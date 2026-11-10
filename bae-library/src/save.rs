@@ -387,6 +387,7 @@ impl SaveService {
                 Some(plan.resolved.track_number),
                 plan.resolved.total_tracks as u32,
                 cover_image_bytes.as_deref(),
+                plan.replay_gain.as_ref(),
             )?;
 
             if cancel_for_blocking.load(Ordering::Relaxed) {
@@ -472,6 +473,57 @@ fn codec_tag_type(codec: &bae_preferences::SaveCodec) -> lofty::tag::TagType {
     }
 }
 
+/// The ReplayGain 2.0 tags of a saved file: the gain that brings it to
+/// playback's reference loudness and its true peak, for the track and for its
+/// release, from the loudness measured at import. A level that was not
+/// measured writes none of its tags.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct ReplayGainTags {
+    track: Option<Level>,
+    album: Option<Level>,
+}
+
+/// One level's tags: gain in dB and peak as a linear ratio.
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct Level {
+    gain_db: f64,
+    peak_linear: f64,
+}
+
+impl ReplayGainTags {
+    pub(crate) fn of(meta: &bae_records::TrackAudioMeta) -> Self {
+        let level = |loudness: Option<f64>, peak: Option<f64>| {
+            loudness.zip(peak).map(|(loudness, peak_linear)| Level {
+                gain_db: bae_playback::loudness_gain_db(loudness),
+                peak_linear,
+            })
+        };
+        Self {
+            track: level(
+                meta.audio_format.track_loudness_lufs,
+                meta.audio_format.track_peak_linear,
+            ),
+            album: level(meta.release.album_loudness_lufs, meta.release.album_peak_linear),
+        }
+    }
+
+    /// Each tag as its key and text, in the form players read.
+    fn items(&self) -> Vec<(lofty::tag::ItemKey, String)> {
+        use lofty::tag::ItemKey;
+        let mut items = Vec::new();
+        for (level, gain, peak) in [
+            (self.track, ItemKey::ReplayGainTrackGain, ItemKey::ReplayGainTrackPeak),
+            (self.album, ItemKey::ReplayGainAlbumGain, ItemKey::ReplayGainAlbumPeak),
+        ] {
+            if let Some(level) = level {
+                items.push((gain, format!("{:.2} dB", level.gain_db)));
+                items.push((peak, format!("{:.6}", level.peak_linear)));
+            }
+        }
+        items
+    }
+}
+
 /// Write every known metadata tag that describes this exported file. Cover art
 /// is written when the export plan found cover bytes; disc number is only
 /// written for digital media because side-based media do not map to ID3 discs.
@@ -482,6 +534,7 @@ fn write_tags(
     track_number: Option<u32>,
     total_tracks: u32,
     cover_data: Option<&[u8]>,
+    replay_gain: Option<&ReplayGainTags>,
 ) -> Result<(), String> {
     use lofty::config::WriteOptions;
     use lofty::picture::{Picture, PictureType};
@@ -515,6 +568,10 @@ fn write_tags(
 
     if let Some(disc) = tags.disc {
         tag.set_disk(disc);
+    }
+
+    for (key, text) in replay_gain.into_iter().flat_map(ReplayGainTags::items) {
+        tag.insert_text(key, text);
     }
 
     if let Some(data) = cover_data {

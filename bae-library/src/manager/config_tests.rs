@@ -98,7 +98,6 @@ async fn set_last_save_preset_rejects_unknown_and_takes_any_format() {
         id: "wav-16".to_string(),
         name: "WAV 16-bit".to_string(),
         codec: bae_preferences::SaveCodec::Wav { bit_depth: bae_preferences::SaveBitDepth::Bits16 },
-        embed_cover: true,
     });
     manager.set_save_presets(presets).await.unwrap();
 

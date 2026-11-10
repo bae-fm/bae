@@ -4,7 +4,9 @@
 //! bytes are downloaded from storage and decrypted with the release's
 //! item key — the same verified read pin and unmanage use.
 
-use bae_preferences::{SaveBitDepth, SaveCodec, SaveFilenameToken, SaveFolderToken, SavePreset};
+use bae_preferences::{
+    SaveBitDepth, SaveCodec, SaveExtras, SaveFilenameToken, SaveFolderToken, SavePreset,
+};
 use bae_transfers::OutputKind;
 use coven::MemoryStorage;
 use std::fs;
@@ -171,7 +173,6 @@ async fn a_lossless_format_writes_the_depth_of_the_track_it_saves() {
         id: "sixteen".to_string(),
         name: "16-bit".to_string(),
         codec: SaveCodec::Flac { bit_depth: SaveBitDepth::Bits16 },
-        ..same_as_source.clone()
     };
     presets.push(sixteen.clone());
     manager.set_save_presets(presets).await.unwrap();
@@ -226,6 +227,7 @@ async fn a_release_save_names_its_folder_by_the_folder_pattern() {
                         preset: flac.clone(),
                         filename_tokens: default_tokens(),
                         folder_tokens: tokens,
+                        extras: SaveExtras::default(),
                     },
                 )
                 .await
@@ -243,6 +245,86 @@ async fn a_release_save_names_its_folder_by_the_folder_pattern() {
         album.title,
         "a pattern that renders nothing names the folder by the album"
     );
+}
+
+/// A release save writes the release's cover as `cover.jpg` in its folder when
+/// the extras ask for it, and not otherwise.
+#[tokio::test]
+async fn a_release_save_writes_the_cover_file_only_when_asked() {
+    bae_util::test_logs::install();
+    let f = ExportFixture::new().await;
+    let album_dir = f.temp_path().join("album");
+    fs::create_dir_all(&album_dir).unwrap();
+    bae_import::test_fixtures::write_tagged_flac(&album_dir, "01.flac", "Track One");
+    bae_import::test_fixtures::write_cover_png(&album_dir.join("cover.png"));
+    let release_id = import_unknown_local(&f, &album_dir).await;
+    let flac = f.library.manager().save_presets().await.unwrap().remove(0);
+
+    let save = |cover_file: bool, directory: &str| {
+        let (f, release_id, flac) = (&f, &release_id, &flac);
+        let target = f.temp_path().join(directory);
+        async move {
+            fs::create_dir_all(&target).unwrap();
+            f.library
+                .manager()
+                .export_release(
+                    release_id,
+                    &target,
+                    OutputKind::Save {
+                        preset: flac.clone(),
+                        filename_tokens: default_tokens(),
+                        folder_tokens: default_folder_tokens(),
+                        extras: SaveExtras { embed_cover: true, cover_file, loudness_tags: true },
+                    },
+                )
+                .await
+                .expect("the release save succeeds");
+            let folder = fs::read_dir(&target).unwrap().next().unwrap().unwrap().path();
+            folder.join("cover.jpg")
+        }
+    };
+
+    let cover = save(true, "with-cover-file").await;
+    let bytes = fs::read(&cover).expect("the folder holds cover.jpg");
+    assert_eq!(&bytes[..2], &[0xFF, 0xD8], "the cover file is a JPEG");
+    assert!(!save(false, "without-cover-file").await.exists(), "no cover file when not asked");
+}
+
+/// Saved files carry the release's measured loudness as ReplayGain tags when
+/// the extras ask for it, and none otherwise.
+#[tokio::test]
+async fn a_saved_track_carries_replaygain_tags_only_when_asked() {
+    use lofty::prelude::*;
+    use lofty::tag::ItemKey;
+
+    bae_util::test_logs::install();
+    let f = ExportFixture::new().await;
+    let album_dir = f.temp_path().join("album");
+    fs::create_dir_all(&album_dir).unwrap();
+    bae_import::test_fixtures::write_tagged_flac(&album_dir, "01.flac", "Track One");
+    let release_id = import_unknown_local(&f, &album_dir).await;
+    let tracks = f.library.records().get_tracks_for_release(&release_id).await.unwrap();
+    let manager = f.library.manager();
+    let gain_of = |path: &Path| {
+        let file = lofty::read_from_path(path).unwrap();
+        let tag = file.primary_tag().expect("the saved file is tagged");
+        (
+            tag.get_string(ItemKey::ReplayGainTrackGain).map(str::to_string),
+            tag.get_string(ItemKey::ReplayGainTrackPeak).map(str::to_string),
+            tag.get_string(ItemKey::ReplayGainAlbumGain).map(str::to_string),
+        )
+    };
+
+    let with_tags = f.temp_path().join("with.flac");
+    manager.save_track(&tracks[0].id, &with_tags, "flac").await.unwrap();
+    let (track_gain, track_peak, album_gain) = gain_of(&with_tags);
+    assert!(track_gain.expect("a track gain").ends_with(" dB"));
+    assert!(track_peak.is_some() && album_gain.is_some());
+
+    manager.set_save_loudness_tags(false).await.unwrap();
+    let without_tags = f.temp_path().join("without.flac");
+    manager.save_track(&tracks[0].id, &without_tags, "flac").await.unwrap();
+    assert_eq!(gain_of(&without_tags), (None, None, None));
 }
 
 /// A single track's save records its format as the one the next save starts
@@ -294,6 +376,7 @@ async fn one_filename_pattern_names_every_format() {
                         preset,
                         filename_tokens: tokens,
                         folder_tokens: default_folder_tokens(),
+                        extras: SaveExtras::default(),
                     },
                 )
                 .await
@@ -335,9 +418,9 @@ async fn one_filename_pattern_names_every_format() {
     assert_eq!(saved_names(mp3, tokens).await, vec!["Track One.mp3", "Track Two.mp3"]);
 }
 
-/// A save reads the cover only when the preset embeds: with art on the
-/// release, `embed_cover: true` carries the bytes and `false` carries none — the
-/// file read is skipped entirely.
+/// A save reads the cover for embedding only when asked: with art on the
+/// release, `true` carries the bytes and `false` carries none — the file read
+/// is skipped entirely.
 #[tokio::test]
 async fn save_cover_image_skips_the_read_when_not_embedding() {
     bae_util::test_logs::install();
@@ -531,6 +614,7 @@ async fn a_release_save_copies_a_track_already_in_the_format_and_converts_the_re
                 preset: flac,
                 filename_tokens: default_tokens(),
                 folder_tokens: default_folder_tokens(),
+                extras: SaveExtras::default(),
             },
         )
         .await
@@ -600,7 +684,6 @@ async fn a_wav_track_saves_as_wav_at_its_own_depth_or_16_bits() {
         id: id.to_string(),
         name: id.to_string(),
         codec: SaveCodec::Wav { bit_depth },
-        embed_cover: false,
     };
     let mut presets = manager.save_presets().await.unwrap();
     presets.push(wav("same", SaveBitDepth::SameAsSource));
@@ -668,6 +751,7 @@ async fn a_cue_image_saves_one_file_per_track_with_each_gap_before_its_track() {
                 preset: flac,
                 filename_tokens: default_tokens(),
                 folder_tokens: default_folder_tokens(),
+                extras: SaveExtras::default(),
             },
         )
         .await
@@ -734,6 +818,7 @@ async fn a_release_save_of_two_names_one_drive_holds_as_one_fails() {
                 preset,
                 filename_tokens: vec![SaveFilenameToken::Title],
                 folder_tokens: default_folder_tokens(),
+                extras: SaveExtras::default(),
             },
         )
         .await
@@ -791,7 +876,6 @@ fn flac_save_preset(id: &str) -> SavePreset {
         id: id.to_string(),
         name: id.to_string(),
         codec: SaveCodec::Flac { bit_depth: SaveBitDepth::Bits16 },
-        embed_cover: false,
     }
 }
 
@@ -820,6 +904,7 @@ async fn peak_sources_open_saving(
                 preset,
                 filename_tokens: default_tokens(),
                 folder_tokens: default_folder_tokens(),
+                extras: SaveExtras::default(),
             },
         )
         .await

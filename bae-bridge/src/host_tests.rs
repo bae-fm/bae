@@ -159,7 +159,6 @@ fn a_new_save_preset_is_cores_flac_preset_with_its_own_id() {
     let preset = host.new_save_preset(Vec::new());
     assert_eq!(preset.name, bridge_save_format_name(BridgeSaveFormat::Flac));
     assert_eq!(preset.codec, bridge_save_format_default_codec(BridgeSaveFormat::Flac));
-    assert!(preset.embed_cover);
     assert_ne!(preset.id, host.new_save_preset(Vec::new()).id);
     let second = host.new_save_preset(vec![preset]);
     assert_eq!(second.name, format!("{} (2)", bridge_save_format_name(BridgeSaveFormat::Flac)));

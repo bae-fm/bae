@@ -85,6 +85,18 @@ forward! { async this => {
             .await?)
     }
 
+    fn set_save_embed_cover(on: bool) -> () {
+        Ok(this.services.set_save_embed_cover(on).await?)
+    }
+
+    fn set_save_cover_file(on: bool) -> () {
+        Ok(this.services.set_save_cover_file(on).await?)
+    }
+
+    fn set_save_loudness_tags(on: bool) -> () {
+        Ok(this.services.set_save_loudness_tags(on).await?)
+    }
+
     fn set_folder_tokens(tokens: Vec<crate::types::BridgeSaveFolderToken>) -> () {
         Ok(this
             .services

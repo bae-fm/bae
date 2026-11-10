@@ -79,7 +79,6 @@ fn the_name_rules_cross_as_core_states_them() {
         id: id.to_string(),
         name: name.to_string(),
         codec: bridge_save_format_default_codec(BridgeSaveFormat::Flac),
-        embed_cover: true,
     };
     let presets = vec![preset("a", "FLAC"), preset("b", "MP3")];
     assert!(bridge_save_name_taken("MP3".to_string(), "a".to_string(), presets.clone()));

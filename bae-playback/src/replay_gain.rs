@@ -8,10 +8,16 @@ use bae_records::ResolvedTrackAudio;
 /// -18 LUFS is a common reference for quiet-listening normalization.
 const REPLAY_GAIN_TARGET_LUFS: f64 = -18.0;
 
+/// The gain in dB that brings audio measured at `loudness_lufs` to the target
+/// loudness, before the peak cap: the value ReplayGain tags carry.
+pub fn loudness_gain_db(loudness_lufs: f64) -> f64 {
+    REPLAY_GAIN_TARGET_LUFS - loudness_lufs
+}
+
 /// The linear gain that brings audio measured at `loudness_lufs` to the
 /// target loudness, before the peak cap. `1.0` = no change.
 pub fn loudness_gain_linear(loudness_lufs: f64) -> f64 {
-    10f64.powf((REPLAY_GAIN_TARGET_LUFS - loudness_lufs) / 20.0)
+    10f64.powf(loudness_gain_db(loudness_lufs) / 20.0)
 }
 
 /// Linear playback gain for `audio` under `mode`. `1.0` = no change.

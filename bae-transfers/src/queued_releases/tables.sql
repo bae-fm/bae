@@ -125,16 +125,19 @@ CREATE TABLE IF NOT EXISTS output_queue (
     -- coven's bytes for the folder's path (`coven::path_bytes`).
     target_dir BLOB NOT NULL,
     kind       TEXT NOT NULL CHECK (kind IN ('export', 'save')),
-    -- A save's preset and its filename and folder name patterns, captured
+    -- A save's preset, its filename and folder name patterns and its extras,
+    -- captured
     -- whole as JSON when it was queued, so a later edit to any changes nothing
     -- already queued.
     preset          TEXT,
     filename_tokens TEXT,
     folder_tokens   TEXT,
+    extras          TEXT,
     CHECK ((state = 'failed') = (error IS NOT NULL)),
     CHECK ((kind = 'save') = (preset IS NOT NULL)),
     CHECK ((kind = 'save') = (filename_tokens IS NOT NULL)),
-    CHECK ((kind = 'save') = (folder_tokens IS NOT NULL))
+    CHECK ((kind = 'save') = (folder_tokens IS NOT NULL)),
+    CHECK ((kind = 'save') = (extras IS NOT NULL))
 ) STRICT;
 CREATE UNIQUE INDEX IF NOT EXISTS output_queue_active
     ON output_queue (state) WHERE state = 'active';

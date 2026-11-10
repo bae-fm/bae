@@ -437,6 +437,18 @@ internal open class FakeAppHandle(
         unfaked("setMuted")
     }
 
+    override suspend fun setSaveCoverFile(on: Boolean) {
+        unfaked("setSaveCoverFile")
+    }
+
+    override suspend fun setSaveEmbedCover(on: Boolean) {
+        unfaked("setSaveEmbedCover")
+    }
+
+    override suspend fun setSaveLoudnessTags(on: Boolean) {
+        unfaked("setSaveLoudnessTags")
+    }
+
     override suspend fun setFolderTokens(tokens: List<BridgeSaveFolderToken>) {
         unfaked("setFolderTokens")
     }

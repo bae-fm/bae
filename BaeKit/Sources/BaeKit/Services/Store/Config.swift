@@ -55,6 +55,8 @@ public struct Config: Equatable {
     public let filenameTokens: [BridgeSaveFilenameToken]
     /// The folder name pattern a release save names its folder by.
     public let folderTokens: [BridgeSaveFolderToken]
+    /// The cover and loudness settings every save format shares.
+    public let saveExtras: BridgeSaveExtras
     /// Id of the preset the last save, of a track or a release, used: the one
     /// a save starts with.
     public let lastSavePreset: String
@@ -88,6 +90,7 @@ public struct Config: Equatable {
         savePresets = bridge.savePresets
         filenameTokens = bridge.filenameTokens
         folderTokens = bridge.folderTokens
+        saveExtras = bridge.saveExtras
         lastSavePreset = bridge.lastSavePreset
         castEnabled = bridge.castEnabled
         castTranscodeFormat = bridge.castTranscodeFormat

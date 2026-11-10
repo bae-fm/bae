@@ -34,6 +34,12 @@ final class Outputs: Sendable, Observable {
     /// Set the one filename pattern every save names its files by.
     let setFilenameTokens:
         @Sendable (_ tokens: [BridgeSaveFilenameToken]) async throws -> Void
+    /// Set whether each saved file embeds the release's cover.
+    let setSaveEmbedCover: @Sendable (_ on: Bool) async throws -> Void
+    /// Set whether a release save writes the cover as cover.jpg in its folder.
+    let setSaveCoverFile: @Sendable (_ on: Bool) async throws -> Void
+    /// Set whether each saved file carries ReplayGain tags.
+    let setSaveLoudnessTags: @Sendable (_ on: Bool) async throws -> Void
     /// Set the folder name pattern a release save names its folder by.
     let setFolderTokens:
         @Sendable (_ tokens: [BridgeSaveFolderToken]) async throws -> Void
@@ -68,6 +74,15 @@ final class Outputs: Sendable, Observable {
         setFolderTokens:
             @escaping @Sendable ([BridgeSaveFolderToken]) async throws
             -> Void = { _ in
+            },
+        setSaveEmbedCover: @escaping @Sendable (Bool) async throws -> Void = {
+            _ in
+        },
+        setSaveCoverFile: @escaping @Sendable (Bool) async throws -> Void = {
+            _ in
+        },
+        setSaveLoudnessTags:
+            @escaping @Sendable (Bool) async throws -> Void = { _ in
             }
     ) {
         self.newSavePreset = newSavePreset
@@ -78,6 +93,9 @@ final class Outputs: Sendable, Observable {
         self.setSavePresets = setSavePresets
         self.setFilenameTokens = setFilenameTokens
         self.setFolderTokens = setFolderTokens
+        self.setSaveEmbedCover = setSaveEmbedCover
+        self.setSaveCoverFile = setSaveCoverFile
+        self.setSaveLoudnessTags = setSaveLoudnessTags
     }
 
     convenience init(handle: any AppHandleProtocol, host: BridgeHost) {
@@ -104,6 +122,11 @@ final class Outputs: Sendable, Observable {
             },
             setFolderTokens: {
                 try await handle.setFolderTokens(tokens: $0)
+            },
+            setSaveEmbedCover: { try await handle.setSaveEmbedCover(on: $0) },
+            setSaveCoverFile: { try await handle.setSaveCoverFile(on: $0) },
+            setSaveLoudnessTags: {
+                try await handle.setSaveLoudnessTags(on: $0)
             }
         )
     }

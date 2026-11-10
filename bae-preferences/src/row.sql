@@ -16,6 +16,11 @@ CREATE TABLE IF NOT EXISTS preferences (
     -- a write that leaves it naming one.
     last_save_preset TEXT NOT NULL
         REFERENCES save_preset (id) DEFERRABLE INITIALLY DEFERRED,
+    -- The settings every save format shares: the cover in each file, the
+    -- cover as `cover.jpg` in a release's folder, ReplayGain tags in each file.
+    save_embed_cover   INTEGER NOT NULL CHECK (save_embed_cover IN (0, 1)),
+    save_cover_file    INTEGER NOT NULL CHECK (save_cover_file IN (0, 1)),
+    save_loudness_tags INTEGER NOT NULL CHECK (save_loudness_tags IN (0, 1)),
     -- Whether playback pauses between sides and discs, and how many seconds
     -- such a pause waits before the next side starts on its own; NULL waits
     -- for Play. The countdown is kept while pausing is off.
@@ -60,7 +65,6 @@ CREATE TABLE IF NOT EXISTS save_preset (
     codec        TEXT NOT NULL CHECK (codec IN ('flac', 'mp3', 'aac', 'opus_ogg', 'wav', 'aiff')),
     bit_depth    TEXT CHECK (bit_depth IN ('same_as_source', 'bits_16')),
     bitrate_kbps INTEGER,
-    embed_cover        INTEGER NOT NULL CHECK (embed_cover IN (0, 1)),
     CHECK ((codec IN ('flac', 'wav', 'aiff')) = (bit_depth IS NOT NULL)),
     CHECK ((codec IN ('flac', 'wav', 'aiff')) = (bitrate_kbps IS NULL)),
     -- The bitrates each encoder writes (SaveFormat::bitrates_kbps).
@@ -86,22 +90,22 @@ CREATE TABLE IF NOT EXISTS save_folder_token (
 ) STRICT;
 
 INSERT OR IGNORE INTO save_preset (
-    id, position, name, codec, bit_depth, bitrate_kbps, embed_cover)
+    id, position, name, codec, bit_depth, bitrate_kbps)
 VALUES
-    ('flac', 0, 'FLAC', 'flac', 'same_as_source', NULL, 1),
-    ('mp3', 1, 'MP3', 'mp3', NULL, 320, 1);
+    ('flac', 0, 'FLAC', 'flac', 'same_as_source', NULL),
+    ('mp3', 1, 'MP3', 'mp3', NULL, 320);
 INSERT OR IGNORE INTO save_filename_token (position, token)
 VALUES (0, 'track_number'), (1, 'title');
 INSERT OR IGNORE INTO save_folder_token (position, token)
 VALUES (0, 'artist'), (1, 'album');
 INSERT OR IGNORE INTO preferences (
-    singleton, discogs_key, replay_gain_mode, last_save_preset, pause_between_sides,
-    side_pause_countdown_seconds,
+    singleton, discogs_key, replay_gain_mode, last_save_preset, save_embed_cover,
+    save_cover_file, save_loudness_tags, pause_between_sides, side_pause_countdown_seconds,
     max_concurrent_uploads, max_concurrent_downloads, show_remaining_time,
     library_full_width, import_destination, identify_automatically,
     import_when_identified, ask_musicbrainz, ask_discogs, cast_enabled,
     cast_transcode_format, mcp_enabled, mcp_port, subsonic_enabled, subsonic_port,
     subsonic_username, subsonic_bind_address)
 VALUES (
-    1, NULL, 'off', 'flac', 1, NULL, 3, 3, 0, 0, 'cloud_pinned', 1, 0, 1, 1, 0, 'mp3', 0,
+    1, NULL, 'off', 'flac', 1, 1, 1, 1, NULL, 3, 3, 0, 0, 'cloud_pinned', 1, 0, 1, 1, 0, 'mp3', 0,
     47777, 0, 4533, '', '127.0.0.1');

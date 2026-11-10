@@ -6,7 +6,6 @@ fn a_lossy_format_saves_only_at_the_bitrates_its_encoder_writes() {
         id: "preset".to_string(),
         name: "Preset".to_string(),
         codec,
-        embed_cover: true,
     };
 
     preset(SaveCodec::Aac { bitrate_kbps: 96 }).validate().unwrap();
@@ -117,7 +116,6 @@ fn each_format_starts_at_a_codec_of_its_own_that_saves() {
             id: "preset".to_string(),
             name: "Preset".to_string(),
             codec,
-            embed_cover: true,
         };
         preset(codec.clone()).validate().unwrap();
         if let Some(accepted) = format.bitrates_kbps() {
@@ -153,7 +151,6 @@ fn a_new_preset_is_a_valid_flac_preset_with_its_own_id() {
             id: "new".to_string(),
             name: "FLAC".to_string(),
             codec: SaveCodec::Flac { bit_depth: SaveBitDepth::SameAsSource },
-            embed_cover: true,
         }
     );
 }

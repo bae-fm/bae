@@ -163,6 +163,11 @@ struct SyncStatusStoreTests {
             savePresets: [],
             filenameTokens: [],
             folderTokens: [.artist, .album],
+            saveExtras: BridgeSaveExtras(
+                embedCover: true,
+                coverFile: true,
+                loudnessTags: true
+            ),
             lastSavePreset: "flac",
             castEnabled: false,
             castTranscodeFormat: .mp3,

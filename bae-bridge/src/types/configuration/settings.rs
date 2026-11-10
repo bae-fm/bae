@@ -66,8 +66,17 @@ pub struct BridgeSavePreset {
     pub id: String,
     pub name: String,
     pub codec: BridgeSaveCodec,
-    /// Whether saved files embed the release's cover art.
+}
+
+/// The cover and loudness settings every save format shares.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeSaveExtras {
+    /// Whether each saved file embeds the release's cover art.
     pub embed_cover: bool,
+    /// Whether a release save writes the cover as `cover.jpg` in its folder.
+    pub cover_file: bool,
+    /// Whether each saved file carries ReplayGain tags.
+    pub loudness_tags: bool,
 }
 
 /// Why a release read from several folders cannot be worked on as it stands,

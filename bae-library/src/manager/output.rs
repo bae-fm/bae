@@ -48,6 +48,7 @@ impl LibraryManager {
                 preset,
                 filename_tokens: preferences.save_filename_tokens,
                 folder_tokens: preferences.save_folder_tokens,
+                extras: preferences.save_extras,
             },
         )
         .await?;
@@ -230,7 +231,7 @@ impl LibraryManager {
             bae_transfers::OutputKind::Export => {
                 self.copy_release_files_to_staging(release_id, &folder, staging.path()).await?;
             }
-            bae_transfers::OutputKind::Save { preset, filename_tokens, .. } => {
+            bae_transfers::OutputKind::Save { preset, filename_tokens, extras, .. } => {
                 info!(
                     release_id,
                     folder = folder.as_str(),
@@ -238,8 +239,17 @@ impl LibraryManager {
                     preset = preset.id.as_str(),
                     "Writing release output"
                 );
-                self.save_release_tracks_to_dir(&release, preset, &filename_tokens, staging.path())
-                    .await?;
+                self.save_release_tracks_to_dir(
+                    &release,
+                    preset,
+                    &filename_tokens,
+                    extras,
+                    staging.path(),
+                )
+                .await?;
+                if extras.cover_file {
+                    self.write_cover_file(release_id, staging.path()).await?;
+                }
             }
         }
 
@@ -252,6 +262,31 @@ impl LibraryManager {
             })
             .await??;
         staging.disarm();
+        Ok(())
+    }
+
+    /// Write the release's cover as `cover.jpg` in `staging_dir`, when it has
+    /// one. The stored cover is already a JPEG. The file is created new, so a
+    /// release file of that name fails the save rather than being replaced.
+    async fn write_cover_file(
+        &self,
+        release_id: &str,
+        staging_dir: &std::path::Path,
+    ) -> Result<(), LibraryError> {
+        let Some(cover) = self.save_cover_image(release_id, true).await? else {
+            return Ok(());
+        };
+        let path = staging_dir.join("cover.jpg");
+        self.diagnostics
+            .blocking("write a save's cover image", move || {
+                use std::io::Write;
+                std::fs::OpenOptions::new()
+                    .write(true)
+                    .create_new(true)
+                    .open(path)?
+                    .write_all(&cover)
+            })
+            .await??;
         Ok(())
     }
 

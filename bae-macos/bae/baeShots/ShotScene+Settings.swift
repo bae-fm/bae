@@ -53,8 +53,7 @@ extension ShotScene {
             let aac = BridgeSavePreset(
                 id: "aac",
                 name: "MP3",
-                codec: .aac(bitrateKbps: 256),
-                embedCover: true
+                codec: .aac(bitrateKbps: 256)
             )
             return ShotStage(
                 SavePresetEditor(

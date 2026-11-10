@@ -102,7 +102,8 @@ fn write_tags_to_encoded_flac(cover: Option<&[u8]>) -> (tempfile::TempDir, std::
     let dir = tempfile::TempDir::new().unwrap();
     let path = dir.path().join("tagged.flac");
     std::fs::write(&path, &flac).unwrap();
-    write_tags(&path, lofty::tag::TagType::VorbisComments, &tags, Some(3), 10, cover).unwrap();
+    write_tags(&path, lofty::tag::TagType::VorbisComments, &tags, Some(3), 10, cover, None)
+        .unwrap();
     (dir, path)
 }
 
@@ -189,7 +190,7 @@ fn write_tags_round_trips_through_mp4_ilst() {
     std::fs::write(&path, &m4a).unwrap();
     let tag_type = codec_tag_type(&bae_preferences::SaveCodec::Aac { bitrate_kbps: 256 });
     assert_eq!(tag_type, TagType::Mp4Ilst);
-    write_tags(&path, tag_type, &tags, Some(3), 10, Some(&cover_bytes)).unwrap();
+    write_tags(&path, tag_type, &tags, Some(3), 10, Some(&cover_bytes), None).unwrap();
 
     let tagged = lofty::read_from_path(&path).unwrap();
     let tag = tagged.tag(TagType::Mp4Ilst).expect("MP4 ilst tag present");
@@ -315,4 +316,23 @@ fn an_empty_folder_name_falls_back_to_the_album() {
         catalog_number: None,
     };
     assert_eq!(render_save_folder_name(&[Artist], &nothing), "release");
+}
+
+/// ReplayGain tags are the gain in dB to two places and the peak as a linear
+/// ratio to six, for each level that was measured.
+#[test]
+fn replaygain_tags_state_gain_and_peak_for_each_measured_level() {
+    use lofty::tag::ItemKey;
+    let tags = ReplayGainTags {
+        track: Some(Level { gain_db: -3.2, peak_linear: 0.987654321 }),
+        album: None,
+    };
+    assert_eq!(
+        tags.items(),
+        vec![
+            (ItemKey::ReplayGainTrackGain, "-3.20 dB".to_string()),
+            (ItemKey::ReplayGainTrackPeak, "0.987654".to_string()),
+        ]
+    );
+    assert!(ReplayGainTags { track: None, album: None }.items().is_empty());
 }

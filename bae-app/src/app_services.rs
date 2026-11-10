@@ -485,6 +485,9 @@ impl AppServices {
     }
 
     delegate_async!(manager, set_save_presets => set_save_presets(presets: Vec<bae_preferences::SavePreset>) -> Result<(), bae_preferences::PreferencesError>);
+    delegate_async!(manager, set_save_embed_cover => set_save_embed_cover(on: bool) -> Result<(), bae_preferences::PreferencesError>);
+    delegate_async!(manager, set_save_cover_file => set_save_cover_file(on: bool) -> Result<(), bae_preferences::PreferencesError>);
+    delegate_async!(manager, set_save_loudness_tags => set_save_loudness_tags(on: bool) -> Result<(), bae_preferences::PreferencesError>);
     delegate_async!(manager, set_save_folder_tokens => set_save_folder_tokens(tokens: Vec<bae_preferences::SaveFolderToken>) -> Result<(), bae_preferences::PreferencesError>);
     delegate_async!(manager, set_save_filename_tokens => set_save_filename_tokens(tokens: Vec<bae_preferences::SaveFilenameToken>) -> Result<(), bae_preferences::PreferencesError>);
     pub async fn rename_library(

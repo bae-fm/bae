@@ -8,8 +8,8 @@
 use super::{
     CastTranscodeFormat, DiscogsValidation, IdentificationPreferences, ImportDestination,
     LookupCatalogPreferences, McpConfig, Preferences, PreferencesError, ReplayGainMode,
-    SaveBitDepth, SaveCodec, SaveFilenameToken, SaveFolderToken, SavePreset, SidePauseCountdown,
-    SubsonicConfig,
+    SaveBitDepth, SaveCodec, SaveExtras, SaveFilenameToken, SaveFolderToken, SavePreset,
+    SidePauseCountdown, SubsonicConfig,
 };
 use bae_store::{DbError, Store};
 use coven::{BulkSqlContext, CovenWrite, SqlRead};
@@ -110,6 +110,11 @@ fn preferences_on(sql: &impl SqlRead) -> rusqlite::Result<Preferences> {
             save_filename_tokens,
             save_folder_tokens,
             last_save_preset: row.get("last_save_preset")?,
+            save_extras: SaveExtras {
+                embed_cover: flag("save_embed_cover")?,
+                cover_file: flag("save_cover_file")?,
+                loudness_tags: flag("save_loudness_tags")?,
+            },
             pause_between_sides: flag("pause_between_sides")?,
             side_pause_countdown: match row.get::<_, Option<u32>>("side_pause_countdown_seconds")? {
                 None => SidePauseCountdown::Off,
@@ -179,7 +184,6 @@ fn save_presets_on(sql: &impl SqlRead) -> rusqlite::Result<Vec<SavePreset>> {
                 "opus_ogg" => SaveCodec::OpusOgg { bitrate_kbps: bitrate_kbps()? },
                 _ => return Err(invalid(row, "codec", codec)),
             },
-            embed_cover: row.get("embed_cover")?,
             id,
         })
     })
@@ -215,18 +219,9 @@ fn write_preferences_on(
                 SaveCodec::OpusOgg { bitrate_kbps } => ("opus_ogg", None, Some(bitrate_kbps)),
             };
             sql.execute(
-                "INSERT INTO save_preset (id, position, name, codec, bit_depth, bitrate_kbps, \
-                     embed_cover) \
-                 VALUES (?, ?, ?, ?, ?, ?, ?)",
-                params![
-                    preset.id,
-                    position as i64,
-                    preset.name,
-                    codec,
-                    bit_depth,
-                    bitrate_kbps,
-                    preset.embed_cover,
-                ],
+                "INSERT INTO save_preset (id, position, name, codec, bit_depth, bitrate_kbps) \
+                 VALUES (?, ?, ?, ?, ?, ?)",
+                params![preset.id, position as i64, preset.name, codec, bit_depth, bitrate_kbps,],
             )?;
         }
     }
@@ -255,6 +250,7 @@ fn write_preferences_on(
         save_filename_tokens: _,
         save_folder_tokens: _,
         last_save_preset,
+        save_extras,
         pause_between_sides,
         side_pause_countdown,
         max_concurrent_uploads,
@@ -270,7 +266,8 @@ fn write_preferences_on(
     } = edited;
     sql.execute(
         "UPDATE preferences SET discogs_key = ?, replay_gain_mode = ?, \
-             last_save_preset = ?, \
+             last_save_preset = ?, save_embed_cover = ?, save_cover_file = ?, \
+             save_loudness_tags = ?, \
              pause_between_sides = ?, side_pause_countdown_seconds = ?, \
              max_concurrent_uploads = ?, max_concurrent_downloads = ?, \
              show_remaining_time = ?, library_full_width = ?, \
@@ -291,6 +288,9 @@ fn write_preferences_on(
                 ReplayGainMode::Album => "album",
             },
             last_save_preset,
+            save_extras.embed_cover,
+            save_extras.cover_file,
+            save_extras.loudness_tags,
             pause_between_sides,
             side_pause_countdown.duration().map(|duration| duration.as_secs() as i64),
             max_concurrent_uploads.get(),

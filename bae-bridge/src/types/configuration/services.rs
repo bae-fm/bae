@@ -52,6 +52,8 @@ pub struct BridgeConfig {
     pub filename_tokens: Vec<BridgeSaveFilenameToken>,
     /// The folder name pattern a release save names its folder by.
     pub folder_tokens: Vec<BridgeSaveFolderToken>,
+    /// The cover and loudness settings every save format shares.
+    pub save_extras: BridgeSaveExtras,
     /// Id of the preset the last save, of a track or a release, used, the one a
     /// save starts with (a valid preset id; core keeps it non-dangling).
     pub last_save_preset: String,

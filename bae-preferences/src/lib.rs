@@ -26,7 +26,7 @@ pub use row::{carry_preferences, preferences, subscribe_preferences, Preferences
 #[cfg(any(test, feature = "test-utils"))]
 pub use row::{fail_preferences_writes_for_test, plant_unknown_replay_gain_mode_for_test};
 pub use save::{
-    SaveBitDepth, SaveCodec, SaveFilenameToken, SaveFolderToken, SaveFormat, SavePreset,
+    SaveBitDepth, SaveCodec, SaveExtras, SaveFilenameToken, SaveFolderToken, SaveFormat, SavePreset,
 };
 pub use server::{
     McpConfig, SubsonicConfig, SubsonicCredential, MCP_DEFAULT_PORT, SUBSONIC_DEFAULT_PORT,
@@ -277,6 +277,8 @@ pub struct Preferences {
     pub save_filename_tokens: Vec<SaveFilenameToken>,
     /// The folder name pattern a release save names its folder by.
     pub save_folder_tokens: Vec<SaveFolderToken>,
+    /// The cover and loudness settings every save format shares.
+    pub save_extras: SaveExtras,
     /// Id of the preset the last save, of a track or a release, used; the
     /// one a save starts with. A required, valid preset id (config validation
     /// keeps it non-dangling).
@@ -342,6 +344,7 @@ impl Default for Preferences {
             save_presets: default_save_presets(),
             save_filename_tokens: default_save_filename_tokens(),
             save_folder_tokens: default_save_folder_tokens(),
+            save_extras: SaveExtras::default(),
             last_save_preset: "flac".to_string(),
             pause_between_sides: true,
             side_pause_countdown: SidePauseCountdown::Off,

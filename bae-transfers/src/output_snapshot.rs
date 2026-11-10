@@ -33,9 +33,10 @@ pub struct OutputRequest {
 /// What a queued release-level output produces at its target dir. `Export`
 /// reconstructs the imported file set verbatim; `Save` renders the release
 /// through the captured preset, naming each file by the captured filename
-/// pattern and the folder by the captured folder pattern. Both are captured whole at enqueue time so a config edit or delete
-/// after enqueue can't change or break a queued save —
-/// the worker never re-reads config.
+/// pattern and the folder by the captured folder pattern, and writing the cover
+/// and loudness tags the captured extras ask for. Each is captured whole at
+/// enqueue time, so a config edit or delete after enqueue can't change or
+/// break a queued save: the worker never re-reads config.
 #[derive(Debug, Clone, PartialEq)]
 pub enum OutputKind {
     Export,
@@ -43,5 +44,6 @@ pub enum OutputKind {
         preset: bae_preferences::SavePreset,
         filename_tokens: Vec<bae_preferences::SaveFilenameToken>,
         folder_tokens: Vec<bae_preferences::SaveFolderToken>,
+        extras: bae_preferences::SaveExtras,
     },
 }

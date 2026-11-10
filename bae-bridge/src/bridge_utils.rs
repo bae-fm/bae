@@ -3,8 +3,8 @@ use crate::types::BridgeOutputKind;
 use crate::types::{
     BridgeCastTranscodeFormat, BridgeConfig, BridgeDiscogsTokenStatus, BridgeImportDestination,
     BridgeLookupCatalog, BridgeLookupCatalogSetting, BridgeMcpConfig, BridgeSaveBitDepth,
-    BridgeSaveCodec, BridgeSaveFilenameToken, BridgeSaveFolderToken, BridgeSavePreset,
-    BridgeSidePauseCountdown, BridgeSourceAvailability, BridgeSubsonicConfig,
+    BridgeSaveCodec, BridgeSaveExtras, BridgeSaveFilenameToken, BridgeSaveFolderToken,
+    BridgeSavePreset, BridgeSidePauseCountdown, BridgeSourceAvailability, BridgeSubsonicConfig,
 };
 
 mirror_enum! {
@@ -87,6 +87,17 @@ impl BridgeSaveCodec {
     }
 }
 
+impl BridgeSaveExtras {
+    pub(crate) fn from_core(extras: &bae_preferences::SaveExtras) -> Self {
+        let bae_preferences::SaveExtras { embed_cover, cover_file, loudness_tags } = extras;
+        BridgeSaveExtras {
+            embed_cover: *embed_cover,
+            cover_file: *cover_file,
+            loudness_tags: *loudness_tags,
+        }
+    }
+}
+
 mirror_enum! {
     BridgeSaveFolderToken = bae_preferences::SaveFolderToken,
     from_core: pub(crate) fn,
@@ -120,18 +131,17 @@ impl BridgeOutputKind {
 
 impl BridgeSavePreset {
     pub(crate) fn from_core(preset: &bae_preferences::SavePreset) -> Self {
-        let bae_preferences::SavePreset { id, name, codec, embed_cover } = preset;
+        let bae_preferences::SavePreset { id, name, codec } = preset;
         BridgeSavePreset {
             id: id.clone(),
             name: name.clone(),
             codec: BridgeSaveCodec::from_core(codec),
-            embed_cover: *embed_cover,
         }
     }
 
     pub(crate) fn into_core(self) -> bae_preferences::SavePreset {
-        let BridgeSavePreset { id, name, codec, embed_cover } = self;
-        bae_preferences::SavePreset { id, name, codec: codec.into_core(), embed_cover }
+        let BridgeSavePreset { id, name, codec } = self;
+        bae_preferences::SavePreset { id, name, codec: codec.into_core() }
     }
 }
 
@@ -150,6 +160,7 @@ impl BridgeConfig {
             save_presets,
             save_filename_tokens,
             save_folder_tokens,
+            save_extras,
             last_save_preset,
             pause_between_sides,
             side_pause_countdown,
@@ -207,6 +218,7 @@ impl BridgeConfig {
                 .copied()
                 .map(BridgeSaveFolderToken::from_core)
                 .collect(),
+            save_extras: BridgeSaveExtras::from_core(save_extras),
             last_save_preset: last_save_preset.clone(),
             cast_enabled: *cast_enabled,
             cast_transcode_format: BridgeCastTranscodeFormat::from_core(*cast_transcode_format),

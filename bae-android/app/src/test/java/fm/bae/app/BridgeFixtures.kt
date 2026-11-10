@@ -33,6 +33,7 @@ import uniffi.bae_bridge.BridgeReleaseStorageState
 import uniffi.bae_bridge.BridgeRendererKind
 import uniffi.bae_bridge.BridgeSaveBitDepth
 import uniffi.bae_bridge.BridgeSaveCodec
+import uniffi.bae_bridge.BridgeSaveExtras
 import uniffi.bae_bridge.BridgeSaveFilenameToken
 import uniffi.bae_bridge.BridgeSaveFolderToken
 import uniffi.bae_bridge.BridgeSavePreset
@@ -288,7 +289,6 @@ object BridgeFixtures {
                         id = "flac",
                         name = "FLAC",
                         codec = BridgeSaveCodec.Flac(bitDepth = BridgeSaveBitDepth.SAME_AS_SOURCE),
-                        embedCover = true,
                     ),
                 ),
             filenameTokens =
@@ -300,6 +300,12 @@ object BridgeFixtures {
                 listOf(
                     BridgeSaveFolderToken.ARTIST,
                     BridgeSaveFolderToken.ALBUM,
+                ),
+            saveExtras =
+                BridgeSaveExtras(
+                    embedCover = true,
+                    coverFile = true,
+                    loudnessTags = true,
                 ),
             lastSavePreset = "flac",
             castEnabled = false,

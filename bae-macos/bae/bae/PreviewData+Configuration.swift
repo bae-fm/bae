@@ -117,6 +117,7 @@
                         savePresets: savePresets,
                         filenameTokens: exportFilenameTokens,
                         folderTokens: [.artist, .album],
+                        saveExtras: PreviewData.saveExtras,
                         lastSavePreset: lastSavePreset,
                         castEnabled: castEnabled,
                         castTranscodeFormat: .mp3,

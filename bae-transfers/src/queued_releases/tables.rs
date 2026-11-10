@@ -86,14 +86,14 @@ impl QueuedPayload for OutputRequest {
     const QUEUE: &'static str = "output";
     const TABLE: &'static str = "output_queue";
     const COLUMNS: &'static [&'static str] =
-        &["target_dir", "kind", "preset", "filename_tokens", "folder_tokens"];
+        &["target_dir", "kind", "preset", "filename_tokens", "folder_tokens", "extras"];
     const NEEDS_NETWORK: bool = false;
 
     #[cfg(desktop)]
     fn values(&self) -> Result<Vec<Value>, DbError> {
-        let (kind, preset, filename_tokens, folder_tokens) = match &self.kind {
-            OutputKind::Export => ("export", None, None, None),
-            OutputKind::Save { preset, filename_tokens, folder_tokens } => (
+        let (kind, preset, filename_tokens, folder_tokens, extras) = match &self.kind {
+            OutputKind::Export => ("export", None, None, None, None),
+            OutputKind::Save { preset, filename_tokens, folder_tokens, extras } => (
                 "save",
                 Some(serde_json::to_string(preset).map_err(|error| {
                     DbError::encode(format!("save preset {}", preset.id), error)
@@ -104,6 +104,9 @@ impl QueuedPayload for OutputRequest {
                 Some(serde_json::to_string(folder_tokens).map_err(|error| {
                     DbError::encode(format!("save folder pattern of {}", preset.id), error)
                 })?),
+                Some(serde_json::to_string(extras).map_err(|error| {
+                    DbError::encode(format!("save extras of {}", preset.id), error)
+                })?),
             ),
         };
         Ok(vec![
@@ -112,6 +115,7 @@ impl QueuedPayload for OutputRequest {
             preset.map_or(Value::Null, Value::Text),
             filename_tokens.map_or(Value::Null, Value::Text),
             folder_tokens.map_or(Value::Null, Value::Text),
+            extras.map_or(Value::Null, Value::Text),
         ])
     }
 
@@ -121,9 +125,10 @@ impl QueuedPayload for OutputRequest {
         let preset: Option<String> = row.get(at + 2)?;
         let filename_tokens: Option<String> = row.get(at + 3)?;
         let folder_tokens: Option<String> = row.get(at + 4)?;
-        let kind = match (kind.as_str(), preset, filename_tokens, folder_tokens) {
-            ("export", None, None, None) => OutputKind::Export,
-            ("save", Some(preset), Some(filename_tokens), Some(folder_tokens)) => {
+        let extras: Option<String> = row.get(at + 5)?;
+        let kind = match (kind.as_str(), preset, filename_tokens, folder_tokens, extras) {
+            ("export", None, None, None, None) => OutputKind::Export,
+            ("save", Some(preset), Some(filename_tokens), Some(folder_tokens), Some(extras)) => {
                 OutputKind::Save {
                     preset: serde_json::from_str(&preset)
                         .map_err(|error| column_conversion_error(row, at + 2, error))?,
@@ -131,15 +136,17 @@ impl QueuedPayload for OutputRequest {
                         .map_err(|error| column_conversion_error(row, at + 3, error))?,
                     folder_tokens: serde_json::from_str(&folder_tokens)
                         .map_err(|error| column_conversion_error(row, at + 4, error))?,
+                    extras: serde_json::from_str(&extras)
+                        .map_err(|error| column_conversion_error(row, at + 5, error))?,
                 }
             }
-            (kind, preset, filename_tokens, folder_tokens) => {
+            (kind, preset, filename_tokens, folder_tokens, extras) => {
                 return Err(column_conversion_error(
                     row,
                     at + 1,
                     format!(
                         "output kind {kind:?} with preset {preset:?}, filename pattern \
-                         {filename_tokens:?} and folder pattern {folder_tokens:?}"
+                         {filename_tokens:?}, folder pattern {folder_tokens:?} and extras {extras:?}"
                     ),
                 ))
             }

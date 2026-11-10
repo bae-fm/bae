@@ -67,13 +67,11 @@ async fn every_preference_reads_back_as_set() {
                 id: "wav".to_string(),
                 name: "WAV \"24-bit\" — 設定".to_string(),
                 codec: SaveCodec::Wav { bit_depth: SaveBitDepth::SameAsSource },
-                embed_cover: false,
             },
             SavePreset {
                 id: "sixteen".to_string(),
                 name: "FLAC 16-bit".to_string(),
                 codec: SaveCodec::Flac { bit_depth: SaveBitDepth::Bits16 },
-                embed_cover: true,
             },
         ],
         save_filename_tokens: vec![
@@ -92,6 +90,7 @@ async fn every_preference_reads_back_as_set() {
             SaveFolderToken::Album,
             SaveFolderToken::Artist,
         ],
+        save_extras: SaveExtras { embed_cover: false, cover_file: false, loudness_tags: false },
         last_save_preset: "sixteen".to_string(),
         pause_between_sides: false,
         side_pause_countdown: SidePauseCountdown::Seconds30,

@@ -291,6 +291,11 @@ async fn an_output_keeps_its_target_and_preset() {
                 preset: preset.clone(),
                 filename_tokens: vec![bae_preferences::SaveFilenameToken::Artist],
                 folder_tokens: vec![bae_preferences::SaveFolderToken::Album],
+                extras: bae_preferences::SaveExtras {
+                    embed_cover: false,
+                    cover_file: true,
+                    loudness_tags: false,
+                },
             },
         },
     };

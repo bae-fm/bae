@@ -27,9 +27,6 @@ struct SavePresetEditor: View {
                     formatRow
                     qualityRow
                 }
-                Section {
-                    coverRow
-                }
             }
             .formStyle(.grouped)
             MacSheetFooter {
@@ -162,22 +159,6 @@ struct SavePresetEditor: View {
             }
         }
         .labelsHidden()
-    }
-
-    private var coverRow: some View {
-        Toggle("Embed cover art", isOn: embedCoverBinding)
-            .presetEditorRowInsets()
-    }
-
-    private var embedCoverBinding: Binding<Bool> {
-        Binding(
-            get: { preset.embedCover },
-            set: { enabled in
-                var changed = preset
-                changed.embedCover = enabled
-                update(changed)
-            }
-        )
     }
 
     private func commitName() {

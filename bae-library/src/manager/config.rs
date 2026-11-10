@@ -323,6 +323,42 @@ impl LibraryManager {
         .await
     }
 
+    /// Set whether each saved file embeds the release's cover.
+    pub async fn set_save_embed_cover(
+        &self,
+        on: bool,
+    ) -> Result<(), bae_preferences::PreferencesError> {
+        self.update_preferences(move |prefs| {
+            prefs.save_extras.embed_cover = on;
+            Ok(())
+        })
+        .await
+    }
+
+    /// Set whether a release save writes the cover as `cover.jpg` in its folder.
+    pub async fn set_save_cover_file(
+        &self,
+        on: bool,
+    ) -> Result<(), bae_preferences::PreferencesError> {
+        self.update_preferences(move |prefs| {
+            prefs.save_extras.cover_file = on;
+            Ok(())
+        })
+        .await
+    }
+
+    /// Set whether each saved file carries ReplayGain tags.
+    pub async fn set_save_loudness_tags(
+        &self,
+        on: bool,
+    ) -> Result<(), bae_preferences::PreferencesError> {
+        self.update_preferences(move |prefs| {
+            prefs.save_extras.loudness_tags = on;
+            Ok(())
+        })
+        .await
+    }
+
     /// Record `preset_id` as the format the last save used, which the next
     /// save starts with.
     #[cfg(desktop)]

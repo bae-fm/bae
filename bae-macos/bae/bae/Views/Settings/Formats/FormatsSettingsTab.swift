@@ -1,7 +1,7 @@
 import BaeKit
 import SwiftUI
 
-/// The Save as pane: the formats and the names, each written through
+/// The Save as pane: the formats, the names and the extras, each written through
 /// `Outputs` and read back from config.
 struct FormatsSettingsTab: View {
     @Environment(ConfigStore.self)
@@ -24,6 +24,7 @@ struct FormatsSettingsTab: View {
         Form {
             formatsSection
             namesSection
+            extrasSection
         }
         .formStyle(.grouped)
         .sheet(item: $editingPreset) { editing in
@@ -82,6 +83,54 @@ struct FormatsSettingsTab: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         } header: {
             Text("Names")
+        }
+    }
+
+    private var extrasSection: some View {
+        Section {
+            extraRow(
+                "Embed cover art",
+                isOn: configStore.config.saveExtras.embedCover,
+                set: outputs.setSaveEmbedCover
+            )
+            extraRow(
+                "Cover image in the folder",
+                note:
+                    "Adds cover.jpg, which many car stereos and players show.",
+                isOn: configStore.config.saveExtras.coverFile,
+                set: outputs.setSaveCoverFile
+            )
+            extraRow(
+                "Loudness tags",
+                note:
+                    "Writes bae’s loudness measurements as ReplayGain, so other players even out the volume.",
+                isOn: configStore.config.saveExtras.loudnessTags,
+                set: outputs.setSaveLoudnessTags
+            )
+        } header: {
+            Text("Extras")
+        }
+    }
+
+    /// One switch of the Extras section, with the note that says what it does.
+    private func extraRow(
+        _ title: LocalizedStringKey,
+        note: LocalizedStringKey? = nil,
+        isOn: Bool,
+        set write: @escaping @Sendable (Bool) async throws -> Void
+    ) -> some View {
+        VStack(alignment: .leading, spacing: ThemeSpace.line) {
+            Toggle(
+                title,
+                isOn: Binding(
+                    get: { isOn },
+                    set: { on in set { try await write(on) } }
+                )
+            )
+            if let note {
+                Text(note)
+                    .fieldNote()
+            }
         }
     }
 

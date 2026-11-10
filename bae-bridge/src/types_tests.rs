@@ -366,11 +366,23 @@ mod conversion_roundtrip {
             codec: bae_preferences::SaveCodec::Flac {
                 bit_depth: bae_preferences::SaveBitDepth::SameAsSource,
             },
-            embed_cover: false,
         };
         let bridge = BridgeSavePreset::from_core(&core);
-        assert!(!bridge.embed_cover);
         assert_eq!(core, bridge.into_core());
+    }
+
+    #[test]
+    fn the_config_carries_the_save_extras() {
+        let mut config = bae_preferences::Config::with_defaults(
+            coven::StoreId("00000000-0000-4000-8000-000000000001".parse().unwrap()),
+            "/library",
+        );
+        assert_eq!(
+            BridgeConfig::from_core(&config).save_extras,
+            BridgeSaveExtras { embed_cover: true, cover_file: true, loudness_tags: true }
+        );
+        config.prefs.save_extras.cover_file = false;
+        assert!(!BridgeConfig::from_core(&config).save_extras.cover_file);
     }
 
     #[test]

@@ -15,18 +15,22 @@
         static let exportFilenameTokens: [BridgeSaveFilenameToken] = [
             .trackNumber, .title,
         ]
+        /// The cover and loudness settings a new library starts with: all on.
+        static let saveExtras = BridgeSaveExtras(
+            embedCover: true,
+            coverFile: true,
+            loudnessTags: true
+        )
         static let savePresets: [BridgeSavePreset] = [
             BridgeSavePreset(
                 id: "flac",
                 name: "FLAC",
-                codec: .flac(bitDepth: .sameAsSource),
-                embedCover: true
+                codec: .flac(bitDepth: .sameAsSource)
             ),
             BridgeSavePreset(
                 id: "mp3",
                 name: "MP3",
-                codec: .mp3(bitrateKbps: 320),
-                embedCover: true
+                codec: .mp3(bitrateKbps: 320)
             ),
         ]
 

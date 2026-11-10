@@ -70,6 +70,9 @@ pub(crate) struct SaveTrackPlan {
     resolved: manager::ResolvedSaveTags,
     audio_meta: bae_records::TrackAudioMeta,
     window: manager::SaveWindow,
+    /// The ReplayGain tags the saved file carries; `None` when the save
+    /// writes no loudness tags.
+    replay_gain: Option<save::ReplayGainTags>,
 }
 
 /// Why the folder for SQLite's temporary tables couldn't be named.

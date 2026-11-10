@@ -262,10 +262,26 @@ pub struct SavePreset {
     pub id: String,
     pub name: String,
     pub codec: SaveCodec,
-    /// Whether saved files embed the release's cover art. When false, the cover
-    /// file is never read — no wasted download/decrypt for a preset that won't
-    /// embed it.
+}
+
+/// The settings every save format shares, all on to start.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SaveExtras {
+    /// Whether each saved file embeds the release's cover art. When false,
+    /// the cover is never read for embedding.
     pub embed_cover: bool,
+    /// Whether a release save writes the release's cover as `cover.jpg` in its
+    /// folder.
+    pub cover_file: bool,
+    /// Whether each saved file carries ReplayGain tags from the loudness
+    /// measured at import.
+    pub loudness_tags: bool,
+}
+
+impl Default for SaveExtras {
+    fn default() -> Self {
+        Self { embed_cover: true, cover_file: true, loudness_tags: true }
+    }
 }
 
 impl SavePreset {
@@ -279,7 +295,6 @@ impl SavePreset {
             id: ids.new_id().simple().to_string(),
             name: format.free_name(&taken),
             codec: format.default_codec(),
-            embed_cover: true,
         }
     }
 
@@ -326,13 +341,11 @@ pub(super) fn default_save_presets() -> Vec<SavePreset> {
             id: "flac".to_string(),
             name: "FLAC".to_string(),
             codec: SaveFormat::Flac.default_codec(),
-            embed_cover: true,
         },
         SavePreset {
             id: "mp3".to_string(),
             name: "MP3".to_string(),
             codec: SaveFormat::Mp3.default_codec(),
-            embed_cover: true,
         },
     ]
 }

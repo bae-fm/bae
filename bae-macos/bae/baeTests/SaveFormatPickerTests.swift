@@ -11,8 +11,7 @@ struct SaveFormatPickerTests {
         BridgeSavePreset(
             id: id,
             name: name,
-            codec: .flac(bitDepth: .sameAsSource),
-            embedCover: true
+            codec: .flac(bitDepth: .sameAsSource)
         )
     }
 

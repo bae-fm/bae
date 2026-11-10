@@ -57,9 +57,11 @@ impl LibraryManager {
         &self,
         meta: TrackAudioMeta,
         window: SaveWindow,
+        loudness_tags: bool,
     ) -> Result<SaveTrackPlan, LibraryError> {
         let resolved = self.resolve_save_tags(&meta.release, &meta.track).await?;
-        Ok(SaveTrackPlan { resolved, audio_meta: meta, window })
+        let replay_gain = loudness_tags.then(|| crate::save::ReplayGainTags::of(&meta));
+        Ok(SaveTrackPlan { resolved, audio_meta: meta, window, replay_gain })
     }
 
     /// The cover bytes a save of `release_id` embeds: the art of the release
@@ -160,9 +162,14 @@ impl LibraryManager {
             Some(next) => Some(TrackAudioMeta::resolve(&self.records, next).await?),
             None => None,
         };
-        let cover = self.save_cover_image(&meta.release.id, preset.embed_cover).await?;
+        let extras = self.preferences().await?.save_extras;
+        let cover = self.save_cover_image(&meta.release.id, extras.embed_cover).await?;
         let plan = self
-            .save_track_plan(meta, SaveWindow { next, is_first_track: neighbors.is_first })
+            .save_track_plan(
+                meta,
+                SaveWindow { next, is_first_track: neighbors.is_first },
+                extras.loudness_tags,
+            )
             .await?;
         let sources = Self::save_source_files([&plan]);
         SaveService::save_tracks(
@@ -186,12 +193,13 @@ impl LibraryManager {
         release: &DbRelease,
         preset: bae_preferences::SavePreset,
         filename_tokens: &[bae_preferences::SaveFilenameToken],
+        extras: bae_preferences::SaveExtras,
         staging_dir: &std::path::Path,
     ) -> Result<(), LibraryError> {
         let release_id = release.id.as_str();
         let tracks = self.records.get_tracks_for_release(release_id).await?;
         let total = tracks.len();
-        let cover = self.save_cover_image(release_id, preset.embed_cover).await?;
+        let cover = self.save_cover_image(release_id, extras.embed_cover).await?;
         let mut metas = Vec::with_capacity(tracks.len());
         for track in &tracks {
             metas.push(TrackAudioMeta::resolve(&self.records, &track.id).await?);
@@ -203,8 +211,13 @@ impl LibraryManager {
         let mut used_paths = std::collections::HashSet::new();
         let mut saves = Vec::with_capacity(tracks.len());
         for (index, (meta, next)) in metas.into_iter().zip(nexts).enumerate() {
-            let plan =
-                self.save_track_plan(meta, SaveWindow { next, is_first_track: index == 0 }).await?;
+            let plan = self
+                .save_track_plan(
+                    meta,
+                    SaveWindow { next, is_first_track: index == 0 },
+                    extras.loudness_tags,
+                )
+                .await?;
             let stem = crate::save::render_save_filename(filename_tokens, &plan.resolved);
             let output_path =
                 unique_output_path(staging_dir, &stem, preset.codec.extension(), &mut used_paths);

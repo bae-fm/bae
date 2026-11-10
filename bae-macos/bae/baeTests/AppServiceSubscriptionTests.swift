@@ -441,6 +441,7 @@ private func makeAppService(
             savePresets: [],
             filenameTokens: [],
             folderTokens: [.artist, .album],
+            saveExtras: PreviewData.saveExtras,
             lastSavePreset: "flac",
             castEnabled: false,
             castTranscodeFormat: .mp3,
