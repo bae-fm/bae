@@ -103,8 +103,8 @@
         }
 
         /// The mapping the picked release produces: nine files against nine
-        /// tracks, every row paired, with the folder's images and documents
-        /// carried alongside them.
+        /// tracks, every row paired, with the folder's images, listed again among
+        /// its files, and documents carried alongside them.
         static let mappingTable = BridgeMappingTable(
             images: mappingImages,
             trackSides: [
@@ -118,7 +118,12 @@
                     ]
                 )
             ],
-            files: [carriedRow(infoLog, role: .document)],
+            files: [
+                carriedRow(infoLog, role: .document),
+                carriedRow(coverImage, role: .image),
+                carriedRow(backImage, role: .image),
+                carriedRow(scanImage, role: .image),
+            ],
             untitledTrackCount: 0
         )
 
@@ -318,6 +323,7 @@
             carriedRow(infoLog, role: .document),
             .sheet(sheet: previewSheetGroup),
             carriedRow(notesDocument, role: .document),
+            carriedRow(coverImage, role: .image),
             carriedRow(damagedFrontImage, role: .damagedImage),
             carriedRow(supplementalVideo, role: .other),
         ]

@@ -65,5 +65,39 @@ extension ShotScene {
                 .mainWindowPreviewEnvironment()
             )
         },
+        ShotScene(
+            id: "release-files-imported-pane",
+            size: CGSize(width: 1_100, height: 1_300)
+        ) {
+            let library = PreviewReleaseLibrary(
+                draft: PreviewData.releaseEditDraft(trackCount: 3)
+            )
+            let images = PreviewData.artImageStore()
+            // The imported pane's editor: the folder's images between the
+            // album row and the tracks, its Files under them.
+            return ShotStage(
+                ReleaseEditorView(
+                    session: ReleaseMetadataEditSession(
+                        releaseId: "release-preview",
+                        opened: library.opened(),
+                        commands: library.commands()
+                    ),
+                    displayName: "Album Title \u{00B7} 2019 \u{00B7} CD",
+                    onViewAlbum: { _ in },
+                    images: PreviewData.mappingImages,
+                    onOpenImages: { _, _ in },
+                    onSaved: { _ in }
+                )
+                .padding(ThemeSpace.section)
+                .background(Theme.background)
+                .environment(PreviewData.artistAssignmentsLibrary())
+                .environment(SettingsNavigation())
+                .albumDetailPreviewEnvironment()
+                .candidateReaderPreviewEnvironment()
+                .mainWindowPreviewEnvironment()
+                .environment(images),
+                images: images
+            )
+        },
     ]
 }
