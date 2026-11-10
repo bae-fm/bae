@@ -33,6 +33,7 @@ import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.CardRow
 import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.ErrorNotice
+import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.RowCard
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.rememberScreenScope
@@ -187,7 +188,7 @@ private fun RenameLibraryDialogContent(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                error?.let { ErrorNotice(it) }
+                error?.let { ErrorNotice(it, look = NoticeLook.QUIET) }
             }
         },
         confirmButton = {

@@ -31,6 +31,7 @@ import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorNotice
+import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.QRCodeImage
 import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.components.rememberCopyText
@@ -170,7 +171,7 @@ private fun InviteCodeDialog(
                     }
                     InviteNote(context.coreString("core.access_key.unused_invite", mapOf("key" to key.accessKeyId)))
                 }
-                error?.let { ErrorNotice(it) }
+                error?.let { ErrorNotice(it, look = NoticeLook.QUIET) }
             }
         },
         confirmButton = {

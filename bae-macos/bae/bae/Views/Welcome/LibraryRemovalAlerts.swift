@@ -21,15 +21,13 @@ enum LibraryRemovalAlerts {
         if LibraryRemovalConfirmation.warnsOfUnsent(loss) {
             alert.informativeText = ""
             alert.accessoryView = AlertAccessory.view(
-                VStack(
-                    alignment: .leading,
-                    spacing: ThemeSpace.related + ThemeSpace.line
-                ) {
+                VStack(alignment: .leading, spacing: 0) {
                     Notice(
                         title: String(localized: "Unsent changes will be lost"),
                         advice: nil,
                         error: nil,
-                        tone: .warning
+                        tone: .warning,
+                        look: .quiet
                     )
                     Text(verbatim: message).themeText(.body)
                 }
