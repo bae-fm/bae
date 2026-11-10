@@ -3087,8 +3087,10 @@ whether or not storage is reachable.
 title bar on macOS and in the library's top bar on Android, never a
 bar across the content. While bytes move it is a spinner: files this device
 is sending, or offline copies downloading. While something needs the person, a sync failure or a pending record,
-it shows a small warning symbol, beside the spinner when both hold. With
-neither it is absent. A pass alone doesn't spin it: an idle library runs one
+it shows a small warning symbol, beside the spinner when both hold. While a
+queue is held (paused, or waiting for network) and nothing moves, it is a
+pause symbol, so the hold stays in reach: the popover's line for that queue
+says Paused or Waiting for network. With none of these it is absent. A pass alone doesn't spin it: an idle library runs one
 every half minute, and the indicator would blink for nothing.
 
 Clicking it opens what sync is doing, a popover on macOS and a sheet on the
@@ -3113,8 +3115,11 @@ once all its files are, and every bar is filled by the bytes of the batch done
 release's files transfer and its count waits. A batch is everything the
 queue has held since it was last empty, so a count only grows, and it starts
 over once the queue empties. A queue's hold (Paused, Waiting for network)
-stands in place of its count. With nothing
-to show it says everything is up to date. *Retry now* shows only while pressing
+stands in place of its count. On the desktop each queue's line ends in Pause,
+or Resume while that queue is paused; pinning and making local are one queue,
+as in Transfers settings, so their lines pause and resume together. Under the
+lines, *Open Storage Manager* opens the Storage manager. On the phones the
+Pinning line ends in Pause or Resume too, and opens the Pinning screen. With nothing to show it says everything is up to date. *Retry now* shows only while pressing
 it would run a pass and a failure that pass can clear holds work back. coven
 publishes what a retry made now would do, decided as it answers the retry
 ([coven api.md

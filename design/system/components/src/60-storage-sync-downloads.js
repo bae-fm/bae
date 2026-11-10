@@ -181,9 +181,11 @@
     var row = function (key, body) { return h('div', { key: key, className: 'bae-m-actrow' }, body); };
     var line = function (key, text, sub) { return row(key, h('div', { className: 'bae-m-actline' }, edge(h('div', null, h('div', null, text), sub ? h('div', { className: 'bae-m-actrow-sub' }, sub) : null)))); };
     // A transfer: what it does, then how far (done of total, or what holds the queue), then a bar; syncing has no count, so its bar moves.
-    var xfer = function (key, label, count, progress) {
+    // `held` is the queue's pause state: a queue's line ends in Pause, or Resume while paused; pinning and making local are one queue, so both lines' buttons act on it together.
+    var xfer = function (key, label, count, progress, held) {
       return row(key, h('div', { className: 'bae-m-actline' },
-        h('div', { className: 'bae-m-actxfer' }, h('span', null, label), count ? h('span', { className: 'bae-muted bae-num' }, count) : null),
+        h('div', { className: 'bae-m-actxfer' }, h('span', null, label), h('span', { className: 'bae-m-actxfer-end' }, count ? h('span', { className: 'bae-muted bae-num' }, count) : null,
+          held != null ? h(MacIconButton, { icon: held ? 'play' : 'pause', size: 13, small: true, boxed: true, label: held ? 'Resume' : 'Pause' }) : null)),
         h('div', { className: 'bae-progress-track bae-m-actxfer-bar' }, h('div', { className: cx('bae-progress-fill', progress == null && 'bae-progress-moving'), style: progress == null ? null : { width: (Number(progress) * 100) + '%' } }))));
     };
     var out = [];
@@ -194,9 +196,11 @@
     if (problems.length) out.push(h(React.Fragment, { key: 'a' }, sec('Needs Attention', problems)));
     if (props.syncing || props.uploads || props.pins || props.makingLocal) out.push(h(React.Fragment, { key: 't' }, sec('Transfers', [
       props.syncing ? xfer('s', 'Syncing changes', null, null) : null,
-      props.uploads ? xfer('u', 'Uploading', props.uploadsWait || props.uploads, props.uploadProgress != null ? props.uploadProgress : 0.4) : null,
-      props.pins ? xfer('p', 'Pinning', props.downloadsWait || props.pins, props.pinProgress != null ? props.pinProgress : 0.3) : null,
-      props.makingLocal ? xfer('m', 'Making local', props.downloadsWait || props.makingLocal, props.makeLocalProgress != null ? props.makeLocalProgress : 0.2) : null].filter(Boolean))));
+      props.uploads ? xfer('u', 'Uploading', props.uploadsWait || props.uploads, props.uploadProgress != null ? props.uploadProgress : 0.4, props.uploadsWait === 'Paused') : null,
+      props.pins ? xfer('p', 'Pinning', props.downloadsWait || props.pins, props.pinProgress != null ? props.pinProgress : 0.3, props.downloadsWait === 'Paused') : null,
+      props.makingLocal ? xfer('m', 'Making local', props.downloadsWait || props.makingLocal, props.makeLocalProgress != null ? props.makeLocalProgress : 0.2, props.downloadsWait === 'Paused') : null].filter(Boolean))));
+    // Under Transfers, Open Storage Manager for the detail.
+    if (props.uploads || props.pins || props.makingLocal) out.push(h('div', { key: 'k', className: 'bae-m-actfoot' }, h(MacButton, { size: 'small' }, 'Open Storage Manager')));
     if (!out.length) out.push(h(React.Fragment, { key: 'i' }, sec(null, row('i', h('div', { className: 'bae-m-actline bae-muted' }, 'Everything is up to date.')))));
     return h('div', { className: 'bae-m-actlist' }, out);
   }
@@ -234,9 +238,11 @@
     var problems = props.children || props.error || props.attention;
     // Only the Needs Attention group starts on its text edge, past the glyphs; the title and the transfers are their own groups, at the sheet's edge.
     var t = function (s, c) { return h('div', { className: c || 'bae-a-act-line' }, s); };
-    var xfer = function (key, label, count, progress, tap) {
+    // `held` as on Mac: the pinning line ends in a tonal Pause, or Resume while paused. A phone never uploads release files, so Uploading has none.
+    var xfer = function (key, label, count, progress, tap, held) {
       return h('div', { key: key, className: cx('bae-a-actxfer', tap && 'bae-a-act-tap') },
-        h('div', { className: 'bae-a-actxfer-line' }, h('span', null, label), count ? h('span', { className: 'bae-muted' }, count) : null),
+        h('div', { className: 'bae-a-actxfer-line' }, h('span', null, label), h('span', { className: 'bae-a-actxfer-end' }, count ? h('span', { className: 'bae-muted' }, count) : null,
+          held != null ? h(AndroidIconButton, { icon: held ? 'play' : 'pause', size: 20, tonal: true, label: held ? 'Resume' : 'Pause' }) : null)),
         h('div', { className: 'bae-progress-track' }, h('div', { className: cx('bae-progress-fill', progress == null && 'bae-progress-moving'), style: progress == null ? null : { width: (Number(progress) * 100) + '%' } })));
     };
     return h('div', { className: 'bae-a-act' },
@@ -252,7 +258,7 @@
       // As on Mac: each transfer is its words, how far it has got, and a bar; the pinning line opens the Pinning screen.
       props.syncing ? xfer('s', 'Syncing changes', null, null) : null,
       props.uploads ? xfer('u', 'Uploading', props.uploadsWait || props.uploads, props.uploadProgress != null ? props.uploadProgress : 0.4) : null,
-      props.pins ? xfer('p', 'Pinning', props.downloadsWait || props.pins, props.pinProgress != null ? props.pinProgress : 0.3, true) : null,
+      props.pins ? xfer('p', 'Pinning', props.downloadsWait || props.pins, props.pinProgress != null ? props.pinProgress : 0.3, true, props.downloadsWait === 'Paused') : null,
       !(problems || props.syncing || props.uploads || props.pins) ? t('Everything is up to date.', 'bae-a-act-sub') : null);
   }
   function AndroidSegmentedButtons(props) {

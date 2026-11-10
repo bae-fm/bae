@@ -112,7 +112,7 @@ export interface AndroidButtonProps { kind?: 'filled' | 'outlined' | 'text'; lab
 export declare function AndroidButton(props: AndroidButtonProps): React.ReactElement;
 
 /** A 48 dp glyph button: a Material Symbol by name (back, close, more, search, …). label is its accessible name. */
-export interface AndroidIconButtonProps { icon: string; label?: string; size?: number }
+export interface AndroidIconButtonProps { icon: string; label?: string; size?: number; tonal?: boolean }
 export declare function AndroidIconButton(props: AndroidIconButtonProps): React.ReactElement;
 
 /** An on/off switch; label is its accessible name. */
@@ -174,7 +174,7 @@ export declare function StatusGlyph(props: { tone: StatusTone; set?: 'mac'; outl
 export interface ArtworkProps { title?: string; seed?: string; size?: number; radius?: number; round?: boolean; missing?: boolean; shadow?: 'tile' | 'bar'; label?: string; children?: React.ReactNode }
 export declare function Artwork(props: ArtworkProps): React.ReactElement;
 export interface NowPlayingProps { trackTitle?: string; trackArtist?: string; trackAlbum?: string; playing?: boolean; waiting?: boolean; position?: number; held?: number | string; elapsed?: string; duration?: string; repeat?: boolean; casting?: string }
-export interface MacMainWindowProps extends NowPlayingProps { section?: 'Library' | 'Import'; search?: string; searchFocused?: boolean; sync?: 'moving' | 'attention'; shuffle?: boolean; queueOpen?: boolean; width?: number; height?: number; children?: React.ReactNode }
+export interface MacMainWindowProps extends NowPlayingProps { section?: 'Library' | 'Import'; search?: string; searchFocused?: boolean; sync?: 'moving' | 'attention' | 'paused'; shuffle?: boolean; queueOpen?: boolean; width?: number; height?: number; children?: React.ReactNode }
 export declare function MacMainWindow(props: MacMainWindowProps): React.ReactElement;
 export interface MacNowPlayingBarProps { title?: string; artist?: string; album?: string; playing?: boolean; waiting?: boolean; position?: number; held?: number | string; elapsed?: string; duration?: string; shuffle?: boolean; repeat?: boolean; casting?: string; queueOpen?: boolean; volume?: number; noCover?: boolean }
 export declare function MacNowPlayingBar(props: MacNowPlayingBarProps): React.ReactElement;
@@ -183,7 +183,7 @@ export declare function MacSeekBar(props: SeekBarProps): React.ReactElement;
 export declare function AndroidSeekBar(props: SeekBarProps): React.ReactElement;
 export interface MacPlayPauseProps { playing?: boolean; waiting?: boolean }
 export declare function MacPlayPause(props: MacPlayPauseProps): React.ReactElement;
-export interface MacIconButtonProps { icon: string; label?: string; active?: boolean; faint?: boolean; size?: number }
+export interface MacIconButtonProps { icon: string; label?: string; active?: boolean; faint?: boolean; small?: boolean; boxed?: boolean; size?: number }
 export declare function MacIconButton(props: MacIconButtonProps): React.ReactElement;
 export interface MacLibraryHeadingProps { view?: 'Albums' | 'Artists' | 'Composers'; collapsed?: boolean; children?: React.ReactNode }
 export declare function MacLibraryHeading(props: MacLibraryHeadingProps): React.ReactElement;
@@ -200,7 +200,7 @@ export interface MacDetailHeaderProps { name: string; count?: string; noImage?: 
 export declare function MacDetailHeader(props: MacDetailHeaderProps): React.ReactElement;
 export interface MacQueueRowProps { title: string; artist?: string; album?: string; duration?: string; hover?: boolean }
 export declare function MacQueueRow(props: MacQueueRowProps): React.ReactElement;
-export interface AndroidLibraryScreenProps extends NowPlayingProps { view?: 'Albums' | 'Artists' | 'Composers'; collapsed?: boolean; searching?: boolean; search?: string; sync?: 'moving' | 'attention'; width?: number; height?: number; children?: React.ReactNode }
+export interface AndroidLibraryScreenProps extends NowPlayingProps { view?: 'Albums' | 'Artists' | 'Composers'; collapsed?: boolean; searching?: boolean; search?: string; sync?: 'moving' | 'attention' | 'paused'; width?: number; height?: number; children?: React.ReactNode }
 export declare function AndroidLibraryScreen(props: AndroidLibraryScreenProps): React.ReactElement;
 export interface AndroidDetailScreenProps extends NowPlayingProps { back?: string; menu?: boolean; flush?: boolean; width?: number; height?: number; children?: React.ReactNode }
 export declare function AndroidDetailScreen(props: AndroidDetailScreenProps): React.ReactElement;

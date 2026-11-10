@@ -61,7 +61,7 @@
   // ---- macOS library ----
 
   function MacIconButton(props) {
-    return h('button', { type: 'button', className: cx('bae-m-iconbtn', props.active && 'bae-m-iconbtn-on', props.faint && 'bae-m-iconbtn-faint'), 'aria-label': props.label || props.icon, title: props.label },
+    return h('button', { type: 'button', className: cx('bae-m-iconbtn', props.active && 'bae-m-iconbtn-on', props.faint && 'bae-m-iconbtn-faint', props.small && 'bae-m-iconbtn-small', props.boxed && 'bae-m-iconbtn-boxed'), 'aria-label': props.label || props.icon, title: props.label },
       h(Glyph, { set: 'mac', name: props.icon, size: props.size || 17 }));
   }
 
@@ -104,6 +104,8 @@
           h('div', { className: cx('bae-m-search', props.searchFocused && 'bae-m-search-focused') }, h(Glyph, { set: 'mac', name: 'search', size: 14 }), h('span', { className: props.search ? null : 'bae-m-search-prompt' }, props.search || 'Search')),
           props.sync === 'moving' ? h('span', { className: 'bae-m-iconbtn', title: 'Activity' }, h(MacSpinner, { size: 14 })) : null,
           props.sync === 'attention' ? h('span', { className: 'bae-m-iconbtn bae-m-sync-warn', title: 'Activity' }, h(Glyph, { set: 'mac', name: 'warning', size: 17 })) : null,
+          // A queue held (Paused, Waiting for network) with nothing moving: the button stays, as a pause symbol, so the hold can be seen.
+          props.sync === 'paused' ? h(MacIconButton, { icon: 'pause', label: 'Activity' }) : null,
           h(MacIconButton, { icon: 'gear', label: 'Settings' }))),
       h('div', { className: 'bae-m-main-body' }, h('div', { className: 'bae-m-main-content' }, kids(props.children).filter(function (c) { return !(c && c.type === MacQueuePanel); })), kids(props.children).filter(function (c) { return c && c.type === MacQueuePanel; })),
       h(MacNowPlayingBar, { title: props.trackTitle, artist: props.trackArtist, album: props.trackAlbum, playing: props.playing, waiting: props.waiting, position: props.position, held: props.held, elapsed: props.elapsed, duration: props.duration, shuffle: props.shuffle, repeat: props.repeat, casting: props.casting, queueOpen: props.queueOpen }));
@@ -275,6 +277,7 @@
           h(AndroidIconButton, { icon: 'search', label: 'Search' }),
           props.sync === 'moving' ? h('span', { className: 'bae-a-iconbtn' }, h(AndroidSpinner, { size: 16 })) : null,
           props.sync === 'attention' ? h(AndroidIconButton, { icon: 'warning', label: 'Activity', className: 'bae-a-sync-warn' }) : null,
+          props.sync === 'paused' ? h(AndroidIconButton, { icon: 'pause', label: 'Activity' }) : null,
           h(AndroidIconButton, { icon: 'more', label: 'More options' })),
       h('main', { className: 'bae-a-libbody' }, props.children),
       h(AndroidNowPlayingBar, { title: props.trackTitle, artist: props.trackArtist, album: props.trackAlbum, playing: props.playing, waiting: props.waiting, position: props.position, held: props.held, elapsed: props.elapsed, duration: props.duration, casting: props.casting, repeat: props.repeat, error: props.barError }));

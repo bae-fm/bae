@@ -3442,6 +3442,22 @@
    "w": 412,
    "x": 3444,
    "y": 17292
+  },
+  "SyncMacPaused.dc.html": {
+   "h": 760,
+   "page": "storage",
+   "title": "macOS: sync activity, paused",
+   "w": 1200,
+   "x": 5120,
+   "y": 2520
+  },
+  "SyncAndroidPaused.dc.html": {
+   "h": 916,
+   "page": "storage",
+   "title": "Sync activity, paused",
+   "w": 412,
+   "x": 2060,
+   "y": 3760
   }
  },
  "createdOnFiles": {
@@ -4574,7 +4590,7 @@
   },
   "row-sync-android": {
    "kind": "title1",
-   "maxW": 1400,
+   "maxW": 2520,
    "page": "storage",
    "text": "Sync activity: Android",
    "w": 240,
@@ -4583,7 +4599,7 @@
   },
   "row-sync-mac": {
    "kind": "title1",
-   "maxW": 5000,
+   "maxW": 6920,
    "page": "storage",
    "text": "Sync activity: macOS",
    "w": 240,
@@ -4834,7 +4850,7 @@
    "page": "storage",
    "size": 24,
    "w": 520,
-   "x": 5120,
+   "x": 6400,
    "y": 2520,
    "text": "How a transfer line counts (macOS and Android):\n- The count is releases done of the batch: “1 of 3 releases”. A release counts as done once all its files are.\n- The bar is bytes, not releases: the bytes done of the whole batch’s bytes. It moves while a release’s files transfer, even while the count stays put.\n- Uploads count the bytes the provider confirmed (coven’s upload progress); pins and make-locals count the bytes downloaded and verified.\n- A batch is everything the queue has held since it was last empty, so both the count’s total and the bar’s total only grow, and start over once the queue empties.\n- Syncing changes has no count, so its bar moves."
   }
@@ -5109,9 +5125,11 @@
   "SyncMacAttention.dc.html",
   "SyncMacFailed.dc.html",
   "SyncMacIdle.dc.html",
+  "SyncMacPaused.dc.html",
   "SyncAndroidMoving.dc.html",
   "SyncAndroidAttention.dc.html",
   "SyncAndroidFailed.dc.html",
+  "SyncAndroidPaused.dc.html",
   "DownloadsAndroid.dc.html",
   "DownloadsAndroidFailed.dc.html",
   "DownloadsAndroidEmpty.dc.html",
