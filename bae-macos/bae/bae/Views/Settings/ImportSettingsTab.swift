@@ -133,7 +133,11 @@ struct ImportSettingsTab: View {
                 set: { setSource(setting.catalog, enabled: $0) }
             ),
             canChange: setting.canChange
-        )
+        ) {
+            if setting.catalog == .musicBrainz {
+                MusicBrainzInfoTip()
+            }
+        }
     }
 
     /// The Discogs switch: always usable without a key. Turning it off with
@@ -158,7 +162,7 @@ struct ImportSettingsTab: View {
             ),
             canChange: setting.canChange
         ) {
-            DiscogsHelpButton()
+            DiscogsInfoTip()
         }
     }
 

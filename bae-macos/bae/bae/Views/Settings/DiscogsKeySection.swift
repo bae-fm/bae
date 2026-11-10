@@ -184,14 +184,14 @@ struct DiscogsSettingsContent: View {
             }
             if isInvalid {
                 Notice(
-                    title: String(localized: "Invalid key."),
+                    title: String(localized: "Invalid key"),
                     advice: nil,
                     error: nil
                 )
             }
             if isEnabled, status == .unvalidated {
                 Notice(
-                    title: String(localized: "Offline. Validation pending."),
+                    title: String(localized: "Validation pending"),
                     advice: nil,
                     error: nil,
                     tone: .warning,

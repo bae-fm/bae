@@ -147320,352 +147320,6 @@
         }
       }
     },
-    "Invalid key." : {
-      "comment" : "Import settings: Discogs turned down the key",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Invalid key."
-          }
-        },
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "المفتاح غير صالح."
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Невалиден ключ."
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Neplatný klíč."
-          }
-        },
-        "da" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ugyldig nøgle."
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ungültiger Schlüssel."
-          }
-        },
-        "el" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Μη έγκυρο κλειδί."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Clave no válida."
-          }
-        },
-        "fi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Virheellinen avain."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Clé non valide."
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "מפתח לא תקין."
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Neispravan ključ."
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Érvénytelen kulcs."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Chiave non valida."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "キーが無効です。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "유효하지 않은 키입니다."
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ugyldig nøkkel."
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ongeldige sleutel."
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nieprawidłowy klucz."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Chave inválida."
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Chave inválida."
-          }
-        },
-        "ro" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cheie nevalidă."
-          }
-        },
-        "sk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Neplatný kľúč."
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ogiltig nyckel."
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Geçersiz anahtar."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Недійсний ключ."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "密钥无效。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "金鑰無效。"
-          }
-        }
-      }
-    },
-    "Offline. Validation pending." : {
-      "comment" : "Import settings: the Discogs key was saved but Discogs could not be reached to check it",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Offline. Validation pending."
-          }
-        },
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "غير متصل. التحقق معلّق."
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Няма връзка. Проверката предстои."
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Offline. Ověření čeká."
-          }
-        },
-        "da" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Offline. Validering afventer."
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Offline. Die Prüfung steht noch aus."
-          }
-        },
-        "el" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Εκτός σύνδεσης. Η επικύρωση εκκρεμεί."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sin conexión. Validación pendiente."
-          }
-        },
-        "fi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ei yhteyttä. Vahvistus odottaa."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hors ligne. Validation en attente."
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "אין חיבור. האימות ממתין."
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Izvan mreže. Provjera je na čekanju."
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Offline. Az érvényesítés függőben van."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Offline. Convalida in sospeso."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "オフラインです。検証は保留中です。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "오프라인입니다. 확인이 보류 중입니다."
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Frakoblet. Validering venter."
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Offline. Validatie in afwachting."
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Brak połączenia. Weryfikacja oczekuje."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Offline. Validação pendente."
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Offline. Validação pendente."
-          }
-        },
-        "ro" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Offline. Validarea este în așteptare."
-          }
-        },
-        "sk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Offline. Overenie čaká."
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Offline. Valideringen väntar."
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Çevrimdışı. Doğrulama bekliyor."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Немає зв’язку. Перевірка очікує."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "已离线。验证待处理。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "已離線。驗證待處理。"
-          }
-        }
-      }
-    },
     "Turn off Discogs?" : {
       "comment" : "Import settings: alert title when Search Discogs is switched off with a key saved",
       "localizations" : {
@@ -148181,179 +147835,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "關於 Discogs"
-          }
-        }
-      }
-    },
-    "[Discogs](https://www.discogs.com) is a music database with detailed release info. To connect, [get your free API key](https://www.discogs.com/settings/developers)." : {
-      "comment" : "Import settings: popover after Search Discogs; Discogs and the API key are links",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) is a music database with detailed release info. To connect, [get your free API key](https://www.discogs.com/settings/developers)."
-          }
-        },
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) قاعدة بيانات موسيقية تضم معلومات مفصلة عن الإصدارات. للاتصال، [احصل على مفتاح API المجاني](https://www.discogs.com/settings/developers)."
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) е музикална база данни с подробна информация за изданията. За да се свържете, [вземете безплатния си API ключ](https://www.discogs.com/settings/developers)."
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) je hudební databáze s podrobnými informacemi o vydáních. Pro připojení [získejte svůj bezplatný klíč API](https://www.discogs.com/settings/developers)."
-          }
-        },
-        "da" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) er en musikdatabase med detaljerede udgivelsesoplysninger. For at oprette forbindelse skal du [hente din gratis API-nøgle](https://www.discogs.com/settings/developers)."
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) ist eine Musikdatenbank mit detaillierten Angaben zu Veröffentlichungen. Zum Verbinden [hol dir deinen kostenlosen API-Schlüssel](https://www.discogs.com/settings/developers)."
-          }
-        },
-        "el" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Το [Discogs](https://www.discogs.com) είναι μια μουσική βάση δεδομένων με αναλυτικές πληροφορίες για εκδόσεις. Για να συνδεθείτε, [αποκτήστε το δωρεάν κλειδί API](https://www.discogs.com/settings/developers)."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) es una base de datos musical con información detallada de ediciones. Para conectarlo, [consigue tu clave de API gratuita](https://www.discogs.com/settings/developers)."
-          }
-        },
-        "fi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) on musiikkitietokanta, jossa on yksityiskohtaiset julkaisutiedot. Yhdistä [hankkimalla ilmainen API-avaimesi](https://www.discogs.com/settings/developers)."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) est une base de données musicale avec des informations détaillées sur les éditions. Pour vous connecter, [obtenez votre clé d’API gratuite](https://www.discogs.com/settings/developers)."
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) הוא מאגר מוזיקה עם מידע מפורט על הוצאות. כדי להתחבר, [קבל את מפתח ה-API החינמי שלך](https://www.discogs.com/settings/developers)."
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) je glazbena baza podataka s detaljnim podacima o izdanjima. Za povezivanje [nabavite svoj besplatni API ključ](https://www.discogs.com/settings/developers)."
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "A [Discogs](https://www.discogs.com) egy zenei adatbázis részletes kiadási információkkal. A csatlakozáshoz [szerezd meg az ingyenes API-kulcsodat](https://www.discogs.com/settings/developers)."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) è un database musicale con informazioni dettagliate sulle edizioni. Per collegarlo, [ottieni la tua chiave API gratuita](https://www.discogs.com/settings/developers)."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) は、リリースの詳細情報を備えた音楽データベースです。接続するには、[無料の API キーを取得](https://www.discogs.com/settings/developers)してください。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com)는 발매 정보가 자세한 음악 데이터베이스입니다. 연결하려면 [무료 API 키를 받으세요](https://www.discogs.com/settings/developers)."
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) er en musikkdatabase med detaljert informasjon om utgivelser. For å koble til, [hent din gratis API-nøkkel](https://www.discogs.com/settings/developers)."
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) is een muziekdatabase met gedetailleerde uitgave-informatie. Om te verbinden, [haal je gratis API-sleutel op](https://www.discogs.com/settings/developers)."
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) to baza danych muzycznych ze szczegółowymi informacjami o wydaniach. Aby się połączyć, [zdobądź bezpłatny klucz API](https://www.discogs.com/settings/developers)."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "O [Discogs](https://www.discogs.com) é um banco de dados musical com informações detalhadas de lançamentos. Para conectar, [obtenha sua chave de API gratuita](https://www.discogs.com/settings/developers)."
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "O [Discogs](https://www.discogs.com) é uma base de dados musical com informações detalhadas de edições. Para ligar, [obtém a tua chave de API gratuita](https://www.discogs.com/settings/developers)."
-          }
-        },
-        "ro" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) este o bază de date muzicală cu informații detaliate despre ediții. Pentru a te conecta, [obține-ți cheia API gratuită](https://www.discogs.com/settings/developers)."
-          }
-        },
-        "sk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) je hudobná databáza s podrobnými informáciami o vydaniach. Na pripojenie [získajte svoj bezplatný kľúč API](https://www.discogs.com/settings/developers)."
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) är en musikdatabas med detaljerad information om utgåvor. För att ansluta, [skaffa din gratis API-nyckel](https://www.discogs.com/settings/developers)."
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com), yayınlar hakkında ayrıntılı bilgi içeren bir müzik veritabanıdır. Bağlanmak için [ücretsiz API anahtarınızı alın](https://www.discogs.com/settings/developers)."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) — це музична база даних з докладними відомостями про видання. Щоб підключитися, [отримайте безкоштовний ключ API](https://www.discogs.com/settings/developers)."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) 是一个包含详细发行信息的音乐数据库。要连接，请[获取你的免费 API 密钥](https://www.discogs.com/settings/developers)。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) 是一個包含詳細發行資訊的音樂資料庫。若要連接，請[取得你的免費 API 金鑰](https://www.discogs.com/settings/developers)。"
           }
         }
       }
@@ -149736,6 +149217,1563 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "匯入到"
+          }
+        }
+      }
+    },
+    "Invalid key" : {
+      "comment" : "Import settings: Discogs turned down the key",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invalid key"
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "المفتاح غير صالح"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Невалиден ключ"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neplatný klíč"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ugyldig nøgle"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ungültiger Schlüssel"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Μη έγκυρο κλειδί"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clave no válida"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Virheellinen avain"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clé non valide"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מפתח לא תקין"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neispravan ključ"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Érvénytelen kulcs"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chiave non valida"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "キーが無効です"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "유효하지 않은 키입니다"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ugyldig nøkkel"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ongeldige sleutel"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nieprawidłowy klucz"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chave inválida"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chave inválida"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cheie nevalidă"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neplatný kľúč"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ogiltig nyckel"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Geçersiz anahtar"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Недійсний ключ"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "密钥无效"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "金鑰無效"
+          }
+        }
+      }
+    },
+    "Validation pending" : {
+      "comment" : "Import settings: the Discogs key was saved but Discogs could not be reached to check it",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Validation pending"
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "التحقق معلّق"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проверката предстои"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ověření čeká"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Validering afventer"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Prüfung steht noch aus"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Η επικύρωση εκκρεμεί"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Validación pendiente"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vahvistus odottaa"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Validation en attente"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "האימות ממתין"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Provjera je na čekanju"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Az érvényesítés függőben van"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Convalida in sospeso"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "検証は保留中です"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "확인이 보류 중입니다"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Validering venter"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Validatie in afwachting"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weryfikacja oczekuje"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Validação pendente"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Validação pendente"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Validarea este în așteptare"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Overenie čaká"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Valideringen väntar"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Doğrulama bekliyor"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перевірка очікує"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "验证待处理"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "驗證待處理"
+          }
+        }
+      }
+    },
+    "[Discogs](https://www.discogs.com) is a music database with detailed release info." : {
+      "comment" : "Import settings: first line of the popover after Search Discogs; Discogs is a link",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[Discogs](https://www.discogs.com) is a music database with detailed release info."
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[Discogs](https://www.discogs.com) قاعدة بيانات موسيقية تضم معلومات مفصلة عن الإصدارات."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[Discogs](https://www.discogs.com) е музикална база данни с подробна информация за изданията."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[Discogs](https://www.discogs.com) je hudební databáze s podrobnými informacemi o vydáních."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[Discogs](https://www.discogs.com) er en musikdatabase med detaljerede udgivelsesoplysninger."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[Discogs](https://www.discogs.com) ist eine Musikdatenbank mit detaillierten Angaben zu Veröffentlichungen."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Το [Discogs](https://www.discogs.com) είναι μια μουσική βάση δεδομένων με αναλυτικές πληροφορίες για εκδόσεις."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[Discogs](https://www.discogs.com) es una base de datos musical con información detallada de ediciones."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[Discogs](https://www.discogs.com) on musiikkitietokanta, jossa on yksityiskohtaiset julkaisutiedot."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[Discogs](https://www.discogs.com) est une base de données musicale avec des informations détaillées sur les éditions."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[Discogs](https://www.discogs.com) הוא מאגר מוזיקה עם מידע מפורט על הוצאות."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[Discogs](https://www.discogs.com) je glazbena baza podataka s detaljnim podacima o izdanjima."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A [Discogs](https://www.discogs.com) egy zenei adatbázis részletes kiadási információkkal."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[Discogs](https://www.discogs.com) è un database musicale con informazioni dettagliate sulle edizioni."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[Discogs](https://www.discogs.com) は、リリースの詳細情報を備えた音楽データベースです。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[Discogs](https://www.discogs.com)는 발매 정보가 자세한 음악 데이터베이스입니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[Discogs](https://www.discogs.com) er en musikkdatabase med detaljert informasjon om utgivelser."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[Discogs](https://www.discogs.com) is een muziekdatabase met gedetailleerde uitgave-informatie."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[Discogs](https://www.discogs.com) to baza danych muzycznych ze szczegółowymi informacjami o wydaniach."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O [Discogs](https://www.discogs.com) é um banco de dados musical com informações detalhadas de lançamentos."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O [Discogs](https://www.discogs.com) é uma base de dados musical com informações detalhadas de edições."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[Discogs](https://www.discogs.com) este o bază de date muzicală cu informații detaliate despre ediții."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[Discogs](https://www.discogs.com) je hudobná databáza s podrobnými informáciami o vydaniach."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[Discogs](https://www.discogs.com) är en musikdatabas med detaljerad information om utgåvor."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[Discogs](https://www.discogs.com), yayınlar hakkında ayrıntılı bilgi içeren bir müzik veritabanıdır."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[Discogs](https://www.discogs.com) — це музична база даних з докладними відомостями про видання."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[Discogs](https://www.discogs.com) 是一个包含详细发行信息的音乐数据库。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[Discogs](https://www.discogs.com) 是一個包含詳細發行資訊的音樂資料庫。"
+          }
+        }
+      }
+    },
+    "To connect, [get your free API key](https://www.discogs.com/settings/developers)." : {
+      "comment" : "Import settings: popover after Search Discogs; the API key is a link",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To connect, [get your free API key](https://www.discogs.com/settings/developers)."
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "للاتصال، [احصل على مفتاح API المجاني](https://www.discogs.com/settings/developers)."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "За да се свържете, [вземете безплатния си API ключ](https://www.discogs.com/settings/developers)."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pro připojení [získejte svůj bezplatný klíč API](https://www.discogs.com/settings/developers)."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "For at oprette forbindelse skal du [hente din gratis API-nøgle](https://www.discogs.com/settings/developers)."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zum Verbinden [hol dir deinen kostenlosen API-Schlüssel](https://www.discogs.com/settings/developers)."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Για να συνδεθείτε, [αποκτήστε το δωρεάν κλειδί API](https://www.discogs.com/settings/developers)."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Para conectarlo, [consigue tu clave de API gratuita](https://www.discogs.com/settings/developers)."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yhdistä [hankkimalla ilmainen API-avaimesi](https://www.discogs.com/settings/developers)."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pour vous connecter, [obtenez votre clé d’API gratuite](https://www.discogs.com/settings/developers)."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כדי להתחבר, [קבל את מפתח ה-API החינמי שלך](https://www.discogs.com/settings/developers)."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Za povezivanje [nabavite svoj besplatni API ključ](https://www.discogs.com/settings/developers)."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A csatlakozáshoz [szerezd meg az ingyenes API-kulcsodat](https://www.discogs.com/settings/developers)."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Per collegarlo, [ottieni la tua chiave API gratuita](https://www.discogs.com/settings/developers)."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "接続するには、[無料の API キーを取得](https://www.discogs.com/settings/developers)してください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "연결하려면 [무료 API 키를 받으세요](https://www.discogs.com/settings/developers)."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "For å koble til, [hent din gratis API-nøkkel](https://www.discogs.com/settings/developers)."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Om te verbinden, [haal je gratis API-sleutel op](https://www.discogs.com/settings/developers)."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aby się połączyć, [zdobądź bezpłatny klucz API](https://www.discogs.com/settings/developers)."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Para conectar, [obtenha sua chave de API gratuita](https://www.discogs.com/settings/developers)."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Para ligar, [obtém a tua chave de API gratuita](https://www.discogs.com/settings/developers)."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pentru a te conecta, [obține-ți cheia API gratuită](https://www.discogs.com/settings/developers)."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Na pripojenie [získajte svoj bezplatný kľúč API](https://www.discogs.com/settings/developers)."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "För att ansluta, [skaffa din gratis API-nyckel](https://www.discogs.com/settings/developers)."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bağlanmak için [ücretsiz API anahtarınızı alın](https://www.discogs.com/settings/developers)."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Щоб підключитися, [отримайте безкоштовний ключ API](https://www.discogs.com/settings/developers)."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "要连接，请[获取你的免费 API 密钥](https://www.discogs.com/settings/developers)。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "若要連接，請[取得你的免費 API 金鑰](https://www.discogs.com/settings/developers)。"
+          }
+        }
+      }
+    },
+    "About MusicBrainz" : {
+      "comment" : "Import settings: accessibility label of the info button after Search MusicBrainz",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "About MusicBrainz"
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "حول MusicBrainz"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Относно MusicBrainz"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O službě MusicBrainz"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Om MusicBrainz"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Über MusicBrainz"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Σχετικά με το MusicBrainz"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Acerca de MusicBrainz"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tietoa MusicBrainzista"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "À propos de MusicBrainz"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אודות MusicBrainz"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O MusicBrainzu"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A MusicBrainzről"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Informazioni su MusicBrainz"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MusicBrainz について"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MusicBrainz 정보"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Om MusicBrainz"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Over MusicBrainz"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O MusicBrainz"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sobre o MusicBrainz"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sobre o MusicBrainz"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Despre MusicBrainz"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O službe MusicBrainz"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Om MusicBrainz"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MusicBrainz hakkında"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Про MusicBrainz"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "关于 MusicBrainz"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "關於 MusicBrainz"
+          }
+        }
+      }
+    },
+    "[MusicBrainz](https://musicbrainz.org) is an open music database that anyone can add to and edit." : {
+      "comment" : "Import settings: first line of the popover after Search MusicBrainz; MusicBrainz is a link",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[MusicBrainz](https://musicbrainz.org) is an open music database that anyone can add to and edit."
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[MusicBrainz](https://musicbrainz.org) قاعدة بيانات موسيقية مفتوحة يمكن لأي شخص الإضافة إليها وتحريرها."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[MusicBrainz](https://musicbrainz.org) е отворена музикална база данни, към която всеки може да добавя и в която може да редактира."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[MusicBrainz](https://musicbrainz.org) je otevřená hudební databáze, do které může kdokoli přispívat a upravovat ji."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[MusicBrainz](https://musicbrainz.org) er en åben musikdatabase, som alle kan tilføje til og redigere."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[MusicBrainz](https://musicbrainz.org) ist eine offene Musikdatenbank, die jeder ergänzen und bearbeiten kann."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Το [MusicBrainz](https://musicbrainz.org) είναι μια ανοιχτή μουσική βάση δεδομένων στην οποία μπορεί να προσθέτει και να επεξεργάζεται οποιοσδήποτε."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[MusicBrainz](https://musicbrainz.org) es una base de datos musical abierta a la que cualquiera puede añadir y editar información."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[MusicBrainz](https://musicbrainz.org) on avoin musiikkitietokanta, johon kuka tahansa voi lisätä ja jota kuka tahansa voi muokata."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[MusicBrainz](https://musicbrainz.org) est une base de données musicale ouverte que tout le monde peut compléter et modifier."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[MusicBrainz](https://musicbrainz.org) הוא מאגר מוזיקה פתוח שכל אחד יכול להוסיף אליו ולערוך אותו."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[MusicBrainz](https://musicbrainz.org) je otvorena glazbena baza podataka kojoj svatko može dodavati sadržaj i uređivati ga."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A [MusicBrainz](https://musicbrainz.org) egy nyílt zenei adatbázis, amelyhez bárki hozzátehet, és amelyet bárki szerkeszthet."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[MusicBrainz](https://musicbrainz.org) è un database musicale aperto che chiunque può ampliare e modificare."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[MusicBrainz](https://musicbrainz.org) は、誰でも追加や編集ができるオープンな音楽データベースです。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[MusicBrainz](https://musicbrainz.org)는 누구나 추가하고 편집할 수 있는 오픈 음악 데이터베이스입니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[MusicBrainz](https://musicbrainz.org) er en åpen musikkdatabase som hvem som helst kan legge til i og redigere."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[MusicBrainz](https://musicbrainz.org) is een open muziekdatabase waar iedereen aan kan toevoegen en die iedereen kan bewerken."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[MusicBrainz](https://musicbrainz.org) to otwarta baza danych muzycznych, do której każdy może dodawać dane i którą każdy może edytować."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O [MusicBrainz](https://musicbrainz.org) é um banco de dados musical aberto que qualquer pessoa pode complementar e editar."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O [MusicBrainz](https://musicbrainz.org) é uma base de dados musical aberta que qualquer pessoa pode complementar e editar."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[MusicBrainz](https://musicbrainz.org) este o bază de date muzicală deschisă la care oricine poate adăuga și pe care oricine o poate edita."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[MusicBrainz](https://musicbrainz.org) je otvorená hudobná databáza, do ktorej môže ktokoľvek prispievať a upravovať ju."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[MusicBrainz](https://musicbrainz.org) är en öppen musikdatabas som vem som helst kan lägga till i och redigera."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[MusicBrainz](https://musicbrainz.org), herkesin ekleme yapabildiği ve düzenleyebildiği açık bir müzik veritabanıdır."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[MusicBrainz](https://musicbrainz.org) — це відкрита музична база даних, до якої кожен може додавати відомості й редагувати їх."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[MusicBrainz](https://musicbrainz.org) 是一个任何人都可以添加和编辑的开放音乐数据库。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[MusicBrainz](https://musicbrainz.org) 是一個任何人都可以新增和編輯的開放音樂資料庫。"
+          }
+        }
+      }
+    },
+    "It takes one request a second and is sometimes unavailable." : {
+      "comment" : "Import settings: popover after Search MusicBrainz, how much it takes and how often it is up",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "It takes one request a second and is sometimes unavailable."
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يقبل طلبًا واحدًا في الثانية وقد يتعذّر الوصول إليه أحيانًا."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Приема една заявка в секунда и понякога не е достъпна."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Přijímá jeden požadavek za sekundu a občas není dostupná."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Den tager én forespørgsel i sekundet og er indimellem utilgængelig."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sie nimmt eine Anfrage pro Sekunde an und ist manchmal nicht erreichbar."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Δέχεται ένα αίτημα το δευτερόλεπτο και μερικές φορές δεν είναι διαθέσιμη."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Admite una petición por segundo y a veces no está disponible."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se käsittelee yhden pyynnön sekunnissa eikä ole joskus käytettävissä."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elle accepte une requête par seconde et est parfois indisponible."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "היא מקבלת בקשה אחת בשנייה ולעיתים אינה זמינה."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prima jedan zahtjev u sekundi i ponekad nije dostupna."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Másodpercenként egy kérést fogad, és időnként nem érhető el."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Accetta una richiesta al secondo e a volte non è disponibile."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 秒に 1 回のリクエストまで受け付け、利用できないこともあります。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "초당 한 번의 요청만 받으며 가끔 이용할 수 없습니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Den tar én forespørsel i sekundet og er noen ganger utilgjengelig."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Het neemt één verzoek per seconde aan en is soms niet beschikbaar."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Przyjmuje jedno żądanie na sekundę i bywa niedostępna."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aceita uma solicitação por segundo e às vezes fica indisponível."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aceita um pedido por segundo e por vezes está indisponível."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Acceptă o cerere pe secundă și uneori nu este disponibilă."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prijíma jednu požiadavku za sekundu a občas nie je dostupná."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Den tar en förfrågan per sekund och är ibland otillgänglig."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saniyede bir istek alır ve bazen erişilemez olur."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Приймає один запит на секунду і подекуди недоступна."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "每秒只接受一次请求，有时无法访问。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "每秒只接受一次請求，有時無法存取。"
+          }
+        }
+      }
+    },
+    "It needs no account or key." : {
+      "comment" : "Import settings: popover after Search MusicBrainz, what it needs to use",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "It needs no account or key."
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "لا يتطلب حسابًا أو مفتاحًا."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не изисква акаунт или ключ."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nevyžaduje účet ani klíč."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Den kræver hverken konto eller nøgle."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sie braucht weder ein Konto noch einen Schlüssel."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Δεν απαιτεί λογαριασμό ή κλειδί."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No necesita cuenta ni clave."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se ei tarvitse tiliä eikä avainta."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elle ne demande ni compte ni clé."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "היא לא דורשת חשבון או מפתח."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ne treba račun ni ključ."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nem kell hozzá fiók vagy kulcs."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Non richiede né account né chiave."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アカウントもキーも必要ありません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "계정이나 키가 필요 없습니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Den trenger verken konto eller nøkkel."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Het heeft geen account of sleutel nodig."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nie wymaga konta ani klucza."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não precisa de conta nem de chave."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não precisa de conta nem de chave."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nu are nevoie de cont sau de cheie."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nevyžaduje účet ani kľúč."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Den kräver varken konto eller nyckel."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hesap ya da anahtar gerektirmez."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не потребує облікового запису чи ключа."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无需账户或密钥。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "不需要帳戶或金鑰。"
+          }
+        }
+      }
+    },
+    "It takes one request a second and is more available than MusicBrainz." : {
+      "comment" : "Import settings: popover after Search Discogs, how much it takes and how often it is up",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "It takes one request a second and is more available than MusicBrainz."
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يقبل طلبًا واحدًا في الثانية وهو أكثر توفّرًا من MusicBrainz."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Приема една заявка в секунда и е по-достъпна от MusicBrainz."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Přijímá jeden požadavek za sekundu a je dostupnější než MusicBrainz."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Den tager én forespørgsel i sekundet og er mere tilgængelig end MusicBrainz."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sie nimmt eine Anfrage pro Sekunde an und ist besser erreichbar als MusicBrainz."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Δέχεται ένα αίτημα το δευτερόλεπτο και είναι πιο διαθέσιμη από το MusicBrainz."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Admite una petición por segundo y está más disponible que MusicBrainz."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se käsittelee yhden pyynnön sekunnissa ja on paremmin käytettävissä kuin MusicBrainz."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elle accepte une requête par seconde et est plus disponible que MusicBrainz."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "היא מקבלת בקשה אחת בשנייה וזמינה יותר מ-MusicBrainz."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prima jedan zahtjev u sekundi i dostupnija je od MusicBrainza."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Másodpercenként egy kérést fogad, és megbízhatóbban elérhető, mint a MusicBrainz."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Accetta una richiesta al secondo ed è più disponibile di MusicBrainz."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 秒に 1 回のリクエストまで受け付け、MusicBrainz よりも安定して利用できます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "초당 한 번의 요청만 받으며 MusicBrainz보다 안정적으로 이용할 수 있습니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Den tar én forespørsel i sekundet og er mer tilgjengelig enn MusicBrainz."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Het neemt één verzoek per seconde aan en is beter beschikbaar dan MusicBrainz."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Przyjmuje jedno żądanie na sekundę i jest dostępniejsza niż MusicBrainz."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aceita uma solicitação por segundo e fica mais disponível que o MusicBrainz."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aceita um pedido por segundo e está mais disponível do que o MusicBrainz."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Acceptă o cerere pe secundă și este mai disponibilă decât MusicBrainz."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prijíma jednu požiadavku za sekundu a je dostupnejšia než MusicBrainz."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Den tar en förfrågan per sekund och är mer tillgänglig än MusicBrainz."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saniyede bir istek alır ve MusicBrainz'den daha erişilebilirdir."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Приймає один запит на секунду і доступніша за MusicBrainz."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "每秒只接受一次请求，可用性比 MusicBrainz 更高。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "每秒只接受一次請求，可用性比 MusicBrainz 更高。"
           }
         }
       }
