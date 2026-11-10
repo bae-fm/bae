@@ -28,10 +28,16 @@
     }
 
     /// The inset panel of an error's causes, one a line and ending in the fault,
-    /// with Copy details in its corner.
+    /// with Copy details in its corner, shown under the pointer or keyboard
+    /// focus.
     private struct ErrorCausesPanel: View {
         let detail: String
         let excerpt: String
+        @State
+        private var hovering = false
+        @FocusState
+        private var copyFocused: Bool
+
         var body: some View {
             let text = Color.secondary
             Text(excerpt)
@@ -57,8 +63,11 @@
                     }
                     .buttonStyle(.borderless)
                     .help("Copy details")
+                    .focused($copyFocused)
+                    .opacity(hovering || copyFocused ? 1 : 0)
                     .padding(ThemeSpace.related)
                 }
+                .onHover { hovering = $0 }
         }
     }
 #endif
