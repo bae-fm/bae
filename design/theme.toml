@@ -440,9 +440,8 @@ android = 32
 # Gaps and insets, the same on every platform (points on Apple, dp on
 # Android): `line` between the lines of one text block, `inline` between a
 # glyph and its text, `related` between related items, `group` between groups,
-# `hang` how far a disclosure's chevron hangs left of its label, `fieldInset`
-# from a text field's edge to its text, `edge` from a container's edge to its
-# content, `section` between sections and `page` around a page.
+# `fieldInset` from a text field's edge to its text, `edge` from a container's
+# edge to its content, `section` between sections and `page` around a page.
 [space]
 hairline = 1
 line = 2
@@ -450,7 +449,6 @@ inline = 4
 compact = 6
 related = 8
 group = 12
-hang = 12
 fieldInset = 10
 edge = 16
 section = 24
