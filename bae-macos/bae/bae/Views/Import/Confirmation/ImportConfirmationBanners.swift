@@ -18,26 +18,29 @@ struct ImportConfirmationBanners: View {
     var body: some View {
         if let libStatus = libraryStatus {
             if libStatus.releaseInLibrary {
-                HStack(spacing: ThemeSpace.related) {
-                    StatusGlyph(.warning)
-                    Text("This release is already in your library")
-                        .themeText(.body)
-                    Spacer()
-                    viewInLibrary(libStatus.albums.filter(\.holdsRelease))
-                }
-                .notice(.warning)
+                ErrorNotice(
+                    title: String(
+                        localized: "This release is already in your library"
+                    ),
+                    advice: nil,
+                    error: nil,
+                    tone: .warning,
+                    action: viewInLibrary(
+                        libStatus.albums.filter(\.holdsRelease)
+                    )
+                )
             }
             else if libStatus.albumInLibrary {
-                HStack(spacing: ThemeSpace.related) {
-                    StatusGlyph(.info)
-                    Text(
-                        "Another release of this album is in your library"
-                    )
-                    .themeText(.body)
-                    Spacer()
-                    viewInLibrary(libStatus.albums)
-                }
-                .notice(.info)
+                ErrorNotice(
+                    title: String(
+                        localized:
+                            "Another release of this album is in your library"
+                    ),
+                    advice: nil,
+                    error: nil,
+                    tone: .info,
+                    action: viewInLibrary(libStatus.albums)
+                )
             }
         }
 
@@ -50,22 +53,25 @@ struct ImportConfirmationBanners: View {
 
     /// The way to the library album the release is in: a button for one
     /// album, a menu naming each when several hold it.
-    @ViewBuilder
-    private func viewInLibrary(_ albums: [BridgeLibraryAlbumMatch]) -> some View
+    private func viewInLibrary(_ albums: [BridgeLibraryAlbumMatch])
+        -> ErrorAction?
     {
         if albums.count == 1, let album = albums.first {
-            Button("View in library") { onViewInLibrary(album.albumId) }
-                .controlSize(.small)
+            return ErrorAction("View in library") {
+                onViewInLibrary(album.albumId)
+            }
         }
-        else if !albums.isEmpty {
-            Menu("View in library") {
-                ForEach(albums, id: \.albumId) { album in
-                    Button(album.albumTitle) { onViewInLibrary(album.albumId) }
+        if albums.isEmpty {
+            return nil
+        }
+        return ErrorAction(
+            "View in library",
+            choices: albums.map { album in
+                ErrorAction.Choice(verbatim: album.albumTitle) {
+                    onViewInLibrary(album.albumId)
                 }
             }
-            .controlSize(.small)
-            .fixedSize()
-        }
+        )
     }
 
     @ViewBuilder
@@ -99,34 +105,42 @@ struct ImportConfirmationBanners: View {
 }
 
 #if DEBUG
-    #Preview("Confirmation banners") {
-        VStack(spacing: ThemeSpace.group) {
-            ImportConfirmationBanners(
-                libraryStatus: BridgeLibraryStatus(
-                    releaseId: "rel-123",
-                    releaseInLibrary: true,
-                    albumInLibrary: true,
-                    albums: [
-                        BridgeLibraryAlbumMatch(
-                            albumId: "preview-album",
-                            albumTitle: "Album Title",
-                            holdsRelease: true
-                        )
-                    ]
-                ),
-                importStatus: nil,
-                error: "Couldn't shape the edit: missing album title",
-                failure: .Diagnostic(
-                    category: .import,
-                    detail: "The folder is no longer where it was"
-                ),
-                canEdit: true,
-                onRetry: {},
-                onViewInLibrary: { _ in },
-            )
+    extension ImportConfirmationBanners {
+        /// The banners as the confirm form shows them: the release in the
+        /// library, the failed import with Retry, and the commit error.
+        static var preview: some View {
+            VStack(spacing: ThemeSpace.group) {
+                ImportConfirmationBanners(
+                    libraryStatus: BridgeLibraryStatus(
+                        releaseId: "rel-123",
+                        releaseInLibrary: true,
+                        albumInLibrary: true,
+                        albums: [
+                            BridgeLibraryAlbumMatch(
+                                albumId: "preview-album",
+                                albumTitle: "Album Title",
+                                holdsRelease: true
+                            )
+                        ]
+                    ),
+                    importStatus: nil,
+                    error: "Couldn't shape the edit: missing album title",
+                    failure: .Diagnostic(
+                        category: .import,
+                        detail: "The folder is no longer where it was"
+                    ),
+                    canEdit: true,
+                    onRetry: {},
+                    onViewInLibrary: { _ in },
+                )
+            }
+            .padding()
+            .frame(width: 480)
+            .windowBackground()
         }
-        .padding()
-        .frame(width: 480)
-        .windowBackground()
+    }
+
+    #Preview("Confirmation banners") {
+        ImportConfirmationBanners.preview
     }
 #endif

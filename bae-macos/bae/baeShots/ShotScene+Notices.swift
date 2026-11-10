@@ -8,6 +8,13 @@ extension ShotScene {
     /// The error notice's looks and what its Details opens, each beside its
     /// canvas board.
     static let noticeScenes: [ShotScene] = [
+        // The import confirm form's banners.
+        ShotScene(
+            id: "import-confirmation-banners",
+            size: CGSize(width: 480, height: 300)
+        ) {
+            ShotStage(ImportConfirmationBanners.preview)
+        },
         ShotScene(
             id: "notice-details-alert",
             size: CGSize(width: 340, height: 320)

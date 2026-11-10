@@ -19,4 +19,4 @@ macOS's notice: a tinted box in its tone, the tone's glyph at the top left. It s
 
 Its text takes the size of the screen it sits in. The glyph is 1.19 times the text, centred on the first line. Info, success, warning and danger fill with their own notice colour (`info-notice` …), with `on-notice` text; neutral keeps the neutral tint and the screen's text.
 
-**In the code:** macOS: BaeKit's `.notice(_:)`; `ErrorNotice` (`BaeKit/Sources/BaeKit/Views/ErrorNotice.swift`), whose Details button opens an alert and whose centred look draws a view that failed whole.
+**In the code:** macOS: `ErrorNotice` (`BaeKit/Sources/BaeKit/Views/ErrorNotice.swift`), whose Details button opens an alert and whose centred look draws a view that failed whole.

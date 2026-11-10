@@ -3,9 +3,25 @@ import SwiftUI
 /// An error notice's primary button, such as Retry: at the right of the
 /// title's line, Details first when the notice has both.
 public struct ErrorAction {
+    /// One target of a menu action.
+    public struct Choice {
+        fileprivate let title: String
+        fileprivate let perform: () -> Void
+
+        public init(verbatim title: String, perform: @escaping () -> Void) {
+            self.title = title
+            self.perform = perform
+        }
+    }
+
+    fileprivate enum Kind {
+        case button(() -> Void)
+        case menu([Choice])
+    }
+
     fileprivate let title: Text
     fileprivate let isDisabled: Bool
-    fileprivate let perform: () -> Void
+    fileprivate let kind: Kind
 
     public init(
         _ title: LocalizedStringKey = "Retry",
@@ -14,7 +30,14 @@ public struct ErrorAction {
     ) {
         self.title = Text(title)
         self.isDisabled = isDisabled
-        self.perform = perform
+        self.kind = .button(perform)
+    }
+
+    /// A choice of targets, such as each album that holds a release.
+    public init(_ title: LocalizedStringKey, choices: [Choice]) {
+        self.title = Text(title)
+        self.isDisabled = false
+        self.kind = .menu(choices)
     }
 
     /// A label already in the person's language.
@@ -25,7 +48,7 @@ public struct ErrorAction {
     ) {
         self.title = Text(verbatim: title)
         self.isDisabled = isDisabled
-        self.perform = perform
+        self.kind = .button(perform)
     }
 }
 
@@ -44,6 +67,7 @@ public struct ErrorNotice: View {
     private let tone: StatusTone
     private let look: NoticeLook
     private let action: ErrorAction?
+    private let onDismiss: (() -> Void)?
 
     /// A notice showing the error's line; its Details, when the error has a
     /// detail, opens the line as the title over the causes.
@@ -51,12 +75,14 @@ public struct ErrorNotice: View {
         error: DisplayError,
         tone: StatusTone = .danger,
         look: NoticeLook = .filled,
-        action: ErrorAction? = nil
+        action: ErrorAction? = nil,
+        onDismiss: (() -> Void)? = nil
     ) {
         self.heading = .line(error)
         self.tone = tone
         self.look = look
         self.action = action
+        self.onDismiss = onDismiss
     }
 
     /// A notice titled in the caller's words, with `advice` under it. The
@@ -69,12 +95,14 @@ public struct ErrorNotice: View {
         error: DisplayError?,
         tone: StatusTone = .danger,
         look: NoticeLook = .filled,
-        action: ErrorAction? = nil
+        action: ErrorAction? = nil,
+        onDismiss: (() -> Void)? = nil
     ) {
         self.heading = .titled(title, advice: advice, error: error)
         self.tone = tone
         self.look = look
         self.action = action
+        self.onDismiss = onDismiss
     }
 
     public var body: some View {
@@ -111,7 +139,7 @@ public struct ErrorNotice: View {
                 words
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            if details != nil || action != nil {
+            if details != nil || action != nil || onDismiss != nil {
                 buttons
             }
         }
@@ -147,8 +175,25 @@ public struct ErrorNotice: View {
             if let action {
                 actionButton(action)
             }
+            if let onDismiss {
+                dismissButton(onDismiss)
+            }
         }
         .fixedSize()
+    }
+
+    /// Takes the notice away without fixing what it reports.
+    private func dismissButton(_ onDismiss: @escaping () -> Void) -> some View {
+        Button(action: onDismiss) {
+            Image(systemName: "xmark")
+                .font(.system(size: 14))
+                .foregroundStyle(.tertiary)
+                .frame(width: ThemeSize.hitTarget, height: ThemeSize.hitTarget)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.borderless)
+        .help("Dismiss")
+        .accessibilityLabel(Text("Dismiss"))
     }
 
     /// The centred layout: the glyph and the title in one row, with the
@@ -215,9 +260,29 @@ public struct ErrorNotice: View {
         #endif
     }
 
+    @ViewBuilder
     private func actionButton(_ action: ErrorAction) -> some View {
-        colouredButton(Button(action: action.perform) { action.title })
+        switch action.kind {
+        case .button(let perform):
+            colouredButton(Button(action: perform) { action.title })
+                .disabled(action.isDisabled)
+        case .menu(let choices):
+            colouredButton(
+                Menu {
+                    ForEach(choices.indices, id: \.self) { index in
+                        Button(
+                            choices[index].title,
+                            action: choices[index].perform
+                        )
+                    }
+                } label: {
+                    action.title
+                }
+                .menuStyle(.button)
+                .fixedSize()
+            )
             .disabled(action.isDisabled)
+        }
     }
 
     /// A button in the notice's text: on a toned notice's own fill, its accent

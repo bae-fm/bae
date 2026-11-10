@@ -171,7 +171,7 @@ extension View {
     /// view they replace, or 300 points where it has none, which no theme
     /// size gives. On the stage they take that space as it is.
     @ViewBuilder
-    public func notice(_ tone: StatusTone, look: NoticeLook = .filled)
+    func notice(_ tone: StatusTone, look: NoticeLook = .filled)
         -> some View
     {
         switch look {

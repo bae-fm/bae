@@ -14,43 +14,17 @@ struct FindOnlineDiscogsBar: View {
     }
 
     var body: some View {
-        HStack(alignment: .center, spacing: ThemeSpace.related) {
-            HStack(alignment: .top, spacing: ThemeSpace.related) {
-                if let symbol = StatusTone.info.symbol {
-                    Image(systemName: symbol)
-                        .themeIcon(.medium)
-                        .foregroundStyle(StatusTone.info.color)
-                        .padding(.top, ThemeSpace.hairline)
-                }
-                VStack(alignment: .leading, spacing: ThemeSpace.line) {
-                    Text("Add \(discogs) to find more pressings")
-                        .themeText(.strong)
-                    Text(
-                        "Many regional releases, reissues and vinyl pressings are only on \(discogs). Tokens are free: create one in your \(discogs) account settings."
-                    )
-                    .themeText(.body)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-            Spacer(minLength: ThemeSpace.group)
-            Button("Open settings", action: onOpenSettings)
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
-            Button(action: onDismiss) {
-                Image(systemName: "xmark")
-                    .themeIcon(.small)
-                    .foregroundStyle(.secondary)
-                    .frame(
-                        width: ThemeSize.hitTarget,
-                        height: ThemeSize.hitTarget
-                    )
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(Text("Dismiss"))
-        }
-        .notice(.info)
+        ErrorNotice(
+            title: String(localized: "Add \(discogs) to find more pressings"),
+            advice: String(
+                localized:
+                    "Many regional releases, reissues and vinyl pressings are only on \(discogs). Tokens are free: create one in your \(discogs) account settings."
+            ),
+            error: nil,
+            tone: .info,
+            action: ErrorAction("Open settings", perform: onOpenSettings),
+            onDismiss: onDismiss
+        )
         .padding(.horizontal, ThemeSpace.edge)
         .padding(.vertical, ThemeSpace.related)
     }
