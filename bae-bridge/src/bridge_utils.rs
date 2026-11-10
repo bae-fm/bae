@@ -142,8 +142,7 @@ impl BridgeConfig {
             replay_gain_mode: _,
             save_presets,
             save_filename_tokens,
-            default_track_save_preset,
-            default_release_save_preset,
+            last_save_preset,
             pause_between_sides,
             side_pause_countdown,
             max_concurrent_uploads,
@@ -195,8 +194,7 @@ impl BridgeConfig {
                 .copied()
                 .map(BridgeSaveFilenameToken::from_core)
                 .collect(),
-            default_track_save_preset: default_track_save_preset.clone(),
-            default_release_save_preset: default_release_save_preset.clone(),
+            last_save_preset: last_save_preset.clone(),
             cast_enabled: *cast_enabled,
             cast_transcode_format: BridgeCastTranscodeFormat::from_core(*cast_transcode_format),
             mcp: BridgeMcpConfig { enabled: *enabled, port: *port },

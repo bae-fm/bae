@@ -534,8 +534,8 @@ extension AlbumDetailView {
             let choices = SaveFormatChoice.choices(
                 presets: configStore.config.savePresets
             )
-            let defaultPresetId = configStore.config.defaultTrackSavePreset
-            guard choices.contains(where: { $0.presetId == defaultPresetId })
+            let lastPresetId = configStore.config.lastSavePreset
+            guard choices.contains(where: { $0.presetId == lastPresetId })
             else {
                 exportError = DisplayError(
                     line: String(localized: "Default format")
@@ -561,7 +561,7 @@ extension AlbumDetailView {
             let panel = TrackSavePanel.make(
                 suggestedStem: stem,
                 choices: choices,
-                selectedPresetId: defaultPresetId
+                selectedPresetId: lastPresetId
             )
             let formatPopup = panel.formatPopup
             let response = panel.savePanel.runModal()

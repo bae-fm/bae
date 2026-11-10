@@ -96,14 +96,6 @@ forward! { async this => {
             )
             .await?)
     }
-
-    fn set_default_track_save_preset(preset_id: String) -> () {
-        Ok(this.services.set_default_track_save_preset(preset_id).await?)
-    }
-
-    fn set_default_release_save_preset(preset_id: String) -> () {
-        Ok(this.services.set_default_release_save_preset(preset_id).await?)
-    }
 } }
 
 forward! { sync this => {

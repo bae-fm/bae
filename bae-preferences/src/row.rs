@@ -102,8 +102,7 @@ fn preferences_on(sql: &impl SqlRead) -> rusqlite::Result<Preferences> {
             },
             save_presets,
             save_filename_tokens,
-            default_track_save_preset: row.get("default_track_save_preset")?,
-            default_release_save_preset: row.get("default_release_save_preset")?,
+            last_save_preset: row.get("last_save_preset")?,
             pause_between_sides: flag("pause_between_sides")?,
             side_pause_countdown: match row.get::<_, Option<u32>>("side_pause_countdown_seconds")? {
                 None => SidePauseCountdown::Off,
@@ -238,8 +237,7 @@ fn write_preferences_on(
         replay_gain_mode,
         save_presets: _,
         save_filename_tokens: _,
-        default_track_save_preset,
-        default_release_save_preset,
+        last_save_preset,
         pause_between_sides,
         side_pause_countdown,
         max_concurrent_uploads,
@@ -255,7 +253,7 @@ fn write_preferences_on(
     } = edited;
     sql.execute(
         "UPDATE preferences SET discogs_key = ?, replay_gain_mode = ?, \
-             default_track_save_preset = ?, default_release_save_preset = ?, \
+             last_save_preset = ?, \
              pause_between_sides = ?, side_pause_countdown_seconds = ?, \
              max_concurrent_uploads = ?, max_concurrent_downloads = ?, \
              show_remaining_time = ?, library_full_width = ?, \
@@ -275,8 +273,7 @@ fn write_preferences_on(
                 ReplayGainMode::Track => "track",
                 ReplayGainMode::Album => "album",
             },
-            default_track_save_preset,
-            default_release_save_preset,
+            last_save_preset,
             pause_between_sides,
             side_pause_countdown.duration().map(|duration| duration.as_secs() as i64),
             max_concurrent_uploads.get(),

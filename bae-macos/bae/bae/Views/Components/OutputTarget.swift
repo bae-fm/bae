@@ -95,7 +95,7 @@ enum OutputTarget {
     }
 
     /// Release save: a folder dialog with a preset-picker accessory (release
-    /// presets, default `defaultReleaseSavePreset`). Returns the chosen folder
+    /// presets, starting at `lastSavePreset`). Returns the chosen folder
     /// plus preset id.
     @MainActor
     static func resolveReleaseSave(config: Config) -> ReleaseSaveTarget? {
@@ -104,7 +104,7 @@ enum OutputTarget {
         )
         guard
             choices.contains(where: {
-                $0.presetId == config.defaultReleaseSavePreset
+                $0.presetId == config.lastSavePreset
             })
         else {
             showDefaultFormatUnavailableAlert()
@@ -114,7 +114,7 @@ enum OutputTarget {
         let panel = makeFolderPanel()
         let popup = SaveFormatPopup.make(
             choices: choices,
-            selectedPresetId: config.defaultReleaseSavePreset,
+            selectedPresetId: config.lastSavePreset,
             frame: NSRect(x: 54, y: 5, width: 190, height: 24)
         )
         panel.accessoryView = formatAccessoryView(popup: popup)

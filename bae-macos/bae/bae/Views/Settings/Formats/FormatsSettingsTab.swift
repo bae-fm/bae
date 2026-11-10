@@ -1,9 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// The Save as pane: the formats, the default format for release and track
-/// saves, and the file names, each written through `Outputs` and read back
-/// from config.
+/// The Save as pane: the formats and the file names, each written through
+/// `Outputs` and read back from config.
 struct FormatsSettingsTab: View {
     @Environment(ConfigStore.self)
     private var configStore
@@ -24,7 +23,6 @@ struct FormatsSettingsTab: View {
     var body: some View {
         Form {
             formatsSection
-            defaultsSection
             fileNamesSection
         }
         .formStyle(.grouped)
@@ -36,28 +34,6 @@ struct FormatsSettingsTab: View {
             }) {
                 SavePresetEditor(preset: preset, update: replacePreset)
             }
-        }
-    }
-
-    private var defaultsSection: some View {
-        Section {
-            presetPicker(
-                label: "Release",
-                presets: configStore.config.savePresets,
-                selection: defaultReleasePresetBinding()
-            )
-            presetPicker(
-                label: "Tracks",
-                presets: configStore.config.savePresets,
-                selection: defaultTrackPresetBinding()
-            )
-        } header: {
-            Text("Defaults")
-        } footer: {
-            Text("The format Save as… starts with.")
-                .themeText(.detail)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
@@ -109,18 +85,6 @@ struct FormatsSettingsTab: View {
         }
     }
 
-    private func presetPicker(
-        label: LocalizedStringKey,
-        presets: [BridgeSavePreset],
-        selection: Binding<String>
-    ) -> some View {
-        Picker(label, selection: selection) {
-            ForEach(presets, id: \.id) { preset in
-                Text(preset.name).tag(preset.id)
-            }
-        }
-    }
-
     private func replacePreset(_ preset: BridgeSavePreset) {
         let presets = configStore.config.savePresets.map {
             $0.id == preset.id ? preset : $0
@@ -142,24 +106,6 @@ struct FormatsSettingsTab: View {
             try await outputs.setSavePresets(presets)
             editingPreset = EditingPreset(id: preset.id)
         }
-    }
-
-    private func defaultTrackPresetBinding() -> Binding<String> {
-        Binding(
-            get: { configStore.config.defaultTrackSavePreset },
-            set: { id in
-                set { try await outputs.setDefaultTrackSavePreset(id) }
-            }
-        )
-    }
-
-    private func defaultReleasePresetBinding() -> Binding<String> {
-        Binding(
-            get: { configStore.config.defaultReleaseSavePreset },
-            set: { id in
-                set { try await outputs.setDefaultReleaseSavePreset(id) }
-            }
-        )
     }
 
     /// Run a config write off the main thread — each is a durable file

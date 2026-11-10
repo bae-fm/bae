@@ -50,12 +50,9 @@ pub struct BridgeConfig {
     /// The one filename pattern every save names its files by, whatever the
     /// format.
     pub filename_tokens: Vec<BridgeSaveFilenameToken>,
-    /// Id of the preset a track save defaults to (a valid, track-applicable
-    /// preset id; core keeps it non-dangling).
-    pub default_track_save_preset: String,
-    /// Id of the preset a release save defaults to (a valid, release-applicable
-    /// preset id; core keeps it non-dangling).
-    pub default_release_save_preset: String,
+    /// Id of the preset the last save, of a track or a release, used, the one a
+    /// save starts with (a valid preset id; core keeps it non-dangling).
+    pub last_save_preset: String,
     /// Whether casting to a network receiver is available. Off unless the user
     /// turns it on; while off, core runs no discovery and refuses to start a
     /// session, and the UI hides its Cast control.

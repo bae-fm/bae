@@ -40,12 +40,15 @@ impl LibraryManager {
     ) -> Result<(), LibraryError> {
         let preset = self.save_preset_for(preset_id).await?;
         let filename_tokens = self.preferences().await?.save_filename_tokens;
+        let preset_id = preset.id.clone();
         self.enqueue_output(
             release_id,
             target_dir,
             bae_transfers::OutputKind::Save { preset, filename_tokens },
         )
-        .await
+        .await?;
+        self.set_last_save_preset(preset_id).await?;
+        Ok(())
     }
 
     /// Shared enqueue body for both release-level outputs. Skips ids already in

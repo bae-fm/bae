@@ -8,7 +8,7 @@ use crate::manager::tests::*;
 async fn a_missing_release_fails_as_the_output_asked_for() {
     let (test, temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
-    let preset = manager.preferences().await.unwrap().default_release_save_preset;
+    let preset = manager.preferences().await.unwrap().last_save_preset;
 
     let saved = manager
         .enqueue_release_save("missing-release", temp_dir.path().to_path_buf(), &preset)

@@ -53,10 +53,9 @@ public struct Config: Equatable {
     /// The one filename pattern every save names its files by, whatever the
     /// format.
     public let filenameTokens: [BridgeSaveFilenameToken]
-    /// Id of the preset a track save defaults to (valid + track-applicable).
-    public let defaultTrackSavePreset: String
-    /// Id of the preset a release save defaults to (valid + release-applicable).
-    public let defaultReleaseSavePreset: String
+    /// Id of the preset the last save, of a track or a release, used: the one
+    /// a save starts with.
+    public let lastSavePreset: String
     /// Whether casting to a network receiver is available. Core enforces it —
     /// while off it runs no discovery and refuses to start a session — so the
     /// playback bar reads this only to decide whether to show its Cast control.
@@ -86,8 +85,7 @@ public struct Config: Equatable {
         libraryFullWidth = bridge.libraryFullWidth
         savePresets = bridge.savePresets
         filenameTokens = bridge.filenameTokens
-        defaultTrackSavePreset = bridge.defaultTrackSavePreset
-        defaultReleaseSavePreset = bridge.defaultReleaseSavePreset
+        lastSavePreset = bridge.lastSavePreset
         castEnabled = bridge.castEnabled
         castTranscodeFormat = bridge.castTranscodeFormat
         mcp = bridge.mcp

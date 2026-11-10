@@ -280,12 +280,11 @@ impl LibraryManager {
                 )));
             }
         }
-        // Both save defaults are required, valid preset ids: re-validate the
-        // stored ones against the new list so deleting a default's preset is
-        // refused rather than leaving a dangling default.
+        // The last-used format is a required, valid preset id: re-validate the
+        // stored one against the new list so deleting its preset is refused
+        // rather than leaving it dangling.
         self.update_preferences(move |prefs| {
-            Self::validate_default_save_preset(&prefs.default_track_save_preset, &presets)?;
-            Self::validate_default_save_preset(&prefs.default_release_save_preset, &presets)?;
+            Self::validate_last_save_preset(&prefs.last_save_preset, &presets)?;
             prefs.save_presets = presets;
             Ok(())
         })
@@ -305,33 +304,24 @@ impl LibraryManager {
         .await
     }
 
-    pub async fn set_default_track_save_preset(
+    /// Record `preset_id` as the format the last save used, which the next
+    /// save starts with.
+    #[cfg(desktop)]
+    pub(crate) async fn set_last_save_preset(
         &self,
         preset_id: String,
     ) -> Result<(), bae_preferences::PreferencesError> {
         self.update_preferences(move |prefs| {
-            Self::validate_default_save_preset(&preset_id, &prefs.save_presets)?;
-            prefs.default_track_save_preset = preset_id;
+            Self::validate_last_save_preset(&preset_id, &prefs.save_presets)?;
+            prefs.last_save_preset = preset_id;
             Ok(())
         })
         .await
     }
 
-    pub async fn set_default_release_save_preset(
-        &self,
-        preset_id: String,
-    ) -> Result<(), bae_preferences::PreferencesError> {
-        self.update_preferences(move |prefs| {
-            Self::validate_default_save_preset(&preset_id, &prefs.save_presets)?;
-            prefs.default_release_save_preset = preset_id;
-            Ok(())
-        })
-        .await
-    }
-
-    /// A save default must name a preset that exists, so a stored default is
-    /// never dangling.
-    fn validate_default_save_preset(
+    /// The last-used format must name a preset that exists, so it is never
+    /// dangling.
+    fn validate_last_save_preset(
         preset_id: &str,
         presets: &[bae_preferences::SavePreset],
     ) -> Result<(), bae_preferences::PreferencesError> {

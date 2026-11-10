@@ -196,6 +196,25 @@ async fn a_lossless_format_writes_the_depth_of_the_track_it_saves() {
     assert_eq!(depths(&sixteen).await, vec![16, 16]);
 }
 
+/// A single track's save records its format as the one the next save starts
+/// with, the same as a release save does.
+#[tokio::test]
+async fn a_track_save_records_its_format_as_last_used() {
+    bae_util::test_logs::install();
+    let f = ExportFixture::new().await;
+    let album_dir = f.temp_path().join("album");
+    fs::create_dir_all(&album_dir).unwrap();
+    bae_import::test_fixtures::write_tagged_flac(&album_dir, "01.flac", "Track One");
+    let release_id = import_unknown_local(&f, &album_dir).await;
+    let tracks = f.library.records().get_tracks_for_release(&release_id).await.unwrap();
+    assert_eq!(f.library.manager().preferences().await.unwrap().last_save_preset, "flac");
+
+    let out = f.temp_path().join("saved.mp3");
+    f.library.manager().save_track(&tracks[0].id, &out, "mp3").await.expect("track saves");
+
+    assert_eq!(f.library.manager().preferences().await.unwrap().last_save_preset, "mp3");
+}
+
 /// The one filename pattern names every file a save writes, whatever the
 /// format: a single track's suggested name and each file of a release save in
 /// FLAC and in MP3 come from it, and setting the pattern changes all of them.

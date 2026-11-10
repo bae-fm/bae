@@ -60,10 +60,10 @@ async fn a_key_checked_offline_is_stored_unvalidated() {
 }
 
 #[tokio::test]
-async fn set_save_presets_rejects_removing_selected_default() {
+async fn set_save_presets_rejects_removing_the_last_used_format() {
     let (test, _temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
-    manager.set_default_track_save_preset("mp3".to_string()).await.unwrap();
+    manager.set_last_save_preset("mp3".to_string()).await.unwrap();
 
     let presets_without_mp3: Vec<_> = manager
         .save_presets()
@@ -75,21 +75,21 @@ async fn set_save_presets_rejects_removing_selected_default() {
     let err = manager
         .set_save_presets(presets_without_mp3)
         .await
-        .expect_err("selected default preset cannot be removed");
+        .expect_err("the last-used format's preset cannot be removed");
 
     assert!(err.to_string().contains("unknown export preset mp3"));
     assert!(manager.save_presets().await.unwrap().iter().any(|preset| preset.id == "mp3"));
 }
 
-/// A save default must name a preset that exists; every format is offered
-/// for tracks and releases alike.
+/// The last-used format must name a preset that exists; any format can be it,
+/// whichever kind of save used it.
 #[tokio::test]
-async fn set_default_save_preset_rejects_unknown_and_takes_any_format() {
+async fn set_last_save_preset_rejects_unknown_and_takes_any_format() {
     let (test, _temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
 
     assert!(
-        manager.set_default_track_save_preset("no-such-preset".to_string()).await.is_err(),
+        manager.set_last_save_preset("no-such-preset".to_string()).await.is_err(),
         "an unknown preset id is rejected"
     );
 
@@ -102,8 +102,8 @@ async fn set_default_save_preset_rejects_unknown_and_takes_any_format() {
     });
     manager.set_save_presets(presets).await.unwrap();
 
-    manager.set_default_track_save_preset("wav-16".to_string()).await.unwrap();
-    manager.set_default_release_save_preset("wav-16".to_string()).await.unwrap();
+    manager.set_last_save_preset("wav-16".to_string()).await.unwrap();
+    assert_eq!(manager.preferences().await.unwrap().last_save_preset, "wav-16");
 }
 
 #[tokio::test]

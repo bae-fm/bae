@@ -11,12 +11,10 @@ CREATE TABLE IF NOT EXISTS preferences (
     discogs_key TEXT CHECK (discogs_key IN ('unvalidated', 'valid', 'rejected')),
     -- Which loudness a track plays at (§7.5).
     replay_gain_mode TEXT NOT NULL CHECK (replay_gain_mode IN ('off', 'track', 'album')),
-    -- The presets a track save and a release save start with. Each applies
-    -- to its level, which the setters check; a preset a default names is
-    -- replaced or removed only in a write that leaves the default naming one.
-    default_track_save_preset   TEXT NOT NULL
-        REFERENCES save_preset (id) DEFERRABLE INITIALLY DEFERRED,
-    default_release_save_preset TEXT NOT NULL
+    -- The preset the last save, of a track or a release, used, which the
+    -- next save starts with; a preset it names is replaced or removed only in
+    -- a write that leaves it naming one.
+    last_save_preset TEXT NOT NULL
         REFERENCES save_preset (id) DEFERRABLE INITIALLY DEFERRED,
     -- Whether playback pauses between sides and discs, and how many seconds
     -- such a pause waits before the next side starts on its own; NULL waits
@@ -88,13 +86,13 @@ VALUES
 INSERT OR IGNORE INTO save_filename_token (position, token)
 VALUES (0, 'track_number'), (1, 'title');
 INSERT OR IGNORE INTO preferences (
-    singleton, discogs_key, replay_gain_mode, default_track_save_preset,
-    default_release_save_preset, pause_between_sides, side_pause_countdown_seconds,
+    singleton, discogs_key, replay_gain_mode, last_save_preset, pause_between_sides,
+    side_pause_countdown_seconds,
     max_concurrent_uploads, max_concurrent_downloads, show_remaining_time,
     library_full_width, import_destination, identify_automatically,
     import_when_identified, ask_musicbrainz, ask_discogs, cast_enabled,
     cast_transcode_format, mcp_enabled, mcp_port, subsonic_enabled, subsonic_port,
     subsonic_username, subsonic_bind_address)
 VALUES (
-    1, NULL, 'off', 'flac', 'flac', 1, NULL, 3, 3, 0, 0, 'cloud_pinned', 1, 0, 1, 1, 0, 'mp3', 0,
+    1, NULL, 'off', 'flac', 1, NULL, 3, 3, 0, 0, 'cloud_pinned', 1, 0, 1, 1, 0, 'mp3', 0,
     47777, 0, 4533, '', '127.0.0.1');

@@ -452,6 +452,21 @@ async fn enqueue_release_save_captures_the_preset() {
     );
 }
 
+/// Queueing a release save records its format as the one the next save starts
+/// with, whichever kind of save that is.
+#[tokio::test]
+async fn enqueue_release_save_records_its_format_as_last_used() {
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    let release_id = insert_pinnable_release(&test).await;
+    manager.set_outputs_paused(true).await.unwrap();
+    assert_eq!(manager.preferences().await.unwrap().last_save_preset, "flac");
+
+    manager.enqueue_release_save(&release_id, temp_dir.path().join("out"), "mp3").await.unwrap();
+
+    assert_eq!(manager.preferences().await.unwrap().last_save_preset, "mp3");
+}
+
 /// The export queue as its table holds it now.
 #[cfg(desktop)]
 async fn output_queue_now(manager: &LibraryManager) -> bae_transfers::OutputPhaseSnapshot {

@@ -33,10 +33,6 @@ final class Outputs: Sendable, Observable {
     /// Set the one filename pattern every save names its files by.
     let setFilenameTokens:
         @Sendable (_ tokens: [BridgeSaveFilenameToken]) async throws -> Void
-    let setDefaultTrackSavePreset:
-        @Sendable (_ presetId: String) async throws -> Void
-    let setDefaultReleaseSavePreset:
-        @Sendable (_ presetId: String) async throws -> Void
 
     init(
         newSavePreset: @escaping @Sendable () -> BridgeSavePreset,
@@ -63,12 +59,6 @@ final class Outputs: Sendable, Observable {
         setFilenameTokens:
             @escaping @Sendable ([BridgeSaveFilenameToken]) async throws
             -> Void = { _ in
-            },
-        setDefaultTrackSavePreset:
-            @escaping @Sendable (String) async throws -> Void = { _ in
-            },
-        setDefaultReleaseSavePreset:
-            @escaping @Sendable (String) async throws -> Void = { _ in
             }
     ) {
         self.newSavePreset = newSavePreset
@@ -78,8 +68,6 @@ final class Outputs: Sendable, Observable {
         self.cancelOutput = cancelOutput
         self.setSavePresets = setSavePresets
         self.setFilenameTokens = setFilenameTokens
-        self.setDefaultTrackSavePreset = setDefaultTrackSavePreset
-        self.setDefaultReleaseSavePreset = setDefaultReleaseSavePreset
     }
 
     convenience init(handle: any AppHandleProtocol, host: BridgeHost) {
@@ -103,12 +91,6 @@ final class Outputs: Sendable, Observable {
             setSavePresets: { try await handle.setSavePresets(presets: $0) },
             setFilenameTokens: {
                 try await handle.setFilenameTokens(tokens: $0)
-            },
-            setDefaultTrackSavePreset: {
-                try await handle.setDefaultTrackSavePreset(presetId: $0)
-            },
-            setDefaultReleaseSavePreset: {
-                try await handle.setDefaultReleaseSavePreset(presetId: $0)
             }
         )
     }

@@ -486,8 +486,6 @@ impl AppServices {
 
     delegate_async!(manager, set_save_presets => set_save_presets(presets: Vec<bae_preferences::SavePreset>) -> Result<(), bae_preferences::PreferencesError>);
     delegate_async!(manager, set_save_filename_tokens => set_save_filename_tokens(tokens: Vec<bae_preferences::SaveFilenameToken>) -> Result<(), bae_preferences::PreferencesError>);
-    delegate_async!(manager, set_default_track_save_preset => set_default_track_save_preset(preset_id: String) -> Result<(), bae_preferences::PreferencesError>);
-    delegate_async!(manager, set_default_release_save_preset => set_default_release_save_preset(preset_id: String) -> Result<(), bae_preferences::PreferencesError>);
     pub async fn rename_library(
         &self,
         name: &bae_store::EnteredName,

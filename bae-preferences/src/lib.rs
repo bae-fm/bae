@@ -273,12 +273,10 @@ pub struct Preferences {
     /// The one filename pattern every save names its files by, whatever the
     /// format: tokens in order, rendered by the library's save.
     pub save_filename_tokens: Vec<SaveFilenameToken>,
-    /// Id of the preset a track save defaults to. A required, valid preset id
-    /// that applies to track saves (config validation keeps it non-dangling).
-    pub default_track_save_preset: String,
-    /// Id of the preset a release save defaults to. A required, valid preset id
-    /// that applies to release saves (config validation keeps it non-dangling).
-    pub default_release_save_preset: String,
+    /// Id of the preset the last save, of a track or a release, used; the
+    /// one a save starts with. A required, valid preset id (config validation
+    /// keeps it non-dangling).
+    pub last_save_preset: String,
     /// Whether playback pauses between vinyl/cassette sides and CD discs.
     /// Defaults to `true`: a side break is part of how the release was made,
     /// so bae plays it unless the person turns it off.
@@ -339,8 +337,7 @@ impl Default for Preferences {
             replay_gain_mode: ReplayGainMode::Off,
             save_presets: default_save_presets(),
             save_filename_tokens: default_save_filename_tokens(),
-            default_track_save_preset: "flac".to_string(),
-            default_release_save_preset: "flac".to_string(),
+            last_save_preset: "flac".to_string(),
             pause_between_sides: true,
             side_pause_countdown: SidePauseCountdown::Off,
             max_concurrent_uploads: default_transfer_concurrency(),

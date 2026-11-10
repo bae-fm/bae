@@ -80,8 +80,7 @@ async fn every_preference_reads_back_as_set() {
             SaveFilenameToken::TrackTotal,
             SaveFilenameToken::Title,
         ],
-        default_track_save_preset: "wav".to_string(),
-        default_release_save_preset: "sixteen".to_string(),
+        last_save_preset: "sixteen".to_string(),
         pause_between_sides: false,
         side_pause_countdown: SidePauseCountdown::Seconds30,
         max_concurrent_uploads: NonZeroU32::new(7).unwrap(),
@@ -196,21 +195,20 @@ async fn concurrent_edits_keep_both_changes() {
     assert!(!prefs.pause_between_sides);
 }
 
-/// The schema refuses what the setters check before writing: a default that
-/// names no preset, a server that could let no one in, and a preset its codec
+/// The schema refuses what the setters check before writing: a last-used format
+/// that names no preset, a server that could let no one in, and a preset its codec
 /// can't write.
 #[tokio::test]
 async fn the_schema_refuses_preferences_no_setter_writes() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
     for (what, edit) in [
         (
-            "a default naming no preset",
-            Box::new(|prefs: &mut Preferences| {
-                prefs.default_release_save_preset = "gone".to_string()
-            }) as Box<dyn FnOnce(&mut Preferences) + Send>,
+            "a last-used format naming no preset",
+            Box::new(|prefs: &mut Preferences| prefs.last_save_preset = "gone".to_string())
+                as Box<dyn FnOnce(&mut Preferences) + Send>,
         ),
         (
-            "removing the preset a default names",
+            "removing the preset the last-used format names",
             Box::new(|prefs: &mut Preferences| {
                 prefs.save_presets.retain(|preset| preset.id != "flac")
             }),

@@ -493,14 +493,6 @@ internal open class FakeAppHandle(
         unfaked("renameLibrary")
     }
 
-    override suspend fun setDefaultReleaseSavePreset(presetId: String) {
-        unfaked("setDefaultReleaseSavePreset")
-    }
-
-    override suspend fun setDefaultTrackSavePreset(presetId: String) {
-        unfaked("setDefaultTrackSavePreset")
-    }
-
     override suspend fun setIdentifyAutomatically(enabled: Boolean) {
         unfaked("setIdentifyAutomatically")
     }

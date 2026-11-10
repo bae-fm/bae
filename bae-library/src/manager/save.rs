@@ -148,6 +148,7 @@ impl LibraryManager {
         preset_id: &str,
     ) -> Result<(), LibraryError> {
         let preset = self.save_preset_for(preset_id).await?;
+        self.set_last_save_preset(preset.id.clone()).await?;
         let meta = TrackAudioMeta::resolve(&self.records, track_id).await?;
         let neighbors = self.records.track_neighbors(&meta.track.id).await?.ok_or_else(|| {
             LibraryError::Save(format!(
