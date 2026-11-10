@@ -163,3 +163,35 @@ fn a_new_save_preset_is_cores_flac_preset_with_its_own_id() {
     assert!(preset.applies_to_track && preset.applies_to_release && preset.embed_cover);
     assert_ne!(preset.id, host.new_save_preset().id);
 }
+
+/// A library the host has open stands by its open session's live sync
+/// status: coven's read of a closed store refuses a store a handle runs, so
+/// only the open library can answer. Once its handle is released, the library
+/// is read as it last stood.
+#[test]
+fn an_open_library_stands_by_its_open_session() {
+    let root = tempfile::tempdir().unwrap();
+    let host = crate::handle::tests::test_host(root.path());
+    let caller = tokio::runtime::Runtime::new().unwrap();
+    let opened = crate::handle::tests::create_opened_library(&host, &caller, "Open Library");
+    let app = opened.open(50, false).unwrap();
+    let id = opened.library_id();
+    drop(opened);
+
+    let open = caller.block_on(host.clone().library_standing(id.clone())).unwrap();
+
+    assert!(
+        matches!(
+            &open.state,
+            crate::BridgeStandingState::Sync { shown }
+                if shown.status == crate::BridgeSyncStatusWord::NotSynced
+        ),
+        "{open:?}"
+    );
+    assert_eq!(open.last_synced, None);
+
+    drop(app);
+    let closed = caller.block_on(host.clone().library_standing(id)).unwrap();
+
+    assert_eq!(closed, open);
+}
