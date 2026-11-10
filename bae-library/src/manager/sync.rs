@@ -45,7 +45,8 @@ impl LibraryManager {
     /// connection's, operations', uploads' and downloads', each keeping its
     /// failure count, and runs a pass. Provider cooldowns, failures that
     /// never retry, and waits for new credentials hold. Automatic triggers
-    /// use [`Self::trigger_sync`], which leaves every backoff in place.
+    /// use [`Store::sync_now`](bae_store::Store::sync_now), which leaves every
+    /// backoff in place.
     ///
     /// The retry is in place once this returns, with its answer to await:
     /// the first pass after it ends, with what came of it. Deciding the
