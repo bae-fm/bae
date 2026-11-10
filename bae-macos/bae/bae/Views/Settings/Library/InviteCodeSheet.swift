@@ -6,7 +6,7 @@ private let logger = Logger.bae("InviteCodeSheet")
 
 /// One of this device's open invites, shown again: while sync grants its
 /// access, that it is doing so, and why coven holds it when it does; then
-/// the QR code with Copy and Share, and when it expires; and Cancel invitation. It closes when the
+/// the QR code with Copy and Share; and Cancel invitation. It closes when the
 /// invite ends.
 struct InviteCodeSheet: View {
     let inviteId: String
@@ -107,11 +107,6 @@ struct InviteCodeSheet: View {
                 }
                 ShareLink(item: code)
             }
-            Text(
-                "Expires \(invite.expiresAt, format: .relative(presentation: .named))"
-            )
-            .themeText(.detail)
-            .foregroundStyle(.secondary)
             if let keyLine = invite.access.keyLine,
                 let unusedLine = invite.access.unusedInviteLine
             {

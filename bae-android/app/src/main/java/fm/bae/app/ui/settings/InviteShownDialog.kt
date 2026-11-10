@@ -130,7 +130,7 @@ internal fun Context.inviteExpiry(expiresAt: Instant): String =
 
 /**
  * The invite to give the person joining: a QR code to scan in bae, and the
- * code to copy or share. It says when it expires.
+ * code to copy or share.
  */
 @Composable
 private fun InviteCodeDialog(
@@ -142,7 +142,6 @@ private fun InviteCodeDialog(
 ) {
     val context = LocalContext.current
     val copy = rememberCopyText()
-    val expires = remember(invite.expiresAt) { context.inviteExpiry(invite.expiresAt) }
     val title = invite.invitee ?: stringResource(R.string.invite_title)
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -164,7 +163,6 @@ private fun InviteCodeDialog(
                             title = title,
                             onCopy = { copy(shown.code) },
                         )
-                        InviteNote(stringResource(R.string.invite_expires, expires))
                     }
                 }
                 (invite.access as? BridgeMemberAccess.S3AccessKey)?.let { key ->

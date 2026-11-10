@@ -208,7 +208,6 @@ pub struct BridgeInvite {
     pub invitee: Option<String>,
     /// The access the invite grants; on S3 the id of the key it carries.
     pub access: BridgeMemberAccess,
-    pub expires_at: std::time::SystemTime,
     pub shown: BridgeInviteShown,
     /// Why coven holds the invite's work, when it does: a refused check or a
     /// failed grant, which cancelling the invite ends.
@@ -255,7 +254,6 @@ impl BridgeInvite {
             member: invite.member.0.to_string(),
             invitee: invite.invitee,
             access: BridgeMemberAccess::from_core(invite.access),
-            expires_at: invite.expires_at,
             shown,
             held: held.map(crate::BridgePendingWait::from_core),
         }

@@ -35,7 +35,6 @@ import uniffi.bae_bridge.BridgeSyncRetryOutcome
 import uniffi.bae_bridge.MembersSubscription
 import uniffi.bae_bridge.NoHandle
 import uniffi.bae_bridge.ProfilesSubscription
-import java.time.Instant
 
 /**
  * A failed read of the library's people ends the spinner with the failure, and
@@ -104,7 +103,6 @@ class MembersModelTest {
                 member = "member-1",
                 invitee = "Dan",
                 access = BridgeMemberAccess.ProviderAccount("dan@example.com"),
-                expiresAt = Instant.ofEpochSecond(2_000_000_000),
                 shown = BridgeInviteShown.Code(code = "invite-code", progress = BridgeInviteProgress.Waiting),
                 held = null,
             )

@@ -367,7 +367,6 @@
     <string name="invite_email">E-mail</string>
     <string name="invite_create">Utwórz zaproszenie</string>
     <string name="invite_title">Zaproszenie</string>
-    <string name="invite_expires">Wygasa %1$s</string>
     <string name="invite_cancel">Anuluj zaproszenie</string>
     <string name="invite_share">Udostępnij</string>
     <string name="join_request_decline">Odrzuć</string>

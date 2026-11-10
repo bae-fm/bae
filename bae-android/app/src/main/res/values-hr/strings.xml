@@ -360,7 +360,6 @@
     <string name="invite_email">E-pošta</string>
     <string name="invite_create">Stvori pozivnicu</string>
     <string name="invite_title">Pozivnica</string>
-    <string name="invite_expires">Istječe %1$s</string>
     <string name="invite_cancel">Otkaži pozivnicu</string>
     <string name="invite_share">Podijeli</string>
     <string name="join_request_decline">Odbij</string>

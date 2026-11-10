@@ -351,7 +351,6 @@
     <string name="invite_email">E-mail</string>
     <string name="invite_create">Opret invitation</string>
     <string name="invite_title">Invitation</string>
-    <string name="invite_expires">Udløber %1$s</string>
     <string name="invite_cancel">Annuller invitation</string>
     <string name="invite_share">Del</string>
     <string name="join_request_decline">Afvis</string>

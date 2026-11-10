@@ -346,7 +346,6 @@
     <string name="invite_email">電子郵件</string>
     <string name="invite_create">建立邀請</string>
     <string name="invite_title">邀請</string>
-    <string name="invite_expires">到期時間：%1$s</string>
     <string name="invite_cancel">取消邀請</string>
     <string name="invite_share">分享</string>
     <string name="join_request_decline">拒絕</string>

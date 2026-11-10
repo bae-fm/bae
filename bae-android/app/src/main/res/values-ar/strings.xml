@@ -381,7 +381,6 @@
     <string name="invite_email">البريد الإلكتروني</string>
     <string name="invite_create">إنشاء دعوة</string>
     <string name="invite_title">دعوة</string>
-    <string name="invite_expires">تنتهي الصلاحية %1$s</string>
     <string name="invite_cancel">إلغاء الدعوة</string>
     <string name="invite_share">مشاركة</string>
     <string name="join_request_decline">رفض</string>

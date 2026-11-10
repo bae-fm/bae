@@ -358,7 +358,6 @@
     <string name="invite_email">E-mail</string>
     <string name="invite_create">Créer l’invitation</string>
     <string name="invite_title">Invitation</string>
-    <string name="invite_expires">Expire le %1$s</string>
     <string name="invite_cancel">Annuler l’invitation</string>
     <string name="invite_share">Partager</string>
     <string name="join_request_decline">Refuser</string>

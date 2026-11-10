@@ -412,7 +412,7 @@ internal class InviteCallbacks(
 
 /**
  * One of this device's open invites: the person's name, marked sharing access until sync has granted it, then invited,
- * or joining once approval has begun; when it expires; and why coven holds its work, when it does.
+ * or joining once approval has begun; and why coven holds its work, when it does.
  */
 @Composable
 internal fun InviteRow(
@@ -420,7 +420,6 @@ internal fun InviteRow(
     callbacks: InviteCallbacks,
 ) {
     val context = LocalContext.current
-    val expires = remember(invite.expiresAt) { context.inviteExpiry(invite.expiresAt) }
     Row(
         modifier = Modifier.fillMaxWidth().clickable(role = Role.Button) { callbacks.onOpen(invite) },
         verticalAlignment = Alignment.CenterVertically,
@@ -437,11 +436,6 @@ internal fun InviteRow(
                 )
                 InviteChip(invite.shown)
             }
-            Text(
-                text = stringResource(R.string.invite_expires, expires),
-                style = ThemeText.detail.style,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
             invite.held?.let { held ->
                 Text(
                     text = context.coreString(held.reason.key),

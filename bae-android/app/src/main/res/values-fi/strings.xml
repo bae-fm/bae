@@ -351,7 +351,6 @@
     <string name="invite_email">Sähköposti</string>
     <string name="invite_create">Luo kutsu</string>
     <string name="invite_title">Kutsu</string>
-    <string name="invite_expires">Vanhenee %1$s</string>
     <string name="invite_cancel">Peruuta kutsu</string>
     <string name="invite_share">Jaa</string>
     <string name="join_request_decline">Hylkää</string>

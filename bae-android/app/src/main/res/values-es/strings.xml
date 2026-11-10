@@ -358,7 +358,6 @@
     <string name="invite_email">Correo electrónico</string>
     <string name="invite_create">Crear invitación</string>
     <string name="invite_title">Invitación</string>
-    <string name="invite_expires">Caduca el %1$s</string>
     <string name="invite_cancel">Cancelar invitación</string>
     <string name="invite_share">Compartir</string>
     <string name="join_request_decline">Rechazar</string>

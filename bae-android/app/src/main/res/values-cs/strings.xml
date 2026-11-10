@@ -367,7 +367,6 @@
     <string name="invite_email">E-mail</string>
     <string name="invite_create">Vytvořit pozvánku</string>
     <string name="invite_title">Pozvánka</string>
-    <string name="invite_expires">Platnost vyprší %1$s</string>
     <string name="invite_cancel">Zrušit pozvánku</string>
     <string name="invite_share">Sdílet</string>
     <string name="join_request_decline">Odmítnout</string>

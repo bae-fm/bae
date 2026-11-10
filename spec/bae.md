@@ -2791,25 +2791,24 @@ library asks for his profile under it once sync has loaded that far, at
 that open or a later one (§5.4).
 
 **Open invites.** Until it ends, each invite Ana's laptop made is a row in
-People: the person's name, marked invited, with when it expires. The rows
-follow coven's list of this device's open invites
+People: the person's name, marked invited. The rows follow coven's list of this
+device's open invites
 ([coven §13.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#132-adding-a-person-invites)),
-which coven ends when the invite is approved, declined, cancelled or expires,
-so an expired invite leaves People when its lifetime ends. Only the
-device that made it shows the row, since only that device can act on it. The
-row's refresh button runs Retry now for the library (§6.4), so the request
-shows the moment Dan says he has entered the code, without waiting for the next
-check. Opening the row shows the invite again, with **Cancel invite**. A row
-shows coven's pending record for its invite when it is a hold: a refused check,
-a failed grant, or a failure to read Dan's request. The invite's own waiting is
-not shown: the request it hasn't found yet, and a request that awaits Ana's
-decision. Closing
-the request dialog keeps the request, and the row opens it again. Approving is
-one write on Ana's laptop that records the approval, offline too; sync then
-lets Dan in. From that write until the invite ends, Dan's row is marked
-joining and offers no Approve or Decline. Once Ana's laptop has begun letting
-Dan in, cancelling fails and says Dan is already joining, rather than leaving
-him half joined.
+which coven ends when the invite is approved, declined, cancelled or expires, so
+an expired invite leaves People when its lifetime ends. Only the device that
+made it shows the row, since only that device can act on it. The row's refresh
+button runs Retry now for the library (§6.4), so the request shows the moment
+Dan says he has entered the code, without waiting for the next check. Opening
+the row shows the invite again, with **Cancel invite**. A row shows coven's
+pending record for its invite when it is a hold: a refused check, a failed
+grant, or a failure to read Dan's request. The invite's own waiting is not
+shown: the request it hasn't found yet, and a request that awaits Ana's
+decision. Closing the request dialog keeps the request, and the row opens it
+again. Approving is one write on Ana's laptop that records the approval, offline
+too; sync then lets Dan in. From that write until the invite ends, Dan's row is
+marked joining and offers no Approve or Decline. Once Ana's laptop has begun
+letting Dan in, cancelling fails and says Dan is already joining, rather than
+leaving him half joined.
 
 On S3 the invite's screen also shows the id of the key it carries, and says to
 delete that key in the provider's console if nobody uses the invite: bae keeps

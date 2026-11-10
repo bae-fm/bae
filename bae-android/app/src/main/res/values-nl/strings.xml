@@ -353,7 +353,6 @@
     <string name="invite_email">E-mail</string>
     <string name="invite_create">Uitnodiging maken</string>
     <string name="invite_title">Uitnodiging</string>
-    <string name="invite_expires">Verloopt op %1$s</string>
     <string name="invite_cancel">Uitnodiging annuleren</string>
     <string name="invite_share">Delen</string>
     <string name="join_request_decline">Afwijzen</string>

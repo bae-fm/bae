@@ -346,7 +346,6 @@
     <string name="invite_email">电子邮件</string>
     <string name="invite_create">创建邀请</string>
     <string name="invite_title">邀请</string>
-    <string name="invite_expires">过期时间：%1$s</string>
     <string name="invite_cancel">取消邀请</string>
     <string name="invite_share">分享</string>
     <string name="join_request_decline">拒绝</string>

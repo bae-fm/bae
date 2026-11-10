@@ -346,7 +346,6 @@
     <string name="invite_email">メールアドレス</string>
     <string name="invite_create">招待を作成</string>
     <string name="invite_title">招待</string>
-    <string name="invite_expires">有効期限：%1$s</string>
     <string name="invite_cancel">招待を取り消す</string>
     <string name="invite_share">共有</string>
     <string name="join_request_decline">拒否</string>

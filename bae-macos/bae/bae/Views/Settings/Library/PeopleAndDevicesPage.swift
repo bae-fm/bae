@@ -795,8 +795,7 @@ private struct FormerDevicesDisclosure: View {
 
 /// One of this device's open invites: the person's name, marked sharing
 /// access until sync has granted it, then invited, or joining once approval
-/// has begun; when it expires; why coven holds its work, when it does; and
-/// a refresh that checks for its request now.
+/// has begun; why coven holds its work, when it does; and a refresh that checks for its request now.
 private struct InviteRow: View {
     let invite: BridgeInvite
     let onOpen: () -> Void
@@ -817,11 +816,6 @@ private struct InviteRow: View {
                         case .code(_, .joining):
                             StatusChip("Joining", tone: .activity)
                         }
-                        Text(
-                            "Expires \(invite.expiresAt, format: .relative(presentation: .named))"
-                        )
-                        .themeText(.detail)
-                        .foregroundStyle(.secondary)
                         Spacer()
                     }
                     .contentShape(Rectangle())

@@ -358,7 +358,6 @@
     <string name="invite_email">E-mail</string>
     <string name="invite_create">Creează invitația</string>
     <string name="invite_title">Invitație</string>
-    <string name="invite_expires">Expiră pe %1$s</string>
     <string name="invite_cancel">Anulează invitația</string>
     <string name="invite_share">Distribuie</string>
     <string name="join_request_decline">Refuză</string>

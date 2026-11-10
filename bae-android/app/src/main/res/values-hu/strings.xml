@@ -351,7 +351,6 @@
     <string name="invite_email">E-mail</string>
     <string name="invite_create">Meghívó létrehozása</string>
     <string name="invite_title">Meghívó</string>
-    <string name="invite_expires">Lejár: %1$s</string>
     <string name="invite_cancel">Meghívó visszavonása</string>
     <string name="invite_share">Megosztás</string>
     <string name="join_request_decline">Elutasítás</string>

@@ -367,7 +367,6 @@
     <string name="invite_email">Ел. пошта</string>
     <string name="invite_create">Створити запрошення</string>
     <string name="invite_title">Запрошення</string>
-    <string name="invite_expires">Діє до %1$s</string>
     <string name="invite_cancel">Скасувати запрошення</string>
     <string name="invite_share">Поділитися</string>
     <string name="join_request_decline">Відхилити</string>

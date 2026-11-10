@@ -409,7 +409,6 @@
     <string name="invite_create">Create invite</string>
     <string name="invite_title">Invite</string>
     <!-- %1$s = the date and time the invite expires -->
-    <string name="invite_expires">Expires %1$s</string>
     <string name="invite_cancel">Cancel invite</string>
     <string name="invite_share">Share</string>
     <string name="join_request_decline">Decline</string>

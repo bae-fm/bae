@@ -360,7 +360,6 @@
     <string name="invite_email">אימייל</string>
     <string name="invite_create">יצירת הזמנה</string>
     <string name="invite_title">הזמנה</string>
-    <string name="invite_expires">בתוקף עד %1$s</string>
     <string name="invite_cancel">ביטול ההזמנה</string>
     <string name="invite_share">שיתוף</string>
     <string name="join_request_decline">דחייה</string>

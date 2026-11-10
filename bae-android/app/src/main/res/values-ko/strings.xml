@@ -346,7 +346,6 @@
     <string name="invite_email">이메일</string>
     <string name="invite_create">초대 만들기</string>
     <string name="invite_title">초대</string>
-    <string name="invite_expires">만료: %1$s</string>
     <string name="invite_cancel">초대 취소</string>
     <string name="invite_share">공유</string>
     <string name="join_request_decline">거절</string>

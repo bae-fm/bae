@@ -353,7 +353,6 @@
     <string name="invite_email">E-posta</string>
     <string name="invite_create">Davet oluştur</string>
     <string name="invite_title">Davet</string>
-    <string name="invite_expires">Son geçerlilik: %1$s</string>
     <string name="invite_cancel">Daveti iptal et</string>
     <string name="invite_share">Paylaş</string>
     <string name="join_request_decline">Reddet</string>
