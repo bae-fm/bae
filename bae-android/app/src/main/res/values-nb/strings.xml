@@ -124,12 +124,12 @@
     <string name="copy">Kopier</string>
     <string name="hide">Skjul</string>
     <string name="settings_remove_library">Fjern dette biblioteket fra denne enheten</string>
-    <string name="settings_remove_library_confirm_title">Fjerne biblioteket fra denne enheten?</string>
+    <string name="library_remove_confirm_title">Fjerne «%1$s» fra denne enheten?</string>
     <string name="settings_remove_library_confirm_body">Biblioteket blir værende i lagringen og på de andre enhetene dine.</string>
-    <string name="unsent_edits_body">Hvis du fjerner biblioteket fra denne enheten, forkastes de.</string>
     <string name="settings_remove">Fjern</string>
     <string name="onboarding_libraries_title">Bibliotekene dine</string>
-    <string name="library_delete_confirm_title">Slette biblioteket?</string>
+    <string name="library_delete_confirm_title">Slette «%1$s»?</string>
+    <string name="library_unsent_changes_lost">Endringer som ikke er sendt, går tapt</string>
     <string name="library_delete_confirm_body">Dette biblioteket er ikke synkronisert, så det slettes for godt. Lydfilene dine blir liggende i mappene sine.</string>
     <string name="library_delete">Slett</string>
     <string name="library_not_synced">Ikke synkronisert</string>

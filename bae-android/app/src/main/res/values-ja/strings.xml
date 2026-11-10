@@ -117,12 +117,12 @@
     <string name="copy">コピー</string>
     <string name="hide">非表示</string>
     <string name="settings_remove_library">このライブラリをこのデバイスから削除</string>
-    <string name="settings_remove_library_confirm_title">ライブラリをこのデバイスから削除しますか？</string>
+    <string name="library_remove_confirm_title">「%1$s」をこのデバイスから削除しますか？</string>
     <string name="settings_remove_library_confirm_body">ライブラリはストレージとほかのデバイスに残ります。</string>
-    <string name="unsent_edits_body">このデバイスからライブラリを削除すると、これらは破棄されます。</string>
     <string name="settings_remove">削除</string>
     <string name="onboarding_libraries_title">ライブラリ</string>
-    <string name="library_delete_confirm_title">ライブラリを削除しますか？</string>
+    <string name="library_delete_confirm_title">「%1$s」を削除しますか？</string>
+    <string name="library_unsent_changes_lost">未送信の変更は失われます</string>
     <string name="library_delete_confirm_body">このライブラリは同期されていないため、完全に削除されます。オーディオファイルはそれぞれのフォルダに残ります。</string>
     <string name="library_delete">削除</string>
     <string name="library_not_synced">未同期</string>

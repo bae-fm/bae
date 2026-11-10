@@ -120,12 +120,12 @@
     <string name="copy">Копиране</string>
     <string name="hide">Скриване</string>
     <string name="settings_remove_library">Премахване на тази библиотека от това устройство</string>
-    <string name="settings_remove_library_confirm_title">Премахване на библиотеката от това устройство?</string>
+    <string name="library_remove_confirm_title">Премахване на „%1$s“ от това устройство?</string>
     <string name="settings_remove_library_confirm_body">Библиотеката остава в хранилището и на другите ви устройства.</string>
-    <string name="unsent_edits_body">Премахването на библиотеката от това устройство ги отхвърля.</string>
     <string name="settings_remove">Премахване</string>
     <string name="onboarding_libraries_title">Вашите библиотеки</string>
-    <string name="library_delete_confirm_title">Изтриване на библиотеката?</string>
+    <string name="library_delete_confirm_title">Изтриване на „%1$s“?</string>
+    <string name="library_unsent_changes_lost">Неизпратените промени ще бъдат загубени</string>
     <string name="library_delete_confirm_body">Тази библиотека не е синхронизирана, затова ще бъде изтрита завинаги. Аудиофайловете ви остават в папките си.</string>
     <string name="library_delete">Изтриване</string>
     <string name="library_not_synced">Не е синхронизирана</string>

@@ -128,12 +128,12 @@
     <string name="copy">Copiază</string>
     <string name="hide">Ascunde</string>
     <string name="settings_remove_library">Elimină această bibliotecă de pe acest dispozitiv</string>
-    <string name="settings_remove_library_confirm_title">Elimini biblioteca de pe acest dispozitiv?</string>
+    <string name="library_remove_confirm_title">Elimini „%1$s” de pe acest dispozitiv?</string>
     <string name="settings_remove_library_confirm_body">Biblioteca rămâne în stocare și pe celelalte dispozitive ale tale.</string>
-    <string name="unsent_edits_body">Eliminarea bibliotecii de pe acest dispozitiv le elimină.</string>
     <string name="settings_remove">Elimină</string>
     <string name="onboarding_libraries_title">Bibliotecile tale</string>
-    <string name="library_delete_confirm_title">Ștergi biblioteca?</string>
+    <string name="library_delete_confirm_title">Ștergi „%1$s”?</string>
+    <string name="library_unsent_changes_lost">Modificările netrimise se vor pierde</string>
     <string name="library_delete_confirm_body">Această bibliotecă nu este sincronizată, așa că va fi ștearsă definitiv. Fișierele tale audio rămân în dosarele lor.</string>
     <string name="library_delete">Șterge</string>
     <string name="library_not_synced">Nesincronizată</string>

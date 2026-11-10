@@ -126,12 +126,12 @@
     <string name="copy">Kopírovat</string>
     <string name="hide">Skrýt</string>
     <string name="settings_remove_library">Odebrat tuto knihovnu z tohoto zařízení</string>
-    <string name="settings_remove_library_confirm_title">Odebrat knihovnu z tohoto zařízení?</string>
+    <string name="library_remove_confirm_title">Odebrat „%1$s“ z tohoto zařízení?</string>
     <string name="settings_remove_library_confirm_body">Knihovna zůstane v úložišti a na vašich dalších zařízeních.</string>
-    <string name="unsent_edits_body">Odebráním knihovny z tohoto zařízení se zahodí.</string>
     <string name="settings_remove">Odebrat</string>
     <string name="onboarding_libraries_title">Vaše knihovny</string>
-    <string name="library_delete_confirm_title">Smazat knihovnu?</string>
+    <string name="library_delete_confirm_title">Smazat „%1$s“?</string>
+    <string name="library_unsent_changes_lost">Neodeslané změny budou ztraceny</string>
     <string name="library_delete_confirm_body">Tato knihovna není synchronizovaná, takže se smaže natrvalo. Vaše zvukové soubory zůstanou ve svých složkách.</string>
     <string name="library_delete">Smazat</string>
     <string name="library_not_synced">Nesynchronizovaná</string>

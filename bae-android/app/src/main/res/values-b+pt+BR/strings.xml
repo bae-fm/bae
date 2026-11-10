@@ -123,12 +123,12 @@
     <string name="copy">Copiar</string>
     <string name="hide">Ocultar</string>
     <string name="settings_remove_library">Remover esta biblioteca deste dispositivo</string>
-    <string name="settings_remove_library_confirm_title">Remover a biblioteca deste dispositivo?</string>
+    <string name="library_remove_confirm_title">Remover “%1$s” deste dispositivo?</string>
     <string name="settings_remove_library_confirm_body">A biblioteca continua no armazenamento e nos seus outros dispositivos.</string>
-    <string name="unsent_edits_body">Remover a biblioteca deste dispositivo as descarta.</string>
     <string name="settings_remove">Remover</string>
     <string name="onboarding_libraries_title">Suas bibliotecas</string>
-    <string name="library_delete_confirm_title">Excluir a biblioteca?</string>
+    <string name="library_delete_confirm_title">Excluir “%1$s”?</string>
+    <string name="library_unsent_changes_lost">As alterações não enviadas serão perdidas</string>
     <string name="library_delete_confirm_body">Esta biblioteca não está sincronizada, então será excluída para sempre. Seus arquivos de áudio continuam nas pastas deles.</string>
     <string name="library_delete">Excluir</string>
     <string name="library_not_synced">Não sincronizada</string>

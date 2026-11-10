@@ -117,12 +117,12 @@
     <string name="copy">複製</string>
     <string name="hide">隱藏</string>
     <string name="settings_remove_library">從此裝置移除此資料庫</string>
-    <string name="settings_remove_library_confirm_title">要從此裝置移除資料庫嗎？</string>
+    <string name="library_remove_confirm_title">要從此裝置移除「%1$s」嗎？</string>
     <string name="settings_remove_library_confirm_body">資料庫會保留在儲存空間和你的其他裝置上。</string>
-    <string name="unsent_edits_body">從此裝置移除該資料庫會捨棄這些變更。</string>
     <string name="settings_remove">移除</string>
     <string name="onboarding_libraries_title">你的資料庫</string>
-    <string name="library_delete_confirm_title">要刪除資料庫嗎？</string>
+    <string name="library_delete_confirm_title">要刪除「%1$s」嗎？</string>
+    <string name="library_unsent_changes_lost">未傳送的變更將會遺失</string>
     <string name="library_delete_confirm_body">此資料庫未同步，因此會被永久刪除。你的音訊檔案會保留在原資料夾中。</string>
     <string name="library_delete">刪除</string>
     <string name="library_not_synced">未同步</string>

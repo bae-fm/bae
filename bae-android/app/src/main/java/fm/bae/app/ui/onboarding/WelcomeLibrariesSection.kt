@@ -94,7 +94,7 @@ internal fun WelcomeLibrariesSection(
     libraries.details?.let { LibraryDetailsSheet(it, onDismiss = libraries::closeDetails) }
     libraries.pending?.let { pending ->
         RemoveLibraryDialog(
-            ending = LibraryEnding.of(pending.library.state),
+            library = pending.library,
             loss = pending.loss,
             onConfirm = { libraries.remove(pending) },
             onDismiss = libraries::dismiss,

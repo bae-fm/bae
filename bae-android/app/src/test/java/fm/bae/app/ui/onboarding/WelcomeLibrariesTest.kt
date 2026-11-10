@@ -199,7 +199,7 @@ class WelcomeLibrariesTest {
     }
 
     @Test
-    fun removeCountsWhatTheLibraryHasntSentThenAsksBeforeLeavingIt() {
+    fun removeWarnsOfUnsentChangesThenAsksBeforeLeavingIt() {
         val fake = FakeLibraries(listOf(synced))
         fake.unsent = BridgeUnsentWork(writes = 3u, files = 0u, isEmpty = false)
         showLibraries(fake)
@@ -207,10 +207,9 @@ class WelcomeLibrariesTest {
         chooseFromMenu("Remove…")
 
         compose.waitUntil(HANG_GUARD_MS) { fake.calls.contains("unsent synced") }
-        compose.onNodeWithText("Remove library from this device?").assertIsDisplayed()
-        compose
-            .onNodeWithText("The library will remain in storage and on your other devices.", substring = true)
-            .assertIsDisplayed()
+        compose.onNodeWithText("Remove “Home Library” from this device?").assertIsDisplayed()
+        compose.onNodeWithText("Unsent changes will be lost").assertIsDisplayed()
+        compose.onNodeWithText("The library will remain in storage and on your other devices.").assertIsDisplayed()
         assertEquals(listOf("list", "unsent synced"), fake.calls)
 
         compose.onNode(hasText("Remove") and hasAnyAncestor(isDialog())).performClick()
@@ -221,6 +220,19 @@ class WelcomeLibrariesTest {
     }
 
     @Test
+    fun nothingUnsentShowsNoWarning() {
+        val fake = FakeLibraries(listOf(synced))
+        showLibraries(fake)
+
+        chooseFromMenu("Remove…")
+
+        compose.waitUntil(HANG_GUARD_MS) { fake.calls.contains("unsent synced") }
+        compose.onNodeWithText("Remove “Home Library” from this device?").assertIsDisplayed()
+        compose.onNodeWithText("The library will remain in storage and on your other devices.").assertIsDisplayed()
+        compose.onNodeWithText("Unsent changes will be lost").assertDoesNotExist()
+    }
+
+    @Test
     fun deleteAsksForANeverSyncedLibraryAndSaysItIsGoneForGood() {
         val fake = FakeLibraries(listOf(neverSynced))
         showLibraries(fake)
@@ -228,7 +240,7 @@ class WelcomeLibrariesTest {
         chooseFromMenu("Delete…")
 
         compose.waitUntil(HANG_GUARD_MS) { fake.calls.contains("unsent local") }
-        compose.onNodeWithText("Delete library?").assertIsDisplayed()
+        compose.onNodeWithText("Delete “Local Library”?").assertIsDisplayed()
         compose
             .onNodeWithText("This library isn't synced, so it will be deleted for good. Your audio files stay in their folders.")
             .assertIsDisplayed()
@@ -262,7 +274,7 @@ class WelcomeLibrariesTest {
         compose.setContent {
             BaeTheme {
                 RemoveLibraryDialog(
-                    ending = LibraryEnding.of(removalStopped.state),
+                    library = removalStopped,
                     loss = RemovalLoss.Uncounted,
                     onConfirm = {},
                     onDismiss = {},
@@ -270,7 +282,8 @@ class WelcomeLibrariesTest {
             }
         }
 
-        compose.onNodeWithText("Remove library from this device?").assertIsDisplayed()
+        compose.onNodeWithText("Remove “Half Removed” from this device?").assertIsDisplayed()
+        compose.onNodeWithText("Unsent changes will be lost").assertDoesNotExist()
         compose
             .onNodeWithText(
                 "This library can't be opened, so any changes on this device that weren't sent are lost. " +

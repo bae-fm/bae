@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -15,6 +16,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -40,6 +42,8 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.NoticeLook
+import fm.bae.app.ui.components.RemovalLoss
+import fm.bae.app.ui.components.RemoveLibraryText
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.components.TitledErrorNotice
 import fm.bae.app.ui.components.TitledSheetContent
@@ -78,7 +82,9 @@ import uniffi.bae_bridge.BridgeCountLabel
 import uniffi.bae_bridge.BridgeDownloadState
 import uniffi.bae_bridge.BridgeDropboxLocation
 import uniffi.bae_bridge.BridgeFolderLabel
+import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeLibraryStanding
+import uniffi.bae_bridge.BridgeLibraryState
 import uniffi.bae_bridge.BridgeMessage
 import uniffi.bae_bridge.BridgeReleaseDownloadStatus
 import uniffi.bae_bridge.BridgeRemoteDevice
@@ -90,6 +96,7 @@ import uniffi.bae_bridge.BridgeSyncFix
 import uniffi.bae_bridge.BridgeSyncShown
 import uniffi.bae_bridge.BridgeSyncStatusWord
 import uniffi.bae_bridge.BridgeSyncTone
+import uniffi.bae_bridge.BridgeUnsentWork
 import java.time.Instant
 
 // Screenshot scenes captured by scripts/shots/android.sh. Each function is one
@@ -100,6 +107,7 @@ import java.time.Instant
 // size, with additional light and tinted appearance captures. Function name ⇒ scene id:
 //   Welcome ⇒ welcome, WelcomeLibraries ⇒ welcome-libraries, WelcomeLibraryDetails ⇒ welcome-library-details,
 //   WelcomeLibraryDetailsUnsent ⇒ welcome-library-details-unsent, WelcomeAddLibrary ⇒ welcome-add-library,
+//   RemoveLibraryUnsent ⇒ remove-library-unsent, RemoveLibrary ⇒ remove-library,
 //   LibraryGrid ⇒ library-grid, LibraryGridScrolled ⇒ library-grid-scrolled, LibraryGrouped ⇒ library-grouped, LibraryGroupedPinned ⇒
 //   library-grouped-pinned, LibraryMoreMenu ⇒ library-more-menu, LibraryViewMenu ⇒
 //   library-view-menu, AlbumDetail ⇒ album-detail, CastPicker ⇒ cast-picker, CastingSettingsFound ⇒
@@ -172,6 +180,54 @@ private fun LibraryDetailsScene(state: BridgeStandingState) {
                             BridgeLibraryStanding(state, Instant.now().minusSeconds(TWO_HOURS_SECONDS)),
                         ),
                 )
+            }
+        }
+    }
+}
+
+/** The confirmation to remove a library that holds changes it hasn't sent. */
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun RemoveLibraryUnsent() {
+    val unsent = BridgeUnsentWork(writes = 3u, files = 0u, isEmpty = false)
+    DialogScene { RemoveLibraryText(sceneLibrary, RemovalLoss.Counted(unsent)) }
+}
+
+/** The confirmation to remove a library with nothing unsent. */
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun RemoveLibrary() {
+    val nothing = BridgeUnsentWork(writes = 0u, files = 0u, isEmpty = true)
+    DialogScene { RemoveLibraryText(sceneLibrary, RemovalLoss.Counted(nothing)) }
+}
+
+private val sceneLibrary =
+    BridgeLibrary(
+        id = "home",
+        name = "Home music",
+        path = "/libraries/home",
+        state =
+            BridgeLibraryState.Openable(
+                BridgeStorageLocation.Dropbox(
+                    location = BridgeDropboxLocation.AppFolder,
+                    accountLabel = "mara.quill@example.com",
+                    folderLabel = null,
+                ),
+            ),
+        isActive = false,
+    )
+
+/** A dialog's words on the dialog's own surface: the dialog opens a window the screenshot tests don't render. */
+@Composable
+private fun DialogScene(content: @Composable () -> Unit) {
+    BaeTheme {
+        Box(modifier = Modifier.fillMaxSize().padding(ThemeSpace.page), contentAlignment = Alignment.Center) {
+            Surface(
+                shape = AlertDialogDefaults.shape,
+                color = AlertDialogDefaults.containerColor,
+                tonalElevation = AlertDialogDefaults.TonalElevation,
+            ) {
+                Box(modifier = Modifier.padding(ThemeSpace.section)) { content() }
             }
         }
     }

@@ -132,12 +132,12 @@
     <string name="copy">نسخ</string>
     <string name="hide">إخفاء</string>
     <string name="settings_remove_library">إزالة هذه المكتبة من هذا الجهاز</string>
-    <string name="settings_remove_library_confirm_title">إزالة المكتبة من هذا الجهاز؟</string>
+    <string name="library_remove_confirm_title">إزالة «%1$s» من هذا الجهاز؟</string>
     <string name="settings_remove_library_confirm_body">تبقى المكتبة في التخزين وعلى أجهزتك الأخرى.</string>
-    <string name="unsent_edits_body">تؤدي إزالة المكتبة من هذا الجهاز إلى تجاهلها.</string>
     <string name="settings_remove">إزالة</string>
     <string name="onboarding_libraries_title">مكتباتك</string>
-    <string name="library_delete_confirm_title">حذف المكتبة؟</string>
+    <string name="library_delete_confirm_title">حذف «%1$s»؟</string>
+    <string name="library_unsent_changes_lost">ستُفقد التغييرات غير المُرسلة</string>
     <string name="library_delete_confirm_body">هذه المكتبة غير متزامنة، لذا ستُحذف نهائيًا. تبقى ملفاتك الصوتية في مجلداتها.</string>
     <string name="library_delete">حذف</string>
     <string name="library_not_synced">غير متزامنة</string>

@@ -3548,7 +3548,7 @@ fail, saying the laptop left the library and its files are still on it.
 
 - **The confirmation.** On a Mac, Remove asks "Remove “Household” from this
   Mac?", naming the library, and Delete asks "Delete “Household”?"; on Android
-  they ask "Remove library from this device?" and "Delete library?". Remove says
+  they ask "Remove “Household” from this device?" and "Delete “Household”?". Remove says
   "The library will remain in the cloud and on your other devices." Delete says
   the library isn't synced, so it will be deleted for good, and that the audio
   files stay in their folders. The first screens on a Mac and on Android ask this way,
@@ -3567,9 +3567,7 @@ fail, saying the laptop left the library and its files are still on it.
   device's files goes on to the screen that finishes deleting them.
 - **Unsent edits.** Dan's laptop still holds edits it hasn't sent. Before
   removing, bae asks coven what this device hasn't sent, and the confirmation
-  says so: on a Mac it leads with "Unsent changes will be lost", and on Android
-  it counts the edits and the files that haven't finished uploading, then says
-  removing the library discards them. The library keeps running while
+  says so: it leads with "Unsent changes will be lost". The library keeps running while
   bae asks, so *Cancel* changes nothing; for a library that isn't open, bae
   opens its store just long enough to count. If Dan confirms, the laptop
   leaves without sending them. Refusing instead would tie his removal to

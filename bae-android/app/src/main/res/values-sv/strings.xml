@@ -124,12 +124,12 @@
     <string name="copy">Kopiera</string>
     <string name="hide">Dölj</string>
     <string name="settings_remove_library">Ta bort det här biblioteket från den här enheten</string>
-    <string name="settings_remove_library_confirm_title">Ta bort biblioteket från den här enheten?</string>
+    <string name="library_remove_confirm_title">Ta bort ”%1$s” från den här enheten?</string>
     <string name="settings_remove_library_confirm_body">Biblioteket finns kvar i lagringen och på dina andra enheter.</string>
-    <string name="unsent_edits_body">Om biblioteket tas bort från den här enheten går de förlorade.</string>
     <string name="settings_remove">Ta bort</string>
     <string name="onboarding_libraries_title">Dina bibliotek</string>
-    <string name="library_delete_confirm_title">Radera biblioteket?</string>
+    <string name="library_delete_confirm_title">Radera ”%1$s”?</string>
+    <string name="library_unsent_changes_lost">Ändringar som inte har skickats går förlorade</string>
     <string name="library_delete_confirm_body">Det här biblioteket är inte synkroniserat, så det raderas för alltid. Dina ljudfiler ligger kvar i sina mappar.</string>
     <string name="library_delete">Radera</string>
     <string name="library_not_synced">Inte synkroniserat</string>

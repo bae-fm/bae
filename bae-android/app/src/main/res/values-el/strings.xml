@@ -124,12 +124,12 @@
     <string name="copy">Αντιγραφή</string>
     <string name="hide">Απόκρυψη</string>
     <string name="settings_remove_library">Αφαίρεση αυτής της βιβλιοθήκης από αυτή τη συσκευή</string>
-    <string name="settings_remove_library_confirm_title">Αφαίρεση της βιβλιοθήκης από αυτή τη συσκευή;</string>
+    <string name="library_remove_confirm_title">Αφαίρεση της βιβλιοθήκης «%1$s» από αυτή τη συσκευή;</string>
     <string name="settings_remove_library_confirm_body">Η βιβλιοθήκη παραμένει στον χώρο αποθήκευσης και στις άλλες συσκευές σας.</string>
-    <string name="unsent_edits_body">Η αφαίρεση της βιβλιοθήκης από αυτή τη συσκευή τις απορρίπτει.</string>
     <string name="settings_remove">Αφαίρεση</string>
     <string name="onboarding_libraries_title">Οι βιβλιοθήκες σας</string>
-    <string name="library_delete_confirm_title">Διαγραφή της βιβλιοθήκης;</string>
+    <string name="library_delete_confirm_title">Διαγραφή της βιβλιοθήκης «%1$s»;</string>
+    <string name="library_unsent_changes_lost">Οι αλλαγές που δεν έχουν σταλεί θα χαθούν</string>
     <string name="library_delete_confirm_body">Αυτή η βιβλιοθήκη δεν είναι συγχρονισμένη, οπότε θα διαγραφεί οριστικά. Τα αρχεία ήχου σας παραμένουν στους φακέλους τους.</string>
     <string name="library_delete">Διαγραφή</string>
     <string name="library_not_synced">Δεν είναι συγχρονισμένη</string>

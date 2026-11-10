@@ -123,12 +123,12 @@
     <string name="copy">Kopiraj</string>
     <string name="hide">Sakrij</string>
     <string name="settings_remove_library">Ukloni ovu fonoteku s ovog uređaja</string>
-    <string name="settings_remove_library_confirm_title">Ukloniti fonoteku s ovog uređaja?</string>
+    <string name="library_remove_confirm_title">Ukloniti „%1$s” s ovog uređaja?</string>
     <string name="settings_remove_library_confirm_body">Fonoteka ostaje u pohrani i na vašim drugim uređajima.</string>
-    <string name="unsent_edits_body">Uklanjanjem fonoteke s ovog uređaja one se odbacuju.</string>
     <string name="settings_remove">Ukloni</string>
     <string name="onboarding_libraries_title">Vaše fonoteke</string>
-    <string name="library_delete_confirm_title">Izbrisati fonoteku?</string>
+    <string name="library_delete_confirm_title">Izbrisati „%1$s”?</string>
+    <string name="library_unsent_changes_lost">Neposlane promjene bit će izgubljene</string>
     <string name="library_delete_confirm_body">Ova fonoteka nije sinkronizirana, pa će se trajno izbrisati. Vaše audiodatoteke ostaju u svojim mapama.</string>
     <string name="library_delete">Izbriši</string>
     <string name="library_not_synced">Nije sinkronizirana</string>

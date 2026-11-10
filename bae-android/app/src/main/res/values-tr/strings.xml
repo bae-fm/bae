@@ -120,12 +120,12 @@
     <string name="copy">Kopyala</string>
     <string name="hide">Gizle</string>
     <string name="settings_remove_library">Bu kitaplığı bu cihazdan kaldır</string>
-    <string name="settings_remove_library_confirm_title">Kitaplık bu cihazdan kaldırılsın mı?</string>
+    <string name="library_remove_confirm_title">“%1$s” bu cihazdan kaldırılsın mı?</string>
     <string name="settings_remove_library_confirm_body">Kitaplık depolamada ve diğer cihazlarınızda kalır.</string>
-    <string name="unsent_edits_body">Kitaplığı bu cihazdan kaldırmak bunları siler.</string>
     <string name="settings_remove">Kaldır</string>
     <string name="onboarding_libraries_title">Arşivleriniz</string>
-    <string name="library_delete_confirm_title">Kitaplık silinsin mi?</string>
+    <string name="library_delete_confirm_title">“%1$s” silinsin mi?</string>
+    <string name="library_unsent_changes_lost">Gönderilmemiş değişiklikler kaybolacak</string>
     <string name="library_delete_confirm_body">Bu kitaplık eşitlenmediği için kalıcı olarak silinecek. Ses dosyalarınız klasörlerinde kalır.</string>
     <string name="library_delete">Sil</string>
     <string name="library_not_synced">Eşitlenmedi</string>

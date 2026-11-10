@@ -120,12 +120,12 @@
     <string name="copy">Kopieren</string>
     <string name="hide">Ausblenden</string>
     <string name="settings_remove_library">Diese Bibliothek von diesem Gerät entfernen</string>
-    <string name="settings_remove_library_confirm_title">Bibliothek von diesem Gerät entfernen?</string>
+    <string name="library_remove_confirm_title">„%1$s“ von diesem Gerät entfernen?</string>
     <string name="settings_remove_library_confirm_body">Die Bibliothek bleibt im Speicher und auf deinen anderen Geräten erhalten.</string>
-    <string name="unsent_edits_body">Wenn du die Bibliothek von diesem Gerät entfernst, werden sie verworfen.</string>
     <string name="settings_remove">Entfernen</string>
     <string name="onboarding_libraries_title">Deine Bibliotheken</string>
-    <string name="library_delete_confirm_title">Bibliothek löschen?</string>
+    <string name="library_delete_confirm_title">„%1$s“ löschen?</string>
+    <string name="library_unsent_changes_lost">Nicht gesendete Änderungen gehen verloren</string>
     <string name="library_delete_confirm_body">Diese Bibliothek ist nicht synchronisiert und wird daher endgültig gelöscht. Deine Audiodateien bleiben in ihren Ordnern.</string>
     <string name="library_delete">Löschen</string>
     <string name="library_not_synced">Nicht synchronisiert</string>

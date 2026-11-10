@@ -1,16 +1,21 @@
 package fm.bae.app.ui.components
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.R
-import fm.bae.app.coreString
 import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.appearance.ThemeSpace
+import uniffi.bae_bridge.BridgeDropboxLocation
+import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeLibraryState
+import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeUnsentWork
 
 /**
@@ -46,63 +51,24 @@ internal sealed interface RemovalLoss {
 }
 
 /**
- * The confirmation for ending a library: what it loses, then what ending
- * does. Cancel changes nothing.
+ * The confirmation for ending [library]: what ending it does, led by a warning
+ * when this device holds changes it hasn't sent. Cancel changes nothing.
  */
 @Composable
 internal fun RemoveLibraryDialog(
-    ending: LibraryEnding,
+    library: BridgeLibrary,
     loss: RemovalLoss,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val context = LocalContext.current
-    val message =
-        stringResource(
-            when (ending) {
-                LibraryEnding.REMOVE -> R.string.settings_remove_library_confirm_body
-                LibraryEnding.DELETE -> R.string.library_delete_confirm_body
-            },
-        )
-    val body =
-        when (loss) {
-            RemovalLoss.Uncounted -> {
-                stringResource(R.string.removal_uncounted_body)
-            }
-
-            is RemovalLoss.Counted -> {
-                val lost =
-                    listOfNotNull(
-                        loss.work.writes.takeIf { it > 0u }?.let {
-                            context.coreString("core.library.removal.unsent_writes", mapOf("count" to it.toLong()))
-                        },
-                        loss.work.files.takeIf { it > 0u }?.let {
-                            context.coreString("core.library.removal.unsent_files", mapOf("count" to it.toLong()))
-                        },
-                    )
-                val consequence =
-                    if (lost.isEmpty()) emptyList() else listOf(stringResource(R.string.unsent_edits_body))
-                (lost + consequence + message).joinToString(" ")
-            }
-        }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = {
-            Text(
-                stringResource(
-                    when (ending) {
-                        LibraryEnding.REMOVE -> R.string.settings_remove_library_confirm_title
-                        LibraryEnding.DELETE -> R.string.library_delete_confirm_title
-                    },
-                ),
-            )
-        },
-        text = { Text(body) },
+        text = { RemoveLibraryText(library, loss) },
         confirmButton = {
             TextButton(onClick = onConfirm) {
                 Text(
                     stringResource(
-                        when (ending) {
+                        when (LibraryEnding.of(library.state)) {
                             LibraryEnding.REMOVE -> R.string.settings_remove
                             LibraryEnding.DELETE -> R.string.library_delete
                         },
@@ -116,28 +82,102 @@ internal fun RemoveLibraryDialog(
     )
 }
 
+/**
+ * The confirmation's words: the title naming [library], then the warning when
+ * its [loss] is unsent changes, then what ending it does. It is separate from
+ * the dialog so a screenshot can draw it: an [AlertDialog] opens a window the
+ * screenshot tests don't render.
+ */
+@Composable
+internal fun RemoveLibraryText(
+    library: BridgeLibrary,
+    loss: RemovalLoss,
+) {
+    val ending = LibraryEnding.of(library.state)
+    val title =
+        stringResource(
+            when (ending) {
+                LibraryEnding.REMOVE -> R.string.library_remove_confirm_title
+                LibraryEnding.DELETE -> R.string.library_delete_confirm_title
+            },
+            library.name,
+        )
+    val message =
+        stringResource(
+            when (ending) {
+                LibraryEnding.REMOVE -> R.string.settings_remove_library_confirm_body
+                LibraryEnding.DELETE -> R.string.library_delete_confirm_body
+            },
+        )
+    val bodyColor = MaterialTheme.colorScheme.onSurfaceVariant
+    Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.group)) {
+        Text(text = title, style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onSurface)
+        when (loss) {
+            RemovalLoss.Uncounted -> {
+                Text(stringResource(R.string.removal_uncounted_body))
+            }
+
+            is RemovalLoss.Counted -> {
+                if (!loss.work.isEmpty) {
+                    TitledErrorNotice(
+                        title = stringResource(R.string.library_unsent_changes_lost),
+                        advice = null,
+                        error = null,
+                        tone = StatusTone.WARNING,
+                    )
+                }
+                Text(message, color = bodyColor)
+            }
+        }
+    }
+}
+
+private val previewHome =
+    BridgeLibrary(
+        id = "home",
+        name = "Home music",
+        path = "/libraries/home",
+        state =
+            BridgeLibraryState.Openable(
+                BridgeStorageLocation.Dropbox(
+                    BridgeDropboxLocation.AppFolder,
+                    accountLabel = "name@example.com",
+                    folderLabel = null,
+                ),
+            ),
+        isActive = false,
+    )
+
+private val previewLocal =
+    previewHome.copy(id = "local", name = "Local music", state = BridgeLibraryState.Openable(storage = null))
+
+private val previewUnreadable =
+    previewHome.copy(id = "stopped", name = "Half removed", state = BridgeLibraryState.DeletionUnfinished)
+
+private val nothingUnsent = RemovalLoss.Counted(BridgeUnsentWork(writes = 0u, files = 0u, isEmpty = true))
+
+private val someUnsent = RemovalLoss.Counted(BridgeUnsentWork(writes = 3u, files = 0u, isEmpty = false))
+
 @Preview(showBackground = true)
 @Composable
-private fun RemoveLibraryDialogPreview() {
-    BaeTheme {
-        RemoveLibraryDialog(
-            ending = LibraryEnding.REMOVE,
-            loss = RemovalLoss.Counted(BridgeUnsentWork(writes = 3u, files = 0u, isEmpty = false)),
-            onConfirm = {},
-            onDismiss = {},
-        )
-    }
+private fun RemoveLibraryUnsentPreview() {
+    BaeTheme { RemoveLibraryText(previewHome, someUnsent) }
 }
 
 @Preview(showBackground = true)
 @Composable
-private fun DeleteLibraryDialogPreview() {
-    BaeTheme {
-        RemoveLibraryDialog(
-            ending = LibraryEnding.DELETE,
-            loss = RemovalLoss.Counted(BridgeUnsentWork(writes = 0u, files = 0u, isEmpty = true)),
-            onConfirm = {},
-            onDismiss = {},
-        )
-    }
+private fun RemoveLibraryPreview() {
+    BaeTheme { RemoveLibraryText(previewHome, nothingUnsent) }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun DeleteLibraryPreview() {
+    BaeTheme { RemoveLibraryText(previewLocal, nothingUnsent) }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun RemoveUnreadableLibraryPreview() {
+    BaeTheme { RemoveLibraryText(previewUnreadable, RemovalLoss.Uncounted) }
 }

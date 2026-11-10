@@ -124,12 +124,12 @@
     <string name="copy">Kopioi</string>
     <string name="hide">Piilota</string>
     <string name="settings_remove_library">Poista tämä kirjasto tältä laitteelta</string>
-    <string name="settings_remove_library_confirm_title">Poistetaanko kirjasto tältä laitteelta?</string>
+    <string name="library_remove_confirm_title">Poistetaanko ”%1$s” tältä laitteelta?</string>
     <string name="settings_remove_library_confirm_body">Kirjasto säilyy tallennustilassa ja muilla laitteillasi.</string>
-    <string name="unsent_edits_body">Kirjaston poistaminen tältä laitteelta hylkää ne.</string>
     <string name="settings_remove">Poista</string>
     <string name="onboarding_libraries_title">Kirjastosi</string>
-    <string name="library_delete_confirm_title">Poistetaanko kirjasto?</string>
+    <string name="library_delete_confirm_title">Poistetaanko ”%1$s”?</string>
+    <string name="library_unsent_changes_lost">Lähettämättömät muutokset menetetään</string>
     <string name="library_delete_confirm_body">Tätä kirjastoa ei ole synkronoitu, joten se poistetaan pysyvästi. Äänitiedostosi pysyvät kansioissaan.</string>
     <string name="library_delete">Poista</string>
     <string name="library_not_synced">Ei synkronoitu</string>

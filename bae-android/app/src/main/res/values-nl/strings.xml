@@ -120,12 +120,12 @@
     <string name="copy">Kopiëren</string>
     <string name="hide">Verbergen</string>
     <string name="settings_remove_library">Verwijder deze bibliotheek van dit apparaat</string>
-    <string name="settings_remove_library_confirm_title">De bibliotheek van dit apparaat verwijderen?</string>
+    <string name="library_remove_confirm_title">‘%1$s’ van dit apparaat verwijderen?</string>
     <string name="settings_remove_library_confirm_body">De bibliotheek blijft in de opslag en op je andere apparaten.</string>
-    <string name="unsent_edits_body">Als je de bibliotheek van dit apparaat verwijdert, worden ze weggegooid.</string>
     <string name="settings_remove">Verwijderen</string>
     <string name="onboarding_libraries_title">Je bibliotheken</string>
-    <string name="library_delete_confirm_title">De bibliotheek verwijderen?</string>
+    <string name="library_delete_confirm_title">‘%1$s’ verwijderen?</string>
+    <string name="library_unsent_changes_lost">Niet-verzonden wijzigingen gaan verloren</string>
     <string name="library_delete_confirm_body">Deze bibliotheek is niet gesynchroniseerd en wordt daarom definitief verwijderd. Je audiobestanden blijven in hun mappen.</string>
     <string name="library_delete">Verwijderen</string>
     <string name="library_not_synced">Niet gesynchroniseerd</string>

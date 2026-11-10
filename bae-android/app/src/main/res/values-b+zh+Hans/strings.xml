@@ -117,12 +117,12 @@
     <string name="copy">复制</string>
     <string name="hide">隐藏</string>
     <string name="settings_remove_library">从此设备移除此库</string>
-    <string name="settings_remove_library_confirm_title">从此设备移除该库？</string>
+    <string name="library_remove_confirm_title">从此设备移除“%1$s”？</string>
     <string name="settings_remove_library_confirm_body">库会保留在存储中和你的其他设备上。</string>
-    <string name="unsent_edits_body">从此设备移除该库会丢弃这些更改。</string>
     <string name="settings_remove">移除</string>
     <string name="onboarding_libraries_title">你的库</string>
-    <string name="library_delete_confirm_title">删除该库？</string>
+    <string name="library_delete_confirm_title">删除“%1$s”？</string>
+    <string name="library_unsent_changes_lost">未发送的更改将会丢失</string>
     <string name="library_delete_confirm_body">该库未同步，因此将被永久删除。你的音频文件会保留在原文件夹中。</string>
     <string name="library_delete">删除</string>
     <string name="library_not_synced">未同步</string>

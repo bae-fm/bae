@@ -123,12 +123,12 @@
     <string name="copy">Copia</string>
     <string name="hide">Nascondi</string>
     <string name="settings_remove_library">Rimuovi questa libreria da questo dispositivo</string>
-    <string name="settings_remove_library_confirm_title">Rimuovere la libreria da questo dispositivo?</string>
+    <string name="library_remove_confirm_title">Rimuovere «%1$s» da questo dispositivo?</string>
     <string name="settings_remove_library_confirm_body">La libreria resta nello spazio di archiviazione e sugli altri tuoi dispositivi.</string>
-    <string name="unsent_edits_body">Rimuovendo la libreria da questo dispositivo verranno eliminate.</string>
     <string name="settings_remove">Rimuovi</string>
     <string name="onboarding_libraries_title">Le tue librerie</string>
-    <string name="library_delete_confirm_title">Eliminare la libreria?</string>
+    <string name="library_delete_confirm_title">Eliminare «%1$s»?</string>
+    <string name="library_unsent_changes_lost">Le modifiche non inviate andranno perse</string>
     <string name="library_delete_confirm_body">Questa libreria non è sincronizzata, quindi verrà eliminata per sempre. I tuoi file audio restano nelle loro cartelle.</string>
     <string name="library_delete">Elimina</string>
     <string name="library_not_synced">Non sincronizzata</string>
