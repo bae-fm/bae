@@ -7,9 +7,9 @@ import Testing
 private actor ClosedLibraryBridge {
     private(set) var calls: [String] = []
 
-    func unsent(_ libraryId: String) -> BridgeUnsentWork {
+    func unsent(_ libraryId: String) -> Bool {
         calls.append("unsent \(libraryId)")
-        return BridgeUnsentWork(writes: 3, files: 1, isEmpty: false)
+        return true
     }
 
     func remove(_ libraryId: String) -> BridgeLibraryRemoval {
@@ -100,12 +100,11 @@ struct LibraryRemovalsClosedLibraryTests {
         let removals = removals
         let loss = await removals.loss(closedLibrary: openable)
 
-        guard case .unsent(let unsent) = loss else {
+        guard case .counted(let holdsUnsent) = loss else {
             Issue.record("a library that opens has its changes counted")
             return
         }
-        #expect(unsent.writes == 3)
-        #expect(unsent.files == 1)
+        #expect(holdsUnsent)
         #expect(await bridge.calls == ["unsent library-1"])
         #expect(removals.failed == nil)
     }
@@ -131,9 +130,7 @@ struct LibraryRemovalsClosedLibraryTests {
         let removals = removals
         await remove(
             with: removals,
-            losing: .unsent(
-                BridgeUnsentWork(writes: 3, files: 1, isEmpty: false)
-            )
+            losing: .counted(holdsUnsent: true)
         )
 
         #expect(await bridge.calls == ["remove library-1"])
@@ -176,7 +173,7 @@ struct LibraryRemovalsClosedLibraryTests {
             makeFinishingSteps: { LibrarySetupSteps(host: host) },
             unsentOfClosed: { _, _ in
                 Issue.record("nothing is counted")
-                return BridgeUnsentWork(writes: 0, files: 0, isEmpty: true)
+                return false
             },
             removeClosed: { _, _, _ in
                 Issue.record("the library isn't opened")
@@ -221,7 +218,7 @@ struct LibraryRemovalsClosedLibraryTests {
             makeFinishingSteps: { LibrarySetupSteps(host: host) },
             unsentOfClosed: { _, _ in
                 Issue.record("nothing is counted")
-                return BridgeUnsentWork(writes: 0, files: 0, isEmpty: true)
+                return false
             },
             removeClosed: { _, _, _ in
                 .unfinished(
@@ -245,9 +242,7 @@ struct LibraryRemovalsClosedLibraryTests {
 
         await remove(
             with: removals,
-            losing: .unsent(
-                BridgeUnsentWork(writes: 0, files: 0, isEmpty: true)
-            )
+            losing: .counted(holdsUnsent: false)
         )
 
         #expect(removals.failed == nil)
@@ -266,7 +261,7 @@ struct LibraryRemovalsClosedLibraryTests {
             makeFinishingSteps: { LibrarySetupSteps(host: host) },
             unsentOfClosed: { _, _ in
                 Issue.record("nothing is counted")
-                return BridgeUnsentWork(writes: 0, files: 0, isEmpty: true)
+                return false
             },
             removeClosed: { _, _, _ in
                 Issue.record("the library isn't opened")
@@ -359,12 +354,12 @@ struct LibraryRemovalConfirmationTests {
     func warnsOfUnsent() {
         #expect(
             LibraryRemovalConfirmation.warnsOfUnsent(
-                .unsent(BridgeUnsentWork(writes: 2, files: 0, isEmpty: false))
+                .counted(holdsUnsent: true)
             )
         )
         #expect(
             !LibraryRemovalConfirmation.warnsOfUnsent(
-                .unsent(BridgeUnsentWork(writes: 0, files: 0, isEmpty: true))
+                .counted(holdsUnsent: false)
             )
         )
         #expect(!LibraryRemovalConfirmation.warnsOfUnsent(.uncounted))
@@ -374,9 +369,7 @@ struct LibraryRemovalConfirmationTests {
     func countedLoss() {
         let text = LibraryRemovalConfirmation.message(
             for: openable,
-            losing: .unsent(
-                BridgeUnsentWork(writes: 2, files: 0, isEmpty: false)
-            )
+            losing: .counted(holdsUnsent: true)
         )
         #expect(text == LibraryRemovalConfirmation.message(syncs: false))
     }
@@ -446,7 +439,7 @@ struct LibraryRemovalsUnfinishedTests {
             makeRemovalSteps: { LibraryClosingSteps(host: host) },
             makeFinishingSteps: { LibrarySetupSteps(host: host) },
             unsentOfClosed: { _, _ in
-                BridgeUnsentWork(writes: 0, files: 0, isEmpty: true)
+                false
             },
             removeClosed: { _, _, _ in .removed },
             removeUnopenable: { _, _ in .removed },
@@ -488,7 +481,7 @@ struct LibraryRemovalsUnfinishedTests {
             makeRemovalSteps: { LibraryClosingSteps(host: host) },
             makeFinishingSteps: { LibrarySetupSteps(host: host) },
             unsentOfClosed: { _, _ in
-                BridgeUnsentWork(writes: 0, files: 0, isEmpty: true)
+                false
             },
             removeClosed: { _, _, _ in .removed },
             removeUnopenable: { _, _ in .removed },
@@ -519,7 +512,7 @@ struct LibraryRemovalsUnfinishedTests {
             makeRemovalSteps: { LibraryClosingSteps(host: host) },
             makeFinishingSteps: { LibrarySetupSteps(host: host) },
             unsentOfClosed: { _, _ in
-                BridgeUnsentWork(writes: 0, files: 0, isEmpty: true)
+                false
             },
             removeClosed: { _, _, _ in .removed },
             removeUnopenable: { _, _ in .removed },

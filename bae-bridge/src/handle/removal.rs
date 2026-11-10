@@ -1,21 +1,5 @@
 use super::*;
 
-/// What removing a library from this device loses: `writes` edits and
-/// `files` attached files still waiting to upload to its storage.
-#[derive(Clone, Copy, uniffi::Record)]
-pub struct BridgeUnsentWork {
-    pub writes: u64,
-    pub files: u64,
-    /// Nothing waits to upload, as coven decides it.
-    pub is_empty: bool,
-}
-
-impl BridgeUnsentWork {
-    pub(crate) fn from_core(work: coven::UnsentWork) -> Self {
-        Self { writes: work.writes, files: work.files, is_empty: work.is_empty() }
-    }
-}
-
 #[derive(Clone, uniffi::Enum)]
 pub enum BridgeLibraryRemoval {
     Removed,
@@ -70,13 +54,12 @@ impl BridgeUnfinishedRemoval {
 
 #[uniffi::export(async_runtime = "tokio", cancellable)]
 impl AppHandle {
-    /// What removing this library would lose, for the person to confirm
+    /// Whether removing this library would discard edits or files this
+    /// device hasn't sent, as coven decides it, for the person to confirm
     /// first. Nothing about the library changes.
-    pub async fn unsent_before_removal(
-        self: std::sync::Arc<Self>,
-    ) -> Result<BridgeUnsentWork, BridgeError> {
+    pub async fn unsent_before_removal(self: std::sync::Arc<Self>) -> Result<bool, BridgeError> {
         self.run_exported("AppHandle.unsent_before_removal", |this| async move {
-            Ok(BridgeUnsentWork::from_core(this.services.unsent_before_removal().await?))
+            Ok(!this.services.unsent_before_removal().await?.is_empty())
         })
         .await
     }

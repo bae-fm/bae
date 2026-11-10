@@ -44,8 +44,7 @@ public final class LibraryRemovals {
     private let makeFinishingSteps: @Sendable () -> LibrarySetupSteps
     @ObservationIgnored
     private let unsentOfClosed:
-        @Sendable (String, BridgeLibraryOpening) async throws
-            -> BridgeUnsentWork
+        @Sendable (String, BridgeLibraryOpening) async throws -> Bool
     @ObservationIgnored
     private let removeClosed:
         @Sendable (String, BridgeLibraryOpening, BridgeLibraryClosing)
@@ -78,7 +77,7 @@ public final class LibraryRemovals {
         makeFinishingSteps: @escaping @Sendable () -> LibrarySetupSteps,
         unsentOfClosed:
             @escaping @Sendable (String, BridgeLibraryOpening) async throws
-            -> BridgeUnsentWork,
+            -> Bool,
         removeClosed:
             @escaping @Sendable (
                 String, BridgeLibraryOpening, BridgeLibraryClosing
@@ -125,8 +124,11 @@ public final class LibraryRemovals {
         )
         defer { opening = nil }
         do {
-            return .unsent(
-                try await unsentOfClosed(library.id, progress.opening)
+            return .counted(
+                holdsUnsent: try await unsentOfClosed(
+                    library.id,
+                    progress.opening
+                )
             )
         }
         catch {
@@ -152,7 +154,7 @@ public final class LibraryRemovals {
         let libraryId = library.id
         run(library, retry: .remove(loss), onFinished: onFinished) { steps in
             switch loss {
-            case .unsent:
+            case .counted:
                 let progress = self.makeOpenProgress()
                 self.opening = ClosedLibraryOpening(
                     libraryId: libraryId,

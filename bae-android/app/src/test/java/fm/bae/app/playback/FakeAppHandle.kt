@@ -76,7 +76,6 @@ import uniffi.bae_bridge.BridgeStoreKeyState
 import uniffi.bae_bridge.BridgeSyncActivity
 import uniffi.bae_bridge.BridgeSyncRetryOutcome
 import uniffi.bae_bridge.BridgeSyncStatusSnapshot
-import uniffi.bae_bridge.BridgeUnsentWork
 import uniffi.bae_bridge.BridgeUploadReleasesOutcome
 import uniffi.bae_bridge.BridgeWorkDetail
 import uniffi.bae_bridge.CastReceiversSubscription
@@ -740,7 +739,7 @@ internal open class FakeAppHandle(
 
     override suspend fun removeLibrary(closing: BridgeLibraryClosing?): BridgeLibraryRemoval = unfaked("removeLibrary")
 
-    override suspend fun unsentBeforeRemoval(): BridgeUnsentWork = unfaked("unsentBeforeRemoval")
+    override suspend fun unsentBeforeRemoval(): Boolean = unfaked("unsentBeforeRemoval")
 
     override fun subscribeStorageBrowse(
         sort: BridgeStorageSort,

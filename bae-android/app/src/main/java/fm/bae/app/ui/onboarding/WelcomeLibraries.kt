@@ -23,7 +23,6 @@ import uniffi.bae_bridge.BridgeLibraryRemoval
 import uniffi.bae_bridge.BridgeLibraryStanding
 import uniffi.bae_bridge.BridgeLibraryState
 import uniffi.bae_bridge.BridgeOpenProgress
-import uniffi.bae_bridge.BridgeUnsentWork
 
 private val logger = BaeLogger("bae.WelcomeLibraries")
 
@@ -119,10 +118,10 @@ internal class WelcomeLibrariesCore(
      */
     val libraryStanding: suspend (String) -> BridgeLibraryStanding,
     /**
-     * What removing the library would lose. Counting opens it; the open's
-     * steps go to the callback.
+     * Whether removing the library would discard changes this device hasn't
+     * sent. Asking opens it; the open's steps go to the callback.
      */
-    val unsentBeforeRemoval: suspend (String, (LatestSource<BridgeOpenProgress>) -> Unit) -> BridgeUnsentWork,
+    val unsentBeforeRemoval: suspend (String, (LatestSource<BridgeOpenProgress>) -> Unit) -> Boolean,
     /** Open the library and remove it, closing the handle it opened. */
     val removeOpened: suspend (String, RemovalSteps) -> BridgeLibraryRemoval,
     /** Remove a library that can't open, without opening it. */
@@ -268,11 +267,11 @@ internal class WelcomeLibraries(
         }
         scope.launch {
             try {
-                val work =
+                val holdsUnsent =
                     core.unsentBeforeRemoval(library.id) { opening ->
                         running = RunningRemoval(library.id, removing = false, opening = opening, closing = null)
                     }
-                pending = PendingRemoval(library, RemovalLoss.Counted(work))
+                pending = PendingRemoval(library, RemovalLoss.Counted(holdsUnsent))
             } catch (e: CancellationException) {
                 throw e
             } catch (e: BridgeException) {

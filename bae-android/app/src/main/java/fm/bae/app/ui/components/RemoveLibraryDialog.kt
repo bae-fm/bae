@@ -15,7 +15,6 @@ import uniffi.bae_bridge.BridgeDropboxLocation
 import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeLibraryState
 import uniffi.bae_bridge.BridgeStorageLocation
-import uniffi.bae_bridge.BridgeUnsentWork
 
 /**
  * What ends a library on this device: a synced library is removed, and a
@@ -40,9 +39,9 @@ internal enum class LibraryEnding {
 
 /** What ending a library loses, for the person to confirm. */
 internal sealed interface RemovalLoss {
-    /** What this device hasn't sent, as core counted it. */
+    /** Whether this device holds changes it hasn't sent, as core found it. */
     data class Counted(
-        val work: BridgeUnsentWork,
+        val holdsUnsent: Boolean,
     ) : RemovalLoss
 
     /** A library that can't open isn't opened to count, so what it loses is unknown. */
@@ -117,7 +116,7 @@ internal fun RemoveLibraryText(
             }
 
             is RemovalLoss.Counted -> {
-                if (!loss.work.isEmpty) {
+                if (loss.holdsUnsent) {
                     TitledErrorNotice(
                         title = stringResource(R.string.library_unsent_changes_lost),
                         advice = null,
@@ -154,9 +153,9 @@ private val previewLocal =
 private val previewUnreadable =
     previewHome.copy(id = "stopped", name = "Half removed", state = BridgeLibraryState.DeletionUnfinished)
 
-private val nothingUnsent = RemovalLoss.Counted(BridgeUnsentWork(writes = 0u, files = 0u, isEmpty = true))
+private val nothingUnsent = RemovalLoss.Counted(holdsUnsent = false)
 
-private val someUnsent = RemovalLoss.Counted(BridgeUnsentWork(writes = 3u, files = 0u, isEmpty = false))
+private val someUnsent = RemovalLoss.Counted(holdsUnsent = true)
 
 @Preview(showBackground = true)
 @Composable

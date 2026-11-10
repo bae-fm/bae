@@ -119,7 +119,6 @@ import uniffi.bae_bridge.BridgeSyncShown
 import uniffi.bae_bridge.BridgeSyncStatusWord
 import uniffi.bae_bridge.BridgeSyncTone
 import uniffi.bae_bridge.BridgeTransferBatch
-import uniffi.bae_bridge.BridgeUnsentWork
 import uniffi.bae_bridge.BridgeUploadQueueActivity
 import uniffi.bae_bridge.BridgeUploadQueueWait
 import java.time.Instant
@@ -215,16 +214,14 @@ private fun LibraryDetailsScene(state: BridgeStandingState) {
 @Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 fun RemoveLibraryUnsent() {
-    val unsent = BridgeUnsentWork(writes = 3u, files = 0u, isEmpty = false)
-    DialogScene { RemoveLibraryText(sceneLibrary, RemovalLoss.Counted(unsent)) }
+    DialogScene { RemoveLibraryText(sceneLibrary, RemovalLoss.Counted(holdsUnsent = true)) }
 }
 
 /** The confirmation to remove a library with nothing unsent. */
 @Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 fun RemoveLibrary() {
-    val nothing = BridgeUnsentWork(writes = 0u, files = 0u, isEmpty = true)
-    DialogScene { RemoveLibraryText(sceneLibrary, RemovalLoss.Counted(nothing)) }
+    DialogScene { RemoveLibraryText(sceneLibrary, RemovalLoss.Counted(holdsUnsent = false)) }
 }
 
 /** A screen of its own, on the screen's background. */

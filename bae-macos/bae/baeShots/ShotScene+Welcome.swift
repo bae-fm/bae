@@ -38,9 +38,7 @@ extension ShotScene {
         removalAlert(
             "welcome-remove-unsent",
             PreviewData.welcomeLibraries[0],
-            losing: .unsent(
-                BridgeUnsentWork(writes: 3, files: 0, isEmpty: false)
-            )
+            losing: .counted(holdsUnsent: true)
         ),
         removalAlert("welcome-delete", PreviewData.welcomeLibraries[1]),
         ShotScene(
@@ -94,9 +92,7 @@ extension ShotScene {
     private static func removalAlert(
         _ id: String,
         _ library: BridgeLibrary,
-        losing loss: RemovalLoss = .unsent(
-            BridgeUnsentWork(writes: 0, files: 0, isEmpty: true)
-        )
+        losing loss: RemovalLoss = .counted(holdsUnsent: false)
     ) -> ShotScene {
         ShotScene(id: id, size: CGSize(width: 340, height: 280)) {
             ShotStage(

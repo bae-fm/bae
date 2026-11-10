@@ -427,14 +427,15 @@ impl BridgeHost {
             .await
     }
 
-    /// What removing the library `library_id`, which isn't open, would lose,
-    /// for the person to confirm first. Counting opens the library, and the
+    /// Whether removing the library `library_id`, which isn't open, would
+    /// discard edits or files this device hasn't sent, as coven decides it,
+    /// for the person to confirm first. Asking opens the library, and the
     /// open's steps are written into `opening`'s stream.
     pub async fn unsent_before_removal(
         self: Arc<Self>,
         library_id: String,
         opening: Arc<crate::BridgeLibraryOpening>,
-    ) -> Result<crate::BridgeUnsentWork, BridgeError> {
+    ) -> Result<bool, BridgeError> {
         let store = crate::from_app::store(&library_id)?;
         let builder = self.library_builder();
         let report = opening.report();
@@ -443,16 +444,15 @@ impl BridgeHost {
             .clone()
             .run("BridgeHost.unsent_before_removal", move || async move {
                 self.closed(store).await?;
-                Ok(crate::BridgeUnsentWork::from_core(
-                    bae_library::unsent_before_removal(
-                        builder,
-                        store,
-                        report,
-                        clock,
-                        &self.diagnostics,
-                    )
-                    .await?,
-                ))
+                Ok(!bae_library::unsent_before_removal(
+                    builder,
+                    store,
+                    report,
+                    clock,
+                    &self.diagnostics,
+                )
+                .await?
+                .is_empty())
             })
             .await
     }

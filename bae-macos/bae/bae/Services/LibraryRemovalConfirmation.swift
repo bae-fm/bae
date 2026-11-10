@@ -67,11 +67,11 @@ enum LibraryRemovalConfirmation {
     }
 
     /// Whether the confirmation leads with a warning that changes this Mac
-    /// hasn't sent will be lost: only when the bridge counted some. A library
+    /// hasn't sent will be lost: only when the bridge found some. A library
     /// that couldn't be counted says so in its message instead.
     static func warnsOfUnsent(_ loss: RemovalLoss) -> Bool {
         switch loss {
-        case .unsent(let work): !work.isEmpty
+        case .counted(let holdsUnsent): holdsUnsent
         case .uncounted: false
         }
     }
@@ -84,7 +84,7 @@ enum LibraryRemovalConfirmation {
         -> String
     {
         switch loss {
-        case .unsent:
+        case .counted:
             guard case .openable(let storage) = library.state else {
                 preconditionFailure(
                     "only a library that opens has its unsent changes counted"

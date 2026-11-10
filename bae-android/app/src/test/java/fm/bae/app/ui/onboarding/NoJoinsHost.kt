@@ -19,7 +19,6 @@ import uniffi.bae_bridge.BridgeSavedRestoreEntry
 import uniffi.bae_bridge.BridgeUnfinishedJoin
 import uniffi.bae_bridge.BridgeUnfinishedRemoval
 import uniffi.bae_bridge.BridgeUnfinishedRestore
-import uniffi.bae_bridge.BridgeUnsentWork
 import uniffi.bae_bridge.OpenedLibrary
 
 /**
@@ -65,7 +64,7 @@ internal open class NoJoinsHost : EditionFakeBridgeHost() {
     override suspend fun unsentBeforeRemoval(
         libraryId: String,
         opening: BridgeLibraryOpening,
-    ): BridgeUnsentWork = unfaked("unsentBeforeRemoval")
+    ): Boolean = unfaked("unsentBeforeRemoval")
 
     override suspend fun forgetSavedRestoreCode(libraryId: String) {
         unfaked("forgetSavedRestoreCode")

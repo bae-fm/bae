@@ -38,7 +38,6 @@ import uniffi.bae_bridge.BridgeLibraryStanding
 import uniffi.bae_bridge.BridgeLibraryState
 import uniffi.bae_bridge.BridgeStandingState
 import uniffi.bae_bridge.BridgeStorageLocation
-import uniffi.bae_bridge.BridgeUnsentWork
 import java.time.Instant
 
 private fun library(
@@ -63,7 +62,7 @@ private class FakeLibraries(
     var libraries: List<BridgeLibrary>,
 ) {
     val calls = mutableListOf<String>()
-    var unsent = BridgeUnsentWork(writes = 0u, files = 0u, isEmpty = true)
+    var unsent = false
     var failure: BridgeException? = null
     var standing = BridgeLibraryStanding(BridgeStandingState.UnsentChanges, lastSynced = null)
     var standingFailure: BridgeException? = null
@@ -200,7 +199,7 @@ class WelcomeLibrariesTest {
     @Test
     fun removeWarnsOfUnsentChangesThenAsksBeforeLeavingIt() {
         val fake = FakeLibraries(listOf(synced))
-        fake.unsent = BridgeUnsentWork(writes = 3u, files = 0u, isEmpty = false)
+        fake.unsent = true
         showLibraries(fake)
 
         chooseFromMenu("Remove…")

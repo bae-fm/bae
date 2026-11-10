@@ -88,9 +88,7 @@ struct WelcomeListingsTests {
 
         await listings.remove(
             closedLibrary: library,
-            losing: .unsent(
-                BridgeUnsentWork(writes: 0, files: 0, isEmpty: true)
-            ),
+            losing: .counted(holdsUnsent: false),
             with: removals,
             from: setup
         )
