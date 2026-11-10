@@ -1,6 +1,8 @@
 package fm.bae.app.data
 
 import fm.bae.app.DisplayError
+import fm.bae.fastvalues.LatestSource
+import fm.bae.fastvalues.LatestStream
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -11,7 +13,10 @@ import uniffi.bae_bridge.BridgeSyncActivity
  * Activity button and the sheet it opens read it here. The sync-activity value
  * stream is its only writer.
  */
-class SyncActivityStore {
+class SyncActivityStore(
+    /** Each transfer line's bar: the share of its batch's bytes done, which core's stream fills. */
+    val bars: LatestStream<Double> = LatestStream.activityBars(),
+) {
     private val mutableActivity = MutableStateFlow<BridgeSyncActivity?>(null)
     val activity: StateFlow<BridgeSyncActivity?> = mutableActivity.asStateFlow()
 
@@ -27,4 +32,15 @@ class SyncActivityStore {
     fun fail(error: DisplayError) {
         mutableError.value = error
     }
+
+    /** The bar of [line], for the View that draws it. */
+    fun bar(line: ActivityLine): LatestSource<Double> = bars.source(line.key)
+}
+
+/** The transfer lines a phone's Activity sheet draws a bar for, named as core's stream keys them. */
+enum class ActivityLine(
+    val key: String,
+) {
+    UPLOADS("uploads"),
+    PINS("pins"),
 }

@@ -53,6 +53,8 @@ echo "android shots: rendering scenes (updateFullDebugScreenshotTest)..."
 SCENES=$(cat <<'EOF'
 ActivityLaunchProblem:activity-launch-problem
 ActivityNeedingAttention:activity-needing-attention
+ActivityTransfers:activity-transfers
+ActivityTransfersHeld:activity-transfers-held
 AlbumDetail:album-detail
 AlbumDetailLight:album-detail-light
 AlbumPinStates:album-pin-states

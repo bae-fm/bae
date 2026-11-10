@@ -42,6 +42,7 @@ const DIRECT_KEYS: &[&str] = &[
     // The Activity panel.
     "core.activity.title",
     "core.activity.attention",
+    "core.activity.transfers",
     "core.activity.open_settings",
     "core.activity.syncing",
     "core.activity.uploading",

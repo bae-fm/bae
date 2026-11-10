@@ -163,6 +163,8 @@ class OpenLibrary internal constructor(
                 onValue = stores.syncActivity::apply,
                 onError = { error -> subscriptionFailed("sync activity", error)?.let(stores.syncActivity::fail) },
             )
+        streamFeeds +=
+            stores.syncActivity.bars.feed(appHandle, scope) { bugs.report("read the Activity transfer bars", it) }
         screenSubscriptions += playbackValues(scope)
         screenSubscriptions += queueAdditions(scope)
         screenSubscriptions += playbackTimeline(scope)

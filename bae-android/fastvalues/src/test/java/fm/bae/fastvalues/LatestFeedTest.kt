@@ -4,6 +4,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -12,6 +13,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -70,7 +72,34 @@ class LatestFeedTest {
             assertEquals("the key change after the failure is still told", 1, told)
         }
 
+    @Test
+    fun aFedActivityBarReadsItsLinesBatchShareAndNoOtherKey() =
+        runTest(main) {
+            val stream = LatestStream.activityBars()
+            val feed =
+                stream.fed(feedScope(), { error -> throw AssertionError("no read failed", error) }) {
+                    HeldShares(mapOf("uploads" to 0.43))
+                }
+
+            assertEquals(0.43, stream.latest("uploads")!!, 0.0)
+            assertNull("a line whose batch holds no release has no bar", stream.latest("pins"))
+            feed.cancel()
+        }
+
     private fun feedScope() = CoroutineScope(SupervisorJob() + main)
+
+    /** A stream holding a batch share under each of [shares]' lines; nothing changes after it is fed. */
+    private class HeldShares(
+        private val shares: Map<String, Double>,
+    ) : KeyedValueStream(NoHandle) {
+        override suspend fun next(): List<ByteArray> = awaitCancellation()
+
+        override fun latest(key: ByteArray): BridgeFastValue? = shares[key.decodeToString()]?.let { BridgeFastValue.BatchShare(it) }
+
+        override fun moving(key: ByteArray): Boolean = false
+
+        override fun cancel() = Unit
+    }
 
     /** A stream whose key changes and failures a test hands the pulls; it holds no value. */
     private class PulledKeys : KeyedValueStream(NoHandle) {

@@ -1,17 +1,26 @@
 package fm.bae.app.ui.sync
 
-import android.content.Context
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -29,12 +38,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.coreString
+import fm.bae.app.data.ActivityLine
 import fm.bae.app.data.SyncActivityStore
-import fm.bae.app.displayError
-import fm.bae.app.queueWaitText
 import fm.bae.app.releasesDoneText
 import fm.bae.app.ui.ActivityProblemId
 import fm.bae.app.ui.AppProblem
@@ -56,8 +65,9 @@ import fm.bae.app.ui.components.StatusGlyph
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.components.TitledErrorNotice
 import fm.bae.app.ui.components.WaitingIndicator
-import fm.bae.app.uploadQueueWaitText
+import fm.bae.fastvalues.LatestSource
 import uniffi.bae_bridge.BridgePendingRecord
+import uniffi.bae_bridge.BridgeQueueWait
 import uniffi.bae_bridge.BridgeSyncActivity
 
 /**
@@ -75,10 +85,12 @@ internal fun ActivityButton(
     onDismissProblem: (ActivityProblemId) -> Unit,
     onOpenSettings: () -> Unit,
     onOpenDownloads: () -> Unit,
+    onSetDownloadsPaused: (Boolean) -> Unit,
 ) {
     val activity by store.activity.collectAsState()
     val error by store.error.collectAsState()
     val problems = activityProblems(app, activity, error, dismissed)
+    val words = activityWords(LocalContext.current, activity)
     val moving = activity?.moving == true
     var listShown by rememberSaveable { mutableStateOf(false) }
     var details by remember { mutableStateOf<ErrorDetails?>(null) }
@@ -106,7 +118,9 @@ internal fun ActivityButton(
             problems = problems,
             app = app,
             activity = activity,
+            words = words,
             error = error,
+            bar = store::bar,
             onDismiss = { listShown = false },
             onDismissProblem = onDismissProblem,
             onOpenDetails = {
@@ -121,6 +135,7 @@ internal fun ActivityButton(
                 listShown = false
                 onOpenDownloads()
             },
+            onSetDownloadsPaused = onSetDownloadsPaused,
         )
     }
     // Outside the sheet: a dialog opened from inside it would close with it.
@@ -132,23 +147,29 @@ private fun ActivitySheet(
     problems: ActivityProblems,
     app: List<AppProblem>,
     activity: BridgeSyncActivity?,
+    words: ActivityWords,
     error: DisplayError?,
+    bar: (ActivityLine) -> LatestSource<Double>,
     onDismiss: () -> Unit,
     onDismissProblem: (ActivityProblemId) -> Unit,
     onOpenDetails: (ErrorDetails) -> Unit,
     onOpenSettings: () -> Unit,
     onOpenDownloads: () -> Unit,
+    onSetDownloadsPaused: (Boolean) -> Unit,
 ) {
     ContentSheet(onDismiss = onDismiss) {
         ActivityList(
             problems = problems,
             app = app,
             activity = activity,
+            words = words,
             error = error,
+            bar = bar,
             onDismissProblem = onDismissProblem,
             onOpenDetails = onOpenDetails,
             onOpenSettings = onOpenSettings,
             onOpenDownloads = onOpenDownloads,
+            onSetDownloadsPaused = onSetDownloadsPaused,
         )
     }
 }
@@ -162,11 +183,14 @@ internal fun ActivityList(
     problems: ActivityProblems,
     app: List<AppProblem>,
     activity: BridgeSyncActivity?,
+    words: ActivityWords,
     error: DisplayError?,
+    bar: (ActivityLine) -> LatestSource<Double>,
     onDismissProblem: (ActivityProblemId) -> Unit,
     onOpenDetails: (ErrorDetails) -> Unit,
     onOpenSettings: () -> Unit,
     onOpenDownloads: () -> Unit,
+    onSetDownloadsPaused: (Boolean) -> Unit,
 ) {
     val context = LocalContext.current
     LazyColumn(
@@ -179,10 +203,19 @@ internal fun ActivityList(
         }
         if (problems.needsAttention) {
             item {
-                NeedsAttention(problems, app, activity, error, onDismissProblem, onOpenDetails, onOpenSettings)
+                NeedsAttention(
+                    problems = problems,
+                    app = app,
+                    activity = activity,
+                    failure = words.failure,
+                    error = error,
+                    onDismissProblem = onDismissProblem,
+                    onOpenDetails = onOpenDetails,
+                    onOpenSettings = onOpenSettings,
+                )
             }
         }
-        activity?.let { transferRows(context, it, onOpenDownloads) }
+        activity?.let { transferRows(it, words, bar, onOpenDownloads, onSetDownloadsPaused) }
         val transfers = activity != null && (activity.syncing || activity.uploads != null || activity.pins != null)
         if (!problems.needsAttention && !transfers) {
             item { SecondaryLine(context.coreString("core.activity.idle")) }
@@ -199,6 +232,7 @@ private fun NeedsAttention(
     problems: ActivityProblems,
     app: List<AppProblem>,
     activity: BridgeSyncActivity?,
+    failure: DisplayError?,
     error: DisplayError?,
     onDismissProblem: (ActivityProblemId) -> Unit,
     onOpenDetails: (ErrorDetails) -> Unit,
@@ -213,7 +247,7 @@ private fun NeedsAttention(
                 ProblemRow(
                     id = id,
                     app = app,
-                    activity = activity,
+                    failure = failure,
                     error = error,
                     onDismiss = { onDismissProblem(id) },
                     onOpenDetails = onOpenDetails,
@@ -235,7 +269,7 @@ private fun NeedsAttention(
 private fun ProblemRow(
     id: ActivityProblemId,
     app: List<AppProblem>,
-    activity: BridgeSyncActivity?,
+    failure: DisplayError?,
     error: DisplayError?,
     onDismiss: () -> Unit,
     onOpenDetails: (ErrorDetails) -> Unit,
@@ -264,10 +298,10 @@ private fun ProblemRow(
             )
         }
     } else {
-        activity?.failure?.let(context::displayError)?.let { failure ->
+        failure?.let {
             val open = ErrorAction(context.coreString("core.activity.open_settings"), onClick = onOpenSettings)
             ErrorNotice(
-                error = failure,
+                error = it,
                 action = open,
                 tone = StatusTone.WARNING,
                 look = NoticeLook.QUIET,
@@ -303,48 +337,98 @@ private fun PendingRecords(
 }
 
 private fun LazyListScope.transferRows(
-    context: Context,
     activity: BridgeSyncActivity,
+    words: ActivityWords,
+    bar: (ActivityLine) -> LatestSource<Double>,
     onOpenDownloads: () -> Unit,
+    onSetDownloadsPaused: (Boolean) -> Unit,
 ) {
+    if (!(activity.syncing || activity.uploads != null || activity.pins != null)) return
+    item { Eyebrow(LocalContext.current.coreString("core.activity.transfers")) }
     if (activity.syncing) {
-        item { Text(context.coreString("core.activity.syncing")) }
+        item {
+            TransferLine(title = LocalContext.current.coreString("core.activity.syncing"), count = null, share = null)
+        }
     }
     activity.uploads?.let { uploads ->
         item {
+            val context = LocalContext.current
             TransferLine(
                 title = context.coreString("core.activity.uploading"),
-                count = uploads.wait?.let(context::uploadQueueWaitText) ?: context.releasesDoneText(uploads.batch),
+                count = words.uploadsWait ?: context.releasesDoneText(uploads.batch),
+                share = bar(ActivityLine.UPLOADS),
             )
         }
     }
     activity.pins?.let { pins ->
         item {
+            val context = LocalContext.current
+            val paused = pins.wait == BridgeQueueWait.PAUSED
             TransferLine(
                 title = context.coreString("core.activity.pinning"),
-                count = pins.wait?.let(context::queueWaitText) ?: context.releasesDoneText(pins.batch),
+                count = words.pinsWait ?: context.releasesDoneText(pins.batch),
+                share = bar(ActivityLine.PINS),
                 modifier = Modifier.clickable(onClick = onOpenDownloads),
+                end = { PausePinning(paused = paused, onClick = { onSetDownloadsPaused(!paused) }) },
             )
         }
     }
 }
 
-/** A transfer's line: its words, and at the end how many of its releases are done, or what holds its queue back. */
+/**
+ * A transfer's line: its words, and at the end how many of its releases are done, or what holds its
+ * queue back, then [end], and under them its bar, which is [share] of the batch's bytes, or moving
+ * when there is none.
+ */
 @Composable
 private fun TransferLine(
     title: String,
-    count: String,
+    count: String?,
+    share: LatestSource<Double>?,
     modifier: Modifier = Modifier,
+    end: (@Composable () -> Unit)? = null,
 ) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(text = title, modifier = Modifier.weight(1f))
-        Text(text = count, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(text = title, modifier = Modifier.weight(1f))
+            count?.let { Text(text = it, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            end?.invoke()
+        }
+        ShareBar(share)
     }
 }
+
+/**
+ * The Pinning line's tonal Pause, or Resume while pinning is paused: a [PAUSE_CONTAINER] disc whose
+ * touch area is the usual 48dp.
+ */
+@Composable
+private fun PausePinning(
+    paused: Boolean,
+    onClick: () -> Unit,
+) {
+    val colors = IconButtonDefaults.filledTonalIconButtonColors()
+    IconButton(onClick = onClick, modifier = Modifier.size(PAUSE_CONTAINER).wrapContentSize(unbounded = true)) {
+        Box(
+            modifier = Modifier.size(PAUSE_CONTAINER).background(colors.containerColor, CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = if (paused) Icons.Filled.PlayArrow else Icons.Filled.Pause,
+                contentDescription = stringResource(if (paused) R.string.resume else R.string.pause),
+                tint = colors.contentColor,
+                modifier = Modifier.size(PAUSE_GLYPH),
+            )
+        }
+    }
+}
+
+private val PAUSE_CONTAINER = 32.dp
+private val PAUSE_GLYPH = 18.dp
 
 @Composable
 private fun SecondaryLine(text: String) {
@@ -360,11 +444,14 @@ private fun ActivityListPreview() {
             problems = activityProblems(emptyList(), activity, null, emptySet()),
             app = emptyList(),
             activity = activity,
+            words = ActivityWords(failure = null, uploadsWait = null, pinsWait = null),
             error = null,
+            bar = SyncActivityStore()::bar,
             onDismissProblem = {},
             onOpenDetails = {},
             onOpenSettings = {},
             onOpenDownloads = {},
+            onSetDownloadsPaused = {},
         )
     }
 }
@@ -381,6 +468,7 @@ private fun ActivityButtonPreview() {
             onDismissProblem = {},
             onOpenSettings = {},
             onOpenDownloads = {},
+            onSetDownloadsPaused = {},
         )
     }
 }

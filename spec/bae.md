@@ -3223,7 +3223,8 @@ comes back shows again. While a library is open these problems show only
 there. A failure a pending record shows has no line of its own: a pass that
 storage refused or couldn't reach leaves the connection's record, a blocked
 slot and a failed operation of coven's own have theirs, and the failure again
-beside its record would read as a second problem. Then one row per
+beside its record would read as a second problem. Then, under a
+*Transfers* label, one row per
 thing moving, each its words, how far it has got and a bar, with no icon:
 Syncing changes, while coven's sync state says so (a pass moving, or a file
 being sent or downloaded), with no count, so its bar moves; Uploading

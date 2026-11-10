@@ -118,6 +118,14 @@ class LatestStream<V : Any> private constructor(
             LatestStream(values) { (it as? BridgeFastValue.TrackPosition)?.position }
 
         /**
+         * The share of each Activity transfer line's batch bytes done, from 0 to 1, by line
+         * (`uploads` or `pins`) while its batch holds a release; a preview's holds [values] and
+         * nothing feeds it.
+         */
+        fun activityBars(values: Map<String, Double>? = null): LatestStream<Double> =
+            LatestStream(values) { (it as? BridgeFastValue.BatchShare)?.fraction }
+
+        /**
          * The parts of the playing track whose bytes this device holds, by track id; a preview's
          * holds [values] and nothing feeds it.
          */
@@ -232,6 +240,14 @@ fun LatestStream<BridgeTrackPosition>.feed(
     scope: CoroutineScope,
     reportBug: (BridgeException) -> Unit,
 ): LatestFeed = fed(scope, reportBug, appHandle::feedPlaybackPositions)
+
+/** Fill from core. */
+@JvmName("feedActivityBars")
+fun LatestStream<Double>.feed(
+    appHandle: AppHandleInterface,
+    scope: CoroutineScope,
+    reportBug: (BridgeException) -> Unit,
+): LatestFeed = fed(scope, reportBug, appHandle::feedActivityBars)
 
 /** Fill from core. */
 @JvmName("feedTrackBuffered")

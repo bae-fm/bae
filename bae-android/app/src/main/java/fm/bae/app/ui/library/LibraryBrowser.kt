@@ -98,6 +98,11 @@ internal fun LibraryBrowser(
                         onDismissProblem = { state.activityDismissed += it },
                         onOpenSettings = onSyncStatus,
                         onOpenDownloads = onDownloads,
+                        onSetDownloadsPaused = { paused ->
+                            session.messages.perform("pause or resume downloads") {
+                                session.appHandle.setDownloadsPaused(paused)
+                            }
+                        },
                     )
                 },
             )

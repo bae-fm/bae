@@ -30,6 +30,7 @@ import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.countLabelsText
 import fm.bae.app.data.LiveValue
+import fm.bae.app.data.SyncActivityStore
 import fm.bae.app.ui.AppProblem
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
@@ -84,11 +85,14 @@ import fm.bae.app.ui.settings.TransfersContent
 import fm.bae.app.ui.settings.sceneOtherPerson
 import fm.bae.app.ui.signInSettingsProblem
 import fm.bae.app.ui.sync.ActivityList
+import fm.bae.app.ui.sync.ActivityWords
 import fm.bae.app.ui.sync.activityProblems
+import fm.bae.fastvalues.LatestStream
 import uniffi.bae_bridge.BridgeCastReceiver
 import uniffi.bae_bridge.BridgeCastTranscodeFormat
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeCountLabel
+import uniffi.bae_bridge.BridgeDownloadQueueActivity
 import uniffi.bae_bridge.BridgeDownloadState
 import uniffi.bae_bridge.BridgeDropboxLocation
 import uniffi.bae_bridge.BridgeErrorCategory
@@ -98,11 +102,11 @@ import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeLibraryStanding
 import uniffi.bae_bridge.BridgeLibraryState
 import uniffi.bae_bridge.BridgeMessage
+import uniffi.bae_bridge.BridgeQueueWait
 import uniffi.bae_bridge.BridgeReleaseDownloadStatus
 import uniffi.bae_bridge.BridgeRemoteDevice
 import uniffi.bae_bridge.BridgeRendererKind
 import uniffi.bae_bridge.BridgeStandingState
-import uniffi.bae_bridge.BridgeStorageFailure
 import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeSyncActivity
 import uniffi.bae_bridge.BridgeSyncCause
@@ -113,6 +117,7 @@ import uniffi.bae_bridge.BridgeSyncTone
 import uniffi.bae_bridge.BridgeTransferBatch
 import uniffi.bae_bridge.BridgeUnsentWork
 import uniffi.bae_bridge.BridgeUploadQueueActivity
+import uniffi.bae_bridge.BridgeUploadQueueWait
 import java.time.Instant
 
 // Screenshot scenes captured by scripts/shots/android.sh. Each function is one
@@ -134,7 +139,7 @@ import java.time.Instant
 //   PeopleAndDevicesPerson ⇒ people-and-devices-person, PeopleAndDevicesYours ⇒ people-and-devices-yours,
 //   SyncStatusSynced/Waiting/Offline/SignedOut/Failed ⇒ sync-status-synced, -waiting, -offline, -signed-out, -failed.
 
-private const val PHONE_SPEC = "spec:width=411dp,height=914dp,dpi=420"
+internal const val PHONE_SPEC = "spec:width=411dp,height=914dp,dpi=420"
 
 @Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
@@ -479,67 +484,6 @@ private fun RestoreCodeShot(shown: Boolean) {
             CompositionLocalProvider(LocalBugReports provides BugReports()) {
                 RestoreCodeScene(shown)
             }
-        }
-    }
-}
-
-/** The Activity sheet's list with sync's failure and a transfer under way. */
-@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES, fontScale = 1.5f)
-@Composable
-fun ActivityNeedingAttention() {
-    val activity =
-        PreviewData
-            .syncActivity(needsAttention = false)
-            .copy(
-                needsAttention = true,
-                failure = BridgeException.Diagnostic(BridgeErrorCategory.Storage(BridgeStorageFailure.Authentication), "401"),
-                syncing = false,
-                uploads = BridgeUploadQueueActivity(BridgeTransferBatch(done = 0u, total = 3u), wait = null),
-                pins = null,
-            )
-    ActivityListShot(activity, app = emptyList(), error = null)
-}
-
-/** The Activity sheet's list with a problem of the app's own: the sign-in settings it couldn't read. */
-@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES, fontScale = 1.5f)
-@Composable
-fun ActivityLaunchProblem() {
-    val activity =
-        PreviewData
-            .syncActivity(needsAttention = false)
-            .copy(
-                syncing = false,
-                uploads = BridgeUploadQueueActivity(BridgeTransferBatch(done = 0u, total = 3u), wait = null),
-                pins = null,
-            )
-    val context = LocalContext.current
-    ActivityListShot(
-        activity,
-        app = listOf(signInSettingsProblem(context, "OAuthConfig: missing client id")),
-        error = null,
-    )
-}
-
-@Composable
-private fun ActivityListShot(
-    activity: BridgeSyncActivity,
-    app: List<AppProblem>,
-    error: DisplayError?,
-) {
-    BaeTheme {
-        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            ActivityList(
-                problems = activityProblems(app, activity, error, emptySet()),
-                app = app,
-                activity = activity,
-                error = error,
-                onDismissProblem = {},
-                onOpenDetails = {},
-                onOpenSettings = {},
-                onOpenDownloads = {},
-            )
         }
     }
 }
