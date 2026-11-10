@@ -1,14 +1,19 @@
 import BaeKit
 import SwiftUI
 
-/// The release editor's draft: its fields, album row and track table, and
-/// the files the release carries that no track plays from.
+/// The release editor's draft: its fields, album row, the folder's images
+/// where it has them, the track table, and the files the release carries
+/// that no track plays from.
 struct ReleaseMetadataEditorContent: View {
     let session: ReleaseMetadataEditSession
     var onEditCover: (() -> Void)?
     /// Show a library album the album row names.
     let onViewAlbum: (String) -> Void
     var onPlayTrack: ((String) -> Void)?
+    /// The images of the folder the release was imported from, drawn under
+    /// the album row.
+    var images: [BridgeMappingImage] = []
+    var onOpenImages: (([BridgeMappingImage], String) -> Void)?
     /// Open one of the release's documents in the viewer: the file's name,
     /// then its file id.
     let onOpenDocument: (String, String) -> Void
@@ -41,6 +46,9 @@ struct ReleaseMetadataEditorContent: View {
                 canEdit: true,
                 actions: session.albumActions(viewInLibrary: onViewAlbum)
             )
+            if !images.isEmpty, let onOpenImages {
+                ImportImagesSection(images: images, onOpen: onOpenImages)
+            }
             trackTable
             if !session.draft.display.files.isEmpty {
                 ReleaseFilesView(

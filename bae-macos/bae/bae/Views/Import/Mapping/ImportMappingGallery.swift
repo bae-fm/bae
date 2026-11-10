@@ -36,6 +36,20 @@ struct ImportMappingGallery: View {
     }
 }
 
+/// The folder's images under their own ruled heading, level with the Tracks
+/// heading the table draws beneath them.
+struct ImportImagesSection: View {
+    let images: [BridgeMappingImage]
+    let onOpen: ([BridgeMappingImage], String) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: ThemeSpace.related) {
+            FormSectionHeader(title: String(localized: "Images"))
+            ImportMappingGallery(images: images, onOpen: onOpen)
+        }
+    }
+}
+
 /// One gallery image over its filename, outlined on hover; dragging it onto
 /// the cover well makes it the cover.
 struct ImportMappingGalleryTile: View {

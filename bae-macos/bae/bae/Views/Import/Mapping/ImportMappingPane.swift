@@ -93,13 +93,10 @@ struct ImportMappingPane: View {
     /// The folder's images under their own ruled heading, level with the
     /// Tracks heading the table draws beneath them.
     private var imagesSection: some View {
-        VStack(alignment: .leading, spacing: ThemeSpace.related) {
-            FormSectionHeader(title: String(localized: "Images"))
-            ImportMappingGallery(
-                images: mapping.images,
-                onOpen: mappingActions.openImages
-            )
-        }
+        ImportImagesSection(
+            images: mapping.images,
+            onOpen: mappingActions.openImages
+        )
     }
 
     /// The card's commit row, absent while the draft is entirely blank.

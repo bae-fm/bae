@@ -122,8 +122,7 @@ pub enum MappingSource {
 /// library release's files.
 ///
 /// Narrower than the role the scan proposes: a folder's track sheet is not a
-/// row here — it heads a group of rows — and a folder's images live in the
-/// table's gallery instead.
+/// row here — it heads a group of rows.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MappingRole {
     /// Playable audio.
@@ -132,7 +131,8 @@ pub enum MappingRole {
     /// could not be parsed as a sheet, or a library release's track sheet,
     /// which reads as the text it is.
     Document,
-    /// An image a library release carries, which has no gallery of its own.
+    /// An image the release carries, listed with its other files; a folder's
+    /// images are also the gallery above its tracks.
     Image,
     /// Named as an image, but its bytes do not decode as one: carried with
     /// the release, and kept out of the gallery the cover is picked from.
@@ -296,8 +296,8 @@ fn folder_files_besides(
             FileRole::Audio => {}
             // Nothing else the folder holds is in the tracklist — the role says
             // so on its own. The folder is the release, so all of it is still
-            // carried. The images are the gallery beside the rows.
-            FileRole::Artwork => {}
+            // carried: its images too, which the gallery also shows.
+            FileRole::Artwork => file_rows.push(carried(entry, MappingRole::Image)),
             FileRole::Document { .. } => file_rows.push(carried(entry, MappingRole::Document)),
             FileRole::DamagedImage => file_rows.push(carried(entry, MappingRole::DamagedImage)),
             FileRole::Other => file_rows.push(carried(entry, MappingRole::Other)),

@@ -124,8 +124,8 @@ fn positions(side: &MappingTrackSide) -> Vec<&str> {
     side.mappings().map(|mapping| mapping.position.as_str()).collect()
 }
 
-/// Every audio row is one of the draft's tracks, and a rip log is carried
-/// beside them, because a role is a fact about the folder.
+/// Every audio row is one of the draft's tracks, and a rip log and an image
+/// are carried beside them, because a role is a fact about the folder.
 #[test]
 fn audio_rows_are_the_draft_s_tracks_and_the_rest_are_carried() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
@@ -152,14 +152,22 @@ fn audio_rows_are_the_draft_s_tracks_and_the_rest_are_carried() {
     assert_eq!(track_file(mappings[0]).name, "01.flac");
     assert_eq!(track_file(mappings[1]).name, "02.flac");
     assert_eq!(mapping_tracks(&table), blank_candidate_draft(&files).release_edit().tracks);
-    let MappingFileRow::File(file) = &table.files[0] else {
-        panic!("expected a carried file, got {:?}", table.files[0]);
-    };
-    assert_eq!(file.name, "rip.log");
+    let carried: Vec<(&str, MappingRole)> = table
+        .files
+        .iter()
+        .map(|row| match row {
+            MappingFileRow::File(file) => (file.name.as_str(), file.role),
+            other => panic!("expected a carried file, got {other:?}"),
+        })
+        .collect();
+    assert_eq!(
+        carried,
+        [("cover.jpg", MappingRole::Image), ("rip.log", MappingRole::Document)],
+        "the image is carried in the scan's order beside the other files"
+    );
     // A row nothing has measured has no probed length to show.
     assert_eq!(track_file(mappings[0]).duration_ms, None);
     assert_eq!(track_file(mappings[0]).role, MappingRole::Audio);
-    assert_eq!(file.role, MappingRole::Document);
 }
 
 /// The table counts the track rows nobody has named: a blank title, or one

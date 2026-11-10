@@ -42,11 +42,10 @@ struct ImportedReleasePane: View {
                     displayName: candidate.displayName,
                     onViewAlbum: onViewInLibrary,
                     onPlayTrack: onPlayTrack,
+                    images: images,
+                    onOpenImages: onOpenImages,
                     onSaved: { _ in }
                 )
-                if !images.isEmpty {
-                    imagesSection
-                }
             }
             else if let loadError {
                 Notice(
@@ -86,16 +85,6 @@ struct ImportedReleasePane: View {
                 .foregroundStyle(Theme.success)
             Button("View in library") { onViewInLibrary(albumId) }
                 .buttonStyle(.borderless)
-        }
-    }
-
-    private var imagesSection: some View {
-        VStack(alignment: .leading, spacing: ThemeSpace.related) {
-            FormSectionHeader(title: String(localized: "Images"))
-            ImportMappingGallery(
-                images: images,
-                onOpen: onOpenImages
-            )
         }
     }
 }
@@ -172,13 +161,10 @@ struct ImportingCandidatePane: View {
                     }
                 }
                 if !candidate.mapping.images.isEmpty {
-                    VStack(alignment: .leading, spacing: ThemeSpace.related) {
-                        FormSectionHeader(title: String(localized: "Images"))
-                        ImportMappingGallery(
-                            images: candidate.mapping.images,
-                            onOpen: onOpenImages
-                        )
-                    }
+                    ImportImagesSection(
+                        images: candidate.mapping.images,
+                        onOpen: onOpenImages
+                    )
                 }
                 ReadOnlyCandidateMappingTable(
                     table: candidate.mapping,

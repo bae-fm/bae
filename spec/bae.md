@@ -1569,14 +1569,16 @@ disc each sheet is, or ignore a sheet. The table also counts the tracks nobody
 has named yet, and the pane states that count beside Import without blocking
 it: importing titles each of them after its file.
 
-The files the folder carries that are no track, such as a rip log or a track
+The files the folder carries that are no track, such as a rip log, its images
+(which its gallery above the tracks also shows) or a track
 sheet that carves no tracks, are listed under the tracks beneath a ruled *Files*
 heading, one line per file: its name in monospace, its size at the right, a
 hairline between lines, a damaged file marked with why. A document opens in the
 viewer when clicked, over whatever else is open. A library release's editor
 (§3.8), on an imported folder's pane and in the album's *Edit Release* sheet,
-lists the release's files the same way, under its tracks; one view draws all
-three, so a release's files never show two ways.
+lists the release's files, images included, the same way, under its tracks, and
+an imported folder's pane puts the folder's images above its tracks; one view draws
+the files in all three, so a release's files never show two ways.
 
 Before importing, the person can play a file through a second player, which
 pauses the library's playback and resumes it when it ends.
