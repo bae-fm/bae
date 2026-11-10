@@ -1,10 +1,11 @@
 //! What kind of file a release file is, and where it sits in the release's
 //! folder, as a file's details show them.
 
+use bae_records::{DocumentKind, ReleaseFileRole};
 use bae_util::content_type::ContentType;
 
-/// What kind of file a release file is, from its content type and, for the
-/// text files a rip leaves, its extension.
+/// What kind of file a release file is: the role, and for a document the
+/// kind, its import stored, with the format its content type names.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FileKind {
     /// Audio, with its format's name ("FLAC").
@@ -15,29 +16,46 @@ pub enum FileKind {
     Image {
         format: String,
     },
+    /// Named as an image, and its bytes do not decode as one.
+    DamagedImage,
+    /// A CUE sheet, whether or not it parsed as a track sheet.
     CueSheet,
     /// A ripper's log of how it read the disc.
     RipLog,
+    /// The report of a rip checked against AccurateRip's database.
+    AccurateRipReport,
+    Playlist,
     Text,
     Pdf,
     Other,
 }
 
 impl FileKind {
-    pub(crate) fn of(content_type: &ContentType, filename: &str) -> Self {
-        let extension = bae_records::stored_name::file_extension(filename);
-        match (content_type, extension.as_deref()) {
-            (content_type, _) if content_type.is_audio() => {
+    pub(crate) fn of(role: ReleaseFileRole, content_type: &ContentType) -> Self {
+        match role {
+            ReleaseFileRole::Audio => {
                 Self::Audio { format: content_type.display_name().to_string() }
             }
-            (content_type, _) if content_type.is_image() => {
+            ReleaseFileRole::Artwork => {
                 Self::Image { format: content_type.display_name().to_string() }
             }
-            (_, Some("cue")) => Self::CueSheet,
-            (_, Some("log")) => Self::RipLog,
-            (ContentType::Pdf, _) => Self::Pdf,
-            (ContentType::PlainText, _) | (_, Some("txt")) => Self::Text,
-            _ => Self::Other,
+            ReleaseFileRole::DamagedImage => Self::DamagedImage,
+            ReleaseFileRole::TrackSheet | ReleaseFileRole::Document(DocumentKind::CueSheet) => {
+                Self::CueSheet
+            }
+            ReleaseFileRole::Document(DocumentKind::RipLog) => Self::RipLog,
+            ReleaseFileRole::Document(DocumentKind::AccurateRipReport) => Self::AccurateRipReport,
+            ReleaseFileRole::Document(DocumentKind::Playlist) => Self::Playlist,
+            ReleaseFileRole::Document(DocumentKind::Text) => Self::Text,
+            // Whatever else the folder carried: a PDF, or an image the scan
+            // offers as no artwork, such as an SVG, says so by its content type.
+            ReleaseFileRole::Other => match content_type {
+                ContentType::Pdf => Self::Pdf,
+                content_type if content_type.is_image() => {
+                    Self::Image { format: content_type.display_name().to_string() }
+                }
+                _ => Self::Other,
+            },
         }
     }
 }

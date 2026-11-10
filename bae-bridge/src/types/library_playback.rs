@@ -671,8 +671,11 @@ pub enum BridgeFileKind {
     Image {
         format: String,
     },
+    DamagedImage,
     CueSheet,
     RipLog,
+    AccurateRipReport,
+    Playlist,
     Text,
     Pdf,
     Other,

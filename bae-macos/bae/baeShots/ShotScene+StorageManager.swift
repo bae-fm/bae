@@ -147,6 +147,14 @@ extension ShotScene {
                 )
             )
         },
+        // A rip log's details: what kind of file it is, read from the kind
+        // of document its import stored.
+        ShotScene(
+            id: "storage-manager-rip-log-details",
+            size: CGSize(width: 440, height: 140)
+        ) {
+            ShotStage(StorageFileDetails(file: .previewRipLog, onClose: {}))
+        },
         // A search that finds nothing, in the whole window: the toolbar's
         // filter field holding the text, and the list saying so.
         ShotScene(

@@ -4457,8 +4457,10 @@ Reads come two ways:
   retries it (§4.3) and one that cancels it. Selecting a file shows its details under the list,
   closed by a button or by selecting nothing: its name and the folder it
   sits in within the release's folder, what kind of file it is, its audio
-  format, and its size. Core reads a file's kind from its content type, and
-  for a cue sheet or a rip log from its extension.
+  format, and its size. Core reads a file's kind from the role and document
+  kind its import stored (§2.2): a CUE sheet, parsed or not, a rip log, an
+  AccurateRip report, a playlist, text, or a damaged image; and from its
+  content type an audio file's or an image's format, and a PDF.
   The upload queue's own subscription says only whether it is paused; how
   fast each release's upload goes, the bytes and speed each download moves,
   and the percent each export reaches arrive apart, per release.

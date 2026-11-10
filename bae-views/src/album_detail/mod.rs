@@ -269,7 +269,7 @@ impl FileDetail {
     pub fn from_raw(f: bae_records::DbFile) -> Self {
         FileDetail {
             place: FilePlace::of(&f.original_filename),
-            kind: FileKind::of(&f.content_type, &f.original_filename),
+            kind: FileKind::of(f.role, &f.content_type),
             is_image: f.content_type.is_image(),
             content_type: f.content_type.to_string(),
             source_audio: f.source_audio,

@@ -6,8 +6,11 @@ mirror_enum! {
     variants: {
         Audio { format },
         Image { format },
+        DamagedImage,
         CueSheet,
         RipLog,
+        AccurateRipReport,
+        Playlist,
         Text,
         Pdf,
         Other,

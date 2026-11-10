@@ -71,8 +71,11 @@ struct StorageFileDetails: View {
         switch file.kind {
         case .audio(let format): String(localized: "\(format) audio")
         case .image(let format): String(localized: "\(format) image")
+        case .damagedImage: String(localized: "Damaged image")
         case .cueSheet: String(localized: "Cue sheet")
         case .ripLog: String(localized: "Rip log")
+        case .accurateRipReport: String(localized: "AccurateRip report")
+        case .playlist: String(localized: "Playlist")
         case .text: String(localized: "Text")
         case .pdf: String(localized: "PDF document")
         case .other: String(localized: "File")
@@ -106,20 +109,22 @@ struct StorageFileDetails: View {
     }
 
     #Preview("Rip log") {
-        StorageFileDetails(
-            file: BridgeFile(
-                id: "file-2",
-                originalFilename: "Album Title.log",
-                name: "Album Title.log",
-                folder: nil,
-                kind: .ripLog,
-                fileSize: 20_000,
-                contentType: "text/plain",
-                isImage: false,
-                audioFormat: nil
-            ),
-            onClose: {}
+        StorageFileDetails(file: .previewRipLog, onClose: {})
+            .frame(width: 440)
+    }
+
+    extension BridgeFile {
+        /// A release's rip log, as a file's details show it.
+        static let previewRipLog = BridgeFile(
+            id: "file-2",
+            originalFilename: "Album Title.log",
+            name: "Album Title.log",
+            folder: nil,
+            kind: .ripLog,
+            fileSize: 20_000,
+            contentType: "text/plain",
+            isImage: false,
+            audioFormat: nil
         )
-        .frame(width: 440)
     }
 #endif

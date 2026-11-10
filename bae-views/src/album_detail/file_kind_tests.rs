@@ -1,20 +1,45 @@
 use super::*;
 
+/// A file's kind is the role and document kind its import stored, whatever
+/// its name says, and an audio file's or an image's format, and a PDF, its
+/// content type.
 #[test]
-fn a_file_kind_reads_its_content_type_and_a_rips_extensions() {
+fn a_file_kind_reads_its_stored_role_and_its_content_type() {
+    use bae_records::{DocumentKind, ReleaseFileRole};
     assert_eq!(
-        FileKind::of(&ContentType::Flac, "01 Track Title.flac"),
+        FileKind::of(ReleaseFileRole::Audio, &ContentType::Flac),
         FileKind::Audio { format: "FLAC".into() }
     );
     assert_eq!(
-        FileKind::of(&ContentType::Jpeg, "front.jpg"),
+        FileKind::of(ReleaseFileRole::Artwork, &ContentType::Jpeg),
         FileKind::Image { format: "JPEG".into() }
     );
-    assert_eq!(FileKind::of(&ContentType::PlainText, "Album Title.cue"), FileKind::CueSheet);
-    assert_eq!(FileKind::of(&ContentType::OctetStream, "Album Title.LOG"), FileKind::RipLog);
-    assert_eq!(FileKind::of(&ContentType::PlainText, "notes.txt"), FileKind::Text);
-    assert_eq!(FileKind::of(&ContentType::Pdf, "booklet.pdf"), FileKind::Pdf);
-    assert_eq!(FileKind::of(&ContentType::OctetStream, "data.bin"), FileKind::Other);
+    assert_eq!(
+        FileKind::of(ReleaseFileRole::DamagedImage, &ContentType::OctetStream),
+        FileKind::DamagedImage
+    );
+    assert_eq!(
+        FileKind::of(ReleaseFileRole::TrackSheet, &ContentType::PlainText),
+        FileKind::CueSheet
+    );
+    for (kind, file_kind) in [
+        (DocumentKind::CueSheet, FileKind::CueSheet),
+        (DocumentKind::RipLog, FileKind::RipLog),
+        (DocumentKind::AccurateRipReport, FileKind::AccurateRipReport),
+        (DocumentKind::Playlist, FileKind::Playlist),
+        (DocumentKind::Text, FileKind::Text),
+    ] {
+        assert_eq!(
+            FileKind::of(ReleaseFileRole::Document(kind), &ContentType::PlainText),
+            file_kind
+        );
+    }
+    assert_eq!(FileKind::of(ReleaseFileRole::Other, &ContentType::Pdf), FileKind::Pdf);
+    assert_eq!(
+        FileKind::of(ReleaseFileRole::Other, &ContentType::Svg),
+        FileKind::Image { format: ContentType::Svg.display_name().into() }
+    );
+    assert_eq!(FileKind::of(ReleaseFileRole::Other, &ContentType::OctetStream), FileKind::Other);
 }
 
 #[test]
