@@ -3234,11 +3234,11 @@ the same read of the library's tables. Bytes moving change none of them, so
 they send it nothing. What needs the person comes first, under *Needs
 attention*, one row each, a line between rows: the app's own problems (the
 sign-in settings it can't read; on macOS a library that failed to open while
-another stays open), titled by what failed; a failure to read sync's state;
+another stays open), titled by what failed, on macOS the title alone; a failure to read sync's state;
 sync's failure, with *Open sync settings*, which closes the panel and opens the
 Sync page; then each pending record in plain words, with *Open sync settings*,
 where each record offers its action. Nothing in the panel retries. A row shows
-no error: clicking it closes the panel and opens the alert with the causes
+no error: clicking it closes the panel and opens the alert with what to do and the causes
 (§9.7); on Android a tap closes the sheet and opens a dialog with the same causes. Each problem has an × that takes it out of the panel, without fixing
 it: it still shows where it is fixed, and a problem that leaves the list and
 comes back shows again. While a library is open these problems show only

@@ -73,7 +73,8 @@ public enum NoticeDetailsOpening {
     /// A Details button among the notice's buttons.
     case button
     /// A click on the notice's row; it has no Details button. For a list of
-    /// problems, where each row is the whole way in.
+    /// problems, where each row is the whole way in. The row is the title;
+    /// what to do and the causes are in what it opens.
     case row
 }
 
@@ -127,7 +128,9 @@ public struct Notice: View {
     /// A notice titled in the caller's words, with `advice` under it. The
     /// error's line isn't shown, so Details is there whenever there is an
     /// error and leads its causes with the line. With no error there is no
-    /// Details: the title and advice are the whole notice.
+    /// Details: the title and advice are the whole notice. A notice whose
+    /// details open from its row (`detailsOpening: .row`) shows the title
+    /// alone; the advice is the message of what the row opens.
     public init(
         title: String,
         advice: String?,
@@ -218,14 +221,20 @@ public struct Notice: View {
                         : HierarchicalShapeStyle.primary
                 )
         case .titled(let title, let advice, _):
+            let shownAdvice = opensFromRow ? nil : advice
             Text(verbatim: title)
-                .themeText(advice == nil ? .body : .strong)
-            if let advice {
-                Text(verbatim: advice)
+                .themeText(shownAdvice == nil ? .body : .strong)
+            if let shownAdvice {
+                Text(verbatim: shownAdvice)
                     .themeText(.body)
                     .foregroundStyle(.secondary)
             }
         }
+    }
+
+    /// The row opens the details, so its words are the title alone.
+    private var opensFromRow: Bool {
+        detailsOpening == .row && details != nil
     }
 
     private var hasChoiceButtons: Bool {

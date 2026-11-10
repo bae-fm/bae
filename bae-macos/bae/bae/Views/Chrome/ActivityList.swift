@@ -3,8 +3,9 @@ import SwiftUI
 
 /// What bae needs the person for and what it is moving, as the Activity
 /// panel lists it: each problem not dismissed first, a quiet row with an ×
-/// whose click opens its details, then the transfer lines, or that everything
-/// is up to date. Its sections go inside the caller's grouped form.
+/// whose click opens its details, then the transfer lines with a button to the
+/// Storage Manager under them, or that everything is up to date. Its
+/// sections go inside the caller's grouped form.
 struct ActivityList: View {
     let problems: ActivityProblems
     /// The app's own problems, which `problems` lists by kind.
@@ -44,17 +45,18 @@ struct ActivityList: View {
             }
         }
         if let activity, showsTransfers {
-            Section("Transfers") {
+            Section {
                 TransferRows(activity: activity)
                     .listRowInsets(Self.rowInsets)
-            }
-            if activity.hasTransferLine {
-                Section {
+            } header: {
+                Text("Transfers")
+            } footer: {
+                if activity.hasTransferLine {
                     Button(
                         String(localized: "Open storage manager"),
                         action: onOpenStorageManager
                     )
-                    .listRowInsets(Self.rowInsets)
+                    .controlSize(.small)
                 }
             }
         }
