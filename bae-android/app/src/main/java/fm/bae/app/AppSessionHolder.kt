@@ -815,7 +815,7 @@ object AppSessionHolder {
                 libraryId = libraryId,
                 appHandle = BridgeLibraryHandle(handle),
                 diagnostics = diagnostics,
-                stores = buildStores(config, handle, initialUnmeteredOnly, initialDownloads, messages),
+                stores = buildStores(config, initialUnmeteredOnly, initialDownloads),
                 runtime =
                     OpenLibraryRuntime(
                         playback =
@@ -846,18 +846,13 @@ object AppSessionHolder {
 
     private fun buildStores(
         config: BridgeConfig,
-        handle: AppHandle,
         initialUnmeteredOnly: Boolean,
         initialDownloads: uniffi.bae_bridge.BridgeDownloadCounts,
-        messages: SessionMessages,
     ): OpenLibraryStores =
         OpenLibraryStores(
             config = ConfigStore(config),
             syncStatus = SyncStatusStore(),
-            syncActivity =
-                SyncActivityStore(
-                    retryNowAction = { messages.startRetrySync(handle::retryNow) },
-                ),
+            syncActivity = SyncActivityStore(),
             downloads = DownloadStore(initialDownloads, initialUnmeteredOnly),
             cast = CastStore(),
         )

@@ -62,7 +62,7 @@ class SyncPullsTest {
 
                 override fun close() = Unit
             }
-        val store = SyncActivityStore({})
+        val store = SyncActivityStore()
         val session = openTestLibrary(handle, syncActivity = store)
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
         session.wireUp(scope)

@@ -1,27 +1,28 @@
 package fm.bae.app.ui.components
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import fm.bae.app.DisplayError
-import fm.bae.app.coreString
+import fm.bae.app.ui.AppProblem
 import fm.bae.app.ui.appearance.ThemeSpace
 
 /**
- * What launch found wrong that doesn't stop the app: this build's Dropbox and
- * OneDrive sign-in settings couldn't be read. Launch records it once, apart
- * from every screen's own failures, and it shows over every screen for the
- * run, so no later failure or opened library hides it.
+ * What launch found wrong that doesn't stop the app, such as this build's Dropbox and OneDrive
+ * sign-in settings not reading. Launch records it once, apart from every screen's own failures, and
+ * it shows above every screen that has no open library for the run. An open library lists it in
+ * its Activity sheet instead.
  */
 @Composable
-fun LaunchProblemBanner(signInSettingsError: String?) {
-    val detail = signInSettingsError ?: return
-    val context = LocalContext.current
-    TitledErrorNotice(
-        title = context.coreString("ui.load_error.sign_in_settings.title"),
-        advice = context.coreString("ui.load_error.sign_in_settings.advice"),
-        error = DisplayError(detail),
-        modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
-    )
+fun LaunchProblemBanner(problems: List<AppProblem>) {
+    Column {
+        problems.forEach { problem ->
+            TitledErrorNotice(
+                title = problem.title,
+                advice = problem.advice,
+                error = problem.error,
+                modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
+            )
+        }
+    }
 }

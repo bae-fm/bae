@@ -25,7 +25,7 @@ import org.robolectric.RuntimeEnvironment
 internal fun openTestLibrary(
     handle: FakeAppHandle,
     syncStatus: SyncStatusStore = SyncStatusStore(),
-    syncActivity: SyncActivityStore = SyncActivityStore({}),
+    syncActivity: SyncActivityStore = SyncActivityStore(),
 ): OpenLibrary {
     val context = RuntimeEnvironment.getApplication()
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)

@@ -215,6 +215,9 @@ fun Notice(
     }
 }
 
+/** Where a notice's words start, past its glyph: what a list of notices insets its dividers by. */
+internal val NoticeTextInset = ThemeIcon.medium + ThemeSpace.related
+
 /** The tone's glyph in a [FirstLineBox], so it centres on the first line. */
 @Composable
 private fun FirstLineGlyph(

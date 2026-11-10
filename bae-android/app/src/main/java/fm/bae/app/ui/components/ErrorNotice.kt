@@ -1,6 +1,7 @@
 package fm.bae.app.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -55,12 +56,23 @@ class ErrorAction(
     val onClick: () -> Unit,
 )
 
+/** Where a notice's buttons sit in the framed layout. */
+enum class NoticeButtons {
+    /** On the title's line at the right, centred on it, the words wrapping beside them. */
+    INLINE,
+
+    /** On a line of their own under the words, in line with them: for a long button in a narrow place. */
+    BELOW,
+}
+
 /**
  * A failure as Android's error notice draws it: a [tone] notice (danger unless
  * told otherwise) with the tone's glyph and the localized line. A notice never
  * shows the error itself: for a failure core reported, a Details button opens
  * the causes in a dialog. Details and [action] sit at the right of the title's
- * line, Details first. Mirrors the Apple apps' `Notice`.
+ * line, Details first, or under the words when [buttons] says so. Given
+ * [onOpenDetails], the notice has no Details button: tapping it hands the
+ * details to the caller, who shows them. Mirrors the Apple apps' `Notice`.
  */
 @Composable
 fun ErrorNotice(
@@ -70,14 +82,28 @@ fun ErrorNotice(
     tone: StatusTone = StatusTone.DANGER,
     look: NoticeLook = NoticeLook.FILLED,
     onDismiss: (() -> Unit)? = null,
+    onOpenDetails: ((ErrorDetails) -> Unit)? = null,
+    buttons: NoticeButtons = NoticeButtons.INLINE,
 ) {
-    ErrorNoticeContent(error.line, null, ErrorDetails.of(error), modifier, action, tone, look, onDismiss)
+    ErrorNoticeContent(
+        title = error.line,
+        advice = null,
+        details = ErrorDetails.of(error),
+        modifier = modifier,
+        action = action,
+        tone = tone,
+        look = look,
+        onDismiss = onDismiss,
+        onOpenDetails = onOpenDetails,
+        buttons = buttons,
+    )
 }
 
 /**
  * A failure under a title the app words for what failed, with [advice], what
  * to do about it. [error] is null when core says the failure has nothing to
- * show; with one, Details opens its causes led by the category's line.
+ * show; with one, Details opens its causes led by the category's line, or a
+ * tap hands them to [onOpenDetails], as [ErrorNotice] says.
  */
 @Composable
 fun TitledErrorNotice(
@@ -88,16 +114,21 @@ fun TitledErrorNotice(
     action: ErrorAction? = null,
     tone: StatusTone = StatusTone.DANGER,
     look: NoticeLook = NoticeLook.FILLED,
+    onDismiss: (() -> Unit)? = null,
+    onOpenDetails: ((ErrorDetails) -> Unit)? = null,
+    buttons: NoticeButtons = NoticeButtons.INLINE,
 ) {
     ErrorNoticeContent(
-        title,
-        advice,
-        error?.let { ErrorDetails.titled(title, advice, it) },
-        modifier,
-        action,
-        tone,
-        look,
-        null,
+        title = title,
+        advice = advice,
+        details = error?.let { ErrorDetails.titled(title, advice, it) },
+        modifier = modifier,
+        action = action,
+        tone = tone,
+        look = look,
+        onDismiss = onDismiss,
+        onOpenDetails = onOpenDetails,
+        buttons = buttons,
     )
 }
 
@@ -118,12 +149,30 @@ private fun ErrorNoticeContent(
     tone: StatusTone,
     look: NoticeLook,
     onDismiss: (() -> Unit)?,
+    onOpenDetails: ((ErrorDetails) -> Unit)?,
+    buttons: NoticeButtons,
 ) {
     var detailsShown by rememberSaveable(details) { mutableStateOf(false) }
     if (look == NoticeLook.CENTERED) {
         CenteredNotice(title, tone, modifier, details != null, { detailsShown = true }, action)
     } else {
-        FramedNotice(title, advice, details != null, { detailsShown = true }, modifier, action, tone, look, onDismiss)
+        FramedNotice(
+            title = title,
+            advice = advice,
+            hasDetails = details != null && onOpenDetails == null,
+            onDetails = { detailsShown = true },
+            modifier =
+                if (details != null && onOpenDetails != null) {
+                    modifier.clickable { onOpenDetails(details) }
+                } else {
+                    modifier
+                },
+            action = action,
+            tone = tone,
+            look = look,
+            onDismiss = onDismiss,
+            buttons = buttons,
+        )
     }
     if (detailsShown && details != null) {
         ErrorDetailsDialog(details, onDismiss = { detailsShown = false })
@@ -186,7 +235,9 @@ private fun FramedNotice(
     tone: StatusTone,
     look: NoticeLook,
     onDismiss: (() -> Unit)?,
+    buttons: NoticeButtons,
 ) {
+    val hasButtons = hasDetails || action != null
     Notice(tone = tone, modifier = modifier, look = look) {
         Row(
             modifier = Modifier.weight(1f),
@@ -200,29 +251,41 @@ private fun FramedNotice(
                     color = LocalContentColor.current,
                 )
                 advice?.let { Text(text = it, style = ThemeText.body.style, color = onNoticeSecondary) }
+                if (hasButtons && buttons == NoticeButtons.BELOW) {
+                    // The buttons' own padding overhangs: a label starts on the words' edge.
+                    NoticeButtonRow(hasDetails, onDetails, action, Modifier.offset(x = -ThemeSpace.related))
+                }
             }
-            if (hasDetails || action != null) {
+            if (hasButtons && buttons == NoticeButtons.INLINE) {
                 // The buttons' own padding overhangs: a label's right edge is the notice's.
                 FirstLineBox {
-                    Row(
-                        modifier = Modifier.offset(x = ThemeSpace.related),
-                        horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
-                    ) {
-                        if (hasDetails) {
-                            TextButton(
-                                onClick = onDetails,
-                                colors = ButtonDefaults.textButtonColors(contentColor = noticeButtonColor),
-                                contentPadding = ACTION_PADDING,
-                            ) {
-                                Text(stringResource(R.string.details))
-                            }
-                        }
-                        action?.let { ErrorActionButton(it) }
-                    }
+                    NoticeButtonRow(hasDetails, onDetails, action, Modifier.offset(x = ThemeSpace.related))
                 }
             }
             onDismiss?.let { DismissButton(it) }
         }
+    }
+}
+
+/** A notice's buttons in a row: Details first, then the primary [action]. */
+@Composable
+private fun NoticeButtonRow(
+    hasDetails: Boolean,
+    onDetails: () -> Unit,
+    action: ErrorAction?,
+    modifier: Modifier,
+) {
+    Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
+        if (hasDetails) {
+            TextButton(
+                onClick = onDetails,
+                colors = ButtonDefaults.textButtonColors(contentColor = noticeButtonColor),
+                contentPadding = ACTION_PADDING,
+            ) {
+                Text(stringResource(R.string.details))
+            }
+        }
+        action?.let { ErrorActionButton(it) }
     }
 }
 

@@ -8,16 +8,14 @@ import uniffi.bae_bridge.BridgeSyncActivity
 
 /**
  * Everything sync is doing on this device, as core reports it: the top bar's
- * indicator and the list it opens read it here. The sync-activity value stream
- * is its only writer.
+ * Activity button and the sheet it opens read it here. The sync-activity value
+ * stream is its only writer.
  */
-class SyncActivityStore(
-    private val retryNowAction: () -> Unit,
-) {
+class SyncActivityStore {
     private val mutableActivity = MutableStateFlow<BridgeSyncActivity?>(null)
     val activity: StateFlow<BridgeSyncActivity?> = mutableActivity.asStateFlow()
 
-    /** The last failure to read the activity. */
+    /** Why the activity couldn't be read, until it is read again. */
     private val mutableError = MutableStateFlow<DisplayError?>(null)
     val error: StateFlow<DisplayError?> = mutableError.asStateFlow()
 
@@ -29,13 +27,4 @@ class SyncActivityStore(
     fun fail(error: DisplayError) {
         mutableError.value = error
     }
-
-    /** The person's retry: every ordinary wait ends and sync runs now; what didn't sync shows as a snackbar. */
-    fun retryNow() = retryNowAction()
 }
-
-/** The indicator shows while bytes move or something needs the person, and is absent otherwise. */
-fun syncActivityVisible(
-    activity: BridgeSyncActivity?,
-    error: DisplayError?,
-): Boolean = error != null || (activity != null && (activity.moving || activity.needsAttention))

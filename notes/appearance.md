@@ -55,7 +55,7 @@ The shared components are defined once per platform: `StatusTone` (neutral,
 accent, info, success, warning, danger, activity), a `StatusChip` for short
 labels on a tone's fill, a notice (`Notice` on both)
 for a message in a tone, `.card(elevated:)` on Apple, and `ErrorText` for a
-failure line. A failing sync cycle is one `SyncFailureNotice` on Android.
+failure line. A failing sync cycle is one warning `ErrorNotice` in the Activity sheet on Android.
 
 Apple views use `Theme`, `ThemeOpacity`, `PrimaryButtonStyle`, and
 `.appAppearance()` at every scene root; Apple's hierarchical label styles stay

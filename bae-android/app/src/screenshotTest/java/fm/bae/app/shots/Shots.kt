@@ -30,6 +30,7 @@ import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.countLabelsText
 import fm.bae.app.data.LiveValue
+import fm.bae.app.ui.AppProblem
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.albumdetail.AlbumDetailScene
@@ -81,13 +82,17 @@ import fm.bae.app.ui.settings.SyncRowSummary
 import fm.bae.app.ui.settings.SyncStatusScene
 import fm.bae.app.ui.settings.TransfersContent
 import fm.bae.app.ui.settings.sceneOtherPerson
-import fm.bae.app.ui.sync.SyncActivityList
+import fm.bae.app.ui.signInSettingsProblem
+import fm.bae.app.ui.sync.ActivityList
+import fm.bae.app.ui.sync.activityProblems
 import uniffi.bae_bridge.BridgeCastReceiver
 import uniffi.bae_bridge.BridgeCastTranscodeFormat
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeCountLabel
 import uniffi.bae_bridge.BridgeDownloadState
 import uniffi.bae_bridge.BridgeDropboxLocation
+import uniffi.bae_bridge.BridgeErrorCategory
+import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeFolderLabel
 import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeLibraryStanding
@@ -97,13 +102,17 @@ import uniffi.bae_bridge.BridgeReleaseDownloadStatus
 import uniffi.bae_bridge.BridgeRemoteDevice
 import uniffi.bae_bridge.BridgeRendererKind
 import uniffi.bae_bridge.BridgeStandingState
+import uniffi.bae_bridge.BridgeStorageFailure
 import uniffi.bae_bridge.BridgeStorageLocation
+import uniffi.bae_bridge.BridgeSyncActivity
 import uniffi.bae_bridge.BridgeSyncCause
 import uniffi.bae_bridge.BridgeSyncFix
 import uniffi.bae_bridge.BridgeSyncShown
 import uniffi.bae_bridge.BridgeSyncStatusWord
 import uniffi.bae_bridge.BridgeSyncTone
+import uniffi.bae_bridge.BridgeTransferBatch
 import uniffi.bae_bridge.BridgeUnsentWork
+import uniffi.bae_bridge.BridgeUploadQueueActivity
 import java.time.Instant
 
 // Screenshot scenes captured by scripts/shots/android.sh. Each function is one
@@ -474,18 +483,62 @@ private fun RestoreCodeShot(shown: Boolean) {
     }
 }
 
+/** The Activity sheet's list with sync's failure and a transfer under way. */
 @Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES, fontScale = 1.5f)
 @Composable
-fun SyncActivityNeedingAttention() {
+fun ActivityNeedingAttention() {
+    val activity =
+        PreviewData
+            .syncActivity(needsAttention = false)
+            .copy(
+                needsAttention = true,
+                failure = BridgeException.Diagnostic(BridgeErrorCategory.Storage(BridgeStorageFailure.Authentication), "401"),
+                syncing = false,
+                uploads = BridgeUploadQueueActivity(BridgeTransferBatch(done = 0u, total = 3u), wait = null),
+                pins = null,
+            )
+    ActivityListShot(activity, app = emptyList(), error = null)
+}
+
+/** The Activity sheet's list with a problem of the app's own: the sign-in settings it couldn't read. */
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES, fontScale = 1.5f)
+@Composable
+fun ActivityLaunchProblem() {
+    val activity =
+        PreviewData
+            .syncActivity(needsAttention = false)
+            .copy(
+                syncing = false,
+                uploads = BridgeUploadQueueActivity(BridgeTransferBatch(done = 0u, total = 3u), wait = null),
+                pins = null,
+            )
+    val context = LocalContext.current
+    ActivityListShot(
+        activity,
+        app = listOf(signInSettingsProblem(context, "OAuthConfig: missing client id")),
+        error = null,
+    )
+}
+
+@Composable
+private fun ActivityListShot(
+    activity: BridgeSyncActivity,
+    app: List<AppProblem>,
+    error: DisplayError?,
+) {
     BaeTheme {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            SyncActivityList(
-                activity = PreviewData.syncActivity(needsAttention = true),
-                error = null,
+            ActivityList(
+                problems = activityProblems(app, activity, error, emptySet()),
+                app = app,
+                activity = activity,
+                error = error,
+                onDismissProblem = {},
+                onOpenDetails = {},
                 onOpenSettings = {},
                 onOpenDownloads = {},
-                onRetryNow = {},
             )
         }
     }

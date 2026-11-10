@@ -98,15 +98,21 @@ fun ContentView(
             )
         }
     }
+    val launchProblems =
+        remember(oauthProvidersError) {
+            listOfNotNull(oauthProvidersError?.let { signInSettingsProblem(context, it) })
+        }
     BaeAppChrome {
         Column(modifier = Modifier.fillMaxSize()) {
-            LaunchProblemBanner(oauthProvidersError)
+            // An open library lists these in its Activity sheet.
+            if (screen !is AppScreen.LibraryOpen) LaunchProblemBanner(launchProblems)
             Box(modifier = Modifier.weight(1f)) {
                 CompositionLocalProvider(LocalBugReports provides bugs) {
                     AppScreenRouter(
                         screen = screen,
                         oauthProviders = oauthProviders,
                         oauthProvidersError = oauthProvidersError,
+                        launchProblems = launchProblems,
                         shortcutAction = shortcutAction,
                         onShortcutHandled = onShortcutHandled,
                         snackbarHostState = snackbarHostState,
@@ -144,6 +150,7 @@ private fun AppScreenRouter(
     screen: AppScreen,
     oauthProviders: OAuthProviders?,
     oauthProvidersError: String?,
+    launchProblems: List<AppProblem>,
     shortcutAction: ShortcutAction?,
     onShortcutHandled: () -> Unit,
     snackbarHostState: SnackbarHostState,
@@ -176,6 +183,7 @@ private fun AppScreenRouter(
                 LibraryOpenScreen(
                     session = current.session,
                     libraries = AppSessionHolder.libraries,
+                    launchProblems = launchProblems,
                     shortcutAction = shortcutAction,
                     onShortcutHandled = onShortcutHandled,
                     snackbarHostState = snackbarHostState,
@@ -361,6 +369,7 @@ private fun sessionActions(
 private fun LibraryOpenScreen(
     session: OpenLibrary,
     libraries: StateFlow<LibraryListing>,
+    launchProblems: List<AppProblem>,
     shortcutAction: ShortcutAction?,
     onShortcutHandled: () -> Unit,
     snackbarHostState: SnackbarHostState,
@@ -392,6 +401,7 @@ private fun LibraryOpenScreen(
         LibraryScreen(
             session = session,
             libraries = libraries,
+            launchProblems = launchProblems,
             openSearch = shortcutAction == ShortcutAction.SEARCH,
             onSearchOpened = onShortcutHandled,
             actions = actions,

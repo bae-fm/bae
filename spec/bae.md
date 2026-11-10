@@ -3199,7 +3199,7 @@ title bar on macOS and in the library's top bar on Android, never a
 bar across the content. While bytes move it is a spinner: files this device
 is sending, or offline copies downloading. While a problem the person hasn't dismissed, or a pending record, is
 listed in the Activity panel, it shows a small warning symbol, beside the
-spinner when both hold. While a
+spinner when both hold; with every problem dismissed it goes back to its usual look. While a
 queue is held (paused, or waiting for network) and nothing moves, it is a
 pause symbol, so the hold stays in reach: the popover's line for that queue
 says Paused or Waiting for network. With none of these it is absent. A pass alone doesn't spin it: an idle library runs one
@@ -3217,7 +3217,7 @@ sync's failure, with *Open sync settings*, which closes the panel and opens the
 Sync page; then each pending record in plain words, with *Open sync settings*,
 where each record offers its action. Nothing in the panel retries. A row shows
 no error: clicking it closes the panel and opens the alert with the causes
-(§9.7). Each problem has an × that takes it out of the panel, without fixing
+(§9.7); on Android a tap closes the sheet and opens a dialog with the same causes. Each problem has an × that takes it out of the panel, without fixing
 it: it still shows where it is fixed, and a problem that leaves the list and
 comes back shows again. While a library is open these problems show only
 there. A failure a pending record shows has no line of its own: a pass that
@@ -4621,7 +4621,9 @@ failures for the whole run: sign-in settings bae can't read. It shows beside
 whatever opens or fails later, so a library that opens doesn't hide it and a
 later failure doesn't replace it. On macOS, while a library is open, it shows
 in the Activity panel (§6.4) and nowhere else in the window; on the welcome it
-shows in the welcome's content. A keychain that won't open stops the launch:
+shows in the welcome's content. On Android, while a library is open it shows in the Activity sheet
+and nowhere else on its screens; on its screens without an open library it
+shows at their top. A keychain that won't open stops the launch:
 the host opens it as it starts, and listing, opening and removing libraries
 all go through it. On Apple's platforms only a wrong keychain service name,
 bae's own bug, keeps it from opening; on Linux it is the desktop's secret

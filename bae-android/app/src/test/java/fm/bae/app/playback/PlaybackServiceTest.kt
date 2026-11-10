@@ -138,7 +138,7 @@ class PlaybackServiceTest {
                 OpenLibraryStores(
                     config = ConfigStore(BridgeFixtures.config()),
                     syncStatus = SyncStatusStore(),
-                    syncActivity = SyncActivityStore({}),
+                    syncActivity = SyncActivityStore(),
                     downloads = DownloadStore(BridgeFixtures.downloadCounts(), initialUnmeteredOnly = false),
                     cast = CastStore(),
                 ),

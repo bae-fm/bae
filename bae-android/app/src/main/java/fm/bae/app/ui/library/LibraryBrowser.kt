@@ -14,8 +14,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import fm.bae.app.OpenLibrary
+import fm.bae.app.ui.ActivityProblemId
+import fm.bae.app.ui.AppProblem
 import fm.bae.app.ui.playback.NowPlayingBar
-import fm.bae.app.ui.sync.SyncActivityButton
+import fm.bae.app.ui.sync.ActivityButton
 import uniffi.bae_bridge.BridgeArtistSortCriterion
 import uniffi.bae_bridge.BridgeArtistSortField
 import uniffi.bae_bridge.BridgeComposerSortCriterion
@@ -45,6 +47,9 @@ internal class LibraryBrowserState {
     var groupAlbumsByArtist by mutableStateOf(false)
     var composerSortCriterion by mutableStateOf(DEFAULT_COMPOSER_SORT)
     var artistSortCriterion by mutableStateOf(DEFAULT_ARTIST_SORT)
+
+    /** The problems the person took out of the Activity sheet; they show again if they leave the list and return. */
+    var activityDismissed by mutableStateOf(emptySet<ActivityProblemId>())
     val gridState = LazyGridState()
     val artistListState = LazyListState()
     val composerListState = LazyListState()
@@ -59,6 +64,7 @@ internal class LibraryBrowserState {
 internal fun LibraryBrowser(
     session: OpenLibrary,
     state: LibraryBrowserState,
+    launchProblems: List<AppProblem>,
     onSelectAlbum: (String) -> Unit,
     onSelectComposer: (String) -> Unit,
     onSelectArtist: (String) -> Unit,
@@ -85,8 +91,11 @@ internal fun LibraryBrowser(
                 },
                 onSettings = onSettings,
                 syncActivity = {
-                    SyncActivityButton(
+                    ActivityButton(
                         store = session.syncActivityStore,
+                        app = launchProblems,
+                        dismissed = state.activityDismissed,
+                        onDismissProblem = { state.activityDismissed += it },
                         onOpenSettings = onSyncStatus,
                         onOpenDownloads = onDownloads,
                     )
