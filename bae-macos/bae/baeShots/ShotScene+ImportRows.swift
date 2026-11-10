@@ -6,7 +6,8 @@ import SwiftUI
 extension ShotScene {
     /// Import rows whose looks the tests leave to the gallery: a row whose
     /// import waits its turn, drawing its clock, and the arrow a row read
-    /// from a record draws, at rest and selected.
+    /// from a record draws, at rest and selected, and the sheep on the empty
+    /// Import screen across its loop.
     static let importRowScenes: [ShotScene] = [
         ShotScene(
             id: "import-row-queued",
@@ -40,6 +41,7 @@ extension ShotScene {
                 images: images
             )
         },
+        importSheepMoments,
     ]
 
     private static func row(_ row: BridgeTriageRow) -> some View {
