@@ -21,14 +21,16 @@ extension ShotScene {
         ) {
             ShotStage(
                 CastPickerPopover(
-                    receivers: [
-                        BridgeCastReceiver(
-                            id: "speaker-1",
-                            name: "Kitchen",
-                            kind: .cast,
-                            casting: false
-                        )
-                    ],
+                    receivers: BridgeCastReceiverList(
+                        casting: nil,
+                        found: [
+                            BridgeCastReceiver(
+                                id: "speaker-1",
+                                name: "Kitchen",
+                                kind: .cast
+                            )
+                        ]
+                    ),
                     endedFailure: nil,
                     connectingName: "Kitchen",
                     onDisconnect: {}
@@ -39,36 +41,35 @@ extension ShotScene {
         },
     ]
 
-    /// Three receivers with Living Room cast to, first, as core lists them.
+    /// Three receivers with Living Room cast to, as core lists them.
     static func castPickerReceivers(
         livingRoom: String = "Living Room",
         den: String = "Den receiver"
-    ) -> [BridgeCastReceiver] {
-        [
-            BridgeCastReceiver(
+    ) -> BridgeCastReceiverList {
+        BridgeCastReceiverList(
+            casting: BridgeCastReceiver(
                 id: "cast-living-room",
                 name: livingRoom,
-                kind: .cast,
-                casting: true
+                kind: .cast
             ),
-            BridgeCastReceiver(
-                id: "cast-den",
-                name: den,
-                kind: .dlna,
-                casting: false
-            ),
-            BridgeCastReceiver(
-                id: "cast-kitchen",
-                name: "Kitchen",
-                kind: .airPlay,
-                casting: false
-            ),
-        ]
+            found: [
+                BridgeCastReceiver(
+                    id: "cast-den",
+                    name: den,
+                    kind: .dlna
+                ),
+                BridgeCastReceiver(
+                    id: "cast-kitchen",
+                    name: "Kitchen",
+                    kind: .airPlay
+                ),
+            ]
+        )
     }
 
     private static func castPicker(
         _ id: String,
-        receivers: [BridgeCastReceiver]
+        receivers: BridgeCastReceiverList
     ) -> ShotScene {
         ShotScene(id: id, size: CGSize(width: 300, height: 260)) {
             ShotStage(

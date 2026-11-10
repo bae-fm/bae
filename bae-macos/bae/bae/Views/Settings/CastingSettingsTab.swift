@@ -121,7 +121,7 @@ struct CastingSettingsTab: View {
 /// spinner until the first one answers. Browsing has no end while the page is
 /// open, so an empty list is still looking.
 private struct CastReceiversSection: View {
-    let receivers: [BridgeCastReceiver]
+    let receivers: BridgeCastReceiverList
     /// The receiver a cast is connecting to, while it does.
     let connectingName: String?
     let onCast: (BridgeCastReceiver) -> Void
@@ -136,13 +136,11 @@ private struct CastReceiversSection: View {
                 WaitingIndicator("Looking for receivers…")
             }
             else {
-                ForEach(receivers, id: \.id) { receiver in
-                    CastReceiverRow(
-                        receiver: receiver,
-                        onCast: { onCast(receiver) },
-                        onDisconnect: onDisconnect
-                    )
-                }
+                CastReceiverRows(
+                    receivers: receivers,
+                    onCast: onCast,
+                    onDisconnect: onDisconnect
+                )
             }
         } header: {
             Text("Receivers on your network")

@@ -74,9 +74,9 @@ impl AppHandle {
             .collect()
     }
 
-    /// The receivers the cast picker lists, the cast-to receiver first, then
-    /// by name: the first list at once, then one after each change discovery
-    /// finds or playback moving to or off a receiver.
+    /// The receivers the cast picker lists, the cast-to receiver apart from
+    /// the rest, which are by name: the first list at once, then one after
+    /// each change discovery finds or playback moving to or off a receiver.
     pub fn subscribe_cast_receivers(
         &self,
     ) -> std::sync::Arc<crate::screens::CastReceiversSubscription> {

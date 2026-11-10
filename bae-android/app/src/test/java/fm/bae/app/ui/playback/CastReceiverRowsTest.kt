@@ -19,6 +19,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeCastReceiver
+import uniffi.bae_bridge.BridgeCastReceiverList
 import uniffi.bae_bridge.BridgeRendererKind
 
 /** One row per receiver, wherever receivers are listed: the one cast to says so and offers Disconnect, the rest cast on a tap. */
@@ -28,11 +29,13 @@ class CastReceiverRowsTest {
     @get:Rule
     val compose = createComposeRule()
 
-    private val livingRoom = BridgeCastReceiver(id = "living-room", name = "Living Room", kind = BridgeRendererKind.CAST, casting = true)
-    private val kitchen = BridgeCastReceiver(id = "kitchen", name = "Kitchen", kind = BridgeRendererKind.AIR_PLAY, casting = false)
+    private val livingRoom = BridgeCastReceiver(id = "living-room", name = "Living Room", kind = BridgeRendererKind.CAST)
+    private val kitchen = BridgeCastReceiver(id = "kitchen", name = "Kitchen", kind = BridgeRendererKind.AIR_PLAY)
+
+    private fun found(vararg receivers: BridgeCastReceiver) = BridgeCastReceiverList(casting = null, found = receivers.toList())
 
     private fun setRows(
-        receivers: List<BridgeCastReceiver>,
+        receivers: BridgeCastReceiverList,
         connectingName: String? = null,
         onCast: (BridgeCastReceiver) -> Unit = {},
     ) {
@@ -53,7 +56,7 @@ class CastReceiverRowsTest {
 
     @Test
     fun theReceiverCastToSaysCastingAndOffersDisconnect() {
-        setRows(listOf(livingRoom, kitchen))
+        setRows(BridgeCastReceiverList(casting = livingRoom, found = listOf(kitchen)))
 
         compose.onNodeWithText("Casting").assertIsDisplayed()
         compose.onAllNodesWithText("Disconnect").assertCountEquals(1)
@@ -63,7 +66,7 @@ class CastReceiverRowsTest {
     @Test
     fun tappingAnotherReceiverCastsToIt() {
         val cast = mutableListOf<String>()
-        setRows(listOf(livingRoom, kitchen)) { cast += it.id }
+        setRows(BridgeCastReceiverList(casting = livingRoom, found = listOf(kitchen))) { cast += it.id }
 
         compose.onNodeWithText("Living Room").performClick()
         assertEquals(emptyList<String>(), cast)
@@ -75,7 +78,7 @@ class CastReceiverRowsTest {
     /** Discovery runs while the places that list receivers are open, so an empty list is still looking. */
     @Test
     fun anEmptyListIsStillLookingAndReceiversAppearAsFound() {
-        var receivers by mutableStateOf(emptyList<BridgeCastReceiver>())
+        var receivers by mutableStateOf(found())
         compose.setContent {
             BaeTheme {
                 Column {
@@ -92,7 +95,7 @@ class CastReceiverRowsTest {
 
         compose.onNodeWithText("Looking for devices…").assertIsDisplayed()
 
-        receivers = listOf(kitchen)
+        receivers = found(kitchen)
         compose.waitForIdle()
 
         compose.onNodeWithText("Kitchen").assertIsDisplayed()
@@ -107,7 +110,7 @@ class CastReceiverRowsTest {
             BaeTheme {
                 Column {
                     CastReceiverRows(
-                        receivers = listOf(kitchen),
+                        receivers = found(kitchen),
                         connectingName = connecting,
                         onCast = {},
                         onDisconnect = {},

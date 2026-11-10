@@ -1,20 +1,50 @@
 import BaeKit
 import SwiftUI
 
+/// The rows of a receiver list, wherever bae lists them: the one playback is
+/// cast to first, then the rest.
+struct CastReceiverRows: View {
+    let receivers: BridgeCastReceiverList
+    let onCast: (BridgeCastReceiver) -> Void
+    let onDisconnect: () -> Void
+
+    var body: some View {
+        if let casting = receivers.casting {
+            CastReceiverRow(
+                receiver: casting,
+                role: .casting(onDisconnect: onDisconnect)
+            )
+        }
+        ForEach(receivers.found, id: \.id) { receiver in
+            CastReceiverRow(
+                receiver: receiver,
+                role: .found(onCast: { onCast(receiver) })
+            )
+        }
+    }
+}
+
 /// A receiver, wherever bae lists them: the cast picker and Settings → Casting.
 /// Its kind's glyph, its name, then its kind under it; the receiver playback is
 /// cast to says "Casting" in the accent instead and ends in Disconnect. Any
 /// other row casts to its receiver when clicked.
 struct CastReceiverRow: View {
+    /// Where the row's receiver stands in the list, and what the row offers.
+    enum Role {
+        /// Playback is cast to it; the row offers Disconnect.
+        case casting(onDisconnect: () -> Void)
+        /// Discovery found it; clicking the row casts to it.
+        case found(onCast: () -> Void)
+    }
+
     let receiver: BridgeCastReceiver
-    let onCast: () -> Void
-    let onDisconnect: () -> Void
+    let role: Role
 
     var body: some View {
-        if receiver.casting {
+        switch role {
+        case .casting:
             row
-        }
-        else {
+        case .found(let onCast):
             Button(action: onCast) {
                 row.contentShape(Rectangle())
             }
@@ -22,17 +52,26 @@ struct CastReceiverRow: View {
         }
     }
 
+    private var casting: Bool {
+        if case .casting = role {
+            true
+        }
+        else {
+            false
+        }
+    }
+
     private var row: some View {
         RowItem {
             Image(systemName: icon)
-                .foregroundStyle(receiver.casting ? Theme.accent : .secondary)
+                .foregroundStyle(casting ? Theme.accent : .secondary)
         } content: {
             VStack(alignment: .leading, spacing: ThemeSpace.hairline) {
                 Text(verbatim: receiver.name)
                     .themeText(.rowTitle)
                     .lineLimit(2)
                     .truncationMode(.tail)
-                if receiver.casting {
+                if casting {
                     Text(
                         LocalizedStringResource(
                             "cast.receiver.casting",
@@ -51,7 +90,7 @@ struct CastReceiverRow: View {
                 }
             }
         } trail: {
-            if receiver.casting {
+            if case .casting(let onDisconnect) = role {
                 Button("Disconnect", action: onDisconnect)
                     .buttonStyle(.borderless)
                     .controlSize(.small)

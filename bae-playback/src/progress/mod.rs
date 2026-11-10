@@ -1,5 +1,6 @@
 pub mod handle;
 pub mod timeline;
+use crate::renderer::CastReceiver;
 use crate::service::PlaybackState;
 use crate::timeline::{StreamPosition, TrackTimeline};
 pub use handle::{PlaybackPositionsWatch, PlaybackProgressFeed, PlaybackProgressHandle};
@@ -101,16 +102,6 @@ pub struct PlaybackPositions {
     pub preview: Option<PreviewPosition>,
 }
 
-/// A remote renderer playback moved to: its stable id, its name, which the
-/// UI shows, and its kind, so the picker can list it before discovery finds
-/// it again. Names need not be unique across devices.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct RemoteDevice {
-    pub id: String,
-    pub name: String,
-    pub kind: crate::renderer::RendererKind,
-}
-
 /// Where playback is going, for the cast surfaces: the speaker button's state,
 /// the picker's active device, and why the last device stopped playing.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -118,12 +109,12 @@ pub enum RemotePlayback {
     /// This device's own output.
     Local,
     /// A remote renderer (Cast, DLNA or AirPlay).
-    On(RemoteDevice),
+    On(CastReceiver),
     /// Back on this device's own output because the link to `device` was lost:
     /// the receiver stopped its app, went unreachable, or the network dropped.
     /// `detail` is why, untranslated. Held until playback moves to a device
     /// again, so the picker can say what happened to the last one.
-    Ended { device: RemoteDevice, detail: String },
+    Ended { device: CastReceiver, detail: String },
 }
 
 impl PlaybackValues {

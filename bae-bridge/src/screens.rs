@@ -275,14 +275,12 @@ pulled_read! {
 
 #[cfg(feature = "cast")]
 pulled_read! {
-    /// The receivers the cast picker lists, the cast-to receiver first, then
-    /// by name.
+    /// The receivers the cast picker lists, the cast-to receiver apart from
+    /// the rest, which are by name.
     CastReceiversSubscription:
-        LiveValues<Vec<bae_playback::renderer::CastReceiver>>
-            => Vec<crate::types::BridgeCastReceiver>,
-    converted by |receivers: Vec<bae_playback::renderer::CastReceiver>| {
-        receivers.into_iter().map(crate::types::BridgeCastReceiver::from_core).collect::<Vec<_>>()
-    },
+        LiveValues<bae_playback::renderer::CastReceiverList>
+            => crate::types::BridgeCastReceiverList,
+    converted by crate::types::BridgeCastReceiverList::from_core,
     built by cast_receivers
 }
 

@@ -22,12 +22,27 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import fm.bae.app.R
+import fm.bae.app.data.isEmpty
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.components.cardRowDivider
 import uniffi.bae_bridge.BridgeCastReceiver
+import uniffi.bae_bridge.BridgeCastReceiverList
 import uniffi.bae_bridge.BridgeRendererKind
+
+/** Where a row's receiver stands in the list, and what the row offers. */
+internal sealed interface CastReceiverRole {
+    /** Playback is cast to it; the row offers Disconnect. */
+    data class Casting(
+        val onDisconnect: () -> Unit,
+    ) : CastReceiverRole
+
+    /** Discovery found it; tapping the row casts to it. */
+    data class Found(
+        val onCast: () -> Unit,
+    ) : CastReceiverRole
+}
 
 /**
  * A receiver as the cast picker and the Casting page list it: its kind's icon, its name over its kind, or over
@@ -36,23 +51,27 @@ import uniffi.bae_bridge.BridgeRendererKind
 @Composable
 internal fun CastReceiverRow(
     receiver: BridgeCastReceiver,
-    onCast: () -> Unit,
-    onDisconnect: () -> Unit,
+    role: CastReceiverRole,
 ) {
+    val casting = role is CastReceiverRole.Casting
     Row(
         modifier =
             Modifier
                 .cardRowDivider()
                 .fillMaxWidth()
-                .then(if (receiver.casting) Modifier else Modifier.clickable(onClick = onCast))
-                .padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.group),
+                .then(
+                    when (role) {
+                        is CastReceiverRole.Casting -> Modifier
+                        is CastReceiverRole.Found -> Modifier.clickable(onClick = role.onCast)
+                    },
+                ).padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.group),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
             imageVector = deviceIcon(receiver.kind),
             contentDescription = null,
             tint =
-                if (receiver.casting) {
+                if (casting) {
                     MaterialTheme.colorScheme.primary
                 } else {
                     MaterialTheme.colorScheme.onSurfaceVariant
@@ -66,7 +85,7 @@ internal fun CastReceiverRow(
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
-            if (receiver.casting) {
+            if (casting) {
                 Text(
                     text = stringResource(R.string.cast_receiver_casting),
                     style = ThemeText.body.style,
@@ -80,8 +99,8 @@ internal fun CastReceiverRow(
                 )
             }
         }
-        if (receiver.casting) {
-            TextButton(onClick = onDisconnect) {
+        if (role is CastReceiverRole.Casting) {
+            TextButton(onClick = role.onDisconnect) {
                 Text(stringResource(R.string.cast_disconnect))
             }
         }
@@ -90,11 +109,12 @@ internal fun CastReceiverRow(
 
 /**
  * What the cast picker and the Casting page list: the receiver a cast is connecting to, while one is,
- * then each receiver once, or [looking] while none has answered. Browsing has no end while either is open.
+ * then each receiver once, the one cast to first, or [looking] while none has answered. Browsing has no
+ * end while either is open.
  */
 @Composable
 internal fun CastReceiverRows(
-    receivers: List<BridgeCastReceiver>,
+    receivers: BridgeCastReceiverList,
     connectingName: String?,
     onCast: (BridgeCastReceiver) -> Unit,
     onDisconnect: () -> Unit,
@@ -103,11 +123,14 @@ internal fun CastReceiverRows(
     if (connectingName != null) {
         WaitingRow(text = stringResource(R.string.cast_connecting, connectingName))
     }
-    if (receivers.isEmpty()) {
+    if (receivers.isEmpty) {
         WaitingRow(text = looking)
     } else {
-        receivers.forEach { receiver ->
-            CastReceiverRow(receiver = receiver, onCast = { onCast(receiver) }, onDisconnect = onDisconnect)
+        receivers.casting?.let { casting ->
+            CastReceiverRow(receiver = casting, role = CastReceiverRole.Casting(onDisconnect))
+        }
+        receivers.found.forEach { receiver ->
+            CastReceiverRow(receiver = receiver, role = CastReceiverRole.Found { onCast(receiver) })
         }
     }
 }

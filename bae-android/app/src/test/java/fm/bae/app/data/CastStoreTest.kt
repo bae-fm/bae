@@ -11,7 +11,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
-import uniffi.bae_bridge.BridgeRemoteDevice
+import uniffi.bae_bridge.BridgeCastReceiver
+import uniffi.bae_bridge.BridgeCastReceiverList
 import uniffi.bae_bridge.BridgeRemotePlayback
 import uniffi.bae_bridge.BridgeRendererKind
 
@@ -23,7 +24,7 @@ import uniffi.bae_bridge.BridgeRendererKind
 @RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
 class CastStoreTest {
-    private val device = BridgeRemoteDevice(id = "cast-2", name = "Speaker Name", kind = BridgeRendererKind.CAST)
+    private val device = BridgeCastReceiver(id = "cast-2", name = "Speaker Name", kind = BridgeRendererKind.CAST)
 
     @Test
     fun statusCarriesTheCastingDevice() {
@@ -67,17 +68,26 @@ class CastStoreTest {
     @Test
     fun receiversSurfaceTheLatestList() {
         val store = CastStore()
-        assertTrue(store.receivers.value.isEmpty())
+        assertTrue(store.receivers.value.isEmpty)
 
         store.setReceivers(
-            listOf(
-                BridgeFixtures.castReceiver(id = "cast-1", name = "Kitchen"),
-                BridgeFixtures.castReceiver(id = "cast-2", name = "Study"),
+            BridgeCastReceiverList(
+                casting = device,
+                found =
+                    listOf(
+                        BridgeFixtures.castReceiver(id = "cast-1", name = "Kitchen"),
+                        BridgeFixtures.castReceiver(id = "cast-3", name = "Study"),
+                    ),
             ),
         )
-        assertEquals(listOf("Kitchen", "Study"), store.receivers.value.map { it.name })
+        assertEquals(device, store.receivers.value.casting)
+        assertEquals(
+            listOf("Kitchen", "Study"),
+            store.receivers.value.found
+                .map { it.name },
+        )
 
-        store.setReceivers(emptyList())
-        assertTrue(store.receivers.value.isEmpty())
+        store.setReceivers(BridgeCastReceiverList(casting = null, found = emptyList()))
+        assertTrue(store.receivers.value.isEmpty)
     }
 }

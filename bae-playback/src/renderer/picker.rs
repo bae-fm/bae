@@ -12,42 +12,20 @@ pub(crate) const SCHEMA: bae_store::SchemaPart =
 use bae_store::DbError;
 use bae_store::Store;
 use coven::SqlReadContext;
-use rusqlite::{params, Row};
+use rusqlite::{params, OptionalExtension, Row};
 
-/// Which flavor of remote renderer a device is. Shown as a tag; the picker
-/// does not segregate the list by it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum RendererKind {
-    Cast,
-    Dlna,
-    /// An AirPlay receiver (RAOP or AirPlay 2). Unlike Cast/DLNA it does not
-    /// fetch a URL — bae pushes decoded audio to it — but it shares the one
-    /// device list.
-    AirPlay,
-}
+use super::receiver::{CastReceiver, RendererKind};
+use crate::tables::remote_receiver_from_row;
 
-/// One receiver discovery found, as it lists it.
+/// What the picker and the Casting page list: the receiver playback is cast
+/// to, listed while a new search hasn't found it again, and every other
+/// receiver discovery found.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct CastDevice {
-    /// The id casting to it is asked by.
-    pub id: String,
-    /// The name the picker shows.
-    pub name: String,
-    pub kind: RendererKind,
-}
-
-/// A receiver as the picker and the Casting page list it: what discovery
-/// found, and the one playback is cast to, which comes first and is listed
-/// while a new search hasn't found it again.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct CastReceiver {
-    /// The id casting to it is asked by.
-    pub id: String,
-    /// The name the picker shows.
-    pub name: String,
-    pub kind: RendererKind,
-    /// Whether playback is cast to it.
-    pub casting: bool,
+pub struct CastReceiverList {
+    /// The receiver playback is cast to; `None` while it plays elsewhere.
+    pub casting: Option<CastReceiver>,
+    /// The other receivers discovery found, by name, then id.
+    pub found: Vec<CastReceiver>,
 }
 
 /// `kind` as a `kind` column holds it.
@@ -76,27 +54,31 @@ pub(crate) fn kind_from_column<I: rusqlite::RowIndex + Copy>(
     }
 }
 
-/// The picker's list, in its order: the receiver playback is cast to, then
-/// every other receiver discovery found, by name, then id.
-fn cast_receivers_on(sql: &SqlReadContext<'_>) -> Result<Vec<CastReceiver>, DbError> {
-    Ok(sql.query(
-        "SELECT remote_device_id AS id, remote_device_name AS name, \
-                remote_device_kind AS kind, 1 AS casting \
-           FROM playback_now WHERE remote = 'on' \
-         UNION ALL \
-         SELECT id, name, kind, 0 FROM cast_device \
+/// The picker's list: the receiver playback is cast to, then every other
+/// receiver discovery found.
+fn cast_receivers_on(sql: &SqlReadContext<'_>) -> Result<CastReceiverList, DbError> {
+    let casting = sql
+        .query_row(
+            "SELECT remote_device_id, remote_device_name, remote_device_kind \
+               FROM playback_now WHERE remote = 'on'",
+            [],
+            remote_receiver_from_row,
+        )
+        .optional()?;
+    let found = sql.query(
+        "SELECT id, name, kind FROM cast_device \
            WHERE id NOT IN (SELECT remote_device_id FROM playback_now WHERE remote = 'on') \
-         ORDER BY casting DESC, name, id",
+         ORDER BY name, id",
         [],
         |row| {
             Ok(CastReceiver {
                 id: row.get("id")?,
                 name: row.get("name")?,
                 kind: kind_from_column(row, "kind")?,
-                casting: row.get("casting")?,
             })
         },
-    )?)
+    )?;
+    Ok(CastReceiverList { casting, found })
 }
 
 /// The picker's list in the library's store: the receivers discovery last
@@ -112,15 +94,15 @@ impl CastPicker {
         Self { store }
     }
 
-    /// List `devices` in place of every receiver listed, in one write.
-    pub async fn show(&self, devices: Vec<CastDevice>) -> Result<(), DbError> {
+    /// List `receivers` in place of every receiver listed, in one write.
+    pub async fn show(&self, receivers: Vec<CastReceiver>) -> Result<(), DbError> {
         self.store
             .call(move |sql| {
                 sql.execute("DELETE FROM cast_device", [])?;
-                for device in &devices {
+                for receiver in &receivers {
                     sql.execute(
                         "INSERT INTO cast_device (id, name, kind) VALUES (?1, ?2, ?3)",
-                        params![device.id, device.name, kind_column(device.kind)],
+                        params![receiver.id, receiver.name, kind_column(receiver.kind)],
                     )?;
                 }
                 Ok(())
@@ -129,8 +111,8 @@ impl CastPicker {
     }
 
     /// Follow the receivers the picker lists, the one playback is cast to
-    /// first.
-    pub fn subscribe(&self) -> coven::LiveQuery<Vec<CastReceiver>, bae_store::DbError> {
+    /// apart from the rest.
+    pub fn subscribe(&self) -> coven::LiveQuery<CastReceiverList, bae_store::DbError> {
         self.store.subscribe(|sql| cast_receivers_on(&sql))
     }
 
@@ -147,7 +129,7 @@ impl CastPicker {
 
     /// The receivers the picker lists now.
     #[cfg(test)]
-    async fn receivers(&self) -> Result<Vec<CastReceiver>, DbError> {
+    async fn receivers(&self) -> Result<CastReceiverList, DbError> {
         self.store.read(|sql| cast_receivers_on(&sql)).await
     }
 }

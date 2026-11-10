@@ -19,7 +19,7 @@ import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeArtistSortCriterion
 import uniffi.bae_bridge.BridgeBrowsingFor
-import uniffi.bae_bridge.BridgeCastReceiver
+import uniffi.bae_bridge.BridgeCastReceiverList
 import uniffi.bae_bridge.BridgeCastTranscodeFormat
 import uniffi.bae_bridge.BridgeComposerDetail
 import uniffi.bae_bridge.BridgeComposerDetailRow
@@ -809,9 +809,9 @@ internal class FakeKeyedValueStream : KeyedValueStream(NoHandle) {
 
 /** A cast receiver list nothing delivers: each pull waits until cancelled. */
 internal class FakeCastReceiversSubscription : CastReceiversSubscription(NoHandle) {
-    private val receivers = Channel<List<BridgeCastReceiver>>(Channel.UNLIMITED)
+    private val receivers = Channel<BridgeCastReceiverList>(Channel.UNLIMITED)
 
-    override suspend fun next(): List<BridgeCastReceiver> = receivers.receive()
+    override suspend fun next(): BridgeCastReceiverList = receivers.receive()
 
     override suspend fun cancel() {
         receivers.close(BridgeException.Cancelled())

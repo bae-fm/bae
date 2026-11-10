@@ -11,11 +11,12 @@ use super::queue::repeat_from_row;
 use super::track_display::track_display_on;
 use super::*;
 use crate::renderer::picker::{kind_column, kind_from_column};
+use crate::renderer::CastReceiver;
 use crate::{AudioOutputProblem, PlaybackDiagnostic, PlaybackErrorReason};
 use crate::{
     LoadingTrack, NowPlayingTrack, NowPlayingValues, PlaybackChange, PlaybackFailure,
     PlaybackPauseBoundary, PlaybackPauseReason, PlaybackSideCountdown, PlaybackSidePausePrompt,
-    PlaybackState, PlaybackValues, PlayingTrack, PreviewState, RemoteDevice, RemotePlayback,
+    PlaybackState, PlaybackValues, PlayingTrack, PreviewState, RemotePlayback,
 };
 
 /// The `playback_now` row, as playback writes it.
@@ -377,16 +378,22 @@ fn state_from_row(row: &Row<'_>) -> rusqlite::Result<PlaybackState> {
     })
 }
 
+/// The receiver a row playback is on, or lost the link to, names in its
+/// `remote_device_*` columns.
+pub(crate) fn remote_receiver_from_row(row: &Row<'_>) -> rusqlite::Result<CastReceiver> {
+    Ok(CastReceiver {
+        id: row.get("remote_device_id")?,
+        name: row.get("remote_device_name")?,
+        kind: kind_from_column(row, "remote_device_kind")?,
+    })
+}
+
 fn remote_from_row(row: &Row<'_>) -> rusqlite::Result<RemotePlayback> {
     let remote: String = row.get("remote")?;
     if remote == "local" {
         return Ok(RemotePlayback::Local);
     }
-    let device = RemoteDevice {
-        id: row.get("remote_device_id")?,
-        name: row.get("remote_device_name")?,
-        kind: kind_from_column(row, "remote_device_kind")?,
-    };
+    let device = remote_receiver_from_row(row)?;
     Ok(match remote.as_str() {
         "on" => RemotePlayback::On(device),
         "ended" => RemotePlayback::Ended { device, detail: row.get("remote_end_detail")? },

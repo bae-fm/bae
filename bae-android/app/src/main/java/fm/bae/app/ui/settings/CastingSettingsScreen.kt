@@ -43,6 +43,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.BridgeBrowsingFor
 import uniffi.bae_bridge.BridgeCastReceiver
+import uniffi.bae_bridge.BridgeCastReceiverList
 import uniffi.bae_bridge.BridgeCastTranscodeFormat
 
 /** What flipping the casting toggle should do. */
@@ -138,7 +139,7 @@ internal fun CastingSettingsScreen(
 @Composable
 internal fun CastingPage(
     enabled: Boolean,
-    receivers: List<BridgeCastReceiver>,
+    receivers: BridgeCastReceiverList,
     connectingName: String?,
     transcodeFormat: BridgeCastTranscodeFormat,
     onBack: () -> Unit,

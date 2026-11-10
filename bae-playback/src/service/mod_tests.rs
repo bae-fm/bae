@@ -655,8 +655,8 @@ pub(super) fn test_stream_provider() -> crate::renderer::MediaUrlProvider {
     Arc::new(|track_id: &str, _format| Ok(format!("http://renderer.local/stream?id={track_id}")))
 }
 
-pub(super) fn test_device() -> crate::RemoteDevice {
-    crate::RemoteDevice {
+pub(super) fn test_device() -> crate::renderer::CastReceiver {
+    crate::renderer::CastReceiver {
         id: "renderer-device-id".to_string(),
         name: "Speaker Name".to_string(),
         kind: crate::renderer::RendererKind::Cast,

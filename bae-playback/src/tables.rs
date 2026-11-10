@@ -18,6 +18,7 @@ mod track_display;
 
 #[cfg(any(test, feature = "test-utils"))]
 pub use now::now_playing;
+pub(crate) use now::remote_receiver_from_row;
 pub use now::subscribe_now_playing;
 pub(super) use now::SCHEMA as NOW_SCHEMA;
 pub use now::{playback_level, PlaybackNowRow};

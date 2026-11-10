@@ -197,20 +197,29 @@ pub struct BridgeSubsonicConfig {
     pub bind_address: String,
 }
 
-/// A receiver as the cast picker and the Casting page list it: the one
-/// playback is cast to first, then what discovery found, by name. One list,
-/// tagged by `kind`; the picker doesn't segregate by protocol. Mirrors
-/// `bae_playback::renderer::CastReceiver`.
-#[derive(Debug, Clone, uniffi::Record)]
+/// A receiver playback can be cast to, wherever bae names one: in the
+/// picker's list, as the one playback is on, and as the one whose link was
+/// lost. Mirrors `bae_playback::renderer::CastReceiver`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeCastReceiver {
     /// Opaque id passed back to `cast_to`.
     pub id: String,
-    /// Display name shown in the picker.
+    /// Display name shown in the picker and the cast surfaces.
     pub name: String,
     /// Which protocol the receiver speaks, so the row can carry a flavor hint.
     pub kind: BridgeRendererKind,
-    /// Whether playback is cast to it.
-    pub casting: bool,
+}
+
+/// What the cast picker and the Casting page list: the receiver playback is
+/// cast to, then the rest discovery found, by name. One list, tagged by
+/// `kind`; the picker doesn't segregate by protocol. Mirrors
+/// `bae_playback::renderer::CastReceiverList`.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeCastReceiverList {
+    /// The receiver playback is cast to; `None` while it plays elsewhere.
+    pub casting: Option<BridgeCastReceiver>,
+    /// The other receivers discovery found, by name.
+    pub found: Vec<BridgeCastReceiver>,
 }
 
 /// The protocol flavor of a receiver.
@@ -228,10 +237,16 @@ mirror_enum! {
 }
 
 mirror_struct! {
-    #[cfg(feature = "cast")]
     BridgeCastReceiver = bae_playback::renderer::CastReceiver,
     from_core: pub(crate) fn,
-    fields: { id, name, kind: (BridgeRendererKind), casting },
+    fields: { id, name, kind: (BridgeRendererKind) },
+}
+
+mirror_struct! {
+    #[cfg(feature = "cast")]
+    BridgeCastReceiverList = bae_playback::renderer::CastReceiverList,
+    from_core: pub(crate) fn,
+    fields: { casting: (opt BridgeCastReceiver), found: (each BridgeCastReceiver) },
 }
 
 /// A place that lists the receivers bae finds, and so asks it to browse.

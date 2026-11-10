@@ -4,9 +4,7 @@ use bae_playback::renderer::{
     ReceiverStatus, RendererChannel, RendererError, RendererFlavor, RendererMedia,
     RendererMediaSource, RendererPlayerState,
 };
-use bae_playback::{
-    AudioError, AudioOutput, AudioOutputDevice, PlaybackClock, PlaybackSleep, RemoteDevice,
-};
+use bae_playback::{AudioError, AudioOutput, AudioOutputDevice, PlaybackClock, PlaybackSleep};
 
 use crate::test_playback_behavior::fixtures::*;
 use crate::test_playback_behavior::support::*;
@@ -254,7 +252,7 @@ async fn a_service_that_ends_while_casting_tells_the_receiver_to_stop() {
             let finished = Arc::new(AtomicBool::new(false));
             fixture.playback_handle.play_on(
                 Box::new(FakeReceiver { stops: stops.clone(), finished: finished.clone() }),
-                RemoteDevice {
+                bae_playback::renderer::CastReceiver {
                     id: "receiver".to_string(),
                     name: "Receiver".to_string(),
                     kind: bae_playback::renderer::RendererKind::Cast,

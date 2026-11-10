@@ -18,6 +18,7 @@ pub mod channel;
 pub mod format;
 pub mod media_source;
 pub mod picker;
+pub mod receiver;
 pub mod session;
 
 pub use channel::{
@@ -25,7 +26,8 @@ pub use channel::{
 };
 pub use format::{RendererFlavor, RendererStreamFormat, TRANSCODE_BITRATE_KBPS};
 pub use media_source::{CoverUrlProvider, MediaUrlProvider, RendererMediaSource, ServedTrack};
-pub use picker::{CastDevice, CastPicker, CastReceiver, RendererKind};
+pub use picker::{CastPicker, CastReceiverList};
+pub use receiver::{CastReceiver, RendererKind};
 pub use session::{EventCallback, RendererSession, RendererSessionEvent};
 
 #[cfg(test)]

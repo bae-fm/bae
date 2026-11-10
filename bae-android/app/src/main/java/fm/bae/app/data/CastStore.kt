@@ -7,21 +7,21 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import uniffi.bae_bridge.BridgeCastReceiver
-import uniffi.bae_bridge.BridgeRemoteDevice
+import uniffi.bae_bridge.BridgeCastReceiverList
 import uniffi.bae_bridge.BridgeRemotePlayback
 
 /**
  * Cast state for the playback surfaces: where playback is going (this device,
  * a renderer, or back here after a renderer's link was lost), and the
- * receivers the picker lists, the one cast to first and marked. Both follow
+ * receivers the picker lists, the one cast to apart from the rest. Both follow
  * retained value subscriptions.
  */
 class CastStore {
     private val _status = MutableStateFlow<BridgeRemotePlayback>(BridgeRemotePlayback.Local)
     val status: StateFlow<BridgeRemotePlayback> = _status.asStateFlow()
 
-    private val _receivers = MutableStateFlow<List<BridgeCastReceiver>>(emptyList())
-    val receivers: StateFlow<List<BridgeCastReceiver>> = _receivers.asStateFlow()
+    private val _receivers = MutableStateFlow(BridgeCastReceiverList(casting = null, found = emptyList()))
+    val receivers: StateFlow<BridgeCastReceiverList> = _receivers.asStateFlow()
 
     /**
      * Apply the retained status, which every playback value repeats. Returns
@@ -34,13 +34,17 @@ class CastStore {
         return (remote as? BridgeRemotePlayback.Ended)?.takeIf { it != previous }
     }
 
-    fun setReceivers(receivers: List<BridgeCastReceiver>) {
+    fun setReceivers(receivers: BridgeCastReceiverList) {
         _receivers.value = receivers
     }
 }
 
+/** Whether the list holds no receiver: none cast to, and none found. */
+val BridgeCastReceiverList.isEmpty: Boolean
+    get() = casting == null && found.isEmpty()
+
 /** The device playback is on, else null. */
-fun castingDevice(status: BridgeRemotePlayback): BridgeRemoteDevice? =
+fun castingDevice(status: BridgeRemotePlayback): BridgeCastReceiver? =
     when (status) {
         is BridgeRemotePlayback.On -> status.device
         BridgeRemotePlayback.Local, is BridgeRemotePlayback.Ended -> null

@@ -8,7 +8,7 @@ use crate::{AudioOutputProblem, PlaybackErrorReason};
 use crate::{
     LoadingTrack, PlaybackChange, PlaybackPauseBoundary, PlaybackPauseReason,
     PlaybackSideCountdown, PlaybackSidePausePrompt, PlaybackState, PlayingTrack, PreviewState,
-    RemoteDevice, RemotePlayback,
+    RemotePlayback,
 };
 use bae_track_audio::PreviewTarget;
 
@@ -52,7 +52,7 @@ async fn each_change_reads_back_as_written() {
 
     // Each kind reads back as the one written.
     let device =
-        |kind| RemoteDevice { id: "speaker-1".to_string(), name: "Kitchen".to_string(), kind };
+        |kind| CastReceiver { id: "speaker-1".to_string(), name: "Kitchen".to_string(), kind };
     for remote in [
         RemotePlayback::On(device(RendererKind::Cast)),
         RemotePlayback::On(device(RendererKind::Dlna)),

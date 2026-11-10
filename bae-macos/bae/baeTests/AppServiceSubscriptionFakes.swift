@@ -17,7 +17,7 @@ final class NoCastReceivers: CastReceiversSubscription, @unchecked Sendable {
         super.init(unsafeFromHandle: handle)
     }
 
-    override func next() async throws -> [BridgeCastReceiver] {
+    override func next() async throws -> BridgeCastReceiverList {
         throw BridgeError.Cancelled
     }
 

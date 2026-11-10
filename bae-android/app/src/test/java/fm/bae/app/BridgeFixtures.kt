@@ -236,7 +236,7 @@ object BridgeFixtures {
         id: String = "cast-1",
         name: String = "Kitchen",
         kind: BridgeRendererKind = BridgeRendererKind.CAST,
-    ): BridgeCastReceiver = BridgeCastReceiver(id = id, name = name, kind = kind, casting = false)
+    ): BridgeCastReceiver = BridgeCastReceiver(id = id, name = name, kind = kind)
 
     fun library(
         id: String,

@@ -19,10 +19,10 @@ use std::time::Duration;
 
 use super::*;
 use crate::renderer::{
-    ReceiverStatus, RendererMedia, RendererMediaSource, RendererPlayerState, RendererSession,
-    RendererSessionEvent,
+    CastReceiver, ReceiverStatus, RendererMedia, RendererMediaSource, RendererPlayerState,
+    RendererSession, RendererSessionEvent,
 };
-use crate::{RemoteDevice, RemotePlayback};
+use crate::RemotePlayback;
 
 /// Where the current track plays. `Local` is the default; `Remote` holds the live
 /// session for a fetch-a-URL device (Cast/DLNA); `AirPlay` keeps decoding locally
@@ -126,7 +126,7 @@ pub(super) enum RemoteEnd {
 
 impl RemoteEnd {
     /// Where playback is going once remote playback on `device` ends this way.
-    fn remote_playback(self, device: RemoteDevice) -> RemotePlayback {
+    fn remote_playback(self, device: CastReceiver) -> RemotePlayback {
         match self {
             Self::Stopped => RemotePlayback::Local,
             Self::Lost(detail) => RemotePlayback::Ended { device, detail },
@@ -139,7 +139,7 @@ impl RemoteEnd {
 /// session the service drives pause/resume/seek through and reads the receiver
 /// latency from, and the local output to restore when AirPlay ends.
 pub(super) struct AirPlayRenderer {
-    device: RemoteDevice,
+    device: CastReceiver,
     control: Arc<crate::airplay_output::AirPlayControl>,
     /// The local (cpal/aaudio) output, put back when AirPlay playback ends.
     saved_output: crate::audio_output::PlayerOutput,
@@ -147,7 +147,7 @@ pub(super) struct AirPlayRenderer {
 
 impl AirPlayRenderer {
     pub(super) fn new(
-        device: RemoteDevice,
+        device: CastReceiver,
         control: Arc<crate::airplay_output::AirPlayControl>,
         saved_output: crate::audio_output::PlayerOutput,
     ) -> Self {
@@ -161,7 +161,7 @@ impl AirPlayRenderer {
         self,
         audio_output: &mut crate::audio_output::PlayerOutput,
         volume: OutputVolume,
-    ) -> RemoteDevice {
+    ) -> CastReceiver {
         *audio_output = self.saved_output;
         volume.apply_to(audio_output);
         self.device
@@ -174,13 +174,13 @@ impl AirPlayRenderer {
 /// `PlaybackCommand`'s derive working.
 pub(crate) struct AirPlayConnect {
     sink: Box<dyn crate::airplay_output::AirPlaySink>,
-    device: RemoteDevice,
+    device: CastReceiver,
 }
 
 impl AirPlayConnect {
     pub(super) fn new(
         sink: Box<dyn crate::airplay_output::AirPlaySink>,
-        device: RemoteDevice,
+        device: CastReceiver,
     ) -> Self {
         Self { sink, device }
     }
@@ -198,7 +198,7 @@ impl std::fmt::Debug for AirPlayConnect {
 /// the current track in the slot, which every status, seek and load updates;
 /// local playback resumes there when remote playback ends.
 pub(super) struct RemoteRenderer {
-    device: RemoteDevice,
+    device: CastReceiver,
     session: RendererSession,
     media_source: RendererMediaSource,
 }
@@ -245,14 +245,14 @@ impl RemoteRenderer {
 /// `PlaybackCommand`'s derive working without the un-`Debug` channel/closures.
 pub(crate) struct RemoteConnect {
     channel: Box<dyn crate::renderer::RendererChannel>,
-    device: RemoteDevice,
+    device: CastReceiver,
     media_source: RendererMediaSource,
 }
 
 impl RemoteConnect {
     pub(super) fn new(
         channel: Box<dyn crate::renderer::RendererChannel>,
-        device: RemoteDevice,
+        device: CastReceiver,
         media_source: RendererMediaSource,
     ) -> Self {
         Self { channel, device, media_source }
@@ -334,7 +334,7 @@ impl PlaybackService {
     /// stream had reached. Nothing playing leaves the device armed but idle.
     async fn hand_over_to_device(
         &mut self,
-        device: RemoteDevice,
+        device: CastReceiver,
         current: Option<(String, StreamPosition)>,
         target: PlayTarget,
     ) {

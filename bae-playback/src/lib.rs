@@ -82,8 +82,8 @@ pub use now_playing::{
 pub use progress::{
     MediaControlPlayback, PlaybackChange, PlaybackPosition, PlaybackPositions,
     PlaybackPositionsWatch, PlaybackProgress, PlaybackProgressFeed, PlaybackTimeline,
-    PlaybackValues, PreviewPosition, PreviewState, PreviewTimelinePoint, RemoteDevice,
-    RemotePlayback, TimelinePoint,
+    PlaybackValues, PreviewPosition, PreviewState, PreviewTimelinePoint, RemotePlayback,
+    TimelinePoint,
 };
 pub use queue::{NextEntry, PlaybackQueue, PreviousAction, QueueEntry, QueueEntryId};
 pub use queue_values::{QueueAddition, QueueItem, ResolvedContext, ResolvedQueueSnapshot};

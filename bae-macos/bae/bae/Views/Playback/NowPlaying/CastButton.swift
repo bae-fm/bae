@@ -80,7 +80,7 @@ struct CastButton: View {
 /// receiver a cast is connecting to, then each receiver once, the one cast to
 /// first with Disconnect.
 struct CastPickerPopover: View {
-    let receivers: [BridgeCastReceiver]
+    let receivers: BridgeCastReceiverList
     let endedFailure: DisplayError?
     /// The receiver a cast is connecting to, while it does.
     let connectingName: String?
@@ -114,13 +114,11 @@ struct CastPickerPopover: View {
                     .padding(.horizontal, ThemeSpace.inline)
             }
             else {
-                ForEach(receivers, id: \.id) { receiver in
-                    CastReceiverRow(
-                        receiver: receiver,
-                        onCast: { asked = start.cast(to: receiver) },
-                        onDisconnect: onDisconnect
-                    )
-                }
+                CastReceiverRows(
+                    receivers: receivers,
+                    onCast: { receiver in asked = start.cast(to: receiver) },
+                    onDisconnect: onDisconnect
+                )
             }
         }
         .padding(ThemeSpace.group)

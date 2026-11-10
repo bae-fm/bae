@@ -487,7 +487,7 @@ impl PlaybackHandle {
     pub fn play_on(
         &self,
         channel: Box<dyn crate::renderer::RendererChannel>,
-        device: crate::RemoteDevice,
+        device: crate::renderer::CastReceiver,
         media_source: crate::renderer::RendererMediaSource,
     ) {
         self.dispatch(PlaybackCommand::PlayOn(Box::new(RemoteConnect::new(
@@ -501,7 +501,7 @@ impl PlaybackHandle {
     pub fn play_on_airplay(
         &self,
         sink: Box<dyn crate::airplay_output::AirPlaySink>,
-        device: crate::RemoteDevice,
+        device: crate::renderer::CastReceiver,
     ) {
         self.dispatch(PlaybackCommand::PlayOnAirPlay(Box::new(renderer::AirPlayConnect::new(
             sink, device,

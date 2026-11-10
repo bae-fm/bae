@@ -18,7 +18,7 @@
             let store = CastStore()
             store.applyStatus(
                 .on(
-                    device: BridgeRemoteDevice(
+                    device: BridgeCastReceiver(
                         id: "cast-living-room",
                         name: "Living Room Speaker",
                         kind: .cast

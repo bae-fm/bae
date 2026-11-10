@@ -50,21 +50,21 @@ impl AppServices {
         manager.values_until_closed(manager.subscribe_playback_timeline())
     }
 
-    /// The receivers the cast picker lists, the cast-to receiver first, then
-    /// by name: the first list at once, then one after each write that
+    /// The receivers the cast picker lists, the cast-to receiver apart from
+    /// the rest: the first list at once, then one after each write that
     /// changes it.
     pub fn subscribe_cast_receivers(
         &self,
-    ) -> bae_store::live_query::LiveValues<Vec<bae_playback::renderer::CastReceiver>> {
+    ) -> bae_store::live_query::LiveValues<bae_playback::renderer::CastReceiverList> {
         self.inner.manager.values_until_closed(self.inner.cast_picker.subscribe())
     }
 
-    /// List `devices` as the cast picker's receivers in place of the last
+    /// List `receivers` as the cast picker's receivers in place of the last
     /// list, in one write.
-    pub async fn show_cast_devices(
+    pub async fn show_cast_receivers(
         &self,
-        devices: Vec<bae_playback::renderer::CastDevice>,
+        receivers: Vec<bae_playback::renderer::CastReceiver>,
     ) -> Result<(), bae_store::DbError> {
-        self.inner.cast_picker.show(devices).await
+        self.inner.cast_picker.show(receivers).await
     }
 }

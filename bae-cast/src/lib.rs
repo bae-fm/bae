@@ -426,8 +426,9 @@ impl CastController {
                     });
                     match merged {
                         Ok(merged) => {
-                            let listed = merged.iter().map(RendererDevice::listed).collect();
-                            if let Err(error) = controller.services.show_cast_devices(listed).await
+                            let listed = merged.iter().map(RendererDevice::receiver).collect();
+                            if let Err(error) =
+                                controller.services.show_cast_receivers(listed).await
                             {
                                 controller
                                     .diagnostics
@@ -698,7 +699,7 @@ impl CastController {
             let sink =
                 build_airplay_sink(&self.ids, &self.diagnostics, *addr, *port, capabilities)?;
             return self.hand_over(number, || {
-                self.services.playback_play_on_airplay(sink, device.remote());
+                self.services.playback_play_on_airplay(sink, device.receiver());
             });
         }
 
@@ -756,7 +757,7 @@ impl CastController {
         self.hand_over(number, || {
             self.services.playback_play_on(
                 channel,
-                device.remote(),
+                device.receiver(),
                 RendererMediaSource::new(stream_provider, cover_provider, flavor),
             );
         })

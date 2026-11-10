@@ -96,6 +96,7 @@ import fm.bae.app.ui.sync.ActivityWords
 import fm.bae.app.ui.sync.activityProblems
 import fm.bae.fastvalues.LatestStream
 import uniffi.bae_bridge.BridgeCastReceiver
+import uniffi.bae_bridge.BridgeCastReceiverList
 import uniffi.bae_bridge.BridgeCastTranscodeFormat
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeCountLabel
@@ -653,7 +654,7 @@ fun CastPickerLongNames() {
 }
 
 @Composable
-private fun CastPickerScene(receivers: List<BridgeCastReceiver>) {
+private fun CastPickerScene(receivers: BridgeCastReceiverList) {
     TitledSheetShot(stringResource(R.string.cast)) {
         CastReceiverRows(
             receivers = receivers,
@@ -665,25 +666,28 @@ private fun CastPickerScene(receivers: List<BridgeCastReceiver>) {
     }
 }
 
-/** Living Room cast to, listed first as core lists it, then the rest by name. */
+/** Living Room cast to, as core lists it, then the rest by name. */
 private fun castReceivers(
     casting: String = "Living Room",
     dlna: String = "Den receiver",
-) = listOf(
-    BridgeCastReceiver(id = "cast-living-room", name = casting, kind = BridgeRendererKind.CAST, casting = true),
-    BridgeCastReceiver(id = "cast-den", name = dlna, kind = BridgeRendererKind.DLNA, casting = false),
-    BridgeCastReceiver(id = "cast-kitchen", name = "Kitchen", kind = BridgeRendererKind.AIR_PLAY, casting = false),
+) = BridgeCastReceiverList(
+    casting = BridgeCastReceiver(id = "cast-living-room", name = casting, kind = BridgeRendererKind.CAST),
+    found =
+        listOf(
+            BridgeCastReceiver(id = "cast-den", name = dlna, kind = BridgeRendererKind.DLNA),
+            BridgeCastReceiver(id = "cast-kitchen", name = "Kitchen", kind = BridgeRendererKind.AIR_PLAY),
+        ),
 )
 
 @Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 fun CastingSettingsLooking() {
-    CastingSettingsScene(receivers = emptyList())
+    CastingSettingsScene(receivers = BridgeCastReceiverList(casting = null, found = emptyList()))
 }
 
 /** The Casting page with casting on and [receivers] found. */
 @Composable
-private fun CastingSettingsScene(receivers: List<BridgeCastReceiver>) {
+private fun CastingSettingsScene(receivers: BridgeCastReceiverList) {
     BaeTheme {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             CastingPage(

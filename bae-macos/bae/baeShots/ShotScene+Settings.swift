@@ -27,7 +27,10 @@ extension ShotScene {
             )
         },
         castingSettings("settings-casting", receivers: castPickerReceivers()),
-        castingSettings("settings-casting-looking", receivers: []),
+        castingSettings(
+            "settings-casting-looking",
+            receivers: BridgeCastReceiverList(casting: nil, found: [])
+        ),
         transfersSettings("settings-transfers", uploadsPaused: false),
         transfersSettings(
             "settings-transfers-uploads-paused",
@@ -61,7 +64,7 @@ extension ShotScene {
     /// The Casting tab with casting on and `receivers` found.
     private static func castingSettings(
         _ id: String,
-        receivers: [BridgeCastReceiver]
+        receivers: BridgeCastReceiverList
     ) -> ShotScene {
         ShotScene(id: id, size: CGSize(width: 500, height: 600)) {
             let castStore = CastStore()

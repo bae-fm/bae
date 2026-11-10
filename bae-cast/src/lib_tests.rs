@@ -378,10 +378,11 @@ fn the_picker_lists_the_devices_from_the_library() {
         runtime.block_on(async {
             tokio::time::timeout(HANG_GUARD, async {
                 loop {
-                    let devices = listed.next().await.expect("the picker's list reads");
-                    let shown: Vec<_> = devices.iter().map(|device| device.name.as_str()).collect();
+                    let list = listed.next().await.expect("the picker's list reads");
+                    let shown: Vec<_> =
+                        list.found.iter().map(|receiver| receiver.name.as_str()).collect();
                     if shown == names {
-                        return devices;
+                        return list;
                     }
                 }
             })
@@ -396,14 +397,14 @@ fn the_picker_lists_the_devices_from_the_library() {
     let port = refusing_loopback_port();
     controller.renderer_found(reported_cast_service("Study", "cast-2", port));
     controller.renderer_found(reported_cast_service("Kitchen", "cast-1", port));
-    let devices = until_listed(&["Kitchen", "Study"]);
+    let list = until_listed(&["Kitchen", "Study"]);
+    assert_eq!(list.casting, None);
     assert_eq!(
-        devices[0],
+        list.found[0],
         bae_playback::renderer::CastReceiver {
             id: "cast-1".to_string(),
             name: "Kitchen".to_string(),
             kind: bae_playback::renderer::RendererKind::Cast,
-            casting: false,
         }
     );
 
