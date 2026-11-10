@@ -284,6 +284,11 @@ impl ReportedThread {
         self.thread.is_finished()
     }
 
+    /// The thread, for an owner that unparks it.
+    pub fn thread(&self) -> &std::thread::Thread {
+        self.thread.thread()
+    }
+
     /// Wait for the thread to exit. A panic in its body was reported on the
     /// thread; one that escaped even that (the crash reporter itself
     /// panicking) is logged here.

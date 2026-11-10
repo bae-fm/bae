@@ -51,7 +51,8 @@ async fn retiring_preloaded_next_removes_staged_source() {
         PreloadedNextSource::Staged,
     ));
 
-    let (_audio_tx, audio_events) = audio_event_channel().unwrap();
+    let (_audio_tx, audio_events) =
+        audio_event_channel(&bae_diagnostics::Diagnostics::noop()).unwrap();
     service.output = Some(test_output(gapless.clone(), audio_events));
     assert!(service.retire_preloaded_track());
 
@@ -466,7 +467,7 @@ async fn the_loop_completes_an_airplay_track_when_its_last_audio_is_heard() {
     service.slot = active_slot(prepared, TrackPhase::Playing);
     let _airplay = install_airplay(&mut service, Duration::from_secs(2));
     assert!(service.begin_listening().await);
-    let (mut tx, _) = audio_event_channel().unwrap();
+    let (mut tx, _) = audio_event_channel(&bae_diagnostics::Diagnostics::noop()).unwrap();
     source.pull_samples(&mut vec![0.0; 4000], &mut tx);
     service
         .handle_audio_event(AudioEvent::Completion(source.take_completion_event().unwrap()))
@@ -511,7 +512,8 @@ async fn the_loop_drains_an_event_the_moment_the_output_pushes_it() {
         prepared.track_fmt(StreamPosition::START),
     )));
     service.slot = active_slot(prepared, TrackPhase::Playing);
-    let (mut audio_tx, audio_rx) = audio_event_channel().unwrap();
+    let (mut audio_tx, audio_rx) =
+        audio_event_channel(&bae_diagnostics::Diagnostics::noop()).unwrap();
     service.output = Some(test_output(source.clone(), audio_rx));
 
     let commands = service.command_tx.clone();

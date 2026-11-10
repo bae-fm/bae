@@ -157,23 +157,28 @@ where
         |track_stream, handle, cancel_token, _ready| (track_stream, handle, cancel_token),
     )?;
 
-    let (stream, source, audio_events) =
-        match build_and_play_stream(audio_output, track_stream, fmt, position_update_interval_ms)
-            .await
-        {
-            Ok(parts) => parts,
-            Err(e) => {
-                error!("Failed to create streaming audio stream: {:?}", e);
-                // The decoder is spawned but no stream will pull from it. Cancel
-                // it so it exits instead of parking on a ring nobody reads, then
-                // detach — joining would block the caller's command loop. Waking
-                // its byte buffers (so a read-blocked decoder sees the token) is
-                // the owner's job on the returned `Err`.
-                cancel_token.store(true, Ordering::Release);
-                drop(handle);
-                return Err(e);
-            }
-        };
+    let (stream, source, audio_events) = match build_and_play_stream(
+        diagnostics,
+        audio_output,
+        track_stream,
+        fmt,
+        position_update_interval_ms,
+    )
+    .await
+    {
+        Ok(parts) => parts,
+        Err(e) => {
+            error!("Failed to create streaming audio stream: {:?}", e);
+            // The decoder is spawned but no stream will pull from it. Cancel
+            // it so it exits instead of parking on a ring nobody reads, then
+            // detach — joining would block the caller's command loop. Waking
+            // its byte buffers (so a read-blocked decoder sees the token) is
+            // the owner's job on the returned `Err`.
+            cancel_token.store(true, Ordering::Release);
+            drop(handle);
+            return Err(e);
+        }
+    };
 
     Ok(compose(
         StreamPipeline { stream, source, decoder_handle: handle, cancel_token },
@@ -186,6 +191,7 @@ where
 /// through (the main player builds its persistent stream in `service::output`
 /// instead).
 async fn build_and_play_stream(
+    diagnostics: &Diagnostics,
     audio_output: &mut PlayerOutput,
     track_source: TrackStream,
     fmt: TrackFmt,
@@ -199,7 +205,7 @@ async fn build_and_play_stream(
         (guard.sample_rate(), guard.channels())
     };
 
-    let (audio_event_tx, audio_events) = match audio_event_channel() {
+    let (audio_event_tx, audio_events) = match audio_event_channel(diagnostics) {
         Ok(channel) => channel,
         Err(error) => {
             source.lock().unwrap().cancel();

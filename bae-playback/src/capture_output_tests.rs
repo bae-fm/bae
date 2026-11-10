@@ -30,7 +30,7 @@ async fn playing_one_second() -> Playing {
     let mut output = ManualCaptureAudioOutput::new(captured_tx, clock.clone());
     let controls = AudioOutputControls::new(crate::Volume::FULL);
     controls.set_state(AudioState::Playing);
-    let (events_tx, events) = audio_event_channel().unwrap();
+    let (events_tx, events) = audio_event_channel(&bae_diagnostics::Diagnostics::noop()).unwrap();
     let stream = output.create_stream(controls, source, 44_100, 2, events_tx, 100).unwrap();
     let captured = captured_rx.recv().await.expect("the stream's capture");
     Playing { _stream: stream, captured, clock, events }

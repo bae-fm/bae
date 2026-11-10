@@ -124,7 +124,7 @@ impl PlaybackService {
         // back in, so there is nothing to cancel then.)
         self.discard_output();
 
-        let (mut audio_event_tx, audio_events) = match audio_event_channel() {
+        let (mut audio_event_tx, audio_events) = match audio_event_channel(&self.diagnostics) {
             Ok(channel) => channel,
             Err(error) => {
                 source.lock().unwrap().cancel();

@@ -703,7 +703,7 @@ async fn airplay_seek_flushes_and_reanchors() {
     let buffer = create_sparse_buffer(64 * 1024);
     service.slot = active_slot(test_prepared_track(TRACK_T, buffer.clone()), TrackPhase::Playing);
     let (_sink, source, _ready) = create_track_stream_pair(44_100, 2);
-    let (_tx, audio_rx) = audio_event_channel().unwrap();
+    let (_tx, audio_rx) = audio_event_channel(&bae_diagnostics::Diagnostics::noop()).unwrap();
     service.output = Some(test_output(
         Arc::new(Mutex::new(source::PlaybackSource::new(source, TrackFmt::for_test(TRACK_T)))),
         audio_rx,

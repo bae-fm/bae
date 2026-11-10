@@ -84,7 +84,7 @@ fn create_stream_drives_the_sink_and_publishes_control() {
     let controls = AudioOutputControls::new(crate::Volume::FULL);
     controls.set_state(AudioState::Playing);
 
-    let (tx, _rx) = audio_event_channel().unwrap();
+    let (tx, _rx) = audio_event_channel(&bae_diagnostics::Diagnostics::noop()).unwrap();
     let stream = output.create_stream(controls, source, 44_100, 2, tx, 100).expect("stream builds");
 
     // The session was handed the output's failure report.
@@ -110,7 +110,7 @@ fn create_stream_drives_the_sink_and_publishes_control() {
 /// is sent, rather than streamed unconverted at the wrong speed and pitch.
 #[test]
 fn a_converter_that_cant_be_set_up_refuses_the_stream() {
-    let (tx, _rx) = audio_event_channel().unwrap();
+    let (tx, _rx) = audio_event_channel(&bae_diagnostics::Diagnostics::noop()).unwrap();
     let controls = AudioOutputControls::new(crate::Volume::FULL);
     controls.set_state(AudioState::Playing);
     let refused = DrainSource::new(
@@ -126,7 +126,7 @@ fn a_converter_that_cant_be_set_up_refuses_the_stream() {
 /// nothing), and a playing one converts full-scale f32 to i16::MAX.
 #[test]
 fn drain_source_respects_pause_and_converts_scale() {
-    let (tx, _rx) = audio_event_channel().unwrap();
+    let (tx, _rx) = audio_event_channel(&bae_diagnostics::Diagnostics::noop()).unwrap();
     let controls = AudioOutputControls::new(crate::Volume::FULL);
     controls.set_state(AudioState::Paused);
     let mut paused = DrainSource::new(
@@ -140,7 +140,7 @@ fn drain_source_respects_pause_and_converts_scale() {
     assert_eq!(paused.next_frames(&mut out), 0, "paused yields nothing");
 
     // Now playing: the four full-scale stereo frames convert to i16::MAX.
-    let (tx2, _rx2) = audio_event_channel().unwrap();
+    let (tx2, _rx2) = audio_event_channel(&bae_diagnostics::Diagnostics::noop()).unwrap();
     let controls2 = AudioOutputControls::new(crate::Volume::FULL);
     controls2.set_state(AudioState::Playing);
     let mut playing = DrainSource::new(
@@ -170,7 +170,7 @@ fn drain_source_resamples_to_the_receiver_rate() {
 
     let controls = AudioOutputControls::new(crate::Volume::FULL);
     controls.set_state(AudioState::Playing);
-    let (tx, _rx) = audio_event_channel().unwrap();
+    let (tx, _rx) = audio_event_channel(&bae_diagnostics::Diagnostics::noop()).unwrap();
     let mut ds =
         DrainSource::new(AudioDrain::new(controls.clone(), source, tx, 100), controls, 48_000, 2)
             .expect("a converter sets up");

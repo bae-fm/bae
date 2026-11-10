@@ -536,13 +536,16 @@ impl AudioEventReceiver {
     }
 }
 
-/// An output's event ring, with the relay thread that wakes its drain; the
-/// error when that thread can't start.
-pub(crate) fn audio_event_channel() -> std::io::Result<(AudioEventSender, AudioEventReceiver)> {
+/// An output's event ring, with the relay thread that wakes its drain, whose
+/// panic is reported to `diagnostics`; the error when that thread can't
+/// start.
+pub(crate) fn audio_event_channel(
+    diagnostics: &bae_diagnostics::Diagnostics,
+) -> std::io::Result<(AudioEventSender, AudioEventReceiver)> {
     let (producer, consumer) = RingBuffer::new(AUDIO_EVENT_CAPACITY);
     let dropped_events = Arc::new(AtomicU64::new(0));
     let dropped_required_events = Arc::new(AtomicU64::new(0));
-    let (wake, relay) = event_relay()?;
+    let (wake, relay) = event_relay(diagnostics)?;
     Ok((
         AudioEventSender {
             producer,

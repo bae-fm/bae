@@ -12,7 +12,9 @@
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use std::thread::{JoinHandle, Thread};
+use std::thread::Thread;
+
+use bae_diagnostics::{Diagnostics, ReportedThread};
 
 struct RelayState {
     ready: tokio::sync::Notify,
@@ -37,7 +39,7 @@ impl RelayWake {
 pub(crate) struct EventRelay {
     state: Arc<RelayState>,
     /// The relay thread, taken by the drop that joins it.
-    relay: Option<JoinHandle<()>>,
+    relay: Option<ReportedThread>,
 }
 
 impl EventRelay {
@@ -57,30 +59,28 @@ impl Drop for EventRelay {
         relay.thread().unpark();
         // The relay thread runs only the loop below, which never drops this,
         // so the join is never on itself.
-        if relay.join().is_err() {
-            tracing::warn!("the playback audio event relay thread panicked");
-        }
+        relay.join();
     }
 }
 
-/// Start a relay thread, and hand back its two sides.
-pub(crate) fn event_relay() -> std::io::Result<(RelayWake, EventRelay)> {
+/// Start a relay thread, and hand back its two sides. A panic on the thread
+/// is reported to `diagnostics`.
+pub(crate) fn event_relay(diagnostics: &Diagnostics) -> std::io::Result<(RelayWake, EventRelay)> {
     let state = Arc::new(RelayState { ready: tokio::sync::Notify::new(), closed: false.into() });
     let relayed = state.clone();
-    #[expect(
-        clippy::disallowed_methods,
-        reason = "the relay only parks and notifies; the audio callback unparks its Thread, which ReportedThread does not expose, and playback's audio output has no Diagnostics"
-    )]
-    let relay =
-        std::thread::Builder::new().name("playback audio events".to_string()).spawn(move || {
-            loop {
-                std::thread::park();
-                if relayed.closed.load(Ordering::Acquire) {
-                    return;
-                }
-                relayed.ready.notify_one();
+    let relay = diagnostics.spawn_thread_reported(
+        "playback audio events",
+        move || loop {
+            std::thread::park();
+            if relayed.closed.load(Ordering::Acquire) {
+                return;
             }
-        })?;
+            relayed.ready.notify_one();
+        },
+        // The relay only parks, reads a flag and notifies; the report is
+        // all there is to do.
+        |_| {},
+    )?;
     Ok((RelayWake { relay: relay.thread().clone() }, EventRelay { state, relay: Some(relay) }))
 }
 

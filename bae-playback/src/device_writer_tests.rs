@@ -25,7 +25,7 @@ fn playing_drain() -> (AudioOutputControls, AudioDrain, AudioEventReceiver) {
     let source = Arc::new(Mutex::new(PlaybackSource::new(stream, TrackFmt::for_test("t"))));
     let controls = AudioOutputControls::new(crate::Volume::FULL);
     controls.set_state(AudioState::Playing);
-    let (tx, rx) = audio_event_channel().unwrap();
+    let (tx, rx) = audio_event_channel(&bae_diagnostics::Diagnostics::noop()).unwrap();
     let drain = AudioDrain::new(controls.clone(), source, tx, 100);
     (controls, drain, rx)
 }
@@ -281,7 +281,7 @@ impl RunningWriter {
         let source = Arc::new(Mutex::new(PlaybackSource::new(stream, TrackFmt::for_test("t"))));
         let controls = AudioOutputControls::new(crate::Volume::FULL);
         controls.set_state(state);
-        let (events, _rx) = audio_event_channel().unwrap();
+        let (events, _rx) = audio_event_channel(&bae_diagnostics::Diagnostics::noop()).unwrap();
         let drain = AudioDrain::new(controls.clone(), source.clone(), events, 100);
         let (written_tx, written) = std::sync::mpsc::channel();
         let writer = DeviceWriter::new(

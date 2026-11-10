@@ -189,7 +189,8 @@ async fn the_resume_point_is_saved_after_each_second_of_play() {
     let (mut sink, stream, _) = create_track_stream_pair_with_capacity(100, 1, 4000);
     sink.push_samples(&vec![0.25; 4000]);
     let source = Arc::new(Mutex::new(source::PlaybackSource::new(stream, fmt)));
-    let (mut audio_tx, audio_rx) = crate::audio_output::audio_event_channel().unwrap();
+    let (mut audio_tx, audio_rx) =
+        crate::audio_output::audio_event_channel(&bae_diagnostics::Diagnostics::noop()).unwrap();
     service.output = Some(test_output(source.clone(), audio_rx));
     let generation = service.next_load_generation();
     service.slot =

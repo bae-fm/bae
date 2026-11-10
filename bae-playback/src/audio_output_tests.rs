@@ -13,7 +13,7 @@ fn drain_over_frames(frames: usize) -> (AudioDrain, AudioEventReceiver) {
     let source = Arc::new(Mutex::new(PlaybackSource::new(stream, TrackFmt::for_test("t"))));
     let controls = AudioOutputControls::new(crate::Volume::FULL);
     controls.set_state(AudioState::Playing);
-    let (events, received) = audio_event_channel().unwrap();
+    let (events, received) = audio_event_channel(&bae_diagnostics::Diagnostics::noop()).unwrap();
     (AudioDrain::new(controls, source, events, 250), received)
 }
 

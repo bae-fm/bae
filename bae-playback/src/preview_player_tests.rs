@@ -373,7 +373,8 @@ async fn preview_listener_maps_completion_to_preview_completed() {
         bae_diagnostics::Diagnostics::noop(),
     );
 
-    let (mut audio_tx, audio_rx) = audio_event_channel().unwrap();
+    let (mut audio_tx, audio_rx) =
+        audio_event_channel(&bae_diagnostics::Diagnostics::noop()).unwrap();
     let handle = spawn_preview_listener(
         &tokio::runtime::Handle::current(),
         &player.diagnostics,
