@@ -14,20 +14,13 @@ struct RestoreS3KeySheet: View {
             width: 440
         ) {
             VStack(alignment: .leading, spacing: ThemeSpace.related) {
-                Grid(
-                    alignment: .leading,
-                    horizontalSpacing: ThemeSpace.group,
-                    verticalSpacing: ThemeSpace.related
-                ) {
-                    GridRow {
-                        Text("Access key ID")
-                            .gridColumnAlignment(.trailing)
+                FieldColumn {
+                    FieldRow("Access key ID") {
                         TextField("", text: $form.accessKey)
                             .accessibilityLabel("Access key ID")
                             .boxedTextField()
                     }
-                    GridRow {
-                        Text("Secret access key")
+                    FieldRow("Secret access key") {
                         SecureField("", text: $form.secretKey)
                             .accessibilityLabel("Secret access key")
                             .boxedTextField()

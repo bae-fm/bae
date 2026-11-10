@@ -713,15 +713,16 @@ private struct RenameProfileSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.group) {
-            Form {
-                Section {
-                    TextField("Name", text: $name)
-                    Text("Everyone in the library sees this name.")
-                        .themeText(.detail)
-                        .foregroundStyle(.secondary)
+            FieldColumn {
+                FieldRow(
+                    "Name",
+                    note: "Everyone in the library sees this name."
+                ) {
+                    TextField("", text: $name)
+                        .accessibilityLabel("Name")
+                        .boxedTextField()
                 }
             }
-            .formStyle(.grouped)
             .disabled(task != nil)
             if let error {
                 Notice(error: error)

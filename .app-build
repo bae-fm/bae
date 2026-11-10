@@ -21,5 +21,6 @@ step release-files-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --s
 step sync-setup-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene sync-setup --tone midnight
 step settings-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene settings- --tone midnight
 step cast-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene cast- --tone midnight
+step label-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene sheet-footer- --tone midnight
 step activity-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene activity- --tone midnight
 step people-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene people- --tone midnight

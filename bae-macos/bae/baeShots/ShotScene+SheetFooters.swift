@@ -8,7 +8,7 @@ extension ShotScene {
     static let sheetFooterScenes: [ShotScene] = [
         ShotScene(
             id: "sheet-footer-rename-library",
-            size: CGSize(width: 420, height: 240)
+            size: CGSize(width: 420, height: 170)
         ) {
             ShotStage(RenameLibrarySheetStaged())
         }

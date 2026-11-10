@@ -18,34 +18,29 @@ struct RenameLibrarySheet: View {
     let onCommit: (String) -> Void
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text("Rename library")
-                    .themeText(.heading)
-                Spacer()
-            }
-            .padding()
-            Divider()
-
-            Form {
-                Section {
-                    TextField(
+        MacSheet("Rename library", width: 420) {
+            VStack(alignment: .leading, spacing: ThemeSpace.related) {
+                FieldColumn {
+                    FieldRow(
                         "New name",
-                        text: Binding(
-                            get: { state.newName },
-                            set: { state.newName = $0 }
+                        note: "Everyone in the library sees this name."
+                    ) {
+                        TextField(
+                            "",
+                            text: Binding(
+                                get: { state.newName },
+                                set: { state.newName = $0 }
+                            )
                         )
-                    )
-                }
-                if let error = state.error {
-                    Section {
-                        Notice(error: error)
+                        .accessibilityLabel("New name")
+                        .boxedTextField()
                     }
                 }
+                if let error = state.error {
+                    Notice(error: error)
+                }
             }
-            .formStyle(.grouped)
-            .scrollDisabled(true)
-
+        } footer: {
             MacSheetFooter {
                 Button("Cancel") { onCancel() }
                     .keyboardShortcut(.cancelAction)
@@ -60,11 +55,7 @@ struct RenameLibrarySheet: View {
                             .isEmpty
                     )
             }
-            .padding([.horizontal, .bottom])
         }
-        // Grows to fit an error and its details.
-        .frame(width: 420)
-        .frame(minHeight: 240)
     }
 }
 
