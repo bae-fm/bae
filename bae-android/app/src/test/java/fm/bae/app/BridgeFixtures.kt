@@ -229,7 +229,6 @@ object BridgeFixtures {
                     active = active,
                     failed = failed,
                 ),
-            summaryParts = emptyList(),
             wait = wait,
         )
 

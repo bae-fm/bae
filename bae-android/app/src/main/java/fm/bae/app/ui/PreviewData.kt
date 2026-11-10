@@ -316,7 +316,6 @@ object PreviewData {
     ): BridgeDownloadCounts =
         BridgeDownloadCounts(
             total = BridgeDownloadProgress(queued = queued, active = active, failed = failed),
-            summaryParts = emptyList(),
             wait = wait,
         )
 

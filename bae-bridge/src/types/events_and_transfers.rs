@@ -325,6 +325,22 @@ mirror_enum! {
     },
 }
 
+/// The Pinning screen's summary line for the download queue's counts
+/// `total`: its parts in core's order, which the UI resolves and joins. Only
+/// a phone has the Pinning screen, and a phone's download queue holds only
+/// pins; a desktop's holds make-locals too, which these words would call
+/// pinning, so it has no such line.
+#[cfg(not(desktop))]
+#[uniffi::export]
+pub fn bridge_pin_summary_parts(total: BridgeDownloadProgress) -> Vec<BridgeCountLabel> {
+    let BridgeDownloadProgress { queued, active, failed } = total;
+    bae_transfers::ReleaseQueueProgress { queued, active, failed }
+        .pin_summary_parts()
+        .into_iter()
+        .map(BridgeCountLabel::from_core)
+        .collect()
+}
+
 /// Localization key for what holds a queue back ("Paused", "Waiting for
 /// network"). The UI resolves it against the `Core` table.
 #[uniffi::export]
@@ -379,8 +395,6 @@ pub struct BridgeDownloadProgress {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeDownloadCounts {
     pub total: BridgeDownloadProgress,
-    /// The summary line's parts, in core's order; the UI resolves and joins them.
-    pub summary_parts: Vec<BridgeCountLabel>,
     /// What holds the queue back.
     pub wait: Option<BridgeQueueWait>,
 }

@@ -29,7 +29,7 @@ fn a_transfer_summary_leaves_out_zero_counts() {
 fn summary_parts_order_drop_and_active_verb() {
     let progress = ReleaseQueueProgress { queued: 3, active: 2, failed: 0 };
     assert_eq!(
-        progress.download_summary_parts(),
+        progress.pin_summary_parts(),
         vec![
             CountLabel { key: "core.queue.pinning".to_string(), count: 2 },
             CountLabel { key: "core.queue.queued_to_pin".to_string(), count: 3 },

@@ -50,6 +50,7 @@ import uniffi.bae_bridge.BridgeDownloadCounts
 import uniffi.bae_bridge.BridgeDownloadOp
 import uniffi.bae_bridge.BridgeDownloadState
 import uniffi.bae_bridge.BridgeQueueWait
+import uniffi.bae_bridge.bridgePinSummaryParts
 
 /** The Pinning screen: each pin's progress, pause and retry for the queue, and cancel per item. */
 @Composable
@@ -216,7 +217,7 @@ private fun queueSummaryText(
     counts: BridgeDownloadCounts,
 ): String =
     listOfNotNull(
-        context.countLabelsText(counts.summaryParts).ifEmpty { null },
+        context.countLabelsText(bridgePinSummaryParts(counts.total)).ifEmpty { null },
         counts.wait?.let(context::queueWaitText),
     ).joinToString(" · ")
 

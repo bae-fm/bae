@@ -141,10 +141,9 @@ impl ReleaseQueueProgress {
             .collect()
     }
 
-    /// The summary parts of the download queue in pinning's words: the
-    /// Pinning screen's line. Only a phone has that screen, and a phone's
-    /// download queue holds only pins.
-    pub fn download_summary_parts(&self) -> Vec<CountLabel> {
+    /// The Pinning screen's line: the summary parts of a queue of pins, in
+    /// pinning's words.
+    pub fn pin_summary_parts(&self) -> Vec<CountLabel> {
         self.summary_parts("core.queue.pinning", "core.queue.queued_to_pin")
     }
 }
