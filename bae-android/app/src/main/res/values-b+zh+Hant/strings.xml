@@ -135,9 +135,9 @@
     <string name="settings_open_in_browser">在瀏覽器中開啟</string>
     <string name="settings_folder_no_app">此裝置上沒有應用程式開啟資料夾的頁面。</string>
     <string name="settings_transfers">傳輸</string>
-    <string name="transfers_wifi_only">僅透過 Wi-Fi 下載</string>
+    <string name="transfers_wifi_only">僅透過 Wi-Fi 釘選</string>
     <string name="transfers_wifi_only_footer">已釘選的發行會等待 Wi-Fi。播放未釘選的曲目仍會使用行動數據。</string>
-    <string name="transfers_concurrency_footer">釘選發行時同時下載的檔案數。</string>
+    <string name="transfers_concurrency_footer">同時釘選的檔案數。</string>
     <string name="members_title">成員和裝置</string>
     <string name="people_people">人員</string>
     <string name="people_role">角色</string>
@@ -166,8 +166,7 @@
     <string name="cloud_provider_s3">S3-compatible</string>
     <string name="cloud_provider_icloud">iCloud</string>
     <string name="qr_scanner_instructions">掃描你其他裝置上 bae 顯示的還原碼，或一個邀請。</string>
-    <!-- Downloads -->
-    <string name="downloads">下載</string>
+    <!-- Pinning -->
     <string name="pin">釘選</string>
     <string name="unpin">取消釘選</string>
     <string name="pinned">已釘選</string>
@@ -178,10 +177,7 @@
     <string name="upload_missing_title">缺少 %1$s</string>
     <string name="upload_missing_advice">還原該檔案以完成上傳。</string>
     <string name="resume">繼續</string>
-    <string name="downloads_empty">沒有下載</string>
-    <string name="downloads_load_failed">無法載入你的下載。</string>
-    <string name="downloads_load_more_failed">無法載入更多下載。</string>
-    <plurals name="download_file_count">
+    <plurals name="pin_file_count">
         <item quantity="other">%1$d 個檔案</item>
     </plurals>
     <plurals name="queue_items_added">
@@ -353,7 +349,6 @@
     <string name="settings_history">收聽紀錄</string>
     <string name="settings_history_private">僅自己</string>
     <string name="settings_history_household">資料庫中的所有人</string>
-    <string name="downloads_concurrency_label">同時下載數</string>
     <string name="settings_stored_in">儲存於</string>
     <string name="storage_location_account">%1$s：%2$s</string>
     <string name="storage_location_bucket">%1$s：%2$s（%3$s）</string>
@@ -414,4 +409,8 @@
     <string name="sync_fix_sign_in">登入 %1$s</string>
     <string name="sync_fix_enter_key">輸入存取金鑰</string>
     <string name="sync_fix_remove">從此裝置移除</string>
+    <string name="pins_at_once">同時釘選數</string>
+    <string name="pinning_empty">沒有要釘選的內容</string>
+    <string name="pinning_load_failed">無法載入釘選項目。</string>
+    <string name="pinning_load_more_failed">無法載入更多釘選項目。</string>
 </resources>

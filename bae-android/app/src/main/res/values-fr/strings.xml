@@ -141,9 +141,9 @@
     <string name="settings_open_in_browser">Ouvrir dans le navigateur</string>
     <string name="settings_folder_no_app">Aucune application de cet appareil n\'a ouvert la page du dossier.</string>
     <string name="settings_transfers">Transferts</string>
-    <string name="transfers_wifi_only">Télécharger uniquement en Wi-Fi</string>
+    <string name="transfers_wifi_only">Épingler en Wi-Fi uniquement</string>
     <string name="transfers_wifi_only_footer">Les sorties épinglées attendent le Wi-Fi. Lire une piste non épinglée utilise toujours les données mobiles.</string>
-    <string name="transfers_concurrency_footer">Nombre de fichiers téléchargés en même temps lorsqu’une sortie est épinglée.</string>
+    <string name="transfers_concurrency_footer">Combien de fichiers sont épinglés en même temps.</string>
     <string name="members_title">Personnes et appareils</string>
     <string name="people_people">Personnes</string>
     <string name="people_role">Rôle</string>
@@ -174,8 +174,7 @@
     <string name="cloud_provider_s3">S3-compatible</string>
     <string name="cloud_provider_icloud">iCloud</string>
     <string name="qr_scanner_instructions">Scannez un code de restauration affiché dans bae sur l’un de vos appareils, ou une invitation.</string>
-    <!-- Downloads -->
-    <string name="downloads">Téléchargements</string>
+    <!-- Pinning -->
     <string name="pin">Épingler</string>
     <string name="unpin">Désépingler</string>
     <string name="pinned">Épinglé</string>
@@ -186,10 +185,7 @@
     <string name="upload_missing_title">%1$s est introuvable</string>
     <string name="upload_missing_advice">Restaurez-le pour terminer l’envoi.</string>
     <string name="resume">Reprendre</string>
-    <string name="downloads_empty">Aucun téléchargement</string>
-    <string name="downloads_load_failed">Impossible de charger vos téléchargements.</string>
-    <string name="downloads_load_more_failed">Impossible de charger plus de téléchargements.</string>
-    <plurals name="download_file_count">
+    <plurals name="pin_file_count">
         <item quantity="one">%1$d fichier</item>
         <item quantity="many">%1$d fichiers</item>
         <item quantity="other">%1$d fichiers</item>
@@ -365,7 +361,6 @@
     <string name="settings_history">Historique d’écoute</string>
     <string name="settings_history_private">Moi uniquement</string>
     <string name="settings_history_household">Tout le monde dans la bibliothèque</string>
-    <string name="downloads_concurrency_label">Téléchargements simultanés</string>
     <string name="settings_stored_in">Stocké dans</string>
     <string name="storage_location_account">%1$s : %2$s</string>
     <string name="storage_location_bucket">%1$s : %2$s (%3$s)</string>
@@ -426,4 +421,8 @@
     <string name="sync_fix_sign_in">Se connecter à %1$s</string>
     <string name="sync_fix_enter_key">Saisir la clé d’accès</string>
     <string name="sync_fix_remove">Retirer de cet appareil</string>
+    <string name="pins_at_once">Épinglages simultanés</string>
+    <string name="pinning_empty">Rien à épingler</string>
+    <string name="pinning_load_failed">Impossible de charger vos épinglages.</string>
+    <string name="pinning_load_more_failed">Impossible de charger plus d’épinglages.</string>
 </resources>

@@ -2,9 +2,11 @@ package fm.bae.app.shots
 
 import android.content.res.Configuration
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -22,6 +24,7 @@ import fm.bae.app.DisplayError
 import fm.bae.app.LocalBugReports
 import fm.bae.app.R
 import fm.bae.app.coreString
+import fm.bae.app.countLabelsText
 import fm.bae.app.data.LiveValue
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
@@ -41,6 +44,7 @@ import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.components.TitledErrorNotice
 import fm.bae.app.ui.components.TitledSheetContent
 import fm.bae.app.ui.downloads.DownloadQueueRow
+import fm.bae.app.ui.downloads.DownloadsList
 import fm.bae.app.ui.library.ErrorBanner
 import fm.bae.app.ui.library.LibraryGridScene
 import fm.bae.app.ui.library.LibraryHeaderMenu
@@ -67,6 +71,7 @@ import fm.bae.app.ui.sync.SyncActivityList
 import uniffi.bae_bridge.BridgeCastDevice
 import uniffi.bae_bridge.BridgeCastTranscodeFormat
 import uniffi.bae_bridge.BridgeCloudProvider
+import uniffi.bae_bridge.BridgeCountLabel
 import uniffi.bae_bridge.BridgeDownloadState
 import uniffi.bae_bridge.BridgeMessage
 import uniffi.bae_bridge.BridgeReleaseDownloadStatus
@@ -670,6 +675,53 @@ fun AlbumPinStates() {
                 val queued = LocalContext.current.coreString("core.outbox.phase.queued")
                 UploadLineBody(queued, null)
                 UploadLineBody(queued, "01 Track Title.flac")
+            }
+        }
+    }
+}
+
+/** The Pinning screen's list: an active and two queued pins under "1 pinning · 2 queued to pin", then a paused queue's. */
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun PinningList() {
+    val downloads = PreviewData.downloadStore(downloadingReleaseId = "rel-1")
+    val context = LocalContext.current
+    // The summary lines as the screen joins them, from core's words without a call into the bridge.
+    val running =
+        context.countLabelsText(
+            listOf(
+                BridgeCountLabel(key = "core.queue.pinning", count = 1u),
+                BridgeCountLabel(key = "core.queue.queued_to_pin", count = 2u),
+            ),
+        )
+    val paused =
+        listOf(
+            context.countLabelsText(listOf(BridgeCountLabel(key = "core.queue.queued_to_pin", count = 2u))),
+            context.coreString("core.queue.wait.paused"),
+        ).joinToString(" · ")
+    val ops =
+        listOf(
+            PreviewData.downloadOp(releaseId = "rel-1", state = BridgeDownloadState.Active),
+            PreviewData.downloadOp(releaseId = "rel-2", state = BridgeDownloadState.Queued),
+            PreviewData.downloadOp(releaseId = "rel-3", state = BridgeDownloadState.Queued),
+        )
+    BaeTheme {
+        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+            Column {
+                listOf(running to ops, paused to ops.drop(1)).forEach { (summary, rows) ->
+                    Box(modifier = Modifier.weight(1f)) {
+                        DownloadsList(
+                            summary = summary,
+                            count = rows.size,
+                            row = rows::getOrNull,
+                            downloads = downloads,
+                            listState = rememberLazyListState(),
+                            onCancel = {},
+                            onRetry = {},
+                        )
+                    }
+                    HorizontalDivider()
+                }
             }
         }
     }

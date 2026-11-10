@@ -142,9 +142,9 @@
     <string name="settings_open_in_browser">Megnyitás böngészőben</string>
     <string name="settings_folder_no_app">Az eszközön egyetlen alkalmazás sem nyitotta meg a mappa oldalát.</string>
     <string name="settings_transfers">Átvitelek</string>
-    <string name="transfers_wifi_only">Letöltés csak Wi-Fi-n</string>
+    <string name="transfers_wifi_only">Rögzítés csak Wi-Fi-n</string>
     <string name="transfers_wifi_only_footer">A rögzített kiadások Wi-Fire várnak. Egy nem rögzített szám lejátszása továbbra is mobiladatot használ.</string>
-    <string name="transfers_concurrency_footer">Hány fájl töltődik le egyszerre, amikor egy kiadást rögzítenek.</string>
+    <string name="transfers_concurrency_footer">Hány fájl legyen egyszerre rögzítve.</string>
     <string name="members_title">Személyek és eszközök</string>
     <string name="people_people">Személyek</string>
     <string name="people_role">Szerepkör</string>
@@ -174,7 +174,6 @@
     <string name="cloud_provider_s3">S3-kompatibilis</string>
     <string name="cloud_provider_icloud">iCloud</string>
     <string name="qr_scanner_instructions">Olvasd be a bae által az egyik eszközödön mutatott visszaállítási kódot, vagy egy meghívót.</string>
-    <string name="downloads">Letöltések</string>
     <string name="pin">Rögzítés</string>
     <string name="unpin">Rögzítés feloldása</string>
     <string name="pinned">Rögzítve</string>
@@ -185,11 +184,7 @@
     <string name="upload_missing_title">%1$s hiányzik</string>
     <string name="upload_missing_advice">Állítsd vissza a feltöltés befejezéséhez.</string>
     <string name="resume">Folytatás</string>
-    <string name="downloads_empty">Nincs letöltés</string>
-    <string name="downloads_load_failed">A letöltéseidet nem sikerült betölteni.</string>
-    <string name="downloads_load_more_failed">Nem sikerült több letöltést betölteni.</string>
-    <string name="downloads_concurrency_label">Egyidejű letöltések</string>
-    <plurals name="download_file_count">
+    <plurals name="pin_file_count">
         <item quantity="one">%1$d fájl</item>
         <item quantity="other">%1$d fájl</item>
     </plurals>
@@ -419,4 +414,8 @@
     <string name="sync_fix_sign_in">Bejelentkezés: %1$s</string>
     <string name="sync_fix_enter_key">Hozzáférési kulcs megadása</string>
     <string name="sync_fix_remove">Eltávolítás erről az eszközről</string>
+    <string name="pins_at_once">Egyidejű rögzítések</string>
+    <string name="pinning_empty">Nincs mit rögzíteni</string>
+    <string name="pinning_load_failed">Nem sikerült betölteni a rögzítéseket.</string>
+    <string name="pinning_load_more_failed">Nem sikerült további rögzítéseket betölteni.</string>
 </resources>

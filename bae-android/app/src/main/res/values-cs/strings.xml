@@ -144,9 +144,9 @@
     <string name="settings_open_in_browser">Otevřít v prohlížeči</string>
     <string name="settings_folder_no_app">Žádná aplikace v tomto zařízení neotevřela stránku složky.</string>
     <string name="settings_transfers">Přenosy</string>
-    <string name="transfers_wifi_only">Stahovat jen přes Wi-Fi</string>
+    <string name="transfers_wifi_only">Připínat jen přes Wi-Fi</string>
     <string name="transfers_wifi_only_footer">Připnutá vydání čekají na Wi-Fi. Přehrání skladby, která není připnutá, stále používá mobilní data.</string>
-    <string name="transfers_concurrency_footer">Kolik souborů se stahuje současně při připnutí vydání.</string>
+    <string name="transfers_concurrency_footer">Kolik souborů se připíná najednou.</string>
     <string name="members_title">Lidé a zařízení</string>
     <string name="people_people">Lidé</string>
     <string name="people_role">Role</string>
@@ -178,8 +178,7 @@
     <string name="cloud_provider_s3">S3-compatible</string>
     <string name="cloud_provider_icloud">iCloud</string>
     <string name="qr_scanner_instructions">Naskenujte kód pro obnovení zobrazený v bae na některém z vašich zařízení, nebo pozvánku.</string>
-    <!-- Downloads -->
-    <string name="downloads">Stahování</string>
+    <!-- Pinning -->
     <string name="pin">Připnout</string>
     <string name="unpin">Odepnout</string>
     <string name="pinned">Připnuto</string>
@@ -190,10 +189,7 @@
     <string name="upload_missing_title">%1$s chybí</string>
     <string name="upload_missing_advice">Obnovte jej, aby se nahrávání dokončilo.</string>
     <string name="resume">Pokračovat</string>
-    <string name="downloads_empty">Žádná stahování</string>
-    <string name="downloads_load_failed">Nelze načíst vaše stahování.</string>
-    <string name="downloads_load_more_failed">Nelze načíst další stahování.</string>
-    <plurals name="download_file_count">
+    <plurals name="pin_file_count">
         <item quantity="one">%1$d soubor</item>
         <item quantity="few">%1$d soubory</item>
         <item quantity="many">%1$d souboru</item>
@@ -374,7 +370,6 @@
     <string name="settings_history">Historie poslechu</string>
     <string name="settings_history_private">Jen já</string>
     <string name="settings_history_household">Všichni v knihovně</string>
-    <string name="downloads_concurrency_label">Souběžná stahování</string>
     <string name="settings_stored_in">Uloženo v</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
@@ -435,4 +430,8 @@
     <string name="sync_fix_sign_in">Přihlásit se k %1$s</string>
     <string name="sync_fix_enter_key">Zadat přístupový klíč</string>
     <string name="sync_fix_remove">Odebrat z tohoto zařízení</string>
+    <string name="pins_at_once">Souběžná připnutí</string>
+    <string name="pinning_empty">Nic k připnutí</string>
+    <string name="pinning_load_failed">Připnutí se nepodařilo načíst.</string>
+    <string name="pinning_load_more_failed">Další připnutí se nepodařilo načíst.</string>
 </resources>

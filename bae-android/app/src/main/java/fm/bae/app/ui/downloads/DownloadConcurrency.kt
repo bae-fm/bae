@@ -56,7 +56,7 @@ private fun DownloadConcurrencySelector(
         modifier = Modifier.fillMaxWidth().padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
     ) {
         Text(
-            text = stringResource(R.string.downloads_concurrency_label),
+            text = stringResource(R.string.pins_at_once),
             style = ThemeText.body.style,
         )
         SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {

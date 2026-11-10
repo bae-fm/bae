@@ -173,9 +173,9 @@
     <string name="settings_open_in_browser">Open in browser</string>
     <string name="settings_folder_no_app">No app on this device opened the folder\'s page.</string>
     <string name="settings_transfers">Transfers</string>
-    <string name="transfers_wifi_only">Download over Wi-Fi only</string>
+    <string name="transfers_wifi_only">Pin over Wi-Fi only</string>
     <string name="transfers_wifi_only_footer">Pinned releases wait for Wi-Fi. Playing a track that isn\'t pinned still uses mobile data.</string>
-    <string name="transfers_concurrency_footer">How many files download at once when a release is pinned.</string>
+    <string name="transfers_concurrency_footer">How many files are pinned at once.</string>
 
     <!-- People and devices (membership) -->
     <string name="members_title">People and devices</string>
@@ -216,8 +216,7 @@
     <!-- QR scanner -->
     <string name="qr_scanner_instructions">Scan a restore code shown in bae on one of your devices, or an invite.</string>
 
-    <!-- Downloads -->
-    <string name="downloads">Downloads</string>
+    <!-- Pinning -->
     <string name="pin">Pin</string>
     <string name="unpin">Unpin</string>
     <string name="pinned">Pinned</string>
@@ -228,11 +227,7 @@
     <string name="upload_missing_title">%1$s is missing</string>
     <string name="upload_missing_advice">Restore it to finish uploading.</string>
     <string name="resume">Resume</string>
-    <string name="downloads_empty">No downloads</string>
-    <string name="downloads_load_failed">Couldn\'t load your downloads.</string>
-    <string name="downloads_load_more_failed">Couldn\'t load more downloads.</string>
-    <string name="downloads_concurrency_label">Simultaneous downloads</string>
-    <plurals name="download_file_count">
+    <plurals name="pin_file_count">
         <item quantity="one">%1$d file</item>
         <item quantity="other">%1$d files</item>
     </plurals>
@@ -479,4 +474,8 @@
     <string name="sync_fix_sign_in">Sign in to %1$s</string>
     <string name="sync_fix_enter_key">Enter access key</string>
     <string name="sync_fix_remove">Remove from this device</string>
+    <string name="pins_at_once">Pins at once</string>
+    <string name="pinning_empty">Nothing to pin</string>
+    <string name="pinning_load_failed">Couldn\'t load your pins.</string>
+    <string name="pinning_load_more_failed">Couldn\'t load more pins.</string>
 </resources>

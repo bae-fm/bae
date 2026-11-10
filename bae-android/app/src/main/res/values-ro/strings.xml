@@ -146,9 +146,9 @@
     <string name="settings_open_in_browser">Deschide în browser</string>
     <string name="settings_folder_no_app">Nicio aplicație de pe acest dispozitiv nu a deschis pagina dosarului.</string>
     <string name="settings_transfers">Transferuri</string>
-    <string name="transfers_wifi_only">Descarcă doar prin Wi-Fi</string>
+    <string name="transfers_wifi_only">Fixează doar prin Wi-Fi</string>
     <string name="transfers_wifi_only_footer">Edițiile fixate așteaptă Wi-Fi. Redarea unei piese care nu este fixată folosește în continuare date mobile.</string>
-    <string name="transfers_concurrency_footer">Câte fișiere se descarcă simultan când o ediție este fixată.</string>
+    <string name="transfers_concurrency_footer">Câte fișiere se fixează simultan.</string>
     <string name="members_title">Persoane și dispozitive</string>
     <string name="people_people">Persoane</string>
     <string name="people_role">Rol</string>
@@ -179,7 +179,6 @@
     <string name="cloud_provider_s3">Compatibil cu S3</string>
     <string name="cloud_provider_icloud">iCloud</string>
     <string name="qr_scanner_instructions">Scanează un cod de restaurare afișat în bae pe unul dintre dispozitivele tale sau o invitație.</string>
-    <string name="downloads">Descărcări</string>
     <string name="pin">Fixează</string>
     <string name="unpin">Anulează fixarea</string>
     <string name="pinned">Fixat</string>
@@ -190,11 +189,7 @@
     <string name="upload_missing_title">%1$s lipsește</string>
     <string name="upload_missing_advice">Restaurează-l pentru a termina încărcarea.</string>
     <string name="resume">Reia</string>
-    <string name="downloads_empty">Nicio descărcare</string>
-    <string name="downloads_load_failed">Descărcările tale nu au putut fi încărcate.</string>
-    <string name="downloads_load_more_failed">Nu s-au putut încărca mai multe descărcări.</string>
-    <string name="downloads_concurrency_label">Descărcări simultane</string>
-    <plurals name="download_file_count">
+    <plurals name="pin_file_count">
         <item quantity="one">%1$d fișier</item>
         <item quantity="few">%1$d fișiere</item>
         <item quantity="other">%1$d de fișiere</item>
@@ -426,4 +421,8 @@
     <string name="sync_fix_sign_in">Conectează-te la %1$s</string>
     <string name="sync_fix_enter_key">Introdu cheia de acces</string>
     <string name="sync_fix_remove">Elimină de pe acest dispozitiv</string>
+    <string name="pins_at_once">Fixări simultane</string>
+    <string name="pinning_empty">Nimic de fixat</string>
+    <string name="pinning_load_failed">Nu s-au putut încărca fixările.</string>
+    <string name="pinning_load_more_failed">Nu s-au putut încărca mai multe fixări.</string>
 </resources>

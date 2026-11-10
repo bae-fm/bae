@@ -317,8 +317,8 @@ internal class DownloadPageStore(
         appContext,
         scope,
         nothingBeside = Unit,
-        loadMoreFailed = R.string.downloads_load_more_failed,
-        loadFailed = R.string.downloads_load_failed,
+        loadMoreFailed = R.string.pinning_load_more_failed,
+        loadFailed = R.string.pinning_load_failed,
     ) {
     override fun open(parameter: Unit): BrowseRowsQuery<BridgeDownloadOp, Unit> =
         SnapshotRowsQuery(library.downloadBrowse()) { snapshot ->

@@ -142,9 +142,9 @@
     <string name="settings_open_in_browser">Avaa selaimessa</string>
     <string name="settings_folder_no_app">Mikään tämän laitteen ohjelma ei avannut kansion sivua.</string>
     <string name="settings_transfers">Siirrot</string>
-    <string name="transfers_wifi_only">Lataa vain Wi-Fi-yhteydellä</string>
+    <string name="transfers_wifi_only">Kiinnitä vain Wi-Fi-yhteydellä</string>
     <string name="transfers_wifi_only_footer">Kiinnitetyt julkaisut odottavat Wi-Fi-yhteyttä. Kiinnittämättömän raidan toisto käyttää edelleen mobiilidataa.</string>
-    <string name="transfers_concurrency_footer">Montako tiedostoa ladataan kerralla, kun julkaisu kiinnitetään.</string>
+    <string name="transfers_concurrency_footer">Kuinka monta tiedostoa kiinnitetään kerralla.</string>
     <string name="members_title">Ihmiset ja laitteet</string>
     <string name="people_people">Henkilöt</string>
     <string name="people_role">Rooli</string>
@@ -174,7 +174,6 @@
     <string name="cloud_provider_s3">S3-yhteensopiva</string>
     <string name="cloud_provider_icloud">iCloud</string>
     <string name="qr_scanner_instructions">Skannaa palautuskoodi, jonka bae näyttää jossakin laitteessasi, tai kutsu.</string>
-    <string name="downloads">Lataukset</string>
     <string name="pin">Kiinnitä</string>
     <string name="unpin">Irrota</string>
     <string name="pinned">Kiinnitetty</string>
@@ -185,11 +184,7 @@
     <string name="upload_missing_title">%1$s puuttuu</string>
     <string name="upload_missing_advice">Palauta se, jotta lähetys valmistuu.</string>
     <string name="resume">Jatka</string>
-    <string name="downloads_empty">Ei latauksia</string>
-    <string name="downloads_load_failed">Latauksiasi ei voitu ladata.</string>
-    <string name="downloads_load_more_failed">Lisää latauksia ei voitu ladata.</string>
-    <string name="downloads_concurrency_label">Samanaikaiset lataukset</string>
-    <plurals name="download_file_count">
+    <plurals name="pin_file_count">
         <item quantity="one">%1$d tiedosto</item>
         <item quantity="other">%1$d tiedostoa</item>
     </plurals>
@@ -419,4 +414,8 @@
     <string name="sync_fix_sign_in">Kirjaudu palveluun %1$s</string>
     <string name="sync_fix_enter_key">Anna käyttöavain</string>
     <string name="sync_fix_remove">Poista tältä laitteelta</string>
+    <string name="pins_at_once">Samanaikaiset kiinnitykset</string>
+    <string name="pinning_empty">Ei kiinnitettävää</string>
+    <string name="pinning_load_failed">Kiinnityksiä ei voitu ladata.</string>
+    <string name="pinning_load_more_failed">Lisää kiinnityksiä ei voitu ladata.</string>
 </resources>

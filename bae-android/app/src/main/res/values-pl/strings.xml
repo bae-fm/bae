@@ -144,9 +144,9 @@
     <string name="settings_open_in_browser">Otwórz w przeglądarce</string>
     <string name="settings_folder_no_app">Żadna aplikacja na tym urządzeniu nie otworzyła strony folderu.</string>
     <string name="settings_transfers">Transfery</string>
-    <string name="transfers_wifi_only">Pobieraj tylko przez Wi-Fi</string>
+    <string name="transfers_wifi_only">Przypinaj tylko przez Wi-Fi</string>
     <string name="transfers_wifi_only_footer">Przypięte wydania czekają na Wi-Fi. Odtwarzanie utworu, który nie jest przypięty, nadal korzysta z danych mobilnych.</string>
-    <string name="transfers_concurrency_footer">Ile plików pobiera się jednocześnie po przypięciu wydania.</string>
+    <string name="transfers_concurrency_footer">Ile plików jest jednocześnie przypinanych.</string>
     <string name="members_title">Osoby i urządzenia</string>
     <string name="people_people">Osoby</string>
     <string name="people_role">Rola</string>
@@ -178,8 +178,7 @@
     <string name="cloud_provider_s3">S3-compatible</string>
     <string name="cloud_provider_icloud">iCloud</string>
     <string name="qr_scanner_instructions">Zeskanuj kod przywracania wyświetlony w bae na jednym z twoich urządzeń albo zaproszenie.</string>
-    <!-- Downloads -->
-    <string name="downloads">Pobieranie</string>
+    <!-- Pinning -->
     <string name="pin">Przypnij</string>
     <string name="unpin">Odepnij</string>
     <string name="pinned">Przypięto</string>
@@ -190,10 +189,7 @@
     <string name="upload_missing_title">Brak pliku %1$s</string>
     <string name="upload_missing_advice">Przywróć go, aby dokończyć wysyłanie.</string>
     <string name="resume">Wznów</string>
-    <string name="downloads_empty">Brak pobrań</string>
-    <string name="downloads_load_failed">Nie udało się wczytać pobrań.</string>
-    <string name="downloads_load_more_failed">Nie udało się wczytać kolejnych pobrań.</string>
-    <plurals name="download_file_count">
+    <plurals name="pin_file_count">
         <item quantity="one">%1$d plik</item>
         <item quantity="few">%1$d pliki</item>
         <item quantity="many">%1$d plików</item>
@@ -374,7 +370,6 @@
     <string name="settings_history">Historia słuchania</string>
     <string name="settings_history_private">Tylko ja</string>
     <string name="settings_history_household">Wszyscy w bibliotece</string>
-    <string name="downloads_concurrency_label">Jednoczesne pobierania</string>
     <string name="settings_stored_in">Przechowywane w</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
@@ -435,4 +430,8 @@
     <string name="sync_fix_sign_in">Zaloguj się do %1$s</string>
     <string name="sync_fix_enter_key">Wprowadź klucz dostępu</string>
     <string name="sync_fix_remove">Usuń z tego urządzenia</string>
+    <string name="pins_at_once">Równoczesne przypinania</string>
+    <string name="pinning_empty">Nic do przypięcia</string>
+    <string name="pinning_load_failed">Nie udało się wczytać przypięć.</string>
+    <string name="pinning_load_more_failed">Nie udało się wczytać kolejnych przypięć.</string>
 </resources>

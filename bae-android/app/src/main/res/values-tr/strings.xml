@@ -138,9 +138,9 @@
     <string name="settings_open_in_browser">Tarayıcıda aç</string>
     <string name="settings_folder_no_app">Bu cihazdaki hiçbir uygulama klasörün sayfasını açmadı.</string>
     <string name="settings_transfers">Aktarımlar</string>
-    <string name="transfers_wifi_only">Yalnızca Wi-Fi ile indir</string>
+    <string name="transfers_wifi_only">Yalnızca Wi-Fi\'de sabitle</string>
     <string name="transfers_wifi_only_footer">Sabitlenen yayınlar Wi-Fi’yi bekler. Sabitlenmemiş bir parçayı çalmak yine mobil veri kullanır.</string>
-    <string name="transfers_concurrency_footer">Bir yayın sabitlendiğinde aynı anda kaç dosyanın indirileceği.</string>
+    <string name="transfers_concurrency_footer">Aynı anda kaç dosyanın sabitleneceği.</string>
     <string name="members_title">Kişiler ve cihazlar</string>
     <string name="people_people">Kişiler</string>
     <string name="people_role">Rol</string>
@@ -170,8 +170,7 @@
     <string name="cloud_provider_s3">S3-compatible</string>
     <string name="cloud_provider_icloud">iCloud</string>
     <string name="qr_scanner_instructions">Cihazlarınızdan birinde bae’nin gösterdiği bir geri yükleme kodunu ya da bir daveti tarayın.</string>
-    <!-- Downloads -->
-    <string name="downloads">İndirilenler</string>
+    <!-- Pinning -->
     <string name="pin">Sabitle</string>
     <string name="unpin">Sabitlemeyi kaldır</string>
     <string name="pinned">Sabitlendi</string>
@@ -182,10 +181,7 @@
     <string name="upload_missing_title">%1$s eksik</string>
     <string name="upload_missing_advice">Yüklemeyi bitirmek için dosyayı geri yükleyin.</string>
     <string name="resume">Sürdür</string>
-    <string name="downloads_empty">İndirme yok</string>
-    <string name="downloads_load_failed">İndirmeleriniz yüklenemedi.</string>
-    <string name="downloads_load_more_failed">Daha fazla indirme yüklenemedi.</string>
-    <plurals name="download_file_count">
+    <plurals name="pin_file_count">
         <item quantity="one">%1$d dosya</item>
         <item quantity="other">%1$d dosya</item>
     </plurals>
@@ -360,7 +356,6 @@
     <string name="settings_history">Dinleme geçmişi</string>
     <string name="settings_history_private">Yalnızca ben</string>
     <string name="settings_history_household">Kitaplıktaki herkes</string>
-    <string name="downloads_concurrency_label">Eş zamanlı indirmeler</string>
     <string name="settings_stored_in">Depolandığı yer</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
@@ -421,4 +416,8 @@
     <string name="sync_fix_sign_in">%1$s hesabında oturum aç</string>
     <string name="sync_fix_enter_key">Erişim anahtarı gir</string>
     <string name="sync_fix_remove">Bu cihazdan kaldır</string>
+    <string name="pins_at_once">Eşzamanlı sabitlemeler</string>
+    <string name="pinning_empty">Sabitlenecek bir şey yok</string>
+    <string name="pinning_load_failed">Sabitlemeler yüklenemedi.</string>
+    <string name="pinning_load_more_failed">Daha fazla sabitleme yüklenemedi.</string>
 </resources>

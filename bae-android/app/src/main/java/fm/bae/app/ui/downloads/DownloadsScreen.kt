@@ -51,7 +51,7 @@ import uniffi.bae_bridge.BridgeDownloadOp
 import uniffi.bae_bridge.BridgeDownloadState
 import uniffi.bae_bridge.BridgeQueueWait
 
-/** The download queue: each pin's progress, pause and retry for the queue, and cancel per item. */
+/** The Pinning screen: each pin's progress, pause and retry for the queue, and cancel per item. */
 @Composable
 internal fun DownloadsScreen(
     session: OpenLibrary,
@@ -134,7 +134,7 @@ private fun DownloadsBody(
 
             page.totalCount == 0 -> {
                 Text(
-                    text = stringResource(R.string.downloads_empty),
+                    text = stringResource(R.string.pinning_empty),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.align(Alignment.Center).padding(ThemeSpace.page),
                 )
@@ -196,7 +196,7 @@ private fun DownloadsTopBar(
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
             }
             Text(
-                text = stringResource(R.string.downloads),
+                text = stringResource(R.string.pinning),
                 style = ThemeText.title.style,
                 modifier = Modifier.weight(1f),
             )
@@ -222,7 +222,7 @@ private fun queueSummaryText(
 
 /** The queue's summary, then its [count] entries in the order queued, each drawn once [row] has read it. */
 @Composable
-private fun DownloadsList(
+internal fun DownloadsList(
     summary: String,
     count: Int,
     row: (Int) -> BridgeDownloadOp?,

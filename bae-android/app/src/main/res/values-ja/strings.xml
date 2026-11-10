@@ -135,9 +135,9 @@
     <string name="settings_open_in_browser">ブラウザで開く</string>
     <string name="settings_folder_no_app">このデバイスのアプリでフォルダのページを開けませんでした。</string>
     <string name="settings_transfers">転送</string>
-    <string name="transfers_wifi_only">Wi-Fi接続時のみダウンロード</string>
+    <string name="transfers_wifi_only">Wi-Fi 接続時のみピン留め</string>
     <string name="transfers_wifi_only_footer">ピン留めしたリリースはWi-Fiに接続するまで待機します。ピン留めしていないトラックの再生では、引き続きモバイルデータ通信を使います。</string>
-    <string name="transfers_concurrency_footer">リリースをピン留めしたときに同時にダウンロードするファイル数です。</string>
+    <string name="transfers_concurrency_footer">一度にピン留めするファイル数。</string>
     <string name="members_title">メンバーとデバイス</string>
     <string name="people_people">メンバー</string>
     <string name="people_role">役割</string>
@@ -166,8 +166,7 @@
     <string name="cloud_provider_s3">S3-compatible</string>
     <string name="cloud_provider_icloud">iCloud</string>
     <string name="qr_scanner_instructions">お使いのデバイスの bae に表示された復元コード、または招待をスキャンしてください。</string>
-    <!-- Downloads -->
-    <string name="downloads">ダウンロード</string>
+    <!-- Pinning -->
     <string name="pin">ピン留め</string>
     <string name="unpin">ピン留めを解除</string>
     <string name="pinned">ピン留め済み</string>
@@ -178,10 +177,7 @@
     <string name="upload_missing_title">%1$s が見つかりません</string>
     <string name="upload_missing_advice">アップロードを完了するには、ファイルを元に戻してください。</string>
     <string name="resume">再開</string>
-    <string name="downloads_empty">ダウンロードはありません</string>
-    <string name="downloads_load_failed">ダウンロードを読み込めませんでした。</string>
-    <string name="downloads_load_more_failed">これ以上ダウンロードを読み込めませんでした。</string>
-    <plurals name="download_file_count">
+    <plurals name="pin_file_count">
         <item quantity="other">%1$d 個のファイル</item>
     </plurals>
     <plurals name="queue_items_added">
@@ -353,7 +349,6 @@
     <string name="settings_history">再生履歴</string>
     <string name="settings_history_private">自分のみ</string>
     <string name="settings_history_household">ライブラリの全員</string>
-    <string name="downloads_concurrency_label">同時ダウンロード数</string>
     <string name="settings_stored_in">保存先</string>
     <string name="storage_location_account">%1$s：%2$s</string>
     <string name="storage_location_bucket">%1$s：%2$s（%3$s）</string>
@@ -414,4 +409,8 @@
     <string name="sync_fix_sign_in">%1$s にサインイン</string>
     <string name="sync_fix_enter_key">アクセスキーを入力</string>
     <string name="sync_fix_remove">このデバイスから削除</string>
+    <string name="pins_at_once">同時ピン留め数</string>
+    <string name="pinning_empty">ピン留めするものはありません</string>
+    <string name="pinning_load_failed">ピン留めを読み込めませんでした。</string>
+    <string name="pinning_load_more_failed">これ以上ピン留めを読み込めませんでした。</string>
 </resources>

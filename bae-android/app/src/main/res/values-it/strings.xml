@@ -141,9 +141,9 @@
     <string name="settings_open_in_browser">Apri nel browser</string>
     <string name="settings_folder_no_app">Nessuna app su questo dispositivo ha aperto la pagina della cartella.</string>
     <string name="settings_transfers">Trasferimenti</string>
-    <string name="transfers_wifi_only">Scarica solo con Wi-Fi</string>
+    <string name="transfers_wifi_only">Fissa solo con Wi-Fi</string>
     <string name="transfers_wifi_only_footer">Le pubblicazioni fissate attendono il Wi-Fi. Riprodurre una traccia non fissata usa comunque i dati mobili.</string>
-    <string name="transfers_concurrency_footer">Quanti file vengono scaricati contemporaneamente quando si fissa una pubblicazione.</string>
+    <string name="transfers_concurrency_footer">Quanti file vengono fissati contemporaneamente.</string>
     <string name="members_title">Persone e dispositivi</string>
     <string name="people_people">Persone</string>
     <string name="people_role">Ruolo</string>
@@ -174,8 +174,7 @@
     <string name="cloud_provider_s3">S3-compatible</string>
     <string name="cloud_provider_icloud">iCloud</string>
     <string name="qr_scanner_instructions">Scansiona un codice di ripristino mostrato da bae su uno dei tuoi dispositivi, oppure un invito.</string>
-    <!-- Downloads -->
-    <string name="downloads">Download</string>
+    <!-- Pinning -->
     <string name="pin">Fissa</string>
     <string name="unpin">Rimuovi fissaggio</string>
     <string name="pinned">Fissato</string>
@@ -186,10 +185,7 @@
     <string name="upload_missing_title">%1$s manca</string>
     <string name="upload_missing_advice">Ripristinalo per completare il caricamento.</string>
     <string name="resume">Riprendi</string>
-    <string name="downloads_empty">Nessun download</string>
-    <string name="downloads_load_failed">Impossibile caricare i tuoi download.</string>
-    <string name="downloads_load_more_failed">Impossibile caricare altri download.</string>
-    <plurals name="download_file_count">
+    <plurals name="pin_file_count">
         <item quantity="one">%1$d file</item>
         <item quantity="many">%1$d file</item>
         <item quantity="other">%1$d file</item>
@@ -365,7 +361,6 @@
     <string name="settings_history">Cronologia di ascolto</string>
     <string name="settings_history_private">Solo io</string>
     <string name="settings_history_household">Tutti nella libreria</string>
-    <string name="downloads_concurrency_label">Download simultanei</string>
     <string name="settings_stored_in">Archiviato in</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
@@ -426,4 +421,8 @@
     <string name="sync_fix_sign_in">Accedi a %1$s</string>
     <string name="sync_fix_enter_key">Inserisci chiave di accesso</string>
     <string name="sync_fix_remove">Rimuovi da questo dispositivo</string>
+    <string name="pins_at_once">Fissaggi simultanei</string>
+    <string name="pinning_empty">Niente da fissare</string>
+    <string name="pinning_load_failed">Impossibile caricare i fissaggi.</string>
+    <string name="pinning_load_more_failed">Impossibile caricare altri fissaggi.</string>
 </resources>

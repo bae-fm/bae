@@ -141,9 +141,9 @@
     <string name="settings_open_in_browser">Otvori u pregledniku</string>
     <string name="settings_folder_no_app">Nijedna aplikacija na ovom uređaju nije otvorila stranicu mape.</string>
     <string name="settings_transfers">Prijenosi</string>
-    <string name="transfers_wifi_only">Preuzimaj samo putem Wi-Fi-ja</string>
+    <string name="transfers_wifi_only">Prikvači samo putem Wi-Fi-ja</string>
     <string name="transfers_wifi_only_footer">Prikvačena izdanja čekaju Wi-Fi. Reprodukcija pjesme koja nije prikvačena i dalje koristi mobilne podatke.</string>
-    <string name="transfers_concurrency_footer">Koliko se datoteka istodobno preuzima kad se izdanje prikvači.</string>
+    <string name="transfers_concurrency_footer">Koliko se datoteka istodobno prikvačuje.</string>
     <string name="members_title">Osobe i uređaji</string>
     <string name="people_people">Osobe</string>
     <string name="people_role">Uloga</string>
@@ -174,8 +174,7 @@
     <string name="cloud_provider_s3">S3-compatible</string>
     <string name="cloud_provider_icloud">iCloud</string>
     <string name="qr_scanner_instructions">Skenirajte kod za vraćanje koji bae prikazuje na jednom od vaših uređaja ili pozivnicu.</string>
-    <!-- Downloads -->
-    <string name="downloads">Preuzimanja</string>
+    <!-- Pinning -->
     <string name="pin">Prikvači</string>
     <string name="unpin">Otkvači</string>
     <string name="pinned">Prikvačeno</string>
@@ -186,10 +185,7 @@
     <string name="upload_missing_title">%1$s nedostaje</string>
     <string name="upload_missing_advice">Vratite je da se prijenos dovrši.</string>
     <string name="resume">Nastavi</string>
-    <string name="downloads_empty">Nema preuzimanja</string>
-    <string name="downloads_load_failed">Nije moguće učitati vaša preuzimanja.</string>
-    <string name="downloads_load_more_failed">Nije moguće učitati više preuzimanja.</string>
-    <plurals name="download_file_count">
+    <plurals name="pin_file_count">
         <item quantity="one">%1$d datoteka</item>
         <item quantity="few">%1$d datoteke</item>
         <item quantity="other">%1$d datoteka</item>
@@ -367,7 +363,6 @@
     <string name="settings_history">Povijest slušanja</string>
     <string name="settings_history_private">Samo ja</string>
     <string name="settings_history_household">Svi u fonoteci</string>
-    <string name="downloads_concurrency_label">Istodobna preuzimanja</string>
     <string name="settings_stored_in">Pohranjeno u</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
@@ -428,4 +423,8 @@
     <string name="sync_fix_sign_in">Prijava na %1$s</string>
     <string name="sync_fix_enter_key">Unesi pristupni ključ</string>
     <string name="sync_fix_remove">Ukloni s ovog uređaja</string>
+    <string name="pins_at_once">Istodobna prikvačivanja</string>
+    <string name="pinning_empty">Ništa za prikvačivanje</string>
+    <string name="pinning_load_failed">Prikvačivanja nije moguće učitati.</string>
+    <string name="pinning_load_more_failed">Nije moguće učitati još prikvačivanja.</string>
 </resources>

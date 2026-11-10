@@ -93,6 +93,7 @@ PeopleAndDevices:people-and-devices
 PeopleAndDevicesMember:people-and-devices-member
 PeopleAndDevicesPerson:people-and-devices-person
 PeopleAndDevicesYours:people-and-devices-yours
+PinningList:pinning-list
 RestoreCodeMasked:restore-code-masked
 RestoreCodeShown:restore-code-shown
 S3SetupRegionMismatch:s3-setup-region-mismatch

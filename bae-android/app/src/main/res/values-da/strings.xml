@@ -142,9 +142,9 @@
     <string name="settings_open_in_browser">Åbn i browser</string>
     <string name="settings_folder_no_app">Ingen app på denne enhed åbnede mappens side.</string>
     <string name="settings_transfers">Overførsler</string>
-    <string name="transfers_wifi_only">Download kun via Wi-Fi</string>
+    <string name="transfers_wifi_only">Fastgør kun via Wi-Fi</string>
     <string name="transfers_wifi_only_footer">Fastgjorte udgivelser venter på Wi-Fi. Afspilning af et nummer, der ikke er fastgjort, bruger stadig mobildata.</string>
-    <string name="transfers_concurrency_footer">Hvor mange filer der downloades på én gang, når en udgivelse fastgøres.</string>
+    <string name="transfers_concurrency_footer">Hvor mange filer der fastgøres ad gangen.</string>
     <string name="members_title">Personer og enheder</string>
     <string name="people_people">Personer</string>
     <string name="people_role">Rolle</string>
@@ -174,7 +174,6 @@
     <string name="cloud_provider_s3">S3-kompatibel</string>
     <string name="cloud_provider_icloud">iCloud</string>
     <string name="qr_scanner_instructions">Scan en gendannelseskode, der vises i bae på en af dine enheder, eller en invitation.</string>
-    <string name="downloads">Overførsler</string>
     <string name="pin">Fastgør</string>
     <string name="unpin">Frigør</string>
     <string name="pinned">Fastgjort</string>
@@ -185,11 +184,7 @@
     <string name="upload_missing_title">%1$s mangler</string>
     <string name="upload_missing_advice">Gendan den for at fuldføre uploaden.</string>
     <string name="resume">Fortsæt</string>
-    <string name="downloads_empty">Ingen overførsler</string>
-    <string name="downloads_load_failed">Dine overførsler kunne ikke indlæses.</string>
-    <string name="downloads_load_more_failed">Der kunne ikke indlæses flere overførsler.</string>
-    <string name="downloads_concurrency_label">Samtidige overførsler</string>
-    <plurals name="download_file_count">
+    <plurals name="pin_file_count">
         <item quantity="one">%1$d fil</item>
         <item quantity="other">%1$d filer</item>
     </plurals>
@@ -419,4 +414,8 @@
     <string name="sync_fix_sign_in">Log ind på %1$s</string>
     <string name="sync_fix_enter_key">Indtast adgangsnøgle</string>
     <string name="sync_fix_remove">Fjern fra denne enhed</string>
+    <string name="pins_at_once">Samtidige fastgørelser</string>
+    <string name="pinning_empty">Intet at fastgøre</string>
+    <string name="pinning_load_failed">Kunne ikke indlæse dine fastgørelser.</string>
+    <string name="pinning_load_more_failed">Kunne ikke indlæse flere fastgørelser.</string>
 </resources>

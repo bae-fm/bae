@@ -150,9 +150,9 @@
     <string name="settings_open_in_browser">فتح في المتصفح</string>
     <string name="settings_folder_no_app">لم يفتح أي تطبيق على هذا الجهاز صفحة المجلد.</string>
     <string name="settings_transfers">عمليات النقل</string>
-    <string name="transfers_wifi_only">التنزيل عبر Wi-Fi فقط</string>
+    <string name="transfers_wifi_only">التثبيت عبر Wi-Fi فقط</string>
     <string name="transfers_wifi_only_footer">تنتظر الإصدارات المثبّتة اتصال Wi-Fi. يظل تشغيل مقطع غير مثبّت يستخدم بيانات الجوّال.</string>
-    <string name="transfers_concurrency_footer">عدد الملفات التي تُنزَّل في وقت واحد عند تثبيت إصدار.</string>
+    <string name="transfers_concurrency_footer">عدد الملفات التي تُثبَّت في آن واحد.</string>
     <string name="members_title">الأشخاص والأجهزة</string>
     <string name="people_people">الأشخاص</string>
     <string name="people_role">الدور</string>
@@ -186,8 +186,7 @@
     <string name="cloud_provider_s3">S3-compatible</string>
     <string name="cloud_provider_icloud">iCloud</string>
     <string name="qr_scanner_instructions">امسح رمز استرداد معروضًا في bae على أحد أجهزتك، أو دعوة.</string>
-    <!-- Downloads -->
-    <string name="downloads">التنزيلات</string>
+    <!-- Pinning -->
     <string name="pin">تثبيت</string>
     <string name="unpin">إلغاء التثبيت</string>
     <string name="pinned">مثبّت</string>
@@ -198,10 +197,7 @@
     <string name="upload_missing_title">%1$s مفقود</string>
     <string name="upload_missing_advice">استعِده لإكمال الرفع.</string>
     <string name="resume">استئناف</string>
-    <string name="downloads_empty">لا توجد تنزيلات</string>
-    <string name="downloads_load_failed">تعذّر تحميل تنزيلاتك.</string>
-    <string name="downloads_load_more_failed">تعذّر تحميل المزيد من التنزيلات.</string>
-    <plurals name="download_file_count">
+    <plurals name="pin_file_count">
         <item quantity="zero">%1$d ملف</item>
         <item quantity="one">ملف واحد</item>
         <item quantity="two">ملفان</item>
@@ -388,7 +384,6 @@
     <string name="settings_history">سجل الاستماع</string>
     <string name="settings_history_private">أنا فقط</string>
     <string name="settings_history_household">الجميع في المكتبة</string>
-    <string name="downloads_concurrency_label">التنزيلات المتزامنة</string>
     <string name="settings_stored_in">مخزّن في</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
@@ -449,4 +444,8 @@
     <string name="sync_fix_sign_in">تسجيل الدخول إلى %1$s</string>
     <string name="sync_fix_enter_key">إدخال مفتاح الوصول</string>
     <string name="sync_fix_remove">إزالة من هذا الجهاز</string>
+    <string name="pins_at_once">عمليات التثبيت المتزامنة</string>
+    <string name="pinning_empty">لا شيء للتثبيت</string>
+    <string name="pinning_load_failed">تعذر تحميل عمليات التثبيت.</string>
+    <string name="pinning_load_more_failed">تعذر تحميل المزيد من عمليات التثبيت.</string>
 </resources>

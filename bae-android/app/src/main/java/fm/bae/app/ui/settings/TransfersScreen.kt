@@ -36,8 +36,8 @@ import fm.bae.app.ui.components.RowCard
 import fm.bae.app.ui.downloads.setDownloadConcurrency
 
 /**
- * How this phone moves files: whether downloads wait for Wi-Fi, which core
- * holds with coven's setting, then how many download at once. A phone never
+ * How this phone moves files: whether pins wait for Wi-Fi, which core
+ * holds with coven's setting, then how many pins run at once. A phone never
  * uploads release files, so there is no pause.
  */
 @Composable
@@ -85,7 +85,7 @@ internal fun TransfersContent(
     }
 }
 
-/** Download over Wi-Fi only, or why whether it is on can't be told. */
+/** Pin over Wi-Fi only, or why whether it is on can't be told. */
 @Composable
 private fun WifiOnlyRows(
     unmeteredOnly: LiveValue<Boolean>,
@@ -101,7 +101,7 @@ private fun WifiOnlyRows(
             }
         }
 
-        // Whether downloads wait for Wi-Fi is unknown while its read has failed.
+        // Whether pins wait for Wi-Fi is unknown while its read has failed.
         is LiveValue.Failed -> {
             Text(stringResource(R.string.transfers_wifi_only))
             ErrorNotice(unmeteredOnly.error)
@@ -109,7 +109,7 @@ private fun WifiOnlyRows(
     }
 }
 
-/** Simultaneous downloads, naming the count, which opens a dialog of 1 up to [limit]. */
+/** Pins at once, naming the count, which opens a dialog of 1 up to [limit]. */
 @Composable
 private fun ConcurrencyRow(
     value: UInt,
@@ -117,7 +117,7 @@ private fun ConcurrencyRow(
     onSelect: (UInt) -> Unit,
 ) {
     var open by remember { mutableStateOf(false) }
-    val title = stringResource(R.string.downloads_concurrency_label)
+    val title = stringResource(R.string.pins_at_once)
     CardRow(title = title, subtitle = value.toString(), onClick = { open = true })
     if (open) {
         AlertDialog(

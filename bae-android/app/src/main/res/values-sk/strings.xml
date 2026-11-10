@@ -150,9 +150,9 @@
     <string name="settings_open_in_browser">Otvoriť v prehliadači</string>
     <string name="settings_folder_no_app">Žiadna aplikácia v tomto zariadení neotvorila stránku priečinka.</string>
     <string name="settings_transfers">Prenosy</string>
-    <string name="transfers_wifi_only">Sťahovať iba cez Wi-Fi</string>
+    <string name="transfers_wifi_only">Pripínať len cez Wi-Fi</string>
     <string name="transfers_wifi_only_footer">Pripnuté vydania čakajú na Wi-Fi. Prehrávanie skladby, ktorá nie je pripnutá, stále používa mobilné dáta.</string>
-    <string name="transfers_concurrency_footer">Koľko súborov sa sťahuje naraz, keď sa vydanie pripne.</string>
+    <string name="transfers_concurrency_footer">Koľko súborov sa naraz pripína.</string>
     <string name="members_title">Ľudia a zariadenia</string>
     <string name="people_people">Ľudia</string>
     <string name="people_role">Rola</string>
@@ -184,7 +184,6 @@
     <string name="cloud_provider_s3">Kompatibilné s S3</string>
     <string name="cloud_provider_icloud">iCloud</string>
     <string name="qr_scanner_instructions">Naskenuj kód na obnovenie, ktorý bae zobrazuje na niektorom z tvojich zariadení, alebo pozvánku.</string>
-    <string name="downloads">Stiahnuté</string>
     <string name="pin">Pripnúť</string>
     <string name="unpin">Odopnúť</string>
     <string name="pinned">Pripnuté</string>
@@ -195,11 +194,7 @@
     <string name="upload_missing_title">%1$s chýba</string>
     <string name="upload_missing_advice">Obnovte ho, aby sa odosielanie dokončilo.</string>
     <string name="resume">Pokračovať</string>
-    <string name="downloads_empty">Žiadne sťahovania</string>
-    <string name="downloads_load_failed">Tvoje sťahovania sa nepodarilo načítať.</string>
-    <string name="downloads_load_more_failed">Ďalšie sťahovania sa nepodarilo načítať.</string>
-    <string name="downloads_concurrency_label">Súbežné sťahovania</string>
-    <plurals name="download_file_count">
+    <plurals name="pin_file_count">
         <item quantity="one">%1$d súbor</item>
         <item quantity="few">%1$d súbory</item>
         <item quantity="many">%1$d súboru</item>
@@ -433,4 +428,8 @@
     <string name="sync_fix_sign_in">Prihlásiť sa do %1$s</string>
     <string name="sync_fix_enter_key">Zadať prístupový kľúč</string>
     <string name="sync_fix_remove">Odstrániť z tohto zariadenia</string>
+    <string name="pins_at_once">Súbežné pripnutia</string>
+    <string name="pinning_empty">Nič na pripnutie</string>
+    <string name="pinning_load_failed">Pripnutia sa nepodarilo načítať.</string>
+    <string name="pinning_load_more_failed">Ďalšie pripnutia sa nepodarilo načítať.</string>
 </resources>

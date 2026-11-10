@@ -138,9 +138,9 @@
     <string name="settings_open_in_browser">Отваряне в браузъра</string>
     <string name="settings_folder_no_app">Нито едно приложение на това устройство не отвори страницата на папката.</string>
     <string name="settings_transfers">Трансфери</string>
-    <string name="transfers_wifi_only">Изтегляне само през Wi-Fi</string>
+    <string name="transfers_wifi_only">Закачане само през Wi-Fi</string>
     <string name="transfers_wifi_only_footer">Закачените издания изчакват Wi-Fi. Пускането на песен, която не е закачена, пак използва мобилни данни.</string>
-    <string name="transfers_concurrency_footer">Колко файла се изтеглят едновременно, когато издание се закача.</string>
+    <string name="transfers_concurrency_footer">Колко файла се закачат едновременно.</string>
     <string name="members_title">Хора и устройства</string>
     <string name="people_people">Хора</string>
     <string name="people_role">Роля</string>
@@ -170,8 +170,7 @@
     <string name="cloud_provider_s3">S3-compatible</string>
     <string name="cloud_provider_icloud">iCloud</string>
     <string name="qr_scanner_instructions">Сканирайте код за възстановяване, показан в bae на някое от устройствата ви, или покана.</string>
-    <!-- Downloads -->
-    <string name="downloads">Изтегляния</string>
+    <!-- Pinning -->
     <string name="pin">Закачи</string>
     <string name="unpin">Откачи</string>
     <string name="pinned">Закачено</string>
@@ -182,10 +181,7 @@
     <string name="upload_missing_title">%1$s липсва</string>
     <string name="upload_missing_advice">Възстановете го, за да завърши качването.</string>
     <string name="resume">Възобнови</string>
-    <string name="downloads_empty">Няма изтегляния</string>
-    <string name="downloads_load_failed">Изтеглянията ви не могат да бъдат заредени.</string>
-    <string name="downloads_load_more_failed">Не могат да бъдат заредени още изтегляния.</string>
-    <plurals name="download_file_count">
+    <plurals name="pin_file_count">
         <item quantity="one">%1$d файл</item>
         <item quantity="other">%1$d файла</item>
     </plurals>
@@ -360,7 +356,6 @@
     <string name="settings_history">История на слушането</string>
     <string name="settings_history_private">Само аз</string>
     <string name="settings_history_household">Всички в библиотеката</string>
-    <string name="downloads_concurrency_label">Едновременни изтегляния</string>
     <string name="settings_stored_in">Съхранява се в</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
@@ -421,4 +416,8 @@
     <string name="sync_fix_sign_in">Влизане в %1$s</string>
     <string name="sync_fix_enter_key">Въвеждане на ключ за достъп</string>
     <string name="sync_fix_remove">Премахване от това устройство</string>
+    <string name="pins_at_once">Едновременни закачания</string>
+    <string name="pinning_empty">Няма нищо за закачане</string>
+    <string name="pinning_load_failed">Закачанията не можаха да се заредят.</string>
+    <string name="pinning_load_more_failed">Не можаха да се заредят още закачания.</string>
 </resources>

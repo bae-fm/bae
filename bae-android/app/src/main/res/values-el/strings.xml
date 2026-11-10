@@ -142,9 +142,9 @@
     <string name="settings_open_in_browser">Άνοιγμα στο πρόγραμμα περιήγησης</string>
     <string name="settings_folder_no_app">Καμία εφαρμογή σε αυτήν τη συσκευή δεν άνοιξε τη σελίδα του φακέλου.</string>
     <string name="settings_transfers">Μεταφορές</string>
-    <string name="transfers_wifi_only">Λήψη μόνο μέσω Wi-Fi</string>
+    <string name="transfers_wifi_only">Καρφίτσωμα μόνο μέσω Wi-Fi</string>
     <string name="transfers_wifi_only_footer">Οι καρφιτσωμένες κυκλοφορίες περιμένουν Wi-Fi. Η αναπαραγωγή ενός κομματιού που δεν είναι καρφιτσωμένο εξακολουθεί να χρησιμοποιεί δεδομένα κινητής τηλεφωνίας.</string>
-    <string name="transfers_concurrency_footer">Πόσα αρχεία λαμβάνονται ταυτόχρονα όταν καρφιτσώνεται μια κυκλοφορία.</string>
+    <string name="transfers_concurrency_footer">Πόσα αρχεία καρφιτσώνονται ταυτόχρονα.</string>
     <string name="members_title">Άτομα και συσκευές</string>
     <string name="people_people">Άτομα</string>
     <string name="people_role">Ρόλος</string>
@@ -174,7 +174,6 @@
     <string name="cloud_provider_s3">Συμβατό με S3</string>
     <string name="cloud_provider_icloud">iCloud</string>
     <string name="qr_scanner_instructions">Σαρώστε έναν κωδικό επαναφοράς που εμφανίζει το bae σε μία από τις συσκευές σας ή μια πρόσκληση.</string>
-    <string name="downloads">Λήψεις</string>
     <string name="pin">Καρφίτσωμα</string>
     <string name="unpin">Ξεκαρφίτσωμα</string>
     <string name="pinned">Καρφιτσωμένο</string>
@@ -185,11 +184,7 @@
     <string name="upload_missing_title">Το %1$s λείπει</string>
     <string name="upload_missing_advice">Επαναφέρετέ το για να ολοκληρωθεί η μεταφόρτωση.</string>
     <string name="resume">Συνέχιση</string>
-    <string name="downloads_empty">Καμία λήψη</string>
-    <string name="downloads_load_failed">Δεν ήταν δυνατή η φόρτωση των λήψεών σας.</string>
-    <string name="downloads_load_more_failed">Δεν ήταν δυνατή η φόρτωση περισσότερων λήψεων.</string>
-    <string name="downloads_concurrency_label">Ταυτόχρονες λήψεις</string>
-    <plurals name="download_file_count">
+    <plurals name="pin_file_count">
         <item quantity="one">%1$d αρχείο</item>
         <item quantity="other">%1$d αρχεία</item>
     </plurals>
@@ -419,4 +414,8 @@
     <string name="sync_fix_sign_in">Σύνδεση στο %1$s</string>
     <string name="sync_fix_enter_key">Εισαγωγή κλειδιού πρόσβασης</string>
     <string name="sync_fix_remove">Αφαίρεση από αυτή τη συσκευή</string>
+    <string name="pins_at_once">Ταυτόχρονα καρφιτσώματα</string>
+    <string name="pinning_empty">Τίποτα για καρφίτσωμα</string>
+    <string name="pinning_load_failed">Δεν ήταν δυνατή η φόρτωση των καρφιτσωμάτων.</string>
+    <string name="pinning_load_more_failed">Δεν ήταν δυνατή η φόρτωση περισσότερων καρφιτσωμάτων.</string>
 </resources>

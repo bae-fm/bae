@@ -135,9 +135,9 @@
     <string name="settings_open_in_browser">在浏览器中打开</string>
     <string name="settings_folder_no_app">此设备上没有应用打开文件夹的页面。</string>
     <string name="settings_transfers">传输</string>
-    <string name="transfers_wifi_only">仅通过 Wi-Fi 下载</string>
+    <string name="transfers_wifi_only">仅通过 Wi-Fi 固定</string>
     <string name="transfers_wifi_only_footer">已固定的发行会等待 Wi-Fi。播放未固定的曲目仍会使用移动数据。</string>
-    <string name="transfers_concurrency_footer">固定发行时同时下载的文件数。</string>
+    <string name="transfers_concurrency_footer">同时固定的文件数。</string>
     <string name="members_title">成员和设备</string>
     <string name="people_people">人员</string>
     <string name="people_role">角色</string>
@@ -166,8 +166,7 @@
     <string name="cloud_provider_s3">S3-compatible</string>
     <string name="cloud_provider_icloud">iCloud</string>
     <string name="qr_scanner_instructions">扫描你其他设备上 bae 显示的恢复码，或一个邀请。</string>
-    <!-- Downloads -->
-    <string name="downloads">下载</string>
+    <!-- Pinning -->
     <string name="pin">固定</string>
     <string name="unpin">取消固定</string>
     <string name="pinned">已固定</string>
@@ -178,10 +177,7 @@
     <string name="upload_missing_title">缺少 %1$s</string>
     <string name="upload_missing_advice">恢复该文件以完成上传。</string>
     <string name="resume">恢复</string>
-    <string name="downloads_empty">暂无下载</string>
-    <string name="downloads_load_failed">无法加载你的下载。</string>
-    <string name="downloads_load_more_failed">无法加载更多下载。</string>
-    <plurals name="download_file_count">
+    <plurals name="pin_file_count">
         <item quantity="other">%1$d 个文件</item>
     </plurals>
     <plurals name="queue_items_added">
@@ -353,7 +349,6 @@
     <string name="settings_history">收听记录</string>
     <string name="settings_history_private">仅自己</string>
     <string name="settings_history_household">库中的所有人</string>
-    <string name="downloads_concurrency_label">同时下载数</string>
     <string name="settings_stored_in">存储于</string>
     <string name="storage_location_account">%1$s：%2$s</string>
     <string name="storage_location_bucket">%1$s：%2$s（%3$s）</string>
@@ -414,4 +409,8 @@
     <string name="sync_fix_sign_in">登录 %1$s</string>
     <string name="sync_fix_enter_key">输入访问密钥</string>
     <string name="sync_fix_remove">从此设备移除</string>
+    <string name="pins_at_once">同时固定数</string>
+    <string name="pinning_empty">没有要固定的内容</string>
+    <string name="pinning_load_failed">无法载入固定项。</string>
+    <string name="pinning_load_more_failed">无法载入更多固定项。</string>
 </resources>

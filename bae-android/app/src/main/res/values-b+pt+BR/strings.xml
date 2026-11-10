@@ -141,9 +141,9 @@
     <string name="settings_open_in_browser">Abrir no navegador</string>
     <string name="settings_folder_no_app">Nenhum app deste dispositivo abriu a página da pasta.</string>
     <string name="settings_transfers">Transferências</string>
-    <string name="transfers_wifi_only">Baixar apenas por Wi-Fi</string>
+    <string name="transfers_wifi_only">Fixar só no Wi-Fi</string>
     <string name="transfers_wifi_only_footer">Lançamentos fixados esperam pelo Wi-Fi. Tocar uma faixa que não está fixada continua usando dados móveis.</string>
-    <string name="transfers_concurrency_footer">Quantos arquivos são baixados ao mesmo tempo quando um lançamento é fixado.</string>
+    <string name="transfers_concurrency_footer">Quantos arquivos são fixados de uma vez.</string>
     <string name="members_title">Pessoas e dispositivos</string>
     <string name="people_people">Pessoas</string>
     <string name="people_role">Função</string>
@@ -174,8 +174,7 @@
     <string name="cloud_provider_s3">S3-compatible</string>
     <string name="cloud_provider_icloud">iCloud</string>
     <string name="qr_scanner_instructions">Leia um código de restauração exibido no bae em um dos seus dispositivos ou um convite.</string>
-    <!-- Downloads -->
-    <string name="downloads">Downloads</string>
+    <!-- Pinning -->
     <string name="pin">Fixar</string>
     <string name="unpin">Desafixar</string>
     <string name="pinned">Fixado</string>
@@ -186,10 +185,7 @@
     <string name="upload_missing_title">%1$s está faltando</string>
     <string name="upload_missing_advice">Restaure-o para concluir o envio.</string>
     <string name="resume">Retomar</string>
-    <string name="downloads_empty">Nenhum download</string>
-    <string name="downloads_load_failed">Não foi possível carregar seus downloads.</string>
-    <string name="downloads_load_more_failed">Não foi possível carregar mais downloads.</string>
-    <plurals name="download_file_count">
+    <plurals name="pin_file_count">
         <item quantity="one">%1$d arquivo</item>
         <item quantity="many">%1$d arquivos</item>
         <item quantity="other">%1$d arquivos</item>
@@ -365,7 +361,6 @@
     <string name="settings_history">Histórico de reprodução</string>
     <string name="settings_history_private">Só eu</string>
     <string name="settings_history_household">Todos na biblioteca</string>
-    <string name="downloads_concurrency_label">Downloads simultâneos</string>
     <string name="settings_stored_in">Armazenado em</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
@@ -426,4 +421,8 @@
     <string name="sync_fix_sign_in">Entrar no %1$s</string>
     <string name="sync_fix_enter_key">Inserir chave de acesso</string>
     <string name="sync_fix_remove">Remover deste dispositivo</string>
+    <string name="pins_at_once">Fixações simultâneas</string>
+    <string name="pinning_empty">Nada para fixar</string>
+    <string name="pinning_load_failed">Não foi possível carregar suas fixações.</string>
+    <string name="pinning_load_more_failed">Não foi possível carregar mais fixações.</string>
 </resources>

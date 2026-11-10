@@ -141,9 +141,9 @@
     <string name="settings_open_in_browser">פתח בדפדפן</string>
     <string name="settings_folder_no_app">אף אפליקציה במכשיר הזה לא פתחה את דף התיקייה.</string>
     <string name="settings_transfers">העברות</string>
-    <string name="transfers_wifi_only">הורדה דרך Wi-Fi בלבד</string>
+    <string name="transfers_wifi_only">הצמדה רק ב-Wi-Fi</string>
     <string name="transfers_wifi_only_footer">מהדורות מוצמדות ממתינות ל-Wi-Fi. השמעת רצועה שאינה מוצמדת עדיין משתמשת בנתונים סלולריים.</string>
-    <string name="transfers_concurrency_footer">כמה קבצים יורדים בו-זמנית כשמצמידים מהדורה.</string>
+    <string name="transfers_concurrency_footer">כמה קבצים מוצמדים בו‑זמנית.</string>
     <string name="members_title">אנשים ומכשירים</string>
     <string name="people_people">אנשים</string>
     <string name="people_role">תפקיד</string>
@@ -174,8 +174,7 @@
     <string name="cloud_provider_s3">S3-compatible</string>
     <string name="cloud_provider_icloud">iCloud</string>
     <string name="qr_scanner_instructions">סרוק קוד שחזור שמוצג ב-bae באחד המכשירים שלך, או הזמנה.</string>
-    <!-- Downloads -->
-    <string name="downloads">הורדות</string>
+    <!-- Pinning -->
     <string name="pin">הצמד</string>
     <string name="unpin">בטל הצמדה</string>
     <string name="pinned">מוצמד</string>
@@ -186,10 +185,7 @@
     <string name="upload_missing_title">%1$s חסר</string>
     <string name="upload_missing_advice">שחזר אותו כדי לסיים את ההעלאה.</string>
     <string name="resume">המשך</string>
-    <string name="downloads_empty">אין הורדות</string>
-    <string name="downloads_load_failed">לא ניתן לטעון את ההורדות שלך.</string>
-    <string name="downloads_load_more_failed">לא ניתן לטעון הורדות נוספות.</string>
-    <plurals name="download_file_count">
+    <plurals name="pin_file_count">
         <item quantity="one">קובץ אחד</item>
         <item quantity="two">שני קבצים</item>
         <item quantity="other">%1$d קבצים</item>
@@ -367,7 +363,6 @@
     <string name="settings_history">היסטוריית האזנה</string>
     <string name="settings_history_private">רק אני</string>
     <string name="settings_history_household">כולם בספרייה</string>
-    <string name="downloads_concurrency_label">הורדות בו־זמנית</string>
     <string name="settings_stored_in">מאוחסן ב</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
@@ -428,4 +423,8 @@
     <string name="sync_fix_sign_in">היכנס ל-%1$s</string>
     <string name="sync_fix_enter_key">הזן מפתח גישה</string>
     <string name="sync_fix_remove">הסר ממכשיר זה</string>
+    <string name="pins_at_once">הצמדות בו-זמניות</string>
+    <string name="pinning_empty">אין מה להצמיד</string>
+    <string name="pinning_load_failed">לא ניתן לטעון את ההצמדות.</string>
+    <string name="pinning_load_more_failed">לא ניתן לטעון הצמדות נוספות.</string>
 </resources>

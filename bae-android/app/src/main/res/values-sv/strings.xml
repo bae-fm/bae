@@ -142,9 +142,9 @@
     <string name="settings_open_in_browser">Öppna i webbläsaren</string>
     <string name="settings_folder_no_app">Ingen app på den här enheten öppnade mappens sida.</string>
     <string name="settings_transfers">Överföringar</string>
-    <string name="transfers_wifi_only">Hämta endast via Wi-Fi</string>
+    <string name="transfers_wifi_only">Fäst bara via Wi-Fi</string>
     <string name="transfers_wifi_only_footer">Fästa utgåvor väntar på Wi-Fi. Att spela ett spår som inte är fäst använder fortfarande mobildata.</string>
-    <string name="transfers_concurrency_footer">Hur många filer som hämtas samtidigt när en utgåva fästs.</string>
+    <string name="transfers_concurrency_footer">Hur många filer som fästs samtidigt.</string>
     <string name="members_title">Personer och enheter</string>
     <string name="people_people">Personer</string>
     <string name="people_role">Roll</string>
@@ -174,7 +174,6 @@
     <string name="cloud_provider_s3">S3-kompatibel</string>
     <string name="cloud_provider_icloud">iCloud</string>
     <string name="qr_scanner_instructions">Skanna en återställningskod som bae visar på en av dina enheter, eller en inbjudan.</string>
-    <string name="downloads">Hämtningar</string>
     <string name="pin">Fäst</string>
     <string name="unpin">Lossa</string>
     <string name="pinned">Fäst</string>
@@ -185,11 +184,7 @@
     <string name="upload_missing_title">%1$s saknas</string>
     <string name="upload_missing_advice">Återställ den för att slutföra uppladdningen.</string>
     <string name="resume">Fortsätt</string>
-    <string name="downloads_empty">Inga hämtningar</string>
-    <string name="downloads_load_failed">Dina hämtningar kunde inte läsas in.</string>
-    <string name="downloads_load_more_failed">Fler hämtningar kunde inte läsas in.</string>
-    <string name="downloads_concurrency_label">Samtidiga hämtningar</string>
-    <plurals name="download_file_count">
+    <plurals name="pin_file_count">
         <item quantity="one">%1$d fil</item>
         <item quantity="other">%1$d filer</item>
     </plurals>
@@ -419,4 +414,8 @@
     <string name="sync_fix_sign_in">Logga in på %1$s</string>
     <string name="sync_fix_enter_key">Ange åtkomstnyckel</string>
     <string name="sync_fix_remove">Ta bort från den här enheten</string>
+    <string name="pins_at_once">Samtidiga fästningar</string>
+    <string name="pinning_empty">Inget att fästa</string>
+    <string name="pinning_load_failed">Det gick inte att läsa in dina fästningar.</string>
+    <string name="pinning_load_more_failed">Det gick inte att läsa in fler fästningar.</string>
 </resources>

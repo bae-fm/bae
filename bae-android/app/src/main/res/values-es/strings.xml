@@ -141,9 +141,9 @@
     <string name="settings_open_in_browser">Abrir en el navegador</string>
     <string name="settings_folder_no_app">Ninguna app de este dispositivo abrió la página de la carpeta.</string>
     <string name="settings_transfers">Transferencias</string>
-    <string name="transfers_wifi_only">Descargar solo con Wi-Fi</string>
+    <string name="transfers_wifi_only">Fijar solo con Wi-Fi</string>
     <string name="transfers_wifi_only_footer">Los lanzamientos fijados esperan a tener Wi-Fi. Reproducir una pista que no está fijada sigue usando datos móviles.</string>
-    <string name="transfers_concurrency_footer">Cuántos archivos se descargan a la vez al fijar un lanzamiento.</string>
+    <string name="transfers_concurrency_footer">Cuántos archivos se fijan a la vez.</string>
     <string name="members_title">Personas y dispositivos</string>
     <string name="people_people">Personas</string>
     <string name="people_role">Rol</string>
@@ -174,8 +174,7 @@
     <string name="cloud_provider_s3">S3-compatible</string>
     <string name="cloud_provider_icloud">iCloud</string>
     <string name="qr_scanner_instructions">Escanea un código de restauración que muestre bae en uno de tus dispositivos, o una invitación.</string>
-    <!-- Downloads -->
-    <string name="downloads">Descargas</string>
+    <!-- Pinning -->
     <string name="pin">Fijar</string>
     <string name="unpin">Desfijar</string>
     <string name="pinned">Fijada</string>
@@ -186,10 +185,7 @@
     <string name="upload_missing_title">Falta %1$s</string>
     <string name="upload_missing_advice">Restáuralo para terminar la subida.</string>
     <string name="resume">Reanudar</string>
-    <string name="downloads_empty">Sin descargas</string>
-    <string name="downloads_load_failed">No se pudieron cargar tus descargas.</string>
-    <string name="downloads_load_more_failed">No se pudieron cargar más descargas.</string>
-    <plurals name="download_file_count">
+    <plurals name="pin_file_count">
         <item quantity="one">%1$d archivo</item>
         <item quantity="many">%1$d archivos</item>
         <item quantity="other">%1$d archivos</item>
@@ -365,7 +361,6 @@
     <string name="settings_history">Historial de escucha</string>
     <string name="settings_history_private">Solo yo</string>
     <string name="settings_history_household">Todos en la biblioteca</string>
-    <string name="downloads_concurrency_label">Descargas simultáneas</string>
     <string name="settings_stored_in">Guardado en</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
@@ -426,4 +421,8 @@
     <string name="sync_fix_sign_in">Iniciar sesión en %1$s</string>
     <string name="sync_fix_enter_key">Introducir clave de acceso</string>
     <string name="sync_fix_remove">Quitar de este dispositivo</string>
+    <string name="pins_at_once">Fijaciones simultáneas</string>
+    <string name="pinning_empty">Nada que fijar</string>
+    <string name="pinning_load_failed">No se pudieron cargar tus fijaciones.</string>
+    <string name="pinning_load_more_failed">No se pudieron cargar más fijaciones.</string>
 </resources>

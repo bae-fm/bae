@@ -142,9 +142,9 @@
     <string name="settings_open_in_browser">Åpne i nettleseren</string>
     <string name="settings_folder_no_app">Ingen app på denne enheten åpnet mappens side.</string>
     <string name="settings_transfers">Overføringer</string>
-    <string name="transfers_wifi_only">Last ned kun via Wi-Fi</string>
+    <string name="transfers_wifi_only">Fest bare via Wi-Fi</string>
     <string name="transfers_wifi_only_footer">Festede utgivelser venter på Wi-Fi. Avspilling av et spor som ikke er festet bruker fortsatt mobildata.</string>
-    <string name="transfers_concurrency_footer">Hvor mange filer som lastes ned samtidig når en utgivelse festes.</string>
+    <string name="transfers_concurrency_footer">Hvor mange filer som festes samtidig.</string>
     <string name="members_title">Personer og enheter</string>
     <string name="people_people">Personer</string>
     <string name="people_role">Rolle</string>
@@ -174,7 +174,6 @@
     <string name="cloud_provider_s3">S3-kompatibel</string>
     <string name="cloud_provider_icloud">iCloud</string>
     <string name="qr_scanner_instructions">Skann en gjenopprettingskode som bae viser på en av enhetene dine, eller en invitasjon.</string>
-    <string name="downloads">Nedlastinger</string>
     <string name="pin">Fest</string>
     <string name="unpin">Løsne</string>
     <string name="pinned">Festet</string>
@@ -185,11 +184,7 @@
     <string name="upload_missing_title">%1$s mangler</string>
     <string name="upload_missing_advice">Gjenopprett den for å fullføre opplastingen.</string>
     <string name="resume">Fortsett</string>
-    <string name="downloads_empty">Ingen nedlastinger</string>
-    <string name="downloads_load_failed">Nedlastingene dine kunne ikke lastes inn.</string>
-    <string name="downloads_load_more_failed">Kunne ikke laste inn flere nedlastinger.</string>
-    <string name="downloads_concurrency_label">Samtidige nedlastinger</string>
-    <plurals name="download_file_count">
+    <plurals name="pin_file_count">
         <item quantity="one">%1$d fil</item>
         <item quantity="other">%1$d filer</item>
     </plurals>
@@ -419,4 +414,8 @@
     <string name="sync_fix_sign_in">Logg inn på %1$s</string>
     <string name="sync_fix_enter_key">Skriv inn tilgangsnøkkel</string>
     <string name="sync_fix_remove">Fjern fra denne enheten</string>
+    <string name="pins_at_once">Samtidige festinger</string>
+    <string name="pinning_empty">Ingenting å feste</string>
+    <string name="pinning_load_failed">Kunne ikke laste inn festingene dine.</string>
+    <string name="pinning_load_more_failed">Kunne ikke laste inn flere festinger.</string>
 </resources>

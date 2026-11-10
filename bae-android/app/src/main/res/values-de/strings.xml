@@ -138,9 +138,9 @@
     <string name="settings_open_in_browser">Im Browser öffnen</string>
     <string name="settings_folder_no_app">Keine App auf diesem Gerät hat die Seite des Ordners geöffnet.</string>
     <string name="settings_transfers">Übertragungen</string>
-    <string name="transfers_wifi_only">Nur über WLAN herunterladen</string>
+    <string name="transfers_wifi_only">Nur über WLAN anheften</string>
     <string name="transfers_wifi_only_footer">Angeheftete Veröffentlichungen warten auf WLAN. Das Abspielen eines nicht angehefteten Titels nutzt weiterhin mobile Daten.</string>
-    <string name="transfers_concurrency_footer">Wie viele Dateien gleichzeitig heruntergeladen werden, wenn eine Veröffentlichung angeheftet wird.</string>
+    <string name="transfers_concurrency_footer">Wie viele Dateien gleichzeitig angeheftet werden.</string>
     <string name="members_title">Personen und Geräte</string>
     <string name="people_people">Personen</string>
     <string name="people_role">Rolle</string>
@@ -170,8 +170,7 @@
     <string name="cloud_provider_s3">S3-compatible</string>
     <string name="cloud_provider_icloud">iCloud</string>
     <string name="qr_scanner_instructions">Scanne einen Wiederherstellungscode, den bae auf einem deiner Geräte zeigt, oder eine Einladung.</string>
-    <!-- Downloads -->
-    <string name="downloads">Downloads</string>
+    <!-- Pinning -->
     <string name="pin">Anheften</string>
     <string name="unpin">Loslösen</string>
     <string name="pinned">Angeheftet</string>
@@ -182,10 +181,7 @@
     <string name="upload_missing_title">%1$s fehlt</string>
     <string name="upload_missing_advice">Stelle sie wieder her, damit das Hochladen abgeschlossen wird.</string>
     <string name="resume">Fortsetzen</string>
-    <string name="downloads_empty">Keine Downloads</string>
-    <string name="downloads_load_failed">Deine Downloads konnten nicht geladen werden.</string>
-    <string name="downloads_load_more_failed">Weitere Downloads konnten nicht geladen werden.</string>
-    <plurals name="download_file_count">
+    <plurals name="pin_file_count">
         <item quantity="one">%1$d Datei</item>
         <item quantity="other">%1$d Dateien</item>
     </plurals>
@@ -360,7 +356,6 @@
     <string name="settings_history">Hörverlauf</string>
     <string name="settings_history_private">Nur ich</string>
     <string name="settings_history_household">Alle in der Bibliothek</string>
-    <string name="downloads_concurrency_label">Gleichzeitige Downloads</string>
     <string name="settings_stored_in">Gespeichert in</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
@@ -421,4 +416,8 @@
     <string name="sync_fix_sign_in">Bei %1$s anmelden</string>
     <string name="sync_fix_enter_key">Zugriffsschlüssel eingeben</string>
     <string name="sync_fix_remove">Von diesem Gerät entfernen</string>
+    <string name="pins_at_once">Gleichzeitiges Anheften</string>
+    <string name="pinning_empty">Nichts zum Anheften</string>
+    <string name="pinning_load_failed">Deine Anheftungen konnten nicht geladen werden.</string>
+    <string name="pinning_load_more_failed">Weitere Anheftungen konnten nicht geladen werden.</string>
 </resources>

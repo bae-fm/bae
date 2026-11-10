@@ -142,9 +142,9 @@
     <string name="settings_open_in_browser">Abrir no navegador</string>
     <string name="settings_folder_no_app">Nenhuma app deste dispositivo abriu a página da pasta.</string>
     <string name="settings_transfers">Transferências</string>
-    <string name="transfers_wifi_only">Descarregar apenas por Wi-Fi</string>
+    <string name="transfers_wifi_only">Fixar apenas por Wi-Fi</string>
     <string name="transfers_wifi_only_footer">As edições fixadas esperam pelo Wi-Fi. Reproduzir uma faixa que não está fixada continua a usar dados móveis.</string>
-    <string name="transfers_concurrency_footer">Quantos ficheiros são descarregados em simultâneo quando uma edição é fixada.</string>
+    <string name="transfers_concurrency_footer">Quantos ficheiros são fixados de uma vez.</string>
     <string name="members_title">Pessoas e dispositivos</string>
     <string name="people_people">Pessoas</string>
     <string name="people_role">Função</string>
@@ -175,7 +175,6 @@
     <string name="cloud_provider_s3">Compatível com S3</string>
     <string name="cloud_provider_icloud">iCloud</string>
     <string name="qr_scanner_instructions">Leia um código de restauração apresentado no bae num dos seus dispositivos ou um convite.</string>
-    <string name="downloads">Transferências</string>
     <string name="pin">Fixar</string>
     <string name="unpin">Desafixar</string>
     <string name="pinned">Fixado</string>
@@ -186,11 +185,7 @@
     <string name="upload_missing_title">%1$s está em falta</string>
     <string name="upload_missing_advice">Reponha-o para concluir o envio.</string>
     <string name="resume">Retomar</string>
-    <string name="downloads_empty">Sem transferências</string>
-    <string name="downloads_load_failed">Não foi possível carregar as suas transferências.</string>
-    <string name="downloads_load_more_failed">Não foi possível carregar mais transferências.</string>
-    <string name="downloads_concurrency_label">Transferências em simultâneo</string>
-    <plurals name="download_file_count">
+    <plurals name="pin_file_count">
         <item quantity="one">%1$d ficheiro</item>
         <item quantity="other">%1$d ficheiros</item>
     </plurals>
@@ -420,4 +415,8 @@
     <string name="sync_fix_sign_in">Iniciar sessão no %1$s</string>
     <string name="sync_fix_enter_key">Introduzir chave de acesso</string>
     <string name="sync_fix_remove">Remover deste dispositivo</string>
+    <string name="pins_at_once">Fixações em simultâneo</string>
+    <string name="pinning_empty">Nada para fixar</string>
+    <string name="pinning_load_failed">Não foi possível carregar as suas fixações.</string>
+    <string name="pinning_load_more_failed">Não foi possível carregar mais fixações.</string>
 </resources>

@@ -131,7 +131,7 @@ internal fun ActiveDownloadProgress(
 private fun BridgeQueuedRelease.detailText(context: Context): String {
     val files =
         context.resources.getQuantityString(
-            R.plurals.download_file_count,
+            R.plurals.pin_file_count,
             fileCount.toInt(),
             fileCount.toInt(),
         )
