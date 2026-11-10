@@ -269,7 +269,7 @@
     <string name="onboarding_enter_code">Ввести код</string>
     <string name="welcome_add_library">Додати бібліотеку</string>
     <string name="onboarding_enter_code_instructions">Введіть свій код відновлення або запрошення до бібліотеки.</string>
-    <string name="onboarding_code_placeholder">Код відновлення або запрошення</string>
+    <string name="onboarding_code_label">Код відновлення або запрошення</string>
     <string name="continue_action">Продовжити</string>
     <string name="onboarding_code_invalid">Це не код відновлення і не запрошення.</string>
     <string name="onboarding_restore_title">Відновлення бібліотеки</string>

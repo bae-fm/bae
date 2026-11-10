@@ -145,8 +145,6 @@ struct BootstrapCodeView: View {
 
     @ViewBuilder
     private var codeSection: some View {
-        @Bindable
-        var form = form
         if let saved = form.saved {
             Section("Saved restore code") {
                 LabeledContent("Library", value: saved.info.name)
@@ -158,8 +156,7 @@ struct BootstrapCodeView: View {
         }
         else {
             Section("Code") {
-                TextField("Paste a code", text: $form.codeInput)
-                    .themeText(.mono)
+                CodeField(form: form)
                 Button("Scan") { showScanner = true }
                 if let decodeError = form.decodeError {
                     Notice(error: decodeError)

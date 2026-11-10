@@ -255,7 +255,7 @@
     <string name="onboarding_enter_code">Εισαγωγή κωδικού</string>
     <string name="welcome_add_library">Προσθήκη βιβλιοθήκης</string>
     <string name="onboarding_enter_code_instructions">Εισαγάγετε τον κωδικό επαναφοράς σας ή μια πρόσκληση σε βιβλιοθήκη.</string>
-    <string name="onboarding_code_placeholder">Κωδικός επαναφοράς ή πρόσκληση</string>
+    <string name="onboarding_code_label">Κωδικός επαναφοράς ή πρόσκληση</string>
     <string name="continue_action">Συνέχεια</string>
     <string name="onboarding_code_invalid">Αυτό δεν είναι κωδικός επαναφοράς ούτε πρόσκληση.</string>
     <string name="onboarding_restore_title">Επαναφορά της βιβλιοθήκης σας</string>

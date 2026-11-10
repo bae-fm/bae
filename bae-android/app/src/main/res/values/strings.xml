@@ -305,7 +305,7 @@
     <string name="onboarding_enter_code">Enter code</string>
     <string name="welcome_add_library">Add library</string>
     <string name="onboarding_enter_code_instructions">Enter your restore code, or an invite to a library.</string>
-    <string name="onboarding_code_placeholder">Restore code or invite</string>
+    <string name="onboarding_code_label">Restore code or invite</string>
     <string name="continue_action">Continue</string>
     <string name="onboarding_code_invalid">This isn’t a restore code or an invite.</string>
     <string name="onboarding_restore_title">Restore your library</string>

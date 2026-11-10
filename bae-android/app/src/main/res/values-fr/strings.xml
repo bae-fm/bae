@@ -262,7 +262,7 @@
     <string name="onboarding_enter_code">Saisir un code</string>
     <string name="welcome_add_library">Ajouter une bibliothèque</string>
     <string name="onboarding_enter_code_instructions">Saisissez votre code de restauration, ou une invitation à une bibliothèque.</string>
-    <string name="onboarding_code_placeholder">Code de restauration ou invitation</string>
+    <string name="onboarding_code_label">Code de restauration ou invitation</string>
     <string name="continue_action">Continuer</string>
     <string name="onboarding_code_invalid">Ce n’est ni un code de restauration ni une invitation.</string>
     <string name="onboarding_restore_title">Restaurer votre bibliothèque</string>

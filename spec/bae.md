@@ -2717,7 +2717,10 @@ Once it lists libraries, the three are the items of **Add library…** under the
 list. On a Mac, **Enter Code…** opens a sheet over the first screen, titled
 **Enter code**, with one field for a restore code or an invite, **Cancel**, and
 **Continue**, off until the field holds something; **Scan Code…** opens the
-scanner. A scanned code starts at once, as an invite does, with no sheet to
+scanner. On both platforms the field is several lines tall and monospaced, and
+shows a typed or pasted code in groups of four with a space between, as Settings
+shows a restore code (core's `restore_code::grouped`); what it passes on is the
+code without the spaces (`restore_code::entered`). A scanned code starts at once, as an invite does, with no sheet to
 confirm it, and a typed code starts when the person chooses **Continue**: the
 person scanned or entered it to add this device, or to join. Only an S3 code
 without the key stops first, to ask for it on a second sheet, **S3 key**, in a

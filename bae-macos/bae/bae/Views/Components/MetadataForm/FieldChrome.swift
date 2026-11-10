@@ -1,11 +1,15 @@
 import BaeKit
 import SwiftUI
 
-/// The shared text-field chrome, `.boxed` for grouped cards and `.inline` for
-/// running text or table cells, with the same padding in every state.
+/// The shared text-field chrome, `.boxed` for grouped cards (`.boxedMultiline`
+/// for one that holds several lines) and `.inline` for running text or table
+/// cells, with the same padding in every state.
 struct FieldChrome: ViewModifier {
     enum Style {
         case boxed
+        /// The boxed well for text that runs over several lines: it grows
+        /// with its text, which sits `ThemeSpace.related` below its top.
+        case boxedMultiline
         case inline
     }
 
@@ -56,7 +60,7 @@ struct FieldChrome: ViewModifier {
 
     private var horizontalPadding: CGFloat {
         switch style {
-        case .boxed: ThemeSpace.fieldInset
+        case .boxed, .boxedMultiline: ThemeSpace.fieldInset
         case .inline: Self.inlineHorizontalPadding
         }
     }
@@ -64,20 +68,21 @@ struct FieldChrome: ViewModifier {
     private var verticalPadding: CGFloat {
         switch style {
         case .boxed: 0
+        case .boxedMultiline: ThemeSpace.related
         case .inline: Self.inlineVerticalPadding
         }
     }
 
     private var cornerRadius: CGFloat {
         switch style {
-        case .boxed: ThemeRadius.field
+        case .boxed, .boxedMultiline: ThemeRadius.field
         case .inline: ThemeRadius.chip
         }
     }
 
     private var fill: AnyShapeStyle {
         switch style {
-        case .boxed:
+        case .boxed, .boxedMultiline:
             AnyShapeStyle(focused ? Theme.fieldHover : Theme.field)
         case .inline:
             if focused {
@@ -96,7 +101,7 @@ struct FieldChrome: ViewModifier {
     /// the fill already sets a boxed field apart, and a soft line in Light.
     private var ring: Color {
         switch style {
-        case .boxed:
+        case .boxed, .boxedMultiline:
             focused ? Theme.accent : Theme.fieldEdge
         case .inline:
             focused ? Theme.accent : .clear
@@ -105,7 +110,7 @@ struct FieldChrome: ViewModifier {
 
     private var ringWidth: CGFloat {
         switch style {
-        case .boxed: focused ? 1.5 : 1
+        case .boxed, .boxedMultiline: focused ? 1.5 : 1
         case .inline: 1
         }
     }

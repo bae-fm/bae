@@ -255,7 +255,7 @@
     <string name="onboarding_enter_code">Ange en kod</string>
     <string name="welcome_add_library">Lägg till bibliotek</string>
     <string name="onboarding_enter_code_instructions">Ange din återställningskod, eller en inbjudan till ett bibliotek.</string>
-    <string name="onboarding_code_placeholder">Återställningskod eller inbjudan</string>
+    <string name="onboarding_code_label">Återställningskod eller inbjudan</string>
     <string name="continue_action">Fortsätt</string>
     <string name="onboarding_code_invalid">Det här är varken en återställningskod eller en inbjudan.</string>
     <string name="onboarding_restore_title">Återställ ditt bibliotek</string>

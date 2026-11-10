@@ -255,7 +255,7 @@
     <string name="onboarding_enter_code">Indtast en kode</string>
     <string name="welcome_add_library">Tilføj bibliotek</string>
     <string name="onboarding_enter_code_instructions">Indtast din gendannelseskode eller en invitation til et bibliotek.</string>
-    <string name="onboarding_code_placeholder">Gendannelseskode eller invitation</string>
+    <string name="onboarding_code_label">Gendannelseskode eller invitation</string>
     <string name="continue_action">Fortsæt</string>
     <string name="onboarding_code_invalid">Det er hverken en gendannelseskode eller en invitation.</string>
     <string name="onboarding_restore_title">Gendan dit bibliotek</string>

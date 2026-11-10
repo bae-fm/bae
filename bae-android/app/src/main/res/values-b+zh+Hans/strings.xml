@@ -251,7 +251,7 @@
     <string name="onboarding_enter_code">输入代码</string>
     <string name="welcome_add_library">添加库</string>
     <string name="onboarding_enter_code_instructions">输入你的恢复码，或加入某个库的邀请。</string>
-    <string name="onboarding_code_placeholder">恢复码或邀请</string>
+    <string name="onboarding_code_label">恢复码或邀请</string>
     <string name="continue_action">继续</string>
     <string name="onboarding_code_invalid">这不是恢复码，也不是邀请。</string>
     <string name="onboarding_restore_title">恢复你的库</string>

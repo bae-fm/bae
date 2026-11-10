@@ -261,7 +261,7 @@
     <string name="onboarding_enter_code">Introdu un cod</string>
     <string name="welcome_add_library">Adaugă o bibliotecă</string>
     <string name="onboarding_enter_code_instructions">Introdu codul tău de restaurare sau o invitație la o bibliotecă.</string>
-    <string name="onboarding_code_placeholder">Cod de restaurare sau invitație</string>
+    <string name="onboarding_code_label">Cod de restaurare sau invitație</string>
     <string name="continue_action">Continuă</string>
     <string name="onboarding_code_invalid">Acesta nu este un cod de restaurare sau o invitație.</string>
     <string name="onboarding_restore_title">Restaurează-ți biblioteca</string>

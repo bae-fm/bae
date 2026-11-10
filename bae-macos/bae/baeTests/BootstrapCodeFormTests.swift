@@ -94,7 +94,7 @@ private struct FinishedReplacement: Equatable, Sendable {
 struct BootstrapCodeFormTests {
     private let host = RestoreRecordingHost()
 
-    private static let code = "CVR1-RESTORE-CODE"
+    private static let code = "CVR1-RESTORECODE"
 
     /// A restore code for an S3 library, holding the S3 key as the QR code
     /// the person's own device shows does, or not, as the code to type.
@@ -178,14 +178,14 @@ struct BootstrapCodeFormTests {
         form.clearReading()
 
         #expect(form.attempt == nil)
-        #expect(form.codeInput == Self.code)
+        #expect(form.codeInput == codeInGroups(text: Self.code))
     }
 
     @Test("the code entry joins an invite")
     func codeEntryJoinsAnInvite() async {
         let form = form(reading: Self.invite)
 
-        form.codeInput = Self.code
+        form.edit(code: Self.code)
         form.decodeCode()
 
         guard case .join(let code, let invite) = form.attempt else {
@@ -198,11 +198,32 @@ struct BootstrapCodeFormTests {
         #expect(await joined.next() == Self.code)
     }
 
+    @Test("a code typed in groups is passed on without the spaces")
+    func groupedCodeIsPassedOnWithoutSpaces() async {
+        let form = form(reading: Self.restoreCode(carriesS3Key: true))
+
+        form.edit(code: "CVR1 REST ORE CODE")
+        form.decodeCode()
+        form.start()
+
+        var codes = host.restoredCodes.makeAsyncIterator()
+        #expect(await codes.next() == Self.code)
+    }
+
+    @Test("a typed code shows in groups of four")
+    func typedCodeShowsInGroups() {
+        let form = form(reading: Self.restoreCode(carriesS3Key: true))
+
+        form.edit(code: Self.code)
+
+        #expect(form.codeInput == "CVR1 REST OREC ODE")
+    }
+
     @Test("a typed restore code waits for Add")
     func typedCodeWaitsForAdd() {
         let form = form(reading: Self.restoreCode(carriesS3Key: true))
 
-        form.codeInput = Self.code
+        form.edit(code: Self.code)
         form.decodeCode()
 
         #expect(!form.isRunning)

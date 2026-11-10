@@ -120,6 +120,20 @@ pub fn decode_code_info(code: String) -> Result<BridgeCodeInfo, BridgeError> {
     })
 }
 
+/// A restore code or invite as a code field shows it: in groups of four with
+/// a space between, whether it was typed in groups or run together.
+#[uniffi::export]
+pub fn code_in_groups(text: String) -> String {
+    bae_library::sync::restore_code::grouped(&text)
+}
+
+/// A restore code or invite as a code field holds it, to pass on: the spaces
+/// and line breaks of its groups dropped.
+#[uniffi::export]
+pub fn code_as_entered(text: String) -> String {
+    bae_library::sync::restore_code::entered(&text)
+}
+
 /// A store a create, restore, join or device reset left open, held until an
 /// open hands it to the library it opens. Released before that, its store is
 /// closed on a thread the host waits for before opening or removing the store

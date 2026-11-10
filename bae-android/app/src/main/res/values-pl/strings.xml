@@ -269,7 +269,7 @@
     <string name="onboarding_enter_code">Wpisz kod</string>
     <string name="welcome_add_library">Dodaj bibliotekę</string>
     <string name="onboarding_enter_code_instructions">Wpisz swój kod przywracania albo zaproszenie do biblioteki.</string>
-    <string name="onboarding_code_placeholder">Kod przywracania lub zaproszenie</string>
+    <string name="onboarding_code_label">Kod przywracania lub zaproszenie</string>
     <string name="continue_action">Dalej</string>
     <string name="onboarding_code_invalid">To nie jest kod przywracania ani zaproszenie.</string>
     <string name="onboarding_restore_title">Przywróć swoją bibliotekę</string>

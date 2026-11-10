@@ -255,7 +255,7 @@
     <string name="onboarding_enter_code">Skriv inn en kode</string>
     <string name="welcome_add_library">Legg til bibliotek</string>
     <string name="onboarding_enter_code_instructions">Skriv inn gjenopprettingskoden din, eller en invitasjon til et bibliotek.</string>
-    <string name="onboarding_code_placeholder">Gjenopprettingskode eller invitasjon</string>
+    <string name="onboarding_code_label">Gjenopprettingskode eller invitasjon</string>
     <string name="continue_action">Fortsett</string>
     <string name="onboarding_code_invalid">Dette er verken en gjenopprettingskode eller en invitasjon.</string>
     <string name="onboarding_restore_title">Gjenopprett biblioteket ditt</string>

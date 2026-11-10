@@ -43,6 +43,8 @@ import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.Logo
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.TitledSheet
+import uniffi.bae_bridge.codeAsEntered
+import uniffi.bae_bridge.codeInGroups
 
 private const val TAG = "bae.CodeScreen"
 private val logger = BaeLogger(TAG)
@@ -130,10 +132,10 @@ internal fun CodeScreen(
                     codeInput = ""
                     showCodeDialog = true
                 },
-                onCodeInputChange = { codeInput = it },
+                onCodeInputChange = { codeInput = codeInGroups(it) },
                 onEnterCode = { code ->
                     showCodeDialog = false
-                    flow.enter(step, code, CodeSource.TYPED)
+                    flow.enter(step, codeAsEntered(code), CodeSource.TYPED)
                 },
                 onDismissCodeDialog = { showCodeDialog = false },
             ),
@@ -183,7 +185,7 @@ private fun CodeScreenContent(
                 PasteDialogText(
                     title = stringResource(R.string.onboarding_enter_code),
                     instructions = stringResource(R.string.onboarding_enter_code_instructions),
-                    placeholder = stringResource(R.string.onboarding_code_placeholder),
+                    label = stringResource(R.string.onboarding_code_label),
                     confirmLabel = stringResource(R.string.continue_action),
                 ),
             pasteInput = codeInput,

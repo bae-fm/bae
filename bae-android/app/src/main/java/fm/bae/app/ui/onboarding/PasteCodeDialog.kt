@@ -16,11 +16,15 @@ import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.BaeAlertDialog
 import fm.bae.app.ui.components.NeutralTextButton
 
+/** The lines a code field is tall at least, and the most it grows to before it scrolls. */
+private const val CODE_FIELD_LINES = 3
+private const val CODE_FIELD_MAX_LINES = 6
+
 /** The fixed wording of a [PasteCodeDialog], distinct per code it accepts. */
 class PasteDialogText(
     val title: String,
     val instructions: String,
-    val placeholder: String,
+    val label: String,
     val confirmLabel: String,
 )
 
@@ -40,12 +44,12 @@ fun PasteCodeDialog(
             OutlinedTextField(
                 value = pasteInput,
                 onValueChange = onInputChange,
-                placeholder = { Text(text.placeholder) },
+                label = { Text(text.label) },
                 modifier = Modifier.fillMaxWidth(),
                 textStyle = ThemeText.mono.style,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii, autoCorrectEnabled = false),
-                singleLine = false,
-                maxLines = 3,
+                minLines = CODE_FIELD_LINES,
+                maxLines = CODE_FIELD_MAX_LINES,
             )
         },
         confirmButton = {
@@ -68,7 +72,7 @@ private fun PasteCodeDialogPreview() {
                 PasteDialogText(
                     title = "Paste code",
                     instructions = "Paste the code from your other device.",
-                    placeholder = "Code",
+                    label = "Code",
                     confirmLabel = "Connect",
                 ),
             pasteInput = "placeholder-code",

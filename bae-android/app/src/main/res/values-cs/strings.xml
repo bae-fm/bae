@@ -269,7 +269,7 @@
     <string name="onboarding_enter_code">Zadat kód</string>
     <string name="welcome_add_library">Přidat knihovnu</string>
     <string name="onboarding_enter_code_instructions">Zadejte svůj kód pro obnovení, nebo pozvánku do knihovny.</string>
-    <string name="onboarding_code_placeholder">Kód pro obnovení nebo pozvánka</string>
+    <string name="onboarding_code_label">Kód pro obnovení nebo pozvánka</string>
     <string name="continue_action">Pokračovat</string>
     <string name="onboarding_code_invalid">Toto není kód pro obnovení ani pozvánka.</string>
     <string name="onboarding_restore_title">Obnovit knihovnu</string>

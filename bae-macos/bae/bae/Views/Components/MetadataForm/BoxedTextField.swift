@@ -4,13 +4,15 @@ import SwiftUI
 extension View {
     /// This text field in the shared boxed chrome, for a field that doesn't
     /// keep its own focus state: the field's height, inset, corners, fill and
-    /// focus ring are `FieldChrome`'s.
-    func boxedTextField() -> some View {
-        modifier(BoxedTextField())
+    /// focus ring are `FieldChrome`'s. `multiline` is for a field of several
+    /// lines.
+    func boxedTextField(multiline: Bool = false) -> some View {
+        modifier(BoxedTextField(multiline: multiline))
     }
 }
 
 private struct BoxedTextField: ViewModifier {
+    let multiline: Bool
     @FocusState
     private var focused: Bool
 
@@ -19,6 +21,11 @@ private struct BoxedTextField: ViewModifier {
             .textFieldStyle(.plain)
             .themeText(.body)
             .focused($focused)
-            .modifier(FieldChrome(focused: focused, style: .boxed))
+            .modifier(
+                FieldChrome(
+                    focused: focused,
+                    style: multiline ? .boxedMultiline : .boxed
+                )
+            )
     }
 }

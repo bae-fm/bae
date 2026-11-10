@@ -94,7 +94,7 @@ extension ShotScene {
             size: CGSize(width: 400, height: 190)
         ) {
             let form = enterCodeForm()
-            form.codeInput = PreviewData.restoreCode
+            form.edit(code: PreviewData.restoreCode)
             return ShotStage(
                 EnterCodeSheet(form: form, onCancel: {})
                     .windowBackground()

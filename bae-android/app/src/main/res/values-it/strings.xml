@@ -262,7 +262,7 @@
     <string name="onboarding_enter_code">Inserisci un codice</string>
     <string name="welcome_add_library">Aggiungi libreria</string>
     <string name="onboarding_enter_code_instructions">Inserisci il tuo codice di ripristino, oppure un invito a una libreria.</string>
-    <string name="onboarding_code_placeholder">Codice di ripristino o invito</string>
+    <string name="onboarding_code_label">Codice di ripristino o invito</string>
     <string name="continue_action">Continua</string>
     <string name="onboarding_code_invalid">Questo non è un codice di ripristino né un invito.</string>
     <string name="onboarding_restore_title">Ripristina la tua libreria</string>

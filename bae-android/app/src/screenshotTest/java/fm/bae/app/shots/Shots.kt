@@ -66,6 +66,8 @@ import fm.bae.app.ui.library.LibraryGridScene
 import fm.bae.app.ui.library.LibraryHeaderMenu
 import fm.bae.app.ui.library.SceneGrid
 import fm.bae.app.ui.onboarding.LibraryDetailsRows
+import fm.bae.app.ui.onboarding.PasteCodeDialog
+import fm.bae.app.ui.onboarding.PasteDialogText
 import fm.bae.app.ui.onboarding.RemovalFailedText
 import fm.bae.app.ui.onboarding.RestoreText
 import fm.bae.app.ui.onboarding.S3KeyDialog
@@ -260,6 +262,28 @@ fun S3KeyDialogScene() {
             error = null,
             onRestore = {},
             onBack = {},
+        )
+    }
+}
+
+/** The dialog asking for a restore code or an invite, with a code typed in and shown in groups of four. */
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun EnterCodeDialogScene() {
+    BaeTheme {
+        PasteCodeDialog(
+            text =
+                PasteDialogText(
+                    title = stringResource(R.string.onboarding_enter_code),
+                    instructions = stringResource(R.string.onboarding_enter_code_instructions),
+                    label = stringResource(R.string.onboarding_code_label),
+                    confirmLabel = stringResource(R.string.continue_action),
+                ),
+            pasteInput =
+                "CVR1 UJZD EGXD NCF3 2EPF 3DHO DZDO CIS2 JHTL GMXG EDN7 3U55 XTPL PFT7",
+            onInputChange = {},
+            onConfirm = {},
+            onDismiss = {},
         )
     }
 }

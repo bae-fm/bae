@@ -10,18 +10,6 @@ struct EnterCodeSheet: View {
     var form: BootstrapCodeForm
     let onCancel: () -> Void
 
-    /// What the field holds. Editing it drops what the last Continue read, so
-    /// an error about the old text doesn't outlive it.
-    private var code: Binding<String> {
-        Binding(
-            get: { form.codeInput },
-            set: {
-                form.codeInput = $0
-                form.clearReading()
-            }
-        )
-    }
-
     /// The join this device had under way, while the field is empty: its code
     /// is kept, so Join resumes it, and a code typed in its place joins that.
     private var resumedJoin: BridgeInviteInfo? {
@@ -42,15 +30,10 @@ struct EnterCodeSheet: View {
             width: 400
         ) {
             VStack(alignment: .leading, spacing: ThemeSpace.related) {
-                TextField(
-                    text: code,
-                    prompt: Text("Restore code or invite")
-                ) {
-                    EmptyView()
+                if let resumedJoin {
+                    LabeledContent("Library", value: resumedJoin.libraryName)
                 }
-                .labelsHidden()
-                .themeText(.mono)
-                .boxedTextField()
+                CodeField(form: form)
                 if let decodeError = form.decodeError {
                     Notice(error: decodeError)
                 }

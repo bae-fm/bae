@@ -77,6 +77,7 @@ CastingSettingsFound:settings-casting
 CastingSettingsLooking:settings-casting-looking
 DeleteAlbumDialogScene:delete-album-dialog
 DownloadEntries:download-entries
+EnterCodeDialogScene:onboarding-enter-code
 FolderChoiceDropbox:folder-choice-dropbox
 FolderChoiceOneDrive:folder-choice-onedrive
 FullPlayerAllHere:full-player-all-here

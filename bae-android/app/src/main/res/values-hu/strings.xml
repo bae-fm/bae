@@ -255,7 +255,7 @@
     <string name="onboarding_enter_code">Kód megadása</string>
     <string name="welcome_add_library">Könyvtár hozzáadása</string>
     <string name="onboarding_enter_code_instructions">Add meg a visszaállítási kódodat, vagy egy könyvtárba szóló meghívót.</string>
-    <string name="onboarding_code_placeholder">Helyreállítási kód vagy meghívó</string>
+    <string name="onboarding_code_label">Helyreállítási kód vagy meghívó</string>
     <string name="continue_action">Tovább</string>
     <string name="onboarding_code_invalid">Ez nem visszaállítási kód és nem is meghívó.</string>
     <string name="onboarding_restore_title">Könyvtár visszaállítása</string>

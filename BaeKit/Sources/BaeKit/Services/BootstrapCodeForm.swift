@@ -78,7 +78,8 @@ public final class BootstrapCodeForm {
     public let entry: Entry
     /// The saved code a restore opened with, read once.
     public let saved: SavedRestoreCode?
-    public var codeInput = ""
+    /// The code as the field shows it, in groups of four.
+    public private(set) var codeInput = ""
     /// The entered code's kind and metadata, or nil while the field is empty.
     private var decoded: Result<BridgeCodeInfo, Error>?
     public var accessKey = ""
@@ -150,7 +151,7 @@ public final class BootstrapCodeForm {
             return .resume(join, invite: join.info())
         }
         guard case .success(let info) = decoded else { return nil }
-        let code = codeInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        let code = codeAsEntered(text: codeInput)
         return switch (info, entry) {
         case (.restore(let metadata), _):
             .restore(code: code, metadata: metadata)
@@ -189,9 +190,17 @@ public final class BootstrapCodeForm {
     /// is an S3 code without the key, which waits for the key. A code from
     /// the person's own device holds their S3 key.
     public func acceptCode(_ text: String) {
-        codeInput = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        codeInput = codeInGroups(text: text)
         decodeCode()
         if ready { start() }
+    }
+
+    /// The person typed or pasted `text` into the code field: it shows in
+    /// groups of four, and what the last reading made of the old text is
+    /// dropped.
+    public func edit(code text: String) {
+        codeInput = codeInGroups(text: text)
+        clearReading()
     }
 
     /// Forget what the entered code read as: the text changed, or the person
@@ -204,7 +213,7 @@ public final class BootstrapCodeForm {
     /// Read what the entered code is. Called whenever the code changes.
     public func decodeCode() {
         error = nil
-        let code = codeInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        let code = codeAsEntered(text: codeInput)
         guard !code.isEmpty else {
             decoded = nil
             return

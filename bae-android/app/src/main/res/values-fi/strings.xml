@@ -255,7 +255,7 @@
     <string name="onboarding_enter_code">Syötä koodi</string>
     <string name="welcome_add_library">Lisää kirjasto</string>
     <string name="onboarding_enter_code_instructions">Syötä palautuskoodisi tai kutsu kirjastoon.</string>
-    <string name="onboarding_code_placeholder">Palautuskoodi tai kutsu</string>
+    <string name="onboarding_code_label">Palautuskoodi tai kutsu</string>
     <string name="continue_action">Jatka</string>
     <string name="onboarding_code_invalid">Tämä ei ole palautuskoodi eikä kutsu.</string>
     <string name="onboarding_restore_title">Palauta kirjastosi</string>
