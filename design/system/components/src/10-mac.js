@@ -177,12 +177,6 @@
       h('div', { className: 'bae-m-sheet-footer-lead' }, list[0]), list.slice(1));
   }
 
-  // A bar's track and fill. `value` is 0 to 1, or null for a wait of no known length, a moving bar; `android` draws Material's bar, with a gap before its end dot. `className` is for the caller's layout.
-  function ProgressBar(props) {
-    var known = props.value != null;
-    return h('div', { className: cx('bae-progress-track', props.android && 'bae-progress-android', props.className), role: 'progressbar', 'aria-valuenow': known ? Math.round(props.value * 100) : undefined },
-      h('div', { className: cx('bae-progress-fill', !known && 'bae-progress-moving'), style: known ? { width: (props.value * 100) + '%' } : null }));
-  }
   function Progress(prefix) {
     return function (props) {
       // A board passes value as text ("0.45"), so a number in any form is a known amount; no value is a wait of no known length, a moving bar.
