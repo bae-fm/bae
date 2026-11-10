@@ -64,26 +64,6 @@ class LocaleTest(unittest.TestCase):
         self.assertFalse(check.title_case_copy("iCloud kullan"))
 
 
-class CloudTest(unittest.TestCase):
-    def test_cloud_is_refused_in_every_language(self):
-        self.assertEqual(check.cloud_words("Move to cloud"), ["cloud"])
-        self.assertEqual(check.cloud_words("In die Cloud verschieben", "de"), ["Cloud"])
-        self.assertEqual(check.cloud_words("Flyt til skyen", "da"), ["skyen"])
-        self.assertEqual(check.cloud_words("Mover a la nube", "es"), ["nube"])
-        self.assertEqual(check.cloud_words("העבר לענן", "he"), ["לענן"])
-        self.assertEqual(check.cloud_words("نقل إلى السحابة", "ar"), ["السحاب"])
-        self.assertEqual(check.cloud_words("クラウドに移動", "ja"), ["クラウド"])
-
-    def test_storage_and_names_pass(self):
-        self.assertEqual(check.cloud_words("Move to storage"), [])
-        self.assertEqual(check.cloud_words("Restore from iCloud Keychain"), [])
-        self.assertEqual(check.cloud_words("Backblaze, Cloudflare R2"), [])
-        self.assertEqual(check.cloud_words("Kopibeskyttet", "da"), [])
-        self.assertEqual(check.cloud_words("רענן", "he"), [])
-        self.assertEqual(check.cloud_words("Felhasználónév", "hu"), [])
-        self.assertEqual(check.cloud_words("America de Nord", "ro"), [])
-
-
 class MenuBarTest(unittest.TestCase):
     def test_title_case_passes(self):
         self.assertEqual(check.title_case_misses("Pause Between Sides and Discs"), [])

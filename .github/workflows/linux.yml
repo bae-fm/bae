@@ -197,8 +197,8 @@ jobs:
         # Translations still carrying the English, glued morphology, or mismatched
         # placeholders, in all three catalogs.
         python3 scripts/loc-english-skeleton.py || status=1
-        # spec/words.md: title case outside the macOS menu bar, sentence case
-        # in it, and "cloud" on screen.
+        # spec/words.md: sentence case outside the macOS menu bar, title case
+        # in it.
         python3 scripts/loc-words.py || status=1
         python3 scripts/tests/loc-words-test.py || status=1
         exit $status

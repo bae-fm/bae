@@ -31,20 +31,21 @@ catalogs, source and every locale.
 ## The library and where it lives
 
 - **Library.** One catalog and its files. A synced library is kept in
-  storage and is the same on every device that has it; a library not synced yet
+  the cloud and is the same on every device that has it; a library not synced yet
   lives only on the Mac that made it. Say "the library", never "the cloud
   library" or "your local library": there is one library, wherever its copies
   are.
-- **Synced / not synced.** Whether the library is kept in storage. A library
+- **Synced / not synced.** Whether the library is kept in the cloud. A library
   starts not synced and becomes synced when sync is set up for it.
-- **Storage.** Where a synced library is kept: the Dropbox or OneDrive
+- **Cloud.** Where a synced library is kept: the Dropbox or OneDrive
   folder, the iCloud container, or the S3-compatible bucket it syncs through.
-  Always "storage" on screen, never "the cloud" or "cloud home". "The library
-  will remain in storage and on your other devices." A release whose files are
-  all in storage is "In storage" beside "Local" and "Pinned", and moving a
-  local release there is "Move to storage". scripts/loc-words.py refuses
-  "cloud" (past "iCloud" and "Cloudflare") in every catalog and locale, and
-  each language's own word for a cloud in its translations.
+  "The cloud" in everyday words, "cloud home" where sync is set up (the Sync
+  settings section "Cloud home", setup's steps), never "storage" alone for
+  either. "The library will remain in the cloud and on your other devices." A
+  release whose files are all in the cloud is "In cloud" beside "Local" and
+  "Pinned", and moving a local release there is "Move to cloud". "Storage"
+  stays for the Storage Manager, a release's Storage sheet and a device's own
+  storage.
 - **This device's copy.** What the library has on this phone or Mac: its
   catalog and the files downloaded here. Removing the library from this device
   deletes this copy; the library itself is untouched.
@@ -52,7 +53,8 @@ catalogs, source and every locale.
 ## Sync
 
 - **Sync.** The page and the Library row about keeping this device's copy and
-  storage in step. On screen it is "Sync", never "Cloud home". The states it
+  the cloud in step. On screen it is "Sync"; the place it keeps in step is the
+  "cloud home" in its setup and its settings section. The states it
   shows are coven's sync state
   ([coven §19.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#191-what-the-app-sees)).
 

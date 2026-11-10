@@ -3088,7 +3088,7 @@ setup the same way: coven would otherwise run it to its end with nobody
 waiting. A setup bae was stopped partway through is undone as the
 library opens if it hadn't reached that point, and otherwise finishes once
 sync starts, which the library does at launch for it as for a library with
-storage set up. While a setup runs, the Sync page says "Setting up storage…"
+storage set up. While a setup runs, the Sync page says "Setting up your cloud home…"
 in place of any state that names no problem; a library with no location
 recorded yet shows that where Settings would offer setting up sync, and
 Settings reads the location again once the setup stops running, since it
@@ -3301,8 +3301,8 @@ words of a button, which are each platform's.
   paused.* and *Resume uploads* when uploads are paused, with *An upload
   failed. bae will try again shortly.* and *Retry now* when an upload waits to
   retry, and with nothing else when sync waits its turn. A phone never
-  uploads files, so its only reason to wait is the provider's. While a storage
-  setup runs, "Setting up storage…" takes the place of any state that is no
+  uploads files, so its only reason to wait is the provider's. While a cloud home
+  setup runs, "Setting up your cloud home…" takes the place of any state that is no
   problem (§6.2).
 - **Green.** Synced, with a dot. It means data and files both: a file still
   uploading is Syncing….
@@ -3315,7 +3315,7 @@ words of a button, which are each platform's.
   signs in from System Settings; an S3 library has no sign-in, so it reads
   *Access key not accepted* and asks for a new key for the same bucket. A
   sign-in that expired reads the same as none saved.
-- **Red.** Device needs reset, with the reset. No access to the cloud, Cloud home
+- **Red.** Device needs reset, with the reset. No access to the cloud, Cloud
   folder missing and Clock is wrong, each with its cause. Removed from the
   library, with *An admin removed this device. What's here is an old copy.*
   and the list of libraries on this device, where it is removed. Cloud full, with *Free up space in the
