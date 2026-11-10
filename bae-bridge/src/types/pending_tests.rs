@@ -13,3 +13,16 @@ fn a_write_waiting_for_a_raise_names_the_raise() {
     );
     assert_eq!(key(coven::Prerequisite::SequenceCatchUp), "core.pending.reason.waits");
 }
+
+/// A joined device whose admission the library refused was never in it; its
+/// records say it was removed, as coven shows it (coven §13.2), and a change
+/// it asked for stopped as a removal stops one.
+#[test]
+fn a_refused_admission_reads_as_a_removal() {
+    let key = |reason| BridgePendingReason::from_core(reason, None).key;
+    assert_eq!(key(coven::PendingReason::NotAdmitted), key(coven::PendingReason::Removed));
+    assert_eq!(
+        crate::BridgeDeviceStop::from_core(coven::DeviceStop::NotAdmitted),
+        crate::BridgeDeviceStop::Removed
+    );
+}

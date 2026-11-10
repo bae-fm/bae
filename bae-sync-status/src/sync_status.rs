@@ -69,7 +69,9 @@ fn sync_failure_category(error: &coven::SyncFailure) -> bae_diagnostics::UiError
     match error {
         coven::SyncFailure::UpdateRequired(_) => C::SyncUpdateRequired,
         coven::SyncFailure::DeviceIdInUse(_) => C::DeviceResetRequired,
-        coven::SyncFailure::Removed => C::DeviceRemoved,
+        // A joined device whose admission the library refused shows as a
+        // removed one (coven §13.2).
+        coven::SyncFailure::Removed | coven::SyncFailure::NotAdmitted => C::DeviceRemoved,
         coven::SyncFailure::Storage(error) => bae_diagnostics::storage_error_category(error),
         coven::SyncFailure::Operation(_) | coven::SyncFailure::Other(_) => C::Internal,
     }
@@ -82,7 +84,7 @@ fn status_failure_category(failure: &coven::StatusFailure) -> bae_diagnostics::U
     match failure {
         coven::StatusFailure::UpdateRequired(_) => C::SyncUpdateRequired,
         coven::StatusFailure::DeviceIdInUse(_) => C::DeviceResetRequired,
-        coven::StatusFailure::Removed => C::DeviceRemoved,
+        coven::StatusFailure::Removed | coven::StatusFailure::NotAdmitted => C::DeviceRemoved,
         coven::StatusFailure::Storage(failure) => bae_diagnostics::storage_category(*failure),
         coven::StatusFailure::Operation(_) | coven::StatusFailure::Other => C::Internal,
     }
@@ -402,7 +404,7 @@ impl SyncStatusSnapshot {
             )),
             Some(S::Failed { failure: F::Operation(record), .. }) => retries(record),
             Some(S::Failed {
-                failure: F::UpdateRequired(_) | F::Removed | F::DeviceIdInUse(_),
+                failure: F::UpdateRequired(_) | F::Removed | F::NotAdmitted | F::DeviceIdInUse(_),
                 ..
             }) => false,
             Some(S::Synced) | None => self.pending.iter().any(|item| item.wait.retries_by_itself()),
@@ -500,7 +502,7 @@ pub fn pending_action(record: &coven::PendingRecord, release_id: Option<&str>) -
         R::FileUnavailable(coven::FileMissingReason::Lost) => PendingAction::Review,
         R::UpdateRequired(_) | R::Refused(_) => PendingAction::UpdateApp,
         R::MemberKeysReplaced { .. } => PendingAction::RestoreFromCode,
-        R::Removed => PendingAction::Review,
+        R::Removed | R::NotAdmitted => PendingAction::Review,
         _ => match record.retry() {
             coven::Retry::Automatic => PendingAction::Wait,
             coven::Retry::AfterUpdate => PendingAction::UpdateApp,

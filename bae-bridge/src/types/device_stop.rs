@@ -3,7 +3,9 @@
 /// make it (§5.6).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeDeviceStop {
-    /// This device, or its person, was removed from the library.
+    /// This device, or its person, was removed from the library; or the
+    /// library refused the admission of a joined device, which was never in
+    /// it, and which shows as a removal does (coven §13.2).
     Removed,
     /// A restore put another copy of bae in this device's place.
     Replaced,
@@ -12,7 +14,13 @@ pub enum BridgeDeviceStop {
     /// Another of the person's devices replaced their keys.
     MemberKeysReplaced,
 }
-mirror_enum! { BridgeDeviceStop = coven::DeviceStop,
-    from_core: pub(crate) fn,
-    variants: { Removed, Replaced, Copied, MemberKeysReplaced },
+impl BridgeDeviceStop {
+    pub(crate) fn from_core(stop: coven::DeviceStop) -> Self {
+        match stop {
+            coven::DeviceStop::Removed | coven::DeviceStop::NotAdmitted => Self::Removed,
+            coven::DeviceStop::Replaced => Self::Replaced,
+            coven::DeviceStop::Copied => Self::Copied,
+            coven::DeviceStop::MemberKeysReplaced => Self::MemberKeysReplaced,
+        }
+    }
 }

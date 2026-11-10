@@ -96,6 +96,7 @@ fn reports_failure(reason: &coven::PendingReason) -> bool {
         | R::Rejected(_)
         | R::Paused
         | R::Removed
+        | R::NotAdmitted
         | R::MemberKeysReplaced { .. } => false,
     }
 }

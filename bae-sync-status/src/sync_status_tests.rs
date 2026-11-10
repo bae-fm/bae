@@ -276,6 +276,38 @@ fn a_removed_device_says_so_and_offers_nothing_that_registers_it() {
     );
 }
 
+/// A joined device whose admission the library refused was never in it, and
+/// shows as a removed one: removed, with nothing to retry and its record
+/// only reviewed (coven §13.2).
+#[test]
+fn a_device_whose_admission_was_refused_shows_as_removed() {
+    assert_eq!(
+        pending_action(&record(coven::PendingReason::NotAdmitted), None),
+        PendingAction::Review
+    );
+    assert_eq!(
+        category(&failed(coven::StatusFailure::NotAdmitted, coven::SyncState::Removed)),
+        bae_diagnostics::UiErrorCategory::DeviceRemoved
+    );
+    assert!(!retried(
+        failed_status(coven::StatusFailure::NotAdmitted, coven::SyncState::Removed),
+        Vec::new()
+    ));
+    let refused = SyncRetryOutcome::from(coven::RetryOutcome::Failed(coven::PassFailure::Failed {
+        error: coven::SyncFailure::NotAdmitted,
+    }));
+    assert!(
+        matches!(
+            refused,
+            SyncRetryOutcome::Failed(UiError::Diagnostic {
+                category: bae_diagnostics::UiErrorCategory::DeviceRemoved,
+                ..
+            })
+        ),
+        "{refused:?}"
+    );
+}
+
 /// Keys replaced by another of the person's devices are restored with the
 /// person's current code, not by resetting this device.
 #[test]

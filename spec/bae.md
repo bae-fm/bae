@@ -3306,7 +3306,12 @@ offers nothing.
   library, its record says so in its own error line, "This device was removed
   from the library.", and offers only the record's details. Resetting would
   register the device again under keys that no longer count, asking storage to
-  take back a device the library removed.
+  take back a device the library removed. A phone whose join the library's
+  history refused to admit, which only a faulty or hostile writer can cause,
+  was never in the library: coven stops it for good, and bae shows it as a
+  removed device, in the same words, with Removed from the library as its
+  sync state
+  ([coven §13.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#132-adding-a-person-invites)).
 - **Replaced keys.** When another of the person's devices replaced their keys,
   this device can no longer send. Its record offers *Restore with code*: bae
   closes the library and asks for the person's current restore code, warning
@@ -5360,7 +5365,7 @@ A `BridgeError` is `Cancelled` (show nothing), `NotFound` (a library), or
 | `Database`, `Config`, `Internal` | reports it |
 | `SyncUpdateRequired` | updates the app |
 | `DeviceResetRequired` | resets the device, after its warning (§6.4) |
-| `DeviceRemoved` | stops syncing this library on this device for good: the device, or its person, was removed from the library |
+| `DeviceRemoved` | stops syncing this library on this device for good: the device, or its person, was removed from the library, or the library refused a joined device's admission |
 | `Import`, `ImportData` | reads the detail: an import couldn't finish, because a catalog or a source couldn't answer or be read, or its candidate or the library's artists changed before its write, and importing again works on what now stands |
 | `ChangedMeanwhile` | asks again, on what now stands: what a change acted on changed before it was written, and nothing was written (a release, album or file deleted before a change of it, an album or release a deletion was planned against, a release whose tracks came or went under an edit, a cover or artist image replaced again, a release picked as its album's primary that moved to another album, an artist given a printed name that was deleted or merged, an artist a credit picked that left the library, a candidate or the watched folders that changed under a change to them, a cancel that came after the import began writing) |
 | `InvalidEdit` | fixes what they typed, as the line says: an album title, an artist, an artist's name, a year |

@@ -715,6 +715,7 @@ pub(super) fn setup_failure_classes_retain_the_actionable_category() {
         (coven::SyncError::Storage(F::Network.into()).into(), C::Storage(F::Network)),
         (coven::SyncError::NoStorage.into(), C::Config),
         (coven::SyncError::Removed.into(), C::DeviceRemoved),
+        (coven::SyncError::NotAdmitted.into(), C::DeviceRemoved),
         (coven::KeyError::Left.into(), C::DeviceRemoved),
         (coven::SyncError::SecureStorage(coven::KeyError::Left).into(), C::DeviceRemoved),
         (missing_entitlement().into(), C::KeychainEntitlementMissing),

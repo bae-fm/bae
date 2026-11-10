@@ -16,8 +16,10 @@ pub enum UiErrorCategory {
     /// Sync encountered data written by a newer app schema.
     SyncUpdateRequired,
     DeviceResetRequired,
-    /// This device, or its person, was removed from the library; syncing has
-    /// stopped for good and nothing on this device registers it again.
+    /// This device, or its person, was removed from the library, or a joined
+    /// device's admission was refused, so it was never in the library;
+    /// syncing has stopped for good and nothing on this device registers it
+    /// again.
     DeviceRemoved,
     /// An import couldn't finish: a catalog or a source couldn't answer or
     /// be read, or what it was prepared against changed before its write.

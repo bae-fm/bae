@@ -290,6 +290,7 @@ impl SyncStatusSnapshot {
                 }
                 StatusFailure::UpdateRequired(_)
                 | StatusFailure::Removed
+                | StatusFailure::NotAdmitted
                 | StatusFailure::DeviceIdInUse(_)
                 | StatusFailure::Other => None,
             },
