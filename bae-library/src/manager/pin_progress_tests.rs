@@ -255,8 +255,9 @@ impl HeardDownloads {
 }
 
 /// A pin whose second file's download fails never counts that file's bytes
-/// beyond the share its download moved: from the first file whole and the
-/// second held partway, no progress until the pin's error goes higher.
+/// beyond the share its download moved: no progress until the pin's error
+/// goes higher than the first file whole and the second's share where its
+/// download was cut off.
 #[tokio::test]
 async fn a_failed_files_bytes_never_count() {
     let (test, temp_dir) = setup_test_manager().await;
@@ -292,11 +293,11 @@ async fn a_failed_files_bytes_never_count() {
     );
 
     // The failing file's download stops partway, and once let go its bytes
-    // stop coming.
+    // stop coming a little further on.
     let at = 100_000;
+    let cut_off = at + 1_000;
     home.set_faults(coven::Faults {
-        body_failures: [(failing_object.clone(), coven::BodyFailure::Interrupted(at + 1_000))]
-            .into(),
+        body_failures: [(failing_object.clone(), coven::BodyFailure::Interrupted(cut_off))].into(),
         ..coven::Faults::none()
     })
     .await;
@@ -320,10 +321,8 @@ async fn a_failed_files_bytes_never_count() {
     held.await.unwrap();
 
     // The first file's download finishes while the failing one is held.
-    let share = |moved: Option<coven::TransferProgress>| {
-        moved.map_or(0, |moved| {
-            (failing_size as f64 * crate::file_transfers::fraction(moved)) as u64
-        })
+    let share = |moved: coven::TransferProgress| {
+        (failing_size as f64 * crate::file_transfers::fraction(moved)) as u64
     };
     let mut heard = HeardDownloads {
         whole: whole.id(),
@@ -342,7 +341,8 @@ async fn a_failed_files_bytes_never_count() {
     .await
     .expect("the first file finishes and the failing one reaches its hold");
     // The pin counts the first file whole and the failing one's share.
-    let at_hold = whole_size + share(heard.failing_moved);
+    let moved_at_hold = heard.failing_moved.expect("the failing download reached its hold");
+    let at_hold = whole_size + share(moved_at_hold);
     let mut seen = Vec::new();
     tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         while seen.last() != Some(&at_hold) {
@@ -365,7 +365,11 @@ async fn a_failed_files_bytes_never_count() {
     while let Ok(done) = bytes.try_recv() {
         seen.push(done);
     }
-    let most = whole_size + share(heard.failing_moved);
+    // The watch tells changes a reader hasn't read yet together, so this
+    // test may not hear the failing download's last bytes the pin heard: the
+    // furthest it moved is where its body was cut off.
+    let most =
+        whole_size + share(coven::TransferProgress { bytes_transferred: cut_off, ..moved_at_hold });
     assert!(
         seen.iter().all(|done| *done <= most),
         "no progress counts more than {most} bytes: {seen:?}"
