@@ -367,7 +367,7 @@ extension Notice {
     @ViewBuilder
     private func colouredButton(_ button: some View) -> some View {
         if look == .filled && tone.hasNoticeFill {
-            button.modifier(NoticeAccent())
+            button.foregroundStyle(Theme.accent).tint(Theme.accent)
         }
         else if look == .centered {
             button.foregroundStyle(.secondary).tint(.secondary)

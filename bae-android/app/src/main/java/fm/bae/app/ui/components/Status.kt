@@ -64,7 +64,10 @@ val StatusTone.fill: Color
     @Composable
     get() = color.copy(alpha = ThemeOpacity.tint)
 
-/** The fill of a filled notice: a toned notice has its own, solid and light in dark mode; the rest keep [fill]. */
+/**
+ * The fill of a filled notice: a toned notice has its own, a pale tone in light mode and the neutral
+ * fill in dark; the rest keep [fill].
+ */
 private val StatusTone.noticeFill: Color
     @Composable
     get() =
@@ -84,18 +87,13 @@ private val StatusTone.hasNoticeFill: Boolean
 private val LocalOnNoticeFill = compositionLocalOf { false }
 
 /**
- * The colour of a button in a notice. On a filled toned notice's own fill: the accent in light mode,
- * `onNotice` in dark, where the accent would vanish on the solid fill. Anywhere else, the screen's
- * text.
+ * The colour of a button in a notice. On a filled toned notice's own fill: the accent. Anywhere else,
+ * the screen's text.
  */
 internal val noticeButtonColor: Color
     @Composable
     get() =
-        when {
-            !LocalOnNoticeFill.current -> LocalContentColor.current
-            BaeTheme.isDark -> BaeTheme.colors.onNotice
-            else -> MaterialTheme.colorScheme.primary
-        }
+        if (LocalOnNoticeFill.current) MaterialTheme.colorScheme.primary else LocalContentColor.current
 
 /** The glyph a notice in this tone leads with: a filled circle with its mark, or its outline when [outline]. */
 private fun StatusTone.icon(outline: Boolean): ImageVector? =
@@ -120,8 +118,7 @@ private val StatusTone.iconColor: Color
 
 /**
  * The tone's glyph in the tone's glyph colour, or the secondary text colour when [muted]; nothing for
- * a tone without one. On a filled notice's own fill in dark mode, where the fill is the tone's colour
- * solid, it is `onNotice`.
+ * a tone without one.
  */
 @Composable
 fun StatusGlyph(
@@ -148,7 +145,6 @@ private fun glyphTint(
 ): Color =
     when {
         muted -> MaterialTheme.colorScheme.onSurfaceVariant
-        LocalOnNoticeFill.current && BaeTheme.isDark -> BaeTheme.colors.onNotice
         else -> tone.iconColor
     }
 

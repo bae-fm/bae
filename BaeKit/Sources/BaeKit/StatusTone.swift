@@ -35,8 +35,9 @@ public enum StatusTone: Sendable, Equatable {
         }
     }
 
-    /// The fill of a filled notice: a toned notice has its own, solid and
-    /// light in dark mode; the tones with no glyph keep their tint.
+    /// The fill of a filled notice: a toned notice has its own, a pale tone in
+    /// light mode and the neutral fill in dark; the tones with no glyph keep
+    /// their tint.
     public var noticeFill: Color {
         switch self {
         case .info: Theme.infoNotice
@@ -47,8 +48,8 @@ public enum StatusTone: Sendable, Equatable {
         }
     }
 
-    /// Whether a filled notice draws this tone's text and glyph in
-    /// `Theme.onNotice`, as it has its own fill.
+    /// Whether a filled notice draws this tone's text in `Theme.onNotice`, as
+    /// it has its own fill.
     var hasNoticeFill: Bool {
         symbol != nil
     }
@@ -105,11 +106,6 @@ public struct StatusGlyph: View {
     private let outline: Bool
     private let muted: Bool
 
-    @Environment(\.onNoticeFill)
-    private var onNoticeFill
-    @Environment(\.colorScheme)
-    private var colorScheme
-
     /// `muted` draws the glyph in the grey of the words beside it (secondary
     /// text), for a failure that should not call attention to itself.
     public init(
@@ -129,37 +125,10 @@ public struct StatusGlyph: View {
         }
     }
 
-    /// On a notice's own fill the glyph is `onNotice` in dark mode, where the
-    /// solid fill is the tone's colour, and the tone's icon colour in light.
+    /// The glyph carries the tone in both modes: its icon colour, or the
+    /// grey of the words beside it when muted.
     private var color: Color {
-        if muted { return Color.secondary }
-        if onNoticeFill, colorScheme == .dark { return Theme.onNotice }
-        return tone.iconColor
-    }
-}
-
-private struct OnNoticeFillKey: EnvironmentKey {
-    static let defaultValue = false
-}
-
-extension EnvironmentValues {
-    /// Whether the view sits on a filled notice's own fill.
-    fileprivate var onNoticeFill: Bool {
-        get { self[OnNoticeFillKey.self] }
-        set { self[OnNoticeFillKey.self] = newValue }
-    }
-}
-
-/// The accent a button or link takes on a filled notice's own fill: the
-/// accent in light mode, `onNotice` in dark, where the accent would vanish on
-/// the solid fill.
-struct NoticeAccent: ViewModifier {
-    @Environment(\.colorScheme)
-    private var colorScheme
-
-    func body(content: Content) -> some View {
-        let color = colorScheme == .dark ? Theme.onNotice : Theme.accent
-        content.foregroundStyle(color).tint(color)
+        muted ? Color.secondary : tone.iconColor
     }
 }
 
@@ -184,7 +153,6 @@ extension View {
                 .foregroundStyle(
                     tone.hasNoticeFill ? Theme.onNotice : Color.primary
                 )
-                .environment(\.onNoticeFill, tone.hasNoticeFill)
         case .quiet:
             padding(.vertical, ThemeSpace.related + ThemeSpace.line)
         case .centered:
