@@ -18,6 +18,7 @@ import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.components.ErrorNotice
+import fm.bae.app.ui.components.NeutralTextButton
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.RadioRow
 import fm.bae.app.ui.rememberScreenScope
@@ -120,6 +121,6 @@ private fun RenameProfileDialogContent(
                 Text(stringResource(R.string.save))
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+        dismissButton = { NeutralTextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
     )
 }

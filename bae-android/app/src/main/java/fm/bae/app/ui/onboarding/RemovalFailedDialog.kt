@@ -14,6 +14,7 @@ import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeSpace
+import fm.bae.app.ui.components.NeutralTextButton
 import uniffi.bae_bridge.BridgeLibrary
 
 /**
@@ -33,7 +34,7 @@ internal fun RemovalFailedDialog(
             onDismissRequest = onCancel,
             text = { RemovalFailedText(library, error) },
             confirmButton = { TextButton(onClick = onRetry) { Text(stringResource(R.string.retry)) } },
-            dismissButton = { TextButton(onClick = onCancel) { Text(stringResource(R.string.cancel)) } },
+            dismissButton = { NeutralTextButton(onClick = onCancel) { Text(stringResource(R.string.cancel)) } },
         )
     } else {
         AlertDialog(

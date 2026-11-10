@@ -24,14 +24,16 @@ fun DestructiveTextButton(
     )
 }
 
-/** A text button beside a destructive one (Cancel, Keep): in the screen's text colour. */
+/** The other button of a dialog's row (Cancel, Back, Not yet, Keep, Decline): in the screen's text colour. */
 @Composable
 fun NeutralTextButton(
     onClick: () -> Unit,
+    enabled: Boolean = true,
     content: @Composable RowScope.() -> Unit,
 ) {
     TextButton(
         onClick = onClick,
+        enabled = enabled,
         colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
         content = content,
     )

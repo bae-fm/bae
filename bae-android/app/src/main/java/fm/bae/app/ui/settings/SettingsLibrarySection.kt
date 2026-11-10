@@ -32,6 +32,7 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.CardRow
 import fm.bae.app.ui.components.ErrorNotice
+import fm.bae.app.ui.components.NeutralTextButton
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.RowCard
 import fm.bae.app.ui.components.StatusTone
@@ -202,7 +203,7 @@ private fun RenameLibraryDialogContent(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+            NeutralTextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         },
     )
 }

@@ -30,7 +30,6 @@ import fm.bae.app.currentLocale
 import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.DestructiveTextButton
 import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.NeutralTextButton
 import fm.bae.app.ui.components.NoticeLook
@@ -114,7 +113,7 @@ private fun CancelInviteConfirmDialog(
         title = { Text(context.coreString("core.invite.cancel_confirm.title")) },
         text = forgetLine?.let { line -> { Text(line) } },
         confirmButton = {
-            DestructiveTextButton(onClick = onConfirm) { Text(stringResource(R.string.invite_cancel)) }
+            TextButton(onClick = onConfirm) { Text(stringResource(R.string.invite_cancel)) }
         },
         dismissButton = {
             NeutralTextButton(onClick = onDismiss) { Text(context.coreString("core.invite.cancel_confirm.keep")) }
@@ -178,7 +177,9 @@ private fun InviteCodeDialog(
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.done)) }
         },
         dismissButton = {
-            TextButton(onClick = onCancelInvite, enabled = !busy) { Text(stringResource(R.string.invite_cancel)) }
+            NeutralTextButton(onClick = onCancelInvite, enabled = !busy) {
+                Text(stringResource(R.string.invite_cancel))
+            }
         },
     )
 }

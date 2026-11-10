@@ -18,6 +18,7 @@ import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.cloudProviderLabel
+import fm.bae.app.ui.components.DestructiveTextButton
 import fm.bae.app.ui.components.LabeledValueRow
 import fm.bae.app.ui.components.MatchCode
 import fm.bae.app.ui.components.NeutralTextButton
@@ -215,7 +216,7 @@ private fun CutOffRetryDialog(
         },
         confirmButton = { TextButton(onClick = onTryAgain) { Text(stringResource(R.string.retry)) } },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.device_cut_off_not_yet)) }
+            NeutralTextButton(onClick = onDismiss) { Text(stringResource(R.string.device_cut_off_not_yet)) }
         },
     )
 }
@@ -274,10 +275,10 @@ private fun RemovalConfirmDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onConfirm) { Text(stringResource(R.string.members_remove)) }
+            DestructiveTextButton(onClick = onConfirm) { Text(stringResource(R.string.members_remove)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+            NeutralTextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         },
     )
 }
@@ -314,7 +315,7 @@ private fun SignOutDialog(
         },
         dismissButton =
             if (step.offersCutOff) {
-                { TextButton(onClick = onDismiss) { Text(stringResource(R.string.device_cut_off_not_yet)) } }
+                { NeutralTextButton(onClick = onDismiss) { Text(stringResource(R.string.device_cut_off_not_yet)) } }
             } else {
                 null
             },

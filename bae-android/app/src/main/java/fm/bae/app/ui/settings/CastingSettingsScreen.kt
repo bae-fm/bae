@@ -36,6 +36,7 @@ import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.Eyebrow
+import fm.bae.app.ui.components.NeutralTextButton
 import fm.bae.app.ui.components.RowCard
 import fm.bae.app.ui.playback.CastReceiverRows
 import kotlinx.coroutines.CoroutineDispatcher
@@ -277,7 +278,7 @@ private fun CastDisconnectDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            NeutralTextButton(onClick = onDismiss) {
                 Text(stringResource(R.string.cancel))
             }
         },

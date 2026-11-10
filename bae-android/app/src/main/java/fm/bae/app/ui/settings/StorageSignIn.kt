@@ -15,6 +15,7 @@ import androidx.compose.ui.res.stringResource
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.ui.appearance.ThemeSpace
+import fm.bae.app.ui.components.NeutralTextButton
 import fm.bae.app.ui.components.S3KeyFields
 import uniffi.bae_bridge.BridgeSaveSyncConfig
 import uniffi.bae_bridge.BridgeStorageLocation
@@ -55,7 +56,7 @@ internal fun S3KeyDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+            NeutralTextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         },
     )
 }

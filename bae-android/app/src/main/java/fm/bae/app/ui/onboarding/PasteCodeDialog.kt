@@ -19,6 +19,7 @@ import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.NeutralTextButton
 
 /** The fixed wording of a [PasteCodeDialog], distinct per code it accepts. */
 class PasteDialogText(
@@ -65,7 +66,7 @@ fun PasteCodeDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+            NeutralTextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         },
     )
 }

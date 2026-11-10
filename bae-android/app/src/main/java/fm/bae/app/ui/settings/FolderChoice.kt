@@ -37,6 +37,7 @@ import fm.bae.app.ui.BaeAppChrome
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorNotice
+import fm.bae.app.ui.components.NeutralTextButton
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.components.retryAction
@@ -270,7 +271,7 @@ private fun NewFolderDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+            NeutralTextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         },
     )
 }

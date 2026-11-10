@@ -12,7 +12,6 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -39,6 +38,7 @@ import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.NeutralTextButton
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.components.color
@@ -203,7 +203,7 @@ fun SidePauseAlert(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { answer(false) }) {
+                NeutralTextButton(onClick = { answer(false) }) {
                     Text(stringResource(R.string.close))
                 }
             },

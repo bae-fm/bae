@@ -28,6 +28,7 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.LabeledValueRow
+import fm.bae.app.ui.components.NeutralTextButton
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.S3KeyFields
@@ -142,7 +143,7 @@ internal fun S3KeyDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
+            NeutralTextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
         },
     )
 }
