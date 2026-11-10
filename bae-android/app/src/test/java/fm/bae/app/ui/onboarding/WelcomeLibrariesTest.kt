@@ -214,7 +214,7 @@ class WelcomeLibrariesTest {
         compose.waitUntil(HANG_GUARD_MS) { fake.calls.contains("unsent synced") }
         compose.onNodeWithText("Remove “Home Library” from this device?").assertIsDisplayed()
         compose.onNodeWithText("Unsent changes will be lost").assertIsDisplayed()
-        compose.onNodeWithText("The library will remain in storage and on your other devices.").assertIsDisplayed()
+        compose.onNodeWithText("The library will remain in the cloud and on your other devices.").assertIsDisplayed()
         assertEquals(listOf("list", "unsent synced"), fake.calls)
 
         compose.onNode(hasText("Remove") and hasAnyAncestor(isDialog())).performClick()
@@ -233,7 +233,7 @@ class WelcomeLibrariesTest {
 
         compose.waitUntil(HANG_GUARD_MS) { fake.calls.contains("unsent synced") }
         compose.onNodeWithText("Remove “Home Library” from this device?").assertIsDisplayed()
-        compose.onNodeWithText("The library will remain in storage and on your other devices.").assertIsDisplayed()
+        compose.onNodeWithText("The library will remain in the cloud and on your other devices.").assertIsDisplayed()
         compose.onNodeWithText("Unsent changes will be lost").assertDoesNotExist()
     }
 
@@ -292,7 +292,7 @@ class WelcomeLibrariesTest {
         compose
             .onNodeWithText(
                 "This library can't be opened, so any changes on this device that weren't sent are lost. " +
-                    "Its copy on this device is deleted; if the library is kept in storage, it stays there.",
+                    "Its copy on this device is deleted; if the library is kept in the cloud, it stays there.",
             ).assertIsDisplayed()
     }
 

@@ -36,7 +36,7 @@
     <string name="album_options">Albumopties</string>
     <string name="delete_album">Album verwijderen…</string>
     <string name="delete_album_confirm_title">Dit album verwijderen?</string>
-    <string name="delete_album_confirm_body">Alle releases van dit album worden uit de bibliotheek verwijderd, samen met de kopieën van hun bestanden die bae op dit apparaat en in je opslag bewaart. Bestanden in je eigen mappen worden niet verwijderd. Dit kan niet ongedaan worden gemaakt.</string>
+    <string name="delete_album_confirm_body">Alle releases van dit album worden uit de bibliotheek verwijderd, samen met de kopieën van hun bestanden die bae op dit apparaat en in de cloud bewaart. Bestanden in je eigen mappen worden niet verwijderd. Dit kan niet ongedaan worden gemaakt.</string>
     <string name="delete_album_confirm">Verwijderen</string>
     <string name="now_playing">Speelt nu</string>
     <string name="paused">Gepauzeerd</string>
@@ -121,7 +121,7 @@
     <string name="hide">Verbergen</string>
     <string name="settings_remove_library">Verwijder deze bibliotheek van dit apparaat</string>
     <string name="library_remove_confirm_title">‘%1$s’ van dit apparaat verwijderen?</string>
-    <string name="settings_remove_library_confirm_body">De bibliotheek blijft in de opslag en op je andere apparaten.</string>
+    <string name="settings_remove_library_confirm_body">De bibliotheek blijft in de cloud en op je andere apparaten.</string>
     <string name="settings_remove">Verwijderen</string>
     <string name="onboarding_libraries_title">Je bibliotheken</string>
     <string name="library_delete_confirm_title">‘%1$s’ verwijderen?</string>
@@ -135,7 +135,7 @@
     <string name="library_delete_menu">Verwijderen…</string>
     <string name="library_last_synced">Laatst gesynchroniseerd</string>
     <string name="library_unsent_changes">Niet-verzonden wijzigingen</string>
-    <string name="removal_uncounted_body">Deze bibliotheek kan niet worden geopend, dus wijzigingen op dit apparaat die niet zijn verzonden, gaan verloren. De kopie op dit apparaat wordt verwijderd; staat de bibliotheek in de opslag, dan blijft die daar.</string>
+    <string name="removal_uncounted_body">Deze bibliotheek kan niet worden geopend, dus wijzigingen op dit apparaat die niet zijn verzonden, gaan verloren. De kopie op dit apparaat wordt verwijderd; staat de bibliotheek in de cloud, dan blijft die daar.</string>
     <string name="settings_provider">Provider</string>
     <string name="settings_account">Account</string>
     <string name="settings_bucket">Bucket</string>
@@ -170,7 +170,7 @@
     <string name="onboarding_add_device">Apparaat toevoegen</string>
     <string name="onboarding_tagline">Je muziek, overal</string>
     <string name="onboarding_camera_permission_required">Cameratoestemming is vereist om QR-codes te scannen</string>
-    <string name="oauth_unconfigured">Aanmelden bij de opslag van deze bibliotheek is niet geconfigureerd in deze build.</string>
+    <string name="oauth_unconfigured">Aanmelden bij het cloudthuis van deze bibliotheek is niet geconfigureerd in deze build.</string>
     <string name="signing_in">Aanmelden…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
@@ -286,7 +286,7 @@
     <string name="onboarding_check_now">Nu controleren</string>
     <string name="pending_update_no_store">Geen enkele appwinkel op dit apparaat kan bae bijwerken.</string>
     <string name="storage_setup_title">Synchronisatie instellen</string>
-    <string name="settings_set_up_sync_explanation">Deze bibliotheek staat alleen op dit apparaat. Synchronisatie houdt hem in de opslag, waar je andere apparaten en je huishouden hem kunnen gebruiken.</string>
+    <string name="settings_set_up_sync_explanation">Deze bibliotheek staat alleen op dit apparaat. Synchronisatie houdt hem in een cloudthuis, waar je andere apparaten en je huishouden hem kunnen gebruiken.</string>
     <string name="storage_setup_choose">Waar moet deze bibliotheek worden opgeslagen?</string>
     <string name="storage_s3_endpoint_hint">Laat leeg voor Amazon S3.</string>
     <string name="storage_set_up">Instellen</string>
@@ -315,7 +315,7 @@
     <string name="restore_code_partly_hidden">Herstelcode, gedeeltelijk verborgen</string>
     <string name="restore_code_print_title">bae-herstelcode</string>
     <string name="restore_code_printed">Geprint op %1$s</string>
-    <string name="restore_code_print_keep">Als je al je apparaten kwijtraakt, kies je in bae op een nieuw apparaat Apparaat toevoegen en scan je dit of typ je de code. Iedereen die deze pagina heeft en toegang tot je opslag, kan je bibliotheek openen: bewaar hem op een privéplek.</string>
+    <string name="restore_code_print_keep">Als je al je apparaten kwijtraakt, kies je in bae op een nieuw apparaat Apparaat toevoegen en scan je dit of typ je de code. Iedereen die deze pagina heeft en toegang tot je cloud, kan je bibliotheek openen: bewaar hem op een privéplek.</string>
     <string name="done">Klaar</string>
     <string name="members_you">Jij</string>
     <string name="members_unnamed">Nog geen naam</string>
@@ -336,7 +336,7 @@
     <string name="device_removed_title">Het apparaat wordt verwijderd</string>
     <string name="device_cut_off_confirm">Ik heb dit apparaat losgekoppeld</string>
     <string name="device_cut_off_not_yet">Nog niet</string>
-    <string name="device_cut_off_running_title">Een verzoek aan je opslag loopt nog</string>
+    <string name="device_cut_off_running_title">Een verzoek aan de cloud loopt nog</string>
     <string name="device_cut_off_running_body">Wacht tot het klaar is en probeer het dan opnieuw.</string>
     <string name="device_cut_off_not_gone_title">De verwijdering is nog niet op dit apparaat aangekomen</string>
     <string name="device_cut_off_not_gone_body">Probeer het opnieuw na de volgende synchronisatie.</string>
@@ -379,8 +379,8 @@
     <string name="onboarding_saved_code_reason_ambiguous">Meer dan eens bewaard</string>
     <string name="onboarding_saved_code_delete">Verwijderen</string>
     <string name="onboarding_saved_code_delete_title">Deze herstelcode verwijderen?</string>
-    <string name="onboarding_saved_code_delete_body">Hiermee verwijder je de herstelcode voor ‘%1$s’ alleen van dit apparaat. De bibliotheek en alles in je opslag blijven bestaan.</string>
-    <string name="onboarding_saved_code_delete_body_unusable">Hiermee verwijder je de herstelcode alleen van dit apparaat. De bibliotheek en alles in je opslag blijven bestaan.</string>
+    <string name="onboarding_saved_code_delete_body">Hiermee verwijder je de herstelcode voor ‘%1$s’ alleen van dit apparaat. De bibliotheek en alles in de cloud blijven bestaan.</string>
+    <string name="onboarding_saved_code_delete_body_unusable">Hiermee verwijder je de herstelcode alleen van dit apparaat. De bibliotheek en alles in de cloud blijven bestaan.</string>
     <string name="onboarding_saved_code_delete_failed">Kan de herstelcode niet verwijderen</string>
     <string name="onboarding_saved_code_removed">Deze herstelcode is niet meer bewaard op dit apparaat.</string>
     <string name="onboarding_saved_library">Bibliotheek</string>
@@ -392,7 +392,7 @@
     <string name="settings_profile_refused">Je profiel kon niet worden gemaakt. %1$s</string>
     <string name="settings_profile_create_prompt">Maak je profiel zodat de bibliotheek kan laten zien wie je bent.</string>
     <string name="settings_profile_create">Profiel maken</string>
-    <string name="operation_rejection_store_owner">Het account dat eigenaar is van de opslag van de bibliotheek kan niet worden verwijderd.</string>
+    <string name="operation_rejection_store_owner">Het account dat eigenaar is van het cloudthuis van de bibliotheek kan niet worden verwijderd.</string>
     <string name="operation_rejection_person_gone">Die persoon zit niet meer in de bibliotheek.</string>
     <string name="operation_rejection_device_gone">Dat apparaat zit niet meer in de bibliotheek.</string>
     <string name="operation_rejection_circle_gone">Die kring bestaat niet meer.</string>
@@ -419,7 +419,7 @@
     <string name="sync_status">Status</string>
     <string name="sync_last_synced">Laatst gesynchroniseerd: %1$s</string>
     <string name="sync_pending">In afwachting</string>
-    <string name="sync_storage">Opslag</string>
+    <string name="sync_cloud_home">Cloudthuis</string>
     <string name="sync_fix_update">Bijwerken</string>
     <string name="sync_fix_sign_in">Aanmelden bij %1$s</string>
     <string name="sync_fix_enter_key">Toegangssleutel invoeren</string>

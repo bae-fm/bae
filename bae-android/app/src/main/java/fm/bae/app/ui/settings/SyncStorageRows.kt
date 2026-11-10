@@ -35,7 +35,7 @@ private val logger = BaeLogger("bae.SyncStorageRows")
 @Composable
 internal fun StorageSection(location: BridgeStorageLocation) {
     Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
-        Eyebrow(text = stringResource(R.string.sync_storage))
+        Eyebrow(text = stringResource(R.string.sync_cloud_home))
         RowCard { StorageRows(location) }
     }
 }

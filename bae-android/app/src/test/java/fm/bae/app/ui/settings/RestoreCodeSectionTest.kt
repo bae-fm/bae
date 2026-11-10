@@ -163,13 +163,13 @@ class RestoreCodeSectionTest {
                 RestoreCodeReveal(
                     this,
                     generate = { throw BridgeException.Diagnostic(BridgeErrorCategory.Config, "storage unreachable") },
-                    errorDisplay = { DisplayError("Couldn’t reach your storage.", it.diagnosticDetail) },
+                    errorDisplay = { DisplayError("Couldn’t reach the cloud.", it.diagnosticDetail) },
                 )
             reveal.open()
             advanceUntilIdle()
 
             assertEquals(
-                RestoreCodeState.Failed(DisplayError("Couldn’t reach your storage.", "storage unreachable")),
+                RestoreCodeState.Failed(DisplayError("Couldn’t reach the cloud.", "storage unreachable")),
                 reveal.state,
             )
         }

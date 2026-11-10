@@ -36,7 +36,7 @@
     <string name="album_options">Opções do álbum</string>
     <string name="delete_album">Eliminar álbum…</string>
     <string name="delete_album_confirm_title">Eliminar este álbum?</string>
-    <string name="delete_album_confirm_body">Todas as edições deste álbum são eliminadas da biblioteca, juntamente com as cópias dos respetivos ficheiros que o bae guarda neste dispositivo e no seu armazenamento. Os ficheiros nas suas próprias pastas não são eliminados. Não é possível anular.</string>
+    <string name="delete_album_confirm_body">Todas as edições deste álbum são eliminadas da biblioteca, juntamente com as cópias dos respetivos ficheiros que o bae guarda neste dispositivo e na nuvem. Os ficheiros nas suas próprias pastas não são eliminados. Não é possível anular.</string>
     <string name="delete_album_confirm">Eliminar</string>
     <string name="now_playing">A reproduzir</string>
     <string name="paused">Em pausa</string>
@@ -125,7 +125,7 @@
     <string name="hide">Ocultar</string>
     <string name="settings_remove_library">Remover esta biblioteca deste dispositivo</string>
     <string name="library_remove_confirm_title">Remover «%1$s» deste dispositivo?</string>
-    <string name="settings_remove_library_confirm_body">A biblioteca continua no armazenamento e nos seus outros dispositivos.</string>
+    <string name="settings_remove_library_confirm_body">A biblioteca continua na nuvem e nos seus outros dispositivos.</string>
     <string name="settings_remove">Remover</string>
     <string name="onboarding_libraries_title">As suas bibliotecas</string>
     <string name="library_delete_confirm_title">Eliminar «%1$s»?</string>
@@ -139,7 +139,7 @@
     <string name="library_delete_menu">Eliminar…</string>
     <string name="library_last_synced">Última sincronização</string>
     <string name="library_unsent_changes">Alterações por enviar</string>
-    <string name="removal_uncounted_body">Esta biblioteca não pode ser aberta, por isso as alterações deste dispositivo que não foram enviadas perdem-se. A sua cópia neste dispositivo é eliminada; se a biblioteca for guardada no armazenamento, continua lá.</string>
+    <string name="removal_uncounted_body">Esta biblioteca não pode ser aberta, por isso as alterações deste dispositivo que não foram enviadas perdem-se. A sua cópia neste dispositivo é eliminada; se a biblioteca for guardada na nuvem, continua lá.</string>
     <string name="settings_provider">Fornecedor</string>
     <string name="settings_account">Conta</string>
     <string name="settings_bucket">Contentor</string>
@@ -175,7 +175,7 @@
     <string name="onboarding_add_device">Adicionar dispositivo</string>
     <string name="onboarding_tagline">A sua música, em todo o lado</string>
     <string name="onboarding_camera_permission_required">É necessária permissão de câmara para digitalizar códigos QR</string>
-    <string name="oauth_unconfigured">O início de sessão no armazenamento desta biblioteca não está configurado nesta versão.</string>
+    <string name="oauth_unconfigured">O início de sessão na casa na nuvem desta biblioteca não está configurado nesta versão.</string>
     <string name="signing_in">A iniciar sessão…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
@@ -285,7 +285,7 @@
     <string name="onboarding_check_now">Verificar agora</string>
     <string name="pending_update_no_store">Nenhuma loja de aplicações neste dispositivo pode atualizar o bae.</string>
     <string name="storage_setup_title">Configurar sincronização</string>
-    <string name="settings_set_up_sync_explanation">Esta biblioteca está guardada apenas neste dispositivo. A sincronização mantém-na no armazenamento, onde os seus outros dispositivos e a sua casa a podem usar.</string>
+    <string name="settings_set_up_sync_explanation">Esta biblioteca está guardada apenas neste dispositivo. A sincronização mantém-na numa casa na nuvem, onde os seus outros dispositivos e a sua casa a podem usar.</string>
     <string name="storage_setup_choose">Onde deve ficar guardada esta biblioteca?</string>
     <string name="storage_s3_endpoint_hint">Deixe vazio para o Amazon S3.</string>
     <string name="storage_set_up">Configurar</string>
@@ -314,7 +314,7 @@
     <string name="restore_code_partly_hidden">Código de restauração, parcialmente oculto</string>
     <string name="restore_code_print_title">Código de restauração do bae</string>
     <string name="restore_code_printed">Impresso em %1$s</string>
-    <string name="restore_code_print_keep">Se perder todos os seus dispositivos, escolha Adicionar dispositivo no bae num novo e depois leia este código ou escreva-o. Qualquer pessoa que tenha esta página e acesso ao seu armazenamento pode abrir a sua biblioteca: guarde-a num local privado.</string>
+    <string name="restore_code_print_keep">Se perder todos os seus dispositivos, escolha Adicionar dispositivo no bae num novo e depois leia este código ou escreva-o. Qualquer pessoa que tenha esta página e acesso à sua nuvem pode abrir a sua biblioteca: guarde-a num local privado.</string>
     <string name="done">Concluído</string>
     <string name="members_you">Você</string>
     <string name="members_unnamed">Ainda sem nome</string>
@@ -335,7 +335,7 @@
     <string name="device_removed_title">O dispositivo será removido</string>
     <string name="device_cut_off_confirm">Desliguei este dispositivo</string>
     <string name="device_cut_off_not_yet">Ainda não</string>
-    <string name="device_cut_off_running_title">Um pedido ao seu armazenamento ainda está em curso</string>
+    <string name="device_cut_off_running_title">Um pedido à nuvem ainda está em curso</string>
     <string name="device_cut_off_running_body">Aguarde que termine e tente novamente.</string>
     <string name="device_cut_off_not_gone_title">A remoção ainda não chegou a este dispositivo</string>
     <string name="device_cut_off_not_gone_body">Tente novamente após a próxima sincronização.</string>
@@ -378,8 +378,8 @@
     <string name="onboarding_saved_code_reason_ambiguous">Guardado mais de uma vez</string>
     <string name="onboarding_saved_code_delete">Eliminar</string>
     <string name="onboarding_saved_code_delete_title">Eliminar este código de restauração?</string>
-    <string name="onboarding_saved_code_delete_body">Isto remove o código de restauração de «%1$s» apenas deste dispositivo. Não elimina a biblioteca nem nada no seu armazenamento.</string>
-    <string name="onboarding_saved_code_delete_body_unusable">Isto remove o código de restauração apenas deste dispositivo. Não elimina a biblioteca nem nada no seu armazenamento.</string>
+    <string name="onboarding_saved_code_delete_body">Isto remove o código de restauração de «%1$s» apenas deste dispositivo. Não elimina a biblioteca nem nada na nuvem.</string>
+    <string name="onboarding_saved_code_delete_body_unusable">Isto remove o código de restauração apenas deste dispositivo. Não elimina a biblioteca nem nada na nuvem.</string>
     <string name="onboarding_saved_code_delete_failed">Não foi possível eliminar o código de restauração</string>
     <string name="onboarding_saved_code_removed">Este código de restauração já não está guardado neste dispositivo.</string>
     <string name="onboarding_saved_library">Biblioteca</string>
@@ -391,7 +391,7 @@
     <string name="settings_profile_refused">Não foi possível criar o seu perfil. %1$s</string>
     <string name="settings_profile_create_prompt">Crie o seu perfil para que a biblioteca possa mostrar quem é.</string>
     <string name="settings_profile_create">Criar perfil</string>
-    <string name="operation_rejection_store_owner">A conta proprietária do armazenamento da biblioteca não pode ser removida.</string>
+    <string name="operation_rejection_store_owner">A conta proprietária da casa na nuvem da biblioteca não pode ser removida.</string>
     <string name="operation_rejection_person_gone">Essa pessoa já não está na biblioteca.</string>
     <string name="operation_rejection_device_gone">Esse dispositivo já não está na biblioteca.</string>
     <string name="operation_rejection_circle_gone">Esse círculo já não existe.</string>
@@ -418,7 +418,7 @@
     <string name="sync_status">Estado</string>
     <string name="sync_last_synced">Última sincronização: %1$s</string>
     <string name="sync_pending">Pendente</string>
-    <string name="sync_storage">Armazenamento</string>
+    <string name="sync_cloud_home">Casa na nuvem</string>
     <string name="sync_fix_update">Atualizar</string>
     <string name="sync_fix_sign_in">Iniciar sessão no %1$s</string>
     <string name="sync_fix_enter_key">Introduzir chave de acesso</string>

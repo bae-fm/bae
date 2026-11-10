@@ -36,7 +36,7 @@
     <string name="album_options">Album beállításai</string>
     <string name="delete_album">Album törlése…</string>
     <string name="delete_album_confirm_title">Törlöd ezt az albumot?</string>
-    <string name="delete_album_confirm_body">Az album összes kiadása törlődik a könyvtárból, a fájljaik azon másolataival együtt, amelyeket a bae ezen az eszközön és a tárhelyeden tárol. A saját mappáidban lévő fájlok nem törlődnek. A művelet nem vonható vissza.</string>
+    <string name="delete_album_confirm_body">Az album összes kiadása törlődik a könyvtárból, a fájljaik azon másolataival együtt, amelyeket a bae ezen az eszközön és a felhőben tárol. A saját mappáidban lévő fájlok nem törlődnek. A művelet nem vonható vissza.</string>
     <string name="delete_album_confirm">Törlés</string>
     <string name="now_playing">Most szól</string>
     <string name="paused">Szüneteltetve</string>
@@ -125,7 +125,7 @@
     <string name="hide">Elrejtés</string>
     <string name="settings_remove_library">Könyvtár eltávolítása erről az eszközről</string>
     <string name="library_remove_confirm_title">Eltávolítod a(z) „%1$s” könyvtárat erről az eszközről?</string>
-    <string name="settings_remove_library_confirm_body">A könyvtár megmarad a tárhelyen és a többi eszközödön.</string>
+    <string name="settings_remove_library_confirm_body">A könyvtár megmarad a felhőben és a többi eszközödön.</string>
     <string name="settings_remove">Eltávolítás</string>
     <string name="onboarding_libraries_title">A könyvtáraid</string>
     <string name="library_delete_confirm_title">Törlöd a(z) „%1$s” könyvtárat?</string>
@@ -139,7 +139,7 @@
     <string name="library_delete_menu">Törlés…</string>
     <string name="library_last_synced">Utolsó szinkronizálás</string>
     <string name="library_unsent_changes">Elküldetlen módosítások</string>
-    <string name="removal_uncounted_body">Ez a könyvtár nem nyitható meg, ezért az ezen az eszközön lévő, el nem küldött módosítások elvesznek. A könyvtár másolata törlődik erről az eszközről; ha a könyvtár tárhelyen van, ott is marad.</string>
+    <string name="removal_uncounted_body">Ez a könyvtár nem nyitható meg, ezért az ezen az eszközön lévő, el nem küldött módosítások elvesznek. A könyvtár másolata törlődik erről az eszközről; ha a könyvtár a felhőben van, ott is marad.</string>
     <string name="settings_provider">Szolgáltató</string>
     <string name="settings_account">Fiók</string>
     <string name="settings_bucket">Tároló</string>
@@ -174,7 +174,7 @@
     <string name="onboarding_add_device">Eszköz hozzáadása</string>
     <string name="onboarding_tagline">A zenéd mindenhol</string>
     <string name="onboarding_camera_permission_required">A QR-kódok beolvasásához kameraengedély szükséges</string>
-    <string name="oauth_unconfigured">A könyvtár tárhelyére való bejelentkezés ebben a buildben nincs beállítva.</string>
+    <string name="oauth_unconfigured">A könyvtár felhőotthonába való bejelentkezés ebben a buildben nincs beállítva.</string>
     <string name="signing_in">Bejelentkezés…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
@@ -284,7 +284,7 @@
     <string name="onboarding_check_now">Ellenőrzés most</string>
     <string name="pending_update_no_store">Ezen az eszközön nincs olyan alkalmazásbolt, amely frissíteni tudná a bae-t.</string>
     <string name="storage_setup_title">Szinkronizálás beállítása</string>
-    <string name="settings_set_up_sync_explanation">Ez a könyvtár csak ezen az eszközön van. A szinkronizálás a tárhelyen tartja, ahol a többi eszközöd és a háztartásod is használhatja.</string>
+    <string name="settings_set_up_sync_explanation">Ez a könyvtár csak ezen az eszközön van. A szinkronizálás egy felhőotthonban tartja, ahol a többi eszközöd és a háztartásod is használhatja.</string>
     <string name="storage_setup_choose">Hol tárolódjon ez a könyvtár?</string>
     <string name="storage_s3_endpoint_hint">Amazon S3 esetén hagyd üresen.</string>
     <string name="storage_set_up">Beállítás</string>
@@ -313,7 +313,7 @@
     <string name="restore_code_partly_hidden">Helyreállítási kód, részben elrejtve</string>
     <string name="restore_code_print_title">bae visszaállítási kód</string>
     <string name="restore_code_printed">Nyomtatva: %1$s</string>
-    <string name="restore_code_print_keep">Ha elveszíted az összes eszközödet, válaszd a bae-ben egy új eszközön az Eszköz hozzáadása lehetőséget, majd olvasd be ezt, vagy írd be a kódot. Bárki, aki birtokolja ezt az oldalt és hozzáfér a tárhelyedhez, megnyithatja a könyvtáradat: tartsd magánál.</string>
+    <string name="restore_code_print_keep">Ha elveszíted az összes eszközödet, válaszd a bae-ben egy új eszközön az Eszköz hozzáadása lehetőséget, majd olvasd be ezt, vagy írd be a kódot. Bárki, aki birtokolja ezt az oldalt és hozzáfér a felhődhöz, megnyithatja a könyvtáradat: tartsd magánál.</string>
     <string name="done">Kész</string>
     <string name="members_you">Te</string>
     <string name="members_unnamed">Még nincs neve</string>
@@ -334,7 +334,7 @@
     <string name="device_removed_title">Az eszköz el lesz távolítva</string>
     <string name="device_cut_off_confirm">Lecsatlakoztattam ezt az eszközt</string>
     <string name="device_cut_off_not_yet">Még nem</string>
-    <string name="device_cut_off_running_title">A tárhelyedre irányuló egyik kérés még fut</string>
+    <string name="device_cut_off_running_title">A felhőre irányuló egyik kérés még fut</string>
     <string name="device_cut_off_running_body">Várd meg, amíg befejeződik, aztán próbáld újra.</string>
     <string name="device_cut_off_not_gone_title">Az eltávolítás még nem érkezett meg erre az eszközre</string>
     <string name="device_cut_off_not_gone_body">Próbáld újra a következő szinkronizálás után.</string>
@@ -377,8 +377,8 @@
     <string name="onboarding_saved_code_reason_ambiguous">Többször mentve</string>
     <string name="onboarding_saved_code_delete">Törlés</string>
     <string name="onboarding_saved_code_delete_title">Törlöd ezt a visszaállítási kódot?</string>
-    <string name="onboarding_saved_code_delete_body">Ez csak erről az eszközről távolítja el a(z) „%1$s” könyvtár visszaállítási kódját. Nem törli a könyvtárat, sem a tárhelyeden lévő tartalmat.</string>
-    <string name="onboarding_saved_code_delete_body_unusable">Ez csak erről az eszközről távolítja el a visszaállítási kódot. Nem törli a könyvtárat, sem a tárhelyeden lévő tartalmat.</string>
+    <string name="onboarding_saved_code_delete_body">Ez csak erről az eszközről távolítja el a(z) „%1$s” könyvtár visszaállítási kódját. Nem törli a könyvtárat, sem a felhőben lévő tartalmat.</string>
+    <string name="onboarding_saved_code_delete_body_unusable">Ez csak erről az eszközről távolítja el a visszaállítási kódot. Nem törli a könyvtárat, sem a felhőben lévő tartalmat.</string>
     <string name="onboarding_saved_code_delete_failed">Nem sikerült törölni a visszaállítási kódot</string>
     <string name="onboarding_saved_code_removed">Ez a visszaállítási kód már nincs mentve ezen az eszközön.</string>
     <string name="onboarding_saved_library">Könyvtár</string>
@@ -390,7 +390,7 @@
     <string name="settings_profile_refused">Nem sikerült létrehozni a profilodat. %1$s</string>
     <string name="settings_profile_create_prompt">Hozd létre a profilodat, hogy a könyvtár meg tudja mutatni, ki vagy.</string>
     <string name="settings_profile_create">Profil létrehozása</string>
-    <string name="operation_rejection_store_owner">A könyvtár tárhelyét birtokló fiók nem távolítható el.</string>
+    <string name="operation_rejection_store_owner">A könyvtár felhőotthonát birtokló fiók nem távolítható el.</string>
     <string name="operation_rejection_person_gone">Ez a személy már nincs a könyvtárban.</string>
     <string name="operation_rejection_device_gone">Ez az eszköz már nincs a könyvtárban.</string>
     <string name="operation_rejection_circle_gone">Ez a kör már nem létezik.</string>
@@ -417,7 +417,7 @@
     <string name="sync_status">Állapot</string>
     <string name="sync_last_synced">Utolsó szinkronizálás: %1$s</string>
     <string name="sync_pending">Függőben</string>
-    <string name="sync_storage">Tárhely</string>
+    <string name="sync_cloud_home">Felhőotthon</string>
     <string name="sync_fix_update">Frissítés</string>
     <string name="sync_fix_sign_in">Bejelentkezés: %1$s</string>
     <string name="sync_fix_enter_key">Hozzáférési kulcs megadása</string>

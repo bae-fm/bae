@@ -62,7 +62,7 @@ private fun RemovalFailedPreview() {
     BaeTheme {
         RemovalFailedText(
             library = PreviewData.library(id = "lib-1", name = "Home music", isActive = false),
-            error = DisplayError("Couldn’t reach your storage."),
+            error = DisplayError("Couldn’t reach the cloud."),
         )
     }
 }

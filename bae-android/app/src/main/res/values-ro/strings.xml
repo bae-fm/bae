@@ -36,7 +36,7 @@
     <string name="album_options">Opțiuni pentru album</string>
     <string name="delete_album">Șterge albumul…</string>
     <string name="delete_album_confirm_title">Ștergi acest album?</string>
-    <string name="delete_album_confirm_body">Toate edițiile acestui album sunt șterse din bibliotecă, împreună cu copiile fișierelor lor pe care bae le păstrează pe acest dispozitiv și în spațiul tău de stocare. Fișierele din dosarele tale nu sunt șterse. Acțiunea nu poate fi anulată.</string>
+    <string name="delete_album_confirm_body">Toate edițiile acestui album sunt șterse din bibliotecă, împreună cu copiile fișierelor lor pe care bae le păstrează pe acest dispozitiv și în cloud. Fișierele din dosarele tale nu sunt șterse. Acțiunea nu poate fi anulată.</string>
     <string name="delete_album_confirm">Șterge</string>
     <string name="now_playing">Se redă acum</string>
     <string name="paused">În pauză</string>
@@ -129,7 +129,7 @@
     <string name="hide">Ascunde</string>
     <string name="settings_remove_library">Elimină această bibliotecă de pe acest dispozitiv</string>
     <string name="library_remove_confirm_title">Elimini „%1$s” de pe acest dispozitiv?</string>
-    <string name="settings_remove_library_confirm_body">Biblioteca rămâne în stocare și pe celelalte dispozitive ale tale.</string>
+    <string name="settings_remove_library_confirm_body">Biblioteca rămâne în cloud și pe celelalte dispozitive ale tale.</string>
     <string name="settings_remove">Elimină</string>
     <string name="onboarding_libraries_title">Bibliotecile tale</string>
     <string name="library_delete_confirm_title">Ștergi „%1$s”?</string>
@@ -143,7 +143,7 @@
     <string name="library_delete_menu">Șterge…</string>
     <string name="library_last_synced">Ultima sincronizare</string>
     <string name="library_unsent_changes">Modificări netrimise</string>
-    <string name="removal_uncounted_body">Această bibliotecă nu poate fi deschisă, așa că modificările de pe acest dispozitiv care nu au fost trimise se pierd. Copia ei de pe acest dispozitiv este ștearsă; dacă biblioteca este păstrată în stocare, rămâne acolo.</string>
+    <string name="removal_uncounted_body">Această bibliotecă nu poate fi deschisă, așa că modificările de pe acest dispozitiv care nu au fost trimise se pierd. Copia ei de pe acest dispozitiv este ștearsă; dacă biblioteca este păstrată în cloud, rămâne acolo.</string>
     <string name="settings_provider">Furnizor</string>
     <string name="settings_account">Cont</string>
     <string name="settings_bucket">Container</string>
@@ -179,7 +179,7 @@
     <string name="onboarding_add_device">Adaugă dispozitiv</string>
     <string name="onboarding_tagline">Muzica ta, oriunde</string>
     <string name="onboarding_camera_permission_required">Este necesară permisiunea camerei pentru a scana coduri QR</string>
-    <string name="oauth_unconfigured">Conectarea la stocarea acestei biblioteci nu este configurată în această versiune.</string>
+    <string name="oauth_unconfigured">Conectarea la casa din cloud a acestei biblioteci nu este configurată în această versiune.</string>
     <string name="signing_in">Se conectează…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
@@ -290,7 +290,7 @@
     <string name="onboarding_check_now">Verifică acum</string>
     <string name="pending_update_no_store">Niciun magazin de aplicații de pe acest dispozitiv nu poate actualiza bae.</string>
     <string name="storage_setup_title">Configurează sincronizarea</string>
-    <string name="settings_set_up_sync_explanation">Această bibliotecă este stocată doar pe acest dispozitiv. Sincronizarea o păstrează în stocare, unde celelalte dispozitive ale tale și gospodăria o pot folosi.</string>
+    <string name="settings_set_up_sync_explanation">Această bibliotecă este stocată doar pe acest dispozitiv. Sincronizarea o păstrează într-o casă din cloud, unde celelalte dispozitive ale tale și gospodăria o pot folosi.</string>
     <string name="storage_setup_choose">Unde să fie stocată această bibliotecă?</string>
     <string name="storage_s3_endpoint_hint">Lasă gol pentru Amazon S3.</string>
     <string name="storage_set_up">Configurează</string>
@@ -319,7 +319,7 @@
     <string name="restore_code_partly_hidden">Cod de restaurare, parțial ascuns</string>
     <string name="restore_code_print_title">Cod de restaurare bae</string>
     <string name="restore_code_printed">Imprimat pe %1$s</string>
-    <string name="restore_code_print_keep">Dacă pierzi toate dispozitivele, alege Adaugă dispozitiv în bae pe unul nou, apoi scanează acest cod sau tastează-l. Oricine are această pagină și acces la spațiul tău de stocare îți poate deschide biblioteca: păstreaz-o într-un loc privat.</string>
+    <string name="restore_code_print_keep">Dacă pierzi toate dispozitivele, alege Adaugă dispozitiv în bae pe unul nou, apoi scanează acest cod sau tastează-l. Oricine are această pagină și acces la cloudul tău îți poate deschide biblioteca: păstreaz-o într-un loc privat.</string>
     <string name="done">Gata</string>
     <string name="members_you">Tu</string>
     <string name="members_unnamed">Încă fără nume</string>
@@ -341,7 +341,7 @@
     <string name="device_removed_title">Dispozitivul va fi eliminat</string>
     <string name="device_cut_off_confirm">Am deconectat acest dispozitiv</string>
     <string name="device_cut_off_not_yet">Încă nu</string>
-    <string name="device_cut_off_running_title">O cerere către spațiul tău de stocare încă rulează</string>
+    <string name="device_cut_off_running_title">O cerere către cloud încă rulează</string>
     <string name="device_cut_off_running_body">Așteaptă să se termine, apoi încearcă din nou.</string>
     <string name="device_cut_off_not_gone_title">Eliminarea nu a ajuns încă pe acest dispozitiv</string>
     <string name="device_cut_off_not_gone_body">Încearcă din nou după următoarea sincronizare.</string>
@@ -384,8 +384,8 @@
     <string name="onboarding_saved_code_reason_ambiguous">Salvat de mai multe ori</string>
     <string name="onboarding_saved_code_delete">Șterge</string>
     <string name="onboarding_saved_code_delete_title">Ștergi acest cod de restaurare?</string>
-    <string name="onboarding_saved_code_delete_body">Astfel elimini codul de restaurare pentru „%1$s” doar de pe acest dispozitiv. Biblioteca și conținutul spațiului tău de stocare nu sunt șterse.</string>
-    <string name="onboarding_saved_code_delete_body_unusable">Astfel elimini codul de restaurare doar de pe acest dispozitiv. Biblioteca și conținutul spațiului tău de stocare nu sunt șterse.</string>
+    <string name="onboarding_saved_code_delete_body">Astfel elimini codul de restaurare pentru „%1$s” doar de pe acest dispozitiv. Biblioteca și conținutul cloudului nu sunt șterse.</string>
+    <string name="onboarding_saved_code_delete_body_unusable">Astfel elimini codul de restaurare doar de pe acest dispozitiv. Biblioteca și conținutul cloudului nu sunt șterse.</string>
     <string name="onboarding_saved_code_delete_failed">Codul de restaurare nu a putut fi șters</string>
     <string name="onboarding_saved_code_removed">Acest cod de restaurare nu mai este salvat pe acest dispozitiv.</string>
     <string name="onboarding_saved_library">Bibliotecă</string>
@@ -397,7 +397,7 @@
     <string name="settings_profile_refused">Profilul tău nu a putut fi creat. %1$s</string>
     <string name="settings_profile_create_prompt">Creează-ți profilul ca biblioteca să poată arăta cine ești.</string>
     <string name="settings_profile_create">Creează profilul</string>
-    <string name="operation_rejection_store_owner">Contul care deține spațiul de stocare al bibliotecii nu poate fi eliminat.</string>
+    <string name="operation_rejection_store_owner">Contul care deține casa din cloud a bibliotecii nu poate fi eliminat.</string>
     <string name="operation_rejection_person_gone">Persoana respectivă nu mai este în bibliotecă.</string>
     <string name="operation_rejection_device_gone">Dispozitivul respectiv nu mai este în bibliotecă.</string>
     <string name="operation_rejection_circle_gone">Cercul respectiv nu mai există.</string>
@@ -424,7 +424,7 @@
     <string name="sync_status">Stare</string>
     <string name="sync_last_synced">Ultima sincronizare: %1$s</string>
     <string name="sync_pending">În așteptare</string>
-    <string name="sync_storage">Stocare</string>
+    <string name="sync_cloud_home">Casa din cloud</string>
     <string name="sync_fix_update">Actualizează</string>
     <string name="sync_fix_sign_in">Conectează-te la %1$s</string>
     <string name="sync_fix_enter_key">Introdu cheia de acces</string>

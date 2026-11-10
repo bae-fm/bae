@@ -56,6 +56,6 @@ internal fun stepFraction(
 @Composable
 private fun StepBarPreview() {
     BaeTheme {
-        StepBar(title = "Connecting and checking the storage…", fraction = null)
+        StepBar(title = "Connecting and checking your cloud home…", fraction = null)
     }
 }

@@ -267,7 +267,7 @@ fun S3KeyDialogScene() {
 @Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 fun RemoveLibraryFailed() {
-    DialogScene { RemovalFailedText(sceneLibrary, DisplayError("Couldn’t reach your storage.")) }
+    DialogScene { RemovalFailedText(sceneLibrary, DisplayError("Couldn’t reach the cloud.")) }
 }
 
 private val sceneLibrary =
@@ -801,7 +801,7 @@ fun PeopleAndDevicesYours() {
 @Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 fun NoticeLooks() {
-    val error = DisplayError("Couldn’t reach your storage.", "dns error: failed to lookup address information")
+    val error = DisplayError("Couldn’t reach the cloud.", "dns error: failed to lookup address information")
     BaeTheme {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             Column(

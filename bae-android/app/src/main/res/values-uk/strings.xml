@@ -36,7 +36,7 @@
     <string name="album_options">Параметри альбому</string>
     <string name="delete_album">Видалити альбом…</string>
     <string name="delete_album_confirm_title">Видалити цей альбом?</string>
-    <string name="delete_album_confirm_body">Усі релізи цього альбому буде видалено з бібліотеки разом із копіями їхніх файлів, які bae зберігає на цьому пристрої та у вашому сховищі. Файли у ваших власних теках не видаляються. Цю дію не можна скасувати.</string>
+    <string name="delete_album_confirm_body">Усі релізи цього альбому буде видалено з бібліотеки разом із копіями їхніх файлів, які bae зберігає на цьому пристрої та у хмарі. Файли у ваших власних теках не видаляються. Цю дію не можна скасувати.</string>
     <string name="delete_album_confirm">Видалити</string>
     <string name="now_playing">Зараз відтворюється</string>
     <string name="paused">Призупинено</string>
@@ -127,7 +127,7 @@
     <string name="hide">Сховати</string>
     <string name="settings_remove_library">Вилучити цю бібліотеку з цього пристрою</string>
     <string name="library_remove_confirm_title">Вилучити «%1$s» з цього пристрою?</string>
-    <string name="settings_remove_library_confirm_body">Бібліотека залишиться у сховищі та на інших ваших пристроях.</string>
+    <string name="settings_remove_library_confirm_body">Бібліотека залишиться у хмарі та на інших ваших пристроях.</string>
     <string name="settings_remove">Видалити</string>
     <string name="onboarding_libraries_title">Ваші бібліотеки</string>
     <string name="library_delete_confirm_title">Видалити «%1$s»?</string>
@@ -141,7 +141,7 @@
     <string name="library_delete_menu">Видалити…</string>
     <string name="library_last_synced">Остання синхронізація</string>
     <string name="library_unsent_changes">Невідправлені зміни</string>
-    <string name="removal_uncounted_body">Цю бібліотеку не вдається відкрити, тому всі не надіслані зміни на цьому пристрої буде втрачено. Її копію на цьому пристрої буде видалено; якщо бібліотека зберігається у сховищі, вона там і залишиться.</string>
+    <string name="removal_uncounted_body">Цю бібліотеку не вдається відкрити, тому всі не надіслані зміни на цьому пристрої буде втрачено. Її копію на цьому пристрої буде видалено; якщо бібліотека зберігається у хмарі, вона там і залишиться.</string>
     <string name="settings_provider">Постачальник</string>
     <string name="settings_account">Обліковий запис</string>
     <string name="settings_bucket">Бакет</string>
@@ -178,7 +178,7 @@
     <string name="onboarding_add_device">Додати пристрій</string>
     <string name="onboarding_tagline">Ваша музика, будь-де</string>
     <string name="onboarding_camera_permission_required">Для сканування QR-кодів потрібен дозвіл на доступ до камери</string>
-    <string name="oauth_unconfigured">Вхід до сховища цієї бібліотеки не налаштовано в цій збірці.</string>
+    <string name="oauth_unconfigured">Вхід до хмарного дому цієї бібліотеки не налаштовано в цій збірці.</string>
     <string name="signing_in">Вхід…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
@@ -298,7 +298,7 @@
     <string name="onboarding_check_now">Перевірити зараз</string>
     <string name="pending_update_no_store">Жодна крамниця застосунків на цьому пристрої не може оновити bae.</string>
     <string name="storage_setup_title">Налаштувати синхронізацію</string>
-    <string name="settings_set_up_sync_explanation">Ця бібліотека зберігається лише на цьому пристрої. Синхронізація тримає її у сховищі, де нею можуть користуватися інші ваші пристрої та домівка.</string>
+    <string name="settings_set_up_sync_explanation">Ця бібліотека зберігається лише на цьому пристрої. Синхронізація тримає її у хмарному домі, де нею можуть користуватися інші ваші пристрої та домівка.</string>
     <string name="storage_setup_choose">Де зберігати цю бібліотеку?</string>
     <string name="storage_s3_endpoint_hint">Залиште порожнім для Amazon S3.</string>
     <string name="storage_set_up">Налаштувати</string>
@@ -327,7 +327,7 @@
     <string name="restore_code_partly_hidden">Код відновлення, частково приховано</string>
     <string name="restore_code_print_title">Код відновлення bae</string>
     <string name="restore_code_printed">Надруковано %1$s</string>
-    <string name="restore_code_print_keep">Якщо ви втратите всі пристрої, на новому пристрої виберіть у bae «Додати пристрій», а потім відскануйте це або введіть код. Будь-хто, у кого є ця сторінка й доступ до вашого сховища, може відкрити вашу бібліотеку: зберігайте її в приватному місці.</string>
+    <string name="restore_code_print_keep">Якщо ви втратите всі пристрої, на новому пристрої виберіть у bae «Додати пристрій», а потім відскануйте це або введіть код. Будь-хто, у кого є ця сторінка й доступ до вашої хмари, може відкрити вашу бібліотеку: зберігайте її в приватному місці.</string>
     <string name="done">Готово</string>
     <string name="members_you">Ви</string>
     <string name="members_unnamed">Ще без імені</string>
@@ -350,7 +350,7 @@
     <string name="device_removed_title">Пристрій буде вилучено</string>
     <string name="device_cut_off_confirm">Я відключив(-ла) цей пристрій</string>
     <string name="device_cut_off_not_yet">Ще ні</string>
-    <string name="device_cut_off_running_title">Запит до вашого сховища ще виконується</string>
+    <string name="device_cut_off_running_title">Запит до хмари ще виконується</string>
     <string name="device_cut_off_running_body">Зачекайте, поки він завершиться, і спробуйте ще раз.</string>
     <string name="device_cut_off_not_gone_title">Видалення ще не дійшло до цього пристрою</string>
     <string name="device_cut_off_not_gone_body">Спробуйте ще раз після наступної синхронізації.</string>
@@ -393,8 +393,8 @@
     <string name="onboarding_saved_code_reason_ambiguous">Збережено більше одного разу</string>
     <string name="onboarding_saved_code_delete">Видалити</string>
     <string name="onboarding_saved_code_delete_title">Видалити цей код відновлення?</string>
-    <string name="onboarding_saved_code_delete_body">Код відновлення для «%1$s» буде видалено лише з цього пристрою. Бібліотеку й усе у вашому сховищі не буде видалено.</string>
-    <string name="onboarding_saved_code_delete_body_unusable">Код відновлення буде видалено лише з цього пристрою. Бібліотеку й усе у вашому сховищі не буде видалено.</string>
+    <string name="onboarding_saved_code_delete_body">Код відновлення для «%1$s» буде видалено лише з цього пристрою. Бібліотеку й усе у хмарі не буде видалено.</string>
+    <string name="onboarding_saved_code_delete_body_unusable">Код відновлення буде видалено лише з цього пристрою. Бібліотеку й усе у хмарі не буде видалено.</string>
     <string name="onboarding_saved_code_delete_failed">Не вдалося видалити код відновлення</string>
     <string name="onboarding_saved_code_removed">Цей код відновлення більше не збережено на цьому пристрої.</string>
     <string name="onboarding_saved_library">Бібліотека</string>
@@ -406,7 +406,7 @@
     <string name="settings_profile_refused">Не вдалося створити ваш профіль. %1$s</string>
     <string name="settings_profile_create_prompt">Створіть свій профіль, щоб бібліотека могла показувати, хто ви.</string>
     <string name="settings_profile_create">Створити профіль</string>
-    <string name="operation_rejection_store_owner">Обліковий запис, якому належить сховище бібліотеки, не можна вилучити.</string>
+    <string name="operation_rejection_store_owner">Обліковий запис, якому належить хмарний дім бібліотеки, не можна вилучити.</string>
     <string name="operation_rejection_person_gone">Цієї людини вже немає в бібліотеці.</string>
     <string name="operation_rejection_device_gone">Цього пристрою вже немає в бібліотеці.</string>
     <string name="operation_rejection_circle_gone">Цього кола більше не існує.</string>
@@ -433,7 +433,7 @@
     <string name="sync_status">Стан</string>
     <string name="sync_last_synced">Остання синхронізація: %1$s</string>
     <string name="sync_pending">Очікує</string>
-    <string name="sync_storage">Сховище</string>
+    <string name="sync_cloud_home">Хмарний дім</string>
     <string name="sync_fix_update">Оновити</string>
     <string name="sync_fix_sign_in">Увійти в %1$s</string>
     <string name="sync_fix_enter_key">Ввести ключ доступу</string>

@@ -53,7 +53,7 @@ class SettingsLibraryModelTest {
         val model = SettingsLibraryModel(handle, TestErrorDisplays, scope)
 
         runBlocking { model.loadSelf() }
-        assertEquals(SelfRead.Failed(DisplayError("couldn't reach storage")), model.self)
+        assertEquals(SelfRead.Failed(DisplayError("couldn't reach the cloud")), model.self)
 
         runBlocking { model.loadSelf() }
         assertEquals(PreviewData.person().membership.id, (model.self as SelfRead.Loaded).person?.membership?.id)
@@ -70,7 +70,7 @@ class SettingsLibraryModelTest {
             .pulls
             .fail(offline())
         shadowOf(Looper.getMainLooper()).idle()
-        assertEquals(LibraryNameRead.Failed(DisplayError("couldn't reach storage")), model.name)
+        assertEquals(LibraryNameRead.Failed(DisplayError("couldn't reach the cloud")), model.name)
 
         model.watchName()
         handle.names
@@ -106,7 +106,7 @@ class SettingsLibraryModelTest {
         assertEquals(SelfRead.Loading, model.self)
 
         runBlocking { model.loadSelf() }
-        assertEquals(SelfRead.Failed(DisplayError("couldn't reach storage")), model.self)
+        assertEquals(SelfRead.Failed(DisplayError("couldn't reach the cloud")), model.self)
     }
 
     @Test
@@ -136,7 +136,7 @@ class SettingsLibraryModelTest {
         override fun display(reason: BridgePlaybackErrorReason): DisplayError? = null
 
         override fun display(error: BridgeException) =
-            if (error is BridgeException.Cancelled) null else DisplayError("couldn't reach storage")
+            if (error is BridgeException.Cancelled) null else DisplayError("couldn't reach the cloud")
 
         override fun display(outcome: BridgeSyncRetryOutcome): DisplayError? = null
 

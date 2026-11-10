@@ -36,7 +36,7 @@
     <string name="album_options">אפשרויות אלבום</string>
     <string name="delete_album">מחיקת אלבום…</string>
     <string name="delete_album_confirm_title">למחוק את האלבום הזה?</string>
-    <string name="delete_album_confirm_body">כל המהדורות של האלבום הזה יימחקו מהספרייה, יחד עם העותקים של הקבצים שלהן ש‑bae שומר במכשיר הזה ובאחסון שלך. קבצים בתיקיות שלך אינם נמחקים. לא ניתן לבטל פעולה זו.</string>
+    <string name="delete_album_confirm_body">כל המהדורות של האלבום הזה יימחקו מהספרייה, יחד עם העותקים של הקבצים שלהן ש‑bae שומר במכשיר הזה ובענן. קבצים בתיקיות שלך אינם נמחקים. לא ניתן לבטל פעולה זו.</string>
     <string name="delete_album_confirm">מחיקה</string>
     <string name="now_playing">מתנגן כעת</string>
     <string name="paused">מושהה</string>
@@ -124,7 +124,7 @@
     <string name="hide">הסתרה</string>
     <string name="settings_remove_library">הסר ספרייה זו מהמכשיר הזה</string>
     <string name="library_remove_confirm_title">להסיר את ”%1$s“ מהמכשיר הזה?</string>
-    <string name="settings_remove_library_confirm_body">הספרייה תישאר באחסון ובמכשירים האחרים שלך.</string>
+    <string name="settings_remove_library_confirm_body">הספרייה תישאר בענן ובמכשירים האחרים שלך.</string>
     <string name="settings_remove">הסר</string>
     <string name="onboarding_libraries_title">הספריות שלך</string>
     <string name="library_delete_confirm_title">למחוק את ”%1$s“?</string>
@@ -138,7 +138,7 @@
     <string name="library_delete_menu">מחיקה…</string>
     <string name="library_last_synced">סונכרן לאחרונה</string>
     <string name="library_unsent_changes">שינויים שלא נשלחו</string>
-    <string name="removal_uncounted_body">לא ניתן לפתוח את הספרייה הזו, ולכן שינויים במכשיר הזה שלא נשלחו יאבדו. העותק שלה במכשיר הזה יימחק; אם הספרייה שמורה באחסון, היא נשארת שם.</string>
+    <string name="removal_uncounted_body">לא ניתן לפתוח את הספרייה הזו, ולכן שינויים במכשיר הזה שלא נשלחו יאבדו. העותק שלה במכשיר הזה יימחק; אם הספרייה שמורה בענן, היא נשארת שם.</string>
     <string name="settings_provider">ספק</string>
     <string name="settings_account">חשבון</string>
     <string name="settings_bucket">דלי</string>
@@ -174,7 +174,7 @@
     <string name="onboarding_add_device">הוספת מכשיר</string>
     <string name="onboarding_tagline">המוזיקה שלך, בכל מקום</string>
     <string name="onboarding_camera_permission_required">נדרשת הרשאת מצלמה כדי לסרוק קודי QR</string>
-    <string name="oauth_unconfigured">הכניסה לאחסון של ספרייה זו אינה מוגדרת בגרסה זו.</string>
+    <string name="oauth_unconfigured">הכניסה לבית בענן של ספרייה זו אינה מוגדרת בגרסה זו.</string>
     <string name="signing_in">מתחבר…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
@@ -292,7 +292,7 @@
     <string name="onboarding_check_now">בדיקה עכשיו</string>
     <string name="pending_update_no_store">אין במכשיר הזה חנות אפליקציות שיכולה לעדכן את bae.</string>
     <string name="storage_setup_title">הגדר סנכרון</string>
-    <string name="settings_set_up_sync_explanation">הספרייה הזו מאוחסנת רק במכשיר הזה. הסנכרון שומר אותה באחסון, שם המכשירים האחרים שלך ובני הבית יכולים להשתמש בה.</string>
+    <string name="settings_set_up_sync_explanation">הספרייה הזו מאוחסנת רק במכשיר הזה. הסנכרון שומר אותה בבית בענן, שם המכשירים האחרים שלך ובני הבית יכולים להשתמש בה.</string>
     <string name="storage_setup_choose">היכן לאחסן את הספרייה הזו?</string>
     <string name="storage_s3_endpoint_hint">השאר ריק עבור Amazon S3.</string>
     <string name="storage_set_up">הגדרה</string>
@@ -321,7 +321,7 @@
     <string name="restore_code_partly_hidden">קוד שחזור, מוסתר חלקית</string>
     <string name="restore_code_print_title">קוד השחזור של bae</string>
     <string name="restore_code_printed">הודפס ב-%1$s</string>
-    <string name="restore_code_print_keep">אם איבדת את כל המכשירים שלך, בחר ב“הוספת מכשיר” ב-bae במכשיר חדש, ואז סרוק את הקוד הזה או הקלד אותו. כל מי שיש לו את הדף הזה וגישה לאחסון שלך יכול לפתוח את הספרייה שלך: שמור אותו במקום פרטי.</string>
+    <string name="restore_code_print_keep">אם איבדת את כל המכשירים שלך, בחר ב“הוספת מכשיר” ב-bae במכשיר חדש, ואז סרוק את הקוד הזה או הקלד אותו. כל מי שיש לו את הדף הזה וגישה לענן שלך יכול לפתוח את הספרייה שלך: שמור אותו במקום פרטי.</string>
     <string name="done">סיום</string>
     <string name="members_you">את/ה</string>
     <string name="members_unnamed">עדיין ללא שם</string>
@@ -343,7 +343,7 @@
     <string name="device_removed_title">המכשיר יוסר</string>
     <string name="device_cut_off_confirm">ניתקתי את המכשיר הזה</string>
     <string name="device_cut_off_not_yet">עדיין לא</string>
-    <string name="device_cut_off_running_title">בקשה לאחסון שלך עדיין רצה</string>
+    <string name="device_cut_off_running_title">בקשה לענן עדיין רצה</string>
     <string name="device_cut_off_running_body">המתן לסיומה ונסה שוב.</string>
     <string name="device_cut_off_not_gone_title">ההסרה עוד לא הגיעה למכשיר הזה</string>
     <string name="device_cut_off_not_gone_body">נסה שוב אחרי הסנכרון הבא.</string>
@@ -386,8 +386,8 @@
     <string name="onboarding_saved_code_reason_ambiguous">נשמר יותר מפעם אחת</string>
     <string name="onboarding_saved_code_delete">מחיקה</string>
     <string name="onboarding_saved_code_delete_title">למחוק את קוד השחזור הזה?</string>
-    <string name="onboarding_saved_code_delete_body">פעולה זו מסירה את קוד השחזור של ”%1$s” מהמכשיר הזה בלבד. היא לא מוחקת את הספרייה או משהו באחסון שלך.</string>
-    <string name="onboarding_saved_code_delete_body_unusable">פעולה זו מסירה את קוד השחזור מהמכשיר הזה בלבד. היא לא מוחקת את הספרייה או משהו באחסון שלך.</string>
+    <string name="onboarding_saved_code_delete_body">פעולה זו מסירה את קוד השחזור של ”%1$s” מהמכשיר הזה בלבד. היא לא מוחקת את הספרייה או משהו בענן.</string>
+    <string name="onboarding_saved_code_delete_body_unusable">פעולה זו מסירה את קוד השחזור מהמכשיר הזה בלבד. היא לא מוחקת את הספרייה או משהו בענן.</string>
     <string name="onboarding_saved_code_delete_failed">לא ניתן היה למחוק את קוד השחזור</string>
     <string name="onboarding_saved_code_removed">קוד השחזור הזה כבר לא שמור במכשיר הזה.</string>
     <string name="onboarding_saved_library">ספרייה</string>
@@ -399,7 +399,7 @@
     <string name="settings_profile_refused">לא ניתן היה ליצור את הפרופיל שלך. %1$s</string>
     <string name="settings_profile_create_prompt">צור את הפרופיל שלך כדי שהספרייה תוכל להראות מי אתה.</string>
     <string name="settings_profile_create">יצירת פרופיל</string>
-    <string name="operation_rejection_store_owner">לא ניתן להסיר את החשבון שבבעלותו האחסון של הספרייה.</string>
+    <string name="operation_rejection_store_owner">לא ניתן להסיר את החשבון שבבעלותו הבית בענן של הספרייה.</string>
     <string name="operation_rejection_person_gone">האדם הזה כבר לא בספרייה.</string>
     <string name="operation_rejection_device_gone">המכשיר הזה כבר לא בספרייה.</string>
     <string name="operation_rejection_circle_gone">המעגל הזה כבר לא קיים.</string>
@@ -426,7 +426,7 @@
     <string name="sync_status">סטטוס</string>
     <string name="sync_last_synced">סונכרן לאחרונה: %1$s</string>
     <string name="sync_pending">ממתין</string>
-    <string name="sync_storage">אחסון</string>
+    <string name="sync_cloud_home">הבית בענן</string>
     <string name="sync_fix_update">עדכן</string>
     <string name="sync_fix_sign_in">היכנס ל-%1$s</string>
     <string name="sync_fix_enter_key">הזן מפתח גישה</string>

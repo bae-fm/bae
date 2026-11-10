@@ -36,7 +36,7 @@
     <string name="album_options">Opzioni album</string>
     <string name="delete_album">Elimina album…</string>
     <string name="delete_album_confirm_title">Eliminare questo album?</string>
-    <string name="delete_album_confirm_body">Tutte le pubblicazioni di questo album vengono eliminate dalla libreria, insieme alle copie dei loro file che bae conserva su questo dispositivo e nel tuo spazio di archiviazione. I file nelle tue cartelle non vengono eliminati. L\'azione non può essere annullata.</string>
+    <string name="delete_album_confirm_body">Tutte le pubblicazioni di questo album vengono eliminate dalla libreria, insieme alle copie dei loro file che bae conserva su questo dispositivo e nel cloud. I file nelle tue cartelle non vengono eliminati. L\'azione non può essere annullata.</string>
     <string name="delete_album_confirm">Elimina</string>
     <string name="now_playing">In riproduzione</string>
     <string name="paused">In pausa</string>
@@ -124,7 +124,7 @@
     <string name="hide">Nascondi</string>
     <string name="settings_remove_library">Rimuovi questa libreria da questo dispositivo</string>
     <string name="library_remove_confirm_title">Rimuovere «%1$s» da questo dispositivo?</string>
-    <string name="settings_remove_library_confirm_body">La libreria resta nello spazio di archiviazione e sugli altri tuoi dispositivi.</string>
+    <string name="settings_remove_library_confirm_body">La libreria resta nel cloud e sugli altri tuoi dispositivi.</string>
     <string name="settings_remove">Rimuovi</string>
     <string name="onboarding_libraries_title">Le tue librerie</string>
     <string name="library_delete_confirm_title">Eliminare «%1$s»?</string>
@@ -138,7 +138,7 @@
     <string name="library_delete_menu">Elimina…</string>
     <string name="library_last_synced">Ultima sincronizzazione</string>
     <string name="library_unsent_changes">Modifiche non inviate</string>
-    <string name="removal_uncounted_body">Questa libreria non può essere aperta, quindi le modifiche su questo dispositivo non inviate vanno perse. La sua copia su questo dispositivo viene eliminata; se la libreria è nello spazio di archiviazione, resta lì.</string>
+    <string name="removal_uncounted_body">Questa libreria non può essere aperta, quindi le modifiche su questo dispositivo non inviate vanno perse. La sua copia su questo dispositivo viene eliminata; se la libreria è nel cloud, resta lì.</string>
     <string name="settings_provider">Provider</string>
     <string name="settings_account">Account</string>
     <string name="settings_bucket">Bucket</string>
@@ -174,7 +174,7 @@
     <string name="onboarding_add_device">Aggiungi dispositivo</string>
     <string name="onboarding_tagline">La tua musica, ovunque</string>
     <string name="onboarding_camera_permission_required">È necessario il permesso della fotocamera per scansionare codici QR</string>
-    <string name="oauth_unconfigured">L’accesso allo spazio di archiviazione di questa libreria non è configurato in questa build.</string>
+    <string name="oauth_unconfigured">L’accesso alla casa nel cloud di questa libreria non è configurato in questa build.</string>
     <string name="signing_in">Accesso…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
@@ -291,7 +291,7 @@
     <string name="onboarding_check_now">Controlla ora</string>
     <string name="pending_update_no_store">Nessuno store di app su questo dispositivo può aggiornare bae.</string>
     <string name="storage_setup_title">Configura sincronizzazione</string>
-    <string name="settings_set_up_sync_explanation">Questa libreria è archiviata solo su questo dispositivo. La sincronizzazione la tiene nello spazio di archiviazione, dove i tuoi altri dispositivi e la tua famiglia possono usarla.</string>
+    <string name="settings_set_up_sync_explanation">Questa libreria è archiviata solo su questo dispositivo. La sincronizzazione la tiene in una casa nel cloud, dove i tuoi altri dispositivi e la tua famiglia possono usarla.</string>
     <string name="storage_setup_choose">Dove vuoi archiviare questa libreria?</string>
     <string name="storage_s3_endpoint_hint">Lascia vuoto per Amazon S3.</string>
     <string name="storage_set_up">Configura</string>
@@ -320,7 +320,7 @@
     <string name="restore_code_partly_hidden">Codice di ripristino, parzialmente nascosto</string>
     <string name="restore_code_print_title">Codice di ripristino di bae</string>
     <string name="restore_code_printed">Stampato il %1$s</string>
-    <string name="restore_code_print_keep">Se perdi tutti i tuoi dispositivi, scegli Aggiungi dispositivo in bae su uno nuovo, poi scansiona questo o digita il codice. Chiunque abbia questa pagina e l’accesso al tuo spazio di archiviazione può aprire la tua libreria: conservala in un luogo privato.</string>
+    <string name="restore_code_print_keep">Se perdi tutti i tuoi dispositivi, scegli Aggiungi dispositivo in bae su uno nuovo, poi scansiona questo o digita il codice. Chiunque abbia questa pagina e l’accesso al tuo cloud può aprire la tua libreria: conservala in un luogo privato.</string>
     <string name="done">Fine</string>
     <string name="members_you">Tu</string>
     <string name="members_unnamed">Ancora senza nome</string>
@@ -341,7 +341,7 @@
     <string name="device_removed_title">Il dispositivo verrà rimosso</string>
     <string name="device_cut_off_confirm">Ho disconnesso questo dispositivo</string>
     <string name="device_cut_off_not_yet">Non ancora</string>
-    <string name="device_cut_off_running_title">Una richiesta al tuo spazio di archiviazione è ancora in corso</string>
+    <string name="device_cut_off_running_title">Una richiesta al cloud è ancora in corso</string>
     <string name="device_cut_off_running_body">Attendi che finisca, poi riprova.</string>
     <string name="device_cut_off_not_gone_title">La rimozione non è ancora arrivata su questo dispositivo</string>
     <string name="device_cut_off_not_gone_body">Riprova dopo la prossima sincronizzazione.</string>
@@ -384,8 +384,8 @@
     <string name="onboarding_saved_code_reason_ambiguous">Salvato più di una volta</string>
     <string name="onboarding_saved_code_delete">Elimina</string>
     <string name="onboarding_saved_code_delete_title">Eliminare questo codice di ripristino?</string>
-    <string name="onboarding_saved_code_delete_body">Il codice di ripristino di «%1$s» verrà rimosso solo da questo dispositivo. La libreria e il contenuto del tuo spazio di archiviazione non verranno eliminati.</string>
-    <string name="onboarding_saved_code_delete_body_unusable">Il codice di ripristino verrà rimosso solo da questo dispositivo. La libreria e il contenuto del tuo spazio di archiviazione non verranno eliminati.</string>
+    <string name="onboarding_saved_code_delete_body">Il codice di ripristino di «%1$s» verrà rimosso solo da questo dispositivo. La libreria e il contenuto del cloud non verranno eliminati.</string>
+    <string name="onboarding_saved_code_delete_body_unusable">Il codice di ripristino verrà rimosso solo da questo dispositivo. La libreria e il contenuto del cloud non verranno eliminati.</string>
     <string name="onboarding_saved_code_delete_failed">Impossibile eliminare il codice di ripristino</string>
     <string name="onboarding_saved_code_removed">Questo codice di ripristino non è più salvato su questo dispositivo.</string>
     <string name="onboarding_saved_library">Libreria</string>
@@ -397,7 +397,7 @@
     <string name="settings_profile_refused">Non è stato possibile creare il tuo profilo. %1$s</string>
     <string name="settings_profile_create_prompt">Crea il tuo profilo così la libreria può mostrare chi sei.</string>
     <string name="settings_profile_create">Crea profilo</string>
-    <string name="operation_rejection_store_owner">L’account proprietario dello spazio di archiviazione della libreria non può essere rimosso.</string>
+    <string name="operation_rejection_store_owner">L’account proprietario della casa nel cloud della libreria non può essere rimosso.</string>
     <string name="operation_rejection_person_gone">Quella persona non fa più parte della libreria.</string>
     <string name="operation_rejection_device_gone">Quel dispositivo non fa più parte della libreria.</string>
     <string name="operation_rejection_circle_gone">Quella cerchia non esiste più.</string>
@@ -424,7 +424,7 @@
     <string name="sync_status">Stato</string>
     <string name="sync_last_synced">Ultima sincronizzazione: %1$s</string>
     <string name="sync_pending">In sospeso</string>
-    <string name="sync_storage">Archiviazione</string>
+    <string name="sync_cloud_home">Casa nel cloud</string>
     <string name="sync_fix_update">Aggiorna</string>
     <string name="sync_fix_sign_in">Accedi a %1$s</string>
     <string name="sync_fix_enter_key">Inserisci chiave di accesso</string>

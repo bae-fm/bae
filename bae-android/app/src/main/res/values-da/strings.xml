@@ -36,7 +36,7 @@
     <string name="album_options">Albumindstillinger</string>
     <string name="delete_album">Slet album…</string>
     <string name="delete_album_confirm_title">Slet dette album?</string>
-    <string name="delete_album_confirm_body">Alle udgivelser af dette album slettes fra biblioteket sammen med de kopier af deres filer, som bae gemmer på denne enhed og i dit lager. Filer i dine egne mapper slettes ikke. Det kan ikke fortrydes.</string>
+    <string name="delete_album_confirm_body">Alle udgivelser af dette album slettes fra biblioteket sammen med de kopier af deres filer, som bae gemmer på denne enhed og i skyen. Filer i dine egne mapper slettes ikke. Det kan ikke fortrydes.</string>
     <string name="delete_album_confirm">Slet</string>
     <string name="now_playing">Afspilles nu</string>
     <string name="paused">På pause</string>
@@ -125,7 +125,7 @@
     <string name="hide">Skjul</string>
     <string name="settings_remove_library">Fjern dette bibliotek fra denne enhed</string>
     <string name="library_remove_confirm_title">Vil du fjerne “%1$s” fra denne enhed?</string>
-    <string name="settings_remove_library_confirm_body">Biblioteket forbliver i lageret og på dine andre enheder.</string>
+    <string name="settings_remove_library_confirm_body">Biblioteket forbliver i skyen og på dine andre enheder.</string>
     <string name="settings_remove">Fjern</string>
     <string name="onboarding_libraries_title">Dine biblioteker</string>
     <string name="library_delete_confirm_title">Vil du slette “%1$s”?</string>
@@ -139,7 +139,7 @@
     <string name="library_delete_menu">Slet…</string>
     <string name="library_last_synced">Senest synkroniseret</string>
     <string name="library_unsent_changes">Usendte ændringer</string>
-    <string name="removal_uncounted_body">Dette bibliotek kan ikke åbnes, så alle ændringer på denne enhed, der ikke er sendt, går tabt. Dets kopi på denne enhed slettes; hvis biblioteket ligger i lageret, bliver det der.</string>
+    <string name="removal_uncounted_body">Dette bibliotek kan ikke åbnes, så alle ændringer på denne enhed, der ikke er sendt, går tabt. Dets kopi på denne enhed slettes; hvis biblioteket ligger i skyen, bliver det der.</string>
     <string name="settings_provider">Udbyder</string>
     <string name="settings_account">Konto</string>
     <string name="settings_bucket">Bucket</string>
@@ -174,7 +174,7 @@
     <string name="onboarding_add_device">Tilføj enhed</string>
     <string name="onboarding_tagline">Din musik, overalt</string>
     <string name="onboarding_camera_permission_required">Der kræves kameratilladelse for at scanne QR-koder</string>
-    <string name="oauth_unconfigured">Login til bibliotekets lager er ikke konfigureret i denne version.</string>
+    <string name="oauth_unconfigured">Login til bibliotekets skyhjem er ikke konfigureret i denne version.</string>
     <string name="signing_in">Logger ind…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
@@ -284,7 +284,7 @@
     <string name="onboarding_check_now">Kontrollér nu</string>
     <string name="pending_update_no_store">Ingen appbutik på denne enhed kan opdatere bae.</string>
     <string name="storage_setup_title">Konfigurer synkronisering</string>
-    <string name="settings_set_up_sync_explanation">Dette bibliotek ligger kun på denne enhed. Synkronisering holder det i lageret, hvor dine andre enheder og din husstand kan bruge det.</string>
+    <string name="settings_set_up_sync_explanation">Dette bibliotek ligger kun på denne enhed. Synkronisering holder det i et skyhjem, hvor dine andre enheder og din husstand kan bruge det.</string>
     <string name="storage_setup_choose">Hvor skal dette bibliotek gemmes?</string>
     <string name="storage_s3_endpoint_hint">Lad stå tomt for Amazon S3.</string>
     <string name="storage_set_up">Opsæt</string>
@@ -313,7 +313,7 @@
     <string name="restore_code_partly_hidden">Gendannelseskode, delvist skjult</string>
     <string name="restore_code_print_title">bae-gendannelseskode</string>
     <string name="restore_code_printed">Udskrevet %1$s</string>
-    <string name="restore_code_print_keep">Hvis du mister alle dine enheder, skal du vælge Tilføj enhed i bae på en ny enhed og derefter scanne dette eller skrive koden. Alle, der har denne side og adgang til dit lager, kan åbne dit bibliotek: opbevar den et privat sted.</string>
+    <string name="restore_code_print_keep">Hvis du mister alle dine enheder, skal du vælge Tilføj enhed i bae på en ny enhed og derefter scanne dette eller skrive koden. Alle, der har denne side og adgang til din sky, kan åbne dit bibliotek: opbevar den et privat sted.</string>
     <string name="done">Færdig</string>
     <string name="members_you">Dig</string>
     <string name="members_unnamed">Intet navn endnu</string>
@@ -334,7 +334,7 @@
     <string name="device_removed_title">Enheden fjernes</string>
     <string name="device_cut_off_confirm">Jeg har afbrudt denne enhed</string>
     <string name="device_cut_off_not_yet">Ikke endnu</string>
-    <string name="device_cut_off_running_title">En forespørgsel til dit lager kører stadig</string>
+    <string name="device_cut_off_running_title">En forespørgsel til skyen kører stadig</string>
     <string name="device_cut_off_running_body">Vent, til den er færdig, og prøv igen.</string>
     <string name="device_cut_off_not_gone_title">Fjernelsen er endnu ikke nået til denne enhed</string>
     <string name="device_cut_off_not_gone_body">Prøv igen efter næste synkronisering.</string>
@@ -377,8 +377,8 @@
     <string name="onboarding_saved_code_reason_ambiguous">Gemt mere end én gang</string>
     <string name="onboarding_saved_code_delete">Slet</string>
     <string name="onboarding_saved_code_delete_title">Vil du slette denne gendannelseskode?</string>
-    <string name="onboarding_saved_code_delete_body">Dette fjerner gendannelseskoden til “%1$s” kun fra denne enhed. Det sletter ikke biblioteket eller noget i dit lager.</string>
-    <string name="onboarding_saved_code_delete_body_unusable">Dette fjerner gendannelseskoden kun fra denne enhed. Det sletter ikke biblioteket eller noget i dit lager.</string>
+    <string name="onboarding_saved_code_delete_body">Dette fjerner gendannelseskoden til “%1$s” kun fra denne enhed. Det sletter ikke biblioteket eller noget i skyen.</string>
+    <string name="onboarding_saved_code_delete_body_unusable">Dette fjerner gendannelseskoden kun fra denne enhed. Det sletter ikke biblioteket eller noget i skyen.</string>
     <string name="onboarding_saved_code_delete_failed">Kunne ikke slette gendannelseskoden</string>
     <string name="onboarding_saved_code_removed">Denne gendannelseskode er ikke længere gemt på denne enhed.</string>
     <string name="onboarding_saved_library">Bibliotek</string>
@@ -390,7 +390,7 @@
     <string name="settings_profile_refused">Din profil kunne ikke oprettes. %1$s</string>
     <string name="settings_profile_create_prompt">Opret din profil, så biblioteket kan vise, hvem du er.</string>
     <string name="settings_profile_create">Opret profil</string>
-    <string name="operation_rejection_store_owner">Kontoen, der ejer bibliotekets lager, kan ikke fjernes.</string>
+    <string name="operation_rejection_store_owner">Kontoen, der ejer bibliotekets skyhjem, kan ikke fjernes.</string>
     <string name="operation_rejection_person_gone">Den person er ikke længere i biblioteket.</string>
     <string name="operation_rejection_device_gone">Den enhed er ikke længere i biblioteket.</string>
     <string name="operation_rejection_circle_gone">Den kreds findes ikke længere.</string>
@@ -417,7 +417,7 @@
     <string name="sync_status">Status</string>
     <string name="sync_last_synced">Senest synkroniseret: %1$s</string>
     <string name="sync_pending">Afventer</string>
-    <string name="sync_storage">Lagring</string>
+    <string name="sync_cloud_home">Skyhjem</string>
     <string name="sync_fix_update">Opdater</string>
     <string name="sync_fix_sign_in">Log ind på %1$s</string>
     <string name="sync_fix_enter_key">Indtast adgangsnøgle</string>

@@ -36,7 +36,7 @@
     <string name="album_options">專輯選項</string>
     <string name="delete_album">刪除專輯…</string>
     <string name="delete_album_confirm_title">刪除此專輯？</string>
-    <string name="delete_album_confirm_body">此專輯的所有發行都會從資料庫中刪除，bae 在此裝置和你的儲存空間中保存的檔案副本也會一併刪除。你自己資料夾中的檔案不會被刪除。此操作無法復原。</string>
+    <string name="delete_album_confirm_body">此專輯的所有發行都會從資料庫中刪除，bae 在此裝置和雲端中保存的檔案副本也會一併刪除。你自己資料夾中的檔案不會被刪除。此操作無法復原。</string>
     <string name="delete_album_confirm">刪除</string>
     <string name="now_playing">正在播放</string>
     <string name="paused">已暫停</string>
@@ -118,7 +118,7 @@
     <string name="hide">隱藏</string>
     <string name="settings_remove_library">從此裝置移除此資料庫</string>
     <string name="library_remove_confirm_title">要從此裝置移除「%1$s」嗎？</string>
-    <string name="settings_remove_library_confirm_body">資料庫會保留在儲存空間和你的其他裝置上。</string>
+    <string name="settings_remove_library_confirm_body">資料庫會保留在雲端和你的其他裝置上。</string>
     <string name="settings_remove">移除</string>
     <string name="onboarding_libraries_title">你的資料庫</string>
     <string name="library_delete_confirm_title">要刪除「%1$s」嗎？</string>
@@ -132,7 +132,7 @@
     <string name="library_delete_menu">刪除…</string>
     <string name="library_last_synced">上次同步</string>
     <string name="library_unsent_changes">尚未傳送的變更</string>
-    <string name="removal_uncounted_body">此資料庫無法開啟，因此此裝置上尚未傳送的變更都會遺失。此裝置上的副本將被刪除；如果該資料庫保存在儲存空間中，它會留在那裡。</string>
+    <string name="removal_uncounted_body">此資料庫無法開啟，因此此裝置上尚未傳送的變更都會遺失。此裝置上的副本將被刪除；如果該資料庫保存在雲端，它會留在那裡。</string>
     <string name="settings_provider">提供者</string>
     <string name="settings_account">帳號</string>
     <string name="settings_bucket">儲存桶</string>
@@ -166,7 +166,7 @@
     <string name="onboarding_add_device">新增裝置</string>
     <string name="onboarding_tagline">你的音樂，隨處可聽</string>
     <string name="onboarding_camera_permission_required">需要相機權限才能掃描 QR 碼</string>
-    <string name="oauth_unconfigured">此建置尚未設定登入此資料庫的儲存空間。</string>
+    <string name="oauth_unconfigured">此建置尚未設定登入此資料庫的雲端家園。</string>
     <string name="signing_in">正在登入…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
@@ -280,7 +280,7 @@
     <string name="onboarding_check_now">立即檢查</string>
     <string name="pending_update_no_store">此裝置上沒有可以更新 bae 的 App 商店。</string>
     <string name="storage_setup_title">設定同步</string>
-    <string name="settings_set_up_sync_explanation">此資料庫只儲存在這台裝置上。同步會將它保存在儲存空間中，你的其他裝置和家人都能在那裡使用它。</string>
+    <string name="settings_set_up_sync_explanation">此資料庫只儲存在這台裝置上。同步會將它保存在雲端家園中，你的其他裝置和家人都能在那裡使用它。</string>
     <string name="storage_setup_choose">此資料庫要儲存在哪裡？</string>
     <string name="storage_s3_endpoint_hint">使用 Amazon S3 時請留空。</string>
     <string name="storage_set_up">設定</string>
@@ -309,7 +309,7 @@
     <string name="restore_code_partly_hidden">還原碼（部分隱藏）</string>
     <string name="restore_code_print_title">bae 還原碼</string>
     <string name="restore_code_printed">列印日期：%1$s</string>
-    <string name="restore_code_print_keep">如果你遺失了所有裝置，請在新裝置的 bae 中選擇「新增裝置」，然後掃描此碼或輸入代碼。任何拿到此頁面並能存取你儲存空間的人都可以打開你的資料庫，請妥善保管。</string>
+    <string name="restore_code_print_keep">如果你遺失了所有裝置，請在新裝置的 bae 中選擇「新增裝置」，然後掃描此碼或輸入代碼。任何拿到此頁面並能存取你雲端的人都可以打開你的資料庫，請妥善保管。</string>
     <string name="done">完成</string>
     <string name="members_you">你</string>
     <string name="members_unnamed">尚無名字</string>
@@ -329,7 +329,7 @@
     <string name="device_removed_title">此裝置將被移除</string>
     <string name="device_cut_off_confirm">我已切斷此裝置的存取</string>
     <string name="device_cut_off_not_yet">暫不</string>
-    <string name="device_cut_off_running_title">對你的儲存空間的請求仍在執行</string>
+    <string name="device_cut_off_running_title">對雲端的請求仍在執行</string>
     <string name="device_cut_off_running_body">請等它結束後再試一次。</string>
     <string name="device_cut_off_not_gone_title">移除尚未傳到此裝置</string>
     <string name="device_cut_off_not_gone_body">請在下次同步後再試。</string>
@@ -372,8 +372,8 @@
     <string name="onboarding_saved_code_reason_ambiguous">儲存了不只一次</string>
     <string name="onboarding_saved_code_delete">刪除</string>
     <string name="onboarding_saved_code_delete_title">要刪除這個還原碼嗎？</string>
-    <string name="onboarding_saved_code_delete_body">這只會從此裝置移除「%1$s」的還原碼。不會刪除資料庫，也不會刪除你儲存空間中的任何內容。</string>
-    <string name="onboarding_saved_code_delete_body_unusable">這只會從此裝置移除還原碼。不會刪除資料庫，也不會刪除你儲存空間中的任何內容。</string>
+    <string name="onboarding_saved_code_delete_body">這只會從此裝置移除「%1$s」的還原碼。不會刪除資料庫，也不會刪除雲端中的任何內容。</string>
+    <string name="onboarding_saved_code_delete_body_unusable">這只會從此裝置移除還原碼。不會刪除資料庫，也不會刪除雲端中的任何內容。</string>
     <string name="onboarding_saved_code_delete_failed">無法刪除還原碼</string>
     <string name="onboarding_saved_code_removed">這個還原碼已不再儲存在此裝置上。</string>
     <string name="onboarding_saved_library">資料庫</string>
@@ -385,7 +385,7 @@
     <string name="settings_profile_refused">無法建立你的個人檔案。%1$s</string>
     <string name="settings_profile_create_prompt">建立你的個人檔案，讓資料庫能顯示你是誰。</string>
     <string name="settings_profile_create">建立個人檔案</string>
-    <string name="operation_rejection_store_owner">擁有資料庫儲存空間的帳號無法移除。</string>
+    <string name="operation_rejection_store_owner">擁有資料庫雲端家園的帳號無法移除。</string>
     <string name="operation_rejection_person_gone">此人已不在資料庫中。</string>
     <string name="operation_rejection_device_gone">此裝置已不在資料庫中。</string>
     <string name="operation_rejection_circle_gone">此圈子已不存在。</string>
@@ -412,7 +412,7 @@
     <string name="sync_status">狀態</string>
     <string name="sync_last_synced">上次同步：%1$s</string>
     <string name="sync_pending">待處理</string>
-    <string name="sync_storage">儲存空間</string>
+    <string name="sync_cloud_home">雲端家園</string>
     <string name="sync_fix_update">更新</string>
     <string name="sync_fix_sign_in">登入 %1$s</string>
     <string name="sync_fix_enter_key">輸入存取金鑰</string>

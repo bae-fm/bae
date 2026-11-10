@@ -36,7 +36,7 @@
     <string name="album_options">Možnosti albumu</string>
     <string name="delete_album">Odstrániť album…</string>
     <string name="delete_album_confirm_title">Odstrániť tento album?</string>
-    <string name="delete_album_confirm_body">Všetky vydania tohto albumu sa odstránia z knižnice spolu s kópiami ich súborov, ktoré bae uchováva v tomto zariadení a v tvojom úložisku. Súbory v tvojich priečinkoch sa neodstránia. Nedá sa to vrátiť späť.</string>
+    <string name="delete_album_confirm_body">Všetky vydania tohto albumu sa odstránia z knižnice spolu s kópiami ich súborov, ktoré bae uchováva v tomto zariadení a v cloude. Súbory v tvojich priečinkoch sa neodstránia. Nedá sa to vrátiť späť.</string>
     <string name="delete_album_confirm">Odstrániť</string>
     <string name="now_playing">Prehráva sa</string>
     <string name="paused">Pozastavené</string>
@@ -133,7 +133,7 @@
     <string name="hide">Skryť</string>
     <string name="settings_remove_library">Odstrániť túto knižnicu z tohto zariadenia</string>
     <string name="library_remove_confirm_title">Odstrániť „%1$s“ z tohto zariadenia?</string>
-    <string name="settings_remove_library_confirm_body">Knižnica zostane v úložisku a na tvojich ďalších zariadeniach.</string>
+    <string name="settings_remove_library_confirm_body">Knižnica zostane v cloude a na tvojich ďalších zariadeniach.</string>
     <string name="settings_remove">Odstrániť</string>
     <string name="onboarding_libraries_title">Tvoje knižnice</string>
     <string name="library_delete_confirm_title">Odstrániť „%1$s“?</string>
@@ -147,7 +147,7 @@
     <string name="library_delete_menu">Odstrániť…</string>
     <string name="library_last_synced">Posledná synchronizácia</string>
     <string name="library_unsent_changes">Neodoslané zmeny</string>
-    <string name="removal_uncounted_body">Túto knižnicu nemožno otvoriť, takže všetky zmeny na tomto zariadení, ktoré neboli odoslané, sa stratia. Jej kópia na tomto zariadení sa vymaže; ak je knižnica uložená v úložisku, zostane tam.</string>
+    <string name="removal_uncounted_body">Túto knižnicu nemožno otvoriť, takže všetky zmeny na tomto zariadení, ktoré neboli odoslané, sa stratia. Jej kópia na tomto zariadení sa vymaže; ak je knižnica uložená v cloude, zostane tam.</string>
     <string name="settings_provider">Poskytovateľ</string>
     <string name="settings_account">Účet</string>
     <string name="settings_bucket">Kontajner</string>
@@ -184,7 +184,7 @@
     <string name="onboarding_add_device">Pridať zariadenie</string>
     <string name="onboarding_tagline">Tvoja hudba, všade</string>
     <string name="onboarding_camera_permission_required">Na skenovanie QR kódov je potrebné povolenie kamery</string>
-    <string name="oauth_unconfigured">Prihlásenie do úložiska tejto knižnice nie je v tomto zostavení nastavené.</string>
+    <string name="oauth_unconfigured">Prihlásenie do cloudového domova tejto knižnice nie je v tomto zostavení nastavené.</string>
     <string name="signing_in">Prihlasuje sa…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
@@ -296,7 +296,7 @@
     <string name="onboarding_check_now">Skontrolovať teraz</string>
     <string name="pending_update_no_store">Žiadny obchod s aplikáciami v tomto zariadení nemôže aktualizovať bae.</string>
     <string name="storage_setup_title">Nastaviť synchronizáciu</string>
-    <string name="settings_set_up_sync_explanation">Táto knižnica je uložená len v tomto zariadení. Synchronizácia ju udržiava v úložisku, kde ju môžu používať aj tvoje ďalšie zariadenia a domácnosť.</string>
+    <string name="settings_set_up_sync_explanation">Táto knižnica je uložená len v tomto zariadení. Synchronizácia ju udržiava v cloudovom domove, kde ju môžu používať aj tvoje ďalšie zariadenia a domácnosť.</string>
     <string name="storage_setup_choose">Kde má byť táto knižnica uložená?</string>
     <string name="storage_s3_endpoint_hint">Pre Amazon S3 nechaj prázdne.</string>
     <string name="storage_set_up">Nastaviť</string>
@@ -325,7 +325,7 @@
     <string name="restore_code_partly_hidden">Kód na obnovenie, čiastočne skrytý</string>
     <string name="restore_code_print_title">Kód na obnovenie bae</string>
     <string name="restore_code_printed">Vytlačené %1$s</string>
-    <string name="restore_code_print_keep">Ak prídete o všetky zariadenia, vyberte v bae na novom zariadení Pridať zariadenie a potom tento kód naskenujte alebo ho prepíšte. Ktokoľvek, kto má túto stranu a prístup k vášmu úložisku, môže otvoriť vašu knižnicu: uschovajte ju na súkromnom mieste.</string>
+    <string name="restore_code_print_keep">Ak prídete o všetky zariadenia, vyberte v bae na novom zariadení Pridať zariadenie a potom tento kód naskenujte alebo ho prepíšte. Ktokoľvek, kto má túto stranu a prístup k vášmu cloudu, môže otvoriť vašu knižnicu: uschovajte ju na súkromnom mieste.</string>
     <string name="done">Hotovo</string>
     <string name="members_you">Ty</string>
     <string name="members_unnamed">Zatiaľ bez mena</string>
@@ -348,7 +348,7 @@
     <string name="device_removed_title">Zariadenie bude odstránené</string>
     <string name="device_cut_off_confirm">Toto zariadenie som odpojil(a)</string>
     <string name="device_cut_off_not_yet">Ešte nie</string>
-    <string name="device_cut_off_running_title">Požiadavka na vaše úložisko stále beží</string>
+    <string name="device_cut_off_running_title">Požiadavka na cloud stále beží</string>
     <string name="device_cut_off_running_body">Počkajte, kým skončí, a skúste to znova.</string>
     <string name="device_cut_off_not_gone_title">Odstránenie ešte nedorazilo na toto zariadenie</string>
     <string name="device_cut_off_not_gone_body">Skúste to znova po ďalšej synchronizácii.</string>
@@ -391,8 +391,8 @@
     <string name="onboarding_saved_code_reason_ambiguous">Uložený viackrát</string>
     <string name="onboarding_saved_code_delete">Odstrániť</string>
     <string name="onboarding_saved_code_delete_title">Odstrániť tento kód na obnovenie?</string>
-    <string name="onboarding_saved_code_delete_body">Týmto odstrániš kód na obnovenie knižnice „%1$s“ iba z tohto zariadenia. Knižnica ani nič v tvojom úložisku sa neodstráni.</string>
-    <string name="onboarding_saved_code_delete_body_unusable">Týmto odstrániš kód na obnovenie iba z tohto zariadenia. Knižnica ani nič v tvojom úložisku sa neodstráni.</string>
+    <string name="onboarding_saved_code_delete_body">Týmto odstrániš kód na obnovenie knižnice „%1$s“ iba z tohto zariadenia. Knižnica ani nič v cloude sa neodstráni.</string>
+    <string name="onboarding_saved_code_delete_body_unusable">Týmto odstrániš kód na obnovenie iba z tohto zariadenia. Knižnica ani nič v cloude sa neodstráni.</string>
     <string name="onboarding_saved_code_delete_failed">Kód na obnovenie sa nepodarilo odstrániť</string>
     <string name="onboarding_saved_code_removed">Tento kód na obnovenie už v tomto zariadení nie je uložený.</string>
     <string name="onboarding_saved_library">Knižnica</string>
@@ -404,7 +404,7 @@
     <string name="settings_profile_refused">Váš profil sa nepodarilo vytvoriť. %1$s</string>
     <string name="settings_profile_create_prompt">Vytvorte si profil, aby knižnica mohla ukázať, kto ste.</string>
     <string name="settings_profile_create">Vytvoriť profil</string>
-    <string name="operation_rejection_store_owner">Účet, ktorý vlastní úložisko knižnice, nemožno odstrániť.</string>
+    <string name="operation_rejection_store_owner">Účet, ktorý vlastní cloudový domov knižnice, nemožno odstrániť.</string>
     <string name="operation_rejection_person_gone">Táto osoba už v knižnici nie je.</string>
     <string name="operation_rejection_device_gone">Toto zariadenie už v knižnici nie je.</string>
     <string name="operation_rejection_circle_gone">Tento okruh už neexistuje.</string>
@@ -431,7 +431,7 @@
     <string name="sync_status">Stav</string>
     <string name="sync_last_synced">Posledná synchronizácia: %1$s</string>
     <string name="sync_pending">Čakajúce</string>
-    <string name="sync_storage">Úložisko</string>
+    <string name="sync_cloud_home">Cloudový domov</string>
     <string name="sync_fix_update">Aktualizovať</string>
     <string name="sync_fix_sign_in">Prihlásiť sa do %1$s</string>
     <string name="sync_fix_enter_key">Zadať prístupový kľúč</string>

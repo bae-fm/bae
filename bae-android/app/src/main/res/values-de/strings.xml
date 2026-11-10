@@ -36,7 +36,7 @@
     <string name="album_options">Albumoptionen</string>
     <string name="delete_album">Album löschen…</string>
     <string name="delete_album_confirm_title">Dieses Album löschen?</string>
-    <string name="delete_album_confirm_body">Alle Veröffentlichungen dieses Albums werden aus der Bibliothek gelöscht, zusammen mit den Kopien ihrer Dateien, die bae auf diesem Gerät und in deinem Speicher aufbewahrt. Dateien in deinen eigenen Ordnern werden nicht gelöscht. Das kann nicht rückgängig gemacht werden.</string>
+    <string name="delete_album_confirm_body">Alle Veröffentlichungen dieses Albums werden aus der Bibliothek gelöscht, zusammen mit den Kopien ihrer Dateien, die bae auf diesem Gerät und in der Cloud aufbewahrt. Dateien in deinen eigenen Ordnern werden nicht gelöscht. Das kann nicht rückgängig gemacht werden.</string>
     <string name="delete_album_confirm">Löschen</string>
     <string name="now_playing">Aktuelle Wiedergabe</string>
     <string name="paused">Pausiert</string>
@@ -121,7 +121,7 @@
     <string name="hide">Ausblenden</string>
     <string name="settings_remove_library">Diese Bibliothek von diesem Gerät entfernen</string>
     <string name="library_remove_confirm_title">„%1$s“ von diesem Gerät entfernen?</string>
-    <string name="settings_remove_library_confirm_body">Die Bibliothek bleibt im Speicher und auf deinen anderen Geräten erhalten.</string>
+    <string name="settings_remove_library_confirm_body">Die Bibliothek bleibt in der Cloud und auf deinen anderen Geräten erhalten.</string>
     <string name="settings_remove">Entfernen</string>
     <string name="onboarding_libraries_title">Deine Bibliotheken</string>
     <string name="library_delete_confirm_title">„%1$s“ löschen?</string>
@@ -135,7 +135,7 @@
     <string name="library_delete_menu">Löschen…</string>
     <string name="library_last_synced">Zuletzt synchronisiert</string>
     <string name="library_unsent_changes">Nicht gesendete Änderungen</string>
-    <string name="removal_uncounted_body">Diese Bibliothek lässt sich nicht öffnen, daher gehen alle nicht gesendeten Änderungen auf diesem Gerät verloren. Ihre Kopie auf diesem Gerät wird gelöscht; liegt die Bibliothek im Speicher, bleibt sie dort.</string>
+    <string name="removal_uncounted_body">Diese Bibliothek lässt sich nicht öffnen, daher gehen alle nicht gesendeten Änderungen auf diesem Gerät verloren. Ihre Kopie auf diesem Gerät wird gelöscht; liegt die Bibliothek in der Cloud, bleibt sie dort.</string>
     <string name="settings_provider">Anbieter</string>
     <string name="settings_account">Konto</string>
     <string name="settings_bucket">Bucket</string>
@@ -170,7 +170,7 @@
     <string name="onboarding_add_device">Gerät hinzufügen</string>
     <string name="onboarding_tagline">Deine Musik, überall</string>
     <string name="onboarding_camera_permission_required">Zum Scannen von QR-Codes ist eine Kameraberechtigung erforderlich</string>
-    <string name="oauth_unconfigured">Die Anmeldung beim Speicher dieser Bibliothek ist in diesem Build nicht konfiguriert.</string>
+    <string name="oauth_unconfigured">Die Anmeldung beim Cloud-Zuhause dieser Bibliothek ist in diesem Build nicht konfiguriert.</string>
     <string name="signing_in">Anmeldung läuft…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
@@ -286,7 +286,7 @@
     <string name="onboarding_check_now">Jetzt prüfen</string>
     <string name="pending_update_no_store">Kein App-Store auf diesem Gerät kann bae aktualisieren.</string>
     <string name="storage_setup_title">Sync einrichten</string>
-    <string name="settings_set_up_sync_explanation">Diese Bibliothek liegt nur auf diesem Gerät. Sync hält sie im Speicher, wo deine anderen Geräte und dein Haushalt sie nutzen können.</string>
+    <string name="settings_set_up_sync_explanation">Diese Bibliothek liegt nur auf diesem Gerät. Sync hält sie in einem Cloud-Zuhause, wo deine anderen Geräte und dein Haushalt sie nutzen können.</string>
     <string name="storage_setup_choose">Wo soll diese Bibliothek gespeichert werden?</string>
     <string name="storage_s3_endpoint_hint">Für Amazon S3 leer lassen.</string>
     <string name="storage_set_up">Einrichten</string>
@@ -315,7 +315,7 @@
     <string name="restore_code_partly_hidden">Wiederherstellungscode, teilweise verborgen</string>
     <string name="restore_code_print_title">bae-Wiederherstellungscode</string>
     <string name="restore_code_printed">Gedruckt am %1$s</string>
-    <string name="restore_code_print_keep">Wenn du alle deine Geräte verlierst, wähle in bae auf einem neuen Gerät „Gerät hinzufügen“ und scanne dann diesen Code oder tippe ihn ein. Jeder, der diese Seite und Zugriff auf deinen Speicher hat, kann deine Bibliothek öffnen: Bewahre sie an einem privaten Ort auf.</string>
+    <string name="restore_code_print_keep">Wenn du alle deine Geräte verlierst, wähle in bae auf einem neuen Gerät „Gerät hinzufügen“ und scanne dann diesen Code oder tippe ihn ein. Jeder, der diese Seite und Zugriff auf deine Cloud hat, kann deine Bibliothek öffnen: Bewahre sie an einem privaten Ort auf.</string>
     <string name="done">Fertig</string>
     <string name="members_you">Du</string>
     <string name="members_unnamed">Noch kein Name</string>
@@ -336,7 +336,7 @@
     <string name="device_removed_title">Das Gerät wird entfernt</string>
     <string name="device_cut_off_confirm">Ich habe dieses Gerät getrennt</string>
     <string name="device_cut_off_not_yet">Noch nicht</string>
-    <string name="device_cut_off_running_title">Eine Anfrage an deinen Speicher läuft noch</string>
+    <string name="device_cut_off_running_title">Eine Anfrage an die Cloud läuft noch</string>
     <string name="device_cut_off_running_body">Warte, bis sie beendet ist, und versuche es dann erneut.</string>
     <string name="device_cut_off_not_gone_title">Das Entfernen ist noch nicht auf diesem Gerät angekommen</string>
     <string name="device_cut_off_not_gone_body">Versuche es nach der nächsten Synchronisierung erneut.</string>
@@ -379,8 +379,8 @@
     <string name="onboarding_saved_code_reason_ambiguous">Mehr als einmal gespeichert</string>
     <string name="onboarding_saved_code_delete">Löschen</string>
     <string name="onboarding_saved_code_delete_title">Diesen Wiederherstellungscode löschen?</string>
-    <string name="onboarding_saved_code_delete_body">Damit wird der Wiederherstellungscode für „%1$s“ nur von diesem Gerät entfernt. Die Bibliothek und alles in deinem Speicher bleiben erhalten.</string>
-    <string name="onboarding_saved_code_delete_body_unusable">Damit wird der Wiederherstellungscode nur von diesem Gerät entfernt. Die Bibliothek und alles in deinem Speicher bleiben erhalten.</string>
+    <string name="onboarding_saved_code_delete_body">Damit wird der Wiederherstellungscode für „%1$s“ nur von diesem Gerät entfernt. Die Bibliothek und alles in der Cloud bleiben erhalten.</string>
+    <string name="onboarding_saved_code_delete_body_unusable">Damit wird der Wiederherstellungscode nur von diesem Gerät entfernt. Die Bibliothek und alles in der Cloud bleiben erhalten.</string>
     <string name="onboarding_saved_code_delete_failed">Der Wiederherstellungscode konnte nicht gelöscht werden</string>
     <string name="onboarding_saved_code_removed">Dieser Wiederherstellungscode ist nicht mehr auf diesem Gerät gespeichert.</string>
     <string name="onboarding_saved_library">Bibliothek</string>
@@ -392,7 +392,7 @@
     <string name="settings_profile_refused">Dein Profil konnte nicht erstellt werden. %1$s</string>
     <string name="settings_profile_create_prompt">Erstelle dein Profil, damit die Bibliothek zeigen kann, wer du bist.</string>
     <string name="settings_profile_create">Profil erstellen</string>
-    <string name="operation_rejection_store_owner">Das Konto, dem der Speicher der Bibliothek gehört, kann nicht entfernt werden.</string>
+    <string name="operation_rejection_store_owner">Das Konto, dem das Cloud-Zuhause der Bibliothek gehört, kann nicht entfernt werden.</string>
     <string name="operation_rejection_person_gone">Diese Person ist nicht mehr in der Bibliothek.</string>
     <string name="operation_rejection_device_gone">Dieses Gerät ist nicht mehr in der Bibliothek.</string>
     <string name="operation_rejection_circle_gone">Diesen Kreis gibt es nicht mehr.</string>
@@ -419,7 +419,7 @@
     <string name="sync_status">Status</string>
     <string name="sync_last_synced">Zuletzt synchronisiert: %1$s</string>
     <string name="sync_pending">Ausstehend</string>
-    <string name="sync_storage">Speicher</string>
+    <string name="sync_cloud_home">Cloud-Zuhause</string>
     <string name="sync_fix_update">Aktualisieren</string>
     <string name="sync_fix_sign_in">Bei %1$s anmelden</string>
     <string name="sync_fix_enter_key">Zugriffsschlüssel eingeben</string>

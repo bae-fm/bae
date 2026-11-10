@@ -36,7 +36,7 @@
     <string name="album_options">앨범 옵션</string>
     <string name="delete_album">앨범 삭제…</string>
     <string name="delete_album_confirm_title">이 앨범을 삭제할까요?</string>
-    <string name="delete_album_confirm_body">이 앨범의 모든 릴리스가 라이브러리에서 삭제되며, bae가 이 기기와 저장소에 보관하는 파일 사본도 함께 삭제됩니다. 내 폴더의 파일은 삭제되지 않습니다. 되돌릴 수 없습니다.</string>
+    <string name="delete_album_confirm_body">이 앨범의 모든 릴리스가 라이브러리에서 삭제되며, bae가 이 기기와 클라우드에 보관하는 파일 사본도 함께 삭제됩니다. 내 폴더의 파일은 삭제되지 않습니다. 되돌릴 수 없습니다.</string>
     <string name="delete_album_confirm">삭제</string>
     <string name="now_playing">지금 재생 중</string>
     <string name="paused">일시 정지됨</string>
@@ -118,7 +118,7 @@
     <string name="hide">가리기</string>
     <string name="settings_remove_library">이 기기에서 이 라이브러리 제거</string>
     <string name="library_remove_confirm_title">이 기기에서 “%1$s”을(를) 제거할까요?</string>
-    <string name="settings_remove_library_confirm_body">라이브러리는 스토리지와 다른 기기에 그대로 남습니다.</string>
+    <string name="settings_remove_library_confirm_body">라이브러리는 클라우드와 다른 기기에 그대로 남습니다.</string>
     <string name="settings_remove">제거</string>
     <string name="onboarding_libraries_title">내 라이브러리</string>
     <string name="library_delete_confirm_title">“%1$s”을(를) 삭제할까요?</string>
@@ -132,7 +132,7 @@
     <string name="library_delete_menu">삭제…</string>
     <string name="library_last_synced">마지막 동기화</string>
     <string name="library_unsent_changes">보내지 않은 변경 사항</string>
-    <string name="removal_uncounted_body">이 라이브러리를 열 수 없으므로 이 기기에서 전송되지 않은 변경 사항은 모두 사라집니다. 이 기기의 사본은 삭제되며, 라이브러리가 스토리지에 있다면 그대로 남습니다.</string>
+    <string name="removal_uncounted_body">이 라이브러리를 열 수 없으므로 이 기기에서 전송되지 않은 변경 사항은 모두 사라집니다. 이 기기의 사본은 삭제되며, 라이브러리가 클라우드에 있다면 그대로 남습니다.</string>
     <string name="settings_provider">제공자</string>
     <string name="settings_account">계정</string>
     <string name="settings_bucket">버킷</string>
@@ -166,7 +166,7 @@
     <string name="onboarding_add_device">기기 추가</string>
     <string name="onboarding_tagline">내 음악, 어디서나</string>
     <string name="onboarding_camera_permission_required">QR 코드를 스캔하려면 카메라 권한이 필요합니다</string>
-    <string name="oauth_unconfigured">이 라이브러리의 스토리지 로그인이 이 빌드에는 설정되어 있지 않습니다.</string>
+    <string name="oauth_unconfigured">이 라이브러리의 클라우드 홈 로그인이 이 빌드에는 설정되어 있지 않습니다.</string>
     <string name="signing_in">로그인 중…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
@@ -280,7 +280,7 @@
     <string name="onboarding_check_now">지금 확인</string>
     <string name="pending_update_no_store">이 기기에는 bae를 업데이트할 수 있는 앱 스토어가 없습니다.</string>
     <string name="storage_setup_title">동기화 설정</string>
-    <string name="settings_set_up_sync_explanation">이 라이브러리는 이 기기에만 저장되어 있습니다. 동기화하면 라이브러리가 스토리지에 보관되어 다른 기기와 가족도 사용할 수 있습니다.</string>
+    <string name="settings_set_up_sync_explanation">이 라이브러리는 이 기기에만 저장되어 있습니다. 동기화하면 라이브러리가 클라우드 홈에 보관되어 다른 기기와 가족도 사용할 수 있습니다.</string>
     <string name="storage_setup_choose">이 라이브러리를 어디에 저장할까요?</string>
     <string name="storage_s3_endpoint_hint">Amazon S3는 비워 두세요.</string>
     <string name="storage_set_up">설정</string>
@@ -309,7 +309,7 @@
     <string name="restore_code_partly_hidden">복원 코드, 일부 가려짐</string>
     <string name="restore_code_print_title">bae 복원 코드</string>
     <string name="restore_code_printed">인쇄일: %1$s</string>
-    <string name="restore_code_print_keep">모든 기기를 잃어버렸다면, 새 기기의 bae에서 ‘기기 추가’를 선택한 다음 이것을 스캔하거나 코드를 입력하세요. 이 페이지와 저장소 접근 권한이 있는 사람은 누구나 라이브러리를 열 수 있으니 안전한 곳에 보관하세요.</string>
+    <string name="restore_code_print_keep">모든 기기를 잃어버렸다면, 새 기기의 bae에서 ‘기기 추가’를 선택한 다음 이것을 스캔하거나 코드를 입력하세요. 이 페이지와 클라우드 접근 권한이 있는 사람은 누구나 라이브러리를 열 수 있으니 안전한 곳에 보관하세요.</string>
     <string name="done">완료</string>
     <string name="members_you">나</string>
     <string name="members_unnamed">아직 이름 없음</string>
@@ -329,7 +329,7 @@
     <string name="device_removed_title">기기가 제거됩니다</string>
     <string name="device_cut_off_confirm">이 기기의 접근을 차단했습니다</string>
     <string name="device_cut_off_not_yet">아직 아님</string>
-    <string name="device_cut_off_running_title">저장소에 대한 요청이 아직 실행 중입니다</string>
+    <string name="device_cut_off_running_title">클라우드에 대한 요청이 아직 실행 중입니다</string>
     <string name="device_cut_off_running_body">요청이 끝날 때까지 기다린 다음 다시 시도하세요.</string>
     <string name="device_cut_off_not_gone_title">제거가 아직 이 기기에 도착하지 않았습니다</string>
     <string name="device_cut_off_not_gone_body">다음 동기화 후에 다시 시도하세요.</string>
@@ -372,8 +372,8 @@
     <string name="onboarding_saved_code_reason_ambiguous">두 번 이상 저장됨</string>
     <string name="onboarding_saved_code_delete">삭제</string>
     <string name="onboarding_saved_code_delete_title">이 복원 코드를 삭제할까요?</string>
-    <string name="onboarding_saved_code_delete_body">\'%1$s\'의 복원 코드를 이 기기에서만 제거합니다. 라이브러리나 저장소의 내용은 삭제되지 않습니다.</string>
-    <string name="onboarding_saved_code_delete_body_unusable">복원 코드를 이 기기에서만 제거합니다. 라이브러리나 저장소의 내용은 삭제되지 않습니다.</string>
+    <string name="onboarding_saved_code_delete_body">\'%1$s\'의 복원 코드를 이 기기에서만 제거합니다. 라이브러리나 클라우드의 내용은 삭제되지 않습니다.</string>
+    <string name="onboarding_saved_code_delete_body_unusable">복원 코드를 이 기기에서만 제거합니다. 라이브러리나 클라우드의 내용은 삭제되지 않습니다.</string>
     <string name="onboarding_saved_code_delete_failed">복원 코드를 삭제할 수 없습니다</string>
     <string name="onboarding_saved_code_removed">이 복원 코드는 더 이상 이 기기에 저장되어 있지 않습니다.</string>
     <string name="onboarding_saved_library">라이브러리</string>
@@ -385,7 +385,7 @@
     <string name="settings_profile_refused">프로필을 만들 수 없습니다. %1$s</string>
     <string name="settings_profile_create_prompt">라이브러리에 내가 누구인지 표시되도록 프로필을 만드세요.</string>
     <string name="settings_profile_create">프로필 만들기</string>
-    <string name="operation_rejection_store_owner">라이브러리 저장소를 소유한 계정은 제거할 수 없습니다.</string>
+    <string name="operation_rejection_store_owner">라이브러리 클라우드 홈을 소유한 계정은 제거할 수 없습니다.</string>
     <string name="operation_rejection_person_gone">그 사람은 더 이상 라이브러리에 없습니다.</string>
     <string name="operation_rejection_device_gone">그 기기는 더 이상 라이브러리에 없습니다.</string>
     <string name="operation_rejection_circle_gone">그 서클은 더 이상 존재하지 않습니다.</string>
@@ -412,7 +412,7 @@
     <string name="sync_status">상태</string>
     <string name="sync_last_synced">마지막 동기화: %1$s</string>
     <string name="sync_pending">대기 중</string>
-    <string name="sync_storage">저장소</string>
+    <string name="sync_cloud_home">클라우드 홈</string>
     <string name="sync_fix_update">업데이트</string>
     <string name="sync_fix_sign_in">%1$s에 로그인</string>
     <string name="sync_fix_enter_key">액세스 키 입력</string>

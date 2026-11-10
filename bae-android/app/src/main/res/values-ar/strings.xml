@@ -36,7 +36,7 @@
     <string name="album_options">خيارات الألبوم</string>
     <string name="delete_album">حذف الألبوم…</string>
     <string name="delete_album_confirm_title">حذف هذا الألبوم؟</string>
-    <string name="delete_album_confirm_body">تُحذف كل إصدارات هذا الألبوم من المكتبة، مع نسخ ملفاتها التي يحتفظ بها bae على هذا الجهاز وفي مساحة التخزين لديك. لا تُحذف الملفات الموجودة في مجلداتك. لا يمكن التراجع عن هذا.</string>
+    <string name="delete_album_confirm_body">تُحذف كل إصدارات هذا الألبوم من المكتبة، مع نسخ ملفاتها التي يحتفظ بها bae على هذا الجهاز وفي السحابة. لا تُحذف الملفات الموجودة في مجلداتك. لا يمكن التراجع عن هذا.</string>
     <string name="delete_album_confirm">حذف</string>
     <string name="now_playing">قيد التشغيل الآن</string>
     <string name="paused">متوقف مؤقتًا</string>
@@ -133,7 +133,7 @@
     <string name="hide">إخفاء</string>
     <string name="settings_remove_library">إزالة هذه المكتبة من هذا الجهاز</string>
     <string name="library_remove_confirm_title">إزالة «%1$s» من هذا الجهاز؟</string>
-    <string name="settings_remove_library_confirm_body">تبقى المكتبة في التخزين وعلى أجهزتك الأخرى.</string>
+    <string name="settings_remove_library_confirm_body">تبقى المكتبة في السحابة وعلى أجهزتك الأخرى.</string>
     <string name="settings_remove">إزالة</string>
     <string name="onboarding_libraries_title">مكتباتك</string>
     <string name="library_delete_confirm_title">حذف «%1$s»؟</string>
@@ -147,7 +147,7 @@
     <string name="library_delete_menu">حذف…</string>
     <string name="library_last_synced">آخر مزامنة</string>
     <string name="library_unsent_changes">تغييرات غير مرسلة</string>
-    <string name="removal_uncounted_body">لا يمكن فتح هذه المكتبة، لذا تُفقد أي تغييرات على هذا الجهاز لم تُرسل. تُحذف نسختها على هذا الجهاز؛ وإن كانت المكتبة محفوظة في التخزين فهي تبقى هناك.</string>
+    <string name="removal_uncounted_body">لا يمكن فتح هذه المكتبة، لذا تُفقد أي تغييرات على هذا الجهاز لم تُرسل. تُحذف نسختها على هذا الجهاز؛ وإن كانت المكتبة محفوظة في السحابة فهي تبقى هناك.</string>
     <string name="settings_provider">المزوّد</string>
     <string name="settings_account">الحساب</string>
     <string name="settings_bucket">الحاوية</string>
@@ -186,7 +186,7 @@
     <string name="onboarding_add_device">إضافة جهاز</string>
     <string name="onboarding_tagline">موسيقاك في كل مكان</string>
     <string name="onboarding_camera_permission_required">إذن الكاميرا مطلوب لمسح رموز QR</string>
-    <string name="oauth_unconfigured">تسجيل الدخول إلى تخزين هذه المكتبة غير مُعدّ في هذه النسخة.</string>
+    <string name="oauth_unconfigured">تسجيل الدخول إلى المنزل السحابي لهذه المكتبة غير مُعدّ في هذه النسخة.</string>
     <string name="signing_in">جارٍ تسجيل الدخول…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
@@ -310,7 +310,7 @@
     <string name="onboarding_check_now">التحقق الآن</string>
     <string name="pending_update_no_store">لا يوجد متجر تطبيقات على هذا الجهاز يمكنه تحديث bae.</string>
     <string name="storage_setup_title">إعداد المزامنة</string>
-    <string name="settings_set_up_sync_explanation">هذه المكتبة مخزّنة على هذا الجهاز فقط. تحفظها المزامنة في التخزين، حيث يمكن لأجهزتك الأخرى ولأهل بيتك استخدامها.</string>
+    <string name="settings_set_up_sync_explanation">هذه المكتبة مخزّنة على هذا الجهاز فقط. تحفظها المزامنة في منزل سحابي، حيث يمكن لأجهزتك الأخرى ولأهل بيتك استخدامها.</string>
     <string name="storage_setup_choose">أين تريد تخزين هذه المكتبة؟</string>
     <string name="storage_s3_endpoint_hint">اتركه فارغًا لـ Amazon S3.</string>
     <string name="storage_set_up">إعداد</string>
@@ -339,7 +339,7 @@
     <string name="restore_code_partly_hidden">رمز الاستعادة، مخفي جزئيًا</string>
     <string name="restore_code_print_title">رمز استعادة bae</string>
     <string name="restore_code_printed">تمت الطباعة في %1$s</string>
-    <string name="restore_code_print_keep">إذا فقدت جميع أجهزتك، فاختر «إضافة جهاز» في bae على جهاز جديد، ثم امسح هذا الرمز ضوئيًا أو اكتبه. يمكن لأي شخص يملك هذه الصفحة وصولًا إلى مساحة التخزين لديك أن يفتح مكتبتك، فاحتفظ بها في مكان خاص.</string>
+    <string name="restore_code_print_keep">إذا فقدت جميع أجهزتك، فاختر «إضافة جهاز» في bae على جهاز جديد، ثم امسح هذا الرمز ضوئيًا أو اكتبه. يمكن لأي شخص يملك هذه الصفحة وصولًا إلى سحابتك أن يفتح مكتبتك، فاحتفظ بها في مكان خاص.</string>
     <string name="done">تم</string>
     <string name="members_you">أنت</string>
     <string name="members_unnamed">بلا اسم بعد</string>
@@ -364,7 +364,7 @@
     <string name="device_removed_title">ستتم إزالة الجهاز</string>
     <string name="device_cut_off_confirm">لقد فصلت هذا الجهاز</string>
     <string name="device_cut_off_not_yet">ليس بعد</string>
-    <string name="device_cut_off_running_title">طلب إلى مساحة التخزين لديك لا يزال قيد التنفيذ</string>
+    <string name="device_cut_off_running_title">طلب إلى السحابة لا يزال قيد التنفيذ</string>
     <string name="device_cut_off_running_body">انتظر حتى ينتهي، ثم حاول مرة أخرى.</string>
     <string name="device_cut_off_not_gone_title">إزالة الجهاز لم تصل إلى هذا الجهاز بعد</string>
     <string name="device_cut_off_not_gone_body">حاول مرة أخرى بعد المزامنة التالية.</string>
@@ -407,8 +407,8 @@
     <string name="onboarding_saved_code_reason_ambiguous">محفوظ أكثر من مرة</string>
     <string name="onboarding_saved_code_delete">حذف</string>
     <string name="onboarding_saved_code_delete_title">حذف رمز الاستعادة هذا؟</string>
-    <string name="onboarding_saved_code_delete_body">يؤدي هذا إلى إزالة رمز الاستعادة الخاص بـ«%1$s» من هذا الجهاز فقط. لا يحذف المكتبة، ولا أي شيء في مساحة التخزين لديك.</string>
-    <string name="onboarding_saved_code_delete_body_unusable">يؤدي هذا إلى إزالة رمز الاستعادة من هذا الجهاز فقط. لا يحذف المكتبة، ولا أي شيء في مساحة التخزين لديك.</string>
+    <string name="onboarding_saved_code_delete_body">يؤدي هذا إلى إزالة رمز الاستعادة الخاص بـ«%1$s» من هذا الجهاز فقط. لا يحذف المكتبة، ولا أي شيء في السحابة.</string>
+    <string name="onboarding_saved_code_delete_body_unusable">يؤدي هذا إلى إزالة رمز الاستعادة من هذا الجهاز فقط. لا يحذف المكتبة، ولا أي شيء في السحابة.</string>
     <string name="onboarding_saved_code_delete_failed">تعذّر حذف رمز الاستعادة</string>
     <string name="onboarding_saved_code_removed">لم يعد رمز الاستعادة هذا محفوظًا على هذا الجهاز.</string>
     <string name="onboarding_saved_library">المكتبة</string>
@@ -420,7 +420,7 @@
     <string name="settings_profile_refused">تعذّر إنشاء ملف تعريفك. %1$s</string>
     <string name="settings_profile_create_prompt">أنشئ ملف تعريفك لتتمكن المكتبة من إظهار هويتك.</string>
     <string name="settings_profile_create">إنشاء ملف تعريف</string>
-    <string name="operation_rejection_store_owner">لا يمكن إزالة الحساب الذي يملك مساحة تخزين المكتبة.</string>
+    <string name="operation_rejection_store_owner">لا يمكن إزالة الحساب الذي يملك المنزل السحابي للمكتبة.</string>
     <string name="operation_rejection_person_gone">لم يعد هذا الشخص في المكتبة.</string>
     <string name="operation_rejection_device_gone">لم يعد هذا الجهاز في المكتبة.</string>
     <string name="operation_rejection_circle_gone">لم تعد هذه الدائرة موجودة.</string>
@@ -447,7 +447,7 @@
     <string name="sync_status">الحالة</string>
     <string name="sync_last_synced">آخر مزامنة: %1$s</string>
     <string name="sync_pending">قيد الانتظار</string>
-    <string name="sync_storage">التخزين</string>
+    <string name="sync_cloud_home">المنزل السحابي</string>
     <string name="sync_fix_update">تحديث</string>
     <string name="sync_fix_sign_in">تسجيل الدخول إلى %1$s</string>
     <string name="sync_fix_enter_key">إدخال مفتاح الوصول</string>

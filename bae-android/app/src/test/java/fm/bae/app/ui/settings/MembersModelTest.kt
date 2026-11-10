@@ -53,7 +53,7 @@ class MembersModelTest {
 
         model.reload()
         shadowOf(Looper.getMainLooper()).idle()
-        assertEquals(PeopleRead.Failed(DisplayError("couldn't reach storage")), model.people)
+        assertEquals(PeopleRead.Failed(DisplayError("couldn't reach the cloud")), model.people)
 
         model.retry()
         shadowOf(Looper.getMainLooper()).idle()
@@ -169,7 +169,7 @@ class MembersModelTest {
         override fun display(reason: BridgePlaybackErrorReason): DisplayError? = null
 
         override fun display(error: BridgeException) =
-            if (error is BridgeException.Cancelled) null else DisplayError("couldn't reach storage")
+            if (error is BridgeException.Cancelled) null else DisplayError("couldn't reach the cloud")
 
         override fun display(outcome: BridgeSyncRetryOutcome): DisplayError? = null
 

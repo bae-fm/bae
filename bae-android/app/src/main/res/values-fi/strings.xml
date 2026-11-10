@@ -36,7 +36,7 @@
     <string name="album_options">Albumin valinnat</string>
     <string name="delete_album">Poista albumi…</string>
     <string name="delete_album_confirm_title">Poistetaanko tämä albumi?</string>
-    <string name="delete_album_confirm_body">Kaikki tämän albumin julkaisut poistetaan kirjastosta yhdessä niiden tiedostojen kopioiden kanssa, joita bae säilyttää tällä laitteella ja tallennustilassasi. Omissa kansioissasi olevia tiedostoja ei poisteta. Toimintoa ei voi kumota.</string>
+    <string name="delete_album_confirm_body">Kaikki tämän albumin julkaisut poistetaan kirjastosta yhdessä niiden tiedostojen kopioiden kanssa, joita bae säilyttää tällä laitteella ja pilvessä. Omissa kansioissasi olevia tiedostoja ei poisteta. Toimintoa ei voi kumota.</string>
     <string name="delete_album_confirm">Poista</string>
     <string name="now_playing">Nyt toistetaan</string>
     <string name="paused">Tauolla</string>
@@ -125,7 +125,7 @@
     <string name="hide">Piilota</string>
     <string name="settings_remove_library">Poista tämä kirjasto tältä laitteelta</string>
     <string name="library_remove_confirm_title">Poistetaanko ”%1$s” tältä laitteelta?</string>
-    <string name="settings_remove_library_confirm_body">Kirjasto säilyy tallennustilassa ja muilla laitteillasi.</string>
+    <string name="settings_remove_library_confirm_body">Kirjasto säilyy pilvessä ja muilla laitteillasi.</string>
     <string name="settings_remove">Poista</string>
     <string name="onboarding_libraries_title">Kirjastosi</string>
     <string name="library_delete_confirm_title">Poistetaanko ”%1$s”?</string>
@@ -139,7 +139,7 @@
     <string name="library_delete_menu">Poista…</string>
     <string name="library_last_synced">Viimeksi synkronoitu</string>
     <string name="library_unsent_changes">Lähettämättömät muutokset</string>
-    <string name="removal_uncounted_body">Tätä kirjastoa ei voi avata, joten kaikki tämän laitteen muutokset, joita ei ole lähetetty, menetetään. Sen kopio poistetaan tältä laitteelta; jos kirjasto on tallennustilassa, se säilyy siellä.</string>
+    <string name="removal_uncounted_body">Tätä kirjastoa ei voi avata, joten kaikki tämän laitteen muutokset, joita ei ole lähetetty, menetetään. Sen kopio poistetaan tältä laitteelta; jos kirjasto on pilvessä, se säilyy siellä.</string>
     <string name="settings_provider">Palveluntarjoaja</string>
     <string name="settings_account">Tili</string>
     <string name="settings_bucket">Säilö</string>
@@ -174,7 +174,7 @@
     <string name="onboarding_add_device">Lisää laite</string>
     <string name="onboarding_tagline">Musiikkisi kaikkialla</string>
     <string name="onboarding_camera_permission_required">QR-koodien skannaaminen edellyttää kameran käyttöoikeutta</string>
-    <string name="oauth_unconfigured">Kirjautumista tämän kirjaston tallennustilaan ei ole määritetty tässä versiossa.</string>
+    <string name="oauth_unconfigured">Kirjautumista tämän kirjaston pilvikotiin ei ole määritetty tässä versiossa.</string>
     <string name="signing_in">Kirjaudutaan sisään…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
@@ -284,7 +284,7 @@
     <string name="onboarding_check_now">Tarkista nyt</string>
     <string name="pending_update_no_store">Mikään tämän laitteen sovelluskauppa ei voi päivittää bae-sovellusta.</string>
     <string name="storage_setup_title">Ota synkronointi käyttöön</string>
-    <string name="settings_set_up_sync_explanation">Tämä kirjasto on vain tässä laitteessa. Synkronointi pitää sen tallennustilassa, jossa muut laitteesi ja kotitaloutesi voivat käyttää sitä.</string>
+    <string name="settings_set_up_sync_explanation">Tämä kirjasto on vain tässä laitteessa. Synkronointi pitää sen pilvikodissa, jossa muut laitteesi ja kotitaloutesi voivat käyttää sitä.</string>
     <string name="storage_setup_choose">Mihin tämä kirjasto tallennetaan?</string>
     <string name="storage_s3_endpoint_hint">Jätä tyhjäksi, jos käytät Amazon S3:a.</string>
     <string name="storage_set_up">Määritä</string>
@@ -313,7 +313,7 @@
     <string name="restore_code_partly_hidden">Palautuskoodi, osittain piilotettu</string>
     <string name="restore_code_print_title">bae-palautuskoodi</string>
     <string name="restore_code_printed">Tulostettu %1$s</string>
-    <string name="restore_code_print_keep">Jos menetät kaikki laitteesi, valitse baessa uudella laitteella Lisää laite ja skannaa sitten tämä tai kirjoita koodi. Jokainen, jolla on tämä sivu ja pääsy tallennustilaasi, voi avata kirjastosi: säilytä sitä yksityisessä paikassa.</string>
+    <string name="restore_code_print_keep">Jos menetät kaikki laitteesi, valitse baessa uudella laitteella Lisää laite ja skannaa sitten tämä tai kirjoita koodi. Jokainen, jolla on tämä sivu ja pääsy pilveesi, voi avata kirjastosi: säilytä sitä yksityisessä paikassa.</string>
     <string name="done">Valmis</string>
     <string name="members_you">Sinä</string>
     <string name="members_unnamed">Ei vielä nimeä</string>
@@ -334,7 +334,7 @@
     <string name="device_removed_title">Laite poistetaan</string>
     <string name="device_cut_off_confirm">Olen katkaissut tämän laitteen pääsyn</string>
     <string name="device_cut_off_not_yet">Ei vielä</string>
-    <string name="device_cut_off_running_title">Tallennustilaasi kohdistuva pyyntö on yhä käynnissä</string>
+    <string name="device_cut_off_running_title">Pilveen kohdistuva pyyntö on yhä käynnissä</string>
     <string name="device_cut_off_running_body">Odota, että se päättyy, ja yritä sitten uudelleen.</string>
     <string name="device_cut_off_not_gone_title">Poisto ei ole vielä saapunut tälle laitteelle</string>
     <string name="device_cut_off_not_gone_body">Yritä uudelleen seuraavan synkronoinnin jälkeen.</string>
@@ -377,8 +377,8 @@
     <string name="onboarding_saved_code_reason_ambiguous">Tallennettu useammin kuin kerran</string>
     <string name="onboarding_saved_code_delete">Poista</string>
     <string name="onboarding_saved_code_delete_title">Poistetaanko tämä palautuskoodi?</string>
-    <string name="onboarding_saved_code_delete_body">Tämä poistaa kirjaston ”%1$s” palautuskoodin vain tästä laitteesta. Kirjasto ja tallennustilasi sisältö säilyvät.</string>
-    <string name="onboarding_saved_code_delete_body_unusable">Tämä poistaa palautuskoodin vain tästä laitteesta. Kirjasto ja tallennustilasi sisältö säilyvät.</string>
+    <string name="onboarding_saved_code_delete_body">Tämä poistaa kirjaston ”%1$s” palautuskoodin vain tästä laitteesta. Kirjasto ja pilvesi sisältö säilyvät.</string>
+    <string name="onboarding_saved_code_delete_body_unusable">Tämä poistaa palautuskoodin vain tästä laitteesta. Kirjasto ja pilvesi sisältö säilyvät.</string>
     <string name="onboarding_saved_code_delete_failed">Palautuskoodia ei voitu poistaa</string>
     <string name="onboarding_saved_code_removed">Tätä palautuskoodia ei ole enää tallennettu tähän laitteeseen.</string>
     <string name="onboarding_saved_library">Kirjasto</string>
@@ -390,7 +390,7 @@
     <string name="settings_profile_refused">Profiiliasi ei voitu luoda. %1$s</string>
     <string name="settings_profile_create_prompt">Luo profiilisi, jotta kirjasto voi näyttää, kuka olet.</string>
     <string name="settings_profile_create">Luo profiili</string>
-    <string name="operation_rejection_store_owner">Kirjaston tallennustilan omistavaa tiliä ei voi poistaa.</string>
+    <string name="operation_rejection_store_owner">Kirjaston pilvikodin omistavaa tiliä ei voi poistaa.</string>
     <string name="operation_rejection_person_gone">Tämä henkilö ei ole enää kirjastossa.</string>
     <string name="operation_rejection_device_gone">Tämä laite ei ole enää kirjastossa.</string>
     <string name="operation_rejection_circle_gone">Tätä piiriä ei ole enää olemassa.</string>
@@ -417,7 +417,7 @@
     <string name="sync_status">Tila</string>
     <string name="sync_last_synced">Viimeksi synkronoitu: %1$s</string>
     <string name="sync_pending">Odottaa</string>
-    <string name="sync_storage">Tallennustila</string>
+    <string name="sync_cloud_home">Pilvikoti</string>
     <string name="sync_fix_update">Päivitä</string>
     <string name="sync_fix_sign_in">Kirjaudu palveluun %1$s</string>
     <string name="sync_fix_enter_key">Anna käyttöavain</string>

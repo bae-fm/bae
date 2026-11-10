@@ -250,7 +250,7 @@ private fun AddDeviceDialogContentFailedPreview() {
             added = null,
             error =
                 DisplayError(
-                    "Couldn’t reach your storage.",
+                    "Couldn’t reach the cloud.",
                     "S3: Network: dispatch failure: io error: connection refused",
                 ),
             onDismiss = {

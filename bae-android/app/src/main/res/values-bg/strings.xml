@@ -36,7 +36,7 @@
     <string name="album_options">Опции за албума</string>
     <string name="delete_album">Изтриване на албума…</string>
     <string name="delete_album_confirm_title">Да се изтрие ли този албум?</string>
-    <string name="delete_album_confirm_body">Всички издания на този албум се изтриват от библиотеката заедно с копията на файловете им, които bae пази на това устройство и в хранилището ви. Файловете във вашите папки не се изтриват. Действието е необратимо.</string>
+    <string name="delete_album_confirm_body">Всички издания на този албум се изтриват от библиотеката заедно с копията на файловете им, които bae пази на това устройство и в облака. Файловете във вашите папки не се изтриват. Действието е необратимо.</string>
     <string name="delete_album_confirm">Изтриване</string>
     <string name="now_playing">Текущо възпроизвеждане</string>
     <string name="paused">На пауза</string>
@@ -121,7 +121,7 @@
     <string name="hide">Скриване</string>
     <string name="settings_remove_library">Премахване на тази библиотека от това устройство</string>
     <string name="library_remove_confirm_title">Премахване на „%1$s“ от това устройство?</string>
-    <string name="settings_remove_library_confirm_body">Библиотеката остава в хранилището и на другите ви устройства.</string>
+    <string name="settings_remove_library_confirm_body">Библиотеката остава в облака и на другите ви устройства.</string>
     <string name="settings_remove">Премахване</string>
     <string name="onboarding_libraries_title">Вашите библиотеки</string>
     <string name="library_delete_confirm_title">Изтриване на „%1$s“?</string>
@@ -135,7 +135,7 @@
     <string name="library_delete_menu">Изтриване…</string>
     <string name="library_last_synced">Последно синхронизиране</string>
     <string name="library_unsent_changes">Неизпратени промени</string>
-    <string name="removal_uncounted_body">Тази библиотека не може да бъде отворена, затова всички промени на това устройство, които не са изпратени, се губят. Копието ѝ на това устройство се изтрива; ако библиотеката се пази в хранилище, тя остава там.</string>
+    <string name="removal_uncounted_body">Тази библиотека не може да бъде отворена, затова всички промени на това устройство, които не са изпратени, се губят. Копието ѝ на това устройство се изтрива; ако библиотеката се пази в облака, тя остава там.</string>
     <string name="settings_provider">Доставчик</string>
     <string name="settings_account">Акаунт</string>
     <string name="settings_bucket">Кофа</string>
@@ -170,7 +170,7 @@
     <string name="onboarding_add_device">Добавяне на устройство</string>
     <string name="onboarding_tagline">Вашата музика, навсякъде</string>
     <string name="onboarding_camera_permission_required">Необходимо е разрешение за камерата, за да сканирате QR кодове</string>
-    <string name="oauth_unconfigured">Влизането в хранилището на тази библиотека не е конфигурирано в тази версия.</string>
+    <string name="oauth_unconfigured">Влизането в облачния дом на тази библиотека не е конфигурирано в тази версия.</string>
     <string name="signing_in">Влизане…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
@@ -286,7 +286,7 @@
     <string name="onboarding_check_now">Провери сега</string>
     <string name="pending_update_no_store">Няма магазин за приложения на това устройство, който да актуализира bae.</string>
     <string name="storage_setup_title">Настройка на синхронизирането</string>
-    <string name="settings_set_up_sync_explanation">Тази библиотека се съхранява само на това устройство. Синхронизирането я пази в хранилището, където другите ви устройства и домакинството ви могат да я използват.</string>
+    <string name="settings_set_up_sync_explanation">Тази библиотека се съхранява само на това устройство. Синхронизирането я пази в облачен дом, където другите ви устройства и домакинството ви могат да я използват.</string>
     <string name="storage_setup_choose">Къде да се съхранява тази библиотека?</string>
     <string name="storage_s3_endpoint_hint">Оставете празно за Amazon S3.</string>
     <string name="storage_set_up">Настройване</string>
@@ -315,7 +315,7 @@
     <string name="restore_code_partly_hidden">Код за възстановяване, частично скрит</string>
     <string name="restore_code_print_title">Код за възстановяване на bae</string>
     <string name="restore_code_printed">Отпечатано на %1$s</string>
-    <string name="restore_code_print_keep">Ако загубите всичките си устройства, изберете „Добавяне на устройство“ в bae на ново устройство, после сканирайте това или въведете кода. Всеки, който има тази страница и достъп до хранилището ви, може да отвори библиотеката ви: пазете я на скрито място.</string>
+    <string name="restore_code_print_keep">Ако загубите всичките си устройства, изберете „Добавяне на устройство“ в bae на ново устройство, после сканирайте това или въведете кода. Всеки, който има тази страница и достъп до облака ви, може да отвори библиотеката ви: пазете я на скрито място.</string>
     <string name="done">Готово</string>
     <string name="members_you">Вие</string>
     <string name="members_unnamed">Още без име</string>
@@ -336,7 +336,7 @@
     <string name="device_removed_title">Устройството ще бъде премахнато</string>
     <string name="device_cut_off_confirm">Прекъснах достъпа на това устройство</string>
     <string name="device_cut_off_not_yet">Още не</string>
-    <string name="device_cut_off_running_title">Заявка към хранилището ви още се изпълнява</string>
+    <string name="device_cut_off_running_title">Заявка към облака още се изпълнява</string>
     <string name="device_cut_off_running_body">Изчакайте да приключи и опитайте отново.</string>
     <string name="device_cut_off_not_gone_title">Премахването още не е стигнало до това устройство</string>
     <string name="device_cut_off_not_gone_body">Опитайте отново след следващото синхронизиране.</string>
@@ -379,8 +379,8 @@
     <string name="onboarding_saved_code_reason_ambiguous">Запазен повече от веднъж</string>
     <string name="onboarding_saved_code_delete">Изтриване</string>
     <string name="onboarding_saved_code_delete_title">Изтриване на този код за възстановяване?</string>
-    <string name="onboarding_saved_code_delete_body">Това премахва кода за възстановяване за „%1$s“ само от това устройство. Не изтрива библиотеката, нито нещо в хранилището ви.</string>
-    <string name="onboarding_saved_code_delete_body_unusable">Това премахва кода за възстановяване само от това устройство. Не изтрива библиотеката, нито нещо в хранилището ви.</string>
+    <string name="onboarding_saved_code_delete_body">Това премахва кода за възстановяване за „%1$s“ само от това устройство. Не изтрива библиотеката, нито нещо в облака.</string>
+    <string name="onboarding_saved_code_delete_body_unusable">Това премахва кода за възстановяване само от това устройство. Не изтрива библиотеката, нито нещо в облака.</string>
     <string name="onboarding_saved_code_delete_failed">Кодът за възстановяване не можа да бъде изтрит</string>
     <string name="onboarding_saved_code_removed">Този код за възстановяване вече не е запазен на това устройство.</string>
     <string name="onboarding_saved_library">Библиотека</string>
@@ -392,7 +392,7 @@
     <string name="settings_profile_refused">Профилът ви не можа да бъде създаден. %1$s</string>
     <string name="settings_profile_create_prompt">Създайте профила си, за да може библиотеката да показва кой сте.</string>
     <string name="settings_profile_create">Създай профил</string>
-    <string name="operation_rejection_store_owner">Акаунтът, който притежава хранилището на библиотеката, не може да бъде премахнат.</string>
+    <string name="operation_rejection_store_owner">Акаунтът, който притежава облачния дом на библиотеката, не може да бъде премахнат.</string>
     <string name="operation_rejection_person_gone">Този човек вече не е в библиотеката.</string>
     <string name="operation_rejection_device_gone">Това устройство вече не е в библиотеката.</string>
     <string name="operation_rejection_circle_gone">Този кръг вече не съществува.</string>
@@ -419,7 +419,7 @@
     <string name="sync_status">Състояние</string>
     <string name="sync_last_synced">Последно синхронизиране: %1$s</string>
     <string name="sync_pending">Чакащи</string>
-    <string name="sync_storage">Хранилище</string>
+    <string name="sync_cloud_home">Облачен дом</string>
     <string name="sync_fix_update">Актуализиране</string>
     <string name="sync_fix_sign_in">Влизане в %1$s</string>
     <string name="sync_fix_enter_key">Въвеждане на ключ за достъп</string>
