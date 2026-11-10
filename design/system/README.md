@@ -6,7 +6,7 @@ Everything here is drawn at each platform's regular size, the one the apps use b
 
 - Sentence case everywhere on screen: "Set up sync", "Restore code".
 - Minimal words, phrases and sentences, and only to say what the UI itself can't. A note is one sentence; most controls need none.
-- A full sentence ends in a period: "Open Settings on your desktop to add this device." A label or fragment has none: "No shared folders yet".
+- A full sentence ends in a period: "People in this library see this name." A label or fragment has none: "No shared folders yet".
 - Buttons are verbs: "Set up", "Cancel", "New folder…". An ellipsis on a button means it opens more before acting; on a waiting line it means work is under way: "Checking the folder “Music”…".
 - Placeholders never repeat the label and never end in an ellipsis. Example values are plain and generic: `my-bucket`, `https://s3.home.lan`.
 - Error lines say what is wrong and what to do: "“Music” isn’t empty. Choose an empty folder, or make a new one."

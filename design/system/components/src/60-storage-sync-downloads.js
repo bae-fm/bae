@@ -237,7 +237,7 @@
   // The Activity sheet (SyncActivity.kt's, grown to hold every problem): the title, Needs Attention with the caller's notices (children), bae couldn't read sync's status (no button), and sync's own with Open Sync Settings; nothing retries in place; then the transfers (the downloads line opens Downloads), or up to date.
   function AndroidActivity(props) {
     var problems = props.children || props.error || props.attention;
-    // Only the Needs Attention group starts on its text edge, past the glyphs; the title and the transfers are their own groups, at the sheet's edge.
+    // Only the problems' rows start their words on the text edge, past the glyphs; the title, the Needs Attention label and the transfers sit at the sheet's edge.
     var t = function (s, c) { return h('div', { className: c || 'bae-a-act-line' }, s); };
     // `held` as on Mac: the pinning line ends in a tonal Pause, or Resume while paused. A phone never uploads release files, so Uploading has none.
     var xfer = function (key, label, count, progress, tap, held) {
@@ -247,16 +247,15 @@
         h('div', { className: 'bae-progress-track' }, h('div', { className: cx('bae-progress-fill', progress == null && 'bae-progress-moving'), style: progress == null ? null : { width: (Number(progress) * 100) + '%' } })));
     };
     return h('div', { className: 'bae-a-act' },
-      // While problems are listed, every line but the notices starts where the notices' text does, so their icons stand in a column of their own.
       h('div', { className: 'bae-a-act-title' }, 'Activity'),
       // Each problem is a quiet notice, a line between rows.
-      problems ? h('div', { className: 'bae-a-act-block' }, h('div', { className: 'bae-a-act-text' }, h(AndroidEyebrow, null, 'Needs Attention')),
+      problems ? h('div', { className: 'bae-a-act-block' }, h(AndroidEyebrow, null, 'Needs Attention'),
         h('div', { className: 'bae-a-actproblems' }, divided(kids(props.children).concat([
           props.error ? h(AndroidNotice, { key: 'e', quiet: true, dismiss: true, tone: 'danger', title: props.error }) : null,
           props.attention ? h(AndroidNotice, { key: 'f', quiet: true, dismiss: true, tone: 'warning', title: props.attention, action: 'Open Sync Settings', buttons: 'below' }) : null,
-          props.attention && props.record ? h('div', { key: 'r' }, h('div', { className: 'bae-strong' }, props.record), h(AndroidNotice, { quiet: true, tone: 'neutral', title: props.reason })) : null].filter(Boolean)))),
-        h('div', { className: 'bae-divider bae-a-act-text-rule' })) : null,
-      // As on Mac: each transfer is its words, how far it has got, and a bar; the pinning line opens the Pinning screen.
+          props.attention && props.record ? h('div', { key: 'r' }, h('div', { className: 'bae-strong' }, props.record), h(AndroidNotice, { quiet: true, tone: 'neutral', title: props.reason })) : null].filter(Boolean))))) : null,
+      // As on Mac: Transfers is its own labelled group; each transfer is its words, how far it has got, and a bar; the pinning line opens the Pinning screen.
+      props.syncing || props.uploads || props.pins ? h(AndroidEyebrow, null, 'Transfers') : null,
       props.syncing ? xfer('s', 'Syncing changes', null, null) : null,
       props.uploads ? xfer('u', 'Uploading', props.uploadsWait || props.uploads, props.uploadProgress != null ? props.uploadProgress : 0.4) : null,
       props.pins ? xfer('p', 'Pinning', props.downloadsWait || props.pins, props.pinProgress != null ? props.pinProgress : 0.3, true, props.downloadsWait === 'Paused') : null,

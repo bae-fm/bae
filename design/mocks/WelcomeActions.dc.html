@@ -17,9 +17,9 @@
 body{margin:0;background:var(--background)}
 </style>
 </helmet>
-<div style="display: flex; flex-direction: column; font-family: var(--font-android)"><div style="display: flex; flex-direction: column; gap: 10px; padding: 0 16px"><x-import component-from-global-scope="Bae.AndroidButton" large="{{yes}}">Scan code</x-import><x-import component-from-global-scope="Bae.AndroidButton" kind="outlined" large="{{yes}}">Enter code</x-import></div><div style="padding: 20px 32px 0; font-size: 14px; line-height: 20px; color: var(--text-secondary); text-align: center">Open Settings on your desktop to add this device.</div></div>
+<div style="display: flex; flex-direction: column; font-family: var(--font-android)"><div style="display: flex; flex-direction: column; gap: 10px; padding: 0 16px"><x-import component-from-global-scope="Bae.AndroidButton" large="{{yes}}">Scan code</x-import><x-import component-from-global-scope="Bae.AndroidButton" kind="outlined" large="{{yes}}">Enter code</x-import></div></div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":412,"height":180}}'>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":412,"height":106}}'>
 class Component extends DCLogic {
   renderVals() {
     return { yes: true };

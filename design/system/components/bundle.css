@@ -560,12 +560,17 @@
 .bae-m-sidepause-count { font: 600 13px var(--font-sans); font-variant-numeric: tabular-nums; }
 .bae-m-sidepause-buttons { display: flex; justify-content: flex-end; gap: 8px; padding-top: 8px; }
 .bae-m-castpop { z-index: 7; width: 260px; box-sizing: border-box; display: flex; flex-direction: column; gap: 6px; padding: 12px; border-radius: var(--radius-control); background: var(--tile); box-shadow: 0 8px 24px var(--shadow); font: 400 13px var(--font-sans); }
-.bae-m-castpop-row, .bae-m-castpop-casting, .bae-m-castpop-wait { display: flex; align-items: center; gap: 8px; padding: 4px; }
-.bae-m-castpop-row > span { flex: 1; font-weight: 500; }
-.bae-m-castpop-casting > strong { flex: 1; font-weight: 600; }
+.bae-m-castpop-row, .bae-m-castpop-wait { display: flex; align-items: center; gap: 8px; padding: 4px; }
+.bae-m-castpop-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+/* As on Android, a long receiver name wraps to a second line, then ends in an ellipsis; the receiver being cast to says Casting under its name. */
+.bae-m-castpop-name { font-weight: 500; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
+.bae-m-castpop-state { font-size: 11.5px; color: var(--accent); }
 .bae-a-scrim { position: absolute; inset: 0; z-index: 8; background: rgba(0,0,0,0.32); }
-.bae-a-sheet { position: absolute; left: 0; right: 0; bottom: 0; top: 120px; overflow: hidden; border-radius: 28px 28px 0 0; background: var(--surface); font-family: var(--font-android); }
-.bae-a-sheet-title { margin: 0; padding: 0 var(--space-edge) var(--space-group); font: 400 22px/28px var(--font-android); color: var(--text-primary); }
+/* A sheet is as tall as what it holds, as Material's modal sheet is, up to near the top of the screen; `top` pins a tall one (the queue, the player) to a height of its own. */
+.bae-a-sheet { position: absolute; left: 0; right: 0; bottom: 0; max-height: calc(100% - var(--space-page)); padding-bottom: var(--space-section); box-sizing: border-box; overflow: hidden; border-radius: 28px 28px 0 0; background: var(--surface); font-family: var(--font-android); }
+/* The sheet's content sits in from its rounded edge: rows keep their own 16dp inset, the body adds space-related, so text starts 24dp in, and the title matches. */
+.bae-a-sheet-title { margin: 0; padding: 0 var(--space-section) var(--space-group); font: 400 22px/28px var(--font-android); color: var(--text-primary); }
+.bae-a-sheet-body { padding: 0 var(--space-related); }
 .bae-a-sheet-handle { width: 32px; height: 4px; margin: 22px auto; border-radius: 2px; background: var(--text-secondary); opacity: 0.4; }
 .bae-a-queuelabel { display: flex; align-items: center; padding: 0 8px 0 16px; min-height: 48px; }
 .bae-a-qrow { display: flex; align-items: center; gap: 12px; padding: 8px 4px 8px 12px; background: var(--surface); }
@@ -585,7 +590,10 @@
 .bae-a-fp-slider > div { position: absolute; top: 0; bottom: 0; left: 0; border-radius: 8px 2px 2px 8px; background: var(--accent); margin-right: 6px; max-width: calc(70% - 6px); }
 .bae-a-fp-slider > span { position: absolute; top: 50%; width: 4px; height: 44px; margin: -22px 0 0 -2px; border-radius: 2px; background: var(--accent); }
 .bae-a-castrow { display: flex; align-items: center; gap: 12px; padding: 12px 16px; font-family: var(--font-android); }
-.bae-a-castrow-name { flex: 1; min-width: 0; font: 500 16px/24px var(--font-android); white-space: nowrap; overflow: hidden; }
+/* A long receiver name wraps to a second line, then ends in an ellipsis; the icon and the trailing control stay centred on the row. */
+.bae-a-castrow-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.bae-a-castrow-name { font: 500 16px/24px var(--font-android); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
+.bae-a-castrow-state { font: 400 14px/20px var(--font-android); color: var(--accent); }
 .bae-a-checkrow { display: flex; align-items: center; gap: 8px; font: 400 14px var(--font-android); }
 .bae-a-checkbox { width: 18px; height: 18px; margin: 11px; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; border-radius: 2px; box-shadow: inset 0 0 0 2px var(--text-secondary); color: var(--background); fill: currentColor; }
 .bae-a-checkbox-on { background: var(--accent); box-shadow: none; }
@@ -677,7 +685,7 @@
 .bae-m-actrow-sub { font: 400 11.5px var(--font-sans); color: var(--text-secondary); margin-top: 2px; }
 .bae-a-act { --bae-a-act-gutter: calc(14px * 1.19 + var(--space-related)); display: flex; flex-direction: column; gap: 8px; padding: 0 16px 16px; font: 400 14px/20px var(--font-android); }
 .bae-a-act-text { padding-left: var(--bae-a-act-gutter); }
-.bae-a-act-text-rule, .bae-a-actproblems > .bae-divider { margin-left: var(--bae-a-act-gutter); }
+.bae-a-actproblems > .bae-divider { margin-left: var(--bae-a-act-gutter); }
 .bae-a-act-title { font: 600 16px var(--font-android); }
 .bae-a-actproblems { display: flex; flex-direction: column; }
 .bae-a-act-block { display: flex; flex-direction: column; gap: 4px; }

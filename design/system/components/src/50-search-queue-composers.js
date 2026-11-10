@@ -60,14 +60,17 @@
     var glyph = { cast: 'cast', airplay: 'airplay', upnp: 'tv' };
     return h('div', { className: 'bae-m-castpop', style: { position: 'absolute', right: Number(props.right != null ? props.right : 120), bottom: Number(props.bottom != null ? props.bottom : 92) } },
       props.connecting ? h('div', { className: 'bae-m-castpop-wait' }, h(MacSpinner, { size: 14 }), 'Connecting to ' + props.connecting + '…') : null,
-      props.casting ? h('div', { className: 'bae-m-castpop-casting' }, h(Glyph, { set: 'mac', name: 'cast', size: 15, className: 'bae-accent' }), h('strong', null, 'Casting to ' + props.casting), h(MacButton, { kind: 'borderless' }, 'Disconnect')) : null,
-      devices.length ? devices.map(function (d, i) { return h('div', { key: i, className: 'bae-m-castpop-row' }, h(Glyph, { set: 'mac', name: glyph[d.kind] || 'cast', size: 15, className: 'bae-muted' }), h('span', null, d.name), d.name === props.casting ? h(Glyph, { set: 'mac', name: 'check', size: 13, className: 'bae-accent' }) : null); })
+      devices.length ? devices.map(function (d, i) {
+        var on = d.name === props.casting;
+        return h('div', { key: i, className: 'bae-m-castpop-row' }, h(Glyph, { set: 'mac', name: glyph[d.kind] || 'cast', size: 15, className: on ? 'bae-accent' : 'bae-muted' }),
+          h('span', { className: 'bae-m-castpop-text' }, h('span', { className: 'bae-m-castpop-name' }, d.name), on ? h('span', { className: 'bae-m-castpop-state' }, 'Casting') : null),
+          on ? h(MacButton, { kind: 'borderless', size: 'small' }, 'Disconnect') : null); })
         : (props.connecting || props.casting ? null : h('div', { className: 'bae-muted' }, 'No Cast devices found')));
   }
 
   // ---- Queue and playback (Android) ----
   function AndroidSheet(props) {
-    return h('div', { className: 'bae-a-scrim' }, h('div', { className: 'bae-a-sheet', style: props.top != null ? { top: Number(props.top) } : null }, h('div', { className: 'bae-a-sheet-handle' }), props.title ? h('h2', { className: 'bae-a-sheet-title' }, props.title) : null, props.children));
+    return h('div', { className: 'bae-a-scrim' }, h('div', { className: 'bae-a-sheet', style: props.top != null ? { top: Number(props.top) } : null }, h('div', { className: 'bae-a-sheet-handle' }), props.title ? h('h2', { className: 'bae-a-sheet-title' }, props.title) : null, h('div', { className: 'bae-a-sheet-body' }, props.children)));
   }
   function AndroidQueueLabel(props) {
     return h('div', { className: 'bae-a-queuelabel' }, h('span', { className: 'bae-a-eyebrow', style: { paddingTop: 0, flex: 1 } }, props.title),
@@ -91,9 +94,11 @@
   }
   function AndroidCastRow(props) {
     if (props.waiting) return h('div', { className: 'bae-a-castrow' }, h(AndroidSpinner, { size: 20 }), h('span', { className: 'bae-muted', style: { fontSize: 14 } }, props.waiting));
-    if (props.casting) return h('div', { className: 'bae-a-castrow' }, h(Glyph, { name: 'cast', size: 24, className: 'bae-accent' }), h('span', { className: 'bae-a-castrow-name' }, 'Casting to ' + props.casting), h(AndroidButton, { kind: 'text' }, 'Disconnect'));
+    // The receiver being cast to is the same row as the others: its state, Casting, is a line under its name, and Disconnect ends it at the right. No separate "Casting to" row, and no check: the row says it.
     var icon = { cast: 'cast', airplay: 'speakerbox', upnp: 'tv' }[props.kind || 'cast'];
-    return h('div', { className: 'bae-a-castrow' }, h(Glyph, { name: icon, size: 24, className: 'bae-muted' }), h('span', { className: 'bae-a-castrow-name' }, props.name), props.active ? h(Glyph, { name: 'check', size: 24, className: 'bae-accent' }) : null);
+    return h('div', { className: 'bae-a-castrow' }, h(Glyph, { name: icon, size: 24, className: props.active ? 'bae-accent' : 'bae-muted' }),
+      h('span', { className: 'bae-a-castrow-text' }, h('span', { className: 'bae-a-castrow-name' }, props.name), props.active ? h('span', { className: 'bae-a-castrow-state' }, 'Casting') : null),
+      props.active ? h(AndroidButton, { kind: 'text' }, 'Disconnect') : null);
   }
   function AndroidCheckbox(props) {
     return h('div', { className: 'bae-a-checkrow' }, h('span', { className: cx('bae-a-checkbox', props.on && 'bae-a-checkbox-on') }, props.on ? h(Glyph, { name: 'check', size: 16 }) : null), h('span', null, props.label));
