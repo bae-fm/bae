@@ -52,8 +52,6 @@ struct SyncSetupWizard: View {
 
     @Environment(ConfigStore.self)
     private var configStore
-    @Environment(Sync.self)
-    private var sync
     #if BAE_OAUTH_PROVIDERS
         @Environment(CloudSyncSetup.self)
         private var cloudSyncSetup
