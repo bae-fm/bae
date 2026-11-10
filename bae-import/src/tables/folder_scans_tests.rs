@@ -830,3 +830,6 @@ pub struct DbFolderScanSnapshot {
     pub status: crate::StoredScanOutcome,
     pub items: Vec<crate::folder_scanner::ScanItem>,
 }
+
+#[path = "folder_scans_tests/write_cost.rs"]
+mod write_cost;

@@ -234,9 +234,8 @@ pub(crate) enum Readers<'a> {
 /// `coverage`'s, one above it read whole, or — for `coverage` over a whole
 /// folder — one below it.
 ///
-/// Each of those is a lookup by folder in `idx_scan_candidate_file_root`,
-/// which SQLite picks from its statistics on `scan_candidate`. Coven gathers
-/// them while a scan fills the table, once it holds 100 rows.
+/// A scan asks this of every folder it writes, so it reads only the entries
+/// it returns, whatever else the root holds: see [`entries_reading_sql`].
 pub(crate) fn entries_reading(
     sql: &impl coven::SqlRead,
     watched_folder_path: &Path,
@@ -256,34 +255,54 @@ pub(crate) fn entries_reading(
         coverage.whole_subtree.then(|| crate::tables::watched_path::paths_below(&coverage.folder));
     let mut params: Vec<(&str, &dyn rusqlite::ToSql)> =
         vec![(":root", &root), (":folder", &folder), (":above", &above)];
-    let readers_clause = match &readers {
-        Readers::Settled => "kind IN ('valid', 'invalid')",
-        Readers::Besides(key) => {
-            params.push((":key", key));
-            "path != :key"
-        }
+    if let Readers::Besides(key) = &readers {
+        params.push((":key", key));
+    }
+    if let Some((first, past)) = &below {
+        params.push((":below_first", first));
+        params.push((":below_past", past));
+    }
+    let mut keys =
+        sql.query(&entries_reading_sql(readers, below.is_some()), params.as_slice(), |row| {
+            row.get::<_, CandidateKey>(0)
+        })?;
+    // Sorted here: an `ORDER BY` has SQLite read each part in key order, a
+    // pass over every entry under the root.
+    keys.sort();
+    Ok(keys)
+}
+
+/// [`entries_reading`]'s statement: lookups in `idx_scan_candidate_file_root`
+/// by the root and the folder, by the root and each folder above it, and —
+/// `below` — by the root and the range of folders below it. Each part reads
+/// other folders, so no entry is in two of them. They are separate selects in
+/// no order: joined by `OR` in one select, sorted by key, or told apart with
+/// `UNION`, SQLite may plan them as passes over every entry under the root,
+/// as it does with no statistics, and with those coven gathers of a large
+/// watched folder.
+pub(super) fn entries_reading_sql(readers: Readers<'_>, below: bool) -> String {
+    let kept = match readers {
+        Readers::Settled => "source_kind = 'folder' AND kind IN ('valid', 'invalid')",
+        Readers::Besides(_) => "source_kind = 'folder' AND path != :key",
     };
-    let below_clause = match &below {
-        Some((first, past)) => {
-            params.push((":below_first", first));
-            params.push((":below_past", past));
-            " OR (file_root >= :below_first AND file_root < :below_past)"
-        }
-        None => "",
-    };
-    Ok(sql.query(
-        &format!(
-            "SELECT path FROM scan_candidate \
-             WHERE watched_folder_path = :root AND source_kind = 'folder' \
-               AND {readers_clause} \
-               AND (file_root = :folder \
-                    OR (scope = 'recursive' \
-                        AND file_root IN (SELECT unhex(value) FROM json_each(:above))){below_clause}) \
-             ORDER BY path"
-        ),
-        params.as_slice(),
-        |row| row.get::<_, CandidateKey>(0),
-    )?)
+    let mut statement = format!(
+        "SELECT path FROM scan_candidate \
+         WHERE watched_folder_path = :root AND file_root = :folder AND {kept} \
+         UNION ALL \
+         SELECT path FROM scan_candidate \
+         WHERE watched_folder_path = :root \
+           AND file_root IN (SELECT unhex(value) FROM json_each(:above)) \
+           AND scope = 'recursive' AND {kept}"
+    );
+    if below {
+        statement.push_str(&format!(
+            " UNION ALL \
+             SELECT path FROM scan_candidate \
+             WHERE watched_folder_path = :root \
+               AND file_root >= :below_first AND file_root < :below_past AND {kept}"
+        ));
+    }
+    statement
 }
 
 // ── Candidates ──────────────────────────────────────────────────────────────
@@ -773,3 +792,7 @@ fn parts_of(candidate_path: &CandidateKey, json: &str) -> Result<Vec<ReleasePart
         .map(|part| ReleasePart { folder: part.folder, prefix: part.prefix })
         .collect())
 }
+
+#[cfg(test)]
+#[path = "read_tests.rs"]
+mod tests;

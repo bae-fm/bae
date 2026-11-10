@@ -147,9 +147,11 @@ CREATE INDEX IF NOT EXISTS idx_scan_candidate_grouping ON scan_candidate (groupi
 CREATE INDEX IF NOT EXISTS idx_scan_candidate_content_hash
     ON scan_candidate (content_hash) WHERE content_hash IS NOT NULL;
 
--- The entries reading a folder's files, which a scan write looks up by the
--- folder, the folders above it and the range below it.
-CREATE INDEX IF NOT EXISTS idx_scan_candidate_file_root ON scan_candidate (file_root);
+-- The entries under a watched folder reading a folder's files, which a scan
+-- write looks up by the root and the folder, the folders above it and the
+-- range below it.
+CREATE INDEX IF NOT EXISTS idx_scan_candidate_file_root
+    ON scan_candidate (watched_folder_path, file_root);
 
 -- Every file of a candidate folder, the role the scan read it as, and the audio
 -- facts probing found in it. `relative_path` is the file's name in the release,
