@@ -230,6 +230,38 @@ fn spawn_thread_reported_reports_a_panic_and_calls_on_panic_on_that_thread() {
     );
 }
 
+/// Work on a thread of its own hands its value back, run with the stack it
+/// asked for: a frame a default stack can't hold fits.
+#[test]
+fn run_on_thread_hands_back_the_work_s_value_on_its_stack() {
+    let (diagnostics, reports) = reporting();
+    let value = diagnostics.run_on_thread("deep work", 16 * 1024 * 1024, || {
+        let frame = std::hint::black_box([1u8; 8 * 1024 * 1024]);
+        (frame[0], std::thread::current().name().map(str::to_string))
+    });
+    assert_eq!(value.expect("the work ran"), (1, Some("deep work".to_string())));
+    assert!(reports.reports().is_empty());
+}
+
+/// Work on a thread of its own that panics is reported, and its caller hears
+/// the panic.
+#[test]
+fn run_on_thread_reports_a_panic_and_hands_it_back() {
+    let (diagnostics, reports) = reporting();
+    let failed = diagnostics.run_on_thread("open the library", 1024 * 1024, || -> () {
+        test_panic::panics("schema out of date")
+    });
+    assert!(
+        matches!(&failed, Err(ThreadFailed::Panicked(bug))
+            if *bug == test_panic::bug("open the library", "schema out of date")),
+        "{failed:?}"
+    );
+    assert_eq!(
+        reports.reports(),
+        vec![test_panic::report("open the library", "schema out of date")]
+    );
+}
+
 #[test]
 fn lock_or_crash_hands_out_an_unpoisoned_lock() {
     let (diagnostics, reports) = reporting();

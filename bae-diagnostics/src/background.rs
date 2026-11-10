@@ -1,10 +1,13 @@
 //! A panic in work apart from its caller, reported as the bug it is.
 //!
-//! Four shapes, decided by who waits on the work:
+//! Five shapes, decided by who waits on the work:
 //!
 //! - Work a caller awaits runs under `bae_util::task_failure::caught`, and
 //!   the caller hands the failure to [`Diagnostics::panicked`] before turning
 //!   it into its own error.
+//! - Work a caller waits on, on a thread of its own with the stack it needs,
+//!   runs under [`Diagnostics::run_on_thread`]: a panic is reported and
+//!   handed back to the caller.
 //! - Work on the blocking pool runs under [`Diagnostics::blocking`], to its
 //!   end even when its caller stops waiting: a panic is reported to a caller
 //!   still waiting as the first shape's is, and to the crash reporter once
@@ -179,6 +182,37 @@ impl Diagnostics {
         Ok(ReportedThread { name, thread })
     }
 
+    /// Run `work`, named `name`, on a thread of its own with a stack of
+    /// `stack_size` bytes, and wait for it: for work deeper than the
+    /// caller's thread can hold. A panic in it is reported and handed back.
+    pub fn run_on_thread<T: Send + 'static>(
+        &self,
+        name: &'static str,
+        stack_size: usize,
+        work: impl FnOnce() -> T + Send + 'static,
+    ) -> Result<T, ThreadFailed> {
+        let diagnostics = self.clone();
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "this is the reported thread spawner: the work runs under caught_sync"
+        )]
+        let thread = std::thread::Builder::new()
+            .name(name.to_string())
+            .stack_size(stack_size)
+            .spawn(move || caught_sync(name, work).map_err(|bug| diagnostics.panicked(bug)))
+            .map_err(|source| ThreadFailed::Start { name, source })?;
+        match thread.join() {
+            Ok(done) => done.map_err(ThreadFailed::Panicked),
+            // The thread catches its work's panic, so this is reporting it
+            // panicking.
+            Err(payload) => {
+                let message = bae_util::task_failure::panic_message(payload.as_ref());
+                tracing::error!(thread = name, "reporting a panic panicked: {message}");
+                Err(ThreadFailed::Panicked(Bug { operation: name, message, location: None }))
+            }
+        }
+    }
+
     /// Report a panic, then let its owner end what the work served. A panic in
     /// `on_panic` itself is reported too, and goes no further: it runs where
     /// nothing above it catches.
@@ -269,6 +303,21 @@ impl<U> ReportedTask<U> {
             Err(_) => Err(Unfinished::Stopped),
         }
     }
+}
+
+/// Why [`Diagnostics::run_on_thread`] has no value to hand back.
+#[derive(Debug, thiserror::Error)]
+pub enum ThreadFailed {
+    /// The system refused the thread.
+    #[error("start the {name} thread: {source}")]
+    Start {
+        name: &'static str,
+        #[source]
+        source: std::io::Error,
+    },
+    /// The work panicked, and was reported.
+    #[error(transparent)]
+    Panicked(Bug),
 }
 
 /// A thread [`Diagnostics::spawn_thread_reported`] started. Dropping it

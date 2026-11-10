@@ -631,6 +631,7 @@ OpenCalls = "LibrarySessions"
 "bae-diagnostics/src/background.rs" = [
     "Diagnostics::spawn_ending",
     "Diagnostics::spawn_thread_reported",
+    "Diagnostics::run_on_thread",
 ]
 # A test's candidate runtime opens its own tables.
 "bae-import/src/candidate_runtime.rs" = ["CandidateRuntime::for_test"]

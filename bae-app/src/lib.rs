@@ -397,46 +397,26 @@ where
     // stack, especially in debug builds. Callers may invoke us from small-stack
     // threads (Swift cooperative Tasks, Android coroutine workers; ~0.5 MB), which
     // overflow there — so run the whole thing on a thread with a large stack.
-    let reporter = diagnostics.clone();
-    #[expect(
-        clippy::disallowed_methods,
-        reason = "a 32 MiB stack, which Diagnostics::spawn_thread_reported can't give; the body runs under caught_sync and the caller joins the thread at once and reports its panic there"
-    )]
-    let bootstrap_thread = std::thread::Builder::new()
-        .name("bae-bootstrap".to_string())
-        .stack_size(32 * 1024 * 1024)
-        .spawn(move || {
-            bae_util::task_failure::caught_sync("open the library", || {
-                bootstrap_inner(
-                    opening,
-                    app_dir,
-                    library_id,
-                    position_update_interval_ms,
-                    restore_playback,
-                    playback_output,
-                    diagnostics,
-                    clock,
-                    ids,
-                    builder,
-                    compose,
-                )
-            })
-        })
-        .map_err(|error| {
-            BootstrapError::Internal(format!("Failed to spawn bootstrap thread: {error}"))
-        })?;
-
     // A panic fails the open as something that went wrong, reported as a
-    // bug; what it had built was dropped as the thread unwound. A panic that
-    // escaped the body's catch reaches the join with no place in the code.
-    let opened = bootstrap_thread.join().unwrap_or_else(|payload| {
-        Err(bae_util::task_failure::Bug {
-            operation: "open the library",
-            message: bae_util::task_failure::panic_message(payload.as_ref()),
-            location: None,
+    // bug; what it had built was dropped as the thread unwound.
+    let reporter = diagnostics.clone();
+    reporter
+        .run_on_thread("bae-bootstrap", 32 * 1024 * 1024, move || {
+            bootstrap_inner(
+                opening,
+                app_dir,
+                library_id,
+                position_update_interval_ms,
+                restore_playback,
+                playback_output,
+                diagnostics,
+                clock,
+                ids,
+                builder,
+                compose,
+            )
         })
-    });
-    opened.map_err(|bug| BootstrapError::Internal(reporter.panicked(bug).to_string()))?
+        .map_err(|failed| BootstrapError::Internal(failed.to_string()))?
 }
 
 fn bootstrap_inner<T, F>(
