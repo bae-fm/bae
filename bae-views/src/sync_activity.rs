@@ -130,6 +130,17 @@ impl SyncActivity {
     pub fn needs_attention(&self) -> bool {
         self.failure.is_some() || !self.attention.is_empty()
     }
+
+    /// A queue is held and no bytes move: a line shows what holds its queue
+    /// in its count's place, whatever holds it (a pause, the network, a
+    /// metered network, a retry's time). The indicator shows a pause symbol
+    /// while it is, so the hold stays in reach.
+    pub fn held(&self) -> bool {
+        let uploads_held = self.uploads.as_ref().is_some_and(|uploads| uploads.wait.is_some());
+        let downloads_held =
+            [&self.pins, &self.making_local].into_iter().flatten().any(|line| line.wait.is_some());
+        !self.moving && (uploads_held || downloads_held)
+    }
 }
 
 #[cfg(test)]

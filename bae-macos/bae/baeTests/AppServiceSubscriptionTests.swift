@@ -169,6 +169,7 @@ struct SyncActivitySubscriptionTests {
     private func activity(sending: UInt32?) -> BridgeSyncActivity {
         BridgeSyncActivity(
             moving: sending != nil,
+            held: false,
             needsAttention: false,
             failure: nil,
             attention: [],

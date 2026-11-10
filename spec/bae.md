@@ -3210,9 +3210,13 @@ bar across the content. While bytes move it is a spinner: files this device
 is sending, or offline copies downloading. While a problem the person hasn't dismissed, or a pending record, is
 listed in the Activity panel, it shows a small warning symbol, beside the
 spinner when both hold; with every problem dismissed it goes back to its usual look. While a
-queue is held (paused, or waiting for network) and nothing moves, it is a
-pause symbol, so the hold stays in reach: the popover's line for that queue
-says Paused or Waiting for network. With none of these it is absent. A pass alone doesn't spin it: an idle library runs one
+queue is held and no bytes move, it is a pause symbol in the spinner's place,
+so the hold stays in reach: a queue is held while its line in the Activity
+panel shows what holds it in place of its count, whatever holds it (Paused,
+Waiting for network, Waiting for Wi-Fi, Retrying at its time). A held queue
+with no line, no release waiting in it, doesn't show it. Core works this out
+with the rest of the activity; the apps only draw it. With none of these it is
+absent. A pass alone doesn't spin it: an idle library runs one
 every half minute, and the button would blink for nothing.
 
 Clicking it opens the Activity panel, a popover on macOS and a sheet on the
@@ -3257,7 +3261,8 @@ local, since none of that kind waited or downloaded. Uploading counts the
 releases with files queued to upload; a cover or picture on its way counts in
 no line. A release that leaves its batch without finishing, cancelled, failed
 or removed from the library, stays in the count and never counts as done. A
-queue's hold (Paused, Waiting for network) stands in place of its count. On
+queue's hold (Paused, Waiting for network, and for uploads Waiting for Wi-Fi or
+Retrying at its time) stands in place of its count. On
 the desktop each queue's line ends in Pause, or Resume while that queue is
 paused; pinning and making local are one queue, as in Transfers settings, so
 their lines pause and resume together. Under the lines, *Open Storage Manager*

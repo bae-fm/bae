@@ -38,6 +38,7 @@ fn status() -> SyncStatusSnapshot {
 fn a_settled_library_is_quiet() {
     let activity = SyncActivity::new(&status(), &idle_uploads(), &idle_downloads());
     assert!(!activity.moving);
+    assert!(!activity.held());
     assert!(!activity.needs_attention());
     assert_eq!((activity.uploads, activity.pins, activity.making_local), (None, None, None));
 }
@@ -133,6 +134,96 @@ fn a_held_line_keeps_its_count() {
             Some(DownloadQueueActivity { batch: batch(1, 1), wait: Some(QueueWait::Offline) })
         )
     );
+}
+
+/// The indicator shows the pause symbol while a line shows what holds its
+/// queue, whatever holds it, and no bytes move: a paused, offline, metered or
+/// retrying upload queue, and a paused or offline download queue on either of
+/// its lines.
+#[test]
+fn a_held_line_with_nothing_moving_holds_the_indicator() {
+    use bae_records::UploadQueueWait;
+    let upload_waits = [
+        UploadQueueWait::Paused,
+        UploadQueueWait::Offline,
+        UploadQueueWait::Metered,
+        UploadQueueWait::Retrying { at_ms: 1_700_000_000_000 },
+    ];
+    for wait in upload_waits {
+        let uploads = UploadQueueCounts { batch: batch(1, 3), sending: 0, wait: Some(wait) };
+        let activity = SyncActivity::new(&status(), &uploads, &idle_downloads());
+        assert!(activity.held(), "{:?}", activity.uploads);
+    }
+    for wait in [QueueWait::Paused, QueueWait::Offline] {
+        let held_queue = ReleaseQueueCounts {
+            total: ReleaseQueueProgress { queued: 1, active: 0, failed: 0 },
+            wait: Some(wait),
+        };
+        let pins = DownloadQueueCounts {
+            pins: batch(0, 1),
+            queue: held_queue.clone(),
+            ..idle_downloads()
+        };
+        assert!(SyncActivity::new(&status(), &idle_uploads(), &pins).held(), "pins {wait:?}");
+        let making_local = DownloadQueueCounts {
+            making_local: batch(0, 1),
+            queue: held_queue,
+            ..idle_downloads()
+        };
+        assert!(
+            SyncActivity::new(&status(), &idle_uploads(), &making_local).held(),
+            "making local {wait:?}"
+        );
+    }
+}
+
+/// Bytes moving anywhere show the spinner in the pause symbol's place: a
+/// cover sent while release files are paused, or a pin downloading while
+/// uploads are paused.
+#[test]
+fn bytes_moving_are_not_held() {
+    let paused = Some(bae_records::UploadQueueWait::Paused);
+    let sending_cover = UploadQueueCounts { batch: batch(0, 2), sending: 1, wait: paused.clone() };
+    let activity = SyncActivity::new(&status(), &sending_cover, &idle_downloads());
+    assert!(activity.moving);
+    assert!(!activity.held());
+
+    let uploads = UploadQueueCounts { batch: batch(0, 2), sending: 0, wait: paused };
+    let downloading = DownloadQueueCounts {
+        pins: batch(0, 1),
+        queue: ReleaseQueueCounts {
+            total: ReleaseQueueProgress { queued: 0, active: 1, failed: 0 },
+            wait: None,
+        },
+        ..idle_downloads()
+    };
+    let activity = SyncActivity::new(&status(), &uploads, &downloading);
+    assert!(activity.moving);
+    assert!(!activity.held());
+}
+
+/// A queue holds nothing back with no line to say so: a paused queue whose
+/// batch holds no release, or a line whose queue waits on nothing, leaves
+/// the indicator absent.
+#[test]
+fn a_hold_without_its_line_or_a_line_without_a_hold_is_not_held() {
+    let paused_empty = UploadQueueCounts {
+        batch: batch(0, 0),
+        sending: 0,
+        wait: Some(bae_records::UploadQueueWait::Paused),
+    };
+    let downloads_paused_empty = DownloadQueueCounts {
+        queue: ReleaseQueueCounts {
+            wait: Some(QueueWait::Paused),
+            ..ReleaseQueueCounts::default()
+        },
+        ..idle_downloads()
+    };
+    assert!(!SyncActivity::new(&status(), &paused_empty, &downloads_paused_empty).held());
+
+    let waiting = UploadQueueCounts { batch: batch(0, 2), sending: 0, wait: None };
+    let pins_waiting = DownloadQueueCounts { pins: batch(0, 1), ..idle_downloads() };
+    assert!(!SyncActivity::new(&status(), &waiting, &pins_waiting).held());
 }
 
 /// A sync failure or a pending record that needs the person marks the

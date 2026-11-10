@@ -286,6 +286,7 @@ object PreviewData {
     fun syncActivity(needsAttention: Boolean): BridgeSyncActivity =
         BridgeSyncActivity(
             moving = true,
+            held = false,
             needsAttention = needsAttention,
             failure = null,
             attention =

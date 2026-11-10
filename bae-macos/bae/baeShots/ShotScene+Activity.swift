@@ -111,6 +111,7 @@ private enum ActivityShot {
     ) -> BridgeSyncActivity {
         BridgeSyncActivity(
             moving: true,
+            held: false,
             needsAttention: failure != nil,
             failure: failure,
             attention: [],
@@ -126,13 +127,15 @@ private enum ActivityShot {
     }
 
     /// Syncing, and an upload, a pin and a make-local, each in the middle
-    /// of its batch.
+    /// of its batch: moving, or held with nothing moving while the uploads
+    /// wait.
     static func transfers(
         uploadsWait: BridgeUploadQueueWait? = nil,
         downloadsWait: BridgeQueueWait? = nil
     ) -> BridgeSyncActivity {
         BridgeSyncActivity(
             moving: uploadsWait == nil,
+            held: uploadsWait != nil,
             needsAttention: false,
             failure: nil,
             attention: [],

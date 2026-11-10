@@ -8,6 +8,9 @@
 pub struct BridgeSyncActivity {
     /// Bytes are moving: the indicator spins. A pass alone doesn't count.
     pub moving: bool,
+    /// A queue is held and no bytes move: the indicator shows a pause
+    /// symbol, and that queue's line says what holds it.
+    pub held: bool,
     /// Something needs the person: the indicator shows a warning, and the
     /// panel leads with it.
     pub needs_attention: bool,
@@ -33,6 +36,7 @@ pub struct BridgeSyncActivity {
 impl BridgeSyncActivity {
     pub(crate) fn from_core(activity: bae_views::SyncActivity) -> Self {
         let needs_attention = activity.needs_attention();
+        let held = activity.held();
         let bae_views::SyncActivity {
             failure,
             attention,
@@ -45,6 +49,7 @@ impl BridgeSyncActivity {
         } = activity;
         Self {
             moving,
+            held,
             needs_attention,
             failure: failure.map(super::BridgeError::from_core),
             attention: attention.into_iter().map(super::BridgePendingRecord::from_core).collect(),

@@ -78,6 +78,7 @@ class ActivityProblemsTest {
     private fun settled() =
         BridgeSyncActivity(
             moving = false,
+            held = false,
             needsAttention = false,
             failure = null,
             attention = emptyList(),

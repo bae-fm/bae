@@ -85,6 +85,7 @@ class SyncPullsTest {
     private fun activity(uploads: BridgeUploadQueueActivity?) =
         BridgeSyncActivity(
             moving = uploads != null,
+            held = false,
             needsAttention = false,
             failure = null,
             attention = emptyList(),

@@ -61,6 +61,7 @@ public final class SyncActivityStore {
         public static func preview(needsAttention: Bool) -> BridgeSyncActivity {
             BridgeSyncActivity(
                 moving: true,
+                held: false,
                 needsAttention: needsAttention,
                 failure: nil,
                 attention: needsAttention ? [previewSignIn] : [],
