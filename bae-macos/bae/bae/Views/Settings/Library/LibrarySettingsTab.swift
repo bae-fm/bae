@@ -418,6 +418,15 @@ private struct RestoreCodeSettingsPage: View {
         )
     }
 
+    #Preview("Sync page") {
+        syncSettingsPagePreview(
+            LibrarySettingsTabPreviewFixture(
+                storage: PreviewData.previewStorage
+            ),
+            shown: .previewSynced
+        )
+    }
+
     /// The restore code section with its reveal at `state`, in an S3 library.
     @MainActor
     private func restoreCodeSectionPreview(

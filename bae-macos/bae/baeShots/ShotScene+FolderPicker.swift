@@ -29,72 +29,18 @@ extension ShotScene {
             folderPicker("folder-picker-onedrive-none", .oneDrive, .none),
         ]
 
-        private enum PickerState {
-            case list, naming, made, notEmpty, none
-        }
-
         private static func folderPicker(
             _ id: String,
             _ provider: StorageFolderBrowser.Provider,
-            _ state: PickerState
+            _ state: PreviewData.FolderPickerState
         ) -> ShotScene {
             ShotScene(id: id, size: CGSize(width: 460, height: 560)) {
                 ShotStage(
                     SyncSetupWizard.stagedPicker(
-                        stagedBrowser(provider, state)
+                        PreviewData.folderBrowser(provider, state)
                     )
                 )
             }
-        }
-
-        @MainActor
-        private static func stagedBrowser(
-            _ provider: StorageFolderBrowser.Provider,
-            _ state: PickerState
-        ) -> StorageFolderBrowser {
-            func folder(_ name: String) -> BridgeStorageFolder {
-                BridgeStorageFolder(
-                    name: name,
-                    location: provider == .dropbox
-                        ? .dropbox(
-                            location: .sharedFolder(namespaceId: name),
-                            accountLabel: nil,
-                            folderLabel: nil
-                        )
-                        : .oneDrive(
-                            driveId: "drive",
-                            folderId: name,
-                            accountLabel: nil,
-                            folderLabel: nil
-                        )
-                )
-            }
-            let names =
-                provider == .dropbox
-                ? ["Family", "Music", "Photos"] : ["Live", "Albums", "Mixes"]
-            let path =
-                provider == .dropbox
-                ? [] : [folder("OneDrive"), folder("Music")]
-            let folders = state == .none ? [] : names.map(folder)
-            let listing = StorageFolderBrowser.Listing(
-                path: path,
-                folders: state == .made ? folders + [folder("bae")] : folders
-            )
-            let selected: BridgeStorageFolder? =
-                switch state {
-                case .list, .notEmpty: folder(names[1])
-                case .made: folder("bae")
-                case .naming, .none: nil
-                }
-            return StorageFolderBrowser(
-                staged: provider,
-                listing: listing,
-                nests: provider == .oneDrive,
-                selected: selected,
-                isNaming: state == .naming,
-                newFolderName: state == .naming ? "bae" : "",
-                notEmpty: state == .notEmpty ? folder(names[1]) : nil
-            )
         }
     #else
         static let folderPickerScenes: [ShotScene] = []

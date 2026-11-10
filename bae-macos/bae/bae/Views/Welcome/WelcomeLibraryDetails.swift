@@ -104,15 +104,13 @@ extension BridgeLibraryStanding {
 
 #if DEBUG
     #Preview("Synced") {
-        WelcomeLibraryDetails(
-            library: PreviewData.welcomeDropboxLibrary,
+        PreviewScenes.welcomeLibraryDetails(
             readStanding: { _ in PreviewData.standingSynced }
         )
     }
 
     #Preview("Unsent changes") {
-        WelcomeLibraryDetails(
-            library: PreviewData.welcomeDropboxLibrary,
+        PreviewScenes.welcomeLibraryDetails(
             readStanding: { _ in PreviewData.standingUnsent }
         )
     }

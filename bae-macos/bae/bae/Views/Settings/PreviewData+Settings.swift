@@ -226,4 +226,77 @@
             makeConfigStore(libraryFullWidth: false, storage: storage)
         }
     }
+
+    #if BAE_OAUTH_PROVIDERS
+        extension PreviewData {
+            // MARK: - Folder picker
+
+            /// What set up sync's folder picker shows.
+            enum FolderPickerState {
+                /// The folders, one selected.
+                case list
+                /// The name field for a new folder, filled in.
+                case naming
+                /// The folder it just made, selected.
+                case made
+                /// A selected folder setup found holding other files.
+                case notEmpty
+                /// No folders.
+                case none
+            }
+
+            /// A `provider` folder browser signed in and showing `state`.
+            @MainActor
+            static func folderBrowser(
+                _ provider: StorageFolderBrowser.Provider,
+                _ state: FolderPickerState
+            ) -> StorageFolderBrowser {
+                func folder(_ name: String) -> BridgeStorageFolder {
+                    BridgeStorageFolder(
+                        name: name,
+                        location: provider == .dropbox
+                            ? .dropbox(
+                                location: .sharedFolder(namespaceId: name),
+                                accountLabel: nil,
+                                folderLabel: nil
+                            )
+                            : .oneDrive(
+                                driveId: "drive",
+                                folderId: name,
+                                accountLabel: nil,
+                                folderLabel: nil
+                            )
+                    )
+                }
+                let names =
+                    provider == .dropbox
+                    ? ["Family", "Music", "Photos"]
+                    : ["Live", "Albums", "Mixes"]
+                let path =
+                    provider == .dropbox
+                    ? [] : [folder("OneDrive"), folder("Music")]
+                let folders = state == .none ? [] : names.map(folder)
+                let listing = StorageFolderBrowser.Listing(
+                    path: path,
+                    folders: state == .made
+                        ? folders + [folder("bae")] : folders
+                )
+                let selected: BridgeStorageFolder? =
+                    switch state {
+                    case .list, .notEmpty: folder(names[1])
+                    case .made: folder("bae")
+                    case .naming, .none: nil
+                    }
+                return StorageFolderBrowser(
+                    staged: provider,
+                    listing: listing,
+                    nests: provider == .oneDrive,
+                    selected: selected,
+                    isNaming: state == .naming,
+                    newFolderName: state == .naming ? "bae" : "",
+                    notEmpty: state == .notEmpty ? folder(names[1]) : nil
+                )
+            }
+        }
+    #endif
 #endif

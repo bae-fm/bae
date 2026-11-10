@@ -635,12 +635,7 @@ struct SetupStep<Fields: View, Leading: View>: View {
     }
 
     #Preview("Provider Selection") {
-        SyncSetupWizard(onDone: {})
-            .environment(PreviewData.configStore())
-            .environment(PreviewData.previewSync(storage: nil))
-            #if BAE_OAUTH_PROVIDERS
-                .environment(CloudSyncSetup())
-            #endif
+        SyncSetupWizard.choosing()
     }
 
     #Preview("Connecting") {
@@ -654,4 +649,46 @@ struct SetupStep<Fields: View, Leading: View>: View {
     #Preview("Cancelling") {
         SyncSetupWizard.staged(.cancelling)
     }
+
+    #if BAE_OAUTH_PROVIDERS
+        #Preview("Signing in to Dropbox") {
+            SyncSetupWizard.signingInToDropbox()
+        }
+
+        #Preview("Folder picker") {
+            SyncSetupWizard.stagedPicker(
+                PreviewData.folderBrowser(.dropbox, .list)
+            )
+        }
+
+        #Preview("Folder picker — naming a folder") {
+            SyncSetupWizard.stagedPicker(
+                PreviewData.folderBrowser(.dropbox, .naming)
+            )
+        }
+
+        #Preview("Folder picker — folder made") {
+            SyncSetupWizard.stagedPicker(
+                PreviewData.folderBrowser(.dropbox, .made)
+            )
+        }
+
+        #Preview("Folder picker — folder not empty") {
+            SyncSetupWizard.stagedPicker(
+                PreviewData.folderBrowser(.dropbox, .notEmpty)
+            )
+        }
+
+        #Preview("Folder picker — no folders") {
+            SyncSetupWizard.stagedPicker(
+                PreviewData.folderBrowser(.dropbox, .none)
+            )
+        }
+
+        #Preview("Folder picker — OneDrive") {
+            SyncSetupWizard.stagedPicker(
+                PreviewData.folderBrowser(.oneDrive, .list)
+            )
+        }
+    #endif
 #endif

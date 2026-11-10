@@ -219,21 +219,6 @@ private struct LibraryRow: View {
 
 #if DEBUG
     #Preview {
-        LocalLibrariesSection(
-            libraries: PreviewData.welcomeLibraries,
-            disabled: false,
-            canDeleteActiveLibrary: true,
-            removing: nil,
-            opening: nil,
-            onOpen: { _ in },
-            onFinish: { _, _ in },
-            onFinishRemoving: { _ in },
-            onRemove: { _ in },
-            readStanding: { _ in PreviewData.standingSynced },
-            onCreate: {},
-            onScanCode: {},
-            onEnterCode: {}
-        )
-        .padding()
+        PreviewScenes.welcomeLibraries()
     }
 #endif
