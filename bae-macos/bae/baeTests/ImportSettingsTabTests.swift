@@ -85,11 +85,9 @@ struct ImportSettingsTabTests {
         ) { _, host in
             try await SnapshotTestSupport.settle(host)
 
-            // The settings section draws its two switches first, identify
-            // automatically then importing when identified.
-            let importSwitch = try #require(
-                switches(in: host).dropFirst().first
-            )
+            // Importing when identified is the pane's last switch, in the box
+            // under the one holding identification and the sources.
+            let importSwitch = try #require(switches(in: host).last)
             #expect(importSwitch.isEnabled)
             HostedInput.press(importSwitch)
             try await SnapshotTestSupport.settle(host)
@@ -117,9 +115,7 @@ struct ImportSettingsTabTests {
             try await SnapshotTestSupport.settle(host)
 
             #expect(keyField(in: host) != nil)
-            // Core lists the sources in its own order and Discogs is the last of
-            // them, so the last switch on the pane is the one the key unlocks.
-            #expect(switches(in: host).last?.isEnabled == false)
+            #expect(discogsSwitch(in: host)?.isEnabled == false)
         }
     }
 
@@ -132,7 +128,7 @@ struct ImportSettingsTabTests {
             try await SnapshotTestSupport.settle(host)
 
             #expect(keyField(in: host) == nil)
-            #expect(switches(in: host).last?.isEnabled == true)
+            #expect(discogsSwitch(in: host)?.isEnabled == true)
         }
     }
 
@@ -168,6 +164,13 @@ struct ImportSettingsTabTests {
 
     private func switches(in host: NSView) -> [NSSwitch] {
         SnapshotTestSupport.descendants(of: host).compactMap { $0 as? NSSwitch }
+    }
+
+    /// Core lists the sources in its own order and Discogs is the last of
+    /// them, so the switch just above the one importing when identified is the
+    /// one the key unlocks.
+    private func discogsSwitch(in host: NSView) -> NSSwitch? {
+        switches(in: host).dropLast().last
     }
 
     private func keyField(in host: NSView) -> NSTextField? {

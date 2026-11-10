@@ -14,28 +14,11 @@ struct ImportSettingsTab: View {
     var body: some View {
         Form {
             Section {
-                Toggle("Identify automatically", isOn: identifyAutomatically)
-                Toggle(
-                    "Import automatically when identified",
-                    isOn: importWhenIdentified
+                SettingToggleRow(
+                    title: "Identify automatically",
+                    note: "Looks up each new album as soon as it’s added.",
+                    isOn: identifyAutomatically
                 )
-            } header: {
-                Text("Metadata")
-            } footer: {
-                VStack(alignment: .leading, spacing: ThemeSpace.compact) {
-                    Text(
-                        "Identify automatically: new candidates are identified as they are added."
-                    )
-                    Text(
-                        "Import automatically when identified: while this is on, a candidate whose identification needs nothing from you is imported right away, where your last import went, including identifications you start yourself."
-                    )
-                }
-                .themeText(.detail)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-
-            Section {
                 ForEach(sourceSwitches.beforeKey, id: \.catalog) { setting in
                     sourceToggle(setting)
                 }
@@ -45,15 +28,22 @@ struct ImportSettingsTab: View {
                         sourceToggle(setting)
                     }
                 }
-            } header: {
-                Text("Sources")
             } footer: {
                 Text(
-                    "Identification asks the sources that are checked here."
+                    "Searching both MusicBrainz and Discogs helps bae recognise more of your albums automatically."
                 )
                 .themeText(.detail)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            Section {
+                SettingToggleRow(
+                    title: "Import automatically when identified",
+                    note:
+                        "Adds the album to your library once bae is sure of the match.",
+                    isOn: importWhenIdentified
+                )
             }
         }
         .formStyle(.grouped)
