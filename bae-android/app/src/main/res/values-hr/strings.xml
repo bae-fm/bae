@@ -36,7 +36,7 @@
     <string name="album_options">Mogućnosti albuma</string>
     <string name="delete_album">Izbriši album…</string>
     <string name="delete_album_confirm_title">Izbrisati ovaj album?</string>
-    <string name="delete_album_confirm_body">Sva izdanja ovog albuma brišu se iz fonoteke, zajedno s kopijama njihovih datoteka koje bae čuva na ovom uređaju i u oblaku. Datoteke u vašim mapama ne brišu se. Ovo se ne može poništiti.</string>
+    <string name="delete_album_confirm_body">Sva izdanja ovog albuma trajno će se izbrisati s vaših uređaja i iz oblaka. Izvorne datoteke u vašim mapama neće se dirati.</string>
     <string name="delete_album_confirm">Izbriši</string>
     <string name="now_playing">Trenutno svira</string>
     <string name="paused">Pauzirano</string>

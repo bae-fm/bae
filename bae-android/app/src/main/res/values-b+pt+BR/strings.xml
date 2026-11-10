@@ -36,7 +36,7 @@
     <string name="album_options">Opções do álbum</string>
     <string name="delete_album">Excluir álbum…</string>
     <string name="delete_album_confirm_title">Excluir este álbum?</string>
-    <string name="delete_album_confirm_body">Todos os lançamentos deste álbum são excluídos da biblioteca, junto com as cópias dos arquivos deles que o bae mantém neste dispositivo e na nuvem. Os arquivos nas suas próprias pastas não são excluídos. Isso não pode ser desfeito.</string>
+    <string name="delete_album_confirm_body">Todos os lançamentos deste álbum serão excluídos permanentemente dos seus dispositivos e da nuvem. Os arquivos originais nas suas pastas não serão alterados.</string>
     <string name="delete_album_confirm">Excluir</string>
     <string name="now_playing">Tocando agora</string>
     <string name="paused">Pausado</string>

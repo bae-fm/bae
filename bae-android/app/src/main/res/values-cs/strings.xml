@@ -36,7 +36,7 @@
     <string name="album_options">Možnosti alba</string>
     <string name="delete_album">Smazat album…</string>
     <string name="delete_album_confirm_title">Smazat toto album?</string>
-    <string name="delete_album_confirm_body">Všechna vydání tohoto alba se smažou z knihovny spolu s kopiemi jejich souborů, které bae uchovává v tomto zařízení a v cloudu. Soubory ve vašich složkách se nesmažou. Akci nelze vrátit zpět.</string>
+    <string name="delete_album_confirm_body">Všechna vydání tohoto alba budou trvale smazána z vašich zařízení i z cloudu. Původní soubory ve vašich složkách zůstanou nedotčené.</string>
     <string name="delete_album_confirm">Smazat</string>
     <string name="now_playing">Právě hraje</string>
     <string name="paused">Pozastaveno</string>

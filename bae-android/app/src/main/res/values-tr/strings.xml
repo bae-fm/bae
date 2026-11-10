@@ -36,7 +36,7 @@
     <string name="album_options">Albüm seçenekleri</string>
     <string name="delete_album">Albümü sil…</string>
     <string name="delete_album_confirm_title">Bu albüm silinsin mi?</string>
-    <string name="delete_album_confirm_body">Bu albümün tüm yayınları, bae\'nin bu cihazda ve bulutta tuttuğu dosya kopyalarıyla birlikte kitaplıktan silinir. Kendi klasörlerinizdeki dosyalar silinmez. Bu işlem geri alınamaz.</string>
+    <string name="delete_album_confirm_body">Bu albümün tüm yayınları cihazlarınızdan ve buluttan kalıcı olarak silinecek. Klasörlerinizdeki özgün dosyalara dokunulmayacak.</string>
     <string name="delete_album_confirm">Sil</string>
     <string name="now_playing">Çalıyor</string>
     <string name="paused">Duraklatıldı</string>

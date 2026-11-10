@@ -36,7 +36,7 @@
     <string name="album_options">アルバムオプション</string>
     <string name="delete_album">アルバムを削除…</string>
     <string name="delete_album_confirm_title">このアルバムを削除しますか？</string>
-    <string name="delete_album_confirm_body">このアルバムのすべてのリリースがライブラリから削除され、bae がこのデバイスとクラウドに保持しているファイルのコピーも削除されます。自分のフォルダ内のファイルは削除されません。この操作は取り消せません。</string>
+    <string name="delete_album_confirm_body">このアルバムのすべてのリリースが、お使いのデバイスとクラウドから完全に削除されます。フォルダ内の元のファイルには手を加えません。</string>
     <string name="delete_album_confirm">削除</string>
     <string name="now_playing">再生中</string>
     <string name="paused">一時停止中</string>

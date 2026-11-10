@@ -181,7 +181,9 @@ it holds in one write, and is refused for an album holding none. An album
 left with no release is never deleted itself: another device may have added a
 release to it while apart. It is inert, since every listing shows only albums
 holding a release, and a release that lands in it later fills it again. Both
-deletes ask first, saying what goes and that it can't be undone. On macOS the
+deletes ask first, saying that the release, or every release of the album, will be
+permanently deleted from the person's devices and the cloud, and that the
+original files in their folders won't be touched. On macOS the
 album detail's menu offers *Delete release* and *Delete album…*, and a grid
 card's menu offers *Delete album…* when it acts on one album; on Android the
 album page's menu offers *Delete album…*.

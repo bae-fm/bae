@@ -36,7 +36,7 @@
     <string name="album_options">Albumin valinnat</string>
     <string name="delete_album">Poista albumi…</string>
     <string name="delete_album_confirm_title">Poistetaanko tämä albumi?</string>
-    <string name="delete_album_confirm_body">Kaikki tämän albumin julkaisut poistetaan kirjastosta yhdessä niiden tiedostojen kopioiden kanssa, joita bae säilyttää tällä laitteella ja pilvessä. Omissa kansioissasi olevia tiedostoja ei poisteta. Toimintoa ei voi kumota.</string>
+    <string name="delete_album_confirm_body">Kaikki tämän albumin julkaisut poistetaan pysyvästi laitteiltasi ja pilvestä. Kansioissasi olevia alkuperäisiä tiedostoja ei kosketa.</string>
     <string name="delete_album_confirm">Poista</string>
     <string name="now_playing">Nyt toistetaan</string>
     <string name="paused">Tauolla</string>

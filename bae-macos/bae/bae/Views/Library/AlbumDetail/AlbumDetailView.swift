@@ -163,7 +163,7 @@ struct AlbumDetailView: View {
             Button("Cancel", role: .cancel) { releaseIdPendingDelete = nil }
         } message: {
             Text(
-                "Are you sure you want to delete this release? This cannot be undone."
+                "This release will be permanently deleted from your devices and the cloud. Original files in your folders won't be touched."
             )
         }
         .deleteAlbumConfirmation(albumId: $albumIdPendingDelete) { albumId in

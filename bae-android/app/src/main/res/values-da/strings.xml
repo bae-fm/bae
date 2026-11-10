@@ -36,7 +36,7 @@
     <string name="album_options">Albumindstillinger</string>
     <string name="delete_album">Slet album…</string>
     <string name="delete_album_confirm_title">Slet dette album?</string>
-    <string name="delete_album_confirm_body">Alle udgivelser af dette album slettes fra biblioteket sammen med de kopier af deres filer, som bae gemmer på denne enhed og i skyen. Filer i dine egne mapper slettes ikke. Det kan ikke fortrydes.</string>
+    <string name="delete_album_confirm_body">Alle udgivelser af dette album slettes permanent fra dine enheder og fra skyen. De originale filer i dine mapper bliver ikke rørt.</string>
     <string name="delete_album_confirm">Slet</string>
     <string name="now_playing">Afspilles nu</string>
     <string name="paused">På pause</string>

@@ -36,7 +36,7 @@
     <string name="album_options">Opzioni album</string>
     <string name="delete_album">Elimina album…</string>
     <string name="delete_album_confirm_title">Eliminare questo album?</string>
-    <string name="delete_album_confirm_body">Tutte le pubblicazioni di questo album vengono eliminate dalla libreria, insieme alle copie dei loro file che bae conserva su questo dispositivo e nel cloud. I file nelle tue cartelle non vengono eliminati. L\'azione non può essere annullata.</string>
+    <string name="delete_album_confirm_body">Tutte le pubblicazioni di questo album verranno eliminate definitivamente dai tuoi dispositivi e dal cloud. I file originali nelle tue cartelle non verranno toccati.</string>
     <string name="delete_album_confirm">Elimina</string>
     <string name="now_playing">In riproduzione</string>
     <string name="paused">In pausa</string>

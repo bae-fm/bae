@@ -36,7 +36,7 @@
     <string name="album_options">Album beállításai</string>
     <string name="delete_album">Album törlése…</string>
     <string name="delete_album_confirm_title">Törlöd ezt az albumot?</string>
-    <string name="delete_album_confirm_body">Az album összes kiadása törlődik a könyvtárból, a fájljaik azon másolataival együtt, amelyeket a bae ezen az eszközön és a felhőben tárol. A saját mappáidban lévő fájlok nem törlődnek. A művelet nem vonható vissza.</string>
+    <string name="delete_album_confirm_body">Az album összes kiadása véglegesen törlődik az eszközeidről és a felhőből. A mappáidban lévő eredeti fájlokhoz nem nyúlunk.</string>
     <string name="delete_album_confirm">Törlés</string>
     <string name="now_playing">Most szól</string>
     <string name="paused">Szüneteltetve</string>

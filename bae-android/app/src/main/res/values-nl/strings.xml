@@ -36,7 +36,7 @@
     <string name="album_options">Albumopties</string>
     <string name="delete_album">Album verwijderen…</string>
     <string name="delete_album_confirm_title">Dit album verwijderen?</string>
-    <string name="delete_album_confirm_body">Alle releases van dit album worden uit de bibliotheek verwijderd, samen met de kopieën van hun bestanden die bae op dit apparaat en in de cloud bewaart. Bestanden in je eigen mappen worden niet verwijderd. Dit kan niet ongedaan worden gemaakt.</string>
+    <string name="delete_album_confirm_body">Alle releases van dit album worden definitief van je apparaten en uit de cloud verwijderd. Originele bestanden in je mappen blijven ongemoeid.</string>
     <string name="delete_album_confirm">Verwijderen</string>
     <string name="now_playing">Speelt nu</string>
     <string name="paused">Gepauzeerd</string>

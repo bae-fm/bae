@@ -36,7 +36,7 @@
     <string name="album_options">Opcje albumu</string>
     <string name="delete_album">Usuń album…</string>
     <string name="delete_album_confirm_title">Usunąć ten album?</string>
-    <string name="delete_album_confirm_body">Wszystkie wydania tego albumu zostaną usunięte z biblioteki razem z kopiami ich plików, które bae przechowuje na tym urządzeniu i w chmurze. Pliki w Twoich folderach nie są usuwane. Tej operacji nie można cofnąć.</string>
+    <string name="delete_album_confirm_body">Wszystkie wydania tego albumu zostaną trwale usunięte z Twoich urządzeń i z chmury. Oryginalne pliki w Twoich folderach nie zostaną naruszone.</string>
     <string name="delete_album_confirm">Usuń</string>
     <string name="now_playing">Teraz odtwarzane</string>
     <string name="paused">Wstrzymano</string>

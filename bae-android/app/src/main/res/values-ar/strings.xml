@@ -36,7 +36,7 @@
     <string name="album_options">خيارات الألبوم</string>
     <string name="delete_album">حذف الألبوم…</string>
     <string name="delete_album_confirm_title">حذف هذا الألبوم؟</string>
-    <string name="delete_album_confirm_body">تُحذف كل إصدارات هذا الألبوم من المكتبة، مع نسخ ملفاتها التي يحتفظ بها bae على هذا الجهاز وفي السحابة. لا تُحذف الملفات الموجودة في مجلداتك. لا يمكن التراجع عن هذا.</string>
+    <string name="delete_album_confirm_body">ستُحذف كل إصدارات هذا الألبوم نهائيًا من أجهزتك ومن السحابة. لن تُمَسّ الملفات الأصلية في مجلداتك.</string>
     <string name="delete_album_confirm">حذف</string>
     <string name="now_playing">قيد التشغيل الآن</string>
     <string name="paused">متوقف مؤقتًا</string>

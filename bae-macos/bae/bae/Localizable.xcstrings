@@ -1,6 +1,179 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Every release of this album will be permanently deleted from your devices and the cloud. Original files in your folders won't be touched." : {
+      "comment" : "Album grid and album detail: what deleting an album deletes and keeps",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ستُحذف كل إصدارات هذا الألبوم نهائيًا من أجهزتك ومن السحابة. لن تُمَسّ الملفات الأصلية في مجلداتك."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Всички издания на този албум ще бъдат изтрити завинаги от вашите устройства и от облака. Оригиналните файлове във вашите папки няма да бъдат докоснати."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Všechna vydání tohoto alba budou trvale smazána z vašich zařízení i z cloudu. Původní soubory ve vašich složkách zůstanou nedotčené."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle udgivelser af dette album slettes permanent fra dine enheder og fra skyen. De originale filer i dine mapper bliver ikke rørt."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle Veröffentlichungen dieses Albums werden endgültig von deinen Geräten und aus der Cloud gelöscht. Originaldateien in deinen Ordnern werden nicht angetastet."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Όλες οι κυκλοφορίες αυτού του άλμπουμ θα διαγραφούν οριστικά από τις συσκευές σας και από το cloud. Τα αρχικά αρχεία στους φακέλους σας δεν θα επηρεαστούν."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Every release of this album will be permanently deleted from your devices and the cloud. Original files in your folders won't be touched."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Todas las ediciones de este álbum se eliminarán de forma permanente de tus dispositivos y de la nube. Los archivos originales de tus carpetas no se tocarán."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kaikki tämän albumin julkaisut poistetaan pysyvästi laitteiltasi ja pilvestä. Kansioissasi olevia alkuperäisiä tiedostoja ei kosketa."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Toutes les éditions de cet album seront supprimées définitivement de vos appareils et du cloud. Les fichiers originaux de vos dossiers ne seront pas modifiés."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כל המהדורות של האלבום הזה יימחקו לצמיתות מהמכשירים שלך ומהענן. הקבצים המקוריים בתיקיות שלך לא ייפגעו."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sva izdanja ovog albuma trajno će se izbrisati s vaših uređaja i iz oblaka. Izvorne datoteke u vašim mapama neće se dirati."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Az album összes kiadása véglegesen törlődik az eszközeidről és a felhőből. A mappáidban lévő eredeti fájlokhoz nem nyúlunk."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tutte le pubblicazioni di questo album verranno eliminate definitivamente dai tuoi dispositivi e dal cloud. I file originali nelle tue cartelle non verranno toccati."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このアルバムのすべてのリリースが、お使いのデバイスとクラウドから完全に削除されます。フォルダ内の元のファイルには手を加えません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 앨범의 모든 릴리스가 내 기기와 클라우드에서 영구적으로 삭제됩니다. 내 폴더의 원본 파일은 변경되지 않습니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle utgivelser av dette albumet slettes permanent fra enhetene dine og fra skyen. Originalfilene i mappene dine blir ikke rørt."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle releases van dit album worden definitief van je apparaten en uit de cloud verwijderd. Originele bestanden in je mappen blijven ongemoeid."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wszystkie wydania tego albumu zostaną trwale usunięte z Twoich urządzeń i z chmury. Oryginalne pliki w Twoich folderach nie zostaną naruszone."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Todos os lançamentos deste álbum serão excluídos permanentemente dos seus dispositivos e da nuvem. Os arquivos originais nas suas pastas não serão alterados."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Todas as edições deste álbum serão eliminadas permanentemente dos seus dispositivos e da nuvem. Os ficheiros originais nas suas pastas não serão alterados."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Toate edițiile acestui album vor fi șterse definitiv de pe dispozitivele tale și din cloud. Fișierele originale din dosarele tale nu vor fi atinse."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Všetky vydania tohto albumu sa natrvalo odstránia z tvojich zariadení aj z cloudu. Pôvodné súbory v tvojich priečinkoch sa nedotknú."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alla utgåvor av det här albumet raderas permanent från dina enheter och från molnet. Originalfilerna i dina mappar rörs inte."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bu albümün tüm yayınları cihazlarınızdan ve buluttan kalıcı olarak silinecek. Klasörlerinizdeki özgün dosyalara dokunulmayacak."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Усі релізи цього альбому буде остаточно видалено з ваших пристроїв і з хмари. Оригінальні файли у ваших теках не буде змінено."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此专辑的所有版本将从你的设备和云端永久删除。你文件夹中的原始文件不会受到影响。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此專輯的所有發行將從你的裝置和雲端永久刪除。你資料夾中的原始檔案不會受到影響。"
+          }
+        }
+      }
+    },
     "Make sure this code is showing:" : {
       "comment" : "Join request sheet: asks the admin to check the requester's screen shows the same code.",
       "localizations" : {
@@ -5647,6 +5820,179 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "此裝置的移除尚未傳到這部 Mac"
+          }
+        }
+      }
+    },
+    "This release will be permanently deleted from your devices and the cloud. Original files in your folders won't be touched." : {
+      "comment" : "Album detail: delete-release confirmation message",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "سيُحذف هذا الإصدار نهائيًا من أجهزتك ومن السحابة. لن تُمَسّ الملفات الأصلية في مجلداتك."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Това издание ще бъде изтрито завинаги от вашите устройства и от облака. Оригиналните файлове във вашите папки няма да бъдат докоснати."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Toto vydání bude trvale smazáno z vašich zařízení i z cloudu. Původní soubory ve vašich složkách zůstanou nedotčené."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Denne udgivelse slettes permanent fra dine enheder og fra skyen. De originale filer i dine mapper bliver ikke rørt."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Veröffentlichung wird endgültig von deinen Geräten und aus der Cloud gelöscht. Originaldateien in deinen Ordnern werden nicht angetastet."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Αυτή η κυκλοφορία θα διαγραφεί οριστικά από τις συσκευές σας και από το cloud. Τα αρχικά αρχεία στους φακέλους σας δεν θα επηρεαστούν."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This release will be permanently deleted from your devices and the cloud. Original files in your folders won't be touched."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta edición se eliminará de forma permanente de tus dispositivos y de la nube. Los archivos originales de tus carpetas no se tocarán."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tämä julkaisu poistetaan pysyvästi laitteiltasi ja pilvestä. Kansioissasi olevia alkuperäisiä tiedostoja ei kosketa."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cette édition sera supprimée définitivement de vos appareils et du cloud. Les fichiers originaux de vos dossiers ne seront pas modifiés."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "המהדורה הזו תימחק לצמיתות מהמכשירים שלך ומהענן. הקבצים המקוריים בתיקיות שלך לא ייפגעו."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ovo izdanje trajno će se izbrisati s vaših uređaja i iz oblaka. Izvorne datoteke u vašim mapama neće se dirati."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ez a kiadás véglegesen törlődik az eszközeidről és a felhőből. A mappáidban lévő eredeti fájlokhoz nem nyúlunk."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Questa pubblicazione verrà eliminata definitivamente dai tuoi dispositivi e dal cloud. I file originali nelle tue cartelle non verranno toccati."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このリリースは、お使いのデバイスとクラウドから完全に削除されます。フォルダ内の元のファイルには手を加えません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 릴리스가 내 기기와 클라우드에서 영구적으로 삭제됩니다. 내 폴더의 원본 파일은 변경되지 않습니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Denne utgivelsen slettes permanent fra enhetene dine og fra skyen. Originalfilene i mappene dine blir ikke rørt."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deze release wordt definitief van je apparaten en uit de cloud verwijderd. Originele bestanden in je mappen blijven ongemoeid."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To wydanie zostanie trwale usunięte z Twoich urządzeń i z chmury. Oryginalne pliki w Twoich folderach nie zostaną naruszone."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este lançamento será excluído permanentemente dos seus dispositivos e da nuvem. Os arquivos originais nas suas pastas não serão alterados."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta edição será eliminada permanentemente dos seus dispositivos e da nuvem. Os ficheiros originais nas suas pastas não serão alterados."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Această ediție va fi ștearsă definitiv de pe dispozitivele tale și din cloud. Fișierele originale din dosarele tale nu vor fi atinse."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Toto vydanie sa natrvalo odstráni z tvojich zariadení aj z cloudu. Pôvodné súbory v tvojich priečinkoch sa nedotknú."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Den här utgåvan raderas permanent från dina enheter och från molnet. Originalfilerna i dina mappar rörs inte."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bu yayın cihazlarınızdan ve buluttan kalıcı olarak silinecek. Klasörlerinizdeki özgün dosyalara dokunulmayacak."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Цей реліз буде остаточно видалено з ваших пристроїв і з хмари. Оригінальні файли у ваших теках не буде змінено."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此版本将从你的设备和云端永久删除。你文件夹中的原始文件不会受到影响。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此發行將從你的裝置和雲端永久刪除。你資料夾中的原始檔案不會受到影響。"
           }
         }
       }
@@ -28768,179 +29114,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "核准"
-          }
-        }
-      }
-    },
-    "Are you sure you want to delete this release? This cannot be undone." : {
-      "comment" : "Album detail: delete-release confirmation message",
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "هل أنت متأكد من حذف هذا الإصدار؟ لا يمكن التراجع عن هذا."
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Сигурни ли сте, че искате да изтриете това издание? Действието е необратимо."
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Opravdu chcete toto vydání smazat? Akci nelze vrátit zpět."
-          }
-        },
-        "da" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Er du sikker på, at du vil slette denne udgivelse? Det kan ikke fortrydes."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Are you sure you want to delete this release? This cannot be undone."
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Möchtest du diese Veröffentlichung wirklich löschen? Das kann nicht rückgängig gemacht werden."
-          }
-        },
-        "el" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Θέλετε σίγουρα να διαγράψετε αυτή την κυκλοφορία; Η ενέργεια δεν αναιρείται."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "¿Seguro que quieres eliminar esta edición? Esta acción no se puede deshacer."
-          }
-        },
-        "fi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Haluatko varmasti poistaa tämän julkaisun? Toimintoa ei voi kumota."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Voulez-vous vraiment supprimer cette édition ? Cette action est irréversible."
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "למחוק את המהדורה הזו? לא ניתן לבטל פעולה זו."
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Jeste li sigurni da želite izbrisati ovo izdanje? Ovo se ne može poništiti."
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Biztosan törlöd ezt a kiadást? A művelet nem vonható vissza."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vuoi davvero eliminare questa pubblicazione? L'azione non può essere annullata."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "このリリースを削除してもよろしいですか？この操作は取り消せません。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "이 릴리스를 삭제할까요? 되돌릴 수 없습니다."
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Er du sikker på at du vil slette denne utgivelsen? Dette kan ikke angres."
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Weet je zeker dat je deze release wilt verwijderen? Dit kan niet ongedaan worden gemaakt."
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Na pewno usunąć to wydanie? Tej operacji nie można cofnąć."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tem certeza de que deseja excluir este lançamento? Isso não pode ser desfeito."
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tem a certeza de que quer eliminar esta edição? Não é possível anular."
-          }
-        },
-        "ro" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sigur vrei să ștergi această ediție? Acțiunea nu poate fi anulată."
-          }
-        },
-        "sk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Naozaj chceš toto vydanie odstrániť? Nedá sa to vrátiť späť."
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vill du verkligen radera den här utgåvan? Det går inte att ångra."
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bu yayını silmek istediğinizden emin misiniz? Bu işlem geri alınamaz."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ви впевнені, що хочете видалити цей реліз? Цю дію не можна скасувати."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "确定要删除此版本吗？此操作无法撤销。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "確定要刪除此發行嗎？此操作無法復原。"
           }
         }
       }
@@ -126605,179 +126778,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "刪除專輯"
-          }
-        }
-      }
-    },
-    "Every release of this album is deleted from the library, along with the copies of their files that bae keeps on this Mac and in the cloud. Files in your own folders aren't deleted. This cannot be undone." : {
-      "comment" : "Album grid and album detail: what deleting an album deletes and keeps",
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "تُحذف كل إصدارات هذا الألبوم من المكتبة، مع نسخ ملفاتها التي يحتفظ بها bae على هذا الـ Mac وفي السحابة. لا يتم حذف الملفات الموجودة في مجلداتك. لا يمكن التراجع عن هذا."
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Всички издания на този албум се изтриват от библиотеката заедно с копията на файловете им, които bae пази на този Mac и в облака. Файловете във вашите папки не се изтриват. Действието е необратимо."
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Všechna vydání tohoto alba se smažou z knihovny spolu s kopiemi jejich souborů, které bae uchovává na tomto Macu a v cloudu. Soubory ve vašich složkách se nesmažou. Akci nelze vrátit zpět."
-          }
-        },
-        "da" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Alle udgivelser af dette album slettes fra biblioteket sammen med de kopier af deres filer, som bae gemmer på denne Mac og i skyen. Filer i dine egne mapper slettes ikke. Det kan ikke fortrydes."
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Alle Veröffentlichungen dieses Albums werden aus der Bibliothek gelöscht, zusammen mit den Kopien ihrer Dateien, die bae auf diesem Mac und in der Cloud aufbewahrt. Dateien in deinen eigenen Ordnern werden nicht gelöscht. Das kann nicht rückgängig gemacht werden."
-          }
-        },
-        "el" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Όλες οι κυκλοφορίες αυτού του άλμπουμ διαγράφονται από τη βιβλιοθήκη, μαζί με τα αντίγραφα των αρχείων τους που κρατά το bae σε αυτό το Mac και στο cloud. Τα αρχεία στους δικούς σας φακέλους δεν διαγράφονται. Η ενέργεια δεν αναιρείται."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Every release of this album is deleted from the library, along with the copies of their files that bae keeps on this Mac and in the cloud. Files in your own folders aren't deleted. This cannot be undone."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Todas las ediciones de este álbum se eliminan de la biblioteca, junto con las copias de sus archivos que bae guarda en este Mac y en la nube. Los archivos de tus propias carpetas no se eliminan. Esta acción no se puede deshacer."
-          }
-        },
-        "fi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kaikki tämän albumin julkaisut poistetaan kirjastosta yhdessä niiden tiedostojen kopioiden kanssa, joita bae säilyttää tässä Macissa ja pilvessä. Omissa kansioissasi olevia tiedostoja ei poisteta. Toimintoa ei voi kumota."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Toutes les éditions de cet album sont supprimées de la bibliothèque, ainsi que les copies de leurs fichiers que bae conserve sur ce Mac et dans le cloud. Les fichiers de vos propres dossiers ne sont pas supprimés. Cette action est irréversible."
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "כל המהדורות של האלבום הזה יימחקו מהספרייה, יחד עם העותקים של הקבצים שלהן ש‑bae שומר ב‑Mac הזה ובענן. קבצים בתיקיות שלך אינם נמחקים. לא ניתן לבטל פעולה זו."
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sva izdanja ovog albuma brišu se iz fonoteke, zajedno s kopijama njihovih datoteka koje bae čuva na ovom Macu i u oblaku. Datoteke u vašim mapama ne brišu se. Ovo se ne može poništiti."
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Az album összes kiadása törlődik a könyvtárból, a fájljaik azon másolataival együtt, amelyeket a bae ezen a Macen és a felhőben tárol. A saját mappáidban lévő fájlok nem törlődnek. A művelet nem vonható vissza."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tutte le pubblicazioni di questo album vengono eliminate dalla libreria, insieme alle copie dei loro file che bae conserva su questo Mac e nel cloud. I file nelle tue cartelle non vengono eliminati. L'azione non può essere annullata."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "このアルバムのすべてのリリースがライブラリから削除され、bae がこの Mac とクラウドに保持しているファイルのコピーも削除されます。自分のフォルダ内のファイルは削除されません。この操作は取り消せません。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "이 앨범의 모든 릴리스가 라이브러리에서 삭제되며, bae가 이 Mac과 클라우드에 보관하는 파일 사본도 함께 삭제됩니다. 내 폴더의 파일은 삭제되지 않습니다. 되돌릴 수 없습니다."
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Alle utgivelser av dette albumet slettes fra biblioteket, sammen med kopiene av filene deres som bae oppbevarer på denne Macen og i skyen. Filer i dine egne mapper slettes ikke. Dette kan ikke angres."
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Alle releases van dit album worden uit de bibliotheek verwijderd, samen met de kopieën van hun bestanden die bae op deze Mac en in de cloud bewaart. Bestanden in je eigen mappen worden niet verwijderd. Dit kan niet ongedaan worden gemaakt."
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wszystkie wydania tego albumu zostaną usunięte z biblioteki razem z kopiami ich plików, które bae przechowuje na tym Macu i w chmurze. Pliki w Twoich folderach nie są usuwane. Tej operacji nie można cofnąć."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Todos os lançamentos deste álbum são excluídos da biblioteca, junto com as cópias dos arquivos deles que o bae mantém neste Mac e na nuvem. Os arquivos nas suas próprias pastas não são excluídos. Isso não pode ser desfeito."
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Todas as edições deste álbum são eliminadas da biblioteca, juntamente com as cópias dos respetivos ficheiros que o bae guarda neste Mac e na nuvem. Os ficheiros nas suas próprias pastas não são eliminados. Não é possível anular."
-          }
-        },
-        "ro" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Toate edițiile acestui album sunt șterse din bibliotecă, împreună cu copiile fișierelor lor pe care bae le păstrează pe acest Mac și în cloud. Fișierele din dosarele tale nu sunt șterse. Acțiunea nu poate fi anulată."
-          }
-        },
-        "sk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Všetky vydania tohto albumu sa odstránia z knižnice spolu s kópiami ich súborov, ktoré bae uchováva v tomto Macu a v cloude. Súbory v tvojich priečinkoch sa neodstránia. Nedá sa to vrátiť späť."
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Alla utgåvor av det här albumet raderas från biblioteket, tillsammans med kopiorna av deras filer som bae sparar på den här Macen och i molnet. Filer i dina egna mappar raderas inte. Det går inte att ångra."
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bu albümün tüm yayınları, bae'nin bu Mac'te ve bulutta tuttuğu dosya kopyalarıyla birlikte kitaplıktan silinir. Kendi klasörlerinizdeki dosyalar silinmez. Bu işlem geri alınamaz."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Усі релізи цього альбому буде видалено з бібліотеки разом із копіями їхніх файлів, які bae зберігає на цьому Mac і у хмарі. Файли у ваших власних теках не видаляються. Цю дію не можна скасувати."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "此专辑的所有版本都会从库中删除，bae 在这台 Mac 和云端中保存的文件副本也会一并删除。你自己文件夹中的文件不会被删除。此操作无法撤销。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "此專輯的所有發行都會從資料庫中刪除，bae 在這台 Mac 和雲端中保存的檔案副本也會一併刪除。你自己資料夾中的檔案不會被刪除。此操作無法復原。"
           }
         }
       }

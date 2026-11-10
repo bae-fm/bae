@@ -36,7 +36,7 @@
     <string name="album_options">Opțiuni pentru album</string>
     <string name="delete_album">Șterge albumul…</string>
     <string name="delete_album_confirm_title">Ștergi acest album?</string>
-    <string name="delete_album_confirm_body">Toate edițiile acestui album sunt șterse din bibliotecă, împreună cu copiile fișierelor lor pe care bae le păstrează pe acest dispozitiv și în cloud. Fișierele din dosarele tale nu sunt șterse. Acțiunea nu poate fi anulată.</string>
+    <string name="delete_album_confirm_body">Toate edițiile acestui album vor fi șterse definitiv de pe dispozitivele tale și din cloud. Fișierele originale din dosarele tale nu vor fi atinse.</string>
     <string name="delete_album_confirm">Șterge</string>
     <string name="now_playing">Se redă acum</string>
     <string name="paused">În pauză</string>

@@ -24,7 +24,7 @@ struct DeleteAlbumConfirmation: ViewModifier {
             Button("Cancel", role: .cancel) {}
         } message: { _ in
             Text(
-                "Every release of this album is deleted from the library, along with the copies of their files that bae keeps on this Mac and in the cloud. Files in your own folders aren't deleted. This cannot be undone."
+                "Every release of this album will be permanently deleted from your devices and the cloud. Original files in your folders won't be touched."
             )
         }
     }
