@@ -220,7 +220,16 @@ async fn file_tags_cannot_restore_mappings_read_before_a_file_decision() {
         .await
         .expect_err("the new file snapshot cannot carry mappings from the old file revision");
 
-    assert!(error.to_string().contains("candidate changed"), "{error}");
+    assert!(
+        matches!(
+            error,
+            crate::ImportError::CandidateState(crate::tables::CandidateStateRefusal::FilesChanged {
+                ref content_hash,
+                revision,
+            }) if *content_hash == hash && revision == stale.file_edits.revision
+        ),
+        "{error:?}"
+    );
     shut_down(handle).await;
 }
 
