@@ -641,6 +641,8 @@ impl PlaybackService {
         clock: crate::PlaybackClockRef,
         audio_focus: crate::AudioFocus,
     ) -> PlaybackHandle {
+        #[cfg(target_os = "android")]
+        let output_diagnostics = diagnostics.clone();
         Self::start_inner(
             store,
             records,
@@ -653,7 +655,13 @@ impl PlaybackService {
             runtime_handle,
             position_update_interval_ms,
             restore_playback,
-            Box::new(|report| Arc::new(SystemAudioOutputDevice::new(report))),
+            Box::new(move |report| {
+                Arc::new(SystemAudioOutputDevice::new(
+                    report,
+                    #[cfg(target_os = "android")]
+                    output_diagnostics.clone(),
+                ))
+            }),
             clock,
             audio_focus,
         )

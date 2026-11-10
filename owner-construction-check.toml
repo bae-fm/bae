@@ -683,7 +683,7 @@ OpenCalls = "LibrarySessions"
 "bae-library/src/test_libraries/storage.rs" = ["storage_library"]
 # The writer thread of an output stream: the stream's handle stops it and
 # joins it when dropped.
-"bae-playback/src/aaudio_output.rs" = ["AAudioOutput::create_stream"]
+"bae-playback/src/aaudio_output.rs" = ["AAudioOutput::create_stream", "AAudioOutput::new"]
 # The relay thread: the drain keeps its handle and joins it when dropped.
 "bae-playback/src/event_relay.rs" = ["event_relay"]
 # The follow of the tracks a service holds, made for the service when it is
@@ -1077,7 +1077,10 @@ OpenCalls = "LibrarySessions"
 "bae-playback/src/service/api.rs" = ["PlaybackHandle::new"]
 "bae-playback/src/service/file_buffers.rs" = ["FileBuffers::new"]
 "bae-playback/src/service/library_follow.rs" = ["LibraryFollow::new"]
-"bae-playback/src/service/mod.rs" = ["SystemAudioOutputDevice::new"]
+"bae-playback/src/service/mod.rs" = [
+    "SystemAudioOutputDevice::new",
+    "SystemAudioOutputDevice::open_output",
+]
 "bae-playback/src/service/renderer.rs" = [
     "AirPlayConnect::new",
     "AirPlayRenderer::new",

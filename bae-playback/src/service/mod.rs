@@ -564,16 +564,24 @@ pub(crate) struct SystemAudioOutputDevice {
     #[cfg(target_os = "macos")]
     device_formats:
         Arc<crate::device_formats::DeviceFormats<crate::device_formats::CoreAudioDeviceFormats>>,
+    /// Where a panic on an AAudio output's writer thread is reported.
+    #[cfg(target_os = "android")]
+    diagnostics: Diagnostics,
 }
 
 impl SystemAudioOutputDevice {
-    pub(crate) fn new(report: crate::audio_output::InvalidationReport) -> Self {
+    pub(crate) fn new(
+        report: crate::audio_output::InvalidationReport,
+        #[cfg(target_os = "android")] diagnostics: Diagnostics,
+    ) -> Self {
         Self {
             report,
             #[cfg(target_os = "macos")]
             device_formats: crate::device_formats::DeviceFormats::new(
                 crate::device_formats::CoreAudioDeviceFormats,
             ),
+            #[cfg(target_os = "android")]
+            diagnostics,
         }
     }
 }
@@ -590,7 +598,7 @@ impl AudioOutputDevice for SystemAudioOutputDevice {
 
     #[cfg(target_os = "android")]
     fn open_output(&self) -> Result<Box<dyn AudioOutput>, crate::audio_output::AudioError> {
-        Ok(Box::new(crate::aaudio_output::AAudioOutput))
+        Ok(Box::new(crate::aaudio_output::AAudioOutput::new(self.diagnostics.clone())))
     }
 }
 

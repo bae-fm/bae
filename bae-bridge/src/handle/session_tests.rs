@@ -42,28 +42,24 @@ async fn panicking_close() -> super::Closing {
     Ok(())
 }
 
-/// What a session's `failed` was told, in order.
-type Told = Arc<Mutex<Vec<String>>>;
-
-/// A `failed` that records what it is told, and the record.
-fn told() -> (impl Fn(&dyn std::fmt::Display) + Send + Sync + 'static, Told) {
-    let heard = Told::default();
-    let telling = heard.clone();
-    (move |error: &dyn std::fmt::Display| telling.lock().unwrap().push(error.to_string()), heard)
+/// A reporter that keeps what it is told, and the record.
+fn reporting() -> (bae_diagnostics::Diagnostics, Arc<bae_diagnostics::RecordingBugReporter>) {
+    let reports = Arc::new(bae_diagnostics::RecordingBugReporter::default());
+    (bae_diagnostics::Diagnostics::noop().reporting_bugs_to(reports.clone()), reports)
 }
 
 /// Released on a runtime thread, the close runs on a thread of its own; its
-/// panic is caught there and told to `failed`, so the open that later waits
-/// for that close is not failed by it.
+/// panic is caught there and reported, so the open that later waits for that
+/// close is not failed by it.
 #[test]
-fn a_released_close_that_panics_on_its_thread_is_told_not_raised_into_the_next_open() {
+fn a_released_close_that_panics_on_its_thread_is_reported_not_raised_into_the_next_open() {
     let sessions = crate::host::LibrarySessions::new();
     let session = open_session(&sessions);
-    let (failed, heard) = told();
+    let (diagnostics, reports) = reporting();
     let caller = tokio::runtime::Runtime::new().expect("build the caller's runtime");
 
     caller.block_on(async {
-        session.end_released(panicking_close(), failed);
+        session.end_released(panicking_close(), &diagnostics);
     });
 
     assert!(
@@ -72,23 +68,22 @@ fn a_released_close_that_panics_on_its_thread_is_told_not_raised_into_the_next_o
     );
     sessions.wait(store());
 
-    let heard = heard.lock().unwrap().clone();
-    assert_eq!(heard.len(), 1, "{heard:?}");
-    assert!(heard[0].contains("the close broke its guarantee"), "{heard:?}");
+    let reports = reports.reports();
+    assert_eq!(reports.len(), 1, "{reports:?}");
+    assert!(reports[0].1.contains("the close broke its guarantee"), "{reports:?}");
 }
 
 /// Released off any runtime, the close runs inside the handle's `Drop`; its
-/// panic is caught there and told to `failed`, never unwinding out of the
-/// `Drop`.
+/// panic is caught there and reported, never unwinding out of the `Drop`.
 #[test]
-fn a_released_close_that_panics_inline_is_told_not_unwound() {
+fn a_released_close_that_panics_inline_is_reported_not_unwound() {
     let sessions = crate::host::LibrarySessions::new();
     let session = open_session(&sessions);
-    let (failed, heard) = told();
+    let (diagnostics, reports) = reporting();
 
-    session.end_released(panicking_close(), failed);
+    session.end_released(panicking_close(), &diagnostics);
 
-    let heard = heard.lock().unwrap().clone();
-    assert_eq!(heard.len(), 1, "{heard:?}");
-    assert!(heard[0].contains("the close broke its guarantee"), "{heard:?}");
+    let reports = reports.reports();
+    assert_eq!(reports.len(), 1, "{reports:?}");
+    assert!(reports[0].1.contains("the close broke its guarantee"), "{reports:?}");
 }

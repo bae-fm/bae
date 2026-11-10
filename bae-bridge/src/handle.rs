@@ -1,6 +1,5 @@
 use bae_app::AppServices;
 use bae_playback::QueueEntryId;
-use bae_util::task_failure::ReportedBug;
 use std::sync::PoisonError;
 use tracing::info;
 
@@ -176,6 +175,9 @@ impl SessionState {
 
 type Closing = Result<(), bae_library::LibraryError>;
 
+/// What closing a released handle's library is reported as.
+const CLOSE_RELEASED: &str = "close the library its handle released";
+
 impl Session {
     /// Close the open library with `closing` on its runtime, then shut the
     /// runtime down, waiting for every task on it to end. After a removal
@@ -192,16 +194,16 @@ impl Session {
         ended
     }
 
-    /// [`Self::end`] for a released handle, with no caller to hear a failure,
-    /// which `failed` is told of: the close's error, or its panic. Released
-    /// on a thread of a runtime — the last call on the handle ending on the
-    /// app runtime — it can't wait there for work only a runtime can do, so a
-    /// thread of its own ends the session, and the close stays under way in
-    /// the host's record until that thread ends.
+    /// [`Self::end`] for a released handle, with no caller to hear a failure:
+    /// the close's error, or its panic, is reported to `diagnostics` as the
+    /// bug it is. Released on a thread of a runtime — the last call on the
+    /// handle ending on the app runtime — it can't wait there for work only
+    /// a runtime can do, so a thread of its own ends the session, and the
+    /// close stays under way in the host's record until that thread ends.
     fn end_released(
         &self,
         closing: impl std::future::Future<Output = Closing> + Send + 'static,
-        failed: impl Fn(&dyn std::fmt::Display) + Send + Sync + 'static,
+        diagnostics: &bae_diagnostics::Diagnostics,
     ) {
         let state = std::mem::replace(
             &mut *self.0.lock().unwrap_or_else(PoisonError::into_inner),
@@ -211,20 +213,14 @@ impl Session {
         if matches!(state, Ending::Ended) {
             return;
         }
-        let failed = std::sync::Arc::new(failed);
-        let closing_failed = failed.clone();
+        let reporter = diagnostics.clone();
         let ending: Box<dyn FnOnce() + Send> = Box::new(move || {
-            match bae_util::task_failure::caught_sync("close a released library", || {
-                end(state, closing)
-            }) {
+            match bae_util::task_failure::caught_sync(CLOSE_RELEASED, || end(state, closing)) {
                 Ok(None | Some(Ok(()))) => {}
-                // A bug a coven call carried back was reported as it
-                // returned; the failed close is only logged then.
-                Ok(Some(Err(error))) if error.reported_bug().is_some() => {
-                    tracing::error!("closing a released library failed on a bug: {error}");
+                Ok(Some(Err(error))) => reporter.report_failure(CLOSE_RELEASED, &error),
+                Err(panicked) => {
+                    reporter.panicked(panicked);
                 }
-                Ok(Some(Err(error))) => closing_failed(&error),
-                Err(panicked) => closing_failed(&panicked),
             }
         });
         if tokio::runtime::Handle::try_current().is_err() {
@@ -240,17 +236,18 @@ impl Session {
         // thread, or with a thread that could not start, never with the close
         // forgotten below: a call waiting for it goes on and finds the store
         // still held.
-        #[expect(
-            clippy::disallowed_methods,
-            reason = "the close catches and reports its own panic through `failed`; end_released has no Diagnostics to spawn through"
-        )]
-        let started =
-            std::thread::Builder::new().name("bae-library-close".to_string()).spawn(move || {
+        let started = diagnostics.spawn_thread_reported(
+            "bae-library-close",
+            move || {
                 if let Ok(ending) = work.recv() {
                     ending();
                 }
                 drop(under_way);
-            });
+            },
+            // The close catches its own panic; the close under way drops as
+            // a panic outside it unwinds, ending the close the record holds.
+            |_| {},
+        );
         let (unstarted, why) = match started {
             Ok(_) => match work_tx.send(ending) {
                 Ok(()) => return,
@@ -263,7 +260,7 @@ impl Session {
         // A runtime thread can neither run the close nor drop the runtime, so
         // the library stays open, owned by nothing, until the process exits;
         // opening it again finds its store held and says so.
-        failed(&format!("the library was left open: {why}"));
+        diagnostics.report_bug(CLOSE_RELEASED, &format!("the library was left open: {why}"));
         std::mem::forget(unstarted);
     }
 
@@ -431,12 +428,9 @@ impl AppHandle {
 /// waits for it before opening or removing the library again.
 impl Drop for AppHandle {
     fn drop(&mut self) {
-        let services = self.services.clone();
         self.session.end_released(
             self.closing(crate::screens::ClosingFeed::new(None).steps()),
-            move |error: &dyn std::fmt::Display| {
-                services.report_bug("close the library its handle released", error)
-            },
+            &self.diagnostics,
         );
     }
 }

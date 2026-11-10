@@ -13,6 +13,7 @@ use super::audio_output::{
 };
 use super::device_writer::{DeviceStream, DeviceStreamError, DeviceWriter};
 use crate::source::PlaybackSource;
+use bae_diagnostics::{Diagnostics, ReportedThread};
 use bae_util::task_failure::caught_sync;
 use ndk::audio::{
     AudioDirection, AudioError as NdkAudioError, AudioFormat, AudioPerformanceMode,
@@ -34,7 +35,16 @@ const WRITE_FRAMES: usize = 1024;
 const WRITE_TIMEOUT_NS: i64 = 100_000_000; // 100 ms
 
 /// Audio output writing decoded PCM to an AAudio output stream.
-pub struct AAudioOutput;
+pub struct AAudioOutput {
+    /// Where a panic on a writer thread is reported.
+    diagnostics: Diagnostics,
+}
+
+impl AAudioOutput {
+    pub(crate) fn new(diagnostics: Diagnostics) -> Self {
+        Self { diagnostics }
+    }
+}
 
 /// An AAudio output stream as the [`DeviceWriter`] drives it.
 struct AAudioDeviceStream {
@@ -144,7 +154,7 @@ struct AAudioStreamHandle {
     /// The controls the writer waits on while it has nothing to write: woken
     /// after `stop` is set, so a waiting writer sees it.
     controls: AudioOutputControls,
-    thread: Option<std::thread::JoinHandle<()>>,
+    thread: Option<ReportedThread>,
 }
 
 impl AudioStream for AAudioStreamHandle {
@@ -157,10 +167,8 @@ impl Drop for AAudioStreamHandle {
     fn drop(&mut self) {
         self.stop.store(true, Ordering::Release);
         self.controls.wake_drain();
-        if let Some(handle) = self.thread.take() {
-            if let Err(e) = handle.join() {
-                warn!("AAudio writer thread panicked during shutdown: {:?}", e);
-            }
+        if let Some(thread) = self.thread.take() {
+            thread.join();
         }
     }
 }
@@ -183,54 +191,62 @@ impl AudioOutput for AAudioOutput {
         // fails this build rather than a later write.
         let (opened_tx, opened_rx) = mpsc::sync_channel(1);
 
-        #[expect(
-            clippy::disallowed_methods,
-            reason = "the thread catches each of its steps (caught_sync) and a panic ends the output, which playback reports; the audio output has no Diagnostics"
-        )]
-        let thread = std::thread::spawn(move || {
-            // A panic ending this thread unseen would leave playback showing
-            // Playing with no sound: opening and each step are caught, and a
-            // panic fails the build or ends the output, which playback
-            // reports.
-            let opened = caught_sync("open the AAudio stream", || {
-                open_output_stream(source_sample_rate, source_channels)
-            })
-            .map_err(|failed| AudioError::Unexpected(failed.to_string()))
-            .and_then(|opened| {
-                opened.map_err(|error| open_error(error, source_sample_rate, source_channels))
-            });
-            let stream = match opened {
-                Ok(stream) => stream,
-                Err(error) => {
-                    if opened_tx.send(Err(error)).is_err() {
-                        warn!("the AAudio output stopped waiting for its stream to open");
+        let thread = self.diagnostics.spawn_thread_reported(
+            "bae-aaudio-writer",
+            move || {
+                // A panic ending this thread unseen would leave playback showing
+                // Playing with no sound: opening and each step are caught, and a
+                // panic fails the build or ends the output, which playback
+                // reports.
+                let opened = caught_sync("open the AAudio stream", || {
+                    open_output_stream(source_sample_rate, source_channels)
+                })
+                .map_err(|failed| AudioError::Unexpected(failed.to_string()))
+                .and_then(|opened| {
+                    opened.map_err(|error| open_error(error, source_sample_rate, source_channels))
+                });
+                let stream = match opened {
+                    Ok(stream) => stream,
+                    Err(error) => {
+                        if opened_tx.send(Err(error)).is_err() {
+                            warn!("the AAudio output stopped waiting for its stream to open");
+                        }
+                        return;
                     }
+                };
+                if opened_tx.send(Ok(())).is_err() {
+                    warn!("the AAudio output stopped waiting for its stream to open");
                     return;
                 }
-            };
-            if opened_tx.send(Ok(())).is_err() {
-                warn!("the AAudio output stopped waiting for its stream to open");
-                return;
-            }
 
-            let drain = AudioDrain::new(
-                controls.clone(),
-                source,
-                audio_events,
-                position_update_interval_ms,
-            );
-            let writer = DeviceWriter::new(
-                stream,
-                move || {
-                    open_output_stream(source_sample_rate, source_channels)
-                        .map_err(|error| format!("{error:?}"))
-                },
-                controls,
-                drain,
-                WRITE_FRAMES * source_channels as usize,
-            );
-            writer.run(&stop_clone);
-        });
+                let drain = AudioDrain::new(
+                    controls.clone(),
+                    source,
+                    audio_events,
+                    position_update_interval_ms,
+                );
+                let writer = DeviceWriter::new(
+                    stream,
+                    move || {
+                        open_output_stream(source_sample_rate, source_channels)
+                            .map_err(|error| format!("{error:?}"))
+                    },
+                    controls,
+                    drain,
+                    WRITE_FRAMES * source_channels as usize,
+                );
+                writer.run(&stop_clone);
+            },
+            // Opening and each step catch their own panic and fail the build
+            // or end the output. A panic outside them before the stream
+            // opened drops the sender, failing this build below; after it,
+            // only building the drain and the writer is left, and the report
+            // is all there is to do.
+            |_| {},
+        );
+        let thread = thread.map_err(|error| {
+            AudioError::Unexpected(format!("the AAudio writer thread could not start: {error}"))
+        })?;
 
         let handle = AAudioStreamHandle { stop, controls: handle_controls, thread: Some(thread) };
         match opened_rx.recv() {
