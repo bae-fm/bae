@@ -151,7 +151,9 @@ private class PendingActionRunner(
     private fun runDeviceFix(fix: BridgeSyncFix) {
         when (fix) {
             BridgeSyncFix.ResetDevice -> {
-                resetting = AppSessionHolder.prepareDeviceReset(context, session.libraryId)
+                perform("prepare the device reset") {
+                    resetting = AppSessionHolder.prepareDeviceReset(context, session.libraryId)
+                }
             }
 
             BridgeSyncFix.RemoveFromThisDevice -> {

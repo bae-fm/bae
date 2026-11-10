@@ -251,7 +251,7 @@ sealed interface AppScreen {
         ): AppScreen =
             when (val category = (error as? BridgeException.Diagnostic)?.category) {
                 is BridgeErrorCategory.DeviceResetRequired -> {
-                    ResetOffered(libraryId, ScreenFailure(FailedStep.RESET_OFFERED, shown))
+                    ResetOffered(libraryId, ScreenFailure(FailedStep.LIBRARY_OPEN, shown))
                 }
 
                 is BridgeErrorCategory.DeletionUnfinished -> {
@@ -550,6 +550,14 @@ object AppSessionHolder {
         val host = (context.applicationContext as BaeApp).host
         return host.prepareDeviceReset(libraryId, deviceName(context))
     }
+
+    /** [resetDevice] from the screen that offered it: a failed reset shows that screen again with why. */
+    suspend fun resetOffered(
+        context: Context,
+        libraryId: String,
+        reset: BridgeDeviceReset,
+        onScreen: (AppScreen) -> Unit,
+    ) = resetDevice(context, libraryId, reset, onScreen) { AppScreen.ResetOffered(libraryId, it) }
 
     /**
      * Reset this device after the person accepted [reset]'s warning: the

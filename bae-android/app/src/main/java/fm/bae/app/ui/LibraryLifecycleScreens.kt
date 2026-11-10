@@ -21,9 +21,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import fm.bae.app.AppScreen
 import fm.bae.app.AppSessionHolder
+import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
+import fm.bae.app.ErrorDisplays
 import fm.bae.app.FailedStep
+import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.R
 import fm.bae.app.ScreenFailure
 import fm.bae.app.coreString
@@ -38,10 +42,14 @@ import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.ScreenFailureNotice
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.components.TitledErrorNotice
+import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeDeviceReset
 import uniffi.bae_bridge.BridgeErrorCategory
+import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeReplacedBy
 import uniffi.bae_bridge.bridgeErrorCategoryKey
+
+private val logger = BaeLogger("bae.LibraryLifecycleScreens")
 
 /**
  * The warning a device reset carries, before the person confirms it: edits on
@@ -71,34 +79,45 @@ internal fun DeviceResetDialog(
  * after its warning. The screen says why: [error]'s own line, or with none,
  * after a reset was cancelled, the reset's line. A reset that failed is titled
  * by what failed instead, and Retry resets again without the warning the
- * person already accepted. Back leaves without resetting.
+ * person already accepted. Back leaves without resetting. Preparing the reset
+ * can itself fail (it reads this device's state); that shows as a failed reset
+ * does, with the same Retry.
  */
 @Composable
 internal fun ResetOfferedScreen(
     libraryId: String,
     error: ScreenFailure?,
+    prepare: () -> BridgeDeviceReset,
+    errors: ErrorDisplays,
     onReset: (BridgeDeviceReset) -> Unit,
     onLeave: () -> Unit,
 ) {
     val context = LocalContext.current
     var reset by remember(libraryId) { mutableStateOf<BridgeDeviceReset?>(null) }
+    var prepareFailure by remember(libraryId, error) { mutableStateOf<ScreenFailure?>(null) }
     BackHandler(onBack = onLeave)
-    val offer =
-        ErrorAction(stringResource(R.string.reset_device)) {
-            reset = AppSessionHolder.prepareDeviceReset(context, libraryId)
+
+    // Runs [then] on the prepared reset; a failed preparation replaces the screen's failure.
+    fun prepared(then: (BridgeDeviceReset) -> Unit) {
+        try {
+            prepareFailure = null
+            then(prepare())
+        } catch (e: BridgeException) {
+            logger.error("preparing the device reset for $libraryId failed", e)
+            prepareFailure = errors.display(e)?.let { ScreenFailure(FailedStep.DEVICE_RESET, it) }
         }
-    val reason = error?.error
+    }
+    val offer = ErrorAction(stringResource(R.string.reset_device)) { prepared { reset = it } }
+    val shown = prepareFailure ?: error
+    val reason = shown?.error
     when {
-        error != null && error.step == FailedStep.DEVICE_RESET -> {
+        shown != null && shown.step == FailedStep.DEVICE_RESET -> {
             TitledErrorNotice(
-                title = context.coreString(error.step.titleKey),
+                title = context.coreString(shown.step.titleKey),
                 advice = null,
                 error = reason,
                 look = NoticeLook.CENTERED,
-                action =
-                    ErrorAction(stringResource(R.string.retry)) {
-                        onReset(AppSessionHolder.prepareDeviceReset(context, libraryId))
-                    },
+                action = ErrorAction(stringResource(R.string.retry)) { prepared(onReset) },
             )
         }
 
@@ -126,6 +145,25 @@ internal fun ResetOfferedScreen(
             onDismiss = { reset = null },
         )
     }
+}
+
+/** [ResetOfferedScreen] for [screen], whose reset a failure shows this screen again for, with why. */
+@Composable
+internal fun ResetOfferedRecovery(
+    screen: AppScreen.ResetOffered,
+    onScreen: (AppScreen) -> Unit,
+) {
+    val context = LocalContext.current
+    val scope = rememberScreenScope()
+    val libraryId = screen.libraryId
+    ResetOfferedScreen(
+        libraryId = libraryId,
+        error = screen.error,
+        prepare = { AppSessionHolder.prepareDeviceReset(context, libraryId) },
+        errors = remember(context) { LocaleErrorDisplays(context) },
+        onReset = { scope.launch { AppSessionHolder.resetOffered(context, libraryId, it, onScreen) } },
+        onLeave = { AppSessionHolder.leaveRecovery(onScreen) },
+    )
 }
 
 /**

@@ -50,7 +50,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import uniffi.bae_bridge.BridgeDeviceReset
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeLibraryState
@@ -219,23 +218,9 @@ private fun RecoveryScreen(
     val context = LocalContext.current
     val scope = rememberScreenScope()
     val libraryId = screen.libraryId
-
-    // A failed reset shows [failed], the screen it started from, with why;
-    // a cancelled one shows it with nothing.
-    fun reset(
-        prepared: BridgeDeviceReset,
-        failed: (ScreenFailure?) -> AppScreen,
-    ) {
-        scope.launch { AppSessionHolder.resetDevice(context, libraryId, prepared, onScreen, failed) }
-    }
     when (val current = screen) {
         is AppScreen.ResetOffered -> {
-            ResetOfferedScreen(
-                libraryId = libraryId,
-                error = current.error,
-                onReset = { prepared -> reset(prepared) { AppScreen.ResetOffered(libraryId, it) } },
-                onLeave = { AppSessionHolder.leaveRecovery(onScreen) },
-            )
+            ResetOfferedRecovery(current, onScreen)
         }
 
         is AppScreen.RestoreOffered -> {

@@ -5,8 +5,7 @@ import uniffi.bae_bridge.BridgeException
 /**
  * The step of bringing a library up that failed. A failure screen titles the
  * failure by its step and says what to do next, through shared `ui.load_error`
- * catalog keys; a reset-offered failure has no advice of its own, since the
- * reset screen it lands on is the way out.
+ * catalog keys.
  */
 enum class FailedStep(
     val titleKey: String,
@@ -23,9 +22,6 @@ enum class FailedStep(
 
     /** Opening a library. */
     LIBRARY_OPEN("ui.load_error.library_open.title", "ui.load_error.library_open.advice"),
-
-    /** Opening a library found this device's copy unusable. */
-    RESET_OFFERED("ui.load_error.reset_offered.title", null),
 
     /** Resetting this device's copy of a library. */
     DEVICE_RESET("ui.load_error.device_reset.title", "ui.load_error.device_reset.advice"),

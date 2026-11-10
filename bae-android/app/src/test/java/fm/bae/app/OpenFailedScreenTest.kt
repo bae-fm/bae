@@ -24,7 +24,7 @@ class OpenFailedScreenTest {
         assertEquals(
             AppScreen.ResetOffered(
                 "library",
-                ScreenFailure(FailedStep.RESET_OFFERED, DisplayError("This device must be reset.", "damaged database")),
+                ScreenFailure(FailedStep.LIBRARY_OPEN, DisplayError("This device must be reset.", "damaged database")),
             ),
             AppScreen.openFailed(
                 "library",
