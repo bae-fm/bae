@@ -22,13 +22,8 @@ fn an_unfinished_removal_is_reported_and_finished_by_the_host() {
     });
     let host = crate::handle::tests::test_host(root.path());
     let app = Arc::new(
-        AppHandle::start(
-            services,
-            runtime,
-            bae_diagnostics::Diagnostics::noop(),
-            #[cfg(feature = "cast")]
-            Arc::new(coven::SequentialIds::new()),
-            host.clone(),
+        crate::host::start_handle(host.clone(), bae_diagnostics::Diagnostics::noop())(
+            services, runtime,
         )
         .unwrap(),
     );

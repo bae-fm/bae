@@ -234,13 +234,8 @@ pub(super) fn start_test_handle(
             .expect("the test library's services start")
     });
     let handle = Arc::new(
-        super::AppHandle::start(
-            services,
-            runtime,
-            bae_diagnostics::Diagnostics::noop(),
-            #[cfg(feature = "cast")]
-            Arc::new(coven::SequentialIds::new()),
-            test_host(root.path()),
+        crate::host::start_handle(test_host(root.path()), bae_diagnostics::Diagnostics::noop())(
+            services, runtime,
         )
         .expect("the bridge handle starts"),
     );

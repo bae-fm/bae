@@ -195,3 +195,61 @@ fn an_open_library_stands_by_its_open_session() {
 
     assert_eq!(closed, open);
 }
+
+/// A library closed while the app still holds its handle has left the host's
+/// record of open libraries: its standing is read from the closed store, never
+/// asked of the closed handle.
+#[test]
+fn a_closed_library_whose_handle_is_still_held_is_read_closed() {
+    let root = tempfile::tempdir().unwrap();
+    let host = crate::handle::tests::test_host(root.path());
+    let caller = tokio::runtime::Runtime::new().unwrap();
+    let opened = crate::handle::tests::create_opened_library(&host, &caller, "Closed Library");
+    let app = opened.open(50, false).unwrap();
+    let id = opened.library_id();
+    let store = crate::from_app::store(&id).unwrap();
+    drop(opened);
+
+    app.close_library(None).unwrap();
+    let standing = caller.block_on(host.clone().library_standing(id)).unwrap();
+
+    let closed = caller
+        .block_on(bae_library::closed_library_standing(&host.coven, store, &host.diagnostics))
+        .unwrap();
+    assert_eq!(standing, crate::BridgeLibraryStanding::from_core(closed));
+    drop(app);
+}
+
+/// A standing asked while the library closes waits for the close to end,
+/// then reads the closed store: the library left the record as its close was
+/// recorded, so the call finds the close and never the half-closed library.
+#[test]
+fn a_standing_asked_during_a_close_waits_for_it_then_reads_the_closed_store() {
+    let root = tempfile::tempdir().unwrap();
+    let host = crate::handle::tests::test_host(root.path());
+    let caller = tokio::runtime::Runtime::new().unwrap();
+    let opened = crate::handle::tests::create_opened_library(&host, &caller, "Closing Library");
+    let app = opened.open(50, false).unwrap();
+    let id = opened.library_id();
+    let store = crate::from_app::store(&id).unwrap();
+    drop(opened);
+    let closing = crate::BridgeLibraryClosing::new(host.clone());
+    let (reached, release) = closing.hold_at(crate::types::BridgeClosingStep::StoppingPlayback);
+    let closer = std::thread::spawn({
+        let app = app.clone();
+        move || app.close_library(Some(closing))
+    });
+    reached.recv_timeout(bae_util::test_channels::HANG_GUARD).expect("the close starts");
+
+    let standing = caller.spawn(host.clone().library_standing(id));
+    host.library_sessions.wait_for_waiter(store);
+    release.send(()).unwrap();
+    closer.join().unwrap().unwrap();
+    let standing = caller.block_on(standing).unwrap().unwrap();
+
+    let closed = caller
+        .block_on(bae_library::closed_library_standing(&host.coven, store, &host.diagnostics))
+        .unwrap();
+    assert_eq!(standing, crate::BridgeLibraryStanding::from_core(closed));
+    drop(app);
+}

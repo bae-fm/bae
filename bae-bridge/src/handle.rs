@@ -138,12 +138,36 @@ mod sync_status;
 struct Session(std::sync::Mutex<SessionState>);
 
 enum SessionState {
-    /// The library is open on the runtime.
-    Open(tokio::runtime::Runtime),
+    /// The library is open on the runtime, and in its host's record of open
+    /// libraries while `record` is held.
+    Open { runtime: tokio::runtime::Runtime, record: crate::OpenRecord },
     /// Removing the library deleted its store; only the runtime is left to end.
     Removed(tokio::runtime::Runtime),
     /// The runtime has ended.
     Ended,
+}
+
+/// What is left of a session once it has begun to end.
+enum Ending {
+    /// Close the open library on the runtime, then end the runtime.
+    Close(tokio::runtime::Runtime),
+    /// Removing the library deleted its store; only the runtime is left to end.
+    Removed(tokio::runtime::Runtime),
+    /// The runtime has ended.
+    Ended,
+}
+
+impl SessionState {
+    /// Begin to end the session. An open library leaves its host's record
+    /// and its close is recorded there, under way until the returned close is
+    /// dropped, so a call that names the store waits for it.
+    fn ending(self) -> (Ending, Option<crate::CloseUnderWay>) {
+        match self {
+            Self::Open { runtime, record } => (Ending::Close(runtime), Some(record.close())),
+            Self::Removed(runtime) => (Ending::Removed(runtime), None),
+            Self::Ended => (Ending::Ended, None),
+        }
+    }
 }
 
 type Closing = Result<(), bae_library::LibraryError>;
@@ -158,26 +182,29 @@ impl Session {
             &mut *self.0.lock().unwrap_or_else(PoisonError::into_inner),
             SessionState::Ended,
         );
-        end(state, closing)
+        let (ending, under_way) = state.ending();
+        let ended = end(ending, closing);
+        drop(under_way);
+        ended
     }
 
     /// [`Self::end`] for a released handle, with no caller to hear a failure,
     /// which `failed` is told of: the close's error, or its panic. Released
     /// on a thread of a runtime — the last call on the handle ending on the
     /// app runtime — it can't wait there for work only a runtime can do, so a
-    /// thread of its own ends the session, and `ending_on` is handed the
-    /// thread to wait on.
+    /// thread of its own ends the session, and the close stays under way in
+    /// the host's record until that thread ends.
     fn end_released(
         &self,
         closing: impl std::future::Future<Output = Closing> + Send + 'static,
         failed: impl Fn(&dyn std::fmt::Display) + Send + Sync + 'static,
-        ending_on: impl FnOnce(std::thread::JoinHandle<()>),
     ) {
         let state = std::mem::replace(
             &mut *self.0.lock().unwrap_or_else(PoisonError::into_inner),
             SessionState::Ended,
         );
-        if matches!(state, SessionState::Ended) {
+        let (state, under_way) = state.ending();
+        if matches!(state, Ending::Ended) {
             return;
         }
         let failed = std::sync::Arc::new(failed);
@@ -198,28 +225,31 @@ impl Session {
         });
         if tokio::runtime::Handle::try_current().is_err() {
             ending();
+            drop(under_way);
             return;
         }
         // The thread is handed the close once it has started, so a close
         // whose thread can't start is still here, not dropped with the
         // spawn's error.
         let (work_tx, work) = std::sync::mpsc::channel::<Box<dyn FnOnce() + Send>>();
+        // The close under way moves into the thread, so it ends with the
+        // thread, or with a thread that could not start, never with the close
+        // forgotten below: a call waiting for it goes on and finds the store
+        // still held.
         let started =
             std::thread::Builder::new().name("bae-library-close".to_string()).spawn(move || {
                 if let Ok(ending) = work.recv() {
                     ending();
                 }
+                drop(under_way);
             });
         let (unstarted, why) = match started {
-            Ok(thread) => {
-                ending_on(thread);
-                match work_tx.send(ending) {
-                    Ok(()) => return,
-                    Err(unsent) => {
-                        (unsent.0, "its thread ended before it was handed the close".to_string())
-                    }
+            Ok(_) => match work_tx.send(ending) {
+                Ok(()) => return,
+                Err(unsent) => {
+                    (unsent.0, "its thread ended before it was handed the close".to_string())
                 }
-            }
+            },
             Err(error) => (ending, format!("its thread could not start: {error}")),
         };
         // A runtime thread can neither run the close nor drop the runtime, so
@@ -233,7 +263,12 @@ impl Session {
     fn removed(&self) {
         let mut state = self.0.lock().unwrap_or_else(PoisonError::into_inner);
         *state = match std::mem::replace(&mut *state, SessionState::Ended) {
-            SessionState::Open(runtime) => SessionState::Removed(runtime),
+            // The store is gone: the library leaves its host's record with no
+            // close to wait for.
+            SessionState::Open { runtime, record } => {
+                drop(record);
+                SessionState::Removed(runtime)
+            }
             ended @ (SessionState::Removed(_) | SessionState::Ended) => ended,
         };
     }
@@ -241,21 +276,18 @@ impl Session {
 
 /// See [`Session::end`]. After a removal, `closing` is dropped unrun once the
 /// runtime has ended, so what it holds outlives the runtime's tasks.
-fn end(
-    state: SessionState,
-    closing: impl std::future::Future<Output = Closing>,
-) -> Option<Closing> {
-    let (runtime, closed) = match state {
-        SessionState::Open(runtime) => {
+fn end(ending: Ending, closing: impl std::future::Future<Output = Closing>) -> Option<Closing> {
+    let (runtime, closed) = match ending {
+        Ending::Close(runtime) => {
             let closed = runtime.block_on(closing);
             (runtime, closed)
         }
-        SessionState::Removed(runtime) => {
+        Ending::Removed(runtime) => {
             drop(runtime);
             drop(closing);
             return Some(Ok(()));
         }
-        SessionState::Ended => return None,
+        Ending::Ended => return None,
     };
     drop(runtime);
     Some(closed)
@@ -275,6 +307,7 @@ impl AppHandle {
         diagnostics: bae_diagnostics::Diagnostics,
         #[cfg(feature = "cast")] ids: coven::IdSourceRef,
         host: std::sync::Arc<crate::BridgeHost>,
+        record: crate::OpenRecord,
     ) -> Result<Self, bae_app::BootstrapError> {
         #[cfg(desktop)]
         let desktop = {
@@ -325,7 +358,7 @@ impl AppHandle {
                 diagnostics.clone(),
             ),
             diagnostics,
-            session: Session(std::sync::Mutex::new(SessionState::Open(runtime))),
+            session: Session(std::sync::Mutex::new(SessionState::Open { runtime, record })),
             host,
         })
     }
@@ -344,11 +377,6 @@ impl AppHandle {
             .save_s3_config(config.into_core()?, device_name, &|progress| steps.storage(progress))
             .await
             .map(crate::types::BridgeStorageSetup::from_core)?)
-    }
-
-    /// The store of the open library.
-    pub(crate) fn store_id(&self) -> coven::StoreId {
-        self.services.store_id()
     }
 
     async fn run_exported<T, Build, Fut>(
@@ -400,7 +428,6 @@ impl Drop for AppHandle {
             move |error: &dyn std::fmt::Display| {
                 services.report_bug("close the library its handle released", error)
             },
-            |thread| self.host.library_closing(self.services.store_id(), thread),
         );
     }
 }
@@ -452,32 +479,3 @@ mod removal;
 pub use removal::*;
 
 mod admin;
-
-/// What answers for an open library's standing with its storage, from its live
-/// sync status. The host keeps these by store, so a call that names a store
-/// reaches the library when it is open.
-pub(crate) trait OpenStanding: Send + Sync {
-    fn standing(
-        self: std::sync::Arc<Self>,
-    ) -> std::pin::Pin<
-        Box<
-            dyn std::future::Future<Output = Result<crate::BridgeLibraryStanding, BridgeError>>
-                + Send,
-        >,
-    >;
-}
-
-impl OpenStanding for AppHandle {
-    fn standing(
-        self: std::sync::Arc<Self>,
-    ) -> std::pin::Pin<
-        Box<
-            dyn std::future::Future<Output = Result<crate::BridgeLibraryStanding, BridgeError>>
-                + Send,
-        >,
-    > {
-        Box::pin(self.run_exported("AppHandle.standing", |this| async move {
-            Ok(crate::BridgeLibraryStanding::from_core(this.services.standing().await?))
-        }))
-    }
-}

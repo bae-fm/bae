@@ -22,6 +22,18 @@ pub struct BridgeLibraryClosing {
     /// test reads steps that come and go faster than it could look.
     #[cfg(test)]
     written: Arc<Mutex<Vec<Option<BridgeClosingStep>>>>,
+    /// A step a test holds the close at, until it lets the close go on.
+    #[cfg(test)]
+    held: Arc<Mutex<Option<HeldStep>>>,
+}
+
+/// The step a test holds a close at: as the close reaches it, `reached` hears
+/// so, and the close waits there until `release` hears from the test.
+#[cfg(test)]
+struct HeldStep {
+    step: BridgeClosingStep,
+    reached: std::sync::mpsc::Sender<()>,
+    release: std::sync::mpsc::Receiver<()>,
 }
 
 /// A closing whose stream is pulled on `runtime`.
@@ -30,6 +42,8 @@ pub(crate) fn library_closing(runtime: OperationRuntime) -> Arc<BridgeLibraryClo
         steps: ProgressStream::new(runtime),
         #[cfg(test)]
         written: Arc::default(),
+        #[cfg(test)]
+        held: Arc::default(),
     })
 }
 
@@ -48,6 +62,19 @@ impl BridgeLibraryClosing {
     #[cfg(test)]
     pub(crate) fn written(&self) -> Vec<Option<BridgeClosingStep>> {
         self.written.lock().unwrap().clone()
+    }
+
+    /// Hold the close at `step`: the first receiver hears when the close
+    /// reaches it, and the close goes on once the sender sends.
+    #[cfg(test)]
+    pub(crate) fn hold_at(
+        &self,
+        step: BridgeClosingStep,
+    ) -> (std::sync::mpsc::Receiver<()>, std::sync::mpsc::Sender<()>) {
+        let (reached, reaching) = std::sync::mpsc::channel();
+        let (releasing, release) = std::sync::mpsc::channel();
+        *self.held.lock().unwrap() = Some(HeldStep { step, reached, release });
+        (reaching, releasing)
     }
 }
 
@@ -69,11 +96,15 @@ impl ClosingFeed {
                 writer: Some(closing.steps.writer()),
                 #[cfg(test)]
                 written: Some(closing.written.clone()),
+                #[cfg(test)]
+                held: Some(closing.held.clone()),
             },
             None => ClosingSteps {
                 writer: None,
                 #[cfg(test)]
                 written: None,
+                #[cfg(test)]
+                held: None,
             },
         }
     }
@@ -84,6 +115,8 @@ pub(crate) struct ClosingSteps {
     writer: Option<ProgressWriter>,
     #[cfg(test)]
     written: Option<Arc<Mutex<Vec<Option<BridgeClosingStep>>>>>,
+    #[cfg(test)]
+    held: Option<Arc<Mutex<Option<HeldStep>>>>,
 }
 
 impl ClosingSteps {
@@ -107,6 +140,15 @@ impl ClosingSteps {
         }
         if let Some(writer) = &self.writer {
             writer.set(BridgeFastValue::ClosingStep { step });
+        }
+        #[cfg(test)]
+        if let Some(held) = &self.held {
+            let mut held = held.lock().unwrap();
+            if held.as_ref().is_some_and(|held| held.step == step) {
+                let held = held.take().expect("the held step is there");
+                held.reached.send(()).expect("the test waits for the held step");
+                held.release.recv().expect("the test lets the close go on");
+            }
         }
     }
 }

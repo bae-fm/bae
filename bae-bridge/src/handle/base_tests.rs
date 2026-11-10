@@ -113,14 +113,10 @@ fn setting_up_s3_storage_writes_its_steps() {
     )
     .unwrap();
     let app = Arc::new(
-        super::AppHandle::start(
-            services,
-            runtime,
-            bae_diagnostics::Diagnostics::noop(),
-            #[cfg(feature = "cast")]
-            Arc::new(coven::SequentialIds::new()),
+        crate::host::start_handle(
             crate::handle::tests::test_host(root.path()),
-        )
+            bae_diagnostics::Diagnostics::noop(),
+        )(services, runtime)
         .unwrap(),
     );
     let setup = crate::BridgeLibrarySetup::new(host);

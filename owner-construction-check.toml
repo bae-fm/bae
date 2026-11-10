@@ -235,6 +235,8 @@ non_owner_types = [
     "AppState",
     # The state a session's lock guards: open, removed or ended.
     "SessionState",
+    # What is left of a session once it begins to end: the runtime to end.
+    "Ending",
 ]
 
 # Values an owner makes for its caller's one operation, view or read and
@@ -516,6 +518,11 @@ FormatLease = "DeviceFormats"
 StreamFormat = "PlayerFormat"
 # One image a test's remote image host holds back until the test lets it go.
 ImageHold = "RemoteImageHost"
+# An open library's place in the host's record, held by its session while it
+# is open, and one close of a store, recorded until it ends; dropping either
+# takes it out of the record.
+OpenRecord = "LibrarySessions"
+CloseUnderWay = "LibrarySessions"
 
 # Where the app opens: the bootstrap builds the runtime, the clock, the ids,
 # the HTTP client and the library's owners once, and starts the services that
@@ -572,7 +579,7 @@ ImageHold = "RemoteImageHost"
 ]
 # An owner's constructor builds the owner and the parts it holds that nothing
 # else shares.
-"bae-bridge/src/host/closing_libraries.rs" = ["ClosingLibraries::new"]
+"bae-bridge/src/host/library_sessions.rs" = ["LibrarySessions::new", "OpenLibrary::new"]
 # A dev reset creates the library and opens it.
 "bae-bridge/src/host/dev_reset.rs" = ["BridgeHost::run_dev_reset"]
 # The sink, clock and id source the app built at launch, taken back as core's

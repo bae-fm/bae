@@ -27,11 +27,10 @@ pub struct BridgeHost {
     presenter: Mutex<Option<Arc<dyn coven::OAuthPresenter>>>,
     /// How this platform shares the speaker, for every library's playback.
     audio_focus: bae_playback::AudioFocus,
-    closing_libraries: closing_libraries::ClosingLibraries,
-    /// The libraries this host has open, each by its store, as what answers
-    /// for its standing: the app holds the library, which ends with the app's
-    /// last reference to it.
-    open_libraries: Mutex<Vec<(coven::StoreId, std::sync::Weak<dyn crate::OpenStanding>)>>,
+    /// The libraries this host has open and the stores still closing, so a
+    /// call that names a store reaches its open library, or waits for its
+    /// close.
+    library_sessions: Arc<LibrarySessions>,
 }
 
 impl Drop for BridgeHost {
@@ -120,59 +119,17 @@ impl BridgeHost {
         &self,
         bootstrapped: Result<AppHandle, BootstrapError>,
     ) -> Result<Arc<AppHandle>, BridgeError> {
-        bootstrapped
-            .map(|handle| {
-                let handle = Arc::new(handle);
-                self.register_open(&handle);
-                handle
-            })
-            .map_err(|error| {
-                self.diagnostics
-                    .event(TelemetryEvent::AppStartFailed { kind: app_start_failure_kind(&error) });
-                bootstrap_error_to_bridge(error)
-            })
-    }
-
-    /// Record `handle`, a library this host opened, so a call that names its
-    /// store reaches the open library. Handles the app has let go of drop out
-    /// of the record as it is next changed.
-    fn register_open(&self, handle: &Arc<AppHandle>) {
-        let library: Arc<dyn crate::OpenStanding> = handle.clone();
-        let mut open = self.open_libraries.lock().expect(HOST_LOCK);
-        open.retain(|(_, library)| library.strong_count() > 0);
-        open.push((handle.store_id(), Arc::downgrade(&library)));
-    }
-
-    /// How the library of `store` stands, if this host has it open.
-    async fn open_standing(
-        &self,
-        store: coven::StoreId,
-    ) -> Option<Result<crate::BridgeLibraryStanding, BridgeError>> {
-        let open = self
-            .open_libraries
-            .lock()
-            .expect(HOST_LOCK)
-            .iter()
-            .find(|(open, _)| *open == store)
-            .and_then(|(_, library)| library.upgrade())?;
-        Some(open.standing().await)
+        bootstrapped.map(Arc::new).map_err(|error| {
+            self.diagnostics
+                .event(TelemetryEvent::AppStartFailed { kind: app_start_failure_kind(&error) });
+            bootstrap_error_to_bridge(error)
+        })
     }
 
     /// How this platform shares the speaker, which an opened library's
     /// playback asks before every start.
     pub(crate) fn audio_focus(&self) -> bae_playback::AudioFocus {
         self.audio_focus.clone()
-    }
-
-    /// Record `closing`, the thread closing `store` after its library's handle
-    /// was released on the library's own runtime, or after the
-    /// [`crate::OpenedLibrary`] holding it was released unopened.
-    pub(crate) fn library_closing(
-        &self,
-        store: coven::StoreId,
-        closing: std::thread::JoinHandle<()>,
-    ) {
-        self.closing_libraries.add(store, closing);
     }
 
     /// Close `handle`, a store an [`crate::OpenedLibrary`] held and was
@@ -184,6 +141,9 @@ impl BridgeHost {
     pub(crate) fn close_released(self: &Arc<Self>, handle: coven::CovenHandle) {
         let store = handle.store_id();
         let host = Arc::clone(self);
+        // Moved into the thread, so the close ends with it, or with the
+        // thread that could not start.
+        let closing = self.library_sessions.closing(store);
         let started =
             std::thread::Builder::new().name("bae-store-close".to_string()).spawn(move || {
                 let runtime = host
@@ -197,21 +157,21 @@ impl BridgeHost {
                     host.diagnostics
                         .report_failure("close the store a released library held", &error);
                 }
+                drop(closing);
             });
-        match started {
-            Ok(thread) => self.library_closing(store, thread),
-            Err(error) => self.diagnostics.report_bug(
+        if let Err(error) = started {
+            self.diagnostics.report_bug(
                 "close the store a released library held",
                 &format!("its thread could not start: {error}"),
-            ),
+            );
         }
     }
 
-    /// Wait until `store` has closed, if its library's handle was released on
-    /// its runtime, or the [`crate::OpenedLibrary`] holding it was released,
-    /// and it is still closing, before a call opens or removes the store. Blocks, so it runs off any async runtime.
+    /// Wait until `store` has closed, if its library is closing, before a
+    /// call opens, reads or removes the store. Blocks, so it runs off any
+    /// async runtime.
     pub(crate) fn wait_for_closing(&self, store: coven::StoreId) {
-        self.closing_libraries.wait(store);
+        self.library_sessions.wait(store);
     }
 
     /// [`Self::wait_for_closing`] from an async call on the host's runtime.
@@ -336,8 +296,7 @@ impl BridgeHost {
             #[cfg(not(desktop))]
             presenter: Mutex::new(None),
             audio_focus,
-            closing_libraries: closing_libraries::ClosingLibraries::new(),
-            open_libraries: Mutex::new(Vec::new()),
+            library_sessions: LibrarySessions::new(),
         }))
     }
 }
@@ -500,13 +459,14 @@ impl BridgeHost {
     /// How the library `library_id` stands with its storage: its sync state,
     /// when it last synced and whether it holds unsent changes. A library
     /// this host has open answers from its live sync status; any other is read
-    /// as it last stood, without opening it.
+    /// as it last stood, without opening it, once a close of it under way has
+    /// ended.
     pub async fn library_standing(
         self: Arc<Self>,
         library_id: String,
     ) -> Result<crate::BridgeLibraryStanding, BridgeError> {
         let store = crate::from_app::store(&library_id)?;
-        if let Some(standing) = self.open_standing(store).await {
+        if let Some(standing) = self.library_sessions.open_standing(store).await {
             return standing;
         }
         self.operations
@@ -727,9 +687,10 @@ fn bootstrap_error_to_bridge(e: BootstrapError) -> BridgeError {
     }
 }
 
-/// What a bootstrap runs once the library is open: start the handle for
-/// `host` over it, reporting a panic in its work through `diagnostics`.
-fn start_handle(
+/// What a bootstrap runs once the library is open: record it in `host`'s
+/// open libraries and start the handle for `host` over it, reporting a panic
+/// in its work through `diagnostics`.
+pub(crate) fn start_handle(
     host: Arc<crate::BridgeHost>,
     diagnostics: Diagnostics,
 ) -> impl FnOnce(
@@ -739,6 +700,18 @@ fn start_handle(
        + Send
        + 'static {
     move |services, runtime| {
+        // The library is in the host's record from here, until its session
+        // begins to close; an open that fails here drops it again.
+        let record = host.library_sessions.open(
+            services.store_id(),
+            Arc::new(library_sessions::OpenLibrary::new(
+                services.clone(),
+                crate::operation_runtime::OperationRuntime::new(
+                    runtime.handle().clone(),
+                    diagnostics.clone(),
+                ),
+            )),
+        );
         AppHandle::start(
             services,
             runtime,
@@ -746,13 +719,15 @@ fn start_handle(
             #[cfg(feature = "cast")]
             host.ids.clone(),
             host,
+            record,
         )
     }
 }
 
 mod bootstrap;
 pub use bootstrap::*;
-mod closing_libraries;
+mod library_sessions;
+pub(crate) use library_sessions::{CloseUnderWay, LibrarySessions, OpenRecord, OpenStanding};
 #[cfg(all(feature = "dev-reset", desktop, unix))]
 mod dev_reset;
 mod steps;
