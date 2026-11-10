@@ -33,12 +33,6 @@ struct CastButton: View {
                 receivers: castStore.receivers,
                 endedFailure: castStore.endedFailure,
                 connectingName: connectingName,
-                onCast: { receiver in
-                    start.cast(
-                        to: receiver,
-                        onStarted: { showPicker = false }
-                    )
-                },
                 onDisconnect: {
                     cast.stopCasting()
                     showPicker = false
@@ -90,8 +84,16 @@ struct CastPickerPopover: View {
     let endedFailure: DisplayError?
     /// The receiver a cast is connecting to, while it does.
     let connectingName: String?
-    let onCast: (BridgeCastReceiver) -> Void
     let onDisconnect: () -> Void
+
+    @Environment(CastStart.self)
+    private var start
+    @Environment(\.dismiss)
+    private var dismiss
+    /// The start this popover began. It closes when that one connects, not
+    /// when one an earlier popover began does.
+    @State
+    private var asked: CastStart.Attempt?
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.compact) {
@@ -115,7 +117,7 @@ struct CastPickerPopover: View {
                 ForEach(receivers, id: \.id) { receiver in
                     CastReceiverRow(
                         receiver: receiver,
-                        onCast: { onCast(receiver) },
+                        onCast: { asked = start.cast(to: receiver) },
                         onDisconnect: onDisconnect
                     )
                 }
@@ -123,5 +125,10 @@ struct CastPickerPopover: View {
         }
         .padding(ThemeSpace.group)
         .frame(width: 260)
+        .onChange(of: start.started) {
+            if start.didStart(asked) {
+                dismiss()
+            }
+        }
     }
 }

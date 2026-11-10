@@ -31,9 +31,9 @@ extension ShotScene {
                     ],
                     endedFailure: nil,
                     connectingName: "Kitchen",
-                    onCast: { _ in },
                     onDisconnect: {}
                 )
+                .environment(CastStart.stub())
                 .padding()
             )
         },
@@ -76,9 +76,9 @@ extension ShotScene {
                     receivers: receivers,
                     endedFailure: nil,
                     connectingName: nil,
-                    onCast: { _ in },
                     onDisconnect: {}
                 )
+                .environment(CastStart.stub())
                 .padding()
             )
         }

@@ -29,9 +29,9 @@ struct CastPickerTests {
                 ],
                 endedFailure: nil,
                 connectingName: connectingName,
-                onCast: { _ in },
                 onDisconnect: {}
             )
+            .environment(CastStart.stub())
             .frame(width: size.width, height: size.height),
             size: size
         ) { _, host in

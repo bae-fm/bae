@@ -26,10 +26,7 @@ struct CastStartTests {
         let (reports, reported) = AsyncStream.makeStream(of: (any Error).self)
         let start = CastStart(cast: cast, report: { reported.yield($0) })
 
-        start.cast(
-            to: receiver("kitchen"),
-            onStarted: { Issue.record("a refused cast started") }
-        )
+        start.cast(to: receiver("kitchen"))
         #expect(start.connecting?.id == "kitchen")
 
         answer.yield(false)
@@ -37,6 +34,7 @@ struct CastStartTests {
         let error = await errors.next()
         #expect(error is Refused)
         #expect(start.connecting == nil)
+        #expect(start.started == nil)
     }
 
     @Test("a newer cast calls off the one still connecting")
@@ -53,26 +51,45 @@ struct CastStartTests {
             }
             for await _ in answers { return }
         })
-        let (starts, startedOn) = AsyncStream.makeStream(of: String.self)
         let start = CastStart(
             cast: cast,
             report: { Issue.record("a called-off cast reported \($0)") }
         )
 
-        start.cast(
-            to: receiver("kitchen"),
-            onStarted: { Issue.record("the called-off cast started") }
-        )
-        start.cast(to: receiver("den"), onStarted: { startedOn.yield("den") })
+        let kitchen = start.cast(to: receiver("kitchen"))
+        let den = start.cast(to: receiver("den"))
 
         var endings = ends.makeAsyncIterator()
         #expect(await endings.next() == "kitchen")
         #expect(start.connecting?.id == "den")
 
         answer.yield(())
-        var started = starts.makeAsyncIterator()
-        #expect(await started.next() == "den")
-        #expect(start.connecting == nil)
+        while start.connecting != nil { await Task.yield() }
+        #expect(start.started == den)
+        #expect(start.started != kitchen)
         keepSilent.finish()
+    }
+
+    @Test("a cast that connects closes only the place that asked for it")
+    func onlyTheAskerSeesItStart() async {
+        let (answers, answer) = AsyncStream.makeStream(of: Void.self)
+        let cast = Cast(castTo: { _ in
+            for await _ in answers { return }
+        })
+        let start = CastStart(cast: cast, report: { _ in })
+
+        // A picker asks, is closed, and a second opens before the connect
+        // finishes: the second asked nothing.
+        let firstPickerAsked: CastStart.Attempt? = start.cast(
+            to: receiver("kitchen")
+        )
+        let secondPickerAsked: CastStart.Attempt? = nil
+        #expect(!start.didStart(firstPickerAsked))
+
+        answer.yield(())
+        while start.connecting != nil { await Task.yield() }
+
+        #expect(start.didStart(firstPickerAsked))
+        #expect(!start.didStart(secondPickerAsked))
     }
 }

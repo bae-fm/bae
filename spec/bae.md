@@ -4093,7 +4093,8 @@ picks a receiver, the picker or the page names it while bae connects, until
 the cast starts or fails. On macOS the cast connecting is the app's, not the
 picker's or the page's: both name it, so does the Cast button's tooltip, and
 closing either leaves it connecting; a cast that fails says why in an alert,
-wherever the person is. On Android it is the open library's too: closing the
+wherever the person is. A cast that connects closes the picker that started
+it, never one opened after. On Android it is the open library's too: closing the
 picker or the page leaves it connecting, both name it, and a cast that fails
 says why in the picker while it is open and in a snackbar otherwise.
 Stopping casting, turning it off, or picking another

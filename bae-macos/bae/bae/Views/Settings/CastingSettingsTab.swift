@@ -38,7 +38,7 @@ struct CastingSettingsTab: View {
                     receivers: castStore.receivers,
                     connectingName: start.connecting?.name,
                     onCast: { receiver in
-                        start.cast(to: receiver, onStarted: {})
+                        start.cast(to: receiver)
                     },
                     onDisconnect: cast.stopCasting
                 )

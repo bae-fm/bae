@@ -4,12 +4,18 @@ import Observation
 /// app, not one per place that lists receivers: the picker and the Casting
 /// settings page show the same start, and closing the one that began it leaves
 /// it connecting. A newer start calls off the one before it. A start that
-/// fails says why through `report`, wherever the person is by then.
+/// fails says why through `report`, wherever the person is by then. A start
+/// that connects shows as `started`; a place that began one closes itself when
+/// `started` is the `Attempt` it was given, so a place opened later never
+/// closes for a start it did not ask for.
 @MainActor
 @Observable
 public final class CastStart {
     /// The receiver a cast is connecting to, while it does.
     public private(set) var connecting: BridgeCastReceiver?
+    /// The latest start that reached playback on its receiver.
+    public private(set) var started: Attempt?
+    private var attempts = 0
     private let cast: Cast
     private let report: @MainActor (any Error) -> Void
     private var task: Task<Void, Never>?
@@ -22,21 +28,34 @@ public final class CastStart {
         self.report = report
     }
 
+    /// One call to `cast(to:)`. `started` equals it once that start connects.
+    public struct Attempt: Equatable, Sendable {
+        fileprivate let number: Int
+    }
+
+    /// Whether `attempt`, what a place was given when it asked, is the start
+    /// that connected. A place that asked nothing, or asked an earlier start
+    /// that a later one replaced, gets false.
+    public func didStart(_ attempt: Attempt?) -> Bool {
+        attempt != nil && attempt == started
+    }
+
     /// Switch playback to `receiver`, calling off the start an earlier call
-    /// began. `onStarted` runs once playback is on the receiver.
-    public func cast(
-        to receiver: BridgeCastReceiver,
-        onStarted: @escaping @MainActor () -> Void
-    ) {
+    /// began. Returns the attempt `started` becomes once playback is on the
+    /// receiver.
+    @discardableResult
+    public func cast(to receiver: BridgeCastReceiver) -> Attempt {
         task?.cancel()
         connecting = receiver
+        attempts += 1
+        let attempt = Attempt(number: attempts)
         let cast = cast
         task = Task {
             do {
                 try await cast.castTo(receiver.id)
                 guard !Task.isCancelled else { return }
                 connecting = nil
-                onStarted()
+                started = attempt
             }
             catch is CancellationError {
                 return
@@ -48,6 +67,7 @@ public final class CastStart {
                 report(error)
             }
         }
+        return attempt
     }
 
     #if DEBUG
