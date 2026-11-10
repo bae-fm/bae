@@ -47,7 +47,7 @@ struct WelcomeLibraryDetails: View {
                 ProgressView()
                     .controlSize(.small)
             case .failed(let failure):
-                ErrorNotice(error: failure)
+                Notice(error: failure)
             case .loaded(let status):
                 LabeledContent("Status") {
                     HStack(spacing: ThemeSpace.related) {

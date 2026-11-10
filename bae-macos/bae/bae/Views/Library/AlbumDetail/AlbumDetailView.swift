@@ -218,7 +218,7 @@ struct AlbumDetailView: View {
     @ViewBuilder
     private var detailPlaceholder: some View {
         if let error = albumRead.error {
-            ErrorNotice(
+            Notice(
                 error: error,
                 look: .centered,
                 action: ErrorAction {

@@ -68,7 +68,7 @@ extension ShotScene {
             size: CGSize(width: 900, height: 520)
         ) {
             ShotStage(
-                ErrorNotice(
+                Notice(
                     error: DisplayError(
                         line: "Couldn’t read your library.",
                         detail:
@@ -106,13 +106,13 @@ private struct NoticeLooksShot: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.group) {
-            ErrorNotice(error: error, action: ErrorAction {})
-            ErrorNotice(
+            Notice(error: error, action: ErrorAction {})
+            Notice(
                 title: "bae couldn’t open your library",
                 advice: "Check your connection, then quit and reopen bae.",
                 error: error
             )
-            ErrorNotice(
+            Notice(
                 title: "Couldn't pin",
                 advice: nil,
                 error: error,

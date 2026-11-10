@@ -21,7 +21,7 @@ struct ComposerDetailPane: View {
                     BrowseDetailHeader(summary: composerDetail.composer)
                     if let rows {
                         if let error = rows.initialLoadError {
-                            ErrorNotice(
+                            Notice(
                                 error: error,
                                 look: .centered,
                                 action: ErrorAction {

@@ -118,10 +118,10 @@ struct PeopleAndDevicesPage: View {
             )
             Form {
                 if let error = store.error {
-                    Section { ErrorNotice(error: error) }
+                    Section { Notice(error: error) }
                 }
                 if let actionError {
-                    Section { ErrorNotice(error: actionError) }
+                    Section { Notice(error: actionError) }
                 }
                 switch shown {
                 case .people:
@@ -717,7 +717,7 @@ private struct RenameProfileSheet: View {
             .formStyle(.grouped)
             .disabled(task != nil)
             if let error {
-                ErrorNotice(error: error)
+                Notice(error: error)
             }
             MacSheetFooter {
                 Button("Cancel", action: onDismiss)
@@ -860,7 +860,7 @@ private struct JoinRequestSheet: View {
                     .textSelection(.enabled)
             }
             if let error {
-                ErrorNotice(error: error)
+                Notice(error: error)
             }
             MacSheetFooter(
                 lead: {

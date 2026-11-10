@@ -123,7 +123,7 @@ struct CastPickerPopover: View {
                 Divider()
             }
             else if let endedFailure {
-                ErrorNotice(error: endedFailure, tone: .warning)
+                Notice(error: endedFailure, tone: .warning)
                     .padding(.vertical, ThemeSpace.line)
                 Divider()
             }

@@ -34,7 +34,7 @@ struct StorageContentsInspector: View {
     var body: some View {
         Group {
             if let error {
-                ErrorNotice(
+                Notice(
                     error: error,
                     look: .centered,
                     action: ErrorAction {

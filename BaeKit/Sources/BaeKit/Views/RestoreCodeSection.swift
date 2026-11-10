@@ -50,7 +50,7 @@ public struct RestoreCodeSection: View {
                 codeRow(code, shown: true)
                 caption
             case .failed(let error):
-                ErrorNotice(error: error)
+                Notice(error: error)
             }
         }
     }

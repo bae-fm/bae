@@ -78,7 +78,7 @@ struct ReleaseStorageSheet: View {
             .padding()
             Divider()
             if let releaseError {
-                ErrorNotice(error: releaseError)
+                Notice(error: releaseError)
                     .padding()
             }
             else {
@@ -132,7 +132,7 @@ struct ReleaseStorageSheet: View {
             .padding(.bottom, ThemeSpace.inline)
 
             if let error {
-                ErrorNotice(
+                Notice(
                     error: error,
                     look: .centered,
                     action: ErrorAction {

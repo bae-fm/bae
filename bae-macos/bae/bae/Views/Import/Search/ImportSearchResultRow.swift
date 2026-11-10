@@ -120,7 +120,7 @@ struct ImportSearchResultRow: View {
     @ViewBuilder
     private var failureLine: some View {
         if let failure = rowFailure {
-            ErrorNotice(
+            Notice(
                 error: failure.error,
                 action: ErrorAction(
                     isDisabled: !isPickable,

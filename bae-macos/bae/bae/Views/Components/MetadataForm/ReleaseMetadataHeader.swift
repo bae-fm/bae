@@ -691,7 +691,7 @@ private struct ArtistAssignmentsEditor: View {
                     .disabled(trimmedQuery.isEmpty)
             }
             if let error = search?.error {
-                ErrorNotice(error: error)
+                Notice(error: error)
             }
             if let list = search?.list {
                 foundArtists(list)

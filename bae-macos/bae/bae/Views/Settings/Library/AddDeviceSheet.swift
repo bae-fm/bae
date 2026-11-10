@@ -72,7 +72,7 @@ struct AddDeviceSheet: View {
                 Spacer()
                 // The presenter only records failures that have a line.
                 if let shown = DisplayError(error) {
-                    ErrorNotice(error: shown)
+                    Notice(error: shown)
                 }
                 Spacer()
             }

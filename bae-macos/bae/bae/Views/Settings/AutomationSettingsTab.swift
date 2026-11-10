@@ -85,7 +85,7 @@ struct AutomationSettingsContent: View {
                         .themeText(.body)
                         .foregroundStyle(.secondary)
                 case .error(let failure):
-                    ErrorNotice(error: failure)
+                    Notice(error: failure)
                 case nil:
                     EmptyView()
                 }

@@ -20,7 +20,7 @@ struct StorageStatusBand: View {
                 pill
             }
             if let missing = release.summary.upload?.missing {
-                ErrorNotice(
+                Notice(
                     title: String(localized: "\(missing) is missing"),
                     advice: String(
                         localized: "Restore it to finish uploading."
@@ -91,14 +91,14 @@ struct StorageStatusBand: View {
     @ViewBuilder
     private var failure: some View {
         if case .failed(let error) = release.downloadStatus {
-            ErrorNotice(
+            Notice(
                 title: String(localized: "Couldn't pin"),
                 advice: nil,
                 error: DisplayError(line: error)
             )
         }
         if case .failed(let error) = release.makeLocal {
-            ErrorNotice(
+            Notice(
                 title: String(localized: "Couldn't make local"),
                 advice: nil,
                 error: DisplayError(line: error)

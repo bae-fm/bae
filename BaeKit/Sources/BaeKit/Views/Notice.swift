@@ -57,7 +57,7 @@ public struct ErrorAction {
 /// notice never shows the error itself: when there is a detail, its Details
 /// button opens the causes in an alert, with Copy details. The buttons sit at
 /// the right of the title's line, Details first.
-public struct ErrorNotice: View {
+public struct Notice: View {
     private enum Heading {
         case line(DisplayError)
         case titled(String, advice: String?, error: DisplayError?)

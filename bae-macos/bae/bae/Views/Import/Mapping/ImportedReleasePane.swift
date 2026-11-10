@@ -53,7 +53,7 @@ struct ImportedReleasePane: View {
                 }
             }
             else if let loadError {
-                ErrorNotice(
+                Notice(
                     error: loadError,
                     look: .centered,
                     action: ErrorAction {

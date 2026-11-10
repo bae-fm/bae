@@ -51,7 +51,7 @@ private struct FolderRows: View {
             Button("Open in browser", action: open)
         }
         if let openFailure {
-            ErrorNotice(error: openFailure)
+            Notice(error: openFailure)
         }
     }
 

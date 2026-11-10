@@ -57,7 +57,7 @@
                         }
                     }
                     if let error = browser.error {
-                        ErrorNotice(error: error)
+                        Notice(error: error)
                     }
                 }
                 .padding()
@@ -112,7 +112,7 @@
                     }
                     if let error = browser.error {
                         Section {
-                            ErrorNotice(error: error)
+                            Notice(error: error)
                         }
                     }
                 }

@@ -112,7 +112,7 @@ struct UndoneSetupLine: View {
         if let undone = status.snapshot?.undoneSetup,
             let error = DisplayError(undone.error)
         {
-            ErrorNotice(
+            Notice(
                 error: error,
                 action: ErrorAction("Dismiss", isDisabled: dismissTask != nil) {
                     dismiss(undone.operation)
@@ -180,7 +180,7 @@ private struct RestoreFileSheet: View {
                     .textSelection(.enabled)
             }
             if let error {
-                ErrorNotice(error: error)
+                Notice(error: error)
             }
             MacSheetFooter {
                 Button("Cancel", action: onDismiss)
@@ -295,7 +295,7 @@ struct S3KeySheet: View {
                     .padding(.horizontal)
             }
             if let error {
-                ErrorNotice(error: error)
+                Notice(error: error)
                     .padding(.horizontal)
             }
             MacSheetFooter {

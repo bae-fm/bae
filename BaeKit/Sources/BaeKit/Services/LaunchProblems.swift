@@ -26,7 +26,7 @@ public struct LaunchProblemNotices: View {
 
     public var body: some View {
         if let error = problems.signInSettings {
-            ErrorNotice(
+            Notice(
                 title: localizedCoreString(
                     "ui.load_error.sign_in_settings.title"
                 ),

@@ -185,7 +185,7 @@ extension LibraryView {
         Group {
             if let albumList = session.albums.list {
                 if let error = albumList.initialLoadError {
-                    ErrorNotice(
+                    Notice(
                         error: error,
                         look: .centered,
                         action: ErrorAction {
@@ -239,7 +239,7 @@ extension LibraryView {
         Group {
             if let composerList = session.composers.list {
                 if let error = composerList.initialLoadError {
-                    ErrorNotice(
+                    Notice(
                         error: error,
                         look: .centered,
                         action: ErrorAction {
@@ -290,7 +290,7 @@ extension LibraryView {
         Group {
             if let artistList = session.artists.list {
                 if let error = artistList.initialLoadError {
-                    ErrorNotice(
+                    Notice(
                         error: error,
                         look: .centered,
                         action: ErrorAction {

@@ -33,7 +33,7 @@ struct DeviceResetView: View {
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: WelcomeLayout.columnWidth)
             if let error {
-                ErrorNotice(
+                Notice(
                     title: error.step.title,
                     advice: error.step.advice,
                     error: error.error

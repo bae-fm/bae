@@ -25,7 +25,7 @@ enum LibraryRemovalAlerts {
                     alignment: .leading,
                     spacing: ThemeSpace.related + ThemeSpace.line
                 ) {
-                    ErrorNotice(
+                    Notice(
                         title: String(localized: "Unsent changes will be lost"),
                         advice: nil,
                         error: nil,

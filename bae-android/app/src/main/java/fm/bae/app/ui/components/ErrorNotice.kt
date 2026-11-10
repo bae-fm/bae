@@ -60,7 +60,7 @@ class ErrorAction(
  * told otherwise) with the tone's glyph and the localized line. A notice never
  * shows the error itself: for a failure core reported, a Details button opens
  * the causes in a dialog. Details and [action] sit at the right of the title's
- * line, Details first. Mirrors the Apple apps' `ErrorNotice`.
+ * line, Details first. Mirrors the Apple apps' `Notice`.
  */
 @Composable
 fun ErrorNotice(

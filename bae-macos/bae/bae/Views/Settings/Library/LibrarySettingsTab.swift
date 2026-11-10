@@ -211,7 +211,7 @@ private struct SyncSettingsPage: View {
             Section {
                 UndoneSetupLine()
                 if let storageReadError {
-                    ErrorNotice(error: storageReadError)
+                    Notice(error: storageReadError)
                 }
                 SyncStatusBlock(
                     location: configStore.storage,

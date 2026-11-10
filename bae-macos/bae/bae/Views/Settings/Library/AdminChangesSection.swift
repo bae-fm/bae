@@ -31,7 +31,7 @@ struct AdminChangesSection: View {
                     )
                 }
                 if let error {
-                    ErrorNotice(error: error)
+                    Notice(error: error)
                 }
             }
         }

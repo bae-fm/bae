@@ -142,7 +142,7 @@ struct WelcomeChooseView: View {
             LaunchProblemNotices(launchProblems)
                 .frame(maxWidth: WelcomeLayout.columnWidth)
             if let loadError {
-                ErrorNotice(
+                Notice(
                     title: loadError.step.title,
                     advice: loadError.step.advice,
                     error: loadError.error
@@ -156,7 +156,7 @@ struct WelcomeChooseView: View {
                 )
             }
             if let failure = listings.localLibraries.failure {
-                ErrorNotice(
+                Notice(
                     title: String(
                         localized: "Couldn't list the libraries on this Mac"
                     ),
@@ -187,7 +187,7 @@ struct WelcomeChooseView: View {
                 )
             }
             if let failure = listings.savedCodes.list.failure {
-                ErrorNotice(
+                Notice(
                     title: String(
                         localized:
                             "Couldn't read restore codes from your keychain"
@@ -199,7 +199,7 @@ struct WelcomeChooseView: View {
             }
             else if listings.savedCodes.list.value?.isEmpty == false {
                 if let deleteError = listings.savedCodes.deleteError {
-                    ErrorNotice(
+                    Notice(
                         title: String(
                             localized: "Couldn't delete the restore code"
                         ),
@@ -222,7 +222,7 @@ struct WelcomeChooseView: View {
                     .frame(maxWidth: StepProgressLayout.width)
             }
             if let error {
-                ErrorNotice(error: error)
+                Notice(error: error)
             }
             Spacer()
         }
@@ -305,7 +305,7 @@ private struct UnfinishedRemovalNotice: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
-            ErrorNotice(
+            Notice(
                 title: String(localized: "Couldn't remove the library"),
                 advice: nil,
                 error: error,

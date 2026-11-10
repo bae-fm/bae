@@ -131,7 +131,7 @@ private struct LoadErrorLine: View {
 
     var body: some View {
         if let loadError {
-            ErrorNotice(
+            Notice(
                 title: loadError.step.title,
                 advice: loadError.step.advice,
                 error: loadError.error

@@ -69,7 +69,7 @@ struct DownloadRow: View {
     @ViewBuilder
     private var failure: some View {
         if case .failed(let error) = op.state {
-            ErrorNotice(
+            Notice(
                 title: op.kind == .pin
                     ? String(localized: "Couldn't pin")
                     : String(localized: "Couldn't make local"),

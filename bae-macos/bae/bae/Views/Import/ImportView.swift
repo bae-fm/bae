@@ -139,7 +139,7 @@ struct ImportView: View {
     /// Shown when the list could not be read, instead of an empty state that
     /// would wrongly say no folder is watched.
     private func failedState(_ failure: DisplayError) -> some View {
-        ErrorNotice(
+        Notice(
             title: String(localized: "The import list couldn't be read"),
             advice: nil,
             error: failure,

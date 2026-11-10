@@ -113,7 +113,7 @@ struct SyncFixButton: View {
             StepProgressLine(steps: steps.steps) { EmptyView() }
         }
         if let error = error ?? reconnection.error {
-            ErrorNotice(error: error)
+            Notice(error: error)
         }
     }
 

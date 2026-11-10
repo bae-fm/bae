@@ -298,7 +298,7 @@ extension LightboxView {
     /// The failed-load state, with a retry. The load keeps no error, so the
     /// notice has no Details.
     fileprivate var loadFailedView: some View {
-        ErrorNotice(
+        Notice(
             error: DisplayError(
                 line: String(localized: "Couldn’t load the image")
             ),

@@ -155,7 +155,7 @@ struct StorageManagerView: View {
         VStack(spacing: 0) {
             if let list = storageManagerStore.list, let runner {
                 if let error = list.initialLoadError {
-                    ErrorNotice(
+                    Notice(
                         error: error,
                         look: .centered,
                         action: ErrorAction {

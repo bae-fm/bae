@@ -130,13 +130,13 @@
 
     #Preview("Error Notice") {
         VStack(alignment: .leading, spacing: ThemeSpace.section) {
-            ErrorNotice(error: PreviewData.displayErrorSimple)
-            ErrorNotice(error: PreviewData.displayErrorWithDetail)
-            ErrorNotice(
+            Notice(error: PreviewData.displayErrorSimple)
+            Notice(error: PreviewData.displayErrorWithDetail)
+            Notice(
                 error: PreviewData.displayErrorWithDetail,
                 action: ErrorAction {}
             )
-            ErrorNotice(
+            Notice(
                 title: "Couldn't open the library",
                 advice: "Check that its folder is still there, then try again.",
                 error: PreviewData.displayErrorWithDetail
