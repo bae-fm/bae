@@ -35,11 +35,11 @@ a{color:var(--accent)}a:hover{color:#F6BFD9}
     </x-import>
     <x-import component-from-global-scope="Bae.AndroidRow" title="Add device" action="{{yes}}" leading-icon="add"></x-import>
   </x-import>
-  <x-import component-from-global-scope="Bae.AndroidDialog" title="Add a device" width="340">
-    Tablet wants to join. Add it if its screen shows this number.
-    <div style="font: 500 32px/40px var(--font-android); letter-spacing: 2px; color: var(--text-primary); text-align: center">412 778</div>
+  <x-import component-from-global-scope="Bae.AndroidDialog" title="Tablet wants to join" width="340">
+    Add it if its screen shows this code:
+    <x-import component-from-global-scope="Bae.AndroidMatchCode" code="412 778" dialog="{{yes}}"></x-import>
     <x-import component-from-global-scope="Bae.AndroidDialogActions">
-      <x-import component-from-global-scope="Bae.AndroidButton" kind="text" destructive="{{yes}}">Decline</x-import>
+      <x-import component-from-global-scope="Bae.AndroidButton" kind="text" neutral="{{yes}}">Decline</x-import>
       <x-import component-from-global-scope="Bae.AndroidButton" kind="text">Add</x-import>
     </x-import>
   </x-import>

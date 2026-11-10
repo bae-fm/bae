@@ -137,6 +137,9 @@
 .bae-m-field { display: flex; flex-direction: column; gap: var(--space-inline); color: var(--text-primary); font: 400 13px var(--font-sans); min-width: 0; }
 .bae-m-field-line { display: flex; align-items: center; gap: var(--space-group); }
 .bae-m-field-label { flex: none; }
+.bae-m-field-auto { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: var(--space-group); row-gap: var(--space-inline); align-items: center; }
+.bae-m-field-auto .bae-m-field-line { display: contents; }
+.bae-m-field-auto .bae-m-field-note { grid-column: 2; }
 .bae-m-input { flex: 1; min-width: 0; box-sizing: border-box; height: var(--size-field); padding: 0 10px; border: 0; outline: none; border-radius: 8px; background: var(--field); box-shadow: inset 0 0 0 1px var(--field-edge); color: var(--text-primary); font: 400 13px/16px var(--font-sans); }
 .bae-m-input:hover:not(:disabled) { background: var(--field-hover); }
 .bae-m-input::placeholder { color: var(--text-tertiary); }
@@ -168,6 +171,13 @@
 .bae-a-disclosure-mark { display: inline-flex; color: var(--text-secondary); }
 
 .bae-m-scrim { position: absolute; inset: 0; background: none; display: flex; justify-content: center; align-items: flex-start; z-index: 10; }
+.bae-m-step { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-section); padding: 56px var(--space-page) var(--space-page); font: 400 13px var(--font-sans); color: var(--text-primary); }
+.bae-m-step-head { display: flex; flex-direction: column; align-items: center; gap: var(--space-compact); max-width: 440px; text-align: center; }
+.bae-m-step-title { margin: 0; font: 600 20px/26px var(--font-sans); color: var(--text-primary); text-wrap: balance; }
+.bae-m-step-text { margin: 0; font: 400 13px/18px var(--font-sans); color: var(--text-secondary); text-wrap: pretty; }
+.bae-m-step-actions { display: flex; justify-content: center; gap: var(--space-related); }
+.bae-m-code { display: flex; flex-direction: column; align-items: center; gap: var(--space-edge); text-align: center; }
+.bae-m-code-digits { font: 600 34px/40px var(--font-sans); letter-spacing: 3px; color: var(--text-primary); }
 .bae-m-sheet { margin-top: 36px; display: flex; flex-direction: column; background: var(--elevated); border-radius: 20px; box-shadow: 0 10px 30px var(--shadow); color: var(--text-primary); font: 400 13px var(--font-sans); }
 .bae-m-sheet-title { padding: 18px var(--space-edge) 0; font: 700 13px var(--font-sans); }
 .bae-m-sheet-body { padding: 12px var(--space-edge) var(--space-edge); display: flex; flex-direction: column; gap: 10px; }
@@ -217,6 +227,15 @@
 .bae-a-row-lead { flex: none; fill: var(--text-secondary); }
 .bae-a-row-lead-action { fill: var(--accent); }
 
+.bae-a-step { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: var(--space-section); padding: var(--space-section) var(--space-edge) var(--space-page); font-family: var(--font-android); }
+.bae-a-step-head { display: flex; flex-direction: column; gap: var(--space-related); text-align: center; }
+.bae-a-step-title { margin: 0; font: 500 22px/28px var(--font-android); color: var(--text-primary); text-wrap: balance; }
+.bae-a-step-text { margin: 0; font: 400 16px/24px var(--font-android); color: var(--text-secondary); text-wrap: pretty; }
+.bae-a-step-top { justify-content: flex-start; }
+.bae-a-step-top .bae-a-step-head { text-align: start; }
+.bae-a-code { display: flex; flex-direction: column; align-items: center; gap: var(--space-edge); text-align: center; }
+.bae-a-code-digits { font: 500 40px/48px var(--font-android); letter-spacing: 3px; color: var(--text-primary); }
+.bae-a-code-dialog .bae-a-code-digits { font-size: 32px; line-height: 40px; letter-spacing: 2px; }
 .bae-a-btn { height: 40px; padding: 0 var(--space-section); border-radius: 20px; border: 0; font: 500 14px var(--font-android); cursor: pointer; white-space: nowrap; }
 .bae-a-btn-large { height: 48px; border-radius: 24px; font-size: 15px; }
 .bae-a-btn-filled { background: var(--accent-selection); color: var(--on-fill); }
@@ -239,10 +258,11 @@
 .bae-a-switch-on { background: var(--accent); box-shadow: none; }
 .bae-a-switch-on .bae-a-switch-thumb { left: 24px; top: 4px; width: 24px; height: 24px; background: var(--background); }
 
-.bae-a-field { display: flex; flex-direction: column; gap: var(--space-inline); font-family: var(--font-android); }
+.bae-a-field { display: flex; flex-direction: column; gap: var(--space-inline); text-align: start; font-family: var(--font-android); }
 .bae-a-field-box { position: relative; display: block; border-radius: 4px; box-shadow: inset 0 0 0 1px var(--text-secondary); }
 .bae-a-field-label { position: absolute; top: -9px; left: 12px; padding: 0 4px; background: var(--elevated); font-size: 12px; line-height: 16px; color: var(--text-secondary); }
 .bae-a-input { width: 100%; box-sizing: border-box; padding: 14px var(--space-edge); border: 0; outline: none; background: none; color: var(--text-primary); font: 400 16px var(--font-android); }
+.bae-a-input::placeholder { color: var(--text-secondary); }
 .bae-a-field-focused .bae-a-field-box { box-shadow: inset 0 0 0 2px var(--accent); }
 .bae-a-field-focused .bae-a-field-label { color: var(--accent); }
 .bae-a-field-error .bae-a-field-box { box-shadow: inset 0 0 0 2px var(--danger); }
@@ -305,13 +325,12 @@
 /* Scan code: what to do, the QR code, its buttons, then when it ends. */
 .bae-scan { display: flex; flex-direction: column; align-items: center; gap: var(--space-edge); padding: var(--space-related) 0; text-align: center; text-wrap: pretty; }
 .bae-scan-text { margin-bottom: var(--space-related); }
-.bae-scan-note { margin-top: var(--space-related); }
 .bae-scan-qr { padding: 10px; border-radius: 8px; background: var(--text-primary); line-height: 0; }
 .bae-scan-qr svg { fill: var(--background); display: block; }
 .bae-scan-buttons { display: flex; justify-content: center; gap: var(--space-related); margin-top: calc(-1 * var(--space-inline)); }
-.bae-m-scan .bae-scan-text, .bae-m-scan .bae-scan-note { font: 400 12px/16px var(--font-sans); color: var(--text-secondary); }
+.bae-m-scan .bae-scan-text { font: 400 12px/16px var(--font-sans); color: var(--text-secondary); }
 .bae-m-scan .bae-scan-text { color: var(--text-primary); font-size: 13px; line-height: 18px; }
-.bae-a-scan .bae-scan-text, .bae-a-scan .bae-scan-note { font: 400 14px/20px var(--font-android); color: var(--text-secondary); }
+.bae-a-scan .bae-scan-text { font: 400 14px/20px var(--font-android); color: var(--text-secondary); }
 .bae-a-scan .bae-scan-text { color: var(--text-primary); }
 
 /* A nested row depends on the row above (a switch it only matters under): it joins that row with no gap and no divider, on the same left edge, and dims while the switch is off. */

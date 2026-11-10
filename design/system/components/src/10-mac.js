@@ -8,6 +8,19 @@
       props.children);
   }
 
+  // A window that walks through one step of joining or adding a device, centred in the window: a headline, an optional line under it, then the step's own content and its buttons (MacStepActions), a section apart. The buttons follow what they act on rather than sitting at the window's foot. The welcome window has no title bar text, so the headline is the only place that says where you are.
+  function MacStep(props) {
+    return h('div', { className: 'bae-m-step' },
+      h('div', { className: 'bae-m-step-head' },
+        h('h2', { className: 'bae-m-step-title' }, props.title),
+        props.text ? h('p', { className: 'bae-m-step-text' }, props.text) : null),
+      props.children);
+  }
+  // A step's buttons, side by side and centred, the default on the right (list it last).
+  function MacStepActions(props) {
+    return h('div', { className: 'bae-m-step-actions' }, props.children);
+  }
+
   // A macOS alert: title and message left-aligned, as macOS 26 draws them, then two buttons side by side with the default on the right (list it first); three or more stack. `details` (an error's causes, one a line) adds the inset panel with Copy under the message.
   function MacAlert(props) {
     return h('div', { className: 'bae-m-scrim' },
@@ -94,7 +107,9 @@
     var state = props.state || 'normal';
     var hidden = !!props.labelHidden;
     var bare = hidden || props.label == null;
-    var lw = props.labelWidth != null ? Number(props.labelWidth) : 90;
+    // `labelWidth: 'auto'`: a lone field sizes its label to its words, in any language, rather than to a column shared with other fields.
+    var auto = props.labelWidth === 'auto';
+    var lw = auto ? null : props.labelWidth != null ? Number(props.labelWidth) : 90;
     var isError = state === 'error';
     var line = isError ? props.error : props.note;
     var input = h('input', {
@@ -106,12 +121,12 @@
       disabled: state === 'off',
       spellCheck: false
     });
-    return h('div', { className: cx('bae-m-field', state === 'off' && 'bae-off') },
+    return h('div', { className: cx('bae-m-field', auto && !bare && 'bae-m-field-auto', state === 'off' && 'bae-off') },
       h('div', { className: 'bae-m-field-line' },
-        bare ? null : h('span', { className: 'bae-m-field-label', style: { width: lw } }, props.label),
+        bare ? null : h('span', { className: 'bae-m-field-label', style: auto ? null : { width: lw } }, props.label),
         input,
         props.children),
-      line ? h('div', { className: cx('bae-m-field-note', isError && 'bae-m-field-note-error'), style: { marginLeft: bare ? 0 : lw + 12 } }, line) : null);
+      line ? h('div', { className: cx('bae-m-field-note', isError && 'bae-m-field-note-error'), style: auto ? null : { marginLeft: bare ? 0 : lw + 12 } }, line) : null);
   }
 
   function MacRadio(props) {

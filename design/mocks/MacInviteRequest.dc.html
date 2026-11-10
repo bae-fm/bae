@@ -27,7 +27,7 @@ body{margin:0}
 <x-import component-from-global-scope="Bae.MacSettingsWindow" pane="Library" title="People and devices" back="Library">
   <x-import component-from-global-scope="Bae.MacSection" title="You">
     <x-import component-from-global-scope="Bae.MacBox">
-      <x-import component-from-global-scope="Bae.MacRow" label="Name" value="Your Name">
+      <x-import component-from-global-scope="Bae.MacRow" label="Name" value="Ana">
         <x-import component-from-global-scope="Bae.MacButton">Change…</x-import>
       </x-import>
       <x-import component-from-global-scope="Bae.MacRow" label="Role" value="Admin"></x-import>
@@ -39,16 +39,16 @@ body{margin:0}
   </x-import>
   <x-import component-from-global-scope="Bae.MacSection" title="People">
     <x-import component-from-global-scope="Bae.MacBox">
-      <x-import component-from-global-scope="Bae.MacRow" label="Person Name" strong="{{yes}}" tag="Member" value="1 device" chevron="{{yes}}"></x-import>
-      <x-import component-from-global-scope="Bae.MacRow" label="person@example.com" strong="{{yes}}" tag="Invited" value="Expires in 7 days" chevron="{{yes}}"></x-import>
+      <x-import component-from-global-scope="Bae.MacRow" label="Ben" strong="{{yes}}" tag="Member" value="1 device" chevron="{{yes}}"></x-import>
+      <x-import component-from-global-scope="Bae.MacRow" label="dan@example.com" strong="{{yes}}" tag="Invited" chevron="{{yes}}"></x-import>
       <x-import component-from-global-scope="Bae.MacRow" label="Invite…" action="{{yes}}"></x-import>
     </x-import>
   </x-import>
-  <x-import component-from-global-scope="Bae.MacSheet" title="Approve request?" overlay="{{yes}}" width="400">
-    <div style="font-size: 13px; line-height: 18px; color: var(--text-primary)">New Person used your invite to person@example.com. Approve if their screen shows this number.</div>
-    <div style="padding: 12px 0; font: 600 34px/40px var(--font-sans); letter-spacing: 3px; text-align: center; color: var(--text-primary)">412 778</div>
+  <x-import component-from-global-scope="Bae.MacSheet" title="Dan wants to join" overlay="{{yes}}" width="400">
+    <div style="font-size: 13px; line-height: 18px; color: var(--text-primary)">Approve if their screen shows this code:</div>
+    <x-import component-from-global-scope="Bae.MacMatchCode" code="412 778"></x-import>
     <x-import component-from-global-scope="Bae.MacSheetFooter">
-      <x-import component-from-global-scope="Bae.MacButton" destructive="{{yes}}">Decline</x-import>
+      <x-import component-from-global-scope="Bae.MacButton">Decline</x-import>
       <x-import component-from-global-scope="Bae.MacButton" kind="primary">Approve</x-import>
     </x-import>
   </x-import>

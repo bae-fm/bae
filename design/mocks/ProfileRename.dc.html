@@ -30,20 +30,20 @@ a{color:var(--accent)}a:hover{color:#F6BFD9}
 <x-import component-from-global-scope="Bae.AndroidScreen" keyboard="{{ true }}" title="People and devices" back="{{yes}}">
   <x-import component-from-global-scope="Bae.AndroidSection" title="You"></x-import>
   <x-import component-from-global-scope="Bae.AndroidCard">
-    <x-import component-from-global-scope="Bae.AndroidRow" title="Name" subtitle="Your Name" icon="edit"></x-import>
+    <x-import component-from-global-scope="Bae.AndroidRow" title="Name" subtitle="Ana" icon="edit"></x-import>
     <x-import component-from-global-scope="Bae.AndroidRow" title="Role" subtitle="Admin"></x-import>
     <x-import component-from-global-scope="Bae.AndroidRow" title="Listening history" subtitle="Only me"></x-import>
     <x-import component-from-global-scope="Bae.AndroidRow" title="Devices" subtitle="2 devices" icon="chevron"></x-import>
   </x-import>
   <x-import component-from-global-scope="Bae.AndroidSection" title="People"></x-import>
   <x-import component-from-global-scope="Bae.AndroidCard">
-    <x-import component-from-global-scope="Bae.AndroidRow" title="Person Name" subtitle="Member · 1 device" icon="chevron"></x-import>
+    <x-import component-from-global-scope="Bae.AndroidRow" title="Ben" subtitle="Member · 1 device" icon="chevron"></x-import>
     <x-import component-from-global-scope="Bae.AndroidRow" title="Invite" action="{{yes}}" leading-icon="add"></x-import>
   </x-import>
   <x-import component-from-global-scope="Bae.AndroidDialog" title="Your name">
-    <x-import component-from-global-scope="Bae.AndroidTextField" label="Name" value="New Name" state="focused" helper="Everyone in the library sees this name."></x-import>
+    <x-import component-from-global-scope="Bae.AndroidTextField" label="Name" value="Annie" state="focused" helper="Everyone in the library sees this name."></x-import>
     <x-import component-from-global-scope="Bae.AndroidDialogActions">
-      <x-import component-from-global-scope="Bae.AndroidButton" kind="text">Cancel</x-import>
+      <x-import component-from-global-scope="Bae.AndroidButton" kind="text" neutral="{{yes}}">Cancel</x-import>
       <x-import component-from-global-scope="Bae.AndroidButton" kind="text">Save</x-import>
     </x-import>
   </x-import>

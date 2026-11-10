@@ -9,7 +9,7 @@
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Resting', h(B.AndroidTextField, { label: 'Name', value: 'Library Name' })), W('Focused', h(B.AndroidTextField, { label: 'Name', value: 'Library Name', state: 'focused' })), W('Helper', h(B.AndroidTextField, { label: 'Name', value: 'Library Name', helper: 'People in this library see this name.' })), W('Error', h(B.AndroidTextField, { label: 'Name', state: 'error', error: 'Enter a name.' }))));
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Resting', h(B.AndroidTextField, { label: 'Name', value: 'Home music' })), W('Focused', h(B.AndroidTextField, { label: 'Name', value: 'Home music', state: 'focused' })), W('Helper', h(B.AndroidTextField, { label: 'Name', value: 'Home music', helper: 'People in this library see this name.' })), W('Error', h(B.AndroidTextField, { label: 'Name', state: 'error', error: 'Enter a name.' }))));
 </script>
 </body>
 </html>

@@ -16,7 +16,9 @@ body{margin:0}
 </style>
 </helmet>
 <x-import component-from-global-scope="Bae.MacWindow">
-  <div style="flex: 1; display: flex; flex-direction: column; align-items: center; padding: 56px 0 24px; font: 13px var(--font-sans); color: var(--text-primary)"><div style="font-size: 20px; font-weight: 600">This code has ended</div><div style="margin-top: 6px; color: var(--text-secondary)">Open Add device on your other device for a new one.</div><div style="flex: 1"></div><div style="display: flex; gap: 8px"><x-import component-from-global-scope="Bae.MacButton" kind="primary">OK</x-import></div></div>
+  <x-import component-from-global-scope="Bae.MacStep" title="This code has ended" text="Open Add device on your other device for a new one.">
+    <x-import component-from-global-scope="Bae.MacStepActions"><x-import component-from-global-scope="Bae.MacButton" kind="primary">OK</x-import></x-import>
+  </x-import>
 </x-import>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":690,"height":600}}'>

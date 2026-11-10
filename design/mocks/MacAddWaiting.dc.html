@@ -16,7 +16,9 @@ body{margin:0}
 </style>
 </helmet>
 <x-import component-from-global-scope="Bae.MacWindow">
-  <div style="flex: 1; display: flex; flex-direction: column; align-items: center; padding: 56px 0 24px; font: 13px var(--font-sans); color: var(--text-primary)"><div style="font-size: 20px; font-weight: 600">Add device</div><div style="margin-top: 6px; color: var(--text-secondary)">Check that your other device shows this number, then add this device there.</div><div style="margin-top: 28px; font: 600 34px/40px var(--font-sans); letter-spacing: 3px">412 778</div><div style="margin-top: 16px; font-size: 12px; color: var(--text-secondary)">Waiting for your other device.</div><div style="flex: 1"></div></div>
+  <x-import component-from-global-scope="Bae.MacStep" title="Check that your other device shows this code" text="Then add this device there.">
+    <x-import component-from-global-scope="Bae.MacMatchCode" code="412 778" waiting="Waiting for your other device…"></x-import>
+  </x-import>
 </x-import>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":690,"height":600}}'>

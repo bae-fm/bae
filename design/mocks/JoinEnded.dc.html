@@ -17,13 +17,10 @@
 body{margin:0}
 </style>
 </helmet>
-<x-import component-from-global-scope="Bae.AndroidScreen" title="Join Library Name" back="{{yes}}">
-  <div style="flex: 1; display: flex; flex-direction: column; gap: 16px; padding: 24px 16px; font-family: var(--font-android)">
-    <div style="font: 500 22px/28px var(--font-android); color: var(--text-primary)">This invite has ended</div>
-    <div style="font-size: 16px; line-height: 24px; color: var(--text-secondary)">Ask the person who invited you for a new one.</div>
-    <div style="flex: 1"></div>
+<x-import component-from-global-scope="Bae.AndroidScreen" title="Join library" back="{{yes}}">
+  <x-import component-from-global-scope="Bae.AndroidStep" top="{{yes}}" title="This invite has ended" text="Ask Ana for a new one.">
     <x-import component-from-global-scope="Bae.AndroidButton" large="{{yes}}">OK</x-import>
-  </div>
+  </x-import>
 </x-import>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":412,"height":916}}'>

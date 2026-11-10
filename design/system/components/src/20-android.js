@@ -81,8 +81,18 @@
     return h('div', { className: cx('bae-a-field', state === 'focused' && 'bae-a-field-focused', isError && 'bae-a-field-error') },
       h('label', { className: 'bae-a-field-box' },
         h('span', { className: 'bae-a-field-label' }, props.label),
-        h('input', { className: 'bae-a-input', defaultValue: props.value || '', 'aria-label': props.label, spellCheck: false })),
+        h('input', { className: 'bae-a-input', defaultValue: props.value || '', placeholder: props.placeholder, 'aria-label': props.label, spellCheck: false })),
       line ? h('div', { className: 'bae-a-field-line' }, line) : null);
+  }
+
+  // A screen that walks through one step, centred in the space above the keyboard or the screen's foot: a headline, an optional line under it, then the step's own content and its buttons, a section apart. The buttons follow what they act on rather than sitting at the bottom.
+  // `top`: a step to read or fill in (a name to type, an invite that ended) sits at the top, left-aligned, as a page or form reads, its button right under it. Without it the step is centred: a step whose content is one thing to look at, such as a code.
+  function AndroidStep(props) {
+    return h('div', { className: cx('bae-a-step', props.top && 'bae-a-step-top') },
+      h('div', { className: 'bae-a-step-head' },
+        h('h2', { className: 'bae-a-step-title' }, props.title),
+        props.text ? h('p', { className: 'bae-a-step-text' }, props.text) : null),
+      props.children);
   }
 
   function AndroidRadio(props) {

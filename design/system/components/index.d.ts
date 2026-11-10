@@ -10,6 +10,12 @@ export declare function MacSettingsWindow(props: MacSettingsWindowProps): React.
 export interface MacWindowProps { width?: number; height?: number; children?: React.ReactNode }
 export declare function MacWindow(props: MacWindowProps): React.ReactElement;
 
+/** A window that walks through one step, centred: a headline, an optional line under it, then the step's content and its MacStepActions. */
+export interface MacStepProps { title: string; text?: string; children?: React.ReactNode }
+export declare function MacStep(props: MacStepProps): React.ReactElement;
+/** A step's buttons, side by side and centred, the default last. */
+export declare function MacStepActions(props: { children?: React.ReactNode }): React.ReactElement;
+
 /** A macOS alert: title, message, and its buttons stacked full width as children. */
 export interface MacAlertProps { title: string; warning?: string; message?: string; details?: string; children?: React.ReactNode }
 export declare function MacAlert(props: MacAlertProps): React.ReactElement;
@@ -40,7 +46,7 @@ export interface MacButtonProps { kind?: 'primary' | 'secondary' | 'borderless' 
 export declare function MacButton(props: MacButtonProps): React.ReactElement;
 
 /** A text field with its label on the left (labelWidth px), or the label as a placeholder (labelHidden). note is a grey line under it; error a red one, shown when state is error. Leave out label when a MacFieldRow holds the field and gives the label. Children sit after the field. */
-export interface MacTextFieldProps { label?: string; value?: string; placeholder?: string; state?: 'normal' | 'focused' | 'off' | 'error'; secret?: boolean; note?: string; error?: string; labelHidden?: boolean; labelWidth?: number; children?: React.ReactNode }
+export interface MacTextFieldProps { label?: string; value?: string; placeholder?: string; state?: 'normal' | 'focused' | 'off' | 'error'; secret?: boolean; note?: string; error?: string; labelHidden?: boolean; labelWidth?: number | 'auto'; children?: React.ReactNode }
 export declare function MacTextField(props: MacTextFieldProps): React.ReactElement;
 
 /** One choice of several, as a row of a MacBox. */
@@ -103,6 +109,16 @@ export declare function AndroidSection(props: AndroidSectionProps): React.ReactE
 export interface AndroidCardProps { children?: React.ReactNode }
 export declare function AndroidCard(props: AndroidCardProps): React.ReactElement;
 
+/** A screen that walks through one step, centred: a headline, an optional line under it, then the step's content and buttons. */
+/** The six digits two devices both show while one lets the other in, centred; `waiting` is what the device waits for, beside a spinner. */
+export interface MatchCodeProps { code: string; waiting?: string }
+export declare function MacMatchCode(props: MatchCodeProps): React.ReactElement;
+/** `dialog` is the smaller size for inside a dialog. */
+export declare function AndroidMatchCode(props: MatchCodeProps & { dialog?: boolean }): React.ReactElement;
+
+export interface AndroidStepProps { title: string; text?: string; top?: boolean; children?: React.ReactNode }
+export declare function AndroidStep(props: AndroidStepProps): React.ReactElement;
+
 /** One line of a card: title (with a tag chip after it), a subtitle under it (in tone with a dot), controls as children, and an icon on the right. action draws the title as an accent action; destructive colors it danger, for an action that removes something. */
 export interface AndroidRowProps { title: string; tag?: string; subtitle?: string; tone?: 'success' | 'warning' | 'danger' | 'activity' | 'accent'; icon?: 'chevron' | 'edit' | 'expand' | 'more' | 'refresh'; leadingIcon?: 'add'; action?: boolean; destructive?: boolean; selected?: boolean; nested?: boolean; onClick?: () => void; children?: React.ReactNode }
 export declare function AndroidRow(props: AndroidRowProps): React.ReactElement;
@@ -130,7 +146,7 @@ export interface AndroidAccentPickerProps { selected?: 'blue' | 'orchid' | 'pink
 export declare function AndroidAccentPicker(props: AndroidAccentPickerProps): React.ReactElement;
 
 /** An outlined text field with its label on the border. helper is a grey line under it; error a red one, shown when state is error. */
-export interface AndroidTextFieldProps { label: string; value?: string; state?: 'normal' | 'focused' | 'error'; helper?: string; error?: string }
+export interface AndroidTextFieldProps { label: string; value?: string; placeholder?: string; state?: 'normal' | 'focused' | 'error'; helper?: string; error?: string }
 export declare function AndroidTextField(props: AndroidTextFieldProps): React.ReactElement;
 
 /** One choice of several, in a dialog. */
@@ -163,9 +179,9 @@ export interface StatusChipProps { tone?: StatusTone; children?: React.ReactNode
 export declare function StatusChip(props: StatusChipProps): React.ReactElement;
 
 /** A code to scan, centered: what to do, the QR code, the buttons that hand over the code (children), then when it ends. size is the QR code's width in points. */
-export interface MacScanCodeProps { instruction?: string; note?: string; size?: number; children?: React.ReactNode }
+export interface MacScanCodeProps { instruction?: string; size?: number; children?: React.ReactNode }
 export declare function MacScanCode(props: MacScanCodeProps): React.ReactElement;
-export interface AndroidScanCodeProps { instruction?: string; note?: string; size?: number; children?: React.ReactNode }
+export interface AndroidScanCodeProps { instruction?: string; size?: number; children?: React.ReactNode }
 export declare function AndroidScanCode(props: AndroidScanCodeProps): React.ReactElement;
 
 /** A message on its tone's tint. */

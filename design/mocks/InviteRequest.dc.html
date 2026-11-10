@@ -30,22 +30,22 @@ a{color:var(--accent)}a:hover{color:#F6BFD9}
 <x-import component-from-global-scope="Bae.AndroidScreen" title="People and devices" back="{{yes}}">
   <x-import component-from-global-scope="Bae.AndroidSection" title="You"></x-import>
   <x-import component-from-global-scope="Bae.AndroidCard">
-    <x-import component-from-global-scope="Bae.AndroidRow" title="Name" subtitle="Your Name" icon="edit"></x-import>
+    <x-import component-from-global-scope="Bae.AndroidRow" title="Name" subtitle="Ana" icon="edit"></x-import>
     <x-import component-from-global-scope="Bae.AndroidRow" title="Role" subtitle="Admin"></x-import>
     <x-import component-from-global-scope="Bae.AndroidRow" title="Listening history" subtitle="Only me"></x-import>
     <x-import component-from-global-scope="Bae.AndroidRow" title="Devices" subtitle="2 devices" icon="chevron"></x-import>
   </x-import>
   <x-import component-from-global-scope="Bae.AndroidSection" title="People"></x-import>
   <x-import component-from-global-scope="Bae.AndroidCard">
-    <x-import component-from-global-scope="Bae.AndroidRow" title="Person Name" subtitle="Member · 1 device" icon="chevron"></x-import>
-    <x-import component-from-global-scope="Bae.AndroidRow" title="person@example.com" tag="Invited" subtitle="Expires in 7 days" icon="chevron"></x-import>
+    <x-import component-from-global-scope="Bae.AndroidRow" title="Ben" subtitle="Member · 1 device" icon="chevron"></x-import>
+    <x-import component-from-global-scope="Bae.AndroidRow" title="dan@example.com" tag="Invited" icon="chevron"></x-import>
     <x-import component-from-global-scope="Bae.AndroidRow" title="Invite" action="{{yes}}" leading-icon="add"></x-import>
   </x-import>
-  <x-import component-from-global-scope="Bae.AndroidDialog" title="Approve request?" width="340">
-    New Person used your invite to person@example.com. Approve if their screen shows this number.
-    <div style="font: 500 32px/40px var(--font-android); letter-spacing: 2px; color: var(--text-primary); text-align: center">412 778</div>
+  <x-import component-from-global-scope="Bae.AndroidDialog" title="Dan wants to join" width="340">
+    Approve if their screen shows this code:
+    <x-import component-from-global-scope="Bae.AndroidMatchCode" code="412 778" dialog="{{yes}}"></x-import>
     <x-import component-from-global-scope="Bae.AndroidDialogActions">
-      <x-import component-from-global-scope="Bae.AndroidButton" kind="text" destructive="{{yes}}">Decline</x-import>
+      <x-import component-from-global-scope="Bae.AndroidButton" kind="text" neutral="{{yes}}">Decline</x-import>
       <x-import component-from-global-scope="Bae.AndroidButton" kind="text">Approve</x-import>
     </x-import>
   </x-import>
