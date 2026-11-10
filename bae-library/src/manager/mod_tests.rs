@@ -778,14 +778,10 @@ pub(super) fn setup_failure_classes_retain_the_actionable_category() {
 #[test]
 fn a_refused_credit_shows_its_own_line() {
     use bae_diagnostics::UiErrorCategory as C;
-    use bae_records::{IdentityRefusal as R, IdentityWriteError};
-    for (refusal, expected) in [
-        (R::ArtistGone("gone".to_string()), C::ChangedMeanwhile),
-        (R::ConflictingSourceIds("Artist Name".to_string()), C::ConflictingSourceIds),
-    ] {
-        let error = LibraryError::from(IdentityWriteError::from(refusal));
-        assert_eq!(error.category(), expected, "{error}");
-    }
+    use bae_records::{IdentityRefusal, IdentityWriteError};
+    let refusal = IdentityRefusal::ArtistGone("gone".to_string());
+    let error = LibraryError::from(IdentityWriteError::from(refusal));
+    assert_eq!(error.category(), C::ChangedMeanwhile, "{error}");
 }
 
 #[test]

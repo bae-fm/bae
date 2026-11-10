@@ -133,7 +133,6 @@ impl From<bae_diagnostics::UiError> for AutomationError {
             | UiErrorCategory::TiedMediums { .. }
             | UiErrorCategory::ReleaseChangedSinceOpened
             | UiErrorCategory::ChangedMeanwhile
-            | UiErrorCategory::ConflictingSourceIds
             | UiErrorCategory::GroupingBlocked(_) => Self::Import(detail),
             UiErrorCategory::Config
             | UiErrorCategory::InvalidEdit(_)

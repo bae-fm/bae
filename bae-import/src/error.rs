@@ -561,10 +561,6 @@ impl ImportError {
             #[cfg(desktop)]
             Self::Identity(bae_records::IdentityRefusal::ArtistGone(_)) => C::ChangedMeanwhile,
             #[cfg(desktop)]
-            Self::Identity(bae_records::IdentityRefusal::ConflictingSourceIds(_)) => {
-                C::ConflictingSourceIds
-            }
-            #[cfg(desktop)]
             Self::Database(error) => bae_diagnostics::database_category(error),
             #[cfg(desktop)]
             Self::StoredName(_) => C::Database,

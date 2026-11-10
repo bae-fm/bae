@@ -147,9 +147,6 @@ pub enum BridgeErrorCategory {
     /// read and its write, and wrote nothing; asking again acts on what now
     /// stands.
     ChangedMeanwhile,
-    /// A credit's catalog ids disagree with those of the library artist it
-    /// matched; the detail names the artist.
-    ConflictingSourceIds,
     /// What the person typed can't be saved; the line says what it needs.
     InvalidEdit {
         reason: BridgeValidationReason,
@@ -373,7 +370,6 @@ pub fn bridge_error_category_key(category: BridgeErrorCategory) -> String {
             "core.release_edit.error.changed_since_opened"
         }
         BridgeErrorCategory::ChangedMeanwhile => "core.error.changed_meanwhile",
-        BridgeErrorCategory::ConflictingSourceIds => "core.error.conflicting_source_ids",
         BridgeErrorCategory::InvalidEdit { reason } => reason.loc_key(),
         BridgeErrorCategory::WatchedFolderOverlap => "core.error.watched_folder_overlap",
         BridgeErrorCategory::Export => "core.error.category.export",
@@ -533,7 +529,6 @@ impl BridgeErrorCategory {
             Self::TiedMediums { .. } => K::TiedMediums,
             Self::ReleaseChangedSinceOpened => K::ReleaseChangedSinceOpened,
             Self::ChangedMeanwhile => K::ChangedMeanwhile,
-            Self::ConflictingSourceIds => K::ConflictingSourceIds,
             Self::InvalidEdit { .. } => K::InvalidEdit,
             Self::WatchedFolderOverlap => K::WatchedFolderOverlap,
             Self::GroupingBlocked { .. } => K::GroupingBlocked,
@@ -646,7 +641,6 @@ mirror_enum! {
         TiedMediums { mediums },
         ReleaseChangedSinceOpened,
         ChangedMeanwhile,
-        ConflictingSourceIds,
         InvalidEdit(reason: (BridgeValidationReason)),
         WatchedFolderOverlap,
         GroupingBlocked(reason: (BridgeGroupingBlock)),

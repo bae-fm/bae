@@ -43,10 +43,6 @@ pub enum IdentityRefusal {
     /// An artist the person picked left the library after they picked it.
     #[error("artist '{0}' no longer exists")]
     ArtistGone(String),
-    /// A credit's catalog ids disagree with those of the library artist it
-    /// was matched to, by one of them or by name. Holds the credit's name.
-    #[error("artist '{0}' has conflicting source IDs")]
-    ConflictingSourceIds(String),
 }
 
 /// Why a write that decides which library artist each credit and which

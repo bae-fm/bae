@@ -248,7 +248,6 @@ fn produced_keys() -> Vec<String> {
         BridgeErrorCategory::TiedMediums { mediums: vec![2, 4] },
         BridgeErrorCategory::ReleaseChangedSinceOpened,
         BridgeErrorCategory::ChangedMeanwhile,
-        BridgeErrorCategory::ConflictingSourceIds,
         BridgeErrorCategory::InvalidEdit { reason: BridgeValidationReason::EmptyArtistName },
         BridgeErrorCategory::WatchedFolderOverlap,
         BridgeErrorCategory::CandidateImportInProgress,

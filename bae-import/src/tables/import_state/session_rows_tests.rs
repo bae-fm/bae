@@ -22,7 +22,6 @@ fn every_failure_class_reads_back_as_itself() {
         C::TiedMediums { mediums: vec![2, 4] },
         C::ReleaseChangedSinceOpened,
         C::ChangedMeanwhile,
-        C::ConflictingSourceIds,
         C::WatchedFolderOverlap,
         C::InvalidEdit(crate::EditValidationError::EmptyAlbumTitle),
         C::InvalidEdit(crate::EditValidationError::NoAlbumArtist),

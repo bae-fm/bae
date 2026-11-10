@@ -435,9 +435,6 @@ impl LibraryError {
             LibraryError::Identity(bae_records::IdentityRefusal::ArtistGone(_)) => {
                 C::ChangedMeanwhile
             }
-            LibraryError::Identity(bae_records::IdentityRefusal::ConflictingSourceIds(_)) => {
-                C::ConflictingSourceIds
-            }
             LibraryError::Cleanup { operation, .. } => operation.category(),
             #[cfg(desktop)]
             LibraryError::ReleaseEditLoad(_) => C::Internal,

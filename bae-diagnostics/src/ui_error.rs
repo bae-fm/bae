@@ -54,10 +54,6 @@ pub enum UiErrorCategory {
     /// watched folders moved under it. Nothing was written; asking again acts
     /// on what now stands.
     ChangedMeanwhile,
-    /// A credit's catalog ids disagree with those of the library artist it
-    /// matched, so its write can't say which artist it is; the detail names
-    /// the artist.
-    ConflictingSourceIds,
     /// What the person typed can't be saved; the line says what it needs.
     InvalidEdit(bae_types::edit_validation::EditValidationError),
     /// A folder to watch holds, or lies in, a watched folder; the detail
