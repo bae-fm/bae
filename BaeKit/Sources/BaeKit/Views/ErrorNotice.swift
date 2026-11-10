@@ -111,7 +111,9 @@ public struct ErrorNotice: View {
                 words
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            buttons
+            if details != nil || action != nil {
+                buttons
+            }
         }
     }
 

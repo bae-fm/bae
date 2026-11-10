@@ -2,7 +2,7 @@ import Foundation
 
 /// What removing a library that isn't open loses, as the person confirms it.
 /// It also decides how the confirmed removal runs.
-public enum RemovalLoss {
+public enum RemovalLoss: Sendable {
     /// The library opens: the changes this device hasn't sent, counted by
     /// opening it. Removing it opens it again to leave its store.
     case unsent(BridgeUnsentWork)

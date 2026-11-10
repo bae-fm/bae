@@ -27,28 +27,28 @@ final class WelcomeListings {
     /// Remove a library that isn't open, once the person confirmed `loss`,
     /// then read both lists again.
     func remove(
-        closedLibrary libraryId: String,
+        closedLibrary library: BridgeLibrary,
         losing loss: RemovalLoss,
         with removals: LibraryRemovals,
         from setup: LibrarySetup
     ) async {
         await withCheckedContinuation { finished in
-            removals.remove(closedLibrary: libraryId, losing: loss) {
+            removals.remove(closedLibrary: library, losing: loss) {
                 finished.resume()
             }
         }
         await load(from: setup)
     }
 
-    /// Finish removing the library `libraryId`, whose removal stopped
+    /// Finish removing `library`, whose removal stopped
     /// partway, then list the libraries again.
     func finishRemoving(
-        _ libraryId: String,
+        _ library: BridgeLibrary,
         with removals: LibraryRemovals,
         from setup: LibrarySetup
     ) async {
         await withCheckedContinuation { finished in
-            removals.finishRemoving(libraryId: libraryId) {
+            removals.finishRemoving(library: library) {
                 finished.resume()
             }
         }

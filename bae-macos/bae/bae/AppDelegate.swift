@@ -272,7 +272,7 @@ extension AppDelegate {
             }
             // Core lists the active library first; one whose settings can't
             // be read shows on the welcome, saying why.
-            guard removals.error == nil,
+            guard removals.unfinishedError == nil,
                 let library = libraries.first, library.isOpenable
             else {
                 screen = .home

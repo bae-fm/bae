@@ -1,3 +1,4 @@
+import AppKit
 import BaeKit
 import SwiftUI
 
@@ -32,12 +33,61 @@ extension ShotScene {
                 )
             ) { reads.answered == 2 }
         },
+        removalAlert("welcome-remove", PreviewData.welcomeLibraries[0]),
+        removalAlert(
+            "welcome-remove-unsent",
+            PreviewData.welcomeLibraries[0],
+            losing: .unsent(
+                BridgeUnsentWork(writes: 3, files: 0, isEmpty: false)
+            )
+        ),
+        removalAlert("welcome-delete", PreviewData.welcomeLibraries[1]),
+        ShotScene(
+            id: "welcome-remove-failed",
+            size: CGSize(width: 340, height: 160)
+        ) {
+            ShotStage(
+                NSAlertShot {
+                    LibraryRemovalAlerts.failure(
+                        FailedRemoval(
+                            library: PreviewData.welcomeLibraries[0],
+                            error: DisplayError(
+                                line:
+                                    "Couldn't reach the cloud. Check your connection and try again."
+                            ),
+                            retry: .ask
+                        )
+                    )
+                }
+            )
+        },
         detailsScene("welcome-library-details", PreviewData.standingSynced),
         detailsScene(
             "welcome-library-details-unsent",
             PreviewData.standingUnsent
         ),
     ]
+
+    /// The confirmation `library` asks before it is removed, counted as
+    /// `loss`.
+    private static func removalAlert(
+        _ id: String,
+        _ library: BridgeLibrary,
+        losing loss: RemovalLoss = .unsent(
+            BridgeUnsentWork(writes: 0, files: 0, isEmpty: true)
+        )
+    ) -> ShotScene {
+        ShotScene(id: id, size: CGSize(width: 340, height: 280)) {
+            ShotStage(
+                NSAlertShot {
+                    LibraryRemovalAlerts.confirmation(
+                        for: library,
+                        losing: loss
+                    )
+                }
+            )
+        }
+    }
 
     /// The details popover's content for a Dropbox library, once its status
     /// is in.

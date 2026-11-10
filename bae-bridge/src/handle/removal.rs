@@ -6,11 +6,13 @@ use super::*;
 pub struct BridgeUnsentWork {
     pub writes: u64,
     pub files: u64,
+    /// Nothing waits to upload, as coven decides it.
+    pub is_empty: bool,
 }
 
 impl BridgeUnsentWork {
     pub(crate) fn from_core(work: coven::UnsentWork) -> Self {
-        Self { writes: work.writes, files: work.files }
+        Self { writes: work.writes, files: work.files, is_empty: work.is_empty() }
     }
 }
 

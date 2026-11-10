@@ -19,10 +19,14 @@ public final class LibraryRemovals {
     public private(set) var opening: ClosedLibraryOpening?
     /// A removal that left the store but not this device's files for it.
     /// A removal that stopped before the store was deleted shows only its
-    /// `error`: the library is still here, with nothing to finish.
+    /// `unfinishedError`: the library is still here, with nothing to finish.
     public private(set) var unfinished: BridgeUnfinishedRemoval?
-    /// The last removal failure, or why `unfinished` stopped.
-    public private(set) var error: DisplayError?
+    /// Why `unfinished` stopped, why reading it at launch failed, or why
+    /// finishing it failed.
+    public private(set) var unfinishedError: DisplayError?
+    /// The last removal started from where libraries are listed that failed,
+    /// for the person to retry or drop.
+    public private(set) var failed: FailedRemoval?
     /// Finishing unfinished removals, with its steps; nil while it doesn't
     /// run.
     public private(set) var finishing: LibrarySetupSteps?
@@ -102,12 +106,12 @@ public final class LibraryRemovals {
     }
 
     /// What removing `library`, which isn't open, would lose, for the
-    /// person to confirm first; nil after a failure, shown as `error`. A
+    /// person to confirm first; nil after a failure, kept as `failed`. A
     /// library that can't open isn't opened to count.
     public func loss(closedLibrary library: BridgeLibrary) async
         -> RemovalLoss?
     {
-        error = nil
+        failed = nil
         guard library.isOpenable else {
             logger.info(
                 "\(library.id) can't open; removing it loses what it hasn't sent, uncounted"
@@ -129,7 +133,10 @@ public final class LibraryRemovals {
             logger.error(
                 "Couldn't read what removing \(library.id) loses: \(String(reflecting: error))"
             )
-            self.error = DisplayError(error)
+            failed = DisplayError(error)
+                .map {
+                    FailedRemoval(library: library, error: $0, retry: .ask)
+                }
             return nil
         }
     }
@@ -138,11 +145,12 @@ public final class LibraryRemovals {
     /// then report the list changed. A library that opens is opened to leave
     /// its store; one that can't is removed without opening.
     public func remove(
-        closedLibrary libraryId: String,
+        closedLibrary library: BridgeLibrary,
         losing loss: RemovalLoss,
         onFinished: @escaping () -> Void
     ) {
-        run(libraryId, onFinished: onFinished) { steps in
+        let libraryId = library.id
+        run(library, retry: .remove(loss), onFinished: onFinished) { steps in
             switch loss {
             case .unsent:
                 let progress = self.makeOpenProgress()
@@ -165,18 +173,19 @@ public final class LibraryRemovals {
     /// Finish removing a library whose removal stopped partway, which
     /// never opens again, then report the list changed.
     public func finishRemoving(
-        libraryId: String,
+        library: BridgeLibrary,
         onFinished: @escaping () -> Void
     ) {
-        run(libraryId, onFinished: onFinished) { steps in
-            try await self.finishDeletion(libraryId, steps.closing)
+        run(library, retry: .finish, onFinished: onFinished) { steps in
+            try await self.finishDeletion(library.id, steps.closing)
         }
     }
 
-    /// Run one removal of `libraryId`, its steps on the library's row, and
-    /// note how it ended.
+    /// Run one removal of `library`, its steps on the library's row, and
+    /// note how it ended; a failure is kept as `failed` with `retry`.
     private func run(
-        _ libraryId: String,
+        _ library: BridgeLibrary,
+        retry: FailedRemoval.Retry,
         onFinished: @escaping () -> Void,
         removal:
             @escaping (LibraryClosingSteps) async throws ->
@@ -184,8 +193,8 @@ public final class LibraryRemovals {
     ) {
         precondition(task == nil, "one library removal at a time")
         let steps = makeRemovalSteps()
-        removing = RunningRemoval(libraryId: libraryId, steps: steps)
-        error = nil
+        removing = RunningRemoval(libraryId: library.id, steps: steps)
+        failed = nil
         task = Task {
             defer {
                 removing = nil
@@ -196,9 +205,12 @@ public final class LibraryRemovals {
             }
             catch {
                 logger.error(
-                    "Couldn't remove \(libraryId): \(String(reflecting: error))"
+                    "Couldn't remove \(library.id): \(String(reflecting: error))"
                 )
-                self.error = DisplayError(error)
+                failed = DisplayError(error)
+                    .map {
+                        FailedRemoval(library: library, error: $0, retry: retry)
+                    }
             }
             onFinished()
         }
@@ -210,7 +222,7 @@ public final class LibraryRemovals {
         switch removal {
         case .removed:
             unfinished = nil
-            error = nil
+            unfinishedError = nil
         case .unfinished(let leftover):
             show(leftover)
         }
@@ -219,7 +231,12 @@ public final class LibraryRemovals {
     private func show(_ removal: BridgeUnfinishedRemoval) {
         logger.error("A library removal didn't finish: \(removal.error)")
         unfinished = removal.filesRemain ? removal : nil
-        error = DisplayError(removal.error)
+        unfinishedError = DisplayError(removal.error)
+    }
+
+    /// Drop the failure the person has seen.
+    public func dismissFailure() {
+        failed = nil
     }
 
     /// Delete the files unfinished removals left.
@@ -229,7 +246,7 @@ public final class LibraryRemovals {
             "Retry shows only for an unfinished removal"
         )
         precondition(task == nil, "one library removal at a time")
-        error = nil
+        unfinishedError = nil
         let steps = makeFinishingSteps()
         finishing = steps
         task = Task {
@@ -245,7 +262,7 @@ public final class LibraryRemovals {
                 logger.error(
                     "Couldn't finish removing a library: \(String(reflecting: error))"
                 )
-                self.error = DisplayError(error)
+                self.unfinishedError = DisplayError(error)
             }
         }
     }
@@ -302,7 +319,7 @@ extension LibraryRemovals {
             logger.error(
                 "Couldn't read unfinished library removals: \(String(reflecting: error))"
             )
-            self.error = DisplayError(error)
+            self.unfinishedError = DisplayError(error)
         }
     }
 

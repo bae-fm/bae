@@ -23,14 +23,6 @@ enum LibraryRemovalConfirmation {
             }
         }
 
-        /// The confirmation's question.
-        var title: String {
-            switch self {
-            case .remove: String(localized: "Remove library from this Mac?")
-            case .delete: String(localized: "Delete library?")
-            }
-        }
-
         /// The button that ends the library, in a row and in the
         /// confirmation.
         var action: String {
@@ -49,11 +41,6 @@ enum LibraryRemovalConfirmation {
         }
     }
 
-    /// What follows the counts of changes this Mac hasn't sent.
-    static var consequence: String {
-        String(localized: "Removing the library from this Mac discards them.")
-    }
-
     /// A synced library stays in storage and on the person's other devices. A
     /// never-synced library has no other copy: it is deleted for good, while
     /// indexed audio files stay in the user's folders.
@@ -70,24 +57,40 @@ enum LibraryRemovalConfirmation {
         )
     }
 
-    /// The confirmation for removing `library`, which isn't open, losing
-    /// `loss`. A library that can't open is deleted from this Mac without
-    /// leaving, so storage plays no part, and whether it has a cloud copy
-    /// can't be read.
-    static func text(for library: BridgeLibrary, losing loss: RemovalLoss)
+    /// The confirmation's question, naming the library.
+    static func title(for library: BridgeLibrary) -> String {
+        switch Ending(of: library) {
+        case .remove:
+            String(localized: "Remove “\(library.name)” from this Mac?")
+        case .delete: String(localized: "Delete “\(library.name)”?")
+        }
+    }
+
+    /// Whether the confirmation leads with a warning that changes this Mac
+    /// hasn't sent will be lost: only when the bridge counted some. A library
+    /// that couldn't be counted says so in its message instead.
+    static func warnsOfUnsent(_ loss: RemovalLoss) -> Bool {
+        switch loss {
+        case .unsent(let work): !work.isEmpty
+        case .uncounted: false
+        }
+    }
+
+    /// The confirmation's text under its title, for removing `library`, which
+    /// isn't open, losing `loss`. A library that can't open is deleted from
+    /// this Mac without leaving, so storage plays no part, and whether it has
+    /// a cloud copy can't be read.
+    static func message(for library: BridgeLibrary, losing loss: RemovalLoss)
         -> String
     {
         switch loss {
-        case .unsent(let unsent):
+        case .unsent:
             guard case .openable(let storage) = library.state else {
                 preconditionFailure(
                     "only a library that opens has its unsent changes counted"
                 )
             }
-            return unsent.confirmation(
-                consequence: consequence,
-                message: message(syncs: storage != nil)
-            )
+            return message(syncs: storage != nil)
         case .uncounted:
             return String(
                 localized:

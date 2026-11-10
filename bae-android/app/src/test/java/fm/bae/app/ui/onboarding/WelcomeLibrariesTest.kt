@@ -62,7 +62,7 @@ private class FakeLibraries(
     var libraries: List<BridgeLibrary>,
 ) {
     val calls = mutableListOf<String>()
-    var unsent = BridgeUnsentWork(writes = 0u, files = 0u)
+    var unsent = BridgeUnsentWork(writes = 0u, files = 0u, isEmpty = true)
     var failure: BridgeException? = null
     var standing = BridgeLibraryStanding(BridgeStandingState.UnsentChanges, lastSynced = null)
     var standingFailure: BridgeException? = null
@@ -149,7 +149,7 @@ class WelcomeLibrariesTest {
     @Test
     fun removeCountsWhatTheLibraryHasntSentThenAsksBeforeLeavingIt() {
         val fake = FakeLibraries(listOf(synced))
-        fake.unsent = BridgeUnsentWork(writes = 3u, files = 0u)
+        fake.unsent = BridgeUnsentWork(writes = 3u, files = 0u, isEmpty = false)
         showLibraries(fake)
 
         chooseFromMenu("Remove…")

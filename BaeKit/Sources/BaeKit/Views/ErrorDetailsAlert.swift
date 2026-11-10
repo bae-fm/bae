@@ -8,9 +8,6 @@
     /// same way from a window, a sheet or a popover. AppKit adds its own OK.
     @MainActor
     public enum ErrorDetailsAlert {
-        /// The causes panel's width: the alert's usual 260 less its margins.
-        private static let panelWidth: CGFloat = 228
-
         public static func show(_ details: ErrorDetails) {
             makeAlert(details).runModal()
         }
@@ -20,16 +17,12 @@
             let alert = NSAlert()
             alert.messageText = details.title
             alert.informativeText = details.message ?? ""
-            let panel = NSHostingView(
-                rootView: ErrorCausesPanel(
+            alert.accessoryView = AlertAccessory.view(
+                ErrorCausesPanel(
                     detail: details.copyText,
                     excerpt: details.causes
                 )
-                .frame(width: panelWidth)
             )
-            let height = panel.fittingSize.height
-            panel.frame = NSRect(x: 0, y: 0, width: panelWidth, height: height)
-            alert.accessoryView = panel
             return alert
         }
     }

@@ -38,11 +38,6 @@ struct WelcomeChooseView: View {
     private var createTask: Task<Void, Never>?
     @State
     private var error: DisplayError?
-    /// The library the person is asked to remove, with what removing it
-    /// would lose.
-    @State
-    private var pendingRemoval: PendingRemoval?
-
     /// Libraries on this Mac and the restore codes saved for others, read on
     /// appear.
     @State
@@ -82,47 +77,52 @@ struct WelcomeChooseView: View {
         }
         .task { await listings.load(from: setup) }
         .onDisappear { createTask?.cancel() }
-        .alert(
-            pendingRemoval.map {
-                LibraryRemovalConfirmation.Ending(of: $0.library).title
-            } ?? "",
-            isPresented: Binding(
-                get: { pendingRemoval != nil },
-                set: { if !$0 { pendingRemoval = nil } }
-            ),
-            presenting: pendingRemoval
-        ) { pending in
-            Button(
-                LibraryRemovalConfirmation.Ending(of: pending.library).action,
-                role: .destructive
-            ) {
-                Task {
-                    await listings.remove(
-                        closedLibrary: pending.library.id,
-                        losing: pending.loss,
-                        with: removals,
-                        from: setup
-                    )
-                }
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: { pending in
-            Text(
-                LibraryRemovalConfirmation.text(
-                    for: pending.library,
-                    losing: pending.loss
-                )
-            )
-        }
     }
 
-    /// Read what removing `library` would lose, then ask. A failure shows as
-    /// the removal's error.
-    private func askToRemove(_ library: BridgeLibrary) {
-        Task {
-            if let loss = await removals.loss(closedLibrary: library) {
-                pendingRemoval = PendingRemoval(library: library, loss: loss)
-            }
+    /// Read what removing `library` would lose, ask, and remove it. A failure
+    /// of the count or of the removal is offered back as an alert.
+    private func askToRemove(_ library: BridgeLibrary) async {
+        guard let loss = await removals.loss(closedLibrary: library) else {
+            return await offerRetry()
+        }
+        guard
+            LibraryRemovalAlerts.confirmation(for: library, losing: loss)
+                .runModal() == .alertFirstButtonReturn
+        else { return }
+        await listings.remove(
+            closedLibrary: library,
+            losing: loss,
+            with: removals,
+            from: setup
+        )
+        await offerRetry()
+    }
+
+    /// Finish removing `library`, whose removal stopped partway.
+    private func finishRemoving(_ library: BridgeLibrary) async {
+        await listings.finishRemoving(library, with: removals, from: setup)
+        await offerRetry()
+    }
+
+    /// When a removal failed, say so, and on Retry run again what failed.
+    private func offerRetry() async {
+        guard let failed = removals.failed else { return }
+        let retry = LibraryRemovalAlerts.failure(failed).runModal()
+        removals.dismissFailure()
+        guard retry == .alertFirstButtonReturn else { return }
+        switch failed.retry {
+        case .ask:
+            await askToRemove(failed.library)
+        case .remove(let loss):
+            await listings.remove(
+                closedLibrary: failed.library,
+                losing: loss,
+                with: removals,
+                from: setup
+            )
+            await offerRetry()
+        case .finish:
+            await finishRemoving(failed.library)
         }
     }
 
@@ -149,8 +149,11 @@ struct WelcomeChooseView: View {
                 )
                 .frame(maxWidth: WelcomeLayout.columnWidth)
             }
-            if let removalError = removals.error {
-                RemovalErrorCallout(error: removalError, removals: removals)
+            if let unfinishedError = removals.unfinishedError {
+                UnfinishedRemovalNotice(
+                    error: unfinishedError,
+                    removals: removals
+                )
             }
             if let failure = listings.localLibraries.failure {
                 ErrorNotice(
@@ -172,15 +175,11 @@ struct WelcomeChooseView: View {
                     onOpen: { onOpenLibrary($0.id) },
                     onFinish: { onFinishReplacement($0.id, $1) },
                     onFinishRemoving: { library in
-                        Task {
-                            await listings.finishRemoving(
-                                library.id,
-                                with: removals,
-                                from: setup
-                            )
-                        }
+                        Task { await finishRemoving(library) }
                     },
-                    onRemove: { askToRemove($0) },
+                    onRemove: { library in
+                        Task { await askToRemove(library) }
+                    },
                     readStanding: setup.libraryStanding,
                     onCreate: doCreate,
                     onScanCode: onScanCode,
@@ -297,15 +296,10 @@ enum WelcomeLayout {
     static let columnWidth: CGFloat = 420
 }
 
-/// A library the person is asked to remove, with what removing it loses.
-private struct PendingRemoval {
-    let library: BridgeLibrary
-    let loss: RemovalLoss
-}
-
-/// A removal that failed, or left this Mac's files for a library it already
-/// left, with Retry for the latter.
-private struct RemovalErrorCallout: View {
+/// Why a removal left this Mac's files for a library it already left, or why
+/// reading or finishing that failed, with Retry while there is something to
+/// finish.
+private struct UnfinishedRemovalNotice: View {
     let error: DisplayError
     let removals: LibraryRemovals
 

@@ -65,3 +65,16 @@ fn an_unfinished_removal_is_reported_and_finished_by_the_host() {
         host.clone().finish_removals(crate::BridgeLibrarySetup::new(host.clone())).await.unwrap();
     });
 }
+
+/// The bridge carries coven's answer to "does anything wait to upload", so
+/// the apps don't decide it from the counts.
+#[test]
+fn unsent_work_carries_covens_is_empty() {
+    let nothing = BridgeUnsentWork::from_core(coven::UnsentWork { writes: 0, files: 0 });
+    assert!(nothing.is_empty);
+    for (writes, files) in [(2, 0), (0, 1), (3, 1)] {
+        let waiting = BridgeUnsentWork::from_core(coven::UnsentWork { writes, files });
+        assert!(!waiting.is_empty);
+        assert_eq!((waiting.writes, waiting.files), (writes, files));
+    }
+}

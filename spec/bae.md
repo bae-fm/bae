@@ -3517,28 +3517,34 @@ its copy then fails, coven discards the closed copy without opening it, and the
 removal goes on to delete bae's files for it. Only if that discard fails too does the removal
 fail, saying the laptop left the library and its files are still on it.
 
-- **The confirmation.** Remove asks "Remove library from this Mac?" ("this
-  device" on Android) and says "The library will remain in the cloud and on your
-  other devices." Delete asks "Delete library?" and says the library isn't
-  synced, so it will be deleted for good, and that the audio files stay in their
-  folders. The first screens on a Mac and on Android ask this way,
+- **The confirmation.** On a Mac, Remove asks "Remove “Household” from this
+  Mac?", naming the library, and Delete asks "Delete “Household”?"; on Android
+  they ask "Remove library from this device?" and "Delete library?". Remove says
+  "The library will remain in the cloud and on your other devices." Delete says
+  the library isn't synced, so it will be deleted for good, and that the audio
+  files stay in their folders. The first screens on a Mac and on Android ask this way,
   and neither platform's Settings removes the library. A row whose library doesn't sync
   says "Not synced" and offers *Delete* in place of *Remove*. Neither platform
   asks the person to unlock the device first: the confirmation is the only step.
   On Android's first screen no library is open, so a library that opens is
   opened to count what it hasn't sent and again to leave its store, its row
   showing each step in place of its storage line, and a library that can't open
-  is removed without opening, as on a Mac. A removal that fails says why on the
+  is removed without opening, as on a Mac. On a Mac a removal that fails, or the
+  count before it, shows an alert, "Couldn't remove “Household”", with the
+  error's line, *Retry* and *Cancel*: *Retry* counts and asks again, or runs
+  again the removal the person confirmed, and the row goes back to its name. On
+  Android a removal that fails says why on the
   row, with *Retry* in place of its ⋮ menu; one that left the store but not this
   device's files goes on to the screen that finishes deleting them.
 - **Unsent edits.** Dan's laptop still holds edits it hasn't sent. Before
   removing, bae asks coven what this device hasn't sent, and the confirmation
-  counts it: the edits, and the files that haven't finished uploading, then
-  that removing the library discards them. The library keeps running while
+  says so: on a Mac it leads with "Unsent changes will be lost", and on Android
+  it counts the edits and the files that haven't finished uploading, then says
+  removing the library discards them. The library keeps running while
   bae asks, so *Cancel* changes nothing; for a library that isn't open, bae
   opens its store just long enough to count. If Dan confirms, the laptop
   leaves without sending them. Refusing instead would tie his removal to
-  uploads that may be stuck; the counts let him decide.
+  uploads that may be stuck; the confirmation lets him decide.
 - **What the removal shows while it runs.** Leaving waits on storage, and
   deleting a large cache takes a while, so a removal reports each step as it
   starts, through the same kind of stream a close reports in (§10.2): stopping

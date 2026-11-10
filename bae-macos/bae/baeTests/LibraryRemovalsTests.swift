@@ -9,7 +9,7 @@ private actor ClosedLibraryBridge {
 
     func unsent(_ libraryId: String) -> BridgeUnsentWork {
         calls.append("unsent \(libraryId)")
-        return BridgeUnsentWork(writes: 3, files: 1)
+        return BridgeUnsentWork(writes: 3, files: 1, isEmpty: false)
     }
 
     func remove(_ libraryId: String) -> BridgeLibraryRemoval {
@@ -89,7 +89,7 @@ struct LibraryRemovalsClosedLibraryTests {
         losing loss: RemovalLoss
     ) async {
         await withCheckedContinuation { finished in
-            removals.remove(closedLibrary: "library-1", losing: loss) {
+            removals.remove(closedLibrary: openable, losing: loss) {
                 finished.resume()
             }
         }
@@ -107,7 +107,7 @@ struct LibraryRemovalsClosedLibraryTests {
         #expect(unsent.writes == 3)
         #expect(unsent.files == 1)
         #expect(await bridge.calls == ["unsent library-1"])
-        #expect(removals.error == nil)
+        #expect(removals.failed == nil)
     }
 
     @Test(
@@ -123,7 +123,7 @@ struct LibraryRemovalsClosedLibraryTests {
             return
         }
         #expect(await bridge.calls.isEmpty)
-        #expect(removals.error == nil)
+        #expect(removals.failed == nil)
     }
 
     @Test("a confirmed count removes by opening the library, once")
@@ -131,11 +131,14 @@ struct LibraryRemovalsClosedLibraryTests {
         let removals = removals
         await remove(
             with: removals,
-            losing: .unsent(BridgeUnsentWork(writes: 3, files: 1))
+            losing: .unsent(
+                BridgeUnsentWork(writes: 3, files: 1, isEmpty: false)
+            )
         )
 
         #expect(await bridge.calls == ["remove library-1"])
-        #expect(removals.error == nil)
+        #expect(removals.failed == nil)
+        #expect(removals.unfinishedError == nil)
         #expect(removals.removing == nil)
     }
 
@@ -143,13 +146,14 @@ struct LibraryRemovalsClosedLibraryTests {
     func finishingRemovesWithoutOpening() async {
         let removals = removals
         await withCheckedContinuation { finished in
-            removals.finishRemoving(libraryId: "library-1") {
+            removals.finishRemoving(library: library(.deletionUnfinished)) {
                 finished.resume()
             }
         }
 
         #expect(await bridge.calls == ["finish removing library-1"])
-        #expect(removals.error == nil)
+        #expect(removals.failed == nil)
+        #expect(removals.unfinishedError == nil)
         #expect(removals.removing == nil)
     }
 
@@ -159,19 +163,20 @@ struct LibraryRemovalsClosedLibraryTests {
         await remove(with: removals, losing: .uncounted)
 
         #expect(await bridge.calls == ["remove unopenable library-1"])
-        #expect(removals.error == nil)
+        #expect(removals.failed == nil)
+        #expect(removals.unfinishedError == nil)
         #expect(removals.removing == nil)
     }
 
-    @Test("a refused removal of a library that can't open shows why")
-    func refusedUnopenableRemovalShowsError() async {
+    @Test("a removal that fails keeps what was confirmed, for Retry")
+    func failedRemovalKeepsWhatWasConfirmed() async {
         let removals = LibraryRemovals(
             makeOpenProgress: { LibraryOpenProgress(host: host) },
             makeRemovalSteps: { LibraryClosingSteps(host: host) },
             makeFinishingSteps: { LibrarySetupSteps(host: host) },
             unsentOfClosed: { _, _ in
                 Issue.record("nothing is counted")
-                return BridgeUnsentWork(writes: 0, files: 0)
+                return BridgeUnsentWork(writes: 0, files: 0, isEmpty: true)
             },
             removeClosed: { _, _, _ in
                 Issue.record("the library isn't opened")
@@ -188,11 +193,66 @@ struct LibraryRemovalsClosedLibraryTests {
             finishUnfinished: { _ in }
         )
 
-        await remove(with: removals, losing: .uncounted)
+        await withCheckedContinuation { finished in
+            removals.remove(
+                closedLibrary: library(.deletionUnfinished),
+                losing: .uncounted
+            ) { finished.resume() }
+        }
 
-        #expect(removals.error != nil)
+        #expect(removals.failed?.library.id == "library-1")
+        guard case .remove(.uncounted) = removals.failed?.retry else {
+            Issue.record("Retry runs the confirmed removal again")
+            return
+        }
+        #expect(removals.unfinishedError == nil)
         #expect(removals.unfinished == nil)
         #expect(removals.removing == nil)
+
+        removals.dismissFailure()
+        #expect(removals.failed == nil)
+    }
+
+    @Test("a removal that leaves files behind is not a failed removal")
+    func leftoverFilesAreNotAFailure() async {
+        let removals = LibraryRemovals(
+            makeOpenProgress: { LibraryOpenProgress(host: host) },
+            makeRemovalSteps: { LibraryClosingSteps(host: host) },
+            makeFinishingSteps: { LibrarySetupSteps(host: host) },
+            unsentOfClosed: { _, _ in
+                Issue.record("nothing is counted")
+                return BridgeUnsentWork(writes: 0, files: 0, isEmpty: true)
+            },
+            removeClosed: { _, _, _ in
+                .unfinished(
+                    removal: BridgeUnfinishedRemoval(
+                        error: .Diagnostic(category: .config, detail: "x"),
+                        filesRemain: true
+                    )
+                )
+            },
+            removeUnopenable: { _, _ in
+                Issue.record("the library opens")
+                return .removed
+            },
+            finishDeletion: { _, _ in
+                Issue.record("no removal is finished")
+                return .removed
+            },
+            findUnfinished: { nil },
+            finishUnfinished: { _ in }
+        )
+
+        await remove(
+            with: removals,
+            losing: .unsent(
+                BridgeUnsentWork(writes: 0, files: 0, isEmpty: true)
+            )
+        )
+
+        #expect(removals.failed == nil)
+        #expect(removals.unfinished != nil)
+        #expect(removals.unfinishedError != nil)
     }
 
     /// A library that can't open is removed with steps all the same, which
@@ -206,7 +266,7 @@ struct LibraryRemovalsClosedLibraryTests {
             makeFinishingSteps: { LibrarySetupSteps(host: host) },
             unsentOfClosed: { _, _ in
                 Issue.record("nothing is counted")
-                return BridgeUnsentWork(writes: 0, files: 0)
+                return BridgeUnsentWork(writes: 0, files: 0, isEmpty: true)
             },
             removeClosed: { _, _, _ in
                 Issue.record("the library isn't opened")
@@ -229,12 +289,13 @@ struct LibraryRemovalsClosedLibraryTests {
 
         await remove(with: removals, losing: .uncounted)
 
-        #expect(removals.error == nil)
+        #expect(removals.failed == nil)
+        #expect(removals.unfinishedError == nil)
         #expect(removals.removing == nil)
     }
 
-    @Test("a count that can't be read shows why and asks nothing")
-    func unreadableCountShowsError() async {
+    @Test("a count that fails asks again on Retry")
+    func failedCountAsksAgain() async {
         let removals = LibraryRemovals(
             makeOpenProgress: { LibraryOpenProgress(host: host) },
             makeRemovalSteps: { LibraryClosingSteps(host: host) },
@@ -259,7 +320,12 @@ struct LibraryRemovalsClosedLibraryTests {
         )
 
         #expect(await removals.loss(closedLibrary: openable) == nil)
-        #expect(removals.error != nil)
+        guard case .ask = removals.failed?.retry else {
+            Issue.record("Retry counts and asks again")
+            return
+        }
+        #expect(removals.failed?.library.id == "library-1")
+        #expect(removals.unfinishedError == nil)
     }
 }
 
@@ -289,18 +355,30 @@ struct LibraryRemovalConfirmationTests {
         #expect(LibraryRemovalConfirmation.Ending(of: library) == .remove)
     }
 
-    @Test("a counted loss lists the changes, then the consequence")
-    func countedLoss() {
-        let text = LibraryRemovalConfirmation.text(
-            for: openable,
-            losing: .unsent(BridgeUnsentWork(writes: 2, files: 0))
-        )
+    @Test("only unsent work the bridge counts warns")
+    func warnsOfUnsent() {
         #expect(
-            text.hasSuffix(
-                LibraryRemovalConfirmation.consequence + " "
-                    + LibraryRemovalConfirmation.message(syncs: false)
+            LibraryRemovalConfirmation.warnsOfUnsent(
+                .unsent(BridgeUnsentWork(writes: 2, files: 0, isEmpty: false))
             )
         )
+        #expect(
+            !LibraryRemovalConfirmation.warnsOfUnsent(
+                .unsent(BridgeUnsentWork(writes: 0, files: 0, isEmpty: true))
+            )
+        )
+        #expect(!LibraryRemovalConfirmation.warnsOfUnsent(.uncounted))
+    }
+
+    @Test("a counted loss is followed by the message for the ending")
+    func countedLoss() {
+        let text = LibraryRemovalConfirmation.message(
+            for: openable,
+            losing: .unsent(
+                BridgeUnsentWork(writes: 2, files: 0, isEmpty: false)
+            )
+        )
+        #expect(text == LibraryRemovalConfirmation.message(syncs: false))
     }
 
     @Test(
@@ -308,7 +386,7 @@ struct LibraryRemovalConfirmationTests {
         arguments: unopenable
     )
     func uncountedLoss(library: BridgeLibrary) {
-        let text = LibraryRemovalConfirmation.text(
+        let text = LibraryRemovalConfirmation.message(
             for: library,
             losing: .uncounted
         )
@@ -319,24 +397,6 @@ struct LibraryRemovalConfirmationTests {
                         "This library can't be opened, so any changes on this Mac that weren't sent are lost. Its copy on this Mac is deleted; if the library is kept in storage, it stays there."
                 )
         )
-    }
-}
-
-@Suite("BridgeUnsentWork confirmation")
-struct BridgeUnsentWorkConfirmationTests {
-    @Test("nothing waiting leaves only the message")
-    func nothingWaiting() {
-        let text = BridgeUnsentWork(writes: 0, files: 0)
-            .confirmation(consequence: "Lost.", message: "Message.")
-        #expect(text == "Message.")
-    }
-
-    @Test("waiting changes come first, then the consequence")
-    func changesWaiting() {
-        let text = BridgeUnsentWork(writes: 2, files: 0)
-            .confirmation(consequence: "Lost.", message: "Message.")
-        #expect(text.hasSuffix("Lost. Message."))
-        #expect(text != "Lost. Message.")
     }
 }
 
@@ -385,7 +445,9 @@ struct LibraryRemovalsUnfinishedTests {
             makeOpenProgress: { LibraryOpenProgress(host: host) },
             makeRemovalSteps: { LibraryClosingSteps(host: host) },
             makeFinishingSteps: { LibrarySetupSteps(host: host) },
-            unsentOfClosed: { _, _ in BridgeUnsentWork(writes: 0, files: 0) },
+            unsentOfClosed: { _, _ in
+                BridgeUnsentWork(writes: 0, files: 0, isEmpty: true)
+            },
             removeClosed: { _, _, _ in .removed },
             removeUnopenable: { _, _ in .removed },
             finishDeletion: { _, _ in
@@ -398,19 +460,19 @@ struct LibraryRemovalsUnfinishedTests {
 
         await removals.loadUnfinished()
         #expect(removals.unfinished != nil)
-        #expect(removals.error != nil)
+        #expect(removals.unfinishedError != nil)
 
         removals.retryUnfinished()
         try await Wait.until { !removals.isRetrying }
         #expect(removals.unfinished != nil)
-        #expect(removals.error != nil)
+        #expect(removals.unfinishedError != nil)
 
         removals.retryUnfinished()
         let shown = removals.finishing
         #expect(shown != nil, "a retry shows its steps while it runs")
         try await Wait.until { !removals.isRetrying }
         #expect(removals.unfinished == nil)
-        #expect(removals.error == nil)
+        #expect(removals.unfinishedError == nil)
         #expect(removals.finishing == nil)
         #expect(await bridge.finishes == 2)
         #expect(
@@ -425,7 +487,9 @@ struct LibraryRemovalsUnfinishedTests {
             makeOpenProgress: { LibraryOpenProgress(host: host) },
             makeRemovalSteps: { LibraryClosingSteps(host: host) },
             makeFinishingSteps: { LibrarySetupSteps(host: host) },
-            unsentOfClosed: { _, _ in BridgeUnsentWork(writes: 0, files: 0) },
+            unsentOfClosed: { _, _ in
+                BridgeUnsentWork(writes: 0, files: 0, isEmpty: true)
+            },
             removeClosed: { _, _, _ in .removed },
             removeUnopenable: { _, _ in .removed },
             finishDeletion: { _, _ in
@@ -445,7 +509,7 @@ struct LibraryRemovalsUnfinishedTests {
 
         await removals.loadUnfinished()
         #expect(removals.unfinished == nil)
-        #expect(removals.error != nil)
+        #expect(removals.unfinishedError != nil)
     }
 
     @Test("nothing shows when no removal was left unfinished")
@@ -454,7 +518,9 @@ struct LibraryRemovalsUnfinishedTests {
             makeOpenProgress: { LibraryOpenProgress(host: host) },
             makeRemovalSteps: { LibraryClosingSteps(host: host) },
             makeFinishingSteps: { LibrarySetupSteps(host: host) },
-            unsentOfClosed: { _, _ in BridgeUnsentWork(writes: 0, files: 0) },
+            unsentOfClosed: { _, _ in
+                BridgeUnsentWork(writes: 0, files: 0, isEmpty: true)
+            },
             removeClosed: { _, _, _ in .removed },
             removeUnopenable: { _, _ in .removed },
             finishDeletion: { _, _ in
@@ -469,6 +535,6 @@ struct LibraryRemovalsUnfinishedTests {
 
         await removals.loadUnfinished()
         #expect(removals.unfinished == nil)
-        #expect(removals.error == nil)
+        #expect(removals.unfinishedError == nil)
     }
 }

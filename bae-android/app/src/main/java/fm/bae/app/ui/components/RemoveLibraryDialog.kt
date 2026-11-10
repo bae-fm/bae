@@ -122,7 +122,7 @@ private fun RemoveLibraryDialogPreview() {
     BaeTheme {
         RemoveLibraryDialog(
             ending = LibraryEnding.REMOVE,
-            loss = RemovalLoss.Counted(BridgeUnsentWork(writes = 3u, files = 0u)),
+            loss = RemovalLoss.Counted(BridgeUnsentWork(writes = 3u, files = 0u, isEmpty = false)),
             onConfirm = {},
             onDismiss = {},
         )
@@ -135,7 +135,7 @@ private fun DeleteLibraryDialogPreview() {
     BaeTheme {
         RemoveLibraryDialog(
             ending = LibraryEnding.DELETE,
-            loss = RemovalLoss.Counted(BridgeUnsentWork(writes = 0u, files = 0u)),
+            loss = RemovalLoss.Counted(BridgeUnsentWork(writes = 0u, files = 0u, isEmpty = true)),
             onConfirm = {},
             onDismiss = {},
         )

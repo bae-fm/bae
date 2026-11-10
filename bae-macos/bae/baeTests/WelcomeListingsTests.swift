@@ -74,14 +74,23 @@ struct WelcomeListingsTests {
     /// are read again with the libraries.
     @Test("removing a library reads both lists again")
     func removalReadsBothListsAgain() async {
+        let library = BridgeLibrary(
+            id: "library-1",
+            name: "Library",
+            path: "/libraries/library-1",
+            state: .openable(storage: nil),
+            isActive: false
+        )
         let listings = WelcomeListings()
         await listings.load(from: setup)
         let loaded = await bridge.calls
         #expect(Set(loaded) == ["list libraries", "list saved codes"])
 
         await listings.remove(
-            closedLibrary: "library-1",
-            losing: .unsent(BridgeUnsentWork(writes: 0, files: 0)),
+            closedLibrary: library,
+            losing: .unsent(
+                BridgeUnsentWork(writes: 0, files: 0, isEmpty: true)
+            ),
             with: removals,
             from: setup
         )
