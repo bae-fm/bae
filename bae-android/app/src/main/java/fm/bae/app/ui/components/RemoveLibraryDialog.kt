@@ -123,6 +123,7 @@ internal fun RemoveLibraryText(
                         advice = null,
                         error = null,
                         tone = StatusTone.WARNING,
+                        look = NoticeLook.QUIET,
                     )
                 }
                 Text(message, color = bodyColor)
