@@ -23,8 +23,8 @@ use crate::sync::S3ConfigData;
 use bae_diagnostics::{Diagnostics, SyncOperation, TelemetryEvent};
 use bae_records::GallerySource;
 #[cfg(desktop)]
-use bae_records::{DbAlbum, DbArtist};
-use bae_records::{DbFile, DbLibraryImage, DbRelease, DbTrack, ImageRef, LibraryImageType};
+use bae_records::{DbAlbum, DbArtist, DbTrack};
+use bae_records::{DbFile, DbLibraryImage, DbRelease, ImageRef, LibraryImageType};
 use bae_store::Store;
 use bae_sync_status::SyncStatus;
 use bae_types::release_storage::ReleaseStorageAction;
