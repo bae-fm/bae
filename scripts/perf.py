@@ -21,8 +21,9 @@ accepting a slower number takes a commit:
   slower        above the baseline by more than the tolerance (exit status 1)
   no baseline   the scenario's number has none yet (exit status 0)
   not compared  the machine's one-minute load was over half its cores when the
-                scenario started, after waiting up to ten minutes for it to
-                fall; the numbers are shown and recorded, and
+                scenario started (after waiting up to ten minutes for it to
+                fall) or at any minute while it ran; the numbers are shown
+                and recorded with when the load went over and how high, and
                 `accept` refuses them
 
 The tolerance is 25%, widened by the baseline's own spread. The last run
@@ -47,6 +48,7 @@ import statistics
 import subprocess
 import sys
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -58,6 +60,8 @@ TOLERANCE = 0.25
 LOAD_SHARE = 0.5
 DEFAULT_REPEAT = 3
 QUIET_WAIT = 600
+# Seconds between the load readings of a run.
+LOAD_CHECK = 60
 
 BETTER, WITHIN, SLOWER, NO_BASELINE, NOT_COMPARED = (
     "better",
@@ -94,6 +98,11 @@ SCENARIOS: tuple[Scenario, ...] = (
         "import-list-windows",
         test_command("bae-import", ("--lib",), ("import_list_window_cost",)),
         "reading one window of the import list, by jump and by scroll",
+    ),
+    Scenario(
+        "import-list-search",
+        test_command("bae-import", ("--lib",), ("import_list_search_window_cost",)),
+        "a text-filtered import list's windows, first jumps and typing, each size in its own store",
     ),
     Scenario(
         "library-list-windows",
@@ -213,18 +222,51 @@ def chosen(names: list[str]) -> list[Scenario]:
     return [known[name] for name in names] if names else list(SCENARIOS)
 
 
-def run_once(scenario: Scenario) -> tuple[int, str]:
-    process = subprocess.run(
-        [str(ROOT / "scripts" / "cargo.sh"), *scenario.cargo],
-        env={**os.environ, **dict(scenario.env)},
+@dataclass(frozen=True)
+class Run:
+    status: int
+    output: str
+    # The largest one-minute load read: at the start and after each wait
+    # during the run, and how many seconds into the run it was read.
+    peak_load: float
+    peak_at: float
+
+
+def run_once(
+    command: list[str],
+    env: dict[str, str],
+    read_load: Callable[[], float] = lambda: os.getloadavg()[0],
+    wait: float = LOAD_CHECK,
+) -> Run:
+    """Run a command, reading the load at its start and after each `wait`
+    seconds until it exits, so a load that rises mid-run is seen."""
+    started = time.monotonic()
+    peak, peak_at = read_load(), 0.0
+    process = subprocess.Popen(
+        command,
+        env=env,
         cwd=ROOT,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
         errors="replace",
-        check=False,
     )
-    return process.returncode, process.stdout
+    while True:
+        try:
+            output, _ = process.communicate(timeout=wait)
+            break
+        except subprocess.TimeoutExpired:
+            load = read_load()
+            if load > peak:
+                peak, peak_at = load, time.monotonic() - started
+    return Run(process.returncode, output, peak, peak_at)
+
+
+def run_scenario(scenario: Scenario) -> Run:
+    return run_once(
+        [str(ROOT / "scripts" / "cargo.sh"), *scenario.cargo],
+        {**os.environ, **dict(scenario.env)},
+    )
 
 
 def command_list(_: argparse.Namespace) -> int:
@@ -256,13 +298,22 @@ def command_run(args: argparse.Namespace) -> int:
         load = os.getloadavg()[0]
         print(f"\n{scenario.name} (load {load:.2f} of {cores} cores)")
         runs, logs = [], []
-        for _ in range(args.repeat):
-            status, output = run_once(scenario)
-            logs.append(output)
-            if status != 0:
-                sys.stderr.write(output[-4000:])
-                sys.exit(f"{scenario.name}: cargo exited {status}")
-            runs.append(parse_numbers(output))
+        peak = None  # the highest load over the share: (load, seconds into the run, repeat)
+        for repeat in range(1, args.repeat + 1):
+            run = run_scenario(scenario)
+            logs.append(run.output)
+            if run.status != 0:
+                sys.stderr.write(run.output[-4000:])
+                sys.exit(f"{scenario.name}: cargo exited {run.status}")
+            runs.append(parse_numbers(run.output))
+            load = max(load, run.peak_load)
+            if run.peak_load > cores * LOAD_SHARE and (peak is None or run.peak_load > peak[0]):
+                peak = (run.peak_load, run.peak_at, repeat)
+        if peak:
+            print(
+                f"  load went over {cores * LOAD_SHARE:g}: {peak[0]:.2f} at "
+                f"{peak[1] / 60:.0f} min into run {peak[2]} of {args.repeat}; not compared"
+            )
         LAST_RUN.parent.mkdir(parents=True, exist_ok=True)
         (LAST_RUN.parent / f"{scenario.name}.log").write_text("\n".join(logs))
         if not any(runs):
@@ -280,6 +331,7 @@ def command_run(args: argparse.Namespace) -> int:
             recorded[metric] = number
         last["scenarios"][scenario.name] = {
             "load": load,
+            "load_over_at": None if peak is None else {"load": peak[0], "seconds": peak[1], "run": peak[2]},
             "cores": cores,
             "compared": load <= cores * LOAD_SHARE,
             "numbers": recorded,

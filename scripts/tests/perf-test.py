@@ -102,5 +102,26 @@ class SummaryTests(unittest.TestCase):
         self.assertEqual(summary["unit"], "ms")
 
 
+class RunOnceTests(unittest.TestCase):
+    def test_the_largest_load_read_while_the_command_runs(self) -> None:
+        loads = iter([1.0, 3.0, 9.5, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0])
+        run = PERF.run_once(
+            [sys.executable, "-c", "import time; time.sleep(0.3); print('done')"],
+            dict(),
+            read_load=lambda: next(loads),
+            wait=0.05,
+        )
+        self.assertEqual(run.status, 0)
+        self.assertEqual(run.output.strip(), "done")
+        self.assertEqual(run.peak_load, 9.5)
+        self.assertGreater(run.peak_at, 0.0)
+
+    def test_the_load_at_the_start_counts(self) -> None:
+        run = PERF.run_once(
+            [sys.executable, "-c", "pass"], dict(), read_load=lambda: 7.0, wait=0.05
+        )
+        self.assertEqual((run.peak_load, run.peak_at), (7.0, 0.0))
+
+
 if __name__ == "__main__":
     unittest.main()
