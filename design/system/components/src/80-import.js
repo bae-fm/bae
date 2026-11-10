@@ -40,14 +40,16 @@
   function MacImportFolderLine(props) {
     return h('div', { className: 'bae-m-ifl' }, h(StatusChip, { tone: 'accent' }, props.tab || 'Found'), h(Sym, { name: 'right', size: 10, className: 'bae-m-tertiary' }), h(Sym, { name: 'folder', size: 15, className: 'bae-muted' }), h('span', { className: 'bae-ellipsis bae-strong', style: { fontSize: 15 } }, props.folder));
   }
-  // The draft card: Identify with Automatic, Search and ⋯; In cloud/Pinned and Import; the folder's check in a warning notice; the cover well and identity; the Release grid; the linked records.
+  // Where an import goes, one choice of three, as the person last chose it: This Mac, Cloud, or Cloud, pinned (kept whole here too). One stored choice, shown wherever Import is (the draft card, the bulk pane's Import row) and in Settings → Import, so changing it in one place changes it in all.
+  function MacImportDestination(props) { return h(MacPopUpButton, { value: props.to || 'Cloud', off: props.off }); }
+  // The draft card: Identify with Automatic, Search and ⋯; where the import goes and Import; the folder's check in a warning notice; the cover well and identity; the Release grid; the linked records.
   function MacImportDraft(props) {
     var rows = list(props.fields || 'Year:1992,Media:CD,Label:Harbor Records — HR-1042,Country:—,Barcode:—,Status:Official,Packaging:—,Details:—').map(function (r) { var i = r.indexOf(':'); return [r.slice(0, i), r.slice(i + 1)]; });
     return h('div', { className: 'bae-m-card bae-m-idraft' },
       h('div', { className: 'bae-m-idraft-actions' },
         h('span', { className: 'bae-strong bae-muted' }, 'Identify'), h(MacButton, null, 'Automatic'), h(MacButton, null, 'Search'), props.editor ? null : h(MacButton, null, '⋯'),
         h('span', { style: { flex: 1 } }),
-        props.cloud ? h(MacCheckbox, { label: 'In cloud', on: true }) : null, props.cloud ? h(MacCheckbox, { label: 'Pinned' }) : null,
+        props.cloud ? h(MacImportDestination, { to: props.to }) : null,
         props.editor ? [props.changed ? h(MacButton, { key: 'c' }, 'Cancel') : null, h(MacButton, { key: 's', kind: 'primary' }, 'Save')] : props.blank ? null : h(MacButton, { kind: 'primary' }, props.retry ? 'Retry Import' : 'Import')),
       props.check ? h(MacNotice, { tone: 'warning', title: props.check }) : null,
       h('div', { className: 'bae-m-idraft-head' },
@@ -125,13 +127,14 @@
   }
   // Several rows selected: the count, then the actions in groups, each with how many it applies to.
   function MacImportBulk(props) {
-    var row = function (icon, label, n, strong) { return h('div', { key: label, className: cx('bae-m-bulkrow', !n && 'bae-m-bulkrow-off') }, h(Sym, { name: icon, size: 15, className: strong ? 'bae-accent' : 'bae-muted' }), h('span', { className: strong ? 'bae-strong' : 'bae-muted', style: { flex: 1 } }, label), h(StatusChip, { tone: strong ? 'accent' : 'neutral' }, String(n || 0))); };
+    // `extra` sits on the row before its count: Import's destination, on Import's own line.
+    var row = function (icon, label, n, strong, extra) { return h('div', { key: label, className: cx('bae-m-bulkrow', !n && 'bae-m-bulkrow-off') }, h(Sym, { name: icon, size: 15, className: strong ? 'bae-accent' : 'bae-muted' }), h('span', { className: strong ? 'bae-strong' : 'bae-muted', style: { flex: 1 } }, label), extra || null, h(StatusChip, { tone: strong ? 'accent' : 'neutral' }, String(n || 0))); };
     var grp = function (eyebrow, rows) { return h('div', { className: 'bae-m-bulkgrp' }, eyebrow ? h('div', { className: 'bae-m-eyebrowtxt', style: { padding: '8px 12px 2px' } }, eyebrow) : null, rows); };
     var n = Number(props.count || 5);
     return h('div', { className: 'bae-m-bulk' }, h('div', { className: 'bae-m-card', style: { width: 440, padding: 24, display: 'flex', flexDirection: 'column', gap: 12 } },
       h('div', { style: { font: '700 22px var(--font-sans)' } }, n + ' selected'), h('div', { className: 'bae-muted' }, 'Each action applies only to eligible selected folders.'),
       h('div', { className: 'bae-m-bulklist' },
-        grp('Import', [row('saveAs', 'Import', props.ready || 3, true), row('xcircle', 'Cancel import of selected', 0), row('grid', 'Combine as One Release', 0, true), row('grid', 'Keep as Separate Releases', 0)]),
+        grp('Import', [row('saveAs', 'Import', props.ready || 3, true, props.cloud ? h(MacImportDestination, { to: props.to }) : null), row('xcircle', 'Cancel import of selected', 0), row('grid', 'Combine as One Release', 0, true), row('grid', 'Keep as Separate Releases', 0)]),
         grp('Metadata', [row('refresh', 'Identify selected', n), row('xcircle', 'Stop identifying selected', 0), row('refresh', 'Retry failed identification', 1), row('edit', 'Reset to file metadata', n), row('trash', 'Clear metadata', n)]),
         grp(null, [row('xcircle', 'Skip selected', n), row('left', 'Restore to Pending', 0)]),
         grp(null, [row('folder', 'Reveal in Finder', n)]))),

@@ -64,11 +64,21 @@
     return h('div', { className: cx('bae-m-box', props.elevated && 'bae-m-box-elevated', props.className) }, out);
   }
 
+  // What belongs to the row above it and is more than one setting: a field with its explanation under a switch, say. It joins that row as a nested row does, with no line between them, its text in secondary on the rows' left edge.
+  function MacNested(props) {
+    return h('div', { className: 'bae-m-nested' }, kids(props.children));
+  }
+
+  // An ⓘ after a row's name, for what the name can't say in a word: what Discogs is, say. Clicking it opens a popover with `text` (a board draws the open popover with MacPopover, since a box crops what spills out of it).
+  function MacInfoTip(props) {
+    return h('button', { type: 'button', className: 'bae-m-infotip', 'aria-label': props.label || 'More info' }, h(StatusGlyph, { tone: 'info', set: 'mac', outline: true, muted: true, size: 13 }));
+  }
+
   function MacRow(props) {
     var trail = kids(props.children);
     return h('div', { className: cx('bae-m-row', props.nested && 'bae-m-row-nested', props.nested && props.off && 'bae-m-row-nested-off', props.selected && 'bae-m-row-selected', props.action && 'bae-m-row-action', props.destructive && 'bae-m-row-destructive'), onClick: props.onClick },
       props.label == null ? null : h('span', { className: 'bae-m-row-label' },
-        h('span', { className: 'bae-m-row-title' }, h('span', { className: props.strong ? 'bae-m-row-strong' : null }, props.label), props.tag ? h(StatusChip, null, props.tag) : null),
+        h('span', { className: 'bae-m-row-title' }, h('span', { className: props.strong ? 'bae-m-row-strong' : null }, props.label), props.tag ? h(StatusChip, null, props.tag) : null, props.info ? h(MacInfoTip, { label: 'About ' + props.label }) : null),
         props.note ? h('span', { className: cx('bae-m-row-note', props.noteTone && 'bae-tone-' + props.noteTone) }, props.note) : null),
       props.value != null && props.value !== '' ? h('span', { className: cx('bae-m-row-value', props.tone && 'bae-tone-' + props.tone) }, props.tone ? h('span', { className: 'bae-dot', 'aria-hidden': true }) : null, props.value) : null,
       trail.length ? h('span', { className: 'bae-m-row-trail' }, trail) : null,
@@ -121,11 +131,12 @@
     var line = isError ? props.error : props.note;
     var input = props.code ? h('div', { role: 'textbox', 'aria-multiline': true, 'aria-label': props.label,
       className: cx('bae-m-input', 'bae-m-codetext', state === 'focused' && 'bae-m-input-focused', isError && 'bae-m-input-error') },
-      props.value ? groupCode(props.value) : h('span', { className: 'bae-codetext-placeholder' }, hidden ? props.label : props.placeholder)) : h('input', {
+      props.value ? groupCode(props.value) : h('span', { className: 'bae-codetext-placeholder' }, props.placeholder || (hidden ? props.label : null))) : h('input', {
       className: cx('bae-m-input', state === 'focused' && 'bae-m-input-focused', isError && 'bae-m-input-error'),
       type: props.secret ? 'password' : 'text',
       defaultValue: props.value || '',
-      placeholder: hidden ? props.label : props.placeholder,
+      // A hidden label still names the field to VoiceOver; the placeholder, when given, is what shows.
+      placeholder: props.placeholder || (hidden ? props.label : null),
       'aria-label': props.label,
       disabled: state === 'off',
       spellCheck: false

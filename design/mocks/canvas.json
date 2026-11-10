@@ -3490,6 +3490,22 @@
    "w": 690,
    "x": 6040,
    "y": 5444
+  },
+  "SetMacImportTurnOff.dc.html": {
+   "h": 760,
+   "page": "settings",
+   "title": "macOS: Import, turning Discogs off",
+   "w": 690,
+   "x": 4710,
+   "y": 8136
+  },
+  "SetMacImportDiscogsTip.dc.html": {
+   "h": 170,
+   "page": "settings",
+   "title": "macOS: Import, the Discogs ⓘ",
+   "w": 360,
+   "x": 4330,
+   "y": 8136
   }
  },
  "createdOnFiles": {
@@ -3648,7 +3664,8 @@
   "row-logo-icons",
   "row-logo-accents",
   "code-logo",
-  "activity-progress"
+  "activity-progress",
+  "set-import-discogs-tip"
  ],
  "notes": {
   "canvas-key-library": {
@@ -4909,6 +4926,15 @@
    "x": 7400,
    "y": 1620,
    "text": "What the code needs: REMOVE the clue labels. Not optional.\n- No file, track or image in the import says which clue was read from it: no \"Disc ID\" label on the rip log or a CUE sheet's row, no \"Barcode\" label on an image. Remove them everywhere they show: the Found pane's track and file rows, the images gallery, the imported pane.\n- macOS: ImportEvidenceChip and every use (ImportMappingSourceCell, ImportMappingGallery, ImportSheetCaptionRow, ImportMappingTrackRow, ImportedReleasePane), their tests and strings; the bridge's file evidence goes when nothing reads it. Android the same.\n- Queued as #513."
+  },
+  "set-import-discogs-tip": {
+   "page": "settings",
+   "x": 4330,
+   "y": 8386,
+   "w": 360,
+   "size": 24,
+   "fill": "blue",
+   "text": "The ⓘ after Search Discogs opens the popover drawn above. “Discogs” and “get your free API key” are links, in the accent. The key is kept in this Mac’s keychain, in an entry that stays on this device (coven’s host secret).\n\nSearch Discogs works like any switch: it's always usable. Off, the key field under it is greyed; on, the field takes a key and Save checks it. Turning it off with a saved key asks first (“Turn off Discogs?” / “Your saved key will be cleared.”, Turn Off and Cancel), then clears the key. A working key shows “Key saved” as the row’s second line, in secondary text, and no Remove: turning the switch off is how a key goes. Today the switch is greyed until a key validates (ImportSettingsTab.swift:108, `.disabled(!setting.canChange)`)."
   }
  },
  "order": [
@@ -5198,6 +5224,8 @@
   "SetMacImportRejected.dc.html",
   "SetMacImportConnected.dc.html",
   "SetMacImportUnvalidated.dc.html",
+  "SetMacImportDiscogsTip.dc.html",
+  "SetMacImportTurnOff.dc.html",
   "SetMacFormats.dc.html",
   "SetMacFormatEditor.dc.html",
   "SetMacFormatDelete.dc.html",

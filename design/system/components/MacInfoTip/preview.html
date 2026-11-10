@@ -1,0 +1,13 @@
+<!-- @dsCard group="macOS" height=110 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>MacInfoTip</title></head>
+<body class="bae-preview bae-preview-mac" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  ReactDOM.createRoot(document.getElementById('root')).render(h('div', { style: { width: 460 } },
+    h(B.MacBox, null, h(B.MacRow, { label: 'Search Discogs', info: true }, h(B.MacSwitch, { on: false, label: 'Search Discogs' })))));
+</script>
+</body>
+</html>

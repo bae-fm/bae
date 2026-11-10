@@ -33,7 +33,11 @@ export interface MacBoxProps { elevated?: boolean; empty?: string; children?: Re
 export declare function MacBox(props: MacBoxProps): React.ReactElement;
 
 /** One line of a MacBox: label on the left, then value (grey, or in tone with a dot), controls passed as children, and a chevron when it opens something. action draws the label as an accent action ("Invite…"); destructive colors it danger, for an action that removes something. */
-export interface MacRowProps { label?: string; destructive?: boolean; strong?: boolean; tag?: string; note?: string; noteTone?: 'danger' | 'warning' | 'success'; value?: string; tone?: 'success' | 'warning' | 'danger' | 'activity' | 'accent'; chevron?: boolean; selected?: boolean; action?: boolean; nested?: boolean; off?: boolean; onClick?: () => void; children?: React.ReactNode }
+export interface MacRowProps { label?: string; info?: boolean; destructive?: boolean; strong?: boolean; tag?: string; note?: string; noteTone?: 'danger' | 'warning' | 'success'; value?: string; tone?: 'success' | 'warning' | 'danger' | 'activity' | 'accent'; chevron?: boolean; selected?: boolean; action?: boolean; nested?: boolean; off?: boolean; onClick?: () => void; children?: React.ReactNode }
+/** What belongs to the row above it and is more than one setting (a field with its explanation): joined to that row with no line, text in secondary. */
+export declare function MacNested(props: { children?: React.ReactNode }): React.ReactElement;
+/** An ⓘ after a row's name that opens a popover saying what the name can't. */
+export declare function MacInfoTip(props: { label?: string }): React.ReactElement;
 export declare function MacRow(props: MacRowProps): React.ReactElement;
 export declare function MacItem(props: { lead?: React.ReactNode; trail?: React.ReactNode; children?: React.ReactNode }): React.ReactElement;
 
@@ -329,7 +333,9 @@ export declare function MacImportSidebar(props: { tab?: 'Found' | 'Imported' | '
 export declare function MacImportGroupHeader(props: { name: string; closed?: boolean }): React.ReactElement;
 export declare function MacImportRow(props: { title?: string; artist?: string; folder?: string; cover?: string; noCover?: boolean; record?: boolean; badge?: string; badgeTone?: 'warning' | 'danger'; state?: 'identifyQueued' | 'identifying' | 'importQueued' | 'importing' | 'uploading'; step?: string; progress?: number; error?: string; grouped?: boolean; selected?: boolean }): React.ReactElement;
 export declare function MacImportFolderLine(props: { tab?: string; folder: string }): React.ReactElement;
-export declare function MacImportDraft(props: { title?: string; artist?: string; artistChip?: string; year?: string; audio?: string; cover?: string; fields?: string; records?: string; check?: string; cloud?: boolean; retry?: boolean; blank?: boolean; editor?: boolean; changed?: boolean }): React.ReactElement;
+/** Where an import goes: This Mac, Cloud, or Cloud, pinned. One stored choice, wherever it shows. */
+export declare function MacImportDestination(props: { to?: 'This Mac' | 'Cloud' | 'Cloud, pinned'; off?: boolean }): React.ReactElement;
+export declare function MacImportDraft(props: { title?: string; artist?: string; artistChip?: string; year?: string; audio?: string; cover?: string; fields?: string; records?: string; check?: string; cloud?: boolean; to?: 'This Mac' | 'Cloud' | 'Cloud, pinned'; retry?: boolean; blank?: boolean; editor?: boolean; changed?: boolean }): React.ReactElement;
 export declare function MacImportTable(props: { children?: React.ReactNode }): React.ReactElement;
 export declare function MacImportTrackRow(props: { file: string; entry?: boolean; position?: string; title?: string; artist?: string; inherited?: boolean; length?: string; mismatch?: boolean; playing?: boolean }): React.ReactElement;
 export declare function MacImportSheetCaption(props: { disc?: string; sheet: string; bound?: string; unbound?: boolean }): React.ReactElement;
@@ -337,7 +343,7 @@ export declare function MacFindOnline(props: { open?: 'Automatic' | 'Search'; di
 export declare function MacIdentifierBand(props: { chips: string }): React.ReactElement;
 export declare function MacReleaseCard(props: { title: string; artist?: string; label?: string; sources?: string; children?: React.ReactNode }): React.ReactElement;
 export declare function MacPressingRow(props: { year?: string; labels?: string; catalog?: string; badges?: string; summary?: string; sources?: string; inLibrary?: boolean; selected?: boolean }): React.ReactElement;
-export declare function MacImportBulk(props: { count?: number; ready?: number; running?: string }): React.ReactElement;
+export declare function MacImportBulk(props: { count?: number; ready?: number; running?: string; cloud?: boolean; to?: 'This Mac' | 'Cloud' | 'Cloud, pinned' }): React.ReactElement;
 export declare function MacModal(props: { width?: number; height?: number; children?: React.ReactNode }): React.ReactElement;
 export declare function MacModalHeader(props: { title: string; subtitle?: string; large?: boolean; children?: React.ReactNode }): React.ReactElement;
 export declare function MacCoverGallery(props: { title?: string; selected?: string; source?: string; current?: string; remote?: 'unlinked'; remoteNames?: string; files?: string }): React.ReactElement;

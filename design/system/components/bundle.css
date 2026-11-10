@@ -101,7 +101,8 @@
 .bae-m-fieldrow-content { flex: 1; min-width: 0; display: flex; align-items: flex-start; gap: var(--space-related); }
 .bae-m-fieldrow-content > :first-child, .bae-m-fieldrow-content .bae-m-field { flex: 1; min-width: 0; }
 .bae-m-fieldrow-aligned .bae-m-field { margin-left: -10px; }
-.bae-m-fieldrow-content .bae-m-btn { flex: none; margin-top: calc((16px + 2 * var(--space-related) - var(--size-control)) / 2); }
+/* A button beside the field (Save, Scan) is the field's height and corners, so the two read as one control. */
+.bae-m-fieldrow-content .bae-m-btn { flex: none; height: var(--size-field); line-height: var(--size-field); border-radius: 8px; }
 .bae-m-row-action .bae-m-row-label { color: var(--accent); }
 .bae-m-row-destructive .bae-m-row-label { color: var(--danger); }
 .bae-m-row-label { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-inline); }
@@ -340,6 +341,13 @@
 /* A nested row depends on the row above (a switch it only matters under): it joins that row with no gap and no divider, on the same left edge, and dims while the switch is off. */
 .bae-m-row-nested { padding-top: 0; min-height: 0; }
 .bae-m-row-nested-off { opacity: 0.45; }
+/* MacNested: no line above it, a field row inside it keeps the row's padding, and its text sits on the rows' edge in secondary. */
+.bae-m-box > .bae-divider:has(+ .bae-m-nested) { display: none; }
+.bae-m-nested { display: flex; flex-direction: column; gap: var(--space-related); padding-bottom: var(--space-group); color: var(--text-secondary); }
+.bae-m-nested > .bae-m-row { padding-top: 0; }
+.bae-m-nested > :not(.bae-m-row) { margin: 0 var(--space-group); }
+.bae-m-nested p { margin: 0; font: 400 13px/18px var(--font-sans); text-wrap: pretty; }
+.bae-m-infotip { display: inline-flex; align-items: center; padding: 0; border: 0; background: none; color: inherit; cursor: pointer; }
 /* A nested row joins the switch row above it into one piece of the card: no gap, no corners between them, and set in from the card's edge. */
 .bae-a-row-nested { padding-top: 0; min-height: 0; padding-left: calc(var(--space-edge) + var(--space-section)); }
 /* The card finds the pair itself, whether a row is the card's child or sits in a tile of its own: the tile above a nested row loses its bottom corners, the nested row's tile its top corners and the gap. */
