@@ -347,7 +347,6 @@
     <string name="storage_onedrive_heading">Choose an empty folder for this library.</string>
     <string name="storage_dropbox_empty">No shared folders yet</string>
     <string name="storage_onedrive_empty">No folders here yet</string>
-    <string name="storage_dropbox_note">A shared folder is required to invite people to the library.</string>
     <string name="storage_onedrive_name_taken">A folder named “%1$s” is already here. Choose another name.</string>
     <string name="storage_folder_not_empty">“%1$s” isn’t empty. Choose an empty folder, or make a new one.</string>
     <string name="storage_refresh">Refresh</string>

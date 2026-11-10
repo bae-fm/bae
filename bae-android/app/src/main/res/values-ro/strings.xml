@@ -300,7 +300,6 @@
     <string name="storage_onedrive_heading">Alege un dosar gol pentru această bibliotecă.</string>
     <string name="storage_dropbox_empty">Încă nu există dosare partajate</string>
     <string name="storage_onedrive_empty">Încă nu există dosare aici</string>
-    <string name="storage_dropbox_note">Pentru a invita oameni în bibliotecă este necesar un dosar partajat.</string>
     <string name="storage_onedrive_name_taken">Există deja aici un dosar numit „%1$s”. Alege alt nume.</string>
     <string name="storage_folder_not_empty">„%1$s” nu este gol. Alege un dosar gol sau creează unul nou.</string>
     <string name="storage_refresh">Reîmprospătează</string>

@@ -294,7 +294,6 @@
     <string name="storage_onedrive_heading">Válassz egy üres mappát ehhez a könyvtárhoz.</string>
     <string name="storage_dropbox_empty">Még nincsenek megosztott mappák</string>
     <string name="storage_onedrive_empty">Itt még nincsenek mappák</string>
-    <string name="storage_dropbox_note">A könyvtárba való meghíváshoz megosztott mappa szükséges.</string>
     <string name="storage_onedrive_name_taken">Itt már van „%1$s” nevű mappa. Válassz másik nevet.</string>
     <string name="storage_folder_not_empty">A(z) „%1$s” nem üres. Válassz egy üres mappát, vagy hozz létre újat.</string>
     <string name="storage_refresh">Frissítés</string>

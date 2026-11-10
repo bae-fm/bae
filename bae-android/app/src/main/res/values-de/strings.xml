@@ -296,7 +296,6 @@
     <string name="storage_onedrive_heading">Wähle einen leeren Ordner für diese Mediathek.</string>
     <string name="storage_dropbox_empty">Noch keine geteilten Ordner</string>
     <string name="storage_onedrive_empty">Hier gibt es noch keine Ordner</string>
-    <string name="storage_dropbox_note">Um Personen zur Mediathek einzuladen, ist ein geteilter Ordner nötig.</string>
     <string name="storage_onedrive_name_taken">Hier gibt es bereits einen Ordner namens „%1$s“. Wähle einen anderen Namen.</string>
     <string name="storage_folder_not_empty">„%1$s“ ist nicht leer. Wähle einen leeren Ordner oder lege einen neuen an.</string>
     <string name="storage_refresh">Aktualisieren</string>

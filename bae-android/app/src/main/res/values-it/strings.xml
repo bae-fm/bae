@@ -301,7 +301,6 @@
     <string name="storage_onedrive_heading">Scegli una cartella vuota per questa libreria.</string>
     <string name="storage_dropbox_empty">Ancora nessuna cartella condivisa</string>
     <string name="storage_onedrive_empty">Ancora nessuna cartella qui</string>
-    <string name="storage_dropbox_note">Per invitare persone nella libreria serve una cartella condivisa.</string>
     <string name="storage_onedrive_name_taken">Qui c’è già una cartella chiamata “%1$s”. Scegli un altro nome.</string>
     <string name="storage_folder_not_empty">“%1$s” non è vuota. Scegli una cartella vuota o creane una nuova.</string>
     <string name="storage_refresh">Aggiorna</string>

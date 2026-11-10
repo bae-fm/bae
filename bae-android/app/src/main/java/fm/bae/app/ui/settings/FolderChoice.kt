@@ -155,7 +155,6 @@ private fun FolderList(
     browser.notEmpty?.let {
         Text(stringResource(R.string.storage_folder_not_empty, it.name), color = MaterialTheme.colorScheme.error)
     }
-    words.note?.let { Text(stringResource(it), style = ThemeText.detail.style) }
 }
 
 /** New folder, Refresh, and Set up, which needs a chosen folder. */

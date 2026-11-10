@@ -302,7 +302,6 @@
     <string name="storage_onedrive_heading">בחר תיקייה ריקה לספרייה זו.</string>
     <string name="storage_dropbox_empty">עדיין אין תיקיות משותפות</string>
     <string name="storage_onedrive_empty">עדיין אין כאן תיקיות</string>
-    <string name="storage_dropbox_note">נדרשת תיקייה משותפת כדי להזמין אנשים לספרייה.</string>
     <string name="storage_onedrive_name_taken">כבר יש כאן תיקייה בשם ״%1$s״. בחר שם אחר.</string>
     <string name="storage_folder_not_empty">״%1$s״ אינה ריקה. בחר תיקייה ריקה או צור חדשה.</string>
     <string name="storage_refresh">רענון</string>

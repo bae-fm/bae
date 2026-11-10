@@ -296,7 +296,6 @@
     <string name="storage_onedrive_heading">Bu kitaplık için boş bir klasör seçin.</string>
     <string name="storage_dropbox_empty">Henüz paylaşılan klasör yok</string>
     <string name="storage_onedrive_empty">Burada henüz klasör yok</string>
-    <string name="storage_dropbox_note">Kitaplığa kişi davet etmek için paylaşılan bir klasör gerekir.</string>
     <string name="storage_onedrive_name_taken">Burada “%1$s” adlı bir klasör zaten var. Başka bir ad seçin.</string>
     <string name="storage_folder_not_empty">“%1$s” boş değil. Boş bir klasör seçin veya yeni bir klasör oluşturun.</string>
     <string name="storage_refresh">Yenile</string>

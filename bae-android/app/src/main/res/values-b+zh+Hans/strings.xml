@@ -290,7 +290,6 @@
     <string name="storage_onedrive_heading">请为此资料库选择一个空文件夹。</string>
     <string name="storage_dropbox_empty">还没有共享文件夹</string>
     <string name="storage_onedrive_empty">这里还没有文件夹</string>
-    <string name="storage_dropbox_note">邀请他人加入资料库需要一个共享文件夹。</string>
     <string name="storage_onedrive_name_taken">此处已有名为“%1$s”的文件夹。请换一个名称。</string>
     <string name="storage_folder_not_empty">“%1$s”不是空的。请选择一个空文件夹，或新建一个。</string>
     <string name="storage_refresh">刷新</string>

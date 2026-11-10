@@ -294,7 +294,6 @@
     <string name="storage_onedrive_heading">Velg en tom mappe for dette biblioteket.</string>
     <string name="storage_dropbox_empty">Ingen delte mapper ennå</string>
     <string name="storage_onedrive_empty">Ingen mapper her ennå</string>
-    <string name="storage_dropbox_note">En delt mappe kreves for å invitere folk til biblioteket.</string>
     <string name="storage_onedrive_name_taken">Det finnes allerede en mappe som heter «%1$s» her. Velg et annet navn.</string>
     <string name="storage_folder_not_empty">«%1$s» er ikke tom. Velg en tom mappe, eller lag en ny.</string>
     <string name="storage_refresh">Oppdater</string>

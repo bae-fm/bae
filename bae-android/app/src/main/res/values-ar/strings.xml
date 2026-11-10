@@ -320,7 +320,6 @@
     <string name="storage_onedrive_heading">اختر مجلدًا فارغًا لهذه المكتبة.</string>
     <string name="storage_dropbox_empty">لا توجد مجلدات مشتركة بعد</string>
     <string name="storage_onedrive_empty">لا توجد مجلدات هنا بعد</string>
-    <string name="storage_dropbox_note">يلزم مجلد مشترك لدعوة أشخاص إلى المكتبة.</string>
     <string name="storage_onedrive_name_taken">يوجد هنا مجلد باسم «%1$s» بالفعل. اختر اسمًا آخر.</string>
     <string name="storage_folder_not_empty">«%1$s» ليس فارغًا. اختر مجلدًا فارغًا أو أنشئ مجلدًا جديدًا.</string>
     <string name="storage_refresh">تحديث</string>

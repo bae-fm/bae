@@ -296,7 +296,6 @@
     <string name="storage_onedrive_heading">Изберете празна папка за тази библиотека.</string>
     <string name="storage_dropbox_empty">Все още няма споделени папки</string>
     <string name="storage_onedrive_empty">Тук още няма папки</string>
-    <string name="storage_dropbox_note">За да поканите хора в библиотеката, е необходима споделена папка.</string>
     <string name="storage_onedrive_name_taken">Папка с име „%1$s“ вече има тук. Изберете друго име.</string>
     <string name="storage_folder_not_empty">„%1$s“ не е празна. Изберете празна папка или създайте нова.</string>
     <string name="storage_refresh">Опресняване</string>

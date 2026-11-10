@@ -2,13 +2,12 @@
     import BaeKit
     import SwiftUI
 
-    /// What a provider's picker says: the line over the list, the empty list's
-    /// line, and a note under it. Only these and the provider's calls differ
+    /// What a provider's picker says: the line over the list and the empty
+    /// list's line. Only these and the provider's calls differ
     /// between Dropbox and OneDrive; the picker draws both the same.
     struct FolderPickerWords {
         let heading: LocalizedStringResource
         let empty: LocalizedStringResource
-        let note: LocalizedStringResource?
         /// The line when the name given is already taken, for that name.
         let nameTaken: (String) -> LocalizedStringResource
     }
@@ -27,11 +26,6 @@
                         "No shared folders yet",
                         comment:
                             "Dropbox setup's folder list, when the person has no shared folder."
-                    ),
-                    note: LocalizedStringResource(
-                        "A shared folder is required to invite people to the library.",
-                        comment:
-                            "Dropbox setup's folder list, the note under it."
                     ),
                     nameTaken: {
                         LocalizedStringResource(
@@ -53,7 +47,6 @@
                         comment:
                             "OneDrive setup's folder list, when the folder shown holds no folders."
                     ),
-                    note: nil,
                     nameTaken: {
                         LocalizedStringResource(
                             "A folder named “\($0)” is already here. Choose another name.",
@@ -134,14 +127,6 @@
                     .themeText(.body)
                     .foregroundStyle(Theme.danger)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                }
-            }
-            if let note = words.note {
-                Section {
-                    Text(note)
-                        .themeText(.detail)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
             Section {

@@ -294,7 +294,6 @@
     <string name="storage_onedrive_heading">Valitse tälle kirjastolle tyhjä kansio.</string>
     <string name="storage_dropbox_empty">Ei vielä jaettuja kansioita</string>
     <string name="storage_onedrive_empty">Täällä ei ole vielä kansioita</string>
-    <string name="storage_dropbox_note">Ihmisten kutsuminen kirjastoon edellyttää jaettua kansiota.</string>
     <string name="storage_onedrive_name_taken">Täällä on jo kansio nimeltä “%1$s”. Valitse toinen nimi.</string>
     <string name="storage_folder_not_empty">“%1$s” ei ole tyhjä. Valitse tyhjä kansio tai luo uusi.</string>
     <string name="storage_refresh">Päivitä</string>

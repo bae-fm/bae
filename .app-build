@@ -11,6 +11,7 @@ step storage-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene s
 step android-shots ./scripts/shots/android.sh /Volumes/Builds/bae/shots/android
 step library-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene library-browse-list --tone midnight
 step welcome-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene welcome- --scene story-1 --tone midnight
+step folder-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene folder-picker- --tone midnight
 step import-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene import- --tone midnight
 step release-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene release-storage --tone midnight
 step release-files-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene release-files- --tone midnight

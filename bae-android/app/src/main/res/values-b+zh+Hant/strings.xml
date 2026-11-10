@@ -290,7 +290,6 @@
     <string name="storage_onedrive_heading">請為此資料庫選擇一個空資料夾。</string>
     <string name="storage_dropbox_empty">還沒有共享資料夾</string>
     <string name="storage_onedrive_empty">這裡還沒有資料夾</string>
-    <string name="storage_dropbox_note">邀請他人加入資料庫需要一個共享資料夾。</string>
     <string name="storage_onedrive_name_taken">此處已有名為「%1$s」的資料夾。請換一個名稱。</string>
     <string name="storage_folder_not_empty">「%1$s」不是空的。請選擇一個空資料夾，或新增一個。</string>
     <string name="storage_refresh">重新整理</string>

@@ -308,7 +308,6 @@
     <string name="storage_onedrive_heading">Wybierz pusty folder dla tej biblioteki.</string>
     <string name="storage_dropbox_empty">Brak jeszcze udostępnionych folderów</string>
     <string name="storage_onedrive_empty">Brak jeszcze folderów</string>
-    <string name="storage_dropbox_note">Aby zapraszać osoby do biblioteki, potrzebny jest udostępniony folder.</string>
     <string name="storage_onedrive_name_taken">Folder o nazwie „%1$s” już tu istnieje. Wybierz inną nazwę.</string>
     <string name="storage_folder_not_empty">„%1$s” nie jest pusty. Wybierz pusty katalog lub utwórz nowy.</string>
     <string name="storage_refresh">Odśwież</string>

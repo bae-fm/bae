@@ -294,7 +294,6 @@
     <string name="storage_onedrive_heading">Επιλέξτε έναν κενό φάκελο για αυτή τη βιβλιοθήκη.</string>
     <string name="storage_dropbox_empty">Δεν υπάρχουν ακόμη κοινόχρηστοι φάκελοι</string>
     <string name="storage_onedrive_empty">Δεν υπάρχουν ακόμη φάκελοι εδώ</string>
-    <string name="storage_dropbox_note">Για να προσκαλέσετε άτομα στη βιβλιοθήκη, απαιτείται κοινόχρηστος φάκελος.</string>
     <string name="storage_onedrive_name_taken">Υπάρχει ήδη φάκελος με το όνομα «%1$s» εδώ. Επιλέξτε άλλο όνομα.</string>
     <string name="storage_folder_not_empty">Ο φάκελος «%1$s» δεν είναι κενός. Επιλέξτε έναν κενό φάκελο ή δημιουργήστε νέο.</string>
     <string name="storage_refresh">Ανανέωση</string>

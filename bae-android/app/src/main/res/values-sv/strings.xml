@@ -294,7 +294,6 @@
     <string name="storage_onedrive_heading">Välj en tom mapp för det här biblioteket.</string>
     <string name="storage_dropbox_empty">Inga delade mappar än</string>
     <string name="storage_onedrive_empty">Inga mappar här än</string>
-    <string name="storage_dropbox_note">En delad mapp krävs för att bjuda in personer till biblioteket.</string>
     <string name="storage_onedrive_name_taken">Det finns redan en mapp som heter ”%1$s” här. Välj ett annat namn.</string>
     <string name="storage_folder_not_empty">”%1$s” är inte tom. Välj en tom mapp eller skapa en ny.</string>
     <string name="storage_refresh">Uppdatera</string>

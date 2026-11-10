@@ -67,7 +67,6 @@ internal class FolderCalls(
 internal class FolderWords(
     @StringRes val heading: Int,
     @StringRes val empty: Int,
-    @StringRes val note: Int?,
     @StringRes val reading: Int,
     @StringRes val nameTaken: Int,
     val provider: String,
@@ -77,7 +76,6 @@ internal val DROPBOX_WORDS =
     FolderWords(
         heading = R.string.storage_dropbox_heading,
         empty = R.string.storage_dropbox_empty,
-        note = R.string.storage_dropbox_note,
         reading = R.string.storage_dropbox_reading,
         nameTaken = R.string.storage_dropbox_name_taken,
         provider = "Dropbox",
@@ -87,7 +85,6 @@ internal val ONEDRIVE_WORDS =
     FolderWords(
         heading = R.string.storage_onedrive_heading,
         empty = R.string.storage_onedrive_empty,
-        note = null,
         reading = R.string.storage_onedrive_reading,
         nameTaken = R.string.storage_onedrive_name_taken,
         provider = "OneDrive",

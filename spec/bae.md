@@ -3050,9 +3050,8 @@ picks the empty folder the library lives in, in one folder picker for both
 providers: a line over the list, the folders to choose from (a chosen one is
 marked), *New folder…*, and the folder setup found holding other files. Only
 the provider's facts differ. On Dropbox the folder is a shared folder, so the
-household can be invited to it: the list is flat, with a note that a shared
-folder is needed to invite people, and a new folder is made at the top of the
-person's Dropbox and shared. On OneDrive any folder will do: the list shows
+household can be invited to it: the list is flat, and a new folder is made at
+the top of the person's Dropbox and shared. On OneDrive any folder will do: the list shows
 where the person is, each folder opens into the folders inside it, and a new
 folder is made in the one shown. *New folder…* shows a name field in the list,
 its text aligned with the folder names above it, and *Create* adds the new

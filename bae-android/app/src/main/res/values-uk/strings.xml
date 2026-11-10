@@ -308,7 +308,6 @@
     <string name="storage_onedrive_heading">Виберіть порожню папку для цієї бібліотеки.</string>
     <string name="storage_dropbox_empty">Спільних папок поки немає</string>
     <string name="storage_onedrive_empty">Тут ще немає папок</string>
-    <string name="storage_dropbox_note">Щоб запрошувати людей до бібліотеки, потрібна спільна папка.</string>
     <string name="storage_onedrive_name_taken">Тут уже є папка «%1$s». Виберіть іншу назву.</string>
     <string name="storage_folder_not_empty">Папка «%1$s» не порожня. Виберіть порожню папку або створіть нову.</string>
     <string name="storage_refresh">Оновити</string>

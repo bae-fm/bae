@@ -302,7 +302,6 @@
     <string name="storage_onedrive_heading">Odaberite praznu mapu za ovu biblioteku.</string>
     <string name="storage_dropbox_empty">Još nema zajedničkih mapa</string>
     <string name="storage_onedrive_empty">Ovdje još nema mapa</string>
-    <string name="storage_dropbox_note">Za pozivanje ljudi u biblioteku potrebna je zajednička mapa.</string>
     <string name="storage_onedrive_name_taken">Ovdje već postoji mapa naziva „%1$s“. Odaberite drugi naziv.</string>
     <string name="storage_folder_not_empty">Mapa „%1$s“ nije prazna. Odaberite praznu mapu ili napravite novu.</string>
     <string name="storage_refresh">Osvježi</string>

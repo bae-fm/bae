@@ -290,7 +290,6 @@
     <string name="storage_onedrive_heading">このライブラリ用の空のフォルダを選んでください。</string>
     <string name="storage_dropbox_empty">共有フォルダはまだありません</string>
     <string name="storage_onedrive_empty">ここにはまだフォルダがありません</string>
-    <string name="storage_dropbox_note">ライブラリに人を招待するには、共有フォルダが必要です。</string>
     <string name="storage_onedrive_name_taken">「%1$s」という名前のフォルダはすでにここにあります。別の名前を選んでください。</string>
     <string name="storage_folder_not_empty">「%1$s」は空ではありません。空のフォルダを選ぶか、新しく作成してください。</string>
     <string name="storage_refresh">更新</string>

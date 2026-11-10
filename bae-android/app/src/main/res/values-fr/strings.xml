@@ -301,7 +301,6 @@
     <string name="storage_onedrive_heading">Choisissez un dossier vide pour cette bibliothèque.</string>
     <string name="storage_dropbox_empty">Aucun dossier partagé pour l’instant</string>
     <string name="storage_onedrive_empty">Aucun dossier ici pour l’instant</string>
-    <string name="storage_dropbox_note">Un dossier partagé est nécessaire pour inviter des personnes dans la bibliothèque.</string>
     <string name="storage_onedrive_name_taken">Un dossier nommé « %1$s » existe déjà ici. Choisissez un autre nom.</string>
     <string name="storage_folder_not_empty">« %1$s » n’est pas vide. Choisissez un dossier vide ou créez-en un nouveau.</string>
     <string name="storage_refresh">Actualiser</string>
