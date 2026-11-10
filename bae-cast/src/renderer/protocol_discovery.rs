@@ -26,6 +26,12 @@ pub(crate) fn preferred_address(addresses: impl Iterator<Item = IpAddr>) -> Opti
     chosen
 }
 
+/// What a receiver states of itself in `value`, trimmed: `None` when it states
+/// nothing or only blanks, since a blank is no model.
+pub(crate) fn stated(value: Option<&str>) -> Option<String> {
+    value.map(str::trim).filter(|value| !value.is_empty()).map(str::to_string)
+}
+
 /// The instance label of a service fullname (`"Living Room._airplay._tcp.local."`
 /// → `"Living Room"`): what precedes the first of `service_markers` the
 /// fullname holds, else the whole fullname.

@@ -256,6 +256,8 @@ async fn a_service_that_ends_while_casting_tells_the_receiver_to_stop() {
                     id: "receiver".to_string(),
                     name: "Receiver".to_string(),
                     kind: bae_playback::renderer::RendererKind::Cast,
+                    model: None,
+                    address: "192.168.1.20".to_string(),
                 },
                 RendererMediaSource::new(
                     Arc::new(|track_id, _format| Ok(format!("http://receiver.test/{track_id}"))),

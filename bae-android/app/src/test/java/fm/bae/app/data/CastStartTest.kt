@@ -24,8 +24,9 @@ import uniffi.bae_bridge.BridgeRendererKind
 @Config(sdk = [35], application = Application::class)
 class CastStartTest {
     private val scope = TestScope(UnconfinedTestDispatcher())
-    private val kitchen = BridgeCastReceiver(id = "kitchen", name = "Kitchen", kind = BridgeRendererKind.AIR_PLAY)
-    private val den = BridgeCastReceiver(id = "den", name = "Den", kind = BridgeRendererKind.DLNA)
+    private val kitchen =
+        BridgeCastReceiver(id = "kitchen", name = "Kitchen", kind = BridgeRendererKind.AIR_PLAY, model = null, address = "192.168.1.40")
+    private val den = BridgeCastReceiver(id = "den", name = "Den", kind = BridgeRendererKind.DLNA, model = null, address = "192.168.1.40")
     private val told = mutableListOf<DisplayError>()
 
     private fun failingStart(pickerOpen: Boolean) =

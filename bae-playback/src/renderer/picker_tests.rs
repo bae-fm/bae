@@ -11,7 +11,13 @@ use bae_util::test_channels::HANG_GUARD;
 use crate::renderer::RendererKind;
 
 fn receiver(id: &str, name: &str, kind: RendererKind) -> CastReceiver {
-    CastReceiver { id: id.to_string(), name: name.to_string(), kind }
+    CastReceiver {
+        id: id.to_string(),
+        name: name.to_string(),
+        kind,
+        model: None,
+        address: format!("10.0.0.{}", id.len()),
+    }
 }
 
 /// Playback moving to `receiver`, as playback writes it.
@@ -50,6 +56,31 @@ async fn each_write_lists_the_whole_picker_by_name() {
     assert_eq!(
         picker.receivers().await.unwrap(),
         found(vec![receiver("cast-1", "Kitchen", RendererKind::Cast)])
+    );
+}
+
+/// A receiver's model and address read back as written, whether it is listed
+/// among those found or as the one cast to; no stated model reads back as none.
+#[tokio::test]
+async fn model_and_address_read_back() {
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
+    let picker = CastPicker::new(db.clone());
+    let modelled = CastReceiver {
+        model: Some("Chromecast Audio".to_string()),
+        address: "192.168.1.40".to_string(),
+        ..receiver("cast-1", "Kitchen", RendererKind::Cast)
+    };
+    let bare = CastReceiver {
+        address: "192.168.1.41".to_string(),
+        ..receiver("uuid:den", "Den", RendererKind::Dlna)
+    };
+    picker.show(vec![modelled.clone(), bare.clone()]).await.unwrap();
+    assert_eq!(picker.receivers().await.unwrap(), found(vec![bare.clone(), modelled.clone()]));
+
+    PlaybackNowRow::new(db).apply(&cast_to(&modelled)).await.unwrap();
+    assert_eq!(
+        picker.receivers().await.unwrap(),
+        CastReceiverList { casting: Some(modelled), found: vec![bare] }
     );
 }
 

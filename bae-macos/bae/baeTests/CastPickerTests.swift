@@ -25,7 +25,9 @@ struct CastPickerTests {
                         BridgeCastReceiver(
                             id: "speaker-1",
                             name: "Kitchen",
-                            kind: .cast
+                            kind: .cast,
+                            model: nil,
+                            address: "192.168.1.41"
                         )
                     ]
                 ),

@@ -59,14 +59,15 @@ pub(crate) fn kind_from_column<I: rusqlite::RowIndex + Copy>(
 fn cast_receivers_on(sql: &SqlReadContext<'_>) -> Result<CastReceiverList, DbError> {
     let casting = sql
         .query_row(
-            "SELECT cast_receiver_id, cast_receiver_name, cast_receiver_kind \
+            "SELECT cast_receiver_id, cast_receiver_name, cast_receiver_kind, \
+                    cast_receiver_model, cast_receiver_address \
                FROM playback_now WHERE remote = 'on'",
             [],
             remote_receiver_from_row,
         )
         .optional()?;
     let found = sql.query(
-        "SELECT id, name, kind FROM cast_receiver \
+        "SELECT id, name, kind, model, address FROM cast_receiver \
            WHERE id NOT IN (SELECT cast_receiver_id FROM playback_now WHERE remote = 'on') \
          ORDER BY name, id",
         [],
@@ -75,6 +76,8 @@ fn cast_receivers_on(sql: &SqlReadContext<'_>) -> Result<CastReceiverList, DbErr
                 id: row.get("id")?,
                 name: row.get("name")?,
                 kind: kind_from_column(row, "kind")?,
+                model: row.get("model")?,
+                address: row.get("address")?,
             })
         },
     )?;
@@ -101,8 +104,15 @@ impl CastPicker {
                 sql.execute("DELETE FROM cast_receiver", [])?;
                 for receiver in &receivers {
                     sql.execute(
-                        "INSERT INTO cast_receiver (id, name, kind) VALUES (?1, ?2, ?3)",
-                        params![receiver.id, receiver.name, kind_column(receiver.kind)],
+                        "INSERT INTO cast_receiver (id, name, kind, model, address) \
+                         VALUES (?1, ?2, ?3, ?4, ?5)",
+                        params![
+                            receiver.id,
+                            receiver.name,
+                            kind_column(receiver.kind),
+                            receiver.model,
+                            receiver.address,
+                        ],
                     )?;
                 }
                 Ok(())

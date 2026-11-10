@@ -25,7 +25,7 @@ fn only_device(mut devices: Vec<RendererDevice>) -> RendererDevice {
 /// The DLNA connection's control URLs, for asserting on a parsed device.
 fn dlna_urls(device: &RendererDevice) -> (String, Option<String>) {
     match &device.connection {
-        RendererConnection::Dlna { av_transport_url, rendering_control_url } => {
+        RendererConnection::Dlna { av_transport_url, rendering_control_url, .. } => {
             (av_transport_url.clone(), rendering_control_url.clone())
         }
         _ => panic!("a device description must parse to a DLNA connection"),
@@ -55,6 +55,30 @@ fn ssdp_response_without_location_is_none() {
 }
 
 // -- device description → device ----------------------------------------------
+
+/// A description that names its model and is fetched from a host.
+#[test]
+fn description_states_model_and_host() {
+    let xml = relative_urls_description().replace("<UDN>", "<modelName>Play:5</modelName><UDN>");
+    let device =
+        only_device(parse_device_description(&xml, "http://192.168.1.50:8080/description.xml"));
+    assert_eq!(device.model.as_deref(), Some("Play:5"), "the description's modelName");
+    assert_eq!(device.receiver().address, "192.168.1.50", "the host it was fetched from");
+}
+
+/// A description with no `modelName`, or an empty one, states no model.
+#[test]
+fn description_without_a_model_has_none() {
+    let device = only_device(parse_device_description(
+        relative_urls_description(),
+        "http://192.168.1.50:8080/description.xml",
+    ));
+    assert_eq!(device.model, None);
+    let blank = relative_urls_description().replace("<UDN>", "<modelName> </modelName><UDN>");
+    let device =
+        only_device(parse_device_description(&blank, "http://192.168.1.50:8080/description.xml"));
+    assert_eq!(device.model, None);
+}
 
 /// A renderer description whose control URLs are relative to the description's
 /// own location — the common case.

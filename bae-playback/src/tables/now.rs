@@ -121,12 +121,15 @@ fn apply_on(sql: &CovenWrite<'_>, change: &PlaybackChange) -> rusqlite::Result<(
             };
             sql.execute(
                 "UPDATE playback_now SET remote = ?, cast_receiver_id = ?, \
-                     cast_receiver_name = ?, cast_receiver_kind = ?, remote_end_detail = ?",
+                     cast_receiver_name = ?, cast_receiver_kind = ?, \
+                     cast_receiver_model = ?, cast_receiver_address = ?, remote_end_detail = ?",
                 params![
                     kind,
                     device.map(|device| device.id.as_str()),
                     device.map(|device| device.name.as_str()),
                     device.map(|device| kind_column(device.kind)),
+                    device.and_then(|device| device.model.as_deref()),
+                    device.map(|device| device.address.as_str()),
                     detail,
                 ],
             )?;
@@ -187,7 +190,8 @@ pub(super) fn reset_playback_now_on(
              duration_ms = NULL, pause_reason = NULL, side_boundary_id = NULL, \
              side_boundary_kind = NULL, side_label = NULL, side_resumes_at = NULL, \
              remote = 'local', cast_receiver_id = NULL, cast_receiver_name = NULL, \
-             cast_receiver_kind = NULL, remote_end_detail = NULL, preview = 'idle', preview_path = NULL, \
+             cast_receiver_kind = NULL, cast_receiver_model = NULL, \
+             cast_receiver_address = NULL, remote_end_detail = NULL, preview = 'idle', preview_path = NULL, \
              preview_start_sample = NULL, preview_end_sample = NULL, preview_duration_ms = NULL, \
              failure = NULL, failure_problem = NULL, failure_detail = NULL, \
              failure_device = NULL, failure_device_state = NULL, failures = 0",
@@ -385,6 +389,8 @@ pub(crate) fn remote_receiver_from_row(row: &Row<'_>) -> rusqlite::Result<CastRe
         id: row.get("cast_receiver_id")?,
         name: row.get("cast_receiver_name")?,
         kind: kind_from_column(row, "cast_receiver_kind")?,
+        model: row.get("cast_receiver_model")?,
+        address: row.get("cast_receiver_address")?,
     })
 }
 

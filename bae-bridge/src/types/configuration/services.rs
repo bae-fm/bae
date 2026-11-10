@@ -208,6 +208,10 @@ pub struct BridgeCastReceiver {
     pub name: String,
     /// Which protocol the receiver speaks, so the row can carry a flavor hint.
     pub kind: BridgeRendererKind,
+    /// The model the receiver states of itself; `None` when it states none.
+    pub model: Option<String>,
+    /// The host the receiver was found at, as text.
+    pub address: String,
 }
 
 /// What the cast picker and the Casting page list: the receiver playback is
@@ -239,7 +243,7 @@ mirror_enum! {
 mirror_struct! {
     BridgeCastReceiver = bae_playback::renderer::CastReceiver,
     from_core: pub(crate) fn,
-    fields: { id, name, kind: (BridgeRendererKind) },
+    fields: { id, name, kind: (BridgeRendererKind), model, address },
 }
 
 mirror_struct! {

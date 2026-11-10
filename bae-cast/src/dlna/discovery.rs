@@ -15,7 +15,7 @@ use std::time::{Duration, Instant};
 
 use tracing::{debug, warn};
 
-use crate::renderer::protocol_discovery::{Browse, ProtocolDiscovery};
+use crate::renderer::protocol_discovery::{stated, Browse, ProtocolDiscovery};
 use crate::renderer::published_devices::PublishedDevices;
 use crate::renderer::{RendererConnection, RendererDevice};
 use bae_diagnostics::{Diagnostics, ReportedThread};
@@ -315,20 +315,31 @@ fn parse_device(device: &roxmltree::Node, base: &str, location: &str) -> Option<
         .filter(|s| !s.is_empty())
         .unwrap_or_else(|| fallback_name(location));
 
+    let Some(host) = location_host(location) else {
+        warn!(
+            "dlna discovery: the renderer {name} was described at {location}, which names no \
+             host; leaving it out of the picker"
+        );
+        return None;
+    };
+
     Some(RendererDevice {
         id,
         name,
-        connection: RendererConnection::Dlna { av_transport_url, rendering_control_url },
+        model: stated(child_text(device, "modelName")),
+        connection: RendererConnection::Dlna { host, av_transport_url, rendering_control_url },
     })
 }
 
 /// A display name for a renderer that advertises no `friendlyName`: its host, so
 /// the picker shows something addressable rather than a blank row.
 fn fallback_name(location: &str) -> String {
-    reqwest::Url::parse(location)
-        .ok()
-        .and_then(|url| url.host_str().map(str::to_string))
-        .unwrap_or_else(|| "UPnP Renderer".to_string())
+    location_host(location).unwrap_or_else(|| "UPnP Renderer".to_string())
+}
+
+/// The host a description was fetched from.
+fn location_host(location: &str) -> Option<String> {
+    reqwest::Url::parse(location).ok().and_then(|url| url.host_str().map(str::to_string))
 }
 
 /// The child element of `node` with local name `name`.

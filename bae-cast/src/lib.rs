@@ -734,7 +734,7 @@ impl CastController {
                     .map_err(|e| CastError::Connect(e.to_string()))?;
                 (Box::new(channel), RendererFlavor::Cast)
             }
-            RendererConnection::Dlna { av_transport_url, rendering_control_url } => {
+            RendererConnection::Dlna { av_transport_url, rendering_control_url, .. } => {
                 let channel =
                     DlnaChannel::connect(av_transport_url.clone(), rendering_control_url.clone())
                         .map_err(|e| CastError::Connect(e.to_string()))?;

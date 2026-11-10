@@ -5,5 +5,9 @@
 CREATE TABLE IF NOT EXISTS cast_receiver (
     id   TEXT PRIMARY KEY,
     name TEXT NOT NULL,
-    kind TEXT NOT NULL CHECK (kind IN ('cast', 'dlna', 'airplay'))
+    kind TEXT NOT NULL CHECK (kind IN ('cast', 'dlna', 'airplay')),
+    -- What the receiver states of itself; NULL when it states no model.
+    model TEXT,
+    -- The host discovery found it at.
+    address TEXT NOT NULL
 ) STRICT;

@@ -8,7 +8,7 @@ fn cast_service(instance: &str, id: &str, addr: &str) -> ReportedRenderer {
         instance_name: instance.to_string(),
         addr: addr.to_string(),
         port: 8009,
-        txt: [("id", id), ("fn", instance)]
+        txt: [("id", id), ("fn", instance), ("MD", "Chromecast")]
             .into_iter()
             .map(|(k, v)| (k.to_string(), v.to_string()))
             .collect(),
@@ -46,6 +46,9 @@ fn reported_services_appear_and_disappear() {
     assert_eq!(devices[0].kind(), RendererKind::Cast);
     assert_eq!(devices[1].kind(), RendererKind::AirPlay);
     assert!(matches!(devices[0].connection, RendererConnection::Cast { port: 8009, .. }));
+    assert_eq!(devices[0].model.as_deref(), Some("Chromecast"), "TXT keys match any case");
+    assert_eq!(devices[0].receiver().address, "192.168.1.7");
+    assert_eq!(devices[1].model, None, "the AirPlay service stated no model");
 
     discovery.forget(RendererServiceType::GoogleCast, "Kitchen");
     assert_eq!(

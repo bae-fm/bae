@@ -22,13 +22,42 @@ use tracing::{debug, warn};
 
 use super::capabilities::{AirPlayCapabilities, Dialect, UnreadableSetting};
 use crate::renderer::discovery::{sort_for_picker, RendererServiceType};
-use crate::renderer::protocol_discovery::{self, preferred_address, Browse, ProtocolDiscovery};
+use crate::renderer::protocol_discovery::{
+    self, preferred_address, stated, Browse, ProtocolDiscovery,
+};
 use crate::renderer::published_devices::PublishedDevices;
 use crate::renderer::{RendererConnection, RendererDevice};
 
 /// The two AirPlay service types browsed for.
-const SERVICE_TYPES: [RendererServiceType; 2] =
-    [RendererServiceType::AirPlay, RendererServiceType::Raop];
+const SERVICES: [AirPlayService; 2] = [AirPlayService::AirPlay, AirPlayService::Raop];
+
+/// The two service types an AirPlay receiver advertises on. Cast has no place
+/// here, which is why this is not a [`RendererServiceType`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum AirPlayService {
+    /// `_airplay._tcp`: AirPlay 2 and newer AirPlay 1 gear.
+    AirPlay,
+    /// `_raop._tcp`: legacy RAOP.
+    Raop,
+}
+
+impl AirPlayService {
+    /// The service type as discovery names it.
+    pub(crate) fn renderer_type(self) -> RendererServiceType {
+        match self {
+            Self::AirPlay => RendererServiceType::AirPlay,
+            Self::Raop => RendererServiceType::Raop,
+        }
+    }
+
+    /// The TXT record the service states the receiver's model in.
+    fn model_record(self) -> &'static str {
+        match self {
+            Self::AirPlay => "model",
+            Self::Raop => "am",
+        }
+    }
+}
 
 /// A discovered AirPlay receiver: enough to display it, reach its RTSP port, and
 /// decide how to connect.
@@ -40,6 +69,8 @@ pub(crate) struct AirPlayDevice {
     pub id: String,
     /// Human-readable name for the picker.
     pub name: String,
+    /// The model it states of itself, or `None`.
+    pub model: Option<String>,
     /// The receiver's RTSP control address.
     pub addr: IpAddr,
     pub port: u16,
@@ -55,6 +86,7 @@ impl AirPlayDevice {
         RendererDevice {
             id: self.id.clone(),
             name: self.name.clone(),
+            model: self.model.clone(),
             connection: RendererConnection::AirPlay {
                 addr: self.addr,
                 port: self.port,
@@ -91,9 +123,9 @@ impl Browse for AirPlayBrowse {
         // receiver appearing on `_airplay._tcp` and `_raop._tcp` collapses to one
         // entry regardless of which browse resolves first.
         let table = std::sync::Arc::new(std::sync::Mutex::new(DeviceTable::default()));
-        let mut readers = Vec::with_capacity(SERVICE_TYPES.len());
-        for service_type in SERVICE_TYPES {
-            let mdns_type = service_type.mdns_service_type();
+        let mut readers = Vec::with_capacity(SERVICES.len());
+        for service in SERVICES {
+            let mdns_type = service.renderer_type().mdns_service_type();
             let events = match daemon.browse(mdns_type) {
                 Ok(events) => events,
                 Err(e) => {
@@ -110,7 +142,7 @@ impl Browse for AirPlayBrowse {
             let panicked_devices = devices.clone();
             let reader = diagnostics.spawn_thread_reported(
                 "airplay browse reader",
-                move || run_browse(service_type, events, table, devices, reader_diagnostics),
+                move || run_browse(service, events, table, devices, reader_diagnostics),
                 move |_| panicked_devices.clear(),
             );
             match reader {
@@ -150,7 +182,7 @@ struct DeviceTable {
 /// An event whose handling panics is reported and skipped; the browse reads
 /// on.
 fn run_browse(
-    service_type: RendererServiceType,
+    service: AirPlayService,
     events: mdns_sd::Receiver<ServiceEvent>,
     table: std::sync::Arc<std::sync::Mutex<DeviceTable>>,
     devices: PublishedDevices,
@@ -158,7 +190,7 @@ fn run_browse(
 ) {
     while let Ok(event) = events.recv() {
         let followed = caught_sync("follow an AirPlay advertisement", || {
-            if let Some(change) = table_change(service_type, event) {
+            if let Some(change) = table_change(service, event) {
                 let mut table = lock_table(&table);
                 if change.apply(&mut table) {
                     let mut snapshot: Vec<RendererDevice> =
@@ -201,11 +233,11 @@ impl TableChange {
 }
 
 /// The change `event` makes, or `None` when it makes none the picker sees.
-fn table_change(service_type: RendererServiceType, event: ServiceEvent) -> Option<TableChange> {
+fn table_change(service: AirPlayService, event: ServiceEvent) -> Option<TableChange> {
     match event {
         ServiceEvent::ServiceResolved(resolved) => {
             let fullname = resolved.fullname.clone();
-            match device_from_resolved(service_type, &resolved) {
+            match device_from_resolved(service, &resolved) {
                 Some(device) => Some(TableChange::Resolved { fullname, device }),
                 None => {
                     debug!("airplay discovery: ignoring unusable service {fullname}");
@@ -260,7 +292,7 @@ pub(crate) fn dedupe_by_id<'a>(
 /// type is opaque, so its pieces are pulled out here and mapped by the pure
 /// [`map_device`], which the tests drive directly.
 fn device_from_resolved(
-    service_type: RendererServiceType,
+    service: AirPlayService,
     resolved: &ResolvedService,
 ) -> Option<AirPlayDevice> {
     let txt = resolved
@@ -269,7 +301,7 @@ fn device_from_resolved(
         .map(|p| (p.key().to_ascii_lowercase(), p.val_str().to_string()))
         .collect::<HashMap<String, String>>();
     map_device(
-        service_type,
+        service,
         instance_label(&resolved.fullname),
         resolved.port,
         resolved.addresses.iter().map(|scoped| scoped.to_ip_addr()),
@@ -284,7 +316,7 @@ fn device_from_resolved(
 /// (`AABBCCDDEEFF@Name`), either as a [`normalise_mac`] MAC, then to the
 /// instance label as it is.
 pub(crate) fn map_device(
-    service_type: RendererServiceType,
+    service: AirPlayService,
     instance: &str,
     port: u16,
     addresses: impl Iterator<Item = IpAddr>,
@@ -303,14 +335,16 @@ pub(crate) fn map_device(
     let name = if name.is_empty() { id.clone() } else { name };
 
     let addr = preferred_address(addresses)?;
-    let capabilities = AirPlayCapabilities::from_txt(service_type, txt);
+    let capabilities = AirPlayCapabilities::from_txt(service.renderer_type(), txt);
     if let Err(unreadable) = &capabilities {
         warn!(
-            "airplay discovery: {name} ({id}) on {service_type:?} advertises a setting bae \
+            "airplay discovery: {name} ({id}) on {service:?} advertises a setting bae \
              can't read, so it can't be connected to: {unreadable}"
         );
     }
-    Some(AirPlayDevice { id, name, addr, port, capabilities })
+    // `_airplay._tcp` states the model as `model`, `_raop._tcp` as `am`.
+    let model = stated(txt.get(service.model_record()).map(String::as_str));
+    Some(AirPlayDevice { id, name, model, addr, port, capabilities })
 }
 
 /// A MAC as one id however it was written: `_airplay._tcp` states `deviceid` as

@@ -90,7 +90,7 @@ fn reported_cast_service(instance: &str, id: &str, port: u16) -> ReportedRendere
         instance_name: instance.to_string(),
         addr: "127.0.0.1".to_string(),
         port,
-        txt: [("id", id), ("fn", instance)]
+        txt: [("id", id), ("fn", instance), ("md", "Chromecast")]
             .into_iter()
             .map(|(k, v)| (k.to_string(), v.to_string()))
             .collect(),
@@ -405,6 +405,8 @@ fn the_picker_lists_the_devices_from_the_library() {
             id: "cast-1".to_string(),
             name: "Kitchen".to_string(),
             kind: bae_playback::renderer::RendererKind::Cast,
+            model: Some("Chromecast".to_string()),
+            address: "127.0.0.1".to_string(),
         }
     );
 

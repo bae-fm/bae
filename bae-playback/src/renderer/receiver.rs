@@ -15,11 +15,19 @@ pub enum RendererKind {
 }
 
 /// A receiver: its stable id, which casting to it is asked by, its name,
-/// which the picker and the cast surfaces show, and its kind. Names need not
-/// be unique across receivers.
+/// which the picker and the cast surfaces show, its kind, the model it states
+/// of itself, and the address discovery found it at. Names need not be unique
+/// across receivers.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CastReceiver {
     pub id: String,
     pub name: String,
     pub kind: RendererKind,
+    /// The model the receiver's own advertisement or description states
+    /// (Cast `md`, AirPlay `model` or `am`, UPnP `modelName`); `None` when it
+    /// states none.
+    pub model: Option<String>,
+    /// The host discovery found the receiver at, as text: an IP address, or
+    /// the host of a UPnP device's description.
+    pub address: String,
 }

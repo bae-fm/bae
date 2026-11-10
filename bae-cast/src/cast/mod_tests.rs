@@ -24,6 +24,7 @@ fn resolved_service_maps_to_device() {
         [v4(192, 168, 1, 40)].into_iter(),
         Some("abcd1234"),
         Some("Living Room Speaker"),
+        Some("Chromecast Audio"),
     )
     .expect("a resolved cast service maps to a device");
 
@@ -31,12 +32,30 @@ fn resolved_service_maps_to_device() {
     assert_eq!(device.name, "Living Room Speaker");
     assert_eq!(device.kind(), RendererKind::Cast);
     assert_eq!(cast_addr(&device), (v4(192, 168, 1, 40), 8009));
+    assert_eq!(device.model.as_deref(), Some("Chromecast Audio"), "the TXT `md` record");
+    assert_eq!(device.receiver().address, "192.168.1.40", "where discovery found it");
+}
+
+#[test]
+fn cast_device_that_states_no_model_has_none() {
+    for md in [None, Some(""), Some("  ")] {
+        let device = map_device(
+            "Den",
+            8009,
+            [v4(192, 168, 1, 44)].into_iter(),
+            Some("den-id"),
+            Some("Den"),
+            md,
+        )
+        .expect("maps");
+        assert_eq!(device.model, None, "`md` {md:?} states no model");
+    }
 }
 
 #[test]
 fn resolved_service_without_id_is_unusable() {
     assert!(
-        map_device("No Id", 8009, [v4(192, 168, 1, 41)].into_iter(), None, Some("No Id"),)
+        map_device("No Id", 8009, [v4(192, 168, 1, 41)].into_iter(), None, Some("No Id"), None)
             .is_none(),
         "a service with no device id can't be routed to, so it is dropped"
     );
@@ -53,9 +72,15 @@ fn service_fullname_reduces_to_its_instance_label() {
 
 #[test]
 fn resolved_service_falls_back_to_instance_name_without_fn() {
-    let device =
-        map_device("Kitchen", 8009, [v4(192, 168, 1, 42)].into_iter(), Some("kitchen-id"), None)
-            .expect("maps with a fallback name");
+    let device = map_device(
+        "Kitchen",
+        8009,
+        [v4(192, 168, 1, 42)].into_iter(),
+        Some("kitchen-id"),
+        None,
+        None,
+    )
+    .expect("maps with a fallback name");
     assert_eq!(device.name, "Kitchen");
 }
 
@@ -67,6 +92,7 @@ fn resolved_service_prefers_ipv4() {
         [IpAddr::V6(Ipv6Addr::LOCALHOST), v4(192, 168, 1, 43)].into_iter(),
         Some("dual-id"),
         Some("Dual Stack"),
+        None,
     )
     .expect("maps");
     assert_eq!(
@@ -79,8 +105,15 @@ fn resolved_service_prefers_ipv4() {
 #[test]
 fn resolved_service_without_address_is_unusable() {
     assert!(
-        map_device("Addrless", 8009, std::iter::empty(), Some("addrless-id"), Some("Addrless"),)
-            .is_none(),
+        map_device(
+            "Addrless",
+            8009,
+            std::iter::empty(),
+            Some("addrless-id"),
+            Some("Addrless"),
+            None
+        )
+        .is_none(),
         "a service with no address can't be reached, so it is dropped"
     );
 }

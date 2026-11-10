@@ -22,6 +22,8 @@ pub struct RendererDevice {
     pub id: String,
     /// Human-readable name to show in the picker.
     pub name: String,
+    /// The model the device states of itself; `None` when it states none.
+    pub model: Option<String>,
     /// The flavor-specific address the channel connects to.
     pub connection: RendererConnection,
 }
@@ -39,7 +41,13 @@ impl RendererDevice {
     /// The receiver this device is, as the picker lists it and playback
     /// names the one it plays on.
     pub fn receiver(&self) -> CastReceiver {
-        CastReceiver { id: self.id.clone(), name: self.name.clone(), kind: self.kind() }
+        CastReceiver {
+            id: self.id.clone(),
+            name: self.name.clone(),
+            kind: self.kind(),
+            model: self.model.clone(),
+            address: self.connection.address(),
+        }
     }
 }
 
@@ -51,6 +59,8 @@ pub enum RendererConnection {
     Cast { addr: IpAddr, port: u16 },
     /// A UPnP MediaRenderer, addressed by its resolved SOAP control URLs.
     Dlna {
+        /// The host the device's description was fetched from.
+        host: String,
         av_transport_url: String,
         /// `None` when the renderer advertises no RenderingControl service
         /// (volume is then unsupported).
@@ -64,4 +74,14 @@ pub enum RendererConnection {
         port: u16,
         capabilities: Result<AirPlayCapabilities, crate::airplay::UnreadableSetting>,
     },
+}
+
+impl RendererConnection {
+    /// The host discovery found the device at, as text.
+    pub fn address(&self) -> String {
+        match self {
+            Self::Cast { addr, .. } | Self::AirPlay { addr, .. } => addr.to_string(),
+            Self::Dlna { host, .. } => host.clone(),
+        }
+    }
 }

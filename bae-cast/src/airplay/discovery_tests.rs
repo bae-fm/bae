@@ -11,7 +11,7 @@ const AIRPLAY2_FEATURES: &str = "0x0,0x10000";
 #[test]
 fn airplay2_service_maps_to_device() {
     let device = map_device(
-        RendererServiceType::AirPlay,
+        AirPlayService::AirPlay,
         "Kitchen",
         7000,
         [v4(10, 0, 0, 4)].into_iter(),
@@ -30,7 +30,7 @@ fn airplay2_service_maps_to_device() {
 #[test]
 fn raop_instance_name_splits_mac_and_name() {
     let device = map_device(
-        RendererServiceType::Raop,
+        AirPlayService::Raop,
         "001122334455@Studio Monitor",
         5000,
         [v4(10, 0, 0, 9)].into_iter(),
@@ -46,7 +46,7 @@ fn raop_instance_name_splits_mac_and_name() {
 #[test]
 fn service_without_address_is_dropped() {
     assert!(map_device(
-        RendererServiceType::AirPlay,
+        AirPlayService::AirPlay,
         "Nowhere",
         7000,
         std::iter::empty(),
@@ -59,7 +59,7 @@ fn service_without_address_is_dropped() {
 #[test]
 fn ipv4_is_preferred() {
     let device = map_device(
-        RendererServiceType::AirPlay,
+        AirPlayService::AirPlay,
         "Dual",
         7000,
         ["fe80::1".parse().unwrap(), v4(192, 168, 1, 5)].into_iter(),
@@ -74,7 +74,7 @@ fn ipv4_is_preferred() {
 #[test]
 fn same_receiver_on_both_services_prefers_airplay2() {
     let raop = map_device(
-        RendererServiceType::Raop,
+        AirPlayService::Raop,
         "AABBCCDDEEFF@Den",
         5000,
         [v4(10, 0, 0, 7)].into_iter(),
@@ -82,7 +82,7 @@ fn same_receiver_on_both_services_prefers_airplay2() {
     )
     .unwrap();
     let airplay = map_device(
-        RendererServiceType::AirPlay,
+        AirPlayService::AirPlay,
         "Den",
         7000,
         [v4(10, 0, 0, 7)].into_iter(),
@@ -106,7 +106,7 @@ fn same_receiver_on_both_services_prefers_airplay2() {
 #[test]
 fn colon_deviceid_and_raop_name_prefix_are_one_receiver() {
     let raop = map_device(
-        RendererServiceType::Raop,
+        AirPlayService::Raop,
         "A483E771D10D@Den",
         5000,
         [v4(10, 0, 0, 7)].into_iter(),
@@ -114,7 +114,7 @@ fn colon_deviceid_and_raop_name_prefix_are_one_receiver() {
     )
     .unwrap();
     let airplay = map_device(
-        RendererServiceType::AirPlay,
+        AirPlayService::AirPlay,
         "Den",
         7000,
         [v4(10, 0, 0, 7)].into_iter(),
@@ -134,7 +134,7 @@ fn colon_deviceid_and_raop_name_prefix_are_one_receiver() {
 #[test]
 fn an_unreadable_advertisement_wins_over_a_readable_one() {
     let raop = map_device(
-        RendererServiceType::Raop,
+        AirPlayService::Raop,
         "AABBCCDDEEFF@Den",
         5000,
         [v4(10, 0, 0, 7)].into_iter(),
@@ -142,7 +142,7 @@ fn an_unreadable_advertisement_wins_over_a_readable_one() {
     )
     .unwrap();
     let airplay = map_device(
-        RendererServiceType::AirPlay,
+        AirPlayService::AirPlay,
         "Den",
         7000,
         [v4(10, 0, 0, 7)].into_iter(),
@@ -160,5 +160,50 @@ fn an_unreadable_advertisement_wins_over_a_readable_one() {
                 raw: Some("unreadable".to_string()),
             })
         );
+    }
+}
+
+/// An `_airplay._tcp` service states its model in the `model` record.
+#[test]
+fn airplay_service_states_its_model_in_model() {
+    let device = map_device(
+        AirPlayService::AirPlay,
+        "Kitchen",
+        7000,
+        [v4(10, 0, 0, 4)].into_iter(),
+        &txt(&[("deviceid", "AA:BB:CC:DD:EE:FF"), ("model", "AudioAccessory5,1")]),
+    )
+    .unwrap();
+    assert_eq!(device.model.as_deref(), Some("AudioAccessory5,1"));
+    assert_eq!(device.to_renderer_device().receiver().address, "10.0.0.4");
+}
+
+/// A `_raop._tcp` service states its model in the `am` record.
+#[test]
+fn raop_service_states_its_model_in_am() {
+    let device = map_device(
+        AirPlayService::Raop,
+        "001122334455@Studio",
+        5000,
+        [v4(10, 0, 0, 9)].into_iter(),
+        &txt(&[("am", "Sonos One"), ("et", "0,1")]),
+    )
+    .unwrap();
+    assert_eq!(device.model.as_deref(), Some("Sonos One"));
+}
+
+/// A receiver that states no model, or an empty one, has none.
+#[test]
+fn airplay_service_without_a_model_has_none() {
+    for records in [vec![("deviceid", "ID")], vec![("deviceid", "ID"), ("model", " ")]] {
+        let device = map_device(
+            AirPlayService::AirPlay,
+            "Bare",
+            7000,
+            [v4(10, 0, 0, 5)].into_iter(),
+            &txt(&records),
+        )
+        .unwrap();
+        assert_eq!(device.model, None);
     }
 }

@@ -51,8 +51,13 @@ async fn each_change_reads_back_as_written() {
     }
 
     // Each kind reads back as the one written.
-    let device =
-        |kind| CastReceiver { id: "speaker-1".to_string(), name: "Kitchen".to_string(), kind };
+    let device = |kind| CastReceiver {
+        id: "speaker-1".to_string(),
+        name: "Kitchen".to_string(),
+        kind,
+        model: Some("Audio Pro".to_string()),
+        address: "192.168.1.9".to_string(),
+    };
     for remote in [
         RemotePlayback::On(device(RendererKind::Cast)),
         RemotePlayback::On(device(RendererKind::Dlna)),

@@ -711,11 +711,24 @@ private fun castReceivers(
     casting: String = "Living Room",
     dlna: String = "Den receiver",
 ) = BridgeCastReceiverList(
-    casting = BridgeCastReceiver(id = "cast-living-room", name = casting, kind = BridgeRendererKind.CAST),
+    casting =
+        BridgeCastReceiver(
+            id = "cast-living-room",
+            name = casting,
+            kind = BridgeRendererKind.CAST,
+            model = null,
+            address = "192.168.1.40",
+        ),
     found =
         listOf(
-            BridgeCastReceiver(id = "cast-den", name = dlna, kind = BridgeRendererKind.DLNA),
-            BridgeCastReceiver(id = "cast-kitchen", name = "Kitchen", kind = BridgeRendererKind.AIR_PLAY),
+            BridgeCastReceiver(id = "cast-den", name = dlna, kind = BridgeRendererKind.DLNA, model = null, address = "192.168.1.40"),
+            BridgeCastReceiver(
+                id = "cast-kitchen",
+                name = "Kitchen",
+                kind = BridgeRendererKind.AIR_PLAY,
+                model = null,
+                address = "192.168.1.40",
+            ),
         ),
 )
 

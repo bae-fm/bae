@@ -15,7 +15,7 @@ use tracing::{debug, warn};
 
 use crate::renderer::discovery::RendererServiceType;
 use crate::renderer::protocol_discovery::{
-    instance_label, preferred_address, Browse, ProtocolDiscovery,
+    instance_label, preferred_address, stated, Browse, ProtocolDiscovery,
 };
 use crate::renderer::published_devices::PublishedDevices;
 use crate::renderer::{RendererConnection, RendererDevice};
@@ -168,6 +168,7 @@ fn device_from_resolved(resolved: &ResolvedService) -> Option<RendererDevice> {
         resolved.addresses.iter().map(|scoped| scoped.to_ip_addr()),
         resolved.txt_properties.get_property_val_str("id"),
         resolved.txt_properties.get_property_val_str("fn"),
+        resolved.txt_properties.get_property_val_str("md"),
     )
 }
 
@@ -175,13 +176,15 @@ fn device_from_resolved(resolved: &ResolvedService) -> Option<RendererDevice> {
 /// lacks what's needed to reach and name it: a device id, and at least one
 /// address. IPv4 is preferred — Cast receivers advertise it and the media
 /// receiver fetches over IPv4 LAN. The name falls back to the service instance
-/// label when a device advertises no `fn` value.
+/// label when a device advertises no `fn` value. Its model is the TXT `md`
+/// record, when it states one.
 pub(crate) fn map_device(
     instance: &str,
     port: u16,
     addresses: impl Iterator<Item = IpAddr>,
     id: Option<&str>,
     friendly_name: Option<&str>,
+    model: Option<&str>,
 ) -> Option<RendererDevice> {
     let id = id.map(str::trim).filter(|id| !id.is_empty())?;
     let name =
@@ -190,6 +193,7 @@ pub(crate) fn map_device(
     Some(RendererDevice {
         id: id.to_string(),
         name,
+        model: stated(model),
         connection: RendererConnection::Cast { addr: preferred_address(addresses)?, port },
     })
 }

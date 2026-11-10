@@ -27,7 +27,9 @@ extension ShotScene {
                             BridgeCastReceiver(
                                 id: "speaker-1",
                                 name: "Kitchen",
-                                kind: .cast
+                                kind: .cast,
+                                model: nil,
+                                address: "192.168.1.41"
                             )
                         ]
                     ),
@@ -50,18 +52,24 @@ extension ShotScene {
             casting: BridgeCastReceiver(
                 id: "cast-living-room",
                 name: livingRoom,
-                kind: .cast
+                kind: .cast,
+                model: nil,
+                address: "192.168.1.42"
             ),
             found: [
                 BridgeCastReceiver(
                     id: "cast-den",
                     name: den,
-                    kind: .dlna
+                    kind: .dlna,
+                    model: nil,
+                    address: "192.168.1.43"
                 ),
                 BridgeCastReceiver(
                     id: "cast-kitchen",
                     name: "Kitchen",
-                    kind: .airPlay
+                    kind: .airPlay,
+                    model: nil,
+                    address: "192.168.1.44"
                 ),
             ]
         )

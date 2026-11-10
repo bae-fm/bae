@@ -11,7 +11,13 @@ struct CastStartTests {
     private struct Refused: Error {}
 
     private func receiver(_ id: String) -> BridgeCastReceiver {
-        BridgeCastReceiver(id: id, name: id, kind: .cast)
+        BridgeCastReceiver(
+            id: id,
+            name: id,
+            kind: .cast,
+            model: nil,
+            address: "192.168.1.40"
+        )
     }
 
     @Test("a cast connects with no place open, and its failure is reported")

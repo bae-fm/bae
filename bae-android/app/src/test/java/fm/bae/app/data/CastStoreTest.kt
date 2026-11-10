@@ -24,7 +24,8 @@ import uniffi.bae_bridge.BridgeRendererKind
 @RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
 class CastStoreTest {
-    private val device = BridgeCastReceiver(id = "cast-2", name = "Speaker Name", kind = BridgeRendererKind.CAST)
+    private val device =
+        BridgeCastReceiver(id = "cast-2", name = "Speaker Name", kind = BridgeRendererKind.CAST, model = null, address = "192.168.1.40")
 
     @Test
     fun statusCarriesTheCastingDevice() {

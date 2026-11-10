@@ -4096,10 +4096,15 @@ them closes or casting is turned off. Desktops and Android browse the network
 themselves.
 The picker and the page list what discovery found from a device-local table,
 by name, after the receiver playback is cast to, which playback names with its
-kind, so it is listed while a new search hasn't found it again: one task
+kind, model and address, so it is listed while a new search hasn't found it again: one task
 merges every source's list and writes it whole, in one write per change, in
 the order the changes came. No discovery outlives the process that ran it, so
-the table is emptied as the library opens. Once the person
+the table is emptied as the library opens. A receiver carries, besides its
+id, name and kind, the model it states of itself and the address discovery
+found it at. The model is the Cast `md` record, the AirPlay `model` record
+(`am` on a RAOP service), or the UPnP description's `modelName`; a receiver that
+states none has none. The address is the IP address a Cast or AirPlay service
+resolved to, or the host a UPnP description was fetched from. Once the person
 picks a receiver, the picker or the page names it while bae connects, until
 the cast starts or fails. On macOS the cast connecting is the app's, not the
 picker's or the page's: both name it, so does the Cast button's tooltip, and
@@ -4534,9 +4539,9 @@ seek; volume and mute; queue edits; repeat and shuffle; play on a receiver or
 stop; preview a file before import. What playback is doing is one
 device-local row, `playback_now`, which playback writes as each value
 changes, before it tells anyone else of the change: the playing track and its
-phase, volume, mute, where playback is going (a receiver by its id, name and
-kind), the preview, and why playback last failed, numbered, until it next
-plays. Starting playback with the library resets the row to stopped, keeping
+phase, volume, mute, where playback is going (a receiver by its id, name,
+kind, model and address), the preview, and why playback last failed, numbered,
+until it next plays. Starting playback with the library resets the row to stopped, keeping
 the volume and mute only when it resumes what it played. The app pulls a
 live query of that row joined with the playing track's display and the
 queue's repeat mode, a value after each change; while the row names a track

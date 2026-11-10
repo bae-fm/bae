@@ -23,7 +23,7 @@ use std::net::IpAddr;
 
 use tracing::debug;
 
-use crate::airplay::discovery::AirPlayDevice;
+use crate::airplay::discovery::{AirPlayDevice, AirPlayService};
 use crate::airplay::AirPlayDiscovery;
 use crate::cast::CastDiscovery;
 use crate::dlna::DlnaDiscovery;
@@ -212,19 +212,29 @@ fn map_reported(service: &ReportedRenderer) -> Option<ReportedEntry> {
             std::iter::once(addr),
             txt.get("id").map(String::as_str),
             txt.get("fn").map(String::as_str),
+            txt.get("md").map(String::as_str),
         )
         .map(ReportedEntry::Cast),
-        RendererServiceType::AirPlay | RendererServiceType::Raop => {
-            crate::airplay::discovery::map_device(
-                service.service_type,
-                &service.instance_name,
-                service.port,
-                std::iter::once(addr),
-                &txt,
-            )
-            .map(ReportedEntry::AirPlay)
-        }
+        RendererServiceType::AirPlay => map_airplay(AirPlayService::AirPlay, service, addr, &txt),
+        RendererServiceType::Raop => map_airplay(AirPlayService::Raop, service, addr, &txt),
     }
+}
+
+/// A reported AirPlay or RAOP service, mapped by the code bae's own browse uses.
+fn map_airplay(
+    airplay: AirPlayService,
+    service: &ReportedRenderer,
+    addr: IpAddr,
+    txt: &HashMap<String, String>,
+) -> Option<ReportedEntry> {
+    crate::airplay::discovery::map_device(
+        airplay,
+        &service.instance_name,
+        service.port,
+        std::iter::once(addr),
+        txt,
+    )
+    .map(ReportedEntry::AirPlay)
 }
 
 /// The merged picker list: Cast devices collapsed by device id, AirPlay

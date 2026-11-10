@@ -21,7 +21,9 @@
                     device: BridgeCastReceiver(
                         id: "cast-living-room",
                         name: "Living Room Speaker",
-                        kind: .cast
+                        kind: .cast,
+                        model: nil,
+                        address: "192.168.1.41"
                     )
                 )
             )
