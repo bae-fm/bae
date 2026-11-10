@@ -87,3 +87,22 @@ async fn a_report_lists_its_release_until_it_drops() {
         Some(vec![ReleaseTransferChange::Removed { release_id: "release-1".to_string() }])
     );
 }
+
+/// Applying what a reader hears holds the progress it describes: the
+/// changes between two reads take the first to the second.
+#[test]
+fn applying_the_changes_heard_holds_the_progress_they_describe() {
+    let told = BTreeMap::from([
+        ("release-1".to_string(), progress(10)),
+        ("release-2".to_string(), progress(20)),
+    ]);
+    let next = BTreeMap::from([
+        ("release-1".to_string(), progress(40)),
+        ("release-3".to_string(), progress(5)),
+    ]);
+    let mut held = BTreeMap::new();
+    apply_release_changes(&mut held, vec![ReleaseTransferChange::Reset(told.clone())]);
+    assert_eq!(held, told);
+    apply_release_changes(&mut held, release_changes(&told, &next));
+    assert_eq!(held, next);
+}

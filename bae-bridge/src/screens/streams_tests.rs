@@ -148,6 +148,32 @@ fn one_batch_of_outbox_transfers_writes_both_streams() {
     assert_eq!(total_values.latest(b""), None);
 }
 
+/// The Activity lines' bars are held under each line's name while its batch
+/// holds a release: the Pinning line's share of its batch's bytes while the
+/// pin batch lasts, and nothing once it empties.
+#[test]
+fn the_activity_bars_hold_pins_while_a_pin_batch_holds_a_release() {
+    use bae_library::{ActivityBars, BatchBar};
+    let values = StreamValues::new();
+    let writer = StreamWriter::new(values.clone());
+    let pinning = BatchBar { bytes_done: 250, bytes_total: 400 };
+    writer.reset(activity_bars_held(ActivityBars {
+        uploads: None,
+        pins: Some(pinning),
+        making_local: None,
+    }));
+    assert_eq!(values.latest(b"pins"), Some(BridgeFastValue::BatchShare { fraction: 0.625 }));
+    assert_eq!(values.latest(b"uploads"), None);
+    assert_eq!(values.latest(b"making_local"), None);
+
+    writer.reset(activity_bars_held(ActivityBars {
+        uploads: None,
+        pins: None,
+        making_local: None,
+    }));
+    assert_eq!(values.latest(b"pins"), None, "the pin batch is over");
+}
+
 /// A track is at rest in its stream once it is held in one stretch from its
 /// start to its end, and not before.
 #[test]

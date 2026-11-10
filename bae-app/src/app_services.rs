@@ -782,6 +782,7 @@ impl AppServices {
     delegate_lib!(store, is_sync_paused => uploads_paused() -> bool);
 
     delegate_sync!(manager, watch_outbox_transfers => watch_outbox_transfers() -> bae_library::OutboxTransfersWatch);
+    delegate_sync!(manager, watch_activity_bars => watch_activity_bars() -> bae_library::ActivityBarsWatch);
     delegate_sync!(manager, watch_upload_file_transfers => watch_upload_file_transfers() -> bae_library::FileTransfersWatch);
     delegate_sync!(manager, watch_pin_file_transfers => watch_pin_file_transfers() -> bae_library::FileTransfersWatch);
 

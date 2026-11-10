@@ -208,3 +208,50 @@ async fn pins_and_make_locals_are_counted_apart() {
     manager.cancel_download(&releases[1]).await.unwrap();
     assert_eq!(pins_now(manager).await, None, "no pin waits");
 }
+
+/// Watch the Pinning line's bar until it is `want`.
+async fn pin_bar_until(bars: &mut crate::ActivityBarsWatch, want: Option<crate::BatchBar>) {
+    loop {
+        let told = bars.next().await.expect("the watch stays open").unwrap();
+        if told.pins == want {
+            return;
+        }
+    }
+}
+
+/// The release's whole size, as its storage row holds it.
+async fn release_size(manager: &LibraryManager, release: &str) -> u64 {
+    let release = release.to_string();
+    manager
+        .store
+        .read(move |sql| {
+            Ok(sql.query_row(
+                "SELECT total_size FROM release_storage WHERE release_id = ?1",
+                [release],
+                |row| bae_store::read::count_column(row, "total_size"),
+            )?)
+        })
+        .await
+        .unwrap()
+}
+
+/// The Pinning line's bar is the bytes of its batch's releases pinned, of
+/// all of theirs: none while they wait, the first release's size once it is
+/// pinned, and no bar once the batch's last release is and the batch is
+/// over.
+#[tokio::test]
+async fn the_pin_bar_fills_with_each_release_pinned() {
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    let releases = pinnable_releases(&test, 2).await;
+    let first = release_size(manager, &releases[0]).await;
+    let total = first + release_size(manager, &releases[1]).await;
+    let mut bars = manager.watch_activity_bars();
+
+    queue_pins(manager, &releases).await;
+    pin_bar_until(&mut bars, Some(crate::BatchBar { bytes_done: 0, bytes_total: total })).await;
+    pin(manager, &releases[0]).await;
+    pin_bar_until(&mut bars, Some(crate::BatchBar { bytes_done: first, bytes_total: total })).await;
+    pin(manager, &releases[1]).await;
+    pin_bar_until(&mut bars, None).await;
+}

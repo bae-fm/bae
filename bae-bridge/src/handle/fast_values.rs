@@ -38,6 +38,14 @@ impl AppHandle {
         crate::screens::pin_file_shares(self.runtime.clone(), self.run_feed())
     }
 
+    /// Write the share of each Activity transfer line's batch bytes done
+    /// into a stream by line: `uploads`, `pins` or `making_local`, each
+    /// while its batch holds a release. A failed read empties the stream and
+    /// is pulled as an error; the next bars fill it again.
+    pub fn feed_activity_bars(&self) -> Arc<KeyedValueStream> {
+        crate::screens::activity_bars(self.runtime.clone(), self.run_feed())
+    }
+
     /// Write how far each pinning release has come into a stream by release
     /// id: its bytes and rate.
     pub fn feed_download_transfers(&self) -> Arc<KeyedValueStream> {

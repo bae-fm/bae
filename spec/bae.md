@@ -3149,8 +3149,13 @@ the Pinning screen; and on the desktop Making local on a line of its own ("0 of
 1 release"): a make-local changes where files live for every device, while a
 pin only keeps a copy on this one. Every count is in releases, a release done
 once all its files are, and every bar is filled by the bytes of the batch done
-(for uploads, the bytes the providers confirmed), so a bar moves while a
-release's files transfer and its count waits. A batch is everything the
+(for uploads, the bytes the providers confirmed), each release counting its
+size: a done release all of it, an upload its stored files and its files'
+shares on the way, the pin or make-local downloading its share; the bytes done
+never go back while the batch lasts, so a release whose transfer ends before
+its line reads it done keeps the bytes it reached, and one removed from the
+library keeps what it had counted. A bar moves while a release's files transfer
+and its count waits. A batch is everything the
 queue has held since it was last empty, so a count only grows, and it starts
 over once the queue empties. Pinning and Making local share the download
 queue but each counts its own batch: the releases queued to pin, or to make
@@ -4656,13 +4661,14 @@ release's or track's id as UTF-8, or a candidate's key.
   Device's code, the profiles, ratings, playlists and a playlist's entries,
   the library's name, the watched folders' scans, and an import pane's
   library membership, which moves its checks in place.
-- **Fast values** — transfer bytes and rates, file shares, export
+- **Fast values** — transfer bytes and rates, the Activity lines' bars, file shares, export
   percents, playback and preview positions, the parts of the playing track
   its buffer holds and its load's wait on storage,
   import percents, and how far a
   bulk action has got, which core sends many times a second, and the steps
   of an open and of a setup call — reach an app
-  only in a `KeyedValueStream`, keyed by release, file, track or candidate,
+  only in a `KeyedValueStream`, keyed by release, file, track, candidate or
+  Activity line,
   never in a callback, a
   record field or a subscription value. Every stream is built in the
   bridge's `screens` module. A `feed_*` call starts writing one
@@ -5023,6 +5029,7 @@ What the library lists, bae-views' part, kept by its triggers:
 | `release_listing` | release, keyed by the release: what the Storage manager (§4.2) sorts and filters it by — its album's title and credit keys, its media, when it was added, and from its `release_storage` row its files' count and size, whether they are uploaded and how many are pinned, requested to be kept here and queued — with an index for each sort, alone and under the uploaded filter; whether the download queue holds it waiting or downloading, and whether it holds it failed; whether a move of it failed; and where it sorts by storage, worked out from those: a failed download or move, uploading, pinning (a download in the queue, or copies coven keeps here of a release not wholly pinned), local, pinned, in storage only |
 | `release_listing_totals` | uploaded or not: how many releases are, and their files' total size |
 | `upload_batch` | release with files queued to upload since none had any, which the Activity panel's Uploading line counts; whether it is done is read from its `release_storage` row |
+| `upload_batch_number` | one row: how many upload batches have begun, the number of the one `upload_batch` holds, advanced as its first release joins, by which the Uploading line's bar tells a new batch from the one whose bytes it held (§6.4) |
 | `library_list_versions` | table a library list sorts or narrows by (`album_listing`, `album_artist_link`, `artist_listing`, `artist_image` for the artists' pictures the album grid's sections carry, `composer_listing`, `composer_detail_row`, `release_listing`, and `library_search` for what library search finds of albums, which the Storage manager's search narrows by): how many writes have inserted, deleted or reordered its rows, or for `library_search` changed an album's title, an artist's name or other printed name, an album's credits or the artist a credit shows as, advanced by its triggers in each such write, so a read knows whether its last read's rows still sit where they did (§9.2) |
 | `album_search`, `track_search`, `work_search`, `artist_search`, `artist_credit_search` | album title, track title, work title, artist name and sort name, or other printed name, lowercased, in an FTS5 trigram index library search (§2.3) matches against, beside the searched row's key and, for a track or a work, its title to order by |
 | `album_search_entry`, `track_search_entry`, `work_search_entry`, `artist_search_entry`, `artist_credit_search_entry` | searched row, keyed by its own key: the integer its search row is found by |
@@ -5191,6 +5198,7 @@ write commits, so the release and the row naming it land in either order.
 | `release_queue_versions` | queue table (`download_queue`, `output_queue`): how many writes have added, removed or moved its entries, advanced by its triggers in each such write, so a read knows whether its last read's rows still sit where they did (§9.2) |
 | `download_queue` | release queued to pin or to make local, in the order queued: pin or make local, with a make-local's folder, a BLOB of coven's bytes for its path; and queued, downloading, or failed with its error (§4.3, §4.4) |
 | `download_batch` | release and kind the download queue has held since that kind last had none waiting or downloading, which the Activity panel's Pinning and Making local lines count (§6.4) |
+| `download_batch_number` | kind (pin or make local): how many batches of it have begun, the number of the one `download_batch` holds, advanced as its first release joins, by which the Pinning and Making local lines' bars tell a new batch from the one whose bytes they held (§6.4) |
 | `output_queue` | release queued to export or save, in the order queued: its folder, a BLOB of coven's bytes for its path, export or save with the preset captured whole, and queued, writing, or failed with its error (§4.6) |
 
 The download queue keeps its entries and its pause across restarts; the export

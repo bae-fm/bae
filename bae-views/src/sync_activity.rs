@@ -134,7 +134,7 @@ impl SyncActivity {
 
 #[cfg(test)]
 #[path = "sync_activity_tests.rs"]
-mod tests;
+pub(crate) mod tests;
 
 /// What the activity reads of the library's tables in one go, beside
 /// coven's sync state: what the upload and download queues hold and the sync
@@ -163,7 +163,8 @@ fn sync_activity(state: coven::SyncStatus, rows: SyncActivityRows) -> SyncActivi
     SyncActivity::new(&SyncStatusSnapshot::read(state, status), &uploads, &downloads)
 }
 
-/// The SQL creating the Uploading line's batch and the triggers that keep it.
+/// The SQL creating the Uploading line's batch and its number, and the
+/// triggers that keep them.
 pub(super) const SQL: &str = include_str!("sync_activity.sql");
 
 /// The Uploading line's batch, how many files this process is sending now,
@@ -196,35 +197,61 @@ fn download_queue_counts_on(
     sql: &coven::SqlReadContext<'_>,
 ) -> Result<DownloadQueueCounts, bae_store::DbError> {
     Ok(DownloadQueueCounts {
-        pins: download_batch_on(sql, "pin", RELEASE_STORAGE_PINNED)?,
-        making_local: download_batch_on(sql, "make_local", "storage.stored = 0")?,
+        pins: download_batch_on(sql, &DownloadLine::PINS)?,
+        making_local: download_batch_on(sql, &DownloadLine::MAKING_LOCAL)?,
         queue: bae_transfers::tables::release_queue_counts_on::<bae_transfers::DownloadRequest>(
             sql,
         )?,
     })
 }
 
-/// The batch of `kind` in `download_batch`, a release done once no entry of
-/// that kind for it is in the queue and its storage row `storage` says
-/// `done`. A release the library no longer holds has no storage row and
-/// never counts done.
+/// One kind of download's line: the kind `download_batch` and
+/// `download_queue` name it by, and what a release's storage row `storage`
+/// says once the kind's work on it is done.
+pub(crate) struct DownloadLine {
+    pub(crate) kind: &'static str,
+    stored_done: &'static str,
+}
+
+impl DownloadLine {
+    /// The Pinning line: a release is done once every file is pinned.
+    pub(crate) const PINS: Self = Self { kind: "pin", stored_done: RELEASE_STORAGE_PINNED };
+    /// The Making local line: a release is done once it is no longer stored
+    /// in the cloud.
+    pub(crate) const MAKING_LOCAL: Self =
+        Self { kind: "make_local", stored_done: "storage.stored = 0" };
+
+    /// Whether the release of `batch`, a `download_batch` row joined to its
+    /// storage row as `storage`, is done: no entry of the line's kind for it
+    /// is in the queue, and its storage row says the work is done. A release
+    /// the library no longer holds has no storage row, so the condition is
+    /// NULL for it: never done.
+    pub(crate) fn done(&self) -> String {
+        format!(
+            "{} AND NOT EXISTS ( \
+                 SELECT 1 FROM download_queue AS queue \
+                 WHERE queue.release_id = batch.release_id AND queue.kind = batch.kind)",
+            self.stored_done
+        )
+    }
+}
+
+/// The batch of `line` in `download_batch`, a release done as
+/// [`DownloadLine::done`] says.
 fn download_batch_on(
     sql: &coven::SqlReadContext<'_>,
-    kind: &str,
-    done: &str,
+    line: &DownloadLine,
 ) -> Result<TransferBatch, bae_store::DbError> {
     Ok(sql.query_row(
         &format!(
             "SELECT COUNT(*) AS batch_total, \
-                 COUNT(storage.release_id) FILTER (WHERE {done} AND NOT EXISTS ( \
-                     SELECT 1 FROM download_queue AS queue \
-                     WHERE queue.release_id = batch.release_id AND queue.kind = batch.kind)) \
-                     AS batch_done \
+                 COUNT(*) FILTER (WHERE {}) AS batch_done \
              FROM download_batch AS batch \
              LEFT JOIN release_storage AS storage ON storage.release_id = batch.release_id \
-             WHERE batch.kind = ?1"
+             WHERE batch.kind = ?1",
+            line.done()
         ),
-        [kind],
+        [line.kind],
         transfer_batch_in_row,
     )?)
 }

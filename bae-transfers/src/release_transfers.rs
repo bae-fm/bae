@@ -168,6 +168,26 @@ pub fn release_changes<Progress: Clone + PartialEq>(
     changes
 }
 
+/// Apply what a reader heard to `held`, each release's progress as it last
+/// heard it: what [`release_changes`] said, back into the progress it
+/// describes.
+pub fn apply_release_changes<Progress>(
+    held: &mut BTreeMap<String, Progress>,
+    changes: Vec<ReleaseTransferChange<Progress>>,
+) {
+    for change in changes {
+        match change {
+            ReleaseTransferChange::Reset(all) => *held = all,
+            ReleaseTransferChange::Updated { release_id, progress } => {
+                held.insert(release_id, progress);
+            }
+            ReleaseTransferChange::Removed { release_id } => {
+                held.remove(&release_id);
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 #[path = "release_transfers_tests.rs"]
 mod tests;

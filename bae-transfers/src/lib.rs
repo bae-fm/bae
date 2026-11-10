@@ -35,8 +35,8 @@ pub use release_queue::{
 };
 pub use release_state::release_download_entry_on;
 pub use release_transfers::{
-    release_changes, ReleaseTransferChange, ReleaseTransferReport, ReleaseTransfers,
-    ReleaseTransfersWatch,
+    apply_release_changes, release_changes, ReleaseTransferChange, ReleaseTransferReport,
+    ReleaseTransfers, ReleaseTransfersWatch,
 };
 pub use storage_moves::{StorageMoveError, StorageMoveRefusal};
 

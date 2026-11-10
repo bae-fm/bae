@@ -196,18 +196,34 @@ const FILES_SENDING: &str = "SELECT sending.file AS file, f.release_id AS releas
      LEFT JOIN release_files AS f ON f.file = sending.file \
      LEFT JOIN coven_files AS coven ON coven.id = sending.file";
 
+/// Of the release whose `release_storage` row is `storage`, the bytes of its
+/// files stored: its whole size less the sizes of its files still queued to
+/// upload.
+pub const RELEASE_BYTES_STORED: &str = "storage.total_size - COALESCE(( \
+         SELECT SUM(coven.size) FROM release_files AS f \
+         JOIN coven_upload_queue AS queued ON queued.file = f.file \
+         JOIN coven_files AS coven ON coven.id = f.file \
+         WHERE f.release_id = storage.release_id), 0)";
+
 /// Each release with files this process is sending now: of its whole size,
-/// the bytes of its files stored, those not queued. Each release is found by
-/// its files from the files in flight.
-const RELEASES_SENDING_BYTES: &str = "SELECT storage.release_id AS release_id, \
-         storage.total_size - (SELECT SUM(coven.size) FROM release_files AS f \
-             JOIN coven_upload_queue AS queued ON queued.file = f.file \
-             JOIN coven_files AS coven ON coven.id = f.file \
-             WHERE f.release_id = storage.release_id) AS bytes_stored, \
-         storage.total_size AS bytes_total \
-     FROM release_storage AS storage \
-     WHERE storage.release_id IN (SELECT f.release_id FROM coven_sending AS sending \
-         JOIN release_files AS f ON f.file = sending.file)";
+/// the bytes of its files stored. Each release is found by its files from
+/// the files in flight.
+fn releases_sending_bytes() -> String {
+    format!(
+        "SELECT storage.release_id AS release_id, \
+             {RELEASE_BYTES_STORED} AS bytes_stored, \
+             storage.total_size AS bytes_total \
+         FROM release_storage AS storage \
+         WHERE storage.release_id IN (SELECT f.release_id FROM coven_sending AS sending \
+             JOIN release_files AS f ON f.file = sending.file)"
+    )
+}
+
+/// Each file this process is sending now, a cover's or a picture's among
+/// them, and of a release's file its release and size.
+pub fn sending_files_on(sql: &SqlReadContext<'_>) -> Result<Vec<DbSendingFile>, DbError> {
+    Ok(sql.query(FILES_SENDING, [], sending_file_in_row)?)
+}
 
 /// A file [`FILES_SENDING`] read; a size below zero is a column-conversion
 /// error.
@@ -219,7 +235,7 @@ pub(super) fn sending_file_in_row(row: &Row<'_>) -> rusqlite::Result<DbSendingFi
     })
 }
 
-/// A release [`RELEASES_SENDING_BYTES`] read; a byte count below zero is a
+/// A release [`releases_sending_bytes`] read; a byte count below zero is a
 /// column-conversion error.
 pub(super) fn sending_release_in_row(row: &Row<'_>) -> rusqlite::Result<DbSendingRelease> {
     Ok(DbSendingRelease {
@@ -276,8 +292,8 @@ impl Records {
     /// got is coven's upload watch.
     pub fn subscribe_sending_uploads(&self) -> coven::LiveQuery<DbSendingUploads, DbError> {
         self.store.subscribe(|sql| {
-            let files = sql.query(FILES_SENDING, [], sending_file_in_row)?;
-            let releases = sql.query(RELEASES_SENDING_BYTES, [], sending_release_in_row)?;
+            let files = sending_files_on(&sql)?;
+            let releases = sql.query(&releases_sending_bytes(), [], sending_release_in_row)?;
             Ok(DbSendingUploads {
                 files,
                 releases,

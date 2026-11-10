@@ -311,7 +311,7 @@ async fn activity_now(store: &bae_store::Store) -> SyncActivity {
 /// Run `test` on a library whose storage is set up and whose uploads are
 /// paused, with a folder for the originals its files are staged from. The
 /// store is closed before its runtime ends, as a store still syncing must be.
-fn run_on_library_with_storage(
+pub(crate) fn run_on_library_with_storage(
     test: impl AsyncFnOnce(&bae_store::Store, &std::path::Path) + Send + 'static,
 ) {
     bae_store::test_devices::on_device_runtime(async move || {
@@ -336,12 +336,15 @@ fn run_on_library_with_storage(
     });
 }
 
-const FILE_EARLY: &str = "5b0c3f0e-2d7a-4c61-9a4e-1f2b3c4d5e61";
-const FILE_LATE: &str = "6c1d4a1f-3e8b-4d72-8b5f-2a3c4d5e6f72";
+pub(crate) const FILE_EARLY: &str = "5b0c3f0e-2d7a-4c61-9a4e-1f2b3c4d5e61";
+pub(crate) const FILE_LATE: &str = "6c1d4a1f-3e8b-4d72-8b5f-2a3c4d5e6f72";
 
 /// The two releases of `storage_listing`, each with one file staged on this
 /// device only.
-async fn write_releases_with_files(store: &bae_store::Store, originals: &std::path::Path) {
+pub(crate) async fn write_releases_with_files(
+    store: &bae_store::Store,
+    originals: &std::path::Path,
+) {
     use bae_records::test_fixtures::storage_listing::*;
     write_library(&bae_records::test_fixtures::test_records(store)).await;
     insert_file(store, originals, (FILE_EARLY, RELEASE_EARLY, "early.flac", 3)).await;
@@ -349,7 +352,7 @@ async fn write_releases_with_files(store: &bae_store::Store, originals: &std::pa
 }
 
 /// Move `release` to the cloud, queueing its files to upload.
-async fn queue_upload(store: &bae_store::Store, release: &str) {
+pub(crate) async fn queue_upload(store: &bae_store::Store, release: &str) {
     let moved =
         bae_transfers::storage_moves::move_releases_to_cloud(store, vec![release.into()], false)
             .await

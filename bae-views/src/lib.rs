@@ -20,6 +20,7 @@
 //! row's own trigger, when it arrives, counts the rows that were waiting for
 //! it.
 
+mod activity_bytes;
 pub mod album;
 pub mod album_detail;
 mod album_search;
@@ -43,6 +44,9 @@ mod sync_activity;
 mod uploads;
 mod versions;
 
+pub use activity_bytes::{
+    activity_bytes_on, ActivityBytes, BatchReleases, DownloadRelease, UploadRelease,
+};
 pub use artist_search::{ArtistSearchSnapshot, ArtistSearchView, LiveArtistSearch};
 pub use browse::*;
 #[cfg(desktop)]

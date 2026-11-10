@@ -1,3 +1,4 @@
+mod activity_bars;
 mod album_selection;
 mod assembly;
 mod bootstrap;
@@ -28,6 +29,7 @@ pub mod test_libraries;
 mod track_decode;
 mod upload_progress;
 mod upload_throughput;
+pub use activity_bars::{ActivityBars, ActivityBarsWatch, BatchBar};
 pub use album_selection::{AlbumSelectionSnapshot, LiveAlbumSelection};
 pub use assembly::open_library_manager;
 pub use bootstrap::{

@@ -187,6 +187,8 @@ internal open class FakeAppHandle(
 
     override fun feedPinFileShares(): KeyedValueStream = FakeKeyedValueStream()
 
+    override fun feedActivityBars(): KeyedValueStream = FakeKeyedValueStream()
+
     override fun subscribeCastReceivers(): CastReceiversSubscription = FakeCastReceiversSubscription()
 
     override fun subscribeQueue(): QueueSubscription = FakeQueueSubscription()
