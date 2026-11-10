@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -24,6 +23,7 @@ import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.CardRow
+import fm.bae.app.ui.components.DestructiveTextButton
 import fm.bae.app.ui.components.Eyebrow
 import fm.bae.app.ui.components.RowCard
 import uniffi.bae_bridge.BridgeActiveDevice
@@ -145,10 +145,7 @@ private fun RemoveDeviceButton(
     own: Boolean,
     callbacks: MemberCallbacks,
 ) {
-    TextButton(
-        onClick = { callbacks.onRemoveDevice(device, own) },
-        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-    ) {
+    DestructiveTextButton(onClick = { callbacks.onRemoveDevice(device, own) }) {
         Text(stringResource(R.string.members_remove))
     }
 }

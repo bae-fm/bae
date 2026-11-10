@@ -3,8 +3,6 @@ package fm.bae.app.ui.settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -21,6 +19,7 @@ import fm.bae.app.coreString
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.cloudProviderLabel
+import fm.bae.app.ui.components.DestructiveTextButton
 import fm.bae.app.ui.components.LabeledValueRow
 import kotlinx.coroutines.CancellationException
 import uniffi.bae_bridge.BridgeActiveDevice
@@ -353,9 +352,8 @@ private fun JoinRequestDialog(
             }
         },
         dismissButton = {
-            TextButton(
+            DestructiveTextButton(
                 onClick = { model.perform("decline a join request") { session.appHandle.declineJoinRequest(request) } },
-                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
             ) {
                 Text(stringResource(R.string.join_request_decline))
             }

@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -65,7 +64,7 @@ internal fun RemoveLibraryDialog(
         onDismissRequest = onDismiss,
         text = { RemoveLibraryText(library, loss) },
         confirmButton = {
-            TextButton(onClick = onConfirm) {
+            DestructiveTextButton(onClick = onConfirm) {
                 Text(
                     stringResource(
                         when (LibraryEnding.of(library.state)) {
@@ -77,7 +76,7 @@ internal fun RemoveLibraryDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+            NeutralTextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         },
     )
 }

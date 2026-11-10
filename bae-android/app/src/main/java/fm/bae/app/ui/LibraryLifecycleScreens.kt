@@ -28,7 +28,9 @@ import fm.bae.app.ScreenFailure
 import fm.bae.app.coreString
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.DestructiveTextButton
 import fm.bae.app.ui.components.ErrorAction
+import fm.bae.app.ui.components.NeutralTextButton
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.ScreenFailureNotice
@@ -53,10 +55,10 @@ internal fun DeviceResetDialog(
         title = { Text(stringResource(R.string.reset_device_confirm_title)) },
         text = { Text(LocalContext.current.coreString(reset.warningKey())) },
         confirmButton = {
-            TextButton(onClick = onConfirm) { Text(stringResource(R.string.reset_device_confirm)) }
+            DestructiveTextButton(onClick = onConfirm) { Text(stringResource(R.string.reset_device_confirm)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+            NeutralTextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         },
     )
 }

@@ -69,6 +69,7 @@ AppearanceLightSlate:appearance-light-slate
 CastPicker:cast-picker
 CastingSettingsFound:settings-casting
 CastingSettingsLooking:settings-casting-looking
+DeleteAlbumDialogScene:delete-album-dialog
 DownloadEntries:download-entries
 FolderChoiceDropbox:folder-choice-dropbox
 FolderChoiceOneDrive:folder-choice-onedrive

@@ -33,6 +33,7 @@ import fm.bae.app.data.LiveValue
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.albumdetail.AlbumDetailScene
+import fm.bae.app.ui.albumdetail.DeleteAlbumDialog
 import fm.bae.app.ui.albumdetail.DownloadControlBody
 import fm.bae.app.ui.albumdetail.UploadLineBody
 import fm.bae.app.ui.appearance.AccentChoice
@@ -203,6 +204,13 @@ fun RemoveLibraryUnsent() {
 fun RemoveLibrary() {
     val nothing = BridgeUnsentWork(writes = 0u, files = 0u, isEmpty = true)
     DialogScene { RemoveLibraryText(sceneLibrary, RemovalLoss.Counted(nothing)) }
+}
+
+/** The confirmation to delete an album: Cancel in the screen's text, Delete in red. */
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun DeleteAlbumDialogScene() {
+    BaeTheme { DeleteAlbumDialog(onConfirm = {}, onDismiss = {}) }
 }
 
 /** The dialog for a removal that failed. */

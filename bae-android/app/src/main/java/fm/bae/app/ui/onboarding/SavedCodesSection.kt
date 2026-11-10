@@ -7,10 +7,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
@@ -23,8 +21,10 @@ import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.CardRow
+import fm.bae.app.ui.components.DestructiveTextButton
 import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.Eyebrow
+import fm.bae.app.ui.components.NeutralTextButton
 import fm.bae.app.ui.components.RowCard
 import fm.bae.app.ui.storageLocationLabel
 import uniffi.bae_bridge.BridgeDropboxAccess
@@ -159,11 +159,7 @@ private fun SavedCodeRow(
         onClick = onClick,
         onClickLabel = stringResource(R.string.onboarding_restore_action),
     ) {
-        TextButton(
-            onClick = { callbacks.onDelete(entry) },
-            enabled = enabled,
-            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-        ) {
+        DestructiveTextButton(onClick = { callbacks.onDelete(entry) }, enabled = enabled) {
             Text(stringResource(R.string.onboarding_saved_code_delete))
         }
     }
@@ -194,15 +190,12 @@ private fun DeleteSavedCodeDialog(
         title = { Text(stringResource(R.string.onboarding_saved_code_delete_title)) },
         text = { Text(body) },
         confirmButton = {
-            TextButton(
-                onClick = onConfirm,
-                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-            ) {
+            DestructiveTextButton(onClick = onConfirm) {
                 Text(stringResource(R.string.onboarding_saved_code_delete))
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+            NeutralTextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         },
     )
 }
