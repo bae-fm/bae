@@ -4,6 +4,7 @@ import android.app.Application
 import android.os.Looper
 import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.DisplayError
+import fm.bae.app.NoErrorDisplays
 import fm.bae.app.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -44,7 +45,7 @@ class OnboardingSavedRestoreTest {
             OnboardingFlow(
                 scope,
                 RuntimeEnvironment.getApplication(),
-                OnboardingCore(host, ::FakeBootstrapCancellation, ::unfakedOpenProgress, ::fakeSetupStatus),
+                OnboardingCore(host, NoErrorDisplays::display, ::FakeBootstrapCancellation, ::unfakedOpenProgress, ::fakeSetupStatus),
                 oauthProvidersError,
                 null,
             ) {}
@@ -134,7 +135,13 @@ class OnboardingSavedRestoreTest {
             OnboardingFlow(
                 scope,
                 RuntimeEnvironment.getApplication(),
-                OnboardingCore(SavedCodesHost(listOf(dropboxCode)), ::FakeBootstrapCancellation, ::unfakedOpenProgress, ::fakeSetupStatus),
+                OnboardingCore(
+                    SavedCodesHost(listOf(dropboxCode)),
+                    NoErrorDisplays::display,
+                    ::FakeBootstrapCancellation,
+                    ::unfakedOpenProgress,
+                    ::fakeSetupStatus,
+                ),
                 null,
                 RestoreOver(
                     libraryId = "library-1",

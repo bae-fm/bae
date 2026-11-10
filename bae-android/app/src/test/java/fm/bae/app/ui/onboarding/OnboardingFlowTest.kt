@@ -3,6 +3,8 @@ package fm.bae.app.ui.onboarding
 import android.app.Application
 import android.os.Looper
 import fm.bae.app.BaeRobolectricTestRunner
+import fm.bae.app.DisplayError
+import fm.bae.app.NoErrorDisplays
 import fm.bae.app.data.LibrarySetupStatus
 import fm.bae.fastvalues.LatestStream
 import kotlinx.coroutines.CoroutineScope
@@ -124,7 +126,7 @@ class OnboardingFlowTest {
             OnboardingFlow(
                 scope,
                 RuntimeEnvironment.getApplication(),
-                OnboardingCore(host, ::FakeBootstrapCancellation, ::unfakedOpenProgress) {
+                OnboardingCore(host, NoErrorDisplays::display, ::FakeBootstrapCancellation, ::unfakedOpenProgress) {
                     LibrarySetupStatus.written(FakeLibrarySetup(), states, LatestStream.written(), scope)
                 },
                 null,
@@ -219,6 +221,7 @@ class OnboardingFlowTest {
 
         assertEquals(listOf("library-1" to BridgeReplacedBy.RESTORE), host.finished)
         assertEquals(OnboardingStep.EnterCode(finishing), flow.step)
+        assertEquals(DisplayError("failed", "offline"), flow.error)
     }
 
     /** A restore onto this phone that stopped after it recorded itself goes on finishing as the welcome opens. */

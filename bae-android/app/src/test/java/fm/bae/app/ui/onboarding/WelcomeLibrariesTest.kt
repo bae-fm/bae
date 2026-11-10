@@ -17,6 +17,7 @@ import androidx.compose.ui.test.performClick
 import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.DisplayError
 import fm.bae.app.HANG_GUARD_MS
+import fm.bae.app.NoErrorDisplays
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.components.LibraryEnding
 import fm.bae.app.ui.components.RemovalLoss
@@ -132,7 +133,13 @@ class WelcomeLibrariesTest {
                     OnboardingFlow(
                         scope,
                         context,
-                        OnboardingCore(NoJoinsHost(), ::FakeBootstrapCancellation, ::unfakedOpenProgress, ::fakeSetupStatus),
+                        OnboardingCore(
+                            NoJoinsHost(),
+                            NoErrorDisplays::display,
+                            ::FakeBootstrapCancellation,
+                            ::unfakedOpenProgress,
+                            ::fakeSetupStatus,
+                        ),
                         null,
                         null,
                     ) {}

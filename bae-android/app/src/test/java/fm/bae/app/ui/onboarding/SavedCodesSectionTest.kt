@@ -17,6 +17,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.HANG_GUARD_MS
+import fm.bae.app.NoErrorDisplays
 import fm.bae.app.ui.BaeTheme
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
@@ -41,7 +42,13 @@ class SavedCodesSectionTest {
                     OnboardingFlow(
                         scope,
                         context,
-                        OnboardingCore(host, ::FakeBootstrapCancellation, ::unfakedOpenProgress, ::fakeSetupStatus),
+                        OnboardingCore(
+                            host,
+                            NoErrorDisplays::display,
+                            ::FakeBootstrapCancellation,
+                            ::unfakedOpenProgress,
+                            ::fakeSetupStatus,
+                        ),
                         null,
                         null,
                     ) {}

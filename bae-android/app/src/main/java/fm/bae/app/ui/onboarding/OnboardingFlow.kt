@@ -11,7 +11,6 @@ import fm.bae.app.coreString
 import fm.bae.app.data.LibraryOpenProgress
 import fm.bae.app.data.LibrarySetupStatus
 import fm.bae.app.deviceName
-import fm.bae.app.displayError
 import fm.bae.fastvalues.LatestSource
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -205,6 +204,7 @@ internal fun codeReadStep(
 
 /**
  * The core onboarding runs against: the [host] that restores and joins,
+ * [errorDisplay], which words a failed call as core says to show it,
  * [newCancellation], which makes the stop each restore is handed,
  * [newOpenProgress], which makes the open a restore over this device's copy
  * reports its steps in, and [newSetupStatus], which makes the setup each
@@ -212,6 +212,7 @@ internal fun codeReadStep(
  */
 internal class OnboardingCore(
     val host: BridgeHostInterface,
+    val errorDisplay: (BridgeException) -> DisplayError?,
     val newCancellation: () -> BootstrapCancellation,
     val newOpenProgress: () -> LibraryOpenProgress,
     val newSetupStatus: () -> LibrarySetupStatus,
@@ -242,7 +243,7 @@ internal class OnboardingFlow(
      * a restore over this device's copy, which takes the person's current code.
      */
     val savedCodes: SavedRestoreCodes? =
-        if (restoreOver == null) SavedRestoreCodes(scope, core.host) { context.displayError(it) } else null
+        if (restoreOver == null) SavedRestoreCodes(scope, core.host, core.errorDisplay) else null
 
     private var cancellation: (() -> Unit)? = null
 
@@ -294,7 +295,7 @@ internal class OnboardingFlow(
                 throw e
             } catch (e: BridgeException) {
                 logger.error("listing what is under way failed", e)
-                error = context.displayError(e)
+                error = core.errorDisplay(e)
             }
         }
     }
@@ -512,7 +513,7 @@ internal class OnboardingFlow(
                 logger.error("restoring or joining failed", e)
                 following.cancel()
                 step = from.formStep()
-                error = context.displayError(e)
+                error = core.errorDisplay(e)
             } finally {
                 following.cancel()
                 setup.close()

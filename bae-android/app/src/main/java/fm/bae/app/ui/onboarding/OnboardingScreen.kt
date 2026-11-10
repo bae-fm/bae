@@ -112,6 +112,7 @@ internal fun OnboardingScreen(
                 context,
                 OnboardingCore(
                     app.host,
+                    { context.displayError(it) },
                     ::BootstrapCancellation,
                     { LibraryOpenProgress(app.host, scope, app.bugs) },
                     { LibrarySetupStatus.of(app.host, scope, app.bugs) },

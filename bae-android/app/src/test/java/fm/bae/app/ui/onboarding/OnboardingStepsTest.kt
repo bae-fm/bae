@@ -10,6 +10,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import fm.bae.app.BaeRobolectricTestRunner
+import fm.bae.app.NoErrorDisplays
 import fm.bae.app.ui.BaeTheme
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -37,7 +38,13 @@ class OnboardingStepsTest {
                     OnboardingFlow(
                         scope,
                         context,
-                        OnboardingCore(NoJoinsHost(), ::FakeBootstrapCancellation, ::unfakedOpenProgress, ::fakeSetupStatus),
+                        OnboardingCore(
+                            NoJoinsHost(),
+                            NoErrorDisplays::display,
+                            ::FakeBootstrapCancellation,
+                            ::unfakedOpenProgress,
+                            ::fakeSetupStatus,
+                        ),
                         null,
                         restoreOver,
                     ) {}
