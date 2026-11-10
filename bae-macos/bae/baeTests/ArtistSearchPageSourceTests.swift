@@ -150,7 +150,7 @@ struct ArtistSearchResultsTests {
         let found = [artist("artist-1"), artist("artist-2")]
         let clock = ManualClock()
         let search = ArtistSearchResults(
-            open: { .fixed(found, answers: FixedAnswers()) },
+            open: { .fixed(found, answers: UnansweredCount()) },
             clock: clock
         )
         #expect(search.list == nil)

@@ -69,7 +69,7 @@ struct ReleaseEditorTests {
                 values: session.draft.edit,
                 writer: session.fieldWriter,
                 editingCommands: session.editingCommands,
-                artistSearch: { .fixed([], answers: FixedAnswers()) },
+                artistSearch: { .fixed([], answers: UnansweredCount()) },
                 cover: { EmptyView() },
                 audioFacts: { EmptyView() }
             )

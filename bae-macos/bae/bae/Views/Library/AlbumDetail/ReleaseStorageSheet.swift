@@ -246,12 +246,12 @@ struct ReleaseStorageSheet: View {
         .environment(
             Library(
                 releaseDetail: {
-                    .fixed(answers: FixedAnswers()) { _ in release }
+                    .fixed(answers: UnansweredCount()) { _ in release }
                 },
                 releaseFiles: {
                     .fixed(
                         PreviewData.previewReleaseFiles,
-                        answers: FixedAnswers()
+                        answers: UnansweredCount()
                     )
                 }
             )

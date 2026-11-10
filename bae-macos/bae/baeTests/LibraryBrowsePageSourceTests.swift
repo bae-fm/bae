@@ -21,7 +21,7 @@ private final class RecordingBrowse: @unchecked Sendable {
 
     func query() -> LibraryBrowseQuery<BridgeAlbum> {
         let fixed = LibraryBrowseQuery<BridgeAlbum>
-            .fixed(rows, answers: FixedAnswers())
+            .fixed(rows, answers: UnansweredCount())
         return LibraryBrowseQuery(
             setWindows: { [self] windows in
                 lock.withLock { requests.append(windows) }
@@ -53,7 +53,7 @@ struct LibraryBrowsePageSourceTests {
     func distinctCount() async {
         let album = makeBridgeAlbum(id: "shared")
         let fixed = LibraryBrowseQuery<BridgeAlbum>
-            .fixed([album, album], answers: FixedAnswers())
+            .fixed([album, album], answers: UnansweredCount())
         let query = LibraryBrowseQuery<BridgeAlbum>(
             setWindows: fixed.setWindows,
             values: PulledValues(fixed.values) { page in
@@ -97,7 +97,7 @@ struct LibraryBrowsePageSourceTests {
             ),
         ]
         let fixed = LibraryBrowseQuery<BridgeAlbum>
-            .fixed(rows, answers: FixedAnswers())
+            .fixed(rows, answers: UnansweredCount())
         let query = LibraryBrowseQuery<BridgeAlbum>(
             setWindows: fixed.setWindows,
             values: PulledValues(fixed.values) { page in
@@ -134,7 +134,7 @@ struct LibraryBrowsePageSourceTests {
             )
         ]
         let fixed = LibraryBrowseQuery<BridgeAlbum>
-            .fixed(rows, answers: FixedAnswers())
+            .fixed(rows, answers: UnansweredCount())
         let delivered = DeliveryCount()
         let query = LibraryBrowseQuery<BridgeAlbum>(
             setWindows: fixed.setWindows,

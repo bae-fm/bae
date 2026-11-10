@@ -13,7 +13,7 @@ struct HostedAlbumGrid {
     let host: NSView
     let uiStore: UiStore
     /// The grid's page reads not yet answered.
-    let answers: FixedAnswers
+    let answers: UnansweredCount
 
     /// Six hundred albums, `grid-0` to `grid-599`.
     static let albums: [BridgeAlbum] = (0..<600)
@@ -36,7 +36,7 @@ struct HostedAlbumGrid {
     ) async throws -> HostedAlbumGrid {
         let uiStore = UiStore()
         let albums = Self.albums
-        let answers = FixedAnswers()
+        let answers = UnansweredCount()
         let list = AlbumList(
             pageSource: LibraryAlbumPageSource(
                 query: query(
@@ -88,7 +88,7 @@ struct HostedAlbumGrid {
     private static func query(
         albums: [BridgeAlbum],
         sections: [BridgeLibraryBrowseSection],
-        answers: FixedAnswers
+        answers: UnansweredCount
     ) -> LibraryBrowseQuery<BridgeAlbum> {
         let fixed = LibraryBrowseQuery<BridgeAlbum>
             .fixed(
@@ -127,9 +127,9 @@ struct HostedAlbumGrid {
     /// for: its caller waits for its end first.
     func settle() async throws {
         while true {
-            try await Wait.until { answers.unanswered == 0 }
+            try await Wait.until { answers.value == 0 }
             try await Wait.untilSteady { geometry() }
-            if answers.unanswered == 0 { return }
+            if answers.value == 0 { return }
         }
     }
 

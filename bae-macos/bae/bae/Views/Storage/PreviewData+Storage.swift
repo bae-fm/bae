@@ -532,8 +532,11 @@
             rows: [BridgeStorageRow] = storageRows
         ) -> StorageList {
             let list = StorageList(
-                pageSource: storageLibrary(answers: FixedAnswers(), rows: rows)
-                    .storagePageSource,
+                pageSource: storageLibrary(
+                    answers: UnansweredCount(),
+                    rows: rows
+                )
+                .storagePageSource,
                 onError: { _ in }
             )
             list.preloadForPreview(
@@ -549,7 +552,7 @@
         /// The fixture's library, its reads answered off the main thread and
         /// counted in `answers`.
         static func storageLibrary(
-            answers: FixedAnswers,
+            answers: UnansweredCount,
             rows: [BridgeStorageRow] = storageRows,
             downloads: [BridgeDownloadOp] = downloadOps,
             outputs: [BridgeOutputOp] = outputOps,

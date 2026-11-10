@@ -14,16 +14,16 @@
         static func albumDetailLibrary() -> Library {
             Library(
                 albumDetail: {
-                    .fixed(answers: FixedAnswers()) { albumDetails[$0] }
+                    .fixed(answers: UnansweredCount()) { albumDetails[$0] }
                 },
                 releaseDetail: {
-                    .fixed(answers: FixedAnswers()) { id in
+                    .fixed(answers: UnansweredCount()) { id in
                         albumDetails.values.lazy.flatMap(\.releases)
                             .first { $0.id == id }
                     }
                 },
                 releaseFiles: {
-                    .fixed(previewReleaseFiles, answers: FixedAnswers())
+                    .fixed(previewReleaseFiles, answers: UnansweredCount())
                 }
             )
         }

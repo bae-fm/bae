@@ -14,9 +14,9 @@
         /// `albumContent`/`composerContent` rather than a hand-built stand-in.
         static func emptyLibrary() -> Library {
             Library(
-                albumBrowse: { _, _ in .fixed([], answers: FixedAnswers()) },
-                composerBrowse: { _ in .fixed([], answers: FixedAnswers()) },
-                artistBrowse: { _ in .fixed([], answers: FixedAnswers()) }
+                albumBrowse: { _, _ in .fixed([], answers: UnansweredCount()) },
+                composerBrowse: { _ in .fixed([], answers: UnansweredCount()) },
+                artistBrowse: { _ in .fixed([], answers: UnansweredCount()) }
             )
         }
 
@@ -62,7 +62,8 @@
                     )
                 }
             let library = Library(
-                albumBrowse: { _, _ in .fixed(albums, answers: FixedAnswers())
+                albumBrowse: { _, _ in
+                    .fixed(albums, answers: UnansweredCount())
                 },
                 getAlbumIndex: { _, albumId, _ in
                     albums.firstIndex { $0.id == albumId }.map(UInt64.init)
@@ -114,15 +115,16 @@
             let workDetail = previewWorkDetail(work: works[0])
             let library = Library(
                 composerBrowse: { _ in
-                    .fixed(composers, answers: FixedAnswers())
+                    .fixed(composers, answers: UnansweredCount())
                 },
                 composerDetail: {
-                    .fixed(answers: FixedAnswers()) { _ in composerDetail }
+                    .fixed(answers: UnansweredCount()) { _ in composerDetail }
                 },
-                composerDetailRows: { _ in .fixed(rows, answers: FixedAnswers())
+                composerDetailRows: { _ in
+                    .fixed(rows, answers: UnansweredCount())
                 },
                 workDetail: {
-                    .fixed(answers: FixedAnswers()) { _ in workDetail }
+                    .fixed(answers: UnansweredCount()) { _ in workDetail }
                 },
             )
             let session = LibraryBrowseSession(

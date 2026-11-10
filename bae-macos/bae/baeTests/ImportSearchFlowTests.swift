@@ -415,7 +415,7 @@ final class MetadataApplicationEditingTests: XCTestCase {
                     }
                 ),
                 editingCommands: editingCommands,
-                artistSearch: { .fixed([], answers: FixedAnswers()) },
+                artistSearch: { .fixed([], answers: UnansweredCount()) },
                 cover: { EmptyView() },
                 audioFacts: { EmptyView() }
             )

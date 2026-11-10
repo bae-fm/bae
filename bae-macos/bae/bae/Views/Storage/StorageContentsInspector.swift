@@ -111,7 +111,7 @@ struct StorageContentsInspector: View {
     /// A release uploading, its audio file selected.
     #Preview("File selected") {
         let library = PreviewData.storageLibrary(
-            answers: FixedAnswers(),
+            answers: UnansweredCount(),
             downloads: [],
             outputs: []
         )
@@ -133,7 +133,7 @@ struct StorageContentsInspector: View {
     /// A release pinning: its cover kept, its audio waiting.
     #Preview("Pinning") {
         let library = PreviewData.storageLibrary(
-            answers: FixedAnswers(),
+            answers: UnansweredCount(),
             outputs: [],
             uploads: []
         )

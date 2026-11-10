@@ -194,7 +194,7 @@ extension ShotStage {
     static func storageManager(_ scene: StorageManagerPreviewScene) -> ShotStage
     {
         ShotStage(scene) {
-            scene.store.list != nil && scene.answers.unanswered == 0
+            scene.store.list != nil && scene.answers.value == 0
         }
     }
 }

@@ -110,7 +110,7 @@
         ) -> ComposerDetailRowList {
             let list = ComposerDetailRowList(
                 pageSource: LibraryComposerDetailPageSource(
-                    query: .fixed(rows, answers: FixedAnswers())
+                    query: .fixed(rows, answers: UnansweredCount())
                 ),
                 onError: { _ in },
             )
@@ -152,7 +152,7 @@
                 }
             return ComposerDetailRowList(
                 pageSource: LibraryComposerDetailPageSource(
-                    query: .fixed(rows, answers: FixedAnswers())
+                    query: .fixed(rows, answers: UnansweredCount())
                 ),
                 onError: { _ in },
             )
@@ -274,7 +274,7 @@
                 }
             let session = LibraryBrowseSession(
                 library: Library(albumBrowse: { _, _ in
-                    .fixed(albums, answers: FixedAnswers())
+                    .fixed(albums, answers: UnansweredCount())
                 }),
                 uiStore: uiStore
             )
@@ -289,7 +289,7 @@
         static func composerList() -> ComposerList {
             let list = ComposerList(
                 pageSource: LibraryComposerPageSource(
-                    query: .fixed(composerSummaries, answers: FixedAnswers())
+                    query: .fixed(composerSummaries, answers: UnansweredCount())
                 ),
                 onError: { _ in },
             )

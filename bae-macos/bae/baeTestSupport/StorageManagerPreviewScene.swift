@@ -7,7 +7,7 @@ import SwiftUI
 struct StorageManagerPreviewScene: View {
     private let fixture: StorageManagerPreviewFixture
     /// The scene's reads not yet answered.
-    let answers: FixedAnswers
+    let answers: UnansweredCount
 
     init(
         rows: [BridgeStorageRow] = PreviewData.storageRows,
@@ -20,7 +20,7 @@ struct StorageManagerPreviewScene: View {
         uploads: [PreviewData.PreviewReleaseUpload] =
             PreviewData.defaultUploads
     ) {
-        let answers = FixedAnswers()
+        let answers = UnansweredCount()
         self.answers = answers
         fixture = StorageManagerPreviewFixture(
             rows: rows,

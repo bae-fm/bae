@@ -224,7 +224,7 @@ struct StorageManagerView: View {
             outputs: [BridgeOutputOp] = PreviewData.outputOps,
             uploads: [PreviewData.PreviewReleaseUpload] =
                 PreviewData.defaultUploads,
-            answers: FixedAnswers = FixedAnswers()
+            answers: UnansweredCount = UnansweredCount()
         ) {
             let library = PreviewData.storageLibrary(
                 answers: answers,

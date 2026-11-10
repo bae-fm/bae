@@ -41,16 +41,16 @@ enum SnapshotTestSupport {
     @MainActor
     static func settle(
         _ host: NSView,
-        answering answers: FixedAnswers,
+        answering answers: UnansweredCount,
         file: StaticString = #filePath,
         line: UInt = #line
     ) async throws {
         while true {
             try await Wait.until(file: file, line: line) {
-                answers.unanswered == 0
+                answers.value == 0
             }
             try await settle(host, file: file, line: line)
-            if answers.unanswered == 0 { return }
+            if answers.value == 0 { return }
         }
     }
 

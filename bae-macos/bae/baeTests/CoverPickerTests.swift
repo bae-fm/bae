@@ -30,7 +30,7 @@ struct CoverPickerTests {
         let release = persistedRelease()
         let recorder = CoverRecorder()
         let library = Library(releaseDetail: {
-            .fixed(answers: FixedAnswers()) { _ in release }
+            .fixed(answers: UnansweredCount()) { _ in release }
         })
         let png = try imageBytes()
         let images = ImageStore(fetchReleaseImageBytes: { releaseId, source in

@@ -332,7 +332,7 @@
                         creditNames: []
                     ),
                 ],
-                answers: FixedAnswers()
+                answers: UnansweredCount()
             )
         }
     }

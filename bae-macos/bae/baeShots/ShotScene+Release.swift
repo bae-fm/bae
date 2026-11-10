@@ -38,7 +38,7 @@ extension ShotScene {
                 storageActions: [.unpin, .detachAudio],
                 playability: .playable
             )
-            let answers = FixedAnswers()
+            let answers = UnansweredCount()
             // The sheet asks for the release and its files as it appears,
             // a main-actor step after it is first drawn, which the tree's
             // coming to rest spans.
@@ -67,7 +67,7 @@ extension ShotScene {
                 )
                 .environment(OutboxStore(uploadsPaused: false))
                 .environment(DownloadStore())
-            ) { answers.unanswered == 0 }
+            ) { answers.value == 0 }
         },
         // A release's Storage band in each state it can be in: one change on
         // its way as one pill, what needs the person as a notice, and the

@@ -1,6 +1,5 @@
 #if DEBUG
     import Foundation
-    import Observation
 
     // Reads over fixed rows, for previews and tests: each answers every
     // request with its slice of rows given already in order, which only core
@@ -10,7 +9,7 @@
         /// A read over fixed details, for previews and tests: every id is
         /// answered with what `lookup` finds for it.
         public static func fixed(
-            answers: FixedAnswers,
+            answers: UnansweredCount,
             _ lookup: @escaping @Sendable (Id) -> Value?
         ) -> KeyedDetailQuery<Value, Id> {
             let requests = FixedRequests<Id>(answers: answers)
@@ -32,7 +31,7 @@
         /// every window request is answered with its slice.
         public static func fixed(
             _ rows: [Row],
-            answers: FixedAnswers
+            answers: UnansweredCount
         ) -> LibraryBrowseQuery<Row> {
             let requests = FixedRequests<[BridgeLibraryPageWindow]>(
                 answers: answers
@@ -63,38 +62,13 @@
         }
     }
 
-    /// How many reads a fixture's fixed queries were asked and have not yet
-    /// answered, for a test that waits until a hosted view has what it asked
-    /// for. A fixed query answers off the main thread; an answer counts once
-    /// the screen reading it has taken it up and asked for its next value.
-    public final class FixedAnswers: Observable, @unchecked Sendable {
-        private let registrar = ObservationRegistrar()
-        private let lock = NSLock()
-        private var count = 0
-
-        public init() {}
-
-        /// Reads asked and not yet answered.
-        public var unanswered: Int {
-            registrar.access(self, keyPath: \.unanswered)
-            return lock.withLock { count }
-        }
-
-        fileprivate func change(by delta: Int) {
-            guard delta != 0 else { return }
-            registrar.withMutation(of: self, keyPath: \.unanswered) {
-                lock.withLock { count += delta }
-            }
-        }
-    }
-
     /// The requests a fixed query answers: the latest one not yet answered,
     /// handed to the one reader waiting for it. A request counts in `answers`
     /// from when it is made until its reader asks for the next one, or the
     /// query closes; one replacing a request no reader has taken yet is the
     /// same read asked again.
     final class FixedRequests<Request: Sendable>: @unchecked Sendable {
-        private let answers: FixedAnswers
+        private let answers: UnansweredCount
         private let lock = NSLock()
         private var pending: Request?
         private var waiter: CheckedContinuation<Request, any Error>?
@@ -102,7 +76,7 @@
         private var handedOut = false
         private var closed = false
 
-        init(answers: FixedAnswers) {
+        init(answers: UnansweredCount) {
             self.answers = answers
         }
 
@@ -173,7 +147,7 @@
         public static func fixed(
             _ rows: [BridgeStorageRow],
             queues: BridgeStorageQueues,
-            answers: FixedAnswers
+            answers: UnansweredCount
         ) -> StorageBrowseQuery {
             let requests = FixedRequests<StorageBrowseView>(answers: answers)
             return StorageBrowseQuery(
@@ -237,7 +211,7 @@
         /// the text.
         public static func fixed(
             _ results: [BridgeArtistSearchResult],
-            answers: FixedAnswers
+            answers: UnansweredCount
         ) -> ArtistSearchQuery {
             let requests = FixedRequests<(UInt64, [BridgeLibraryPageWindow])>(
                 answers: answers
@@ -354,7 +328,7 @@
         /// answered with `files` as given, whatever order it asks for.
         public static func fixed(
             _ files: [BridgeFile],
-            answers: FixedAnswers
+            answers: UnansweredCount
         ) -> ReleaseFilesQuery {
             let requests = FixedRequests<BridgeReleaseFilesRequest?>(
                 answers: answers

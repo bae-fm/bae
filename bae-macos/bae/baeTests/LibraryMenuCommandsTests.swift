@@ -119,7 +119,7 @@ struct LibraryMenuCommandsTests {
             ),
             libraryBrowseSession: LibraryBrowseSession(
                 library: Library(albumBrowse: { _, _ in
-                    .fixed(albums, answers: FixedAnswers())
+                    .fixed(albums, answers: UnansweredCount())
                 }),
                 uiStore: uiStore
             ),
