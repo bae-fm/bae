@@ -33,9 +33,9 @@ body{margin:0}
   <x-import component-from-global-scope="Bae.MacNote">Plays to Cast, AirPlay, and UPnP receivers on your network. While off, bae does not look for devices.</x-import>
   <x-import component-from-global-scope="Bae.MacSection" title="Receivers on your network">
     <x-import component-from-global-scope="Bae.MacBox">
-      <x-import component-from-global-scope="Bae.MacRow" label="Living Room" value="Chromecast"></x-import>
-      <x-import component-from-global-scope="Bae.MacRow" label="Kitchen" value="AirPlay"></x-import>
-      <x-import component-from-global-scope="Bae.MacRow" label="Den receiver" value="UPnP"></x-import>
+      <x-import component-from-global-scope="Bae.MacCastRow" name="Living Room" kind="cast" active="{{ true }}"></x-import>
+      <x-import component-from-global-scope="Bae.MacCastRow" name="Kitchen" kind="airplay"></x-import>
+      <x-import component-from-global-scope="Bae.MacCastRow" name="Den receiver" kind="upnp"></x-import>
     </x-import>
     <x-import component-from-global-scope="Bae.MacNote">Receivers show up here while this page is open.</x-import>
   </x-import>

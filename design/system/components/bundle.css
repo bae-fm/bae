@@ -560,11 +560,14 @@
 .bae-m-sidepause-count { font: 600 13px var(--font-sans); font-variant-numeric: tabular-nums; }
 .bae-m-sidepause-buttons { display: flex; justify-content: flex-end; gap: 8px; padding-top: 8px; }
 .bae-m-castpop { z-index: 7; width: 260px; box-sizing: border-box; display: flex; flex-direction: column; gap: 6px; padding: 12px; border-radius: var(--radius-control); background: var(--tile); box-shadow: 0 8px 24px var(--shadow); font: 400 13px var(--font-sans); }
-.bae-m-castpop-row, .bae-m-castpop-wait { display: flex; align-items: center; gap: 8px; padding: 4px; }
+.bae-m-castpop-wait { display: flex; align-items: center; gap: 8px; padding: 4px; }
+/* A receiver row: a box row's inset around MacItem, which spans it, so Disconnect sits at the right edge. */
+.bae-m-castrow { padding: 10px var(--space-group); }
 .bae-m-castpop-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 /* As on Android, a long receiver name wraps to a second line, then ends in an ellipsis; the receiver being cast to says Casting under its name. */
 .bae-m-castpop-name { font-weight: 500; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
 .bae-m-castpop-state { font-size: 11.5px; color: var(--accent); }
+.bae-m-castpop-kind { font-size: 11.5px; color: var(--text-secondary); }
 .bae-a-scrim { position: absolute; inset: 0; z-index: 8; background: rgba(0,0,0,0.32); }
 /* A sheet is as tall as what it holds, as Material's modal sheet is, up to near the top of the screen; `top` pins a tall one (the queue, the player) to a height of its own. */
 .bae-a-sheet { position: absolute; left: 0; right: 0; bottom: 0; max-height: calc(100% - var(--space-page)); padding-bottom: var(--space-section); box-sizing: border-box; overflow: hidden; border-radius: 28px 28px 0 0; background: var(--surface); font-family: var(--font-android); }
@@ -594,6 +597,7 @@
 .bae-a-castrow-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .bae-a-castrow-name { font: 500 16px/24px var(--font-android); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
 .bae-a-castrow-state { font: 400 14px/20px var(--font-android); color: var(--accent); }
+.bae-a-castrow-kind { font: 400 14px/20px var(--font-android); color: var(--text-secondary); }
 .bae-a-checkrow { display: flex; align-items: center; gap: 8px; font: 400 14px var(--font-android); }
 .bae-a-checkbox { width: 18px; height: 18px; margin: 11px; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; border-radius: 2px; box-shadow: inset 0 0 0 2px var(--text-secondary); color: var(--background); fill: currentColor; }
 .bae-a-checkbox-on { background: var(--accent); box-shadow: none; }

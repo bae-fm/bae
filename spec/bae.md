@@ -3924,7 +3924,10 @@ picks a receiver, the picker names it while bae connects, until the cast
 starts or fails.
 
 **The Casting page.** While casting is on, the page lists each receiver found,
-with its name and kind: Chromecast, AirPlay or UPnP. Until the first answers it
+with its name and kind: Chromecast, AirPlay or UPnP. They are the picker's
+rows and work the same: picking one casts to it, and the one being cast to says
+Casting in place of its kind, with Disconnect. The picker shows each receiver
+once the same way, with no separate row for the cast under way. Until the first answers it
 shows a spinner and says it is looking; there is no end state, since the search
 runs for as long as the page is open. On Android, Settings opens Casting as a
 page of its own.

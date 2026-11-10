@@ -256,6 +256,8 @@ export interface SidePauseProps { kind?: 'side' | 'disc'; label?: string; countd
 export declare function MacSidePause(props: SidePauseProps): React.ReactElement;
 export interface MacCastPopoverProps { devices?: string; casting?: string; connecting?: string; right?: number; bottom?: number }
 export declare function MacCastPopover(props: MacCastPopoverProps): React.ReactElement;
+export interface MacCastRowProps { name: string; kind?: 'cast' | 'airplay' | 'upnp'; active?: boolean }
+export declare function MacCastRow(props: MacCastRowProps): React.ReactElement;
 export declare function AndroidSheet(props: { top?: number; title?: string; children?: React.ReactNode }): React.ReactElement;
 export interface AndroidQueueLabelProps { title: string; clear?: boolean; shuffle?: boolean }
 export declare function AndroidQueueLabel(props: AndroidQueueLabelProps): React.ReactElement;

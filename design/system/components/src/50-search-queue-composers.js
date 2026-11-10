@@ -55,16 +55,18 @@
       h('div', { className: 'bae-m-sidepause-buttons' }, h(MacButton, null, 'Close'), h(MacButton, { kind: 'primary' }, 'Play'))));
   }
 
+  // A receiver, wherever bae lists them (the cast popover, Settings → Casting): its kind's icon, its name, then its kind, or Casting in the accent for the one being cast to, which ends in Disconnect. Clicking any other casts to it. One row per receiver.
+  var CAST_KIND = { cast: 'Chromecast', airplay: 'AirPlay', upnp: 'UPnP' };
+  function MacCastRow(props) {
+    var glyph = { cast: 'cast', airplay: 'airplay', upnp: 'tv' }[props.kind || 'cast'];
+    return h('div', { className: 'bae-m-castrow' }, h(MacItem, { lead: h(Glyph, { set: 'mac', name: glyph, size: 15, className: props.active ? 'bae-accent' : 'bae-muted' }), trail: props.active ? h(MacButton, { kind: 'borderless', size: 'small' }, 'Disconnect') : null },
+      h('span', { className: 'bae-m-castpop-text' }, h('span', { className: 'bae-m-castpop-name' }, props.name), h('span', { className: props.active ? 'bae-m-castpop-state' : 'bae-m-castpop-kind' }, props.active ? 'Casting' : CAST_KIND[props.kind || 'cast']))));
+  }
   function MacCastPopover(props) {
     var devices = String(props.devices || '').split(',').filter(Boolean).map(function (d) { var p = d.trim().split(':'); return { name: p[0], kind: p[1] || 'cast' }; });
-    var glyph = { cast: 'cast', airplay: 'airplay', upnp: 'tv' };
     return h('div', { className: 'bae-m-castpop', style: { position: 'absolute', right: Number(props.right != null ? props.right : 120), bottom: Number(props.bottom != null ? props.bottom : 92) } },
       props.connecting ? h('div', { className: 'bae-m-castpop-wait' }, h(MacSpinner, { size: 14 }), 'Connecting to ' + props.connecting + '…') : null,
-      devices.length ? devices.map(function (d, i) {
-        var on = d.name === props.casting;
-        return h('div', { key: i, className: 'bae-m-castpop-row' }, h(Glyph, { set: 'mac', name: glyph[d.kind] || 'cast', size: 15, className: on ? 'bae-accent' : 'bae-muted' }),
-          h('span', { className: 'bae-m-castpop-text' }, h('span', { className: 'bae-m-castpop-name' }, d.name), on ? h('span', { className: 'bae-m-castpop-state' }, 'Casting') : null),
-          on ? h(MacButton, { kind: 'borderless', size: 'small' }, 'Disconnect') : null); })
+      devices.length ? devices.map(function (d, i) { return h(MacCastRow, { key: i, name: d.name, kind: d.kind, active: d.name === props.casting }); })
         : (props.connecting || props.casting ? null : h('div', { className: 'bae-muted' }, 'No Cast devices found')));
   }
 
@@ -94,10 +96,10 @@
   }
   function AndroidCastRow(props) {
     if (props.waiting) return h('div', { className: 'bae-a-castrow' }, h(AndroidSpinner, { size: 20 }), h('span', { className: 'bae-muted', style: { fontSize: 14 } }, props.waiting));
-    // The receiver being cast to is the same row as the others: its state, Casting, is a line under its name, and Disconnect ends it at the right. No separate "Casting to" row, and no check: the row says it.
+    // A receiver, in the picker and on the Casting page alike: under its name its kind, or Casting for the one being cast to, which ends in Disconnect. Tapping any other casts to it. No separate "Casting to" row, and no check: the row says it.
     var icon = { cast: 'cast', airplay: 'speakerbox', upnp: 'tv' }[props.kind || 'cast'];
     return h('div', { className: 'bae-a-castrow' }, h(Glyph, { name: icon, size: 24, className: props.active ? 'bae-accent' : 'bae-muted' }),
-      h('span', { className: 'bae-a-castrow-text' }, h('span', { className: 'bae-a-castrow-name' }, props.name), props.active ? h('span', { className: 'bae-a-castrow-state' }, 'Casting') : null),
+      h('span', { className: 'bae-a-castrow-text' }, h('span', { className: 'bae-a-castrow-name' }, props.name), h('span', { className: props.active ? 'bae-a-castrow-state' : 'bae-a-castrow-kind' }, props.active ? 'Casting' : CAST_KIND[props.kind || 'cast'])),
       props.active ? h(AndroidButton, { kind: 'text' }, 'Disconnect') : null);
   }
   function AndroidCheckbox(props) {
