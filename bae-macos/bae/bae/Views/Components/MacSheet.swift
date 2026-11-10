@@ -41,10 +41,13 @@ struct MacSheet<Content: View, Footer: View>: View {
 }
 
 #if DEBUG
+    // Sample copy goes through String values so the string extractor skips it.
     #Preview("Sheet") {
+        let sampleTitle = "Sheet title"
+        let sampleMessage = "The line under the title."
         MacSheet(
-            "Sheet title",
-            message: "The line under the title.",
+            LocalizedStringKey(sampleTitle),
+            message: LocalizedStringKey(sampleMessage),
             width: 400
         ) {
             TextField(text: .constant(""), prompt: Text(verbatim: "Field")) {

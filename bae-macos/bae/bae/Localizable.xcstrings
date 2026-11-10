@@ -17895,7 +17895,7 @@
         }
       }
     },
-    "%lld files" : {
+    "%llu files" : {
       "localizations" : {
         "ar" : {
           "variations" : {
@@ -17903,13 +17903,13 @@
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld ملفات"
+                  "value" : "%llu ملفات"
                 }
               },
               "many" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld ملفًا"
+                  "value" : "%llu ملفًا"
                 }
               },
               "one" : {
@@ -17921,7 +17921,7 @@
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld ملف"
+                  "value" : "%llu ملف"
                 }
               },
               "two" : {
@@ -17933,7 +17933,7 @@
               "zero" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld ملف"
+                  "value" : "%llu ملف"
                 }
               }
             }
@@ -17945,13 +17945,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld файл"
+                  "value" : "%llu файл"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld файла"
+                  "value" : "%llu файла"
                 }
               }
             }
@@ -17963,25 +17963,25 @@
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld soubory"
+                  "value" : "%llu soubory"
                 }
               },
               "many" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld souboru"
+                  "value" : "%llu souboru"
                 }
               },
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld soubor"
+                  "value" : "%llu soubor"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld souborů"
+                  "value" : "%llu souborů"
                 }
               }
             }
@@ -17993,13 +17993,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld fil"
+                  "value" : "%llu fil"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld filer"
+                  "value" : "%llu filer"
                 }
               }
             }
@@ -18011,13 +18011,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld file"
+                  "value" : "%llu file"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld files"
+                  "value" : "%llu files"
                 }
               }
             }
@@ -18029,13 +18029,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld Datei"
+                  "value" : "%llu Datei"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld Dateien"
+                  "value" : "%llu Dateien"
                 }
               }
             }
@@ -18047,13 +18047,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld αρχείο"
+                  "value" : "%llu αρχείο"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld αρχεία"
+                  "value" : "%llu αρχεία"
                 }
               }
             }
@@ -18065,13 +18065,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld archivo"
+                  "value" : "%llu archivo"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld archivos"
+                  "value" : "%llu archivos"
                 }
               }
             }
@@ -18083,13 +18083,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld tiedosto"
+                  "value" : "%llu tiedosto"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld tiedostoa"
+                  "value" : "%llu tiedostoa"
                 }
               }
             }
@@ -18101,13 +18101,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld fichier"
+                  "value" : "%llu fichier"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld fichiers"
+                  "value" : "%llu fichiers"
                 }
               }
             }
@@ -18119,25 +18119,25 @@
               "many" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld קבצים"
+                  "value" : "%llu קבצים"
                 }
               },
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld קובץ"
+                  "value" : "%llu קובץ"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld קבצים"
+                  "value" : "%llu קבצים"
                 }
               },
               "two" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld קבצים"
+                  "value" : "%llu קבצים"
                 }
               }
             }
@@ -18149,19 +18149,19 @@
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld datoteke"
+                  "value" : "%llu datoteke"
                 }
               },
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld datoteka"
+                  "value" : "%llu datoteka"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld datoteka"
+                  "value" : "%llu datoteka"
                 }
               }
             }
@@ -18173,13 +18173,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld fájl"
+                  "value" : "%llu fájl"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld fájl"
+                  "value" : "%llu fájl"
                 }
               }
             }
@@ -18191,13 +18191,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld file"
+                  "value" : "%llu file"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld file"
+                  "value" : "%llu file"
                 }
               }
             }
@@ -18209,7 +18209,7 @@
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld個のファイル"
+                  "value" : "%llu個のファイル"
                 }
               }
             }
@@ -18221,7 +18221,7 @@
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "파일 %lld개"
+                  "value" : "파일 %llu개"
                 }
               }
             }
@@ -18233,13 +18233,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld fil"
+                  "value" : "%llu fil"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld filer"
+                  "value" : "%llu filer"
                 }
               }
             }
@@ -18251,13 +18251,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld bestand"
+                  "value" : "%llu bestand"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld bestanden"
+                  "value" : "%llu bestanden"
                 }
               }
             }
@@ -18269,25 +18269,25 @@
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld pliki"
+                  "value" : "%llu pliki"
                 }
               },
               "many" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld plików"
+                  "value" : "%llu plików"
                 }
               },
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld plik"
+                  "value" : "%llu plik"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld pliku"
+                  "value" : "%llu pliku"
                 }
               }
             }
@@ -18299,13 +18299,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld arquivo"
+                  "value" : "%llu arquivo"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld arquivos"
+                  "value" : "%llu arquivos"
                 }
               }
             }
@@ -18317,13 +18317,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld ficheiro"
+                  "value" : "%llu ficheiro"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld ficheiros"
+                  "value" : "%llu ficheiros"
                 }
               }
             }
@@ -18335,19 +18335,19 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld fișier"
+                  "value" : "%llu fișier"
                 }
               },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld fișiere"
+                  "value" : "%llu fișiere"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld de fișiere"
+                  "value" : "%llu de fișiere"
                 }
               }
             }
@@ -18359,25 +18359,25 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld súbor"
+                  "value" : "%llu súbor"
                 }
               },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld súbory"
+                  "value" : "%llu súbory"
                 }
               },
               "many" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld súboru"
+                  "value" : "%llu súboru"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld súborov"
+                  "value" : "%llu súborov"
                 }
               }
             }
@@ -18389,13 +18389,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld fil"
+                  "value" : "%llu fil"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld filer"
+                  "value" : "%llu filer"
                 }
               }
             }
@@ -18407,13 +18407,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld dosya"
+                  "value" : "%llu dosya"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld dosya"
+                  "value" : "%llu dosya"
                 }
               }
             }
@@ -18425,25 +18425,25 @@
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld файли"
+                  "value" : "%llu файли"
                 }
               },
               "many" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld файлів"
+                  "value" : "%llu файлів"
                 }
               },
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld файл"
+                  "value" : "%llu файл"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld файлу"
+                  "value" : "%llu файлу"
                 }
               }
             }
@@ -18455,7 +18455,7 @@
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld 个文件"
+                  "value" : "%llu 个文件"
                 }
               }
             }
@@ -18467,7 +18467,7 @@
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld 個檔案"
+                  "value" : "%llu 個檔案"
                 }
               }
             }
@@ -18475,31 +18475,31 @@
         }
       }
     },
-    "%lld files · %@" : {
-      "comment" : "Download/upload row: file count and total size; %lld is file count, %@ is formatted size",
+    "%llu files · %@" : {
+      "comment" : "Download/upload row: file count and total size; %llu is file count, %@ is formatted size",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld ملفات · %@"
+            "value" : "%llu ملفات · %@"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld файла · %@"
+            "value" : "%llu файла · %@"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld souborů · %@"
+            "value" : "%llu souborů · %@"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$lld filer · %2$@"
+            "value" : "%1$llu filer · %2$@"
           }
         },
         "en" : {
@@ -18508,13 +18508,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%1$lld file · %2$@"
+                  "value" : "%1$llu file · %2$@"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%1$lld files · %2$@"
+                  "value" : "%1$llu files · %2$@"
                 }
               }
             }
@@ -18523,312 +18523,312 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld Dateien · %@"
+            "value" : "%llu Dateien · %@"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$lld αρχεία · %2$@"
+            "value" : "%1$llu αρχεία · %2$@"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld archivos · %@"
+            "value" : "%llu archivos · %@"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$lld tiedostoa · %2$@"
+            "value" : "%1$llu tiedostoa · %2$@"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld fichiers · %@"
+            "value" : "%llu fichiers · %@"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld קבצים · %@"
+            "value" : "%llu קבצים · %@"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld datoteka · %@"
+            "value" : "%llu datoteka · %@"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$lld fájl · %2$@"
+            "value" : "%1$llu fájl · %2$@"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld file · %@"
+            "value" : "%llu file · %@"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld個のファイル · %@"
+            "value" : "%llu個のファイル · %@"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld개 파일 · %@"
+            "value" : "%llu개 파일 · %@"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$lld filer · %2$@"
+            "value" : "%1$llu filer · %2$@"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld bestanden · %@"
+            "value" : "%llu bestanden · %@"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld plików · %@"
+            "value" : "%llu plików · %@"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld arquivos · %@"
+            "value" : "%llu arquivos · %@"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$lld ficheiros · %2$@"
+            "value" : "%1$llu ficheiros · %2$@"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$lld fișiere · %2$@"
+            "value" : "%1$llu fișiere · %2$@"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$lld súborov · %2$@"
+            "value" : "%1$llu súborov · %2$@"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$lld filer · %2$@"
+            "value" : "%1$llu filer · %2$@"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld dosya · %@"
+            "value" : "%llu dosya · %@"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld файлів · %@"
+            "value" : "%llu файлів · %@"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld个文件 · %@"
+            "value" : "%llu个文件 · %@"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld個檔案 · %@"
+            "value" : "%llu個檔案 · %@"
           }
         }
       }
     },
-    "%lld files · %@ · %@" : {
+    "%llu files · %@ · %@" : {
       "comment" : "Storage queue export row: file count, total size, and preset name",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld ملفات · %@ · %@"
+            "value" : "%llu ملفات · %@ · %@"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld файла · %@ · %@"
+            "value" : "%llu файла · %@ · %@"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld souborů · %@ · %@"
+            "value" : "%llu souborů · %@ · %@"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld filer · %@ · %@"
+            "value" : "%llu filer · %@ · %@"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld files · %@ · %@"
+            "value" : "%llu files · %@ · %@"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld Dateien · %@ · %@"
+            "value" : "%llu Dateien · %@ · %@"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld αρχεία · %@ · %@"
+            "value" : "%llu αρχεία · %@ · %@"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld archivos · %@ · %@"
+            "value" : "%llu archivos · %@ · %@"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld tiedostoa · %@ · %@"
+            "value" : "%llu tiedostoa · %@ · %@"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld fichiers · %@ · %@"
+            "value" : "%llu fichiers · %@ · %@"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld קבצים · %@ · %@"
+            "value" : "%llu קבצים · %@ · %@"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld datoteka · %@ · %@"
+            "value" : "%llu datoteka · %@ · %@"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld fájl · %@ · %@"
+            "value" : "%llu fájl · %@ · %@"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld file · %@ · %@"
+            "value" : "%llu file · %@ · %@"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld個のファイル · %@ · %@"
+            "value" : "%llu個のファイル · %@ · %@"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "파일 %lld개 · %@ · %@"
+            "value" : "파일 %llu개 · %@ · %@"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld filer · %@ · %@"
+            "value" : "%llu filer · %@ · %@"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld bestanden · %@ · %@"
+            "value" : "%llu bestanden · %@ · %@"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld plików · %@ · %@"
+            "value" : "%llu plików · %@ · %@"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld arquivos · %@ · %@"
+            "value" : "%llu arquivos · %@ · %@"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld ficheiros · %@ · %@"
+            "value" : "%llu ficheiros · %@ · %@"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld fișiere · %@ · %@"
+            "value" : "%llu fișiere · %@ · %@"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld súborov · %@ · %@"
+            "value" : "%llu súborov · %@ · %@"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld filer · %@ · %@"
+            "value" : "%llu filer · %@ · %@"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld dosya · %@ · %@"
+            "value" : "%llu dosya · %@ · %@"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld файлів · %@ · %@"
+            "value" : "%llu файлів · %@ · %@"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld 个文件 · %@ · %@"
+            "value" : "%llu 个文件 · %@ · %@"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld 個檔案 · %@ · %@"
+            "value" : "%llu 個檔案 · %@ · %@"
           }
         }
       }
