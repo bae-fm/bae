@@ -4123,7 +4123,8 @@ typed error.
 
 The server listens only on this machine, and every request must carry the
 token. A request that hits a bug is reported as one and answered with an
-internal error (HTTP 500).
+internal error: HTTP 500, or, for a tool call, the call's own internal error
+in the response stream already under way.
 
 ---
 ## 9. API

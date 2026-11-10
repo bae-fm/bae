@@ -100,11 +100,12 @@ impl McpServerController {
         let automation = self.automation.clone();
         let token_provider = self.token_provider.clone();
         let diagnostics = self.diagnostics.clone();
+        let tool_diagnostics = self.diagnostics.clone();
         self.server
             .start(port, format!("http://127.0.0.1:{port}/mcp"), |cancellation| {
                 let service: StreamableHttpService<BaeMcpServer, LocalSessionManager> =
                     StreamableHttpService::new(
-                        move || Ok(BaeMcpServer::new(automation.clone())),
+                        move || Ok(BaeMcpServer::new(automation.clone(), tool_diagnostics.clone())),
                         Default::default(),
                         StreamableHttpServerConfig::default()
                             .with_sse_keep_alive(None)
@@ -179,23 +180,19 @@ async fn bearer_auth(
 #[derive(Clone)]
 struct BaeMcpServer {
     automation: Automation,
+    /// Where a panic in a tool call is reported.
+    diagnostics: Diagnostics,
 }
 
 impl BaeMcpServer {
-    fn new(automation: Automation) -> Self {
-        Self { automation }
-    }
-}
-
-impl ServerHandler for BaeMcpServer {
-    fn get_info(&self) -> ServerConfig {
-        mcp_server_info()
+    fn new(automation: Automation, diagnostics: Diagnostics) -> Self {
+        Self { automation, diagnostics }
     }
 
-    async fn call_tool(
+    /// Answer `request` with the automation tool it names.
+    async fn answer_tool_call(
         &self,
         request: CallToolRequestParams,
-        _: RequestContext<RoleServer>,
     ) -> Result<CallToolResponse, ErrorData> {
         let Some(tool) = AutomationTool::from_name(&request.name) else {
             return Err(ErrorData::invalid_params("tool not found", None));
@@ -218,6 +215,35 @@ impl ServerHandler for BaeMcpServer {
             Err(error) => CallToolResult::structured_error(automation_error_value(error)?),
         };
         Ok(result.into())
+    }
+}
+
+/// The answer `answering` gives a tool call, or, when it panics, an internal
+/// error, with the panic reported to `diagnostics`. rmcp runs each call on a
+/// task of its own and drops the task's handle, so a panic there reaches
+/// neither the request [`report_panics`] waits on nor any other catch: this is
+/// the one place that hears it.
+async fn answer_or_report(
+    diagnostics: &Diagnostics,
+    answering: impl std::future::Future<Output = Result<CallToolResponse, ErrorData>>,
+) -> Result<CallToolResponse, ErrorData> {
+    match caught("answer an MCP tool call", answering).await {
+        Ok(answer) => answer,
+        Err(bug) => Err(ErrorData::internal_error(diagnostics.panicked(bug).to_string(), None)),
+    }
+}
+
+impl ServerHandler for BaeMcpServer {
+    fn get_info(&self) -> ServerConfig {
+        mcp_server_info()
+    }
+
+    async fn call_tool(
+        &self,
+        request: CallToolRequestParams,
+        _: RequestContext<RoleServer>,
+    ) -> Result<CallToolResponse, ErrorData> {
+        answer_or_report(&self.diagnostics, self.answer_tool_call(request)).await
     }
 
     async fn list_tools(
@@ -246,3 +272,7 @@ fn automation_error_value(error: AutomationError) -> Result<Value, ErrorData> {
         ErrorData::internal_error(format!("failed to serialize tool error: {e}"), None)
     })
 }
+
+#[cfg(test)]
+#[path = "lib_tests.rs"]
+mod tests;
