@@ -854,8 +854,7 @@ struct JoinRequestSheet: View {
         VStack(alignment: .leading, spacing: ThemeSpace.group) {
             Text(verbatim: title)
                 .themeText(.heading)
-            Text("Make sure this code is showing:")
-                .themeText(.body)
+            SheetMessage("Make sure this code is showing:")
             MacMatchCode(code: confirmation, dialog: true)
             if let error {
                 Notice(error: error)

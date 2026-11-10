@@ -111,12 +111,27 @@ struct SyncSetupWizard: View {
     // MARK: - Header
 
     private var header: some View {
-        HStack {
+        VStack(alignment: .leading, spacing: ThemeSpace.related) {
             Text(headerTitle)
                 .themeText(.heading)
-            Spacer()
+            if let headerMessage {
+                SheetMessage(headerMessage)
+            }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
+    }
+
+    /// The line under the title, where the step has one.
+    private var headerMessage: LocalizedStringKey? {
+        switch step {
+        case .selectProvider:
+            "Choose where this library is kept. Everything is encrypted on this Mac before it's uploaded."
+        case .configure(.cloudKit):
+            "This library's cloud home will be bae's space in iCloud, using the Apple Account this Mac is signed in to."
+        case .configure, .restoreCode:
+            nil
+        }
     }
 
     /// One screen back: from a provider's screen to the list of providers, or
@@ -149,13 +164,6 @@ struct SyncSetupWizard: View {
     private var providerList: some View {
         VStack(spacing: 0) {
             Form {
-                Section {
-                    Text(
-                        "Choose where this library is kept. Everything is encrypted on this Mac before it's uploaded."
-                    )
-                    .themeText(.body)
-                    .foregroundStyle(.secondary)
-                }
                 Section {
                     ForEach(providerOptions, id: \.self) { provider in
                         Button {
@@ -277,16 +285,7 @@ struct SyncSetupWizard: View {
                 operation: { try await cloudSyncSetup.useCloudKit($0) },
                 leave: leave,
                 onConnected: onConnected,
-                fields: {
-                    Section {
-                        Text(
-                            "This library's cloud home will be bae's space in iCloud, using the Apple Account this Mac is signed in to."
-                        )
-                        .themeText(.body)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                }
+                fields: { EmptyView() }
             )
         }
     }
@@ -616,6 +615,22 @@ struct SetupStep<Fields: View, Leading: View>: View {
     }
 
     extension SyncSetupWizard {
+        /// The wizard on iCloud's screen, before setup starts.
+        static func iCloud() -> some View {
+            SyncSetupWizard(
+                provider: .cloudKit,
+                run: StorageSetupRun(onCancelled: {}),
+                onDone: {}
+            )
+            .environment(PreviewData.configStore())
+            .environment(PreviewData.previewSync(storage: nil))
+            #if BAE_OAUTH_PROVIDERS
+                .environment(CloudSyncSetup())
+            #endif
+        }
+    }
+
+    extension SyncSetupWizard {
         /// The wizard as it opens, on its list of providers.
         static func choosing() -> some View {
             SyncSetupWizard(onDone: {})
@@ -636,6 +651,10 @@ struct SetupStep<Fields: View, Leading: View>: View {
 
     #Preview("Provider Selection") {
         SyncSetupWizard.choosing()
+    }
+
+    #Preview("iCloud") {
+        SyncSetupWizard.iCloud()
     }
 
     #Preview("Connecting") {

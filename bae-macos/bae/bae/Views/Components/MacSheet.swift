@@ -30,10 +30,7 @@ struct MacSheet<Content: View, Footer: View>: View {
             Text(title)
                 .themeText(.strong)
             if let message {
-                Text(message)
-                    .themeText(.body)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                SheetMessage(message)
             }
             content
             footer

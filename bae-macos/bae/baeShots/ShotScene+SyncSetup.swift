@@ -27,6 +27,12 @@ extension ShotScene {
             ) {
                 ShotStage(SyncSetupWizard.choosing())
             },
+            ShotScene(
+                id: "sync-setup-icloud",
+                size: CGSize(width: 460, height: 560)
+            ) {
+                ShotStage(SyncSetupWizard.iCloud())
+            },
             syncSetup("sync-setup-s3-connecting", .running(.connecting)),
             syncSetup("sync-setup-s3-creating", .finishing(.creatingStore)),
             syncSetup("sync-setup-s3-cancelling", .cancelling),
