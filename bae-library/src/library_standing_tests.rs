@@ -56,10 +56,9 @@ async fn a_closed_library_reports_its_last_sync_and_its_unsent_changes() {
     let unsent = synced_closed_library(&installation, "Unsent").await;
     let unsent_id = unsent.store_id();
     unsent.stop_sync().await.unwrap();
-    let records = bae_records::Records::new(
-        bae_store::test_devices::store_under(unsent.clone(), Arc::new(coven::SystemClock)),
-        Arc::new(coven::UuidIds),
-    );
+    let (clock, ids) = crate::test_libraries::system_sources();
+    let records =
+        bae_records::Records::new(bae_store::test_devices::store_under(unsent.clone(), clock), ids);
     let album = crate::test_libraries::test_album();
     records.insert_album(&album).await.unwrap();
     crate::test_libraries::insert_release(

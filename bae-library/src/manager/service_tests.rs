@@ -18,8 +18,9 @@ async fn opening_a_library_keeps_its_download_queue() {
     let app_dir = bae_app_dir::AppDir::at(temp_dir.path()).unwrap();
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let clock: coven::ClockRef = Arc::new(coven::SystemClock);
+    let ids = bae_store::test_devices::ids_timed_by(&clock);
     let handle = bae_store::configure_store(
-        bae_store::test_devices::test_builder_on(&installation, &clock),
+        bae_store::store_builder(&installation, clock.clone(), ids.clone()),
         crate::SCHEMA,
     )
     .storage_connector(Arc::new(MemoryStorage::builder().clock(clock.clone()).build().unwrap()))
@@ -43,7 +44,7 @@ async fn opening_a_library_keeps_its_download_queue() {
         bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         bae_util::http::Http::for_test(),
         clock,
-        Arc::new(coven::UuidIds),
+        ids,
         bae_diagnostics::Diagnostics::noop(),
     )
     .await;

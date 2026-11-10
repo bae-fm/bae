@@ -50,7 +50,7 @@ impl ImportFixture {
         let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::over(http.clone());
         let (library, storage) =
             bae_library::test_libraries::storage_library(&db_dir, fakes.providers(), http).await;
-        let ids: Arc<dyn coven::IdSource> = Arc::new(coven::UuidIds);
+        let ids: Arc<dyn coven::IdSource> = library.ids().clone();
         let handle = library.start_discogs_import().await;
 
         Self { library, storage, handle, fakes, ids, images, _temp: temp }

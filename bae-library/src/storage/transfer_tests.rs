@@ -36,16 +36,16 @@ async fn manager_with_recording_transport_over_storage() -> (
     let installation = coven::Coven::in_memory(
         bae_app_dir::AppDir::under_home(home.path()).unwrap().coven_app_dir(),
     );
+    let (clock, ids) = crate::test_libraries::system_sources();
     let handle = bae_store::configure_store(
-        bae_store::test_devices::test_builder(&installation),
+        bae_store::store_builder(&installation, clock.clone(), ids.clone()),
         crate::SCHEMA,
     )
-    .clock(Arc::new(coven::SystemClock))
     .storage_connector(storage.clone())
     .create_store("Test Library")
     .await
     .unwrap();
-    let database = bae_store::test_devices::device_store(handle);
+    let database = bae_store::test_devices::store_under(handle, clock.clone());
     let store = database.clone();
 
     let transport = Arc::new(RecordingTransport::new(vec![]));
@@ -74,8 +74,8 @@ async fn manager_with_recording_transport_over_storage() -> (
         bae_app_dir::AppDir::under_home(home.path()).unwrap(),
         bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         bae_util::http::Http::for_test(),
-        Arc::new(coven::SystemClock),
-        Arc::new(coven::UuidIds),
+        clock,
+        ids,
         diagnostics.clone(),
     )
     .await;

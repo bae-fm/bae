@@ -55,8 +55,9 @@ pub(super) async fn setup_test_manager_with(
     let app_dir = bae_app_dir::AppDir::at(temp_dir.path()).unwrap();
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let storage = Arc::new(MemoryStorage::builder().clock(clock.clone()).build().unwrap());
+    let ids = bae_store::test_devices::ids_timed_by(&clock);
     let handle = bae_store::configure_store(
-        bae_store::test_devices::test_builder_on(&installation, &clock),
+        bae_store::store_builder(&installation, clock.clone(), ids.clone()),
         crate::SCHEMA,
     )
     .storage_connector(storage.clone())
@@ -71,7 +72,7 @@ pub(super) async fn setup_test_manager_with(
         fakes.providers(),
         bae_util::http::Http::for_test(),
         clock,
-        Arc::new(coven::UuidIds),
+        ids,
         diagnostics,
     )
     .await;

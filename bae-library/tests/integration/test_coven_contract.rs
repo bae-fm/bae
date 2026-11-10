@@ -5,22 +5,20 @@ async fn real_schema_opens_with_the_declarations_and_device_only_files() {
     let directory = tempfile::tempdir().unwrap();
     let installation =
         coven::Coven::in_memory(bae_app_dir::AppDir::at(directory.path()).unwrap().coven_app_dir());
+    let (clock, ids) = bae_library::test_libraries::system_sources();
     let handle = bae_store::configure_store(
-        bae_store::test_devices::test_builder(&installation),
+        bae_store::store_builder(&installation, clock.clone(), ids.clone()),
         bae_library::SCHEMA,
     )
     .create_store("Schema Test")
     .await
     .unwrap();
     let records = bae_records::Records::new(
-        bae_store::test_devices::store_under(
-            handle.clone(),
-            std::sync::Arc::new(coven::SystemClock),
-        ),
-        std::sync::Arc::new(coven::UuidIds),
+        bae_store::test_devices::store_under(handle.clone(), clock),
+        ids.clone(),
     );
     let artist = bae_records::DbArtist {
-        id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
+        id: ids.new_id().to_string(),
         name: "Schema Artist".into(),
         sort_name: None,
         discogs_artist_id: None,
