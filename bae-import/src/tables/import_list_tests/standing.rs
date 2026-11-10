@@ -193,6 +193,54 @@ impl Library {
         records: Vec<bae_catalogs::records::ReleaseRecord>,
     ) -> Write {
         let db = self.db.clone();
+        let (album, release) = self.imported_rows(display_path, created_at, album_title);
+        Write::step(async move {
+            commit_import(&db, &candidate, Some(&album), &release, &[], &records, Vec::new()).await;
+        })
+    }
+
+    /// [`Library::import_of`], the release imported for the cloud with one
+    /// file, read from an original written for it, so the file's upload
+    /// waits in this device's queue.
+    pub(crate) fn import_uploading(
+        &self,
+        candidate: FolderCandidate,
+        display_path: &str,
+        created_at: &str,
+        album_title: &str,
+        records: Vec<bae_catalogs::records::ReleaseRecord>,
+    ) -> Write {
+        let db = self.db.clone();
+        let (album, release) = self.imported_rows(display_path, created_at, album_title);
+        let file_id = bae_util::test_ids::test_uuid(&format!("file {display_path}"));
+        Write::step(async move {
+            let original = tempfile::NamedTempFile::new().unwrap();
+            std::fs::write(original.path(), b"liner notes").unwrap();
+            let file = crate::service::PreparedImportFile {
+                row: bae_records::NewReleaseFile::new(
+                    &release.id,
+                    "notes.bin",
+                    bae_util::content_type::ContentType::OctetStream,
+                    bae_records::ReleaseFileRole::Other,
+                    file_id,
+                    release.created_at,
+                ),
+                original: coven::prepare_user_file(original.path(), |_| ()).await.unwrap(),
+                place: coven::Place::Cloud,
+            };
+            commit_import(&db, &candidate, Some(&album), &release, &[], &records, vec![file]).await;
+        })
+    }
+
+    /// The album and release [`Library::import_of`] writes for
+    /// `display_path`, written at `created_at` (RFC 3339), the album titled
+    /// `album_title`.
+    fn imported_rows(
+        &self,
+        display_path: &str,
+        created_at: &str,
+        album_title: &str,
+    ) -> (bae_records::DbAlbum, bae_records::DbRelease) {
         let created_at = chrono::DateTime::parse_from_rfc3339(created_at)
             .expect("an RFC 3339 time")
             .with_timezone(&chrono::Utc);
@@ -207,9 +255,7 @@ impl Library {
             created_at,
             ..bae_records::DbRelease::new_test(&album.id, &self.release_id(display_path))
         };
-        Write::step(async move {
-            commit_import(&db, &candidate, Some(&album), &release, &[], &records).await;
-        })
+        (album, release)
     }
 
     /// The id of the album [`Self::imported`] writes for `display_path`.
@@ -249,8 +295,8 @@ pub(crate) async fn as_read(tables: &ImportTables, content_hash: &str) -> crate:
 
 /// An import of `candidate` as this device's import commits it: the import
 /// claims the candidate, then writes `album` (`None` for one the library
-/// holds) and `release` with `tracks`, and records the hash of the files it
-/// read, in one write.
+/// holds) and `release` with `tracks` and `files`, and records the hash of
+/// the files it read, in one write.
 pub(crate) async fn commit_import(
     db: &Store,
     candidate: &FolderCandidate,
@@ -258,6 +304,7 @@ pub(crate) async fn commit_import(
     release: &bae_records::DbRelease,
     tracks: &[crate::TrackFile],
     records: &[bae_catalogs::records::ReleaseRecord],
+    files: Vec<crate::service::PreparedImportFile>,
 ) {
     let tables = ImportTables::new(db.clone());
     let key = candidate.key();
@@ -286,7 +333,7 @@ pub(crate) async fn commit_import(
             release,
             tracks,
             crate::tables::ImportRows { mediums: &mediums, records, ..Default::default() },
-            Vec::new(),
+            files,
             None,
             crate::tables::NewArtistImages::default(),
         )
@@ -311,7 +358,7 @@ pub(crate) async fn imported_release(
         &album.id,
         &bae_util::test_ids::test_uuid(&format!("release {}", candidate.name)),
     );
-    commit_import(db, candidate, Some(&album), &release, &[], &[]).await;
+    commit_import(db, candidate, Some(&album), &release, &[], &[], Vec::new()).await;
     release
 }
 

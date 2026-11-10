@@ -10,7 +10,7 @@ use std::time::{Duration, Instant};
 /// A kind of row a window holds, by what its read has to look up.
 #[derive(Clone, Copy, Debug)]
 enum Kind {
-    /// A release this device imported.
+    /// A release this device imported, its file waiting to upload.
     Imported,
     /// A release linked to a pressing.
     Linked,
@@ -55,7 +55,7 @@ async fn library_of(kind: Kind, rows: u64) -> Library {
             );
             for path in &paths {
                 lib.run(lib.scan(path)).await;
-                lib.run(lib.import_of(
+                lib.run(lib.import_uploading(
                     lib.candidate(path),
                     path,
                     "2026-01-01T00:00:00Z",
@@ -260,6 +260,22 @@ async fn statements_of(kind: Kind, rows: u64) -> usize {
 #[tokio::test]
 async fn a_window_reads_imported_rows_in_statements_its_size_does_not_change() {
     assert_eq!(statements_of(Kind::Imported, 2).await, statements_of(Kind::Imported, 10).await);
+}
+
+/// An imported row whose file waits in this device's upload queue shows it
+/// waiting, read with the window's other imported rows'.
+#[tokio::test]
+async fn an_imported_row_shows_its_upload_waiting_whatever_the_window_holds() {
+    let lib = library_of(Kind::Imported, 3).await;
+    let (read, _) = read_window(&lib, Kind::Imported, 3).await;
+    for row in rows(&read) {
+        assert_eq!(
+            row.upload,
+            Some(bae_records::UploadProgress { queued: 1, uploading: 0 }),
+            "{}",
+            row.display_path
+        );
+    }
 }
 
 #[tokio::test]
