@@ -189,7 +189,7 @@
 .bae-a-keys-row { display: flex; gap: 6px; }
 .bae-a-key { flex: 1; height: 46px; border-radius: 6px; background: var(--tile); color: var(--text-primary); font: 400 21px/46px var(--font-android); text-align: center; }
 .bae-a-key-mod { background: var(--elevated); font-size: 16px; }
-.bae-a-key-enter { background: var(--accent-fill); color: var(--on-accent-fill); }
+.bae-a-key-enter { background: var(--accent-selection); color: var(--on-fill); }
 .bae-a-keyboard-gesture { height: 28px; display: flex; align-items: center; justify-content: center; }
 .bae-a-keyboard-gesture::before { content: ""; width: 108px; height: 4px; border-radius: 2px; background: var(--text-secondary); }
 .bae-a-main { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
@@ -219,7 +219,7 @@
 
 .bae-a-btn { height: 40px; padding: 0 var(--space-section); border-radius: 20px; border: 0; font: 500 14px var(--font-android); cursor: pointer; white-space: nowrap; }
 .bae-a-btn-large { height: 48px; border-radius: 24px; font-size: 15px; }
-.bae-a-btn-filled { background: var(--accent-fill); color: var(--on-accent-fill); }
+.bae-a-btn-filled { background: var(--accent-selection); color: var(--on-fill); }
 .bae-a-btn-filled.bae-a-btn-destructive { background: var(--danger); color: var(--background); }
 /* tonal: Material's filled tonal button, a raised fill with the screen's text: an action that stands alone (a failed view's Retry, Check now), where an outline reads as the lesser of two. */
 .bae-a-btn-tonal { background: var(--tile); color: var(--text-primary); }
