@@ -15,7 +15,7 @@ enum SettingsTab: Hashable, CaseIterable {
         case .library: "Library"
         case .playback: "Playback"
         case .importing: "Import"
-        case .formats: "Formats"
+        case .formats: "Save as"
         case .transfers: "Transfers"
         case .casting: "Casting"
         case .subsonic: "Subsonic"

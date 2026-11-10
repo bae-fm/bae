@@ -1,8 +1,9 @@
 import BaeKit
 import SwiftUI
 
-/// Export preferences: the export presets and the default preset for release
-/// and track saves, each written through `Outputs` and read back from config.
+/// The Save as pane: the formats, the default format for release and track
+/// saves, and the file names, each written through `Outputs` and read back
+/// from config.
 struct FormatsSettingsTab: View {
     @Environment(ConfigStore.self)
     private var configStore
@@ -97,22 +98,14 @@ struct FormatsSettingsTab: View {
                 PresetRow(
                     preset: preset,
                     edit: { editingPreset = EditingPreset(id: preset.id) },
-                    update: replacePreset,
                     delete: { deletePreset(id: preset.id) }
                 )
             }
-            Button(action: addPreset) {
-                Label("Add format", systemImage: "plus")
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
         } header: {
             Text("Formats")
         } footer: {
-            Text("Formats appear in Save as… on tracks and releases.")
-                .themeText(.detail)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            Button("Add format…", action: addPreset)
+                .frame(maxWidth: .infinity, alignment: .trailing)
         }
     }
 
@@ -191,12 +184,11 @@ struct FormatsSettingsTab: View {
     }
 }
 
-/// One format in the settings list: the summary opens the edit sheet, the
-/// Track/Release toggles set its Save as… scopes, and the minus deletes it.
+/// One format in the settings list: the summary opens the edit sheet, and the
+/// ⋯ menu offers Edit… and Delete….
 private struct PresetRow: View {
     let preset: BridgeSavePreset
     let edit: () -> Void
-    let update: (BridgeSavePreset) -> Void
     let delete: () -> Void
 
     @State
@@ -209,15 +201,12 @@ private struct PresetRow: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            scopeToggles
-            Button {
-                confirmingDelete = true
-            } label: {
-                Image(systemName: "minus")
+            MoreMenu {
+                Button("Edit…", action: edit)
+                Button("Delete…") {
+                    confirmingDelete = true
+                }
             }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
-            .accessibilityLabel(Text("Delete format"))
             .confirmationDialog(
                 "Delete the “\(preset.name)” format?",
                 isPresented: $confirmingDelete
@@ -225,32 +214,6 @@ private struct PresetRow: View {
                 Button("Delete", role: .destructive, action: delete)
             }
         }
-    }
-
-    /// The Track and Release scope toggles, locked for a single-file+CUE
-    /// preset, which is always a whole-release export.
-    private var scopeToggles: some View {
-        HStack(spacing: ThemeSpace.related) {
-            Toggle("Track", isOn: trackScopeBinding)
-            Toggle("Release", isOn: releaseScopeBinding)
-        }
-        .toggleStyle(.button)
-        .controlSize(.small)
-        .disabled(preset.pregapPlacement == .singleFileWithCue)
-    }
-
-    private var trackScopeBinding: Binding<Bool> {
-        Binding(
-            get: { preset.trackScopeOn },
-            set: { on in update(preset.withTrackScope(on)) }
-        )
-    }
-
-    private var releaseScopeBinding: Binding<Bool> {
-        Binding(
-            get: { preset.releaseScopeOn },
-            set: { on in update(preset.withReleaseScope(on)) }
-        )
     }
 }
 
