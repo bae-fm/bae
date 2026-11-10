@@ -2,8 +2,9 @@ import BaeKit
 import SwiftUI
 
 /// A section of a grouped form that folds part of one group away: its own
-/// box, the chevron leading inside the label's row, pointing right and
-/// turning down when open, and the rows it shows indented to the label.
+/// box, the chevron centred in the leading column so it has room to turn,
+/// pointing right and turning down when open. The label and the rows it shows
+/// start on that column's edge, as `RowItem`'s text does.
 struct FormDisclosure<Label: View, Content: View>: View {
     @Binding
     var isExpanded: Bool
@@ -17,14 +18,13 @@ struct FormDisclosure<Label: View, Content: View>: View {
             Button {
                 isExpanded.toggle()
             } label: {
-                HStack(spacing: 0) {
+                RowItem {
                     Image(systemName: "chevron.right")
                         .themeIcon(.small)
                         .foregroundStyle(.secondary)
                         .rotationEffect(.degrees(isExpanded ? 90 : 0))
-                        .frame(width: ThemeSpace.hang, alignment: .leading)
+                } content: {
                     label
-                    Spacer(minLength: 0)
                 }
                 .contentShape(Rectangle())
             }
@@ -32,7 +32,7 @@ struct FormDisclosure<Label: View, Content: View>: View {
             .accessibilityAddTraits(.isHeader)
             if isExpanded {
                 Group { content }
-                    .padding(.leading, ThemeSpace.hang)
+                    .padding(.leading, ThemeSize.lead + ThemeSpace.related)
             }
         }
     }

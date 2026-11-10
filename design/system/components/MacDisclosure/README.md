@@ -4,4 +4,4 @@ For settings most people never change: "Advanced". Its own box: the chevron lead
 
 On Android the same thing is `AndroidDisclosure`.
 
-**In the code:** macOS: `DisclosureGroup` in a grouped `Form`.
+**In the code:** macOS: `FormDisclosure` (`Views/Components/FormDisclosure.swift`) in a grouped `Form`.
