@@ -147,10 +147,11 @@ async fn next_event(events: &mut PlaybackProgressFeed) -> PlaybackProgress {
         .expect("the fan-out stays open")
 }
 
-/// A state change reaches the row and leaves the positions; a position
-/// tick moves the positions and leaves the row.
+/// A state change reaches the row and moves no position, only saying in the
+/// positions whether the track's position moves; a position tick moves the
+/// positions and leaves the row.
 #[tokio::test]
-async fn a_position_tick_moves_only_the_positions_and_a_state_change_only_the_row() {
+async fn a_position_tick_moves_only_the_positions_and_a_state_change_moves_no_position() {
     let (handle, progress_tx, db, _tmp) = started().await;
     let mut events = handle.subscribe_all();
     let mut positions = handle.subscribe_positions();
@@ -173,7 +174,11 @@ async fn a_position_tick_moves_only_the_positions_and_a_state_change_only_the_ro
         None,
         "the row names track-1, which the library does not hold"
     );
-    assert!(!positions.has_changed().unwrap(), "a state change moves no position");
+    assert_eq!(
+        positions.positions(),
+        PlaybackPositions { playing: true, ..PlaybackPositions::initial() },
+        "a state change moves no position, and says the track's position moves now"
+    );
 
     progress_tx
         .send(PlaybackProgress::PositionUpdate {
