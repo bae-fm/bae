@@ -737,6 +737,7 @@ mirror_enum! {
     /// bridge types.
     BridgeValidationReason = bae_types::edit_validation::EditValidationError,
     from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
     variants: { EmptyAlbumTitle, NoAlbumArtist, EmptyArtistName, InvalidYear },
 }
 

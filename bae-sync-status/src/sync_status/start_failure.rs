@@ -61,6 +61,8 @@ impl FailureColumns {
         let class = category.class();
         match class {
             K::Database
+            | K::DatabaseBusy
+            | K::DatabaseDamaged
             | K::Config
             | K::Internal
             | K::SyncUpdateRequired

@@ -8,6 +8,8 @@ use super::UiErrorCategory;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UiErrorClass {
     Database,
+    DatabaseBusy,
+    DatabaseDamaged,
     Config,
     Internal,
     SyncUpdateRequired,
@@ -56,8 +58,10 @@ pub enum UiErrorClass {
 
 impl UiErrorClass {
     /// Every class, each once.
-    const ALL: [Self; 45] = [
+    const ALL: [Self; 47] = [
         Self::Database,
+        Self::DatabaseBusy,
+        Self::DatabaseDamaged,
         Self::Config,
         Self::Internal,
         Self::SyncUpdateRequired,
@@ -108,6 +112,8 @@ impl UiErrorClass {
     pub fn name(self) -> &'static str {
         match self {
             Self::Database => "database",
+            Self::DatabaseBusy => "database_busy",
+            Self::DatabaseDamaged => "database_damaged",
             Self::Config => "config",
             Self::Internal => "internal",
             Self::SyncUpdateRequired => "sync_update_required",
@@ -172,6 +178,8 @@ impl UiErrorClass {
             // failed, the setting refused, the broken invariant, the source
             // that couldn't be read or written.
             Self::Database
+            | Self::DatabaseBusy
+            | Self::DatabaseDamaged
             | Self::Config
             | Self::Internal
             | Self::Import
@@ -243,6 +251,8 @@ impl UiErrorCategory {
         use UiErrorClass as K;
         match self {
             Self::Database => K::Database,
+            Self::DatabaseBusy => K::DatabaseBusy,
+            Self::DatabaseDamaged => K::DatabaseDamaged,
             Self::Config => K::Config,
             Self::Internal => K::Internal,
             Self::SyncUpdateRequired => K::SyncUpdateRequired,
@@ -296,6 +306,8 @@ impl UiErrorCategory {
         use UiErrorClass as K;
         Some(match class {
             K::Database => Self::Database,
+            K::DatabaseBusy => Self::DatabaseBusy,
+            K::DatabaseDamaged => Self::DatabaseDamaged,
             K::Config => Self::Config,
             K::Internal => Self::Internal,
             K::SyncUpdateRequired => Self::SyncUpdateRequired,

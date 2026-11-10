@@ -123,7 +123,9 @@ impl From<bae_diagnostics::UiError> for AutomationError {
         use bae_diagnostics::{UiError, UiErrorCategory};
         let UiError::Diagnostic { category, detail } = value;
         match category {
-            UiErrorCategory::Database => Self::Database(detail),
+            UiErrorCategory::Database
+            | UiErrorCategory::DatabaseBusy
+            | UiErrorCategory::DatabaseDamaged => Self::Database(detail),
             UiErrorCategory::Import
             | UiErrorCategory::ImportData
             | UiErrorCategory::CandidateImportInProgress

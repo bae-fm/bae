@@ -279,8 +279,7 @@ pub fn creation_category(error: &coven::StoreCreationError) -> C {
             // coven or bae went wrong.
             C::Internal
         }
-        E::Store(coven::CovenError::Database(error)) => database_category(error),
-        E::Store(_) => C::Database,
+        E::Store(error) => database_category(error),
         E::Identity(_) | E::Directory(_) => C::Internal,
         E::Sync(error) => sync_category(error),
         E::Cleanup { operation, .. } => creation_category(operation),
@@ -339,8 +338,7 @@ pub fn bootstrap_category(error: &coven::BootstrapError) -> C {
             // coven or bae went wrong.
             C::Internal
         }
-        E::Store(coven::CovenError::Database(error)) => database_category(error),
-        E::Store(_) => C::Database,
+        E::Store(error) => database_category(error),
         // Restoring as the member whose account holds the store, signed in
         // with another account.
         E::Sync(coven::SyncError::StoreOwner) => C::StoreOwnerAccount,
@@ -372,12 +370,17 @@ pub fn bootstrap_category(error: &coven::BootstrapError) -> C {
 
 /// A database call's failure, coven's or bae's over it. One holding a bug,
 /// its own or an earlier one that failed the store's handle, is a bug the
-/// person can only report; any other is the database's.
-pub fn database_category(error: &dyn bae_util::task_failure::ReportedBug) -> C {
+/// person can only report; any other is the database's, as busy, damaged or
+/// refused, which is what says whether asking again can pass.
+pub fn database_category(error: &dyn bae_util::database_failure::FailedDatabaseCall) -> C {
+    use bae_util::database_failure::DatabaseFailure as F;
     if error.reported_bug().is_some() {
-        C::Internal
-    } else {
-        C::Database
+        return C::Internal;
+    }
+    match error.database_failure() {
+        F::Busy => C::DatabaseBusy,
+        F::Damaged => C::DatabaseDamaged,
+        F::Refused => C::Database,
     }
 }
 
@@ -390,14 +393,14 @@ fn write_category(error: &coven::CovenError) -> C {
         E::Rollback { operation, .. } => write_category(operation),
         E::FileCleanup { write, .. } => write_category(write),
         E::Sync(error) => sync_category(error),
-        E::Database(error) => database_category(error),
-        E::Migration(_)
+        E::Database(_)
+        | E::Migration(_)
         | E::CovenMigration(_)
         | E::Settings(_)
         | E::Lock(_)
         | E::MissingConfiguration { .. }
         | E::DeviceKeyMissing { .. }
-        | E::MemberKeysMissing { .. } => C::Database,
+        | E::MemberKeysMissing { .. } => database_category(error),
         // The runtime is shutting down under the work: the process is
         // ending it, which no line the person reads can help with. A panic
         // in coven's work is a bug the person can only report.

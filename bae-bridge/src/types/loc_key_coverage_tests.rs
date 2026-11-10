@@ -240,6 +240,8 @@ fn produced_keys() -> Vec<String> {
     // bridge_error_category_key — every variant carries a key.
     for c in [
         BridgeErrorCategory::Database,
+        BridgeErrorCategory::DatabaseBusy,
+        BridgeErrorCategory::DatabaseDamaged,
         BridgeErrorCategory::Config,
         BridgeErrorCategory::Internal,
         BridgeErrorCategory::SyncUpdateRequired,

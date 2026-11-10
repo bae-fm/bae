@@ -38,19 +38,23 @@ fn internal_import_failure_retains_its_category() {
 }
 
 /// A store failure, an internal fault or a refusal crosses with its class,
-/// whether the library or import met it.
+/// whether the library or import met it: a stored value nothing writes as
+/// damage, coven's work under way as busy.
 #[test]
 fn store_internal_and_refused_failures_keep_their_category() {
     use bae_library::LibraryError;
-    let cases: [(BridgeError, BridgeErrorCategory); 4] = [
+    let busy = || bae_store::DbError::from(coven::DbError::ClaimPending);
+    let cases: [(BridgeError, BridgeErrorCategory); 6] = [
         (
             LibraryError::Database(bae_store::DbError::unreadable("a column", "a value")).into(),
-            BridgeErrorCategory::Database,
+            BridgeErrorCategory::DatabaseDamaged,
         ),
         (
             ImportError::Database(bae_store::DbError::unreadable("a column", "a value")).into(),
-            BridgeErrorCategory::Database,
+            BridgeErrorCategory::DatabaseDamaged,
         ),
+        (LibraryError::Database(busy()).into(), BridgeErrorCategory::DatabaseBusy),
+        (ImportError::Database(busy()).into(), BridgeErrorCategory::DatabaseBusy),
         (
             LibraryError::Internal("prepared state missing".into()).into(),
             BridgeErrorCategory::Internal,
@@ -197,4 +201,25 @@ async fn actual_artwork_data_failure_reaches_the_bridge_with_its_detail() {
         BridgeError::Diagnostic { category: BridgeErrorCategory::ImportData, detail }
     );
     server.await.unwrap();
+}
+
+/// Retry is worth offering for a busy database and never for a damaged one,
+/// a cancellation or a library that isn't there.
+#[test]
+fn retry_helps_only_where_core_says_it_can() {
+    let diagnostic =
+        |category| BridgeError::Diagnostic { category, detail: "the database's fault".into() };
+    assert!(bridge_error_retry_can_help(&diagnostic(BridgeErrorCategory::DatabaseBusy)));
+    assert!(!bridge_error_retry_can_help(&diagnostic(BridgeErrorCategory::DatabaseDamaged)));
+    assert!(bridge_error_retry_can_help(&diagnostic(BridgeErrorCategory::Storage {
+        failure: BridgeStorageFailure::Network
+    })));
+    assert!(!bridge_error_retry_can_help(&diagnostic(BridgeErrorCategory::Storage {
+        failure: BridgeStorageFailure::Authentication
+    })));
+    assert!(!bridge_error_retry_can_help(&BridgeError::Cancelled));
+    assert!(!bridge_error_retry_can_help(&BridgeError::NotFound {
+        entity: BridgeEntityKind::Library,
+        id: "a library".into()
+    }));
 }

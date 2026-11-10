@@ -8,6 +8,8 @@ fn every_failure_class_reads_back_as_itself() {
     use UiErrorCategory as C;
     let classes = [
         C::Database,
+        C::DatabaseBusy,
+        C::DatabaseDamaged,
         C::Config,
         C::Internal,
         C::SyncUpdateRequired,

@@ -43,6 +43,7 @@ pub enum BridgeStorageFailure {
 mirror_enum! {
  BridgeStorageFailure = coven::StorageFailure,
  from_core: pub(crate) fn,
+ into_core: pub(crate) fn,
  variants: {
 ProviderUnavailable,
 AccessNotRegistered { required: (crate::BridgeOAuthAccess) },

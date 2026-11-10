@@ -64,6 +64,8 @@ async fn every_class_a_start_fails_in_reads_back_as_written() {
     ];
     let categories = [
         C::Database,
+        C::DatabaseBusy,
+        C::DatabaseDamaged,
         C::Config,
         C::Internal,
         C::SyncUpdateRequired,

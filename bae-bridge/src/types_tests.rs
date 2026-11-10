@@ -520,7 +520,7 @@ fn a_database_fault_is_not_prefixed_twice() {
     let fault = || bae_store::DbError::unreadable("a folder scan column", "invalid");
     let expected = fault().to_string();
     let error = bae_library::LibraryError::Database(fault());
-    let BridgeError::Diagnostic { detail, .. } = BridgeError::database_query(error) else {
+    let BridgeError::Diagnostic { detail, .. } = BridgeError::from(error) else {
         panic!("diagnostic")
     };
     assert_eq!(detail, expected);

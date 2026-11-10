@@ -2,6 +2,7 @@
 //! localized line for, and the untranslated detail behind it.
 
 mod class;
+mod retry;
 pub use class::UiErrorClass;
 
 /// The kind of diagnostic failure. The UI shows one generic localized line per
@@ -10,7 +11,15 @@ pub use class::UiErrorClass;
 /// `BridgeErrorCategory`; the bridge maps one to the other.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UiErrorCategory {
+    /// A database call failed, and made again unchanged it fails the same
+    /// way: the database refused it, or the cause names nothing that ends.
     Database,
+    /// The database was busy with other work, or what the call read changed
+    /// under it: made again, the same call can pass.
+    DatabaseBusy,
+    /// The library's database file is damaged, or holds a value nothing
+    /// here writes: no call passes until this device's copy is replaced.
+    DatabaseDamaged,
     Config,
     Internal,
     /// Sync encountered data written by a newer app schema.

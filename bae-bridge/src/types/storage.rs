@@ -428,7 +428,7 @@ pub enum BridgeS3BucketVersioning {
     Suspended,
     Unavailable,
 }
-mirror_enum! {BridgeS3BucketVersioning=coven::S3BucketVersioning,from_core:pub(crate) fn,variants:{Disabled,Enabled,Suspended,Unavailable},}
+mirror_enum! {BridgeS3BucketVersioning=coven::S3BucketVersioning,from_core:pub(crate) fn,into_core:pub(crate) fn,variants:{Disabled,Enabled,Suspended,Unavailable},}
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeStorageCheck {
     Create,
@@ -442,4 +442,4 @@ pub enum BridgeStorageCheck {
     PublicationTime,
     Behavior,
 }
-mirror_enum! {BridgeStorageCheck=coven::StorageCheck,from_core:pub(crate) fn,variants:{Create,CreateOnce,ConditionalReplace,Read,ReadRange,List,Delete,MultipartCreateOnce,PublicationTime,Behavior},}
+mirror_enum! {BridgeStorageCheck=coven::StorageCheck,from_core:pub(crate) fn,into_core:pub(crate) fn,variants:{Create,CreateOnce,ConditionalReplace,Read,ReadRange,List,Delete,MultipartCreateOnce,PublicationTime,Behavior},}

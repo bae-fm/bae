@@ -4634,6 +4634,17 @@ category whose line names the whole fault, with the counts, discs or folder it
 carries, shows the line alone, since its detail is the same sentence again in
 English.
 
+Core also says per error whether making the same call again can get past
+it, and an app offers *Retry* on an error only then: a busy database, the
+network or a keychain locked this second can pass; a damaged database, a
+bug, an edit to fix or a call only another call answers can't. A database
+failure says which it met, from SQLite's or coven's own answer: busy (another
+connection held it past SQLite's wait, the store open in another process,
+coven's own work the call waits on, or what it read changed under it),
+damaged (a page SQLite can't read, a file that isn't a database, a stored
+value nothing writes), or refused (anything else). Appendix G lists which
+categories offer it.
+
 A failure while bringing a library up has a step as well as a category: bae
 starting, opening secure storage, reading sign-in settings, listing this
 device's libraries, or opening, resetting, closing or removing one. Each app
@@ -5556,6 +5567,8 @@ A `BridgeError` is `Cancelled` (show nothing), `NotFound` (a library), or
 | Category | The person |
 |---|---|
 | `Database`, `Config`, `Internal` | reports it |
+| `DatabaseBusy` | asks again: the library's database was busy with other work, or what the call read changed under it |
+| `DatabaseDamaged` | can't go on with this device's copy: the library's database file is damaged, or holds a value nothing writes |
 | `SyncUpdateRequired` | updates the app |
 | `DeviceResetRequired` | resets the device, after its warning (§6.4) |
 | `DeviceRemoved` | stops syncing this library on this device for good: the device, or its person, was removed from the library, or the library refused a joined device's admission |
@@ -5601,6 +5614,16 @@ These show their line alone, without the detail (§9.7): `SyncUpdateRequired`,
 `ReplacementUnfinished`, `RestoreRegistered`, `MemberKeysReplaced`,
 `StorageSetupFinishing`, `DeletionUnfinished` and `DeletionSignInRequired`.
 Every other category shows its detail under its line.
+
+An error offers *Retry* only when making the same call again can get past
+it (§9.7): `DatabaseBusy`, `CandidateBeingIdentified`,
+`StorageSetupFinishing`, `ChangedMeanwhile`, `Import`, `Network`,
+`KeyringLocked`, `Credentials`, `Membership`, a `GroupingBlocked` waiting on a
+download, and a `Storage`, `StorageCheck` or `S3VersioningUnknown` whose
+provider reason coven retries by itself: the network, throttling, a conflict,
+an expired session, an object not there yet, a read a transfer changed, the
+provider's quota, a local file, or catching up first. A cancellation, a
+library that isn't there, and every other category offer none.
 
 ### G.2 Why a found release isn't picked
 

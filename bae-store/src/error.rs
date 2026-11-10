@@ -136,6 +136,52 @@ impl bae_util::task_failure::ReportedBug for DbError {
     }
 }
 
+/// What a failed call of bae's met in the database: SQLite's or coven's own
+/// answer, a stored value nothing here writes as damage, a queue entry a
+/// cancel took out under the write as what changed under it, and what failed
+/// first under a failed rollback or cleanup. A store that failed to come up,
+/// or a file read, outside the database refuses.
+impl bae_util::database_failure::FailedDatabaseCall for DbError {
+    fn database_failure(&self) -> bae_util::database_failure::DatabaseFailure {
+        use bae_util::database_failure::DatabaseFailure;
+        match self {
+            Self::Sqlite(error) => sqlite_failure(error),
+            Self::Coven(error) => error.database_failure(),
+            Self::Creation(error) => match &**error {
+                coven::StoreCreationError::Store(error) => error.database_failure(),
+                _ => DatabaseFailure::Refused,
+            },
+            Self::FileRead(error) => match &**error {
+                coven::FileReadError::Database(error) => error.database_failure(),
+                _ => DatabaseFailure::Refused,
+            },
+            Self::Unreadable { .. } | Self::UnreadableJson { .. } => DatabaseFailure::Damaged,
+            Self::EntryCancelled { .. } => DatabaseFailure::Busy,
+            Self::Rollback { operation: failed, .. } | Self::FileCleanup { write: failed, .. } => {
+                failed.database_failure()
+            }
+            Self::Io(_) | Self::Encode { .. } | Self::OutOfRange { .. } | Self::StoredPath(_) => {
+                DatabaseFailure::Refused
+            }
+        }
+    }
+}
+
+/// What SQLite's own error says: busy or locked past its wait, a damaged
+/// file, or anything else, which refuses.
+fn sqlite_failure(error: &rusqlite::Error) -> bae_util::database_failure::DatabaseFailure {
+    use bae_util::database_failure::DatabaseFailure;
+    match error.sqlite_error_code() {
+        Some(rusqlite::ErrorCode::DatabaseBusy | rusqlite::ErrorCode::DatabaseLocked) => {
+            DatabaseFailure::Busy
+        }
+        Some(rusqlite::ErrorCode::DatabaseCorrupt | rusqlite::ErrorCode::NotADatabase) => {
+            DatabaseFailure::Damaged
+        }
+        _ => DatabaseFailure::Refused,
+    }
+}
+
 /// A database failure that carries a bug of coven's work, itself or through
 /// the failure it keeps.
 impl coven::task::CarriesBug for DbError {
@@ -312,3 +358,7 @@ impl<R> coven::WriteFailure for WriteError<R> {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "error_tests.rs"]
+mod tests;

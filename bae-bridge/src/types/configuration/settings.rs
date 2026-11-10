@@ -94,6 +94,7 @@ pub enum BridgeGroupingBlock {
 mirror_enum! {
     BridgeGroupingBlock = bae_diagnostics::GroupingBlockReason,
     from_core: pub(crate) fn,
+    into_core: fn,
     variants: {
         SourceChanged,
         SourceGone,
@@ -115,7 +116,15 @@ impl From<&bae_import::GroupingBlock> for BridgeError {
 /// a copyable disclosure, never translated.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeErrorCategory {
+    /// A database call failed, and made again unchanged it fails the same
+    /// way.
     Database,
+    /// The database was busy, or what the call read changed under it: made
+    /// again, the same call can pass.
+    DatabaseBusy,
+    /// The library's database file is damaged, or holds a value nothing
+    /// here writes: no call passes until this device's copy is replaced.
+    DatabaseDamaged,
     Config,
     Internal,
     SyncUpdateRequired,
@@ -282,10 +291,6 @@ impl BridgeError {
     ) -> Self {
         Self::diagnostic(BridgeErrorCategory::from_core(category), detail)
     }
-    pub(crate) fn database(detail: impl std::fmt::Display) -> Self {
-        Self::diagnostic(BridgeErrorCategory::Database, detail)
-    }
-
     /// A failed database read or write, carrying the fault alone.
     ///
     /// The layers a database failure crosses on its way up prefix themselves
@@ -295,15 +300,13 @@ impl BridgeError {
     /// this is, and each UI renders that as its own localized line. A bare
     /// `DbError` crosses as its own text, through `From<DbError>`. A failure
     /// holding a bug, which its owner reported as it arrived, is shown as
-    /// the bug it is.
+    /// the bug it is, and any other as what the database met: busy,
+    /// damaged or refused.
     pub(crate) fn database_query(
-        error: impl DatabaseFault + bae_util::task_failure::ReportedBug,
+        error: impl DatabaseFault + bae_util::database_failure::FailedDatabaseCall,
     ) -> Self {
-        if error.reported_bug().is_some() {
-            Self::internal(error.database_fault())
-        } else {
-            Self::database(error.database_fault())
-        }
+        let category = bae_diagnostics::database_category(&error);
+        Self::categorized(category, error.database_fault())
     }
     pub(crate) fn config(detail: impl std::fmt::Display) -> Self {
         Self::diagnostic(BridgeErrorCategory::Config, detail)
@@ -348,7 +351,9 @@ pub enum BridgePlaybackErrorReason {
 #[uniffi::export]
 pub fn bridge_error_category_key(category: BridgeErrorCategory) -> String {
     match category {
-        BridgeErrorCategory::Database => "core.error.category.database",
+        BridgeErrorCategory::Database
+        | BridgeErrorCategory::DatabaseBusy
+        | BridgeErrorCategory::DatabaseDamaged => "core.error.category.database",
         BridgeErrorCategory::Config => "core.error.category.config",
         BridgeErrorCategory::Internal => "core.error.category.internal",
         BridgeErrorCategory::DeviceResetRequired => "core.error.device_reset_required",
@@ -508,59 +513,23 @@ pub fn bridge_error_shown_detail(error: &BridgeError) -> Option<String> {
     }
 }
 
+/// Whether making the same call again can get past `error`: core's answer
+/// for its category ([`bae_diagnostics::UiErrorCategory::retry_can_help`]),
+/// so an app offers *Retry* only then. A cancellation has nothing to get
+/// past, and a library that isn't there doesn't appear by asking again.
+#[uniffi::export]
+pub fn bridge_error_retry_can_help(error: &BridgeError) -> bool {
+    match error {
+        BridgeError::Cancelled | BridgeError::NotFound { .. } => false,
+        BridgeError::Diagnostic { category, .. } => category.clone().into_core().retry_can_help(),
+    }
+}
+
 impl BridgeErrorCategory {
     /// Whether this category's detail says something its line doesn't: core's
     /// answer for the category's class.
     fn detail_adds_to_line(&self) -> bool {
-        use bae_diagnostics::UiErrorClass as K;
-        let class = match self {
-            Self::Database => K::Database,
-            Self::Config => K::Config,
-            Self::Internal => K::Internal,
-            Self::SyncUpdateRequired => K::SyncUpdateRequired,
-            Self::DeviceResetRequired => K::DeviceResetRequired,
-            Self::DeviceRemoved => K::DeviceRemoved,
-            Self::Import => K::Import,
-            Self::ImportData => K::ImportData,
-            Self::CandidateImportInProgress => K::CandidateImportInProgress,
-            Self::CandidateBeingIdentified => K::CandidateBeingIdentified,
-            Self::FilesAlreadyImported => K::FilesAlreadyImported,
-            Self::MetadataTrackCount { .. } => K::MetadataTrackCount,
-            Self::TiedMediums { .. } => K::TiedMediums,
-            Self::ReleaseChangedSinceOpened => K::ReleaseChangedSinceOpened,
-            Self::ChangedMeanwhile => K::ChangedMeanwhile,
-            Self::InvalidEdit { .. } => K::InvalidEdit,
-            Self::WatchedFolderOverlap => K::WatchedFolderOverlap,
-            Self::GroupingBlocked { .. } => K::GroupingBlocked,
-            Self::Export => K::Export,
-            Self::Save => K::Save,
-            Self::Storage { .. } => K::Storage,
-            Self::StorageCheck { .. } => K::StorageCheck,
-            Self::S3VersioningUnknown { .. } => K::S3VersioningUnknown,
-            Self::S3VersioningUnsupported { .. } => K::S3VersioningUnsupported,
-            Self::StorageLocationChangeUnsupported => K::StorageLocationChangeUnsupported,
-            Self::Credentials => K::Credentials,
-            Self::Network => K::Network,
-            Self::Keyring => K::Keyring,
-            Self::KeyringLocked => K::KeyringLocked,
-            Self::KeychainEntitlementMissing => K::KeychainEntitlementMissing,
-            Self::SavedRestoreCodesFull => K::SavedRestoreCodesFull,
-            Self::SavedRestoreCodeTooLarge => K::SavedRestoreCodeTooLarge,
-            Self::Membership => K::Membership,
-            Self::InviteJoining => K::InviteJoining,
-            Self::StoreOwnerAccount => K::StoreOwnerAccount,
-            Self::Renderer => K::Renderer,
-            Self::AirPlayUnsupported => K::AirPlayUnsupported,
-            Self::AirPlayUnreadableSettings => K::AirPlayUnreadableSettings,
-            Self::ReplacementUnfinished { .. } => K::ReplacementUnfinished,
-            Self::RestoreRegistered => K::RestoreRegistered,
-            Self::MemberKeysReplaced => K::MemberKeysReplaced,
-            Self::StorageSetupUndone => K::StorageSetupUndone,
-            Self::StorageSetupFinishing => K::StorageSetupFinishing,
-            Self::DeletionUnfinished => K::DeletionUnfinished,
-            Self::DeletionSignInRequired => K::DeletionSignInRequired,
-        };
-        class.detail_adds_to_line()
+        self.clone().into_core().class().detail_adds_to_line()
     }
 }
 
@@ -625,8 +594,11 @@ pub fn bridge_playback_error_reason_line(
 mirror_enum! {
     BridgeErrorCategory = bae_diagnostics::UiErrorCategory,
     from_core: pub(crate) fn,
+    into_core: fn,
     variants: {
         Database,
+        DatabaseBusy,
+        DatabaseDamaged,
         Config,
         Internal,
         SyncUpdateRequired,

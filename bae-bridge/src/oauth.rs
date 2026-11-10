@@ -6,6 +6,7 @@ pub enum BridgeDropboxAccess {
 mirror_enum! {
     BridgeDropboxAccess = coven::DropboxAccess,
     from_core: fn,
+    into_core: fn,
     variants: { AppFolder, FullDropbox },
 }
 
@@ -17,6 +18,7 @@ pub enum BridgeOAuthAccess {
 mirror_enum! {
     BridgeOAuthAccess = coven::OAuthAccess,
     from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
     variants: { Dropbox(access: (BridgeDropboxAccess)), OneDrive },
 }
 

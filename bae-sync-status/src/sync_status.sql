@@ -12,7 +12,8 @@ CREATE TABLE IF NOT EXISTS sync_start_failure (
     -- The failure's class, as the status line words it: one of the classes
     -- coven's sync errors map to, or `internal` for a start that panicked.
     category TEXT NOT NULL CHECK (category IN (
-        'database', 'config', 'internal', 'sync_update_required',
+        'database', 'database_busy', 'database_damaged', 'config', 'internal',
+        'sync_update_required',
         'device_reset_required', 'device_removed', 'membership', 'keyring',
         'keyring_locked', 'keychain_entitlement_missing',
         'saved_restore_codes_full', 'saved_restore_code_too_large', 'storage'
