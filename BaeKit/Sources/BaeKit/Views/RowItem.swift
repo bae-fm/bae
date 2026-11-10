@@ -25,12 +25,13 @@ public struct RowItem<Lead: View, Content: View, Trail: View>: View {
     public var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: ThemeSpace.related) {
             // The hidden line gives the column the first line's height and
-            // baseline, so the lead centres on that line.
-            ZStack {
-                Text(verbatim: " ").themeText(.body).hidden()
-                lead
-            }
-            .frame(width: ThemeSize.lead)
+            // baseline, and the lead centres on that line over it. As an
+            // overlay the lead adds no baseline of its own: in a stack beside
+            // the line, a native view's baseline at its top would become the
+            // column's, and the row would align its text to the lead's top.
+            Text(verbatim: " ").themeText(.body).hidden()
+                .frame(width: ThemeSize.lead)
+                .overlay { lead }
             content.frame(maxWidth: .infinity, alignment: .leading)
             HStack(spacing: ThemeSpace.related) { trail }
         }
