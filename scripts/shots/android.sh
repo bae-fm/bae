@@ -129,6 +129,7 @@ WelcomeLibraries:welcome-libraries
 WelcomeLibraryDetails:welcome-library-details
 WelcomeLibraryDetailsUnsent:welcome-library-details-unsent
 WelcomeLight:welcome-light
+WelcomeRemoving:welcome-removing
 EOF
 )
 

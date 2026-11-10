@@ -33,6 +33,8 @@ private const val BAR_MAX = 10_000
  * step that counts nothing (null), in its place, which a View reads from
  * [steps]'s latest value each display frame. Only a step starting or ending
  * recomposes, and tells [onStepping]. With no call to follow, [idle] alone.
+ * With [bar] false the step shows as its title alone, for a place where a
+ * spinner beside it already says it runs.
  */
 @Composable
 internal fun <Step : Any> StepProgressLine(
@@ -40,6 +42,7 @@ internal fun <Step : Any> StepProgressLine(
     title: (Step) -> String,
     fraction: (Step) -> Double?,
     modifier: Modifier = Modifier,
+    bar: Boolean = true,
     onStepping: (Boolean) -> Unit = {},
     idle: @Composable () -> Unit,
 ) {
@@ -57,6 +60,7 @@ internal fun <Step : Any> StepProgressLine(
                 update = { view ->
                     view.applyStyle(accent = accent, track = track, text = text, textSizeSp = size)
                     view.describe(title, fraction)
+                    view.showsBar = bar
                     view.onStepping = { started ->
                         stepping = started
                         onStepping(started)
@@ -86,6 +90,13 @@ internal class StepProgressView<Step : Any>(
     /** Whether a step runs, as last told to [onStepping]; null until the View shows what its stream holds. */
     private var told: Boolean? = null
     var onStepping: (Boolean) -> Unit = {}
+
+    /** Whether the bar shows under the step's title. */
+    var showsBar: Boolean = true
+        set(value) {
+            field = value
+            bar.visibility = if (value) View.VISIBLE else View.GONE
+        }
 
     init {
         orientation = VERTICAL

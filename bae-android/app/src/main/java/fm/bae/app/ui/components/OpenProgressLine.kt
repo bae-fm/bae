@@ -19,12 +19,13 @@ import uniffi.bae_bridge.bridgeOpenStepKey
 /**
  * What shows while a library opens: [idle] until the open runs a step, then
  * the step's name over a bar of how much of it is done, in its place. With no
- * open to follow, [idle] alone.
+ * open to follow, [idle] alone. With [bar] false the step shows as its name alone.
  */
 @Composable
 internal fun OpenProgressLine(
     steps: LatestSource<BridgeOpenProgress>?,
     modifier: Modifier = Modifier,
+    bar: Boolean = true,
     onStepping: (Boolean) -> Unit = {},
     idle: @Composable () -> Unit,
 ) {
@@ -34,6 +35,7 @@ internal fun OpenProgressLine(
         title = { context.coreString(bridgeOpenStepKey(it.step)) },
         fraction = { if (it.total > 0uL) it.done.toDouble() / it.total.toDouble() else 0.0 },
         modifier = modifier,
+        bar = bar,
         onStepping = onStepping,
         idle = idle,
     )

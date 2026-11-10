@@ -2702,9 +2702,11 @@ them below those (below). A Mac lists its libraries the same
 way under **Your libraries**: a click on one opens it, and its ⋯ button, or a
 right click, holds **Remove…**, or **Delete…** for one never synced. A
 library that can't be read, or whose reset, restore or removal stopped
-partway, says so under its name, and its menu offers to finish it first.
-While a removal runs, its row shows the step with a spinner in place of the
-⋯. **Details…** hangs a popover off the ⋯ with the library's sync status as
+partway, says so under its name, and its menu offers to finish it first. A
+library row shows its name alone otherwise, on a phone and on a Mac: no
+provider line, and nothing for one that never synced. While a removal runs, its
+row shows the step under its name with a spinner in place of the ⋯ (the ⋮ on a
+phone). **Details…** hangs a popover off the ⋯ with the library's sync status as
 this Mac last knew it (**Synced**, or **Unsent changes** while it holds some it
 never uploaded), when it last synced, and its provider, account and folder. A
 library that is open shows its live sync status; any other is read as it last
@@ -3666,15 +3668,15 @@ fail, saying the laptop left the library and its files are still on it.
   "The library will remain in the cloud and on your other devices." Delete says
   the library isn't synced, so it will be deleted for good, and that the audio
   files stay in their folders. The first screens on a Mac and on Android ask this way,
-  and neither platform's Settings removes the library. A row whose library doesn't sync
-  says "Not synced" and offers *Delete* in place of *Remove*. Neither platform
+  and neither platform's Settings removes the library. A library that doesn't sync
+  offers *Delete* in place of *Remove*. Neither platform
   asks the person to unlock the device first: the confirmation is the only step.
   *Remove* loses nothing (the library stays in the cloud), so it is the
   confirmation's accent button, the Mac alert's default; only *Delete* is red.
   On Android's first screen no library is open, so a library that opens is
   opened to count what it hasn't sent and again to leave its store, its row
-  showing each step in place of its storage line, and a library that can't open
-  is removed without opening, as on a Mac. A removal that fails, or the count
+  showing each step under its name, with a spinner in place of the ⋮, and a
+  library that can't open is removed without opening, as on a Mac. A removal that fails, or the count
   before it, shows an alert on a Mac and a dialog on Android, "Couldn't remove
   “Household”", with the error's line, *Retry* and *Cancel*: *Retry* counts and
   asks again, or runs again the removal the person confirmed, and the row goes
@@ -3692,11 +3694,12 @@ fail, saying the laptop left the library and its files are still on it.
   starts, through the same kind of stream a close reports in (§10.2): stopping
   the desktop's servers, playback, and identification and import, ending the
   library's background work, leaving the library, then deleting this device's
-  files. The apps show the step's name in place of a spinner: for the open
-  library on the screen the app waits on, and on the Mac, for a library that
-  isn't open, on its row once its open's steps are done, or from the start
-  for one that can't open, whose removal reports leaving it and deleting its
-  files. The row's *Remove* shows no spinner of its own.
+  files. For the open library the apps show the step's name on the screen they wait on. For a
+  library that isn't open, its row shows the step's name, as words with no bar,
+  under the library's name, with a spinner in place of the ⋯ or ⋮: the open's
+  steps while it is opened to count, then the removal's, or the removal's from
+  the start for one that can't open, whose removal reports leaving it and
+  deleting its files.
 - **A library that can't open.** A library whose settings can't be read, or
   whose reset or restore stopped partway, can't be opened to count what it
   hasn't sent, nor to leave. Its confirmation says it can't be opened, so any

@@ -5,12 +5,14 @@ import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -233,7 +235,10 @@ private fun WelcomeColumn(
     }
 }
 
-/** The welcome over a list of libraries, whose Add library row raises the sheet of actions. */
+/**
+ * The welcome over a list of libraries, whose Add library row raises the sheet of actions. The
+ * logo, tagline and list sit together, centered top to bottom, and scroll when they don't fit.
+ */
 @Composable
 private fun ListedWelcome(
     callbacks: CodeScreenCallbacks,
@@ -242,23 +247,27 @@ private fun ListedWelcome(
     libraries: @Composable (onAdd: () -> Unit) -> Unit,
 ) {
     var adding by remember { mutableStateOf(false) }
-    Column(
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(top = ThemeSpace.section, bottom = LIST_BOTTOM_PADDING),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Logo(size = LIST_LOGO_SIZE, bob = true, glow = true)
-        Tagline(modifier = Modifier.padding(LIST_TAGLINE_PADDING))
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         Column(
-            modifier = Modifier.padding(horizontal = ThemeSpace.edge),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .heightIn(min = maxHeight)
+                    .padding(top = ThemeSpace.section, bottom = LIST_BOTTOM_PADDING),
             horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
         ) {
-            libraries { adding = true }
-            savedCodes()
-            error?.let { ErrorNotice(it) }
+            Logo(size = LIST_LOGO_SIZE, bob = true, glow = true)
+            Tagline(modifier = Modifier.padding(LIST_TAGLINE_PADDING))
+            Column(
+                modifier = Modifier.padding(horizontal = ThemeSpace.edge),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                libraries { adding = true }
+                savedCodes()
+                error?.let { ErrorNotice(it) }
+            }
         }
     }
     if (adding) {

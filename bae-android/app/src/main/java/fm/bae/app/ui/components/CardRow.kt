@@ -35,7 +35,8 @@ import fm.bae.app.ui.appearance.ThemeText
  * its card), with [leadingIcon] before it when it adds to the list; [selected]
  * tints the row for the one choice made. In a [RowCard] a hairline divides the
  * row from the one above it. The [subtitle] wraps, read whole, as Material's supporting
- * text does. A [nested] row is a setting that belongs to the switch row above it: joined to it
+ * text does; [subtitleContent] draws the line itself where its words change as the row runs. A
+ * [nested] row is a setting that belongs to the switch row above it: joined to it
  * with no hairline and set in. A row that is not [enabled] shows dimmed and does nothing. A row
  * with an [onClick] opens or changes something, which [onClickLabel] names for screen readers.
  */
@@ -44,6 +45,7 @@ internal fun CardRow(
     title: String,
     modifier: Modifier = Modifier,
     subtitle: String? = null,
+    subtitleContent: (@Composable () -> Unit)? = null,
     tone: StatusTone? = null,
     leadingIcon: ImageVector? = null,
     action: Boolean = false,
@@ -60,7 +62,7 @@ internal fun CardRow(
         modifier =
             modifier.cardRowSurface(
                 nested = nested,
-                twoLines = subtitle != null,
+                twoLines = subtitle != null || subtitleContent != null,
                 selected = selected,
                 enabled = enabled,
                 onClick = onClick,
@@ -89,6 +91,7 @@ internal fun CardRow(
                     },
             )
             subtitle?.let { Subtitle(it, tone) }
+            subtitleContent?.invoke()
         }
         trailing?.invoke(this)
     }

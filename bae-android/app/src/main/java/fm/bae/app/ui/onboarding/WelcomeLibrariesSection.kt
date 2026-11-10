@@ -1,9 +1,11 @@
 package fm.bae.app.ui.onboarding
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -33,7 +35,7 @@ import fm.bae.app.ui.components.OpenProgressLine
 import fm.bae.app.ui.components.RemoveLibraryDialog
 import fm.bae.app.ui.components.RowCard
 import fm.bae.app.ui.components.StepProgressLine
-import fm.bae.app.ui.components.cardRowDivider
+import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.settings.libraryDetail
 import uniffi.bae_bridge.BridgeDropboxLocation
 import uniffi.bae_bridge.BridgeLibrary
@@ -102,7 +104,7 @@ internal fun WelcomeLibrariesSection(
  * tapped.
  */
 @Composable
-private fun WelcomeLibrariesContent(
+internal fun WelcomeLibrariesContent(
     list: WelcomeLibrariesList,
     running: RunningRemoval?,
     callbacks: WelcomeLibrariesCallbacks,
@@ -144,11 +146,10 @@ private fun WelcomeLibrariesContent(
 }
 
 /**
- * One library: its name over where it is stored, or "Not synced", or why it
- * doesn't open, with a ⋮ menu of Details, for a library that opens, and
- * Remove, or Delete for a library that was never synced. A tap opens it,
- * unless its settings can't be read. While it is counted or removed the row
- * shows the step.
+ * One library: its name alone, or under it, in red, why it doesn't open, with a
+ * ⋮ menu of Details, for a library that opens, and Remove, or Delete for a
+ * library that was never synced. A tap opens it, unless its settings can't be
+ * read. While it is counted or removed the row shows the step.
  */
 @Composable
 private fun WelcomeLibraryRow(
@@ -161,11 +162,11 @@ private fun WelcomeLibraryRow(
         RunningLibraryRow(library, running)
         return
     }
-    val detail = libraryDetail(library.state)
+    val problem = libraryDetail(library.state).takeIf { library.state !is BridgeLibraryState.Openable }
     CardRow(
         title = library.name,
-        subtitle = detail.text,
-        tone = detail.tone,
+        subtitle = problem?.text,
+        tone = problem?.tone,
         // A library whose settings can't be read offers nothing to open.
         onClick =
             if (!busy && library.state !is BridgeLibraryState.Unreadable) {
@@ -215,8 +216,9 @@ private fun LibraryMenu(
 }
 
 /**
- * A library being counted or removed: the removal's step, else the open's,
- * else what the row waits on, in place of its provider line.
+ * A library being counted or removed: its name over the removal's step, else
+ * the open's, else what the row waits on, as words alone, with a spinner where
+ * the ⋮ was.
  */
 @Composable
 private fun RunningLibraryRow(
@@ -226,32 +228,33 @@ private fun RunningLibraryRow(
     val context = LocalContext.current
     val waiting =
         if (running.removing) R.string.loading_removing_library else R.string.loading_opening_library
-    Column(
-        modifier =
-            Modifier
-                .cardRowDivider()
-                .fillMaxWidth()
-                .padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.group),
-        horizontalAlignment = Alignment.Start,
-    ) {
-        Text(text = library.name, style = ThemeText.rowTitle.style)
-        StepProgressLine(
-            steps = running.closing,
-            title = { context.coreString(bridgeClosingStepKey(it)) },
-            fraction = { null },
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            OpenProgressLine(steps = running.opening, modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    text = stringResource(waiting),
-                    style = ThemeText.body.style,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+    CardRow(
+        title = library.name,
+        subtitleContent = {
+            StepProgressLine(
+                steps = running.closing,
+                title = { context.coreString(bridgeClosingStepKey(it)) },
+                fraction = { null },
+                modifier = Modifier.fillMaxWidth(),
+                bar = false,
+            ) {
+                OpenProgressLine(steps = running.opening, modifier = Modifier.fillMaxWidth(), bar = false) {
+                    Text(
+                        text = stringResource(waiting),
+                        style = ThemeText.body.style,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
             }
-        }
+        },
+    ) {
+        Box(modifier = Modifier.size(SPINNER_SLOT), contentAlignment = Alignment.Center) { WaitingIndicator() }
     }
 }
+
+/** The room the ⋮ takes, which the spinner takes in its place. */
+private val SPINNER_SLOT = 48.dp
 
 /**
  * The welcome on a phone that holds a synced library and one that was never
@@ -262,8 +265,29 @@ internal fun WelcomeLibrariesScene() {
     WelcomeScene(libraries = WelcomeLibrariesView(listed = true) { onAdd -> WelcomeLibrariesPreviewContent(onAdd) })
 }
 
+/**
+ * The same welcome while the synced library is being removed and has not yet
+ * reported a step, for the `welcome-removing` screenshot scene.
+ */
 @Composable
-private fun WelcomeLibrariesPreviewContent(onAdd: () -> Unit) {
+internal fun WelcomeRemovingScene() {
+    val running =
+        RunningRemoval(
+            libraryId = "lib-1",
+            removing = true,
+            opening = null,
+            closing = null,
+        )
+    WelcomeScene(
+        libraries = WelcomeLibrariesView(listed = true) { onAdd -> WelcomeLibrariesPreviewContent(onAdd, running) },
+    )
+}
+
+@Composable
+private fun WelcomeLibrariesPreviewContent(
+    onAdd: () -> Unit,
+    running: RunningRemoval? = null,
+) {
     val dropbox =
         BridgeLibraryState.Openable(
             storage =
@@ -277,11 +301,11 @@ private fun WelcomeLibrariesPreviewContent(onAdd: () -> Unit) {
         list =
             WelcomeLibrariesList.Loaded(
                 listOf(
-                    BridgeLibrary("lib-1", "Library Name", "/tmp/lib-1", dropbox, isActive = false),
-                    PreviewData.library(id = "lib-2", name = "Local Library", isActive = false),
+                    BridgeLibrary("lib-1", "Home music", "/tmp/lib-1", dropbox, isActive = false),
+                    PreviewData.library(id = "lib-2", name = "Odile’s records", isActive = false),
                 ),
             ),
-        running = null,
+        running = running,
         callbacks =
             WelcomeLibrariesCallbacks(
                 onOpen = {},

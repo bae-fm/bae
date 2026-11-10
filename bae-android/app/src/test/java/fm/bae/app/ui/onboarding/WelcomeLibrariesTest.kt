@@ -170,15 +170,45 @@ class WelcomeLibrariesTest {
     }
 
     @Test
-    fun theListNamesEachLibraryWithWhereItIsStoredOrThatItIsNotSynced() {
+    fun theListNamesEachLibraryAndNothingElse() {
         showLibraries(FakeLibraries(listOf(synced, neverSynced)))
 
         compose.onNodeWithText("YOUR LIBRARIES").assertIsDisplayed()
         compose.onNodeWithText("Home Library").assertIsDisplayed()
-        compose.onNodeWithText("Dropbox: ana@example.com").assertIsDisplayed()
         compose.onNodeWithText("Local Library").assertIsDisplayed()
-        compose.onNodeWithText("Not synced").assertIsDisplayed()
+        compose.onNodeWithText("Dropbox: ana@example.com").assertDoesNotExist()
+        compose.onNodeWithText("Not synced").assertDoesNotExist()
         compose.onAllNodesWithContentDescription("More").assertCountEquals(2)
+    }
+
+    /** The row being counted shows what it waits on as words under its name, a spinner where the ⋮ was, and nothing else taps. */
+    @Test
+    fun aLibraryBeingCountedShowsWhatItWaitsOnInsteadOfItsMenu() {
+        val fake = FakeLibraries(listOf(synced, neverSynced))
+        compose.setContent {
+            BaeTheme {
+                WelcomeLibrariesContent(
+                    list = WelcomeLibrariesList.Loaded(fake.libraries),
+                    running = RunningRemoval(synced.id, removing = false, opening = null, closing = null),
+                    callbacks =
+                        WelcomeLibrariesCallbacks(
+                            onOpen = { fake.calls += "open ${it.id}" },
+                            onDetails = {},
+                            onRemove = {},
+                            onAdd = { fake.calls += "add" },
+                        ),
+                )
+            }
+        }
+
+        compose.onNodeWithText("Home Library").assertIsDisplayed()
+        compose.onNodeWithText("Opening the library…").assertIsDisplayed()
+        compose.onAllNodesWithContentDescription("More").assertCountEquals(1)
+
+        compose.onNodeWithText("Local Library").performClick()
+        compose.onNodeWithText("Add library").performClick()
+
+        assertEquals(emptyList<String>(), fake.calls)
     }
 
     @Test

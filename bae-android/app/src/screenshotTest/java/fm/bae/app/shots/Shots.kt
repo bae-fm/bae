@@ -76,6 +76,7 @@ import fm.bae.app.ui.onboarding.S3KeyInput
 import fm.bae.app.ui.onboarding.StandingRead
 import fm.bae.app.ui.onboarding.WelcomeActions
 import fm.bae.app.ui.onboarding.WelcomeLibrariesScene
+import fm.bae.app.ui.onboarding.WelcomeRemovingScene
 import fm.bae.app.ui.onboarding.WelcomeScene
 import fm.bae.app.ui.playback.FullPlayerScene
 import fm.bae.app.ui.playback.MiniPlayerScene
@@ -130,7 +131,7 @@ import java.time.Instant
 // composition from the production UI (defined in main next to its @Preview) in
 // the app chrome — never a capture-only re-layout. Rendered at a current phone
 // size, with additional light and tinted appearance captures. Function name ⇒ scene id:
-//   Welcome ⇒ welcome, WelcomeLibraries ⇒ welcome-libraries, WelcomeLibraryDetails ⇒ welcome-library-details,
+//   Welcome ⇒ welcome, WelcomeLibraries ⇒ welcome-libraries, WelcomeRemoving ⇒ welcome-removing, WelcomeLibraryDetails ⇒ welcome-library-details,
 //   WelcomeLibraryDetailsUnsent ⇒ welcome-library-details-unsent, WelcomeAddLibrary ⇒ welcome-add-library,
 //   RemoveLibraryUnsent ⇒ remove-library-unsent, RemoveLibrary ⇒ remove-library,
 //   RemoveLibraryFailed ⇒ remove-library-failed,
@@ -157,6 +158,13 @@ fun Welcome() {
 @Composable
 fun WelcomeLibraries() {
     WelcomeLibrariesScene()
+}
+
+/** The welcome while a library is being removed: its row shows the step, with a spinner where the ⋮ was. */
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun WelcomeRemoving() {
+    WelcomeRemovingScene()
 }
 
 /** A library's details sheet, over a Dropbox library that synced two hours ago. */
