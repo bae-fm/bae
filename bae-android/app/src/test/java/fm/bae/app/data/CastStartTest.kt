@@ -10,6 +10,7 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
@@ -39,21 +40,20 @@ class CastStartTest {
     @Test
     fun aCastThatFailsWhileThePickerIsOpenShowsWhyInThePickerAndStopsConnecting() {
         val start = failingStart(pickerOpen = true)
-        var started = false
 
-        start.cast(kitchen) { started = true }
+        start.cast(kitchen)
 
         assertNull(start.connecting.value)
         assertEquals("Couldn't reach it", start.failure.value?.line)
         assertEquals(emptyList<DisplayError>(), told)
-        assertFalse(started)
+        assertNull(start.started.value)
     }
 
     @Test
     fun aCastThatFailsAfterThePickerClosedIsToldNotHeld() {
         val start = failingStart(pickerOpen = false)
 
-        start.cast(kitchen) {}
+        start.cast(kitchen)
 
         assertNull(start.connecting.value)
         assertNull(start.failure.value)
@@ -63,7 +63,7 @@ class CastStartTest {
     @Test
     fun theFailureThePickerShowedGoesWhenItCloses() {
         val start = failingStart(pickerOpen = true)
-        start.cast(kitchen) {}
+        start.cast(kitchen)
 
         start.clearFailure()
 
@@ -85,15 +85,37 @@ class CastStartTest {
                 pickerOpen = { true },
                 tell = { told += it },
             )
-        val started = mutableListOf<String>()
 
-        start.cast(kitchen) { started += "kitchen" }
+        val kitchenAsked = start.cast(kitchen)
         assertEquals("Kitchen", start.connecting.value?.name)
-        start.cast(den) { started += "den" }
+        val denAsked = start.cast(den)
         waiting.complete(Unit)
 
         assertEquals(listOf("den"), reached)
-        assertEquals(listOf("den"), started)
+        assertTrue(start.didStart(denAsked))
+        assertFalse(start.didStart(kitchenAsked))
         assertNull(start.connecting.value)
+    }
+
+    @Test
+    fun aCastThatConnectsClosesOnlyThePlaceThatAskedForIt() {
+        val waiting = CompletableDeferred<Unit>()
+        val start =
+            CastStart(
+                scope = scope,
+                castTo = { waiting.await() },
+                failureOf = { null },
+                pickerOpen = { true },
+                tell = { told += it },
+            )
+
+        // A picker asks, is closed, and a second opens before the connect finishes: the second asked nothing.
+        val firstPickerAsked = start.cast(kitchen)
+        val secondPickerAsked: CastStart.Attempt? = null
+        assertFalse(start.didStart(firstPickerAsked))
+        waiting.complete(Unit)
+
+        assertTrue(start.didStart(firstPickerAsked))
+        assertFalse(start.didStart(secondPickerAsked))
     }
 }

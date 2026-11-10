@@ -9,6 +9,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -20,6 +21,7 @@ import androidx.compose.ui.res.stringResource
 import fm.bae.app.DisplayError
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.data.CastStart
 import fm.bae.app.data.castEndedFailure
 import fm.bae.app.data.castingDevice
 import fm.bae.app.ui.appearance.ThemeSpace
@@ -83,13 +85,19 @@ private fun CastPickerSheet(
     val receivers by session.castStore.receivers.collectAsState()
     val connecting by session.castStart.connecting.collectAsState()
     val castFailure by session.castStart.failure.collectAsState()
+    val started by session.castStart.started.collectAsState()
+    // The start this sheet began: a sheet opened later has none, so it stays open for an earlier one.
+    var asked by remember { mutableStateOf<CastStart.Attempt?>(null) }
+    LaunchedEffect(started) {
+        if (session.castStart.didStart(asked)) onDismiss()
+    }
 
     TitledSheet(title = stringResource(R.string.cast), onDismiss = onDismiss) {
         PickerFailures(endedFailure = endedFailure, castFailure = castFailure)
         CastReceiverRows(
             receivers = receivers,
             connectingName = connecting?.name,
-            onCast = { receiver -> session.castStart.cast(receiver) { onDismiss() } },
+            onCast = { receiver -> asked = session.castStart.cast(receiver) },
             onDisconnect = {
                 session.cast.stopCasting()
                 onDismiss()

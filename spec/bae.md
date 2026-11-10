@@ -4096,7 +4096,8 @@ closing either leaves it connecting; a cast that fails says why in an alert,
 wherever the person is. A cast that connects closes the picker that started
 it, never one opened after. On Android it is the open library's too: closing the
 picker or the page leaves it connecting, both name it, and a cast that fails
-says why in the picker while it is open and in a snackbar otherwise.
+says why in the picker while it is open and in a snackbar otherwise. A cast that
+connects closes the picker that started it, never one opened after.
 Stopping casting, turning it off, or picking another
 receiver while one connects calls that connect off: it moves nothing, and
 nothing says it failed. A connect to a Chromecast already under way runs to

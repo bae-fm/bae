@@ -122,7 +122,7 @@ internal fun CastingSettingsScreen(
         connectingName = connecting?.name,
         transcodeFormat = config.castTranscodeFormat,
         onBack = onBack,
-        onCast = { receiver -> session.castStart.cast(receiver) {} },
+        onCast = { receiver -> session.castStart.cast(receiver) },
         onDisconnect = session.cast::stopCasting,
         onEnabledChange = {
             when (val action = castToggleAction(it, castingDeviceName(status))) {

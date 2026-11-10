@@ -16,7 +16,9 @@ private val logger = BaeLogger("bae.CastStart")
 /**
  * The cast the person started last, while it connects. There is one for the open library, not one per
  * place that lists receivers: the picker and the Casting page show the same start, and closing the one
- * that began it leaves it connecting. A newer start calls off the one before it.
+ * that began it leaves it connecting. A newer start calls off the one before it. A start that connects
+ * shows as [started]; a place that began one closes itself when [didStart] says it is the [Attempt] it
+ * was given, so a place opened later never closes for a start it did not ask for.
  *
  * A start that fails says why where the person is: in the picker, which is a sheet that hides a snackbar,
  * while it is open ([failure]); otherwise through [tell]. [failureOf] words a failure, and is null for one
@@ -39,17 +41,36 @@ class CastStart(
     /** Why the last start failed while the picker was open, until the next start or the picker closes. */
     val failure: StateFlow<DisplayError?> = _failure.asStateFlow()
 
+    private val _started = MutableStateFlow<Attempt?>(null)
+
+    /** The latest start that reached playback on its receiver. */
+    val started: StateFlow<Attempt?> = _started.asStateFlow()
+
+    private var attempts = 0
     private var job: Job? = null
 
-    /**
-     * Switch playback to [receiver], calling off the start an earlier call began.
-     * [onStarted] runs once playback is on it.
-     */
-    fun cast(
-        receiver: BridgeCastReceiver,
-        onStarted: () -> Unit,
+    /** One call to [cast]. [started] equals it once that start connects. */
+    class Attempt internal constructor(
+        private val number: Int,
     ) {
+        override fun equals(other: Any?) = other is Attempt && other.number == number
+
+        override fun hashCode() = number
+    }
+
+    /**
+     * Whether [attempt], what a place was given when it asked, is the start that connected. A place that
+     * asked nothing, or asked an earlier start that a later one replaced, gets false.
+     */
+    fun didStart(attempt: Attempt?): Boolean = attempt != null && attempt == _started.value
+
+    /**
+     * Switch playback to [receiver], calling off the start an earlier call began. Returns the attempt
+     * [started] becomes once playback is on it.
+     */
+    fun cast(receiver: BridgeCastReceiver): Attempt {
         job?.cancel()
+        val attempt = Attempt(++attempts)
         _failure.value = null
         _connecting.value = receiver
         job =
@@ -57,7 +78,7 @@ class CastStart(
                 try {
                     castTo(receiver.id)
                     _connecting.value = null
-                    onStarted()
+                    _started.value = attempt
                 } catch (e: BridgeException) {
                     logger.error("Failed to cast to ${receiver.id}", e)
                     _connecting.value = null
@@ -66,6 +87,7 @@ class CastStart(
                     }
                 }
             }
+        return attempt
     }
 
     /** The picker closed: what it showed of a failure goes with it. */
