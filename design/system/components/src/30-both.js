@@ -65,11 +65,11 @@
   // The outline form (info.circle, checkmark.circle, exclamationmark.circle): a ring, the mark solid inside it.
   var STATUS_RING = STATUS_CIRCLE + 'M12 3.6a8.4 8.4 0 1 1 0 16.8 8.4 8.4 0 1 1 0-16.8z';
   var STATUS_MATERIAL = { info: 'info', success: 'check_circle', warning: 'error', danger: 'error' };
-  // A tone's glyph in the tone's colour; set="mac" for macOS. `outline` draws the outline form, for a quiet notice. Neutral, accent and activity have none.
+  // A tone's glyph in the tone's colour; set="mac" for macOS. `outline` draws the outline form, for a quiet notice; `inline` sizes it at 1.19 times the text beside it instead of `size`; `muted` draws it in secondary text. Neutral, accent and activity have none.
   function StatusGlyph(props) {
     var tone = props.tone, size = Number(props.size || 15);
     if (!STATUS_MATERIAL[tone]) return null;
-    var cls = cx('bae-status-glyph', 'bae-tone-' + tone, props.muted && 'bae-status-glyph-muted', props.className);
+    var cls = cx('bae-status-glyph', 'bae-tone-' + tone, props.muted && 'bae-status-glyph-muted', props.inline && 'bae-status-glyph-inline', props.className);
     return props.set === 'mac'
       ? h('svg', { className: cls, width: size, height: size, viewBox: '2 2 20 20', 'aria-hidden': true, fill: 'currentColor' },
           props.outline ? [h('path', { key: 'r', d: STATUS_RING, fillRule: 'evenodd' }), h('path', { key: 'm', d: STATUS_MARK[tone] })] : h('path', { d: STATUS_CIRCLE + STATUS_MARK[tone], fillRule: 'evenodd' }))
@@ -79,7 +79,7 @@
   // `look.quiet` draws it with no fill, the screen's text, the glyph in its tone as an outline; `look.centered` centres everything in the space it's given (a view that failed whole), its glyph drawn by the caller in the title line (noticeGlyph); `look.stage` is for the lightbox's dark stage; `look.platform` is the app's own class (bae-m-notice-box or bae-a-notice-box).
   // The notice's glyph: an outline when quiet; centred, grey, in front of the title (it says something went wrong and nothing more).
   function noticeGlyph(tone, icon, look) {
-    return icon !== false && STATUS_MATERIAL[tone] ? h('span', { className: 'bae-notice-icon' }, h(StatusGlyph, { tone: tone, set: 'mac', outline: !!(look.quiet || look.centered), muted: !!look.centered })) : null;
+    return icon !== false && STATUS_MATERIAL[tone] ? h('span', { className: 'bae-notice-icon' }, h(StatusGlyph, { tone: tone, set: 'mac', inline: true, outline: !!(look.quiet || look.centered), muted: !!look.centered })) : null;
   }
   function NoticeBox(tone, icon, body, look) {
     var quiet = look.quiet;

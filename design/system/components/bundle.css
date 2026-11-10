@@ -25,7 +25,7 @@
 .bae-notice-with-icon { display: flex; align-items: flex-start; gap: var(--space-related); }
 /* The icon is 1.19 times the text, centred on the first line. */
 .bae-notice-icon { flex: none; display: flex; align-items: center; height: 1lh; }
-.bae-notice-icon .bae-status-glyph { width: 1.19em; height: 1.19em; }
+.bae-status-glyph-inline { width: 1.19em; height: 1.19em; }
 .bae-status-glyph { color: var(--bae-tone-icon, var(--bae-tone)); flex: none; overflow: visible; }
 /* The danger glyph is red mixed toward grey: still red, calmer than the warning's amber next to it. */
 .bae-notice-body { flex: 1; min-width: 0; }
@@ -39,7 +39,6 @@
 /* macOS draws secondary text in the system's own colour (mac-text-secondary); every Mac window, and a Mac board or preview outside one (bae-mac), takes it in place of text-secondary. */
 .bae-m-window, .bae-mac { --text-secondary: var(--mac-text-secondary); }
 .bae-notice:not(.bae-notice-quiet) { --text-secondary: color-mix(in srgb, var(--text-primary) 72%, transparent); }
-.bae-notice:not(.bae-notice-quiet) .bae-m-btn-secondary { background: color-mix(in srgb, var(--text-primary) 12%, transparent); }
 .bae-notice-title-strong { font-weight: 600; }
 .bae-notice-subtitle { color: var(--text-secondary); }
 .bae-m-notice { position: relative; display: flex; flex-direction: column; gap: 4px; }
@@ -56,7 +55,6 @@
 .bae-a-notice-dismiss { flex: none; margin: -14px -14px -14px -8px; }
 /* A toned notice has its own fill (in dark, the neutral one); its text and accent are on-notice and notice-accent, and its glyph keeps its tone. */
 .bae-notice.bae-tone-info:not(.bae-notice-quiet), .bae-notice.bae-tone-success:not(.bae-notice-quiet), .bae-notice.bae-tone-warning:not(.bae-notice-quiet), .bae-notice.bae-tone-danger:not(.bae-notice-quiet) { color: var(--on-notice); --text-primary: var(--on-notice); --accent: var(--notice-accent); }
-.bae-notice .bae-notice-icon .bae-status-glyph:not(.bae-status-glyph-muted) { color: var(--bae-tone-icon, var(--bae-tone)); }
 
 /* ---- macOS ---- */
 
@@ -68,7 +66,6 @@
 .bae-m-alert-buttons { display: flex; flex-direction: row-reverse; gap: 8px; margin-top: 6px; }
 .bae-m-alert-buttons > * { flex: 1; min-width: 0; }
 .bae-m-alert-buttons:has(> :nth-child(3)) { flex-direction: column; }
-.bae-m-alert-buttons .bae-m-btn { width: 100%; height: 28px; line-height: 28px; }
 .bae-m-sidebar { width: 190px; flex: none; margin: 8px 0 8px 8px; border-radius: 12px; background: var(--surface); box-shadow: 0 1px 4px var(--shadow); padding: 32px 8px 8px; box-sizing: border-box; display: flex; flex-direction: column; gap: 2px; position: relative; }
 .bae-m-lights { position: absolute; top: 14px; left: 14px; display: flex; gap: var(--space-related); }
 .bae-m-lights span { width: 12px; height: 12px; border-radius: 6px; background: #FF5F57; }
@@ -128,6 +125,9 @@
 .bae-m-btn.bae-m-btn-muted { color: var(--text-secondary); }
 .bae-m-btn-destructive { color: var(--danger); }
 .bae-m-btn-icon { width: var(--size-control); height: var(--size-control); padding: 0; background: none; color: var(--text-secondary); border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; vertical-align: -3px; }
+/* alert: the button of a MacAlert, filling its row, the large button's height. tinted: on a filled notice, the secondary button's fill is the notice's text at 12%, so it reads on any tone. */
+.bae-m-btn-alert { width: 100%; height: 28px; line-height: 28px; }
+.bae-m-btn-secondary.bae-m-btn-tinted { background: color-mix(in srgb, var(--text-primary) 12%, transparent); }
 .bae-m-btn:hover:not(:disabled) { box-shadow: inset 0 0 0 100px var(--hover); }
 .bae-m-btn-secondary:hover:not(:disabled) { box-shadow: inset 0 0 0 100px var(--hover), 0 0 0 0.5px var(--control-edge), 0 0.5px 1px var(--control-edge); }
 .bae-m-btn:active:not(:disabled) { box-shadow: inset 0 0 0 100px var(--pressed); }
@@ -193,7 +193,7 @@
 .bae-a-screen { position: relative; overflow: hidden; display: flex; flex-direction: column; background: var(--background); color: var(--text-primary); font: 400 14px var(--font-android); }
 .bae-a-topbar { flex: none; display: flex; align-items: center; gap: var(--space-inline); height: 64px; box-sizing: border-box; padding: 0 var(--space-inline); background: var(--background); }
 .bae-a-topbar h1 { margin: 0; padding-left: 12px; font: 400 22px/28px var(--font-android); }
-.bae-a-topbar .bae-a-iconbtn + h1 { padding-left: 0; }
+.bae-a-topbar h1.bae-a-topbar-title-after-back { padding-left: 0; }
 .bae-a-screen-above { flex: 1; min-height: 0; position: relative; display: flex; flex-direction: column; }
 .bae-a-keyboard { flex: none; display: flex; flex-direction: column; gap: 10px; padding: 10px 4px 0; background: var(--surface); }
 .bae-a-keys-row { display: flex; gap: 6px; }
@@ -285,15 +285,10 @@
 .bae-a-screen, .bae-preview-android { --bae-gap-bg: var(--background); }
 .bae-a-dialog { --bae-gap-bg: var(--elevated); }
 .bae-a-sheet { --bae-gap-bg: var(--surface); }
-.bae-a-screen .bae-progress-track, .bae-preview-android .bae-progress-track { height: 4px; border-radius: 2px; background: var(--accent-tint-strong); overflow: visible; }
-.bae-a-screen .bae-progress-track::after, .bae-preview-android .bae-progress-track::after { content: ''; position: absolute; right: 0; top: 0; width: 4px; height: 4px; border-radius: 2px; background: var(--accent); }
-.bae-a-screen .bae-progress-fill, .bae-preview-android .bae-progress-fill { border-radius: 2px; box-shadow: 4px 0 0 var(--bae-gap-bg); z-index: 1; }
-.bae-a-screen .bae-progress-moving, .bae-preview-android .bae-progress-moving { box-shadow: 4px 0 0 var(--bae-gap-bg), -4px 0 0 var(--bae-gap-bg); }
-.bae-a-fullplayer .bae-a-seek .bae-seek-track { height: 16px; border-radius: 8px; background: var(--accent-tint-strong); overflow: visible; }
-.bae-a-fullplayer .bae-a-seek .bae-seek-held { display: none; }
-.bae-a-fullplayer .bae-a-seek .bae-seek-played { border-radius: 8px 2px 2px 8px; }
-.bae-a-fullplayer .bae-a-seek .bae-seek-track::after { content: ''; position: absolute; right: 6px; top: 6px; width: 4px; height: 4px; border-radius: 2px; background: var(--accent); }
-.bae-a-fullplayer .bae-a-seek .bae-seek-thumb { width: 4px; height: 44px; margin: -22px 0 0 -2px; border-radius: 2px; box-shadow: 0 0 0 6px var(--bae-gap-bg); z-index: 1; }
+.bae-progress-android { height: 4px; border-radius: 2px; background: var(--accent-tint-strong); overflow: visible; }
+.bae-progress-android::after { content: ''; position: absolute; right: 0; top: 0; width: 4px; height: 4px; border-radius: 2px; background: var(--accent); }
+.bae-progress-android .bae-progress-fill { border-radius: 2px; box-shadow: 4px 0 0 var(--bae-gap-bg); z-index: 1; }
+.bae-progress-android .bae-progress-moving { box-shadow: 4px 0 0 var(--bae-gap-bg), -4px 0 0 var(--bae-gap-bg); }
 
 /* ---- previews ---- */
 
@@ -352,6 +347,8 @@
 .bae-art-missing { background-image: none !important; }
 .bae-art-shadow-tile { box-shadow: 0 9px 14px var(--shadow); }
 .bae-art-shadow-bar { box-shadow: 0 4px 8px var(--shadow); }
+/* ring: the open tile's accent ring, a gap of the window's background between it and the cover. */
+.bae-art.bae-art-ring { overflow: visible; box-shadow: 0 0 0 4.5px var(--background), 0 0 0 7.5px var(--accent); }
 .bae-accent { color: var(--accent); fill: var(--accent); }
 .bae-muted { color: var(--text-secondary); }
 .bae-glyph { flex: none; display: block; }
@@ -410,7 +407,6 @@
 .bae-m-tile { position: relative; display: flex; flex-direction: column; gap: 2px; padding: 6px; border-radius: var(--radius-card); min-width: 0; }
 .bae-m-tile-selected { background: var(--accent-tint); }
 .bae-m-tile-art { position: relative; margin-bottom: 6px; }
-.bae-m-tile-open .bae-m-tile-art .bae-art { overflow: visible; box-shadow: 0 0 0 4.5px var(--background), 0 0 0 7.5px var(--accent); }
 .bae-m-tile-menu { position: absolute; top: 6px; right: 6px; width: 28px; height: 28px; border-radius: 14px; display: flex; align-items: center; justify-content: center; background: var(--scrim); color: var(--on-fill); fill: currentColor; }
 .bae-m-tile-title { font: 500 13px var(--font-sans); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bae-m-tile-artist { font: 400 11.5px var(--font-sans); color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -457,9 +453,11 @@
 .bae-a-iconbtn { color: var(--text-primary); }
 /* tonal: Material's filled tonal icon button at its extra-small size, a 32dp tinted container (the touch target stays 48dp), for a control inside a line, such as the Activity sheet's Pause. */
 .bae-a-iconbtn-tonal { width: 32px; height: 32px; border-radius: 16px; background: var(--accent-tint); }
-.bae-a-icon-muted { color: var(--text-secondary); }
-.bae-a-icon-accent { color: var(--accent); }
-.bae-a-sync-warn { color: var(--warning-icon); }
+.bae-a-iconbtn-muted { color: var(--text-secondary); }
+.bae-a-iconbtn-accent { color: var(--accent); }
+.bae-a-iconbtn-warning { color: var(--warning-icon); }
+.bae-a-iconbtn-box-40 { width: 40px; height: 40px; }
+.bae-a-iconbtn-box-56 { width: 56px; height: 56px; }
 .bae-a-searchbar { flex: none; display: flex; align-items: center; gap: 4px; padding: 8px; background: var(--surface); }
 .bae-a-searchfield { flex: 1; min-width: 0; height: 56px; box-sizing: border-box; display: flex; align-items: center; gap: 8px; padding: 0 16px; border-radius: 28px; background: var(--elevated); font-size: 16px; fill: var(--text-secondary); }
 .bae-a-searchfield > span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -474,11 +472,15 @@
 .bae-a-np-text { min-width: 0; }
 .bae-a-np-title { font: 500 16px/24px var(--font-android); white-space: nowrap; overflow: hidden; }
 .bae-a-np-sub { font: 400 12px/16px var(--font-android); color: var(--text-secondary); white-space: nowrap; overflow: hidden; }
-.bae-a-npbar .bae-a-iconbtn { width: 40px; height: 40px; }
 .bae-a-playpause { position: relative; flex: none; display: inline-flex; align-items: center; justify-content: center; color: var(--text-primary); fill: currentColor; }
 .bae-a-seek { gap: 8px; font: 400 11px var(--font-android); padding-top: 4px; }
 .bae-a-seek .bae-seek-track { height: 4px; border-radius: 2px; }
 .bae-seek-thumb { position: absolute; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 7px; background: var(--accent); }
+.bae-a-seek-large .bae-seek-track { height: 16px; border-radius: 8px; background: var(--accent-tint-strong); overflow: visible; }
+.bae-a-seek-large .bae-seek-held { display: none; }
+.bae-a-seek-large .bae-seek-played { border-radius: 8px 2px 2px 8px; }
+.bae-a-seek-large .bae-seek-track::after { content: ''; position: absolute; right: 6px; top: 6px; width: 4px; height: 4px; border-radius: 2px; background: var(--accent); }
+.bae-a-seek-large .bae-seek-thumb { width: 4px; height: 44px; margin: -22px 0 0 -2px; border-radius: 2px; box-shadow: 0 0 0 6px var(--bae-gap-bg); z-index: 1; }
 .bae-a-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 12px; }
 .bae-a-tile { min-width: 0; display: flex; flex-direction: column; }
 .bae-a-tile .bae-art { margin-bottom: 6px; }
@@ -495,7 +497,6 @@
 .bae-a-track-title { font: 500 16px/24px var(--font-android); white-space: nowrap; overflow: hidden; }
 .bae-a-track-artist { font: 400 12px/16px var(--font-android); color: var(--text-secondary); white-space: nowrap; overflow: hidden; }
 .bae-a-track-time { font: 400 12px var(--font-android); color: var(--text-secondary); padding-left: 8px; }
-.bae-a-track .bae-a-iconbtn { color: var(--text-secondary); }
 .bae-a-eyebrow { padding-top: 8px; font: 500 14px/20px var(--font-android); color: var(--text-secondary); }
 .bae-a-browse { display: flex; align-items: center; gap: 12px; padding: 8px 16px; }
 .bae-a-browse-text { min-width: 0; }
@@ -618,7 +619,6 @@
 .bae-a-fp-title { margin-top: 24px; font: 700 24px/30px var(--font-android); letter-spacing: -0.5px; white-space: nowrap; overflow: hidden; }
 .bae-a-fp-artist { margin-bottom: 24px; font: 600 16px/24px var(--font-android); color: var(--text-secondary); white-space: nowrap; overflow: hidden; }
 .bae-a-fp-transport { display: flex; align-items: center; justify-content: center; gap: 24px; margin-top: 16px; }
-.bae-a-fp-transport .bae-a-iconbtn { width: 56px; height: 56px; }
 .bae-a-fp-repeat { display: flex; justify-content: center; margin-top: 16px; }
 .bae-a-fp-volume { display: flex; align-items: center; margin-top: 8px; }
 .bae-a-fp-slider { position: relative; flex: 1; height: 16px; margin: 0 8px; }
@@ -917,11 +917,7 @@
 /* On macOS Copy shows only under the pointer (or keyboard focus); on Android, with no pointer, it always shows. */
 .bae-errdis-panel-hover .bae-errdis-copy { opacity: 0; transition: opacity 0.12s; }
 .bae-errdis-panel-hover:hover .bae-errdis-copy, .bae-errdis-panel-hover:focus-within .bae-errdis-copy { opacity: 1; }
-.bae-errdis-panel .bae-a-iconbtn { position: absolute; top: 0; right: 0; width: 40px; height: 40px; }
-.bae-errdis-panel:has(.bae-a-iconbtn) { min-height: 40px; box-sizing: border-box; padding-right: 44px; }
-.bae-errdis-panel .bae-a-iconbtn svg { width: 16px; height: 16px; }
-.bae-errdis-panel .bae-a-iconbtn { color: var(--text-secondary); }
-[data-theme="light"] .bae-notice:not(.bae-tone-neutral):not(.bae-notice-quiet) .bae-errdis-panel { background: color-mix(in srgb, black 7%, transparent); }
+.bae-errdis-panel-android { min-height: 40px; box-sizing: border-box; padding-right: 44px; }
 
 /* ImportSheep: the parts' pivots in the drawing's units, what starts hidden, and the still pose. The motion itself is in src/36-import-sheep.js. */
 .bae-isheep { display: block; }

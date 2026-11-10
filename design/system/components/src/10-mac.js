@@ -93,7 +93,7 @@
       type: 'button',
       disabled: !!props.off,
       onClick: props.onClick,
-      className: cx('bae-m-btn', 'bae-m-btn-' + kind, props.size && props.size !== 'regular' && 'bae-m-btn-' + props.size, props.destructive && 'bae-m-btn-destructive', props.muted && 'bae-m-btn-muted')
+      className: cx('bae-m-btn', 'bae-m-btn-' + kind, props.size && props.size !== 'regular' && 'bae-m-btn-' + props.size, props.destructive && 'bae-m-btn-destructive', props.muted && 'bae-m-btn-muted', props.tinted && 'bae-m-btn-tinted')
     };
     if (kind === 'icon') {
       var icon = props.icon || 'copy';
@@ -177,6 +177,12 @@
       h('div', { className: 'bae-m-sheet-footer-lead' }, list[0]), list.slice(1));
   }
 
+  // A bar's track and fill. `value` is 0 to 1, or null for a wait of no known length, a moving bar; `android` draws Material's bar, with a gap before its end dot. `className` is for the caller's layout.
+  function ProgressBar(props) {
+    var known = props.value != null;
+    return h('div', { className: cx('bae-progress-track', props.android && 'bae-progress-android', props.className), role: 'progressbar', 'aria-valuenow': known ? Math.round(props.value * 100) : undefined },
+      h('div', { className: cx('bae-progress-fill', !known && 'bae-progress-moving'), style: known ? { width: (props.value * 100) + '%' } : null }));
+  }
   function Progress(prefix) {
     return function (props) {
       // A board passes value as text ("0.45"), so a number in any form is a known amount; no value is a wait of no known length, a moving bar.
@@ -184,8 +190,7 @@
       var known = !isNaN(value);
       return h('div', { className: prefix + '-progress' },
         props.label ? h('div', null, props.label) : null,
-        h('div', { className: 'bae-progress-track', role: 'progressbar', 'aria-valuenow': known ? Math.round(value * 100) : undefined },
-          h('div', { className: cx('bae-progress-fill', !known && 'bae-progress-moving'), style: known ? { width: (value * 100) + '%' } : null })));
+        h(ProgressBar, { value: known ? value : null, android: prefix === 'bae-a' }));
     };
   }
   function Spinner(prefix, size) {

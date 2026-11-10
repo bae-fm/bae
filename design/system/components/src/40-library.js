@@ -10,7 +10,7 @@
     if (size) { style.width = size; style.height = size; }
     if (props.round) style.borderRadius = '50%';
     if (!props.missing) style.backgroundImage = 'linear-gradient(135deg, hsl(' + hue + ' 42% 52%), hsl(' + ((hue + 48) % 360) + ' 46% 24%))';
-    return h('div', { className: cx('bae-art', props.missing && 'bae-art-missing', props.shadow && 'bae-art-shadow-' + props.shadow, props.className), style: style, role: 'img', 'aria-label': props.label || props.title || 'Cover' }, props.children);
+    return h('div', { className: cx('bae-art', props.missing && 'bae-art-missing', props.shadow && 'bae-art-shadow-' + props.shadow, props.ring && 'bae-art-ring', props.className), style: style, role: 'img', 'aria-label': props.label || props.title || 'Cover' }, props.children);
   }
 
   var SF = {
@@ -37,6 +37,7 @@
     return h('svg', { width: s, height: s, viewBox: '0 0 24 24', 'aria-hidden': true, className: cx('bae-glyph', props.className), fill: 'currentColor' }, h('path', { d: set[props.name] || set.ellipsis || '', fillRule: 'evenodd' }));
   }
 
+  // `large` is Android's full player's bar: a tall track with a tall thumb, and no held parts.
   // Position and the parts this device holds (`held`, "0-0.4,0.6-0.7"), drawn faint under what has played.
   function heldRanges(held) {
     if (held == null || held === '') return [];
@@ -46,7 +47,7 @@
   function SeekLine(prefix) {
     return function (props) {
       var pos = Number(props.position || 0);
-      return h('div', { className: cx('bae-seek', prefix + '-seek', props.off && 'bae-seek-off') },
+      return h('div', { className: cx('bae-seek', prefix + '-seek', props.off && 'bae-seek-off', props.large && prefix + '-seek-large') },
         h('span', { className: 'bae-seek-time' }, props.elapsed || '0:00'),
         h('div', { className: 'bae-seek-track', role: 'slider', 'aria-label': 'Position', 'aria-valuenow': Math.round(pos * 100) },
           heldRanges(props.held).map(function (r, i) { return h('div', { key: i, className: 'bae-seek-held', style: { left: (r[0] * 100) + '%', width: ((r[1] - r[0]) * 100) + '%' } }); }),
@@ -125,9 +126,9 @@
   }
 
   function MacAlbumTile(props) {
-    return h('div', { className: cx('bae-m-tile', props.selected && 'bae-m-tile-selected', props.open && 'bae-m-tile-open') },
+    return h('div', { className: cx('bae-m-tile', props.selected && 'bae-m-tile-selected') },
       h('div', { className: 'bae-m-tile-art' },
-        h(Artwork, { title: props.title, missing: props.noCover, radius: 10, shadow: 'tile' }),
+        h(Artwork, { title: props.title, missing: props.noCover, radius: 10, shadow: 'tile', ring: props.open }),
         props.hover ? h('span', { className: 'bae-m-tile-menu', 'aria-label': 'Album options' }, h(Glyph, { set: 'mac', name: 'ellipsis', size: 13 })) : null),
       h('div', { className: 'bae-m-tile-title' }, props.title),
       h('div', { className: 'bae-m-tile-artist' }, props.artist),
@@ -258,12 +259,12 @@
       h('div', { className: 'bae-a-np-row' },
         props.error ? h('div', { className: 'bae-a-np-info bae-a-np-error' }, props.error) : h('div', { className: 'bae-a-np-info' }, h(Artwork, { title: props.album || props.title, size: 48, radius: 6 }),
           h('div', { className: 'bae-a-np-text' }, h('div', { className: 'bae-a-np-title' }, props.title), h('div', { className: 'bae-a-np-sub' }, props.artist))),
-        h(AndroidIconButton, { icon: 'previous', label: 'Previous' }),
+        h(AndroidIconButton, { box: 40, icon: 'previous', label: 'Previous' }),
         h(AndroidPlayPause, { playing: props.playing, waiting: props.waiting }),
-        h(AndroidIconButton, { icon: 'next', label: 'Next' }),
-        props.castOff ? null : h(AndroidIconButton, { icon: 'cast', label: 'Cast', className: props.casting ? 'bae-a-icon-accent' : 'bae-a-icon-muted' }),
-        h(AndroidIconButton, { icon: 'queue', label: 'Queue' }),
-        h(AndroidIconButton, { icon: 'repeat', label: 'Repeat', className: props.repeat ? 'bae-a-icon-accent' : 'bae-a-icon-muted' })),
+        h(AndroidIconButton, { box: 40, icon: 'next', label: 'Next' }),
+        props.castOff ? null : h(AndroidIconButton, { box: 40, icon: 'cast', label: 'Cast', tone: props.casting ? 'accent' : 'muted' }),
+        h(AndroidIconButton, { box: 40, icon: 'queue', label: 'Queue' }),
+        h(AndroidIconButton, { box: 40, icon: 'repeat', label: 'Repeat', tone: props.repeat ? 'accent' : 'muted' })),
       h(AndroidSeekBar, { position: props.position, held: props.held, elapsed: props.elapsed, duration: props.duration }));
   }
 
@@ -276,7 +277,7 @@
           h('h1', { className: 'bae-a-libhead-title' }, h('span', null, props.view || 'Albums'), h(Glyph, { name: 'down', size: collapsed ? 16 : 20, className: 'bae-a-libhead-chevron' })),
           h(AndroidIconButton, { icon: 'search', label: 'Search' }),
           props.sync === 'moving' ? h('span', { className: 'bae-a-iconbtn' }, h(AndroidSpinner, { size: 16 })) : null,
-          props.sync === 'attention' ? h(AndroidIconButton, { icon: 'warning', label: 'Activity', className: 'bae-a-sync-warn' }) : null,
+          props.sync === 'attention' ? h(AndroidIconButton, { icon: 'warning', label: 'Activity', tone: 'warning' }) : null,
           props.sync === 'paused' ? h(AndroidIconButton, { icon: 'pause', label: 'Activity' }) : null,
           h(AndroidIconButton, { icon: 'more', label: 'More options' })),
       h('main', { className: 'bae-a-libbody' }, props.children),
@@ -315,7 +316,7 @@
       h('span', { className: 'bae-a-track-lead' }, props.current ? h(Glyph, { name: props.playing ? 'nowplaying' : 'play', size: 24, className: 'bae-accent' }) : h('span', { className: 'bae-a-track-pos' }, props.position)),
       h('div', { className: 'bae-a-track-text' }, h('div', { className: cx('bae-a-track-title', props.current && 'bae-accent') }, props.title), props.artist ? h('div', { className: 'bae-a-track-artist' }, props.artist) : null),
       h('span', { className: 'bae-a-track-time' }, props.duration),
-      h(AndroidIconButton, { icon: 'more', label: 'Track options', className: 'bae-a-icon-muted' }));
+      h(AndroidIconButton, { icon: 'more', label: 'Track options', tone: 'muted' }));
   }
 
   function AndroidEyebrow(props) { return h('div', { className: 'bae-a-eyebrow' }, props.children); }

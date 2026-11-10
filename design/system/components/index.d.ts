@@ -41,8 +41,8 @@ export declare function MacItem(props: { lead?: React.ReactNode; trail?: React.R
 export interface MacFieldRowProps { label?: string; labelWidth?: number; alignText?: boolean; children?: React.ReactNode }
 export declare function MacFieldRow(props: MacFieldRowProps): React.ReactElement;
 
-/** kind: primary is the one action a screen is for; secondary is everything else; borderless is words with no chrome, for an action at the end of a row; icon is a glyph-only button (label is its accessible name). destructive colors the words danger. */
-export interface MacButtonProps { kind?: 'primary' | 'secondary' | 'borderless' | 'icon'; icon?: 'copy' | 'check'; size?: 'small' | 'regular' | 'large'; label?: string; destructive?: boolean; muted?: boolean; off?: boolean; onClick?: () => void; children?: React.ReactNode }
+/** size alert is the button of a MacAlert; tinted is a secondary button on a filled notice. kind: primary is the one action a screen is for; secondary is everything else; borderless is words with no chrome, for an action at the end of a row; icon is a glyph-only button (label is its accessible name). destructive colors the words danger. */
+export interface MacButtonProps { kind?: 'primary' | 'secondary' | 'borderless' | 'icon'; icon?: 'copy' | 'check'; size?: 'small' | 'regular' | 'large' | 'alert'; label?: string; destructive?: boolean; muted?: boolean; tinted?: boolean; off?: boolean; onClick?: () => void; children?: React.ReactNode }
 export declare function MacButton(props: MacButtonProps): React.ReactElement;
 
 /** A text field with its label on the left (labelWidth px), or the label as a placeholder (labelHidden). note is a grey line under it; error a red one, shown when state is error. Leave out label when a MacFieldRow holds the field and gives the label. Children sit after the field. */
@@ -133,8 +133,8 @@ export declare function AndroidKeyboard(props: AndroidKeyboardProps): React.Reac
 export interface AndroidButtonProps { kind?: 'filled' | 'tonal' | 'outlined' | 'text'; label?: string; large?: boolean; alignTo?: 'text' | 'field'; destructive?: boolean; neutral?: boolean; off?: boolean; onClick?: () => void; children?: React.ReactNode }
 export declare function AndroidButton(props: AndroidButtonProps): React.ReactElement;
 
-/** A 48 dp glyph button: a Material Symbol by name (back, close, more, search, …). label is its accessible name. */
-export interface AndroidIconButtonProps { icon: string; label?: string; size?: number; tonal?: boolean }
+/** A 48 dp glyph button: a Material Symbol by name (back, close, more, search, …). label is its accessible name. tone colours the glyph (secondary text, the accent, or the warning); box sets the touch box's side when it isn't 48. */
+export interface AndroidIconButtonProps { icon: string; label?: string; size?: number; tonal?: boolean; tone?: 'muted' | 'accent' | 'warning'; box?: 40 | 56; className?: string }
 export declare function AndroidIconButton(props: AndroidIconButtonProps): React.ReactElement;
 
 /** An on/off switch; label is its accessible name. */
@@ -190,17 +190,17 @@ export interface NoticeProps { tone?: StatusTone; title?: string; subtitle?: str
 /** A tone's glyph in the tone's colour, a filled circle with its mark; `set: 'mac'` draws the macOS stand-in. Neutral, accent and activity draw nothing. */
 /** Material's disclosure row: its own card, expand_more or expand_less at the end; the AndroidRows it shows join the card. */
 export declare function AndroidDisclosure(props: { label: string; summary?: string; open?: boolean; children?: React.ReactNode }): React.ReactElement;
-export declare function StatusGlyph(props: { tone: StatusTone; set?: 'mac'; outline?: boolean; muted?: boolean; size?: number; className?: string }): React.ReactElement | null;
+export declare function StatusGlyph(props: { tone: StatusTone; set?: 'mac'; outline?: boolean; muted?: boolean; inline?: boolean; size?: number; className?: string }): React.ReactElement | null;
 
 /** A cover or picture. Boards give each title its own stand-in colors; `missing` is a plain tile. */
-export interface ArtworkProps { title?: string; seed?: string; size?: number; radius?: number; round?: boolean; missing?: boolean; shadow?: 'tile' | 'bar'; label?: string; children?: React.ReactNode }
+export interface ArtworkProps { title?: string; seed?: string; size?: number; radius?: number; round?: boolean; missing?: boolean; shadow?: 'tile' | 'bar'; ring?: boolean; label?: string; children?: React.ReactNode }
 export declare function Artwork(props: ArtworkProps): React.ReactElement;
 export interface NowPlayingProps { trackTitle?: string; trackArtist?: string; trackAlbum?: string; playing?: boolean; waiting?: boolean; position?: number; held?: number | string; elapsed?: string; duration?: string; repeat?: boolean; casting?: string }
 export interface MacMainWindowProps extends NowPlayingProps { section?: 'Library' | 'Import'; search?: string; searchFocused?: boolean; sync?: 'moving' | 'attention' | 'paused'; shuffle?: boolean; queueOpen?: boolean; width?: number; height?: number; children?: React.ReactNode }
 export declare function MacMainWindow(props: MacMainWindowProps): React.ReactElement;
 export interface MacNowPlayingBarProps { title?: string; artist?: string; album?: string; playing?: boolean; waiting?: boolean; position?: number; held?: number | string; elapsed?: string; duration?: string; shuffle?: boolean; repeat?: boolean; casting?: string; queueOpen?: boolean; volume?: number; noCover?: boolean }
 export declare function MacNowPlayingBar(props: MacNowPlayingBarProps): React.ReactElement;
-export interface SeekBarProps { position?: number; held?: number | string; elapsed?: string; duration?: string; off?: boolean }
+export interface SeekBarProps { position?: number; held?: number | string; elapsed?: string; duration?: string; off?: boolean; large?: boolean }
 export declare function MacSeekBar(props: SeekBarProps): React.ReactElement;
 export declare function AndroidSeekBar(props: SeekBarProps): React.ReactElement;
 export interface MacPlayPauseProps { playing?: boolean; waiting?: boolean }

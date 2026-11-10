@@ -150,7 +150,7 @@
     var tone = props.tone || 'neutral';
     var centered = props.layout === 'centered';
     // Centred, the notice is quiet words: its buttons' labels are secondary text, so nothing in it is brighter than the message.
-    var primary = props.action ? h(MacButton, { key: 'p', muted: centered }, props.action) : null;
+    var primary = props.action ? h(MacButton, { key: 'p', muted: centered, tinted: !props.quiet }, props.action) : null;
     var secondary = props.secondary ? h(MacButton, { key: 's', kind: 'borderless', muted: centered }, props.secondary) : null;
     var dismiss = props.dismiss ? h('span', { key: 'x', className: 'bae-m-notice-dismiss' }, h(MacIconButton, { icon: 'close', size: 14, faint: true, label: 'Dismiss' })) : null;
     if (centered) {
@@ -190,7 +190,7 @@
       return row(key, h('div', { className: 'bae-m-actline bae-m-actline-xfer' },
         h('div', { className: 'bae-m-actxfer' }, h('span', null, label), h('span', { className: 'bae-m-actxfer-end' }, count ? h('span', { className: 'bae-muted bae-num' }, count) : null,
           held != null ? h(MacIconButton, { icon: held ? 'play' : 'pause', size: 13, small: true, boxed: true, label: held ? 'Resume' : 'Pause' }) : null)),
-        h('div', { className: 'bae-progress-track bae-m-actxfer-bar' }, h('div', { className: cx('bae-progress-fill', progress == null && 'bae-progress-moving'), style: progress == null ? null : { width: (Number(progress) * 100) + '%' } }))));
+        h(ProgressBar, { value: progress == null ? null : Number(progress), className: 'bae-m-actxfer-bar' })));
     };
     var out = [];
     var problems = kids(props.children).map(function (p, i) { return row('c' + i, p); }).concat([
@@ -214,7 +214,7 @@
   // ---- Android: sync activity and Downloads ----
   // MacErrorDetails on Android: the panel with a copy icon button at its corner, in a dialog.
   function AndroidErrorDetails(props) {
-    return h('div', { className: 'bae-errdis-panel' }, h('div', { className: 'bae-errdis-chain' }, props.details), h('span', { className: 'bae-errdis-copy' }, h(AndroidIconButton, { icon: 'copy', label: 'Copy details' })));
+    return h('div', { className: 'bae-errdis-panel bae-errdis-panel-android' }, h('div', { className: 'bae-errdis-chain' }, props.details), h('span', { className: 'bae-errdis-copy' }, h(AndroidIconButton, { icon: 'copy', label: 'Copy details', size: 16, box: 40, tone: 'muted' })));
   }
   // Android's notice: MacNotice's parts from Android's own, both buttons text buttons; centred, the primary is an outlined button. Details opens an AndroidDialog holding `AndroidErrorDetails`.
   function AndroidNotice(props) {
@@ -222,7 +222,7 @@
     var centered = props.layout === 'centered';
     var primary = props.action ? h(AndroidButton, { key: 'p', kind: centered ? 'tonal' : 'text' }, props.action) : null;
     var secondary = props.secondary ? h(AndroidButton, { key: 's', kind: 'text' }, props.secondary) : null;
-    var dismiss = props.dismiss ? h('span', { key: 'x', className: 'bae-a-notice-dismiss' }, h(AndroidIconButton, { icon: 'close', size: 20, label: 'Dismiss', className: 'bae-a-icon-muted' })) : null;
+    var dismiss = props.dismiss ? h('span', { key: 'x', className: 'bae-a-notice-dismiss' }, h(AndroidIconButton, { icon: 'close', size: 20, label: 'Dismiss', tone: 'muted' })) : null;
     if (centered) {
       // The glyph sits beside the title only; a subtitle is its own smaller, grey line under them, so the two lines read as a heading and what to do.
       var title = h(React.Fragment, null,
@@ -250,7 +250,7 @@
       return h('div', { key: key, className: cx('bae-a-actxfer', tap && 'bae-a-act-tap') },
         h('div', { className: 'bae-a-actxfer-line' }, h('span', null, label), h('span', { className: 'bae-a-actxfer-end' }, count ? h('span', { className: 'bae-muted' }, count) : null,
           held != null ? h(AndroidIconButton, { icon: held ? 'play' : 'pause', size: 18, tonal: true, label: held ? 'Resume' : 'Pause' }) : null)),
-        h('div', { className: 'bae-progress-track' }, h('div', { className: cx('bae-progress-fill', progress == null && 'bae-progress-moving'), style: progress == null ? null : { width: (Number(progress) * 100) + '%' } })));
+        h(ProgressBar, { android: true, value: progress == null ? null : Number(progress) }));
     };
     return h('div', { className: 'bae-a-act' },
       h('div', { className: 'bae-a-act-title' }, 'Activity'),
@@ -285,7 +285,7 @@
     return h('div', { className: 'bae-a-dlrow2' },
       h('div', { className: 'bae-a-dlrow2-head' },
         h('div', { className: cx('bae-a-browse-name', !props.title && 'bae-a-dlrow2-gone') }, props.title || 'Release no longer in library'),
-        h(AndroidIconButton, { icon: 'close', label: 'Cancel', className: 'bae-a-icon-muted bae-a-dlrow2-cancel' })),
+        h(AndroidIconButton, { icon: 'close', label: 'Cancel', tone: 'muted', className: 'bae-a-dlrow2-cancel' })),
       h('div', { className: 'bae-a-browse-count' }, props.detail),
       state);
   }

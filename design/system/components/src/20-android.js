@@ -4,7 +4,7 @@
     var top = [
       props.title ? h('header', { key: 'top', className: 'bae-a-topbar' },
         props.back ? h(AndroidIconButton, { icon: 'back', label: 'Back' }) : null,
-        h('h1', null, props.title)) : null,
+        h('h1', { className: props.back ? 'bae-a-topbar-title-after-back' : null }, props.title)) : null,
       h('main', { key: 'main', className: 'bae-a-main' }, props.children)];
     // keyboard: a field has focus, so the keyboard is up and the screen, a dialog over it included, fits in the space above it.
     return h('div', { className: 'bae-a-screen', style: { width: Number(props.width || 412), height: Number(props.height || 916) } },
@@ -62,8 +62,9 @@
       props.children != null ? props.children : props.label);
   }
 
+  // `tonal` is the small disc on the accent tint; `tone` colours the glyph (muted: secondary text, accent, warning); `box` is the touch box's side in px when it isn't Material's 48. `className` is only for the caller's layout.
   function AndroidIconButton(props) {
-    return h('button', { type: 'button', className: cx('bae-a-iconbtn', props.tonal && 'bae-a-iconbtn-tonal', props.className), 'aria-label': props.label || props.icon },
+    return h('button', { type: 'button', className: cx('bae-a-iconbtn', props.tonal && 'bae-a-iconbtn-tonal', props.tone && 'bae-a-iconbtn-' + props.tone, props.box && 'bae-a-iconbtn-box-' + props.box, props.className), 'aria-label': props.label || props.icon },
       h(Glyph, { name: props.icon || 'more', size: props.size || 24 }));
   }
 
