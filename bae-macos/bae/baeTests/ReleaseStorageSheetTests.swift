@@ -10,8 +10,8 @@ struct ReleaseStorageSheetTests {
     /// The sheet follows the release's live read, so a storage action's
     /// result shows in its status band while it stays open: here the
     /// release it opened on at rest on this Mac is read again uploading, and
-    /// the band draws the upload's native bar. The band's words for each
-    /// state are the `release-storage-sheet` shot's.
+    /// the band draws the upload's pill with its native fill. The band's
+    /// words for each state are the `release-storage-sheet` shot's.
     @Test("The Storage sheet shows the release as its read gives it now")
     func theSheetFollowsTheReleasesRead() async throws {
         let album = try #require(PreviewData.albumDetails["a-01"])
@@ -62,16 +62,16 @@ struct ReleaseStorageSheetTests {
             size: size
         ) { _, host in
             try await SnapshotTestSupport.settle(host)
-            #expect(uploadBars(in: host) == 0)
+            #expect(uploadFills(in: host) == 0)
             deliver.yield(uploading)
-            try await Wait.untilLaidOut(host) { uploadBars(in: host) == 1 }
+            try await Wait.untilLaidOut(host) { uploadFills(in: host) == 1 }
         }
     }
 
-    /// The native bars the band draws for a transfer.
-    private func uploadBars(in host: NSView) -> Int {
+    /// The native fills the band's pill draws for a transfer.
+    private func uploadFills(in host: NSView) -> Int {
         SnapshotTestSupport.descendants(of: host)
-            .filter { $0 is StreamBarNSView }
+            .filter { $0 is ChipFillNSView }
             .count
     }
 
