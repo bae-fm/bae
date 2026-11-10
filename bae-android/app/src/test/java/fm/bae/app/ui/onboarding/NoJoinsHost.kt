@@ -10,6 +10,7 @@ import uniffi.bae_bridge.BridgeLibraryClosing
 import uniffi.bae_bridge.BridgeLibraryOpening
 import uniffi.bae_bridge.BridgeLibraryRemoval
 import uniffi.bae_bridge.BridgeLibrarySetup
+import uniffi.bae_bridge.BridgeLibraryStanding
 import uniffi.bae_bridge.BridgeReplacedBy
 import uniffi.bae_bridge.BridgeS3Credentials
 import uniffi.bae_bridge.BridgeSavePreset
@@ -46,6 +47,8 @@ internal open class NoJoinsHost : EditionFakeBridgeHost() {
     }
 
     override suspend fun listLibraries(): List<BridgeLibrary> = unfaked("listLibraries")
+
+    override suspend fun libraryStanding(libraryId: String): BridgeLibraryStanding = unfaked("libraryStanding")
 
     override suspend fun removeUnopenableLibrary(
         libraryId: String,
