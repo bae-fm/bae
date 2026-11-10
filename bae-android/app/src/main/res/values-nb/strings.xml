@@ -334,7 +334,7 @@
     <string name="device_removed_title">Enheten blir fjernet</string>
     <string name="device_cut_off_confirm">Jeg har koblet fra denne enheten</string>
     <string name="device_cut_off_not_yet">Ikke ennå</string>
-    <string name="device_cut_off_running_title">En forespørsel til skyen kjører fortsatt</string>
+    <string name="device_cut_off_running_title">Denne enheten synkroniserer fortsatt med skyen</string>
     <string name="device_cut_off_running_body">Vent til den er ferdig, og prøv igjen.</string>
     <string name="device_cut_off_not_gone_title">Fjerningen har ikke nådd denne enheten ennå</string>
     <string name="device_cut_off_not_gone_body">Prøv igjen etter neste synkronisering.</string>

@@ -348,7 +348,7 @@
     <string name="device_removed_title">Zariadenie bude odstránené</string>
     <string name="device_cut_off_confirm">Toto zariadenie som odpojil(a)</string>
     <string name="device_cut_off_not_yet">Ešte nie</string>
-    <string name="device_cut_off_running_title">Požiadavka na cloud stále beží</string>
+    <string name="device_cut_off_running_title">Toto zariadenie sa stále synchronizuje s cloudom</string>
     <string name="device_cut_off_running_body">Počkajte, kým skončí, a skúste to znova.</string>
     <string name="device_cut_off_not_gone_title">Odstránenie ešte nedorazilo na toto zariadenie</string>
     <string name="device_cut_off_not_gone_body">Skúste to znova po ďalšej synchronizácii.</string>

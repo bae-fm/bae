@@ -336,7 +336,7 @@
     <string name="device_removed_title">Cihaz kaldırılacak</string>
     <string name="device_cut_off_confirm">Bu cihazın erişimini kestim</string>
     <string name="device_cut_off_not_yet">Henüz değil</string>
-    <string name="device_cut_off_running_title">Buluta yönelik bir istek hâlâ çalışıyor</string>
+    <string name="device_cut_off_running_title">Bu cihaz hâlâ bulutla eşitleniyor</string>
     <string name="device_cut_off_running_body">Bitmesini bekleyin, sonra tekrar deneyin.</string>
     <string name="device_cut_off_not_gone_title">Kaldırma işlemi henüz bu cihaza ulaşmadı</string>
     <string name="device_cut_off_not_gone_body">Bir sonraki senkronizasyondan sonra tekrar deneyin.</string>

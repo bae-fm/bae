@@ -389,7 +389,7 @@
     <string name="device_removed_title">The device will be removed</string>
     <string name="device_cut_off_confirm">I cut off this device</string>
     <string name="device_cut_off_not_yet">Not yet</string>
-    <string name="device_cut_off_running_title">A request to the cloud is still running</string>
+    <string name="device_cut_off_running_title">This device is still syncing with the cloud</string>
     <string name="device_cut_off_running_body">Wait for it to end, then try again.</string>
     <string name="device_cut_off_not_gone_title">The removal hasn\'t reached this device yet</string>
     <string name="device_cut_off_not_gone_body">Try again after the next sync.</string>

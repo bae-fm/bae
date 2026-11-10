@@ -364,7 +364,7 @@
     <string name="device_removed_title">ستتم إزالة الجهاز</string>
     <string name="device_cut_off_confirm">لقد فصلت هذا الجهاز</string>
     <string name="device_cut_off_not_yet">ليس بعد</string>
-    <string name="device_cut_off_running_title">طلب إلى السحابة لا يزال قيد التنفيذ</string>
+    <string name="device_cut_off_running_title">هذا الجهاز لا يزال يزامن مع السحابة</string>
     <string name="device_cut_off_running_body">انتظر حتى ينتهي، ثم حاول مرة أخرى.</string>
     <string name="device_cut_off_not_gone_title">إزالة الجهاز لم تصل إلى هذا الجهاز بعد</string>
     <string name="device_cut_off_not_gone_body">حاول مرة أخرى بعد المزامنة التالية.</string>

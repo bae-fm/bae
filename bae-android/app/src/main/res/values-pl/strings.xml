@@ -350,7 +350,7 @@
     <string name="device_removed_title">Urządzenie zostanie usunięte</string>
     <string name="device_cut_off_confirm">Odciąłem(-am) to urządzenie</string>
     <string name="device_cut_off_not_yet">Jeszcze nie</string>
-    <string name="device_cut_off_running_title">Żądanie do chmury wciąż trwa</string>
+    <string name="device_cut_off_running_title">To urządzenie wciąż synchronizuje się z chmurą</string>
     <string name="device_cut_off_running_body">Poczekaj, aż się zakończy, i spróbuj ponownie.</string>
     <string name="device_cut_off_not_gone_title">Usunięcie nie dotarło jeszcze na to urządzenie</string>
     <string name="device_cut_off_not_gone_body">Spróbuj ponownie po następnej synchronizacji.</string>

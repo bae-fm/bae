@@ -336,7 +336,7 @@
     <string name="device_removed_title">Das Gerät wird entfernt</string>
     <string name="device_cut_off_confirm">Ich habe dieses Gerät getrennt</string>
     <string name="device_cut_off_not_yet">Noch nicht</string>
-    <string name="device_cut_off_running_title">Eine Anfrage an die Cloud läuft noch</string>
+    <string name="device_cut_off_running_title">Dieses Gerät synchronisiert noch mit der Cloud</string>
     <string name="device_cut_off_running_body">Warte, bis sie beendet ist, und versuche es dann erneut.</string>
     <string name="device_cut_off_not_gone_title">Das Entfernen ist noch nicht auf diesem Gerät angekommen</string>
     <string name="device_cut_off_not_gone_body">Versuche es nach der nächsten Synchronisierung erneut.</string>

@@ -341,7 +341,7 @@
     <string name="device_removed_title">Dispozitivul va fi eliminat</string>
     <string name="device_cut_off_confirm">Am deconectat acest dispozitiv</string>
     <string name="device_cut_off_not_yet">Încă nu</string>
-    <string name="device_cut_off_running_title">O cerere către cloud încă rulează</string>
+    <string name="device_cut_off_running_title">Acest dispozitiv încă se sincronizează cu cloudul</string>
     <string name="device_cut_off_running_body">Așteaptă să se termine, apoi încearcă din nou.</string>
     <string name="device_cut_off_not_gone_title">Eliminarea nu a ajuns încă pe acest dispozitiv</string>
     <string name="device_cut_off_not_gone_body">Încearcă din nou după următoarea sincronizare.</string>

@@ -329,7 +329,7 @@
     <string name="device_removed_title">기기가 제거됩니다</string>
     <string name="device_cut_off_confirm">이 기기의 접근을 차단했습니다</string>
     <string name="device_cut_off_not_yet">아직 아님</string>
-    <string name="device_cut_off_running_title">클라우드에 대한 요청이 아직 실행 중입니다</string>
+    <string name="device_cut_off_running_title">이 기기는 아직 클라우드와 동기화 중입니다</string>
     <string name="device_cut_off_running_body">요청이 끝날 때까지 기다린 다음 다시 시도하세요.</string>
     <string name="device_cut_off_not_gone_title">제거가 아직 이 기기에 도착하지 않았습니다</string>
     <string name="device_cut_off_not_gone_body">다음 동기화 후에 다시 시도하세요.</string>

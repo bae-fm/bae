@@ -2680,8 +2680,8 @@ read fails the app logs it and offers nothing. Coven refuses a device the
 history doesn't have removed yet, which the removal on this device may not have
 reached; the app then says the removal hasn't reached this device yet and asks
 to **Try again** after the next sync, or **Not yet**. While a request to one of
-the accounts runs, coven changes nothing and the app says a request to the
-storage is still running, with the same two buttons. Another person's device
+the accounts runs, coven changes nothing and the app says this device is still
+syncing with the cloud, with the same two buttons. Another person's device
 removed by an admin gets only **OK**: its person does the step.
 
 A new phone's first screen shows bae's sheep and name over "Your music,

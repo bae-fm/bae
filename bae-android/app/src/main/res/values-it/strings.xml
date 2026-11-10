@@ -341,7 +341,7 @@
     <string name="device_removed_title">Il dispositivo verrà rimosso</string>
     <string name="device_cut_off_confirm">Ho disconnesso questo dispositivo</string>
     <string name="device_cut_off_not_yet">Non ancora</string>
-    <string name="device_cut_off_running_title">Una richiesta al cloud è ancora in corso</string>
+    <string name="device_cut_off_running_title">Questo dispositivo è ancora in sincronizzazione con il cloud</string>
     <string name="device_cut_off_running_body">Attendi che finisca, poi riprova.</string>
     <string name="device_cut_off_not_gone_title">La rimozione non è ancora arrivata su questo dispositivo</string>
     <string name="device_cut_off_not_gone_body">Riprova dopo la prossima sincronizzazione.</string>

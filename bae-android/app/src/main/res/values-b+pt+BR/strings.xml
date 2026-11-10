@@ -341,7 +341,7 @@
     <string name="device_removed_title">O dispositivo será removido</string>
     <string name="device_cut_off_confirm">Eu desconectei este dispositivo</string>
     <string name="device_cut_off_not_yet">Ainda não</string>
-    <string name="device_cut_off_running_title">Uma solicitação à nuvem ainda está em andamento</string>
+    <string name="device_cut_off_running_title">Este dispositivo ainda está sincronizando com a nuvem</string>
     <string name="device_cut_off_running_body">Aguarde o término e tente novamente.</string>
     <string name="device_cut_off_not_gone_title">A remoção ainda não chegou a este dispositivo</string>
     <string name="device_cut_off_not_gone_body">Tente novamente após a próxima sincronização.</string>

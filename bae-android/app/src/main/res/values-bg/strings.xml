@@ -336,7 +336,7 @@
     <string name="device_removed_title">Устройството ще бъде премахнато</string>
     <string name="device_cut_off_confirm">Прекъснах достъпа на това устройство</string>
     <string name="device_cut_off_not_yet">Още не</string>
-    <string name="device_cut_off_running_title">Заявка към облака още се изпълнява</string>
+    <string name="device_cut_off_running_title">Това устройство още се синхронизира с облака</string>
     <string name="device_cut_off_running_body">Изчакайте да приключи и опитайте отново.</string>
     <string name="device_cut_off_not_gone_title">Премахването още не е стигнало до това устройство</string>
     <string name="device_cut_off_not_gone_body">Опитайте отново след следващото синхронизиране.</string>

@@ -334,7 +334,7 @@
     <string name="device_removed_title">Η συσκευή θα αφαιρεθεί</string>
     <string name="device_cut_off_confirm">Έχω αποκόψει αυτή τη συσκευή</string>
     <string name="device_cut_off_not_yet">Όχι ακόμα</string>
-    <string name="device_cut_off_running_title">Ένα αίτημα προς το cloud εκτελείται ακόμα</string>
+    <string name="device_cut_off_running_title">Αυτή η συσκευή εξακολουθεί να συγχρονίζεται με το cloud</string>
     <string name="device_cut_off_running_body">Περιμένετε να ολοκληρωθεί και δοκιμάστε ξανά.</string>
     <string name="device_cut_off_not_gone_title">Η αφαίρεση δεν έχει φτάσει ακόμα σε αυτή τη συσκευή</string>
     <string name="device_cut_off_not_gone_body">Δοκιμάστε ξανά μετά τον επόμενο συγχρονισμό.</string>

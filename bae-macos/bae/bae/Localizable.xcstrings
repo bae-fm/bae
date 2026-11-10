@@ -1,168 +1,174 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "A request to the cloud is still running" : {
+    "This device is still syncing with the cloud" : {
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "طلب إلى السحابة لا يزال قيد التنفيذ"
+            "value" : "هذا الجهاز لا يزال يزامن مع السحابة"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Заявка към облака още се изпълнява"
+            "value" : "Това устройство още се синхронизира с облака"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Požadavek na cloud stále běží"
+            "value" : "Toto zařízení se stále synchronizuje s cloudem"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "En forespørgsel til skyen kører stadig"
+            "value" : "Denne enhed synkroniserer stadig med skyen"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Eine Anfrage an die Cloud läuft noch"
+            "value" : "Dieses Gerät synchronisiert noch mit der Cloud"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ένα αίτημα προς το cloud εκτελείται ακόμα"
+            "value" : "Αυτή η συσκευή εξακολουθεί να συγχρονίζεται με το cloud"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This device is still syncing with the cloud"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Una solicitud a la nube sigue en curso"
+            "value" : "Este dispositivo sigue sincronizándose con la nube"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pilveen kohdistuva pyyntö on yhä käynnissä"
+            "value" : "Tämä laite synkronoi yhä pilven kanssa"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Une requête vers le cloud est toujours en cours"
+            "value" : "Cet appareil est toujours en cours de synchronisation avec le cloud"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "בקשה לענן עדיין רצה"
+            "value" : "המכשיר הזה עדיין מסתנכרן עם הענן"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zahtjev prema oblaku još se izvršava"
+            "value" : "Ovaj se uređaj još sinkronizira s oblakom"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A felhőre irányuló egyik kérés még fut"
+            "value" : "Ez az eszköz még szinkronizál a felhővel"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Una richiesta al cloud è ancora in corso"
+            "value" : "Questo dispositivo è ancora in sincronizzazione con il cloud"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "クラウドへのリクエストがまだ実行中です"
+            "value" : "このデバイスはまだクラウドと同期中です"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "클라우드에 대한 요청이 아직 실행 중입니다"
+            "value" : "이 기기는 아직 클라우드와 동기화 중입니다"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "En forespørsel til skyen kjører fortsatt"
+            "value" : "Denne enheten synkroniserer fortsatt med skyen"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Een verzoek aan de cloud loopt nog"
+            "value" : "Dit apparaat is nog aan het synchroniseren met de cloud"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Żądanie do chmury wciąż trwa"
+            "value" : "To urządzenie wciąż synchronizuje się z chmurą"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Uma solicitação à nuvem ainda está em andamento"
+            "value" : "Este dispositivo ainda está sincronizando com a nuvem"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Um pedido à nuvem ainda está em curso"
+            "value" : "Este dispositivo ainda está a sincronizar com a nuvem"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "O cerere către cloud încă rulează"
+            "value" : "Acest dispozitiv încă se sincronizează cu cloudul"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Požiadavka na cloud stále beží"
+            "value" : "Toto zariadenie sa stále synchronizuje s cloudom"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "En förfrågan till molnet pågår fortfarande"
+            "value" : "Den här enheten synkroniseras fortfarande med molnet"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Buluta yönelik bir istek hâlâ çalışıyor"
+            "value" : "Bu cihaz hâlâ bulutla eşitleniyor"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Запит до хмари ще виконується"
+            "value" : "Цей пристрій ще синхронізується з хмарою"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "对云端的请求仍在运行"
+            "value" : "此设备仍在与云端同步"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "對雲端的請求仍在執行"
+            "value" : "此裝置仍在與雲端同步"
           }
         }
       }

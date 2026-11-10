@@ -334,7 +334,7 @@
     <string name="device_removed_title">Enheten tas bort</string>
     <string name="device_cut_off_confirm">Jag har kopplat bort den här enheten</string>
     <string name="device_cut_off_not_yet">Inte än</string>
-    <string name="device_cut_off_running_title">En förfrågan till molnet pågår fortfarande</string>
+    <string name="device_cut_off_running_title">Den här enheten synkroniseras fortfarande med molnet</string>
     <string name="device_cut_off_running_body">Vänta tills den är klar och försök igen.</string>
     <string name="device_cut_off_not_gone_title">Borttagningen har inte nått den här enheten än</string>
     <string name="device_cut_off_not_gone_body">Försök igen efter nästa synkronisering.</string>

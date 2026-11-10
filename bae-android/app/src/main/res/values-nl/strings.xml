@@ -336,7 +336,7 @@
     <string name="device_removed_title">Het apparaat wordt verwijderd</string>
     <string name="device_cut_off_confirm">Ik heb dit apparaat losgekoppeld</string>
     <string name="device_cut_off_not_yet">Nog niet</string>
-    <string name="device_cut_off_running_title">Een verzoek aan de cloud loopt nog</string>
+    <string name="device_cut_off_running_title">Dit apparaat is nog aan het synchroniseren met de cloud</string>
     <string name="device_cut_off_running_body">Wacht tot het klaar is en probeer het dan opnieuw.</string>
     <string name="device_cut_off_not_gone_title">De verwijdering is nog niet op dit apparaat aangekomen</string>
     <string name="device_cut_off_not_gone_body">Probeer het opnieuw na de volgende synchronisatie.</string>

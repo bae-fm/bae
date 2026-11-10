@@ -334,7 +334,7 @@
     <string name="device_removed_title">Az eszköz el lesz távolítva</string>
     <string name="device_cut_off_confirm">Lecsatlakoztattam ezt az eszközt</string>
     <string name="device_cut_off_not_yet">Még nem</string>
-    <string name="device_cut_off_running_title">A felhőre irányuló egyik kérés még fut</string>
+    <string name="device_cut_off_running_title">Ez az eszköz még szinkronizál a felhővel</string>
     <string name="device_cut_off_running_body">Várd meg, amíg befejeződik, aztán próbáld újra.</string>
     <string name="device_cut_off_not_gone_title">Az eltávolítás még nem érkezett meg erre az eszközre</string>
     <string name="device_cut_off_not_gone_body">Próbáld újra a következő szinkronizálás után.</string>

@@ -343,7 +343,7 @@
     <string name="device_removed_title">Uređaj će biti uklonjen</string>
     <string name="device_cut_off_confirm">Odspojio/la sam ovaj uređaj</string>
     <string name="device_cut_off_not_yet">Još ne</string>
-    <string name="device_cut_off_running_title">Zahtjev prema oblaku još se izvršava</string>
+    <string name="device_cut_off_running_title">Ovaj se uređaj još sinkronizira s oblakom</string>
     <string name="device_cut_off_running_body">Pričekajte da završi pa pokušajte ponovno.</string>
     <string name="device_cut_off_not_gone_title">Uklanjanje još nije stiglo na ovaj uređaj</string>
     <string name="device_cut_off_not_gone_body">Pokušajte ponovno nakon sljedeće sinkronizacije.</string>

@@ -341,7 +341,7 @@
     <string name="device_removed_title">L’appareil va être supprimé</string>
     <string name="device_cut_off_confirm">J’ai coupé l’accès de cet appareil</string>
     <string name="device_cut_off_not_yet">Pas encore</string>
-    <string name="device_cut_off_running_title">Une requête vers le cloud est toujours en cours</string>
+    <string name="device_cut_off_running_title">Cet appareil est toujours en cours de synchronisation avec le cloud</string>
     <string name="device_cut_off_running_body">Attendez qu’elle se termine, puis réessayez.</string>
     <string name="device_cut_off_not_gone_title">La suppression n’est pas encore arrivée sur cet appareil</string>
     <string name="device_cut_off_not_gone_body">Réessayez après la prochaine synchronisation.</string>

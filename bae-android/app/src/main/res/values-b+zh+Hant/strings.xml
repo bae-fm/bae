@@ -329,7 +329,7 @@
     <string name="device_removed_title">此裝置將被移除</string>
     <string name="device_cut_off_confirm">我已切斷此裝置的存取</string>
     <string name="device_cut_off_not_yet">暫不</string>
-    <string name="device_cut_off_running_title">對雲端的請求仍在執行</string>
+    <string name="device_cut_off_running_title">此裝置仍在與雲端同步</string>
     <string name="device_cut_off_running_body">請等它結束後再試一次。</string>
     <string name="device_cut_off_not_gone_title">移除尚未傳到此裝置</string>
     <string name="device_cut_off_not_gone_body">請在下次同步後再試。</string>

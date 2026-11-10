@@ -350,7 +350,7 @@
     <string name="device_removed_title">Zařízení bude odebráno</string>
     <string name="device_cut_off_confirm">Toto zařízení jsem odpojil(a)</string>
     <string name="device_cut_off_not_yet">Ještě ne</string>
-    <string name="device_cut_off_running_title">Požadavek na cloud stále běží</string>
+    <string name="device_cut_off_running_title">Toto zařízení se stále synchronizuje s cloudem</string>
     <string name="device_cut_off_running_body">Počkejte, až skončí, a zkuste to znovu.</string>
     <string name="device_cut_off_not_gone_title">Odebrání ještě nedorazilo na toto zařízení</string>
     <string name="device_cut_off_not_gone_body">Zkuste to znovu po další synchronizaci.</string>

@@ -343,7 +343,7 @@
     <string name="device_removed_title">המכשיר יוסר</string>
     <string name="device_cut_off_confirm">ניתקתי את המכשיר הזה</string>
     <string name="device_cut_off_not_yet">עדיין לא</string>
-    <string name="device_cut_off_running_title">בקשה לענן עדיין רצה</string>
+    <string name="device_cut_off_running_title">המכשיר הזה עדיין מסתנכרן עם הענן</string>
     <string name="device_cut_off_running_body">המתן לסיומה ונסה שוב.</string>
     <string name="device_cut_off_not_gone_title">ההסרה עוד לא הגיעה למכשיר הזה</string>
     <string name="device_cut_off_not_gone_body">נסה שוב אחרי הסנכרון הבא.</string>

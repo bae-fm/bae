@@ -350,7 +350,7 @@
     <string name="device_removed_title">Пристрій буде вилучено</string>
     <string name="device_cut_off_confirm">Я відключив(-ла) цей пристрій</string>
     <string name="device_cut_off_not_yet">Ще ні</string>
-    <string name="device_cut_off_running_title">Запит до хмари ще виконується</string>
+    <string name="device_cut_off_running_title">Цей пристрій ще синхронізується з хмарою</string>
     <string name="device_cut_off_running_body">Зачекайте, поки він завершиться, і спробуйте ще раз.</string>
     <string name="device_cut_off_not_gone_title">Видалення ще не дійшло до цього пристрою</string>
     <string name="device_cut_off_not_gone_body">Спробуйте ще раз після наступної синхронізації.</string>

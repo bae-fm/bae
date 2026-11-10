@@ -329,7 +329,7 @@
     <string name="device_removed_title">デバイスは削除されます</string>
     <string name="device_cut_off_confirm">このデバイスを切り離しました</string>
     <string name="device_cut_off_not_yet">まだ</string>
-    <string name="device_cut_off_running_title">クラウドへのリクエストがまだ実行中です</string>
+    <string name="device_cut_off_running_title">このデバイスはまだクラウドと同期中です</string>
     <string name="device_cut_off_running_body">終了するまで待ってから、もう一度お試しください。</string>
     <string name="device_cut_off_not_gone_title">削除はまだこのデバイスに届いていません</string>
     <string name="device_cut_off_not_gone_body">次の同期のあとでもう一度お試しください。</string>
