@@ -854,3 +854,31 @@
 /* On a toned notice's solid dark fill, the panel is lighter than the fill, so its text stays readable. */
 .bae-notice:not(.bae-tone-neutral):not(.bae-notice-quiet) .bae-errdis-panel { background: color-mix(in srgb, white 40%, transparent); }
 [data-theme="light"] .bae-notice:not(.bae-tone-neutral):not(.bae-notice-quiet) .bae-errdis-panel { background: color-mix(in srgb, black 7%, transparent); }
+
+/* ImportSheep: the parts' pivots in the drawing's units, what starts hidden, and the still pose. The motion itself is in src/36-import-sheep.js. */
+.bae-isheep { display: block; }
+.bae-isheep-roll { transform-origin: 292px 300px; }
+.bae-isheep-rig { transform-origin: 292px 540px; }
+.bae-isheep-head { transform-origin: 245px 330px; }
+.bae-isheep-earL { transform-origin: 100px 190px; }
+.bae-isheep-earR { transform-origin: 395px 258px; }
+.bae-isheep-features { transform-origin: 230px 270px; }
+.bae-isheep-cheekL { transform-origin: 124px 267px; }
+.bae-isheep-cheekR { transform-origin: 338px 277px; }
+.bae-isheep-mouth, .bae-isheep-gape { transform-origin: 226px 266px; }
+.bae-isheep-munch { transform-origin: 226px 276px; }
+.bae-isheep-eyes { transform-origin: 230px 248px; }
+.bae-isheep-heart { transform-origin: 220px 398px; }
+.bae-isheep-arms { transform-origin: 222px 470px; }
+.bae-isheep-marks-right { transform-origin: 480px 30px; }
+.bae-isheep-marks-left { transform-origin: 0px 30px; }
+.bae-isheep-marks-top { transform-origin: 240px -40px; }
+.bae-isheep-blush { transform-origin: 230px 275px; }
+.bae-isheep-flash path { fill: #ffffff; stroke: none; }
+.bae-isheep-munch, .bae-isheep-gape, .bae-isheep-blush, .bae-isheep-rise, .bae-isheep-flash, [class^="bae-isheep-marks-"], [class^="bae-isheep-item-"], [class^="bae-isheep-wind-"], [class^="bae-isheep-note-"] { opacity: 0; }
+[class^="bae-isheep-star-"] { transform: scale(0); }
+/* Still: the sheep at rest with the sequence's first release beside it. */
+.bae-isheep-still .bae-isheep-item-1-1 { opacity: 1; transform: translate(588px, 482px) rotate(10deg); }
+@media (prefers-reduced-motion: reduce) {
+  .bae-isheep .bae-isheep-item-1-1 { opacity: 1; transform: translate(588px, 482px) rotate(10deg); }
+}

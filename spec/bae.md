@@ -808,6 +808,11 @@ two different things about one file fails the scan.
 
 ### 3.2 The import list
 
+With no watched folder, the Import screen has no list: bae's sheep plays
+there, every few seconds taking in made-up releases or playing on its own,
+above *Add a folder to import music from* with *Import Folder…* and *Add
+Discogs Key…*; with reduced motion asked for, it holds still.
+
 The import list shows every candidate in one of three tabs:
 
 | Tab | Holds |

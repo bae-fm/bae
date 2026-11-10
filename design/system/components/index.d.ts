@@ -330,3 +330,8 @@ export declare function AndroidListRow(props: { title: string; sub?: string; alb
 export declare function Logo(props: { kind?: 'pair' | 'inline' | 'sheep' | 'word' | 'small'; size?: number; bob?: boolean; glow?: boolean }): React.ReactElement;
 /** An app icon as a platform shows it. macOS, iOS and Android put the sheep on the pale pink tile; Windows and Linux show it with no tile. mask is Android's launcher shape. */
 export declare function AppIcon(props: { platform?: 'macos' | 'ios' | 'android' | 'windows' | 'linux'; size?: number; mask?: 'circle' | 'squircle' | 'rounded' }): React.ReactElement;
+
+// ---- The sheep on the empty Import screen ----
+
+/** The sheep on the empty Import screen. Every few seconds it plays one moment from a fixed sequence, then rests: it gobbles a line of releases from the left or the right, catches one falling from above, breathes one in, bops to its music, or rolls on the spot. size is the sheep's width. still holds the pose it shows when the person has asked for reduced motion. */
+export declare function ImportSheep(props: { size?: number; still?: boolean }): React.ReactElement;
