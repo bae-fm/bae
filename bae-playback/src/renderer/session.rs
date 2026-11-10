@@ -106,11 +106,6 @@ impl RendererSession {
         self.send(SessionCommand::SetVolume(level));
     }
 
-    /// Stop playback on the renderer, leaving the session connected.
-    pub fn stop(&self) {
-        self.send(SessionCommand::Stop);
-    }
-
     fn send(&self, command: SessionCommand) {
         let sent = self.command_tx.as_ref().is_some_and(|tx| tx.send(command).is_ok());
         if !sent {
@@ -124,8 +119,9 @@ impl Drop for RendererSession {
         // However the session's owner ended, the renderer must not play on
         // unattended: the stop goes ahead of the disconnect, so the thread
         // runs it before it exits. A session whose link was lost has no
-        // thread left to take it.
-        self.stop();
+        // thread left to take it. This is the only stop the renderer is
+        // told: the session's owner ends a cast by dropping it.
+        self.send(SessionCommand::Stop);
         // Drop the sender first so the thread's `recv_timeout` wakes with a
         // disconnect and exits its loop; only then can the join complete.
         self.command_tx = None;

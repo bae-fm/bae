@@ -107,10 +107,8 @@ impl Renderer {
     ) -> bool {
         match std::mem::replace(self, Self::Local) {
             Self::Local => false,
-            Self::Remote(remote) => {
-                remote.session.stop();
-                true
-            }
+            // Dropping the session tells the device to stop.
+            Self::Remote(_) => true,
             Self::AirPlay(airplay) => {
                 airplay.restore_local_output(audio_output, volume);
                 true
@@ -397,20 +395,17 @@ impl PlaybackService {
     }
 
     /// End the remote session and resume the local renderer, paused at the
-    /// current track's position on the device. A person's stop stops device
-    /// playback first; a lost link has nothing left to stop.
+    /// current track's position on the device.
     async fn end_remote_and_resume_local(&mut self, end: RemoteEnd) {
         let Renderer::Remote(remote) = &self.renderer else {
             // AirPlay ends through `end_airplay_and_resume_local`, not here.
             return;
         };
-        if matches!(end, RemoteEnd::Stopped) {
-            remote.session.stop();
-        }
         let remote_playback = end.remote_playback(remote.device.clone());
         let current = self.current_track_position();
 
-        // Dropping the session ends its poll thread; back to local.
+        // Dropping the session tells the device to stop, when the link is
+        // still up to take it, and ends its poll thread; back to local.
         self.renderer = Renderer::Local;
         emit_progress(
             &self.progress_tx,

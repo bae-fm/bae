@@ -192,7 +192,8 @@ async fn stop_remote_stops_device_and_returns_to_local() {
     service.handle_stop_remote().await;
 
     assert!(!service.renderer.is_remote(), "the renderer returns to Local");
-    assert!(wait_until(&state, |s| s.stops == 1), "the device is told to stop");
+    // The session is gone, its thread joined: every command it took is in.
+    assert_eq!(state.lock().unwrap().stops, 1, "the device is told to stop once");
     let mut saw_not_remote = false;
     while let Ok(progress) = rx.try_recv() {
         if let PlaybackProgress::RemoteStatusChanged { remote: RemotePlayback::Local } = progress {
@@ -218,9 +219,11 @@ async fn stop_while_remote_stops_device_and_returns_to_local() {
     service.stop().await;
 
     assert!(!service.renderer.is_remote(), "stop must return the renderer to local");
-    assert!(
-        wait_until(&state, |s| s.stops == 1),
-        "stop must stop the device, not leave it playing"
+    // The session is gone, its thread joined: every command it took is in.
+    assert_eq!(
+        state.lock().unwrap().stops,
+        1,
+        "stop must stop the device once, not leave it playing"
     );
     assert!(matches!(service.slot, PlaybackSlot::Stopped), "the slot must be Stopped after stop");
     let mut saw_not_remote = false;

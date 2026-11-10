@@ -3950,6 +3950,8 @@ drops its bytes, and its fill fetches them again.
 Switching to a receiver keeps the queue and sends the current track at its
 current position. Ending the session returns to this device, paused where it
 was, at the volume and mute last set: there is one volume, whatever plays.
+However a session on a Chromecast or UPnP receiver ends, the receiver is told
+to stop once, unless the link to it is already lost.
 It runs from silent to full, and a level asked for past either is held to it
 where it is set, so this device, the receiver, the stored row and every screen
 hold the same level. A volume slider moves this device and the receiver as it
