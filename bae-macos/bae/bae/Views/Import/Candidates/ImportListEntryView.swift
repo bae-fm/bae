@@ -50,9 +50,6 @@ struct ImportListEntry {
 /// header, a candidate's row, or a broken folder's row.
 struct ImportListEntryView: View {
     let entry: ImportListEntry
-    /// Increased while the table draws the row selected, which draws its
-    /// text in the selection's colours.
-    let prominence: BackgroundProminence
     /// Whether the row floats over the rows below; a floating header draws
     /// without the gap above its group.
     let floating: Bool
@@ -60,7 +57,6 @@ struct ImportListEntryView: View {
     var body: some View {
         content
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .environment(\.backgroundProminence, prominence)
             .environment(entry.environment.imageStore)
             .environment(entry.environment.importer)
             .environment(\.importPercents, entry.environment.importPercents)

@@ -59,8 +59,7 @@ final class ImportListGroupRowView: NSTableRowView {
 }
 
 /// A table cell hosting one row of the import list. A reused cell takes the
-/// row it is given now, and draws it with increased prominence while the
-/// table draws its row selected.
+/// row it is given now.
 final class ImportListEntryCell: NSTableCellView {
     private var hosting: NSHostingView<ImportListEntryView>?
     private var entry: ImportListEntry?
@@ -83,13 +82,6 @@ final class ImportListEntryCell: NSTableCellView {
         fatalError("init(coder:) has not been implemented")
     }
 
-    override var backgroundStyle: NSView.BackgroundStyle {
-        didSet {
-            guard backgroundStyle != oldValue else { return }
-            render()
-        }
-    }
-
     /// The item the cell draws now.
     var shownItem: BridgeImportListItem? { entry?.item }
 
@@ -102,7 +94,6 @@ final class ImportListEntryCell: NSTableCellView {
         guard let entry else { return }
         let root = ImportListEntryView(
             entry: entry,
-            prominence: backgroundStyle == .emphasized ? .increased : .standard,
             floating: floating
         )
         if let hosting {

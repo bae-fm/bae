@@ -484,6 +484,23 @@
             )
         }
 
+        /// The queue with its second release selected.
+        @MainActor
+        static func releaseQueueSelectedScene() -> ImportPreviewFixture {
+            var selected = releaseQueueRows[1]
+            selected.selected = true
+            return releaseQueueScene(
+                items: [
+                    releaseQueueGroupHeader,
+                    candidateItem(releaseQueueRows[0]),
+                    candidateItem(selected),
+                    candidateItem(releaseQueueRows[2]),
+                ],
+                summary: releaseQueueSummary,
+                pending: 3
+            )
+        }
+
         @MainActor
         static func releaseQueueScanningScene() -> ImportPreviewFixture {
             let scene = releaseQueueScene(

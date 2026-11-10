@@ -9,8 +9,8 @@ import Testing
 /// core's answer and core tests it; these are about the summary and the arrow
 /// the row draws from it. Which line an unidentified row draws, and the card
 /// the library's facts line opens, are the `import-release-queue` and
-/// `release-records-card` shots', and how the arrow looks on a resting and a
-/// selected row the `import-rows-record-arrow` shot's.
+/// `release-records-card` shots', and how the arrow looks the
+/// `import-rows-record-arrow` shot's.
 @Suite("Triage row rendering")
 struct TriageRowIdentifiedTests {
     @MainActor

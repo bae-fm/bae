@@ -412,17 +412,6 @@ extension TriageRowView {
                     isGroupMember: false
                 )
             }
-            // The same row as the list's first, drawn as the selection draws
-            // it: the whole text column goes white.
-            TriageRowView(
-                row: PreviewData.triageRowReadFromRecord,
-                coverContent: importStore.sidebarCover(
-                    for: PreviewData.triageRowReadFromRecord
-                ),
-                isGroupMember: false
-            )
-            .environment(\.backgroundProminence, .increased)
-            .background(Color.accentColor)
         }
         .padding()
         .frame(width: 340)

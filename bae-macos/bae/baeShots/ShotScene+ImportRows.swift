@@ -5,9 +5,9 @@ import SwiftUI
 
 extension ShotScene {
     /// Import rows whose looks the tests leave to the gallery: a row whose
-    /// import waits its turn, drawing its clock, and the arrow a row read
-    /// from a record draws, at rest and selected, and the sheep on the empty
-    /// Import screen across its loop.
+    /// import waits its turn, drawing its clock, the arrow a row read from a
+    /// record draws, and the sheep on the empty Import screen across its
+    /// loop.
     static let importRowScenes: [ShotScene] = [
         ShotScene(
             id: "import-row-queued",
@@ -24,16 +24,13 @@ extension ShotScene {
         },
         ShotScene(
             id: "import-rows-record-arrow",
-            size: CGSize(width: 340, height: 240)
+            size: CGSize(width: 340, height: 160)
         ) {
             let images = ImageStore.stub()
             return ShotStage(
                 VStack(spacing: 0) {
                     row(PreviewData.triageRowReadFromRecord)
                     row(PreviewData.triageRowNotReadFromRecord)
-                    row(PreviewData.triageRowReadFromRecord)
-                        .environment(\.backgroundProminence, .increased)
-                        .background(Color.accentColor)
                 }
                 .candidateReaderPreviewEnvironment()
                 .environment(images)

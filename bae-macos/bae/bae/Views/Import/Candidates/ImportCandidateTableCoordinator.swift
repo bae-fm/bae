@@ -300,7 +300,9 @@ extension ImportCandidateTableCoordinator {
     }
 
     func tableView(_: NSTableView, rowViewForRow row: Int) -> NSTableRowView? {
-        guard case .groupHeader = item(at: row) else { return nil }
+        guard case .groupHeader = item(at: row) else {
+            return BrowsedTableRowView(accent: environment.appearance.accent)
+        }
         return ImportListGroupRowView()
     }
 

@@ -85,6 +85,13 @@ struct ShotScene {
                 refreshingWatchedFolderPath: nil
             ),
             importReleaseQueue(
+                "import-release-queue-selected",
+                width: 900,
+                scene: PreviewData.releaseQueueSelectedScene,
+                collapsePendingGroup: false,
+                refreshingWatchedFolderPath: nil
+            ),
+            importReleaseQueue(
                 "import-release-ambiguity-narrow",
                 width: 520,
                 scene: PreviewData.releaseQueueScene,
