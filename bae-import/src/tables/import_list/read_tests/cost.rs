@@ -76,6 +76,9 @@ async fn measure_view(
             }
             // The first jump of a list just shown at its top, which no read
             // before it has walked.
+            if offset == 0 {
+                continue;
+            }
             let mut runs = Vec::with_capacity(RUNS);
             let mut rows = 0;
             for _ in 0..RUNS {
