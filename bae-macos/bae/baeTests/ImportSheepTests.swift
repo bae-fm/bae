@@ -84,8 +84,9 @@ struct ImportSheepTests {
         // A held key stays put until the next one.
         #expect(track.pose(at: 1.9) == .at(10, 0, 90, 2))
         #expect(track.pose(at: 2) == .rest.opacity(0))
-        // A track that stops short goes back to its first pose by the end.
-        #expect(track.pose(at: 2.5).isNear(.rest.opacity(0)))
+        // A track that stops short goes back to its first pose by the end,
+        // eased as its last key says.
+        #expect(track.pose(at: 2.5).isNear(.rest.opacity(0.5)))
         #expect(track.pose(at: 3) == .rest)
         for ease: SheepEase in [.inOut, .out, .in, .linear, .back, .snap] {
             #expect(abs(ease.progress(0)) < 1e-6)
