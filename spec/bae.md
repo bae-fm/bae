@@ -2640,9 +2640,12 @@ admin changes, and from another person's page; their listening history, *Only
 me* or *Everyone in the library* (§5.3); and *Devices*, which opens *Your
 devices*: each of the person's devices, this one reading *This device* with no
 menu since a device leaves by removing the library from it, and each other
-device with a ⋯ menu (⋮ on Android) holding *Remove…*, then *Add…* last.
-*People* has one row for each other person, with their role and how many devices
-they have, and the open invites below them. An admin's row opens that person's
+device with a ⋯ menu (⋮ on Android) holding *Remove…*. On a Mac, *Add device…*
+is a plain button under the box, on the right; on Android *Add…* is the last
+row. *People* has one row for each other person, with their role and how many
+devices they have, and the open invites below them; on a Mac an admin's
+*Invite…* is a plain button under the box, on the right, and on Android *Invite
+a person* is the last row. An admin's row opens that person's
 page: their role, with *Make admin* or *Make member*, *Remove from library…* in
 red, and their devices, each with a ⋯ menu (⋮ on Android) holding *Remove…*. A
 member's person rows open nothing: a member has nothing to do there. On Android
@@ -2975,7 +2978,7 @@ The code to type holds no key, and asks for it separately.
 
 **Where the code shows.** The code is coven's *restore code*, which the apps and
 this spec name it.
-Carol adds a device from **Add…** on Your devices, under People and devices,
+Carol adds a device from **Add device…** (on Android, **Add…**) on Your devices, under People and devices,
 shown only for a library with storage. Its sheet tells her to choose **Add
 device** on the new device, then scan its QR code or type the code it shows;
 on S3 it says the QR code carries her key. While it shows the code it watches

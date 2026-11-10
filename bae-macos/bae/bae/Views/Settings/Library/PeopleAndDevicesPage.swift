@@ -29,9 +29,10 @@ private struct CutOffRetry {
 /// other person, with the invites this device has open; an admin's person row
 /// opens that person's page (their role, removing them, their devices), and a
 /// member's opens nothing. Your devices lists this person's devices, with Add
-/// last. Admins invite people, change roles and remove people; each person
-/// adds and removes their own devices, and an admin can remove anyone's. An
-/// invite's request opens a sheet to approve or decline it.
+/// device… under the box. Admins invite people, change roles and remove
+/// people; each person adds and removes their own devices, and an admin can
+/// remove anyone's. An invite's request opens a sheet to approve or decline
+/// it.
 struct PeopleAndDevicesPage: View {
     /// Back to the Library page.
     let onBack: () -> Void
@@ -359,7 +360,7 @@ extension PeopleAndDevicesPage {
     // MARK: - People
 
     private var peopleSection: some View {
-        Section("People") {
+        Section {
             ForEach(others, id: \.membership.id) { person in
                 let member = person.membership
                 // Only an admin has anything to do on a person's page.
@@ -383,8 +384,15 @@ extension PeopleAndDevicesPage {
                     }
                 )
             }
+        } header: {
+            Text("People")
+        } footer: {
+            // The add action sits under the box, on the right, as System
+            // Settings puts "Add Account…".
             if store.selfIsAdmin {
-                Button("Invite a person…") { inviteSheet = .form }
+                MacSheetFooter {
+                    Button("Invite…") { inviteSheet = .form }
+                }
             }
         }
     }
@@ -443,7 +451,7 @@ extension PeopleAndDevicesPage {
 
     /// A person's devices, each with a ⋯ menu that removes it when allowed; on
     /// this person's own page the device this Mac is reads "This device" with
-    /// no menu, and Add is last.
+    /// no menu, and Add device… sits under the box.
     @ViewBuilder
     private func devicesSections(_ person: BridgePerson) -> some View {
         let member = person.membership
@@ -466,17 +474,20 @@ extension PeopleAndDevicesPage {
                     Text(verbatim: device.name)
                 }
             }
-            if member.isSelf {
-                Button("Add…") {
-                    addDeviceShare = nil
-                    showAddDevice = true
-                }
-            }
         } header: {
             // This person's own devices are the page; another's are a
             // section of theirs.
             if !member.isSelf {
                 Text("Devices")
+            }
+        } footer: {
+            if member.isSelf {
+                MacSheetFooter {
+                    Button("Add device…") {
+                        addDeviceShare = nil
+                        showAddDevice = true
+                    }
+                }
             }
         }
         if !member.formerDevices.isEmpty {
