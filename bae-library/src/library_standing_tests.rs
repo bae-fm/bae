@@ -7,18 +7,19 @@ use std::sync::Arc;
 use tempfile::TempDir;
 
 /// A library with S3 storage set up, synced, then closed.
-async fn synced_closed_library(installation: &coven::Coven, name: &str) -> coven::CovenHandle {
+async fn synced_closed_library(
+    installation: &coven::Coven,
+    sources: &crate::test_libraries::TestSources,
+    name: &str,
+) -> coven::CovenHandle {
     let storage = Arc::new(
         coven::MemoryStorage::builder().clock(Arc::new(coven::SystemClock)).build().unwrap(),
     );
-    let handle = bae_store::configure_store(
-        bae_store::test_devices::test_builder(&installation),
-        crate::SCHEMA,
-    )
-    .storage_connector(storage.clone())
-    .create_store(name)
-    .await
-    .unwrap();
+    let handle = bae_store::configure_store(sources.builder(installation), crate::SCHEMA)
+        .storage_connector(storage.clone())
+        .create_store(name)
+        .await
+        .unwrap();
     handle
         .setup_s3_storage(
             storage.config(),
@@ -40,8 +41,9 @@ async fn a_closed_library_reports_its_last_sync_and_its_unsent_changes() {
     let temp = TempDir::new().unwrap();
     let installation =
         coven::Coven::in_memory(AppDir::under_home(temp.path()).unwrap().coven_app_dir());
+    let sources = crate::test_libraries::TestSources::system();
 
-    let synced = synced_closed_library(&installation, "Synced").await;
+    let synced = synced_closed_library(&installation, &sources, "Synced").await;
     let synced_id = synced.store_id();
     synced.close().await.unwrap();
     drop(synced);
@@ -53,12 +55,13 @@ async fn a_closed_library_reports_its_last_sync_and_its_unsent_changes() {
         "{status:?}"
     );
 
-    let unsent = synced_closed_library(&installation, "Unsent").await;
+    let unsent = synced_closed_library(&installation, &sources, "Unsent").await;
     let unsent_id = unsent.store_id();
     unsent.stop_sync().await.unwrap();
-    let (clock, ids) = crate::test_libraries::system_sources();
-    let records =
-        bae_records::Records::new(bae_store::test_devices::store_under(unsent.clone(), clock), ids);
+    let records = bae_records::Records::new(
+        bae_store::test_devices::store_under(unsent.clone(), sources.clock().clone()),
+        sources.ids().clone(),
+    );
     let album = crate::test_libraries::test_album();
     records.insert_album(&album).await.unwrap();
     crate::test_libraries::insert_release(

@@ -713,23 +713,20 @@ async fn reopen_without_credentials(manager: TestManager, temp_dir: &TempDir) ->
     manager.library.manager().close().await.unwrap();
     manager.installation.lose_storage_credentials(store).unwrap();
     let app_dir = bae_app_dir::AppDir::at(temp_dir.path()).unwrap();
-    let (clock, ids) = crate::test_libraries::system_sources();
-    let handle = bae_store::configure_store(
-        bae_store::store_builder(&manager.installation, clock.clone(), ids.clone()),
-        crate::SCHEMA,
-    )
-    .storage_connector(manager.storage.clone())
-    .open(store, |_| ())
-    .await
-    .unwrap();
-    let database = bae_store::test_devices::store_under(handle, clock.clone());
+    let sources = crate::test_libraries::TestSources::system();
+    let handle = bae_store::configure_store(sources.builder(&manager.installation), crate::SCHEMA)
+        .storage_connector(manager.storage.clone())
+        .open(store, |_| ())
+        .await
+        .unwrap();
+    let database = bae_store::test_devices::store_under(handle, sources.clock().clone());
     let library = TestLibrary::open_with(
         database,
         app_dir,
         manager.fakes.providers(),
         bae_util::http::Http::for_test(),
-        clock,
-        ids,
+        sources.clock().clone(),
+        sources.ids().clone(),
         bae_diagnostics::Diagnostics::noop(),
     )
     .await;

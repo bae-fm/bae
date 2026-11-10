@@ -181,13 +181,11 @@ pub(super) fn fresh_test_library(
         .expect("test runtime");
     let app_dir = bae_app_dir::AppDir::under_home(root.path()).unwrap();
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
+    let sources = bae_library::test_libraries::TestSources::system();
     let handle = runtime
         .block_on(
-            bae_store::configure_store(
-                bae_store::test_devices::test_builder(&installation),
-                bae_library::SCHEMA,
-            )
-            .create_store("Test Library"),
+            bae_store::configure_store(sources.builder(&installation), bae_library::SCHEMA)
+                .create_store("Test Library"),
         )
         .expect("test store");
     let library = runtime.block_on(bae_library::test_libraries::test_library_from_handle(
@@ -195,6 +193,7 @@ pub(super) fn fresh_test_library(
         root.path(),
         bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         bae_util::http::Http::for_test(),
+        &sources,
     ));
     (runtime, library, root)
 }

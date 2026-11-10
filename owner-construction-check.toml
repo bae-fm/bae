@@ -777,6 +777,10 @@ OpenCalls = "LibrarySessions"
     "TestLibrary::open",
     "TestLibrary::open_with",
     "TestLibrary::start_playback_reporting",
+    # The clock and ids a test makes once, builds its store from and opens
+    # its library on.
+    "TestSources::system",
+    "TestSources::ids",
     "open_test_library",
     "open_test_library_with",
     "test_library_from_handle",

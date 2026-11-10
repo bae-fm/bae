@@ -16,27 +16,16 @@ pub async fn storage_library(
 ) -> (super::TestLibrary, Arc<MemoryStorage>) {
     let app_dir = bae_app_dir::AppDir::under_home(directory).unwrap();
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
-    let (clock, ids) = super::system_sources();
-    let storage = Arc::new(MemoryStorage::builder().clock(clock.clone()).build().unwrap());
-    let handle = bae_store::configure_store(
-        bae_store::store_builder(&installation, clock.clone(), ids.clone()),
-        crate::SCHEMA,
-    )
-    .storage_connector(storage.clone())
-    .create_store("Test Library")
-    .await
-    .unwrap();
-    let store = bae_store::test_devices::store_under(handle, clock.clone());
-    let library = super::TestLibrary::open_with(
-        store,
-        app_dir,
-        providers,
-        http,
-        clock,
-        ids,
-        bae_diagnostics::Diagnostics::noop(),
-    )
-    .await;
+    let sources = super::TestSources::system();
+    let storage =
+        Arc::new(MemoryStorage::builder().clock(sources.clock().clone()).build().unwrap());
+    let handle = bae_store::configure_store(sources.builder(&installation), crate::SCHEMA)
+        .storage_connector(storage.clone())
+        .create_store("Test Library")
+        .await
+        .unwrap();
+    let library =
+        super::test_library_from_handle(handle, directory, providers, http, &sources).await;
     library.manager().start().unwrap();
     (library, storage)
 }

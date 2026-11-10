@@ -63,7 +63,7 @@ pub(super) struct Household {
     _dir: tempfile::TempDir,
     owner: coven::CovenHandle,
     storage: std::sync::Arc<coven::MemoryStorage>,
-    clock: coven::ClockRef,
+    sources: bae_library::test_libraries::TestSources,
     robin: bae_people::people::PersonProfile,
 }
 
@@ -81,13 +81,13 @@ impl Household {
     }
 
     async fn on(provider: coven::CloudProvider, sign_in: Option<&DropboxSignIn>) -> Self {
-        let (dir, owner, storage, clock) = Self::owner(provider, sign_in).await;
+        let (dir, owner, storage, sources) = Self::owner(provider, sign_in).await;
         let people = bae_people::People::new(bae_store::test_devices::store_under(
             owner.clone(),
-            clock.clone(),
+            sources.clock().clone(),
         ));
         let robin = made_profile_on(&owner, &people, "Robin").await;
-        Self { _dir: dir, owner, storage, clock, robin }
+        Self { _dir: dir, owner, storage, sources, robin }
     }
 
     /// The owner's library on its storage, with no profile yet.
@@ -98,22 +98,21 @@ impl Household {
         tempfile::TempDir,
         coven::CovenHandle,
         std::sync::Arc<coven::MemoryStorage>,
-        coven::ClockRef,
+        bae_library::test_libraries::TestSources,
     ) {
         use coven::Storage;
         let dir = tempfile::tempdir().unwrap();
         let installation =
             coven::Coven::in_memory(bae_app_dir::AppDir::at(dir.path()).unwrap().coven_app_dir());
-        let clock: coven::ClockRef = std::sync::Arc::new(coven::SystemClock);
+        let sources = bae_library::test_libraries::TestSources::system();
         let storage = std::sync::Arc::new(
             coven::MemoryStorage::builder()
                 .provider(provider)
-                .clock(clock.clone())
+                .clock(sources.clock().clone())
                 .build()
                 .unwrap(),
         );
-        let builder =
-            bae_store::test_devices::test_builder(&installation).storage_connector(storage.clone());
+        let builder = sources.builder(&installation).storage_connector(storage.clone());
         let builder = match sign_in {
             Some(sign_in) => sign_in.configure(builder),
             None => builder,
@@ -144,7 +143,7 @@ impl Household {
                 .unwrap();
             }
         }
-        (dir, owner, storage, clock)
+        (dir, owner, storage, sources)
     }
 
     /// An invite giving S3 storage's `key`, or the Dropbox guest's account,
@@ -187,8 +186,7 @@ impl Household {
             coven::CloudProvider::S3 => self.storage.for_device(),
             _ => coven::MemoryStorage::for_recipient(&self.storage, GUEST_ACCOUNT).unwrap(),
         };
-        bae_store::test_devices::test_builder(&installation)
-            .storage_connector(std::sync::Arc::new(storage))
+        self.sources.builder(&installation).storage_connector(std::sync::Arc::new(storage))
     }
 
     /// A library over the owner's store, in `dir`.
@@ -201,6 +199,7 @@ impl Household {
             dir,
             bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
             bae_util::http::Http::for_test(),
+            &self.sources,
         )
         .await
     }
@@ -216,7 +215,7 @@ impl Household {
             self.device(installation),
             code,
             "Guest Device",
-            self.clock.clone(),
+            self.sources.clock().clone(),
             |_| {},
             control,
             &NO_DIAGNOSTICS,
@@ -257,7 +256,7 @@ async fn joined_profile(
     requested.expect("a new person's profile").unwrap();
     let people = bae_people::People::new(bae_store::test_devices::store_under(
         guest.clone(),
-        household.clock.clone(),
+        household.sources.clock().clone(),
     ));
     requested_profile_on(guest, &people).await
 }
@@ -295,27 +294,31 @@ async fn landed_circle(owner: &coven::CovenHandle, name: &str) -> coven::CircleI
 /// private circle to take.
 #[tokio::test]
 async fn a_profile_takes_the_private_circle_already_made_for_it() {
-    let (_dir, owner, _storage, clock) = Household::owner(coven::CloudProvider::S3, None).await;
+    let (_dir, owner, _storage, sources) = Household::owner(coven::CloudProvider::S3, None).await;
     let member =
         owner.members().await.unwrap().into_iter().find(|member| member.is_self).unwrap().id;
     let name = format!("bae-person:{member}");
     let made = landed_circle(&owner, &name).await;
-    let people =
-        bae_people::People::new(bae_store::test_devices::store_under(owner.clone(), clock.clone()));
+    let people = bae_people::People::new(bae_store::test_devices::store_under(
+        owner.clone(),
+        sources.clock().clone(),
+    ));
     people.create_profile("Robin").await.unwrap();
     let profile = people.profile(member).await.unwrap().unwrap();
     assert_eq!(profile.private_circle, made);
     owner.close().await.unwrap();
 
-    let (_dir, owner, _storage, clock) = Household::owner(coven::CloudProvider::S3, None).await;
+    let (_dir, owner, _storage, sources) = Household::owner(coven::CloudProvider::S3, None).await;
     let member =
         owner.members().await.unwrap().into_iter().find(|member| member.is_self).unwrap().id;
     let name = format!("bae-person:{member}");
     for _ in 0..2 {
         landed_circle(&owner, &name).await;
     }
-    let people =
-        bae_people::People::new(bae_store::test_devices::store_under(owner.clone(), clock));
+    let people = bae_people::People::new(bae_store::test_devices::store_under(
+        owner.clone(),
+        sources.clock().clone(),
+    ));
     assert!(matches!(
         people.create_profile("Robin").await,
         Err(ProfileError::InvalidPrivateCircle)
@@ -350,7 +353,7 @@ fn joining_writes_the_invites_name_and_cannot_edit_another_person() {
         assert_eq!(members[0].member, profile.id);
         let error = bae_people::People::new(bae_store::test_devices::store_under(
             guest.clone(),
-            household.clock.clone(),
+            household.sources.clock().clone(),
         ))
         .rename_profile_of_for_test(owner_profile.id, "Impersonated")
         .await
@@ -402,7 +405,7 @@ fn a_replacement_invite_writes_no_profile() {
             household.device(&second),
             &again.code,
             "Replacement Device",
-            household.clock.clone(),
+            household.sources.clock().clone(),
             |_| {},
             &control,
             &NO_DIAGNOSTICS,
@@ -416,14 +419,16 @@ fn a_replacement_invite_writes_no_profile() {
         assert!(profile.is_none());
         let people = bae_people::People::new(bae_store::test_devices::store_under(
             replacement.clone(),
-            household.clock.clone(),
+            household.sources.clock().clone(),
         ));
         assert_eq!(people.profile(rowan.id).await.unwrap(), Some(rowan.clone()));
         // The owner's membership lists each member's devices that can sync
         // apart from those that lost access, as coven's own member list has
         // them.
-        let owner_store =
-            bae_store::test_devices::store_under(household.owner.clone(), household.clock.clone());
+        let owner_store = bae_store::test_devices::store_under(
+            household.owner.clone(),
+            household.sources.clock().clone(),
+        );
         let owner = bae_people::Membership::new(owner_store.clone());
         let owner_people = bae_people::People::new(owner_store);
         let membership = owner.members().await.unwrap();
@@ -511,7 +516,7 @@ fn a_stopped_join_resumes_and_writes_the_profile() {
             household.device(&guest),
             &invite.code,
             "Guest Device",
-            household.clock.clone(),
+            household.sources.clock().clone(),
             |status| {
                 if matches!(status, coven::BootstrapStatus::WaitingForApproval { .. }) {
                     waiting.send_replace(true);
@@ -540,7 +545,7 @@ fn a_stopped_join_resumes_and_writes_the_profile() {
         let resuming = bae_library::resume_join(
             || household.device(&guest),
             join,
-            household.clock.clone(),
+            household.sources.clock().clone(),
             |_| {},
             &control,
             &NO_DIAGNOSTICS,
@@ -574,7 +579,7 @@ fn a_restore_onto_a_device_whose_join_waits_leaves_the_join() {
             household.device(&guest),
             &invite.code,
             "Guest Device",
-            household.clock.clone(),
+            household.sources.clock().clone(),
             |status| {
                 if matches!(status, coven::BootstrapStatus::WaitingForApproval { .. }) {
                     waiting.send_replace(true);
@@ -651,7 +656,7 @@ async fn stopped_dropbox_join(
         sign_in.configure(household.device(guest)),
         &invite.code,
         "Guest Device",
-        household.clock.clone(),
+        household.sources.clock().clone(),
         |status| {
             if matches!(status, coven::BootstrapStatus::WaitingForApproval { .. }) {
                 waiting.send_replace(true);
@@ -693,7 +698,7 @@ fn a_stopped_dropbox_join_resumes_with_the_sign_in_it_kept() {
         let resuming = bae_library::resume_join(
             || sign_in.configure(household.device(&guest)),
             &join,
-            household.clock.clone(),
+            household.sources.clock().clone(),
             |_| {},
             &control,
             &NO_DIAGNOSTICS,
@@ -729,7 +734,7 @@ fn a_stopped_join_whose_sign_in_dropbox_refuses_signs_in_again_and_resumes() {
         let resuming = bae_library::resume_join(
             || sign_in.configure(household.device(&guest)),
             &join,
-            household.clock.clone(),
+            household.sources.clock().clone(),
             |_| {},
             &control,
             &NO_DIAGNOSTICS,
