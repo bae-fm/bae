@@ -106,6 +106,20 @@ async fn set_last_save_preset_rejects_unknown_and_takes_any_format() {
     assert_eq!(manager.preferences().await.unwrap().last_save_preset, "wav-16");
 }
 
+/// Two formats never share a name, whoever asks to write them.
+#[tokio::test]
+async fn set_save_presets_refuses_a_name_another_format_has() {
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    let mut presets = manager.save_presets().await.unwrap();
+    presets[1].name = presets[0].name.clone();
+
+    let err = manager.set_save_presets(presets).await.expect_err("a taken name is refused");
+
+    assert!(err.to_string().contains("another export preset is named FLAC"), "{err}");
+    assert_eq!(manager.save_presets().await.unwrap()[1].name, "MP3");
+}
+
 #[tokio::test]
 async fn mcp_config_rejects_port_zero_and_persists_valid_config() {
     let (test, _temp_dir) = setup_test_manager().await;

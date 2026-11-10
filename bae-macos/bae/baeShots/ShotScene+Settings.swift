@@ -44,6 +44,26 @@ extension ShotScene {
                     .environment(UiStore())
             )
         },
+        ShotScene(
+            id: "settings-format-name-taken",
+            size: CGSize(width: 480, height: 540)
+        ) {
+            // An AAC format named as the MP3 one already is: the name field
+            // turns red and Done is off.
+            let aac = BridgeSavePreset(
+                id: "aac",
+                name: "MP3",
+                codec: .aac(bitrateKbps: 256),
+                embedCover: true
+            )
+            return ShotStage(
+                SavePresetEditor(
+                    preset: aac,
+                    presets: PreviewData.savePresets + [aac],
+                    update: { _ in }
+                )
+            )
+        },
         transfersSettings("settings-transfers", uploadsPaused: false),
         transfersSettings(
             "settings-transfers-uploads-paused",

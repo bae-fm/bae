@@ -367,11 +367,18 @@ impl BridgeHost {
 
 #[uniffi::export]
 impl BridgeHost {
-    /// The preset a person adds to their list, as core makes it: FLAC, both
-    /// levels, the cover embedded, under an id from the host's id source.
-    pub fn new_save_preset(&self) -> crate::types::BridgeSavePreset {
+    /// The preset a person adds to the list `existing`, as core makes it: FLAC,
+    /// named with the next free number, the cover embedded, under an id from
+    /// the host's id source.
+    pub fn new_save_preset(
+        &self,
+        existing: Vec<crate::types::BridgeSavePreset>,
+    ) -> crate::types::BridgeSavePreset {
+        let existing: Vec<_> =
+            existing.into_iter().map(crate::types::BridgeSavePreset::into_core).collect();
         crate::types::BridgeSavePreset::from_core(&bae_preferences::SavePreset::new_flac(
             self.ids.as_ref(),
+            &existing,
         ))
     }
 }

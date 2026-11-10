@@ -1,25 +1,16 @@
 import BaeKit
 import SwiftUI
 
-/// A preset's label in the settings list: its name over its codec.
+/// A preset's label in the settings list: its name.
 struct SavePresetSummaryRow: View {
     let preset: BridgeSavePreset
 
     var body: some View {
         HStack(alignment: .center) {
-            VStack(alignment: .leading, spacing: ThemeSpace.line) {
-                Text(preset.name)
-                    .themeText(.rowTitle)
-                Text(summary)
-                    .themeText(.detail)
-                    .foregroundStyle(.secondary)
-            }
+            Text(preset.name)
+                .themeText(.rowTitle)
             Spacer()
         }
-    }
-
-    private var summary: String {
-        preset.codec.label
     }
 }
 

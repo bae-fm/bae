@@ -107,6 +107,51 @@ impl SaveFormat {
         }
     }
 
+    /// The name a new preset of this format starts with: the format's name,
+    /// or with the first free number from 2 ("FLAC (2)") when `taken` has it.
+    pub fn free_name(self, taken: &[&str]) -> String {
+        let name = self.name();
+        if !taken.contains(&name) {
+            return name.to_string();
+        }
+        // Some candidate among the first `taken.len() + 1` numbers is free, so
+        // the loop ends, and `number` never passes `taken.len() + 2`.
+        let mut number = 2usize;
+        loop {
+            let candidate = format!("{name} ({number})");
+            if !taken.contains(&candidate.as_str()) {
+                return candidate;
+            }
+            number += 1;
+        }
+    }
+
+    /// Whether `name` is what `free_name` makes for this format: its name,
+    /// alone or with a number from 2.
+    fn is_prefill(self, name: &str) -> bool {
+        let format_name = self.name();
+        name == format_name
+            || name
+                .strip_prefix(format_name)
+                .and_then(|rest| rest.strip_prefix(" ("))
+                .and_then(|rest| rest.strip_suffix(')'))
+                .is_some_and(|number| {
+                    number.chars().all(|digit| digit.is_ascii_digit())
+                        && number.parse::<u32>().is_ok_and(|number| number >= 2)
+                })
+    }
+
+    /// The name of a preset whose format changes from `from` to `to`: a name
+    /// still `from`'s prefill becomes `to`'s, free among `taken`; a name the
+    /// person wrote stays.
+    pub fn name_after_change(name: &str, from: Self, to: Self, taken: &[&str]) -> String {
+        if from.is_prefill(name) {
+            to.free_name(taken)
+        } else {
+            name.to_string()
+        }
+    }
+
     /// The format's name, a proper noun shown as-is in every locale; a new
     /// preset of the format is named it.
     pub fn name(self) -> &'static str {
@@ -206,15 +251,22 @@ pub struct SavePreset {
 
 impl SavePreset {
     /// The preset a person adds to their list: FLAC at its starting codec,
-    /// named for the format, embedding the cover, under an id from `ids`.
-    pub fn new_flac(ids: &dyn coven::IdSource) -> Self {
+    /// named for the format with the next free number (`SaveFormat::free_name`),
+    /// embedding the cover, under an id from `ids`.
+    pub fn new_flac(ids: &dyn coven::IdSource, existing: &[SavePreset]) -> Self {
         let format = SaveFormat::Flac;
+        let taken: Vec<&str> = existing.iter().map(|preset| preset.name.as_str()).collect();
         SavePreset {
             id: ids.new_id().simple().to_string(),
-            name: format.name().to_string(),
+            name: format.free_name(&taken),
             codec: format.default_codec(),
             embed_cover: true,
         }
+    }
+
+    /// Whether a format other than `own_id` is already named `name`.
+    pub fn name_taken(name: &str, own_id: &str, presets: &[SavePreset]) -> bool {
+        presets.iter().any(|preset| preset.id != own_id && preset.name == name)
     }
 
     pub fn validate(&self) -> Result<(), PreferencesError> {

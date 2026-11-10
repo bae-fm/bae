@@ -5,6 +5,8 @@ import SwiftUI
 /// preset through `update`, so Done only closes it.
 struct SavePresetEditor: View {
     let preset: BridgeSavePreset
+    /// Every format, this one included, for the names it must not repeat.
+    let presets: [BridgeSavePreset]
     let update: (BridgeSavePreset) -> Void
 
     @Environment(\.dismiss)
@@ -45,7 +47,21 @@ struct SavePresetEditor: View {
     }
 
     private var nameValid: Bool {
-        !nameDraft.trimmingCharacters(in: .whitespaces).isEmpty
+        !nameDraft.trimmingCharacters(in: .whitespaces).isEmpty && !nameTaken
+    }
+
+    /// Another format already has the name in the field.
+    private var nameTaken: Bool {
+        bridgeSaveNameTaken(
+            name: nameDraft,
+            ownId: preset.id,
+            presets: presets
+        )
+    }
+
+    /// The names of the other formats.
+    private var otherNames: [String] {
+        presets.filter { $0.id != preset.id }.map(\.name)
     }
 
     /// The format's one quality setting: a bit depth for a lossless codec, a
@@ -75,19 +91,33 @@ struct SavePresetEditor: View {
 
     private var nameRow: some View {
         LabeledContent("Name") {
-            TextField("Name", text: $nameDraft)
-                .labelsHidden()
-                .textFieldStyle(.plain)
-                .multilineTextAlignment(.leading)
-                .focused($nameFocused)
-                .modifier(FieldChrome(focused: nameFocused, style: .boxed))
-                .frame(width: 200)
-                .onSubmit(commitName)
-                .onChange(of: nameFocused) { _, focused in
-                    if !focused {
-                        commitName()
+            VStack(alignment: .leading, spacing: ThemeSpace.line) {
+                TextField("Name", text: $nameDraft)
+                    .labelsHidden()
+                    .textFieldStyle(.plain)
+                    .multilineTextAlignment(.leading)
+                    .focused($nameFocused)
+                    .modifier(
+                        FieldChrome(
+                            focused: nameFocused,
+                            style: .boxed,
+                            invalid: nameTaken
+                        )
+                    )
+                    .frame(width: 200)
+                    .onSubmit(commitName)
+                    .onChange(of: nameFocused) { _, focused in
+                        if !focused {
+                            commitName()
+                        }
                     }
+                if nameTaken {
+                    Text("Another format is named “\(nameDraft)”.")
+                        .themeText(.detail)
+                        .foregroundStyle(Theme.danger)
+                        .padding(.leading, ThemeSpace.fieldInset)
                 }
+            }
         }
         .presetEditorRowInsets()
     }
@@ -110,11 +140,14 @@ struct SavePresetEditor: View {
                 set: { format in
                     var changed = preset
                     changed.codec = preset.codec.switched(to: format)
-                    // A default name follows the format; a name the user typed
-                    // stays put.
-                    if preset.name == preset.codec.format.label {
-                        changed.name = format.label
-                    }
+                    // A name that is still a format's prefill follows the
+                    // format; a name the user typed stays put.
+                    changed.name = bridgeSaveNameAfterFormatChange(
+                        name: preset.name,
+                        from: preset.codec.format,
+                        to: format,
+                        taken: otherNames
+                    )
                     update(changed)
                 }
             )
@@ -163,6 +196,7 @@ struct SavePresetEditor: View {
 
         SavePresetEditor(
             preset: preset,
+            presets: PreviewData.savePresets,
             update: { preset = $0 }
         )
     }

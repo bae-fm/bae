@@ -61,3 +61,27 @@ fn each_codecs_extension_and_name_cross_as_core_gives_them() {
     }
     assert_eq!(bridge_save_codec_extension(&BridgeSaveCodec::Aac { bitrate_kbps: 256 }), "m4a");
 }
+
+/// The name rules cross as core states them: a prefilled name follows a
+/// format change, and a name is taken only by another format.
+#[test]
+fn the_name_rules_cross_as_core_states_them() {
+    assert_eq!(
+        bridge_save_name_after_format_change(
+            "FLAC (2)".to_string(),
+            BridgeSaveFormat::Flac,
+            BridgeSaveFormat::Mp3,
+            vec!["MP3".to_string()],
+        ),
+        "MP3 (2)"
+    );
+    let preset = |id: &str, name: &str| BridgeSavePreset {
+        id: id.to_string(),
+        name: name.to_string(),
+        codec: bridge_save_format_default_codec(BridgeSaveFormat::Flac),
+        embed_cover: true,
+    };
+    let presets = vec![preset("a", "FLAC"), preset("b", "MP3")];
+    assert!(bridge_save_name_taken("MP3".to_string(), "a".to_string(), presets.clone()));
+    assert!(!bridge_save_name_taken("MP3".to_string(), "b".to_string(), presets));
+}

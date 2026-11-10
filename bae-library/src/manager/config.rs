@@ -271,8 +271,15 @@ impl LibraryManager {
         presets: Vec<bae_preferences::SavePreset>,
     ) -> Result<(), bae_preferences::PreferencesError> {
         let mut ids = std::collections::HashSet::new();
+        let mut names = std::collections::HashSet::new();
         for preset in &presets {
             preset.validate()?;
+            if !names.insert(preset.name.clone()) {
+                return Err(bae_preferences::PreferencesError::Invalid(format!(
+                    "another export preset is named {}",
+                    preset.name
+                )));
+            }
             if !ids.insert(preset.id.clone()) {
                 return Err(bae_preferences::PreferencesError::Invalid(format!(
                     "duplicate export preset id {}",

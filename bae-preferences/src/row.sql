@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS preferences (
 CREATE TABLE IF NOT EXISTS save_preset (
     id       TEXT PRIMARY KEY CHECK (trim(id) <> ''),
     position INTEGER NOT NULL UNIQUE CHECK (position >= 0),
-    name     TEXT NOT NULL CHECK (trim(name) <> ''),
+    name     TEXT NOT NULL UNIQUE CHECK (trim(name) <> ''),
     -- A lossless codec writes at a bit depth, a lossy one at a bitrate.
     codec        TEXT NOT NULL CHECK (codec IN ('flac', 'mp3', 'aac', 'opus_ogg', 'wav', 'aiff')),
     bit_depth    TEXT CHECK (bit_depth IN ('same_as_source', 'bits_16')),

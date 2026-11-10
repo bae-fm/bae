@@ -26,7 +26,8 @@ final class Outputs: Sendable, Observable {
     /// in-flight one (a partial copy never lands its destination file).
     let cancelOutput: @Sendable (_ releaseId: String) async throws -> Void
     /// A preset for a new format as core makes it, under an id of its own.
-    let newSavePreset: @Sendable () -> BridgeSavePreset
+    let newSavePreset:
+        @Sendable (_ existing: [BridgeSavePreset]) -> BridgeSavePreset
     /// Replace configured export presets.
     let setSavePresets:
         @Sendable (_ presets: [BridgeSavePreset]) async throws -> Void
@@ -35,7 +36,8 @@ final class Outputs: Sendable, Observable {
         @Sendable (_ tokens: [BridgeSaveFilenameToken]) async throws -> Void
 
     init(
-        newSavePreset: @escaping @Sendable () -> BridgeSavePreset,
+        newSavePreset:
+            @escaping @Sendable ([BridgeSavePreset]) -> BridgeSavePreset,
         enqueueExport:
             @escaping @Sendable (String, URL)
             async throws -> Void =
@@ -72,7 +74,7 @@ final class Outputs: Sendable, Observable {
 
     convenience init(handle: any AppHandleProtocol, host: BridgeHost) {
         self.init(
-            newSavePreset: { host.newSavePreset() },
+            newSavePreset: { host.newSavePreset(existing: $0) },
             enqueueExport: {
                 try await handle.enqueueExport(
                     releaseId: $0,
@@ -98,7 +100,7 @@ final class Outputs: Sendable, Observable {
     #if DEBUG
         // periphery:ignore
         static func stub() -> Outputs {
-            Outputs(newSavePreset: { PreviewData.savePresets[0] })
+            Outputs(newSavePreset: { _ in PreviewData.savePresets[0] })
         }
     #endif
 }

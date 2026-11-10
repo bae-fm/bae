@@ -214,6 +214,12 @@ async fn the_schema_refuses_preferences_no_setter_writes() {
             }),
         ),
         (
+            "two formats of one name",
+            Box::new(|prefs: &mut Preferences| {
+                prefs.save_presets[1].name = prefs.save_presets[0].name.clone();
+            }),
+        ),
+        (
             "an enabled Subsonic server with no username",
             Box::new(|prefs: &mut Preferences| {
                 prefs.subsonic.enabled = true;

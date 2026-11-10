@@ -15,6 +15,8 @@ struct FieldChrome: ViewModifier {
 
     let focused: Bool
     let style: Style
+    /// The field holds something that cannot be kept: its edge turns red.
+    var invalid = false
 
     /// How far an inline field's text sits inside its chrome.
     static let inlineHorizontalPadding = ThemeSpace.compact
@@ -102,7 +104,7 @@ struct FieldChrome: ViewModifier {
     private var ring: Color {
         switch style {
         case .boxed, .boxedMultiline:
-            focused ? Theme.accent : Theme.fieldEdge
+            invalid ? Theme.danger : focused ? Theme.accent : Theme.fieldEdge
         case .inline:
             focused ? Theme.accent : .clear
         }

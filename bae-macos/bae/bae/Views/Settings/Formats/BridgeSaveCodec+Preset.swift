@@ -49,18 +49,6 @@ extension BridgeSaveCodec {
         }
     }
 
-    var label: String {
-        switch self {
-        case .flac, .wav, .aiff: format.label
-        case .mp3(let bitrateKbps):
-            String(localized: "MP3 \(Int(bitrateKbps)) kbps")
-        case .aac(let bitrateKbps):
-            String(localized: "AAC \(Int(bitrateKbps)) kbps")
-        case .opusOgg(let bitrateKbps):
-            String(localized: "Opus \(Int(bitrateKbps)) kbps")
-        }
-    }
-
     /// The extension of the files this codec writes, as core gives it.
     var fileExtension: String { bridgeSaveCodecExtension(codec: self) }
 }

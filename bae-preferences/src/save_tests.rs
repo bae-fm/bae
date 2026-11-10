@@ -142,8 +142,8 @@ fn each_format_starts_at_a_codec_of_its_own_that_saves() {
 #[test]
 fn a_new_preset_is_a_valid_flac_preset_with_its_own_id() {
     let ids = coven::SequentialIds::new();
-    let preset = SavePreset::new_flac(&ids);
-    let other = SavePreset::new_flac(&ids);
+    let preset = SavePreset::new_flac(&ids, &[]);
+    let other = SavePreset::new_flac(&ids, &[]);
 
     preset.validate().unwrap();
     assert_ne!(preset.id, other.id, "each new preset has an id of its own");
@@ -156,4 +156,51 @@ fn a_new_preset_is_a_valid_flac_preset_with_its_own_id() {
             embed_cover: true,
         }
     );
+}
+
+/// A new format takes its format's name, then the format's name and the next
+/// free number from 2: a name taken by another format, whatever its codec, is
+/// skipped.
+#[test]
+fn a_new_format_is_named_with_the_next_free_number() {
+    let ids = coven::SequentialIds::new();
+    let named =
+        |name: &str| SavePreset { name: name.to_string(), ..SavePreset::new_flac(&ids, &[]) };
+
+    assert_eq!(SavePreset::new_flac(&ids, &[]).name, "FLAC");
+    assert_eq!(SavePreset::new_flac(&ids, &[named("FLAC")]).name, "FLAC (2)");
+    assert_eq!(SavePreset::new_flac(&ids, &[named("FLAC"), named("FLAC (2)")]).name, "FLAC (3)");
+    assert_eq!(
+        SavePreset::new_flac(&ids, &[named("FLAC"), named("FLAC (3)")]).name,
+        "FLAC (2)",
+        "the first free number, not the one after the last"
+    );
+    assert_eq!(SavePreset::new_flac(&ids, &[named("Phone")]).name, "FLAC");
+}
+
+/// Changing a format re-prefills its name while the name is still a prefill of
+/// the format it had, and leaves a name the person wrote alone.
+#[test]
+fn a_prefilled_name_follows_a_format_change() {
+    let change =
+        |name: &str, from, to, taken: &[&str]| SaveFormat::name_after_change(name, from, to, taken);
+    assert_eq!(change("FLAC", SaveFormat::Flac, SaveFormat::Mp3, &[]), "MP3");
+    assert_eq!(change("FLAC (2)", SaveFormat::Flac, SaveFormat::Mp3, &["MP3"]), "MP3 (2)");
+    assert_eq!(change("MP3 (2)", SaveFormat::Mp3, SaveFormat::Flac, &["FLAC"]), "FLAC (2)");
+    assert_eq!(change("Phone", SaveFormat::Flac, SaveFormat::Mp3, &["MP3"]), "Phone");
+    assert_eq!(change("FLAC (1)", SaveFormat::Flac, SaveFormat::Mp3, &[]), "FLAC (1)");
+    assert_eq!(change("FLAC of mine", SaveFormat::Flac, SaveFormat::Mp3, &[]), "FLAC of mine");
+}
+
+/// A name is taken when another format has it; a format's own name is not.
+#[test]
+fn a_name_is_taken_only_by_another_format() {
+    let ids = coven::SequentialIds::new();
+    let flac = SavePreset::new_flac(&ids, &[]);
+    let mp3 = SavePreset { name: "MP3".to_string(), ..SavePreset::new_flac(&ids, &[]) };
+    let presets = vec![flac.clone(), mp3.clone()];
+
+    assert!(SavePreset::name_taken("MP3", &flac.id, &presets));
+    assert!(!SavePreset::name_taken("MP3", &mp3.id, &presets));
+    assert!(!SavePreset::name_taken("Phone", &flac.id, &presets));
 }
