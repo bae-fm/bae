@@ -14,7 +14,10 @@ import fm.bae.app.data.SyncActivityStore
 import fm.bae.app.ui.AppProblem
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.library.LibraryGridScene
+import fm.bae.app.ui.library.SceneGrid
 import fm.bae.app.ui.signInSettingsProblem
+import fm.bae.app.ui.sync.ActivityButton
 import fm.bae.app.ui.sync.ActivityList
 import fm.bae.app.ui.sync.ActivityWords
 import fm.bae.app.ui.sync.activityProblems
@@ -104,6 +107,35 @@ fun ActivityTransfersHeld() {
         app = emptyList(),
         bars = mapOf("uploads" to 0.0, "pins" to 0.0),
     )
+}
+
+/** The library's top bar while both queues are paused and nothing moves: the Activity button's pause symbol. */
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun ActivityButtonHeld() {
+    val batch = BridgeTransferBatch(done = 0u, total = 2u)
+    val activity =
+        PreviewData
+            .syncActivity(needsAttention = false)
+            .copy(
+                moving = false,
+                held = true,
+                syncing = false,
+                uploads = BridgeUploadQueueActivity(batch, BridgeUploadQueueWait.Paused),
+                pins = BridgeDownloadQueueActivity(batch, BridgeQueueWait.PAUSED),
+            )
+    val store = remember { SyncActivityStore().apply { apply(activity) } }
+    LibraryGridScene(grid = SceneGrid.FLAT, firstItem = 0, openMenu = null) {
+        ActivityButton(
+            store = store,
+            app = emptyList(),
+            dismissed = emptySet(),
+            onDismissProblem = {},
+            onOpenSettings = {},
+            onOpenDownloads = {},
+            onSetDownloadsPaused = {},
+        )
+    }
 }
 
 @Composable

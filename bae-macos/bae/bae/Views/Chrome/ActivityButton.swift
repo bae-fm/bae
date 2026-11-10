@@ -2,8 +2,9 @@ import BaeKit
 import SwiftUI
 
 /// The Activity button in the title bar: a small spinner while bytes move, a
-/// warning symbol while a problem the person hasn't dismissed is listed,
-/// nothing otherwise. Clicking it opens the Activity panel in a popover.
+/// pause symbol while a queue is held and nothing moves, a warning symbol
+/// while a problem the person hasn't dismissed is listed, nothing otherwise.
+/// Clicking it opens the Activity panel in a popover.
 struct ActivityButton: View {
     @Environment(SyncActivityStore.self)
     private var store
@@ -41,13 +42,15 @@ struct ActivityButton: View {
     var body: some View {
         let problems = problems
         let moving = store.activity?.moving == true
+        let held = store.activity?.held == true
         Group {
-            if moving || problems.needsAttention {
+            if moving || held || problems.needsAttention {
                 Button {
                     listShown = true
                 } label: {
                     ActivityGlyph(
                         moving: moving,
+                        held: held,
                         needsAttention: problems.needsAttention
                     )
                     .frame(
@@ -93,7 +96,7 @@ struct ActivityButton: View {
         .onChange(of: problems.listed) { _, listed in
             dismissed.formIntersection(listed)
         }
-        .onChange(of: moving || problems.needsAttention) { _, shown in
+        .onChange(of: moving || held || problems.needsAttention) { _, shown in
             if !shown {
                 listShown = false
             }
@@ -106,15 +109,22 @@ struct ActivityButton: View {
     }
 }
 
-/// The spinner, the warning, or both.
+/// The spinner or the pause symbol, the warning, or both. Core never holds
+/// a queue while bytes move, so the spinner and the pause never show
+/// together.
 private struct ActivityGlyph: View {
     let moving: Bool
+    let held: Bool
     let needsAttention: Bool
 
     var body: some View {
         HStack(spacing: ThemeSpace.inline) {
             if moving {
                 WaitingIndicator()
+            }
+            if held {
+                Image(systemName: "pause.fill")
+                    .themeIcon(.large)
             }
             if needsAttention {
                 StatusGlyph(.warning)

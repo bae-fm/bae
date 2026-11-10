@@ -51,6 +51,7 @@ echo "android shots: rendering scenes (updateFullDebugScreenshotTest)..."
 # so the basename starts with the preview function name. One entry per line,
 # sorted by function name, so parallel branches adding scenes merge cleanly.
 SCENES=$(cat <<'EOF'
+ActivityButtonHeld:activity-button-held
 ActivityLaunchProblem:activity-launch-problem
 ActivityNeedingAttention:activity-needing-attention
 ActivityTransfers:activity-transfers

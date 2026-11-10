@@ -99,6 +99,25 @@ extension ShotScene {
             )
             return ShotStage(ActivityPanelShot(store: store, app: []))
         },
+        // The title bar's button while both queues are paused and nothing
+        // moves: the pause symbol of SyncMacPaused.
+        ShotScene(
+            id: "activity-button-held",
+            size: CGSize(width: 120, height: 56)
+        ) {
+            let store = SyncActivityStore(
+                activity: ActivityShot.transfers(
+                    uploadsWait: .paused,
+                    downloadsWait: .paused
+                )
+            )
+            return ShotStage(
+                ActivityButton()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .environment(store)
+                    .environment(SettingsNavigation())
+            )
+        },
     ]
 }
 

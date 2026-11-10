@@ -351,42 +351,42 @@ private fun DialogScene(content: @Composable () -> Unit) {
 @Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 fun LibraryGrid() {
-    LibraryGridScene(grid = SceneGrid.FLAT, firstItem = 0, openMenu = null)
+    LibraryGridScene(grid = SceneGrid.FLAT, firstItem = 0, openMenu = null, syncActivity = {})
 }
 
 /** Scrolled down the grid: the heading in the slim bar. */
 @Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 fun LibraryGridScrolled() {
-    LibraryGridScene(grid = SceneGrid.FLAT, firstItem = 6, openMenu = null)
+    LibraryGridScene(grid = SceneGrid.FLAT, firstItem = 6, openMenu = null, syncActivity = {})
 }
 
 /** Grouped by artist at the top of the grid: each artist's header over its albums. */
 @Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 fun LibraryGrouped() {
-    LibraryGridScene(grid = SceneGrid.GROUPED, firstItem = 0, openMenu = null)
+    LibraryGridScene(grid = SceneGrid.GROUPED, firstItem = 0, openMenu = null, syncActivity = {})
 }
 
 /** Grouped, scrolled into the third artist's albums: its header pinned under the slim bar. */
 @Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 fun LibraryGroupedPinned() {
-    LibraryGridScene(grid = SceneGrid.GROUPED, firstItem = 10, openMenu = null)
+    LibraryGridScene(grid = SceneGrid.GROUPED, firstItem = 10, openMenu = null, syncActivity = {})
 }
 
 /** The ⋮ menu open over the albums view. */
 @Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 fun LibraryMoreMenu() {
-    LibraryGridScene(grid = SceneGrid.FLAT, firstItem = 0, openMenu = LibraryHeaderMenu.MORE)
+    LibraryGridScene(grid = SceneGrid.FLAT, firstItem = 0, openMenu = LibraryHeaderMenu.MORE, syncActivity = {})
 }
 
 /** The heading's menu of views open. */
 @Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 fun LibraryViewMenu() {
-    LibraryGridScene(grid = SceneGrid.FLAT, firstItem = 0, openMenu = LibraryHeaderMenu.VIEWS)
+    LibraryGridScene(grid = SceneGrid.FLAT, firstItem = 0, openMenu = LibraryHeaderMenu.VIEWS, syncActivity = {})
 }
 
 @Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
@@ -404,7 +404,7 @@ fun WelcomeLight() {
 @Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_NO)
 @Composable
 fun LibraryGridLight() {
-    LibraryGridScene(grid = SceneGrid.FLAT, firstItem = 0, openMenu = null)
+    LibraryGridScene(grid = SceneGrid.FLAT, firstItem = 0, openMenu = null, syncActivity = {})
 }
 
 @Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_NO)

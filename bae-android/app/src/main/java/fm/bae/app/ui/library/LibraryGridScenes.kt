@@ -51,14 +51,16 @@ private val SCENE_SECTIONS: List<BridgeLibraryBrowseSection> =
 /**
  * The library home screenshot scenes: the header over fixture albums with empty
  * cover tiles, in the app chrome, needing no session. The grid starts at its
- * item [firstItem] (an artist's header counts as one when grouped), and
- * [openMenu] shows that header menu's contents open over the grid.
+ * item [firstItem] (an artist's header counts as one when grouped),
+ * [openMenu] shows that header menu's contents open over the grid, and
+ * [syncActivity] fills the top bar's place for the Activity button.
  */
 @Composable
 internal fun LibraryGridScene(
     grid: SceneGrid,
     firstItem: Int,
     openMenu: LibraryHeaderMenu?,
+    syncActivity: @Composable () -> Unit,
 ) {
     BaeAppChrome {
         CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
@@ -71,7 +73,7 @@ internal fun LibraryGridScene(
                     collapse = { collapse.value },
                     onShuffleLibrary = {},
                     onSettings = {},
-                    syncActivity = {},
+                    syncActivity = syncActivity,
                 )
                 Box(modifier = Modifier.weight(1f)) {
                     when (grid) {
@@ -179,11 +181,11 @@ private fun sceneGroupedRow(index: Int): BridgeAlbumAppearance =
 @Preview(showBackground = true)
 @Composable
 private fun LibraryGridScenePreview() {
-    LibraryGridScene(grid = SceneGrid.FLAT, firstItem = 0, openMenu = null)
+    LibraryGridScene(grid = SceneGrid.FLAT, firstItem = 0, openMenu = null, syncActivity = {})
 }
 
 @Preview(showBackground = true)
 @Composable
 private fun LibraryGroupedScenePreview() {
-    LibraryGridScene(grid = SceneGrid.GROUPED, firstItem = 0, openMenu = null)
+    LibraryGridScene(grid = SceneGrid.GROUPED, firstItem = 0, openMenu = null, syncActivity = {})
 }
