@@ -25,8 +25,10 @@ where Row.ID: Sendable {
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
-        .contentMargins(.top, ThemeSpace.inline, for: .scrollContent)
-        .contentMargins(.bottom, ThemeSpace.section, for: .scrollContent)
+        // Not `contentMargins`: a plain macOS `List` ignores it. Safe-area
+        // padding insets the rows the way the canvas's list padding does.
+        .safeAreaPadding(.top, ThemeSpace.inline)
+        .safeAreaPadding(.bottom, ThemeSpace.section)
         .reportsHeaderScroll(id: "browseList")
         .background(Theme.background)
     }
