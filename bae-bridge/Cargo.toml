@@ -114,8 +114,10 @@ cloudkit = []
 # on.
 cast = ["dep:bae-cast"]
 # An in-memory keychain a debug app can start its host with, so UI tests never
-# touch the login keychain. Debug macOS builds turn it on.
-test-keyring = ["bae-library/test-utils", "bae-app-dir/test-utils"]
+# touch the login keychain, over a bae directory in a temporary folder. Debug
+# macOS builds turn it on. It takes only those two, so a debug app builds none
+# of bae's other test support.
+test-keyring = ["coven/test-utils", "bae-app-dir/test-utils"]
 # A debug app's dev reset, which recreates its library from a profile file.
 # Debug macOS builds turn it on.
 dev-reset = ["bae-library/dev-reset"]
