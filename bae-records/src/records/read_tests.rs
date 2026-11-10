@@ -54,7 +54,7 @@ fn insert_file(
             }
             None => (None, None, None, None, None, None),
         };
-    // The stand-in record of the coven file the row references.
+    // The record of the coven file the row references, as coven writes it.
     let file = bae_util::test_ids::test_uuid(id);
     conn.execute(
         "INSERT OR IGNORE INTO coven_files (id, audience, size, coordinates, namespace) \
