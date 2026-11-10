@@ -73,8 +73,10 @@ AppearanceLightSand:appearance-light-sand
 AppearanceLightSlate:appearance-light-slate
 CastPicker:cast-picker
 CastPickerLongNames:cast-picker-long-names
+CastingReceiverDetails:settings-casting-details
 CastingSettingsFound:settings-casting
 CastingSettingsLooking:settings-casting-looking
+CastingSettingsMenu:settings-casting-menu
 DeleteAlbumDialogScene:delete-album-dialog
 DownloadEntries:download-entries
 EnterCodeDialogScene:onboarding-enter-code

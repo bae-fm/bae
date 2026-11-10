@@ -127,7 +127,7 @@
     <string name="library_delete_confirm_body">该库未同步，因此将被永久删除。你的音频文件会保留在原文件夹中。</string>
     <string name="library_delete">删除</string>
     <string name="library_not_synced">未同步</string>
-    <string name="library_details_menu">详情…</string>
+    <string name="details_menu">详情…</string>
     <string name="library_remove_menu">移除…</string>
     <string name="library_delete_menu">删除…</string>
     <string name="library_last_synced">上次同步</string>
@@ -201,6 +201,9 @@
     <string name="cast">投放</string>
     <string name="cast_receiver_casting">正在投放</string>
     <string name="cast_disconnect">断开连接</string>
+    <string name="cast_receiver_type">类型</string>
+    <string name="cast_receiver_model">型号</string>
+    <string name="cast_receiver_address">地址</string>
     <string name="cast_looking_for_devices">正在查找设备…</string>
     <string name="cast_connecting">正在连接到 %1$s…</string>
     <string name="cast_turn_off_title">要关闭投放吗？</string>

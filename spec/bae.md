@@ -4122,10 +4122,15 @@ its end and is closed, which leaves the receiver as an ended session does.
 **The Casting page.** While casting is on, the page lists each receiver found,
 with its name and kind: Chromecast, AirPlay or UPnP. They are the picker's
 rows and work the same: picking one casts to it, and the one being cast to says
-Casting in place of its kind, with Disconnect. The picker shows each receiver
-once the same way, with no separate row for the cast under way. Until the first answers it
-shows a spinner and says it is looking; there is no end state, since the search
-runs for as long as the page is open. On Android, Settings opens Casting as a
+Casting in place of its kind. Each row ends in a ⋮ menu (⋯ on macOS) holding
+Details…, and Disconnect on the receiver being cast to. Details is a sheet on
+Android and a popover off the ⋯ on macOS, titled with the receiver's name and
+showing its Type, its Model, left out when it states none, and its Address; it
+shows no status, since the row already says Casting. The picker shows each
+receiver once the same way, with no separate row for the cast under way, and
+keeps Disconnect on the row of the receiver cast to, with no menu on any row.
+Until the first answers it shows a spinner and says it is looking; there is no
+end state, since the search runs for as long as the page is open. On Android, Settings opens Casting as a
 page of its own.
 
 A UPnP renderer is known by its UDN, so it stays the same entry when its

@@ -138,7 +138,7 @@
     <string name="library_delete_confirm_body">Această bibliotecă nu este sincronizată, așa că va fi ștearsă definitiv. Fișierele tale audio rămân în dosarele lor.</string>
     <string name="library_delete">Șterge</string>
     <string name="library_not_synced">Nesincronizată</string>
-    <string name="library_details_menu">Detalii…</string>
+    <string name="details_menu">Detalii…</string>
     <string name="library_remove_menu">Elimină…</string>
     <string name="library_delete_menu">Șterge…</string>
     <string name="library_last_synced">Ultima sincronizare</string>
@@ -211,6 +211,9 @@
     <string name="cast">Transmite</string>
     <string name="cast_receiver_casting">Se transmite</string>
     <string name="cast_disconnect">Deconectează</string>
+    <string name="cast_receiver_type">Tip</string>
+    <string name="cast_receiver_model">Model</string>
+    <string name="cast_receiver_address">Adresă</string>
     <string name="cast_looking_for_devices">Se caută dispozitive…</string>
     <string name="cast_connecting">Se conectează la %1$s…</string>
     <string name="cast_turn_off_title">Oprești transmisia?</string>

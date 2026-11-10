@@ -130,7 +130,7 @@
     <string name="library_delete_confirm_body">Deze bibliotheek is niet gesynchroniseerd en wordt daarom definitief verwijderd. Je audiobestanden blijven in hun mappen.</string>
     <string name="library_delete">Verwijderen</string>
     <string name="library_not_synced">Niet gesynchroniseerd</string>
-    <string name="library_details_menu">Details…</string>
+    <string name="details_menu">Details…</string>
     <string name="library_remove_menu">Verwijderen…</string>
     <string name="library_delete_menu">Verwijderen…</string>
     <string name="library_last_synced">Laatst gesynchroniseerd</string>
@@ -207,6 +207,9 @@
     <string name="cast">Casten</string>
     <string name="cast_receiver_casting">Wordt gecast</string>
     <string name="cast_disconnect">Verbinding verbreken</string>
+    <string name="cast_receiver_type">Type</string>
+    <string name="cast_receiver_model">Model</string>
+    <string name="cast_receiver_address">Adres</string>
     <string name="cast_looking_for_devices">Apparaten zoeken…</string>
     <string name="cast_connecting">Verbinden met %1$s…</string>
     <string name="cast_turn_off_title">Casten uitschakelen?</string>

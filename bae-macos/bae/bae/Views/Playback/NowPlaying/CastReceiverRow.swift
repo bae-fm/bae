@@ -4,6 +4,7 @@ import SwiftUI
 /// The rows of a receiver list, wherever bae lists them: the one playback is
 /// cast to first, then the rest.
 struct CastReceiverRows: View {
+    let place: CastReceiverRow.Place
     let receivers: BridgeCastReceiverList
     let onCast: (BridgeCastReceiver) -> Void
     let onDisconnect: () -> Void
@@ -12,13 +13,15 @@ struct CastReceiverRows: View {
         if let casting = receivers.casting {
             CastReceiverRow(
                 receiver: casting,
-                role: .casting(onDisconnect: onDisconnect)
+                role: .casting(onDisconnect: onDisconnect),
+                place: place
             )
         }
         ForEach(receivers.found, id: \.id) { receiver in
             CastReceiverRow(
                 receiver: receiver,
-                role: .found(onCast: { onCast(receiver) })
+                role: .found(onCast: { onCast(receiver) }),
+                place: place
             )
         }
     }
@@ -26,9 +29,19 @@ struct CastReceiverRows: View {
 
 /// A receiver, wherever bae lists them: the cast picker and Settings → Casting.
 /// Its kind's glyph, its name, then its kind under it; the receiver playback is
-/// cast to says "Casting" in the accent instead and ends in Disconnect. Any
-/// other row casts to its receiver when clicked.
+/// cast to says "Casting" in the accent instead. In the picker it ends in
+/// Disconnect; on the Casting page every row ends in a ⋯ menu holding Details
+/// and, on the receiver cast to, Disconnect. Any other row casts to its
+/// receiver when clicked.
 struct CastReceiverRow: View {
+    /// Where receivers are listed, which decides how a row ends.
+    enum Place {
+        /// The cast picker, opened to pick a receiver or stop.
+        case picker
+        /// Settings → Casting.
+        case page
+    }
+
     /// Where the row's receiver stands in the list, and what the row offers.
     enum Role {
         /// Playback is cast to it; the row offers Disconnect.
@@ -39,6 +52,10 @@ struct CastReceiverRow: View {
 
     let receiver: BridgeCastReceiver
     let role: Role
+    let place: Place
+
+    @State
+    private var showsDetails = false
 
     var body: some View {
         switch role {
@@ -90,10 +107,23 @@ struct CastReceiverRow: View {
                 }
             }
         } trail: {
-            if case .casting(let onDisconnect) = role {
-                Button("Disconnect", action: onDisconnect)
-                    .buttonStyle(.borderless)
-                    .controlSize(.small)
+            switch place {
+            case .picker:
+                if case .casting(let onDisconnect) = role {
+                    Button("Disconnect", action: onDisconnect)
+                        .buttonStyle(.borderless)
+                        .controlSize(.small)
+                }
+            case .page:
+                MoreMenu {
+                    Button("Details…") { showsDetails = true }
+                    if case .casting(let onDisconnect) = role {
+                        Button("Disconnect", action: onDisconnect)
+                    }
+                }
+                .popover(isPresented: $showsDetails, arrowEdge: .bottom) {
+                    CastReceiverDetails(receiver: receiver)
+                }
             }
         }
         .padding(.vertical, ThemeSpace.related + ThemeSpace.line)

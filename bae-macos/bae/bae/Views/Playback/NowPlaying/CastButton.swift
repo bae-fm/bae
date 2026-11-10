@@ -115,6 +115,7 @@ struct CastPickerPopover: View {
             }
             else {
                 CastReceiverRows(
+                    place: .picker,
                     receivers: receivers,
                     onCast: { receiver in asked = start.cast(to: receiver) },
                     onDisconnect: onDisconnect

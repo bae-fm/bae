@@ -188,7 +188,7 @@ private fun LibraryMenu(
     MoreMenu(enabled = !busy) { close ->
         if (library.state is BridgeLibraryState.Openable) {
             DropdownMenuItem(
-                text = { Text(stringResource(R.string.library_details_menu)) },
+                text = { Text(stringResource(R.string.details_menu)) },
                 onClick = {
                     close()
                     callbacks.onDetails(library)

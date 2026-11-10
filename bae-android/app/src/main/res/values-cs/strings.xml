@@ -136,7 +136,7 @@
     <string name="library_delete_confirm_body">Tato knihovna není synchronizovaná, takže se smaže natrvalo. Vaše zvukové soubory zůstanou ve svých složkách.</string>
     <string name="library_delete">Smazat</string>
     <string name="library_not_synced">Nesynchronizovaná</string>
-    <string name="library_details_menu">Podrobnosti…</string>
+    <string name="details_menu">Podrobnosti…</string>
     <string name="library_remove_menu">Odebrat…</string>
     <string name="library_delete_menu">Smazat…</string>
     <string name="library_last_synced">Poslední synchronizace</string>
@@ -219,6 +219,9 @@
     <string name="cast">Odesílat</string>
     <string name="cast_receiver_casting">Odesílá se</string>
     <string name="cast_disconnect">Odpojit</string>
+    <string name="cast_receiver_type">Typ</string>
+    <string name="cast_receiver_model">Model</string>
+    <string name="cast_receiver_address">Adresa</string>
     <string name="cast_looking_for_devices">Hledání zařízení…</string>
     <string name="cast_connecting">Připojování k %1$s…</string>
     <string name="cast_turn_off_title">Vypnout odesílání?</string>

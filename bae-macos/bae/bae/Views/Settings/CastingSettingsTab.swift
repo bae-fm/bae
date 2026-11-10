@@ -137,6 +137,7 @@ private struct CastReceiversSection: View {
             }
             else {
                 CastReceiverRows(
+                    place: .page,
                     receivers: receivers,
                     onCast: onCast,
                     onDisconnect: onDisconnect

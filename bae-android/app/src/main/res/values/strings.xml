@@ -165,7 +165,7 @@
     <string name="library_delete_confirm_body">This library isn\'t synced, so it will be deleted for good. Your audio files stay in their folders.</string>
     <string name="library_delete">Delete</string>
     <string name="library_not_synced">Not synced</string>
-    <string name="library_details_menu">Details…</string>
+    <string name="details_menu">Details…</string>
     <string name="library_remove_menu">Remove…</string>
     <string name="library_delete_menu">Delete…</string>
     <string name="library_last_synced">Last synced</string>
@@ -255,6 +255,9 @@
     <string name="cast">Cast</string>
     <string name="cast_receiver_casting">Casting</string>
     <string name="cast_disconnect">Disconnect</string>
+    <string name="cast_receiver_type">Type</string>
+    <string name="cast_receiver_model">Model</string>
+    <string name="cast_receiver_address">Address</string>
     <string name="cast_looking_for_devices">Looking for devices…</string>
     <string name="cast_connecting">Connecting to %1$s…</string>
     <string name="cast_turn_off_title">Turn off casting?</string>

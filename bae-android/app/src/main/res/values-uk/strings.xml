@@ -136,7 +136,7 @@
     <string name="library_delete_confirm_body">Цю бібліотеку не синхронізовано, тому її буде видалено назавжди. Ваші аудіофайли залишаться у своїх теках.</string>
     <string name="library_delete">Видалити</string>
     <string name="library_not_synced">Не синхронізовано</string>
-    <string name="library_details_menu">Подробиці…</string>
+    <string name="details_menu">Подробиці…</string>
     <string name="library_remove_menu">Видалити…</string>
     <string name="library_delete_menu">Видалити…</string>
     <string name="library_last_synced">Остання синхронізація</string>
@@ -219,6 +219,9 @@
     <string name="cast">Трансляція</string>
     <string name="cast_receiver_casting">Транслюється</string>
     <string name="cast_disconnect">Відключити</string>
+    <string name="cast_receiver_type">Тип</string>
+    <string name="cast_receiver_model">Модель</string>
+    <string name="cast_receiver_address">Адреса</string>
     <string name="cast_looking_for_devices">Пошук пристроїв…</string>
     <string name="cast_connecting">Підключення до %1$s…</string>
     <string name="cast_turn_off_title">Вимкнути трансляцію?</string>

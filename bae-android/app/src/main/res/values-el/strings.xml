@@ -134,7 +134,7 @@
     <string name="library_delete_confirm_body">Αυτή η βιβλιοθήκη δεν είναι συγχρονισμένη, οπότε θα διαγραφεί οριστικά. Τα αρχεία ήχου σας παραμένουν στους φακέλους τους.</string>
     <string name="library_delete">Διαγραφή</string>
     <string name="library_not_synced">Δεν είναι συγχρονισμένη</string>
-    <string name="library_details_menu">Λεπτομέρειες…</string>
+    <string name="details_menu">Λεπτομέρειες…</string>
     <string name="library_remove_menu">Αφαίρεση…</string>
     <string name="library_delete_menu">Διαγραφή…</string>
     <string name="library_last_synced">Τελευταίος συγχρονισμός</string>
@@ -205,6 +205,9 @@
     <string name="cast">Μετάδοση</string>
     <string name="cast_receiver_casting">Μεταδίδεται</string>
     <string name="cast_disconnect">Αποσύνδεση</string>
+    <string name="cast_receiver_type">Τύπος</string>
+    <string name="cast_receiver_model">Μοντέλο</string>
+    <string name="cast_receiver_address">Διεύθυνση</string>
     <string name="cast_looking_for_devices">Αναζήτηση συσκευών…</string>
     <string name="cast_connecting">Σύνδεση με %1$s…</string>
     <string name="cast_turn_off_title">Απενεργοποίηση μετάδοσης;</string>

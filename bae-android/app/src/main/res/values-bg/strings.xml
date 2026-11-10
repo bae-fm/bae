@@ -130,7 +130,7 @@
     <string name="library_delete_confirm_body">Тази библиотека не е синхронизирана, затова ще бъде изтрита завинаги. Аудиофайловете ви остават в папките си.</string>
     <string name="library_delete">Изтриване</string>
     <string name="library_not_synced">Не е синхронизирана</string>
-    <string name="library_details_menu">Подробности…</string>
+    <string name="details_menu">Подробности…</string>
     <string name="library_remove_menu">Премахване…</string>
     <string name="library_delete_menu">Изтриване…</string>
     <string name="library_last_synced">Последно синхронизиране</string>
@@ -207,6 +207,9 @@
     <string name="cast">Предаване</string>
     <string name="cast_receiver_casting">Предава се</string>
     <string name="cast_disconnect">Прекъсване на връзката</string>
+    <string name="cast_receiver_type">Тип</string>
+    <string name="cast_receiver_model">Модел</string>
+    <string name="cast_receiver_address">Адрес</string>
     <string name="cast_looking_for_devices">Търсене на устройства…</string>
     <string name="cast_connecting">Свързване с %1$s…</string>
     <string name="cast_turn_off_title">Да се изключи ли предаването?</string>

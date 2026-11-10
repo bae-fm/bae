@@ -134,7 +134,7 @@
     <string name="library_delete_confirm_body">Ez a könyvtár nincs szinkronizálva, ezért véglegesen törlődik. A hangfájljaid a mappáikban maradnak.</string>
     <string name="library_delete">Törlés</string>
     <string name="library_not_synced">Nincs szinkronizálva</string>
-    <string name="library_details_menu">Részletek…</string>
+    <string name="details_menu">Részletek…</string>
     <string name="library_remove_menu">Eltávolítás…</string>
     <string name="library_delete_menu">Törlés…</string>
     <string name="library_last_synced">Utolsó szinkronizálás</string>
@@ -205,6 +205,9 @@
     <string name="cast">Átküldés</string>
     <string name="cast_receiver_casting">Átküldés folyamatban</string>
     <string name="cast_disconnect">Leválasztás</string>
+    <string name="cast_receiver_type">Típus</string>
+    <string name="cast_receiver_model">Modell</string>
+    <string name="cast_receiver_address">Cím</string>
     <string name="cast_looking_for_devices">Eszközök keresése…</string>
     <string name="cast_connecting">Csatlakozás ehhez: %1$s…</string>
     <string name="cast_turn_off_title">Kikapcsolod az átküldést?</string>

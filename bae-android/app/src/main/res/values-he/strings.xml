@@ -133,7 +133,7 @@
     <string name="library_delete_confirm_body">הספרייה הזו אינה מסונכרנת, ולכן היא תימחק לצמיתות. קובצי האודיו שלך יישארו בתיקיות שלהם.</string>
     <string name="library_delete">מחיקה</string>
     <string name="library_not_synced">לא מסונכרנת</string>
-    <string name="library_details_menu">פרטים…</string>
+    <string name="details_menu">פרטים…</string>
     <string name="library_remove_menu">הסר…</string>
     <string name="library_delete_menu">מחיקה…</string>
     <string name="library_last_synced">סונכרן לאחרונה</string>
@@ -213,6 +213,9 @@
     <string name="cast">שידור</string>
     <string name="cast_receiver_casting">משדר כעת</string>
     <string name="cast_disconnect">התנתק</string>
+    <string name="cast_receiver_type">סוג</string>
+    <string name="cast_receiver_model">דגם</string>
+    <string name="cast_receiver_address">כתובת</string>
     <string name="cast_looking_for_devices">מחפש מכשירים…</string>
     <string name="cast_connecting">מתחבר אל %1$s…</string>
     <string name="cast_turn_off_title">לכבות את השידור?</string>

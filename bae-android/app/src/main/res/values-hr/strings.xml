@@ -133,7 +133,7 @@
     <string name="library_delete_confirm_body">Ova fonoteka nije sinkronizirana, pa će se trajno izbrisati. Vaše audiodatoteke ostaju u svojim mapama.</string>
     <string name="library_delete">Izbriši</string>
     <string name="library_not_synced">Nije sinkronizirana</string>
-    <string name="library_details_menu">Pojedinosti…</string>
+    <string name="details_menu">Pojedinosti…</string>
     <string name="library_remove_menu">Ukloni…</string>
     <string name="library_delete_menu">Izbriši…</string>
     <string name="library_last_synced">Zadnja sinkronizacija</string>
@@ -213,6 +213,9 @@
     <string name="cast">Emitiraj</string>
     <string name="cast_receiver_casting">Emitira se</string>
     <string name="cast_disconnect">Prekini vezu</string>
+    <string name="cast_receiver_type">Vrsta</string>
+    <string name="cast_receiver_model">Model</string>
+    <string name="cast_receiver_address">Adresa</string>
     <string name="cast_looking_for_devices">Traženje uređaja…</string>
     <string name="cast_connecting">Povezivanje s %1$s…</string>
     <string name="cast_turn_off_title">Isključiti emitiranje?</string>

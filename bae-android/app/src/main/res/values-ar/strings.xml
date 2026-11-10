@@ -142,7 +142,7 @@
     <string name="library_delete_confirm_body">هذه المكتبة غير متزامنة، لذا ستُحذف نهائيًا. تبقى ملفاتك الصوتية في مجلداتها.</string>
     <string name="library_delete">حذف</string>
     <string name="library_not_synced">غير متزامنة</string>
-    <string name="library_details_menu">التفاصيل…</string>
+    <string name="details_menu">التفاصيل…</string>
     <string name="library_remove_menu">إزالة…</string>
     <string name="library_delete_menu">حذف…</string>
     <string name="library_last_synced">آخر مزامنة</string>
@@ -231,6 +231,9 @@
     <string name="cast">إرسال</string>
     <string name="cast_receiver_casting">جارٍ الإرسال</string>
     <string name="cast_disconnect">قطع الاتصال</string>
+    <string name="cast_receiver_type">النوع</string>
+    <string name="cast_receiver_model">الطراز</string>
+    <string name="cast_receiver_address">العنوان</string>
     <string name="cast_looking_for_devices">جارٍ البحث عن أجهزة…</string>
     <string name="cast_connecting">جارٍ الاتصال بـ ‏%1$s…</string>
     <string name="cast_turn_off_title">إيقاف الإرسال؟</string>

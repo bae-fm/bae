@@ -39,6 +39,7 @@ import fm.bae.app.ui.components.Eyebrow
 import fm.bae.app.ui.components.NeutralTextButton
 import fm.bae.app.ui.components.RowCard
 import fm.bae.app.ui.components.ScreenTopBar
+import fm.bae.app.ui.playback.CastReceiverPlace
 import fm.bae.app.ui.playback.CastReceiverRows
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -167,6 +168,7 @@ internal fun CastingPage(
                 )
                 RowCard {
                     CastReceiverRows(
+                        place = CastReceiverPlace.PAGE,
                         receivers = receivers,
                         connectingName = connectingName,
                         onCast = onCast,

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.BottomSheetDefaults
@@ -76,12 +77,10 @@ import fm.bae.app.ui.onboarding.StandingRead
 import fm.bae.app.ui.onboarding.WelcomeActions
 import fm.bae.app.ui.onboarding.WelcomeLibrariesScene
 import fm.bae.app.ui.onboarding.WelcomeScene
-import fm.bae.app.ui.playback.CastReceiverRows
 import fm.bae.app.ui.playback.FullPlayerScene
 import fm.bae.app.ui.playback.MiniPlayerScene
 import fm.bae.app.ui.playback.PlayerSceneState
 import fm.bae.app.ui.settings.AppearanceSection
-import fm.bae.app.ui.settings.CastingPage
 import fm.bae.app.ui.settings.FolderChoiceScene
 import fm.bae.app.ui.settings.JoinRequestDialogContent
 import fm.bae.app.ui.settings.LibrarySettingsContent
@@ -98,9 +97,6 @@ import fm.bae.app.ui.sync.ActivityList
 import fm.bae.app.ui.sync.ActivityWords
 import fm.bae.app.ui.sync.activityProblems
 import fm.bae.fastvalues.LatestStream
-import uniffi.bae_bridge.BridgeCastReceiver
-import uniffi.bae_bridge.BridgeCastReceiverList
-import uniffi.bae_bridge.BridgeCastTranscodeFormat
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeCountLabel
 import uniffi.bae_bridge.BridgeDownloadQueueActivity
@@ -115,7 +111,6 @@ import uniffi.bae_bridge.BridgeLibraryState
 import uniffi.bae_bridge.BridgeMessage
 import uniffi.bae_bridge.BridgeQueueWait
 import uniffi.bae_bridge.BridgeReleaseDownloadStatus
-import uniffi.bae_bridge.BridgeRendererKind
 import uniffi.bae_bridge.BridgeStandingState
 import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeSyncActivity
@@ -142,7 +137,8 @@ import java.time.Instant
 //   LibraryGrid ⇒ library-grid, LibraryGridScrolled ⇒ library-grid-scrolled, LibraryGrouped ⇒ library-grouped, LibraryGroupedPinned ⇒
 //   library-grouped-pinned, LibraryMoreMenu ⇒ library-more-menu, LibraryViewMenu ⇒
 //   library-view-menu, AlbumDetail ⇒ album-detail, CastPicker ⇒ cast-picker, CastingSettingsFound ⇒
-//   settings-casting, CastingSettingsLooking ⇒ settings-casting-looking, LibrarySettings ⇒ settings-library,
+//   settings-casting, CastingSettingsLooking ⇒ settings-casting-looking, CastingSettingsMenu ⇒
+//   settings-casting-menu, CastingReceiverDetails ⇒ settings-casting-details, LibrarySettings ⇒ settings-library,
 //   LibrarySettingsProblem ⇒ settings-library-problem, LibrarySettingsNotSynced ⇒ settings-library-not-synced,
 //   PeopleAndDevices ⇒ people-and-devices, PeopleAndDevicesMember ⇒ people-and-devices-member,
 //   PeopleAndDevicesPerson ⇒ people-and-devices-person, PeopleAndDevicesYours ⇒ people-and-devices-yours,
@@ -192,7 +188,7 @@ fun WelcomeAddLibrary() {
 /** A titled sheet's body on the sheet's surface: the sheet's own window isn't rendered by screenshot tests. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TitledSheetShot(
+internal fun TitledSheetShot(
     title: String,
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -664,95 +660,6 @@ private fun LibrarySettingsScene(
                 onOpenSync = {},
                 onOpenPeople = {},
                 onOpenRestoreCode = {},
-            )
-        }
-    }
-}
-
-@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-fun CastingSettingsFound() {
-    CastingSettingsScene(receivers = castReceivers())
-}
-
-@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-fun CastPicker() {
-    CastPickerScene(castReceivers())
-}
-
-/** The cast picker over receivers whose names are longer than a row: two lines, then an ellipsis. */
-@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-fun CastPickerLongNames() {
-    CastPickerScene(
-        castReceivers(
-            casting = "Upstairs Living Room Sonos Arc Soundbar",
-            dlna = "Denon AVR-X3800H Home Theater Receiver (Basement)",
-        ),
-    )
-}
-
-@Composable
-private fun CastPickerScene(receivers: BridgeCastReceiverList) {
-    TitledSheetShot(stringResource(R.string.cast)) {
-        CastReceiverRows(
-            receivers = receivers,
-            connectingName = null,
-            onCast = {},
-            onDisconnect = {},
-            looking = stringResource(R.string.cast_looking_for_devices),
-        )
-    }
-}
-
-/** Living Room cast to, as core lists it, then the rest by name. */
-private fun castReceivers(
-    casting: String = "Living Room",
-    dlna: String = "Den receiver",
-) = BridgeCastReceiverList(
-    casting =
-        BridgeCastReceiver(
-            id = "cast-living-room",
-            name = casting,
-            kind = BridgeRendererKind.CAST,
-            model = null,
-            address = "192.168.1.40",
-        ),
-    found =
-        listOf(
-            BridgeCastReceiver(id = "cast-den", name = dlna, kind = BridgeRendererKind.DLNA, model = null, address = "192.168.1.40"),
-            BridgeCastReceiver(
-                id = "cast-kitchen",
-                name = "Kitchen",
-                kind = BridgeRendererKind.AIR_PLAY,
-                model = null,
-                address = "192.168.1.40",
-            ),
-        ),
-)
-
-@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-fun CastingSettingsLooking() {
-    CastingSettingsScene(receivers = BridgeCastReceiverList(casting = null, found = emptyList()))
-}
-
-/** The Casting page with casting on and [receivers] found. */
-@Composable
-private fun CastingSettingsScene(receivers: BridgeCastReceiverList) {
-    BaeTheme {
-        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            CastingPage(
-                enabled = true,
-                receivers = receivers,
-                connectingName = null,
-                transcodeFormat = BridgeCastTranscodeFormat.MP3,
-                onBack = {},
-                onCast = {},
-                onDisconnect = {},
-                onEnabledChange = {},
-                onTranscodeFormatChange = {},
             )
         }
     }

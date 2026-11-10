@@ -130,7 +130,7 @@
     <string name="library_delete_confirm_body">Diese Bibliothek ist nicht synchronisiert und wird daher endgültig gelöscht. Deine Audiodateien bleiben in ihren Ordnern.</string>
     <string name="library_delete">Löschen</string>
     <string name="library_not_synced">Nicht synchronisiert</string>
-    <string name="library_details_menu">Details…</string>
+    <string name="details_menu">Details…</string>
     <string name="library_remove_menu">Entfernen…</string>
     <string name="library_delete_menu">Löschen…</string>
     <string name="library_last_synced">Zuletzt synchronisiert</string>
@@ -207,6 +207,9 @@
     <string name="cast">Übertragen</string>
     <string name="cast_receiver_casting">Wird übertragen</string>
     <string name="cast_disconnect">Trennen</string>
+    <string name="cast_receiver_type">Typ</string>
+    <string name="cast_receiver_model">Modell</string>
+    <string name="cast_receiver_address">Adresse</string>
     <string name="cast_looking_for_devices">Geräte werden gesucht …</string>
     <string name="cast_connecting">Verbindung mit %1$s wird hergestellt…</string>
     <string name="cast_turn_off_title">Übertragung ausschalten?</string>

@@ -133,7 +133,7 @@
     <string name="library_delete_confirm_body">Cette bibliothèque n’est pas synchronisée, elle sera donc supprimée définitivement. Vos fichiers audio restent dans leurs dossiers.</string>
     <string name="library_delete">Supprimer</string>
     <string name="library_not_synced">Non synchronisée</string>
-    <string name="library_details_menu">Détails…</string>
+    <string name="details_menu">Détails…</string>
     <string name="library_remove_menu">Supprimer…</string>
     <string name="library_delete_menu">Supprimer…</string>
     <string name="library_last_synced">Dernière synchronisation</string>
@@ -212,6 +212,9 @@
     <string name="cast">Diffuser</string>
     <string name="cast_receiver_casting">Diffusion en cours</string>
     <string name="cast_disconnect">Déconnecter</string>
+    <string name="cast_receiver_type">Type</string>
+    <string name="cast_receiver_model">Modèle</string>
+    <string name="cast_receiver_address">Adresse</string>
     <string name="cast_looking_for_devices">Recherche d\'appareils…</string>
     <string name="cast_connecting">Connexion à %1$s…</string>
     <string name="cast_turn_off_title">Désactiver la diffusion ?</string>

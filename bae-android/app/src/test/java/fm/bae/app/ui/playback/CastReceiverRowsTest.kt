@@ -8,7 +8,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import fm.bae.app.BaeRobolectricTestRunner
@@ -39,16 +41,19 @@ class CastReceiverRowsTest {
     private fun setRows(
         receivers: BridgeCastReceiverList,
         connectingName: String? = null,
+        place: CastReceiverPlace = CastReceiverPlace.PICKER,
+        onDisconnect: () -> Unit = {},
         onCast: (BridgeCastReceiver) -> Unit = {},
     ) {
         compose.setContent {
             BaeTheme {
                 Column {
                     CastReceiverRows(
+                        place = place,
                         receivers = receivers,
                         connectingName = connectingName,
                         onCast = onCast,
-                        onDisconnect = {},
+                        onDisconnect = onDisconnect,
                         looking = "Looking for devices…",
                     )
                 }
@@ -63,6 +68,70 @@ class CastReceiverRowsTest {
         compose.onNodeWithText("Casting").assertIsDisplayed()
         compose.onAllNodesWithText("Disconnect").assertCountEquals(1)
         compose.onNodeWithText("AirPlay").assertIsDisplayed()
+    }
+
+    @Test
+    fun thePickerHasNoMenuOnItsRows() {
+        setRows(BridgeCastReceiverList(casting = livingRoom, found = listOf(kitchen)))
+
+        compose.onAllNodesWithContentDescription("More").assertCountEquals(0)
+    }
+
+    @Test
+    fun everyRowOnThePageHasAMenuWithDetailsAndOnlyTheCastToRowOffersDisconnect() {
+        var disconnected = 0
+        setRows(
+            BridgeCastReceiverList(casting = livingRoom, found = listOf(kitchen)),
+            place = CastReceiverPlace.PAGE,
+            onDisconnect = { disconnected++ },
+        )
+
+        compose.onAllNodesWithContentDescription("More").assertCountEquals(2)
+        compose.onAllNodesWithText("Disconnect").assertCountEquals(0)
+
+        compose.onAllNodesWithContentDescription("More")[1].performClick()
+        compose.onNodeWithText("Details…").assertIsDisplayed()
+        compose.onAllNodesWithText("Disconnect").assertCountEquals(0)
+        compose.onNodeWithText("Details…").performClick()
+        compose.waitForIdle()
+
+        compose.onAllNodesWithText("Kitchen").assertCountEquals(2)
+        compose.onNodeWithText("Type").assertIsDisplayed()
+        compose.onNodeWithText("Model").assertDoesNotExist()
+        compose.onNodeWithText("Address").assertIsDisplayed()
+        compose.onNodeWithText("192.168.1.40").assertIsDisplayed()
+        assertEquals(0, disconnected)
+    }
+
+    @Test
+    fun theCastToRowsMenuDisconnects() {
+        var disconnected = 0
+        setRows(
+            BridgeCastReceiverList(casting = livingRoom, found = emptyList()),
+            place = CastReceiverPlace.PAGE,
+            onDisconnect = { disconnected++ },
+        )
+
+        compose.onNodeWithContentDescription("More").performClick()
+        compose.onNodeWithText("Details…").assertIsDisplayed()
+        compose.onNodeWithText("Disconnect").performClick()
+
+        assertEquals(1, disconnected)
+    }
+
+    @Test
+    fun detailsShowAStatedModel() {
+        setRows(
+            BridgeCastReceiverList(casting = null, found = listOf(livingRoom.copy(model = "Nest Audio"))),
+            place = CastReceiverPlace.PAGE,
+        )
+
+        compose.onNodeWithContentDescription("More").performClick()
+        compose.onNodeWithText("Details…").performClick()
+        compose.waitForIdle()
+
+        compose.onNodeWithText("Model").assertIsDisplayed()
+        compose.onNodeWithText("Nest Audio").assertIsDisplayed()
     }
 
     @Test
@@ -85,6 +154,7 @@ class CastReceiverRowsTest {
             BaeTheme {
                 Column {
                     CastReceiverRows(
+                        place = CastReceiverPlace.PICKER,
                         receivers = receivers,
                         connectingName = null,
                         onCast = {},
@@ -112,6 +182,7 @@ class CastReceiverRowsTest {
             BaeTheme {
                 Column {
                     CastReceiverRows(
+                        place = CastReceiverPlace.PICKER,
                         receivers = found(kitchen),
                         connectingName = connecting,
                         onCast = {},

@@ -136,7 +136,7 @@
     <string name="library_delete_confirm_body">Ta biblioteka nie jest zsynchronizowana, więc zostanie usunięta na stałe. Twoje pliki audio zostaną w swoich folderach.</string>
     <string name="library_delete">Usuń</string>
     <string name="library_not_synced">Niezsynchronizowana</string>
-    <string name="library_details_menu">Szczegóły…</string>
+    <string name="details_menu">Szczegóły…</string>
     <string name="library_remove_menu">Usuń…</string>
     <string name="library_delete_menu">Usuń…</string>
     <string name="library_last_synced">Ostatnia synchronizacja</string>
@@ -219,6 +219,9 @@
     <string name="cast">Przesyłaj</string>
     <string name="cast_receiver_casting">Trwa przesyłanie</string>
     <string name="cast_disconnect">Rozłącz</string>
+    <string name="cast_receiver_type">Typ</string>
+    <string name="cast_receiver_model">Model</string>
+    <string name="cast_receiver_address">Adres</string>
     <string name="cast_looking_for_devices">Wyszukiwanie urządzeń…</string>
     <string name="cast_connecting">Łączenie z %1$s…</string>
     <string name="cast_turn_off_title">Wyłączyć przesyłanie?</string>

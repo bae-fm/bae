@@ -133,7 +133,7 @@
     <string name="library_delete_confirm_body">Questa libreria non è sincronizzata, quindi verrà eliminata per sempre. I tuoi file audio restano nelle loro cartelle.</string>
     <string name="library_delete">Elimina</string>
     <string name="library_not_synced">Non sincronizzata</string>
-    <string name="library_details_menu">Dettagli…</string>
+    <string name="details_menu">Dettagli…</string>
     <string name="library_remove_menu">Rimuovi…</string>
     <string name="library_delete_menu">Elimina…</string>
     <string name="library_last_synced">Ultima sincronizzazione</string>
@@ -212,6 +212,9 @@
     <string name="cast">Trasmetti</string>
     <string name="cast_receiver_casting">In trasmissione</string>
     <string name="cast_disconnect">Disconnetti</string>
+    <string name="cast_receiver_type">Tipo</string>
+    <string name="cast_receiver_model">Modello</string>
+    <string name="cast_receiver_address">Indirizzo</string>
     <string name="cast_looking_for_devices">Ricerca dei dispositivi…</string>
     <string name="cast_connecting">Connessione a %1$s…</string>
     <string name="cast_turn_off_title">Disattivare la trasmissione?</string>

@@ -134,7 +134,7 @@
     <string name="library_delete_confirm_body">Dette biblioteket er ikke synkronisert, så det slettes for godt. Lydfilene dine blir liggende i mappene sine.</string>
     <string name="library_delete">Slett</string>
     <string name="library_not_synced">Ikke synkronisert</string>
-    <string name="library_details_menu">Detaljer…</string>
+    <string name="details_menu">Detaljer…</string>
     <string name="library_remove_menu">Fjern…</string>
     <string name="library_delete_menu">Slett…</string>
     <string name="library_last_synced">Sist synkronisert</string>
@@ -205,6 +205,9 @@
     <string name="cast">Cast</string>
     <string name="cast_receiver_casting">Caster nå</string>
     <string name="cast_disconnect">Koble fra</string>
+    <string name="cast_receiver_type">Type</string>
+    <string name="cast_receiver_model">Modell</string>
+    <string name="cast_receiver_address">Adresse</string>
     <string name="cast_looking_for_devices">Ser etter enheter…</string>
     <string name="cast_connecting">Kobler til %1$s…</string>
     <string name="cast_turn_off_title">Slå av castingen?</string>

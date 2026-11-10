@@ -95,6 +95,7 @@ private fun CastPickerSheet(
     TitledSheet(title = stringResource(R.string.cast), onDismiss = onDismiss) {
         PickerFailures(endedFailure = endedFailure, castFailure = castFailure)
         CastReceiverRows(
+            place = CastReceiverPlace.PICKER,
             receivers = receivers,
             connectingName = connecting?.name,
             onCast = { receiver -> asked = session.castStart.cast(receiver) },

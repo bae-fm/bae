@@ -134,7 +134,7 @@
     <string name="library_delete_confirm_body">Det här biblioteket är inte synkroniserat, så det raderas för alltid. Dina ljudfiler ligger kvar i sina mappar.</string>
     <string name="library_delete">Radera</string>
     <string name="library_not_synced">Inte synkroniserat</string>
-    <string name="library_details_menu">Detaljer…</string>
+    <string name="details_menu">Detaljer…</string>
     <string name="library_remove_menu">Ta bort…</string>
     <string name="library_delete_menu">Radera…</string>
     <string name="library_last_synced">Senast synkroniserad</string>
@@ -205,6 +205,9 @@
     <string name="cast">Casta</string>
     <string name="cast_receiver_casting">Castar nu</string>
     <string name="cast_disconnect">Koppla från</string>
+    <string name="cast_receiver_type">Typ</string>
+    <string name="cast_receiver_model">Modell</string>
+    <string name="cast_receiver_address">Adress</string>
     <string name="cast_looking_for_devices">Söker efter enheter…</string>
     <string name="cast_connecting">Ansluter till %1$s…</string>
     <string name="cast_turn_off_title">Stänga av castningen?</string>

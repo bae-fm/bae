@@ -11,11 +11,16 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cast
 import androidx.compose.material.icons.filled.Speaker
 import androidx.compose.material.icons.filled.Tv
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -25,6 +30,9 @@ import fm.bae.app.R
 import fm.bae.app.data.isEmpty
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.CardRow
+import fm.bae.app.ui.components.MoreMenu
+import fm.bae.app.ui.components.TitledSheet
 import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.components.cardRowDivider
 import uniffi.bae_bridge.BridgeCastReceiver
@@ -44,16 +52,28 @@ internal sealed interface CastReceiverRole {
     ) : CastReceiverRole
 }
 
+/** Where receivers are listed, which decides how a row ends. */
+internal enum class CastReceiverPlace {
+    /** The cast picker, opened to pick a receiver or stop: the receiver cast to ends in Disconnect. */
+    PICKER,
+
+    /** The Casting page: every row ends in a ⋮ menu holding Details, and Disconnect on the receiver cast to. */
+    PAGE,
+}
+
 /**
  * A receiver as the cast picker and the Casting page list it: its kind's icon, its name over its kind, or over
  * "Casting" when playback is on it, which is also the one row that offers Disconnect. Any other row casts to it.
+ * On the page every row also has a ⋮ menu whose Details opens a sheet on the receiver.
  */
 @Composable
 internal fun CastReceiverRow(
     receiver: BridgeCastReceiver,
     role: CastReceiverRole,
+    place: CastReceiverPlace,
 ) {
     val casting = role is CastReceiverRole.Casting
+    var showsDetails by remember { mutableStateOf(false) }
     Row(
         modifier =
             Modifier
@@ -78,33 +98,103 @@ internal fun CastReceiverRow(
                 },
         )
         Spacer(modifier = Modifier.width(ThemeSpace.group))
-        Column(modifier = Modifier.weight(1f)) {
+        CastReceiverLabel(receiver = receiver, casting = casting, modifier = Modifier.weight(1f))
+        CastReceiverEnd(role = role, place = place, onDetails = { showsDetails = true })
+    }
+    if (showsDetails) {
+        TitledSheet(title = receiver.name, onDismiss = { showsDetails = false }) {
+            CastReceiverDetailsRows(receiver)
+        }
+    }
+}
+
+/** A receiver's name over its kind, or over "Casting" when playback is on it. */
+@Composable
+private fun CastReceiverLabel(
+    receiver: BridgeCastReceiver,
+    casting: Boolean,
+    modifier: Modifier,
+) {
+    Column(modifier = modifier) {
+        Text(
+            text = receiver.name,
+            style = ThemeText.rowTitle.style,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        if (casting) {
             Text(
-                text = receiver.name,
-                style = ThemeText.rowTitle.style,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
+                text = stringResource(R.string.cast_receiver_casting),
+                style = ThemeText.body.style,
+                color = MaterialTheme.colorScheme.primary,
             )
-            if (casting) {
-                Text(
-                    text = stringResource(R.string.cast_receiver_casting),
-                    style = ThemeText.body.style,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            } else {
-                Text(
-                    text = receiver.kind.productName,
-                    style = ThemeText.body.style,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+        } else {
+            Text(
+                text = receiver.kind.productName,
+                style = ThemeText.body.style,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+/** How a row ends: the picker's Disconnect on the receiver cast to, or the page's ⋮ menu on every row. */
+@Composable
+private fun CastReceiverEnd(
+    role: CastReceiverRole,
+    place: CastReceiverPlace,
+    onDetails: () -> Unit,
+) {
+    when (place) {
+        CastReceiverPlace.PICKER -> {
+            if (role is CastReceiverRole.Casting) {
+                TextButton(onClick = role.onDisconnect) {
+                    Text(stringResource(R.string.cast_disconnect))
+                }
             }
         }
-        if (role is CastReceiverRole.Casting) {
-            TextButton(onClick = role.onDisconnect) {
-                Text(stringResource(R.string.cast_disconnect))
+
+        CastReceiverPlace.PAGE -> {
+            MoreMenu { close ->
+                CastReceiverMenuItems(role = role, onDetails = onDetails, close = close)
             }
         }
     }
+}
+
+/** The ⋮ menu's items: Details on every row, Disconnect on the receiver cast to. */
+@Composable
+internal fun CastReceiverMenuItems(
+    role: CastReceiverRole,
+    onDetails: () -> Unit,
+    close: () -> Unit,
+) {
+    DropdownMenuItem(
+        text = { Text(stringResource(R.string.details_menu)) },
+        onClick = {
+            close()
+            onDetails()
+        },
+    )
+    if (role is CastReceiverRole.Casting) {
+        DropdownMenuItem(
+            text = { Text(stringResource(R.string.cast_disconnect)) },
+            onClick = {
+                close()
+                role.onDisconnect()
+            },
+        )
+    }
+}
+
+/** What the Details sheet shows of a receiver: its type, its model when it states one, and its address. */
+@Composable
+internal fun CastReceiverDetailsRows(receiver: BridgeCastReceiver) {
+    CardRow(title = stringResource(R.string.cast_receiver_type), subtitle = receiver.kind.productName)
+    receiver.model?.let { model ->
+        CardRow(title = stringResource(R.string.cast_receiver_model), subtitle = model)
+    }
+    CardRow(title = stringResource(R.string.cast_receiver_address), subtitle = receiver.address)
 }
 
 /**
@@ -114,6 +204,7 @@ internal fun CastReceiverRow(
  */
 @Composable
 internal fun CastReceiverRows(
+    place: CastReceiverPlace,
     receivers: BridgeCastReceiverList,
     connectingName: String?,
     onCast: (BridgeCastReceiver) -> Unit,
@@ -127,10 +218,10 @@ internal fun CastReceiverRows(
         WaitingRow(text = looking)
     } else {
         receivers.casting?.let { casting ->
-            CastReceiverRow(receiver = casting, role = CastReceiverRole.Casting(onDisconnect))
+            CastReceiverRow(receiver = casting, role = CastReceiverRole.Casting(onDisconnect), place = place)
         }
         receivers.found.forEach { receiver ->
-            CastReceiverRow(receiver = receiver, role = CastReceiverRole.Found { onCast(receiver) })
+            CastReceiverRow(receiver = receiver, role = CastReceiverRole.Found { onCast(receiver) }, place = place)
         }
     }
 }

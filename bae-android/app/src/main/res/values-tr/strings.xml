@@ -130,7 +130,7 @@
     <string name="library_delete_confirm_body">Bu kitaplık eşitlenmediği için kalıcı olarak silinecek. Ses dosyalarınız klasörlerinde kalır.</string>
     <string name="library_delete">Sil</string>
     <string name="library_not_synced">Eşitlenmedi</string>
-    <string name="library_details_menu">Ayrıntılar…</string>
+    <string name="details_menu">Ayrıntılar…</string>
     <string name="library_remove_menu">Kaldır…</string>
     <string name="library_delete_menu">Sil…</string>
     <string name="library_last_synced">Son eşitleme</string>
@@ -207,6 +207,9 @@
     <string name="cast">Yayınla</string>
     <string name="cast_receiver_casting">Yayınlanıyor</string>
     <string name="cast_disconnect">Bağlantıyı kes</string>
+    <string name="cast_receiver_type">Tür</string>
+    <string name="cast_receiver_model">Model</string>
+    <string name="cast_receiver_address">Adres</string>
     <string name="cast_looking_for_devices">Cihazlar aranıyor…</string>
     <string name="cast_connecting">%1$s cihazına bağlanılıyor…</string>
     <string name="cast_turn_off_title">Yayınlama kapatılsın mı?</string>

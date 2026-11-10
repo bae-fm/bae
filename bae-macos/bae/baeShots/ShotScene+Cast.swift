@@ -16,6 +16,22 @@ extension ShotScene {
             )
         ),
         ShotScene(
+            id: "cast-receiver-details",
+            size: CGSize(width: 320, height: 250)
+        ) {
+            ShotStage(
+                CastReceiverDetails(
+                    receiver: BridgeCastReceiver(
+                        id: "cast-living-room",
+                        name: "Living Room",
+                        kind: .cast,
+                        model: "Google Nest Audio",
+                        address: "192.168.1.42"
+                    )
+                )
+            )
+        },
+        ShotScene(
             id: "cast-picker-connecting",
             size: CGSize(width: 300, height: 160)
         ) {
@@ -53,7 +69,7 @@ extension ShotScene {
                 id: "cast-living-room",
                 name: livingRoom,
                 kind: .cast,
-                model: nil,
+                model: "Google Nest Audio",
                 address: "192.168.1.42"
             ),
             found: [
@@ -62,14 +78,14 @@ extension ShotScene {
                     name: den,
                     kind: .dlna,
                     model: nil,
-                    address: "192.168.1.43"
+                    address: "192.168.1.57"
                 ),
                 BridgeCastReceiver(
                     id: "cast-kitchen",
                     name: "Kitchen",
                     kind: .airPlay,
-                    model: nil,
-                    address: "192.168.1.44"
+                    model: "HomePod mini",
+                    address: "192.168.1.63"
                 ),
             ]
         )
