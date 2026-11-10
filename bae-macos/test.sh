@@ -7,7 +7,11 @@
 # running nothing: the check after a change to a bridge shape or Swift code,
 # which `run.sh` alone misses because it never builds the test target.
 #
-# Usage: bae-macos/test.sh [--build-only | <Type>[/<test>] ...]
+# `--run-only` runs the tests a `--build-only` run already built, without
+# compiling anything: the `macos-tests-run` step of `.app-build` follows the
+# `macos-tests` step with it.
+#
+# Usage: bae-macos/test.sh [--build-only | --run-only] [<Type>[/<test>] ...]
 set -euo pipefail
 
 ACTION=test
@@ -17,6 +21,9 @@ if [[ "${1:-}" == "--build-only" ]]; then
         exit 2
     fi
     ACTION=build-for-testing
+    shift
+elif [[ "${1:-}" == "--run-only" ]]; then
+    ACTION=test-without-building
     shift
 fi
 
@@ -38,6 +45,12 @@ for name in "$@"; do
     ONLY_TESTING+=("-only-testing:baeTests/$name")
 done
 
+# The `macos-tests-run` step runs the unit-test target only; the UI tests run in
+# CI and in a plain `test.sh` run.
+if [[ "$ACTION" == test-without-building && ${#ONLY_TESTING[@]} -eq 0 ]]; then
+    ONLY_TESTING=("-only-testing:baeTests")
+fi
+
 RESULTS="$(mktemp -d)"
 trap 'rm -rf "$RESULTS"' EXIT
 BUNDLE="$RESULTS/baeTests.xcresult"
@@ -54,7 +67,7 @@ xcodebuild -project bae-macos/bae/bae.xcodeproj -scheme bae -configuration Debug
     ${ONLY_TESTING[@]+"${ONLY_TESTING[@]}"} "$ACTION" || status=$?
 
 # A build that failed before testing leaves no bundle; its own status says so.
-if [[ "$ACTION" == test && -d "$BUNDLE" ]]; then
+if [[ "$ACTION" != build-for-testing && -d "$BUNDLE" ]]; then
     xcrun xcresulttool get test-results tests --path "$BUNDLE" > "$RESULTS/tests.json"
     python3 scripts/xcresult-tests-ran.py "$RESULTS/tests.json" "$@" || status=1
 fi

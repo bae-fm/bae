@@ -4,8 +4,10 @@ mac bundle fm.bae.desktop
 android build ./bae-android/run.sh
 step macos ./bae-macos/run.sh --no-open
 step macos-tests ./bae-macos/test.sh --build-only
+step macos-tests-run ./bae-macos/test.sh --run-only
 step android-bridge ./bae-bridge/build-android.sh --abi arm64-v8a
 step android ./bae-android/compile-all.sh
+step android-tests ./bae-android/test-unit.sh
 step notice-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene notice- --tone midnight
 step storage-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene storage-manager --tone midnight
 step android-shots ./scripts/shots/android.sh /Volumes/Builds/bae/shots/android
