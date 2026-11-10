@@ -367,7 +367,7 @@ fn a_newer_cast_calls_off_the_one_still_connecting() {
     assert!(matches!(first, Err(CastError::CalledOff)), "{first:?}");
 }
 
-/// The picker reads the devices from the library's `cast_device` table: a
+/// The picker reads the devices from the library's `cast_receiver` table: a
 /// reported service is listed there, by name, and one the host's browser
 /// lost leaves it, each in a write of the whole list.
 #[test]

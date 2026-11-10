@@ -5197,7 +5197,7 @@ membership's (`membership.sql`).
 | `playback_state` | the one row of what this device was playing (§7.8) |
 | `playback_now` | the one row of what this device's playback is doing: track and phase, pause prompt, volume, mute, receiver and its kind, preview, last failure and the count of failures (§9.4) |
 | `playback_timeline` | the one row of where this device's playback is, for the surfaces that move the position on themselves: the playing track's line and the preview's, each a position and whether it moves on, and the count of seeks applied (§9.4) |
-| `cast_device` | receiver the cast picker lists, as discovery last found it: its id, name and kind (Cast, UPnP or AirPlay) |
+| `cast_receiver` | receiver the cast picker lists, as discovery last found it: its id, name and kind (Cast, UPnP or AirPlay) |
 
 A play's fill, Clear up next, Clear playing from and the emptying as a library
 opens without resuming are bulk writes: plain SQLite on these device-local

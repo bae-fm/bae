@@ -120,8 +120,8 @@ fn apply_on(sql: &CovenWrite<'_>, change: &PlaybackChange) -> rusqlite::Result<(
                 }
             };
             sql.execute(
-                "UPDATE playback_now SET remote = ?, remote_device_id = ?, \
-                     remote_device_name = ?, remote_device_kind = ?, remote_end_detail = ?",
+                "UPDATE playback_now SET remote = ?, cast_receiver_id = ?, \
+                     cast_receiver_name = ?, cast_receiver_kind = ?, remote_end_detail = ?",
                 params![
                     kind,
                     device.map(|device| device.id.as_str()),
@@ -186,8 +186,8 @@ pub(super) fn reset_playback_now_on(
         "UPDATE playback_now SET state = 'stopped', track_id = NULL, prepared = NULL, \
              duration_ms = NULL, pause_reason = NULL, side_boundary_id = NULL, \
              side_boundary_kind = NULL, side_label = NULL, side_resumes_at = NULL, \
-             remote = 'local', remote_device_id = NULL, remote_device_name = NULL, \
-             remote_device_kind = NULL, remote_end_detail = NULL, preview = 'idle', preview_path = NULL, \
+             remote = 'local', cast_receiver_id = NULL, cast_receiver_name = NULL, \
+             cast_receiver_kind = NULL, remote_end_detail = NULL, preview = 'idle', preview_path = NULL, \
              preview_start_sample = NULL, preview_end_sample = NULL, preview_duration_ms = NULL, \
              failure = NULL, failure_problem = NULL, failure_detail = NULL, \
              failure_device = NULL, failure_device_state = NULL, failures = 0",
@@ -379,12 +379,12 @@ fn state_from_row(row: &Row<'_>) -> rusqlite::Result<PlaybackState> {
 }
 
 /// The receiver a row playback is on, or lost the link to, names in its
-/// `remote_device_*` columns.
+/// `cast_receiver_*` columns.
 pub(crate) fn remote_receiver_from_row(row: &Row<'_>) -> rusqlite::Result<CastReceiver> {
     Ok(CastReceiver {
-        id: row.get("remote_device_id")?,
-        name: row.get("remote_device_name")?,
-        kind: kind_from_column(row, "remote_device_kind")?,
+        id: row.get("cast_receiver_id")?,
+        name: row.get("cast_receiver_name")?,
+        kind: kind_from_column(row, "cast_receiver_kind")?,
     })
 }
 

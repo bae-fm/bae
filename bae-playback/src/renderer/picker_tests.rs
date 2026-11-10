@@ -1,4 +1,4 @@
-//! The picker's list: `cast_device` as each write lists it whole, read by
+//! The picker's list: `cast_receiver` as each write lists it whole, read by
 //! name apart from the receiver playback is cast to, and emptied as the
 //! library opens.
 

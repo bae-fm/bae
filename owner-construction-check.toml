@@ -1306,7 +1306,7 @@ tables = ["playback_timeline"]
 name = "cast picker"
 owner = "CastPicker"
 homes = ["bae-playback/src/renderer/picker.rs", "bae-playback/src/renderer/picker.sql"]
-tables = ["cast_device"]
+tables = ["cast_receiver"]
 
 [[database.domains]]
 name = "watched folders"

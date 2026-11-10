@@ -303,7 +303,7 @@ pub struct CastController {
     services: AppServices,
     /// Where the picker's devices come from: bae's own browsing, or the services
     /// a host's browser reports in. Chosen once, per host. The picker reads
-    /// them from the library's `cast_device` table, which the device list
+    /// them from the library's `cast_receiver` table, which the device list
     /// writer keeps.
     discovery: Mutex<RendererDiscovery>,
     /// The places open that list receivers. Named, not counted, so a second

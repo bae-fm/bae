@@ -1,4 +1,4 @@
-//! The receivers the picker lists: the library's device-local `cast_device`
+//! The receivers the picker lists: the library's device-local `cast_receiver`
 //! table, what discovery last found, written by bae-cast in one write per
 //! change, after the receiver playback is cast to, which comes first and is
 //! listed while a new search hasn't found it again. The Casting settings page
@@ -59,15 +59,15 @@ pub(crate) fn kind_from_column<I: rusqlite::RowIndex + Copy>(
 fn cast_receivers_on(sql: &SqlReadContext<'_>) -> Result<CastReceiverList, DbError> {
     let casting = sql
         .query_row(
-            "SELECT remote_device_id, remote_device_name, remote_device_kind \
+            "SELECT cast_receiver_id, cast_receiver_name, cast_receiver_kind \
                FROM playback_now WHERE remote = 'on'",
             [],
             remote_receiver_from_row,
         )
         .optional()?;
     let found = sql.query(
-        "SELECT id, name, kind FROM cast_device \
-           WHERE id NOT IN (SELECT remote_device_id FROM playback_now WHERE remote = 'on') \
+        "SELECT id, name, kind FROM cast_receiver \
+           WHERE id NOT IN (SELECT cast_receiver_id FROM playback_now WHERE remote = 'on') \
          ORDER BY name, id",
         [],
         |row| {
@@ -98,10 +98,10 @@ impl CastPicker {
     pub async fn show(&self, receivers: Vec<CastReceiver>) -> Result<(), DbError> {
         self.store
             .call(move |sql| {
-                sql.execute("DELETE FROM cast_device", [])?;
+                sql.execute("DELETE FROM cast_receiver", [])?;
                 for receiver in &receivers {
                     sql.execute(
-                        "INSERT INTO cast_device (id, name, kind) VALUES (?1, ?2, ?3)",
+                        "INSERT INTO cast_receiver (id, name, kind) VALUES (?1, ?2, ?3)",
                         params![receiver.id, receiver.name, kind_column(receiver.kind)],
                     )?;
                 }
@@ -121,7 +121,7 @@ impl CastPicker {
     pub async fn clear(&self) -> Result<(), DbError> {
         self.store
             .call(|sql| {
-                sql.execute("DELETE FROM cast_device", [])?;
+                sql.execute("DELETE FROM cast_receiver", [])?;
                 Ok(())
             })
             .await
