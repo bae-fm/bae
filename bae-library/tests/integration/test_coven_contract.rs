@@ -43,6 +43,7 @@ async fn real_schema_opens_with_the_declarations_and_device_only_files() {
         &release.id,
         "track.flac",
         bae_util::content_type::ContentType::Flac,
+        bae_records::ReleaseFileRole::Other,
         coven::IdSource::new_id(&**sources.ids()).to_string(),
         chrono::Utc::now(),
     );
@@ -113,6 +114,7 @@ async fn upload_cancellation_keeps_the_file_on_this_device_with_its_original() {
         &release.id,
         "track.flac",
         bae_util::content_type::ContentType::Flac,
+        bae_records::ReleaseFileRole::Other,
         coven::IdSource::new_id(&**library.ids()).to_string(),
         chrono::Utc::now(),
     );

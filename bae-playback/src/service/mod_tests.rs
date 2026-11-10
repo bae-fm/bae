@@ -579,6 +579,7 @@ async fn seed_track(
         release_id,
         &format!("track.{}", content_type.file_extension()),
         content_type.clone(),
+        bae_records::ReleaseFileRole::Audio,
         file_id.clone(),
         now,
     );

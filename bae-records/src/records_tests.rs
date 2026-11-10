@@ -31,6 +31,7 @@ async fn release_file_source_audio_facts_round_trip_without_track_rows() {
             release_id: RELEASE_A.to_string(),
             original_filename: "album.flac".to_string(),
             content_type: bae_util::content_type::ContentType::Flac,
+            role: crate::ReleaseFileRole::Audio,
             source_audio: Some(source_audio.clone()),
             created_at: chrono::Utc::now(),
         },

@@ -82,6 +82,7 @@ fn placed_tracks_are_laid_out_again_at_their_new_places() {
         sides: ReleaseEditTrackSide::lay_out(
             ["t1", "t2", "t3"].map(|id| (TrackSide::Flat, context(id, id, File))),
         ),
+        files: Vec::new(),
     };
 
     let placed = display.placed([
@@ -190,4 +191,78 @@ fn missing_segment_file_is_an_editor_load_error() {
         Err(ReleaseEditLoadError::MissingSourceFile { file_id, .. })
             if file_id == "missing-file-id"
     ));
+}
+
+/// A stored file of the release, named `name`, in `role`, with audio facts
+/// laid out as `layout` when it is audio.
+fn stored_file(
+    name: &str,
+    role: bae_records::ReleaseFileRole,
+    layout: Option<SourceAudioLayout>,
+) -> bae_records::DbFile {
+    let audio = role == bae_records::ReleaseFileRole::Audio;
+    bae_records::DbFile {
+        id: format!("id-{name}"),
+        release_id: "release-id".to_string(),
+        original_filename: name.to_string(),
+        file_size: 1_024,
+        content_type: if audio {
+            bae_util::content_type::ContentType::Flac
+        } else {
+            bae_util::content_type::ContentType::PlainText
+        },
+        role,
+        source_audio: audio.then(|| bae_records::source_audio::SourceAudioFile {
+            layout,
+            content_type: bae_util::content_type::ContentType::Flac,
+            container: bae_util::audio_container::AudioContainer::from_name("flac"),
+            duration_ms: 60_000,
+            format: bae_types::audio_format::AudioFormat {
+                codec: "FLAC".to_string(),
+                sample_rate_hz: 44_100,
+                bits_per_sample: Some(16),
+                bitrate_kbps: None,
+                channels: 2,
+            },
+        }),
+        file: coven::FileId(uuid::Uuid::nil()),
+        stored: false,
+        created_at: chrono::DateTime::UNIX_EPOCH,
+    }
+}
+
+/// The Files section lists every file no track plays from, in the release's
+/// order, each with what it is: a track sheet reads as a document, and an
+/// image the scan found damaged says so.
+#[test]
+fn the_files_no_track_plays_from_are_listed_with_their_roles() {
+    use crate::MappingRole;
+    use bae_records::ReleaseFileRole::{Artwork, Audio, DamagedImage, Document, Other, TrackSheet};
+    let (mut raw, tracks) =
+        one_track(vec![segment(bae_records::DbAudioSegmentRole::Main, "id-disc.flac")]);
+    raw.files = vec![
+        stored_file("back.png", DamagedImage, None),
+        stored_file("cover.jpg", Artwork, None),
+        stored_file("disc.cue", TrackSheet, None),
+        stored_file("disc.flac", Audio, Some(SourceAudioLayout::Cue)),
+        stored_file("notes.nfo", Other, None),
+        stored_file("rip.log", Document, None),
+    ];
+
+    let display = ReleaseEditDisplayContext::from_raw(&raw, tracks).unwrap();
+
+    assert_eq!(
+        display
+            .files
+            .iter()
+            .map(|file| (file.file_id.as_str(), file.name.as_str(), file.size, file.role))
+            .collect::<Vec<_>>(),
+        [
+            ("id-back.png", "back.png", 1_024, MappingRole::DamagedImage),
+            ("id-cover.jpg", "cover.jpg", 1_024, MappingRole::Image),
+            ("id-disc.cue", "disc.cue", 1_024, MappingRole::Document),
+            ("id-notes.nfo", "notes.nfo", 1_024, MappingRole::Other),
+            ("id-rip.log", "rip.log", 1_024, MappingRole::Document),
+        ]
+    );
 }

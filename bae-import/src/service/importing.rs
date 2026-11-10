@@ -452,6 +452,7 @@ impl ImportService {
                 &db_release.id,
                 &file.relative_path,
                 resolve_file_content_type(entry)?,
+                release_file_role(&entry.role),
                 self.ids.new_id().to_string(),
                 files_now,
             );

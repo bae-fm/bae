@@ -112,6 +112,7 @@ pub enum DraftAlbum {
 /// A library release as an edit session opens on it: the raw form, the
 /// cover, what the editor shows beside the form, and the album the release
 /// is in.
+#[cfg(desktop)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReleaseEditSeed {
     pub edit: RawReleaseEdit,
@@ -126,6 +127,7 @@ pub struct ReleaseEditSeed {
 /// what the library holds for each artist credit the form carries, whether a
 /// save would write anything the session did not open on, and why the form
 /// can't be saved, when it can't.
+#[cfg(desktop)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReleaseEditDraft {
     pub edit: RawReleaseEdit,
@@ -137,6 +139,7 @@ pub struct ReleaseEditDraft {
     pub invalid: Option<EditValidationError>,
 }
 
+#[cfg(desktop)]
 impl ReleaseEditSeed {
     /// Whether this seed holds every value `opened` held — the form, the
     /// tracks and the album — whatever its cover: the cover is written at

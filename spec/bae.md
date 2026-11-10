@@ -270,10 +270,14 @@ absent (lossy audio) or 1 to 32; the database refuses any other value. Import
 refuses audio that states a deeper one, naming the file. A stored value that
 breaks these rules fails reading the track with an error naming it.
 
-Each file records what the scan read of it: its content type, the container
-its bytes are in (read from the bytes, never the file's name), duration,
-sample rate, bit depth or bitrate, channels, and whether it held one track or a
-CUE-described disc. Lossless codecs state a bit depth; lossy ones a bitrate.
+Each file records what the scan read of it: the role it plays (audio, track
+sheet, artwork, damaged image, document, other), its content type, and for
+audio, and only audio, the container its bytes are in (read from the bytes,
+never the file's name), duration, sample rate, bit depth or bitrate,
+channels, and whether it held one track or a CUE-described disc. Lossless
+codecs state a bit depth; lossy ones a bitrate. The role is kept because the
+content type can't say it: a damaged image is stored as plain bytes, and a CUE
+sheet as text.
 
 The files of a release include everything in its folder, not only the audio:
 the CUE sheet, the rip log, scans of the booklet. A release's folder comes back
@@ -5061,7 +5065,7 @@ All sync.
 | `release_barcodes` | a release's barcodes: each at its position in the list (§2.1) |
 | `release_media` | a release's media: each carrier with its count, at its position in the list (§2.1) |
 | `covers` | release's cover, keyed by the release: the coven file it references (`file`), with an index by it, and its type |
-| `release_files` | file of a release: name (its path in the release, each byte of it that isn't UTF-8 escaped, §3.1), type, the audio facts the scan read, and the coven file it references (`file`, required), whose record holds its size and where it is, with an index by it; with an index of each release's files in `natural_order` of their names, id breaking a tie, the order every list of a release's files shows, read from the index; and by content type, name and id breaking a tie, another order a release's file table sorts by, read from its index forward or backward. Its order by size sorts the release's files by their coven files' sizes |
+| `release_files` | file of a release: name (its path in the release, each byte of it that isn't UTF-8 escaped, §3.1), type, the role the scan gave it (audio, and only audio, stating audio facts), the audio facts the scan read, and the coven file it references (`file`, required), whose record holds its size and where it is, with an index by it; with an index of each release's files in `natural_order` of their names, id breaking a tie, the order every list of a release's files shows, read from the index; and by content type, name and id breaking a tie, another order a release's file table sorts by, read from its index forward or backward. Its order by size sorts the release's files by their coven files' sizes |
 | `release_artist_roles` | credit on a release, as the catalog stated it |
 | `release_records` | catalog record of a release: pressing or album, key, album key; its URL is made from these as it is read; with an index of each release's records in the order surfaces list catalogs, which the release reads them in |
 | `release_mediums` | a release's medium: its position, carrier and number of sides (§2.2) |

@@ -202,6 +202,7 @@ mirror_struct! {
     fields: {
         source_audio: (opt BridgeSourceAudioSummary),
         sides: (each BridgeReleaseEditTrackSide),
+        files: (each BridgeMappingFile),
     },
 }
 

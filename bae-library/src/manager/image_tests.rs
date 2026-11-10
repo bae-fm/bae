@@ -52,6 +52,7 @@ async fn an_undecodable_cover_pick_is_refused_as_unreadable_artwork() {
         &release.id,
         "broken.png",
         ContentType::Png,
+        bae_records::ReleaseFileRole::Artwork,
         coven::IdSource::new_id(&coven::UuidIds).to_string(),
         Utc::now(),
     );
@@ -90,6 +91,7 @@ async fn assert_changed_cover(
         &release.id,
         filename,
         content_type,
+        bae_records::ReleaseFileRole::Artwork,
         coven::IdSource::new_id(&coven::UuidIds).to_string(),
         Utc::now(),
     );
@@ -150,6 +152,7 @@ async fn change_cover_twice_replaces_the_cover_file() {
             &release.id,
             name,
             ContentType::Png,
+            bae_records::ReleaseFileRole::Artwork,
             coven::IdSource::new_id(&coven::UuidIds).to_string(),
             Utc::now(),
         )

@@ -107,6 +107,7 @@ async fn insert_export_release_rows(
             &release.id,
             name,
             bae_util::content_type::ContentType::Flac,
+            bae_records::ReleaseFileRole::Other,
             bae_util::test_ids::test_uuid(&format!("{}-export-file-{index}", release.id)),
             created_at,
         );
@@ -379,6 +380,7 @@ async fn export_mid_failure_leaves_no_partial_output_at_final_path() {
             &release.id,
             name,
             bae_util::content_type::ContentType::Flac,
+            bae_records::ReleaseFileRole::Other,
             coven::IdSource::new_id(&coven::UuidIds).to_string(),
             Utc::now(),
         );

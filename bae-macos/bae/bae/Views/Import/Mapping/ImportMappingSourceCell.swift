@@ -134,7 +134,7 @@ extension BridgeMappingFile {
             localizedCoreString("ui.import.mapping.damaged_image")
         case .damagedAudio(let damage):
             damage.localizedText
-        case .audio, .document, .other:
+        case .audio, .document, .image, .other:
             nil
         }
     }

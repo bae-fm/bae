@@ -322,6 +322,32 @@
             carriedRow(supplementalVideo, role: .other),
         ]
 
+        /// A library release's files that no track plays from, as its editor
+        /// lists them: its rip log, its track sheet, a cover image and a scan
+        /// the import found damaged, in the release's file order.
+        static let libraryReleaseFiles: [BridgeMappingFile] = [
+            libraryReleaseFile("back.png", size: 512, role: .damagedImage),
+            libraryReleaseFile("cover.jpg", size: 1_100_000, role: .image),
+            libraryReleaseFile("disc.cue", size: 1_400, role: .document),
+            libraryReleaseFile("rip.log", size: 4_000, role: .document),
+        ]
+
+        private static func libraryReleaseFile(
+            _ name: String,
+            size: UInt64,
+            role: BridgeMappingRole
+        ) -> BridgeMappingFile {
+            BridgeMappingFile(
+                fileId: "release-file-\(name)",
+                name: name,
+                size: size,
+                previewTarget: nil,
+                durationMs: nil,
+                audioFormat: nil,
+                role: role
+            )
+        }
+
         /// What the folder's own tags say it is: nine tracks, and no release to
         /// tally them against.
         static let fileMetadataMappingTable = BridgeMappingTable(

@@ -634,6 +634,7 @@ async fn storage_page_sort_by_file_count() {
                 release_id: release.id.clone(),
                 original_filename: format!("{i}.flac"),
                 content_type: bae_util::content_type::ContentType::Flac,
+                role: bae_records::ReleaseFileRole::Other,
                 source_audio: None,
                 created_at: Utc::now(),
             };
@@ -667,6 +668,7 @@ async fn storage_page_sort_by_total_size() {
             release_id: release.id.clone(),
             original_filename: "a.flac".to_string(),
             content_type: bae_util::content_type::ContentType::Flac,
+            role: bae_records::ReleaseFileRole::Other,
             source_audio: None,
             created_at: Utc::now(),
         };

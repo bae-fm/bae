@@ -353,6 +353,7 @@ async fn upload_keeps_every_file_in_the_queue() {
             &release.id,
             name,
             bae_util::content_type::ContentType::Flac,
+            bae_records::ReleaseFileRole::Other,
             id.to_string(),
             created_at,
         );

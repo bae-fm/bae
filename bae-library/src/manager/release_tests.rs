@@ -335,6 +335,7 @@ async fn find_release_detail_does_not_panic_on_traversal_filenames_from_a_peer()
         &release.id,
         "cover.jpg",
         bae_util::content_type::ContentType::Jpeg,
+        bae_records::ReleaseFileRole::Artwork,
         coven::IdSource::new_id(&coven::UuidIds).to_string(),
         Utc::now(),
     );
@@ -505,6 +506,7 @@ async fn release_source_audio_summary_uses_every_file_without_track_formats() {
             &release.id,
             name,
             facts.content_type.clone(),
+            bae_records::ReleaseFileRole::Audio,
             coven::IdSource::new_id(&coven::UuidIds).to_string(),
             Utc::now(),
         );
@@ -614,6 +616,7 @@ async fn gallery_includes_cloud_only_image_files_with_no_local_path() {
         &release.id,
         "back.jpg",
         bae_util::content_type::ContentType::Jpeg,
+        bae_records::ReleaseFileRole::Artwork,
         coven::IdSource::new_id(&coven::UuidIds).to_string(),
         Utc::now(),
     );
@@ -657,6 +660,7 @@ async fn cover_picker_excludes_unsupported_images_without_hiding_gallery_files()
             &release.id,
             name,
             content_type,
+            bae_records::ReleaseFileRole::Artwork,
             coven::IdSource::new_id(&coven::UuidIds).to_string(),
             Utc::now(),
         );
@@ -761,6 +765,7 @@ async fn a_gallery_read_refuses_another_releases_file() {
         &other.id,
         "cover.jpg",
         bae_util::content_type::ContentType::Jpeg,
+        bae_records::ReleaseFileRole::Artwork,
         coven::IdSource::new_id(&coven::UuidIds).to_string(),
         Utc::now(),
     );

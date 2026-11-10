@@ -33,7 +33,7 @@ mod reconcile;
 mod track_files;
 mod worker;
 
-use content_type::resolve_file_content_type;
+use content_type::{release_file_role, resolve_file_content_type};
 use track_files::resolve_track_files;
 
 /// Which import run a progress event is about: the run the pane is watching and

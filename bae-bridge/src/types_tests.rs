@@ -463,6 +463,7 @@ mod conversion_roundtrip {
                             },
                         )],
                     }],
+                    files: Vec::new(),
                 },
                 album: bae_import::DraftAlbum::Named {
                     album_id: "album-id".to_string(),

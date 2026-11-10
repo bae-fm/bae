@@ -526,6 +526,8 @@ impl AppServices {
     delegate_async!(manager, read_image_bytes => read_image_bytes(image: &bae_records::ImageRef) -> Result<Option<Vec<u8>>, bae_library::LibraryError>);
     delegate_async!(manager, read_library_image_bytes => read_library_image_bytes(id: &str, image_type: &bae_records::LibraryImageType) -> Result<Option<Vec<u8>>, bae_library::LibraryError>);
     delegate_async!(manager, read_gallery_bytes => read_gallery_bytes(release_id: &str, source: &bae_records::GallerySource) -> Result<Vec<u8>, bae_library::LibraryError>);
+    #[cfg(desktop)]
+    delegate_async!(manager, read_release_document => read_release_document(release_id: &str, file_id: &str) -> Result<String, bae_library::LibraryError>);
     delegate_async!(manager, read_cover_image_bytes => read_cover_image_bytes(release_id: &str) -> Result<Option<Vec<u8>>, bae_library::LibraryError>);
     delegate_lib!(records, get_shown_artists_for_track => get_shown_artists_for_track(track_id: &str) -> Vec<bae_records::credits::LibraryCredit>);
     delegate_lib!(records, get_all_track_ids => get_all_track_ids() -> Vec<String>);

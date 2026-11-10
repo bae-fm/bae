@@ -40,6 +40,7 @@ fn file(id: &str, pin: Option<FilePin>) -> crate::DbStorageInspectorFile {
             original_filename: format!("{id}.flac"),
             file_size: 10,
             content_type: bae_util::content_type::ContentType::Flac,
+            role: bae_records::ReleaseFileRole::Other,
             source_audio: None,
             file: coven::FileId(uuid::Uuid::nil()),
             stored: false,

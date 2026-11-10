@@ -263,16 +263,20 @@ pub enum BridgeSheetDisc {
     Ignored,
 }
 
-/// What one of the folder's files is, as a row of the mapping table. Mirror of
-/// bae-library's `MappingRole`.
+/// What one of a release's files is, as a row of the mapping table or of a
+/// library release's files. Mirror of bae-import's `MappingRole`.
 ///
-/// Narrower than the role the scan proposes: a track sheet is not a row here —
-/// it heads a group of rows — and images live in the table's gallery instead.
+/// Narrower than the role the scan proposes: a folder's track sheet is not a
+/// row here — it heads a group of rows — and a folder's images live in the
+/// table's gallery instead.
 #[cfg(desktop)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeMappingRole {
     Audio,
+    /// Read as text in the document viewer.
     Document,
+    /// An image a library release carries, which has no gallery of its own.
+    Image,
     /// Named as an image, but its bytes do not decode as one; carried, never
     /// in the gallery.
     DamagedImage,
@@ -284,15 +288,16 @@ pub enum BridgeMappingRole {
     Other,
 }
 
-/// A file of the folder, as the mapping table's left half shows it. Mirror of
-/// bae-library's `MappingFile`.
+/// A file of the folder, as the mapping table's left half shows it, or a
+/// file of a library release, as its editor lists it. Mirror of bae-import's
+/// `MappingFile`.
 #[cfg(desktop)]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeMappingFile {
-    /// The file's identity within the release (its relative path) — the id
-    /// the sheet bindings take.
+    /// The id the file is read by: in a folder, its relative path, which the
+    /// sheet bindings take; in the library, its release file's id.
     pub file_id: String,
-    /// The file's own name, without its directory prefix.
+    /// The file's path within the release.
     pub name: String,
     pub size: u64,
     /// The whole-file target when this file currently supplies audio.
@@ -612,6 +617,7 @@ mirror_enum! {
 /// what the library holds for each artist credit the form carries, whether a
 /// save would write anything the session did not open on, and why the form
 /// can't be saved, when it can't. Mirrors `bae_import::ReleaseEditDraft`.
+#[cfg(desktop)]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeReleaseEditDraft {
     pub edit: BridgeRawReleaseEdit,
@@ -666,11 +672,15 @@ pub struct BridgeReleaseEditTrackSide {
 }
 
 /// Persisted release facts used to render the shared metadata editor.
+#[cfg(desktop)]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeReleaseEditDisplayContext {
     pub source_audio: Option<BridgeSourceAudioSummary>,
     /// The release's tracks, laid out as the table draws them.
     pub sides: Vec<BridgeReleaseEditTrackSide>,
+    /// The files the release carries that no track plays from, in the
+    /// release's file order: what its Files section lists under the tracks.
+    pub files: Vec<BridgeMappingFile>,
 }
 
 /// Raw pressing fields as the editor holds them. Mirrors

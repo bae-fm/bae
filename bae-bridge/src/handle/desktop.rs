@@ -467,6 +467,13 @@ forward! {
                 .await?)
         }
 
+        /// The text of a library release's document (a log, a text file, a
+        /// track sheet) named by its release file id, decoded from the
+        /// encoding it was written in.
+        fn read_release_document(release_id: String, file_id: String) -> String {
+            Ok(this.services.read_release_document(&release_id, &file_id).await?)
+        }
+
         /// Pick the library album a candidate joins, over the one its records
         /// name, or (`None`) leave it to its records.
         fn set_candidate_album(candidate_key: Vec<u8>, album_id: Option<String>) -> () {

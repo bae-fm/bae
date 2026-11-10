@@ -350,6 +350,7 @@ async fn the_editor_reads_which_file_holds_a_track_s_body() {
             release_id: RELEASE.to_string(),
             original_filename: name.to_string(),
             content_type: bae_util::content_type::ContentType::Flac,
+            role: crate::ReleaseFileRole::Audio,
             source_audio: Some(crate::source_audio::SourceAudioFile {
                 layout: Some(crate::source_audio::SourceAudioLayout::Cue),
                 format: bae_types::audio_format::AudioFormat {

@@ -392,6 +392,12 @@ CREATE TABLE IF NOT EXISTS release_files (
     -- The file's coven file (`coven_files`), which holds its size, its hash
     -- and where it is: on the device that imported it, or in the cloud.
     file TEXT NOT NULL,
+    -- What the file is to its release, as the import's scan read it. Its
+    -- content type can't say: a damaged image is stored as plain bytes, and
+    -- a CUE sheet as text. Audio, and only audio, states the facts below.
+    role TEXT NOT NULL CHECK (role IN (
+        'audio', 'track_sheet', 'artwork', 'damaged_image', 'document', 'other'
+    )),
     -- How the file gives the release its tracks, its bytes stored as they
     -- were: as its own audio ('file'), or as a CUE-described image whose
     -- tracks are slices of it ('cue'). NULL when it gives no tracks.
@@ -404,6 +410,7 @@ CREATE TABLE IF NOT EXISTS release_files (
     source_audio_bitrate_kbps INTEGER CHECK (source_audio_bitrate_kbps IS NULL OR source_audio_bitrate_kbps > 0),
     source_audio_channels INTEGER,
     FOREIGN KEY (release_id) REFERENCES releases (id) ON DELETE CASCADE,
+    CHECK ((role = 'audio') = (source_audio_content_type IS NOT NULL)),
     -- A file that is not audio states no audio facts. An audio file states
     -- them all, the codec deciding whether bits per sample or bitrate is set,
     -- and a layout unless the release carries it with the tracklist leaving

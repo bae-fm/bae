@@ -115,6 +115,7 @@ impl LibraryManager {
                 &release_id,
                 &audio.file_reference,
                 audio.probe.content_type.clone(),
+                bae_records::ReleaseFileRole::Audio,
                 self.ids.new_id().to_string(),
                 added,
             );

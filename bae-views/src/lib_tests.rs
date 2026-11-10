@@ -688,6 +688,7 @@ mod window_cost {
                         release_id: bulk_library::release_id(i),
                         original_filename: format!("{j:02}.flac"),
                         content_type: bae_util::content_type::ContentType::Flac,
+                        role: bae_records::ReleaseFileRole::Other,
                         source_audio: None,
                         created_at: created,
                     },

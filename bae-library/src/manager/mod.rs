@@ -39,6 +39,8 @@ mod artist;
 mod collections;
 mod config;
 mod coven_files;
+#[cfg(desktop)]
+mod document;
 mod downloads;
 #[cfg(all(any(test, feature = "test-utils", debug_assertions), desktop))]
 mod fixture;

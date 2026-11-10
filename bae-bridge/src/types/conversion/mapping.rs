@@ -110,6 +110,7 @@ mirror_enum! {
     variants: {
         Audio,
         Document,
+        Image,
         DamagedImage,
         DamagedAudio { damage: (crate::types::BridgeAudioDamage) },
         Other,

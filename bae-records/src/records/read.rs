@@ -435,6 +435,12 @@ pub fn row_to_file(row: &Row) -> rusqlite::Result<DbFile> {
         original_filename: row.get("original_filename")?,
         file_size: row.get("file_size")?,
         content_type: ContentType::from_mime(&row.get::<_, String>("content_type")?),
+        role: {
+            let role = row.get::<_, String>("role")?;
+            crate::ReleaseFileRole::from_db_value(&role).ok_or_else(|| {
+                column_conversion_error(row, "role", format!("invalid release file role {role:?}"))
+            })?
+        },
         source_audio,
         file: row.get("file")?,
         stored: row.get("stored")?,

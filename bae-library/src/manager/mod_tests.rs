@@ -373,6 +373,7 @@ pub(super) async fn insert_local_release_in_album(
             &release.id,
             name,
             bae_util::content_type::ContentType::Flac,
+            bae_records::ReleaseFileRole::Other,
             bae_util::test_ids::test_uuid(&format!("{}-test-file-{index}", release.id)),
             created_at,
         );
@@ -817,6 +818,7 @@ pub(super) async fn add_track_audio_sources(
             &track.release_id,
             name,
             ContentType::Flac,
+            bae_records::ReleaseFileRole::Audio,
             coven::IdSource::new_id(&coven::UuidIds).to_string(),
             now,
         );

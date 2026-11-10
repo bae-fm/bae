@@ -119,6 +119,7 @@ async fn a_changed_cover_reaches_the_paused_track_and_the_queue() {
             &release_id,
             "front.gif",
             bae_util::content_type::ContentType::Gif,
+            bae_records::ReleaseFileRole::Artwork,
             coven::IdSource::new_id(&coven::UuidIds).to_string(),
             chrono::Utc::now(),
         );

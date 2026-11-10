@@ -53,6 +53,7 @@ pub async fn insert_local_release_with_files(
             &release.id,
             name,
             bae_util::content_type::ContentType::Flac,
+            bae_records::ReleaseFileRole::Other,
             bae_util::test_ids::test_uuid(&format!("{}-test-file-{index}", release.id)),
             created_at,
         );

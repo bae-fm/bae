@@ -65,6 +65,7 @@ async fn resolve_release_artwork_paths_warns_on_missing_registered_image_file() 
         release_id: release_id.clone(),
         original_filename: "cover.jpg".to_string(),
         content_type: ContentType::Jpeg,
+        role: bae_records::ReleaseFileRole::Artwork,
         source_audio: None,
         created_at: Utc::now(),
     };
@@ -127,10 +128,10 @@ async fn test_resolve_release_identity_local() {
     let (db, release_id) = library_with_release(temp.path()).await;
     let records = bae_records::test_fixtures::test_records(&db);
 
-    for (filename, content_type) in [
-        ("test_album.log", ContentType::PlainText),
-        ("01 Test Track 1.flac", ContentType::Flac),
-        ("02 Test Track 2.flac", ContentType::Flac),
+    for (filename, content_type, role) in [
+        ("test_album.log", ContentType::PlainText, bae_records::ReleaseFileRole::Document),
+        ("01 Test Track 1.flac", ContentType::Flac, bae_records::ReleaseFileRole::Other),
+        ("02 Test Track 2.flac", ContentType::Flac, bae_records::ReleaseFileRole::Other),
     ] {
         let abs = local_dir.join(filename);
         let file = NewReleaseFile {
@@ -138,6 +139,7 @@ async fn test_resolve_release_identity_local() {
             release_id: release_id.clone(),
             original_filename: filename.to_string(),
             content_type,
+            role,
             source_audio: None,
             created_at: Utc::now(),
         };
@@ -215,6 +217,11 @@ async fn folder_and_library_disc_ids(folder: &std::path::Path) -> (Vec<String>, 
                 .source_audio
                 .as_ref()
                 .map_or(ContentType::PlainText, |audio| audio.content_type.clone()),
+            role: if file.source_audio.is_some() {
+                bae_records::ReleaseFileRole::Audio
+            } else {
+                bae_records::ReleaseFileRole::Document
+            },
             source_audio: file.source_audio.as_ref().map(|audio| {
                 bae_records::source_audio::SourceAudioFile {
                     layout: Some(bae_records::source_audio::SourceAudioLayout::Cue),

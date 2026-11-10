@@ -235,6 +235,7 @@
                                 }
                         )
                     ],
+                    files: libraryReleaseFiles
                 ),
                 album: .named(albumId: "album-preview", title: edit.albumTitle),
                 artistResolutions: [],

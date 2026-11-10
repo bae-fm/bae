@@ -20,6 +20,7 @@ async fn a_storage_row_shows_the_audio_this_device_holds() {
                 RELEASE_EARLY,
                 "track.flac",
                 bae_util::content_type::ContentType::Flac,
+                bae_records::ReleaseFileRole::Other,
                 id.to_string(),
                 chrono::Utc::now(),
             ),

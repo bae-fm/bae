@@ -1,6 +1,6 @@
 //! What the release editor shows beside a library release's form: its
-//! tracks laid out by side and by the file each plays from, and the summary of
-//! its audio.
+//! tracks laid out by side and by the file each plays from, the summary of
+//! its audio, and the files it carries that no track plays from.
 
 use bae_records::source_audio::{SourceAudioLayout, SourceAudioSummary};
 use bae_types::mediums::TrackSide;
@@ -122,13 +122,18 @@ impl ReleaseEditTrackSide {
 
 /// Release-backed context needed by the shared metadata editor in addition to
 /// its writable raw form.
+#[cfg(desktop)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReleaseEditDisplayContext {
     pub source_audio: Option<SourceAudioSummary>,
     /// The release's tracks, laid out as the table draws them.
     pub sides: Vec<ReleaseEditTrackSide>,
+    /// The files the release carries that no track plays from, in the
+    /// release's file order: what its Files section lists under the tracks.
+    pub files: Vec<crate::MappingFile>,
 }
 
+#[cfg(desktop)]
 impl ReleaseEditDisplayContext {
     /// Every track, in release order.
     pub fn tracks(&self) -> impl Iterator<Item = &ReleaseEditTrackContext> {
@@ -137,7 +142,6 @@ impl ReleaseEditDisplayContext {
 
     /// The same tracks at the places `positions` gives them, in release
     /// order, laid out again: what an applied catalog reads them as.
-    #[cfg(desktop)]
     pub fn placed(
         self,
         positions: impl IntoIterator<Item = bae_types::mediums::TrackPosition>,
@@ -149,6 +153,7 @@ impl ReleaseEditDisplayContext {
             .flat_map(ReleaseEditTrackRun::into_tracks);
         Self {
             source_audio: self.source_audio,
+            files: self.files,
             sides: ReleaseEditTrackSide::lay_out(tracks.zip(positions).map(|(track, position)| {
                 (
                     position.side(),
@@ -173,12 +178,19 @@ pub enum ReleaseEditLoadError {
     MissingSourceFile { track_id: String, file_id: String },
     #[error("track '{track_id}' source file '{file_id}' has no stored audio layout")]
     MissingSourceAudio { track_id: String, file_id: String },
+    #[error("release file '{file_id}' has no size a file can have, {size}")]
+    FileSize {
+        file_id: String,
+        size: i64,
+        #[source]
+        error: std::num::TryFromIntError,
+    },
 }
 
+#[cfg(desktop)]
 impl ReleaseEditDisplayContext {
     /// The editor's display of the release `raw`, from its tracks' audio as
     /// `tracks` reads it in release order.
-    #[cfg(desktop)]
     pub fn from_raw(
         raw: &bae_records::DbReleaseDetail,
         tracks: Vec<bae_records::DbReleaseEditTrack>,
@@ -228,8 +240,42 @@ impl ReleaseEditDisplayContext {
                 raw.files.iter().filter_map(|file| file.source_audio.as_ref()?.summarized()),
             ),
             sides: ReleaseEditTrackSide::lay_out(contexts),
+            files: raw
+                .files
+                .iter()
+                .filter(|file| file.source_audio.as_ref().and_then(|audio| audio.layout).is_none())
+                .map(carried_file)
+                .collect::<Result<_, _>>()?,
         })
     }
+}
+
+/// A file of the release no track plays from, as its Files section lists it.
+/// It shows no length and no audition: the release's tracks are what play.
+#[cfg(desktop)]
+fn carried_file(file: &bae_records::DbFile) -> Result<crate::MappingFile, ReleaseEditLoadError> {
+    use crate::MappingRole;
+    use bae_records::ReleaseFileRole;
+    Ok(crate::MappingFile {
+        file_id: file.id.clone(),
+        name: file.original_filename.clone(),
+        size: u64::try_from(file.file_size).map_err(|error| ReleaseEditLoadError::FileSize {
+            file_id: file.id.clone(),
+            size: file.file_size,
+            error,
+        })?,
+        preview_target: None,
+        duration_ms: None,
+        audio_format: file.source_audio.as_ref().map(|audio| audio.format.clone()),
+        role: match file.role {
+            ReleaseFileRole::Audio => MappingRole::Audio,
+            // The library keeps no sheet's binding: a sheet is the text it is.
+            ReleaseFileRole::TrackSheet | ReleaseFileRole::Document => MappingRole::Document,
+            ReleaseFileRole::Artwork => MappingRole::Image,
+            ReleaseFileRole::DamagedImage => MappingRole::DamagedImage,
+            ReleaseFileRole::Other => MappingRole::Other,
+        },
+    })
 }
 
 #[cfg(test)]

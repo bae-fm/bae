@@ -469,6 +469,8 @@ pub struct DbFile {
     /// The size coven records for the file.
     pub file_size: i64,
     pub content_type: ContentType,
+    /// What the file is to its release, as the import's scan read it.
+    pub role: crate::ReleaseFileRole,
     /// The scan's complete facts for this physical source file. `None` for
     /// non-audio files.
     pub source_audio: Option<crate::source_audio::SourceAudioFile>,
@@ -489,6 +491,9 @@ pub struct NewReleaseFile {
     pub release_id: String,
     pub original_filename: String,
     pub content_type: ContentType,
+    /// What the file is to its release. Audio, and only audio, states its
+    /// source facts; the table refuses a row where the two disagree.
+    pub role: crate::ReleaseFileRole,
     /// The scan's complete facts for this physical source file. `None` for
     /// non-audio files.
     pub source_audio: Option<crate::source_audio::SourceAudioFile>,
@@ -861,6 +866,7 @@ impl NewReleaseFile {
         release_id: &str,
         original_filename: &str,
         content_type: ContentType,
+        role: crate::ReleaseFileRole,
         id: String,
         now: DateTime<Utc>,
     ) -> Self {
@@ -869,6 +875,7 @@ impl NewReleaseFile {
             release_id: release_id.to_string(),
             original_filename: original_filename.to_string(),
             content_type,
+            role,
             source_audio: None,
             created_at: now,
         }

@@ -321,15 +321,16 @@ pub use types::{
     CandidateDraft, CandidateEditField, CandidateTrack, Credited, DraftAlbum, DraftFieldEdit,
     DraftTrack, EditValidationError, LibraryDraft, LibraryTrack, MetadataProvenance,
     PressingFactEdit, RawLabelEdit, RawPressingEdit, RawReleaseEdit, RawTrackEdit, ReleaseDraft,
-    ReleaseEditDisplayContext, ReleaseEditDraft, ReleaseEditLoadError, ReleaseEditSeed,
-    ReleaseEditTrackContext, ReleaseEditTrackRun, ReleaseEditTrackSide, ReleaseEditTrackSource,
-    ReleaseUserEdit, TrackArtistAssignments, TrackBinding, TrackUserEdit,
+    ReleaseEditLoadError, ReleaseEditTrackContext, ReleaseEditTrackRun, ReleaseEditTrackSide,
+    ReleaseEditTrackSource, ReleaseUserEdit, TrackArtistAssignments, TrackBinding, TrackUserEdit,
 };
 #[cfg(desktop)]
 pub use types::{
     CandidateMetadataDraft, CueAnalyzedAudioFile, CueFlacAnalysis, ImportDestination, ImportPhase,
     ImportProgress, ImportStep, PrepareStep, TrackAudio, TrackFile,
 };
+#[cfg(desktop)]
+pub use types::{ReleaseEditDisplayContext, ReleaseEditDraft, ReleaseEditSeed};
 #[cfg(desktop)]
 pub use watched_folder::WatchedFolder;
 

@@ -118,17 +118,22 @@ pub enum MappingSource {
     SheetEntry(MappingEntry),
 }
 
-/// What one of the folder's files is, as a row of the mapping table.
+/// What one of a release's files is, as a row of the mapping table or of a
+/// library release's files.
 ///
-/// Narrower than the role the scan proposes: a track sheet is not a row here —
-/// it heads a group of rows — and images live in the table's gallery instead.
+/// Narrower than the role the scan proposes: a folder's track sheet is not a
+/// row here — it heads a group of rows — and a folder's images live in the
+/// table's gallery instead.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MappingRole {
     /// Playable audio.
     Audio,
-    /// Readable evidence: a rip log, a tracklist, a playlist, or a CUE that
-    /// could not be parsed as a sheet.
+    /// Readable evidence: a rip log, a tracklist, a playlist, a CUE that
+    /// could not be parsed as a sheet, or a library release's track sheet,
+    /// which reads as the text it is.
     Document,
+    /// An image a library release carries, which has no gallery of its own.
+    Image,
     /// Named as an image, but its bytes do not decode as one: carried with
     /// the release, and kept out of the gallery the cover is picked from.
     DamagedImage,
@@ -139,9 +144,12 @@ pub enum MappingRole {
     Other,
 }
 
-/// A file of the folder, as the mapping table's left half shows it.
-#[derive(Debug, Clone, PartialEq)]
+/// A file of the folder, as the mapping table's left half shows it, or a
+/// file of a library release, as its editor lists it.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MappingFile {
+    /// The id the file is read by: in a folder, its relative path, which the
+    /// sheet bindings take; in the library, its release file's id.
     pub file_id: String,
     /// The file's identity within the release — its relative path, the same
     /// name the storage manager lists it under. Every file lists flat; a

@@ -24,18 +24,20 @@ mod release_edit_display;
 pub use raw_release_edit::{
     EditValidationError, RawLabelEdit, RawPressingEdit, RawReleaseEdit, RawTrackEdit,
 };
+#[cfg(desktop)]
+pub use release_edit_display::ReleaseEditDisplayContext;
 pub use release_edit_display::{
-    ReleaseEditDisplayContext, ReleaseEditLoadError, ReleaseEditTrackContext, ReleaseEditTrackRun,
-    ReleaseEditTrackSide, ReleaseEditTrackSource,
+    ReleaseEditLoadError, ReleaseEditTrackContext, ReleaseEditTrackRun, ReleaseEditTrackSide,
+    ReleaseEditTrackSource,
 };
 #[cfg(desktop)]
 mod release_link;
 #[cfg(desktop)]
 pub use release_link::ReleaseLink;
 mod release_edit;
-pub use release_edit::{
-    DraftAlbum, ReleaseEditDraft, ReleaseEditSeed, ReleaseUserEdit, TrackUserEdit,
-};
+pub use release_edit::{DraftAlbum, ReleaseUserEdit, TrackUserEdit};
+#[cfg(desktop)]
+pub use release_edit::{ReleaseEditDraft, ReleaseEditSeed};
 mod candidate_draft;
 #[cfg(desktop)]
 pub use candidate_draft::CandidateMetadataDraft;

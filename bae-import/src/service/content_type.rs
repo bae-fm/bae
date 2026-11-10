@@ -1,7 +1,8 @@
-//! The `ContentType` each release file is stored with, decided by the role
-//! the scan read it as.
+//! The `ContentType` and role each release file is stored with, decided by
+//! the role the scan read it as.
 
 use crate::ImportError;
+use bae_records::ReleaseFileRole;
 use bae_util::content_type::ContentType;
 use bae_util::content_type_hint::ContentTypeHint;
 
@@ -58,6 +59,21 @@ pub(super) fn resolve_file_content_type(
         // Audio hints were handled above; anything else is unknown binary.
         _ => ContentType::OctetStream,
     })
+}
+
+/// The role a release file is stored with: the scan's, less the parse,
+/// binding and disc a track sheet's role holds, which the import has made
+/// into the release's tracks.
+pub(super) fn release_file_role(role: &crate::folder_scanner::FileRole) -> ReleaseFileRole {
+    use crate::folder_scanner::FileRole;
+    match role {
+        FileRole::Audio => ReleaseFileRole::Audio,
+        FileRole::TrackSheet { .. } => ReleaseFileRole::TrackSheet,
+        FileRole::Artwork => ReleaseFileRole::Artwork,
+        FileRole::DamagedImage => ReleaseFileRole::DamagedImage,
+        FileRole::Document => ReleaseFileRole::Document,
+        FileRole::Other => ReleaseFileRole::Other,
+    }
 }
 
 #[cfg(test)]
