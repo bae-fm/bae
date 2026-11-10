@@ -139,8 +139,8 @@ impl LibraryManager {
 
     /// Save one track to `output_path` under the preset named by `preset_id`
     /// (must exist). The source audio is decoded and re-encoded to the
-    /// preset's codec, tagged from bae's metadata, and cover art embedded —
-    /// always a constructed file, never a verbatim copy.
+    /// preset's codec, or copied when the track is already in it; either way
+    /// the file is tagged from bae's metadata and has the cover art embedded.
     pub async fn save_track(
         &self,
         track_id: &str,
@@ -301,6 +301,71 @@ impl SaveTrackPlan {
             trailing_silence_frames = pregap_frames(next.audio_format.generated_pregap_samples);
         }
         SaveSegments { segments, leading_silence_frames, trailing_silence_frames }
+    }
+
+    /// The release file whose bytes are already what `codec` writes for this
+    /// track, which a save copies instead of decoding and encoding it: the
+    /// track is all of one file, at the depth the codec writes, in the codec's
+    /// own container. Only lossless codecs qualify, since a lossy one writes
+    /// the bitrate the format names, which the stored file does not state. A
+    /// track cut from an image, or given a gap or hidden audio from the track
+    /// after or before it, is not one file's bytes.
+    pub(crate) fn copied_file(
+        &self,
+        codec: &bae_preferences::SaveCodec,
+    ) -> Result<Option<&str>, crate::save::SaveError> {
+        use bae_preferences::SaveCodec;
+        use bae_util::audio_container::AudioContainer;
+        use bae_util::content_type::ContentType;
+
+        let window = self.segments();
+        let [segment] = window.segments[..] else {
+            return Ok(None);
+        };
+        if window.leading_silence_frames != 0
+            || window.trailing_silence_frames != 0
+            || segment.span() != bae_records::SegmentSpan::whole_file()
+        {
+            return Ok(None);
+        }
+        let container = &self
+            .audio_meta
+            .audio_segments
+            .iter()
+            .find(|entry| entry.segment.id == segment.id)
+            .ok_or_else(|| {
+                crate::save::SaveError::Failed(format!(
+                    "segment {} of track {} is not one of the track's own",
+                    segment.id, self.audio_meta.track.id
+                ))
+            })?
+            .container;
+        let format = &self.audio_meta.audio_format;
+        let depth = format.bits_per_sample;
+        // What the file states of PCM does not say whether its samples are
+        // signed integers, which float, unsigned and companded PCM share the
+        // type with; WAV and AIFF files at 16 or 24 bits always are.
+        let integer_pcm = format.content_type == ContentType::Pcm
+            && matches!(depth.map(std::num::NonZeroU32::get), Some(16 | 24));
+        let already = match codec {
+            SaveCodec::Flac { bit_depth } => {
+                *container == AudioContainer::Flac
+                    && format.content_type == ContentType::Flac
+                    && depth.is_some_and(|depth| bit_depth.bits(Some(depth)) == depth.get())
+            }
+            SaveCodec::Wav { bit_depth } => {
+                *container == AudioContainer::Wav
+                    && integer_pcm
+                    && depth.is_some_and(|depth| bit_depth.bits(Some(depth)) == depth.get())
+            }
+            SaveCodec::Aiff { bit_depth } => {
+                *container == AudioContainer::Aiff
+                    && integer_pcm
+                    && depth.is_some_and(|depth| bit_depth.bits(Some(depth)) == depth.get())
+            }
+            SaveCodec::Mp3 { .. } | SaveCodec::Aac { .. } | SaveCodec::OpusOgg { .. } => false,
+        };
+        Ok(already.then_some(segment.file_id.as_str()))
     }
 
     /// The release files this track's saved audio reads, by id.

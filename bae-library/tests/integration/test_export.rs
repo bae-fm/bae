@@ -377,6 +377,175 @@ fn folds_case(dir: &Path) -> bool {
     folds
 }
 
+/// A FLAC file's audio frames: what follows its metadata blocks.
+fn flac_frames(bytes: &[u8]) -> &[u8] {
+    assert_eq!(&bytes[..4], b"fLaC", "a FLAC file starts with its marker");
+    let mut at = 4;
+    loop {
+        let last = bytes[at] & 0x80 != 0;
+        let length = u32::from_be_bytes([0, bytes[at + 1], bytes[at + 2], bytes[at + 3]]) as usize;
+        at += 4 + length;
+        if last {
+            return &bytes[at..];
+        }
+    }
+}
+
+/// Write a tagged copy of a FLAC file made by libFLAC, whose frames FFmpeg's
+/// encoder does not reproduce, into `dir`, carrying a comment that a save never
+/// writes. A copy of its audio keeps the frames and none of the tags.
+fn write_libflac_track(dir: &Path, filename: &str, title: &str) -> Vec<u8> {
+    use lofty::config::WriteOptions;
+    use lofty::prelude::*;
+    use lofty::tag::{Tag, TagType};
+
+    let destination = dir.join(filename);
+    fs::copy(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/flac/libflac-level-0.flac"),
+        &destination,
+    )
+    .unwrap();
+    let mut file = lofty::read_from_path(&destination).unwrap();
+    let mut tag = Tag::new(TagType::VorbisComments);
+    tag.set_title(title.to_string());
+    tag.set_artist("Artist Name".to_string());
+    tag.set_album("Album Title".to_string());
+    tag.insert_text(ItemKey::AlbumArtist, "Artist Name".to_string());
+    tag.set_track(1);
+    tag.insert_text(ItemKey::Comment, "the source's own comment".to_string());
+    file.insert_tag(tag);
+    file.save_to_path(&destination, WriteOptions::default()).unwrap();
+    fs::read(destination).unwrap()
+}
+
+/// A track already stored as the format's codec at the depth it writes is
+/// copied: its audio frames are the source's own bytes, while its tags, cover
+/// and name are written fresh (a comment only the source carries is gone, the
+/// release's cover is embedded, the name comes from the pattern). A track in
+/// another codec or at another depth in the same release is converted.
+#[tokio::test]
+async fn a_release_save_copies_a_track_already_in_the_format_and_converts_the_rest() {
+    bae_util::test_logs::install();
+    let f = ExportFixture::new().await;
+    let album_dir = f.temp_path().join("album");
+    fs::create_dir_all(&album_dir).unwrap();
+    let source = write_libflac_track(&album_dir, "01.flac", "Track One");
+    let silence_24_bit = vec![0u8; 44_100 * 2 * 3];
+    fs::write(
+        album_dir.join("02.wav"),
+        bae_audio::test_samples::wav_with_fmt(1, 24, 2, 44_100, &silence_24_bit),
+    )
+    .unwrap();
+    bae_import::test_fixtures::write_cover_png(&album_dir.join("cover.png"));
+    let release_id = import_unknown_local(&f, &album_dir).await;
+    let flac = f
+        .library
+        .manager()
+        .save_presets()
+        .await
+        .unwrap()
+        .into_iter()
+        .find(|preset| preset.id == "flac")
+        .unwrap();
+
+    let target = f.temp_path().join("export-target");
+    fs::create_dir_all(&target).unwrap();
+    f.library
+        .manager()
+        .export_release(
+            &release_id,
+            &target,
+            OutputKind::Save { preset: flac, filename_tokens: default_tokens() },
+        )
+        .await
+        .expect("the release saves");
+    let folder = fs::read_dir(&target).unwrap().next().unwrap().unwrap().path();
+
+    let copied = fs::read(folder.join("01 Track One.flac")).unwrap();
+    assert!(flac_frames(&copied) == flac_frames(&source), "the audio is the source's own bytes");
+
+    use lofty::prelude::*;
+    let tagged = lofty::read_from_path(folder.join("01 Track One.flac")).unwrap();
+    let tag = tagged.primary_tag().expect("the copy is tagged");
+    assert_eq!(tag.title().as_deref(), Some("Track One"));
+    assert_eq!(tag.artist().as_deref(), Some("Artist Name"));
+    assert_eq!(tag.get_string(ItemKey::Comment), None, "the source's tags are not carried");
+    assert_eq!(tag.picture_count(), 1, "the release's cover is embedded");
+
+    // The 24-bit WAV is not FLAC: it is converted, at its own depth.
+    let converted = fs::read_dir(&folder)
+        .unwrap()
+        .map(|entry| entry.unwrap().path())
+        .find(|path| path.file_name().unwrap().to_string_lossy().starts_with("02 "))
+        .expect("the second track is saved");
+    assert_eq!(saved_bit_depth(&converted), 24);
+}
+
+/// A single track's save copies a track already in the format too, and
+/// replaces nothing of the source.
+#[tokio::test]
+async fn a_track_save_copies_a_track_already_in_the_format() {
+    bae_util::test_logs::install();
+    let f = ExportFixture::new().await;
+    let album_dir = f.temp_path().join("album");
+    fs::create_dir_all(&album_dir).unwrap();
+    let source = write_libflac_track(&album_dir, "01.flac", "Track One");
+    let release_id = import_unknown_local(&f, &album_dir).await;
+    let tracks = f.library.records().get_tracks_for_release(&release_id).await.unwrap();
+
+    let out = f.temp_path().join("one.flac");
+    f.library.manager().save_track(&tracks[0].id, &out, "flac").await.expect("the track saves");
+
+    assert!(flac_frames(&fs::read(&out).unwrap()) == flac_frames(&source), "the audio is copied");
+}
+
+/// A WAV track saved as WAV keeps its depth and its audio whole, and at
+/// 16-bit it is converted down: a WAV is copied only at the depth it writes.
+#[tokio::test]
+async fn a_wav_track_saves_as_wav_at_its_own_depth_or_16_bits() {
+    bae_util::test_logs::install();
+    let f = ExportFixture::new().await;
+    let album_dir = f.temp_path().join("album");
+    fs::create_dir_all(&album_dir).unwrap();
+    let tone: Vec<u8> = (0..44_100u32 * 2)
+        .flat_map(|frame| {
+            let sample = ((f64::from(frame) * 0.01).sin() * 4_000_000.0) as i32;
+            sample.to_le_bytes()[..3].to_vec()
+        })
+        .collect();
+    let source = bae_audio::test_samples::wav_with_fmt(1, 24, 2, 44_100, &tone);
+    // The release's artist comes from a tagged file beside the untagged WAV.
+    bae_import::test_fixtures::write_tagged_flac(&album_dir, "01.flac", "Track One");
+    fs::write(album_dir.join("02.wav"), &source).unwrap();
+    let release_id = import_unknown_local(&f, &album_dir).await;
+    let tracks = f.library.records().get_tracks_for_release(&release_id).await.unwrap();
+    let manager = f.library.manager();
+    let wav = |id: &str, bit_depth| SavePreset {
+        id: id.to_string(),
+        name: id.to_string(),
+        codec: SaveCodec::Wav { bit_depth },
+        embed_cover: false,
+    };
+    let mut presets = manager.save_presets().await.unwrap();
+    presets.push(wav("same", SaveBitDepth::SameAsSource));
+    presets.push(wav("sixteen", SaveBitDepth::Bits16));
+    manager.set_save_presets(presets).await.unwrap();
+
+    let same = f.temp_path().join("same.wav");
+    manager.save_track(&tracks[1].id, &same, "same").await.expect("the track saves");
+    let sixteen = f.temp_path().join("sixteen.wav");
+    manager.save_track(&tracks[1].id, &sixteen, "sixteen").await.expect("the track saves");
+
+    assert_eq!(saved_bit_depth(&same), 24);
+    assert_eq!(saved_bit_depth(&sixteen), 16);
+    let samples = |bytes: &[u8]| {
+        bae_audio::decode_audio(bae_audio::test_samples::filled_sparse_buffer(bytes), None, None)
+            .unwrap()
+            .samples
+    };
+    assert!(samples(&fs::read(&same).unwrap()) == samples(&source), "the audio is whole");
+}
+
 /// A release stored as one image with a CUE sheet saves as one file per track,
 /// cut at the sheet's marks by one rule: a track's gap goes at the end of the
 /// track before it, and hidden audio before track 1 stays at the start of

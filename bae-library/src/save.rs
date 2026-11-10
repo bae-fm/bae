@@ -255,11 +255,45 @@ impl SaveService {
         let cancel = Arc::new(AtomicBool::new(false));
         let _cancel_guard = CancelSaveOnDrop(Arc::clone(&cancel));
 
-        let format = encode_format(&codec, plan.audio_meta.audio_format.bits_per_sample);
         let tag_type = codec_tag_type(&codec);
         let sample_rate = plan.audio_meta.audio_format.sample_rate.get();
         let channels = plan.audio_meta.audio_format.channels.get();
-        let decode = plan.decode(&streams).map_err(|e| e.to_string())?;
+        let cancel_for_audio = Arc::clone(&cancel);
+        // How the audio gets into the file: copied from the source file as
+        // stored, or decoded and encoded to the codec.
+        let write_audio: Box<dyn FnOnce(std::fs::File) -> Result<(), SaveError> + Send> = match plan
+            .copied_file(&codec)?
+        {
+            Some(file_id) => {
+                debug!("Track {track_id} is already in the saved codec: copying file {file_id}");
+                let source = streams
+                    .get(file_id)
+                    .ok_or_else(|| format!("no audio stream opened for file {file_id}"))?
+                    .clone();
+                Box::new(move |file| copy_file_audio(&source, file, &cancel_for_audio))
+            }
+            None => {
+                let format = encode_format(&codec, plan.audio_meta.audio_format.bits_per_sample);
+                let decode = plan.decode(&streams).map_err(|e| e.to_string())?;
+                Box::new(move |file| {
+                    let mut encoder = StreamingEncoder::seekable(
+                        format,
+                        Box::new(file),
+                        cancel_for_audio.clone(),
+                    );
+                    decode.run_to_sink(
+                        sample_rate,
+                        channels,
+                        &mut encoder,
+                        cancel_for_audio.clone(),
+                    )?;
+                    // `finish` closes the muxer and drops the file handle,
+                    // so the tag writer reads a fully-flushed file.
+                    encoder.finish()?;
+                    Ok(())
+                })
+            }
+        };
         drop(streams);
 
         let cancel_for_blocking = Arc::clone(&cancel);
@@ -286,12 +320,7 @@ impl SaveService {
             // Made once the file is this save's: a refused path holds another
             // track's file, which this save must not remove.
             let mut output_guard = OutputPathsGuard::new(vec![output_path.clone()]);
-            let mut encoder =
-                StreamingEncoder::seekable(format, Box::new(file), cancel_for_blocking.clone());
-            decode.run_to_sink(sample_rate, channels, &mut encoder, cancel_for_blocking.clone())?;
-            // `finish` closes the muxer and drops the file handle, so the tag
-            // writer below reads a fully-flushed file.
-            encoder.finish()?;
+            write_audio(file)?;
 
             // Cancel check at every blocking boundary. write_tags can run for a
             // while on slow disks; checking around it keeps the
@@ -322,6 +351,37 @@ impl SaveService {
         debug!("Successfully exported track {}", track_id);
         Ok(())
     }
+}
+
+/// Write every byte of the source file behind `source` to `file`, then close
+/// it: a save of a track that is already in the codec it writes.
+fn copy_file_audio(
+    source: &SharedSparseBuffer,
+    mut file: std::fs::File,
+    cancel: &AtomicBool,
+) -> Result<(), SaveError> {
+    use bae_audio::sparse_buffer::BufferStop;
+    use std::io::Write;
+
+    let mut reader = source.new_reader();
+    let mut chunk = vec![0u8; 64 * 1024];
+    loop {
+        if cancel.load(Ordering::Relaxed) {
+            return Err(SaveError::Failed("export cancelled".to_string()));
+        }
+        match reader.read(&mut chunk) {
+            Ok(0) => break,
+            Ok(read) => file
+                .write_all(&chunk[..read])
+                .map_err(|e| format!("Failed to write track file: {e}"))?,
+            Err(BufferStop::Cancelled) => {
+                return Err(SaveError::Failed("export cancelled".to_string()))
+            }
+            Err(BufferStop::Failed(error)) => return Err(SaveError::Failed(error.to_string())),
+        }
+    }
+    file.flush().map_err(|e| format!("Failed to write track file: {e}"))?;
+    Ok(())
 }
 
 /// The encoder format for a save codec, for a track stored at `source_depth`
@@ -415,6 +475,9 @@ fn write_tags(
         );
     }
 
+    // A copied file brings the tags it was stored with: the saved file carries
+    // only these.
+    tagged_file.clear();
     tagged_file.insert_tag(tag);
 
     tagged_file

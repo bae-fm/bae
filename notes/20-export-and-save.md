@@ -54,18 +54,21 @@ Mechanics:
 release level.
 
 A save always names its output format: the preset specifies the codec, and
-the source audio is decoded and encoded to it. Whether that format matches
-the source's is irrelevant — there is no "keep the original format" save;
-original is export's contract, not a save option. Even when the preset's
-codec coincides with the source's, the output is a constructed file: split
-out of any image, tagged from bae's metadata, named by pattern. The source's
-shape never shows in the result.
+the source audio is decoded and encoded to it. There is no "keep the original
+format" save; original is export's contract, not a save option. The one case
+the audio is not re-encoded: a track that is all of one file already stored in
+the preset's lossless codec at the depth the preset writes (FLAC, or WAV and
+AIFF at 16 or 24 bits). Its file's audio is copied, and the output is still a
+constructed file: its tags, cover and name are written fresh (the tags it was
+stored with are cleared), never the source's. A lossy preset always encodes, as
+the stored file does not state the bitrate the preset names.
 
 **Image splitting.** A CUE/single-file source (one image file backing many
 tracks) has no per-track files to hand out, so save extracts: decode the
 image, cut the track's sample window, encode a standalone file. This is
-inherent to save — a track saved from an image is always constructed, never
-copied.
+inherent to save — a track saved from an image is always encoded, never
+copied. The same holds for a track given a gap or hidden audio from the track
+after or before it.
 
 **The workup**, applied to every constructed output file:
 
@@ -106,7 +109,7 @@ cancel.
 |---|---|---|
 | level | release | release or track |
 | source of truth | imported bytes | bae's metadata + decoded audio |
-| audio bytes | verbatim | decoded, encoded to the preset codec |
+| audio bytes | verbatim | decoded, encoded to the preset codec (copied when already in it, lossless) |
 | image splitting | never (image stays an image) | yes (tracks are constructed) |
 | tags | untouched | written from bae |
 | cover | as imported (a file among files) | optionally embedded |

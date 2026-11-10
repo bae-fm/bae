@@ -2386,8 +2386,10 @@ Two ways put a release back on disk, from desktop:
   Every save writes one file per track. A pregap, stored or generated, goes
   at the end of the track before, and the hidden audio before track 1 stays
   at the start of track 1; a release stored as one image with a CUE sheet is
-  split at its track marks. A track already in the format's codec at the depth it writes
-  is copied without re-encoding, its tags, cover and name written fresh.
+  split at its track marks. A track that is all of one file, already in a
+  lossless format's codec at the depth the format writes (WAV and AIFF count
+  at 16 or 24 bits), is copied without re-encoding, its tags, cover and name
+  written fresh; a lossy format always encodes.
   Each file's track number is the track's number on its side, and its disc
   number the track's medium's position, written only for a release of several
   mediums, and its YEAR the pressing's year, else the album's. Three
