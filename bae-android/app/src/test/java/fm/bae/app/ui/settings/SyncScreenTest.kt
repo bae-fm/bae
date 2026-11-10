@@ -1,9 +1,12 @@
 package fm.bae.app.ui.settings
 
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
 import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.LocalBugReports
 import fm.bae.app.NoErrorDisplays
@@ -74,6 +77,8 @@ class SyncScreenTest {
             }
         }
 
+        // The list of what sync waits on sits below the storage section, past the test screen's height.
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText("Sign in"))
         compose.onNodeWithText("Sign in").performClick()
 
         compose
