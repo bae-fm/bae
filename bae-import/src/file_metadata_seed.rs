@@ -6,7 +6,7 @@
 //! source reading, and embedded cover are produced together.
 
 use crate::cover_art::PreparedCover;
-use crate::file_tag_snapshot::FileTagSnapshot;
+use crate::file_tag_snapshot::{FileTagSnapshot, StoredTagReading};
 use crate::folder_scanner::FolderCandidate;
 use crate::{CandidateDraft, CandidateTrack, ImportError};
 
@@ -30,7 +30,7 @@ impl FileMetadataSeed {
         candidate: &crate::folder_scanner::FolderCandidate,
         scan_generation: u64,
         reads: &crate::folder_scanner::FileReads,
-        stored: Option<&FileTagSnapshot>,
+        stored: Option<&StoredTagReading>,
     ) -> Result<Self, ImportError> {
         let audio_files = candidate.files.audio().cloned().collect::<Vec<_>>();
         let snapshot = reads.tag_snapshot(

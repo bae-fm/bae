@@ -15,6 +15,16 @@ pub(crate) struct FileObservation {
 }
 
 impl FileObservation {
+    /// `file` as the scan saw it: what a rescan compares a stored reading's
+    /// file against to tell whether it changed.
+    pub(crate) fn scanned(file: &ScannedFile) -> Self {
+        Self {
+            relative_path: file.relative_path.clone(),
+            size: file.version.size,
+            modified_at_ns: file.version.modified_at_ns,
+        }
+    }
+
     /// `file` as it stands on disk now: the size and modification time a stat
     /// reads.
     pub(crate) fn of(file: &ScannedFile) -> Result<Self, crate::folder_scanner::FolderScanError> {
@@ -161,6 +171,29 @@ impl FileTagSnapshot {
             && *files == other.files
             && *embedded_cover == other.embedded_cover
     }
+}
+
+/// A tag reading stored for a release, as a rescan takes it to read the
+/// release's files again: each file's tags, and the picture only when the file
+/// it came from has not changed, since a changed file is read from disk
+/// whatever the stored picture was.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct StoredTagReading {
+    pub files: Vec<FileTagFact>,
+    pub cover: StoredCover,
+}
+
+/// What a [`StoredTagReading`] holds of the picture its release embeds.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) enum StoredCover {
+    /// No file embeds a picture.
+    Absent,
+    Picture(EmbeddedCoverFact),
+    /// The first file to embed one is `source_relative_path`, which has
+    /// changed since: its stored picture is not taken.
+    Replaced {
+        source_relative_path: String,
+    },
 }
 
 pub(crate) fn observe_audio_files(

@@ -6,8 +6,8 @@ use super::read::{load_items, RowSources, StoredScanItem};
 use super::tag_snapshot::load_root_file_tags;
 use super::*;
 use crate::file_tag_reader::FileTagReader;
-use crate::file_tag_snapshot::FileTagSnapshot;
-use crate::folder_scanner::{Coverage, FileReads, ScanItem};
+use crate::file_tag_snapshot::StoredTagReading;
+use crate::folder_scanner::{Coverage, FileReads, ScanItem, ScannedFile};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
@@ -77,8 +77,9 @@ pub(crate) enum ScanItemReadings {
     /// keeps that entry and takes no seed.
     Unchanged,
     /// The tag reading stored for the item's candidate, when it reads the
-    /// same files: none for an item with no tracks or no such reading.
-    Stored(Option<FileTagSnapshot>),
+    /// same files: none for an item with no tracks or no such reading. Its
+    /// picture is loaded only when the file it came from is unchanged.
+    Stored(Option<StoredTagReading>),
 }
 
 /// What [`ImportTables::load_scan_batch_readings`] asks of the store for one
@@ -95,6 +96,8 @@ struct CandidateWanted {
     watched_folder_path: PathBuf,
     key: CandidateKey,
     file_root: PathBuf,
+    /// The candidate's audio files as the scan read them.
+    audio_files: Vec<ScannedFile>,
     coverage: Coverage,
     /// Whether the item is tentative, so a settled entry may already read it.
     tentative: bool,
@@ -116,6 +119,7 @@ impl ReadingsWanted {
                 watched_folder_path: candidate.watched_folder_path.clone(),
                 key,
                 file_root: candidate.file_root.clone(),
+                audio_files: candidate.files.audio().cloned().collect(),
                 coverage: item.coverage(),
                 tentative: matches!(item, ScanItem::Discovered(_)),
             }),
@@ -154,6 +158,7 @@ impl ReadingsWanted {
             watched_folder_path,
             &wanted.key,
             &wanted.file_root,
+            &wanted.audio_files,
         )?))
     }
 }

@@ -3,6 +3,7 @@
 //! stands, and an entry that changed after it was read, read again.
 
 use super::*;
+use crate::file_tag_snapshot::StoredCover;
 use crate::scan_passes::tests::*;
 use crate::service::tests::*;
 use bae_util::test_channels::HANG_GUARD;
@@ -141,9 +142,10 @@ fn picture_bytes(readings: &[crate::tables::ScanItemReadings]) -> usize {
     readings
         .iter()
         .map(|readings| match readings {
-            crate::tables::ScanItemReadings::Stored(Some(stored)) => {
-                stored.embedded_cover.as_ref().map_or(0, |cover| cover.data.len())
-            }
+            crate::tables::ScanItemReadings::Stored(Some(stored)) => match &stored.cover {
+                StoredCover::Picture(cover) => cover.data.len(),
+                StoredCover::Absent | StoredCover::Replaced { .. } => 0,
+            },
             _ => 0,
         })
         .sum()
@@ -184,6 +186,68 @@ async fn an_unchanged_release_is_not_seeded_and_its_picture_is_not_loaded() {
     let moved = HashSet::from([items[0].key()]);
     let readings = tables.load_scan_batch_readings(&items, &moved).await.unwrap();
     assert_eq!(picture_bytes(&readings), PICTURE_BYTES, "the moved entry's picture is loaded");
+}
+
+/// A release whose cover's source track changed is read from that track on
+/// disk, so the picture its stored reading holds is not loaded; a release
+/// whose other track changed still takes the stored picture. The stored result
+/// has the picture the changed track embeds now.
+#[tokio::test]
+async fn a_changed_cover_source_track_does_not_load_the_stored_picture() {
+    const NEW_PICTURE_BYTES: usize = 2048;
+    let test = setup_import_service().await;
+    let (root, scan) = scanned_pictured_root(&test, 1).await;
+    let services = &scan.services.services;
+    let tables = &services.tables;
+    let items = tables.load_folder_scan_items(&root).await.unwrap();
+    let [ScanItem::Valid(candidate)] = items.as_slice() else {
+        panic!("one valid release was scanned: {items:?}")
+    };
+    // Every track embeds a picture, so the first track is the cover's source.
+    let with_track_changed = |track: usize| {
+        let mut changed = candidate.clone();
+        let audio = changed
+            .files
+            .files
+            .iter_mut()
+            .filter(|entry| matches!(entry.role, crate::folder_scanner::FileRole::Audio))
+            .nth(track)
+            .expect("the release has the track");
+        audio.file.version.modified_at_ns += 1;
+        vec![ScanItem::Valid(changed)]
+    };
+
+    let source_changed =
+        tables.load_scan_batch_readings(&with_track_changed(0), &HashSet::new()).await.unwrap();
+    assert_eq!(picture_bytes(&source_changed), 0, "the changed source's picture is not loaded");
+    let other_changed =
+        tables.load_scan_batch_readings(&with_track_changed(1), &HashSet::new()).await.unwrap();
+    assert_eq!(
+        picture_bytes(&other_changed),
+        PICTURE_BYTES,
+        "the picture of a source that did not change is loaded"
+    );
+
+    let source = std::fs::File::options().write(true).open(candidate.path.join("01.flac")).unwrap();
+    source.set_modified(std::time::SystemTime::now() + std::time::Duration::from_secs(60)).unwrap();
+    drop(source);
+    let (scan, _events) = test.scan_with(
+        Arc::new(PictureTagReader { bytes: NEW_PICTURE_BYTES }),
+        Arc::new(crate::folder_scanner::OsDirectoryReader),
+    );
+    scan.rescan(&root).await.unwrap();
+    let snapshot = tables
+        .load_candidate_file_tag_snapshot(&items[0].key())
+        .await
+        .unwrap()
+        .expect("the release is stored")
+        .snapshot
+        .expect("its reading is stored");
+    assert_eq!(
+        snapshot.embedded_cover.map(|cover| cover.data.len()),
+        Some(NEW_PICTURE_BYTES),
+        "the picture is the changed track's, read from disk"
+    );
 }
 
 /// An entry that changes after the pass read it as unchanged, before the

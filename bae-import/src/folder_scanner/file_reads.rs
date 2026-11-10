@@ -13,7 +13,8 @@
 use super::*;
 use crate::file_tag_reader::{FileTagRead, FileTagReader, TagReadFailure};
 use crate::file_tag_snapshot::{
-    EmbeddedCoverFact, FileObservation, FileTagFact, FileTagSnapshot, FileTags, TagReading,
+    EmbeddedCoverFact, FileObservation, FileTagFact, FileTagSnapshot, FileTags, StoredCover,
+    StoredTagReading, TagReading,
 };
 use crate::track_numbers::TrackNumbers;
 use crate::ImportError;
@@ -334,16 +335,12 @@ impl FileReads {
         audio_files: &[ScannedFile],
         scan_generation: u64,
         file_edit_revision: u64,
-        stored: Option<&FileTagSnapshot>,
+        stored: Option<&StoredTagReading>,
     ) -> Result<FileTagSnapshot, ImportError> {
         let mut files = Vec::with_capacity(audio_files.len());
         let mut embedded_cover = None;
         for file in audio_files {
-            let observation = FileObservation {
-                relative_path: file.relative_path.clone(),
-                size: file.version.size,
-                modified_at_ns: file.version.modified_at_ns,
-            };
+            let observation = FileObservation::scanned(file);
             // Tags that do not parse embed no picture bae can take.
             let (mut tags, mut cover) = self.with_known(|known| {
                 match known.track(&file.version).and_then(|track| track.tags.as_ref()) {
@@ -490,26 +487,30 @@ enum CoverRead {
 /// What `stored` says of the picture the tags of its file at `index` embed:
 /// the reading's picture is the first its files embed, so every file before
 /// that one embeds none, and what the files after it embed it does not say.
-fn stored_cover(stored: &FileTagSnapshot, index: usize) -> Result<CoverRead, ImportError> {
-    let Some(cover) = &stored.embedded_cover else {
-        return Ok(CoverRead::Absent);
+fn stored_cover(stored: &StoredTagReading, index: usize) -> Result<CoverRead, ImportError> {
+    let (source_relative_path, picture) = match &stored.cover {
+        StoredCover::Absent => return Ok(CoverRead::Absent),
+        StoredCover::Picture(cover) => (&cover.source_relative_path, Some(cover)),
+        StoredCover::Replaced { source_relative_path } => (source_relative_path, None),
     };
     let source = stored
         .files
         .iter()
-        .position(|fact| fact.observation.relative_path == cover.source_relative_path)
+        .position(|fact| &fact.observation.relative_path == source_relative_path)
         .ok_or_else(|| ImportError::Internal {
             detail: format!(
-                "a stored tag reading's picture is {}'s, which is none of its files",
-                cover.source_relative_path
+                "a stored tag reading's picture is {source_relative_path}'s, which is none of \
+                 its files"
             ),
         })?;
-    Ok(match index.cmp(&source) {
-        std::cmp::Ordering::Less => CoverRead::Absent,
-        std::cmp::Ordering::Equal => {
+    Ok(match (index.cmp(&source), picture) {
+        (std::cmp::Ordering::Less, _) => CoverRead::Absent,
+        (std::cmp::Ordering::Equal, Some(cover)) => {
             CoverRead::Picture(cover.data.clone(), cover.content_type.clone())
         }
-        std::cmp::Ordering::Greater => CoverRead::Unknown,
+        // The file the picture came from has changed, so a file at its place
+        // is not the one that held it.
+        (std::cmp::Ordering::Equal, None) | (std::cmp::Ordering::Greater, _) => CoverRead::Unknown,
     })
 }
 
