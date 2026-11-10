@@ -31,9 +31,10 @@ use crate::RelativeFolder;
 use crate::{CandidateKey, CoverSelection, FolderReleaseDecisionKey, ImportedRelease, ReleaseLink};
 use bae_identify::PressingLink;
 use bae_records::records::files::cover_version_sql;
-use bae_records::records::queued_uploads::release_upload_on;
-use bae_records::records::read::get_release_records_on;
+use bae_records::records::queued_uploads::release_uploads_on;
+use bae_records::records::read::get_releases_records_on;
 use bae_records::UploadProgress;
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 /// The items `keys` name, in their order, loaded whole for the list `list`,
@@ -47,7 +48,9 @@ pub(super) fn materialise(
     header_positions: &[Option<u64>],
 ) -> Result<Vec<WindowItemRows>, DbError> {
     let mut headers = header_rows(sql, list, keys)?.into_iter().peekable();
-    let mut releases = release_rows(sql, list.id, keys)?.into_iter().peekable();
+    let releases = release_rows(sql, list.id, keys)?;
+    let imported = ImportedReads::of(sql, &releases)?;
+    let mut releases = releases.into_iter().peekable();
     keys.iter()
         .enumerate()
         .zip(header_positions)
@@ -68,7 +71,7 @@ pub(super) fn materialise(
             if key.item == Item::Invalid {
                 return invalid_item(sql, release);
             }
-            candidate_item(sql, release, header_position)
+            candidate_item(sql, &imported, release, header_position)
         })
         .collect()
 }
@@ -334,10 +337,38 @@ fn invalid_item(sql: &SqlReadContext<'_>, release: ReleaseRows) -> Result<Window
     Ok(WindowItemRows::Ready(ImportListItem::Invalid { candidate, selected: release.selected }))
 }
 
+/// What the window's rows with an imported release read of the library
+/// beside them: how each release's upload stands and the catalogs its records
+/// name, each read once for all the window's imported releases.
+struct ImportedReads {
+    uploads: HashMap<String, bae_records::DbReleaseUpload>,
+    records: HashMap<String, Vec<bae_catalogs::records::ReleaseRecord>>,
+}
+
+impl ImportedReads {
+    fn of(sql: &SqlReadContext<'_>, releases: &[ReleaseRows]) -> Result<Self, DbError> {
+        let release_ids: Vec<String> = releases
+            .iter()
+            .filter_map(|release| release.imported.as_ref())
+            .map(|imported| imported.release_id.clone())
+            .collect();
+        // A window of rows that have none reruns on none of the upload
+        // queue's changes.
+        if release_ids.is_empty() {
+            return Ok(Self { uploads: HashMap::new(), records: HashMap::new() });
+        }
+        Ok(Self {
+            uploads: release_uploads_on(sql, &release_ids)?,
+            records: get_releases_records_on(sql, &release_ids)?,
+        })
+    }
+}
+
 /// A release's row: its placement and the keyed rows beside it, listed under
 /// the header at `header_position`.
 fn candidate_item(
     sql: &SqlReadContext<'_>,
+    imported_reads: &ImportedReads,
     release: ReleaseRows,
     header_position: Option<u64>,
 ) -> Result<WindowItemRows, DbError> {
@@ -347,22 +378,20 @@ fn candidate_item(
     let block = block_of(blocked, subject, holder)?;
     let import_status =
         import_status_of(release.imported.as_ref(), block.as_ref(), release.failure.as_ref());
-    // Only a row with an imported release reads the upload queue, so a
-    // window of rows that have none reruns on none of its changes.
     let upload = release
         .imported
         .as_ref()
-        .map(|imported| release_upload_on(sql, &imported.release_id))
-        .transpose()?
-        .flatten()
-        .map(|upload| UploadProgress::of_release(&upload));
+        .and_then(|imported| imported_reads.uploads.get(&imported.release_id))
+        .map(UploadProgress::of_release);
     let shown = match release.imported.as_ref() {
         // A release this device imported reads the library release: its
         // cover, and the catalogs its records name.
         Some(imported) => ShownRows {
             metadata_provenance: None,
             release_link: None,
-            reading: TriageReading::of_library(get_release_records_on(sql, &imported.release_id)?),
+            reading: TriageReading::of_library(
+                imported_reads.records.get(&imported.release_id).cloned().unwrap_or_default(),
+            ),
             picked: None,
             cover: bae_records::cover_ref(&imported.release_id, release.library_cover.clone())
                 .map(|image| crate::CoverImageSource::Library { image }),

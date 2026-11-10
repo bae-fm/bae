@@ -163,18 +163,29 @@ pub fn release_upload_on(
     sql: &SqlReadContext<'_>,
     release_id: &str,
 ) -> Result<Option<DbReleaseUpload>, DbError> {
-    Ok(sql
-        .query_row(
-            &format!(
-                "SELECT {RELEASE_UPLOAD_COLUMNS} FROM release_storage storage \
-                 LEFT JOIN ({RELEASES_SENDING}) sending ON sending.release_id = storage.release_id \
-                 WHERE storage.release_id = ?1"
-            ),
-            [release_id],
-            release_upload_in_row,
-        )
-        .optional()?
-        .flatten())
+    Ok(release_uploads_on(sql, &[release_id.to_string()])?.remove(release_id))
+}
+
+/// What of each of `release_ids` waits in this device's upload queue, in one
+/// statement. A release none of whose files waits has no entry.
+pub fn release_uploads_on(
+    sql: &SqlReadContext<'_>,
+    release_ids: &[String],
+) -> Result<HashMap<String, DbReleaseUpload>, DbError> {
+    let uploads = sql.query(
+        &format!(
+            "SELECT storage.release_id AS release_id, {RELEASE_UPLOAD_COLUMNS} \
+             FROM release_storage storage \
+             LEFT JOIN ({RELEASES_SENDING}) sending ON sending.release_id = storage.release_id \
+             WHERE storage.release_id IN (SELECT value FROM json_each(?1))"
+        ),
+        [serde_json::json!(release_ids).to_string()],
+        |row| Ok((row.get::<_, String>("release_id")?, release_upload_in_row(row)?)),
+    )?;
+    Ok(uploads
+        .into_iter()
+        .filter_map(|(release_id, upload)| upload.map(|upload| (release_id, upload)))
+        .collect())
 }
 
 /// Each file this process is sending now and, when it is one of a release's

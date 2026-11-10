@@ -4,14 +4,13 @@
 use crate::folder_scanner::{CandidateFile, FileRole, ScanItem, ScannedFile};
 use crate::tables::import_list::tests::*;
 use bae_catalogs::catalog::LookupCatalog;
-use bae_records::test_fixtures::aggregate_ordering::insert_file;
 use bae_store::test_fixtures::window_cost::{report, report_cost, LIMIT, RUNS};
 use std::time::{Duration, Instant};
 
 /// A kind of row a window holds, by what its read has to look up.
 #[derive(Clone, Copy, Debug)]
 enum Kind {
-    /// A release this device imported, with an upload queued.
+    /// A release this device imported.
     Imported,
     /// A release linked to a pressing.
     Linked,
@@ -63,21 +62,6 @@ async fn library_of(kind: Kind, rows: u64) -> Library {
                     "Album Title",
                     vec![pressing.clone()],
                 ))
-                .await;
-                let dir = lib._tmp.as_ref().unwrap().path();
-                insert_file(
-                    &lib.db,
-                    dir,
-                    bae_records::NewReleaseFile {
-                        id: bae_util::test_ids::test_uuid(&format!("file {path}")),
-                        release_id: lib.release_id(path),
-                        original_filename: "01.flac".to_string(),
-                        content_type: bae_util::content_type::ContentType::from_mime("audio/flac"),
-                        source_audio: None,
-                        created_at: bae_store::test_fixtures::fixed_now(),
-                    },
-                    1_000,
-                )
                 .await;
             }
         }
@@ -230,5 +214,32 @@ async fn import_list_row_kinds_cost() {
             (runs[RUNS / 2], rows),
         );
         report_cost(&format!("import_list_rows/{kind:?}/statements"), statements as f64, "count");
+    }
+}
+
+/// The statements a window of `rows` rows of `kind` reads, whose rows are
+/// all of that kind.
+async fn statements_of(kind: Kind, rows: u64) -> usize {
+    let lib = library_of(kind, rows).await;
+    let (read, statements) = read_window(&lib, kind, rows).await;
+    assert_eq!(read.windows[0].rows.len() as u64, rows, "{kind:?}: the window holds every row");
+    statements
+}
+
+#[tokio::test]
+async fn a_window_reads_imported_rows_in_statements_its_size_does_not_change() {
+    assert_eq!(statements_of(Kind::Imported, 2).await, statements_of(Kind::Imported, 10).await);
+}
+
+#[tokio::test]
+async fn an_imported_row_shows_its_records_whatever_the_window_holds() {
+    let lib = library_of(Kind::Imported, 3).await;
+    let (read, _) = read_window(&lib, Kind::Imported, 3).await;
+    for row in rows(&read) {
+        assert!(
+            matches!(row.reading, crate::triage::TriageReading::Identified { .. }),
+            "{} reads its release's records",
+            row.display_path
+        );
     }
 }

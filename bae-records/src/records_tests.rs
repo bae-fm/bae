@@ -75,8 +75,8 @@ async fn release_records_are_read_in_catalog_order() {
     let plan = db
         .read(|sql| {
             sql.query(
-                &format!("EXPLAIN QUERY PLAN {}", crate::records::read::RELEASE_RECORDS_IN_ORDER),
-                [RELEASE_A],
+                &format!("EXPLAIN QUERY PLAN {}", crate::records::read::RELEASES_RECORDS_IN_ORDER),
+                [serde_json::json!([RELEASE_A]).to_string()],
                 |row| row.get::<_, String>(3),
             )
             .map_err(DbError::from)
@@ -161,7 +161,7 @@ async fn release_files_are_read_in_case_insensitive_natural_order() {
         .read(|sql| {
             sql.query(
                 &format!("EXPLAIN QUERY PLAN {}", crate::records::read::RELEASE_FILES_IN_ORDER),
-                [RELEASE_A],
+                [serde_json::json!([RELEASE_A]).to_string()],
                 |row| row.get::<_, String>(3),
             )
             .map_err(DbError::from)

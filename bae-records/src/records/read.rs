@@ -204,14 +204,15 @@ pub fn get_files_for_release_on(
     Ok(files)
 }
 
-/// Every catalog's description of a release, in the order surfaces list
+/// Every catalog's description of each of the releases `?1` names, a JSON
+/// array of release ids: release by release, each in the order surfaces list
 /// catalogs (`bae_catalog_rank`), read from the index of each release's
 /// records in that order.
-pub(super) const RELEASE_RECORDS_IN_ORDER: &str =
-    "SELECT rr.catalog, rr.kind, rr.key, rr.album_key \
+pub(super) const RELEASES_RECORDS_IN_ORDER: &str =
+    "SELECT rr.release_id, rr.catalog, rr.kind, rr.key, rr.album_key \
      FROM release_records rr \
-     WHERE rr.release_id = ?1 \
-     ORDER BY bae_catalog_rank(rr.catalog)";
+     WHERE rr.release_id IN (SELECT value FROM json_each(?1)) \
+     ORDER BY rr.release_id, bae_catalog_rank(rr.catalog)";
 
 /// Every catalog's description of a release, in the order surfaces list
 /// catalogs.
@@ -219,21 +220,46 @@ pub fn get_release_records_on(
     sql: &SqlReadContext<'_>,
     release_id: &str,
 ) -> Result<Vec<bae_catalogs::records::ReleaseRecord>, DbError> {
-    Ok(sql.query(RELEASE_RECORDS_IN_ORDER, params![release_id], |row| {
-        let identity = bae_catalogs::records::MetadataRef::new(
-            parsed_column(row, "catalog")?,
-            row.get::<_, String>("key")?,
-        );
-        match row.get::<_, String>("kind")?.as_str() {
-            "pressing" => {
-                Ok(bae_catalogs::records::ReleaseRecord::new(&identity, row.get("album_key")?))
-            }
-            "album" => Ok(bae_catalogs::records::ReleaseRecord::album(&identity)),
-            kind => {
-                Err(column_conversion_error(row, "kind", format!("unknown record kind: {kind}")))
-            }
-        }
-    })?)
+    Ok(get_releases_records_on(sql, &[release_id.to_string()])?
+        .remove(release_id)
+        .unwrap_or_default())
+}
+
+/// Every catalog's description of each of `release_ids`, in one statement:
+/// per release, in the order surfaces list catalogs. A release described by
+/// no catalog has no entry.
+pub fn get_releases_records_on(
+    sql: &SqlReadContext<'_>,
+    release_ids: &[String],
+) -> Result<HashMap<String, Vec<bae_catalogs::records::ReleaseRecord>>, DbError> {
+    let mut by_release: HashMap<String, Vec<bae_catalogs::records::ReleaseRecord>> = HashMap::new();
+    for (release_id, record) in sql.query(
+        RELEASES_RECORDS_IN_ORDER,
+        params![serde_json::json!(release_ids).to_string()],
+        |row| {
+            let identity = bae_catalogs::records::MetadataRef::new(
+                parsed_column(row, "catalog")?,
+                row.get::<_, String>("key")?,
+            );
+            let record = match row.get::<_, String>("kind")?.as_str() {
+                "pressing" => {
+                    bae_catalogs::records::ReleaseRecord::new(&identity, row.get("album_key")?)
+                }
+                "album" => bae_catalogs::records::ReleaseRecord::album(&identity),
+                kind => {
+                    return Err(column_conversion_error(
+                        row,
+                        "kind",
+                        format!("unknown record kind: {kind}"),
+                    ))
+                }
+            };
+            Ok((row.get::<_, String>("release_id")?, record))
+        },
+    )? {
+        by_release.entry(release_id).or_default().push(record);
+    }
+    Ok(by_release)
 }
 
 // ─── Entity row readers ──────────────────────────────────────────────────────
