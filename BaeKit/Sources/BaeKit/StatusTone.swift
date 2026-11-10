@@ -90,8 +90,8 @@ public enum NoticeLook: Sendable, Equatable {
     /// No fill, in the screen's own text, with an outline glyph.
     case quiet
     /// A view that failed whole: in the middle of the space it is given, a
-    /// grey outline glyph in front of a title in secondary text, the buttons
-    /// in a row under it. No fill.
+    /// grey outline glyph in front of a title in primary text, the buttons in
+    /// secondary text in a row under it. No fill.
     case centered
     /// The centred layout on the image viewer's dark stage, in the stage's own
     /// text colours.

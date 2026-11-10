@@ -275,7 +275,8 @@ extension Notice {
     /// buttons in a row under it, Details first.
     private var centered: some View {
         let onStage = look == .centeredOnStage
-        let titleColor = onStage ? Theme.onFillSecondary : Color.secondary
+        let secondaryColor = onStage ? Theme.onFillSecondary : Color.secondary
+        let titleColor = onStage ? Theme.onFillSecondary : Color.primary
         return VStack(spacing: ThemeSpace.group) {
             HStack(
                 alignment: .firstTextBaseline,
@@ -297,7 +298,7 @@ extension Notice {
             if case .titled(_, let advice?, _) = heading {
                 Text(verbatim: advice)
                     .themeText(.body)
-                    .foregroundStyle(titleColor)
+                    .foregroundStyle(secondaryColor)
                     .multilineTextAlignment(.center)
             }
             HStack(spacing: ThemeSpace.group) {

@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.AlertDialogDefaults
@@ -21,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import fm.bae.app.BugReports
 import fm.bae.app.DisplayError
 import fm.bae.app.LocalBugReports
@@ -769,6 +771,14 @@ fun NoticeLooks() {
                     look = NoticeLook.QUIET,
                 )
                 ErrorNotice(error, action = ErrorAction("Retry") {}, look = NoticeLook.QUIET, onDismiss = {})
+                TitledErrorNotice(
+                    title = "Couldn’t read your library",
+                    advice = null,
+                    error = error,
+                    action = ErrorAction("Retry") {},
+                    look = NoticeLook.CENTERED,
+                    modifier = Modifier.height(300.dp),
+                )
             }
         }
     }
