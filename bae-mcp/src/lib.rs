@@ -46,11 +46,10 @@ impl McpServerController {
         token_provider: Arc<McpTokenProvider>,
         diagnostics: Diagnostics,
     ) -> Self {
-        let reporting = diagnostics.clone();
         Self {
             automation,
             token_provider,
-            server: ServerController::new("MCP", Arc::new(move |bug| reporting.panicked(bug))),
+            server: ServerController::new("MCP", diagnostics.bug_sink()),
             diagnostics,
         }
     }

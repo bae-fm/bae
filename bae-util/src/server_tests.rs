@@ -1,20 +1,11 @@
-use std::sync::Mutex as StdMutex;
-
 use super::*;
 
-/// A serve future that panics is reported through the owner's `bug` and
-/// leaves the status `Error`, never `Running` with nothing serving.
+/// A serve future that panics is reported to the owner's bug sink and leaves
+/// the status `Error`, never `Running` with nothing serving.
 #[tokio::test]
 async fn a_serve_future_that_panics_is_reported_and_leaves_the_server_in_error() {
-    let reported = Arc::new(StdMutex::new(Vec::new()));
-    let reporting = reported.clone();
-    let controller = ServerController::<u16>::new(
-        "Test",
-        Arc::new(move |failed| {
-            reporting.lock().unwrap().push(failed.clone());
-            failed
-        }),
-    );
+    let bugs = coven::task::HeardBugs::shared();
+    let controller = ServerController::<u16>::new("Test", bugs.clone());
     controller
         .start(1, "http://test".to_string(), |_| async move {
             if true {
@@ -39,7 +30,7 @@ async fn a_serve_future_that_panics_is_reported_and_leaves_the_server_in_error()
     };
     assert!(matches!(&error, ServerError::ServerFailed { .. }), "{error:?}");
     assert!(error.detail().contains("the server broke its guarantee"), "{error:?}");
-    let reported = reported.lock().unwrap().clone();
+    let reported = bugs.take();
     assert_eq!(reported.len(), 1, "{reported:?}");
     assert_eq!(reported[0].operation, "Test");
 }

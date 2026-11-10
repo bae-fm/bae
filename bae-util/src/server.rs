@@ -7,9 +7,9 @@
 //! and how each builds its serve future — so those are the parameters here.
 //! The errors they report are shared. Everything else — the state machine, the
 //! locking, the graceful-shutdown token, the task that records a mid-flight
-//! server failure — lives once. A serve future that panics is a bug: the
-//! server's owner reports it through the `bug` it hands the controller, and
-//! the status moves to `Error` like any other failure.
+//! server failure — lives once. A serve future that panics is a bug: it goes
+//! to the bug sink the server's owner hands the controller, and the status
+//! moves to `Error` like any other failure.
 
 use std::fmt::Display;
 use std::future::{Future, IntoFuture};
@@ -17,8 +17,7 @@ use std::sync::Arc;
 
 use tokio::sync::Mutex;
 
-use crate::task_failure::{caught, Bug};
-use tokio::task::JoinHandle;
+use coven::task::{spawn_owned, BugSinkRef, OwnedTask};
 use tokio_util::sync::CancellationToken;
 use tracing::warn;
 
@@ -65,7 +64,7 @@ enum ServerState<I> {
         identity: I,
         url: String,
         cancellation: CancellationToken,
-        task: JoinHandle<()>,
+        task: OwnedTask,
     },
     Error {
         error: ServerError,
@@ -84,17 +83,14 @@ impl<I> ServerState<I> {
 
 /// Owns one server's running state. Services embed this and add their own
 /// config handling around it.
-/// How a server's owner reports a bug — its serve future panicking — and
-/// hands the failure back.
-pub type ReportBug = Arc<dyn Fn(Bug) -> Bug + Send + Sync>;
-
 #[derive(Clone)]
 pub struct ServerController<I> {
     /// The service's name in log messages ("MCP", "Subsonic"), and the
     /// operation a panic of its serve future is reported as.
     name: &'static str,
     inner: Arc<Mutex<ServerState<I>>>,
-    bug: ReportBug,
+    /// Where a panic of the serve future goes: the owner's crash reporter.
+    bugs: BugSinkRef,
     /// Woken when a serve future's ending moves the state, for a test.
     #[cfg(test)]
     ended: Arc<tokio::sync::Notify>,
@@ -104,11 +100,11 @@ impl<I> ServerController<I>
 where
     I: Clone + PartialEq + Send + 'static,
 {
-    pub fn new(name: &'static str, bug: ReportBug) -> Self {
+    pub fn new(name: &'static str, bugs: BugSinkRef) -> Self {
         Self {
             name,
             inner: Arc::new(Mutex::new(ServerState::Disabled)),
-            bug,
+            bugs,
             #[cfg(test)]
             ended: Arc::default(),
         }
@@ -155,9 +151,7 @@ where
             }
         };
         if let Some(task) = task {
-            if let Err(error) = task.await {
-                warn!("{} server task join failed: {error}", self.name);
-            }
+            task.ended().await;
         }
     }
 
@@ -192,42 +186,73 @@ where
         let serving = serve(&cancellation).into_future();
 
         let name = self.name;
-        let bug = self.bug.clone();
-        let task_state = self.inner.clone();
-        let task_identity = identity.clone();
-        #[cfg(test)]
-        let ended = self.ended.clone();
-        #[expect(
-            clippy::disallowed_methods,
-            reason = "the task catches its own panic and reports it through the bug function the owner handed in; bae-util is below bae-diagnostics"
-        )]
-        let task = tokio::spawn(async move {
-            let error = match caught(name, serving).await {
-                Ok(Ok(())) => return,
-                Ok(Err(e)) => {
+        let stopped = Stopped {
+            state: self.inner.clone(),
+            identity: identity.clone(),
+            #[cfg(test)]
+            ended: self.ended.clone(),
+        };
+        let panicked = stopped.clone();
+        let task = spawn_owned(
+            name,
+            self.bugs.clone(),
+            async move {
+                if let Err(e) = serving.await {
                     let error = ServerError::ServerFailed {
                         detail: format!("{name} server stopped with error: {e}"),
                     };
                     warn!("{}", error.detail());
-                    error
+                    stopped.record(error).await;
                 }
-                Err(failed) => ServerError::ServerFailed {
-                    detail: format!("{name} server stopped: {}", bug(failed)),
-                },
-            };
-            let mut state = task_state.lock().await;
-            if let ServerState::Running { identity: running, .. } = &*state {
-                if *running == task_identity {
-                    *state = ServerState::Error { error };
-                }
-            }
-            #[cfg(test)]
-            ended.notify_waiters();
-        });
+            },
+            move |bug| async move {
+                panicked
+                    .record(ServerError::ServerFailed {
+                        detail: format!("{name} server stopped: {bug}"),
+                    })
+                    .await;
+            },
+        );
 
         let status = ServerStatus::Running { url: url.clone() };
         *self.inner.lock().await = ServerState::Running { identity, url, cancellation, task };
         status
+    }
+}
+
+/// How a serve future that stopped records it: the controller's state, and
+/// the config the server was started for.
+struct Stopped<I> {
+    state: Arc<Mutex<ServerState<I>>>,
+    identity: I,
+    /// Woken once the state is moved, for a test.
+    #[cfg(test)]
+    ended: Arc<tokio::sync::Notify>,
+}
+
+impl<I: Clone> Clone for Stopped<I> {
+    fn clone(&self) -> Self {
+        Self {
+            state: self.state.clone(),
+            identity: self.identity.clone(),
+            #[cfg(test)]
+            ended: self.ended.clone(),
+        }
+    }
+}
+
+impl<I: PartialEq> Stopped<I> {
+    /// Move the controller into `Error` with `error`, unless a different
+    /// server has since taken this one's place.
+    async fn record(self, error: ServerError) {
+        let mut state = self.state.lock().await;
+        if let ServerState::Running { identity: running, .. } = &*state {
+            if *running == self.identity {
+                *state = ServerState::Error { error };
+            }
+        }
+        #[cfg(test)]
+        self.ended.notify_waiters();
     }
 }
 

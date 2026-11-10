@@ -53,11 +53,10 @@ impl SubsonicServerController {
         password_provider: Arc<SubsonicPasswordProvider>,
         diagnostics: Diagnostics,
     ) -> Self {
-        let reporting = diagnostics.clone();
         Self {
             services,
             password_provider,
-            server: ServerController::new("Subsonic", Arc::new(move |bug| reporting.panicked(bug))),
+            server: ServerController::new("Subsonic", diagnostics.bug_sink()),
             diagnostics,
         }
     }
