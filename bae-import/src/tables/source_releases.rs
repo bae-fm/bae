@@ -554,7 +554,8 @@ fn load_source_release_rows_on<S: coven::SqlRead>(
     };
     // The record rows keep no order: they read in the order surfaces list
     // catalogs.
-    let other_records = with_joined_records(own_records_on(sql, release)?, &[]);
+    let own = own_records_of_on(sql, &[release])?.pop().expect("one release has one entry");
+    let other_records = with_joined_records(own, &[]);
     let mut covers = ReleaseCovers { release: Vec::new(), album: Vec::new() };
     let copies = super::downscaled_copies::copies_json_sql(
         "source_release_cover_copy",
@@ -659,35 +660,51 @@ fn load_source_release_rows_on<S: coven::SqlRead>(
     }))
 }
 
-/// What the other catalogs say the stored release `release`, or its album,
-/// is, as its rows hold it.
-fn own_records_on<S: coven::SqlRead>(
+/// What the other catalogs say each of the stored `releases`, or its album,
+/// is, as their rows hold it, in their order, in one statement: empty for a
+/// release whose rows name no other catalog, or that nothing stored.
+fn own_records_of_on<S: coven::SqlRead>(
     sql: &S,
-    release: &bae_catalogs::records::LookupRef,
-) -> Result<Vec<ReleaseRecord>, DbError> {
-    sql.query(
-        "SELECT record_catalog, kind, key, album_key FROM source_release_record \
-         WHERE catalog = ? AND release_id = ?",
-        params![release.catalog.as_str(), release.key],
+    releases: &[&bae_catalogs::records::LookupRef],
+) -> Result<Vec<Vec<ReleaseRecord>>, DbError> {
+    let rows = sql.query(
+        "SELECT w.key, r.record_catalog, r.kind, r.key, r.album_key \
+         FROM json_each(?1) AS w \
+         JOIN source_release_record AS r \
+             ON r.catalog = w.value ->> 0 AND r.release_id = w.value ->> 1",
+        [releases_json(releases)],
         |row| {
             Ok((
-                row.get::<_, String>(0)?,
+                row.get::<_, usize>(0)?,
                 row.get::<_, String>(1)?,
                 row.get::<_, String>(2)?,
-                row.get::<_, Option<String>>(3)?,
+                row.get::<_, String>(3)?,
+                row.get::<_, Option<String>>(4)?,
             ))
         },
-    )?
-    .into_iter()
-    .map(|(record_catalog, kind, record_key, album_key)| {
+    )?;
+    let mut own: Vec<Vec<ReleaseRecord>> = vec![Vec::new(); releases.len()];
+    for (at, record_catalog, kind, record_key, album_key) in rows {
         let reference = MetadataRef::new(catalog_column(&record_catalog)?, record_key);
-        match kind.as_str() {
-            "pressing" => Ok(ReleaseRecord::new(&reference, album_key)),
-            "album" => Ok(ReleaseRecord::album(&reference)),
-            other => Err(DbError::unreadable("source_release_record.kind", other)),
-        }
-    })
-    .collect()
+        own[at].push(match kind.as_str() {
+            "pressing" => ReleaseRecord::new(&reference, album_key),
+            "album" => ReleaseRecord::album(&reference),
+            other => return Err(DbError::unreadable("source_release_record.kind", other)),
+        });
+    }
+    Ok(own)
+}
+
+/// `releases` as a JSON array of `[catalog, key]` pairs, in their order, for
+/// a statement to read them by with `json_each`.
+fn releases_json(releases: &[&bae_catalogs::records::LookupRef]) -> String {
+    serde_json::Value::Array(
+        releases
+            .iter()
+            .map(|release| serde_json::json!([release.catalog.as_str(), release.key]))
+            .collect(),
+    )
+    .to_string()
 }
 
 /// `own` and the `joined` albums, in the order surfaces list catalogs.
@@ -712,12 +729,16 @@ fn with_joined_albums_on<S: coven::SqlRead>(
     sql: &S,
     stored: &SourceRelease,
 ) -> Result<SourceRelease, DbError> {
-    let joined = super::album_link_rows::joined_albums_on(
+    let joined = super::album_link_rows::joined_albums_of_on(
         sql,
-        stored.release.catalog.catalog(),
-        stored.source_group_id.as_deref(),
-        &stored.other_records,
-    )?;
+        &[super::album_link_rows::ReleaseAlbums {
+            catalog: stored.release.catalog.catalog(),
+            source_group_id: stored.source_group_id.as_deref(),
+            records: &stored.other_records,
+        }],
+    )?
+    .pop()
+    .expect("one release has one entry");
     let mut release = stored.clone();
     release.other_records = with_joined_records(release.other_records, &joined);
     // A joined release group's images, addressed by its id as the extraction
@@ -798,36 +819,54 @@ pub(crate) fn store_named_releases_on(
     Ok(())
 }
 
-/// Every record the stored release `release` names, its own first — what
+/// Every record each of the stored `releases` names, its own first — what
 /// [`SourceRelease::records`] answers of it — read without the rest of the
-/// release: its tracklist, covers and credits stay unread. `None` when
-/// nothing stored it.
-pub(crate) fn load_release_records_on<S: coven::SqlRead>(
+/// release: its tracklist, covers and credits stay unread. `None` for one
+/// nothing stored. Three statements whatever `releases` holds — their groups,
+/// their records, and the albums kept for theirs — and none for no release.
+pub(crate) fn load_releases_records_on<S: coven::SqlRead>(
     sql: &S,
-    release: &bae_catalogs::records::LookupRef,
-) -> Result<Option<Vec<ReleaseRecord>>, DbError> {
-    let Some(source_group_id) = sql
-        .query_row(
-            "SELECT source_group_id FROM source_release WHERE catalog = ? AND release_id = ?",
-            params![release.catalog.as_str(), release.key],
-            |row| row.get::<_, Option<String>>(0),
-        )
-        .optional()?
-    else {
-        return Ok(None);
-    };
-    let own = own_records_on(sql, release)?;
-    let joined = super::album_link_rows::joined_albums_on(
+    releases: &[&bae_catalogs::records::LookupRef],
+) -> Result<Vec<Option<Vec<ReleaseRecord>>>, DbError> {
+    if releases.is_empty() {
+        return Ok(Vec::new());
+    }
+    let mut groups: Vec<Option<Option<String>>> = vec![None; releases.len()];
+    for (at, source_group_id) in sql.query(
+        "SELECT w.key, s.source_group_id FROM json_each(?1) AS w \
+         JOIN source_release AS s ON s.catalog = w.value ->> 0 AND s.release_id = w.value ->> 1",
+        [releases_json(releases)],
+        |row| Ok((row.get::<_, usize>(0)?, row.get::<_, Option<String>>(1)?)),
+    )? {
+        groups[at] = Some(source_group_id);
+    }
+    let own = own_records_of_on(sql, releases)?;
+    let stored: Vec<(usize, &Option<String>, &Vec<ReleaseRecord>)> = groups
+        .iter()
+        .zip(&own)
+        .enumerate()
+        .filter_map(|(at, (group, own))| group.as_ref().map(|group| (at, group, own)))
+        .collect();
+    let joined = super::album_link_rows::joined_albums_of_on(
         sql,
-        release.catalog.catalog(),
-        source_group_id.as_deref(),
-        &own,
+        &stored
+            .iter()
+            .map(|(at, group, own)| super::album_link_rows::ReleaseAlbums {
+                catalog: releases[*at].catalog.catalog(),
+                source_group_id: group.as_deref(),
+                records: own,
+            })
+            .collect::<Vec<_>>(),
     )?;
-    Ok(Some(bae_catalogs::source_release::release_records(
-        release,
-        source_group_id,
-        with_joined_records(own, &joined),
-    )))
+    let mut records: Vec<Option<Vec<ReleaseRecord>>> = vec![None; releases.len()];
+    for ((at, group, own), joined) in stored.into_iter().zip(joined) {
+        records[at] = Some(bae_catalogs::source_release::release_records(
+            releases[at],
+            group.clone(),
+            with_joined_records(own.clone(), &joined),
+        ));
+    }
+    Ok(records)
 }
 
 impl ImportTables {

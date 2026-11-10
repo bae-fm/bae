@@ -1022,7 +1022,9 @@ and what its commands are decided from are kept beside it as it changes
 A row reads none of its folder's files, so a folder on a slow or unreachable
 volume does not hold up the list, and a linked row reads only the records its
 stored releases name, not the releases whole. A window reads the records and
-the upload standing of its imported rows' releases in one statement each, and
+the upload standing of its imported rows' releases in one statement each, the
+records of the stored releases its linked rows claim — each release's album,
+its own records and the albums kept for those — in one statement each, and
 the stored scan items of its skipped rows and of its candidates holding no
 draft row in one statement, and the file versions its folder-image and
 embedded covers name in one statement each, not one per row.

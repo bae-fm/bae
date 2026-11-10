@@ -66,26 +66,14 @@ async fn library_of(kind: Kind, rows: u64) -> Library {
             }
         }
         Kind::Linked => {
-            let record = bae_catalogs::records::LookupRef::new(LookupCatalog::MusicBrainz, PICKED);
-            tables
-                .save_source_release(
-                    &bae_catalogs::payloads::ReleasePayloads::for_test(
-                        record.clone(),
-                        musicbrainz_release(PICKED, "Picked Album").to_string(),
-                        Vec::new(),
-                    )
-                    .extract()
-                    .unwrap(),
-                )
-                .await
-                .unwrap();
-            for path in &paths {
+            for (row, path) in paths.iter().enumerate() {
+                let record = linked_release(&tables, row).await;
                 lib.run(
                     lib.scan(path)
                         + lib.link(
                             path,
                             Some(crate::ReleaseLink::Pressing(bae_identify::PressingLink {
-                                record: record.clone(),
+                                record,
                                 partners: vec![],
                             })),
                         ),
@@ -170,6 +158,49 @@ async fn library_of(kind: Kind, rows: u64) -> Library {
     lib
 }
 
+/// The `row`th row's own linked release, stored: a MusicBrainz release in a
+/// release group of its own that links a Discogs release, the group read to
+/// be an AllMusic album none of its records reaches, so the release reads
+/// its own records and the album that statement joins to them.
+async fn linked_release(
+    tables: &crate::tables::ImportTables,
+    row: usize,
+) -> bae_catalogs::records::LookupRef {
+    let key = format!("{PICKED}-{row:04}");
+    let group = format!("mb-group-{row:04}");
+    let mut document = musicbrainz_release(&key, "Picked Album");
+    document["release-group"] = serde_json::json!({ "id": group });
+    document["relations"] = serde_json::json!([{
+        "target-type": "url",
+        "type": "discogs",
+        "url": { "resource": format!("https://www.discogs.com/release/{}", 4000 + row) }
+    }]);
+    let record = bae_catalogs::records::LookupRef::new(LookupCatalog::MusicBrainz, key);
+    tables
+        .save_source_release(
+            &bae_catalogs::payloads::ReleasePayloads::for_test(
+                record.clone(),
+                document.to_string(),
+                Vec::new(),
+            )
+            .extract()
+            .unwrap(),
+        )
+        .await
+        .unwrap();
+    tables
+        .replace_group_album_links(vec![(
+            group,
+            vec![bae_catalogs::records::MetadataRef::new(
+                bae_catalogs::catalog::Catalog::AllMusic,
+                format!("mw{row:010}"),
+            )],
+        )])
+        .await
+        .unwrap();
+    record
+}
+
 /// One read of the first `rows` items of `kind`'s tab, and the statements it
 /// ran.
 async fn read_window(lib: &Library, kind: Kind, rows: u64) -> (crate::ImportListProjection, usize) {
@@ -239,6 +270,43 @@ async fn an_imported_row_shows_its_records_whatever_the_window_holds() {
         assert!(
             matches!(row.reading, crate::triage::TriageReading::Identified { .. }),
             "{} reads its release's records",
+            row.display_path
+        );
+    }
+}
+
+#[tokio::test]
+async fn a_window_reads_linked_rows_in_statements_its_size_does_not_change() {
+    assert_eq!(statements_of(Kind::Linked, 2).await, statements_of(Kind::Linked, 10).await);
+}
+
+/// A linked row names what its stored release, read whole, says it is: its
+/// own records and the album a kept statement joins to them, whatever else
+/// the window holds.
+#[tokio::test]
+async fn a_linked_row_names_the_records_its_whole_release_does() {
+    let lib = library_of(Kind::Linked, 3).await;
+    let tables = crate::tables::ImportTables::new(lib.db.clone());
+    let (read, _) = read_window(&lib, Kind::Linked, 3).await;
+    for row in rows(&read) {
+        let Some(crate::ReleaseLink::Pressing(link)) = &row.release_link else {
+            panic!("{} is linked to a pressing", row.display_path);
+        };
+        let whole = tables.load_source_release(&link.record).await.unwrap().unwrap();
+        let crate::triage::TriageReading::Identified { records } = &row.reading else {
+            panic!("{} reads as identified, got {:?}", row.display_path, row.reading);
+        };
+        assert_eq!(
+            records,
+            &bae_catalogs::source_release::claimed_records(&[whole.records()]),
+            "{}",
+            row.display_path
+        );
+        assert!(
+            records
+                .iter()
+                .any(|record| record.catalog() == bae_catalogs::catalog::Catalog::AllMusic),
+            "{} names the album its group was read to be: {records:?}",
             row.display_path
         );
     }

@@ -38,78 +38,130 @@ impl AlbumLinkRow {
 
 const GROUP_LINK_COLUMNS: &str = "release_group, catalog, key";
 
-fn read_group_link(row: &Row<'_>) -> rusqlite::Result<(String, String, String)> {
-    Ok((row.get(0)?, row.get(1)?, row.get(2)?))
+/// For each of `wanted`, every album kept for any of its albums: one a
+/// MusicBrainz release group among them was found to be, or one of the
+/// other catalogs' albums among them some group was found to be. Each is
+/// listed once, album by album in their order: a group's albums by catalog
+/// and key, an album's groups by id. One statement whatever `wanted` holds,
+/// none when it names no album.
+pub(super) fn group_albums_of_on<S: coven::SqlRead>(
+    sql: &S,
+    wanted: &[Vec<MetadataRef>],
+) -> Result<Vec<Vec<GroupAlbum>>, DbError> {
+    // Each album is asked once, at its place among the albums asked.
+    let mut albums: Vec<&MetadataRef> = Vec::new();
+    let mut asked_at: std::collections::HashMap<&MetadataRef, usize> =
+        std::collections::HashMap::new();
+    for album in wanted.iter().flatten() {
+        asked_at.entry(album).or_insert_with(|| {
+            albums.push(album);
+            albums.len() - 1
+        });
+    }
+    if albums.is_empty() {
+        return Ok(vec![Vec::new(); wanted.len()]);
+    }
+    let asked = serde_json::Value::Array(
+        albums.iter().map(|album| serde_json::json!([album.catalog.as_str(), album.key])).collect(),
+    );
+    const LINK_COLUMNS: &str = "link.release_group, link.catalog, link.key";
+    let rows = sql.query(
+        &format!(
+            "WITH asked (at, catalog, key) AS ( \
+                 SELECT key, value ->> 0, value ->> 1 FROM json_each(?1)) \
+             SELECT asked.at, {LINK_COLUMNS} FROM asked \
+             JOIN release_group_album_link AS link \
+                 ON asked.catalog = ?2 AND link.release_group = asked.key \
+             UNION ALL \
+             SELECT asked.at, {LINK_COLUMNS} FROM asked \
+             JOIN release_group_album_link AS link \
+                 ON asked.catalog <> ?2 AND link.catalog = asked.catalog AND link.key = asked.key \
+             ORDER BY 1, 3, 4, 2"
+        ),
+        params![asked.to_string(), Catalog::MusicBrainz.as_str()],
+        |row| Ok((row.get::<_, usize>(0)?, read_group_link(row, 1)?)),
+    )?;
+    let mut kept_for: Vec<Vec<GroupAlbum>> = vec![Vec::new(); albums.len()];
+    for (at, (group, catalog, key)) in rows {
+        kept_for[at]
+            .push(GroupAlbum { group, album: MetadataRef::new(catalog_of(&catalog)?, key) });
+    }
+    Ok(wanted
+        .iter()
+        .map(|albums_of| {
+            let mut kept: Vec<GroupAlbum> = Vec::new();
+            for album in albums_of {
+                for group_album in &kept_for[asked_at[album]] {
+                    if !kept.contains(group_album) {
+                        kept.push(group_album.clone());
+                    }
+                }
+            }
+            kept
+        })
+        .collect())
 }
 
-/// Every album kept for any of `albums`: one a MusicBrainz release group
-/// among them was found to be, or one of the other catalogs' albums among
-/// them some group was found to be.
-pub(super) fn group_albums_on<S: coven::SqlRead>(
-    sql: &S,
-    albums: &[MetadataRef],
-) -> Result<Vec<GroupAlbum>, DbError> {
-    let mut kept: Vec<GroupAlbum> = Vec::new();
-    for album in albums {
-        let rows = match album.catalog {
-            Catalog::MusicBrainz => sql.query(
-                &format!(
-                    "SELECT {GROUP_LINK_COLUMNS} FROM release_group_album_link \
-                     WHERE release_group = ? ORDER BY catalog, key"
-                ),
-                params![album.key],
-                read_group_link,
-            )?,
-            other => sql.query(
-                &format!(
-                    "SELECT {GROUP_LINK_COLUMNS} FROM release_group_album_link \
-                     WHERE catalog = ? AND key = ? ORDER BY release_group"
-                ),
-                params![other.as_str(), album.key],
-                read_group_link,
-            )?,
-        };
-        for (group, catalog, key) in rows {
-            let group_album =
-                GroupAlbum { group, album: MetadataRef::new(catalog_of(&catalog)?, key) };
-            if !kept.contains(&group_album) {
-                kept.push(group_album);
-            }
-        }
-    }
-    Ok(kept)
+fn read_group_link(row: &Row<'_>, first: usize) -> rusqlite::Result<(String, String, String)> {
+    Ok((row.get(first)?, row.get(first + 1)?, row.get(first + 2)?))
 }
 
-/// The albums the kept group albums join to a stored release's own albums —
-/// its group, and the albums its records name — on a catalog none of its
-/// records reaches. The release's own catalog is never one: its album is its
-/// group.
-pub(super) fn joined_albums_on<S: coven::SqlRead>(
-    sql: &S,
-    catalog: Catalog,
-    source_group_id: Option<&str>,
-    records: &[bae_catalogs::records::ReleaseRecord],
-) -> Result<Vec<MetadataRef>, DbError> {
-    let albums: Vec<MetadataRef> = source_group_id
-        .map(|group| MetadataRef::new(catalog, group))
-        .into_iter()
-        .chain(records.iter().filter_map(bae_catalogs::records::ReleaseRecord::album_ref))
-        .collect();
-    let mut joined: Vec<MetadataRef> = Vec::new();
-    for group_album in group_albums_on(sql, &albums)? {
-        for album in &albums {
-            let Some(other) = group_album.other_than(album) else {
-                continue;
-            };
-            let reached = other.catalog == catalog
-                || records.iter().any(|record| record.catalog() == other.catalog)
-                || joined.iter().any(|named| named.catalog == other.catalog);
-            if !reached {
-                joined.push(other);
+/// A stored release as far as which albums join it: its catalog, the group
+/// its catalog files it under, and its records.
+pub(super) struct ReleaseAlbums<'a> {
+    pub(super) catalog: Catalog,
+    pub(super) source_group_id: Option<&'a str>,
+    pub(super) records: &'a [bae_catalogs::records::ReleaseRecord],
+}
+
+impl ReleaseAlbums<'_> {
+    /// The release's own albums: its group, and the albums its records name.
+    fn albums(&self) -> Vec<MetadataRef> {
+        self.source_group_id
+            .map(|group| MetadataRef::new(self.catalog, group))
+            .into_iter()
+            .chain(self.records.iter().filter_map(bae_catalogs::records::ReleaseRecord::album_ref))
+            .collect()
+    }
+
+    /// The albums `kept`, the group albums kept for its own albums, join to
+    /// them on a catalog none of its records reaches.
+    fn joined(&self, albums: &[MetadataRef], kept: &[GroupAlbum]) -> Vec<MetadataRef> {
+        let mut joined: Vec<MetadataRef> = Vec::new();
+        for group_album in kept {
+            for album in albums {
+                let Some(other) = group_album.other_than(album) else {
+                    continue;
+                };
+                let reached = other.catalog == self.catalog
+                    || self.records.iter().any(|record| record.catalog() == other.catalog)
+                    || joined.iter().any(|named| named.catalog == other.catalog);
+                if !reached {
+                    joined.push(other);
+                }
             }
         }
+        joined
     }
-    Ok(joined)
+}
+
+/// For each of `releases`, the albums the kept group albums join to the
+/// stored release's own albums — its group, and the albums its records name
+/// — on a catalog none of its records reaches. The release's own catalog is
+/// never one: its album is its group. One statement whatever `releases`
+/// holds.
+pub(super) fn joined_albums_of_on<S: coven::SqlRead>(
+    sql: &S,
+    releases: &[ReleaseAlbums<'_>],
+) -> Result<Vec<Vec<MetadataRef>>, DbError> {
+    let albums: Vec<Vec<MetadataRef>> = releases.iter().map(ReleaseAlbums::albums).collect();
+    let kept = group_albums_of_on(sql, &albums)?;
+    Ok(releases
+        .iter()
+        .zip(&albums)
+        .zip(&kept)
+        .map(|((release, albums), kept)| release.joined(albums, kept))
+        .collect())
 }
 
 impl ImportTables {

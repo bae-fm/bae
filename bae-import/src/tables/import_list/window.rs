@@ -23,12 +23,13 @@ use crate::tables::import_state::{
     PROVENANCE_COLUMNS, RELEASE_LINK_COLUMNS, RUNTIME_FACT_COLUMNS,
 };
 use crate::tables::release_groupings::{block_of, release_of_stored};
-use crate::tables::source_releases::load_release_records_on;
+use crate::tables::source_releases::load_releases_records_on;
 use crate::triage::{
     import_status_of, TriageGroup, TriageMetadataSummary, TriageReading, TriageRow,
 };
 use crate::RelativeFolder;
 use crate::{CandidateKey, CoverSelection, FolderReleaseDecisionKey, ImportedRelease, ReleaseLink};
+use bae_catalogs::records::{LookupRef, ReleaseRecord};
 use bae_identify::PressingLink;
 use bae_records::records::files::cover_version_sql;
 use bae_records::records::queued_uploads::release_uploads_on;
@@ -50,6 +51,7 @@ pub(super) fn materialise(
     let mut headers = header_rows(sql, list, keys)?.into_iter().peekable();
     let releases = release_rows(sql, list.id, keys)?;
     let imported = ImportedReads::of(sql, &releases)?;
+    let linked = LinkedReads::of(sql, keys, &releases)?;
     let mut scanned = scanned_items(sql, keys, &releases)?;
     let mut covers = row_covers(sql, keys, &releases, &mut scanned)?;
     let mut releases = releases.into_iter().peekable();
@@ -73,7 +75,7 @@ pub(super) fn materialise(
             if key.item == Item::Invalid {
                 return invalid_item(&mut scanned, release);
             }
-            candidate_item(sql, &imported, &mut covers, release, header_position)
+            candidate_item(&imported, &linked, &mut covers, release, header_position)
         })
         .collect()
 }
@@ -397,8 +399,8 @@ impl ImportedReads {
 /// A release's row: its placement and the keyed rows beside it, listed under
 /// the header at `header_position`.
 fn candidate_item(
-    sql: &SqlReadContext<'_>,
     imported_reads: &ImportedReads,
+    linked_reads: &LinkedReads,
     covers: &mut HashMap<usize, crate::CoverImageSource>,
     release: ReleaseRows,
     header_position: Option<u64>,
@@ -433,7 +435,7 @@ fn candidate_item(
             // put together after it ends; an album names its records itself.
             let picked = match release_link.as_ref() {
                 Some(ReleaseLink::Pressing(pressing)) => {
-                    Some(LinkedRows::Pressing(claimed_records(sql, pressing)?))
+                    Some(LinkedRows::Pressing(linked_reads.claimed_records(pressing)))
                 }
                 Some(ReleaseLink::Album(album)) => Some(LinkedRows::Album(album.records())),
                 None => None,
@@ -590,26 +592,66 @@ fn row_covers(
         .collect())
 }
 
-/// The records of every stored release a linked pressing claims, the
-/// primary's first.
-fn claimed_records(
-    sql: &SqlReadContext<'_>,
-    link: &PressingLink,
-) -> Result<Vec<Vec<bae_catalogs::records::ReleaseRecord>>, DbError> {
-    link.claimed()
-        .map(|release| {
-            load_release_records_on(sql, release)?.ok_or_else(|| {
-                DbError::unreadable(
-                    format!(
-                        "the records of linked {} release {}",
-                        release.catalog.as_str(),
-                        release.key
-                    ),
-                    None::<String>,
-                )
-            })
+/// What the window's rows linked to a pressing read of the stored releases
+/// their links claim: the records each release names, read once for every
+/// release the window's links claim.
+struct LinkedReads {
+    records: HashMap<LookupRef, Vec<ReleaseRecord>>,
+}
+
+impl LinkedReads {
+    fn of(
+        sql: &SqlReadContext<'_>,
+        keys: &[ItemKey],
+        releases: &[ReleaseRows],
+    ) -> Result<Self, DbError> {
+        let mut claimed: Vec<&LookupRef> = Vec::new();
+        for release in releases {
+            // A folder that failed validation shows its scan, and a release
+            // this device imported the library release, in its link's place.
+            if keys[release.position].item == Item::Invalid || release.imported.is_some() {
+                continue;
+            }
+            let Some(ReleaseLink::Pressing(pressing)) = &release.release_link else {
+                continue;
+            };
+            for release in pressing.claimed() {
+                if !claimed.contains(&release) {
+                    claimed.push(release);
+                }
+            }
+        }
+        let records = load_releases_records_on(sql, &claimed)?;
+        Ok(Self {
+            records: claimed
+                .into_iter()
+                .zip(records)
+                .map(|(release, records)| {
+                    let records = records.ok_or_else(|| {
+                        DbError::unreadable(
+                            format!(
+                                "the records of linked {} release {}",
+                                release.catalog.as_str(),
+                                release.key
+                            ),
+                            None::<String>,
+                        )
+                    })?;
+                    Ok((release.clone(), records))
+                })
+                .collect::<Result<_, DbError>>()?,
         })
-        .collect()
+    }
+
+    /// The records of every stored release `link` claims, the primary's
+    /// first.
+    fn claimed_records(&self, link: &PressingLink) -> Vec<Vec<ReleaseRecord>> {
+        link.claimed()
+            .map(|release| {
+                self.records.get(release).expect("every release a link claims was read").clone()
+            })
+            .collect()
+    }
 }
 
 #[cfg(test)]
