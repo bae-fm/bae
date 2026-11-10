@@ -151,3 +151,11 @@ extension ShotScene {
         }
     }
 }
+
+extension LibrarySettingsTabPreviewFixture {
+    /// Whether both reads have answered, so the tab shows the name and the
+    /// people.
+    fileprivate var answered: Bool {
+        libraryName.name != nil && membership.members != nil
+    }
+}

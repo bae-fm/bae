@@ -6,6 +6,8 @@ import SwiftUI
 @MainActor
 struct StorageManagerPreviewScene: View {
     private let fixture: StorageManagerPreviewFixture
+    /// The scene's reads not yet answered.
+    let answers: FixedAnswers
 
     init(
         rows: [BridgeStorageRow] = PreviewData.storageRows,
@@ -18,6 +20,8 @@ struct StorageManagerPreviewScene: View {
         uploads: [PreviewData.PreviewReleaseUpload] =
             PreviewData.defaultUploads
     ) {
+        let answers = FixedAnswers()
+        self.answers = answers
         fixture = StorageManagerPreviewFixture(
             rows: rows,
             search: search,
@@ -26,12 +30,10 @@ struct StorageManagerPreviewScene: View {
             selectedFileId: selectedFileId,
             downloads: downloads,
             outputs: outputs,
-            uploads: uploads
+            uploads: uploads,
+            answers: answers
         )
     }
-
-    /// The scene's reads not yet answered.
-    var answers: FixedAnswers { fixture.answers }
 
     /// The manager's store, which holds the list once its first page lands.
     var store: StorageManagerStore { fixture.storageManagerStore }

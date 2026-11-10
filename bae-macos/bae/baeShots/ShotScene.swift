@@ -133,7 +133,7 @@ struct ShotScene {
                 id: "import-done-rows-settled",
                 size: CGSize(
                     width: 360,
-                    height: PreviewScenes.triageRowsHeight(rowCount: 2)
+                    height: triageRowsHeight(rowCount: 2)
                 )
             ) {
                 let images = PreviewData.artImageStore()
@@ -146,7 +146,7 @@ struct ShotScene {
                 id: "import-failed-row",
                 size: CGSize(
                     width: 360,
-                    height: PreviewScenes.triageRowsHeight(rowCount: 1)
+                    height: triageRowsHeight(rowCount: 1)
                 )
             ) {
                 let images = PreviewData.artImageStore()
@@ -286,6 +286,13 @@ extension ShotScene {
 }
 
 extension ShotScene {
+    /// The height a scene of `rowCount` of `PreviewScenes`' triage rows
+    /// needs: the rows and the padding above and below them.
+    fileprivate static func triageRowsHeight(rowCount: Int) -> CGFloat {
+        CGFloat(rowCount) * ImportCandidateTableLayout.rowHeight + 2
+            * PreviewScenes.triageRowsPadding
+    }
+
     /// The import list's pending tab over what `scene` builds, `width`
     /// points wide, its first group folded when `collapsePendingGroup`, and
     /// the watched folder at `refreshingWatchedFolderPath` refreshing.

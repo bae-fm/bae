@@ -298,12 +298,6 @@ private struct RestoreCodeSettingsPage: View {
                 selfIsAdmin: true
             )
         }
-
-        /// Whether both reads have answered, so the tab shows the name and
-        /// the people.
-        var answered: Bool {
-            libraryName.name != nil && membership.members != nil
-        }
     }
 
     /// The Library tab over `fixture`'s library, its sync as `shown` says.

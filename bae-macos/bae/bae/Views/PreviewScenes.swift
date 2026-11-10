@@ -255,14 +255,8 @@
             triageRows([PreviewData.triageRowFailed], images: images)
         }
 
-        /// The height a scene of `rowCount` rows from `triageRows` needs: the
-        /// rows and the padding above and below them.
-        static func triageRowsHeight(rowCount: Int) -> CGFloat {
-            CGFloat(rowCount) * ImportCandidateTableLayout.rowHeight + 2
-                * triageRowsPadding
-        }
-
-        private static let triageRowsPadding: CGFloat = 16
+        /// The padding around the rows of a `triageRows` scene.
+        static let triageRowsPadding: CGFloat = 16
 
         private static func triageRows(
             _ rows: [BridgeTriageRow],
