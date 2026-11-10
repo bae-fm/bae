@@ -129,6 +129,10 @@ where
                 streams.insert(file.clone(), stream.buffer.0.clone());
             }
             let task = work(track, streams);
+            #[expect(
+                clippy::disallowed_methods,
+                reason = "each task catches its work's panic, and the loop joins every task in the set"
+            )]
             running.spawn(async move { (index, files, caught(TRACK_WORK, task).await) });
         }
 

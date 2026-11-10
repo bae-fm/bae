@@ -102,7 +102,6 @@ impl LibraryManager {
     /// export's percent as it writes each file.
     pub(super) async fn run_output_worker(&self) {
         use bae_transfers::OutputKind;
-        use bae_transfers::RunningOp;
         use std::sync::atomic::{AtomicBool, Ordering};
 
         // The completion telemetry differs by kind (export vs save), but the
@@ -123,35 +122,36 @@ impl LibraryManager {
                     );
                     let release_id = op.release_id.clone();
                     let worker = self.clone();
-                    let manager = self.clone();
-                    let task = self.runtime_handle.spawn(caught("export a release", async move {
-                        worker.export_release_to_dir(&op.release_id, op.payload).await?;
-                        // The files are in place: the export ends its entry.
-                        Ok(worker.store.call(move |sql| entry.finish_on(sql)).await?)
-                    }));
-                    let abort = task.abort_handle();
+                    // A panic fails the entry as any failure does, and is
+                    // reported as the bug it is.
+                    let running = self.spawn_ending(
+                        "export a release",
+                        async move {
+                            worker.export_release_to_dir(&op.release_id, op.payload).await?;
+                            // The files are in place: the export ends its entry.
+                            Ok::<_, LibraryError>(
+                                worker.store.call(move |sql| entry.finish_on(sql)).await?,
+                            )
+                        },
+                        |exported| exported.unwrap_or_else(|bug| Err(bug.into())),
+                    );
                     async move {
-                        let outcome = async move {
-                            match task.await {
-                                Ok(Ok(result)) => result,
-                                // A panic fails the entry as any failure does, and is
-                                // reported as the bug it is.
-                                Ok(Err(bug)) => Err(manager.panicked(bug).into()),
+                        let running = running.then(|ended| async move {
+                            match ended.await {
+                                Ok(result) => result,
                                 // Aborted by a cancel, which also removed the entry — the
                                 // driver's `contains` check is what reads that as a cancel.
-                                Err(join_error) if join_error.is_cancelled() => {
+                                Err(bae_diagnostics::Unfinished::Stopped) => {
                                     Err(LibraryError::Export(format!(
                                         "export of {release_id} was cancelled"
                                     )))
                                 }
-                                // The work catches its own panic, so this is its runtime
-                                // ending it.
-                                Err(join_error) => Err(manager
-                                    .bug(TaskFailed::of_join("export a release", join_error))
-                                    .into()),
+                                // `end` only hands the result on; a panic in it
+                                // was reported as it happened.
+                                Err(bae_diagnostics::Unfinished::Panicked(bug)) => Err(bug.into()),
                             }
-                        };
-                        Ok((0, RunningOp::new(abort, outcome)))
+                        });
+                        Ok((0, running))
                     }
                 },
                 |release_id, result| {

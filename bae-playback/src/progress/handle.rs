@@ -1,7 +1,7 @@
 use super::timeline::TimelineFold;
 use super::{PlaybackPositions, PlaybackProgress, PlaybackValues};
 use bae_util::task_failure::caught_sync;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, PoisonError};
 use tokio::sync::mpsc as tokio_mpsc;
 use tokio::sync::watch;
 use tracing::{error, info};
@@ -93,7 +93,8 @@ impl PlaybackProgressHandle {
             Arc::new(Mutex::new(Vec::new()));
         let subscriptions_clone = subscriptions.clone();
         let (positions_tx, positions) = watch::channel(PlaybackPositions::initial());
-        runtime_handle.spawn(async move {
+        let fan_out_diagnostics = diagnostics.clone();
+        let fan_out = async move {
             // What the row holds, as starting playback left it and this
             // fan-out wrote it since: what each event is compared against.
             let mut values = PlaybackValues::initial();
@@ -106,8 +107,7 @@ impl PlaybackProgressHandle {
                             publish_change(&positions_tx, |positions| {
                                 positions.applying(&progress)
                             });
-                            let timeline =
-                                fold.next(&positions_tx.borrow(), &values, clock.now());
+                            let timeline = fold.next(&positions_tx.borrow(), &values, clock.now());
                             (change, timeline)
                         });
                         match folded {
@@ -117,12 +117,15 @@ impl PlaybackProgressHandle {
                                         error!(
                                             "couldn't write what playback is doing ({change:?}): {e}"
                                         );
-                                        diagnostics.report_failure("write what playback is doing", &e);
+                                        diagnostics
+                                            .report_failure("write what playback is doing", &e);
                                     }
                                 }
                                 if let Some(timeline) = timeline {
                                     if let Err(e) = timeline_row.write(&timeline).await {
-                                        error!("couldn't write where playback is ({timeline:?}): {e}");
+                                        error!(
+                                            "couldn't write where playback is ({timeline:?}): {e}"
+                                        );
                                         diagnostics.report_failure("write where playback is", &e);
                                     }
                                 }
@@ -140,7 +143,16 @@ impl PlaybackProgressHandle {
                     }
                 }
             }
-        });
+        };
+        // Each event's fold catches its own panic. A panic outside them ends
+        // the fan-out, and its subscribers' feeds end with it.
+        let ended_subscriptions = subscriptions.clone();
+        drop(fan_out_diagnostics.spawn_reported(
+            &runtime_handle,
+            "fan out playback progress",
+            fan_out,
+            move |_| ended_subscriptions.lock().unwrap_or_else(PoisonError::into_inner).clear(),
+        ));
         Self { subscriptions, positions }
     }
     /// Every progress update from now on. Dropping the feed unsubscribes

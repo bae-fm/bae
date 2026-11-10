@@ -166,6 +166,10 @@ async fn advance(
     job.state =
         JobState::Settling { representative: key.clone(), run, abandon: settle_token.clone() };
     let context = context.clone();
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "the settle catches its own panic, and the queue joins every settle in its set and reports a failed join"
+    )]
     settling.spawn(async move {
         let representative_key = candidate.key();
         settled_or_failed(

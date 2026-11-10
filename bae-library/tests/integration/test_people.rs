@@ -56,7 +56,12 @@ pub(super) fn on_app_runtime(body: impl std::future::Future<Output = ()> + Send 
         .enable_all()
         .build()
         .unwrap();
-    runtime.block_on(runtime.spawn(body)).unwrap();
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "test code: joined at once, so a panic fails the test"
+    )]
+    let task = runtime.spawn(body);
+    runtime.block_on(task).unwrap();
 }
 
 /// An owner's library on shared S3 or Dropbox storage, with Robin's profile.

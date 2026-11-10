@@ -117,6 +117,10 @@ impl ImportServiceHandle {
         let mut reads = tokio::task::JoinSet::new();
         for folder in self.watched_folders().await? {
             let this = self.clone();
+            #[expect(
+                clippy::disallowed_methods,
+                reason = "joined below: each read's panic is reported at its join"
+            )]
             reads.spawn(bae_util::task_failure::caught("read a watched folder", async move {
                 this.refresh_watched_folder(folder.path).await
             }));

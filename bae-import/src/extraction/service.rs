@@ -199,9 +199,15 @@ impl ExtractionService {
             key.clone(),
             move |token, generation| {
                 let extraction = RunningExtraction { run, key, generation, snapshots };
-                runtime_handle.spawn(async move {
-                    run_extraction(inner, extraction, source, token).await;
-                });
+                let diagnostics = inner.diagnostics.clone();
+                // The extraction catches its own panic and fails its signals;
+                // one outside that is reported here.
+                drop(diagnostics.spawn_reported(
+                    &runtime_handle,
+                    "run a candidate's extraction",
+                    run_extraction(inner, extraction, source, token),
+                    |_| {},
+                ));
             },
         );
         ExtractionWatch(snapshots_rx)

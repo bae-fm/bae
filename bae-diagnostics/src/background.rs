@@ -152,6 +152,10 @@ impl Diagnostics {
         end: impl FnOnce(Result<T, Bug>) -> U + Send + 'static,
     ) -> ReportedTask<U> {
         let diagnostics = self.clone();
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "this is the reported task spawner: the task and its end run under caught"
+        )]
         let task = runtime.spawn(async move {
             let ended = caught(name, task).await.map_err(|bug| diagnostics.panicked(bug));
             caught_sync(name, || end(ended))

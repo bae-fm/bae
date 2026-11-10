@@ -71,7 +71,7 @@ pub struct CatalogSessions {
     /// The writes of what calls prove about the key, in flight: each runs as
     /// a task of its own, which closing the library waits for
     /// ([`Self::wait_for_writes`]) before the store closes under it.
-    writes: Arc<std::sync::Mutex<tokio::task::JoinSet<()>>>,
+    writes: Arc<std::sync::Mutex<Vec<bae_diagnostics::ReportedTask>>>,
 }
 
 /// The stored Discogs key as the sessions hold it.
@@ -149,27 +149,20 @@ impl CatalogSessions {
             let observer = Arc::new(move |signal| {
                 let (held, preferences, diagnostics) =
                     (held.clone(), preferences.clone(), diagnostics.clone());
-                let recording = async move {
-                    let recorded = bae_util::task_failure::caught(
-                        "record a Discogs validation signal",
-                        record_signal(&held, &preferences, generation, signal),
-                    )
-                    .await;
-                    match recorded {
-                        Ok(Ok(())) => {}
-                        Ok(Err(error)) => {
+                let mut writes = lock_or_crash(&reporter, "the Discogs signal writes", &writes);
+                // Writes that ended since the last leave the set here.
+                writes.retain(|write| !write.is_finished());
+                writes.push(reporter.spawn_ending(
+                    &runtime,
+                    "record a Discogs validation signal",
+                    async move { record_signal(&held, &preferences, generation, signal).await },
+                    // A panic was reported as it happened.
+                    move |recorded| {
+                        if let Ok(Err(error)) = recorded {
                             diagnostics.report_failure("record a Discogs validation signal", &error)
                         }
-                        Err(bug) => {
-                            diagnostics.panicked(bug);
-                        }
-                    }
-                };
-                let mut writes = lock_or_crash(&reporter, "the Discogs signal writes", &writes);
-                // Writes that ended since the last are reaped here; a panic in
-                // one was caught and reported inside it.
-                while writes.try_join_next().is_some() {}
-                writes.spawn_on(recording, &runtime);
+                    },
+                ));
             });
             key.client = self
                 .store
@@ -184,20 +177,13 @@ impl CatalogSessions {
     /// the store closes under them. A write started after this takes the set
     /// is waited for by the next call.
     pub async fn wait_for_writes(&self) {
-        let mut writes = std::mem::take(&mut *lock_or_crash(
+        let writes = std::mem::take(&mut *lock_or_crash(
             &self.diagnostics,
             "the Discogs signal writes",
             &self.writes,
         ));
-        while let Some(ended) = writes.join_next().await {
-            if let Err(error) = ended {
-                if error.is_panic() {
-                    self.diagnostics.bug(bae_util::task_failure::TaskFailed::of_join(
-                        "record a Discogs validation signal",
-                        error,
-                    ));
-                }
-            }
+        for write in writes {
+            write.ended().await;
         }
     }
 

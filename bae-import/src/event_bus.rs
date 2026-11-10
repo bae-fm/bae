@@ -268,6 +268,10 @@ impl ImportEventBus {
     ) -> ImportProgressFeed {
         let mut events = self.every_event_from_start();
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "test support: the reader ends with its test"
+        )]
         runtime.spawn(async move {
             while let Some(event) = events.recv().await {
                 if tx.is_closed() {
@@ -289,6 +293,10 @@ impl ImportEventBus {
     pub(crate) fn scan_events(&self, runtime: &tokio::runtime::Handle) -> ScanEvents {
         let mut events = self.every_event();
         let (reader, scan_events) = mpsc::unbounded_channel();
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "test support: the reader ends with its test"
+        )]
         runtime.spawn(async move {
             while let Some(event) = events.recv().await {
                 if let ImportEvent::Scan(event) = event {

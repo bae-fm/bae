@@ -66,54 +66,52 @@ impl LibraryManager {
         let files = self.local_copy_paths(&release_id).await?;
         let total = self.release_bytes(&release_id).await?;
         let manager = self.clone();
-        let task = self.runtime_handle.spawn(async move {
-            let file_count = u32::try_from(files.len()).expect("a release's files fit a u32");
-            let made = caught(
-                "make a release local",
-                manager.make_local_into(&release_id, &folder, files, entry),
-            )
-            .await
-            .unwrap_or_else(|bug| Err(manager.panicked(bug).into()));
-            match &made {
-                Ok(_) => {
-                    tracing::info!(%release_id, "release made local");
-                    manager.record_telemetry(TelemetryEvent::StorageTransferCompleted {
-                        action: ReleaseStorageAction::DetachAudio,
-                        release_id: LocalId(release_id),
-                        file_count,
-                    });
+        let file_count = u32::try_from(files.len()).expect("a release's files fit a u32");
+        let local_release_id = release_id.clone();
+        let running = self.spawn_ending(
+            "make a release local",
+            async move { manager.make_local_into(&local_release_id, &folder, files, entry).await },
+            {
+                let manager = self.clone();
+                move |made| {
+                    let made = made.unwrap_or_else(|bug| Err(bug.into()));
+                    match &made {
+                        Ok(_) => {
+                            tracing::info!(%release_id, "release made local");
+                            manager.record_telemetry(TelemetryEvent::StorageTransferCompleted {
+                                action: ReleaseStorageAction::DetachAudio,
+                                release_id: LocalId(release_id),
+                                file_count,
+                            });
+                        }
+                        Err(error) => {
+                            tracing::error!(%release_id, failure = %error, "making a release local failed");
+                            manager.record_telemetry(TelemetryEvent::StorageTransferFailed {
+                                action: ReleaseStorageAction::DetachAudio,
+                                release_id: LocalId(release_id),
+                            });
+                        }
+                    }
+                    made
                 }
-                Err(error) => {
-                    tracing::error!(%release_id, failure = %error, "making a release local failed");
-                    manager.record_telemetry(TelemetryEvent::StorageTransferFailed {
-                        action: ReleaseStorageAction::DetachAudio,
-                        release_id: LocalId(release_id),
-                    });
-                }
-            }
-            made
-        });
-        let abort = task.abort_handle();
-        let manager = self.clone();
-        let outcome = async move {
-            match task.await {
+            },
+        );
+        let running = running.then(|ended| async move {
+            match ended.await {
                 Ok(made) => made,
-                Err(join_error) if join_error.is_cancelled() => {
+                Err(bae_diagnostics::Unfinished::Stopped) => {
                     Err(LibraryError::Storage("making the release local was cancelled".to_string()))
                 }
-                Err(join_error) => Err(manager
-                    .bug(bae_util::task_failure::TaskFailed::of_join(
-                        "make a release local",
-                        join_error,
-                    ))
-                    .into()),
+                // A panic recording how the release ended, reported as it
+                // happened.
+                Err(bae_diagnostics::Unfinished::Panicked(bug)) => Err(bug.into()),
             }
-        };
+        });
         Ok((
             bae_transfers::DownloadTransfer::MakeLocal(
                 bae_transfers::MakeLocalTransferProgress::begin(total),
             ),
-            bae_transfers::RunningOp::new(abort, outcome).boxed(),
+            running.boxed(),
         ))
     }
 

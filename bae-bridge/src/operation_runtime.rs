@@ -22,6 +22,10 @@ where
     Build: FnOnce() -> Fut + Send + 'static,
     Fut: Future<Output = T> + Send + 'static,
 {
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "its callers join the task at once and report its panic through Diagnostics::bug"
+    )]
     runtime.spawn(caught(operation, async move { build().await }))
 }
 
@@ -78,17 +82,21 @@ impl OperationRuntime {
         Fut: Future<Output = Result<T, BridgeError>> + Send + 'static,
     {
         let (result_tx, result_rx) = tokio::sync::oneshot::channel();
-        let operations = self.clone();
-        drop(spawn(&self.runtime, operation, move || async move {
-            let _owner = owner;
-            let result = joined(operation, spawn(&operations.runtime, operation, build))
-                .await
-                .map_err(|failed| operations.failed(failed))
-                .and_then(std::convert::identity);
-            if let Err(Err(error)) = result_tx.send(result) {
-                tracing::error!(operation, error = ?error, "persistent runtime operation failed after its caller disappeared");
-            }
-        }));
+        drop(self.diagnostics.spawn_ending(
+            &self.runtime,
+            operation,
+            async move { build().await },
+            move |ended| {
+                let _owner = owner;
+                // A panic was reported as it happened.
+                let result = ended.unwrap_or_else(|bug| {
+                    Err(BridgeError::unfinished(TaskFailed::Panicked(bug)))
+                });
+                if let Err(Err(error)) = result_tx.send(result) {
+                    tracing::error!(operation, error = ?error, "persistent runtime operation failed after its caller disappeared");
+                }
+            },
+        ));
         result_rx.await.map_err(|error| {
             BridgeError::internal(format!(
                 "persistent runtime operation ended without a result: {operation}: {error}"

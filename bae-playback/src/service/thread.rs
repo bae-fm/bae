@@ -161,11 +161,18 @@ impl PlaybackThread {
         let mut commands = OwnCommands::first(channel);
         let mut start = ServiceStart::Launch { restore_playback };
         loop {
-            let follower = self.runtime_handle.spawn(follow_the_service(
-                self.progress_handle.subscribe_all(),
-                commands.clone(),
-                self.diagnostics.clone(),
-            ));
+            // Each event it follows catches its own panic; a panic outside
+            // them ends the follower, and the join below goes on.
+            let follower = self.diagnostics.spawn_reported(
+                &self.runtime_handle,
+                "follow the playback service",
+                follow_the_service(
+                    self.progress_handle.subscribe_all(),
+                    commands.clone(),
+                    self.diagnostics.clone(),
+                ),
+                |_| {},
+            );
             let reason = match caught_sync(PLAYBACK_THREAD, || {
                 self.serve(start, &commands, messages)
             }) {
@@ -181,7 +188,7 @@ impl PlaybackThread {
             // Its follower ends on hearing that end, which the fan-out wrote
             // into `playback_now` first: the next service reads the level
             // this one set, and its own follower hears nothing of this one.
-            if let Err(error) = self.runtime_handle.block_on(follower) {
+            if let Err(error) = self.runtime_handle.block_on(follower.outcome()) {
                 warn!("the ended service's follower ended without hearing its end: {error}");
             }
             let Some(starter) = next_starter(messages) else {

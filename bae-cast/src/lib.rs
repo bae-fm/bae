@@ -297,9 +297,9 @@ pub enum BrowsingFor {
 pub struct CastController {
     runtime: Handle,
     /// Casting's background tasks, started by [`Self::start_task`]. Dropping
-    /// the controller drops the set, which aborts them; none holds the
-    /// controller strongly, so nothing keeps it alive.
-    tasks: Mutex<tokio::task::JoinSet<()>>,
+    /// the controller aborts them; none holds the controller strongly, so
+    /// nothing keeps it alive.
+    tasks: Mutex<Vec<ReportedTask>>,
     services: AppServices,
     /// Where the picker's devices come from: bae's own browsing, or the services
     /// a host's browser reports in. Chosen once, per host. The picker reads
@@ -343,6 +343,16 @@ pub struct CastController {
     browsing_decided: tokio::sync::watch::Sender<u64>,
 }
 
+/// A controller no one holds ends its tasks with it.
+impl Drop for CastController {
+    fn drop(&mut self) {
+        let tasks = self.tasks.get_mut().unwrap_or_else(std::sync::PoisonError::into_inner);
+        for task in tasks.drain(..) {
+            task.abort();
+        }
+    }
+}
+
 impl CastController {
     /// Build the controller over a host's device source and start the background
     /// tasks it needs: the device-list writer that lists the devices for the picker,
@@ -370,7 +380,7 @@ impl CastController {
         let receivers = discovery.subscribe();
         let controller = Arc::new(Self {
             runtime: runtime.clone(),
-            tasks: Mutex::new(tokio::task::JoinSet::new()),
+            tasks: Mutex::new(Vec::new()),
             services,
             discovery: Mutex::new(discovery),
             browsing_asked: Mutex::new(HashSet::new()),
@@ -525,21 +535,15 @@ impl CastController {
         });
     }
 
-    /// Start `task` on the runtime in the controller's set. A panic in it is
-    /// caught and reported inside it, as it happens. Tasks that ended since
-    /// the last start are reaped here.
+    /// Start `task` on the runtime in the controller's set, its panic
+    /// reported as it happens. Tasks that ended since the last start leave
+    /// the set here.
     fn start_task(&self, task: impl std::future::Future<Output = ()> + Send + 'static) {
         let mut tasks = lock_or_crash(&self.diagnostics, "the casting tasks", &self.tasks);
-        while tasks.try_join_next().is_some() {}
-        let diagnostics = self.diagnostics.clone();
-        tasks.spawn_on(
-            async move {
-                if let Err(bug) = caught("a casting task", task).await {
-                    diagnostics.panicked(bug);
-                }
-            },
-            &self.runtime,
-        );
+        tasks.retain(|task| !task.is_finished());
+        // Each task catches the panic of each step it takes; a panic outside
+        // them ends that task, which the report is all there is to say of.
+        tasks.push(self.diagnostics.spawn_reported(&self.runtime, "a casting task", task, |_| {}));
     }
 
     /// Act on the device sources. A panic while they were held may have left
