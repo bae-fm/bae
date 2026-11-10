@@ -38,6 +38,8 @@ export interface MacRowProps { label?: string; info?: boolean; destructive?: boo
 export declare function MacNested(props: { children?: React.ReactNode }): React.ReactElement;
 /** An ⓘ after a row's name that opens a popover saying what the name can't. */
 export declare function MacInfoTip(props: { label?: string }): React.ReactElement;
+/** How Save as… names each track's file, one pattern for every format: chips, pieces to add, a preview. */
+export declare function MacFileNameField(props: { label?: string; tokens?: string; add?: string; preview?: string }): React.ReactElement;
 export declare function MacRow(props: MacRowProps): React.ReactElement;
 export declare function MacItem(props: { lead?: React.ReactNode; trail?: React.ReactNode; children?: React.ReactNode }): React.ReactElement;
 
@@ -74,7 +76,7 @@ export interface MacMenuProps { children?: React.ReactNode }
 export declare function MacMenu(props: MacMenuProps): React.ReactElement;
 
 /** One choice in a MacMenu: checked marks the current choice, highlighted the one under the pointer. */
-export interface MacMenuItemProps { checked?: boolean; highlighted?: boolean; children?: React.ReactNode }
+export interface MacMenuItemProps { checked?: boolean; highlighted?: boolean; divider?: boolean; children?: React.ReactNode }
 export declare function MacMenuItem(props: MacMenuItemProps): React.ReactElement;
 
 /** A ▸ label that shows its children when opened. open sets how it starts. */

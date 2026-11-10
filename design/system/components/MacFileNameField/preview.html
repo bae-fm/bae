@@ -1,0 +1,13 @@
+<!-- @dsCard group="macOS" height=360 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>MacFileNameField</title></head>
+<body class="bae-preview bae-preview-mac" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  ReactDOM.createRoot(document.getElementById('root')).render(h('div', { style: { width: 460 } },
+    h(B.MacBox, null, h(B.MacFileNameField, { label: 'File name', tokens: 'Track №,Title', add: 'Artist,Album,Release year,Disc №,Track total', preview: '04 Low Tide Hours.flac' }), h(B.MacFileNameField, { label: 'Folder name', tokens: 'Artist,Album', add: 'Release year,Label,Catalog number', preview: 'Mara Quill Low Tide Hours' }))));
+</script>
+</body>
+</html>

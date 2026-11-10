@@ -2357,33 +2357,49 @@ Two ways put a release back on disk, from desktop:
   written as one (`Track?.flac` and `Track？.flac`, or two that differ only in
   case on a drive that holds them as one) fail the export, which leaves
   nothing behind, rather than one file replacing the other.
-- **Save** writes new files with a *preset*: a codec, where pregaps go, and
-  whether to embed the cover. One filename pattern, set once for the library
-  and the same in every format, names every file a save writes. A file's name
-  is the pattern's text, with runs of spaces made one and no leading `.`, written as a
-  copy-out writes a name (§4.4), so a title `Some/Weird:Title` saves as
-  `Some／Weird：Title.flac`; a single track's Save as suggests the same name,
-  whatever format it starts in, and choosing another format changes only its
-  extension.
+- **Save** converts: one track, or a whole release, for a car or a phone
+  (FLAC to MP3, say); an exact copy is an export. It writes new files in a
+  *format* the person keeps in Settings → Save as: a name, a codec, and the
+  codec's bit depth or bitrate. A lossless format writes the source's depth,
+  or 16 bits for players that can't take more; a lossy one writes its
+  bitrate. A new format is named after its codec, with the first free number
+  when that name is taken ("FLAC", "FLAC (2)"); names are unique, and two
+  formats may write the same thing. Save as… offers every format, for a track
+  and for a release, starting with the one last used; its Format menu ends in
+  Edit Formats…, which opens Settings at Save as, and a format added there is
+  chosen when the person comes back.
+  One file name pattern and one folder name pattern serve every format. A
+  file's name is its pattern's text, with runs of spaces made one and no
+  leading `.`, written as a copy-out writes a name (§4.4), so a title
+  `Some/Weird:Title` saves as `Some／Weird：Title.flac`; a single track's Save
+  as suggests the same name, whatever format it starts in, and choosing
+  another format changes only its extension. A release save writes its files into a folder
+  named by the folder pattern, written the same way.
   A release save creates each track's file new, like export, so two names a
   drive holds as one (`Track Title` and `track title` on a drive that folds
   case) fail the save rather than one track replacing the other; a single
   track's Save as replaces a file only when the person confirms it.
+  Every save writes one file per track. A stored pregap goes at the end of
+  the track before, and the hidden audio before track 1 stays at the start
+  of track 1; a release stored as one image with a CUE sheet is split at its
+  track marks. A track already in the format's codec at the depth it writes
+  is copied without re-encoding, its tags, cover and name written fresh.
   Each file's track number is the track's number on its side, and its disc
   number the track's medium's position, written only for a release of several
-  mediums, and its YEAR the pressing's year, else the album's. A lossless
-  preset writes the 16, 24 or 32 bits it names, whatever depth the source
-  has. A preset can write a release as one image with a CUE sheet, both
-  taking the name of the folder that holds them, written as that folder's
-  is. FLAC and MP3 presets come built in (Appendix C).
+  mediums, and its YEAR the pressing's year, else the album's. Three
+  settings serve every format, all on to start: embedding the cover in each
+  file; a release save adding the cover as `cover.jpg` in its folder; and
+  loudness tags, each file's ReplayGain track and album gain and peak from
+  the loudness measured at import (§3.7). FLAC and MP3 formats come built in
+  (Appendix C).
 
 Both run from a queue that can be paused and cancelled, kept and emptied as
 the pin queue is (§4.3), but running again after a restart; pausing stops the
 running export or save at once, leaving no output at the final path, and
 resuming runs it again from the beginning; a failed one
 stays in it, with its error, until it is cancelled. One that breaks on a bug fails the same way, reported as one, and
-the queue goes on to the next. A save keeps the preset it was queued
-with, so editing the preset changes nothing already queued. Either reads files
+the queue goes on to the next. A save keeps the format and save settings it was
+queued with, so editing them changes nothing already queued. Either reads files
 from wherever they are: the person's own path, the cache, or storage.
 
 **Edge cases.**
@@ -5385,7 +5401,7 @@ write commits, so the release and the row naming it land in either order.
 | `download_queue` | release queued to pin or to make local, in the order queued: pin or make local, with a make-local's folder, a BLOB of coven's bytes for its path; and queued, downloading, or failed with its error (§4.3, §4.4) |
 | `download_batch` | release and kind the download queue has held since that kind last had none waiting or downloading, which the Activity panel's Pinning and Making local lines count (§6.4) |
 | `download_batch_number` | kind (pin or make local): how many batches of it have begun, the number of the one `download_batch` holds, advanced as its first release joins, by which the Pinning and Making local lines' bars tell a new batch from the one whose bytes they held (§6.4) |
-| `output_queue` | release queued to export or save, in the order queued: its folder, a BLOB of coven's bytes for its path, export or save with the preset and filename pattern captured whole, and queued, writing, or failed with its error (§4.6) |
+| `output_queue` | release queued to export or save, in the order queued: its folder, a BLOB of coven's bytes for its path, export or save with its format and save settings captured whole, and queued, writing, or failed with its error (§4.6) |
 
 The download queue keeps its entries and its pause across restarts; the export
 queue opens empty and running.
@@ -5395,8 +5411,9 @@ queue opens empty and running.
 | Table | Holds |
 |---|---|
 | `preferences` | the one row of this device's settings for the library (Appendix C) |
-| `save_preset` | save preset, in the order listed: its name, codec and bit depth or bitrate, where pregaps go, the levels it applies to, and whether it embeds the cover (§4.6) |
-| `save_filename_token` | token of the one filename pattern every save names its files by, in order |
+| `save_preset` | save format, in the order listed: its name, unique, and its codec with the source's depth, 16 bits, or a bitrate (§4.6) |
+| `save_filename_token` | token of the one file name pattern every save names its files by, in order |
+| `save_folder_token` | token of the folder name pattern, in order |
 
 ### A.11 Sync status (bae-sync-status)
 
@@ -5461,9 +5478,9 @@ the transfer queues (A.9) are not declared, so they never sync.
 ## Appendix C. Settings
 
 This device's settings for a library are one row of the library's
-device-local `preferences` table, with its save presets as rows of
-`save_preset` and the filename pattern every save shares as rows of
-`save_filename_token`. They are never synced. A copy of the library new
+device-local `preferences` table, with its save formats as rows of
+`save_preset` and its file and folder name patterns as rows of
+`save_filename_token` and `save_folder_token`. They are never synced. A copy of the library new
 to this device — created, added from another device, joined, or restored or
 reset over this device's copy — starts at the defaults below; nothing carries
 the settings of a copy it replaces. Each setter writes the row in one write,
@@ -5474,17 +5491,20 @@ opens, as the setting changes, or as a cast starts,
 the MCP and Subsonic servers as the row changes, and the store's transfer
 limits as the library opens and as either limit changes. The settings screens
 pull the row with the library's id and directory from a live query. The schema
-refuses what no setter writes: a default preset that names no preset, an
-enabled Subsonic server with no username, a preset its codec can't write.
+refuses what no setter writes: a last-used format that names no format, two
+formats of one name, an
+enabled Subsonic server with no username, a format its codec can't write.
 Replay gain has no control in the apps.
 
 | Setting | Default | What it decides |
 |---|---|---|
 | `discogs_key` | none | the stored Discogs key's state: unvalidated (checked while offline), valid or rejected; the key is in the keyring |
 | `replay_gain_mode` | off | loudness: off, track or album (§7.5) |
-| `save_preset` rows | FLAC 24-bit, MP3 320 | the save presets (§4.6), in order |
-| `save_filename_token` rows | track number, title | the one filename pattern of every save, in every format (§4.6), in order |
-| `default_track_save_preset`, `default_release_save_preset` | FLAC | which preset a save starts with |
+| `save_preset` rows | FLAC (the source's depth), MP3 (320 kbps) | the save formats (§4.6), in order |
+| `last_save_preset` | FLAC | which format a save starts with: the one last used |
+| `save_filename_token` rows | track number, title | the file name pattern (§4.6) |
+| `save_folder_token` rows | artist, album | the folder name pattern of a release save (§4.6) |
+| `save_embed_cover`, `save_cover_file`, `save_loudness_tags` | on, on, on | the cover in each file, `cover.jpg` in a release's folder, ReplayGain tags (§4.6) |
 | `pause_between_sides` | on | pausing between sides and discs (§7.3) |
 | `side_pause_countdown_seconds` | none | when such a pause ends on its own: 5, 15, 30, 45 or 60 seconds, or none to wait for Play |
 | `max_concurrent_uploads`, `max_concurrent_downloads` | 3 | files moved at once, 1 to 8; adding this device, joining, and a restore or reset of this device's copy read the library from storage at the default, since the row is in the store being read; the library opens at the row's limits |
@@ -5499,17 +5519,19 @@ Replay gain has no control in the apps.
 | `mcp_enabled`, `mcp_port` | off, 47777 | the MCP server; its token is in the keyring |
 | `subsonic_enabled`, `_port`, `_username`, `_bind_address` | off, 4533, none, 127.0.0.1 | the Subsonic server; its password is in the keyring |
 
-A save preset holds a codec (FLAC, WAV or AIFF at 16, 24 or 32 bits; MP3 at
-32 to 320 kbps, AAC or Opus at 32 to 512 kbps), where pregaps go (appended to the
-track before, with or without the hidden first-track audio; left out; or one
-file with a CUE sheet), and whether it embeds the cover. A preset switched to
-another format keeps its bit depth between lossless formats and its bitrate
-between lossy ones, brought into the new format's range; otherwise it starts
-at 24 bits, or MP3 at 320, AAC at 256 and Opus at 192 kbps. A preset the
-person adds starts as core makes it: FLAC at 24 bits named "FLAC", pregaps appended to the track before except the hidden
-first-track audio, offered for tracks and releases, embedding the cover. Its
-files' extension, and whether its codec can write one file with a CUE sheet
-(not AAC or Opus), come from core too.
+A save format holds a name and a codec: FLAC, WAV or AIFF at the source's
+depth or at 16 bits; MP3 at one of the 14 bitrates its encoder writes at a
+constant rate (32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256 and
+320 kbps); AAC at 96, 128, 160, 192, 256 or 320 kbps; Opus at 64, 96, 128,
+160, 192 or 256 kbps. A format switched to another codec keeps its depth
+between lossless codecs and its bitrate between lossy ones when the new one
+offers it; otherwise it starts at the source's depth, or MP3 at 320, AAC at
+256 and Opus at 192 kbps, and a name still as it was made follows the new
+codec. A format the person adds starts as core makes it: FLAC at the
+source's depth, named "FLAC" or the first free "FLAC (n)". Its files'
+extension comes from core too. The file pattern's tokens are title, artist,
+album, year, track number, disc number and track total; the folder
+pattern's are artist, album, year, label and catalog number.
 
 The filename pattern is an ordered list of tokens (title, artist, album, year,
 track number, disc number, track total), which the Formats settings pane edits

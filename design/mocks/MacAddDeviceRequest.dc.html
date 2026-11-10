@@ -30,8 +30,8 @@ body{margin:0}
     <x-import component-from-global-scope="Bae.MacRow" label="Phone">
       <x-import component-from-global-scope="Bae.MacIconButton" icon="ellipsis" size="15" label="More"></x-import>
     </x-import>
-    <x-import component-from-global-scope="Bae.MacRow" label="Add…" action="{{yes}}"></x-import>
-  </x-import>
+    
+  </x-import><x-import component-from-global-scope="Bae.MacSheetFooter"><x-import component-from-global-scope="Bae.MacButton">Add device…</x-import></x-import>
   <x-import component-from-global-scope="Bae.MacSheet" title="Tablet wants to join" overlay="{{yes}}" width="440" message="Make sure this code is showing:">
     <x-import component-from-global-scope="Bae.MacMatchCode" code="412 778" dialog="{{yes}}"></x-import>
     <x-import component-from-global-scope="Bae.MacSheetFooter">

@@ -40,8 +40,8 @@ body{margin:0}
   <x-import component-from-global-scope="Bae.MacSection" title="People">
     <x-import component-from-global-scope="Bae.MacBox">
       <x-import component-from-global-scope="Bae.MacRow" label="Ben" strong="{{yes}}" tag="Member" value="1 device" chevron="{{yes}}"></x-import>
-      <x-import component-from-global-scope="Bae.MacRow" label="Invite…" action="{{yes}}"></x-import>
-    </x-import>
+      
+    </x-import><x-import component-from-global-scope="Bae.MacSheetFooter"><x-import component-from-global-scope="Bae.MacButton">Invite…</x-import></x-import>
   </x-import>
   <x-import component-from-global-scope="Bae.MacSheet" title="Ana" overlay="{{yes}}" width="420">
     <x-import component-from-global-scope="Bae.MacTextField" label="Name" value="Annie" label-width="80" note="Everyone in the library sees this name."></x-import>

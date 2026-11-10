@@ -2657,7 +2657,7 @@
    "title": "macOS: Automation, off",
    "w": 690,
    "x": 0,
-   "y": 11536
+   "y": 11776
   },
   "SetMacAutomationFailed.dc.html": {
    "h": 600,
@@ -2665,7 +2665,7 @@
    "title": "macOS: Automation, server could not start",
    "w": 690,
    "x": 1540,
-   "y": 11536
+   "y": 11776
   },
   "SetMacAutomationOn.dc.html": {
    "h": 600,
@@ -2673,36 +2673,36 @@
    "title": "macOS: Automation, on, token copied",
    "w": 690,
    "x": 770,
-   "y": 11536
+   "y": 11776
   },
   "SetMacFormatDelete.dc.html": {
-   "h": 600,
+   "h": 960,
    "page": "settings",
-   "title": "macOS: Formats, delete a format",
+   "title": "macOS: Save as, delete a format",
    "w": 690,
    "x": 1540,
    "y": 9376
   },
   "SetMacFormatEditor.dc.html": {
-   "h": 600,
+   "h": 960,
    "page": "settings",
-   "title": "macOS: Formats, editing a format",
+   "title": "macOS: Save as, editing a format",
    "w": 690,
    "x": 770,
    "y": 9376
   },
   "SetMacFormatRefused.dc.html": {
-   "h": 600,
+   "h": 960,
    "page": "settings",
-   "title": "macOS: Formats, core refuses (the shared alert)",
+   "title": "macOS: Save as, core refuses (the shared alert)",
    "w": 690,
    "x": 2310,
    "y": 9376
   },
   "SetMacFormats.dc.html": {
-   "h": 600,
+   "h": 960,
    "page": "settings",
-   "title": "macOS: Formats",
+   "title": "macOS: Save as",
    "w": 690,
    "x": 0,
    "y": 9376
@@ -2753,7 +2753,7 @@
    "title": "macOS: Subsonic, off",
    "w": 690,
    "x": 0,
-   "y": 10456
+   "y": 10696
   },
   "SetMacSubsonicOn.dc.html": {
    "h": 600,
@@ -2761,7 +2761,7 @@
    "title": "macOS: Subsonic, running on the network",
    "w": 690,
    "x": 770,
-   "y": 10456
+   "y": 10696
   },
   "SetMacSubsonicRefused.dc.html": {
    "h": 600,
@@ -2769,7 +2769,7 @@
    "title": "macOS: Subsonic, turned on with no username",
    "w": 690,
    "x": 1540,
-   "y": 10456
+   "y": 10696
   },
   "SettingsOffline.dc.html": {
    "h": 916,
@@ -3506,6 +3506,94 @@
    "w": 360,
    "x": 4330,
    "y": 8136
+  },
+  "SetMacFormatMenu.dc.html": {
+   "h": 960,
+   "page": "settings",
+   "title": "macOS: Save as, a format’s menu",
+   "w": 690,
+   "x": 3620,
+   "y": 9376
+  },
+  "SetMacFormatPicker.dc.html": {
+   "h": 960,
+   "page": "settings",
+   "title": "macOS: Save as, choosing a format",
+   "w": 690,
+   "x": 4890,
+   "y": 9376
+  },
+  "SetMacFormatBitrate.dc.html": {
+   "h": 960,
+   "page": "settings",
+   "title": "macOS: Save as, an MP3 bitrate",
+   "w": 690,
+   "x": 5660,
+   "y": 9376
+  },
+  "SetMacFormatBitDepth.dc.html": {
+   "h": 960,
+   "page": "settings",
+   "title": "macOS: Save as, a FLAC bit depth",
+   "w": 690,
+   "x": 6430,
+   "y": 9376
+  },
+  "SetMacFormatEach.dc.html": {
+   "h": 760,
+   "page": "settings",
+   "title": "macOS: Save as, every format’s editor",
+   "w": 1080,
+   "x": 7200,
+   "y": 9376
+  },
+  "AlbMacSaveAsFormats.dc.html": {
+   "h": 1000,
+   "page": "home",
+   "title": "macOS: Save as… on a track, its Format menu",
+   "w": 1200,
+   "x": 12800,
+   "y": 16892
+  },
+  "AlbMacSaveAsEdit.dc.html": {
+   "h": 1000,
+   "page": "home",
+   "title": "macOS: Save as… on a track, Edit Formats…",
+   "w": 1200,
+   "x": 12800,
+   "y": 17972
+  },
+  "SetMacFormatNameTaken.dc.html": {
+   "h": 960,
+   "page": "settings",
+   "title": "macOS: Save as, a name already taken",
+   "w": 690,
+   "x": 8370,
+   "y": 9376
+  },
+  "AlbMacSaveAsEditAdd.dc.html": {
+   "h": 1000,
+   "page": "home",
+   "title": "macOS: Save as… on a track, adding a format",
+   "w": 1200,
+   "x": 14080,
+   "y": 17972
+  },
+  "AlbMacSaveAsEditAdded.dc.html": {
+   "h": 1000,
+   "page": "home",
+   "title": "macOS: Save as… on a track, the format added",
+   "w": 1200,
+   "x": 15360,
+   "y": 17972
+  },
+  "AlbMacSaveAsEditBack.dc.html": {
+   "h": 1000,
+   "page": "home",
+   "title": "macOS: Save as… on a track, back with the new format",
+   "w": 1200,
+   "x": 16640,
+   "y": 17972
   }
  },
  "createdOnFiles": {
@@ -3735,7 +3823,7 @@
   "code-invite": {
    "page": "library",
    "size": 24,
-   "text": "What the code needs for the invite boards (refs are main as of Nov 6):\n- The People list ends with the invite row: “Invite…” on macOS (today “Invite a person…”, MembersSection.swift:100), “Invite” with a + on Android (today a filled “Invite a person” button after the list, MembersScreen.kt:356, strings.xml:347). bae change.\n- The form asks only what the storage shares with: their Dropbox, Microsoft or Apple Account email, or on S3 an access key, with a line saying why; on S3, Use my key instead (under the fields on Android, left of the footer on macOS) hands them your own key, saying that removing them later means a new key on each of your devices; then Create invite. No name, no role (everyone joins as Member), no in person or sent, a week to expire. Today: name, role, “Their account email” or keys, In person or Send, an expiry, “Create invitation” (InvitePersonSheet.swift, InviteDialog.kt). coven change (§13.2: the join request carries the name, not the invite; one kind of invite, always approved by comparing the number; confirm §14.3 lets two members share one S3 key), then bae; the spec's walk-through (spec/bae.md:2369) changes with it.\n- The invite screen, titled Invite: while sharing, a bar and “Sharing the library with <email>…”; offline, that the code shows once this device is online; then one MacScanCode or AndroidScanCode: what to do, the QR code alone (no code text beside it), Copy code and Share, how long until it expires (“Expires in 7 days”, relative, as InviteCodeSheet.swift does today) and that the request shows up within seconds. The code has no such shared view yet: InviteCodeSheet.swift and InviteShownDialog.kt each lay out the QR code themselves. Today one spinner and “Sharing the library. The code shows once this library syncs.” online or not (InviteCodeSheet.swift:89, strings.xml:401); an in-person invite shows only the QR code, a sent one only the code; the title is the invitee's name. bae change.\n- While the invite screen is open, the app asks sync to check every 5 seconds, as Add device does (bae-library/src/manager/people.rs, sync_often). Today nothing does for invites. bae change.\n- An open invite's row: its email (its key on S3), Invited, and a chevron that opens its screen; Shares access once online while offline; Joining once approved. No refresh button: today “Check for requests” (MembersSection.swift:448, MembersScreen.kt InviteRow). bae change.\n- Their request: “Approve request?”, then “<name> used your invite to <email>”, the number, Decline and Approve. Today the request sheet shows the invitee's name, “Confirmation number” and the number, Close, Decline, Approve (MembersSection.swift JoinRequestSheet). bae change.\n- Cancel invite asks first: “Cancel this invite?” with Keep. Today the same confirmation with core's words (core.invite.cancel_confirm.*). Matches; words only.\n- S3: the code screen also shows the key's ID and says to delete the key if nobody uses the invite (spec/bae.md:2412). Built (InviteCodeSheet.swift keyLine); not drawn yet.\n- A sharing failure a retry can't fix (no such account, say) ends the invite by itself, as a failed request check does (coven spec §13.2). Its row becomes a notice, “Couldn’t invite: Dropbox has no account for it”, with Dismiss; there is no failed screen to cancel from. A failure a retry can fix keeps retrying, the invite still Sharing. Today the invite stays open with coven's held reason, in its row and screen, until it is cancelled (InviteCodeSheet.swift:80, MembersSection.swift InviteRow). coven change (end the invite on a permanent sharing failure, keeping why for the app), then bae.\n- Queued: plans/invites.md; coven in todo.md §2 #214 (one kind of invite, the name in the request, a permanent sharing failure ends the invite, two members on one S3 key), bae in #215 after the coven pin bump.",
+   "text": "What the code needs for the invite boards (refs are main as of Nov 6):\n- The People list is followed by the invite: on macOS an “Invite…” button under the box, on the right (today “Invite a person…”, MembersSection.swift:100), “Invite” with a + on Android (today a filled “Invite a person” button after the list, MembersScreen.kt:356, strings.xml:347). bae change.\n- The form asks only what the storage shares with: their Dropbox, Microsoft or Apple Account email, or on S3 an access key, with a line saying why; on S3, Use my key instead (under the fields on Android, left of the footer on macOS) hands them your own key, saying that removing them later means a new key on each of your devices; then Create invite. No name, no role (everyone joins as Member), no in person or sent, a week to expire. Today: name, role, “Their account email” or keys, In person or Send, an expiry, “Create invitation” (InvitePersonSheet.swift, InviteDialog.kt). coven change (§13.2: the join request carries the name, not the invite; one kind of invite, always approved by comparing the number; confirm §14.3 lets two members share one S3 key), then bae; the spec's walk-through (spec/bae.md:2369) changes with it.\n- The invite screen, titled Invite: while sharing, a bar and “Sharing the library with <email>…”; offline, that the code shows once this device is online; then one MacScanCode or AndroidScanCode: what to do, the QR code alone (no code text beside it), Copy code and Share, how long until it expires (“Expires in 7 days”, relative, as InviteCodeSheet.swift does today) and that the request shows up within seconds. The code has no such shared view yet: InviteCodeSheet.swift and InviteShownDialog.kt each lay out the QR code themselves. Today one spinner and “Sharing the library. The code shows once this library syncs.” online or not (InviteCodeSheet.swift:89, strings.xml:401); an in-person invite shows only the QR code, a sent one only the code; the title is the invitee's name. bae change.\n- While the invite screen is open, the app asks sync to check every 5 seconds, as Add device does (bae-library/src/manager/people.rs, sync_often). Today nothing does for invites. bae change.\n- An open invite's row: its email (its key on S3), Invited, and a chevron that opens its screen; Shares access once online while offline; Joining once approved. No refresh button: today “Check for requests” (MembersSection.swift:448, MembersScreen.kt InviteRow). bae change.\n- Their request: “Approve request?”, then “<name> used your invite to <email>”, the number, Decline and Approve. Today the request sheet shows the invitee's name, “Confirmation number” and the number, Close, Decline, Approve (MembersSection.swift JoinRequestSheet). bae change.\n- Cancel invite asks first: “Cancel this invite?” with Keep. Today the same confirmation with core's words (core.invite.cancel_confirm.*). Matches; words only.\n- S3: the code screen also shows the key's ID and says to delete the key if nobody uses the invite (spec/bae.md:2412). Built (InviteCodeSheet.swift keyLine); not drawn yet.\n- A sharing failure a retry can't fix (no such account, say) ends the invite by itself, as a failed request check does (coven spec §13.2). Its row becomes a notice, “Couldn’t invite: Dropbox has no account for it”, with Dismiss; there is no failed screen to cancel from. A failure a retry can fix keeps retrying, the invite still Sharing. Today the invite stays open with coven's held reason, in its row and screen, until it is cancelled (InviteCodeSheet.swift:80, MembersSection.swift InviteRow). coven change (end the invite on a permanent sharing failure, keeping why for the app), then bae.\n- Queued: plans/invites.md; coven in todo.md §2 #214 (one kind of invite, the name in the request, a permanent sharing failure ends the invite, two members on one S3 key), bae in #215 after the coven pin bump.",
    "w": 420,
    "x": 7558,
    "y": 15560
@@ -3767,7 +3855,7 @@
   "code-people": {
    "page": "library",
    "size": 24,
-   "text": "What the code needs for these boards (refs are main as of Nov 6):\nPeople and devices\n- Two sections, You and People. Under You: a read-only Role row and a Devices row that opens Your devices. Today one People section with a You marker (MembersSection.swift:61, :292). bae change.\n- Add device pairs like an invite instead of showing the restore code (plans/add-device-pairing.md; coven todo.md §2 #227, bae #228). The code screen is a MacScanCode or AndroidScanCode: “Scan or enter the code on the new device.”, the QR code alone, Copy code and Share, and “Works while this stays open. Once the new device enters it, its request shows up here within seconds.” The request replaces it in place: “Tablet wants to join. Add it if its screen shows this number.”, the number, Decline and Add. Closing the screen ends the pairing. On S3 only the QR code carries the access key; a device that enters the copied code asks for it. Today the screen shows the restore code as a QR code and text, with the S3 key line (AddDeviceSheet.swift, AddDeviceDialog.kt). coven change, then bae.\n- Your devices: each device, this one reading This device with no Remove (it leaves by removing the library from it, ActiveDevice::removable, bae-people/src/membership.rs:91); then the add row last: “Add…” on macOS, “Add device” with a + on Android. bae change.\n- Each other person is one row (role, device count) that opens their page: Role with Make admin or Make member, Remove from library in red, their devices. Today macOS lists people with their devices and buttons in one box (MembersSection.swift:63, :326), Android in one list (MembersScreen.kt:437). bae change.\n- “Remove from library”. Today Android reads “Remove person” (strings.xml:335) and macOS a trash glyph, “Remove from the library” (MembersSection.swift:313). bae change.\n- A member's person rows open nothing. coven lets a member read every person's devices; bae leaves that page out on purpose: a member has nothing to do there.\n- Android: Listening history is a choice of AndroidRadio rows in an AndroidDialog; the code has no radio row yet. bae change.\n- Android says “this device”, never “this phone”: today “Changes from this phone”, “Saved on this phone” and the recovery-code lines (strings.xml:384-397, :419). bae change, every locale.",
+   "text": "What the code needs for these boards (refs are main as of Nov 6):\nPeople and devices\n- Two sections, You and People. Under You: a read-only Role row and a Devices row that opens Your devices. Today one People section with a You marker (MembersSection.swift:61, :292). bae change.\n- Add device pairs like an invite instead of showing the restore code (plans/add-device-pairing.md; coven todo.md §2 #227, bae #228). The code screen is a MacScanCode or AndroidScanCode: “Scan or enter the code on the new device.”, the QR code alone, Copy code and Share, and “Works while this stays open. Once the new device enters it, its request shows up here within seconds.” The request replaces it in place: “Tablet wants to join. Add it if its screen shows this number.”, the number, Decline and Add. Closing the screen ends the pairing. On S3 only the QR code carries the access key; a device that enters the copied code asks for it. Today the screen shows the restore code as a QR code and text, with the S3 key line (AddDeviceSheet.swift, AddDeviceDialog.kt). coven change, then bae.\n- Your devices: each device, this one reading This device with no Remove (it leaves by removing the library from it, ActiveDevice::removable, bae-people/src/membership.rs:91); then adding: on macOS an “Add device…” button under the box, on the right; on Android an “Add device” row with a +, last. bae change.\n- Each other person is one row (role, device count) that opens their page: Role with Make admin or Make member, Remove from library in red, their devices. Today macOS lists people with their devices and buttons in one box (MembersSection.swift:63, :326), Android in one list (MembersScreen.kt:437). bae change.\n- “Remove from library”. Today Android reads “Remove person” (strings.xml:335) and macOS a trash glyph, “Remove from the library” (MembersSection.swift:313). bae change.\n- A member's person rows open nothing. coven lets a member read every person's devices; bae leaves that page out on purpose: a member has nothing to do there.\n- Android: Listening history is a choice of AndroidRadio rows in an AndroidDialog; the code has no radio row yet. bae change.\n- Android says “this device”, never “this phone”: today “Changes from this phone”, “Saved on this phone” and the recovery-code lines (strings.xml:384-397, :419). bae change, every locale.",
    "w": 420,
    "x": 7732,
    "y": 11672
@@ -4442,7 +4530,7 @@
   "row-set-automation": {
    "page": "settings",
    "x": 0,
-   "y": 11296,
+   "y": 11536,
    "text": "Automation: desktop only",
    "kind": "title1",
    "w": 240,
@@ -4455,13 +4543,13 @@
    "text": "What looks unintended:\n- Nothing says what MCP is or how to connect.\n- Rotate token breaks connected tools with no confirmation.\n- A refused switch stays on, as in Subsonic.",
    "w": 460,
    "x": 2310,
-   "y": 11536
+   "y": 11776
   },
   "row-set-formats": {
    "page": "settings",
    "x": 0,
    "y": 9136,
-   "text": "Formats: desktop only",
+   "text": "Save as: desktop only",
    "kind": "title1",
    "w": 240,
    "maxW": 3580
@@ -4496,7 +4584,7 @@
   "row-set-subsonic": {
    "page": "settings",
    "x": 0,
-   "y": 10216,
+   "y": 10456,
    "text": "Subsonic: desktop only",
    "kind": "title1",
    "w": 240,
@@ -4509,7 +4597,7 @@
    "text": "What looks unintended:\n- A switch core refuses stays on.\n- On the network, Status shows http://0.0.0.0:4533, which no other device can use.\n- Port and Username each have a Save that saves both; Password saved shows above the password.",
    "w": 460,
    "x": 2310,
-   "y": 10456
+   "y": 10696
   },
   "row-settings-0": {
    "kind": "title1",
@@ -4935,6 +5023,14 @@
    "size": 24,
    "fill": "blue",
    "text": "The ⓘ after Search Discogs opens the popover drawn above. “Discogs” and “get your free API key” are links, in the accent. The key is kept in this Mac’s keychain, in an entry that stays on this device (coven’s host secret).\n\nSearch Discogs works like any switch: it's always usable. Off, the key field under it is greyed; on, the field takes a key and Save checks it. Turning it off with a saved key asks first (“Turn off Discogs?” / “Your saved key will be cleared.”, Turn Off and Cancel), then clears the key. A working key shows “Key saved” as the row’s second line, in secondary text, and no Remove: turning the switch off is how a key goes. Today the switch is greyed until a key validates (ImportSettingsTab.swift:108, `.disabled(!setting.canChange)`)."
+  },
+  "code-set-formats": {
+   "page": "settings",
+   "x": 4390,
+   "y": 9376,
+   "w": 420,
+   "size": 24,
+   "text": "What the code needs for these boards:\n- The Formats pane is “Save as”, in the sidebar and its title (SettingsView.swift, `.formats`); its list keeps the heading “Formats”, and the note “Formats appear in Save as… on tracks and releases.” goes.\n- Each format row ends in a ⋯ button (MoreMenu) with Edit… and Delete…, in place of the Track and Release toggles and the minus (PresetRow, FormatsSettingsTab.swift). Clicking the row still opens the editor. Delete… asks as the minus does today.\n- A format keeps its Name, first in the editor, prefilled when added with the format's name and the next free number: “FLAC”, then “FLAC (2)”, “FLAC (3)”; while it is still that prefill, changing Format re-prefills it. Rows show only the name, no grey line; the save panel's Format pop-up lists the names, then a separator and Edit Formats…, which opens Settings at the Save as pane in front of the save panel; the panel's pop-up follows any change made there, and a format added there is chosen in it. Names are unique on every add and edit: a taken name turns the Name field red with “Another format is named “MP3”.” and Done off, and core refuses one; “(2)” is only the prefill. Two formats may save the same way. Names stay stored, not made from the settings: encoder settings to come will be more than a name can say.\n- “Add format…” is a button under the list, on the right, as Add library… is on Welcome; today “+ Add format” sits inside the box.\n- No Defaults section: Save as starts with the format last used for any save, track or release (one stored choice in place of default_track_save_preset and default_release_save_preset).\n- Track and Release go from the codebase: every format shows in Save as for tracks and releases. Core drops a preset's applies-to-track and applies-to-release.\n- The editor is Name, Format and its one quality setting, nothing else; Embed cover art moves to Extras, one setting for every format. Bit depth for FLAC, WAV and AIFF: “Same as source” (the default) or “16-bit”; core's SaveBitDepth becomes those two, so a CD stays 16-bit where a fixed 24 pads it today. Bitrate for MP3, AAC and Opus, a pop-up, not a text field.\n- The Format pop-up lists lossless first, then a separator, then lossy: FLAC, WAV, AIFF / MP3, AAC, Opus (core's SaveFormat::ALL order today: FLAC, MP3, AAC, Opus, WAV, AIFF).\n- Bitrates, from what each encoder does with bae's bit_rate (bae-audio/src/encode.rs sets bit_rate = kbps × 1000): MP3 is libmp3lame at a constant bitrate, which has only 14 legal values (32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320) and rounds anything between, so its pop-up lists exactly those; AAC (FFmpeg's own encoder) 96, 128, 160, 192, 256, 320; Opus (libopus, max 510) 64, 96, 128, 160, 192, 256.\n- No Advanced. Every save writes one file per track by one rule: a track's gap goes at the end of the track before, and hidden audio before track 1 stays at the start of track 1 (today's AppendToPreviousIncludingHtoa). An image + CUE source is split at its track marks. Core drops SavePregapPlacement and single file + CUE.\n- A release save of a track already in the chosen format at the same depth copies its audio without re-encoding, writing tags, cover and name fresh.\n- Names: one box on the pane, out of each format's editor, with two naming fields labeled above them. File name names each track's file in every format (one stored pattern in place of each preset's save_preset_filename_token). Folder name names the folder a release save makes (Artist, Album by default; adds Release year, Label, Catalog number).\n- Extras, all on: Embed cover art (from each format), Cover image in the folder (a release save writes cover.jpg) and Loudness tags (ReplayGain track and album gain and peak from the loudness measured at import).\n- Spec §4.6 lists Save as's cases: one track converted; a whole release converted; an exact copy is Export.\nbae change, every locale."
   }
  },
  "order": [
@@ -5227,7 +5323,13 @@
   "SetMacImportDiscogsTip.dc.html",
   "SetMacImportTurnOff.dc.html",
   "SetMacFormats.dc.html",
+  "SetMacFormatMenu.dc.html",
   "SetMacFormatEditor.dc.html",
+  "SetMacFormatBitrate.dc.html",
+  "SetMacFormatBitDepth.dc.html",
+  "SetMacFormatEach.dc.html",
+  "SetMacFormatNameTaken.dc.html",
+  "SetMacFormatPicker.dc.html",
   "SetMacFormatDelete.dc.html",
   "SetMacFormatRefused.dc.html",
   "SetMacSubsonic.dc.html",
@@ -5252,6 +5354,11 @@
   "AlbMacLightbox.dc.html",
   "AlbMacLightboxFailed.dc.html",
   "AlbMacSaveAs.dc.html",
+  "AlbMacSaveAsFormats.dc.html",
+  "AlbMacSaveAsEdit.dc.html",
+  "AlbMacSaveAsEditAdd.dc.html",
+  "AlbMacSaveAsEditAdded.dc.html",
+  "AlbMacSaveAsEditBack.dc.html",
   "AlbMacStorageStates.dc.html",
   "ErrAndroidSnackRetry.dc.html",
   "ErrAndroidSnackPlay.dc.html",

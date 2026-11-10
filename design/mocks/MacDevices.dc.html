@@ -30,8 +30,8 @@ body{margin:0}
     <x-import component-from-global-scope="Bae.MacRow" label="Phone">
       <x-import component-from-global-scope="Bae.MacIconButton" icon="ellipsis" size="15" label="More"></x-import>
     </x-import>
-    <x-import component-from-global-scope="Bae.MacRow" label="Add…" action="{{yes}}"></x-import>
-  </x-import> <div style="height:16px"></div><x-import component-from-global-scope="Bae.MacDisclosure" label="Removed devices (2)"></x-import>
+    
+  </x-import><x-import component-from-global-scope="Bae.MacSheetFooter"><x-import component-from-global-scope="Bae.MacButton">Add device…</x-import></x-import> <div style="height:16px"></div><x-import component-from-global-scope="Bae.MacDisclosure" label="Removed devices (2)"></x-import>
 </x-import>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":690,"height":600}}'>

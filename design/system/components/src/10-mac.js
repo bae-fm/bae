@@ -1,6 +1,6 @@
   // ---- macOS ----
 
-  var PANES = ['Appearance', 'Library', 'Playback', 'Transfers', 'Import', 'Formats', 'Casting', 'Subsonic', 'Automation', 'About'];
+  var PANES = ['Appearance', 'Library', 'Playback', 'Transfers', 'Import', 'Save as', 'Casting', 'Subsonic', 'Automation', 'About'];
 
   function MacWindow(props) {
     return h('div', { className: 'bae-m-window bae-m-window-plain', style: { width: Number(props.width || 690), height: Number(props.height || 600) } },
@@ -226,6 +226,17 @@
     return h('div', { className: 'bae-m-note' }, props.children);
   }
 
+  // How Save as… names each track's file, one pattern for every format: the pattern's pieces as chips, each with ×, the pieces it can add, and a preview of a name it makes. `tokens`, `add`: comma-separated; `preview`: the name it shows.
+  function MacFileNameField(props) {
+    var split = function (s) { return String(s || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean); };
+    // `label` sits above the field, at the row's leading edge where a MacRow's title sits, so the field runs the box's full width.
+    return h('div', { className: 'bae-m-filename' },
+      props.label == null ? null : h('span', { className: 'bae-m-filename-label' }, props.label),
+      h('div', { className: 'bae-m-tokenfield', 'aria-label': props.label }, split(props.tokens).map(function (t) { return h('span', { key: t, className: 'bae-chip bae-tone-neutral' }, t + ' ×'); })),
+      h('div', { className: 'bae-m-filename-add' }, 'Add:', split(props.add).map(function (t) { return h('span', { key: t, className: 'bae-m-tokenadd' }, t); })),
+      props.preview ? h('div', { className: 'bae-m-filename-preview' }, 'Preview: ', h('span', { className: 'bae-mono' }, props.preview)) : null);
+  }
+
   function MacSwitch(props) {
     var s = React.useState(!!props.on);
     var on = s[0];
@@ -253,7 +264,9 @@
     return h('div', { className: 'bae-m-menu', role: 'menu' }, props.children);
   }
 
+  // `divider`: a line between groups of items, as NSMenu's separator item.
   function MacMenuItem(props) {
+    if (props.divider) return h('div', { className: 'bae-m-menu-sep', role: 'separator' });
     return h('div', { className: cx('bae-m-menu-item', props.highlighted && 'bae-m-menu-item-on'), role: 'menuitemradio', 'aria-checked': !!props.checked },
       h('span', { className: 'bae-m-menu-check', 'aria-hidden': true }, props.checked ? h('svg', { width: 11, height: 11, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2.6, strokeLinecap: 'round', strokeLinejoin: 'round' }, h('path', { d: 'M5 12.5l4.5 4.5L19 7.5' })) : null),
       props.children);

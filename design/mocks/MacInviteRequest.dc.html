@@ -41,8 +41,8 @@ body{margin:0}
     <x-import component-from-global-scope="Bae.MacBox">
       <x-import component-from-global-scope="Bae.MacRow" label="Ben" strong="{{yes}}" tag="Member" value="1 device" chevron="{{yes}}"></x-import>
       <x-import component-from-global-scope="Bae.MacRow" label="dan@example.com" strong="{{yes}}" tag="Invited" chevron="{{yes}}"></x-import>
-      <x-import component-from-global-scope="Bae.MacRow" label="Invite…" action="{{yes}}"></x-import>
-    </x-import>
+      
+    </x-import><x-import component-from-global-scope="Bae.MacSheetFooter"><x-import component-from-global-scope="Bae.MacButton">Invite…</x-import></x-import>
   </x-import>
   <x-import component-from-global-scope="Bae.MacSheet" title="Dan wants to join" overlay="{{yes}}" width="400" message="Make sure this code is showing:">
     <x-import component-from-global-scope="Bae.MacMatchCode" code="412 778" dialog="{{yes}}"></x-import>

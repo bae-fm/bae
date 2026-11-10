@@ -770,10 +770,11 @@
 .bae-m-switch-off { opacity: 0.45; }
 
 /* Formats pane: button-style toggles, the token field */
-.bae-m-togglebtn { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: 5px; background: var(--control); font: 400 11.5px var(--font-sans); box-shadow: 0 0 0 0.5px var(--control-edge), 0 0.5px 1px var(--control-edge); }
-.bae-m-togglebtn-on { background: var(--accent-fill); color: var(--on-accent-fill); }
-.bae-m-togglebtn-off { opacity: 0.45; }
 .bae-m-tokenfield { min-height: 24px; padding: 6px; border-radius: 7px; background: var(--field); box-shadow: inset 0 0 0 1px var(--hairline-strong); display: flex; gap: 6px; flex-wrap: wrap; }
+.bae-m-filename { padding: 10px var(--space-group); display: flex; flex-direction: column; gap: var(--space-related); }
+.bae-m-filename-label { font: 400 13px var(--font-sans); color: var(--text-primary); }
+.bae-m-filename-add { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; font: 400 11.5px var(--font-sans); color: var(--text-secondary); }
+.bae-m-filename-preview { font: 400 11.5px var(--font-sans); color: var(--text-secondary); }
 .bae-m-tokenadd { padding: 1px 6px; border-radius: 5px; border: 1px dashed var(--hairline-strong); color: var(--text-primary); }
 
 /* ==== part: errors ==== */.bae-a-snack { position: absolute; left: 12px; right: 12px; bottom: 140px; z-index: 12; display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 16px; min-height: 48px; box-sizing: border-box; border-radius: 4px; background: var(--text-primary); color: var(--background); font: 400 14px/20px var(--font-android); box-shadow: 0 4px 12px var(--shadow); fill: currentColor; }
