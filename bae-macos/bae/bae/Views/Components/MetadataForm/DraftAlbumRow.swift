@@ -77,7 +77,7 @@ struct DraftAlbumRow: View {
                 .buttonStyle(.borderless)
             }
             TextField("Search", text: $query)
-                .textFieldStyle(.boxed)
+                .boxedTextField()
             if let searchError {
                 Notice(error: searchError)
             }

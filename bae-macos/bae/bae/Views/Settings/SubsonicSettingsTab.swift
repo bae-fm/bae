@@ -66,8 +66,8 @@ struct SubsonicSettingsContent: View {
                 LabeledContent("Port") {
                     HStack(spacing: ThemeSpace.related) {
                         TextField("Port", text: $portText)
+                            .boxedTextField()
                             .frame(width: 88)
-                            .textFieldStyle(.boxed)
                             .onSubmit(applyConfig)
                         Button("Save", action: applyConfig)
                             .disabled(isWorking)
@@ -76,8 +76,8 @@ struct SubsonicSettingsContent: View {
                 LabeledContent("Username") {
                     HStack(spacing: ThemeSpace.related) {
                         TextField("Username", text: $username)
+                            .boxedTextField()
                             .frame(width: Self.credentialFieldWidth)
-                            .textFieldStyle(.boxed)
                             .onSubmit(applyConfig)
                         Button("Save", action: applyConfig)
                             .disabled(isWorking)
@@ -106,8 +106,8 @@ struct SubsonicSettingsContent: View {
                 LabeledContent("Password") {
                     HStack(spacing: ThemeSpace.related) {
                         SecureField("Password", text: $password)
+                            .boxedTextField()
                             .frame(width: Self.credentialFieldWidth)
-                            .textFieldStyle(.boxed)
                             .onSubmit(savePassword)
                         Button("Save", action: savePassword)
                             .disabled(isWorking)

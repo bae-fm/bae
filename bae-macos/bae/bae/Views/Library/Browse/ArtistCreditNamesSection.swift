@@ -28,7 +28,7 @@ struct ArtistCreditNamesSection: View {
             }
             HStack(spacing: ThemeSpace.related) {
                 TextField("Another name", text: $newName)
-                    .textFieldStyle(.boxed)
+                    .boxedTextField()
                     .onSubmit(add)
                 Button("Add", action: add)
                     .disabled(trimmedNewName.isEmpty)
