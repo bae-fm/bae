@@ -303,38 +303,49 @@ impl CatalogSession {
 
     /// What Discogs says of the stored key, or `None` without one to ask
     /// with.
-    pub async fn validate(&self) -> Option<DiscogsCheck> {
+    pub async fn validate(&self) -> Option<Result<DiscogsCheck, DiscogsError>> {
         let client = self.client.as_ref()?;
         Some(DiscogsCheck::of(client.validate_token(CallClass::REQUESTED).await))
     }
 }
 
 /// What a token-validation request proves about a key: Discogs accepted it,
-/// rejected it, or could not be asked — a failure that says nothing about the
-/// key, kept so the person is told why the key went unchecked.
+/// rejected it, or could not be reached, which says nothing about the key.
 #[derive(Debug)]
 pub enum DiscogsCheck {
     Valid,
     Rejected,
-    Unchecked(DiscogsError),
+    /// The request never reached Discogs, so the key is neither confirmed nor
+    /// turned down; kept so the cause can be logged.
+    Offline(DiscogsError),
 }
 
 impl DiscogsCheck {
-    /// Read a token-validation request's outcome. A failure that leaves the
-    /// key unchecked is warned with its cause.
-    pub fn of(result: Result<(), DiscogsError>) -> Self {
+    /// Read a token-validation request's outcome. A request that never
+    /// reached Discogs is [`Self::Offline`]. Discogs answering with anything
+    /// else that is no verdict on the key (an error status, a missing
+    /// release, an unreadable body) is not the person being offline, so it
+    /// comes back as the error, warned with its cause.
+    pub fn of(result: Result<(), DiscogsError>) -> Result<Self, DiscogsError> {
         match result {
-            Ok(()) => Self::Valid,
-            Err(DiscogsError::InvalidApiKey) => Self::Rejected,
+            Ok(()) => Ok(Self::Valid),
+            Err(DiscogsError::InvalidApiKey) => Ok(Self::Rejected),
+            Err(error @ DiscogsError::Transport(_)) => {
+                warn!("Discogs couldn't be reached to check the key: {error}");
+                Ok(Self::Offline(error))
+            }
             Err(
-                error @ (DiscogsError::Transport(_)
-                | DiscogsError::Provider { .. }
+                error @ (DiscogsError::Provider { .. }
                 | DiscogsError::NotFound
                 | DiscogsError::Serialization(_)),
             ) => {
-                warn!("Discogs couldn't check the key, which stays unvalidated: {error}");
-                Self::Unchecked(error)
+                warn!("Discogs gave no verdict on the key: {error}");
+                Err(error)
             }
         }
     }
 }
+
+#[cfg(test)]
+#[path = "providers_tests.rs"]
+mod tests;

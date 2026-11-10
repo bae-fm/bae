@@ -17722,179 +17722,6 @@
         }
       }
     },
-    "[Discogs](https://www.discogs.com) is a music database with detailed release info: labels, catalog numbers, pressing variants, and more. bae can use it as a metadata source when importing albums." : {
-      "comment" : "Discogs settings: description of the Discogs service (markdown link)",
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) هو قاعدة بيانات موسيقية تحتوي على معلومات إصدار مفصّلة: الملصقات وأرقام الكتالوج وأشكال الطبعات والمزيد. يمكن لـ bae استخدامه كمصدر للبيانات الوصفية عند استيراد الألبومات."
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) е музикална база данни с подробна информация за изданията: лейбъли, каталожни номера, варианти на изданията и др. bae може да я използва като източник на метаданни при внасяне на албуми."
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) je hudební databáze s podrobnými informacemi o vydáních: vydavatelství, katalogová čísla, varianty lisů a další. bae ji může při importu alb použít jako zdroj metadat."
-          }
-        },
-        "da" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) er en musikdatabase med detaljerede oplysninger om udgivelser: selskaber, katalognumre, presningsvarianter og meget mere. bae kan bruge den som metadatakilde, når album importeres."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) is a music database with detailed release info: labels, catalog numbers, pressing variants, and more. bae can use it as a metadata source when importing albums."
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) ist eine Musikdatenbank mit detaillierten Veröffentlichungsinfos: Labels, Katalognummern, Pressungsvarianten und mehr. bae kann es beim Importieren von Alben als Metadatenquelle nutzen."
-          }
-        },
-        "el" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Το [Discogs](https://www.discogs.com) είναι μια μουσική βάση δεδομένων με αναλυτικά στοιχεία κυκλοφοριών: εταιρείες, αριθμούς καταλόγου, παραλλαγές πιεστηρίου και άλλα. Το bae μπορεί να τη χρησιμοποιεί ως πηγή μεταδεδομένων κατά την εισαγωγή άλμπουμ."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) es una base de datos de música con información detallada de ediciones: sellos, números de catálogo, variantes de prensaje y más. bae puede usarla como fuente de metadatos al importar álbumes."
-          }
-        },
-        "fi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) on musiikkitietokanta, jossa on tarkat tiedot julkaisuista: levy-yhtiöt, luettelonumerot, painosvariantit ja paljon muuta. bae voi käyttää sitä metatietolähteenä albumeja tuotaessa."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) est une base de données musicale avec des informations détaillées sur les éditions : labels, numéros de catalogue, variantes de pressage, et plus encore. bae peut l'utiliser comme source de métadonnées lors de l'import d'albums."
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "‏[Discogs](https://www.discogs.com) הוא מסד נתונים מוזיקלי עם מידע מפורט על מהדורות: לייבלים, מספרי קטלוג, וריאנטים של תקליטים ועוד. bae יכול להשתמש בו כמקור מטא-נתונים בעת ייבוא אלבומים."
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) je glazbena baza podataka s detaljnim podacima o izdanjima: izdavačima, kataloškim brojevima, varijantama izdanja i drugim. bae ga može koristiti kao izvor metapodataka pri uvozu albuma."
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "A [Discogs](https://www.discogs.com) egy zenei adatbázis részletes kiadásadatokkal: kiadók, katalógusszámok, préselési változatok és sok más. A bae metaadatforrásként használhatja albumok importálásakor."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) è un database musicale con informazioni dettagliate sulle pubblicazioni: etichette, numeri di catalogo, varianti di stampa e altro. bae può usarlo come sorgente di metadati durante l'importazione degli album."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) は、レーベル、カタログ番号、プレスのバリエーションなど、詳細なリリース情報を持つ音楽データベースです。bae はアルバムの取り込み時にメタデータソースとして利用できます。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com)는 레이블, 카탈로그 번호, 프레싱 변형 등 자세한 릴리스 정보를 가진 음악 데이터베이스입니다. bae는 앨범을 가져올 때 이를 메타데이터 소스로 사용할 수 있습니다."
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) er en musikkdatabase med detaljert informasjon om utgivelser: selskaper, katalognumre, pressevarianter og mye mer. bae kan bruke den som metadatakilde når album importeres."
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) is een muziekdatabase met gedetailleerde release-info: labels, catalogusnummers, persingsvarianten en meer. bae kan dit gebruiken als metadatabron bij het importeren van albums."
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) to baza muzyczna ze szczegółowymi informacjami o wydaniach: wytwórnie, numery katalogowe, warianty tłoczeń i więcej. bae może korzystać z niej jako źródła metadanych przy importowaniu albumów."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "O [Discogs](https://www.discogs.com) é um banco de dados de músicas com informações detalhadas de lançamentos: gravadoras, números de catálogo, variantes de prensagem e mais. O bae pode usá-lo como fonte de metadados ao importar álbuns."
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "O [Discogs](https://www.discogs.com) é uma base de dados musical com informação detalhada sobre edições: editoras, números de catálogo, variantes de prensagem e muito mais. O bae pode usá-la como fonte de metadados ao importar álbuns."
-          }
-        },
-        "ro" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) este o bază de date muzicală cu informații detaliate despre ediții: case de discuri, numere de catalog, variante de presare și altele. bae o poate folosi ca sursă de metadate la importul albumelor."
-          }
-        },
-        "sk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) je hudobná databáza s podrobnosťami o vydaniach: vydavateľstvá, katalógové čísla, varianty lisovania a ďalšie. bae ju môže pri importe albumov použiť ako zdroj metadát."
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) är en musikdatabas med detaljerad information om utgåvor: bolag, katalognummer, pressningsvarianter och mycket mer. bae kan använda den som metadatakälla när album importeras."
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com), ayrıntılı yayın bilgileri içeren bir müzik veritabanıdır: etiketler, katalog numaraları, baskı çeşitleri ve daha fazlası. bae, albüm içe aktarırken bunu bir üst veri kaynağı olarak kullanabilir."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com): це музична база даних з детальною інформацією про релізи: лейбли, каталожні номери, варіанти видань тощо. bae може використовувати її як джерело метаданих під час імпорту альбомів."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) 是一个音乐数据库，包含详细的版本信息：厂牌、目录号、压制版差异等。bae 可在导入专辑时将其用作元数据来源。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "[Discogs](https://www.discogs.com) 是音樂資料庫，包含詳細的發行資訊：廠牌、目錄編號、壓片版本等。bae 可在匯入專輯時將其作為中繼資料來源。"
-          }
-        }
-      }
-    },
     "%@ - %@" : {
       "comment" : "Search results track row: artist and album; first %@ is artist, second %@ is album title",
       "localizations" : {
@@ -34822,179 +34649,6 @@
         }
       }
     },
-    "Connected" : {
-      "comment" : "OAuth row / Discogs: provider connected state",
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "متصل"
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Свързано"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Připojeno"
-          }
-        },
-        "da" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Forbundet"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Connected"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Verbunden"
-          }
-        },
-        "el" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Συνδεδεμένο"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Conectado"
-          }
-        },
-        "fi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Yhdistetty"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Connecté"
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "מחובר"
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Povezano"
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kapcsolódva"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Connesso"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "接続済み"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "연결됨"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tilkoblet"
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Verbonden"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Połączono"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Conectado"
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ligado"
-          }
-        },
-        "ro" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Conectat"
-          }
-        },
-        "sk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pripojené"
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ansluten"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bağlandı"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Підключено"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "已连接"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "已連線"
-          }
-        }
-      }
-    },
     "Connecting…" : {
       "comment" : "Sync wizard: OAuth connect button while a connect is in flight",
       "localizations" : {
@@ -37936,179 +37590,6 @@
         }
       }
     },
-    "Couldn't check the key with Discogs." : {
-      "comment" : "Discogs settings: the key was saved, but Discogs could not be asked whether it is valid; the reason follows in the details",
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "تعذّر التحقق من المفتاح لدى Discogs."
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ключът не може да бъде проверен в Discogs."
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Klíč nelze ověřit u Discogs."
-          }
-        },
-        "da" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nøglen kunne ikke kontrolleres hos Discogs."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Couldn't check the key with Discogs."
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Schlüssel konnte bei Discogs nicht geprüft werden."
-          }
-        },
-        "el" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Δεν ήταν δυνατός ο έλεγχος του κλειδιού στο Discogs."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No se pudo comprobar la clave con Discogs."
-          }
-        },
-        "fi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Avainta ei voitu tarkistaa Discogsista."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Impossible de vérifier la clé auprès de Discogs."
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "לא ניתן לבדוק את המפתח מול Discogs."
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ključ nije moguće provjeriti na Discogsu."
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nem sikerült ellenőrizni a kulcsot a Discogsnál."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Impossibile verificare la chiave con Discogs."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Discogsでキーを確認できませんでした。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Discogs에서 키를 확인할 수 없습니다."
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kunne ikke sjekke nøkkelen hos Discogs."
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kan de sleutel niet controleren bij Discogs."
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nie udało się sprawdzić klucza w Discogs."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Não foi possível verificar a chave com o Discogs."
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Não foi possível verificar a chave junto do Discogs."
-          }
-        },
-        "ro" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cheia nu a putut fi verificată la Discogs."
-          }
-        },
-        "sk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kľúč sa nepodarilo overiť v Discogs."
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Det gick inte att kontrollera nyckeln hos Discogs."
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Anahtar Discogs ile doğrulanamadı."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Не вдалося перевірити ключ у Discogs."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "无法通过 Discogs 验证密钥。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "無法透過 Discogs 驗證金鑰。"
-          }
-        }
-      }
-    },
     "Couldn't read file tags: %@" : {
       "comment" : "Import search: shown on the row when reading the folder's audio file tags fails; %@ is the underlying reason",
       "localizations" : {
@@ -38797,179 +38278,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "無法移除資料夾：%@"
-          }
-        }
-      }
-    },
-    "Couldn't remove the Discogs key: %@" : {
-      "comment" : "Discogs settings: error removing the key; %@ is the system error",
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "تعذّرت إزالة مفتاح Discogs: %@"
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ключът за Discogs не може да бъде премахнат: %@"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nelze odebrat klíč Discogs: %@"
-          }
-        },
-        "da" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Discogs-nøglen kunne ikke fjernes: %@"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Couldn't remove the Discogs key: %@"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Discogs-Schlüssel konnte nicht entfernt werden: %@"
-          }
-        },
-        "el" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Δεν ήταν δυνατή η αφαίρεση του κλειδιού Discogs: %@"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No se pudo quitar la clave de Discogs: %@"
-          }
-        },
-        "fi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Discogs-avainta ei voitu poistaa: %@"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Impossible de supprimer la clé Discogs : %@"
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "לא ניתן להסיר את מפתח Discogs‏: %@"
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nije moguće ukloniti Discogs ključ: %@"
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "A Discogs-kulcsot nem sikerült eltávolítani: %@"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Impossibile rimuovere la chiave Discogs: %@"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Discogsキーを削除できませんでした: %@"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Discogs 키를 제거할 수 없음: %@"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Discogs-nøkkelen kunne ikke fjernes: %@"
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kan de Discogs-sleutel niet verwijderen: %@"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nie udało się usunąć klucza Discogs: %@"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Não foi possível remover a chave do Discogs: %@"
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Não foi possível remover a chave do Discogs: %@"
-          }
-        },
-        "ro" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cheia Discogs nu a putut fi eliminată: %@"
-          }
-        },
-        "sk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kľúč Discogs sa nepodarilo odstrániť: %@"
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Discogs-nyckeln kunde inte tas bort: %@"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Discogs anahtarı kaldırılamadı: %@"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Не вдалося вилучити ключ Discogs: %@"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "无法移除 Discogs 密钥：%@"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "無法移除 Discogs 金鑰：%@"
           }
         }
       }
@@ -43293,179 +42601,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "光碟編號"
-          }
-        }
-      }
-    },
-    "Discogs rejected this key. Check it and save again." : {
-      "comment" : "Discogs settings: 401 rejection of the typed key",
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "رفض Discogs هذا المفتاح. تحقق منه واحفظه مجددًا."
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Discogs отхвърли този ключ. Проверете го и запазете отново."
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Discogs tento klíč odmítl. Zkontrolujte jej a uložte znovu."
-          }
-        },
-        "da" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Discogs afviste denne nøgle. Kontroller den, og gem igen."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Discogs rejected this key. Check it and save again."
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Discogs hat diesen Schlüssel abgelehnt. Überprüfe ihn und speichere erneut."
-          }
-        },
-        "el" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Το Discogs απέρριψε αυτό το κλειδί. Ελέγξτε το και αποθηκεύστε ξανά."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Discogs rechazó esta clave. Compruébala y guárdala de nuevo."
-          }
-        },
-        "fi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Discogs hylkäsi tämän avaimen. Tarkista se ja tallenna uudelleen."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Discogs a rejeté cette clé. Vérifiez-la et enregistrez à nouveau."
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Discogs דחה את המפתח הזה. בדוק אותו ושמור שוב."
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Discogs je odbio ovaj ključ. Provjerite ga i ponovno spremite."
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "A Discogs elutasította ezt a kulcsot. Ellenőrizd, és mentsd újra."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Discogs ha rifiutato questa chiave. Controllala e salva di nuovo."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Discogsがこのキーを拒否しました。確認してもう一度保存してください。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Discogs가 이 키를 거부했습니다. 확인한 뒤 다시 저장하세요."
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Discogs avviste denne nøkkelen. Kontroller den, og lagre på nytt."
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Discogs heeft deze sleutel geweigerd. Controleer deze en bewaar opnieuw."
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Discogs odrzucił ten klucz. Sprawdź go i zapisz ponownie."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "O Discogs rejeitou esta chave. Verifique-a e salve novamente."
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "O Discogs rejeitou esta chave. Verifique-a e guarde novamente."
-          }
-        },
-        "ro" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Discogs a respins această cheie. Verific-o și salveaz-o din nou."
-          }
-        },
-        "sk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Discogs tento kľúč odmietol. Skontroluj ho a ulož znova."
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Discogs avvisade den här nyckeln. Kontrollera den och spara igen."
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Discogs bu anahtarı reddetti. Kontrol edip yeniden kaydedin."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Discogs відхилив цей ключ. Перевірте його та збережіть знову."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Discogs 拒绝了此密钥。请检查后重新保存。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Discogs 拒絕此金鑰。請檢查後再次儲存。"
           }
         }
       }
@@ -63018,179 +62153,6 @@
         }
       }
     },
-    "Paste your key here" : {
-      "comment" : "Discogs settings: API-key field placeholder prompt",
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "الصق مفتاحك هنا"
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Поставете ключа си тук"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vložte sem svůj klíč"
-          }
-        },
-        "da" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Indsæt din nøgle her"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Paste your key here"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Schlüssel hier einfügen"
-          }
-        },
-        "el" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Επικολλήστε εδώ το κλειδί σας"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pega tu clave aquí"
-          }
-        },
-        "fi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Liitä avaimesi tähän"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Collez votre clé ici"
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "הדבק את המפתח שלך כאן"
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zalijepite svoj ključ ovdje"
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ide illeszd be a kulcsodat"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Incolla qui la tua chiave"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ここにキーを貼り付け"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "여기에 키 붙여넣기"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Lim inn nøkkelen din her"
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Plak je sleutel hier"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wklej tutaj swój klucz"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cole sua chave aqui"
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cole a sua chave aqui"
-          }
-        },
-        "ro" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Lipește cheia aici"
-          }
-        },
-        "sk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sem prilep svoj kľúč"
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Klistra in din nyckel här"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Anahtarınızı buraya yapıştırın"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Вставте свій ключ тут"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "在此粘贴你的密钥"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "在此貼上你的金鑰"
-          }
-        }
-      }
-    },
     "Pause" : {
       "comment" : "Queue control / play-pause: pause",
       "localizations" : {
@@ -67574,179 +66536,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "佇列是空的"
-          }
-        }
-      }
-    },
-    "Re-check" : {
-      "comment" : "Discogs settings: button to re-validate the stored API key",
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "إعادة التحقق"
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Повторна проверка"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Znovu ověřit"
-          }
-        },
-        "da" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kontroller igen"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Re-check"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Erneut prüfen"
-          }
-        },
-        "el" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Επανέλεγχος"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Volver a comprobar"
-          }
-        },
-        "fi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tarkista uudelleen"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Revérifier"
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "בדוק מחדש"
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ponovno provjeri"
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Újraellenőrzés"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ricontrolla"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "再確認"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "다시 확인"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sjekk på nytt"
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Opnieuw controleren"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sprawdź ponownie"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Verificar novamente"
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Verificar de novo"
-          }
-        },
-        "ro" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Reverifică"
-          }
-        },
-        "sk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Overiť znova"
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kontrollera igen"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Yeniden denetle"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Перевірити знову"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "重新校验"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "重新檢查"
           }
         }
       }
@@ -74311,179 +73100,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "儲存失敗：%@"
-          }
-        }
-      }
-    },
-    "Saved. Couldn't validate yet (offline). Will retry." : {
-      "comment" : "Discogs settings: unvalidated key status (offline)",
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "تم الحفظ. تعذّر التحقق بعد (دون اتصال). ستتم إعادة المحاولة."
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Запазено. Все още не може да се потвърди (офлайн). Ще се опита отново."
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Uloženo. Zatím nelze ověřit (offline). Zkusí se znovu."
-          }
-        },
-        "da" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gemt. Kunne ikke valideres endnu (offline). Vi prøver igen."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Saved. Couldn't validate yet (offline). Will retry."
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gespeichert. Konnte noch nicht überprüft werden (offline). Wird erneut versucht."
-          }
-        },
-        "el" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Αποθηκεύτηκε. Δεν ήταν δυνατή η επικύρωση ακόμη (εκτός σύνδεσης). Θα γίνει νέα προσπάθεια."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Guardada. Aún no se pudo validar (sin conexión). Se reintentará."
-          }
-        },
-        "fi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tallennettu. Ei voitu vielä vahvistaa (ei verkkoyhteyttä). Yritetään uudelleen."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Enregistré. Validation impossible pour l'instant (hors ligne). Nouvelle tentative à venir."
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "נשמר. לא ניתן לאמת עדיין (לא מקוון). ינסה שוב."
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Spremljeno. Provjera još nije moguća (izvanmrežno). Pokušat će ponovno."
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mentve. Egyelőre nem sikerült ellenőrizni (offline). Újra megpróbáljuk."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Salvato. Impossibile convalidare ora (offline). Riproverà."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "保存しました。まだ検証できません（オフライン）。再試行します。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "저장됨. 아직 검증할 수 없습니다(오프라인). 다시 시도합니다."
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Lagret. Kunne ikke valideres ennå (frakoblet). Vi prøver på nytt."
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bewaard. Kon nog niet valideren (offline). Probeert opnieuw."
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zapisano. Nie udało się jeszcze zweryfikować (offline). Ponowi próbę."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Salvo. Ainda não foi possível validar (offline). Tentaremos novamente."
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Guardado. Ainda não foi possível validar (offline). Vamos tentar de novo."
-          }
-        },
-        "ro" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Salvat. Nu s-a putut valida încă (offline). Vom reîncerca."
-          }
-        },
-        "sk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Uložené. Zatiaľ sa nedalo overiť (offline). Skúsime to znova."
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sparad. Kunde inte valideras än (offline). Vi försöker igen."
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kaydedildi. Henüz doğrulanamadı (çevrimdışı). Yeniden denenecek."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Збережено. Поки не вдалося підтвердити (офлайн). Буде повторено."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "已保存。暂时无法校验（离线）。将重试。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "已儲存。尚無法驗證（離線）。將重試。"
           }
         }
       }
@@ -84171,179 +82787,6 @@
         }
       }
     },
-    "To connect, [get your free API key](https://www.discogs.com/settings/developers) and paste it above." : {
-      "comment" : "Discogs settings: how to connect (markdown link)",
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "للاتصال، [احصل على مفتاح API المجاني](https://www.discogs.com/settings/developers) والصقه أعلاه."
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "За да се свържете, [вземете безплатния си API ключ](https://www.discogs.com/settings/developers) и го поставете по-горе."
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pro připojení [získejte svůj bezplatný API klíč](https://www.discogs.com/settings/developers) a vložte jej výše."
-          }
-        },
-        "da" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "For at forbinde skal du [hente din gratis API-nøgle](https://www.discogs.com/settings/developers) og indsætte den ovenfor."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "To connect, [get your free API key](https://www.discogs.com/settings/developers) and paste it above."
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zum Verbinden [hol dir deinen kostenlosen API-Schlüssel](https://www.discogs.com/settings/developers) und füge ihn oben ein."
-          }
-        },
-        "el" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Για να συνδεθείτε, [αποκτήστε το δωρεάν κλειδί API σας](https://www.discogs.com/settings/developers) και επικολλήστε το παραπάνω."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Para conectar, [consigue tu clave de API gratuita](https://www.discogs.com/settings/developers) y pégala arriba."
-          }
-        },
-        "fi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Yhdistä [hankkimalla ilmainen API-avaimesi](https://www.discogs.com/settings/developers) ja liittämällä se yllä olevaan kenttään."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pour vous connecter, [obtenez votre clé d'API gratuite](https://www.discogs.com/settings/developers) et collez-la ci-dessus."
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "כדי להתחבר, [השג מפתח API חינמי](https://www.discogs.com/settings/developers) והדבק אותו למעלה."
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Za povezivanje [nabavite svoj besplatni API ključ](https://www.discogs.com/settings/developers) i zalijepite ga iznad."
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "A kapcsolódáshoz [szerezz ingyenes API-kulcsot](https://www.discogs.com/settings/developers), és illeszd be fentre."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Per connetterti, [ottieni la tua chiave API gratuita](https://www.discogs.com/settings/developers) e incollala sopra."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "接続するには、[無料のAPIキーを取得](https://www.discogs.com/settings/developers)して上に貼り付けてください。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "연결하려면 [무료 API 키를 받기](https://www.discogs.com/settings/developers) 후 위에 붙여 넣으세요."
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "For å koble til må du [hente den gratis API-nøkkelen din](https://www.discogs.com/settings/developers) og lime den inn ovenfor."
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Om te verbinden, [haal je gratis API-sleutel op](https://www.discogs.com/settings/developers) en plak deze hierboven."
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aby połączyć, [uzyskaj darmowy klucz API](https://www.discogs.com/settings/developers) i wklej go powyżej."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Para conectar, [obtenha sua chave de API gratuita](https://www.discogs.com/settings/developers) e cole-a acima."
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Para ligar, [obtenha a sua chave de API gratuita](https://www.discogs.com/settings/developers) e cole-a acima."
-          }
-        },
-        "ro" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pentru a te conecta, [obține cheia API gratuită](https://www.discogs.com/settings/developers) și lipește-o mai sus."
-          }
-        },
-        "sk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ak sa chceš pripojiť, [získaj svoj bezplatný kľúč API](https://www.discogs.com/settings/developers) a prilep ho vyššie."
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "För att ansluta, [skaffa din kostnadsfria API-nyckel](https://www.discogs.com/settings/developers) och klistra in den ovan."
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bağlanmak için [ücretsiz API anahtarınızı alın](https://www.discogs.com/settings/developers) ve yukarıya yapıştırın."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Щоб підключитися, [отримайте безкоштовний ключ API](https://www.discogs.com/settings/developers) і вставте його вище."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "如需连接，请[获取你的免费 API 密钥](https://www.discogs.com/settings/developers)并粘贴到上方。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "若要連接，請[取得免費 API 金鑰](https://www.discogs.com/settings/developers)並貼到上方。"
-          }
-        }
-      }
-    },
     "Toggle Queue" : {
       "comment" : "Menu: show/hide the playback queue",
       "localizations" : {
@@ -86420,8 +84863,14 @@
       }
     },
     "Turn off" : {
-      "comment" : "Casting settings: the confirming button that turns casting off",
+      "comment" : "Import settings: confirms switching Search Discogs off",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turn off"
+          }
+        },
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
@@ -86446,12 +84895,6 @@
             "value" : "Slå fra"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Turn off"
-          }
-        },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
@@ -86473,7 +84916,7 @@
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ota pois käytöstä"
+            "value" : "Poista käytöstä"
           }
         },
         "fr" : {
@@ -86545,13 +84988,13 @@
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Desligar"
+            "value" : "Desativar"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Oprește"
+            "value" : "Dezactivează"
           }
         },
         "sk" : {
@@ -150414,6 +148857,1563 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "同時搜尋 MusicBrainz 和 Discogs，可協助 bae 自動辨識你更多的專輯。"
+          }
+        }
+      }
+    },
+    "Your free Discogs key" : {
+      "comment" : "Import settings: placeholder of the Discogs API key field",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your free Discogs key"
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "مفتاح Discogs المجاني الخاص بك"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вашият безплатен ключ за Discogs"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Váš bezplatný klíč Discogs"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Din gratis Discogs-nøgle"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dein kostenloser Discogs-Schlüssel"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Το δωρεάν κλειδί σας για το Discogs"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tu clave gratuita de Discogs"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ilmainen Discogs-avaimesi"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Votre clé Discogs gratuite"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מפתח Discogs החינמי שלך"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vaš besplatni Discogs ključ"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Az ingyenes Discogs-kulcsod"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La tua chiave Discogs gratuita"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無料の Discogs キー"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "무료 Discogs 키"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Din gratis Discogs-nøkkel"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Je gratis Discogs-sleutel"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Twój bezpłatny klucz Discogs"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sua chave gratuita do Discogs"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A tua chave gratuita do Discogs"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cheia ta Discogs gratuită"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Váš bezplatný kľúč Discogs"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Din gratis Discogs-nyckel"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ücretsiz Discogs anahtarınız"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ваш безкоштовний ключ Discogs"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你的免费 Discogs 密钥"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你的免費 Discogs 金鑰"
+          }
+        }
+      }
+    },
+    "Key saved" : {
+      "comment" : "Import settings: second line under Search Discogs once its key works",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Key saved"
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تم حفظ المفتاح"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ключът е запазен"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Klíč je uložen"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nøglen er gemt"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schlüssel gespeichert"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Το κλειδί αποθηκεύτηκε"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clave guardada"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avain tallennettu"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clé enregistrée"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "המפתח נשמר"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ključ je spremljen"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kulcs mentve"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chiave salvata"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "キーを保存しました"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "키가 저장됨"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nøkkelen er lagret"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sleutel bewaard"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Klucz zapisany"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chave salva"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chave guardada"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cheie salvată"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kľúč je uložený"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nyckeln är sparad"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anahtar kaydedildi"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ключ збережено"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "密钥已保存"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "金鑰已儲存"
+          }
+        }
+      }
+    },
+    "Invalid key." : {
+      "comment" : "Import settings: Discogs turned down the key",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invalid key."
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "المفتاح غير صالح."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Невалиден ключ."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neplatný klíč."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ugyldig nøgle."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ungültiger Schlüssel."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Μη έγκυρο κλειδί."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clave no válida."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Virheellinen avain."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clé non valide."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מפתח לא תקין."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neispravan ključ."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Érvénytelen kulcs."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chiave non valida."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "キーが無効です。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "유효하지 않은 키입니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ugyldig nøkkel."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ongeldige sleutel."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nieprawidłowy klucz."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chave inválida."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chave inválida."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cheie nevalidă."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neplatný kľúč."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ogiltig nyckel."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Geçersiz anahtar."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Недійсний ключ."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "密钥无效。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "金鑰無效。"
+          }
+        }
+      }
+    },
+    "Offline. Validation pending." : {
+      "comment" : "Import settings: the Discogs key was saved but Discogs could not be reached to check it",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Offline. Validation pending."
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "غير متصل. التحقق معلّق."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Няма връзка. Проверката предстои."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Offline. Ověření čeká."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Offline. Validering afventer."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Offline. Die Prüfung steht noch aus."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Εκτός σύνδεσης. Η επικύρωση εκκρεμεί."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sin conexión. Validación pendiente."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ei yhteyttä. Vahvistus odottaa."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hors ligne. Validation en attente."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אין חיבור. האימות ממתין."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Izvan mreže. Provjera je na čekanju."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Offline. Az érvényesítés függőben van."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Offline. Convalida in sospeso."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "オフラインです。検証は保留中です。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "오프라인입니다. 확인이 보류 중입니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frakoblet. Validering venter."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Offline. Validatie in afwachting."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Brak połączenia. Weryfikacja oczekuje."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Offline. Validação pendente."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Offline. Validação pendente."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Offline. Validarea este în așteptare."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Offline. Overenie čaká."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Offline. Valideringen väntar."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Çevrimdışı. Doğrulama bekliyor."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Немає зв’язку. Перевірка очікує."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已离线。验证待处理。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已離線。驗證待處理。"
+          }
+        }
+      }
+    },
+    "Turn off Discogs?" : {
+      "comment" : "Import settings: alert title when Search Discogs is switched off with a key saved",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turn off Discogs?"
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "إيقاف Discogs؟"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изключване на Discogs?"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vypnout Discogs?"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slå Discogs fra?"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discogs ausschalten?"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Απενεργοποίηση του Discogs;"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Desactivar Discogs?"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Poistetaanko Discogs käytöstä?"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Désactiver Discogs ?"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לכבות את Discogs?"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Isključiti Discogs?"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kikapcsolod a Discogsot?"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Disattivare Discogs?"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discogs をオフにしますか?"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discogs를 끌까요?"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slå av Discogs?"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discogs uitschakelen?"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wyłączyć Discogs?"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desativar o Discogs?"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desativar o Discogs?"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dezactivezi Discogs?"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vypnúť Discogs?"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stänga av Discogs?"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discogs kapatılsın mı?"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вимкнути Discogs?"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "要关闭 Discogs 吗?"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "要關閉 Discogs 嗎?"
+          }
+        }
+      }
+    },
+    "Your saved key will be cleared." : {
+      "comment" : "Import settings: alert message when Search Discogs is switched off with a key saved",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your saved key will be cleared."
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "سيتم مسح المفتاح المحفوظ."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запазеният ключ ще бъде изчистен."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uložený klíč bude vymazán."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Din gemte nøgle bliver slettet."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dein gespeicherter Schlüssel wird gelöscht."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Το αποθηκευμένο κλειδί σας θα διαγραφεί."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se borrará tu clave guardada."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tallennettu avaimesi tyhjennetään."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Votre clé enregistrée sera effacée."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "המפתח השמור שלך יימחק."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vaš spremljeni ključ bit će izbrisan."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A mentett kulcsod törlődik."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La chiave salvata verrà cancellata."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保存したキーは消去されます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "저장된 키가 삭제됩니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Den lagrede nøkkelen din blir slettet."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Je bewaarde sleutel wordt gewist."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zapisany klucz zostanie usunięty."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sua chave salva será apagada."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A tua chave guardada será apagada."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cheia ta salvată va fi ștearsă."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uložený kľúč bude vymazaný."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Din sparade nyckel rensas."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kayıtlı anahtarınız silinecek."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Збережений ключ буде видалено."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已保存的密钥将被清除。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已儲存的金鑰將被清除。"
+          }
+        }
+      }
+    },
+    "About Discogs" : {
+      "comment" : "Import settings: accessibility label of the info button after Search Discogs",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "About Discogs"
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "حول Discogs"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Относно Discogs"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O službě Discogs"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Om Discogs"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Über Discogs"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Σχετικά με το Discogs"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Acerca de Discogs"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tietoa Discogsista"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "À propos de Discogs"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אודות Discogs"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Discogsu"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A Discogsról"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Informazioni su Discogs"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discogs について"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discogs 정보"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Om Discogs"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Over Discogs"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Discogs"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sobre o Discogs"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sobre o Discogs"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Despre Discogs"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O službe Discogs"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Om Discogs"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discogs hakkında"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Про Discogs"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "关于 Discogs"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "關於 Discogs"
+          }
+        }
+      }
+    },
+    "[Discogs](https://www.discogs.com) is a music database with detailed release info. To connect, [get your free API key](https://www.discogs.com/settings/developers)." : {
+      "comment" : "Import settings: popover after Search Discogs; Discogs and the API key are links",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[Discogs](https://www.discogs.com) is a music database with detailed release info. To connect, [get your free API key](https://www.discogs.com/settings/developers)."
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[Discogs](https://www.discogs.com) قاعدة بيانات موسيقية تضم معلومات مفصلة عن الإصدارات. للاتصال، [احصل على مفتاح API المجاني](https://www.discogs.com/settings/developers)."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[Discogs](https://www.discogs.com) е музикална база данни с подробна информация за изданията. За да се свържете, [вземете безплатния си API ключ](https://www.discogs.com/settings/developers)."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[Discogs](https://www.discogs.com) je hudební databáze s podrobnými informacemi o vydáních. Pro připojení [získejte svůj bezplatný klíč API](https://www.discogs.com/settings/developers)."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[Discogs](https://www.discogs.com) er en musikdatabase med detaljerede udgivelsesoplysninger. For at oprette forbindelse skal du [hente din gratis API-nøgle](https://www.discogs.com/settings/developers)."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[Discogs](https://www.discogs.com) ist eine Musikdatenbank mit detaillierten Angaben zu Veröffentlichungen. Zum Verbinden [hol dir deinen kostenlosen API-Schlüssel](https://www.discogs.com/settings/developers)."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Το [Discogs](https://www.discogs.com) είναι μια μουσική βάση δεδομένων με αναλυτικές πληροφορίες για εκδόσεις. Για να συνδεθείτε, [αποκτήστε το δωρεάν κλειδί API](https://www.discogs.com/settings/developers)."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[Discogs](https://www.discogs.com) es una base de datos musical con información detallada de ediciones. Para conectarlo, [consigue tu clave de API gratuita](https://www.discogs.com/settings/developers)."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[Discogs](https://www.discogs.com) on musiikkitietokanta, jossa on yksityiskohtaiset julkaisutiedot. Yhdistä [hankkimalla ilmainen API-avaimesi](https://www.discogs.com/settings/developers)."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[Discogs](https://www.discogs.com) est une base de données musicale avec des informations détaillées sur les éditions. Pour vous connecter, [obtenez votre clé d’API gratuite](https://www.discogs.com/settings/developers)."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[Discogs](https://www.discogs.com) הוא מאגר מוזיקה עם מידע מפורט על הוצאות. כדי להתחבר, [קבל את מפתח ה-API החינמי שלך](https://www.discogs.com/settings/developers)."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[Discogs](https://www.discogs.com) je glazbena baza podataka s detaljnim podacima o izdanjima. Za povezivanje [nabavite svoj besplatni API ključ](https://www.discogs.com/settings/developers)."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A [Discogs](https://www.discogs.com) egy zenei adatbázis részletes kiadási információkkal. A csatlakozáshoz [szerezd meg az ingyenes API-kulcsodat](https://www.discogs.com/settings/developers)."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[Discogs](https://www.discogs.com) è un database musicale con informazioni dettagliate sulle edizioni. Per collegarlo, [ottieni la tua chiave API gratuita](https://www.discogs.com/settings/developers)."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[Discogs](https://www.discogs.com) は、リリースの詳細情報を備えた音楽データベースです。接続するには、[無料の API キーを取得](https://www.discogs.com/settings/developers)してください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[Discogs](https://www.discogs.com)는 발매 정보가 자세한 음악 데이터베이스입니다. 연결하려면 [무료 API 키를 받으세요](https://www.discogs.com/settings/developers)."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[Discogs](https://www.discogs.com) er en musikkdatabase med detaljert informasjon om utgivelser. For å koble til, [hent din gratis API-nøkkel](https://www.discogs.com/settings/developers)."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[Discogs](https://www.discogs.com) is een muziekdatabase met gedetailleerde uitgave-informatie. Om te verbinden, [haal je gratis API-sleutel op](https://www.discogs.com/settings/developers)."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[Discogs](https://www.discogs.com) to baza danych muzycznych ze szczegółowymi informacjami o wydaniach. Aby się połączyć, [zdobądź bezpłatny klucz API](https://www.discogs.com/settings/developers)."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O [Discogs](https://www.discogs.com) é um banco de dados musical com informações detalhadas de lançamentos. Para conectar, [obtenha sua chave de API gratuita](https://www.discogs.com/settings/developers)."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O [Discogs](https://www.discogs.com) é uma base de dados musical com informações detalhadas de edições. Para ligar, [obtém a tua chave de API gratuita](https://www.discogs.com/settings/developers)."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[Discogs](https://www.discogs.com) este o bază de date muzicală cu informații detaliate despre ediții. Pentru a te conecta, [obține-ți cheia API gratuită](https://www.discogs.com/settings/developers)."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[Discogs](https://www.discogs.com) je hudobná databáza s podrobnými informáciami o vydaniach. Na pripojenie [získajte svoj bezplatný kľúč API](https://www.discogs.com/settings/developers)."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[Discogs](https://www.discogs.com) är en musikdatabas med detaljerad information om utgåvor. För att ansluta, [skaffa din gratis API-nyckel](https://www.discogs.com/settings/developers)."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[Discogs](https://www.discogs.com), yayınlar hakkında ayrıntılı bilgi içeren bir müzik veritabanıdır. Bağlanmak için [ücretsiz API anahtarınızı alın](https://www.discogs.com/settings/developers)."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[Discogs](https://www.discogs.com) — це музична база даних з докладними відомостями про видання. Щоб підключитися, [отримайте безкоштовний ключ API](https://www.discogs.com/settings/developers)."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[Discogs](https://www.discogs.com) 是一个包含详细发行信息的音乐数据库。要连接，请[获取你的免费 API 密钥](https://www.discogs.com/settings/developers)。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[Discogs](https://www.discogs.com) 是一個包含詳細發行資訊的音樂資料庫。若要連接，請[取得你的免費 API 金鑰](https://www.discogs.com/settings/developers)。"
+          }
+        }
+      }
+    },
+    "Your key is kept in this Mac’s keychain." : {
+      "comment" : "Import settings: last line of the popover after Search Discogs",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your key is kept in this Mac’s keychain."
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يُحفظ مفتاحك في سلسلة مفاتيح هذا الـ Mac."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ключът се пази в ключодържателя на този Mac."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Klíč je uložen v klíčence tohoto Macu."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Din nøgle opbevares i denne Macs nøglering."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dein Schlüssel wird im Schlüsselbund dieses Mac aufbewahrt."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Το κλειδί σας φυλάσσεται στην Κλειδοθήκη αυτού του Mac."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tu clave se guarda en el llavero de este Mac."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avaimesi säilytetään tämän Macin avainnipussa."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Votre clé est conservée dans le trousseau de ce Mac."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "המפתח נשמר בצרור המפתחות של ה-Mac הזה."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vaš se ključ čuva u privjesku ključeva ovog Maca."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A kulcsod a Mac kulcstartójában van tárolva."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La chiave viene conservata nel portachiavi di questo Mac."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "キーはこの Mac のキーチェーンに保管されます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "키는 이 Mac의 키체인에 보관됩니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nøkkelen din lagres i nøkkelringen på denne Macen."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Je sleutel wordt bewaard in de sleutelhanger van deze Mac."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Klucz jest przechowywany w pęku kluczy tego Maca."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sua chave fica guardada no chaveiro deste Mac."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A tua chave é guardada na keychain deste Mac."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cheia ta este păstrată în Keychain-ul acestui Mac."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Váš kľúč sa uchováva v kľúčenke tohto Macu."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Din nyckel sparas i nyckelringen på den här Macen."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anahtarınız bu Mac'in anahtar zincirinde saklanır."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ключ зберігається у в’язці ключів цього Mac."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你的密钥保存在这台 Mac 的钥匙串中。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你的金鑰保存在這台 Mac 的鑰匙圈中。"
           }
         }
       }

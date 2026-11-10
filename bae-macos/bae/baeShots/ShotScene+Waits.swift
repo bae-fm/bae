@@ -34,7 +34,7 @@ extension ShotScene {
         ) {
             ShotStage(
                 DiscogsKeyPreview(
-                    status: .unvalidated,
+                    status: .notConfigured,
                     draft: "abcdef123456",
                     isValidating: true
                 )

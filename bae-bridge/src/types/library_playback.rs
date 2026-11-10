@@ -16,11 +16,8 @@ pub enum BridgeDiscogsTokenStatus {
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeDiscogsSaveOutcome {
     Valid,
-    /// The key is stored but Discogs could not be asked about it; `detail`
-    /// is why, untranslated, for the details disclosure.
-    Unvalidated {
-        detail: String,
-    },
+    /// The key is stored but Discogs could not be reached to check it.
+    Unvalidated,
     Rejected,
 }
 
@@ -30,7 +27,7 @@ impl BridgeDiscogsSaveOutcome {
         use bae_catalogs::providers::DiscogsCheck;
         match check {
             DiscogsCheck::Valid => Self::Valid,
-            DiscogsCheck::Unchecked(error) => Self::Unvalidated { detail: error.to_string() },
+            DiscogsCheck::Offline(_) => Self::Unvalidated,
             DiscogsCheck::Rejected => Self::Rejected,
         }
     }

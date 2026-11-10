@@ -49,8 +49,7 @@
                 BridgeLookupCatalogSetting(
                     catalog: catalog,
                     availability: availability,
-                    canChange: availability != .notConfigured
-                        && !(availability == .on && onlyAsked)
+                    canChange: !(availability == .on && onlyAsked)
                 )
             }
             return [
@@ -79,8 +78,11 @@
             discogsUsable: Bool = true,
             musicBrainz: BridgeSourceAvailability = .on,
             discogs: BridgeSourceAvailability? = nil,
+            discogsTokenStatus: BridgeDiscogsTokenStatus? = nil,
             storage: BridgeStorageLocation? = nil
         ) -> ConfigStore {
+            let tokenStatus =
+                discogsTokenStatus ?? (discogsUsable ? .valid : .notConfigured)
             let catalogs = lookupCatalogs(
                 musicBrainz: musicBrainz,
                 discogs: discogs ?? (discogsUsable ? .on : .notConfigured)
@@ -120,9 +122,9 @@
                             username: "",
                             bindAddress: "127.0.0.1"
                         ),
-                        discogsTokenStatus: discogsUsable
-                            ? .valid : .notConfigured,
-                        discogsUsable: discogsUsable
+                        discogsTokenStatus: tokenStatus,
+                        discogsUsable: tokenStatus == .valid
+                            || tokenStatus == .unvalidated
                     )
                 ),
                 storage: storage

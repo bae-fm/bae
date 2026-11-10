@@ -11,10 +11,8 @@ pub enum SourceAvailability {
     On,
     /// Switched off by the person.
     Off,
-    /// The source needs a credential this library does not hold, so it cannot
-    /// be asked whatever the preference says. The preference is kept
-    /// underneath: supplying the credential restores the choice the person
-    /// last made.
+    /// Switched on, but the source needs a credential this library does not
+    /// hold, so it cannot be asked until one is supplied.
     NotConfigured,
 }
 

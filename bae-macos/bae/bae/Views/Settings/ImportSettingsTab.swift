@@ -11,6 +11,11 @@ struct ImportSettingsTab: View {
     @Environment(UiStore.self)
     private var uiStore
 
+    /// Set while the person is asked to confirm turning Discogs off, which
+    /// clears its saved key.
+    @State
+    private var confirmsTurningDiscogsOff = false
+
     var body: some View {
         Form {
             Section {
@@ -22,11 +27,11 @@ struct ImportSettingsTab: View {
                 ForEach(sourceSwitches.beforeKey, id: \.catalog) { setting in
                     sourceToggle(setting)
                 }
-                if let afterKey = sourceSwitches.afterKey {
-                    DiscogsKeySection()
-                    ForEach(afterKey, id: \.catalog) { setting in
-                        sourceToggle(setting)
-                    }
+                if let discogs = sourceSwitches.discogs {
+                    DiscogsKeySection(isEnabled: isOn(discogs))
+                }
+                ForEach(sourceSwitches.afterKey, id: \.catalog) { setting in
+                    sourceToggle(setting)
                 }
             } footer: {
                 Text(
@@ -47,55 +52,113 @@ struct ImportSettingsTab: View {
             }
         }
         .formStyle(.grouped)
+        .alert("Turn off Discogs?", isPresented: $confirmsTurningDiscogsOff) {
+            Button("Turn off") { setSource(.discogs, enabled: false) }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Your saved key will be cleared.")
+        }
     }
 
-    /// The source switches split after the Discogs switch, where its key row
-    /// goes; `afterKey` is nil when there is no Discogs source.
-    private var sourceSwitches:
-        (
-            beforeKey: [BridgeLookupCatalogSetting],
-            afterKey: [BridgeLookupCatalogSetting]?
-        )
-    {
+    /// The source switches split after the Discogs switch, where its key rows
+    /// go; with no Discogs source every switch is `beforeKey` and `discogs` is
+    /// nil.
+    private struct SourceSwitches {
+        let beforeKey: [BridgeLookupCatalogSetting]
+        let discogs: BridgeLookupCatalogSetting?
+        let afterKey: [BridgeLookupCatalogSetting]
+    }
+
+    private var sourceSwitches: SourceSwitches {
         let settings = configStore.config.lookupCatalogs
         guard
             let discogs = settings.firstIndex(where: { $0.catalog == .discogs })
         else {
-            return (settings, nil)
+            return SourceSwitches(
+                beforeKey: settings,
+                discogs: nil,
+                afterKey: []
+            )
         }
-        return (
-            Array(settings[...discogs]),
-            Array(settings[settings.index(after: discogs)...])
+        return SourceSwitches(
+            beforeKey: Array(settings[...discogs]),
+            discogs: settings[discogs],
+            afterKey: Array(settings[settings.index(after: discogs)...])
         )
     }
 
-    /// One source's checkbox; core decides whether it can be moved.
+    /// Whether the person has the source switched on, key or no key.
+    private func isOn(_ setting: BridgeLookupCatalogSetting) -> Bool {
+        setting.availability != .off
+    }
+
+    private func setSource(_ catalog: BridgeLookupCatalog, enabled: Bool) {
+        Task {
+            do {
+                try await importer.setMetadataSourceEnabled(catalog, enabled)
+            }
+            catch {
+                uiStore.showError(error)
+            }
+        }
+    }
+
+    /// One source's switch; core decides whether it can be moved.
+    @ViewBuilder
     private func sourceToggle(
         _ setting: BridgeLookupCatalogSetting
     ) -> some View {
-        Toggle(
-            String(
-                localized:
-                    "Search \(bridgeLookupCatalogName(catalog: setting.catalog))"
-            ),
+        if setting.catalog == .discogs {
+            discogsToggle(setting)
+        }
+        else {
+            plainToggle(setting)
+        }
+    }
+
+    private func plainToggle(
+        _ setting: BridgeLookupCatalogSetting
+    ) -> some View {
+        SettingToggleRow(
+            title: sourceTitle(setting.catalog),
             isOn: Binding(
-                get: { setting.availability == .on },
+                get: { isOn(setting) },
+                set: { setSource(setting.catalog, enabled: $0) }
+            ),
+            canChange: setting.canChange
+        )
+    }
+
+    /// The Discogs switch: always usable without a key. Turning it off with
+    /// a key saved asks first, since that clears the key.
+    private func discogsToggle(
+        _ setting: BridgeLookupCatalogSetting
+    ) -> some View {
+        let status = configStore.config.discogsTokenStatus
+        return SettingToggleRow(
+            title: sourceTitle(setting.catalog),
+            note: isOn(setting) && status == .valid ? "Key saved" : nil,
+            isOn: Binding(
+                get: { isOn(setting) },
                 set: { enabled in
-                    Task {
-                        do {
-                            try await importer.setMetadataSourceEnabled(
-                                setting.catalog,
-                                enabled
-                            )
-                        }
-                        catch {
-                            uiStore.showError(error)
-                        }
+                    if enabled || status == .notConfigured {
+                        setSource(setting.catalog, enabled: enabled)
+                    }
+                    else {
+                        confirmsTurningDiscogsOff = true
                     }
                 }
-            )
-        )
-        .disabled(!setting.canChange)
+            ),
+            canChange: setting.canChange
+        ) {
+            DiscogsHelpButton()
+        }
+    }
+
+    private func sourceTitle(_ catalog: BridgeLookupCatalog)
+        -> LocalizedStringKey
+    {
+        "Search \(bridgeLookupCatalogName(catalog: catalog))"
     }
 
     private var importWhenIdentified: Binding<Bool> {

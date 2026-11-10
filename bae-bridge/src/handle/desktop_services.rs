@@ -20,13 +20,6 @@ forward! { async this => {
         this.services.set_mcp_token(token).await?;
         Ok(())
     }
-
-    fn remove_discogs_token() -> () {
-        this.services
-            .import_remove_discogs_token()
-            .await
-            .map_err(BridgeError::config)
-    }
 } }
 
 forward! { async this => {

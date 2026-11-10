@@ -205,6 +205,49 @@ async fn a_revalidation_answered_after_the_key_changed_leaves_the_new_key_alone(
     assert_eq!(stored_validation(&db).await, Some(DiscogsValidation::Valid));
 }
 
+/// Discogs answering a submitted key with something that is no verdict on it
+/// stores nothing: whoever submitted it is told and submits it again.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_key_discogs_gives_no_verdict_on_is_not_stored() {
+    let host = bae_util::test_host::FakeHost::start().await;
+    let (sessions, db, _temp_dir) = sessions_over(&host, Arc::default()).await;
+    host.route("/database/search", 400, "{}");
+
+    let error = sessions.save_discogs_key("the-key").await.unwrap_err();
+
+    assert!(matches!(error, DiscogsKeyError::NoVerdict(_)), "{error}");
+    assert_eq!(stored_validation(&db).await, None);
+    assert_eq!(sessions.stored_discogs_key().await.unwrap(), None);
+}
+
+/// A submitted key Discogs turns down is not stored either, and says so.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_key_discogs_rejects_is_not_stored() {
+    let host = bae_util::test_host::FakeHost::start().await;
+    let (sessions, db, _temp_dir) = sessions_over(&host, Arc::default()).await;
+    host.route("/database/search", 401, REJECTED);
+
+    let check = sessions.save_discogs_key("the-key").await.unwrap();
+
+    assert!(matches!(check, DiscogsCheck::Rejected), "{check:?}");
+    assert_eq!(stored_validation(&db).await, None);
+}
+
+/// A re-check Discogs gives no verdict on fails and leaves the stored key
+/// unvalidated.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_recheck_with_no_verdict_fails_and_leaves_the_key_unvalidated() {
+    let host = bae_util::test_host::FakeHost::start().await;
+    let (sessions, db, _temp_dir) = sessions_over(&host, Arc::default()).await;
+    sessions.store_discogs_key("the-key", DiscogsValidation::Unvalidated).await.unwrap();
+    host.route("/database/search", 400, "{}");
+
+    let error = sessions.revalidate_discogs_key().await.unwrap_err();
+
+    assert!(matches!(error, DiscogsKeyError::NoVerdict(_)), "{error}");
+    assert_eq!(stored_validation(&db).await, Some(DiscogsValidation::Unvalidated));
+}
+
 /// What a call made with a replaced key proves is recorded nowhere: a 401 a
 /// client of the old key hears after the key changed leaves the new key as
 /// its store recorded it.

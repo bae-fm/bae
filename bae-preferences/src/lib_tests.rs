@@ -106,10 +106,10 @@ fn lookup_catalog_preferences_are_total_over_the_asked_catalogs() {
 }
 
 /// The availability list folds two questions that are not the same — whether
-/// this library holds what a source needs, and whether the person wants it
-/// asked — into the one answer everything that asks the sources together
-/// reads. Unreachable beats switched-off, so a source with no credential says
-/// which of the two to fix while the person's switch waits underneath it.
+/// the person wants a source asked, and whether this library holds what it
+/// needs — into the one answer everything that asks the sources together
+/// reads. The switch comes first: a source switched off is off whatever it
+/// holds, and one switched on without its credential says it needs one.
 #[test]
 fn metadata_sources_fold_the_credential_and_the_switch() {
     use crate::SourceAvailability;
@@ -126,22 +126,59 @@ fn metadata_sources_fold_the_credential_and_the_switch() {
             (LookupCatalog::MusicBrainz, SourceAvailability::On),
             (LookupCatalog::Discogs, SourceAvailability::NotConfigured),
         ],
-        "a fresh library has no Discogs key, so it cannot ask Discogs"
+        "a fresh library has Discogs switched on and no key, so it needs one"
     );
+
+    prefs.identification.catalogs.set(LookupCatalog::Discogs, false);
+    assert_eq!(
+        prefs.metadata_sources()[1].state,
+        SourceAvailability::Off,
+        "switched off, Discogs is off, key or no key"
+    );
+    prefs.identification.catalogs.set(LookupCatalog::Discogs, true);
 
     prefs.discogs = Some(DiscogsValidation::Valid);
     prefs.identification.catalogs.set(LookupCatalog::Discogs, false);
     assert_eq!(
         prefs.metadata_sources()[1].state,
         SourceAvailability::Off,
-        "with a key, the switch is what answers"
+        "with a key, a switch that is off is off"
     );
 
+    prefs.identification.catalogs.set(LookupCatalog::Discogs, true);
     prefs.discogs = Some(DiscogsValidation::Rejected);
     assert_eq!(
         prefs.metadata_sources()[1].state,
         SourceAvailability::NotConfigured,
-        "a rejected key is no key, whatever the switch says"
+        "a rejected key is no key: switched on, it needs another"
+    );
+}
+
+/// Search Discogs is a switch like any other: the person can move it without
+/// a key. Only the last source still asked is held, since switching it off
+/// would leave nothing to ask.
+#[test]
+fn a_switch_can_change_unless_it_is_the_last_source_asked() {
+    use bae_catalogs::catalog::LookupCatalog;
+
+    let mut prefs = Preferences::default();
+    let can_change = |prefs: &Preferences| {
+        prefs
+            .lookup_catalog_settings()
+            .into_iter()
+            .map(|setting| (setting.availability.catalog, setting.can_change))
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(
+        can_change(&prefs),
+        vec![(LookupCatalog::MusicBrainz, false), (LookupCatalog::Discogs, true)],
+        "without a key MusicBrainz is the only source asked, and Discogs still moves"
+    );
+
+    prefs.discogs = Some(DiscogsValidation::Valid);
+    assert_eq!(
+        can_change(&prefs),
+        vec![(LookupCatalog::MusicBrainz, true), (LookupCatalog::Discogs, true)]
     );
 }
 
@@ -225,35 +262,22 @@ fn side_pause_countdown_duration_is_the_offered_length() {
 }
 
 /// A key is stored as Discogs' check of it left it: rejected only on a 401,
-/// unvalidated whenever Discogs could not confirm it.
+/// unvalidated only when Discogs could not be reached.
 #[cfg(desktop)]
 #[test]
 fn validation_folds_validate_token_outcomes() {
     use bae_catalogs::discogs::client::DiscogsError;
     use bae_catalogs::providers::DiscogsCheck;
 
-    assert_eq!(DiscogsValidation::of(&DiscogsCheck::of(Ok(()))), DiscogsValidation::Valid);
+    let valid = DiscogsCheck::of(Ok(())).unwrap();
+    assert_eq!(DiscogsValidation::of(&valid), DiscogsValidation::Valid);
     // A 401 is the one outcome that rejects the stored key.
-    assert_eq!(
-        DiscogsValidation::of(&DiscogsCheck::of(Err(DiscogsError::InvalidApiKey))),
-        DiscogsValidation::Rejected
-    );
-    // Anything that merely fails to confirm the key leaves it unvalidated
-    // to retry — never rejected — and keeps why.
-    for couldnt_confirm in [
-        DiscogsError::Provider {
-            status: reqwest::StatusCode::SERVICE_UNAVAILABLE,
-            told_wait: None,
-        },
-        DiscogsError::NotFound,
-        DiscogsError::Serialization(serde_json::from_str::<i32>("nope").unwrap_err()),
-    ] {
-        let reason = couldnt_confirm.to_string();
-        let check = DiscogsCheck::of(Err(couldnt_confirm));
-        assert_eq!(DiscogsValidation::of(&check), DiscogsValidation::Unvalidated);
-        let DiscogsCheck::Unchecked(kept) = check else {
-            panic!("a check Discogs could not answer keeps its failure");
-        };
-        assert_eq!(kept.to_string(), reason);
-    }
+    let rejected = DiscogsCheck::of(Err(DiscogsError::InvalidApiKey)).unwrap();
+    assert_eq!(DiscogsValidation::of(&rejected), DiscogsValidation::Rejected);
+    // The fold reads the variant; the cause it keeps is only for logs.
+    let offline = DiscogsCheck::Offline(DiscogsError::Provider {
+        status: reqwest::StatusCode::SERVICE_UNAVAILABLE,
+        told_wait: None,
+    });
+    assert_eq!(DiscogsValidation::of(&offline), DiscogsValidation::Unvalidated);
 }

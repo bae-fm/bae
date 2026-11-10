@@ -5,13 +5,16 @@ import os.log
 
 private let logger = Logger.bae("DiscogsKey")
 
-/// The Discogs key row under the Discogs source switch in Import settings: the
-/// stored key's state and the actions that change it.
+/// The Discogs key under the Search Discogs switch in Import settings: the
+/// field that takes it, and what Discogs said of the key saved.
 struct DiscogsKeySection: View {
     @Environment(Discogs.self)
     var discogs
     @Environment(ConfigStore.self)
     var configStore
+
+    /// Whether Search Discogs is switched on; off, the field is greyed.
+    let isEnabled: Bool
 
     /// The key being typed, seeded from the keyring and kept after a rejected
     /// save so a typo can be fixed.
@@ -20,8 +23,11 @@ struct DiscogsKeySection: View {
     /// The in-flight save or re-check.
     @State
     private var saveTask: Task<Void, Never>?
-    /// The last save, re-check, or remove error, including Discogs rejecting
-    /// the typed key.
+    /// Whether Discogs turned down the key last saved. A rejected key is not
+    /// stored, so core's status does not say so.
+    @State
+    private var wasRejected = false
+    /// The last save or re-check error.
     @State
     private var saveError: DisplayError?
     /// Set when the stored key can't be read back for display.
@@ -29,21 +35,28 @@ struct DiscogsKeySection: View {
     private var readError: DisplayError?
 
     var body: some View {
-        DiscogsSettingsContent(
+        let content = DiscogsSettingsContent(
             draft: $draft,
             status: configStore.config.discogsTokenStatus,
+            isEnabled: isEnabled,
             isValidating: saveTask != nil,
+            wasRejected: wasRejected,
             saveError: saveError,
             readError: readError,
             onSave: { saveToken() },
             onRecheck: { revalidate() },
-            onRemove: { removeToken() },
         )
+        Group {
+            if !content.isBlank {
+                content
+            }
+        }
         .task {
             await seedDraftFromStoredKey()
             // Core does nothing unless the stored key is unvalidated.
             revalidate()
         }
+        .onChange(of: draft) { wasRejected = false }
         .onDisappear { saveTask?.cancel() }
     }
 
@@ -78,6 +91,7 @@ struct DiscogsKeySection: View {
         saveTask?.cancel()
         saveError = nil
         readError = nil
+        wasRejected = false
         let token = draft
         let discogs = discogs
         saveTask = Task {
@@ -85,21 +99,8 @@ struct DiscogsKeySection: View {
             do {
                 switch try await discogs.saveDiscogsToken(token) {
                 case .rejected:
-                    saveError = DisplayError(
-                        line: String(
-                            localized:
-                                "Discogs rejected this key. Check it and save again."
-                        )
-                    )
-                case .unvalidated(let detail):
-                    // Stored, but unchecked: say why under the status row.
-                    saveError = DisplayError(
-                        line: String(
-                            localized: "Couldn't check the key with Discogs."
-                        ),
-                        detail: detail
-                    )
-                case .valid:
+                    wasRejected = true
+                case .unvalidated, .valid:
                     // The status reaches the row through the config event.
                     break
                 }
@@ -140,47 +141,67 @@ struct DiscogsKeySection: View {
             }
         }
     }
-
-    private func removeToken() {
-        saveError = nil
-        readError = nil
-        Task {
-            do {
-                try await discogs.removeDiscogsToken()
-                draft = ""
-            }
-            catch {
-                saveError = DisplayError(error)?
-                    .rewording { line in
-                        String(
-                            localized:
-                                "Couldn't remove the Discogs key: \(line)"
-                        )
-                    }
-            }
-        }
-    }
 }
 
 // MARK: - DiscogsSettingsContent (pure leaf)
 
-/// One Form row: the state of the stored key with the buttons that state
-/// offers, the check with Discogs while it runs, any error from the last
-/// action, and what the key is for.
+/// The key's rows under the Discogs switch: the field and Save, or what Discogs
+/// said of the saved key, the check with Discogs while it runs, and any error
+/// from the last action.
 struct DiscogsSettingsContent: View {
     @Binding
     var draft: String
     let status: BridgeDiscogsTokenStatus
+    /// Whether Search Discogs is switched on.
+    let isEnabled: Bool
     let isValidating: Bool
+    /// Whether Discogs turned down the key just saved, which core did not store.
+    let wasRejected: Bool
     let saveError: DisplayError?
     let readError: DisplayError?
     let onSave: () -> Void
     let onRecheck: () -> Void
-    let onRemove: () -> Void
+
+    /// Nothing to show: a working key, which the switch's row says, with no
+    /// check running and nothing gone wrong.
+    var isBlank: Bool {
+        isEnabled && status == .valid && !isValidating && !wasRejected
+            && saveError == nil && readError == nil
+    }
+
+    private var takesKey: Bool {
+        !isEnabled || status == .notConfigured || status == .rejected
+    }
+
+    private var isInvalid: Bool {
+        isEnabled && (status == .rejected || wasRejected)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
-            statusRow
+            if takesKey {
+                keyInput
+            }
+            if isInvalid {
+                Notice(
+                    title: String(localized: "Invalid key."),
+                    advice: nil,
+                    error: nil
+                )
+            }
+            if isEnabled, status == .unvalidated {
+                Notice(
+                    title: String(localized: "Offline. Validation pending."),
+                    advice: nil,
+                    error: nil,
+                    tone: .warning,
+                    action: ErrorAction(
+                        "Check now",
+                        isDisabled: isValidating,
+                        perform: onRecheck
+                    )
+                )
+            }
             if isValidating {
                 WaitingIndicator(
                     Text(
@@ -196,73 +217,28 @@ struct DiscogsSettingsContent: View {
             if let readError {
                 Notice(error: readError)
             }
-            VStack(alignment: .leading, spacing: ThemeSpace.related) {
-                Text(
-                    "[Discogs](https://www.discogs.com) is a music database with detailed release info: labels, catalog numbers, pressing variants, and more. bae can use it as a metadata source when importing albums."
-                )
-                Text(
-                    "To connect, [get your free API key](https://www.discogs.com/settings/developers) and paste it above."
-                )
-            }
-            .themeText(.body)
-            .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    @ViewBuilder
-    private var statusRow: some View {
-        switch status {
-        case .notConfigured, .rejected:
-            keyInput
-        case .valid:
-            connectedRow
-        case .unvalidated:
-            unvalidatedRow
-        }
-    }
-
-    /// Key field and Save, for the not-configured and rejected states. The
-    /// field takes the keyboard as it shows.
+    /// Key field and Save. The field takes the keyboard as it shows, and as
+    /// the switch turns it on.
     private var keyInput: some View {
         HStack(spacing: ThemeSpace.compact) {
             KeyTextField(
                 text: $draft,
                 label: String(localized: "API key"),
-                prompt: String(localized: "Paste your key here")
+                prompt: String(localized: "Your free Discogs key")
             )
             Button("Save", action: onSave)
                 .disabled(draft.isEmpty || isValidating)
         }
-    }
-
-    private var connectedRow: some View {
-        HStack(spacing: ThemeSpace.compact) {
-            Image(systemName: "checkmark.circle.fill")
-                .foregroundStyle(Theme.success)
-            Text("Connected")
-                .foregroundStyle(.secondary)
-            Spacer()
-            Button("Remove", action: onRemove)
-        }
-    }
-
-    private var unvalidatedRow: some View {
-        HStack(spacing: ThemeSpace.compact) {
-            Image(systemName: "exclamationmark.circle.fill")
-                .foregroundStyle(Theme.warning)
-            Text("Saved. Couldn't validate yet (offline). Will retry.")
-                .foregroundStyle(.secondary)
-            Spacer()
-            Button("Re-check", action: onRecheck)
-                .disabled(isValidating)
-            Button("Remove", action: onRemove)
-        }
+        .disabled(!isEnabled)
     }
 }
 
 /// The Discogs key's field: plain text, which takes the keyboard as soon as
-/// it is in a window.
+/// it is in a window while enabled, and again each time it is enabled.
 private struct KeyTextField: NSViewRepresentable {
     @Binding
     var text: String
@@ -281,12 +257,20 @@ private struct KeyTextField: NSViewRepresentable {
         field.cell?.isScrollable = true
         field.stringValue = text
         field.focus = context.coordinator.focus
-        context.coordinator.focus.request()
+        field.isEnabled = context.environment.isEnabled
+        if field.isEnabled {
+            context.coordinator.focus.request()
+        }
         return field
     }
 
     func updateNSView(_ field: FocusingTextField, context: Context) {
         context.coordinator.text = $text
+        let enabled = context.environment.isEnabled
+        if enabled, !field.isEnabled {
+            context.coordinator.focus.request()
+        }
+        field.isEnabled = enabled
         if field.stringValue != text {
             field.stringValue = text
         }
@@ -317,11 +301,13 @@ private struct KeyTextField: NSViewRepresentable {
 #if DEBUG
     // MARK: - Previews
 
-    /// The key as the Sources section draws it: one row of a grouped Form.
+    /// The key as the Sources box draws it: the rows under the Discogs switch.
     struct DiscogsKeyPreview: View {
         let status: BridgeDiscogsTokenStatus
+        var isEnabled = true
         var draft: String = ""
         var isValidating = false
+        var wasRejected = false
         var saveError: DisplayError?
 
         var body: some View {
@@ -330,12 +316,13 @@ private struct KeyTextField: NSViewRepresentable {
                     DiscogsSettingsContent(
                         draft: .constant(draft),
                         status: status,
+                        isEnabled: isEnabled,
                         isValidating: isValidating,
+                        wasRejected: wasRejected,
                         saveError: saveError,
                         readError: nil,
                         onSave: {},
                         onRecheck: {},
-                        onRemove: {},
                     )
                 }
             }
@@ -344,33 +331,27 @@ private struct KeyTextField: NSViewRepresentable {
         }
     }
 
-    #Preview("No key") {
+    #Preview("Off") {
+        DiscogsKeyPreview(status: .notConfigured, isEnabled: false)
+    }
+
+    #Preview("On, no key") {
         DiscogsKeyPreview(status: .notConfigured)
     }
 
-    #Preview("Valid") {
-        DiscogsKeyPreview(status: .valid, draft: "abcdef123456")
-    }
-
-    #Preview("Unvalidated") {
+    #Preview("Offline") {
         DiscogsKeyPreview(status: .unvalidated, draft: "abcdef123456")
     }
 
     #Preview("Checking") {
         DiscogsKeyPreview(
-            status: .unvalidated,
+            status: .notConfigured,
             draft: "abcdef123456",
             isValidating: true
         )
     }
 
-    #Preview("Rejected") {
-        DiscogsKeyPreview(
-            status: .rejected,
-            draft: "bad-key",
-            saveError: DisplayError(
-                line: "Discogs rejected this key. Check it and save again."
-            )
-        )
+    #Preview("Invalid") {
+        DiscogsKeyPreview(status: .rejected, draft: "bad-key")
     }
 #endif

@@ -14,7 +14,7 @@ struct DiscogsKeyCheckTests {
     @Test(
         "the key's row spins only while a check runs",
         arguments: [
-            BridgeDiscogsTokenStatus.notConfigured, .unvalidated,
+            BridgeDiscogsTokenStatus.notConfigured, .unvalidated, .rejected,
         ],
         [true, false]
     )
@@ -29,12 +29,13 @@ struct DiscogsKeyCheckTests {
                     DiscogsSettingsContent(
                         draft: .constant("abcdef123456"),
                         status: status,
+                        isEnabled: true,
                         isValidating: isValidating,
+                        wasRejected: false,
                         saveError: nil,
                         readError: nil,
                         onSave: {},
-                        onRecheck: {},
-                        onRemove: {}
+                        onRecheck: {}
                     )
                 }
             }

@@ -62,9 +62,9 @@ pub fn validate_concurrency(n: u32) -> Result<NonZeroU32, PreferencesError> {
 /// this only describes a key that exists, whereas the status folds in the
 /// no-key case for the UI.
 ///
-/// - `Unvalidated` — a key is stored but Discogs hasn't confirmed it yet
-///   (saved while offline or rate-limited). Used optimistically; re-checked
-///   when possible.
+/// - `Unvalidated` — a key is stored but Discogs hasn't confirmed it yet,
+///   because it was saved while offline. Used optimistically; re-checked when
+///   possible.
 /// - `Valid` — Discogs accepted the key.
 /// - `Rejected` — Discogs returned 401 for the key. Not used until re-saved.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -77,13 +77,13 @@ pub enum DiscogsValidation {
 #[cfg(desktop)]
 impl DiscogsValidation {
     /// The validation a key is stored under once Discogs was asked about it:
-    /// a check Discogs could not answer leaves it unvalidated.
+    /// a check made offline leaves it unvalidated.
     pub fn of(check: &bae_catalogs::providers::DiscogsCheck) -> Self {
         use bae_catalogs::providers::DiscogsCheck;
         match check {
             DiscogsCheck::Valid => Self::Valid,
             DiscogsCheck::Rejected => Self::Rejected,
-            DiscogsCheck::Unchecked(_) => Self::Unvalidated,
+            DiscogsCheck::Offline(_) => Self::Unvalidated,
         }
     }
 }
@@ -189,10 +189,10 @@ impl Preferences {
     /// The one answer every place that asks the sources together reads — a
     /// run's provider list, a typed search's per-source parts, the switches a
     /// surface renders. Two things decide it and they are not the same
-    /// question: whether this library holds what the source needs, and whether
-    /// the person wants it asked. Unreachable wins, so a source with no
-    /// credential reports `NotConfigured` rather than `Off`, and the surface
-    /// says which of the two to fix.
+    /// question: whether the person wants the source asked, and whether this
+    /// library holds what it needs. The person's switch comes first: a source
+    /// switched off is `Off`, and one switched on without its credential
+    /// reports `NotConfigured`, which is the surface's cue to ask for it.
     ///
     /// A fact about the stored preferences and nothing else, which is why it
     /// lives here: the bridge builds the list a surface renders out of the
@@ -202,10 +202,10 @@ impl Preferences {
             .into_iter()
             .map(|catalog| CatalogAvailability {
                 catalog,
-                state: if !self.source_is_configured(catalog) {
-                    SourceAvailability::NotConfigured
-                } else if !self.identification.catalogs.enabled(catalog) {
+                state: if !self.identification.catalogs.enabled(catalog) {
                     SourceAvailability::Off
+                } else if !self.source_is_configured(catalog) {
+                    SourceAvailability::NotConfigured
                 } else {
                     SourceAvailability::On
                 },

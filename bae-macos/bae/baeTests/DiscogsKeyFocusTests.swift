@@ -17,12 +17,13 @@ struct DiscogsKeyFocusTests {
             DiscogsSettingsContent(
                 draft: .constant(""),
                 status: .notConfigured,
+                isEnabled: true,
                 isValidating: false,
+                wasRejected: false,
                 saveError: nil,
                 readError: nil,
                 onSave: {},
                 onRecheck: {},
-                onRemove: {},
             )
             .frame(width: size.width, height: size.height),
             size: size
@@ -32,7 +33,7 @@ struct DiscogsKeyFocusTests {
                     .compactMap { $0 as? NSTextField }
                     .first {
                         $0.placeholderString
-                            == String(localized: "Paste your key here")
+                            == String(localized: "Your free Discogs key")
                     }
             )
             try await Wait.untilLaidOut(host) {

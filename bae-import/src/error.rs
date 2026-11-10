@@ -717,6 +717,7 @@ impl ImportError {
                     C::Config
                 }
                 crate::DiscogsKeyError::Task(_) | crate::DiscogsKeyError::Missing => C::Internal,
+                crate::DiscogsKeyError::NoVerdict(ref error) => discogs_category(error),
             },
             #[cfg(desktop)]
             Self::Scan(_)
@@ -736,9 +737,29 @@ impl ImportError {
 
 /// The class a surface words a catalog's failure in: provider failures apart
 /// from data bae cannot read and its own faults.
-fn catalog_category(error: &bae_catalogs::CatalogError) -> bae_diagnostics::UiErrorCategory {
-    #[cfg(desktop)]
+/// The class a failed Discogs request is shown under.
+#[cfg(desktop)]
+fn discogs_category(
+    error: &bae_catalogs::discogs::client::DiscogsError,
+) -> bae_diagnostics::UiErrorCategory {
     use bae_catalogs::discogs::client::DiscogsError;
+    use bae_diagnostics::UiErrorCategory as C;
+    use bae_util::http::TransportFailure;
+    match error {
+        DiscogsError::Serialization(_) => C::ImportData,
+        DiscogsError::Transport(error)
+            if TransportFailure::of(error) == TransportFailure::Unmakeable =>
+        {
+            C::Internal
+        }
+        DiscogsError::Transport(_)
+        | DiscogsError::Provider { .. }
+        | DiscogsError::InvalidApiKey
+        | DiscogsError::NotFound => C::Import,
+    }
+}
+
+fn catalog_category(error: &bae_catalogs::CatalogError) -> bae_diagnostics::UiErrorCategory {
     #[cfg(desktop)]
     use bae_catalogs::musicbrainz::MusicBrainzError;
     use bae_catalogs::remote_image::RemoteImageError;
@@ -771,18 +792,7 @@ fn catalog_category(error: &bae_catalogs::CatalogError) -> bae_diagnostics::UiEr
             | WikidataError::Provider { .. } => C::Import,
         },
         #[cfg(desktop)]
-        CatalogError::Discogs(error) => match error {
-            DiscogsError::Serialization(_) => C::ImportData,
-            DiscogsError::Transport(error)
-                if TransportFailure::of(error) == TransportFailure::Unmakeable =>
-            {
-                C::Internal
-            }
-            DiscogsError::Transport(_)
-            | DiscogsError::Provider { .. }
-            | DiscogsError::InvalidApiKey
-            | DiscogsError::NotFound => C::Import,
-        },
+        CatalogError::Discogs(error) => discogs_category(error),
         CatalogError::RemoteImage(error) => match error {
             RemoteImageError::Unusable { .. } => C::ImportData,
             RemoteImageError::Transport { error, .. }

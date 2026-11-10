@@ -437,6 +437,8 @@ impl AppServices {
     /// holds the config, the searches, and the runs, which is why the order
     /// lives here.
     ///
+    /// Switching Discogs off also clears its key, the last thing done.
+    ///
     /// Switching a source *on* re-runs nothing: the next run or search asks it.
     /// Re-dispatching a settled run because a source became available would
     /// throw away an answer the person is reading.
@@ -466,6 +468,17 @@ impl AppServices {
                 // reads the list as it stands then.
                 for key in self.inner.import.identifying_keys() {
                     self.inner.identification.rerun_identify(key);
+                }
+                // Switching Discogs off is how its key goes: the preference is
+                // written (and any refusal made) before the key is cleared, so
+                // a refused switch keeps the key, and a clear that fails is
+                // told to the person, who switches it off again.
+                if source == bae_catalogs::catalog::LookupCatalog::Discogs {
+                    self.inner
+                        .import
+                        .remove_discogs_token()
+                        .await
+                        .map_err(bae_library::LibraryError::from)?;
                 }
             }
         }

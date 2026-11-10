@@ -1144,11 +1144,16 @@ everything it asked has answered.
 | catalog numbers | both: a number the person picked as it stands; one a found release carries as it stands on MusicBrainz, under the offered releases' artists on Discogs |
 | album and artist title | both, only when no Disc ID, barcode or catalog number returned anything and the draft has a title; ISRC matches don't count, since a recording is on every compilation that reissued it |
 
-Discogs needs an API key; without one it is not asked. Saving a key, or
+Discogs needs an API key; without one it is not asked. Its switch moves
+without a key: switched on with none, Discogs waits for one, and switched off,
+its key is cleared (Settings asks first when one is saved). Saving a key, or
 checking a stored one again, asks Discogs whether it works, and the key's
-setting says so while it asks. A call with the stored key that Discogs
-answers 401 marks it rejected, and one it answers confirms a key not yet
-checked. What a check or a call says of
+setting says so while it asks. A check that never reaches Discogs leaves the
+key stored and unvalidated, which says the person is offline, and is checked
+again on request; one Discogs answers with no verdict on the key (an error
+status, an unreadable reply) stores nothing and tells whoever asked. A call
+with the stored key that Discogs answers 401 marks it rejected, and one it
+answers confirms a key not yet checked. What a check or a call says of
 a key is recorded only while that key is still the one stored: an answer
 about a key replaced since leaves the new key as its own save recorded it. A
 Discogs label name
@@ -5472,7 +5477,7 @@ Replay gain has no control in the apps.
 
 | Setting | Default | What it decides |
 |---|---|---|
-| `discogs_key` | none | the stored Discogs key's state: unvalidated, valid or rejected; the key is in the keyring |
+| `discogs_key` | none | the stored Discogs key's state: unvalidated (checked while offline), valid or rejected; the key is in the keyring |
 | `replay_gain_mode` | off | loudness: off, track or album (§7.5) |
 | `save_preset` rows | FLAC 24-bit, MP3 320 | the save presets (§4.6), in order |
 | `default_track_save_preset`, `default_release_save_preset` | FLAC | which preset a save starts with |

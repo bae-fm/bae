@@ -45,8 +45,10 @@ struct ImportSettingsTabTests {
 
             // Every switch starts on but importing when identified, so clicking
             // each one writes the other value for the setting it names and
-            // says nothing about any other.
-            for control in switches(in: host) {
+            // says nothing about any other. Discogs holds a key here, so it
+            // asks before writing: its own test.
+            let discogs = discogsSwitch(in: host)
+            for control in switches(in: host) where control !== discogs {
                 HostedInput.press(control)
                 try await SnapshotTestSupport.settle(host)
             }
@@ -54,16 +56,10 @@ struct ImportSettingsTabTests {
             #expect(recorder.identifyWrites == [false])
             #expect(recorder.importWhenIdentifiedWrites == [true])
             #expect(
-                recorder.sourceWrites.map(\.enabled) == [false, false],
-                "each source switch wrote the value it was set to"
+                recorder.sourceWrites.map(\.enabled) == [false],
+                "the source switch wrote the value it was set to"
             )
-            #expect(
-                Set(recorder.sourceWrites.map(\.source))
-                    == Set(
-                        PreviewData.configStore().config.lookupCatalogs
-                            .map(\.catalog)
-                    )
-            )
+            #expect(recorder.sourceWrites.map(\.source) == [.musicBrainz])
         }
     }
 
@@ -97,11 +93,10 @@ struct ImportSettingsTabTests {
         }
     }
 
-    /// Discogs cannot be asked without a key, so the key is offered where the
-    /// switch it unlocks is, and core reports the switch as immovable until one
-    /// is stored.
-    @Test("with no key stored the Sources section offers the key input")
-    func theSourcesSectionOffersTheKeyInput() async throws {
+    /// Search Discogs is a switch like any other: it moves without a key, and
+    /// the key field under it is the person's to use once it is on.
+    @Test("with no key stored the switch is usable and the field takes a key")
+    func theSwitchIsUsableAndTheFieldTakesAKey() async throws {
         try await SnapshotTestSupport.withHostedWindow(
             tab(
                 recorder: ImportSettingRecorder(),
@@ -114,12 +109,71 @@ struct ImportSettingsTabTests {
         ) { _, host in
             try await SnapshotTestSupport.settle(host)
 
-            #expect(keyField(in: host) != nil)
-            #expect(discogsSwitch(in: host)?.isEnabled == false)
+            #expect(keyField(in: host)?.isEnabled == true)
+            #expect(discogsSwitch(in: host)?.isEnabled == true)
         }
     }
 
-    @Test("a stored key replaces the input with what the key is doing")
+    @Test("with Discogs off the key field is greyed")
+    func withDiscogsOffTheKeyFieldIsGreyed() async throws {
+        try await SnapshotTestSupport.withHostedWindow(
+            tab(
+                recorder: ImportSettingRecorder(),
+                configStore: PreviewData.makeConfigStore(
+                    libraryFullWidth: false,
+                    discogsUsable: false,
+                    discogs: .off
+                )
+            ),
+            size: Self.size
+        ) { _, host in
+            try await SnapshotTestSupport.settle(host)
+
+            #expect(keyField(in: host)?.isEnabled == false)
+            #expect(discogsSwitch(in: host)?.isEnabled == true)
+        }
+    }
+
+    @Test("with no key saved, switching Discogs off writes at once")
+    func switchingDiscogsOffWithNoKeyWrites() async throws {
+        let recorder = ImportSettingRecorder()
+        try await SnapshotTestSupport.withHostedWindow(
+            tab(
+                recorder: recorder,
+                configStore: PreviewData.makeConfigStore(
+                    libraryFullWidth: false,
+                    discogsUsable: false
+                )
+            ),
+            size: Self.size
+        ) { _, host in
+            try await SnapshotTestSupport.settle(host)
+            HostedInput.press(try #require(discogsSwitch(in: host)))
+            try await SnapshotTestSupport.settle(host)
+
+            #expect(recorder.sourceWrites.map(\.source) == [.discogs])
+            #expect(recorder.sourceWrites.map(\.enabled) == [false])
+        }
+    }
+
+    /// Turning Discogs off clears the saved key, so it asks first and writes
+    /// nothing until the person agrees.
+    @Test("with a key saved, switching Discogs off asks before it writes")
+    func switchingDiscogsOffWithAKeyAsksFirst() async throws {
+        let recorder = ImportSettingRecorder()
+        try await SnapshotTestSupport.withHostedWindow(
+            tab(recorder: recorder),
+            size: Self.size
+        ) { _, host in
+            try await SnapshotTestSupport.settle(host)
+            HostedInput.press(try #require(discogsSwitch(in: host)))
+            try await SnapshotTestSupport.settle(host)
+
+            #expect(recorder.sourceWrites.isEmpty)
+        }
+    }
+
+    @Test("a saved key leaves no field, and the Discogs switch is usable")
     func aStoredKeyReplacesTheInput() async throws {
         try await SnapshotTestSupport.withHostedWindow(
             tab(recorder: ImportSettingRecorder()),
@@ -178,7 +232,7 @@ struct ImportSettingsTabTests {
             .compactMap { $0 as? NSTextField }
             .first {
                 $0.placeholderString
-                    == String(localized: "Paste your key here")
+                    == String(localized: "Your free Discogs key")
             }
     }
 }

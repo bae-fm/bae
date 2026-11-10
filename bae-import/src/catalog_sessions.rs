@@ -37,9 +37,9 @@ pub enum CatalogSessionError {
     Keyring(#[from] coven::KeyError),
 }
 
-/// Why the stored Discogs key, or what Discogs said of it, could not be
-/// written: the keyring or the preferences row refused the write, or the
-/// keyring write ran apart and gave no result.
+/// Why the Discogs key could not be stored or checked: the keyring or the
+/// preferences row refused the write, the keyring write ran apart and gave no
+/// result, or Discogs gave no verdict on the key.
 #[derive(Debug, thiserror::Error)]
 pub enum DiscogsKeyError {
     #[error("Keyring error: {0}")]
@@ -51,6 +51,11 @@ pub enum DiscogsKeyError {
     /// The preferences say a key is stored, and the keyring holds none.
     #[error("the preferences say a Discogs key is stored but the keyring has none")]
     Missing,
+    /// Discogs answered the check with something that is no verdict on the
+    /// key (an error status, an unreadable body). The key's state is left as
+    /// it was, and whoever asked is told, so they ask again.
+    #[error(transparent)]
+    NoVerdict(DiscogsError),
 }
 
 /// The catalogs as this library may ask them: the providers, and the one
@@ -302,12 +307,15 @@ impl CatalogSessions {
     }
 
     /// Check `token`, a key a person submitted, against Discogs, and store it
-    /// with what the check said unless Discogs rejected it.
+    /// with what the check said unless Discogs rejected it. A key checked
+    /// while offline is stored unvalidated; Discogs answering with no verdict
+    /// stores nothing and fails, so the person submits it again.
     pub(crate) async fn save_discogs_key(
         &self,
         token: &str,
     ) -> Result<DiscogsCheck, DiscogsKeyError> {
-        let check = DiscogsCheck::of(self.try_discogs_key(token).await);
+        let check = DiscogsCheck::of(self.try_discogs_key(token).await)
+            .map_err(DiscogsKeyError::NoVerdict)?;
         if !matches!(check, DiscogsCheck::Rejected) {
             self.store_discogs_key(token, DiscogsValidation::of(&check)).await?;
         }
@@ -317,7 +325,8 @@ impl CatalogSessions {
     /// Check the stored key against Discogs again when it is `Unvalidated`,
     /// and record what Discogs said while that key is still the one stored.
     /// `None`, asking nothing, while no key is stored or it is in any other
-    /// state.
+    /// state. An answer that is no verdict on the key leaves it as it is and
+    /// fails.
     pub(crate) async fn revalidate_discogs_key(
         &self,
     ) -> Result<Option<DiscogsCheck>, DiscogsKeyError> {
@@ -332,7 +341,11 @@ impl CatalogSessions {
             let asked = bae_preferences::asked_sources(&preferences.metadata_sources());
             (self.session_with(&mut key, asked)?, key.generation)
         };
-        let check = session.validate().await.ok_or(DiscogsKeyError::Missing)?;
+        let check = session
+            .validate()
+            .await
+            .ok_or(DiscogsKeyError::Missing)?
+            .map_err(DiscogsKeyError::NoVerdict)?;
         let key = self.discogs.lock().await;
         if key.generation == generation {
             let validation = DiscogsValidation::of(&check);

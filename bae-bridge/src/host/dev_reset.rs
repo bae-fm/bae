@@ -143,7 +143,7 @@ impl BridgeHost {
                 Err(BridgeError::config("dev reset: Discogs rejected the profile's token"))
             }
             crate::types::BridgeDiscogsSaveOutcome::Valid
-            | crate::types::BridgeDiscogsSaveOutcome::Unvalidated { .. } => Ok(()),
+            | crate::types::BridgeDiscogsSaveOutcome::Unvalidated => Ok(()),
         }
     }
 }

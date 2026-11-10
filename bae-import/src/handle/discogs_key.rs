@@ -8,8 +8,9 @@ use bae_catalogs::providers::DiscogsCheck;
 
 impl ImportServiceHandle {
     /// Check a submitted Discogs key against Discogs and store it unless
-    /// Discogs rejects it; a key that could not be checked is stored as
-    /// unvalidated, and the check says why.
+    /// Discogs rejects it; a key checked while offline is stored as
+    /// unvalidated. Discogs answering with no verdict stores nothing and
+    /// fails.
     pub async fn save_discogs_token(
         &self,
         token: &str,
@@ -18,16 +19,13 @@ impl ImportServiceHandle {
     }
 
     /// Check a stored `Unvalidated` key against Discogs again; any other
-    /// state, or no key, is left alone. A check Discogs could not answer
-    /// leaves the key unvalidated and fails with why, so the person who asked
-    /// is told rather than shown the same state again.
+    /// state, or no key, is left alone. Still offline leaves the key
+    /// unvalidated, which the key's state already says; Discogs answering
+    /// with no verdict leaves it so and fails, so the person who asked is
+    /// told.
     pub async fn revalidate_discogs_token(&self) -> Result<(), crate::ImportError> {
-        match self.services.catalogs.revalidate_discogs_key().await? {
-            None | Some(DiscogsCheck::Valid | DiscogsCheck::Rejected) => Ok(()),
-            Some(DiscogsCheck::Unchecked(error)) => {
-                Err(bae_catalogs::CatalogError::from(error).into())
-            }
-        }
+        self.services.catalogs.revalidate_discogs_key().await?;
+        Ok(())
     }
 
     /// The library's stored Discogs key, as the settings screen shows it.

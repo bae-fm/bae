@@ -31,14 +31,13 @@ async fn revalidate_errors_when_config_claims_a_key_the_keyring_lacks() {
     );
 }
 
-/// A key Discogs cannot be asked about is stored unvalidated, and the save
-/// says why; asking again fails with why rather than quietly leaving the same
-/// state.
+/// A key checked while Discogs cannot be reached is stored unvalidated, and
+/// the save says it was offline; asking again while still offline leaves the
+/// key unvalidated.
 #[tokio::test]
-async fn a_key_discogs_cannot_be_asked_about_is_stored_unchecked_with_why() {
+async fn a_key_checked_offline_is_stored_unvalidated() {
     use bae_catalogs::discogs::client::DiscogsError;
     use bae_catalogs::providers::DiscogsCheck;
-    use bae_import::ImportError;
     use bae_preferences::DiscogsValidation;
 
     let (test, _temp_dir) = setup_test_manager().await;
@@ -49,24 +48,15 @@ async fn a_key_discogs_cannot_be_asked_about_is_stored_unchecked_with_why() {
     let outcome = handle
         .save_discogs_token("discogs-test-key")
         .await
-        .expect("the key is stored though it went unchecked");
-    let DiscogsCheck::Unchecked(reason) = outcome else {
+        .expect("the key is stored though it could not be checked");
+    let DiscogsCheck::Offline(reason) = outcome else {
         panic!("an unreachable Discogs leaves the key unchecked: {outcome:?}");
     };
-    assert!(reason.to_string().contains("tcp connect error"), "{reason}");
+    assert!(matches!(reason, DiscogsError::Transport(_)), "{reason}");
     assert_eq!(manager.preferences().await.unwrap().discogs, Some(DiscogsValidation::Unvalidated));
 
-    let error = handle
-        .revalidate_discogs_token()
-        .await
-        .expect_err("a re-check Discogs cannot answer fails with why");
-    assert!(
-        matches!(
-            error,
-            ImportError::Catalog(bae_catalogs::CatalogError::Discogs(DiscogsError::Transport(_)))
-        ),
-        "{error}"
-    );
+    handle.revalidate_discogs_token().await.expect("still offline is not a failure");
+    assert_eq!(manager.preferences().await.unwrap().discogs, Some(DiscogsValidation::Unvalidated));
 }
 
 #[tokio::test]
@@ -228,18 +218,22 @@ async fn the_last_source_being_asked_cannot_be_switched_off() {
     );
 }
 
-/// A source with no credential reports why it is not asked rather than looking
-/// switched off, and the person's switch is kept underneath it: turning it off
-/// is allowed (it is not the last one asked) and is what comes back when the
-/// credential arrives.
+/// A source switched on without its credential says it needs one rather than
+/// looking on; switched off, it is off. Either way the person's switch is what
+/// is stored.
 #[tokio::test]
-async fn an_unreachable_source_keeps_the_switch_underneath_it() {
+async fn an_unreachable_source_reports_the_switch_before_the_missing_key() {
     use bae_catalogs::catalog::LookupCatalog;
     use bae_preferences::SourceAvailability;
 
     let (test, _temp_dir) = setup_test_manager().await;
 
     let manager = test.library.manager();
+    assert_eq!(
+        manager.metadata_sources().await.unwrap()[1].state,
+        SourceAvailability::NotConfigured,
+        "switched on, with no key, Discogs needs one"
+    );
 
     manager
         .set_metadata_source_enabled(LookupCatalog::Discogs, false)
@@ -247,8 +241,8 @@ async fn an_unreachable_source_keeps_the_switch_underneath_it() {
         .expect("switching off a source nothing is asking is allowed");
     assert_eq!(
         manager.metadata_sources().await.unwrap()[1].state,
-        SourceAvailability::NotConfigured,
-        "no credential still beats the switch"
+        SourceAvailability::Off,
+        "switched off, it is off"
     );
     assert!(
         !manager
@@ -258,7 +252,7 @@ async fn an_unreachable_source_keeps_the_switch_underneath_it() {
             .identification
             .catalogs
             .enabled(LookupCatalog::Discogs),
-        "the switch is kept where the person left it"
+        "the switch is stored where the person left it"
     );
 }
 

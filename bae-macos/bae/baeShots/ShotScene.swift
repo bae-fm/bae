@@ -53,7 +53,25 @@ struct ShotScene {
                 )
             },
             settingsImport("settings-import-key-stored", discogsUsable: true),
-            settingsImport("settings-import-no-key", discogsUsable: false),
+            settingsImport(
+                "settings-import-no-key",
+                discogsUsable: false,
+                discogs: .off
+            ),
+            settingsImport(
+                "settings-import-key-wanted",
+                discogsUsable: false
+            ),
+            settingsImport(
+                "settings-import-offline",
+                discogsUsable: true,
+                discogsTokenStatus: .unvalidated
+            ),
+            settingsImport(
+                "settings-import-invalid-key",
+                discogsUsable: false,
+                discogsTokenStatus: .rejected
+            ),
             ShotScene(
                 id: "album-detail-mixed-columns",
                 size: CGSize(width: 1100, height: 800)
@@ -328,7 +346,9 @@ extension ShotScene {
     /// Settings' Import pane, with a stored Discogs key or none.
     fileprivate static func settingsImport(
         _ id: String,
-        discogsUsable: Bool
+        discogsUsable: Bool,
+        discogs: BridgeSourceAvailability? = nil,
+        discogsTokenStatus: BridgeDiscogsTokenStatus? = nil
     ) -> ShotScene {
         ShotScene(id: id, size: CGSize(width: 700, height: 620)) {
             ShotStage(
@@ -336,10 +356,14 @@ extension ShotScene {
                     .environment(
                         PreviewData.makeConfigStore(
                             libraryFullWidth: false,
-                            discogsUsable: discogsUsable
+                            discogsUsable: discogsUsable,
+                            discogs: discogs,
+                            discogsTokenStatus: discogsTokenStatus
                         )
                     )
-                    .environment(Discogs.stub())
+                    .environment(
+                        Discogs(getDiscogsToken: { "3f9c0d1e7a2b45c8" })
+                    )
                     .environment(Importer.stub())
                     .environment(UiStore())
             )
