@@ -257,8 +257,10 @@ private struct KeyTextField: NSViewRepresentable {
         field.cell?.isScrollable = true
         field.stringValue = text
         field.focus = context.coordinator.focus
-        field.isEnabled = context.environment.isEnabled
-        if field.isEnabled {
+        let enabled = context.environment.isEnabled
+        context.coordinator.wasEnabled = enabled
+        field.isEnabled = enabled
+        if enabled {
             context.coordinator.focus.request()
         }
         return field
@@ -267,10 +269,14 @@ private struct KeyTextField: NSViewRepresentable {
     func updateNSView(_ field: FocusingTextField, context: Context) {
         context.coordinator.text = $text
         let enabled = context.environment.isEnabled
-        if enabled, !field.isEnabled {
+        // SwiftUI sets the control's `isEnabled` itself before this runs, so
+        // the field cannot say whether the switch just turned it on.
+        let turnedOn = enabled && !context.coordinator.wasEnabled
+        context.coordinator.wasEnabled = enabled
+        field.isEnabled = enabled
+        if turnedOn {
             context.coordinator.focus.request()
         }
-        field.isEnabled = enabled
         if field.stringValue != text {
             field.stringValue = text
         }
@@ -284,6 +290,8 @@ private struct KeyTextField: NSViewRepresentable {
     final class Coordinator: NSObject, NSTextFieldDelegate {
         var text: Binding<String>
         let focus = FieldFocus()
+        /// Whether the last update left the field enabled.
+        var wasEnabled = false
 
         init(text: Binding<String>) {
             self.text = text

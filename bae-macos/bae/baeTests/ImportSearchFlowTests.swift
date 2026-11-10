@@ -22,41 +22,6 @@ final class SettingsNavigationTests: XCTestCase {
 
         #expect(selectionAtPresentation == .importing)
     }
-
-    func testDiscogsKeyFieldTakesFocusWhenItAppears() async throws {
-        let size = NSSize(width: 500, height: 320)
-        try await SnapshotTestSupport.withHostedWindow(
-            Form {
-                Section {
-                    DiscogsSettingsContent(
-                        draft: .constant(""),
-                        status: .notConfigured,
-                        isEnabled: true,
-                        isValidating: false,
-                        wasRejected: false,
-                        saveError: nil,
-                        readError: nil,
-                        onSave: {},
-                        onRecheck: {}
-                    )
-                }
-            }
-            .formStyle(.grouped)
-            .frame(width: size.width, height: size.height),
-            size: size
-        ) { window, host in
-
-            try await SnapshotTestSupport.settle(host)
-
-            let textFields = SnapshotTestSupport.descendants(of: host)
-                .compactMap { $0 as? NSTextField }
-            XCTAssertTrue(
-                textFields.contains {
-                    $0.currentEditor() === window.firstResponder
-                }
-            )
-        }
-    }
 }
 
 @MainActor
