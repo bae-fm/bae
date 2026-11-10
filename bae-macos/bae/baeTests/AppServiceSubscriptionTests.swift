@@ -534,6 +534,10 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
         NoopKeyedValueStream()
     }
 
+    override func feedActivityBars() -> KeyedValueStream {
+        NoopKeyedValueStream()
+    }
+
     override func subscribeSyncActivity() -> SyncActivitySubscription {
         syncActivity
     }
