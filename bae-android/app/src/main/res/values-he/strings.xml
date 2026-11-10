@@ -171,7 +171,7 @@
     <string name="members_remove_confirm_title">להסיר את המכשיר הזה?</string>
     <string name="members_remove_confirm_body">%1$s יאבד גישה לספרייה הזו.</string>
     <string name="join_request_approve">אשר</string>
-    <string name="join_request_match">אשר אם המסך שלהם מציג את הקוד הזה:</string>
+    <string name="join_request_match">ודא שהקוד הזה מוצג:</string>
     <string name="join_request_confirmation">מספר אימות</string>
     <string name="onboarding_add_device">הוספת מכשיר</string>
     <string name="onboarding_tagline">המוזיקה שלך, בכל מקום</string>

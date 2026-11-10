@@ -1,6 +1,7 @@
 package fm.bae.app.ui.components
 
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -10,6 +11,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.sp
+import fm.bae.app.ui.appearance.ThemeSpace
 
 private val dialogDigits =
     TextStyle(fontSize = 32.sp, lineHeight = 40.sp, fontWeight = FontWeight.Medium, letterSpacing = 2.sp)
@@ -30,7 +32,7 @@ fun MatchCode(
             style = dialogDigits,
             color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center,
-            modifier = modifier.fillMaxWidth(),
+            modifier = modifier.fillMaxWidth().padding(top = ThemeSpace.related),
         )
     }
 }

@@ -271,7 +271,7 @@ fun RemoveLibraryFailed() {
     DialogScene { RemovalFailedText(sceneLibrary, DisplayError("Couldn’t reach the cloud.")) }
 }
 
-/** A request to join: the code to match under the line asking to approve, Decline in the text colour. */
+/** A request to join: the code to check under the line asking to make sure it is showing, Decline in the text colour. */
 @Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 fun JoinRequestDialogScene() {

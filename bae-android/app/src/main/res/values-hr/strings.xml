@@ -171,7 +171,7 @@
     <string name="members_remove_confirm_title">Ukloniti ovaj uređaj?</string>
     <string name="members_remove_confirm_body">%1$s gubi pristup ovoj fonoteci.</string>
     <string name="join_request_approve">Odobri</string>
-    <string name="join_request_match">Odobrite ako njihov zaslon prikazuje ovaj kôd:</string>
+    <string name="join_request_match">Provjerite prikazuje li se ovaj kôd:</string>
     <string name="join_request_confirmation">Broj potvrde</string>
     <string name="onboarding_add_device">Dodaj uređaj</string>
     <string name="onboarding_tagline">Vaša glazba, posvuda</string>

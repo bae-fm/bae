@@ -171,7 +171,7 @@
     <string name="members_remove_confirm_title">Poistetaanko tämä laite?</string>
     <string name="members_remove_confirm_body">%1$s menettää pääsyn tähän kirjastoon.</string>
     <string name="join_request_approve">Hyväksy</string>
-    <string name="join_request_match">Hyväksy, jos heidän näytöllään näkyy tämä koodi:</string>
+    <string name="join_request_match">Varmista, että tämä koodi näkyy:</string>
     <string name="join_request_confirmation">Vahvistusnumero</string>
     <string name="onboarding_add_device">Lisää laite</string>
     <string name="onboarding_tagline">Musiikkisi kaikkialla</string>

@@ -2766,7 +2766,7 @@ he taps **Enter code** and pastes it. His waiting screen shows until when it
 waits, which is when the invite expires, his confirmation number, a countdown
 to the next check in whole seconds, rounded up so it never reads 0 before the
 check, and **Check now**. When his request arrives, Ana's laptop shows a dialog
-with Dan's name, asks her to approve if his screen shows this code, and shows
+with Dan's name, asks her to make sure this code is showing, and shows
 the same number under it, with **Approve** and **Decline**. Ana compares it with
 Dan's screen, or asks him for his number, and approves if it matches. Every
 invite waits for her approval: someone who saw the code could use it before Dan,

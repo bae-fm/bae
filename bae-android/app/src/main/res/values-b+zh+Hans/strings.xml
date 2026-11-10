@@ -163,7 +163,7 @@
     <string name="members_remove_confirm_title">移除此设备？</string>
     <string name="members_remove_confirm_body">%1$s 将无法访问此库。</string>
     <string name="join_request_approve">批准</string>
-    <string name="join_request_match">如果对方的屏幕显示此代码，请批准：</string>
+    <string name="join_request_match">请确认屏幕上显示的是此代码：</string>
     <string name="join_request_confirmation">确认码</string>
     <string name="onboarding_add_device">添加设备</string>
     <string name="onboarding_tagline">你的音乐，随处可听</string>

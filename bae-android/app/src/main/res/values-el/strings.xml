@@ -171,7 +171,7 @@
     <string name="members_remove_confirm_title">Αφαίρεση αυτής της συσκευής;</string>
     <string name="members_remove_confirm_body">Η συσκευή %1$s χάνει την πρόσβαση σε αυτή τη βιβλιοθήκη.</string>
     <string name="join_request_approve">Έγκριση</string>
-    <string name="join_request_match">Εγκρίνετε αν η οθόνη τους δείχνει αυτόν τον κωδικό:</string>
+    <string name="join_request_match">Βεβαιωθείτε ότι εμφανίζεται αυτός ο κωδικός:</string>
     <string name="join_request_confirmation">Αριθμός επιβεβαίωσης</string>
     <string name="onboarding_add_device">Προσθήκη συσκευής</string>
     <string name="onboarding_tagline">Η μουσική σας, παντού</string>

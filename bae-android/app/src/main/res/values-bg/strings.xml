@@ -167,7 +167,7 @@
     <string name="members_remove_confirm_title">Премахване на това устройство?</string>
     <string name="members_remove_confirm_body">%1$s губи достъп до тази библиотека.</string>
     <string name="join_request_approve">Одобряване</string>
-    <string name="join_request_match">Одобрете, ако екранът им показва този код:</string>
+    <string name="join_request_match">Уверете се, че този код се показва:</string>
     <string name="join_request_confirmation">Номер за потвърждение</string>
     <string name="onboarding_add_device">Добавяне на устройство</string>
     <string name="onboarding_tagline">Вашата музика, навсякъде</string>

@@ -163,7 +163,7 @@
     <string name="members_remove_confirm_title">이 기기를 제거할까요?</string>
     <string name="members_remove_confirm_body">%1$s 기기는 이 라이브러리에 접근할 수 없게 됩니다.</string>
     <string name="join_request_approve">승인</string>
-    <string name="join_request_match">상대방 화면에 이 코드가 표시되면 승인하세요:</string>
+    <string name="join_request_match">이 코드가 표시되어 있는지 확인하세요:</string>
     <string name="join_request_confirmation">확인 번호</string>
     <string name="onboarding_add_device">기기 추가</string>
     <string name="onboarding_tagline">내 음악, 어디서나</string>

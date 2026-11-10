@@ -171,7 +171,7 @@
     <string name="members_remove_confirm_title">Fjerne denne enheten?</string>
     <string name="members_remove_confirm_body">%1$s mister tilgangen til dette biblioteket.</string>
     <string name="join_request_approve">Godkjenn</string>
-    <string name="join_request_match">Godkjenn hvis skjermen deres viser denne koden:</string>
+    <string name="join_request_match">Pass på at denne koden vises:</string>
     <string name="join_request_confirmation">Bekreftelsesnummer</string>
     <string name="onboarding_add_device">Legg til enhet</string>
     <string name="onboarding_tagline">Musikken din, overalt</string>

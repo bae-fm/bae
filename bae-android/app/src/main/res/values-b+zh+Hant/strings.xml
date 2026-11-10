@@ -163,7 +163,7 @@
     <string name="members_remove_confirm_title">要移除此裝置嗎？</string>
     <string name="members_remove_confirm_body">%1$s 將無法存取此資料庫。</string>
     <string name="join_request_approve">核准</string>
-    <string name="join_request_match">如果對方的螢幕顯示此代碼，請核准：</string>
+    <string name="join_request_match">請確認螢幕上顯示的是此代碼：</string>
     <string name="join_request_confirmation">確認碼</string>
     <string name="onboarding_add_device">新增裝置</string>
     <string name="onboarding_tagline">你的音樂，隨處可聽</string>

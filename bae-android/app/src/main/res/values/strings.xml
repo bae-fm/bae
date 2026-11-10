@@ -205,7 +205,7 @@
     <!-- %1$s = the device's name -->
     <string name="members_remove_confirm_body">%1$s loses access to this library.</string>
     <string name="join_request_approve">Approve</string>
-    <string name="join_request_match">Approve if their screen shows this code:</string>
+    <string name="join_request_match">Make sure this code is showing:</string>
     <string name="join_request_confirmation">Confirmation number</string>
 
     <!-- Onboarding -->
