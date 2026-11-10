@@ -21,48 +21,6 @@ struct SaveFormatChoice {
     }
 }
 
-/// The format popup of a save panel. Each item is keyed by its preset's id,
-/// never by its title: preset names need not be unique, and
-/// `NSPopUpButton.addItems(withTitles:)` keeps only one item per title.
-enum SaveFormatPopup {
-    @MainActor
-    static func make(
-        choices: [SaveFormatChoice],
-        selectedPresetId: String,
-        frame: NSRect
-    ) -> NSPopUpButton {
-        let popup = NSPopUpButton(frame: frame, pullsDown: false)
-        for choice in choices {
-            let item = NSMenuItem(
-                title: choice.title,
-                action: nil,
-                keyEquivalent: ""
-            )
-            item.representedObject = choice.presetId
-            popup.menu?.addItem(item)
-        }
-        popup.select(
-            popup.itemArray.first {
-                $0.representedObject as? String == selectedPresetId
-            }
-        )
-        return popup
-    }
-
-    /// The preset id of the selected item. Every item `make` builds carries
-    /// one, and a popup with items always has one selected.
-    @MainActor
-    static func selectedPresetId(of popup: NSPopUpButton) -> String {
-        guard let presetId = popup.selectedItem?.representedObject as? String
-        else {
-            preconditionFailure(
-                "a save-format popup item carries its preset id"
-            )
-        }
-        return presetId
-    }
-}
-
 /// A resolved release-save destination: the chosen folder plus the preset to
 /// render with.
 struct ReleaseSaveTarget {
@@ -94,31 +52,29 @@ enum OutputTarget {
         return url
     }
 
-    /// Release save: a folder dialog with a preset-picker accessory (release
-    /// presets, starting at `lastSavePreset`). Returns the chosen folder
-    /// plus preset id.
+    /// Release save: a folder dialog with a format-picker accessory, starting
+    /// at the format the last save used. The dialog does not block the app, so
+    /// Edit Formats… can open Settings in front of it. Returns the chosen
+    /// folder plus preset id.
     @MainActor
-    static func resolveReleaseSave(config: Config) -> ReleaseSaveTarget? {
-        let choices = SaveFormatChoice.choices(
-            presets: config.savePresets
-        )
-        guard
-            choices.contains(where: {
-                $0.presetId == config.lastSavePreset
-            })
-        else {
-            showDefaultFormatUnavailableAlert()
-            return nil
-        }
-
+    static func resolveReleaseSave(
+        configStore: ConfigStore,
+        openFormats: @escaping @MainActor () -> Void
+    ) async -> ReleaseSaveTarget? {
         let panel = makeFolderPanel()
-        let popup = SaveFormatPopup.make(
-            choices: choices,
-            selectedPresetId: config.lastSavePreset,
-            frame: NSRect(x: 54, y: 5, width: 190, height: 24)
+        let picker = SaveFormatPicker(
+            configStore: configStore,
+            selectedPresetId: configStore.config.lastSavePreset,
+            frame: NSRect(x: 54, y: 5, width: 190, height: 24),
+            openFormats: openFormats,
+            onChange: { _ in }
         )
-        panel.accessoryView = formatAccessoryView(popup: popup)
-        guard panel.runModal() == .OK, let url = panel.url else {
+        defer { picker.stop() }
+        panel.accessoryView = formatAccessoryView(popup: picker.popup)
+        let response = await withCheckedContinuation { continuation in
+            panel.begin { continuation.resume(returning: $0) }
+        }
+        guard response == .OK, let url = panel.url else {
             return nil
         }
         UserDefaults.standard.set(
@@ -127,7 +83,7 @@ enum OutputTarget {
         )
         return ReleaseSaveTarget(
             targetDir: url,
-            presetId: SaveFormatPopup.selectedPresetId(of: popup)
+            presetId: picker.selectedPresetId
         )
     }
 
@@ -144,15 +100,6 @@ enum OutputTarget {
             panel.directoryURL = URL(fileURLWithPath: last)
         }
         return panel
-    }
-
-    @MainActor
-    private static func showDefaultFormatUnavailableAlert() {
-        let alert = NSAlert()
-        alert.messageText = String(localized: "Export failed")
-        alert.informativeText = String(localized: "Default format")
-        alert.addButton(withTitle: String(localized: "OK"))
-        alert.runModal()
     }
 
     @MainActor

@@ -37,6 +37,10 @@ struct StorageManagerView: View {
     @AppStorage("storageManager.columnLayout")
     private var columnLayout = StorageTableLayout.standard
     /// Runs row context-menu transitions, built once the environment is up.
+    @Environment(SettingsNavigation.self)
+    private var settingsNavigation
+    @Environment(\.openSettingsWindow)
+    private var openSettings
     @State
     private var runner: StorageActionRunner?
 
@@ -114,6 +118,12 @@ struct StorageManagerView: View {
                     configStore: configStore,
                     uiStore: uiStore,
                     storageManagerStore: storageManagerStore,
+                    openSaveAsSettings: {
+                        settingsNavigation.open(
+                            .formats,
+                            present: { openSettings() }
+                        )
+                    }
                 )
             }
         }
@@ -277,6 +287,7 @@ struct StorageManagerView: View {
         .environment(PreviewData.configStore())
         .environment(Importer.stub())
         .environment(fixture.uiStore)
+        .environment(SettingsNavigation())
         .environment(fixture.downloadStore)
         .environment(fixture.outputStore)
         .environment(fixture.outboxStore)
@@ -302,6 +313,7 @@ struct StorageManagerView: View {
         .environment(PreviewData.configStore())
         .environment(Importer.stub())
         .environment(fixture.uiStore)
+        .environment(SettingsNavigation())
         .environment(fixture.downloadStore)
         .environment(fixture.outputStore)
         .environment(fixture.outboxStore)
@@ -324,6 +336,7 @@ struct StorageManagerView: View {
         .environment(PreviewData.configStore())
         .environment(Importer.stub())
         .environment(fixture.uiStore)
+        .environment(SettingsNavigation())
         .environment(fixture.downloadStore)
         .environment(fixture.outputStore)
         .environment(fixture.outboxStore)
@@ -354,6 +367,7 @@ struct StorageManagerView: View {
         .environment(PreviewData.configStore())
         .environment(Importer.stub())
         .environment(fixture.uiStore)
+        .environment(SettingsNavigation())
         .environment(fixture.downloadStore)
         .environment(fixture.outputStore)
         .environment(fixture.outboxStore)
@@ -379,6 +393,7 @@ struct StorageManagerView: View {
         .environment(PreviewData.configStore())
         .environment(Importer.stub())
         .environment(fixture.uiStore)
+        .environment(SettingsNavigation())
         .environment(fixture.downloadStore)
         .environment(fixture.outputStore)
         .environment(fixture.outboxStore)
@@ -406,6 +421,7 @@ struct StorageManagerView: View {
         .environment(PreviewData.configStore())
         .environment(Importer.stub())
         .environment(fixture.uiStore)
+        .environment(SettingsNavigation())
         .environment(fixture.downloadStore)
         .environment(fixture.outputStore)
         .environment(fixture.outboxStore)
@@ -430,6 +446,7 @@ struct StorageManagerView: View {
         .environment(PreviewData.configStore())
         .environment(Importer.stub())
         .environment(fixture.uiStore)
+        .environment(SettingsNavigation())
         .environment(fixture.downloadStore)
         .environment(fixture.outputStore)
         .environment(fixture.outboxStore)
@@ -455,6 +472,7 @@ struct StorageManagerView: View {
         .environment(PreviewData.configStore())
         .environment(Importer.stub())
         .environment(fixture.uiStore)
+        .environment(SettingsNavigation())
         .environment(fixture.downloadStore)
         .environment(fixture.outputStore)
         .environment(fixture.outboxStore)
@@ -484,6 +502,7 @@ struct StorageManagerView: View {
         .environment(PreviewData.configStore())
         .environment(Importer.stub())
         .environment(fixture.uiStore)
+        .environment(SettingsNavigation())
         .environment(fixture.downloadStore)
         .environment(fixture.outputStore)
         .environment(fixture.outboxStore)
@@ -515,6 +534,7 @@ struct StorageManagerView: View {
         .environment(PreviewData.configStore())
         .environment(Importer.stub())
         .environment(fixture.uiStore)
+        .environment(SettingsNavigation())
         .environment(fixture.downloadStore)
         .environment(fixture.outputStore)
         .environment(fixture.outboxStore)
@@ -542,6 +562,7 @@ struct StorageManagerView: View {
         .environment(PreviewData.configStore())
         .environment(Importer.stub())
         .environment(fixture.uiStore)
+        .environment(SettingsNavigation())
         .environment(fixture.downloadStore)
         .environment(fixture.outputStore)
         .environment(fixture.outboxStore)
@@ -571,6 +592,7 @@ struct StorageManagerView: View {
         .environment(PreviewData.configStore())
         .environment(Importer.stub())
         .environment(fixture.uiStore)
+        .environment(SettingsNavigation())
         .environment(fixture.downloadStore)
         .environment(fixture.outputStore)
         .environment(fixture.outboxStore)
@@ -601,6 +623,7 @@ struct StorageManagerView: View {
         .environment(PreviewData.configStore())
         .environment(Importer.stub())
         .environment(fixture.uiStore)
+        .environment(SettingsNavigation())
         .environment(fixture.downloadStore)
         .environment(fixture.outputStore)
         .environment(fixture.outboxStore)

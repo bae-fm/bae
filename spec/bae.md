@@ -2370,8 +2370,9 @@ Two ways put a release back on disk, from desktop:
   when that name is taken ("FLAC", "FLAC (2)"); names are unique, and two
   formats may write the same thing. Save as… offers every format, for a track
   and for a release, starting with the one last used; its Format menu ends in
-  Edit Formats…, which opens Settings at Save as, and a format added there is
-  chosen when the person comes back.
+  Edit Formats…, which opens Settings at Save as in front of the panel, which
+  stays open behind it; the menu follows any change made there, and a format
+  added there is chosen in it at once.
   One file name pattern and one folder name pattern serve every format. A
   file's name is its pattern's text, with runs of spaces made one and no
   leading `.`, written as a copy-out writes a name (§4.4), so a title

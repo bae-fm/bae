@@ -31,6 +31,10 @@ struct AlbumDetailView: View {
     var playbackStore
     @Environment(UiStore.self)
     var uiStore
+    @Environment(SettingsNavigation.self)
+    var settingsNavigation
+    @Environment(\.openSettingsWindow)
+    var openSettings
 
     @State
     private var transferError: DisplayError?
@@ -405,14 +409,15 @@ extension AlbumDetailView {
     /// encode, tags, cover) rather than a verbatim copy. Runs on the same output
     /// queue as export.
     private func saveReleaseAs(releaseId: String) {
-        guard
-            let target = OutputTarget.resolveReleaseSave(
-                config: configStore.config
-            )
-        else {
-            return
-        }
         Task {
+            guard
+                let target = await OutputTarget.resolveReleaseSave(
+                    configStore: configStore,
+                    openFormats: openSaveAsSettings
+                )
+            else {
+                return
+            }
             do {
                 try await outputs.enqueueReleaseSave(
                     releaseId,
@@ -424,6 +429,11 @@ extension AlbumDetailView {
                 exportError = DisplayError(error)
             }
         }
+    }
+
+    /// Settings at the Save as pane, in front of whichever save panel asked.
+    private func openSaveAsSettings() {
+        settingsNavigation.open(.formats, present: { openSettings() })
     }
 
     private func presentMoveToCloudConfirmSheet(releaseId: String) {
@@ -531,18 +541,6 @@ extension AlbumDetailView {
     private func exportTrack(trackId: String) {
         exportTask?.cancel()
         exportTask = Task {
-            let choices = SaveFormatChoice.choices(
-                presets: configStore.config.savePresets
-            )
-            let lastPresetId = configStore.config.lastSavePreset
-            guard choices.contains(where: { $0.presetId == lastPresetId })
-            else {
-                exportError = DisplayError(
-                    line: String(localized: "Default format")
-                )
-                return
-            }
-
             // Core renders the suggested stem from the library's one filename
             // pattern; a failure surfaces rather than falling back to a raw
             // title.
@@ -560,12 +558,13 @@ extension AlbumDetailView {
 
             let panel = TrackSavePanel.make(
                 suggestedStem: stem,
-                choices: choices,
-                selectedPresetId: lastPresetId
+                configStore: configStore,
+                openFormats: openSaveAsSettings
             )
-            let formatPopup = panel.formatPopup
-            let response = panel.savePanel.runModal()
-            _ = panel.formatDelegate  // prevent deallocation during modal
+            defer { panel.picker.stop() }
+            let response = await withCheckedContinuation { continuation in
+                panel.savePanel.begin { continuation.resume(returning: $0) }
+            }
             guard response == .OK else {
                 return  // user cancelled the save panel
             }
@@ -577,7 +576,7 @@ extension AlbumDetailView {
                 return
             }
 
-            let presetId = SaveFormatPopup.selectedPresetId(of: formatPopup)
+            let presetId = panel.picker.selectedPresetId
             do {
                 try await export.saveTrack(trackId, url, presetId)
             }

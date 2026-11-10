@@ -54,6 +54,7 @@ struct StorageManagerPreviewScene: View {
         .environment(Outputs.stub())
         .environment(PreviewData.configStore())
         .environment(fixture.uiStore)
+        .environment(SettingsNavigation())
         .environment(fixture.downloadStore)
         .environment(fixture.outputStore)
         .environment(fixture.outboxStore)

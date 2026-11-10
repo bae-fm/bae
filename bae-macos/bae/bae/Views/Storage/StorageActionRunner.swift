@@ -32,6 +32,8 @@ final class StorageActionRunner {
     private let configStore: ConfigStore
     private let uiStore: UiStore
     private let storageManagerStore: StorageManagerStore
+    /// Opens Settings at the Save as pane, in front of a save panel.
+    private let openSaveAsSettings: @MainActor () -> Void
 
     /// Releases awaiting the "Move to cloud" confirm sheet. Non-nil while
     /// the sheet is up; the view binds its presentation to this.
@@ -44,7 +46,8 @@ final class StorageActionRunner {
         outputs: Outputs,
         configStore: ConfigStore,
         uiStore: UiStore,
-        storageManagerStore: StorageManagerStore
+        storageManagerStore: StorageManagerStore,
+        openSaveAsSettings: @escaping @MainActor () -> Void
     ) {
         self.releaseEditor = releaseEditor
         self.sync = sync
@@ -53,6 +56,7 @@ final class StorageActionRunner {
         self.configStore = configStore
         self.uiStore = uiStore
         self.storageManagerStore = storageManagerStore
+        self.openSaveAsSettings = openSaveAsSettings
     }
 
     /// The releases of `releaseIds` the list holds now, in their order.
@@ -87,15 +91,16 @@ final class StorageActionRunner {
     /// batch. No folder chosen → nothing enqueued. Joins the same output queue as
     /// export.
     func saveAs(releaseIds: [String]) {
-        guard
-            let target = OutputTarget.resolveReleaseSave(
-                config: configStore.config
-            )
-        else {
-            return
-        }
-        let releaseIds = listed(releaseIds)
         Task {
+            guard
+                let target = await OutputTarget.resolveReleaseSave(
+                    configStore: configStore,
+                    openFormats: openSaveAsSettings
+                )
+            else {
+                return
+            }
+            let releaseIds = listed(releaseIds)
             for releaseId in releaseIds {
                 do {
                     try await outputs.enqueueReleaseSave(

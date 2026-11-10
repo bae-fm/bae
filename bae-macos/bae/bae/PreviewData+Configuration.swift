@@ -84,7 +84,9 @@
             discogsTokenStatus: BridgeDiscogsTokenStatus? = nil,
             importWhenIdentified: Bool = false,
             importDestination: BridgeImportDestination = .cloudPinned,
-            storage: BridgeStorageLocation? = nil
+            storage: BridgeStorageLocation? = nil,
+            savePresets: [BridgeSavePreset] = PreviewData.savePresets,
+            lastSavePreset: String = "flac"
         ) -> ConfigStore {
             let tokenStatus =
                 discogsTokenStatus ?? (discogsUsable ? .valid : .notConfigured)
@@ -114,7 +116,7 @@
                         libraryFullWidth: libraryFullWidth,
                         savePresets: savePresets,
                         filenameTokens: exportFilenameTokens,
-                        lastSavePreset: "flac",
+                        lastSavePreset: lastSavePreset,
                         castEnabled: castEnabled,
                         castTranscodeFormat: .mp3,
                         mcp: BridgeMcpConfig(enabled: mcpEnabled, port: 47777),

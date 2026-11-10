@@ -8,6 +8,12 @@ struct StorageManagerWindowRoot: View {
     var body: some View {
         if let appService = appDelegate.appService {
             appService.installEnvironment(StorageManagerView())
+                .environment(
+                    \.openSettingsWindow,
+                    OpenSettingsWindowAction {
+                        appDelegate.showSettingsWindow(nil)
+                    }
+                )
         }
         else {
             ContentUnavailableView {

@@ -344,6 +344,7 @@
                 .environment(Importer.stub())
                 .environment(PlaybackStore())
                 .environment(UiStore())
+                .environment(SettingsNavigation())
                 .environment(ImportStore())
                 .environment(OutboxStore(uploadsPaused: false))
                 .environment(PreviewData.configStore())
