@@ -248,3 +248,19 @@ async fn an_imported_row_shows_its_records_whatever_the_window_holds() {
 async fn a_window_reads_invalid_rows_in_statements_its_size_does_not_change() {
     assert_eq!(statements_of(Kind::Invalid, 2).await, statements_of(Kind::Invalid, 10).await);
 }
+
+#[tokio::test]
+async fn a_window_reads_no_draft_rows_in_statements_its_size_does_not_change() {
+    assert_eq!(
+        statements_of(Kind::FolderCover, 2).await,
+        statements_of(Kind::FolderCover, 10).await
+    );
+}
+
+#[tokio::test]
+async fn a_window_reads_embedded_cover_rows_in_statements_its_size_does_not_change() {
+    assert_eq!(
+        statements_of(Kind::EmbeddedCover, 2).await,
+        statements_of(Kind::EmbeddedCover, 10).await
+    );
+}

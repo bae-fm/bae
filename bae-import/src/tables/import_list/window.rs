@@ -51,6 +51,7 @@ pub(super) fn materialise(
     let releases = release_rows(sql, list.id, keys)?;
     let imported = ImportedReads::of(sql, &releases)?;
     let mut scanned = scanned_items(sql, keys, &releases)?;
+    let mut covers = row_covers(sql, keys, &releases, &mut scanned)?;
     let mut releases = releases.into_iter().peekable();
     keys.iter()
         .enumerate()
@@ -72,7 +73,7 @@ pub(super) fn materialise(
             if key.item == Item::Invalid {
                 return invalid_item(&mut scanned, release);
             }
-            candidate_item(sql, &imported, &mut scanned, release, header_position)
+            candidate_item(sql, &imported, &mut covers, release, header_position)
         })
         .collect()
 }
@@ -398,7 +399,7 @@ impl ImportedReads {
 fn candidate_item(
     sql: &SqlReadContext<'_>,
     imported_reads: &ImportedReads,
-    scanned: &mut HashMap<CandidateKey, folder_scans::StoredScanItem>,
+    covers: &mut HashMap<usize, crate::CoverImageSource>,
     release: ReleaseRows,
     header_position: Option<u64>,
 ) -> Result<WindowItemRows, DbError> {
@@ -446,7 +447,7 @@ fn candidate_item(
                 ),
                 release_link,
                 picked,
-                cover: row_cover(sql, scanned, &release)?,
+                cover: covers.remove(&release.position),
             }
         }
     };
@@ -544,38 +545,49 @@ impl LinkedRows {
     }
 }
 
-/// The cover the row of a candidate this device did not import draws: its
-/// stored selection, or, for a state holding no draft row, the folder's own
-/// cover its blank draft comes with, read from its scan. Only such a row
-/// reads its scan's files.
-fn row_cover(
+/// The cover each row of a candidate this device did not import draws, by
+/// the row's position in the window: its stored selection, or, for a state
+/// holding no draft row, the folder's own cover its blank draft comes with,
+/// read from its scan, which it takes out of `scanned`. The versions of the files the selections
+/// name are read together.
+fn row_covers(
     sql: &SqlReadContext<'_>,
+    keys: &[ItemKey],
+    releases: &[ReleaseRows],
     scanned: &mut HashMap<CandidateKey, folder_scans::StoredScanItem>,
-    release: &ReleaseRows,
-) -> Result<Option<crate::CoverImageSource>, DbError> {
-    let blank;
-    let cover = if release.reads_blank_cover() {
-        let unreadable =
-            || DbError::unreadable(format!("the scan_candidate rows of listed {}", release.key), 0);
-        let stored = scanned.remove(&release.key).ok_or_else(unreadable)?;
-        let (candidate, _) =
-            release_of_stored(&release.watched_folder_path, stored)?.ok_or_else(unreadable)?;
-        blank = candidate.blank_cover().as_ref().map(crate::cover_art::PreparedCover::selection);
-        blank.as_ref()
-    } else {
-        release.cover.as_ref()
-    };
-    cover
-        .map(|cover| {
-            folder_scans::stored_cover_choice(
-                sql,
-                &release.watched_folder_path,
-                &release.key,
-                cover,
-            )
-            .map(crate::CoverChoice::into_image)
+) -> Result<HashMap<usize, crate::CoverImageSource>, DbError> {
+    let mut selections: Vec<(&ReleaseRows, CoverSelection)> = Vec::new();
+    for release in releases {
+        if keys[release.position].item == Item::Invalid || release.imported.is_some() {
+            continue;
+        }
+        let selection = if release.reads_blank_cover() {
+            let unreadable = || {
+                DbError::unreadable(format!("the scan_candidate rows of listed {}", release.key), 0)
+            };
+            let stored = scanned.remove(&release.key).ok_or_else(unreadable)?;
+            let (candidate, _) =
+                release_of_stored(&release.watched_folder_path, stored)?.ok_or_else(unreadable)?;
+            candidate.blank_cover().as_ref().map(crate::cover_art::PreparedCover::selection)
+        } else {
+            release.cover.clone()
+        };
+        if let Some(selection) = selection {
+            selections.push((release, selection));
+        }
+    }
+    let wanted: Vec<_> = selections
+        .iter()
+        .map(|(release, selection)| {
+            (release.watched_folder_path.as_path(), &release.key, selection)
         })
-        .transpose()
+        .collect();
+    let choices = folder_scans::stored_cover_choices(sql, &wanted)?;
+    Ok(selections
+        .iter()
+        .zip(choices)
+        .map(|((release, _), choice)| (release.position, choice.into_image()))
+        .collect())
 }
 
 /// The records of every stored release a linked pressing claims, the

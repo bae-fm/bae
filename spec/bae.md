@@ -972,7 +972,8 @@ volume does not hold up the list, and a linked row reads only the records its
 stored releases name, not the releases whole. A window reads the records and
 the upload standing of its imported rows' releases in one statement each, and
 the stored scan items of its skipped rows and of its candidates holding no
-draft row in one statement, not one per row.
+draft row in one statement, and the file versions its folder-image and
+embedded covers name in one statement each, not one per row.
 Its counts — each tab's, each filter entry's, how many items the list holds
 and how many releases its filters keep, and how many each group's header
 counts — are kept beside the placement as rows move, so reading them costs

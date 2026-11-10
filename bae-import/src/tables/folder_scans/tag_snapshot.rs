@@ -409,74 +409,88 @@ pub(super) fn load_root_file_tags(
         .collect()
 }
 
-/// The version of the file the candidate's selected embedded cover was read
-/// from, which `source_file_id` names. A row reads this and never the bytes:
-/// [`stored_embedded_cover_bytes`] reads those when the cover is drawn.
-pub(super) fn stored_embedded_cover_version(
+/// The versions of the files the candidates' selected embedded covers were
+/// read from, one for each of `wanted`'s roots, candidates and source file
+/// ids, in one statement, in `wanted`'s order. A row reads these and never the
+/// bytes: [`stored_embedded_cover_bytes`] reads those when a cover is drawn.
+pub(super) fn stored_embedded_cover_versions(
     sql: &SqlReadContext<'_>,
-    watched_folder_path: &Path,
-    candidate_path: &CandidateKey,
-    source_file_id: &str,
-) -> Result<FileVersion, DbError> {
+    wanted: &[(&Path, &CandidateKey, &str)],
+) -> Result<Vec<FileVersion>, DbError> {
     type CoverColumns = (Option<String>, Option<i64>, Option<i64>, Option<Vec<u8>>);
-    let (stored_source, size, modified_at_ns, path): CoverColumns = sql
-        .query_row(
-            "SELECT snapshot.embedded_cover_source_relative_path, \
-                    tags.file_size, tags.modified_at_ns, files.absolute_path \
-             FROM scan_candidate_tag_snapshot AS snapshot \
-             LEFT JOIN scan_candidate_file_tag AS tags \
-               ON tags.watched_folder_path = snapshot.watched_folder_path \
-              AND tags.candidate_path = snapshot.candidate_path \
-              AND tags.relative_path = :source \
-             LEFT JOIN scan_candidate_file AS files \
-               ON files.watched_folder_path = snapshot.watched_folder_path \
-              AND files.candidate_path = snapshot.candidate_path \
-              AND files.relative_path = :source \
-             WHERE snapshot.watched_folder_path = :root AND snapshot.candidate_path = :path",
-            rusqlite::named_params! {
-                ":root": coven::path_bytes(watched_folder_path),
-                ":path": candidate_path,
-                ":source": source_file_id,
-            },
-            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
-        )
-        .optional()?
-        .ok_or_else(|| {
-            DbError::unreadable(
-                format!("the tag snapshot of {candidate_path}, whose cover choice is embedded"),
-                None::<String>,
-            )
-        })?;
-    // The table holds a source and its bytes together or neither.
-    let Some(stored_source) = stored_source else {
-        return Err(DbError::unreadable(
-            format!("the embedded cover of {candidate_path}'s tag snapshot, which it chose"),
-            None::<String>,
-        ));
-    };
-    if stored_source != source_file_id {
-        return Err(DbError::unreadable(
-            format!("the source of {candidate_path}'s embedded cover and of its cover choice"),
-            (&stored_source, source_file_id),
-        ));
+    let found = sql.query(
+        "SELECT w.key, snapshot.embedded_cover_source_relative_path, \
+                tags.file_size, tags.modified_at_ns, files.absolute_path \
+         FROM json_each(?1) AS w \
+         JOIN scan_candidate_tag_snapshot AS snapshot \
+           ON snapshot.watched_folder_path = unhex(w.value ->> 0) \
+          AND snapshot.candidate_path = unhex(w.value ->> 1) \
+         LEFT JOIN scan_candidate_file_tag AS tags \
+           ON tags.watched_folder_path = snapshot.watched_folder_path \
+          AND tags.candidate_path = snapshot.candidate_path \
+          AND tags.relative_path = w.value ->> 2 \
+         LEFT JOIN scan_candidate_file AS files \
+           ON files.watched_folder_path = snapshot.watched_folder_path \
+          AND files.candidate_path = snapshot.candidate_path \
+          AND files.relative_path = w.value ->> 2",
+        [super::read::listed_files(wanted)],
+        |row| {
+            let columns: CoverColumns = (row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?);
+            Ok((row.get::<_, usize>(0)?, columns))
+        },
+    )?;
+    let mut stored: Vec<Option<CoverColumns>> = vec![None; wanted.len()];
+    for (at, columns) in found {
+        stored[at] = Some(columns);
     }
-    let (Some(size), Some(modified_at_ns)) = (size, modified_at_ns) else {
-        return Err(DbError::unreadable(
-            format!("the reading of {source_file_id}, the source of {candidate_path}'s cover"),
-            (size, modified_at_ns),
-        ));
-    };
-    let path = path.ok_or_else(|| {
-        DbError::unreadable(
-            format!("the file {candidate_path}'s embedded cover choice names"),
-            source_file_id,
-        )
-    })?;
-    Ok(FileVersion {
-        path: path_column::decode(path)?,
-        size: to_u64(size, "a file-tag reading's size")?,
-        modified_at_ns,
-    })
+    wanted
+        .iter()
+        .zip(stored)
+        .map(|((_, candidate_path, source_file_id), columns)| {
+            let (stored_source, size, modified_at_ns, path) = columns.ok_or_else(|| {
+                DbError::unreadable(
+                    format!("the tag snapshot of {candidate_path}, whose cover choice is embedded"),
+                    None::<String>,
+                )
+            })?;
+            // The table holds a source and its bytes together or neither.
+            let Some(stored_source) = stored_source else {
+                return Err(DbError::unreadable(
+                    format!(
+                        "the embedded cover of {candidate_path}'s tag snapshot, which it chose"
+                    ),
+                    None::<String>,
+                ));
+            };
+            if stored_source != *source_file_id {
+                return Err(DbError::unreadable(
+                    format!(
+                        "the source of {candidate_path}'s embedded cover and of its cover choice"
+                    ),
+                    (&stored_source, source_file_id),
+                ));
+            }
+            let (Some(size), Some(modified_at_ns)) = (size, modified_at_ns) else {
+                return Err(DbError::unreadable(
+                    format!(
+                        "the reading of {source_file_id}, the source of {candidate_path}'s cover"
+                    ),
+                    (size, modified_at_ns),
+                ));
+            };
+            let path = path.ok_or_else(|| {
+                DbError::unreadable(
+                    format!("the file {candidate_path}'s embedded cover choice names"),
+                    source_file_id,
+                )
+            })?;
+            Ok(FileVersion {
+                path: path_column::decode(path)?,
+                size: to_u64(size, "a file-tag reading's size")?,
+                modified_at_ns,
+            })
+        })
+        .collect()
 }
 
 /// The bytes of the embedded cover the candidate's tag snapshot stored from

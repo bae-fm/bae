@@ -78,26 +78,71 @@ pub(crate) fn stored_cover_choice(
     candidate_path: &CandidateKey,
     selection: &CoverSelection,
 ) -> Result<CoverChoice, DbError> {
-    Ok(match selection {
-        CoverSelection::Remote(image, source) => {
-            CoverChoice::Remote { image: image.clone(), source: *source }
-        }
-        CoverSelection::Local(file_id) => CoverChoice::Local {
-            file_id: file_id.clone(),
-            file: read::scanned_file_version(sql, watched_folder_path, candidate_path, file_id)?,
-        },
-        CoverSelection::Embedded(source_file_id) => {
-            let source = tag_snapshot::stored_embedded_cover_version(
-                sql,
-                watched_folder_path,
-                candidate_path,
-                source_file_id,
-            )?;
-            CoverChoice::Embedded {
-                candidate: candidate_path.clone(),
-                source_file_id: source_file_id.clone(),
-                source,
-            }
-        }
-    })
+    let mut choices =
+        stored_cover_choices(sql, &[(watched_folder_path, candidate_path, selection)])?;
+    Ok(choices.remove(0))
+}
+
+/// [`stored_cover_choice`] for each of `covers`, in order: one statement
+/// reads the versions of every folder image, and one those of every
+/// embedded cover's file.
+pub(crate) fn stored_cover_choices(
+    sql: &SqlReadContext<'_>,
+    covers: &[(&Path, &CandidateKey, &CoverSelection)],
+) -> Result<Vec<CoverChoice>, DbError> {
+    let named = |wanted: fn(&CoverSelection) -> Option<&str>| -> Vec<(usize, (&Path, &CandidateKey, &str))> {
+        covers
+            .iter()
+            .enumerate()
+            .filter_map(|(at, (root, key, selection))| {
+                wanted(selection).map(|file_id| (at, (*root, *key, file_id)))
+            })
+            .collect()
+    };
+    let local = named(|selection| match selection {
+        CoverSelection::Local(file_id) => Some(file_id),
+        _ => None,
+    });
+    let embedded = named(|selection| match selection {
+        CoverSelection::Embedded(file_id) => Some(file_id),
+        _ => None,
+    });
+    let mut local_versions = if local.is_empty() {
+        Vec::new()
+    } else {
+        let wanted: Vec<_> = local.iter().map(|(_, wanted)| *wanted).collect();
+        read::scanned_file_versions(sql, &wanted)?
+    }
+    .into_iter();
+    let mut embedded_versions = if embedded.is_empty() {
+        Vec::new()
+    } else {
+        let wanted: Vec<_> = embedded.iter().map(|(_, wanted)| *wanted).collect();
+        tag_snapshot::stored_embedded_cover_versions(sql, &wanted)?
+    }
+    .into_iter();
+    covers
+        .iter()
+        .map(|(_, candidate_path, selection)| {
+            let next = |versions: &mut std::vec::IntoIter<crate::folder_scanner::FileVersion>| {
+                versions.next().ok_or_else(|| {
+                    DbError::unreadable(format!("the cover versions read for {candidate_path}"), 0)
+                })
+            };
+            Ok(match selection {
+                CoverSelection::Remote(image, source) => {
+                    CoverChoice::Remote { image: image.clone(), source: *source }
+                }
+                CoverSelection::Local(file_id) => CoverChoice::Local {
+                    file_id: file_id.clone(),
+                    file: next(&mut local_versions)?,
+                },
+                CoverSelection::Embedded(source_file_id) => CoverChoice::Embedded {
+                    candidate: (*candidate_path).clone(),
+                    source_file_id: source_file_id.clone(),
+                    source: next(&mut embedded_versions)?,
+                },
+            })
+        })
+        .collect()
 }

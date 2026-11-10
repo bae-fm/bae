@@ -321,33 +321,68 @@ pub(crate) fn require_current_candidate(
     }
 }
 
-/// The version of one of the candidate's files that its scan read.
-pub(super) fn scanned_file_version(
+/// The versions of the files the candidate files `wanted` name (each a
+/// root, a candidate and a relative path) that their scans read, in one
+/// statement, in `wanted`'s order.
+pub(super) fn scanned_file_versions(
     sql: &impl coven::SqlRead,
-    watched_folder_path: &Path,
-    candidate_path: &CandidateKey,
-    file_id: &str,
-) -> Result<FileVersion, DbError> {
-    let (path, size, modified_at_ns) = sql
-        .query_row(
-            "SELECT absolute_path, size, modified_at_ns FROM scan_candidate_file \
-             WHERE watched_folder_path = ? AND candidate_path = ? \
-               AND relative_path = ?",
-            params![coven::path_bytes(watched_folder_path), candidate_path, file_id],
-            |row| Ok((row.get::<_, Vec<u8>>(0)?, row.get::<_, i64>(1)?, row.get::<_, i64>(2)?)),
-        )
-        .optional()?
-        .ok_or_else(|| {
-            DbError::unreadable(
-                format!("the file candidate {candidate_path}'s stored cover choice names"),
-                file_id,
-            )
-        })?;
-    Ok(FileVersion {
-        path: path_column::decode(path)?,
-        size: to_u64(size, "a scanned file's size")?,
-        modified_at_ns,
-    })
+    wanted: &[(&Path, &CandidateKey, &str)],
+) -> Result<Vec<FileVersion>, DbError> {
+    let found = sql.query(
+        "SELECT w.key, file.absolute_path, file.size, file.modified_at_ns \
+         FROM json_each(?1) AS w \
+         JOIN scan_candidate_file AS file \
+           ON file.watched_folder_path = unhex(w.value ->> 0) \
+          AND file.candidate_path = unhex(w.value ->> 1) \
+          AND file.relative_path = w.value ->> 2",
+        [listed_files(wanted)],
+        |row| {
+            Ok((
+                row.get::<_, usize>(0)?,
+                row.get::<_, Vec<u8>>(1)?,
+                row.get::<_, i64>(2)?,
+                row.get::<_, i64>(3)?,
+            ))
+        },
+    )?;
+    let mut versions: Vec<Option<FileVersion>> = vec![None; wanted.len()];
+    for (at, path, size, modified_at_ns) in found {
+        versions[at] = Some(FileVersion {
+            path: path_column::decode(path)?,
+            size: to_u64(size, "a scanned file's size")?,
+            modified_at_ns,
+        });
+    }
+    wanted
+        .iter()
+        .zip(versions)
+        .map(|((_, candidate_path, file_id), version)| {
+            version.ok_or_else(|| {
+                DbError::unreadable(
+                    format!("the file candidate {candidate_path}'s stored cover choice names"),
+                    file_id,
+                )
+            })
+        })
+        .collect()
+}
+
+/// `wanted` as the JSON array of `[root, candidate, relative path]` the
+/// batched file reads join on, the paths in hex.
+pub(super) fn listed_files(wanted: &[(&Path, &CandidateKey, &str)]) -> String {
+    serde_json::Value::Array(
+        wanted
+            .iter()
+            .map(|(root, candidate_path, file_id)| {
+                serde_json::json!([
+                    hex::encode(coven::path_bytes(root)),
+                    hex::encode(candidate_path.as_bytes()),
+                    file_id
+                ])
+            })
+            .collect(),
+    )
+    .to_string()
 }
 
 /// The files of the entry joined as `candidate`, as a JSON array in their
