@@ -40,11 +40,67 @@ value = "{count, plural, one {# pending delete} other {# pending deletes}}"
 }
 
 #[test]
-fn apple_rejects_plural_with_extra_arg() {
+fn apple_plural_beside_an_argument_is_a_substitution() {
+    let c = cat(r#"
+[messages."core.activity.releases_done"]
+args = { done = "Int", total = "Int" }
+value = "{done} of {total, plural, one {# release} other {# releases}}"
+translations = { pl = "{done} z {total, plural, one {# wydania} few {# wydań} many {# wydań} other {# wydania}}" }
+"#);
+    let json: serde_json::Value = serde_json::from_str(&apple_xcstrings(&c).unwrap()).unwrap();
+    let locs = &json["strings"]["core.activity.releases_done"]["localizations"];
+
+    let en = &locs["en"];
+    assert_eq!(en["stringUnit"]["value"], "%1$lld of %#@total@");
+    let total = &en["substitutions"]["total"];
+    assert_eq!(total["argNum"], 2);
+    assert_eq!(total["formatSpecifier"], "lld");
+    let cases = total["variations"]["plural"].as_object().unwrap();
+    assert_eq!(cases.keys().collect::<Vec<_>>(), ["one", "other"]);
+    assert_eq!(cases["one"]["stringUnit"]["value"], "%arg release");
+    assert_eq!(cases["other"]["stringUnit"]["value"], "%arg releases");
+
+    let pl = &locs["pl"];
+    assert_eq!(pl["stringUnit"]["value"], "%1$lld z %#@total@");
+    let pl_cases = pl["substitutions"]["total"]["variations"]["plural"].as_object().unwrap();
+    let mut keys: Vec<_> = pl_cases.keys().map(String::as_str).collect();
+    keys.sort();
+    assert_eq!(keys, ["few", "many", "one", "other"]);
+    assert_eq!(pl["substitutions"]["total"]["argNum"], 2);
+}
+
+#[test]
+fn apple_plural_with_another_argument_in_a_case_is_a_substitution() {
     let c = cat(r#"
 [messages."core.bad"]
 args = { count = "Int", name = "Str" }
 value = "{count, plural, one {# thing for {name}} other {# things for {name}}}"
+"#);
+    let json: serde_json::Value = serde_json::from_str(&apple_xcstrings(&c).unwrap()).unwrap();
+    let en = &json["strings"]["core.bad"]["localizations"]["en"];
+    assert_eq!(en["stringUnit"]["value"], "%#@count@");
+    assert_eq!(
+        en["substitutions"]["count"]["variations"]["plural"]["one"]["stringUnit"]["value"],
+        "%arg thing for %2$@"
+    );
+}
+
+#[test]
+fn apple_rejects_a_plural_nested_in_a_plural() {
+    let c = cat(r#"
+[messages."core.bad"]
+args = { a = "Int", b = "Int" }
+value = "{a, plural, one {{b, plural, one {x} other {y}}} other {z}}"
+"#);
+    assert!(apple_xcstrings(&c).is_err());
+}
+
+#[test]
+fn apple_rejects_two_plurals_in_one_message() {
+    let c = cat(r#"
+[messages."core.bad"]
+args = { a = "Int", b = "Int" }
+value = "{a, plural, one {# x} other {# xs}} {b, plural, one {# y} other {# ys}}"
 "#);
     assert!(apple_xcstrings(&c).is_err());
 }

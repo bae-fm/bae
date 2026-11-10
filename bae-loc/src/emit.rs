@@ -1,8 +1,9 @@
 //! Convert a parsed catalog into each platform's native resource file.
 //!
 //! Apple is the only target that needs structural conversion: ICU MessageFormat
-//! named args become positional `%lld`/`%@`, and a whole-message `plural`
-//! becomes a String Catalog `variations.plural`. Android stores the MF1 string
+//! named args become positional `%lld`/`%@`, a whole-message `plural` over its
+//! count alone becomes a String Catalog `variations.plural`, and a `plural`
+//! beside text or other arguments becomes a `%#@arg@` substitution. Android stores the MF1 string
 //! **verbatim** (its runtime parses it) — the only work there is resource-file
 //! escaping and sanitizing the dotted id into a legal resource name.
 //!
@@ -13,8 +14,8 @@
 //! keeps that from reaching a build.
 //!
 //! Only the message shapes bae actually authors are handled; anything else
-//! (plural combined with extra args, a plural embedded mid-sentence) returns an
-//! error so the build fails loudly instead of emitting wrong output.
+//! (two plurals in one message, a plural nested in a plural, `=N` cases)
+//! returns an error so the build fails loudly instead of emitting wrong output.
 
 use crate::mf1::{self, Node, PluralSelector};
 use crate::{ArgType, Catalog, Message, SOURCE_LOCALE, TARGET_LOCALES};
@@ -28,15 +29,30 @@ fn apple_specifier(ty: ArgType) -> &'static str {
     }
 }
 
-/// Render a flat (non-plural) node run into an Apple format string. `count_arg`,
+/// The plural argument of a case body, and how its `#` and name are spelled
+/// there: its own format specifier (`%lld`) in a whole-message plural, `%arg`
+/// inside a substitution, which Apple replaces with the substitution's
+/// `formatSpecifier`.
+#[derive(Clone, Copy)]
+struct PluralCount<'a> {
+    arg: &'a str,
+    spelled_arg: bool,
+}
+
+/// Render a flat (non-plural) node run into an Apple format string. `count`,
 /// when set, is the plural argument whose `#`/name both render as that single
-/// argument (always positional 1 inside a plural body).
+/// argument.
 fn apple_flat(
     nodes: &[Node],
     msg: &Message,
     order: &[String],
-    count_arg: Option<&str>,
+    count: Option<PluralCount>,
 ) -> Result<String, String> {
+    let count_arg = count.map(|c| c.arg);
+    let spell_count = |ty| match count {
+        Some(PluralCount { spelled_arg: true, .. }) => "%arg".to_string(),
+        _ => format!("%{}", apple_specifier(ty)),
+    };
     let mut out = String::new();
     for n in nodes {
         match n {
@@ -47,7 +63,7 @@ fn apple_flat(
                     msg.args.get(arg).copied().ok_or_else(|| {
                         format!("plural argument `{arg}` is not declared in `args`")
                     })?;
-                out.push_str(&format!("%{}", apple_specifier(ty)));
+                out.push_str(&spell_count(ty));
             }
             Node::Arg(name) => {
                 let ty = msg
@@ -56,9 +72,11 @@ fn apple_flat(
                     .copied()
                     .ok_or_else(|| format!("argument `{name}` is not declared in `args`"))?;
                 // The plural count and any single-arg message render
-                // non-positional (`%lld`); only genuinely multi-arg messages
-                // need positional specifiers.
-                if Some(name.as_str()) == count_arg || order.len() <= 1 {
+                // non-positional; only genuinely multi-arg messages need
+                // positional specifiers.
+                if Some(name.as_str()) == count_arg {
+                    out.push_str(&spell_count(ty));
+                } else if order.len() <= 1 {
                     out.push_str(&format!("%{}", apple_specifier(ty)));
                 } else {
                     let pos = order.iter().position(|a| a == name).unwrap() + 1;
@@ -96,11 +114,36 @@ fn localized<'a>(msg: &'a Message, locale: &str) -> (&'a str, &'static str) {
     }
 }
 
-/// Render one locale's MF1 `value` for `msg` into an `.xcstrings` unit: a
-/// `variations.plural` for a whole-message plural, otherwise a flat
-/// `stringUnit`. Each locale's value is parsed independently, so a translation
-/// may carry that locale's own plural categories (one/few/many/other) where the
-/// English source has only one/other.
+/// The `variations.plural` map of a plural's cases, each rendered with `#` and
+/// the count argument as `count`.
+fn plural_variations(
+    cases: &[mf1::PluralCase],
+    msg: &Message,
+    order: &[String],
+    count: PluralCount,
+    state: &str,
+) -> Result<serde_json::Map<String, serde_json::Value>, String> {
+    let mut variations = serde_json::Map::new();
+    for case in cases {
+        let cat = match &case.selector {
+            PluralSelector::Category(c) => c.as_cldr(),
+            PluralSelector::Exact(_) => {
+                return Err("`=N` exact plural cases are not supported on Apple yet".to_string())
+            }
+        };
+        let rendered = apple_flat(&case.message, msg, order, Some(count))?;
+        variations.insert(cat.to_string(), string_unit_state(&rendered, state));
+    }
+    Ok(variations)
+}
+
+/// Render one locale's MF1 `value` for `msg` into an `.xcstrings` unit. A
+/// plural that is the whole message over its count alone is a
+/// `variations.plural`. A plural beside text or other arguments is a
+/// `stringUnit` that names it `%#@arg@`, plus a `substitutions` entry carrying
+/// its cases. Otherwise it is a flat `stringUnit`. Each locale's value is
+/// parsed independently, so a translation may carry that locale's own plural
+/// categories (one/few/many/other) where the English source has only one/other.
 ///
 /// The positions the arguments take are the source message's, whatever order
 /// a translation puts them in: a caller passes them in the order the English
@@ -110,35 +153,44 @@ fn apple_unit(msg: &Message, value: &str, state: &str) -> Result<serde_json::Val
     let nodes = mf1::parse(value)?;
     let order = ordered_args(&mf1::parse(&msg.value)?);
 
-    // Whole-message plural -> variations.plural. Other plural shapes are errors.
-    if let [Node::Plural { arg, cases }] = nodes.as_slice() {
-        if msg.args.len() != 1 || !msg.args.contains_key(arg) {
-            return Err(format!(
-                "plural message `{value}` must take exactly its count arg `{arg}`"
-            ));
-        }
-        let mut variations = serde_json::Map::new();
-        for case in cases {
-            let cat = match &case.selector {
-                PluralSelector::Category(c) => c.as_cldr(),
-                PluralSelector::Exact(_) => {
-                    return Err("`=N` exact plural cases are not supported on Apple yet".to_string())
-                }
-            };
-            let rendered = apple_flat(&case.message, msg, &order, Some(arg))?;
-            variations.insert(cat.to_string(), string_unit_state(&rendered, state));
-        }
+    let mut plurals = nodes.iter().enumerate().filter_map(|(i, n)| match n {
+        Node::Plural { arg, cases } => Some((i, arg, cases)),
+        _ => None,
+    });
+    let Some((at, arg, cases)) = plurals.next() else {
+        return Ok(string_unit_state(&apple_flat(&nodes, msg, &order, None)?, state));
+    };
+    if plurals.next().is_some() {
+        return Err(format!("message `{value}` holds more than one plural"));
+    }
+    if !msg.args.contains_key(arg) {
+        return Err(format!("plural argument `{arg}` is not declared in `args`"));
+    }
+
+    if nodes.len() == 1 && msg.args.len() == 1 {
+        let count = PluralCount { arg, spelled_arg: false };
+        let variations = plural_variations(cases, msg, &order, count, state)?;
         return Ok(serde_json::json!({ "variations": { "plural": variations } }));
     }
 
-    if nodes.iter().any(|n| matches!(n, Node::Plural { .. })) {
-        return Err(format!(
-            "message `{value}` embeds a plural mid-text; Apple needs a substitution, not yet supported"
-        ));
-    }
-
-    let rendered = apple_flat(&nodes, msg, &order, None)?;
-    Ok(string_unit_state(&rendered, state))
+    let argument =
+        order.iter().position(|a| a == arg).expect("a plural's argument is in the source order");
+    let count = PluralCount { arg, spelled_arg: true };
+    let variations = plural_variations(cases, msg, &order, count, state)?;
+    let outer = format!(
+        "{}%#@{arg}@{}",
+        apple_flat(&nodes[..at], msg, &order, None)?,
+        apple_flat(&nodes[at + 1..], msg, &order, None)?,
+    );
+    let mut unit = string_unit_state(&outer, state);
+    unit["substitutions"] = serde_json::json!({
+        arg.as_str(): {
+            "argNum": argument + 1,
+            "formatSpecifier": apple_specifier(msg.args[arg]),
+            "variations": { "plural": variations },
+        }
+    });
+    Ok(unit)
 }
 
 /// Build the `.xcstrings` `localizations` body for one message: the source
