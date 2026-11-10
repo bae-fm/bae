@@ -100,7 +100,7 @@ extension ShotScene {
 /// titled in its own words, then quiet.
 private struct NoticeLooksShot: View {
     private let error = DisplayError(
-        line: "Couldn’t reach your storage.",
+        line: "Couldn’t reach the cloud.",
         detail: "dns error: failed to lookup address information"
     )
 
