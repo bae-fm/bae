@@ -564,8 +564,15 @@ stating one fact write one row
 **Edge cases.**
 
 - **An artist or a label known only by name** has nothing that identifies it
-  across devices, so it gets a fresh id. If a later credit gives it a catalog id, it
-  keeps the id it has; row ids are never rewritten.
+  across devices, so it gets a fresh id. If a later write gives it a catalog
+  id, it keeps the id it has; row ids are never rewritten.
+- **A new artist or label given another id within its write.** A new artist
+  or label takes its id from the catalog ids it holds once the write that
+  makes it has decided every credit or label, one step for both. A label
+  first named by its Discogs id alone, which a later label of the same
+  release gives a MusicBrainz id, takes the MusicBrainz id's; an artist
+  first credited by name alone, which a later credit of the write names with
+  a catalog id, takes that id's.
 - **An album with no group.** A release whose metadata came from its tags names
   no group, so its album gets a fresh id.
 - **A second catalog's group.** A Discogs import whose record pairs with the

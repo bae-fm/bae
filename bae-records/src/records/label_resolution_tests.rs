@@ -229,6 +229,34 @@ async fn labels_of_one_write_sharing_a_discogs_id_with_two_musicbrainz_ids_are_t
     assert_eq!(held(stored_label(&db, &second).await), (Some("mb-second".to_string()), None));
 }
 
+/// A new label first named by its Discogs id alone, which a later label of
+/// the same write gives a MusicBrainz id, takes the id its MusicBrainz id
+/// derives, as a new artist does: a new label's id comes from the ids it
+/// holds once the write has decided every label.
+#[tokio::test]
+async fn a_new_label_a_later_label_gives_a_musicbrainz_id_takes_that_id() {
+    let (db, _tmp) = library(crate::test_fixtures::TEST_SCHEMA).await;
+
+    write(
+        &db,
+        vec![
+            with_ids(label(Some("Label Name"), Some("LN 1")), None, Some("7190")),
+            with_ids(label(Some("Label Name"), Some("LN 2")), Some("mb-label"), Some("7190")),
+        ],
+    )
+    .await
+    .unwrap();
+
+    let made = crate::identity::label_id(Some("mb-label"), Some("7190")).unwrap();
+    assert_eq!(ids_of(&placed(&db).await), [Some(made.as_str()), Some(made.as_str())]);
+    let made = stored_label(&db, &made).await;
+    assert_eq!(
+        (made.musicbrainz_label_id.as_deref(), made.discogs_label_id.as_deref()),
+        (Some("mb-label"), Some("7190"))
+    );
+    assert_eq!(label_count(&db).await, 1);
+}
+
 /// A label whose Discogs id names a new label of this write and whose
 /// MusicBrainz id names a library label makes them one, where no id either
 /// holds contradicts the other: the library label takes the new one's

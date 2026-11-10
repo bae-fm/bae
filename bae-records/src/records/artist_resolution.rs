@@ -30,9 +30,10 @@
 //! A credit linked to an existing artist fills in that artist's missing catalog
 //! ids and sort name. The artist keeps its own id: row ids are never rewritten,
 //! so an artist first created from a name alone keeps the independent id it was
-//! created with after a later credit gives it a catalog id. Only a *new*
+//! created with after a later write gives it a catalog id. Only a *new*
 //! artist a catalog names takes the id [`crate::identity::artist_id`]
-//! derives from that catalog entry.
+//! derives from that catalog entry, from the ids it holds once the write has
+//! decided every credit (`catalog_match`).
 
 use super::catalog_match::*;
 use super::*;
@@ -285,20 +286,7 @@ pub(crate) fn resolve_artists_on<Q: coven::SqlRead>(
         ids.push(resolved_id);
     }
 
-    // A new artist a catalog names gets the id that catalog entry names, so
-    // every device that meets this artist writes one row.
-    for insert in &mut inserts {
-        let Some(identity) = crate::identity::artist_id(
-            insert.musicbrainz_artist_id.as_deref(),
-            insert.discogs_artist_id.as_deref(),
-        ) else {
-            continue;
-        };
-        for id in ids.iter_mut().filter(|id| **id == insert.id) {
-            *id = identity.clone();
-        }
-        insert.id = identity;
-    }
+    identify_new_rows(&mut inserts, &mut ids);
 
     Ok(ResolvedArtists { ids, inserts, external_id_updates, merges })
 }
@@ -551,6 +539,14 @@ impl CatalogRow for DbArtist {
         &self.id
     }
 
+    fn set_row_id(&mut self, id: String) {
+        self.id = id;
+    }
+
+    fn catalog_entry_id(musicbrainz: Option<&str>, discogs: Option<&str>) -> Option<String> {
+        crate::identity::artist_id(musicbrainz, discogs)
+    }
+
     /// Take each catalog id and the sort name this artist lacks from `other`.
     fn fill_missing(&mut self, other: &Self) {
         if self.discogs_artist_id.is_none() {
@@ -571,10 +567,10 @@ impl CatalogRow for DbArtist {
     ) -> Result<Vec<Self>, DbError> {
         let (column, identity) = match column {
             CatalogColumn::Discogs => {
-                ("discogs_artist_id", crate::identity::artist_id(None, Some(catalog_id)))
+                ("discogs_artist_id", Self::catalog_entry_id(None, Some(catalog_id)))
             }
             CatalogColumn::MusicBrainz => {
-                ("musicbrainz_artist_id", crate::identity::artist_id(Some(catalog_id), None))
+                ("musicbrainz_artist_id", Self::catalog_entry_id(Some(catalog_id), None))
             }
         };
         sql.query(

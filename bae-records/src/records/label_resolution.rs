@@ -28,8 +28,9 @@
 //! A label linked to an existing library label fills in that label's missing
 //! catalog ids; the library label keeps its own id. A new label a catalog
 //! names takes the id [`crate::identity::label_id`] derives from that
-//! catalog entry, so every device that meets it writes one row; one known
-//! only by name takes a fresh id.
+//! catalog entry, from the ids it holds once the write has decided every
+//! label (`catalog_match`), so every device that meets it writes one row;
+//! one known only by name keeps the fresh id it was made with.
 
 use super::catalog_match::*;
 use super::*;
@@ -37,8 +38,10 @@ use bae_types::pressing::ReleaseLabel;
 
 /// What a write of a release's labels decides by, beside the labels.
 pub struct LabelWrite<'a> {
-    /// The ids a new label known only by name takes, in order: one for each
-    /// label the release names, since each makes at most one.
+    /// The ids new labels are made with, in order: one for each label the
+    /// release names, since each makes at most one. A new label a catalog
+    /// names takes its catalog entry's id once the write has decided every
+    /// label.
     fresh_ids: &'a [String],
     /// `created_at` for a new label.
     now: &'a str,
@@ -117,6 +120,14 @@ impl CatalogRow for LabelRow {
         &self.id
     }
 
+    fn set_row_id(&mut self, id: String) {
+        self.id = id;
+    }
+
+    fn catalog_entry_id(musicbrainz: Option<&str>, discogs: Option<&str>) -> Option<String> {
+        crate::identity::label_id(musicbrainz, discogs)
+    }
+
     fn fill_missing(&mut self, other: &Self) {
         self.fill_from(other);
     }
@@ -128,10 +139,10 @@ impl CatalogRow for LabelRow {
     ) -> Result<Vec<Self>, DbError> {
         let (column, identity) = match column {
             CatalogColumn::Discogs => {
-                ("discogs_label_id", crate::identity::label_id(None, Some(catalog_id)))
+                ("discogs_label_id", Self::catalog_entry_id(None, Some(catalog_id)))
             }
             CatalogColumn::MusicBrainz => {
-                ("musicbrainz_label_id", crate::identity::label_id(Some(catalog_id), None))
+                ("musicbrainz_label_id", Self::catalog_entry_id(Some(catalog_id), None))
             }
         };
         Ok(sql.query(
@@ -261,6 +272,7 @@ pub fn write_release_labels_on(
         };
         rows.push((id, label.catalog_number()));
     }
+    identify_new_rows(&mut decided.inserts, rows.iter_mut().filter_map(|(id, _)| id.as_mut()));
     let key = |name: &str| bae_types::text_match::label_name_key(name);
     for label in &decided.inserts {
         tx.execute(
@@ -388,19 +400,12 @@ fn resolve_label_on(
         }
     }
 
-    let id = match crate::identity::label_id(label.musicbrainz_label_id(), label.discogs_label_id())
-    {
-        Some(id) => id,
-        None => {
-            let id = write
-                .fresh_ids
-                .get(decided.fresh_taken)
-                .cloned()
-                .expect("a write holds a fresh id for each label it names");
-            decided.fresh_taken += 1;
-            id
-        }
-    };
+    let id = write
+        .fresh_ids
+        .get(decided.fresh_taken)
+        .cloned()
+        .expect("a write holds a fresh id for each label it names");
+    decided.fresh_taken += 1;
     decided.inserts.push(LabelRow {
         id: id.clone(),
         name: name.to_string(),

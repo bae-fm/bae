@@ -15,6 +15,11 @@
 //! from the credit and given to nothing. Where they name a new row of the
 //! write's and another row, and no id either holds contradicts the credit or
 //! the other, the new one is the other.
+//!
+//! A new row takes its id once the write has decided every credit
+//! ([`identify_new_rows`]): a later credit of the write can give it a catalog
+//! id it lacks, and the id its catalog entry derives goes by MusicBrainz
+//! first.
 
 use super::*;
 
@@ -42,6 +47,13 @@ pub(super) fn ids_agree(a: &impl CatalogIds, b: &impl CatalogIds) -> bool {
 /// A library row catalog ids name: an artist, or a label.
 pub(super) trait CatalogRow: CatalogIds + Clone {
     fn row_id(&self) -> &str;
+
+    fn set_row_id(&mut self, id: String);
+
+    /// The id of the row a catalog entry names, preferring MusicBrainz, so
+    /// every device that meets it writes one row. None for a row no catalog
+    /// names.
+    fn catalog_entry_id(musicbrainz: Option<&str>, discogs: Option<&str>) -> Option<String>;
 
     /// Take each catalog id this row lacks from `other`, a row or credit of
     /// the same artist or label, and whatever else such a row takes from it.
@@ -251,4 +263,32 @@ fn exact_holder<R: CatalogRow>(
         row.fill_missing(other);
     }
     Some(Held { row, absorbed })
+}
+
+/// Give each new row of a write that a catalog names the id its catalog entry
+/// derives from the ids the row holds once the write has decided every credit,
+/// and name that id at each of the write's `places` naming the row by the id
+/// it was made with. A row no catalog names keeps the fresh id it was made
+/// with.
+pub(super) fn identify_new_rows<'p, R: CatalogRow>(
+    inserts: &mut [R],
+    places: impl IntoIterator<Item = &'p mut String>,
+) {
+    let renamed: Vec<(String, String)> = inserts
+        .iter_mut()
+        .filter_map(|row| {
+            let id = R::catalog_entry_id(
+                row.catalog_id(CatalogColumn::MusicBrainz),
+                row.catalog_id(CatalogColumn::Discogs),
+            )?;
+            let made_as = row.row_id().to_string();
+            row.set_row_id(id.clone());
+            Some((made_as, id))
+        })
+        .collect();
+    for place in places {
+        if let Some((_, id)) = renamed.iter().find(|(made_as, _)| made_as == place) {
+            place.clone_from(id);
+        }
+    }
 }
