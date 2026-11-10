@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# Runs the macOS app's unit tests (baeTests), all of them or only the named
-# Swift test types (`Type` or `Type/test`), and fails when a name ran no tests:
-# xcodebuild passes a filter that matches nothing, such as a file name.
+# Runs the macOS app's tests: with no names, the unit tests (baeTests) and the UI
+# tests (baeUITests); with names, only the named baeTests Swift test types
+# (`Type` or `Type/test`). Fails when a name ran no tests: xcodebuild passes a
+# filter that matches nothing, such as a file name.
 #
-# `--build-only` compiles the app and baeTests into the same tree and stops,
-# running nothing: the check after a change to a bridge shape or Swift code,
+# `--build-only` compiles the app and the test targets into the same tree and
+# stops, running nothing: the check after a change to a bridge shape or Swift code,
 # which `run.sh` alone misses because it never builds the test target.
 #
 # `--run-only` runs the tests a `--build-only` run already built, without
@@ -46,7 +47,7 @@ for name in "$@"; do
 done
 
 # The `macos-tests-run` step runs the unit-test target only; the UI tests run in
-# CI and in a plain `test.sh` run.
+# CI and in a plain `test.sh` run (the `macos-tests-all` step).
 if [[ "$ACTION" == test-without-building && ${#ONLY_TESTING[@]} -eq 0 ]]; then
     ONLY_TESTING=("-only-testing:baeTests")
 fi
@@ -57,14 +58,39 @@ BUNDLE="$RESULTS/baeTests.xcresult"
 
 ./bae-macos/ensure-bridge.sh Debug
 
+xcodebuild_tests() {
+    xcodebuild -project bae-macos/bae/bae.xcodeproj -scheme bae -configuration Debug \
+        CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
+        "${XCODE_MACOS_UNSIGNED_ARGS[@]}" "${XCODE_MACOS_PACKAGES_ARGS[@]}" \
+        -scmProvider system -disablePackageRepositoryCache -skipPackageUpdates \
+        -disableAutomaticPackageResolution "$@"
+}
+
+# Xcode makes the UI tests' runner by copying its own XCTRunner app, which Apple
+# signed, and adding the test bundle, its frameworks and an Info.plist. With
+# signing off it never signs the result, so the runner's signature no longer
+# matches its contents. Files built on the person's Mac carry macOS's
+# provenance mark, so Gatekeeper checks the runner as it launches, finds an
+# Apple-signed app whose contents changed, and holds it at a prompt saying it is
+# damaged: the runner never gets past dyld, and xcodebuild reports it "hung
+# before establishing connection". Signed ad hoc, as the linker signs bae.app,
+# the runner launches.
+#
+# Once an Apple-signed runner has been launched, macOS refuses codesign's writes
+# into it ("System Policy: codesign deny file-write-create" in the unified log),
+# so the runner is deleted before the build and Xcode's fresh copy is signed.
+UI_TEST_RUNNER="$XCODE_MACOS_UNSIGNED_TREE/Build/Products/Debug/baeUITests-Runner.app"
+
 status=0
-xcodebuild -project bae-macos/bae/bae.xcodeproj -scheme bae -configuration Debug \
-    CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
-    "${XCODE_MACOS_UNSIGNED_ARGS[@]}" "${XCODE_MACOS_PACKAGES_ARGS[@]}" \
-    -scmProvider system -disablePackageRepositoryCache -skipPackageUpdates \
-    -disableAutomaticPackageResolution \
-    -resultBundlePath "$BUNDLE" \
-    ${ONLY_TESTING[@]+"${ONLY_TESTING[@]}"} "$ACTION" || status=$?
+if [[ "$ACTION" != test-without-building ]]; then
+    rm -rf "$UI_TEST_RUNNER"
+    xcodebuild_tests build-for-testing
+    codesign --force --sign - "$UI_TEST_RUNNER"
+fi
+if [[ "$ACTION" != build-for-testing ]]; then
+    xcodebuild_tests -resultBundlePath "$BUNDLE" \
+        ${ONLY_TESTING[@]+"${ONLY_TESTING[@]}"} test-without-building || status=$?
+fi
 
 # A build that failed before testing leaves no bundle; its own status says so.
 if [[ "$ACTION" != build-for-testing && -d "$BUNDLE" ]]; then
