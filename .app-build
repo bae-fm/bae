@@ -13,4 +13,5 @@ step library-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene l
 step welcome-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene welcome- --scene story-1 --tone midnight
 step import-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene import- --tone midnight
 step release-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene release-storage --tone midnight
+step release-files-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene release-files- --tone midnight
 step settings-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene settings- --tone midnight

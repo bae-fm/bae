@@ -312,6 +312,16 @@
             untitledTrackCount: 0
         )
 
+        /// A release's files that are no track: a rip log, a track sheet that
+        /// carves none, a notes file, a damaged image and a video.
+        static let releaseFilesRows: [BridgeMappingFileRow] = [
+            carriedRow(infoLog, role: .document),
+            .sheet(sheet: previewSheetGroup),
+            carriedRow(notesDocument, role: .document),
+            carriedRow(damagedFrontImage, role: .damagedImage),
+            carriedRow(supplementalVideo, role: .other),
+        ]
+
         /// What the folder's own tags say it is: nine tracks, and no release to
         /// tally them against.
         static let fileMetadataMappingTable = BridgeMappingTable(

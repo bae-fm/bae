@@ -43,7 +43,7 @@ struct ImportMappingSourceCell: View {
                     // size mid-digit.
                     .fixedSize()
             }
-            if let damage = damageLine(file) {
+            if let damage = file.damageText {
                 Text(damage)
                     .themeText(.fine)
                     .foregroundStyle(Theme.warning)
@@ -72,19 +72,6 @@ struct ImportMappingSourceCell: View {
             .themeText(.mono)
             .lineLimit(1)
             .truncationMode(.middle)
-    }
-
-    /// What is wrong with a damaged file, in the user's language; nil for
-    /// one that is whole.
-    private func damageLine(_ file: BridgeMappingFile) -> String? {
-        switch file.role {
-        case .damagedImage:
-            localizedCoreString("ui.import.mapping.damaged_image")
-        case .damagedAudio(let damage):
-            damage.localizedText
-        case .audio, .document, .other:
-            nil
-        }
     }
 
     private func openAction(_ file: BridgeMappingFile) -> (() -> Void)? {
@@ -135,5 +122,20 @@ struct ImportMappingSourceCell: View {
                 ? localizedCoreString("ui.import.slots.stop")
                 : localizedCoreString("ui.import.slots.play")
         )
+    }
+}
+
+extension BridgeMappingFile {
+    /// What is wrong with a damaged file, in the user's language; nil for
+    /// one that is whole.
+    var damageText: String? {
+        switch role {
+        case .damagedImage:
+            localizedCoreString("ui.import.mapping.damaged_image")
+        case .damagedAudio(let damage):
+            damage.localizedText
+        case .audio, .document, .other:
+            nil
+        }
     }
 }

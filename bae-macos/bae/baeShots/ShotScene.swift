@@ -221,7 +221,8 @@ struct ShotScene {
                 ShotStage(PreviewScenes.nowPlayingBar(.allHere))
             },
         ] + storageManagerScenes + waitScenes + findOnlineScenes
-        + libraryScenes + importRowScenes + coverPickerScenes + releaseScenes
+        + libraryScenes + releaseFilesScenes + importRowScenes
+        + coverPickerScenes + releaseScenes
         + settingsScenes
         + syncSetupScenes
         + folderPickerScenes

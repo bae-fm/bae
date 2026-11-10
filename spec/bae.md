@@ -1519,6 +1519,14 @@ disc each sheet is, or ignore a sheet. The table also counts the tracks nobody
 has named yet, and the pane states that count beside Import without blocking
 it: importing titles each of them after its file.
 
+The files the folder carries that are no track, such as a rip log or a track
+sheet that carves no tracks, are listed under the tracks beneath a ruled *Files*
+heading, one line per file: its name in monospace, its size at the right, a
+hairline between lines, a damaged file marked with why. A document opens in the
+viewer when clicked. An imported folder's pane lists the files of its scan the
+same way, under its tracks; one view draws both, so a release's files never
+show two ways.
+
 Before importing, the person can play a file through a second player, which
 pauses the library's playback and resumes it when it ends.
 

@@ -29,30 +29,12 @@ struct ImportMappingTable: View {
         VStack(alignment: .leading, spacing: ThemeSpace.edge) {
             tracksSection
             if !table.files.isEmpty {
-                section {
-                    fileHeaderRow
-                    ForEach(table.files, id: \.rowId) { row in
-                        fileBody(of: row)
-                    }
-                }
+                ReleaseFilesView(
+                    rows: table.files,
+                    onOpenDocument: actions.openDocument,
+                    sheetActions: actions
+                )
             }
-        }
-    }
-
-    /// One run of rows, scrolling sideways when the pane is too narrow for
-    /// its columns.
-    @ViewBuilder
-    private func section<Rows: View>(
-        @ViewBuilder rows: () -> Rows
-    ) -> some View {
-        ScrollView(.horizontal) {
-            rowStack(rows)
-        }
-        .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
-        .onGeometryChange(for: CGFloat.self) { geo in
-            geo.size.width
-        } action: {
-            paneWidth = $0
         }
     }
 
@@ -177,32 +159,6 @@ struct ImportMappingTable: View {
                     width: ReleaseMetadataTrackColumns.length,
                     alignment: .trailing
                 )
-        }
-    }
-
-    // MARK: - Files
-
-    /// A row carried with the release that is not one of its tracks.
-    @ViewBuilder
-    private func fileBody(of row: BridgeMappingFileRow) -> some View {
-        switch row {
-        case .file(let file):
-            ImportMappingFileRow(
-                file: file,
-                previewingTarget: previewingTarget,
-                actions: actions,
-            )
-            .mappingRowChrome()
-        case .sheet(let sheet):
-            sheetCaptionRow(sheet)
-                .mappingRowChrome()
-        }
-    }
-
-    private var fileHeaderRow: some View {
-        headerRow {
-            eyebrow("ui.import.mapping.files_title")
-                .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 

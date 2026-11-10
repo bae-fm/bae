@@ -49,7 +49,10 @@ struct ImportedReleasePane: View {
                     imagesSection
                 }
                 if !folder.files.isEmpty {
-                    filesSection
+                    ReleaseFilesView(
+                        rows: folder.files,
+                        onOpenDocument: onOpenDocument
+                    )
                 }
             }
             else if let loadError {
@@ -101,70 +104,6 @@ struct ImportedReleasePane: View {
                 onOpen: onOpenImages
             )
         }
-    }
-
-    private var filesSection: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            FormSectionHeader(title: String(localized: "Files"), ruled: true)
-                .padding(.bottom, ThemeSpace.compact)
-            ForEach(folder.files, id: \.rowId) { row in
-                completedFileRow(row)
-                    .padding(.horizontal, ThemeSpace.line)
-                    .padding(.vertical, ThemeSpace.related)
-                    .overlay(alignment: .top) {
-                        Rectangle().fill(Theme.hairline).frame(height: 1)
-                    }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func completedFileRow(_ row: BridgeMappingFileRow) -> some View {
-        switch row {
-        case .file(let file):
-            if file.role == .document {
-                Button {
-                    onOpenDocument(file.name, file.fileId)
-                } label: {
-                    completedFileLine(name: file.name, size: file.sizeText)
-                }
-                .buttonStyle(.plain)
-            }
-            else {
-                completedFileLine(name: file.name, size: file.sizeText)
-            }
-        case .sheet(let sheet):
-            Button {
-                onOpenDocument(sheet.name, sheet.sheetId)
-            } label: {
-                HStack(spacing: ThemeSpace.group) {
-                    Text(sheet.name)
-                        .themeText(.mono)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                    Spacer(minLength: 0)
-                    Text(Int64(sheet.size).formatted(.byteCount(style: .file)))
-                        .themeText(.fine)
-                        .foregroundStyle(.tertiary)
-                }
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-        }
-    }
-
-    private func completedFileLine(name: String, size: String) -> some View {
-        HStack(spacing: ThemeSpace.group) {
-            Text(name)
-                .themeText(.mono)
-                .lineLimit(1)
-                .truncationMode(.middle)
-            Spacer(minLength: 0)
-            Text(size)
-                .themeText(.fine)
-                .foregroundStyle(.tertiary)
-        }
-        .contentShape(Rectangle())
     }
 }
 
@@ -319,7 +258,10 @@ private struct ReadOnlyCandidateMappingTable: View {
                 availableWidth = $0
             }
             if !table.files.isEmpty {
-                readOnlyFiles
+                ReleaseFilesView(
+                    rows: table.files,
+                    onOpenDocument: onOpenDocument
+                )
             }
         }
     }
@@ -421,36 +363,5 @@ private struct ReadOnlyCandidateMappingTable: View {
             .foregroundStyle(.secondary)
             .frame(width: tableWidth, alignment: .leading)
             .padding(.vertical, ThemeSpace.compact)
-    }
-
-    private var readOnlyFiles: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            FormSectionHeader(title: String(localized: "Files"), ruled: true)
-            ForEach(table.files, id: \.rowId) { fileRow in
-                switch fileRow {
-                case .file(let file):
-                    HStack {
-                        if file.role == .document {
-                            Button(file.name) {
-                                onOpenDocument(file.name, file.fileId)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                        else {
-                            Text(file.name)
-                        }
-                        Spacer()
-                        Text(file.sizeText).foregroundStyle(.tertiary)
-                    }
-                case .sheet(let sheet):
-                    Button(sheet.name) {
-                        onOpenDocument(sheet.name, sheet.sheetId)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .themeText(.mono)
-            .padding(.vertical, ThemeSpace.related)
-        }
     }
 }
