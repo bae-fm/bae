@@ -178,7 +178,7 @@ jobs:
         cargo nextest run --no-fail-fast -p bae-views || status=1
         cargo nextest run --no-fail-fast -p bae-identify || status=1
         cargo nextest run --no-fail-fast -p bae-playback || status=1
-        cargo nextest run --no-fail-fast -p bae-import --features bae-import/test-utils || status=1
+        cargo nextest run --no-fail-fast -p bae-import || status=1
         cargo nextest run --no-fail-fast -p bae-app --features bae-app/test-utils || status=1
         cargo nextest run --no-fail-fast -p bae-loc || status=1
         cargo nextest run --no-fail-fast -p bae-theme || status=1

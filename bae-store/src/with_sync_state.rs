@@ -89,11 +89,4 @@ where
             return Some(Ok(value));
         }
     }
-
-    /// How often the rows' live query had run when it last said they
-    /// changed, for a test that asks how often a write reran it.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub fn runs(&self) -> coven::LiveQueryRuns {
-        self.changes.runs()
-    }
 }

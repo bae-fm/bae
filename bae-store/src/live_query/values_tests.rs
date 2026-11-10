@@ -8,10 +8,6 @@ impl LiveSource<u8> for Answers {
         let next = self.0.pop_front();
         Box::pin(async move { next })
     }
-
-    fn runs(&self) -> coven::LiveQueryRuns {
-        coven::LiveQueryRuns::default()
-    }
 }
 
 fn bug(message: &str) -> coven::task::Bug {

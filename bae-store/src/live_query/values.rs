@@ -16,10 +16,6 @@ pub trait LiveSource<T>: Send {
     /// The next value, a failed read, or `None` once the source has ended
     /// with its store.
     fn next(&mut self) -> NextValue<'_, T>;
-
-    /// How often the source's query had run when it last returned a value.
-    #[cfg(any(test, feature = "test-utils"))]
-    fn runs(&self) -> coven::LiveQueryRuns;
 }
 
 /// A coven live query, failing with bae's own error or coven's.
@@ -31,11 +27,6 @@ where
     fn next(&mut self) -> NextValue<'_, T> {
         Box::pin(async move { Some(coven::LiveQuery::next(self).await?.map_err(Into::into)) })
     }
-
-    #[cfg(any(test, feature = "test-utils"))]
-    fn runs(&self) -> coven::LiveQueryRuns {
-        coven::LiveQuery::runs(self)
-    }
 }
 
 impl<R, T> LiveSource<T> for crate::WithSyncState<R, T>
@@ -45,11 +36,6 @@ where
 {
     fn next(&mut self) -> NextValue<'_, T> {
         Box::pin(crate::WithSyncState::next(self))
-    }
-
-    #[cfg(any(test, feature = "test-utils"))]
-    fn runs(&self) -> coven::LiveQueryRuns {
-        crate::WithSyncState::runs(self)
     }
 }
 
@@ -62,10 +48,6 @@ pub struct LiveValues<T> {
     cancellation: CancellationToken,
     /// Where a bug a failed read carries goes as it arrives.
     bugs: coven::task::BugSinkRef,
-    /// How often the query had run when it last returned a value, kept here
-    /// because a waiting pull holds the query itself.
-    #[cfg(any(test, feature = "test-utils"))]
-    runs: std::sync::Mutex<coven::LiveQueryRuns>,
 }
 
 impl<T: Clone + PartialEq + Send + 'static> LiveValues<T> {
@@ -76,13 +58,7 @@ impl<T: Clone + PartialEq + Send + 'static> LiveValues<T> {
         cancellation: CancellationToken,
         bugs: coven::task::BugSinkRef,
     ) -> Self {
-        Self {
-            #[cfg(any(test, feature = "test-utils"))]
-            runs: std::sync::Mutex::new(query.runs()),
-            query: tokio::sync::Mutex::new(Some(Box::new(query))),
-            cancellation,
-            bugs,
-        }
+        Self { query: tokio::sync::Mutex::new(Some(Box::new(query))), cancellation, bugs }
     }
 
     /// The next value, or why there is none. A failed read that carries a
@@ -94,13 +70,7 @@ impl<T: Clone + PartialEq + Send + 'static> LiveValues<T> {
             value = async {
                 let mut query = self.query.lock().await;
                 let query = query.as_mut().ok_or(LiveQueryError::Cancelled)?;
-                let value = query.next().await;
-                #[cfg(any(test, feature = "test-utils"))]
-                {
-                    *self.runs.lock().expect("live values run count mutex poisoned") =
-                        query.runs();
-                }
-                match value {
+                match query.next().await {
                     Some(value) => {
                         value.map_err(|error| {
                             LiveQueryError::Query(coven::task::reported(self.bugs.as_ref(), error))
@@ -110,14 +80,6 @@ impl<T: Clone + PartialEq + Send + 'static> LiveValues<T> {
                 }
             } => value,
         }
-    }
-
-    /// How often the query had run when it last returned a value, for a
-    /// test that asks how often a write reran it: a run whose result was
-    /// unchanged counts once a later value returns.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub fn runs(&self) -> coven::LiveQueryRuns {
-        *self.runs.lock().expect("live values run count mutex poisoned")
     }
 
     /// Settle a waiting pull and refuse later ones, then drop the query once

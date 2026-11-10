@@ -230,7 +230,7 @@ check "cargo test (bae-transfers)"    scripts/cargo.sh test -p bae-transfers
 check "cargo test (bae-views)"      scripts/cargo.sh test -p bae-views
 check "cargo test (bae-identify)"     scripts/cargo.sh test -p bae-identify
 check "cargo test (bae-playback)"  scripts/cargo.sh test -p bae-playback
-check "cargo test (bae-import)"    scripts/cargo.sh test -p bae-import --features test-utils
+check "cargo test (bae-import)"    scripts/cargo.sh test -p bae-import
 check "cargo test (bae-app)"     scripts/cargo.sh test -p bae-app --features bae-app/test-utils
 check "cargo test (bae-loc)"         scripts/cargo.sh test -p bae-loc
 check "cargo test (bae-theme)"         scripts/cargo.sh test -p bae-theme

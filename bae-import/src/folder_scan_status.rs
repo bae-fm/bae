@@ -268,11 +268,6 @@ impl bae_store::live_query::LiveSource<FolderScanProgress> for FolderScansLive {
     fn next(&mut self) -> bae_store::live_query::NextValue<'_, FolderScanProgress> {
         Box::pin(FolderScansLive::next(self))
     }
-
-    #[cfg(any(test, feature = "test-utils"))]
-    fn runs(&self) -> coven::LiveQueryRuns {
-        self.changes.runs()
-    }
 }
 
 #[cfg(test)]
