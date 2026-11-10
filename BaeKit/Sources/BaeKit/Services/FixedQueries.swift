@@ -215,9 +215,7 @@
                     )
                 },
                 totalCount: UInt64(rows.count),
-                totalSize: UInt64(
-                    rows.reduce(Int64(0)) { $0 + $1.release.totalSize }
-                ),
+                totalSize: rows.reduce(UInt64(0)) { $0 + $1.release.totalSize },
                 selected: selected,
                 // The fixture's stand-in for core's answer: the actions every
                 // selected row lists.

@@ -381,7 +381,7 @@
             transitioning: Bool = false,
             upload: BridgeReleaseUpload? = nil,
             fileCount: Int64 = 12,
-            totalSize: Int64 = 367_000_000
+            totalSize: UInt64 = 367_000_000
         ) -> ReleaseSummary {
             ReleaseSummary(
                 from: BridgeReleaseSummary(
@@ -469,7 +469,7 @@
                                         ? (pinned ? .pinned : .inStorage)
                                         : .onOneDevice,
                         fileCount: Int64(1 + index % 24),
-                        totalSize: Int64(48_000_000 + index * 83_000_000)
+                        totalSize: UInt64(48_000_000 + index * 83_000_000)
                     )
                 }
         }()
@@ -487,7 +487,7 @@
             status: BridgeStorageRowStatus,
             upload: BridgeReleaseUpload? = nil,
             fileCount: Int64 = 12,
-            totalSize: Int64 = 210_000_000
+            totalSize: UInt64 = 210_000_000
         ) -> BridgeStorageRow {
             let releaseId = "rel-row-\(index)"
             let albumId = "album-row-\(index)"
@@ -787,7 +787,7 @@
                 records: [],
                 totalDuration: nil,
                 fileCount: Int64(files.count),
-                totalSize: files.reduce(Int64(0)) { $0 + $1.fileSize },
+                totalSize: files.reduce(UInt64(0)) { $0 + $1.fileSize },
                 cover: row.release.cover
             )
         }

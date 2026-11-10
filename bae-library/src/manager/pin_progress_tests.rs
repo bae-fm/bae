@@ -166,7 +166,7 @@ async fn a_pins_bytes_never_fall_back_as_a_file_lands() {
     let release_id =
         uploaded_release(manager, &temp_dir.path().join("pin-forward"), "Pin Forward", false).await;
     let file = release_files(manager, &release_id).await.remove(0);
-    let size = u64::try_from(file.file_size).unwrap();
+    let size = file.file_size;
     let file = manager.release_file_ref(&file.id).await.unwrap();
     manager.evict_file_for_test(file.id()).await.unwrap();
     let coven::FilePlace::Cloud { location, .. } = file.place() else {
@@ -275,7 +275,7 @@ async fn a_failed_files_bytes_never_count() {
     manager.drain_uploads_expecting_work().await.unwrap();
     let mut files = Vec::new();
     for file in release_files(manager, &release.id).await {
-        let size = u64::try_from(file.file_size).unwrap();
+        let size = file.file_size;
         let file = manager.release_file_ref(&file.id).await.unwrap();
         manager.evict_file_for_test(file.id()).await.unwrap();
         files.push((file, size));

@@ -35,7 +35,7 @@ public struct ReleaseSummary: Identifiable, Sendable {
     /// then reads Cancel pinning.
     public let keepingHere: Bool
     public let fileCount: Int64
-    public let totalSize: Int64
+    public let totalSize: UInt64
     /// Reference to this release's own cover image (id + content version), or
     /// `nil` when none is cached. Keyed on the release id so each release
     /// renders its own art; `ImageView` fetches the bytes by id and caches the

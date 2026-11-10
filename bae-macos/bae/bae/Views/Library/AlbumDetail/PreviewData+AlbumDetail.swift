@@ -313,7 +313,7 @@
                 records: PreviewData.releaseRecordsEveryCatalog,
                 totalDuration: .minutesOnly(minutes: 39),
                 fileCount: Int64(files.count),
-                totalSize: files.reduce(Int64(0)) { $0 + $1.fileSize },
+                totalSize: files.reduce(UInt64(0)) { $0 + $1.fileSize },
                 cover: nil
             )
             return bridge

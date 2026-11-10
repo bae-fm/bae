@@ -91,7 +91,7 @@ impl LibraryManager {
         let file_id = file.id.clone();
         SourceStream::start(
             reader,
-            file.file_size as u64,
+            file.file_size,
             Box::new(move |error| {
                 tracing::warn!("save: streaming release file {file_id} failed: {error}");
             }),

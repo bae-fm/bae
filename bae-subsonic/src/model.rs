@@ -119,7 +119,7 @@ pub(crate) struct Child {
     pub(crate) track: Option<u32>,
     pub(crate) year: Option<i32>,
     pub(crate) cover_art: Option<String>,
-    pub(crate) size: Option<i64>,
+    pub(crate) size: Option<u64>,
     /// MIME type of the *original* file (Subsonic convention — a transcode's
     /// real type reaches the client through the response `Content-Type`).
     pub(crate) content_type: Option<String>,

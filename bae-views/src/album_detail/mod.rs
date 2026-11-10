@@ -257,7 +257,7 @@ pub struct FileDetail {
     /// Its name and folder within the release's folder.
     pub place: FilePlace,
     pub kind: FileKind,
-    pub file_size: i64,
+    pub file_size: u64,
     pub is_image: bool,
     pub content_type: String,
     /// The scan's facts for this physical source file. `None` for non-audio.

@@ -65,6 +65,8 @@ impl Format {
 pub(crate) enum Val {
     Str(String),
     Int(i64),
+    /// A byte count or other unsigned quantity.
+    Count(u64),
     Bool(bool),
 }
 
@@ -81,6 +83,11 @@ impl From<&str> for Val {
 impl From<i64> for Val {
     fn from(v: i64) -> Self {
         Val::Int(v)
+    }
+}
+impl From<u64> for Val {
+    fn from(v: u64) -> Self {
+        Val::Count(v)
     }
 }
 impl From<bool> for Val {
@@ -183,6 +190,7 @@ fn val_to_text(value: &Val) -> String {
     match value {
         Val::Str(s) => s.clone(),
         Val::Int(i) => i.to_string(),
+        Val::Count(n) => n.to_string(),
         Val::Bool(b) => b.to_string(),
     }
 }
@@ -191,6 +199,7 @@ fn val_to_json(value: &Val) -> Value {
     match value {
         Val::Str(s) => Value::String(s.clone()),
         Val::Int(i) => Value::Number((*i).into()),
+        Val::Count(n) => Value::Number((*n).into()),
         Val::Bool(b) => Value::Bool(*b),
     }
 }

@@ -433,7 +433,7 @@ pub fn row_to_file(row: &Row) -> rusqlite::Result<DbFile> {
         id: row.get("id")?,
         release_id: row.get("release_id")?,
         original_filename: row.get("original_filename")?,
-        file_size: row.get("file_size")?,
+        file_size: bae_store::read::count_column(row, "file_size")?,
         content_type: ContentType::from_mime(&row.get::<_, String>("content_type")?),
         role: {
             let role = row.get::<_, String>("role")?;

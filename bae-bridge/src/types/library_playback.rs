@@ -352,7 +352,7 @@ pub struct BridgeReleaseSummary {
     /// cancelling.
     pub transitioning: bool,
     pub file_count: i64,
-    pub total_size: i64,
+    pub total_size: u64,
     /// Reference to this release's own cover (image id + version), or `None` when
     /// it has no cover. Keyed on the release id so each release renders its own
     /// art; the UI caches the bytes under `(id, version)`.
@@ -442,7 +442,7 @@ pub struct BridgeRelease {
     /// the three platforms came to disagree about it.
     pub total_duration: Option<BridgeDurationUnits>,
     pub file_count: i64,
-    pub total_size: i64,
+    pub total_size: u64,
     /// Reference to this release's own cover (image id + version), or `None` when
     /// it has no cover. Mirrors `BridgeReleaseSummary.cover` so a summary rebuilt
     /// from this fat payload keeps its per-release art.
@@ -652,7 +652,7 @@ pub struct BridgeFile {
     /// the folder's top.
     pub folder: Option<String>,
     pub kind: BridgeFileKind,
-    pub file_size: i64,
+    pub file_size: u64,
     pub content_type: String,
     pub is_image: bool,
     /// Structured audio format; `None` for non-audio files. The UI composes the

@@ -145,7 +145,7 @@ impl LibraryManager {
             pinnable.push(PinnableFile {
                 row_id: file.id.clone(),
                 file: self.release_file_ref(&file.id).await?,
-                bytes: bae_store::query::to_u64(file.file_size, "release_files.file_size")?,
+                bytes: file.file_size,
             });
         }
         Ok(pinnable)

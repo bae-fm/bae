@@ -109,7 +109,7 @@ object BridgeFixtures {
             records = emptyList(),
             totalDuration = null,
             fileCount = 0,
-            totalSize = 0,
+            totalSize = 0UL,
             cover = null,
         )
 

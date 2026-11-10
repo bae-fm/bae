@@ -278,7 +278,7 @@ fn row_to_release_summary(row: &Row<'_>) -> rusqlite::Result<DbReleaseSummary> {
         upload: bae_records::records::queued_uploads::release_upload_in_row(row)?,
         download: bae_transfers::download_entry_column(row)?,
         file_count: row.get("file_count")?,
-        total_size: row.get("total_size")?,
+        total_size: bae_store::read::count_column(row, "total_size")?,
     })
 }
 

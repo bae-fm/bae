@@ -40,7 +40,7 @@ func makeBridgeRelease(
         minutes: 45
     ),
     fileCount: Int64 = 0,
-    totalSize: Int64 = 0,
+    totalSize: UInt64 = 0,
     cover: BridgeImageRef? = nil
 ) -> BridgeRelease {
     let facts = PreviewData.pressingFacts(media: media)
@@ -83,7 +83,7 @@ private func makeBridgeReleaseSummary(
     storageState: BridgeReleaseStorageState = .inStorage(pinned: false),
     storageActions: [BridgeReleaseStorageAction] = [],
     fileCount: Int64 = 0,
-    totalSize: Int64 = 0,
+    totalSize: UInt64 = 0,
     cover: BridgeImageRef? = nil
 ) -> BridgeReleaseSummary {
     BridgeReleaseSummary(

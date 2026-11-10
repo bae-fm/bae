@@ -130,7 +130,7 @@ struct AudioFields {
     channel_count: i64,
     content_type: String,
     suffix: Option<String>,
-    size: Option<i64>,
+    size: Option<u64>,
     duration_secs: i64,
 }
 

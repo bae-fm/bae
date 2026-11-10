@@ -165,6 +165,25 @@ fn only_a_document_has_a_kind_and_every_document_has_one() {
     assert_eq!(log.role, crate::ReleaseFileRole::Document(crate::DocumentKind::RipLog));
 }
 
+#[test]
+fn a_negative_file_size_is_an_unreadable_column() {
+    let conn = seeded_conn();
+    insert_file(&conn, "sized", None, None).unwrap();
+    let error = conn
+        .query_row(
+            "SELECT f.*, -5 AS file_size, 0 AS stored FROM release_files AS f WHERE f.id = 'sized'",
+            [],
+            row_to_file,
+        )
+        .unwrap_err();
+    match error {
+        rusqlite::Error::FromSqlConversionFailure(_, _, cause) => {
+            assert!(cause.to_string().starts_with("file_size -5"), "{cause}");
+        }
+        other => panic!("not a column-conversion error: {other}"),
+    }
+}
+
 /// A track of the seeded release with one audio format and one main segment
 /// over a seeded file, all with valid non-negative positions.
 fn seeded_audio_segment() -> Connection {

@@ -467,7 +467,7 @@ pub struct DbFile {
     pub release_id: String,
     pub original_filename: String,
     /// The size coven records for the file.
-    pub file_size: i64,
+    pub file_size: u64,
     pub content_type: ContentType,
     /// What the file is to its release, as the import's scan read it.
     pub role: crate::ReleaseFileRole,

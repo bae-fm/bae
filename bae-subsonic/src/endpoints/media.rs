@@ -107,9 +107,7 @@ async fn stream_file(
         .map_err(lib_err)?
         .ok_or_else(SubError::not_found)?;
 
-    let total = u64::try_from(file.file_size).map_err(|error| {
-        SubError::generic(format!("file {} has a negative size: {error}", file.id))
-    })?;
+    let total = file.file_size;
     let content_type = segment.container.http_mime();
 
     let buffer = services.open_release_file_stream(&segment.file_id, total);

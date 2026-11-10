@@ -43,7 +43,7 @@ pub struct AutomationReleaseSummary {
     /// `storage_actions` empty.
     pub transitioning: bool,
     pub file_count: i64,
-    pub total_size: i64,
+    pub total_size: u64,
     pub cover: Option<AutomationImageRef>,
 }
 
@@ -125,7 +125,7 @@ pub enum AutomationTrackSide {
 pub struct AutomationFileDetail {
     pub id: String,
     pub original_filename: String,
-    pub file_size: i64,
+    pub file_size: u64,
     pub is_image: bool,
     pub content_type: String,
     pub audio_format: Option<AutomationAudioFormat>,

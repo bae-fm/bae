@@ -176,7 +176,7 @@ object PreviewData {
             records = emptyList(),
             totalDuration = null,
             fileCount = trackGroups.sumOf { it.tracks.size }.toLong(),
-            totalSize = 300_000_000L,
+            totalSize = 300_000_000UL,
             cover = cover,
         )
 

@@ -283,7 +283,7 @@ pub struct DbReleaseSummary {
     /// has none.
     pub download: Option<bae_transfers::DownloadEntry>,
     pub file_count: i64,
-    pub total_size: i64,
+    pub total_size: u64,
     /// What the library records this device holding for each audio file whose
     /// row names no stored file.
     pub unstored_audio: Vec<DbUnstoredAudio>,

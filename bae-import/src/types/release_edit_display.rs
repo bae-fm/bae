@@ -178,13 +178,6 @@ pub enum ReleaseEditLoadError {
     MissingSourceFile { track_id: String, file_id: String },
     #[error("track '{track_id}' source file '{file_id}' has no stored audio layout")]
     MissingSourceAudio { track_id: String, file_id: String },
-    #[error("release file '{file_id}' has no size a file can have, {size}")]
-    FileSize {
-        file_id: String,
-        size: i64,
-        #[source]
-        error: std::num::TryFromIntError,
-    },
 }
 
 #[cfg(desktop)]
@@ -245,7 +238,7 @@ impl ReleaseEditDisplayContext {
                 .iter()
                 .filter(|file| file.source_audio.as_ref().and_then(|audio| audio.layout).is_none())
                 .map(carried_file)
-                .collect::<Result<_, _>>()?,
+                .collect(),
         })
     }
 }
@@ -253,17 +246,13 @@ impl ReleaseEditDisplayContext {
 /// A file of the release no track plays from, as its Files section lists it.
 /// It shows no length and no audition: the release's tracks are what play.
 #[cfg(desktop)]
-fn carried_file(file: &bae_records::DbFile) -> Result<crate::MappingFile, ReleaseEditLoadError> {
+fn carried_file(file: &bae_records::DbFile) -> crate::MappingFile {
     use crate::MappingRole;
     use bae_records::ReleaseFileRole;
-    Ok(crate::MappingFile {
+    crate::MappingFile {
         file_id: file.id.clone(),
         name: file.original_filename.clone(),
-        size: u64::try_from(file.file_size).map_err(|error| ReleaseEditLoadError::FileSize {
-            file_id: file.id.clone(),
-            size: file.file_size,
-            error,
-        })?,
+        size: file.file_size,
         preview_target: None,
         duration_ms: None,
         audio_format: file.source_audio.as_ref().map(|audio| audio.format.clone()),
@@ -275,7 +264,7 @@ fn carried_file(file: &bae_records::DbFile) -> Result<crate::MappingFile, Releas
             ReleaseFileRole::DamagedImage => MappingRole::DamagedImage,
             ReleaseFileRole::Other => MappingRole::Other,
         },
-    })
+    }
 }
 
 #[cfg(test)]

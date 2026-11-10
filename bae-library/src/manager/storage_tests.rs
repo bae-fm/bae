@@ -501,11 +501,11 @@ async fn storage_total_size_matches_page_total_size_sum() {
             .get_storage_page(&sort_by_album_title_asc(), filter, 0, 10)
             .await
             .unwrap();
-        let page_sum: i64 = page.rows.iter().map(|row| row.release.total_size).sum();
+        let page_sum: u64 = page.rows.iter().map(|row| row.release.total_size).sum();
 
         let aggregate = views(manager).get_storage_total_size(filter).await.unwrap();
         assert_eq!(
-            aggregate, page_sum as u64,
+            aggregate, page_sum,
             "{filter:?}: aggregate must equal the page's own total_size sum"
         );
     }

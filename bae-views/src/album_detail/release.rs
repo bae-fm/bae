@@ -52,7 +52,7 @@ pub struct ReleaseSummary {
     /// would race it.
     pub transitioning: bool,
     pub file_count: i64,
-    pub total_size: i64,
+    pub total_size: u64,
     /// This release's *own* cover, or `None` when it has no cover row. Keyed on the
     /// release id, so two releases of one album each resolve to their own art rather
     /// than to the album's primary cover.
@@ -224,7 +224,7 @@ impl ReleaseDetail {
         );
 
         let file_count = files.len() as i64;
-        let total_size: i64 = files.iter().map(|f| f.file_size).sum();
+        let total_size = files.iter().map(|f| f.file_size).sum::<u64>();
         let total_duration_ms: u64 = tracks.iter().map(|t| t.duration_ms).sum();
 
         let mut gallery = Vec::new();

@@ -196,10 +196,7 @@ impl LibraryManager {
     #[cfg(desktop)]
     async fn release_bytes(&self, release_id: &str) -> Result<u64, LibraryError> {
         let files = self.records.get_files_for_release(release_id).await?;
-        files
-            .iter()
-            .map(|file| bae_store::query::to_u64(file.file_size, "release_files.file_size"))
-            .try_fold(0u64, |total, bytes| Ok(total + bytes?))
+        Ok(files.iter().map(|file| file.file_size).sum())
     }
 
     /// Unpin the releases of a selection, every one in one write: coven moves
