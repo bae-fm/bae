@@ -170,7 +170,7 @@ fn phase_from_row(row: &Row<'_>, at: usize) -> rusqlite::Result<ReleaseQueueStat
 pub fn queue_rows_sql<P: QueuedPayload>(keyed: Option<&ListOrder>, tail: &str) -> String {
     format!(
         "SELECT {columns}, q.state, q.error, r.id IS NOT NULL, a.title, \
-            COALESCE((SELECT COUNT(*) FROM release_files rf WHERE rf.release_id = q.release_id), 0), \
+            COALESCE((SELECT COUNT(*) FROM release_files rf WHERE rf.release_id = q.release_id), 0) AS queued_file_count, \
             COALESCE((SELECT SUM(coven.size) FROM release_files rf \
                 JOIN coven_files coven ON coven.id = rf.file \
                 WHERE rf.release_id = q.release_id), 0) AS queued_total_size{keys} \
@@ -202,7 +202,7 @@ fn queue_row<P: QueuedPayload>(row: &Row<'_>) -> rusqlite::Result<ReleaseQueueRo
     let release = if held {
         Some(QueuedRelease {
             title: row.get(at + 3)?,
-            file_count: row.get(at + 4)?,
+            file_count: bae_store::read::count_column(row, "queued_file_count")?,
             total_size: bae_store::read::count_column(row, "queued_total_size")?,
         })
     } else {

@@ -47,7 +47,7 @@ pub struct ReleaseQueueOp<Extra, Progress> {
 pub struct QueuedRelease {
     /// The release's album title.
     pub title: String,
-    pub file_count: i64,
+    pub file_count: u64,
     /// Total size in bytes across the release's files.
     pub total_size: u64,
 }

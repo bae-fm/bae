@@ -750,7 +750,7 @@ pub enum AutomationOutputKind {
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationQueuedRelease {
     pub title: String,
-    pub file_count: i64,
+    pub file_count: u64,
     pub total_size: u64,
 }
 

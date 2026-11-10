@@ -276,7 +276,7 @@ object PreviewData {
         BridgeDownloadOp(
             releaseId = releaseId,
             kind = BridgeDownloadKind.PIN,
-            release = BridgeQueuedRelease(title = title, fileCount = 10, totalSize = 300_000_000UL),
+            release = BridgeQueuedRelease(title = title, fileCount = 10UL, totalSize = 300_000_000UL),
             createdAt = 0,
             state = state,
         )

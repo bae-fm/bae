@@ -205,7 +205,7 @@ object BridgeFixtures {
         releaseId: String,
         state: BridgeDownloadState,
         title: String = "Album Title",
-        fileCount: Long = 10,
+        fileCount: ULong = 10UL,
         totalSize: ULong = 1_000UL,
     ): BridgeDownloadOp =
         BridgeDownloadOp(

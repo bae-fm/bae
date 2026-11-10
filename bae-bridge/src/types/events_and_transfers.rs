@@ -215,7 +215,7 @@ pub struct BridgeMakeLocalProgress {
 pub struct BridgeQueuedRelease {
     /// The release's album title.
     pub title: String,
-    pub file_count: i64,
+    pub file_count: u64,
     /// Total size in bytes across the release's files. The UI formats it.
     pub total_size: u64,
 }
