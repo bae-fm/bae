@@ -179,11 +179,118 @@ async fn a_discogs_label_holding_another_musicbrainz_id_leaves_the_label_its_mus
     );
 }
 
+/// Two labels of one write sharing a MusicBrainz id are one label, which
+/// keeps the Discogs id the first gives it: the second's MusicBrainz id names
+/// that label, and its Discogs id that disagrees is dropped.
+#[tokio::test]
+async fn labels_of_one_write_sharing_a_musicbrainz_id_keep_the_first_discogs_id() {
+    let (db, _tmp) = library(crate::test_fixtures::TEST_SCHEMA).await;
+
+    write(
+        &db,
+        vec![
+            with_ids(label(Some("Label Name"), Some("LN 1")), Some("mb-label"), Some("7190")),
+            with_ids(label(Some("Label Name"), Some("LN 2")), Some("mb-label"), Some("9999")),
+        ],
+    )
+    .await
+    .unwrap();
+
+    let made = crate::identity::label_id(Some("mb-label"), None).unwrap();
+    assert_eq!(ids_of(&placed(&db).await), [Some(made.as_str()), Some(made.as_str())]);
+    assert_eq!(stored_label(&db, &made).await.discogs_label_id.as_deref(), Some("7190"));
+    assert_eq!(label_count(&db).await, 1);
+}
+
+/// Two labels of one write sharing a Discogs id and carrying two MusicBrainz
+/// ids are two labels: the second goes by its MusicBrainz id alone.
+#[tokio::test]
+async fn labels_of_one_write_sharing_a_discogs_id_with_two_musicbrainz_ids_are_two_labels() {
+    let (db, _tmp) = library(crate::test_fixtures::TEST_SCHEMA).await;
+
+    write(
+        &db,
+        vec![
+            with_ids(label(Some("Label Name"), Some("LN 1")), Some("mb-first"), Some("7190")),
+            with_ids(label(Some("Label Name"), Some("LN 2")), Some("mb-second"), Some("7190")),
+        ],
+    )
+    .await
+    .unwrap();
+
+    let first = crate::identity::label_id(Some("mb-first"), None).unwrap();
+    let second = crate::identity::label_id(Some("mb-second"), None).unwrap();
+    assert_eq!(ids_of(&placed(&db).await), [Some(first.as_str()), Some(second.as_str())]);
+    let held = |label: LabelRow| (label.musicbrainz_label_id, label.discogs_label_id);
+    assert_eq!(
+        held(stored_label(&db, &first).await),
+        (Some("mb-first".to_string()), Some("7190".to_string()))
+    );
+    assert_eq!(held(stored_label(&db, &second).await), (Some("mb-second".to_string()), None));
+}
+
+/// A label whose Discogs id names a new label of this write and whose
+/// MusicBrainz id names a library label makes them one, where no id either
+/// holds contradicts the other: the library label takes the new one's
+/// Discogs id, and the place that made the new one names it.
+#[tokio::test]
+async fn a_new_label_agreeing_with_a_library_label_both_ids_name_is_that_label() {
+    let (db, _tmp) = library(crate::test_fixtures::TEST_SCHEMA).await;
+    let held = add_label(&db, "Label Name", Some("mb-label"), None).await;
+
+    write(
+        &db,
+        vec![
+            with_ids(label(Some("Label Name"), Some("LN 1")), None, Some("7190")),
+            with_ids(label(Some("Label Name"), Some("LN 2")), Some("mb-label"), Some("7190")),
+        ],
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(ids_of(&placed(&db).await), [Some(held.as_str()), Some(held.as_str())]);
+    assert_eq!(stored_label(&db, &held).await.discogs_label_id.as_deref(), Some("7190"));
+    assert_eq!(label_count(&db).await, 1);
+}
+
+/// A label whose Discogs id names a new label of this write holding another
+/// MusicBrainz id, and whose MusicBrainz id names a library label, is the
+/// library label: the new label stays its own, and the library label is not
+/// given its Discogs id.
+#[tokio::test]
+async fn a_new_label_contradicting_a_library_label_both_ids_name_stays_its_own() {
+    let (db, _tmp) = library(crate::test_fixtures::TEST_SCHEMA).await;
+    let held = add_label(&db, "Label Name", Some("mb-held"), None).await;
+
+    write(
+        &db,
+        vec![
+            with_ids(label(Some("Label Name"), Some("LN 1")), Some("mb-new"), Some("7190")),
+            with_ids(label(Some("Label Name"), Some("LN 2")), Some("mb-held"), Some("7190")),
+        ],
+    )
+    .await
+    .unwrap();
+
+    let made = crate::identity::label_id(Some("mb-new"), None).unwrap();
+    assert_eq!(ids_of(&placed(&db).await), [Some(made.as_str()), Some(held.as_str())]);
+    let held = stored_label(&db, &held).await;
+    assert_eq!(
+        (held.musicbrainz_label_id.as_deref(), held.discogs_label_id.as_deref()),
+        (Some("mb-held"), None)
+    );
+    let made = stored_label(&db, &made).await;
+    assert_eq!(
+        (made.musicbrainz_label_id.as_deref(), made.discogs_label_id.as_deref()),
+        (Some("mb-new"), Some("7190"))
+    );
+}
+
 /// Two devices apart each give one Discogs id to a different label, each by
 /// importing a release naming its label with that id. Once each has the
 /// other's write, the next write naming that id merges the two into the
 /// smaller id and names it, and the other device reads the release's label
-/// as that one.
+/// as that one. A label of that write named as the absorbed label is not it.
 #[test]
 fn a_catalog_id_two_devices_gave_two_labels_merges_them() {
     bae_store::test_devices::run_two_store_test(
@@ -211,9 +318,20 @@ async fn check_two_devices_give_one_label_id(devices: &bae_store::test_devices::
     devices.resume().await;
     devices.converge(labels).await;
 
-    write(devices.a(), vec![with_ids(label(Some("Label Name"), Some("LN 1")), None, Some("7190"))])
-        .await
-        .unwrap();
+    let (survivor, name, absorbed_name) = if first < second {
+        (&first, "Label Name A", "Label Name B")
+    } else {
+        (&second, "Label Name B", "Label Name A")
+    };
+    write(
+        devices.a(),
+        vec![
+            with_ids(label(Some("Label Name"), Some("LN 1")), None, Some("7190")),
+            label(Some(absorbed_name), Some("LN 2")),
+        ],
+    )
+    .await
+    .unwrap();
     devices
         .converge(
             "SELECT id || '>' || into_label_id FROM label_merges \
@@ -221,13 +339,13 @@ async fn check_two_devices_give_one_label_id(devices: &bae_store::test_devices::
         )
         .await;
 
-    let (survivor, name) =
-        if first < second { (&first, "Label Name A") } else { (&second, "Label Name B") };
     for device in [devices.a(), devices.b()] {
-        assert_eq!(ids_of(&placed(device).await), [Some(survivor.as_str())]);
+        let placed = placed(device).await;
+        assert_eq!(placed[0].0.as_deref(), Some(survivor.as_str()));
+        assert!(![&first, &second].contains(&placed[1].0.as_ref().unwrap()), "{placed:?}");
         assert_eq!(
             read_labels(&crate::test_fixtures::test_records(device)).await,
-            vec![label(Some(name), Some("LN 1"))]
+            vec![label(Some(name), Some("LN 1")), label(Some(absorbed_name), Some("LN 2"))]
         );
     }
 }

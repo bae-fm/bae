@@ -430,11 +430,14 @@ one rule, inside the transaction that writes the release's labels, an
 import's or an edit's save:
 
 1. A label carrying a MusicBrainz or Discogs id is the library label holding
-   that id, followed through any merge. One id is one label: where several
-   hold it, the write merges them into the one with the smallest id, which
-   takes the ids it lacks from the others. Where the label's two ids
-   disagree, as a credit's can, the MusicBrainz id decides and the Discogs
-   id is dropped.
+   that id, followed through any merge, or the new label an earlier label of
+   the same write makes holding it. One id is one label: where several
+   library labels hold it, the write merges them into the one with the
+   smallest id, which takes the ids it lacks from the others. Where the
+   label's two ids disagree, naming two labels or a label that holds a
+   different id of the other catalog, the MusicBrainz id decides: the
+   label's Discogs id is dropped, and it goes by its MusicBrainz id alone.
+   This is the step a credit's ids take, one rule for both.
 2. On an edit, a label carrying no id whose name is the name of a label the
    release names now is that label, so saving a release keeps its labels.
 3. Otherwise it is the one library label whose name key matches and whose
@@ -452,7 +455,16 @@ chain or a loop as artists do; no list sorts by label, so no table keeps the
 label each label shows as. The artist edge cases hold for labels: two ids
 naming two labels name the MusicBrainz one, and a label whose name alone
 matches a label holding a different id of the same catalog is not that
-label.
+label. Two labels of one write sharing a MusicBrainz id and carrying
+different Discogs ids are one label, holding the first's Discogs id; two
+sharing a Discogs id and carrying different MusicBrainz ids are two, the
+second going by its MusicBrainz id alone. A label whose ids name a new label
+of the write's and another label makes them one where neither holds an id
+contradicting the label or the other, and otherwise goes by its MusicBrainz
+id. A catalog states one catalog's id for a label, but a label both records
+of an identified pressing state carries both their ids, so an import, not
+only an edit, can bring these about. A label of a write named as a library
+label the write merges away is not that label.
 
 ### 2.4 Works
 

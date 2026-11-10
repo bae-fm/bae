@@ -8,13 +8,15 @@
 //!
 //! 1. **A label stating only a catalog number** names no library label.
 //! 2. **A catalog id is decisive.** A label carrying a MusicBrainz or Discogs
-//!    id is the library label holding that id, followed through any merge.
-//!    One id is one label: several library labels holding it, as two devices
-//!    apart can leave them, are merged in the write, into the smallest id.
-//!    Where the label's two ids disagree — they name two different labels, or
-//!    the label one names holds another id of the other catalog — the
-//!    MusicBrainz id decides: the Discogs id is dropped from the label and
-//!    given to nothing.
+//!    id is the label holding that id, as the write so far leaves the
+//!    library: a library label followed through any merge, or a new label an
+//!    earlier label of the same write makes. This is the step artist credits
+//!    take (`catalog_match`): several library labels holding one id are
+//!    merged in the write, into the smallest id; where the label's two ids
+//!    disagree, the MusicBrainz id decides and the Discogs id is dropped from
+//!    the label and given to nothing; where they name a new label of the
+//!    write's and another label, and no id either holds contradicts the
+//!    label or the other, the new one is the other.
 //! 3. **The label the release names.** On an edit, a label carrying no
 //!    catalog id whose name is the name of a label the release names now is
 //!    that label, so saving a release keeps its labels.
@@ -29,6 +31,7 @@
 //! catalog entry, so every device that meets it writes one row; one known
 //! only by name takes a fresh id.
 
+use super::catalog_match::*;
 use super::*;
 use bae_types::pressing::ReleaseLabel;
 
@@ -87,21 +90,76 @@ impl LabelRow {
         })
     }
 
-    /// Whether no catalog id `label` carries contradicts this row's.
-    fn agrees_with(&self, label: &ReleaseLabel) -> bool {
-        let agrees = crate::models::source_ids_are_compatible;
-        agrees(self.musicbrainz_label_id.as_deref(), label.musicbrainz_label_id())
-            && agrees(self.discogs_label_id.as_deref(), label.discogs_label_id())
-    }
-
-    /// Fill each catalog id this row lacks from `label`.
-    fn fill_from(&mut self, label: &ReleaseLabel) {
+    /// Fill each catalog id this row lacks from `label`, a row or a
+    /// release's label of the same label.
+    fn fill_from(&mut self, label: &impl CatalogIds) {
+        let id = |column| label.catalog_id(column).map(str::to_string);
         if self.musicbrainz_label_id.is_none() {
-            self.musicbrainz_label_id = label.musicbrainz_label_id().map(str::to_string);
+            self.musicbrainz_label_id = id(CatalogColumn::MusicBrainz);
         }
         if self.discogs_label_id.is_none() {
-            self.discogs_label_id = label.discogs_label_id().map(str::to_string);
+            self.discogs_label_id = id(CatalogColumn::Discogs);
         }
+    }
+}
+
+impl CatalogIds for LabelRow {
+    fn catalog_id(&self, column: CatalogColumn) -> Option<&str> {
+        match column {
+            CatalogColumn::Discogs => self.discogs_label_id.as_deref(),
+            CatalogColumn::MusicBrainz => self.musicbrainz_label_id.as_deref(),
+        }
+    }
+}
+
+impl CatalogRow for LabelRow {
+    fn row_id(&self) -> &str {
+        &self.id
+    }
+
+    fn fill_missing(&mut self, other: &Self) {
+        self.fill_from(other);
+    }
+
+    fn holding_on<Q: coven::SqlRead>(
+        sql: &Q,
+        column: CatalogColumn,
+        catalog_id: &str,
+    ) -> Result<Vec<Self>, DbError> {
+        let (column, identity) = match column {
+            CatalogColumn::Discogs => {
+                ("discogs_label_id", crate::identity::label_id(None, Some(catalog_id)))
+            }
+            CatalogColumn::MusicBrainz => {
+                ("musicbrainz_label_id", crate::identity::label_id(Some(catalog_id), None))
+            }
+        };
+        Ok(sql.query(
+            &format!(
+                "SELECT l.* FROM labels l WHERE l.id IN ( \
+                     SELECT {} FROM labels named \
+                     WHERE named.{column} = ?1 OR named.id = ?2) \
+                 ORDER BY l.id",
+                shown_label_id("named.id")
+            ),
+            params![catalog_id, identity],
+            LabelRow::from_row,
+        )?)
+    }
+}
+
+impl CatalogIds for ReleaseLabel {
+    fn catalog_id(&self, column: CatalogColumn) -> Option<&str> {
+        match column {
+            CatalogColumn::Discogs => self.discogs_label_id(),
+            CatalogColumn::MusicBrainz => self.musicbrainz_label_id(),
+        }
+    }
+}
+
+impl CatalogCredit for ReleaseLabel {
+    fn by_musicbrainz_alone(&self) -> Self {
+        self.clone().with_ids(self.musicbrainz_label_id().map(str::to_string), None)
     }
 }
 
@@ -114,14 +172,25 @@ pub fn shown_label_id(label_id: &str) -> String {
     )
 }
 
-/// The labels one write decides: the new ones it inserts and the existing
-/// ones whose catalog ids it fills in, as they will stand once it commits.
+/// The labels one write decides: the new ones it inserts, the existing ones
+/// whose catalog ids it fills in, as they will stand once it commits, and
+/// the library labels it merges into another.
 #[derive(Default)]
 struct Decided {
     inserts: Vec<LabelRow>,
     fills: Vec<LabelRow>,
+    merges: Vec<LabelIdMerge>,
     /// How many of the write's fresh ids new labels have taken.
     fresh_taken: usize,
+}
+
+/// A library label this write merges into another, `survivor`, because both
+/// hold one catalog id.
+struct LabelIdMerge {
+    survivor: String,
+    /// The absorbed label as this write leaves it, whose ids the survivor
+    /// takes where it has none.
+    absorbed: LabelRow,
 }
 
 impl Decided {
@@ -130,22 +199,25 @@ impl Decided {
         self.fills.iter().find(|filled| filled.id == label.id).cloned().unwrap_or(label)
     }
 
-    /// `merged`, a library label this write just merged others into, as this
-    /// write leaves it: a fill this write already staged for it takes the
-    /// catalog ids the merge gave it.
-    fn merged(&mut self, merged: LabelRow) -> LabelRow {
-        match self.fills.iter_mut().find(|filled| filled.id == merged.id) {
-            Some(filled) => {
-                if filled.musicbrainz_label_id.is_none() {
-                    filled.musicbrainz_label_id = merged.musicbrainz_label_id;
-                }
-                if filled.discogs_label_id.is_none() {
-                    filled.discogs_label_id = merged.discogs_label_id;
-                }
-                filled.clone()
-            }
-            None => merged,
+    /// Record that `absorbed` is merged into `survivor`, once, and name the
+    /// survivor wherever this write already placed `absorbed`.
+    fn merge(
+        &mut self,
+        rows: &mut [(Option<String>, Option<&str>)],
+        survivor: &str,
+        absorbed: LabelRow,
+    ) {
+        name_instead(rows, &absorbed.id, survivor);
+        if !self.merges.iter().any(|merge| merge.absorbed.id == absorbed.id) {
+            self.merges.push(LabelIdMerge { survivor: survivor.to_string(), absorbed });
         }
+    }
+
+    /// Drop `folded`, a label this write was making, for `into`: every place
+    /// already decided as `folded` names `into`.
+    fn fold(&mut self, rows: &mut [(Option<String>, Option<&str>)], folded: &LabelRow, into: &str) {
+        self.inserts.retain(|new| new.id != folded.id);
+        name_instead(rows, &folded.id, into);
     }
 
     /// Link `label` to `existing`, filling in its catalog ids, and say which
@@ -169,8 +241,8 @@ impl Decided {
 }
 
 /// Make the release `release_id`'s labels `labels`, in order, each naming the
-/// library label the rule in the module doc decides, inserting the new labels
-/// and filling in the linked ones first.
+/// library label the rule in the module doc decides, inserting the new labels,
+/// filling in the linked ones and merging the labels one id names first.
 pub fn write_release_labels_on(
     tx: &CovenWrite<'_>,
     release_id: &str,
@@ -211,6 +283,18 @@ pub fn write_release_labels_on(
             params![label.musicbrainz_label_id, label.discogs_label_id, label.id],
         )?;
     }
+    for merge in &decided.merges {
+        super::identity_merges::merge_label_on(
+            tx,
+            &super::identity_merges::LabelMerge {
+                survivor: &merge.survivor,
+                absorbed: &merge.absorbed.id,
+                discogs_label_id: merge.absorbed.discogs_label_id.as_deref(),
+                musicbrainz_label_id: merge.absorbed.musicbrainz_label_id.as_deref(),
+                at: write.now,
+            },
+        )?;
+    }
     replace_release_label_rows(tx, release_id, &rows)?;
     Ok(())
 }
@@ -242,37 +326,24 @@ fn resolve_label_on(
     rows: &mut [(Option<String>, Option<&str>)],
     write: &LabelWrite<'_>,
 ) -> Result<String, IdentityWriteError> {
-    let by_musicbrainz = label
-        .musicbrainz_label_id()
-        .map(|id| label_by_catalog_id_on(tx, CatalogColumn::MusicBrainz, id, decided, write.now))
-        .transpose()?
-        .flatten();
-    let by_discogs = label
-        .discogs_label_id()
-        .map(|id| label_by_catalog_id_on(tx, CatalogColumn::Discogs, id, decided, write.now))
-        .transpose()?
-        .flatten();
-    let matched = match (by_discogs, by_musicbrainz) {
-        (Some(discogs), Some(musicbrainz)) if discogs.id != musicbrainz.id => {
-            let pending = |row: &LabelRow| decided.inserts.iter().any(|new| new.id == row.id);
-            match (pending(&discogs), pending(&musicbrainz)) {
-                // A label this write makes stands for the library label the
-                // other id names: every place that named it names that one.
-                (true, false) => Some(absorb_pending(decided, rows, discogs, musicbrainz)),
-                (false, true) => Some(absorb_pending(decided, rows, musicbrainz, discogs)),
-                _ => {
-                    return resolve_by_musicbrainz_on(
-                        tx, label, name, named_now, decided, rows, write,
-                    )
+    let so_far = WriteSoFar { inserts: &decided.inserts, staged: &decided.fills };
+    let matched = catalog_match_on(tx, label, so_far)?;
+    let (label, found) = settled_on(tx, label.clone(), matched, so_far)?;
+    let label = &label;
+    if let Some(CatalogFound { holder, folded }) = found {
+        let existing = match holder {
+            Holder::Library(held) => {
+                for absorbed in held.absorbed {
+                    decided.merge(rows, &held.row.id, absorbed);
                 }
+                held.row
             }
-        }
-        (Some(found), _) | (_, Some(found)) => Some(found),
-        (None, None) => None,
-    };
-    if let Some(existing) = matched {
-        if !existing.agrees_with(label) {
-            return resolve_by_musicbrainz_on(tx, label, name, named_now, decided, rows, write);
+            Holder::New(new) => new,
+        };
+        // The folded label's ids are the label's own: it holds one of them
+        // and no id of the other catalog, or both would name it.
+        if let Some(folded) = folded {
+            decided.fold(rows, &folded, &existing.id);
         }
         return Ok(decided.link(existing, label));
     }
@@ -290,7 +361,7 @@ fn resolve_label_on(
         let pending: Vec<LabelRow> = decided
             .inserts
             .iter()
-            .filter(|pending| same_key(pending) && pending.agrees_with(label))
+            .filter(|pending| same_key(pending) && ids_agree(*pending, label))
             .cloned()
             .collect();
         if let [only] = pending.as_slice() {
@@ -306,8 +377,10 @@ fn resolve_label_on(
                     LabelRow::from_row,
                 )?
                 .into_iter()
+                // A label this write merges into another is that one.
+                .filter(|row| !decided.merges.iter().any(|merge| merge.absorbed.id == row.id))
                 .map(|row| decided.overlaid(row))
-                .filter(|row| row.agrees_with(label))
+                .filter(|row| ids_agree(row, label))
                 .collect();
             if let [only] = named.as_slice() {
                 return Ok(decided.link(only.clone(), label));
@@ -337,113 +410,13 @@ fn resolve_label_on(
     Ok(id)
 }
 
-/// The library label `label` names going by its MusicBrainz id alone: where
-/// its two ids disagree, the MusicBrainz id decides and the Discogs id is
-/// given to nothing.
-fn resolve_by_musicbrainz_on(
-    tx: &CovenWrite<'_>,
-    label: &ReleaseLabel,
-    name: &str,
-    named_now: &[(String, String)],
-    decided: &mut Decided,
-    rows: &mut [(Option<String>, Option<&str>)],
-    write: &LabelWrite<'_>,
-) -> Result<String, IdentityWriteError> {
-    let settled = label.clone().with_ids(label.musicbrainz_label_id().map(str::to_string), None);
-    resolve_label_on(tx, &settled, name, named_now, decided, rows, write)
-}
-
-/// Drop the label `pending` this write was making in favour of the library
-/// label `existing`, which takes its catalog ids; every place already decided
-/// as `pending` names `existing`.
-fn absorb_pending(
-    decided: &mut Decided,
-    rows: &mut [(Option<String>, Option<&str>)],
-    pending: LabelRow,
-    existing: LabelRow,
-) -> LabelRow {
-    decided.inserts.retain(|new| new.id != pending.id);
+/// Make every place of `rows` naming the label `from` name `to`.
+fn name_instead(rows: &mut [(Option<String>, Option<&str>)], from: &str, to: &str) {
     for (id, _) in rows.iter_mut() {
-        if id.as_deref() == Some(pending.id.as_str()) {
-            *id = Some(existing.id.clone());
+        if id.as_deref() == Some(from) {
+            *id = Some(to.to_string());
         }
     }
-    let carried = ReleaseLabel::new(Some(pending.name), None)
-        .expect("a label this write makes has a name")
-        .with_ids(pending.musicbrainz_label_id, pending.discogs_label_id);
-    let existing = decided.overlaid(existing);
-    decided.link(existing.clone(), &carried);
-    decided.overlaid(existing)
-}
-
-#[derive(Clone, Copy)]
-enum CatalogColumn {
-    Discogs,
-    MusicBrainz,
-}
-
-/// The label holding `catalog_id`: one this write makes, else the library
-/// label whose `column` holds it or whose row the catalog id names (its
-/// column may have been filled in or edited since), followed through any
-/// merge to the label it shows as, as this write leaves it. One catalog id is
-/// one label, so several library labels holding it are merged here, at
-/// `now`, into the smallest id, which takes the ids it lacks from the others.
-fn label_by_catalog_id_on(
-    tx: &CovenWrite<'_>,
-    column: CatalogColumn,
-    catalog_id: &str,
-    decided: &mut Decided,
-    now: &str,
-) -> Result<Option<LabelRow>, IdentityWriteError> {
-    let held = |row: &LabelRow| match column {
-        CatalogColumn::Discogs => row.discogs_label_id.as_deref() == Some(catalog_id),
-        CatalogColumn::MusicBrainz => row.musicbrainz_label_id.as_deref() == Some(catalog_id),
-    };
-    if let Some(pending) = decided.inserts.iter().find(|pending| held(pending)) {
-        return Ok(Some(pending.clone()));
-    }
-    if let Some(filled) = decided.fills.iter().find(|filled| held(filled)) {
-        return Ok(Some(filled.clone()));
-    }
-    let (column, identity) = match column {
-        CatalogColumn::Discogs => {
-            ("discogs_label_id", crate::identity::label_id(None, Some(catalog_id)))
-        }
-        CatalogColumn::MusicBrainz => {
-            ("musicbrainz_label_id", crate::identity::label_id(Some(catalog_id), None))
-        }
-    };
-    let mut holding: Vec<LabelRow> = tx.query(
-        &format!(
-            "SELECT l.* FROM labels l WHERE l.id IN ( \
-                 SELECT {} FROM labels named \
-                 WHERE named.{column} = ?1 OR named.id = ?2) \
-             ORDER BY l.id",
-            shown_label_id("named.id")
-        ),
-        params![catalog_id, identity],
-        LabelRow::from_row,
-    )?;
-    if holding.len() < 2 {
-        return Ok(holding.pop().map(|row| decided.overlaid(row)));
-    }
-    let survivor = holding.remove(0).id;
-    for absorbed in holding {
-        let absorbed = decided.overlaid(absorbed);
-        super::identity_merges::merge_label_on(
-            tx,
-            &super::identity_merges::LabelMerge {
-                survivor: &survivor,
-                absorbed: &absorbed.id,
-                discogs_label_id: absorbed.discogs_label_id.as_deref(),
-                musicbrainz_label_id: absorbed.musicbrainz_label_id.as_deref(),
-                at: now,
-            },
-        )?;
-    }
-    let merged =
-        tx.query_row("SELECT * FROM labels WHERE id = ?", [&survivor], LabelRow::from_row)?;
-    Ok(Some(decided.merged(merged)))
 }
 
 /// Make the release `release_id`'s label rows exactly `rows`, in order,
