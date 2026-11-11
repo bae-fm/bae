@@ -136,7 +136,9 @@ async fn pins_and_make_locals_are_counted_apart() {
     );
 
     // The make-local of the third release, as the worker runs it: its files
-    // switched to this device in the write that ends its entry.
+    // switched to this device in the write that ends its entry. Starting it
+    // resumes the queue, so the worker must have read the paused one first.
+    settled_download_worker(manager).await;
     let made_local = releases[2].clone();
     let activated = manager
         .store

@@ -495,6 +495,14 @@ pub(super) async fn insert_pinnable_release(manager: &TestManager) -> String {
     release
 }
 
+/// Wait until the download worker has read the queue as the last wake left
+/// it, so it takes nothing a test starts by hand next.
+pub(super) async fn settled_download_worker(manager: &LibraryManager) {
+    tokio::time::timeout(bae_util::test_channels::HANG_GUARD, manager.downloads.settled())
+        .await
+        .expect("the download worker parks on the paused queue");
+}
+
 /// The queue entry a test's direct pin of `release_id` ends in its write: the
 /// release queued and started as the download worker starts it, with the
 /// queue paused so the worker leaves the entry to the test.
@@ -504,6 +512,7 @@ pub(super) async fn started_pin_entry(
 ) -> bae_transfers::ActiveEntry<bae_transfers::DownloadRequest> {
     manager.set_downloads_paused(true).await.unwrap();
     manager.enqueue_pins(vec![release_id.to_string()]).await.unwrap();
+    settled_download_worker(manager).await;
     let started = release_id.to_string();
     let activated = manager
         .store

@@ -122,10 +122,23 @@ struct Shared<Progress> {
     running: Mutex<Option<Running<Progress>>>,
     /// The active entry's progress, by release, once it has started.
     transfers: crate::ReleaseTransfers<Progress>,
-    /// How many times the worker found nothing to start and parked, for a
-    /// test to wait on.
-    #[cfg(test)]
-    parks: tokio::sync::watch::Sender<u64>,
+    /// What a test waits on: how often the worker found nothing to start and
+    /// parked, and how many wakes it had been sent when it last read the
+    /// queue.
+    #[cfg(any(test, feature = "test-utils"))]
+    rest: tokio::sync::watch::Sender<Rest>,
+    /// How many wakes have been sent.
+    #[cfg(any(test, feature = "test-utils"))]
+    wakes_sent: std::sync::atomic::AtomicU64,
+}
+
+/// How the worker last came to rest, for a test.
+#[cfg(any(test, feature = "test-utils"))]
+#[derive(Clone, Copy, Default)]
+struct Rest {
+    parks: u64,
+    /// The wakes sent before the read that found nothing to start.
+    wakes_heard: u64,
 }
 
 pub struct QueuedReleases<Extra, Progress> {
@@ -140,15 +153,31 @@ impl<Extra, Progress> Clone for QueuedReleases<Extra, Progress> {
     }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "test-utils"))]
 impl<Extra, Progress> QueuedReleases<Extra, Progress> {
     /// Wait until the worker has found nothing to start and parked, `count`
     /// times in all.
+    #[cfg(test)]
     pub(crate) async fn parked(&self, count: u64) {
         self.shared
-            .parks
+            .rest
             .subscribe()
-            .wait_for(|parks| *parks >= count)
+            .wait_for(|rest| rest.parks >= count)
+            .await
+            .expect("the queue's sender lives as long as the queue");
+    }
+
+    /// Wait until the worker has read the queue as the last wake sent left
+    /// it and found nothing to start. A test that moves entries without the
+    /// worker waits for this first: a wake the worker has yet to hear would
+    /// have it read the entries as the test left them, and take them.
+    pub async fn settled(&self) {
+        self.shared
+            .rest
+            .subscribe()
+            .wait_for(|rest| {
+                rest.wakes_heard == self.shared.wakes_sent.load(std::sync::atomic::Ordering::SeqCst)
+            })
             .await
             .expect("the queue's sender lives as long as the queue");
     }
@@ -166,8 +195,10 @@ where
                 wake: Notify::new(),
                 running: Mutex::new(None),
                 transfers: crate::ReleaseTransfers::new(),
-                #[cfg(test)]
-                parks: tokio::sync::watch::channel(0).0,
+                #[cfg(any(test, feature = "test-utils"))]
+                rest: tokio::sync::watch::channel(Rest::default()).0,
+                #[cfg(any(test, feature = "test-utils"))]
+                wakes_sent: std::sync::atomic::AtomicU64::new(0),
             }),
             _extra: PhantomData,
         }
@@ -187,14 +218,21 @@ where
     ) -> Result<bool, DbError> {
         let added = self.store.call(move |sql| tables::enqueue_releases_on(sql, &entries)).await?;
         if added {
-            self.shared.wake.notify_one();
+            self.wake();
         }
         Ok(added)
     }
 
+    /// Wake the worker parked on an empty or paused queue.
+    fn wake(&self) {
+        #[cfg(any(test, feature = "test-utils"))]
+        self.shared.wakes_sent.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        self.shared.wake.notify_one();
+    }
+
     /// Wake the worker after entries went into its queue elsewhere.
     pub fn queued(&self) {
-        self.shared.wake.notify_one();
+        self.wake();
     }
 
     /// Pause or resume. Pausing stops the running task at once, as a cancel
@@ -209,7 +247,7 @@ where
         if paused {
             self.stop(|_| true);
         } else if was_paused {
-            self.shared.wake.notify_one();
+            self.wake();
         }
         Ok(())
     }
@@ -227,7 +265,7 @@ where
     /// Queue every failed entry again and wake the worker.
     pub async fn retry_failed(&self) -> Result<(), DbError> {
         if self.store.call(|sql| tables::retry_failed_releases_on::<Extra>(sql)).await? {
-            self.shared.wake.notify_one();
+            self.wake();
         }
         Ok(())
     }
@@ -241,7 +279,7 @@ where
             .call(move |sql| tables::retry_failed_release_on::<Extra>(sql, &retried))
             .await?
         {
-            self.shared.wake.notify_one();
+            self.wake();
         }
         Ok(())
     }
@@ -443,6 +481,8 @@ where
         };
         let store = &self.store;
         loop {
+            #[cfg(any(test, feature = "test-utils"))]
+            let wakes_heard = self.shared.wakes_sent.load(std::sync::atomic::Ordering::SeqCst);
             let read = store
                 .read(|sql| {
                     Ok((
@@ -454,8 +494,11 @@ where
             let entry = match read {
                 Ok((Some(entry), _)) => entry,
                 Ok((None, usable)) => {
-                    #[cfg(test)]
-                    self.shared.parks.send_modify(|parks| *parks += 1);
+                    #[cfg(any(test, feature = "test-utils"))]
+                    self.shared.rest.send_modify(|rest| {
+                        rest.parks += 1;
+                        rest.wakes_heard = wakes_heard;
+                    });
                     // Woken by a change to the queue, or, for a queue that
                     // needs the network, by the network's change: the entry
                     // it left waiting may be takeable now.
@@ -595,7 +638,7 @@ where
             })
             .await?;
         if added {
-            self.shared.wake.notify_one();
+            self.wake();
         }
         Ok(added)
     }
