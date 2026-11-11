@@ -227,7 +227,7 @@ struct SubsonicSettingsContent: View {
     // MARK: What the server says
 
     private var causes: [BridgeSubsonicNotRunning] {
-        if case .notRunning(let causes) = view.status {
+        if case .notRunning(let causes, _) = view.status {
             causes
         }
         else {
@@ -301,9 +301,9 @@ struct SubsonicSettingsContent: View {
     private func networkLabel(_ network: BridgeNetworkChoice) -> Text {
         let name = names.name(of: network.interface)
         guard let address = network.address else {
-            return Text("\(name) (not connected)")
+            return Text("\(name) · not connected")
         }
-        return Text(verbatim: "\(name) — \(address)")
+        return Text(verbatim: "\(name) · \(address)")
     }
 
     // MARK: Saving

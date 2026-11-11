@@ -8,6 +8,8 @@ import SwiftUI
 struct ActivityButton: View {
     @Environment(SyncActivityStore.self)
     private var store
+    @Environment(SubsonicStore.self)
+    private var subsonicStore
     @Environment(SettingsNavigation.self)
     private var settingsNavigation
     @Environment(\.openSettingsWindow)
@@ -35,6 +37,7 @@ struct ActivityButton: View {
             app: app,
             activity: store.activity,
             error: store.error,
+            subsonic: subsonicStore.view.status,
             dismissed: dismissed
         )
     }
@@ -72,7 +75,9 @@ struct ActivityButton: View {
                             onOpenStorageManager: {
                                 listShown = false
                                 openStorageManager()
-                            }
+                            },
+                            subsonic: subsonicStore.view.status,
+                            onOpenSubsonicSettings: openSubsonicSettings
                         )
                     }
                     .formStyle(.grouped)
@@ -101,6 +106,11 @@ struct ActivityButton: View {
                 listShown = false
             }
         }
+    }
+
+    private func openSubsonicSettings() {
+        listShown = false
+        settingsNavigation.open(.subsonic, present: { openSettings() })
     }
 
     private func openSyncSettings() {
@@ -138,6 +148,7 @@ private struct ActivityGlyph: View {
     #Preview("Activity: moving and needing attention") {
         ActivityButton()
             .environment(SyncActivityStore.preview())
+            .environment(SubsonicStore())
             .environment(SettingsNavigation())
             .environment(\.openSettingsWindow, OpenSettingsWindowAction {})
             .environment(\.openStorageManager, OpenStorageManagerAction {})
@@ -152,6 +163,7 @@ private struct ActivityGlyph: View {
     #Preview("Activity: moving") {
         ActivityButton()
             .environment(SyncActivityStore.preview(needsAttention: false))
+            .environment(SubsonicStore())
             .environment(SettingsNavigation())
             .environment(\.openSettingsWindow, OpenSettingsWindowAction {})
             .environment(\.openStorageManager, OpenStorageManagerAction {})
@@ -194,12 +206,15 @@ private struct ActivityGlyph: View {
                         app: app,
                         activity: store.activity,
                         error: store.error,
+                        subsonic: .off,
                         dismissed: dismissed
                     ),
                     app: app,
                     dismissed: $dismissed,
                     onOpenSettings: {},
-                    onOpenStorageManager: {}
+                    onOpenStorageManager: {},
+                    subsonic: .off,
+                    onOpenSubsonicSettings: {}
                 )
             }
             .formStyle(.grouped)

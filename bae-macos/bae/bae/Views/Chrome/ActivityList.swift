@@ -17,6 +17,11 @@ struct ActivityList: View {
     let onOpenSettings: () -> Void
     /// Opens the Storage Manager, where each transfer is listed.
     let onOpenStorageManager: () -> Void
+    /// What the Subsonic server is doing, which a row lists while it is on
+    /// and not running.
+    let subsonic: BridgeSubsonicStatus
+    /// Opens the Subsonic settings, where why it isn't running is fixed.
+    let onOpenSubsonicSettings: () -> Void
 
     @Environment(SyncActivityStore.self)
     private var store
@@ -107,6 +112,8 @@ struct ActivityList: View {
                     onDismiss: dismiss
                 )
             }
+        case .subsonicNotRunning:
+            subsonicProblem(dismiss: dismiss)
         case .syncFailure:
             if let failure = store.activity?.failure,
                 let displayed = DisplayError(failure)
@@ -126,6 +133,34 @@ struct ActivityList: View {
                     onDismiss: dismiss
                 )
             }
+        }
+    }
+
+    /// The Subsonic server switched on and not running, with why in the alert
+    /// its row opens.
+    @ViewBuilder
+    private func subsonicProblem(dismiss: @escaping () -> Void) -> some View {
+        if case .notRunning(let causes, let tone) = subsonic {
+            let title = String(localized: "Subsonic server isn’t running")
+            let names = NetworkNames.current()
+            Notice(
+                title: title,
+                advice: nil,
+                error: DisplayError(
+                    line: title,
+                    detail: causes.map { $0.line(names: names) }
+                        .joined(separator: "\n")
+                ),
+                tone: tone.statusTone,
+                look: .quiet,
+                action: ErrorAction(
+                    "Open Subsonic settings",
+                    perform: onOpenSubsonicSettings
+                ),
+                buttons: .below,
+                detailsOpening: .row,
+                onDismiss: dismiss
+            )
         }
     }
 }

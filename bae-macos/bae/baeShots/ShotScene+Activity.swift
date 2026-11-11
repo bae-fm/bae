@@ -33,7 +33,8 @@ extension ShotScene {
                             )
                         )
                         .problem
-                    ]
+                    ],
+                    subsonic: .off
                 )
             )
         },
@@ -49,7 +50,9 @@ extension ShotScene {
                     detail: "dns error: failed to lookup address"
                 )
             )
-            return ShotStage(ActivityPanelShot(store: store, app: []))
+            return ShotStage(
+                ActivityPanelShot(store: store, app: [], subsonic: .off)
+            )
         },
         // Sync's own failure with Open sync settings: SyncMacAttention.
         ShotScene(
@@ -65,7 +68,9 @@ extension ShotScene {
                     )
                 )
             )
-            return ShotStage(ActivityPanelShot(store: store, app: []))
+            return ShotStage(
+                ActivityPanelShot(store: store, app: [], subsonic: .off)
+            )
         },
         // Every line moving: SyncMacMoving.
         ShotScene(
@@ -80,7 +85,9 @@ extension ShotScene {
                     ]
                 )
             )
-            return ShotStage(ActivityPanelShot(store: store, app: []))
+            return ShotStage(
+                ActivityPanelShot(store: store, app: [], subsonic: .off)
+            )
         },
         // Uploads paused and downloads waiting for network, each in the
         // count's place: SyncMacPaused.
@@ -97,7 +104,9 @@ extension ShotScene {
                     holding: ["uploads": 0.3, "pins": 0, "making_local": 0]
                 )
             )
-            return ShotStage(ActivityPanelShot(store: store, app: []))
+            return ShotStage(
+                ActivityPanelShot(store: store, app: [], subsonic: .off)
+            )
         },
         // The title bar's button while both queues are paused and nothing
         // moves: the pause symbol of SyncMacPaused.
@@ -115,7 +124,25 @@ extension ShotScene {
                 ActivityButton()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .environment(store)
+                    .environment(SubsonicStore())
                     .environment(SettingsNavigation())
+            )
+        },
+        // The server switched on and not running, alone in Needs attention:
+        // the canvas's SetMacSubsonicActivity.
+        ShotScene(
+            id: "activity-subsonic",
+            size: CGSize(width: 360, height: 200)
+        ) {
+            ShotStage(
+                ActivityPanelShot(
+                    store: SyncActivityStore(activity: nil),
+                    app: [],
+                    subsonic: .notRunning(
+                        causes: [.missingUsername, .missingPassword],
+                        tone: .warning
+                    )
+                )
             )
         },
     ]
@@ -184,6 +211,7 @@ private enum ActivityShot {
 private struct ActivityPanelShot: View {
     let store: SyncActivityStore
     let app: [AppProblem]
+    let subsonic: BridgeSubsonicStatus
     @State
     private var dismissed: Set<ActivityProblemID> = []
 
@@ -194,12 +222,15 @@ private struct ActivityPanelShot: View {
                     app: app,
                     activity: store.activity,
                     error: store.error,
+                    subsonic: subsonic,
                     dismissed: dismissed
                 ),
                 app: app,
                 dismissed: $dismissed,
                 onOpenSettings: {},
-                onOpenStorageManager: {}
+                onOpenStorageManager: {},
+                subsonic: subsonic,
+                onOpenSubsonicSettings: {}
             )
         }
         .formStyle(.grouped)

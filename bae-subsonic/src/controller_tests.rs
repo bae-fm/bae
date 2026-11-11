@@ -1,7 +1,7 @@
 use super::*;
 use std::sync::{Arc, Mutex};
 
-use crate::{ServedAddress, SubsonicStatus};
+use crate::{NotRunningTone, ServedAddress, SubsonicStatus};
 use bae_app::AppServices;
 use tempfile::TempDir;
 
@@ -82,7 +82,7 @@ async fn status(controller: &SubsonicServerController) -> SubsonicStatus {
 }
 
 fn not_running(causes: &[NotRunning]) -> SubsonicStatus {
-    SubsonicStatus::NotRunning { causes: causes.to_vec() }
+    SubsonicStatus::not_running(causes.to_vec())
 }
 
 fn port_is_free(port: u16) -> bool {
@@ -217,6 +217,31 @@ async fn a_keyring_that_cannot_be_read_is_a_failure_with_its_detail() {
         status(&controller).await,
         not_running(&[NotRunning::Failed { detail: "keyring is locked".to_string() }])
     );
+}
+
+/// A server that could not start for a reason of its own reads as danger; one
+/// that waits on something the person can set reads as a warning.
+#[tokio::test]
+async fn only_a_failure_of_its_own_is_danger() {
+    let (services, _temp) = test_manager().await;
+    let broken = SubsonicServerController::new(
+        services.clone(),
+        Arc::new(|| Box::pin(async { Err("keyring is locked".to_string()) })),
+        FakeNetworks::default().lister(),
+        Diagnostics::noop(),
+    );
+    broken.apply_config(enabled_config(free_port(), "listener")).await;
+    assert!(matches!(
+        status(&broken).await,
+        SubsonicStatus::NotRunning { tone: NotRunningTone::Danger, .. }
+    ));
+
+    let waiting = controller(&services, None);
+    waiting.apply_config(enabled_config(free_port(), "listener")).await;
+    assert!(matches!(
+        status(&waiting).await,
+        SubsonicStatus::NotRunning { tone: NotRunningTone::Warning, .. }
+    ));
 }
 
 #[tokio::test]

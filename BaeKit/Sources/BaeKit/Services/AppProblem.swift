@@ -13,6 +13,8 @@ public enum ActivityProblemID: Hashable, Sendable {
     case syncStatusUnread
     /// Sync's own failure.
     case syncFailure
+    /// The Subsonic server is switched on and not running.
+    case subsonicNotRunning
 }
 
 /// A problem the app found in itself, as the Activity panel lists it: what

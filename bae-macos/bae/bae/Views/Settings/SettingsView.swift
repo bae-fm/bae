@@ -80,6 +80,18 @@ private struct SyncBadge: View {
     }
 }
 
+/// Offline beside Subsonic in the sidebar, while the server is switched on and
+/// not running: a warning, or danger when it could not start.
+private struct SubsonicBadge: View {
+    let tone: StatusTone
+
+    var body: some View {
+        Text("Offline")
+            .themeText(.detail)
+            .foregroundStyle(tone.color)
+    }
+}
+
 /// The panes down the side of the settings window, with the state some of them
 /// carry beside their title.
 struct SettingsSidebar: View {
@@ -92,6 +104,8 @@ struct SettingsSidebar: View {
     private var outboxStore
     @Environment(SyncStatusStore.self)
     private var syncStatus
+    @Environment(SubsonicStore.self)
+    private var subsonicStore
 
     var body: some View {
         List(SettingsTab.allCases, id: \.self, selection: $selection) { tab in
@@ -109,6 +123,12 @@ struct SettingsSidebar: View {
                 if tab == .library, let shown = troubledSync {
                     Spacer()
                     SyncBadge(shown: shown)
+                }
+                if tab == .subsonic,
+                    case .notRunning(_, let tone) = subsonicStore.view.status
+                {
+                    Spacer()
+                    SubsonicBadge(tone: tone.statusTone)
                 }
             }
             .tag(tab)

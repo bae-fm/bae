@@ -101,6 +101,7 @@
                 .environment(CastStart.stub())
                 .environment(CastStore())
                 .environment(SyncActivityStore.preview(needsAttention: false))
+                .environment(SubsonicStore())
                 .albumDetailPreviewEnvironment()
                 .environment(SettingsNavigation())
                 .mainWindowPreviewEnvironment()

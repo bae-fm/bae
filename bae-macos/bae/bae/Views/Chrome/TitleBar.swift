@@ -204,6 +204,7 @@ private struct SectionSegmentedControl: View {
             .environment(LibraryProjectionStore(library: library))
             .environment(UiStore())
             .environment(SyncActivityStore.preview())
+            .environment(SubsonicStore())
             .environment(\.libraryLoadError, nil)
             .environment(Sync.stub())
             .environment(Downloads.stub())

@@ -4343,7 +4343,9 @@ connects to his laptop, lists the artists, opens an album and plays it.
   username or password change applies to the next sign-in.
   On but not running, it also shows outside Settings: a mark on the
   Subsonic pane in Settings' sidebar, and a row under *Needs attention* in
-  the Activity panel that opens this pane.
+  the Activity panel that opens this pane. Both read as a warning, or as
+  danger when the server could not start for a reason of its own. The row's
+  × takes it out of the panel until the server has run and stopped again.
 - **Ids** carry their kind: `ar-` an artist, `al-` a release, `tr-` a track. A
   cover's id adds a version, so a client caching art fetches a new cover.
 - **Out of scope.** Playlists, stars and ratings, play counts, podcasts,

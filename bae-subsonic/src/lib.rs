@@ -39,7 +39,8 @@ pub use controller::SubsonicServerController;
 pub use id::{album_cover_art_id, song_id};
 pub use network::{machine_addresses, AddressChanges, NetworkAddress, NetworkLister};
 pub use status::{
-    NetworkChoice, NotRunning, ServedAddress, SubsonicStatus, SubsonicView, SubsonicWatch,
+    NetworkChoice, NotRunning, NotRunningTone, ServedAddress, SubsonicStatus, SubsonicView,
+    SubsonicWatch,
 };
 
 /// Shared handler state: the library, the one accepted credential, and where a

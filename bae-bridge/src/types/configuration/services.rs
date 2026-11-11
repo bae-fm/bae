@@ -235,7 +235,23 @@ pub enum BridgeSubsonicStatus {
     /// Serving, at these addresses.
     Running { addresses: Vec<BridgeServedAddress> },
     /// Switched on and not serving, for these reasons.
-    NotRunning { causes: Vec<BridgeSubsonicNotRunning> },
+    NotRunning { causes: Vec<BridgeSubsonicNotRunning>, tone: BridgeNotRunningTone },
+}
+
+/// How much a server that is switched on and not running needs the person.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeNotRunningTone {
+    /// Something they can set stands in the way.
+    Warning,
+    /// The server could not start for a reason of its own.
+    Danger,
+}
+
+#[cfg(desktop)]
+mirror_enum! {
+    BridgeNotRunningTone = bae_subsonic::NotRunningTone,
+    from_core: pub(crate) fn,
+    variants: { Warning, Danger },
 }
 
 /// An address a Subsonic app connects to.
@@ -310,7 +326,7 @@ mirror_enum! {
     variants: {
         Off,
         Running { addresses: (each BridgeServedAddress) },
-        NotRunning { causes: (each BridgeSubsonicNotRunning) },
+        NotRunning { causes: (each BridgeSubsonicNotRunning), tone: (BridgeNotRunningTone) },
     },
 }
 

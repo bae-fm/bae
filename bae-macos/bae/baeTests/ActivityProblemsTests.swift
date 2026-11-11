@@ -11,6 +11,7 @@ struct ActivityProblemsTests {
             app: [signIn, libraryLoad],
             activity: activity(failure: failure),
             error: unread,
+            subsonic: .off,
             dismissed: []
         )
         #expect(
@@ -27,6 +28,7 @@ struct ActivityProblemsTests {
             app: [signIn, libraryLoad],
             activity: activity(failure: failure),
             error: unread,
+            subsonic: .off,
             dismissed: [.libraryLoad]
         )
         #expect(problems.listed.count == 4)
@@ -43,6 +45,7 @@ struct ActivityProblemsTests {
             app: [signIn],
             activity: activity(failure: failure),
             error: nil,
+            subsonic: .off,
             dismissed: [.signInSettings, .syncFailure]
         )
         #expect(!problems.needsAttention)
@@ -54,6 +57,7 @@ struct ActivityProblemsTests {
             app: [signIn],
             activity: .preview(needsAttention: true),
             error: nil,
+            subsonic: .off,
             dismissed: [.signInSettings]
         )
         #expect(problems.recordsListed)
@@ -68,6 +72,7 @@ struct ActivityProblemsTests {
                 app: [signIn],
                 activity: nil,
                 error: nil,
+                subsonic: .off,
                 dismissed: dismissed
             )
             .needsAttention
@@ -77,10 +82,58 @@ struct ActivityProblemsTests {
                 app: [signIn],
                 activity: nil,
                 error: unread,
+                subsonic: .off,
                 dismissed: dismissed
             )
             .needsAttention
         )
+    }
+
+    @Test(
+        "the Subsonic server not running is listed last, and dismissing it hides it"
+    )
+    func subsonicNotRunning() {
+        let notRunning = BridgeSubsonicStatus.notRunning(
+            causes: [.portTaken],
+            tone: .warning
+        )
+        let problems = ActivityProblems(
+            app: [signIn],
+            activity: activity(failure: failure),
+            error: nil,
+            subsonic: notRunning,
+            dismissed: []
+        )
+        #expect(
+            problems.listed == [
+                .signInSettings, .syncFailure, .subsonicNotRunning,
+            ]
+        )
+
+        let dismissed = ActivityProblems(
+            app: [],
+            activity: nil,
+            error: nil,
+            subsonic: notRunning,
+            dismissed: [.subsonicNotRunning]
+        )
+        #expect(!dismissed.needsAttention)
+    }
+
+    @Test("a Subsonic server that is off or running lists nothing")
+    func subsonicOffOrRunning() {
+        for status in [
+            BridgeSubsonicStatus.off, .running(addresses: []),
+        ] {
+            let problems = ActivityProblems(
+                app: [],
+                activity: nil,
+                error: nil,
+                subsonic: status,
+                dismissed: []
+            )
+            #expect(!problems.needsAttention)
+        }
     }
 
     private let failure = BridgeError.Diagnostic(

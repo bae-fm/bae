@@ -53,9 +53,10 @@ fn the_subsonic_switch_stays_on_while_the_server_cannot_run() {
         desktop.set_subsonic_enabled(true).await.unwrap();
         assert_eq!(
             next().await.status,
-            SubsonicStatus::NotRunning {
-                causes: vec![NotRunning::MissingUsername, NotRunning::MissingPassword]
-            }
+            SubsonicStatus::not_running(vec![
+                NotRunning::MissingUsername,
+                NotRunning::MissingPassword
+            ])
         );
         assert!(services.preferences().await.unwrap().subsonic.enabled);
 
@@ -66,7 +67,7 @@ fn the_subsonic_switch_stays_on_while_the_server_cannot_run() {
         desktop.set_subsonic_password("s3cret").await.unwrap();
         let view = loop {
             let view = next().await;
-            if view.status == (SubsonicStatus::NotRunning { causes: vec![NotRunning::PortTaken] }) {
+            if view.status == SubsonicStatus::not_running(vec![NotRunning::PortTaken]) {
                 break view;
             }
         };

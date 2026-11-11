@@ -128,6 +128,8 @@ extension ShotScene {
             )
         },
         settingsSidebar("settings-sidebar", .previewSynced),
+        subsonicSidebar("settings-sidebar-subsonic-offline", tone: .warning),
+        subsonicSidebar("settings-sidebar-subsonic-failed", tone: .danger),
         settingsSidebar("settings-sidebar-offline", .previewOffline),
         settingsSidebar("settings-sidebar-problem", .previewFailed),
         automationFailed,
@@ -152,7 +154,10 @@ extension ShotScene {
             "settings-subsonic-no-network",
             config: .previewSubsonic(network: .interface(interface: "en0")),
             view: .previewSubsonic(
-                .notRunning(causes: [.networkGone(interface: "en0")]),
+                .notRunning(
+                    causes: [.networkGone(interface: "en0")],
+                    tone: .warning
+                ),
                 networks: [
                     BridgeNetworkChoice(interface: "en0", address: nil),
                     BridgeNetworkChoice(
@@ -166,15 +171,20 @@ extension ShotScene {
             "settings-subsonic-failed",
             config: .previewSubsonic(network: .interface(interface: "en0")),
             view: .previewSubsonic(
-                .notRunning(causes: [
-                    .failed(detail: "Permission denied (os error 13)")
-                ])
+                .notRunning(
+                    causes: [
+                        .failed(detail: "Permission denied (os error 13)")
+                    ],
+                    tone: .danger
+                )
             )
         ),
         subsonicPane(
             "settings-subsonic-port-taken",
             config: .previewSubsonic(network: .interface(interface: "en0")),
-            view: .previewSubsonic(.notRunning(causes: [.portTaken]))
+            view: .previewSubsonic(
+                .notRunning(causes: [.portTaken], tone: .warning)
+            )
         ),
         subsonicPane(
             "settings-subsonic-refused",
@@ -184,7 +194,10 @@ extension ShotScene {
                 port: 4533
             ),
             view: .previewSubsonic(
-                .notRunning(causes: [.missingUsername, .missingPassword]),
+                .notRunning(
+                    causes: [.missingUsername, .missingPassword],
+                    tone: .warning
+                ),
                 passwordSaved: false
             )
         ),
@@ -319,6 +332,7 @@ extension ShotScene {
                 SettingsSidebar(selection: .constant(.appearance))
                     .environment(DownloadStore())
                     .environment(OutboxStore(uploadsPaused: false))
+                    .environment(SubsonicStore())
                     .environment(
                         SyncStatusStore(
                             snapshot: BridgeSyncStatusSnapshot(
@@ -326,6 +340,28 @@ extension ShotScene {
                                 pending: [],
                                 setupRunning: false,
                                 undoneSetup: nil
+                            )
+                        )
+                    )
+            )
+        }
+    }
+
+    /// The sidebar with the Subsonic server switched on and not running.
+    private static func subsonicSidebar(
+        _ id: String,
+        tone: BridgeNotRunningTone
+    ) -> ShotScene {
+        ShotScene(id: id, size: CGSize(width: 190, height: 330)) {
+            ShotStage(
+                SettingsSidebar(selection: .constant(.subsonic))
+                    .environment(DownloadStore())
+                    .environment(OutboxStore(uploadsPaused: false))
+                    .environment(SyncStatusStore())
+                    .environment(
+                        SubsonicStore(
+                            view: .previewSubsonic(
+                                .notRunning(causes: [.portTaken], tone: tone)
                             )
                         )
                     )

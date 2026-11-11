@@ -16,7 +16,28 @@ pub enum SubsonicStatus {
     /// Serving, at these addresses.
     Running { addresses: Vec<ServedAddress> },
     /// Switched on and not serving, for these reasons: never none.
-    NotRunning { causes: Vec<NotRunning> },
+    NotRunning { causes: Vec<NotRunning>, tone: NotRunningTone },
+}
+
+impl SubsonicStatus {
+    /// Not running for `causes`, which are never none.
+    pub fn not_running(causes: Vec<NotRunning>) -> Self {
+        let tone = if causes.iter().any(|cause| matches!(cause, NotRunning::Failed { .. })) {
+            NotRunningTone::Danger
+        } else {
+            NotRunningTone::Warning
+        };
+        Self::NotRunning { causes, tone }
+    }
+}
+
+/// How much a server that is switched on and not running needs the person:
+/// a warning when something they can set stands in the way, danger when the
+/// server could not start for a reason of its own.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NotRunningTone {
+    Warning,
+    Danger,
 }
 
 /// An address a Subsonic app connects to.
@@ -147,15 +168,13 @@ impl Serving {
 fn view(plan: &Plan, server: &ServerStatus) -> Option<SubsonicView> {
     let status = match &plan.stage {
         Stage::Off => SubsonicStatus::Off,
-        Stage::Blocked(causes) => SubsonicStatus::NotRunning { causes: causes.clone() },
+        Stage::Blocked(causes) => SubsonicStatus::not_running(causes.clone()),
         Stage::Serving(serving) => match server {
             ServerStatus::Running { url } if *url == serving.server_url() => {
                 SubsonicStatus::Running { addresses: serving.addresses() }
             }
             ServerStatus::Running { .. } | ServerStatus::Disabled => return None,
-            ServerStatus::Error { error } => {
-                SubsonicStatus::NotRunning { causes: vec![cause(error)] }
-            }
+            ServerStatus::Error { error } => SubsonicStatus::not_running(vec![cause(error)]),
         },
     };
     Some(SubsonicView {
