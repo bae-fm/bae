@@ -3,18 +3,14 @@ package fm.bae.app.ui.settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -24,17 +20,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.LifecycleStartEffect
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.data.castingDeviceName
-import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.BaeAlertDialog
+import fm.bae.app.ui.components.CardRow
 import fm.bae.app.ui.components.Eyebrow
 import fm.bae.app.ui.components.NeutralTextButton
 import fm.bae.app.ui.components.RowCard
@@ -157,7 +152,7 @@ internal fun CastingPage(
             modifier = Modifier.fillMaxWidth().padding(ThemeSpace.edge),
             verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
         ) {
-            CastingCard {
+            RowCard {
                 CastEnabledRow(enabled = enabled, onChange = onEnabledChange)
             }
             CastingCaption(stringResource(R.string.settings_casting_help))
@@ -176,27 +171,12 @@ internal fun CastingPage(
                         looking = stringResource(R.string.settings_casting_looking),
                     )
                 }
-                CastingCard {
+                RowCard {
                     CastTranscodeFormatPicker(selected = transcodeFormat, onSelect = onTranscodeFormatChange)
                 }
                 CastingCaption(stringResource(R.string.settings_cast_transcode_help))
             }
         }
-    }
-}
-
-/** Rows grouped on the page's surface. */
-@Composable
-internal fun CastingCard(content: @Composable ColumnScope.() -> Unit) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(ThemeRadius.card),
-        color = MaterialTheme.colorScheme.surface,
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.group),
-            content = content,
-        )
     }
 }
 
@@ -218,25 +198,21 @@ private fun CastTranscodeFormatPicker(
     onSelect: (BridgeCastTranscodeFormat) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
-    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            text = stringResource(R.string.settings_cast_transcode_format),
-            modifier = Modifier.weight(1f),
+    Box {
+        CardRow(
+            title = stringResource(R.string.settings_cast_transcode_format),
+            subtitle = castTranscodeFormatLabel(selected),
+            onClick = { expanded = true },
         )
-        Box {
-            TextButton(onClick = { expanded = true }) {
-                Text(castTranscodeFormatLabel(selected))
-            }
-            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                BridgeCastTranscodeFormat.entries.forEach { choice ->
-                    DropdownMenuItem(
-                        text = { Text(castTranscodeFormatLabel(choice)) },
-                        onClick = {
-                            expanded = false
-                            onSelect(choice)
-                        },
-                    )
-                }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            BridgeCastTranscodeFormat.entries.forEach { choice ->
+                DropdownMenuItem(
+                    text = { Text(castTranscodeFormatLabel(choice)) },
+                    onClick = {
+                        expanded = false
+                        onSelect(choice)
+                    },
+                )
             }
         }
     }
@@ -255,13 +231,10 @@ private fun CastEnabledRow(
     enabled: Boolean,
     onChange: (Boolean) -> Unit,
 ) {
-    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            text = stringResource(R.string.settings_enable_casting),
-            modifier = Modifier.weight(1f),
-        )
-        Switch(checked = enabled, onCheckedChange = onChange)
-    }
+    CardRow(
+        title = stringResource(R.string.settings_enable_casting),
+        trailing = { Switch(checked = enabled, onCheckedChange = onChange) },
+    )
 }
 
 @Composable
