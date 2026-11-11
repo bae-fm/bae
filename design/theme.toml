@@ -234,7 +234,7 @@ pinning = "#4553B5"
 # light background (design/system/tokens.json `logo-word`).
 logoWord = "#40183D"
 # The glow behind the sheep on Welcome, the pool of light under it, and the
-# word's edge. The same in both modes; design/system/components/bundle.css
+# word's edge. The same in both modes; design/system/components/src/90-explorations.css
 # draws them as .bae-logo-glow, .bae-logo-pool and .bae-word-lift.
 logoGlowCentre = "#52F7A8C4"
 logoGlowInner = "#38C98ADD"
@@ -295,7 +295,7 @@ pinning = "#A9B8FF"
 # The word under the sheep on Welcome: the wool's cream.
 logoWord = "#FFFCF4"
 # The glow behind the sheep on Welcome, the pool of light under it, and the
-# word's edge. The same in both modes; design/system/components/bundle.css
+# word's edge. The same in both modes; design/system/components/src/90-explorations.css
 # draws them as .bae-logo-glow, .bae-logo-pool and .bae-word-lift.
 logoGlowCentre = "#52F7A8C4"
 logoGlowInner = "#38C98ADD"

@@ -1,0 +1,308 @@
+/* ---- Library and playback ---- */
+.bae-art { position: relative; flex: none; width: 100%; aspect-ratio: 1; overflow: hidden; background-color: var(--placeholder); background-size: cover; }
+.bae-art-missing { background-image: none !important; }
+.bae-art-shadow-tile { box-shadow: 0 9px 14px var(--shadow); }
+.bae-art-shadow-bar { box-shadow: 0 4px 8px var(--shadow); }
+/* ring: the open tile's accent ring, a gap of the window's background between it and the cover. */
+.bae-art.bae-art-ring { overflow: visible; box-shadow: 0 0 0 4.5px var(--background), 0 0 0 7.5px var(--accent); }
+.bae-accent { color: var(--accent); fill: var(--accent); }
+.bae-muted { color: var(--text-secondary); }
+.bae-glyph { flex: none; display: block; }
+.bae-ph { background: var(--placeholder); border-radius: var(--radius-bar); }
+.bae-waitarc { position: absolute; inset: 0; color: var(--accent); animation: bae-spin 1s linear infinite reverse; }
+.bae-seek { display: flex; align-items: center; gap: 11px; width: 100%; }
+.bae-seek-time { flex: none; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.bae-seek-track { position: relative; flex: 1; border-radius: 3px; background: var(--hairline); }
+.bae-seek-held { position: absolute; top: 0; bottom: 0; border-radius: inherit; background: var(--accent-tint-strong); }
+.bae-seek-played { position: absolute; left: 0; top: 0; bottom: 0; min-width: 5px; border-radius: inherit; background: var(--accent); }
+.bae-seek-off .bae-seek-time { opacity: 0.5; }
+
+/* macOS */
+.bae-m-main-window { flex-direction: column; }
+.bae-m-titlebar { position: relative; height: 56px; flex: none; display: flex; align-items: center; justify-content: center; padding: 0 16px 0 80px; box-shadow: inset 0 -1px 0 var(--hairline); }
+.bae-m-sections { position: absolute; left: 50%; transform: translateX(calc(-50% - 32px)); display: flex; padding: 4px; border-radius: var(--radius-control); background: var(--well); }
+.bae-m-section-tab { padding: 6px 16px; border-radius: 3px; font: 600 13px var(--font-sans); color: var(--text-secondary); }
+.bae-m-section-tab-on { color: var(--text-primary); background: var(--tile); box-shadow: 0 1px 1.5px var(--shadow); }
+.bae-m-titlebar-trail { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+.bae-m-search { width: 300px; height: 28px; box-sizing: border-box; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-radius: 999px; background: var(--well); color: var(--text-primary); fill: var(--text-tertiary); font: 400 13px var(--font-sans); }
+.bae-m-search-focused { box-shadow: inset 0 0 0 1px var(--accent); }
+.bae-m-search-prompt { color: var(--text-tertiary); }
+.bae-m-iconbtn { width: 28px; height: 28px; flex: none; display: inline-flex; align-items: center; justify-content: center; border: 0; padding: 0; border-radius: var(--radius-control); background: none; color: var(--text-secondary); fill: currentColor; cursor: pointer; }
+.bae-m-iconbtn-small { width: 20px; height: 20px; }
+.bae-m-iconbtn:hover { color: var(--text-primary); background: var(--hover); }
+/* boxed: a filled box at rest, the push button's fill, so it reads as a button among text. */
+.bae-m-iconbtn-boxed { background: var(--control); color: var(--text-primary); box-shadow: 0 0 0 0.5px var(--control-edge), 0 0.5px 1px var(--control-edge); }
+.bae-m-iconbtn-boxed:hover { background: color-mix(in srgb, var(--control) 85%, var(--text-primary)); }
+.bae-m-iconbtn-on { color: var(--accent); background: var(--accent-tint); }
+.bae-m-iconbtn-faint { color: var(--text-tertiary); }
+.bae-m-sync-warn { color: var(--warning-icon); }
+.bae-m-main-body { flex: 1; min-height: 0; overflow: hidden; display: flex; }
+.bae-m-main-content { flex: 1; min-width: 0; max-width: 1240px; margin: 0 auto; overflow: hidden; display: flex; flex-direction: column; }
+.bae-m-npbar { flex: none; display: flex; align-items: center; gap: 24px; padding: 12px 24px; background: var(--surface); box-shadow: inset 0 1px 0 var(--hairline); }
+.bae-m-np-left, .bae-m-np-right { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; }
+.bae-m-np-right { justify-content: flex-end; }
+.bae-m-np-text { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.bae-m-np-title { font: 500 13px var(--font-sans); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bae-m-np-sub { font: 400 11.5px var(--font-sans); color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bae-m-np-center { width: 460px; flex: none; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.bae-m-np-transport { display: flex; align-items: center; gap: 24px; }
+.bae-m-playpause { position: relative; width: 48px; height: 48px; flex: none; display: inline-flex; align-items: center; justify-content: center; border-radius: 24px; background: var(--tile); color: var(--text-primary); fill: currentColor; }
+.bae-m-seek { height: 20px; font: 400 10px var(--font-sans); }
+.bae-m-seek .bae-seek-time:first-child { width: 48px; text-align: right; }
+.bae-m-seek .bae-seek-time:last-child { width: 40px; }
+.bae-m-seek .bae-seek-track { height: 5px; }
+.bae-m-volume { width: 96px; height: 5px; flex: none; border-radius: 3px; background: var(--hairline); overflow: hidden; }
+.bae-m-volume > div { height: 100%; border-radius: 3px; background: var(--accent); }
+.bae-m-libhead { display: flex; align-items: baseline; gap: 12px; padding: 64px 22px 32px; }
+.bae-m-libhead-collapsed { padding: 12px 22px; }
+.bae-m-libhead-title { margin: 0; font: 800 46px/1 var(--font-sans); letter-spacing: -1.1px; display: flex; align-items: baseline; gap: 10px; }
+.bae-m-libhead-collapsed .bae-m-libhead-title { font-size: 22px; letter-spacing: -0.3px; gap: 6px; }
+.bae-m-libhead-chevron { color: var(--text-secondary); fill: currentColor; }
+.bae-m-libhead-trail { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.bae-m-grid { display: grid; gap: 32px; padding: 0 16px 16px; }
+.bae-m-tile { position: relative; display: flex; flex-direction: column; gap: 2px; padding: 6px; border-radius: var(--radius-card); min-width: 0; }
+.bae-m-tile-selected { background: var(--accent-tint); }
+.bae-m-tile-art { position: relative; margin-bottom: 6px; }
+.bae-m-tile-menu { position: absolute; top: 6px; right: 6px; width: 28px; height: 28px; border-radius: 14px; display: flex; align-items: center; justify-content: center; background: var(--scrim); color: var(--on-fill); fill: currentColor; }
+.bae-m-tile-title { font: 500 13px var(--font-sans); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bae-m-tile-artist { font: 400 11.5px var(--font-sans); color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bae-m-tile-year { font: 400 11.5px/14px var(--font-sans); color: var(--text-tertiary); }
+.bae-m-track { height: 40px; box-sizing: border-box; display: flex; align-items: center; gap: 12px; padding: 0 8px; margin: 0 -8px; border-radius: var(--radius-control); }
+.bae-m-track-two { height: 52px; }
+.bae-m-track-hover { background: var(--hover); }
+.bae-m-track-lead { min-width: 22px; display: flex; justify-content: flex-end; color: var(--text-primary); fill: currentColor; }
+.bae-m-track-pos { font: 400 11.5px var(--font-sans); font-variant-numeric: tabular-nums; color: var(--text-tertiary); }
+.bae-m-track-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.bae-m-track-title { font: 500 13px var(--font-sans); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bae-m-track-artist { font: 400 11.5px var(--font-sans); color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bae-m-track-time { font: 400 11.5px var(--font-sans); font-variant-numeric: tabular-nums; color: var(--text-secondary); }
+.bae-m-eyebrow { padding: 16px 0 6px; font: 600 11px var(--font-sans); color: var(--text-secondary); }
+.bae-m-eyebrow:first-child:not(.sc-host-x > *), .sc-host-x:first-child > .bae-m-eyebrow { padding-top: 0; }
+.bae-m-browse { display: flex; align-items: center; gap: 12px; padding: 8px; border-radius: var(--radius-control); }
+.bae-m-browse-hover { background: var(--hover); }
+.bae-m-browse-selected { background: var(--accent-tint); }
+.bae-m-browse-art { width: 44px; height: 44px; border-radius: 6px; flex: none; }
+.bae-m-browse-text { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.bae-m-browse-name { font: 500 13px/17px var(--font-sans); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bae-m-browse-count { font: 400 11.5px/14px var(--font-sans); color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bae-m-dethead { display: flex; align-items: center; gap: 16px; }
+.bae-m-dethead-name { font: 700 22px var(--font-sans); letter-spacing: -0.3px; }
+.bae-m-dethead-count { margin-top: 4px; font: 400 11.5px var(--font-sans); color: var(--text-secondary); }
+.bae-m-qrow { display: flex; align-items: center; gap: 12px; padding: 6px 8px; border-radius: var(--radius-control); }
+.bae-m-qrow-hover { background: var(--hover); }
+.bae-m-qrow-play { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: var(--scrim); color: var(--on-fill); fill: currentColor; }
+.bae-m-qrow-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.bae-m-qrow-title { font: 500 13px var(--font-sans); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bae-m-qrow-sub { font: 400 11.5px var(--font-sans); color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bae-m-qrow-time { font: 400 11.5px var(--font-sans); font-variant-numeric: tabular-nums; color: var(--text-secondary); }
+.bae-m-qrow-remove { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); fill: currentColor; }
+
+/* Android */
+.bae-a-libscreen { font-family: var(--font-android); }
+.bae-a-libheader { flex: none; display: flex; align-items: center; padding: 8px 4px 0 16px; background: var(--background); }
+.bae-a-libheader-collapsed { padding: 4px 4px 4px 16px; background: var(--surface); }
+.bae-a-libhead-title { flex: 1; min-width: 0; margin: 0; display: flex; align-items: center; gap: 6px; font: 800 32px/40px var(--font-android); letter-spacing: -1.1px; }
+.bae-a-libhead-title > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bae-a-libheader-collapsed .bae-a-libhead-title { font: 700 22px/28px var(--font-android); letter-spacing: -0.3px; }
+.bae-a-libhead-chevron { color: var(--text-secondary); fill: currentColor; }
+.bae-a-iconbtn .bae-glyph { fill: currentColor; }
+.bae-a-iconbtn { color: var(--text-primary); }
+/* tonal: Material's filled tonal icon button at its extra-small size, a 32dp tinted container (the touch target stays 48dp), for a control inside a line, such as the Activity sheet's Pause. */
+.bae-a-iconbtn-tonal { width: 32px; height: 32px; border-radius: 16px; background: var(--accent-tint); }
+.bae-a-iconbtn-muted { color: var(--text-secondary); }
+.bae-a-iconbtn-accent { color: var(--accent); }
+.bae-a-iconbtn-warning { color: var(--warning-icon); }
+.bae-a-iconbtn-box-40 { width: 40px; height: 40px; }
+.bae-a-iconbtn-box-56 { width: 56px; height: 56px; }
+.bae-a-searchbar { flex: none; display: flex; align-items: center; gap: 4px; padding: 8px; background: var(--surface); }
+.bae-a-searchfield { flex: 1; min-width: 0; height: 56px; box-sizing: border-box; display: flex; align-items: center; gap: 8px; padding: 0 16px; border-radius: 28px; background: var(--elevated); font-size: 16px; fill: var(--text-secondary); }
+.bae-a-searchfield > span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bae-a-search-prompt { color: var(--text-secondary); }
+.bae-a-libbody { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+.bae-a-detailbar { flex: none; display: flex; align-items: center; height: 64px; box-sizing: border-box; padding: 0 4px; background: var(--background); }
+.bae-a-detail-back { display: inline-flex; align-items: center; gap: 4px; height: 40px; padding: 0 12px; border: 0; border-radius: 20px; background: none; color: var(--accent); fill: currentColor; font: 500 14px var(--font-android); }
+.bae-a-detailbody { padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+.bae-a-npbar { flex: none; display: flex; flex-direction: column; padding: 8px 12px; background: var(--surface); box-shadow: inset 0 1px 0 var(--hairline); }
+.bae-a-np-row { display: flex; align-items: center; }
+.bae-a-np-info { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; }
+.bae-a-np-text { min-width: 0; }
+.bae-a-np-title { font: 500 16px/24px var(--font-android); white-space: nowrap; overflow: hidden; }
+.bae-a-np-sub { font: 400 12px/16px var(--font-android); color: var(--text-secondary); white-space: nowrap; overflow: hidden; }
+.bae-a-playpause { position: relative; flex: none; display: inline-flex; align-items: center; justify-content: center; color: var(--text-primary); fill: currentColor; }
+.bae-a-seek { gap: 8px; font: 400 11px var(--font-android); padding-top: 4px; }
+.bae-a-seek .bae-seek-track { height: 4px; border-radius: 2px; }
+.bae-seek-thumb { position: absolute; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 7px; background: var(--accent); }
+.bae-a-seek-large .bae-seek-track { height: 16px; border-radius: 8px; background: var(--accent-tint-strong); overflow: visible; }
+.bae-a-seek-large .bae-seek-held { display: none; }
+.bae-a-seek-large .bae-seek-played { border-radius: 8px 2px 2px 8px; }
+.bae-a-seek-large .bae-seek-track::after { content: ''; position: absolute; right: 6px; top: 6px; width: 4px; height: 4px; border-radius: 2px; background: var(--accent); }
+.bae-a-seek-large .bae-seek-thumb { width: 4px; height: 44px; margin: -22px 0 0 -2px; border-radius: 2px; box-shadow: 0 0 0 6px var(--bae-gap-bg); z-index: 1; }
+.bae-a-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 12px; }
+.bae-a-tile { min-width: 0; display: flex; flex-direction: column; }
+.bae-a-tile .bae-art { margin-bottom: 6px; }
+.bae-a-tile-title { font: 500 16px/24px var(--font-android); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bae-a-tile-line { font: 400 12px/16px var(--font-android); color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bae-a-artisthead { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; padding-top: 4px; }
+.bae-a-artisthead-pinned { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; margin: 0 -12px; padding: 8px 12px; background: var(--background); box-shadow: inset 0 -1px 0 var(--hairline); }
+.bae-a-artisthead-name { font: 600 16px/24px var(--font-android); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bae-a-artisthead-count { font: 400 12px/16px var(--font-android); color: var(--text-secondary); }
+.bae-a-track { display: flex; align-items: center; padding: 8px 0; }
+.bae-a-track-lead { width: 40px; flex: none; display: flex; }
+.bae-a-track-pos { font: 400 14px var(--font-android); color: var(--text-secondary); }
+.bae-a-track-text { flex: 1; min-width: 0; }
+.bae-a-track-title { font: 500 16px/24px var(--font-android); white-space: nowrap; overflow: hidden; }
+.bae-a-track-artist { font: 400 12px/16px var(--font-android); color: var(--text-secondary); white-space: nowrap; overflow: hidden; }
+.bae-a-track-time { font: 400 12px var(--font-android); color: var(--text-secondary); padding-left: 8px; }
+.bae-a-eyebrow { padding-top: 8px; font: 500 14px/20px var(--font-android); color: var(--text-secondary); }
+.bae-a-browse { display: flex; align-items: center; gap: 12px; padding: 8px 16px; }
+.bae-a-browse-text { min-width: 0; }
+.bae-a-browse-name { font: 500 16px/24px var(--font-android); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bae-a-browse-count { font: 400 12px/16px var(--font-android); color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bae-a-albumhead { display: flex; align-items: flex-start; gap: 16px; }
+.bae-a-albumhead-text { min-width: 0; }
+.bae-a-albumhead-title { font: 700 24px/30px var(--font-android); letter-spacing: -0.5px; }
+.bae-a-albumhead-artist { font: 400 14px/20px var(--font-android); color: var(--text-secondary); }
+.bae-a-albumhead-fact { font: 400 12px/16px var(--font-android); color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bae-a-albumhead-gap { margin-top: 4px; }
+.bae-a-dl { display: flex; flex-direction: column; gap: 6px; }
+.bae-a-dlrow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.bae-a-btn-icon { display: inline-flex; align-items: center; gap: 8px; fill: currentColor; }
+.bae-a-fineline { font: 400 12px var(--font-android); color: var(--text-secondary); }
+.bae-a-fine { font: 400 11px var(--font-android); color: var(--text-secondary); }
+.bae-m-tertiary { color: var(--text-tertiary); }
+.bae-m-albumpanel { position: relative; display: flex; align-items: flex-start; gap: 32px; padding: 32px; border-radius: var(--radius-panel); background: var(--elevated); box-shadow: inset 0 0 0 1px var(--hairline), 0 18px 28px var(--shadow); }
+.bae-m-albumpanel-close { position: absolute; top: 16px; right: 16px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 14px; background: var(--hover); color: var(--text-secondary); fill: currentColor; }
+.bae-m-albumpanel-cover { box-shadow: 0 12px 20px var(--shadow); }
+.bae-m-albumpanel-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.bae-m-albumpanel-title { margin: 0; font: 700 30px var(--font-sans); letter-spacing: -0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bae-m-albumpanel-sub { display: flex; gap: 8px; font: 600 15px var(--font-sans); white-space: nowrap; }
+.bae-m-albumpanel-releases { padding: 4px 0 2px; }
+.bae-m-albumpanel-facts { display: flex; flex-direction: column; gap: 2px; font: 400 11.5px var(--font-sans); color: var(--text-tertiary); }
+.bae-m-albumpanel-facts > div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bae-m-albumpanel-unplayable { font: 400 11.5px var(--font-sans); color: var(--text-secondary); }
+.bae-m-albumpanel-actions { display: flex; align-items: center; gap: 8px; padding-top: 12px; }
+.bae-m-albumpanel-more { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-control); background: var(--hover); color: var(--text-secondary); fill: currentColor; }
+.bae-m-albumpanel-tracks { padding-top: 16px; }
+.bae-m-trackcols { display: grid; grid-template-columns: 1fr 1fr; column-gap: 32px; }
+.bae-m-trackcols > div { min-width: 0; }
+.bae-m-split { display: flex; height: 100%; min-height: 0; }
+.bae-m-split-list { width: 320px; flex: none; padding: 4px 8px 24px; box-sizing: border-box; overflow: hidden; display: flex; flex-direction: column; gap: 1px; box-shadow: inset -1px 0 0 var(--hairline); }
+.bae-m-split-detail { flex: 1; min-width: 0; padding: 24px; background: var(--surface); display: flex; flex-direction: column; gap: 24px; overflow: hidden; }
+.bae-m-artistgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+.bae-m-atile { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.bae-m-atile-year { font: 400 11.5px/12px var(--font-sans); color: var(--text-secondary); }
+.bae-m-sortrow { display: flex; align-items: center; gap: 8px; }
+.bae-m-sortpill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: var(--radius-control); background: var(--placeholder); font: 400 13px var(--font-sans); }
+.bae-m-sortpill-field { display: inline-flex; align-items: center; gap: 4px; font-weight: 600; }
+.bae-m-sortpill .bae-muted { display: inline-flex; fill: currentColor; }
+.bae-m-sortadd { width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius-control); background: var(--placeholder); color: var(--text-secondary); fill: currentColor; }
+.bae-m-checkbox { display: inline-flex; align-items: center; gap: 6px; font: 400 13px var(--font-sans); white-space: nowrap; }
+.bae-m-checkbox-box { width: 14px; height: 14px; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; border-radius: 3px; background: var(--field); box-shadow: inset 0 0 0 1px var(--hairline-strong); color: var(--on-accent-fill); }
+.bae-m-checkbox-on { background: var(--accent-fill); box-shadow: none; }
+.bae-m-checkbox-box svg { width: 10px; height: 10px; }
+.bae-m-groupheading { grid-column: 1 / -1; padding: 0 6px; margin-bottom: -16px; font: 500 13px var(--font-sans); }
+.bae-a-menu { z-index: 5; padding: 8px 0; border-radius: 4px; background: var(--elevated); box-shadow: 0 2px 6px var(--shadow), 0 1px 2px var(--shadow); font-family: var(--font-android); }
+.bae-a-menu-item { height: 48px; display: flex; align-items: center; gap: 12px; padding: 0 12px; font: 500 14px var(--font-android); color: var(--text-primary); }
+.bae-a-menu-item > span:first-child { flex: 1; }
+.bae-a-menu-item-on { color: var(--accent); font-weight: 600; }
+.bae-a-menu-item-pressed { background: var(--pressed); }
+.bae-a-menu-check { display: inline-flex; fill: var(--accent); }
+.bae-a-menu-heading { padding: 4px 12px; font: 400 12px var(--font-android); color: var(--text-secondary); }
+.bae-a-menu-divider { height: 1px; margin: 8px 0; background: var(--hairline); }
+.bae-m-menu-sep { height: 1px; margin: 5px 7px; background: var(--hairline); }
+.bae-m-searchcard { box-sizing: border-box; max-height: 455px; overflow: hidden; padding: 8px; display: flex; flex-direction: column; gap: 1px; border-radius: var(--radius-card); background: var(--elevated); box-shadow: inset 0 0 0 1px var(--hairline), 0 6px 12px var(--shadow); }
+.bae-m-searchcard-empty { height: 240px; display: flex; align-items: center; justify-content: center; font: 700 17px var(--font-sans); }
+.bae-m-searchsection { padding: 12px 12px 8px; font: 600 11px var(--font-sans); color: var(--text-secondary); }
+.bae-m-searchrow { display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-radius: var(--radius-control); }
+.bae-m-searchrow-hover { background: var(--hover); }
+.bae-m-searchrow-text { flex: 1; min-width: 0; }
+.bae-m-searchrow-title { font: 500 13px var(--font-sans); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bae-m-searchrow-sub { font: 400 11.5px/14px var(--font-sans); color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bae-m-searchrow-trail { font: 400 11.5px var(--font-sans); font-variant-numeric: tabular-nums; color: var(--text-secondary); }
+.bae-a-searchsection { padding: 8px 16px; font: 600 16px var(--font-android); color: var(--text-secondary); }
+.bae-a-searchrow { display: flex; align-items: center; gap: 12px; padding: 8px 16px; }
+.bae-a-searchrow-text { flex: 1; min-width: 0; }
+.bae-a-searchrow-title { font: 500 16px/24px var(--font-android); white-space: nowrap; overflow: hidden; }
+.bae-a-searchrow-sub { font: 400 12px/16px var(--font-android); color: var(--text-secondary); white-space: nowrap; overflow: hidden; }
+.bae-a-searchrow-trail { font: 400 12px var(--font-android); color: var(--text-secondary); }
+.bae-m-queue { width: 420px; flex: none; display: flex; flex-direction: column; background: var(--surface); box-shadow: inset 1px 0 0 var(--hairline); overflow: hidden; }
+.bae-m-queue-head { display: flex; align-items: flex-start; padding: 16px 16px 12px; }
+.bae-m-queue-head h2 { flex: 1; margin: 0; font: 700 22px var(--font-sans); letter-spacing: -0.3px; }
+.bae-m-queue-np { margin: 0 12px 6px; display: flex; align-items: flex-start; gap: 12px; padding: 12px; border-radius: var(--radius-card); background: var(--elevated); box-shadow: inset 0 0 0 1px var(--hairline), 0 6px 12px var(--shadow); }
+.bae-m-queue-np-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.bae-m-queue-np-eyebrow { font: 600 11px var(--font-sans); color: var(--accent); }
+.bae-m-queue-strip { display: flex; align-items: center; gap: 8px; padding-top: 6px; height: 10px; }
+.bae-m-queue-strip-bar { flex: 1; height: 4px; border-radius: 2px; background: var(--hairline); overflow: hidden; }
+.bae-m-queue-strip-bar > div { height: 100%; background: var(--accent); }
+.bae-m-queue-strip > span { width: 34px; text-align: right; font: 600 10px var(--font-sans); font-variant-numeric: tabular-nums; color: var(--text-secondary); }
+.bae-m-queue-np-play { width: 28px; height: 28px; flex: none; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-control); background: var(--hover); color: var(--text-secondary); fill: currentColor; }
+.bae-m-queue-body { flex: 1; min-height: 0; overflow: hidden; padding: 0 8px; display: flex; flex-direction: column; gap: 1px; }
+.bae-m-queue-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center; }
+.bae-m-cu-title { font: 700 17px var(--font-sans); }
+.bae-m-cu-desc { font: 400 13px var(--font-sans); color: var(--text-secondary); }
+.bae-m-queue-section { display: flex; align-items: center; gap: 6px; padding: 12px 8px 4px; }
+.bae-m-queue-section-title { flex: 1; min-width: 0; font: 600 11px var(--font-sans); color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bae-m-queue-clear { font: 400 11px var(--font-sans); color: var(--accent); }
+.bae-m-queue-shuffle { width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius-control); color: var(--text-secondary); fill: currentColor; }
+.bae-m-queue-shuffle-on { color: var(--accent); background: var(--accent-tint); }
+.bae-m-queue-insert { height: 2px; margin: 0 8px; background: var(--accent); }
+.bae-m-sidepause { width: 500px; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; padding: 24px; border-radius: var(--radius-panel); background: var(--elevated); box-shadow: inset 0 0 0 1px var(--hairline), 0 10px 20px var(--shadow); font: 400 13px var(--font-sans); }
+.bae-m-sidepause-title { font: 600 15px var(--font-sans); }
+.bae-m-sidepause-count { font: 600 13px var(--font-sans); font-variant-numeric: tabular-nums; }
+.bae-m-sidepause-buttons { display: flex; justify-content: flex-end; gap: 8px; padding-top: 8px; }
+.bae-m-castpop { z-index: 7; width: 260px; box-sizing: border-box; display: flex; flex-direction: column; gap: 6px; padding: 12px; border-radius: var(--radius-control); background: var(--tile); box-shadow: 0 8px 24px var(--shadow); font: 400 13px var(--font-sans); }
+.bae-m-castpop-wait { display: flex; align-items: center; gap: 8px; padding: 4px; }
+/* A receiver row: a box row's inset around MacItem, which spans it, so Disconnect sits at the right edge. */
+.bae-m-castrow { padding: 10px var(--space-group); }
+.bae-m-castpop-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+/* As on Android, a long receiver name wraps to a second line, then ends in an ellipsis; the receiver being cast to says Casting under its name. */
+.bae-m-castpop-name { font-weight: 500; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
+.bae-m-castpop-state { font-size: 11.5px; color: var(--accent); }
+.bae-m-castpop-kind { font-size: 11.5px; color: var(--text-secondary); }
+.bae-a-scrim { position: absolute; inset: 0; z-index: 8; background: rgba(0,0,0,0.32); }
+/* A sheet is as tall as what it holds, as Material's modal sheet is, up to near the top of the screen; `top` pins a tall one (the queue, the player) to a height of its own. */
+.bae-a-sheet { position: absolute; left: 0; right: 0; bottom: 0; max-height: calc(100% - var(--space-page)); padding-bottom: var(--space-section); box-sizing: border-box; overflow: hidden; border-radius: 28px 28px 0 0; background: var(--surface); font-family: var(--font-android); }
+/* The sheet's content sits in from its rounded edge: rows keep their own 16dp inset, the body adds space-related, so text starts 24dp in, and the title matches. */
+.bae-a-sheet-title { margin: 0; padding: 0 var(--space-section) var(--space-group); font: 400 22px/28px var(--font-android); color: var(--text-primary); }
+.bae-a-sheet-body { padding: 0 var(--space-related); }
+.bae-a-sheet-handle { width: 32px; height: 4px; margin: 22px auto; border-radius: 2px; background: var(--text-secondary); opacity: 0.4; }
+.bae-a-queuelabel { display: flex; align-items: center; padding: 0 8px 0 16px; min-height: 48px; }
+.bae-a-qrow { display: flex; align-items: center; gap: 12px; padding: 8px 4px 8px 12px; background: var(--surface); }
+.bae-a-qrow-drag { box-shadow: 0 4px 12px var(--shadow); }
+.bae-a-qrow-text { flex: 1; min-width: 0; }
+.bae-a-fullplayer { display: flex; flex-direction: column; padding: 8px 24px; }
+.bae-a-fullplayer > .bae-a-iconbtn:first-child { margin-left: -12px; margin-bottom: 8px; }
+.bae-a-fp-title { margin-top: 24px; font: 700 24px/30px var(--font-android); letter-spacing: -0.5px; white-space: nowrap; overflow: hidden; }
+.bae-a-fp-artist { margin-bottom: 24px; font: 600 16px/24px var(--font-android); color: var(--text-secondary); white-space: nowrap; overflow: hidden; }
+.bae-a-fp-transport { display: flex; align-items: center; justify-content: center; gap: 24px; margin-top: 16px; }
+.bae-a-fp-repeat { display: flex; justify-content: center; margin-top: 16px; }
+.bae-a-fp-volume { display: flex; align-items: center; margin-top: 8px; }
+.bae-a-fp-slider { position: relative; flex: 1; height: 16px; margin: 0 8px; }
+.bae-a-fp-slider::before { content: ''; position: absolute; top: 0; bottom: 0; left: calc(70% + 6px); right: 0; border-radius: 2px 8px 8px 2px; background: var(--accent-tint-strong); }
+.bae-a-fp-slider::after { content: ''; position: absolute; top: 6px; right: 6px; width: 4px; height: 4px; border-radius: 2px; background: var(--accent); }
+.bae-a-fp-slider > div { position: absolute; top: 0; bottom: 0; left: 0; border-radius: 8px 2px 2px 8px; background: var(--accent); margin-right: 6px; max-width: calc(70% - 6px); }
+.bae-a-fp-slider > span { position: absolute; top: 50%; width: 4px; height: 44px; margin: -22px 0 0 -2px; border-radius: 2px; background: var(--accent); }
+.bae-a-castrow { display: flex; align-items: center; gap: 12px; padding: 12px 16px; font-family: var(--font-android); }
+/* A long receiver name wraps to a second line, then ends in an ellipsis; the icon and the trailing control stay centred on the row. */
+.bae-a-castrow-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.bae-a-castrow-name { font: 500 16px/24px var(--font-android); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
+.bae-a-castrow-state { font: 400 14px/20px var(--font-android); color: var(--accent); }
+.bae-a-castrow-kind { font: 400 14px/20px var(--font-android); color: var(--text-secondary); }
+.bae-a-checkrow { display: flex; align-items: center; gap: 8px; font: 400 14px var(--font-android); }
+.bae-a-checkbox { width: 18px; height: 18px; margin: 11px; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; border-radius: 2px; box-shadow: inset 0 0 0 2px var(--text-secondary); color: var(--background); fill: currentColor; }
+.bae-a-checkbox-on { background: var(--accent); box-shadow: none; }
+
+/* Composer and work pages */
+.bae-m-drow { display: flex; align-items: center; gap: 12px; padding: 6px 8px; margin-right: -8px; margin-left: -8px; border-radius: var(--radius-control); }
+.bae-m-drow-hover { background: var(--hover); }
+.bae-m-drow-credit { padding: 4px 0; margin: 0; }
+.bae-m-drow-text { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.bae-m-drow-title { font: 500 13px/17px var(--font-sans); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bae-m-drow-sub { font: 400 11.5px/14px var(--font-sans); color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bae-m-sechead { padding-top: 4px; font: 600 15px var(--font-sans); }
+.bae-m-work { display: flex; flex-direction: column; gap: 12px; }
+.bae-m-work-title { font: 700 22px var(--font-sans); letter-spacing: -0.3px; }
+.bae-m-hairline { height: 1px; background: var(--hairline); flex: none; }
+.bae-m-cu { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center; min-height: 240px; }
+.bae-a-searchrow-part { padding-left: 32px; }
+.bae-a-searchrow-inset .bae-a-searchrow-text { padding: 8px 16px; }

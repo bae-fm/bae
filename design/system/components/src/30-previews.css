@@ -1,0 +1,67 @@
+/* ---- previews ---- */
+
+.bae-preview { margin: 0; padding: var(--space-edge); background: var(--elevated); color: var(--text-primary); font: 400 13px var(--font-sans); display: flex; flex-direction: column; gap: var(--space-group); }
+.bae-preview-android { font-family: var(--font-android); background: var(--background); }
+.bae-preview-row { display: flex; align-items: center; gap: var(--space-edge); }
+.bae-preview-row-wide { align-items: flex-start; }
+.bae-preview-row-wide > .bae-preview-name { padding-top: 7px; }
+.bae-preview-row-wide > .bae-preview-cell > * { flex: 1; min-width: 0; }
+.bae-preview-name { width: 110px; flex: none; font: 400 11.5px/15px var(--font-sans); color: var(--text-secondary); }
+.bae-preview-cell { flex: 1; min-width: 0; display: flex; align-items: center; }
+.bae-preview-slot { padding: var(--space-group); border: 1px dashed var(--hairline-strong); border-radius: var(--radius-card); color: var(--text-secondary); }
+.bae-m-switch { position: relative; width: 32px; height: 18px; flex: none; border: 0; border-radius: 9px; padding: 0; cursor: pointer; background: var(--tile); }
+.bae-m-switch-on { background: var(--accent-fill); }
+.bae-m-switch-knob { position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 7px; background: var(--on-fill); box-shadow: 0 1px 2px var(--shadow); }
+.bae-m-switch-on .bae-m-switch-knob { left: 16px; }
+.bae-swatch { flex: none; border: 0; padding: 0; border-radius: 50%; cursor: pointer; }
+.bae-m-accents { display: flex; gap: var(--space-related); }
+.bae-m-accents .bae-swatch { width: 18px; height: 18px; }
+.bae-m-accents .bae-swatch-on { box-shadow: 0 0 0 2px var(--surface), 0 0 0 3.5px var(--text-primary); }
+.bae-a-accents { display: flex; justify-content: space-between; }
+.bae-a-accents .bae-swatch { width: 36px; height: 36px; }
+.bae-a-accents .bae-swatch-on { box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--text-primary); }
+.bae-m-menu { display: flex; flex-direction: column; min-width: 190px; padding: 6px; border-radius: 12px; background: var(--tile); box-shadow: 0 8px 24px var(--shadow); font: 400 13px var(--font-sans); color: var(--text-primary); }
+.bae-m-menu-item { display: flex; align-items: center; gap: var(--space-compact); padding: 4px var(--space-related); border-radius: 6px; }
+.bae-m-menu-item-on { background: var(--accent-selection); color: var(--on-fill); }
+.bae-m-menu-item-off { color: var(--text-tertiary); }
+.bae-m-menu-check { width: 11px; display: flex; }
+
+/* Scan code: what to do, the QR code, its buttons, then when it ends. */
+.bae-scan { display: flex; flex-direction: column; align-items: center; gap: var(--space-edge); padding: var(--space-related) 0; text-align: center; text-wrap: pretty; }
+.bae-scan-text { margin-bottom: var(--space-related); }
+.bae-scan-qr { padding: 10px; border-radius: 8px; background: var(--text-primary); line-height: 0; }
+.bae-scan-qr svg { fill: var(--background); display: block; }
+.bae-scan-buttons { display: flex; justify-content: center; gap: var(--space-related); margin-top: calc(-1 * var(--space-inline)); }
+.bae-m-scan .bae-scan-text { font: 400 12px/16px var(--font-sans); color: var(--text-secondary); }
+.bae-m-scan .bae-scan-text { color: var(--text-primary); font-size: 13px; line-height: 18px; }
+.bae-a-scan .bae-scan-text { font: 400 14px/20px var(--font-android); color: var(--text-secondary); }
+.bae-a-scan .bae-scan-text { color: var(--text-primary); }
+
+/* A nested row depends on the row above (a switch it only matters under): it joins that row with no gap and no divider, on the same left edge, and dims while the switch is off. */
+.bae-m-row-nested { padding-top: 0; min-height: 0; }
+.bae-m-row-nested-off { opacity: 0.45; }
+/* MacNested: no line above it, a field row inside it keeps the row's padding, and its text sits on the rows' edge in secondary. */
+/* The canvas draws each component inside a <div class="sc-host-x" style="display:contents">, so each rule here also reaches through one. A nested row or block has no line above it: MacBox leaves it out when it can see the row is nested, and this rule hides it when a wrapper hides that. */
+.bae-m-box > .bae-divider:has(+ :is(.bae-m-nested, .bae-m-row-nested)), .bae-m-box > .bae-divider:has(+ .sc-host-x > :is(.bae-m-nested, .bae-m-row-nested)) { display: none; }
+.bae-m-nested { display: flex; flex-direction: column; gap: var(--space-related); padding-bottom: var(--space-group); color: var(--text-secondary); }
+:is(.bae-m-nested, .bae-m-nested > .sc-host-x) > .bae-m-row { padding-top: 0; }
+/* A field row in a nested block is as tall as its field: the block's own bottom padding is the space under it, as wide as the box's side inset. */
+:is(.bae-m-nested, .bae-m-nested > .sc-host-x) > .bae-m-fieldrow { padding-bottom: 0; min-height: 0; }
+:is(.bae-m-nested, .bae-m-nested > .sc-host-x) > :not(.bae-m-row, .sc-host-x) { margin: 0 var(--space-group); }
+/* A filled notice in a box keeps to the rows' edges, however deep it sits (the canvas wraps each component, so a child selector misses it): inset by the rows' padding, with the box's padding under it; in a nested block, whose own padding is under it, only at the sides; in a row, as the row lays it out. */
+.bae-m-box .bae-m-notice-box:not(.bae-notice-quiet) { margin: 0 var(--space-group) var(--space-group); }
+.bae-m-nested .bae-m-notice-box:not(.bae-notice-quiet) { margin: 0 var(--space-group); }
+.bae-m-row .bae-m-notice-box:not(.bae-notice-quiet) { margin: 0; }
+.bae-m-nested p { margin: 0; font: 400 13px/18px var(--font-sans); text-wrap: pretty; }
+.bae-m-infotip { display: inline-flex; align-items: center; padding: 0; border: 0; background: none; color: inherit; cursor: pointer; }
+/* A nested row joins the switch row above it into one piece of the card: no gap, no corners between them, and set in from the card's edge. */
+.bae-a-row-nested { padding-top: 0; min-height: 0; padding-left: calc(var(--space-edge) + var(--space-section)); }
+/* The card finds the pair itself, whether a row is the card's child or sits in a tile of its own: the tile above a nested row loses its bottom corners, the nested row's tile its top corners and the gap. */
+.bae-a-card > :not(.sc-host-x):has(+ .bae-a-row-nested), .bae-a-card > :not(.sc-host-x):has(+ * .bae-a-row-nested), .bae-a-card > .sc-host-x:has(+ .bae-a-row-nested) > *, .bae-a-card > .sc-host-x:has(+ * .bae-a-row-nested) > * { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.bae-a-card > .bae-a-row-nested, .bae-a-card > :not(.sc-host-x):has(.bae-a-row-nested), .bae-a-card > .sc-host-x > .bae-a-row-nested, .bae-a-card > .sc-host-x > :has(.bae-a-row-nested) { margin-top: calc(-1 * var(--space-line)); border-top-left-radius: 0; border-top-right-radius: 0; }
+.bae-spinner { animation: bae-spin 0.9s linear infinite; flex: none; }
+@keyframes bae-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .bae-spinner { animation-duration: 2.4s; } }
+.bae-m-spinner { display: inline-flex; align-items: center; gap: var(--space-related); color: var(--text-secondary); font: 400 11.5px var(--font-sans); }
+.bae-a-spinner { display: inline-flex; align-items: center; gap: 12px; color: var(--accent); font: 400 14px/20px var(--font-android); }
+.bae-a-spinner > span { color: var(--text-secondary); }

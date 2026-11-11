@@ -1,0 +1,59 @@
+/* ==== part: explore ==== */.bae-stars { display: inline-flex; align-items: center; gap: 2px; }
+.bae-avatar { display: inline-flex; align-items: center; justify-content: center; flex: none; border-radius: 50%; background: var(--accent-tint-strong); color: var(--accent); font-weight: 600; font-family: var(--font-sans); }
+.bae-m-lrow { display: flex; align-items: center; gap: 10px; padding: 5px 8px; border-radius: 6px; font: 400 13px var(--font-sans); }
+.bae-m-lrow-selected { background: var(--accent-tint); }
+.bae-a-lrow { display: flex; align-items: center; gap: 12px; padding: 8px 16px; font-family: var(--font-android); }
+.bae-a-lrow-selected { background: var(--accent-tint); }
+.bae-m-chips { display: inline-flex; align-items: center; gap: var(--space-inline); }
+.bae-m-dlrow { display: flex; flex-direction: column; gap: 6px; padding: 8px 16px; font: 400 13px var(--font-sans); border-bottom: 1px solid var(--hairline); }
+.bae-m-dlrow-text { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 8px; }
+.bae-m-dlrow-detail { font-size: 11px; white-space: nowrap; }
+.bae-m-dlrow-ago { font-size: 10.5px; white-space: nowrap; }
+
+/* Logo */
+@keyframes bae-sheep-rise { 0%, 100% { translate: 0 0; } 50% { translate: 0 -4%; } }
+@keyframes bae-tilt { 0%, 100% { rotate: -2deg; } 50% { rotate: 2deg; } }
+@keyframes bae-word-rise { 0%, 100% { translate: 0 0; } 50% { translate: 0 -15%; } }
+.bae-sheep-bob { animation: bae-sheep-rise 6s ease-in-out infinite, bae-tilt 7.3s ease-in-out infinite; }
+.bae-word-bob { animation: bae-word-rise 6s ease-in-out -2s infinite, bae-tilt 7.3s ease-in-out -2s infinite; }
+.bae-logo-glow { position: absolute; left: 50%; top: 65%; width: 260%; aspect-ratio: 1; z-index: -1; transform: translate(-50%, -50%); background: radial-gradient(circle closest-side, rgba(247, 168, 196, 0.32), rgba(201, 138, 221, 0.22) 30%, rgba(155, 108, 246, 0.12) 55%, rgba(155, 108, 246, 0.04) 80%, transparent); }
+.bae-logo-pool { position: absolute; left: 50%; top: 90%; width: 125%; height: 34%; z-index: -1; transform: translate(-50%, -50%); border-radius: 50%; background: radial-gradient(ellipse, rgba(247, 168, 196, 0.16), rgba(155, 108, 246, 0.06) 50%, transparent 72%); }
+.bae-word-lift { color: var(--logo-word); filter: drop-shadow(1px 1px 0 rgba(255, 255, 255, 0.35)); }
+@media (prefers-reduced-motion: reduce) { .bae-sheep-bob, .bae-word-bob { animation: none; } }
+
+.bae-errdis-panel { position: relative; margin-top: 2px; padding: 8px 30px 8px 10px; border-radius: 8px; background: color-mix(in srgb, black 28%, transparent); }
+[data-theme="light"] .bae-errdis-panel { background: color-mix(in srgb, black 7%, transparent); }
+.bae-errdis-chain { font: 400 11px/16px var(--font-mono); color: var(--text-secondary); white-space: pre-wrap; overflow-wrap: anywhere; }
+.bae-errdis-panel .bae-errdis-copy { position: absolute; top: 8px; right: 8px; }
+/* On macOS Copy shows only under the pointer (or keyboard focus); on Android, with no pointer, it always shows. */
+.bae-errdis-panel-hover .bae-errdis-copy { opacity: 0; transition: opacity 0.12s; }
+.bae-errdis-panel-hover:hover .bae-errdis-copy, .bae-errdis-panel-hover:focus-within .bae-errdis-copy { opacity: 1; }
+.bae-errdis-panel-android { min-height: 40px; box-sizing: border-box; padding-right: 44px; }
+
+/* ImportSheep: the parts' pivots in the drawing's units, what starts hidden, and the still pose. The motion itself is in src/36-import-sheep.js. */
+.bae-isheep { display: block; }
+.bae-isheep-roll { transform-origin: 292px 300px; }
+.bae-isheep-rig { transform-origin: 292px 540px; }
+.bae-isheep-head { transform-origin: 245px 330px; }
+.bae-isheep-earL { transform-origin: 100px 190px; }
+.bae-isheep-earR { transform-origin: 395px 258px; }
+.bae-isheep-features { transform-origin: 230px 270px; }
+.bae-isheep-cheekL { transform-origin: 124px 267px; }
+.bae-isheep-cheekR { transform-origin: 338px 277px; }
+.bae-isheep-mouth, .bae-isheep-gape { transform-origin: 226px 266px; }
+.bae-isheep-munch { transform-origin: 226px 276px; }
+.bae-isheep-eyes { transform-origin: 230px 248px; }
+.bae-isheep-heart { transform-origin: 220px 398px; }
+.bae-isheep-arms { transform-origin: 222px 470px; }
+.bae-isheep-marks-right { transform-origin: 480px 30px; }
+.bae-isheep-marks-left { transform-origin: 0px 30px; }
+.bae-isheep-marks-top { transform-origin: 240px -40px; }
+.bae-isheep-blush { transform-origin: 230px 275px; }
+.bae-isheep-flash path { fill: #ffffff; stroke: none; }
+.bae-isheep-munch, .bae-isheep-gape, .bae-isheep-blush, .bae-isheep-rise, .bae-isheep-flash, [class^="bae-isheep-marks-"], [class^="bae-isheep-item-"], [class^="bae-isheep-wind-"], [class^="bae-isheep-note-"] { opacity: 0; }
+[class^="bae-isheep-star-"] { transform: scale(0); }
+/* Still: the sheep at rest with the sequence's first release beside it. */
+.bae-isheep-still .bae-isheep-item-1-1 { opacity: 1; transform: translate(588px, 482px) rotate(10deg); }
+@media (prefers-reduced-motion: reduce) {
+  .bae-isheep .bae-isheep-item-1-1 { opacity: 1; transform: translate(588px, 482px) rotate(10deg); }
+}

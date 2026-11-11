@@ -131,6 +131,7 @@ AGENTS.md
 bae-android/.kotlin/
 bae-ios/.build/
 __pycache__/
-# The design system's one script, built from design/system/components/src/ by
-# design/system/build-bundle.py.
+# The design system's one script and one style sheet, built from
+# design/system/components/src/ by design/system/build-bundle.py.
 design/system/components/bundle.js
+design/system/components/bundle.css

@@ -1,0 +1,24 @@
+/* ==== part: errors ==== */.bae-a-snack { position: absolute; left: 12px; right: 12px; bottom: 140px; z-index: 12; display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 16px; min-height: 48px; box-sizing: border-box; border-radius: 4px; background: var(--text-primary); color: var(--background); font: 400 14px/20px var(--font-android); box-shadow: 0 4px 12px var(--shadow); fill: currentColor; }
+.bae-a-snack-action { font: 500 14px var(--font-android); color: var(--accent-fill); padding: 0 8px; }
+.bae-a-snack-x { display: flex; padding: 6px; }
+.bae-a-errbanner { margin: 8px 16px; }
+.bae-a-np-error { color: var(--danger); font: 400 14px/20px var(--font-android); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+/* centered: a view that failed whole: the glyph over the words, everything centred in the space it's given, the title in secondary text, the buttons in one row under it. */
+.bae-notice.bae-notice-centered { flex: 1; min-height: 300px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-related); padding: var(--space-section); text-align: center; }
+.bae-notice-centered .bae-notice-body { flex: none; }
+.bae-notice-centered .bae-m-notice, .bae-notice-centered .bae-a-notice { align-items: center; gap: var(--space-group); }
+/* The centred title line carries the title's type, so the glyph in front of it scales with it (1.19 times, centred on the line). */
+.bae-m-notice-box.bae-notice-centered .bae-notice-centered-title { font: 400 15px/20px var(--font-sans); color: var(--text-primary); }
+.bae-a-notice-box.bae-notice-centered .bae-notice-centered-title { font: 400 16px/24px var(--font-android); color: var(--text-primary); }
+/* Under a subtitle the centred title is the line to read: primary text, the subtitle, glyph and buttons staying grey. A title alone stays grey. */
+.bae-notice-centered .bae-notice-title-strong { color: var(--text-primary); }
+.bae-notice-centered-row { display: flex; align-items: center; gap: var(--space-group); }
+.bae-notice-centered-title { display: flex; align-items: flex-start; gap: var(--space-compact); }
+.bae-notice-centered-sub { color: var(--text-secondary); }
+.bae-m-notice-box .bae-notice-centered-sub { font: 400 13px/18px var(--font-sans); }
+.bae-a-notice-box .bae-notice-centered-sub { font: 400 14px/20px var(--font-android); }
+/* muted: a status glyph in the message's own grey, saying only that something went wrong (a failed view's centred notice). */
+.bae-status-glyph.bae-status-glyph-muted { color: var(--text-secondary); }
+/* stage: on the lightbox's dark stage, in the stage's text colours, sized to its words. */
+.bae-notice-stage { --text-primary: var(--on-fill); --text-secondary: var(--on-fill-secondary); --text-tertiary: var(--on-fill-secondary); }
+.bae-notice.bae-notice-centered.bae-notice-stage { min-height: 0; padding: 0; }

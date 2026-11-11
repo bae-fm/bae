@@ -1,0 +1,143 @@
+/* ---- macOS ---- */
+
+.bae-m-window { position: relative; display: flex; overflow: hidden; border-radius: 16px; background: var(--background); color: var(--text-primary); font: 400 13px var(--font-sans); box-shadow: inset 0 0 0 1px var(--hairline); }
+.bae-m-window-plain { flex-direction: column; }
+.bae-m-alert { width: 260px; margin-top: 36px; padding: 20px 16px 16px; border-radius: 20px; background: var(--elevated); box-shadow: 0 10px 30px var(--shadow); display: flex; flex-direction: column; gap: 10px; text-align: left; color: var(--text-primary); font: 400 13px var(--font-sans); }
+.bae-m-alert-title { font-weight: 700; }
+.bae-m-alert-message { font-size: 11px; line-height: 14px; color: var(--text-secondary); }
+.bae-m-alert-buttons { display: flex; flex-direction: row-reverse; gap: 8px; margin-top: 6px; }
+.bae-m-alert-buttons > :not(.sc-host-x), .bae-m-alert-buttons > .sc-host-x > * { flex: 1; min-width: 0; }
+.bae-m-alert-buttons:has(> :nth-child(3)) { flex-direction: column; }
+.bae-m-sidebar { width: 190px; flex: none; margin: 8px 0 8px 8px; border-radius: 12px; background: var(--surface); box-shadow: 0 1px 4px var(--shadow); padding: 32px 8px 8px; box-sizing: border-box; display: flex; flex-direction: column; gap: 2px; position: relative; }
+.bae-m-lights { position: absolute; top: 14px; left: 14px; display: flex; gap: var(--space-related); }
+.bae-m-lights span { width: 12px; height: 12px; border-radius: 6px; background: #FF5F57; }
+.bae-m-lights span + span { background: #FEBC2E; }
+.bae-m-lights span + span + span { background: #28C840; }
+.bae-m-pane { display: block; width: 100%; text-align: left; border: 0; background: none; color: var(--text-primary); font: 400 13px var(--font-sans); padding: 5px 10px; border-radius: 8px; cursor: pointer; }
+.bae-m-pane-on { background: var(--accent-selection); color: var(--on-fill); }
+.bae-m-pane { display: flex; align-items: center; justify-content: space-between; gap: var(--space-related); }
+.bae-m-main { flex: 1; min-width: 0; padding: 18px 20px; box-sizing: border-box; overflow: hidden; display: flex; flex-direction: column; }
+.bae-m-heading { display: flex; align-items: center; gap: var(--space-related); margin: 0 0 12px; }
+.bae-m-heading h1 { margin: 0; font: 600 15px var(--font-sans); }
+.bae-m-back { width: var(--size-control); height: var(--size-control); border-radius: 999px; border: 0; background: var(--control); display: flex; align-items: center; justify-content: center; padding: 0; fill: var(--text-primary); box-shadow: 0 0 0 0.5px var(--control-edge), 0 0.5px 1px var(--control-edge); }
+
+.bae-m-section { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; }
+.bae-m-heading + .bae-m-section, .bae-m-heading + .sc-host-x > .bae-m-section { margin-top: 4px; }
+.bae-m-section-title { margin: 0 4px; font: 600 13px var(--font-sans); color: var(--text-primary); }
+
+.bae-m-box { display: flex; flex-direction: column; background: var(--surface); border-radius: 12px; overflow: hidden; color: var(--text-primary); font: 400 13px var(--font-sans); }
+.bae-m-box-elevated { background: var(--elevated); box-shadow: 0 var(--space-compact) var(--space-group) var(--shadow); }
+.bae-m-box > .bae-divider { margin: 0 var(--space-group); opacity: 0.6; }
+/* MacItem: the row piece. The leading column is size-lead wide and as tall as the first line, so its icon centres on that line. */
+.bae-m-item { display: flex; align-items: flex-start; gap: var(--space-related); }
+.bae-m-item-lead { flex: none; width: var(--size-lead); height: 1lh; display: flex; align-items: center; justify-content: center; }
+.bae-m-item-body { flex: 1; min-width: 0; }
+.bae-m-item-trail { flex: none; display: flex; align-items: center; gap: var(--space-related); }
+.bae-m-box-empty { min-height: 108px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); }
+
+.bae-m-row { display: flex; align-items: center; gap: var(--space-group); min-height: var(--size-row); padding: 10px var(--space-group); box-sizing: border-box; color: var(--text-primary); font: 400 13px var(--font-sans); }
+/* selected: the one choice in a picker (a folder in the set-up sheet), solid as the Settings sidebar's chosen pane. A list you browse marks its selected row with the tint instead. */
+.bae-m-row-selected { background: var(--accent-selection); color: var(--on-fill); --text-primary: var(--on-fill); --text-secondary: var(--on-fill-secondary); --text-tertiary: var(--on-fill-secondary); }
+.bae-m-fieldrow { align-items: flex-start; padding-top: 6px; padding-bottom: 6px; }
+.bae-m-fieldrow-label { flex: none; padding-top: 8px; }
+.bae-m-fieldrow-content { flex: 1; min-width: 0; display: flex; align-items: flex-start; gap: var(--space-related); }
+.bae-m-fieldrow-content > :first-child:not(.sc-host-x), .bae-m-fieldrow-content > .sc-host-x:first-child > *, .bae-m-fieldrow-content .bae-m-field { flex: 1; min-width: 0; }
+.bae-m-fieldrow-aligned .bae-m-field { margin-left: -10px; }
+/* A button beside the field (Save, Scan) is the field's height and corners, so the two read as one control. */
+.bae-m-fieldrow-content .bae-m-btn { flex: none; height: var(--size-field); line-height: var(--size-field); border-radius: 8px; }
+.bae-m-row-action .bae-m-row-label { color: var(--accent); }
+.bae-m-row-destructive .bae-m-row-label { color: var(--danger); }
+.bae-m-row-label { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-inline); }
+.bae-m-row-strong { font-weight: 600; }
+.bae-m-row-title { display: flex; align-items: center; gap: 6px; }
+.bae-m-row-note { font-size: 11.5px; line-height: 16px; color: var(--text-secondary); }
+.bae-m-row-note[class*="bae-tone-"] { color: var(--bae-tone); }
+.bae-m-portfield { flex: none; width: 72px; }
+.bae-m-portfield .bae-m-input { font-variant-numeric: tabular-nums; }
+.bae-m-copytext { display: inline-flex; align-items: center; gap: 4px; color: var(--text-secondary); vertical-align: top; }
+.bae-m-copytext-text { user-select: text; }
+.bae-m-row-notelist { margin: 2px 0 0; padding-left: 16px; }
+/* The copy button keeps its place while hidden, so the text never moves when it shows. */
+.bae-m-copytext-btn { width: 16px; height: 16px; padding: 0; border: 0; border-radius: 4px; background: none; color: var(--text-secondary); display: inline-flex; align-items: center; justify-content: center; opacity: 0; cursor: pointer; }
+.bae-m-copytext-btn svg { width: 12px; height: 12px; }
+.bae-m-copytext:hover .bae-m-copytext-btn, .bae-m-copytext:focus-within .bae-m-copytext-btn, .bae-m-copytext-hover .bae-m-copytext-btn { opacity: 1; }
+.bae-m-copytext-btn:hover { color: var(--text-primary); }
+.bae-m-row-value { color: var(--text-secondary); white-space: nowrap; display: flex; align-items: center; gap: 6px; }
+.bae-m-row-value[class*="bae-tone-"] { color: var(--bae-tone); }
+.bae-m-row-value .bae-dot { width: 7px; height: 7px; }
+.bae-m-row-trail { display: flex; align-items: center; gap: var(--space-related); }
+.bae-m-row-chevron { flex: none; color: var(--text-secondary); }
+
+.bae-m-btn { height: var(--size-control); padding: 0 12px; border: 0; border-radius: 5px; font: 400 13px/var(--size-control) var(--font-sans); white-space: nowrap; cursor: pointer; }
+.bae-m-btn-small { height: 20px; padding: 0 var(--space-related); border-radius: 4px; font-size: 11px; line-height: 20px; }
+.bae-m-btn-large { height: 28px; padding: 0 14px; border-radius: 999px; line-height: 28px; }
+.bae-m-btn-secondary { background: var(--control); color: var(--text-primary); box-shadow: 0 0 0 0.5px var(--control-edge), 0 0.5px 1px var(--control-edge); }
+.bae-m-btn-primary { background: var(--accent-selection); color: var(--on-fill); }
+.bae-m-btn-borderless { padding: 0 var(--space-inline); background: none; color: var(--text-primary); }
+/* muted: the label in secondary text, for buttons under quiet words (a failed view's centred notice). */
+.bae-m-btn.bae-m-btn-muted { color: var(--text-secondary); }
+.bae-m-btn-destructive { color: var(--danger); }
+.bae-m-btn-icon { width: var(--size-control); height: var(--size-control); padding: 0; background: none; color: var(--text-secondary); border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; vertical-align: -3px; }
+/* alert: the button of a MacAlert, filling its row, the large button's height. tinted: on a filled notice, the secondary button's fill is the notice's text at 12%, so it reads on any tone. */
+.bae-m-btn-alert { width: 100%; height: 28px; line-height: 28px; }
+.bae-m-btn-secondary.bae-m-btn-tinted { background: color-mix(in srgb, var(--text-primary) 12%, transparent); }
+.bae-m-btn:hover:not(:disabled) { box-shadow: inset 0 0 0 100px var(--hover); }
+.bae-m-btn-secondary:hover:not(:disabled) { box-shadow: inset 0 0 0 100px var(--hover), 0 0 0 0.5px var(--control-edge), 0 0.5px 1px var(--control-edge); }
+.bae-m-btn:active:not(:disabled) { box-shadow: inset 0 0 0 100px var(--pressed); }
+.bae-m-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent); }
+.bae-m-btn:disabled { opacity: var(--opacity-off); cursor: default; }
+
+.bae-m-field { display: flex; flex-direction: column; gap: var(--space-inline); color: var(--text-primary); font: 400 13px var(--font-sans); min-width: 0; }
+.bae-m-field-line { display: flex; align-items: center; gap: var(--space-group); }
+.bae-m-field-label { flex: none; text-align: end; }
+.bae-m-field-auto { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: var(--space-group); row-gap: var(--space-inline); align-items: center; }
+.bae-m-field-auto .bae-m-field-line { display: contents; }
+.bae-m-field-auto .bae-m-field-note { grid-column: 2; }
+.bae-m-input { flex: 1; min-width: 0; box-sizing: border-box; height: var(--size-field); padding: 0 10px; border: 0; outline: none; border-radius: 8px; background: var(--field); box-shadow: inset 0 0 0 1px var(--field-edge); color: var(--text-primary); font: 400 13px/16px var(--font-sans); }
+.bae-m-input:hover:not(:disabled) { background: var(--field-hover); }
+.bae-m-input::placeholder { color: var(--text-tertiary); }
+.bae-m-input:focus, .bae-m-input-focused { background: var(--field-hover); box-shadow: inset 0 0 0 1px var(--field-edge), 0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent); }
+.bae-m-input-error, .bae-m-input-error:focus { box-shadow: inset 0 0 0 1px var(--danger), 0 0 0 3px color-mix(in srgb, var(--danger) 35%, transparent); }
+.bae-m-field-note { padding-left: 10px; font: 400 11.5px/15px var(--font-sans); color: color-mix(in srgb, var(--text-secondary) 50%, var(--text-tertiary)); }
+.bae-m-field-note-error { color: var(--danger); }
+
+.bae-m-radio { align-items: flex-start; gap: 10px; padding-top: 10px; padding-bottom: 10px; cursor: pointer; }
+.bae-m-radio-dot { width: 14px; height: 14px; flex: none; margin-top: 1px; box-sizing: border-box; border-radius: 7px; border: 1.5px solid var(--text-tertiary); }
+.bae-m-radio-dot-on { border: 0; background: var(--accent-fill); position: relative; }
+.bae-m-radio-dot-on::after { content: ''; position: absolute; left: 4.5px; top: 4.5px; width: 5px; height: 5px; border-radius: 3px; background: var(--on-accent-fill); }
+
+.bae-m-popupbutton { height: 24px; padding: 0 var(--space-related) 0 12px; border: 0; border-radius: 999px; background: var(--control); color: var(--text-primary); font: 400 13px var(--font-sans); display: inline-flex; align-items: center; justify-content: space-between; gap: var(--space-related); box-sizing: border-box; cursor: pointer; box-shadow: 0 0 0 0.5px var(--control-edge), 0 0.5px 1px var(--control-edge); }
+.bae-m-popupbutton-mark { flex: none; color: var(--text-secondary); }
+.bae-m-segmented { display: inline-flex; height: 28px; box-sizing: border-box; padding: 3px; border-radius: 999px; background: var(--tile); }
+.bae-m-segment { display: flex; align-items: center; padding: 0 14px; border-radius: 999px; font: 400 13px var(--font-sans); color: var(--text-primary); cursor: pointer; }
+.bae-m-segment-on { background: var(--hover); box-shadow: inset 0 0 0 100px var(--hairline-strong); }
+.bae-m-popupbutton:disabled { opacity: var(--opacity-off); }
+
+/* macOS's disclosure: its own box; the chevron leads inside the row and turns down when open; the rows it shows line up with the label. */
+.bae-m-disclosure-toggle { width: 100%; border: 0; background: none; text-align: left; gap: var(--space-related); cursor: pointer; }
+/* The chevron sits centred in the leading column (size-lead), so it has room to turn and the label starts on the same edge as MacItem's text and a nested row's. */
+.bae-m-disclosure-lead { width: var(--size-lead); flex: none; display: flex; align-items: center; justify-content: center; }
+.bae-m-disclosure-mark { width: 6px; height: 10px; flex: none; color: var(--text-secondary); transition: transform 0.15s; }
+.bae-m-disclosure-mark-open { transform: rotate(90deg); }
+.bae-m-disclosure > .bae-m-row:not(.bae-m-disclosure-toggle) { padding-left: calc(var(--space-group) + var(--size-lead) + var(--space-related)); }
+.bae-m-disclosure > .bae-divider:not(:nth-child(2)) { margin-left: calc(var(--space-group) + var(--size-lead) + var(--space-related)); }
+.bae-a-disclosure-mark { display: inline-flex; color: var(--text-secondary); }
+
+.bae-m-scrim { position: absolute; inset: 0; background: none; display: flex; justify-content: center; align-items: flex-start; z-index: 10; }
+.bae-m-step { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-section); padding: 56px var(--space-page) var(--space-page); font: 400 13px var(--font-sans); color: var(--text-primary); }
+.bae-m-step-head { display: flex; flex-direction: column; align-items: center; gap: var(--space-compact); max-width: 440px; text-align: center; }
+.bae-m-step-title { margin: 0; font: 600 20px/26px var(--font-sans); color: var(--text-primary); text-wrap: balance; }
+.bae-m-step-text { margin: 0; font: 400 13px/18px var(--font-sans); color: var(--text-secondary); text-wrap: pretty; }
+.bae-m-step-actions { display: flex; justify-content: center; gap: var(--space-related); }
+.bae-m-code { display: flex; flex-direction: column; align-items: center; gap: var(--space-edge); text-align: center; }
+.bae-m-code-digits { font: 600 34px/40px var(--font-sans); letter-spacing: 3px; color: var(--text-primary); }
+.bae-m-sheet { margin-top: 36px; display: flex; flex-direction: column; background: var(--elevated); border-radius: 20px; box-shadow: 0 10px 30px var(--shadow); color: var(--text-primary); font: 400 13px var(--font-sans); }
+.bae-m-sheet-title { padding: 18px var(--space-edge) 0; font: 700 13px var(--font-sans); }
+.bae-m-sheet-body { padding: 12px var(--space-edge) var(--space-edge); display: flex; flex-direction: column; gap: 10px; }
+.bae-m-sheet-message { font: 400 13px/18px var(--font-sans); color: var(--text-secondary); text-wrap: pretty; }
+.bae-m-sheet-footer { margin-top: var(--space-inline); display: flex; gap: var(--space-related); justify-content: flex-end; }
+.bae-m-sheet-footer-lead { margin-right: auto; display: flex; }
+
+.bae-a-progress { display: flex; flex-direction: column; gap: var(--space-related); color: var(--text-primary); font: 400 14px/20px var(--font-android); }
+.bae-m-progress { display: flex; flex-direction: column; gap: var(--space-related); color: var(--text-primary); font: 400 13px var(--font-sans); }
+.bae-m-note { padding: 6px 4px 0; font: 400 11.5px var(--font-sans); line-height: 15px; color: var(--text-secondary); }

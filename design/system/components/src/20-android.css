@@ -1,0 +1,109 @@
+/* ---- Android ---- */
+
+.bae-a-screen { position: relative; overflow: hidden; display: flex; flex-direction: column; background: var(--background); color: var(--text-primary); font: 400 14px var(--font-android); }
+.bae-a-topbar { flex: none; display: flex; align-items: center; gap: var(--space-inline); height: 64px; box-sizing: border-box; padding: 0 var(--space-inline); background: var(--background); }
+.bae-a-topbar h1 { margin: 0; padding-left: 12px; font: 400 22px/28px var(--font-android); }
+.bae-a-topbar h1.bae-a-topbar-title-after-back { padding-left: 0; }
+.bae-a-screen-above { flex: 1; min-height: 0; position: relative; display: flex; flex-direction: column; }
+.bae-a-keyboard { flex: none; display: flex; flex-direction: column; gap: 10px; padding: 10px 4px 0; background: var(--surface); }
+.bae-a-keys-row { display: flex; gap: 6px; }
+.bae-a-key { flex: 1; height: 46px; border-radius: 6px; background: var(--tile); color: var(--text-primary); font: 400 21px/46px var(--font-android); text-align: center; }
+.bae-a-key-mod { background: var(--elevated); font-size: 16px; }
+.bae-a-key-enter { background: var(--accent-selection); color: var(--on-fill); }
+.bae-a-keyboard-gesture { height: 28px; display: flex; align-items: center; justify-content: center; }
+.bae-a-keyboard-gesture::before { content: ""; width: 108px; height: 4px; border-radius: 2px; background: var(--text-secondary); }
+.bae-a-main { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+
+.bae-a-section { margin: 0; padding: var(--space-section) var(--space-page) var(--space-related); font: 500 14px/20px var(--font-android); color: var(--accent); }
+.bae-a-card { margin: var(--space-related) var(--space-edge) 0; display: flex; flex-direction: column; gap: var(--space-line); flex: none; }
+/* A tile of a card (a row, or what the card wraps around anything else): 4dp corners, 20dp on the card's outer ones. */
+.bae-a-card-tile { background: var(--surface); border-radius: 4px; }
+.bae-a-card-tile-first, .bae-a-card-tile-alone { border-top-left-radius: 20px; border-top-right-radius: 20px; }
+.bae-a-card-tile-last, .bae-a-card-tile-alone { border-bottom-left-radius: 20px; border-bottom-right-radius: 20px; }
+.bae-a-main > .bae-a-card:first-child, .bae-a-main > .sc-host-x:first-child > .bae-a-card { margin-top: var(--space-edge); }
+.bae-a-section + .bae-a-card, .bae-a-section + .sc-host-x > .bae-a-card, .sc-host-x:has(> .bae-a-section) + .bae-a-card, .sc-host-x:has(> .bae-a-section) + .sc-host-x > .bae-a-card { margin-top: 0; }
+
+.bae-a-row { display: flex; align-items: center; gap: var(--space-edge); min-height: 72px; padding: var(--space-group) var(--space-edge); box-sizing: border-box; color: var(--text-primary); }
+.bae-a-row-one { min-height: 56px; }
+.bae-a-row[role="button"] { cursor: pointer; }
+.bae-a-row-selected { background: var(--accent-tint); }
+.bae-a-row-lines { flex: 1; min-width: 0; }
+.bae-a-row-title { font-size: 16px; line-height: 24px; display: flex; align-items: center; gap: var(--space-related); }
+.bae-a-row-action { color: var(--accent); font-weight: 500; }
+.bae-a-row-destructive { color: var(--danger); }
+/* Supporting text wraps, as Material's list items let it run to more lines: a setting's explanation is read whole, never cut off. */
+.bae-a-row-subtitle { font-size: 14px; line-height: 20px; color: var(--text-secondary); display: flex; align-items: baseline; gap: 6px; }
+.bae-a-row-subtitle[class*="bae-tone-"] { color: var(--bae-tone); }
+.bae-a-row-trail { display: flex; align-items: center; gap: var(--space-edge); font-size: 14px; color: var(--text-secondary); }
+.bae-a-row-icon { flex: none; fill: var(--text-secondary); }
+.bae-a-row-lead { flex: none; fill: var(--text-secondary); }
+.bae-a-row-lead-action { fill: var(--accent); }
+
+.bae-a-step { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: var(--space-section); padding: var(--space-section) var(--space-edge) var(--space-page); font-family: var(--font-android); }
+.bae-a-step-head { display: flex; flex-direction: column; gap: var(--space-related); text-align: center; }
+.bae-a-step-title { margin: 0; font: 500 22px/28px var(--font-android); color: var(--text-primary); text-wrap: balance; }
+.bae-a-step-text { margin: 0; font: 400 16px/24px var(--font-android); color: var(--text-secondary); text-wrap: pretty; }
+.bae-a-step-top { justify-content: flex-start; }
+.bae-a-step-top .bae-a-step-head { text-align: start; }
+.bae-a-code { display: flex; flex-direction: column; align-items: center; gap: var(--space-edge); text-align: center; }
+.bae-a-code-digits { font: 500 40px/48px var(--font-android); letter-spacing: 3px; color: var(--text-primary); }
+.bae-a-code-dialog, .bae-m-code-dialog { padding-top: var(--space-related); }
+.bae-a-code-dialog .bae-a-code-digits { font-size: 32px; line-height: 40px; letter-spacing: 2px; }
+.bae-a-btn { height: 40px; padding: 0 var(--space-section); border-radius: 20px; border: 0; font: 500 14px var(--font-android); cursor: pointer; white-space: nowrap; }
+.bae-a-btn-large { height: 48px; border-radius: 24px; font-size: 15px; }
+.bae-a-btn-filled { background: var(--accent-selection); color: var(--on-fill); }
+.bae-a-btn-filled.bae-a-btn-destructive { background: var(--danger); color: var(--background); }
+/* tonal: Material's filled tonal button, a raised fill with the screen's text: an action that stands alone (a failed view's Retry, Check now), where an outline reads as the lesser of two. */
+.bae-a-btn-tonal { background: var(--tile); color: var(--text-primary); }
+.bae-a-btn-outlined { background: none; color: var(--text-primary); box-shadow: inset 0 0 0 1px var(--text-secondary); }
+.bae-a-btn-text { height: auto; padding: 10px 12px; background: none; color: var(--accent); border-radius: 20px; }
+.bae-a-btn-text.bae-a-btn-destructive, .bae-a-btn-outlined.bae-a-btn-destructive { color: var(--danger); }
+/* neutral: a text button in the screen's own text colour, for Cancel beside a destructive action, so the accent and danger never sit side by side. */
+.bae-a-btn-text.bae-a-btn-neutral { color: var(--text-primary); }
+.bae-a-btn-align-text { align-self: flex-start; margin-left: -12px; }
+.bae-a-btn-align-field { align-self: flex-start; margin-left: calc(var(--space-edge) - 12px); }
+.bae-a-btn:disabled { opacity: var(--opacity-off); cursor: default; }
+
+.bae-a-iconbtn { width: 48px; height: 48px; flex: none; display: flex; align-items: center; justify-content: center; background: none; border: 0; border-radius: 24px; padding: 0; fill: var(--text-primary); cursor: pointer; }
+
+.bae-a-switch { position: relative; width: 52px; height: 32px; flex: none; border: 0; border-radius: 16px; padding: 0; cursor: pointer; background: var(--tile); box-shadow: inset 0 0 0 2px var(--text-secondary); }
+.bae-a-switch-thumb { position: absolute; left: 6px; top: 8px; width: 16px; height: 16px; border-radius: 12px; background: var(--text-secondary); }
+.bae-a-switch-on { background: var(--accent); box-shadow: none; }
+.bae-a-switch-on .bae-a-switch-thumb { left: 24px; top: 4px; width: 24px; height: 24px; background: var(--background); }
+
+.bae-a-field { display: flex; flex-direction: column; gap: var(--space-inline); text-align: start; font-family: var(--font-android); }
+.bae-a-field-box { position: relative; display: block; border-radius: 4px; box-shadow: inset 0 0 0 1px var(--text-secondary); }
+.bae-a-field-label { position: absolute; top: -9px; left: 12px; padding: 0 4px; background: var(--elevated); font-size: 12px; line-height: 16px; color: var(--text-secondary); }
+.bae-a-input { width: 100%; box-sizing: border-box; padding: 14px var(--space-edge); border: 0; outline: none; background: none; color: var(--text-primary); font: 400 16px var(--font-android); }
+.bae-a-input::placeholder { color: var(--text-secondary); }
+.bae-a-codetext { min-height: calc(3 * 24px + 28px); font: 400 15px/24px var(--font-mono); word-spacing: 4px; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
+.bae-m-codetext { height: auto; min-height: calc(3 * 20px + 16px); padding-top: 8px; padding-bottom: 8px; font: 400 13px/20px var(--font-mono); word-spacing: 4px; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
+.bae-codetext-placeholder { font-family: var(--font-sans); word-spacing: normal; color: var(--text-secondary); }
+.bae-a-field-focused .bae-a-field-box { box-shadow: inset 0 0 0 2px var(--accent); }
+.bae-a-field-focused .bae-a-field-label { color: var(--accent); }
+.bae-a-field-error .bae-a-field-box { box-shadow: inset 0 0 0 2px var(--danger); }
+.bae-a-field-error .bae-a-field-label, .bae-a-field-error .bae-a-field-line { color: var(--danger); }
+.bae-a-field-line { padding: 0 var(--space-edge); font-size: 12px; line-height: 16px; color: var(--text-secondary); }
+
+.bae-a-radio { display: flex; align-items: center; gap: var(--space-edge); min-height: 48px; font-size: 16px; color: var(--text-primary); cursor: pointer; }
+.bae-a-radio-dot { position: relative; width: 20px; height: 20px; border-radius: 10px; box-sizing: border-box; flex: none; box-shadow: inset 0 0 0 2px var(--text-secondary); }
+.bae-a-radio-dot-on { box-shadow: inset 0 0 0 2px var(--accent); }
+.bae-a-radio-dot-on::after { content: ''; position: absolute; inset: 5px; border-radius: 5px; background: var(--accent); }
+
+.bae-a-scrim { position: absolute; inset: 0; background: var(--scrim); display: flex; align-items: center; justify-content: center; z-index: 10; }
+.bae-a-dialog { padding: var(--space-section); border-radius: 28px; background: var(--elevated); box-sizing: border-box; display: flex; flex-direction: column; gap: var(--space-edge); font: 400 14px/20px var(--font-android); color: var(--text-secondary); }
+.bae-a-dialog-title { margin: 0; font: 400 24px/32px var(--font-android); color: var(--text-primary); }
+.bae-a-dialog-head { display: flex; flex-direction: column; gap: var(--space-related); }
+.bae-a-dialog-message { margin: 0; text-wrap: pretty; }
+.bae-a-dialog-actions { margin-top: var(--space-related); display: flex; justify-content: flex-end; gap: var(--space-related); }
+
+.bae-a-note { padding: var(--space-related) var(--space-page) 0; font: 400 12px/16px var(--font-android); color: var(--text-secondary); }
+
+.bae-msym { font-family: 'Material Symbols Rounded'; font-size: 24px; font-weight: 400; font-feature-settings: 'liga'; }
+.bae-a-screen, .bae-preview-android { --bae-gap-bg: var(--background); }
+.bae-a-dialog { --bae-gap-bg: var(--elevated); }
+.bae-a-sheet { --bae-gap-bg: var(--surface); }
+.bae-progress-android { height: 4px; border-radius: 2px; background: var(--accent-tint-strong); overflow: visible; }
+.bae-progress-android::after { content: ''; position: absolute; right: 0; top: 0; width: 4px; height: 4px; border-radius: 2px; background: var(--accent); }
+.bae-progress-android .bae-progress-fill { border-radius: 2px; box-shadow: 4px 0 0 var(--bae-gap-bg); z-index: 1; }
+.bae-progress-android .bae-progress-moving { box-shadow: 4px 0 0 var(--bae-gap-bg), -4px 0 0 var(--bae-gap-bg); }
