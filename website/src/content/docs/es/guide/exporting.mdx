@@ -3,23 +3,44 @@ title: Exportación
 description: Saca música en la forma que necesitas
 ---
 
-No quedar encerrado funciona en ambos sentidos: bae no cambia tus archivos al entrar, y no los retiene al salir. Los lanzamientos locales ya son archivos en tus carpetas. Los lanzamientos en la nube pueden volver a hacerse locales en cualquier momento, byte por byte. Y cuando necesitas una forma *distinta*, una codificación apta para teléfono, una imagen lista para grabar, exportar la produce sin tocar los originales.
+La ausencia de ataduras funciona en ambos sentidos: bae no cambia tus archivos al entrar y no los retiene al salir. Los lanzamientos locales ya son solo archivos en tus carpetas. Los lanzamientos en la nube pueden volver a ser locales en cualquier momento, byte a byte. Y cuando necesitas una forma *distinta*, como una codificación apta para el teléfono, Guardar como… la produce sin tocar los originales.
 
 ## Dos exportaciones
 
-- **Exportación de pista**: clic derecho en una pista, **Guardar como…**, elige un formato, listo.
-- **Exportación de lanzamiento**: **Exportar…** en el menú del álbum, o el Gestor de almacenamiento, exporta un lanzamiento completo a una carpeta. Se ejecuta en una cola con progreso, pausa y reintento.
+- **Exportar…**: en el menú del álbum o en el Gestor de almacenamiento, copia los archivos de un lanzamiento byte a byte en una carpeta.
+- **Guardar como…**: en una pista, o en el menú del álbum para un lanzamiento, convierte a un formato que eliges, por ejemplo de FLAC a MP3 para el coche o el teléfono. Escribe archivos nuevos; los originales quedan como están.
 
-Los archivos originales se exportan tal como están. Todo lo demás se codifica al salir.
+Ambas se ejecutan en una cola con progreso. Puedes pausarlas y cancelarlas; una que falla permanece en la cola con su error hasta que la canceles. Un guardado conserva el formato y los ajustes con los que se puso en cola, así que editarlos después no cambia nada de lo que ya está en cola.
 
-## Preajustes
+## Formatos
 
-Los formatos de exportación son preajustes que defines una vez en Ajustes, Formatos: FLAC, MP3, Opus, WAV o AIFF, con los parámetros del codec (profundidad de bits para los formatos sin pérdida, bitrate para los con pérdida) y una plantilla de nombre de archivo construida desde tokens como título, artista, álbum, año y número de pista. Define un preajuste predeterminado para pistas y otro para lanzamientos, y elige si las exportaciones de lanzamiento siempre piden destino o siempre usan una carpeta fija.
+Un formato es un nombre y un códec: FLAC, WAV, AIFF, MP3, AAC u Opus. Se guardan en Ajustes, Guardar como, bajo **Formatos**. **Añadir formato…** añade uno, y los elementos **Editar…** y **Eliminar…** de su menú lo cambian o lo quitan. Un formato tiene un **Nombre**, un **Formato** y un ajuste de calidad. Los nombres son únicos, pero dos formatos pueden escribir lo mismo. Un formato nuevo lleva el nombre de su códec, con un número si ese nombre ya está en uso («FLAC», «FLAC (2)»). FLAC y MP3 vienen incluidos.
 
-## Pregaps en exportaciones
+Cada formato sirve para pistas y para lanzamientos. En la ventana Guardar como, el menú **Formato** lista todos los formatos y empieza por el último que usaste. Su último elemento, **Editar formatos…**, abre los ajustes en Guardar como; el menú sigue los cambios hechos allí, y un formato añadido allí queda elegido de inmediato.
 
-Las copias de CD con pregaps plantean una pregunta real al salir: ¿adónde va el audio oculto? El ajuste **Pregap** de cada preajuste elige una política:
+## Calidad
 
-- **Añadir excepto HTOA** y **Añadir incluyendo HTOA** añaden cada pregap al final de la pista anterior, la convención común; se diferencian en si el audio oculto antes de la pista uno se omite o se conserva al inicio de la pista uno.
-- **Excluir** omite los pregaps por completo: límites limpios de pista, audio oculto omitido.
-- **Archivo único + CUE**: el disco como un archivo de audio más una hoja CUE, preservando exactamente la disposición original.
+- **Profundidad de bits**, para FLAC, WAV y AIFF: **Igual que el original** o **16-bit**. Una fuente con pérdida no tiene profundidad propia, así que se escribe a 16 bits.
+- **Tasa de bits**, para MP3, AAC y Opus: una lista de las tasas que escribe el codificador del códec. MP3: 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320 kbps. AAC: 96, 128, 160, 192, 256, 320 kbps. Opus: 64, 96, 128, 160, 192, 256 kbps.
+
+## Nombres
+
+Bajo **Nombres** en Ajustes, Guardar como, un patrón de **Nombre del archivo** y un patrón de **Nombre de la carpeta** sirven para todos los formatos. Un patrón es una fila de piezas que reordenas, quitas y añades, con una vista previa del nombre que produce. Un nombre de archivo puede usar título, artista, álbum, año, número de pista, número de disco y total de pistas. Un nombre de carpeta puede usar artista, álbum, año, sello y número de catálogo; una pieza que el lanzamiento no indica se omite.
+
+Guardar como… en una pista propone el nombre del patrón, y elegir otro formato cambia solo la extensión. Guardar un lanzamiento escribe sus archivos en una carpeta con el nombre que da el patrón de carpeta. Guardar un lanzamiento nunca reemplaza un archivo: si dos nombres serían el mismo archivo en tu unidad, el guardado falla. Guardar como… en una sola pista reemplaza un archivo existente solo si lo confirmas.
+
+## Un archivo por pista
+
+Cada guardado escribe un archivo por pista, con una sola regla para los huecos. Un pregap, almacenado o generado, va al final de la pista anterior, y el audio oculto antes de la pista uno se queda al principio de la pista uno. Un lanzamiento almacenado como una imagen con hoja CUE se divide en las marcas de pista. Guardar como… no escribe hoja CUE.
+
+## Copiar en vez de codificar
+
+Una pista que es un archivo entero ya en el formato sin pérdida elegido, con la profundidad que escribe el formato, se copia en vez de recodificarse. WAV y AIFF cuentan a 16 o 24 bits. Sus etiquetas, carátula y nombre se escriben de nuevo. Un formato con pérdida siempre codifica.
+
+## Extras
+
+Bajo **Extras** en Ajustes, Guardar como, tres interruptores valen para todos los formatos. Todos empiezan activados.
+
+- **Incrustar carátula**: pone la carátula en cada archivo.
+- **Imagen de portada en la carpeta**: guardar un lanzamiento escribe además `cover.jpg` en su carpeta.
+- **Etiquetas de volumen**: escribe en cada archivo la ganancia y el pico ReplayGain de pista y de álbum, a partir del volumen que bae midió al importar.

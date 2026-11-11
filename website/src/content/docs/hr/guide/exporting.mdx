@@ -3,23 +3,44 @@ title: Izvoz
 description: Izvucite glazbu u obliku koji trebate
 ---
 
-Bez zaključavanja vrijedi u oba smjera: bae ne mijenja vaše datoteke pri ulazu i ne drži ih zatočene pri izlazu. Lokalna izdanja već su samo datoteke u vašim mapama. Izdanja u oblaku mogu se u bilo kojem trenutku ponovno učiniti lokalnima, bajt po bajt. A kad trebate *drugi* oblik, zapis prikladan za telefon, sliku spremnu za snimanje, izvoz ga proizvodi bez diranja izvornika.
+Nepostojanje zaključavanja vrijedi u oba smjera: bae ne mijenja vaše datoteke pri ulasku i ne drži ih kao taoce pri izlasku. Lokalna izdanja već su samo datoteke u vašim mapama. Izdanja u oblaku mogu se u svakom trenutku ponovno učiniti lokalnima, bajt po bajt. A kad trebate *drugačiji* oblik, na primjer kodiranje prikladno za telefon, Spremi kao… ga stvara bez diranja izvornika.
 
 ## Dva izvoza
 
-- **Izvoz pjesme**: desni klik na pjesmu, **Spremi kao…**, odaberite format, gotovo.
-- **Izvoz izdanja**: **Izvoz…** u izborniku albuma ili Upravitelj pohrane izvozi cijelo izdanje u mapu. Radi u redu čekanja s napretkom, pauzom i ponovnim pokušajem.
+- **Izvoz…**: u izborniku albuma ili u Upravitelju pohrane kopira datoteke izdanja bajt po bajt u mapu.
+- **Spremi kao…**: na pjesmi, ili u izborniku albuma za izdanje, pretvara u format koji odaberete, na primjer iz FLAC-a u MP3 za auto ili telefon. Zapisuje nove datoteke; izvornici ostaju kakvi jesu.
 
-Izvorne datoteke izvoze se takve kakve jesu. Sve ostalo kodira se pri izlazu.
+Oba se izvode u redu s napretkom. Možete ih pauzirati i otkazati; neuspjeli zadatak ostaje u redu sa svojom pogreškom dok ga ne otkažete. Spremanje zadržava format i postavke s kojima je stavljeno u red, pa kasnije uređivanje ne mijenja ništa što je već u redu.
 
-## Predlošci
+## Formati
 
-Formati izvoza predlošci su koje jednom definirate u Postavke, Formati: FLAC, MP3, Opus, WAV ili AIFF, s parametrima kodeka (dubina bita za bezgubitne formate, bitrate za one s gubitkom) i predloškom imena datoteke izgrađenim od tokena poput naslova, izvođača, albuma, godine i broja pjesme. Postavite zadani predložak za pjesme i jedan za izdanja te odaberite traže li izvozi izdanja uvijek odredište ili uvijek koriste fiksnu mapu.
+Format je naziv i kodek: FLAC, WAV, AIFF, MP3, AAC ili Opus. Čuvaju se u Postavke, Spremi kao, pod **Formati**. **Dodaj format…** dodaje jedan, a stavke **Uredi…** i **Izbriši…** u njegovu izborniku mijenjaju ga ili uklanjaju. Format ima **Naziv**, **Format** i jednu postavku kvalitete. Nazivi su jedinstveni, ali dva formata mogu zapisivati isto. Novi format dobiva naziv svojeg kodeka, s brojem ako je taj naziv zauzet („FLAC”, „FLAC (2)”). FLAC i MP3 su ugrađeni.
 
-## Pregapovi u izvozima
+Svaki format radi za pjesme i za izdanja. U prozoru Spremi kao izbornik **Format** navodi sve formate i počinje onim posljednje korištenim. Njegova posljednja stavka, **Uredi formate…**, otvara postavke na Spremi kao; izbornik prati promjene napravljene tamo, a format dodan tamo odmah je odabran.
 
-CD ripovi s pregapovima postavljaju stvarno pitanje pri izlazu: kamo ide skriveni zvuk? **Pregap** svakog predloška bira pravilo:
+## Kvaliteta
 
-- **Dodaj osim HTOA** i **Dodaj uključujući HTOA** dodaju svaki pregap na kraj prethodne pjesme, što je uobičajena konvencija; razlikuju se po tome odbacuje li se zvuk skriven prije prve pjesme ili se zadržava na početku prve pjesme.
-- **Isključi** potpuno odbacuje pregapove: čiste granice pjesama, skriveni zvuk izostavljen.
-- **Jedna datoteka + CUE**: disk kao jedna zvučna datoteka plus CUE list, uz točno očuvanje izvornog rasporeda.
+- **Bitna dubina**, za FLAC, WAV i AIFF: **Isto kao izvor** ili **16-bit**. Izvor s gubitkom nema vlastitu dubinu pa se zapisuje u 16 bitova.
+- **Brzina prijenosa**, za MP3, AAC i Opus: popis brzina prijenosa koje zapisuje koder tog kodeka. MP3: 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320 kbps. AAC: 96, 128, 160, 192, 256, 320 kbps. Opus: 64, 96, 128, 160, 192, 256 kbps.
+
+## Nazivi
+
+Pod **Nazivi** u Postavke, Spremi kao, jedan obrazac **Naziv datoteke** i jedan obrazac **Naziv mape** vrijede za sve formate. Obrazac je niz dijelova koje preslažete, uklanjate i dodajete, s pregledom naziva koji stvara. Naziv datoteke može koristiti naslov, izvođača, album, godinu, broj pjesme, broj diska i ukupan broj pjesama. Naziv mape može koristiti izvođača, album, godinu, izdavačku kuću i kataloški broj; dio koji izdanje ne navodi izostavlja se.
+
+Spremi kao… na pjesmi predlaže naziv iz obrasca, a odabir drugog formata mijenja samo ekstenziju. Spremanje izdanja zapisuje njegove datoteke u mapu imenovanu prema obrascu mape. Spremanje izdanja nikad ne zamjenjuje datoteku: ako bi dva naziva na vašem disku bila ista datoteka, spremanje ne uspijeva. Spremi kao… na jednoj pjesmi zamjenjuje postojeću datoteku samo uz vašu potvrdu.
+
+## Jedna datoteka po pjesmi
+
+Svako spremanje zapisuje jednu datoteku po pjesmi, s jednim pravilom za praznine. Pregap, pohranjen ili generiran, ide na kraj prethodne pjesme, a skriveni zvuk prije prve pjesme ostaje na početku prve pjesme. Izdanje pohranjeno kao jedna slika s CUE listom dijeli se na oznakama pjesama. Spremi kao… ne zapisuje CUE list.
+
+## Kopiranje umjesto kodiranja
+
+Pjesma koja je cijela datoteka već u odabranom formatu bez gubitaka, s dubinom koju format zapisuje, kopira se umjesto ponovnog kodiranja. WAV i AIFF računaju se pri 16 ili 24 bita. Oznake, omot i naziv zapisuju se iznova. Format s gubitkom uvijek kodira.
+
+## Dodaci
+
+Pod **Dodaci** u Postavke, Spremi kao, tri prekidača vrijede za svaki format. Svi su isprva uključeni.
+
+- **Ugradi omot albuma**: stavlja omot u svaku datoteku.
+- **Slika omota u mapi**: spremanje izdanja zapisuje i `cover.jpg` u njegovu mapu.
+- **Oznake glasnoće**: zapisuje u svaku datoteku ReplayGain pojačanje i vršnu vrijednost pjesme i albuma, iz glasnoće koju je bae izmjerio pri uvozu.

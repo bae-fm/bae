@@ -3,23 +3,44 @@ title: Exporting
 description: તમને જોઈએ તે સ્વરૂપમાં music બહાર લો
 ---
 
-બંધન ન હોવું બંને દિશામાં કામ કરે છે: bae તમારી files અંદર આવતી વખતે બદલતું નથી, અને બહાર જતી વખતે તેમને અટકાવતું નથી. સ્થાનિક releases પહેલેથી જ તમારા ફોલ્ડર્સમાંની files છે. Cloud માંના releases કોઈ પણ સમયે byte-for-byte ફરી સ્થાનિક બનાવી શકાય છે. અને જ્યારે તમને *જુદું* સ્વરૂપ જોઈએ, ફોન માટે યોગ્ય encode અથવા burn કરવા તૈયાર image, ત્યારે export મૂળ files ને સ્પર્શ્યા વગર તે બનાવે છે.
+બંધનમુક્તિ બંને દિશામાં લાગુ પડે છે: bae અંદર આવતી વખતે તમારી ફાઇલો બદલતું નથી, અને બહાર જતી વખતે તેમને રોકી રાખતું નથી. સ્થાનિક release તો પહેલેથી તમારા folderમાંની ફાઇલો જ છે. ક્લાઉડમાંના release ગમે ત્યારે byte-for-byte ફરી સ્થાનિક કરી શકાય છે. અને જ્યારે તમને *અલગ* સ્વરૂપ જોઈએ, જેમ કે ફોન માટે યોગ્ય encode, ત્યારે Save as… મૂળ ફાઇલોને અડ્યા વિના તે બનાવે છે.
 
 ## બે exports
 
-- **Track export**: track પર right-click કરો, **Save as…**, format પસંદ કરો, પૂરું.
-- **Release export**: album menu માંનું **Export…**, અથવા Storage manager, આખો release folder માં export કરે છે. Progress, pause અને retry સાથે queue પર ચાલે છે.
+- **Export…**: album menu અથવા Storage managerમાં, release ની ફાઇલોને byte-for-byte એક folderમાં કૉપિ કરે છે.
+- **Save as…**: track પર, અથવા release માટે album menuમાં, તમે પસંદ કરેલા formatમાં બદલે છે, જેમ કે કાર કે ફોન માટે FLAC થી MP3. તે નવી ફાઇલો લખે છે; મૂળ ફાઇલો જેવી છે તેવી જ રહે છે.
 
-Original files જેવી છે તેવી export થાય છે. બાકીની બધું બહાર જતાં encode થાય છે.
+બંને પ્રગતિ બતાવતી queueમાં ચાલે છે. તમે તેમને pause અને cancel કરી શકો છો; નિષ્ફળ કામ તમે cancel ન કરો ત્યાં સુધી તેની ભૂલ સાથે queueમાં રહે છે. Save queueમાં મૂકતી વખતના format અને settings રાખે છે, એટલે પછી તેમને બદલવાથી queueમાં પહેલેથી રહેલું કંઈ બદલાતું નથી.
 
-## Presets
+## Formats
 
-Export formats એ presets છે જે તમે Settings, Formats માં એક વાર define કરો છો: FLAC, MP3, Opus, WAV, અથવા AIFF, codec ના parameters સાથે (lossless formats માટે bit depth, lossy માટે bitrate) અને title, artist, album, year અને track number જેવા tokens થી બનેલું filename template. Tracks માટે default preset અને releases માટે એક preset set કરો, અને release exports હંમેશા destination પૂછે કે હંમેશા fixed folder વાપરે તે પસંદ કરો.
+Format એટલે નામ અને codec: FLAC, WAV, AIFF, MP3, AAC અથવા Opus. તે Settings, Save asમાં **Formats** હેઠળ રાખવામાં આવે છે. **Add format…** એક ઉમેરે છે, અને તેના menuના **Edit…** અને **Delete…** તેને બદલે કે કાઢી નાખે છે. Formatમાં એક **Name**, એક **Format** અને ગુણવત્તાનું એક setting હોય છે. નામ અનન્ય હોય છે, પણ બે format એક જ વસ્તુ લખી શકે. નવા formatનું નામ તેના codec પરથી પડે છે, અને નામ લેવાયેલું હોય તો નંબર ઉમેરાય છે ("FLAC", "FLAC (2)"). FLAC અને MP3 પહેલેથી હાજર છે.
 
-## Exports માં pregaps
+દરેક format track અને release બંને માટે ચાલે છે. Save as windowમાં **Format** pop-up બધા format બતાવે છે અને તમે છેલ્લે વાપરેલા formatથી શરૂ થાય છે. તેની છેલ્લી એન્ટ્રી **Edit formats…** settingsમાં Save as ખોલે છે; pop-up ત્યાં થયેલા ફેરફારોને અનુસરે છે, અને ત્યાં ઉમેરેલો format તરત પસંદ થઈ જાય છે.
 
-Pregaps ધરાવતા CD rips બહાર જતાં સાચો પ્રશ્ન ઊભો કરે છે: hidden audio ક્યાં જાય? દરેક preset નું **Pregap** policy પસંદ કરે છે:
+## ગુણવત્તા
 
-- **Append except HTOA** અને **Append including HTOA** દરેક pregap ને આગલા track ના અંતે જોડે છે, સામાન્ય convention; તેમનો ફરક એ છે કે track one પહેલાં છુપાયેલ audio drop થાય કે track one ની શરૂઆતમાં રખાય.
-- **Exclude** pregaps સંપૂર્ણપણે drop કરે છે: clean track boundaries, hidden audio છોડાયેલ.
-- **Single file + CUE**: disc એક audio file તરીકે અને CUE sheet સાથે, original layout સચોટ રીતે સાચવીને.
+- **Bit depth**, FLAC, WAV અને AIFF માટે: **Same as source** અથવા **16-bit**. Lossy સ્રોતની પોતાની depth હોતી નથી, એટલે તે 16 bit પર લખાય છે.
+- **Bitrate**, MP3, AAC અને Opus માટે: તે codecનું encoder જે bitrate લખે છે તેની યાદી. MP3: 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320 kbps. AAC: 96, 128, 160, 192, 256, 320 kbps. Opus: 64, 96, 128, 160, 192, 256 kbps.
+
+## નામ
+
+Settings, Save asમાં **Names** હેઠળ, એક **File name** pattern અને એક **Folder name** pattern બધા formatને લાગુ પડે છે. Pattern એ ભાગોની હરોળ છે જેને તમે ફરી ગોઠવો, કાઢો અને ઉમેરો, અને તે જે નામ બનાવે છે તેનું preview દેખાય છે. ફાઇલના નામમાં title, artist, album, year, track number, disc number અને કુલ track આવી શકે. Folderના નામમાં artist, album, year, label અને catalog number આવી શકે; release જે ભાગ જણાવતું નથી તે છૂટી જાય છે.
+
+Track પર Save as… patternનું નામ સૂચવે છે, અને બીજો format પસંદ કરવાથી માત્ર extension બદલાય છે. Release save કરવાથી તેની ફાઇલો folder patternથી નામ પામેલા folderમાં લખાય છે. Release save ક્યારેય કોઈ ફાઇલ બદલતું નથી: તમારી ડ્રાઇવ પર બે નામ એક જ ફાઇલ બનતા હોય તો save નિષ્ફળ જાય છે. એક track પર Save as… હાલની ફાઇલ ત્યારે જ બદલે છે જ્યારે તમે પુષ્ટિ કરો.
+
+## દરેક trackની એક ફાઇલ
+
+દરેક save દરેક trackની એક ફાઇલ લખે છે, અને ખાલી જગ્યા માટે એક જ નિયમ છે. Pregap, સંગ્રહેલું કે બનાવેલું, આગળના trackના અંતે જાય છે, અને track 1 પહેલાંનો છુપાયેલો audio track 1ની શરૂઆતમાં રહે છે. એક image અને CUE sheet તરીકે સંગ્રહેલું release track markersએ વહેંચાય છે. Save as… CUE sheet લખતું નથી.
+
+## Encode કરવાને બદલે કૉપિ
+
+જે track આખી ફાઇલ છે અને પહેલેથી પસંદ કરેલા lossless formatમાં છે, format જે depth પર લખે છે તે depth પર, તેને ફરી encode કરવાને બદલે કૉપિ કરવામાં આવે છે. WAV અને AIFF 16 કે 24 bit પર ગણાય છે. તેના tags, cover અને નામ નવેસરથી લખાય છે. Lossy format હંમેશાં encode કરે છે.
+
+## વધારાના
+
+Settings, Save asમાં **Extras** હેઠળ ત્રણ switch દરેક formatને લાગુ પડે છે. બધા શરૂઆતમાં ચાલુ હોય છે.
+
+- **Embed cover art**: દરેક ફાઇલમાં cover મૂકે છે.
+- **Cover image in the folder**: release save તેના folderમાં `cover.jpg` પણ લખે છે.
+- **Loudness tags**: import વખતે baeએ માપેલી loudnessથી દરેક ફાઇલમાં track અને albumનું ReplayGain gain અને peak લખે છે.

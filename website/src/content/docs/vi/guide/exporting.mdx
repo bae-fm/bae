@@ -3,23 +3,44 @@ title: Xuất
 description: Lấy nhạc ra, theo hình dạng bạn cần
 ---
 
-Không khóa người dùng đi theo cả hai chiều: bae không đổi tệp của bạn khi đưa vào, và không giữ chúng làm con tin khi đưa ra. Các bản phát hành cục bộ vốn đã chỉ là tệp trong thư mục của bạn. Các bản phát hành trên đám mây có thể được đưa về cục bộ bất cứ lúc nào, từng byte một. Và khi bạn cần một hình dạng *khác*, một bản mã hóa hợp với điện thoại, một ảnh đĩa sẵn sàng để ghi, xuất sẽ tạo nó mà không chạm vào bản gốc.
+Không khóa người dùng đi theo cả hai chiều: bae không đổi tệp của bạn khi đưa vào, và không giữ chúng làm con tin khi đưa ra. Các bản phát hành cục bộ vốn đã chỉ là tệp trong thư mục của bạn. Các bản phát hành trên đám mây có thể được đưa về cục bộ bất cứ lúc nào, từng byte một. Và khi bạn cần một hình dạng *khác*, chẳng hạn một bản mã hóa hợp với điện thoại, Save as… tạo ra nó mà không chạm vào bản gốc.
 
 ## Hai kiểu xuất
 
-- **Xuất track**: bấm phải vào một track, **Save as…**, chọn định dạng, xong.
-- **Xuất bản phát hành**: **Export…** trong menu album, hoặc Storage manager, xuất toàn bộ một bản phát hành ra một thư mục. Chạy trên hàng đợi có tiến độ, tạm dừng và thử lại.
+- **Export…**: trong menu album hoặc Storage manager, sao chép các tệp của một bản phát hành từng byte một vào một thư mục.
+- **Save as…**: trên một track, hoặc trong menu album với một bản phát hành, chuyển sang định dạng bạn chọn, chẳng hạn từ FLAC sang MP3 cho ô tô hoặc điện thoại. Nó ghi tệp mới; tệp gốc giữ nguyên.
 
-Tệp gốc được xuất nguyên trạng. Mọi thứ khác được mã hóa lại trên đường ra.
+Cả hai chạy trên một hàng đợi có hiển thị tiến độ. Bạn có thể tạm dừng và hủy; một mục thất bại ở lại trong hàng đợi cùng lỗi của nó cho đến khi bạn hủy. Một lần lưu giữ định dạng và thiết lập lúc nó được xếp vào hàng đợi, nên sửa chúng về sau không đổi gì ở những mục đã có trong hàng đợi.
 
-## Thiết lập sẵn
+## Định dạng
 
-Định dạng xuất là các preset bạn định nghĩa một lần trong Settings, Formats: FLAC, MP3, Opus, WAV hoặc AIFF, với tham số của codec (độ sâu bit cho định dạng lossless, bitrate cho định dạng lossy) và mẫu tên tệp dựng từ token như tựa đề, nghệ sĩ, album, năm và số track. Đặt preset mặc định cho track và một preset cho bản phát hành, rồi chọn việc xuất bản phát hành luôn hỏi đích đến hay luôn dùng một thư mục cố định.
+Một định dạng gồm một tên và một codec: FLAC, WAV, AIFF, MP3, AAC hoặc Opus. Chúng được giữ trong Settings, Save as, dưới **Formats**. **Add format…** thêm một định dạng, còn các mục **Edit…** và **Delete…** trong menu của nó sửa hoặc xóa nó. Một định dạng có **Name**, **Format** và một thiết lập chất lượng. Tên là duy nhất, nhưng hai định dạng có thể ghi cùng một thứ. Định dạng mới được đặt theo tên codec của nó, thêm số nếu tên đã dùng ("FLAC", "FLAC (2)"). FLAC và MP3 có sẵn.
 
-## Pregap trong bản xuất
+Mọi định dạng đều dùng được cho track và cho bản phát hành. Trong cửa sổ Save as, menu bật lên **Format** liệt kê mọi định dạng và bắt đầu bằng định dạng bạn dùng gần nhất. Mục cuối của nó, **Edit formats…**, mở phần thiết lập tại Save as; menu theo các thay đổi làm ở đó, và một định dạng thêm ở đó được chọn ngay.
 
-Bản rip CD có pregap đặt ra một câu hỏi thực khi xuất: âm thanh ẩn đi đâu? **Pregap** của mỗi preset chọn một chính sách:
+## Chất lượng
 
-- **Append except HTOA** và **Append including HTOA** gắn mỗi pregap vào cuối track trước, quy ước thường dùng; chúng khác nhau ở chỗ âm thanh ẩn trước track một bị bỏ hay được giữ ở đầu track một.
-- **Exclude** bỏ toàn bộ pregap: ranh giới track gọn, âm thanh ẩn bị bỏ.
-- **Single file + CUE**: đĩa là một tệp âm thanh cộng một CUE sheet, giữ đúng bố cục gốc.
+- **Bit depth**, cho FLAC, WAV và AIFF: **Same as source** hoặc **16-bit**. Nguồn có mất dữ liệu không có độ sâu riêng, nên được ghi ở 16 bit.
+- **Bitrate**, cho MP3, AAC và Opus: danh sách các bitrate mà bộ mã hóa của codec đó ghi được. MP3: 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320 kbps. AAC: 96, 128, 160, 192, 256, 320 kbps. Opus: 64, 96, 128, 160, 192, 256 kbps.
+
+## Tên
+
+Dưới **Names** trong Settings, Save as, một mẫu **File name** và một mẫu **Folder name** dùng cho mọi định dạng. Mẫu là một hàng các phần mà bạn sắp lại, bỏ đi và thêm vào, kèm bản xem trước của tên nó tạo ra. Tên tệp có thể dùng tiêu đề, nghệ sĩ, album, năm, số track, số đĩa và tổng số track. Tên thư mục có thể dùng nghệ sĩ, album, năm, hãng đĩa và số danh mục; phần nào bản phát hành không nêu thì bị bỏ.
+
+Save as… trên một track gợi ý tên theo mẫu, và chọn định dạng khác chỉ đổi phần mở rộng. Lưu một bản phát hành ghi các tệp của nó vào thư mục đặt tên theo mẫu thư mục. Lưu bản phát hành không bao giờ thay thế một tệp: nếu hai tên sẽ thành cùng một tệp trên ổ đĩa của bạn, việc lưu thất bại. Save as… trên một track riêng lẻ chỉ thay một tệp có sẵn khi bạn xác nhận.
+
+## Một tệp cho mỗi track
+
+Mỗi lần lưu ghi một tệp cho mỗi track, với một quy tắc chung cho khoảng lặng. Pregap, đã lưu hoặc được tạo, đi vào cuối track trước nó, và âm thanh ẩn trước track 1 ở lại đầu track 1. Một bản phát hành lưu dưới dạng một ảnh đĩa kèm tệp CUE được tách tại các dấu track. Save as… không ghi tệp CUE.
+
+## Sao chép thay vì mã hóa
+
+Một track là cả một tệp, đã ở đúng định dạng lossless được chọn, với độ sâu mà định dạng đó ghi, thì được sao chép thay vì mã hóa lại. WAV và AIFF tính ở 16 hoặc 24 bit. Thẻ, ảnh bìa và tên được ghi mới. Định dạng có mất dữ liệu luôn mã hóa.
+
+## Bổ sung
+
+Dưới **Extras** trong Settings, Save as, ba công tắc áp dụng cho mọi định dạng. Tất cả đều bật lúc đầu.
+
+- **Embed cover art**: đặt ảnh bìa vào từng tệp.
+- **Cover image in the folder**: lưu một bản phát hành cũng ghi `cover.jpg` vào thư mục của nó.
+- **Loudness tags**: ghi vào mỗi tệp độ lợi và đỉnh ReplayGain của track và album, từ độ lớn âm thanh bae đo lúc nhập.

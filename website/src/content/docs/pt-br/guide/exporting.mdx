@@ -3,23 +3,44 @@ title: Exportação
 description: Tire música da biblioteca no formato de que você precisa
 ---
 
-Sem aprisionamento funciona nos dois sentidos: bae não altera seus arquivos ao entrar, e não os mantém reféns ao sair. Lançamentos locais já são só arquivos nas suas pastas. Lançamentos na nuvem podem voltar a ser locais a qualquer momento, byte por byte. E quando você precisa de um formato diferente, uma codificação adequada ao telefone, uma imagem pronta para gravação, a exportação o produz sem tocar nos originais.
+Não prender o usuário vale nos dois sentidos: o bae não altera seus arquivos na entrada e não os mantém reféns na saída. Lançamentos locais já são apenas arquivos nas suas pastas. Lançamentos na nuvem podem voltar a ser locais a qualquer momento, byte a byte. E quando você precisa de uma forma *diferente*, como uma codificação própria para o celular, Salvar como… a produz sem tocar nos originais.
 
 ## Duas exportações
 
-- **Exportação de faixa**: clique com o botão direito em uma faixa, **Salvar como…**, escolha um formato, pronto.
-- **Exportação de lançamento**: **Exportar…** no menu do álbum, ou o Gerenciador de armazenamento, exporta um lançamento inteiro para uma pasta. Roda em uma fila com progresso, pausa e nova tentativa.
+- **Exportar…**: no menu do álbum ou no Gerenciador de armazenamento, copia os arquivos de um lançamento byte a byte para uma pasta.
+- **Salvar como…**: numa faixa, ou no menu do álbum para um lançamento, converte para um formato à sua escolha, por exemplo de FLAC para MP3 para o carro ou o celular. Grava arquivos novos; os originais ficam como estão.
 
-Arquivos originais são exportados como estão. Todo o resto é codificado na saída.
+As duas rodam numa fila com progresso. Você pode pausá-las e cancelá-las; uma que falha fica na fila com o erro até você cancelá-la. Um salvamento guarda o formato e os ajustes com que entrou na fila, então editá-los depois não muda nada do que já está na fila.
 
-## Predefinições
+## Formatos
 
-Formatos de exportação são predefinições que você define uma vez em Configurações, Formatos: FLAC, MP3, Opus, WAV ou AIFF, com os parâmetros do codec (profundidade de bits para formatos sem perdas, taxa de bits para os com perdas) e um modelo de nome de arquivo feito de tokens como título, artista, álbum, ano e número da faixa. Defina uma predefinição padrão para faixas e uma para lançamentos, e escolha se exportações de lançamento sempre pedem um destino ou sempre usam uma pasta fixa.
+Um formato é um nome e um codec: FLAC, WAV, AIFF, MP3, AAC ou Opus. Ficam em Configurações, Salvar como, em **Formatos**. **Adicionar formato…** adiciona um, e os itens **Editar…** e **Excluir…** do seu menu o alteram ou o removem. Um formato tem um **Nome**, um **Formato** e um ajuste de qualidade. Os nomes são únicos, mas dois formatos podem gravar o mesmo. Um formato novo recebe o nome do seu codec, com um número quando esse nome já está em uso (“FLAC”, “FLAC (2)”). FLAC e MP3 já vêm incluídos.
 
-## Pregaps em exportações
+Todo formato vale para faixas e para lançamentos. Na janela Salvar como, o menu **Formato** lista todos os formatos e começa pelo último usado. Seu último item, **Editar formatos…**, abre os ajustes em Salvar como; o menu acompanha as mudanças feitas lá, e um formato adicionado lá é escolhido na hora.
 
-Rips de CD com pregaps levantam uma pergunta real na saída: para onde vai o áudio oculto? O ajuste **Pregap** de cada predefinição escolhe uma política:
+## Qualidade
 
-- **Anexar exceto HTOA** e **Anexar incluindo HTOA** acrescentam cada pregap ao fim da faixa anterior, a convenção comum; eles diferem em se o áudio oculto antes da faixa um é descartado ou mantido no início da faixa um.
-- **Excluir** descarta os pregaps inteiros: limites de faixa limpos, áudio oculto omitido.
-- **Arquivo único + CUE**: o disco como um arquivo de áudio mais uma folha CUE, preservando o layout original exatamente.
+- **Profundidade de bits**, para FLAC, WAV e AIFF: **Igual à origem** ou **16-bit**. Uma fonte com perda não tem profundidade própria, então é gravada em 16 bits.
+- **Taxa de bits**, para MP3, AAC e Opus: uma lista das taxas que o codificador do codec grava. MP3: 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320 kbps. AAC: 96, 128, 160, 192, 256, 320 kbps. Opus: 64, 96, 128, 160, 192, 256 kbps.
+
+## Nomes
+
+Em **Nomes**, dentro de Configurações, Salvar como, um padrão de **Nome do arquivo** e um de **Nome da pasta** servem a todos os formatos. Um padrão é uma fileira de peças que você reordena, remove e adiciona, com uma prévia do nome que ele gera. Um nome de arquivo pode usar título, artista, álbum, ano, número da faixa, número do disco e total de faixas. Um nome de pasta pode usar artista, álbum, ano, selo e número de catálogo; uma peça que o lançamento não informa é omitida.
+
+Salvar como… numa faixa sugere o nome do padrão, e escolher outro formato muda só a extensão. Salvar um lançamento grava seus arquivos numa pasta com o nome do padrão de pasta. Salvar um lançamento nunca substitui um arquivo: se dois nomes seriam o mesmo arquivo no seu disco, o salvamento falha. Salvar como… numa faixa avulsa só substitui um arquivo existente se você confirmar.
+
+## Um arquivo por faixa
+
+Todo salvamento grava um arquivo por faixa, com uma só regra para os intervalos. Um pregap, armazenado ou gerado, vai para o fim da faixa anterior, e o áudio oculto antes da faixa um fica no início da faixa um. Um lançamento armazenado como uma imagem com folha CUE é dividido nas marcas de faixa. Salvar como… não grava folha CUE.
+
+## Copiar em vez de codificar
+
+Uma faixa que é um arquivo inteiro já no formato sem perda escolhido, na profundidade que o formato grava, é copiada em vez de recodificada. WAV e AIFF contam com 16 ou 24 bits. Tags, capa e nome são gravados de novo. Um formato com perda sempre codifica.
+
+## Extras
+
+Em **Extras**, dentro de Configurações, Salvar como, três chaves valem para todos os formatos. Todas começam ligadas.
+
+- **Incorporar capa**: coloca a capa em cada arquivo.
+- **Imagem da capa na pasta**: salvar um lançamento também grava `cover.jpg` na sua pasta.
+- **Tags de volume**: grava em cada arquivo o ganho e o pico ReplayGain da faixa e do álbum, a partir do volume que o bae mediu na importação.

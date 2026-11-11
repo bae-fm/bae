@@ -3,23 +3,44 @@ title: Dışa aktarma
 description: Müziği ihtiyacınız olan biçimde dışarı alın
 ---
 
-Kilitlenmeme iki yönde işler: bae dosyalarınızı içeri alırken değiştirmez ve dışarı çıkarırken onları rehin tutmaz. Yerel sürümler zaten klasörlerinizdeki dosyalardır. Buluttaki sürümler de herhangi bir zamanda bayt bayt aynı şekilde yeniden yerel yapılabilir. Farklı bir biçime, telefon dostu bir kodlamaya veya yazmaya hazır bir imaja ihtiyacınız olduğunda dışa aktarma bunu özgünlere dokunmadan üretir.
+Kilitlenmemek iki yönde de geçerlidir: bae dosyalarınızı içeri alırken değiştirmez, dışarı verirken de rehin tutmaz. Yerel sürümler zaten klasörlerinizdeki dosyalardır. Bulutaki sürümler istediğiniz zaman bayt bayt yeniden yerel yapılabilir. Telefona uygun bir kodlama gibi *farklı* bir biçime ihtiyaç duyduğunuzda, Farklı kaydet… onu özgün dosyalara dokunmadan üretir.
 
 ## İki dışa aktarma
 
-- **Parça dışa aktarma**: bir parçaya sağ tıklayın, **Farklı kaydet…** seçin, bir biçim seçin, biter.
-- **Sürüm dışa aktarma**: albüm menüsündeki **Dışa aktar…** veya Depolama yöneticisi bütün bir sürümü bir klasöre dışa aktarır. İlerleme, duraklatma ve yeniden denemeyle bir kuyrukta çalışır.
+- **Dışa aktar…**: albüm menüsünde veya Depolama yöneticisinde, bir sürümün dosyalarını bayt bayt bir klasöre kopyalar.
+- **Farklı kaydet…**: bir parçada, ya da albüm menüsünde bir sürüm için, seçtiğiniz bir biçime dönüştürür; örneğin araba veya telefon için FLAC'tan MP3'e. Yeni dosyalar yazar; özgün dosyalar olduğu gibi kalır.
 
-Özgün dosyalar oldukları gibi dışa aktarılır. Geri kalan her şey çıkış sırasında kodlanır.
+İkisi de ilerleme gösteren bir kuyrukta çalışır. Duraklatabilir ve iptal edebilirsiniz; başarısız olan iş, siz iptal edene kadar hatasıyla kuyrukta kalır. Bir kaydetme, kuyruğa alındığı biçimi ve ayarları korur; bu yüzden sonradan yaptığınız düzenleme kuyruktakilerden hiçbirini değiştirmez.
 
-## Ön ayarlar
+## Biçimler
 
-Dışa aktarma biçimleri Ayarlar, Biçimler içinde bir kez tanımladığınız ön ayarlardır: FLAC, MP3, Opus, WAV veya AIFF; codec parametreleriyle (kayıpsız biçimler için bit derinliği, kayıplı olanlar için bit hızı) ve title, artist, album, year ve track number gibi belirteçlerden kurulan bir dosya adı şablonuyla. Parçalar için ve sürümler için varsayılan ön ayar belirleyin; sürüm dışa aktarmalarının her zaman hedef sormasını mı yoksa her zaman sabit bir klasör kullanmasını mı istediğinizi seçin.
+Bir biçim, bir ad ve bir kodektir: FLAC, WAV, AIFF, MP3, AAC veya Opus. Ayarlar, Farklı kaydet altında **Biçimler** bölümünde tutulurlar. **Biçim ekle…** bir tane ekler; menüsündeki **Düzenle…** ve **Sil…** öğeleri onu değiştirir veya kaldırır. Bir biçimin bir **Ad**, bir **Biçim** ve bir kalite ayarı vardır. Adlar benzersizdir, ama iki biçim aynı şeyi yazabilir. Yeni bir biçim kodeğinin adını alır; ad doluysa bir numara eklenir (“FLAC”, “FLAC (2)”). FLAC ve MP3 yerleşik gelir.
 
-## Dışa aktarmalarda pregap'ler
+Her biçim hem parçalar hem sürümler için çalışır. Farklı kaydet penceresinde **Biçim** açılır menüsü tüm biçimleri listeler ve en son kullandığınızla başlar. Son öğesi **Biçimleri düzenle…**, ayarları Farklı kaydet bölümünde açar; menü orada yapılan değişiklikleri izler ve orada eklenen biçim hemen seçilir.
 
-Pregap içeren CD rip'leri çıkışta gerçek bir soru doğurur: gizli ses nereye gider? Her ön ayarın **Pregap** seçeneği bir politika seçer:
+## Kalite
 
-- **HTOA hariç sona ekle** ve **HTOA dahil sona ekle** her pregap'i önceki parçanın sonuna ekler, yaygın kural budur; aralarındaki fark, birinci parçadan önce gizlenen sesin atılması ya da birinci parçanın başında tutulmasıdır.
-- **Hariç tut** pregap'leri bütünüyle atar: temiz parça sınırları, gizli ses atlanır.
-- **Tek dosya + CUE**: diski tek bir ses dosyası ve bir CUE sayfası olarak, özgün yerleşimi tam koruyarak üretir.
+- **Bit derinliği**, FLAC, WAV ve AIFF için: **Kaynakla aynı** veya **16-bit**. Kayıplı bir kaynağın kendi derinliği yoktur, bu yüzden 16 bit yazılır.
+- **Bit hızı**, MP3, AAC ve Opus için: kodeğin kodlayıcısının yazdığı bit hızlarının listesi. MP3: 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320 kbps. AAC: 96, 128, 160, 192, 256, 320 kbps. Opus: 64, 96, 128, 160, 192, 256 kbps.
+
+## Adlar
+
+Ayarlar, Farklı kaydet altında **Adlar** bölümünde, tüm biçimler için bir **Dosya adı** deseni ve bir **Klasör adı** deseni geçerlidir. Desen, yeniden sıraladığınız, çıkardığınız ve eklediğiniz bir parça dizisidir; ürettiği adın önizlemesi gösterilir. Dosya adı parça adı, sanatçı, albüm, yıl, parça numarası, disk numarası ve parça sayısını kullanabilir. Klasör adı sanatçı, albüm, yıl, plak şirketi ve katalog numarasını kullanabilir; sürümün belirtmediği parça atlanır.
+
+Bir parçada Farklı kaydet…, desenin adını önerir; başka bir biçim seçmek yalnızca uzantıyı değiştirir. Bir sürümü kaydetmek dosyalarını klasör deseninin adlandırdığı bir klasöre yazar. Sürüm kaydetme hiçbir dosyanın yerine yazmaz: iki ad sürücünüzde aynı dosya olacaksa kaydetme başarısız olur. Tek bir parçada Farklı kaydet…, var olan bir dosyanın yerine yalnızca siz onaylarsanız yazar.
+
+## Parça başına bir dosya
+
+Her kaydetme parça başına bir dosya yazar ve boşluklar için tek bir kural uygular. Saklanan ya da üretilen bir pregap, önceki parçanın sonuna gider; birinci parçadan önceki gizli ses birinci parçanın başında kalır. CUE sayfasıyla tek bir imaj olarak saklanan bir sürüm, parça işaretlerinde bölünür. Farklı kaydet… CUE sayfası yazmaz.
+
+## Kodlamak yerine kopyalamak
+
+Seçilen kayıpsız biçimde olan ve biçimin yazdığı derinlikte bulunan, tek başına bütün bir dosya olan parça yeniden kodlanmaz, kopyalanır. WAV ve AIFF 16 veya 24 bitte sayılır. Etiketler, kapak ve ad yeniden yazılır. Kayıplı bir biçim her zaman kodlar.
+
+## Ekstralar
+
+Ayarlar, Farklı kaydet altında **Ekstralar** bölümünde, her biçim için geçerli üç anahtar vardır. Hepsi başlangıçta açıktır.
+
+- **Kapak resmini göm**: kapağı her dosyaya yerleştirir.
+- **Klasörde kapak görseli**: sürüm kaydetme klasörüne ayrıca `cover.jpg` yazar.
+- **Ses düzeyi etiketleri**: her dosyaya, bae'nin içe aktarırken ölçtüğü ses düzeyinden parça ve albüm ReplayGain kazancını ve tepe değerini yazar.

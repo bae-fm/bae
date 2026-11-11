@@ -3,23 +3,44 @@ title: Export
 description: Získejte hudbu ven ve tvaru, který potřebujete
 ---
 
-Žádné uzamčení do aplikace platí oběma směry: bae nemění vaše soubory při vstupu a nedrží je jako rukojmí při výstupu. Místní vydání jsou už teď soubory ve vašich složkách. Vydání v cloudu lze kdykoli vrátit zpět na místní disk, bajt po bajtu. A když potřebujete *jiný* tvar, kódování vhodné pro telefon nebo obraz připravený k vypálení, export ho vytvoří bez zásahu do originálů.
+Žádné uzamčení platí oběma směry: bae nemění vaše soubory při vstupu a nedrží je jako rukojmí při výstupu. Místní vydání jsou už jen soubory ve vašich složkách. Vydání v cloudu lze kdykoli znovu zpřístupnit lokálně, bajt po bajtu. A když potřebujete *jiný* tvar, například kódování vhodné pro telefon, vytvoří ho Uložit jako…, aniž by se dotklo originálů.
 
 ## Dva exporty
 
-- **Export stopy**: klikněte pravým tlačítkem na stopu, **Uložit jako…**, vyberte formát, hotovo.
-- **Export vydání**: **Export…** v nabídce alba nebo Správce úložiště exportuje celé vydání do složky. Běží ve frontě s průběhem, pozastavením a opakováním.
+- **Exportovat…**: v nabídce alba nebo ve Správci úložiště zkopíruje soubory vydání bajt po bajtu do složky.
+- **Uložit jako…**: u skladby, nebo v nabídce alba u vydání, převede do zvoleného formátu, například z FLAC do MP3 pro auto nebo telefon. Zapíše nové soubory; originály zůstanou, jak jsou.
 
-Původní soubory se exportují tak, jak jsou. Všechno ostatní se při výstupu kóduje.
+Oba běží ve frontě s průběhem. Můžete je pozastavit a zrušit; neúspěšná úloha zůstane ve frontě se svou chybou, dokud ji nezrušíte. Uložení si ponechá formát a nastavení, se kterými bylo zařazeno, takže pozdější úprava nezmění nic z toho, co už ve frontě čeká.
 
-## Předvolby
+## Formáty
 
-Exportní formáty jsou předvolby, které jednou definujete v Nastavení, Formáty: FLAC, MP3, Opus, WAV nebo AIFF, s parametry kodeku (bitová hloubka pro bezeztrátové formáty, datový tok pro ztrátové) a šablonou názvu souboru postavenou z tokenů jako title, artist, album, year a track number. Nastavte výchozí předvolbu pro stopy a jednu pro vydání a zvolte, zda se exporty vydání vždy ptají na cíl, nebo vždy používají pevnou složku.
+Formát je název a kodek: FLAC, WAV, AIFF, MP3, AAC nebo Opus. Jsou uloženy v Nastavení, Uložit jako, v části **Formáty**. **Přidat formát…** jeden přidá a položky **Upravit…** a **Smazat…** v jeho nabídce ho změní nebo odeberou. Formát má **Název**, **Formát** a jedno nastavení kvality. Názvy jsou jedinečné, ale dva formáty mohou zapisovat totéž. Nový formát se jmenuje po svém kodeku, s číslem, pokud je název obsazený („FLAC“, „FLAC (2)“). FLAC a MP3 jsou vestavěné.
 
-## Pregapy v exportech
+Každý formát funguje pro skladby i pro vydání. V okně Uložit jako nabídka **Formát** uvádí všechny formáty a začíná posledním použitým. Její poslední položka, **Upravit formáty…**, otevře nastavení na Uložit jako; nabídka sleduje změny provedené tam a formát tam přidaný je hned vybrán.
 
-Ripy CD s pregapy při exportu kladou skutečnou otázku: kam patří skrytý zvuk? **Pregap** každé předvolby vybírá pravidlo:
+## Kvalita
 
-- **Připojit kromě HTOA** a **Připojit včetně HTOA** přidají každý pregap na konec předchozí stopy, což je běžná konvence; liší se v tom, zda se zvuk skrytý před první stopou zahodí, nebo ponechá na začátku první stopy.
-- **Vyloučit** pregapy úplně zahodí: čisté hranice stop, skrytý zvuk vynechán.
-- **Jeden soubor + CUE**: disk jako jeden zvukový soubor plus CUE sheet, s přesným zachováním původního rozložení.
+- **Bitová hloubka**, pro FLAC, WAV a AIFF: **Stejná jako zdroj** nebo **16-bit**. Ztrátový zdroj nemá vlastní hloubku, a zapíše se proto v 16 bitech.
+- **Datový tok**, pro MP3, AAC a Opus: seznam datových toků, které zapisuje kodér daného kodeku. MP3: 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320 kbps. AAC: 96, 128, 160, 192, 256, 320 kbps. Opus: 64, 96, 128, 160, 192, 256 kbps.
+
+## Názvy
+
+V části **Názvy** v Nastavení, Uložit jako, platí pro všechny formáty jeden vzor pro **Název souboru** a jeden pro **Název složky**. Vzor je řada dílů, které přeřazujete, odebíráte a přidáváte, s náhledem názvu, který vytvoří. Název souboru může použít název skladby, interpreta, album, rok, číslo skladby, číslo disku a počet skladeb. Název složky může použít interpreta, album, rok, vydavatele a katalogové číslo; díl, který vydání neuvádí, se vynechá.
+
+Uložit jako… u skladby navrhne název podle vzoru a volba jiného formátu změní jen příponu. Uložení vydání zapíše jeho soubory do složky pojmenované podle vzoru složky. Uložení vydání nikdy nepřepíše soubor: pokud by dva názvy byly na vašem disku tentýž soubor, uložení selže. Uložit jako… u jedné skladby přepíše existující soubor jen po vašem potvrzení.
+
+## Jeden soubor na skladbu
+
+Každé uložení zapíše jeden soubor na skladbu, s jedním pravidlem pro mezery. Pregap, uložený nebo vygenerovaný, jde na konec předchozí skladby a skryté audio před první skladbou zůstane na jejím začátku. Vydání uložené jako jeden obraz s listem CUE se rozdělí na značkách skladeb. Uložit jako… list CUE nezapisuje.
+
+## Kopírování místo kódování
+
+Skladba, která je celým souborem už ve zvoleném bezeztrátovém formátu, v hloubce, kterou formát zapisuje, se zkopíruje místo opětovného kódování. WAV a AIFF se počítají při 16 nebo 24 bitech. Značky, obal a název se zapíší znovu. Ztrátový formát vždy kóduje.
+
+## Doplňky
+
+V části **Doplňky** v Nastavení, Uložit jako, platí pro každý formát tři přepínače. Všechny jsou zpočátku zapnuté.
+
+- **Vložit obal alba**: vloží obal do každého souboru.
+- **Obrázek obalu ve složce**: uložení vydání zapíše do jeho složky také `cover.jpg`.
+- **Značky hlasitosti**: zapíše do každého souboru zisk a špičku ReplayGain skladby a alba z hlasitosti, kterou bae změřil při importu.

@@ -3,23 +3,44 @@ title: Exportation
 description: Sortir la musique, dans la forme dont vous avez besoin
 ---
 
-L’absence d’enfermement vaut dans les deux sens : bae ne change pas vos fichiers à l’entrée, et ne les retient pas à la sortie. Les sorties locales sont déjà de simples fichiers dans vos dossiers. Les sorties dans le cloud peuvent redevenir locales à tout moment, octet pour octet. Et quand vous avez besoin d’une forme *différente*, un encodage adapté au téléphone, une image prête à graver, l’exportation la produit sans toucher aux originaux.
+L’absence d’enfermement joue dans les deux sens : bae ne modifie pas vos fichiers à l’entrée et ne les retient pas à la sortie. Les sorties locales ne sont déjà que des fichiers dans vos dossiers. Les sorties dans le cloud peuvent redevenir locales à tout moment, octet pour octet. Et quand il vous faut une forme *différente*, comme un encodage adapté au téléphone, Enregistrer sous… la produit sans toucher aux originaux.
 
 ## Deux exportations
 
-- **Exportation de piste** : clic droit sur une piste, **Enregistrer sous…**, choisissez un format, terminé.
-- **Exportation de sortie** : **Exporter…** dans le menu de l’album, ou le Gestionnaire de stockage, exporte toute une sortie vers un dossier. S’exécute dans une file avec progression, pause et nouvel essai.
+- **Exporter…** : dans le menu de l’album ou le Gestionnaire de stockage, copie les fichiers d’une sortie octet pour octet dans un dossier.
+- **Enregistrer sous…** : sur une piste, ou dans le menu de l’album pour une sortie, convertit vers un format de votre choix, par exemple du FLAC en MP3 pour une voiture ou un téléphone. Cela écrit de nouveaux fichiers ; les originaux restent tels quels.
 
-Les fichiers originaux sont exportés tels quels. Tout le reste est encodé en sortie.
+Les deux passent par une file avec progression. Vous pouvez les mettre en pause et les annuler ; un travail échoué reste dans la file avec son erreur jusqu’à ce que vous l’annuliez. Un enregistrement garde le format et les réglages avec lesquels il a été mis en file : les modifier ensuite ne change rien à ce qui est déjà en file.
 
-## Préréglages
+## Formats
 
-Les formats d’exportation sont des préréglages que vous définissez une fois dans Réglages, Formats : FLAC, MP3, Opus, WAV ou AIFF, avec les paramètres du codec (profondeur de bits pour les formats sans perte, débit pour les formats avec perte) et un modèle de nom de fichier construit depuis des jetons comme titre, artiste, album, année et numéro de piste. Définissez un préréglage par défaut pour les pistes et un pour les sorties, puis choisissez si les exportations de sortie demandent toujours une destination ou utilisent toujours un dossier fixe.
+Un format est un nom et un codec : FLAC, WAV, AIFF, MP3, AAC ou Opus. Ils se trouvent dans Réglages, Enregistrer sous, sous **Formats**. **Ajouter un format…** en ajoute un ; les éléments **Modifier…** et **Supprimer…** de son menu le modifient ou le suppriment. Un format a un **Nom**, un **Format** et un réglage de qualité. Les noms sont uniques, mais deux formats peuvent écrire la même chose. Un nouveau format porte le nom de son codec, avec un numéro si ce nom est pris (« FLAC », « FLAC (2) »). FLAC et MP3 sont fournis d’office.
 
-## Pregaps dans les exportations
+Chaque format fonctionne pour les pistes comme pour les sorties. Dans la fenêtre Enregistrer sous, le menu **Format** liste tous les formats et commence par le dernier utilisé. Son dernier élément, **Modifier les formats…**, ouvre les réglages sur Enregistrer sous ; le menu suit les changements faits là, et un format ajouté là est aussitôt choisi.
 
-Les rips de CD avec pregaps posent une vraie question à la sortie : où va l’audio caché ? Le réglage **Pregap** de chaque préréglage choisit une politique :
+## Qualité
 
-- **Ajouter sauf HTOA** et **Ajouter avec HTOA** ajoutent chaque pregap à la fin de la piste précédente, la convention courante ; ils diffèrent selon que l’audio caché avant la piste un est supprimé ou conservé au début de la piste un.
-- **Exclure** supprime entièrement les pregaps : limites de pistes nettes, audio caché omis.
-- **Fichier unique + CUE** : le disque comme un seul fichier audio plus une fiche CUE, en préservant exactement la disposition d’origine.
+- **Résolution**, pour FLAC, WAV et AIFF : **Identique à la source** ou **16-bit**. Une source avec perte n’a pas de résolution propre : elle est écrite en 16 bits.
+- **Débit**, pour MP3, AAC et Opus : une liste des débits que l’encodeur du codec écrit. MP3 : 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320 kbps. AAC : 96, 128, 160, 192, 256, 320 kbps. Opus : 64, 96, 128, 160, 192, 256 kbps.
+
+## Noms
+
+Sous **Noms** dans Réglages, Enregistrer sous, un modèle de **Nom du fichier** et un modèle de **Nom du dossier** servent pour tous les formats. Un modèle est une rangée d’éléments que vous réordonnez, retirez et ajoutez, avec un aperçu du nom qu’il produit. Un nom de fichier peut utiliser le titre, l’artiste, l’album, l’année, le numéro de piste, le numéro de disque et le nombre de pistes. Un nom de dossier peut utiliser l’artiste, l’album, l’année, le label et le numéro de catalogue ; un élément que la sortie ne renseigne pas est omis.
+
+Enregistrer sous… sur une piste propose le nom du modèle, et choisir un autre format ne change que l’extension. Enregistrer une sortie écrit ses fichiers dans un dossier nommé par le modèle de dossier. L’enregistrement d’une sortie ne remplace jamais un fichier : si deux noms désignent le même fichier sur votre disque, l’enregistrement échoue. Enregistrer sous… sur une seule piste ne remplace un fichier existant qu’après votre confirmation.
+
+## Un fichier par piste
+
+Chaque enregistrement écrit un fichier par piste, avec une seule règle pour les silences. Un pregap, stocké ou généré, va à la fin de la piste précédente, et l’audio caché avant la piste un reste au début de la piste un. Une sortie stockée comme une seule image avec une feuille CUE est découpée aux repères de pistes. Enregistrer sous… n’écrit pas de feuille CUE.
+
+## Copier au lieu d’encoder
+
+Une piste qui est un fichier entier déjà dans le format sans perte choisi, à la résolution que le format écrit, est copiée au lieu d’être réencodée. WAV et AIFF comptent à 16 ou 24 bits. Ses étiquettes, sa pochette et son nom sont réécrits. Un format avec perte encode toujours.
+
+## Options supplémentaires
+
+Sous **Options supplémentaires** dans Réglages, Enregistrer sous, trois interrupteurs s’appliquent à tous les formats. Tous sont activés au départ.
+
+- **Intégrer la pochette** : place la pochette dans chaque fichier.
+- **Image de pochette dans le dossier** : l’enregistrement d’une sortie écrit aussi `cover.jpg` dans son dossier.
+- **Étiquettes de volume** : écrit pour chaque fichier le gain et le pic ReplayGain de la piste et de l’album, d’après le volume que bae a mesuré à l’import.

@@ -3,23 +3,44 @@ title: Exporteren
 description: Haal muziek eruit in de vorm die je nodig hebt
 ---
 
-Geen insluiting werkt twee kanten op: bae verandert je bestanden niet bij het importeren, en houdt ze ook niet vast bij het exporteren. Lokale releases zijn al gewone bestanden in je mappen. Releases in de cloud kunnen op elk moment weer lokaal worden gemaakt, byte voor byte. En wanneer je een *andere* vorm nodig hebt, een telefoonvriendelijke codering, een brandklare image, maakt exporteren die zonder de originelen aan te raken.
+Geen lock-in werkt twee kanten op: bae verandert je bestanden niet bij het binnenkomen en houdt ze niet vast bij het naar buiten gaan. Lokale releases zijn al gewoon bestanden in je mappen. Releases in de cloud kun je op elk moment weer lokaal maken, byte voor byte. En als je een *andere* vorm nodig hebt, zoals een telefoonvriendelijke codering, maakt Bewaar als… die zonder de originelen aan te raken.
 
 ## Twee exports
 
-- **Trackexport**: rechtsklik op een track, **Bewaar als…**, kies een formaat, klaar.
-- **Release-export**: met **Exporteren…** in het albummenu, of vanuit Opslagbeheer, exporteer je een hele release naar een map. Dit draait in een wachtrij met voortgang, pauzeren en opnieuw proberen.
+- **Exporteren…**: in het albummenu of in Opslagbeheer kopieert de bestanden van een release byte voor byte naar een map.
+- **Bewaar als…**: bij een nummer, of in het albummenu bij een release, zet om naar een formaat naar keuze, bijvoorbeeld FLAC naar MP3 voor de auto of de telefoon. Het schrijft nieuwe bestanden; de originelen blijven zoals ze zijn.
 
-Originele bestanden worden geexporteerd zoals ze zijn. Al het andere wordt bij het exporteren gecodeerd.
+Beide lopen via een wachtrij met voortgang. Je kunt ze pauzeren en annuleren; een mislukte taak blijft met zijn fout in de wachtrij staan tot je hem annuleert. Een opslag houdt het formaat en de instellingen waarmee hij in de wachtrij kwam, dus later bewerken verandert niets aan wat al in de wachtrij staat.
 
-## Presets
+## Formaten
 
-Exportformaten zijn presets die je een keer definieert in Instellingen, Formaten: FLAC, MP3, Opus, WAV of AIFF, met de parameters van de codec (bitdiepte voor verliesloze formaten, bitrate voor formaten met verlies) en een bestandsnaamsjabloon opgebouwd uit tokens zoals title, artist, album, year en track number. Stel een standaardpreset in voor tracks en een voor releases, en kies of release-exports altijd om een bestemming vragen of altijd een vaste map gebruiken.
+Een formaat is een naam en een codec: FLAC, WAV, AIFF, MP3, AAC of Opus. Ze staan in Instellingen, Bewaar als, onder **Formaten**. Met **Voeg formaat toe…** voeg je er een toe, en met **Bewerken…** en **Verwijderen…** in het menu wijzig of verwijder je er een. Een formaat heeft een **Naam**, een **Formaat** en één kwaliteitsinstelling. Namen zijn uniek, maar twee formaten mogen hetzelfde schrijven. Een nieuw formaat krijgt de naam van zijn codec, met een nummer als die naam al bezet is (“FLAC”, “FLAC (2)”). FLAC en MP3 zijn standaard aanwezig.
 
-## Pregaps in exports
+Elk formaat werkt voor nummers en voor releases. In het Bewaar als-venster toont het menu **Formaat** alle formaten en begint het met het laatst gebruikte. Het laatste onderdeel, **Formaten bewerken…**, opent de instellingen bij Bewaar als; het menu volgt wijzigingen daar, en een formaat dat je daar toevoegt is meteen gekozen.
 
-CD-rips met pregaps stellen bij exporteren een echte vraag: waar gaat de verborgen audio heen? In elke preset kiest **Pregap** een beleid:
+## Kwaliteit
 
-- **Toevoegen behalve HTOA** en **Toevoegen inclusief HTOA** voegen elke pregap toe aan het einde van de vorige track, de gebruikelijke conventie; ze verschillen in of de audio die verborgen zit voor track een wordt weggelaten of aan het begin van track een wordt bewaard.
-- **Uitsluiten** laat pregaps helemaal weg: duidelijke trackgrenzen, verborgen audio weggelaten.
-- **Eén bestand + CUE**: de disc als een audiobestand plus een CUE-sheet, met de oorspronkelijke indeling exact behouden.
+- **Bitdiepte**, voor FLAC, WAV en AIFF: **Zelfde als bron** of **16-bit**. Een bron met verlies heeft zelf geen diepte en wordt met 16 bits geschreven.
+- **Bitsnelheid**, voor MP3, AAC en Opus: een lijst van de bitrates die de encoder van de codec schrijft. MP3: 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320 kbps. AAC: 96, 128, 160, 192, 256, 320 kbps. Opus: 64, 96, 128, 160, 192, 256 kbps.
+
+## Namen
+
+Onder **Namen** in Instellingen, Bewaar als, gelden één patroon voor de **Bestandsnaam** en één voor de **Mapnaam** voor alle formaten. Een patroon is een rij onderdelen die je herordent, verwijdert en toevoegt, met een voorbeeld van de naam die het maakt. Een bestandsnaam kan titel, artiest, album, jaar, tracknummer, schijfnummer en aantal tracks gebruiken. Een mapnaam kan artiest, album, jaar, label en catalogusnummer gebruiken; een onderdeel dat de release niet vermeldt valt weg.
+
+Bewaar als… bij een nummer stelt de naam van het patroon voor, en een ander formaat kiezen verandert alleen de extensie. Een release opslaan schrijft de bestanden in een map die het mappatroon benoemt. Een release opslaan vervangt nooit een bestand: als twee namen op je schijf hetzelfde bestand zouden zijn, mislukt het opslaan. Bewaar als… bij één nummer vervangt een bestaand bestand alleen na jouw bevestiging.
+
+## Eén bestand per nummer
+
+Elke opslag schrijft één bestand per nummer, met één regel voor pauzes. Een pregap, opgeslagen of gegenereerd, komt aan het eind van het nummer ervoor, en de verborgen audio voor nummer één blijft aan het begin van nummer één. Een release die als één image met CUE-sheet is opgeslagen, wordt gesplitst op de trackmarkeringen. Bewaar als… schrijft geen CUE-sheet.
+
+## Kopiëren in plaats van coderen
+
+Een nummer dat een heel bestand is dat al in het gekozen verliesvrije formaat staat, met de diepte die het formaat schrijft, wordt gekopieerd in plaats van opnieuw gecodeerd. WAV en AIFF tellen mee met 16 of 24 bits. Tags, hoes en naam worden opnieuw geschreven. Een formaat met verlies codeert altijd.
+
+## Extra's
+
+Onder **Extra's** in Instellingen, Bewaar als, gelden drie schakelaars voor elk formaat. Ze staan allemaal eerst aan.
+
+- **Hoesafbeelding insluiten**: zet de hoes in elk bestand.
+- **Hoesafbeelding in de map**: een release opslaan schrijft ook `cover.jpg` in de map.
+- **Luidheidstags**: schrijft voor elk bestand de ReplayGain-versterking en -piek van nummer en album, uit het volume dat bae bij het importeren mat.

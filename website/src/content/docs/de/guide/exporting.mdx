@@ -3,23 +3,44 @@ title: Exportieren
 description: Hole Musik in der Form heraus, die du brauchst
 ---
 
-Kein Einsperren gilt in beide Richtungen: bae verändert deine Dateien beim Hineinholen nicht und hält sie beim Herausholen nicht fest. Lokale Releases sind ohnehin nur Dateien in deinen Ordnern. Releases in der Cloud können jederzeit wieder lokal gemacht werden, Byte für Byte. Und wenn du eine *andere* Form brauchst, eine telefonfreundliche Kodierung oder ein brennfertiges Image, erzeugt der Export sie, ohne die Originale zu berühren.
+Keine Bindung gilt in beide Richtungen: bae ändert deine Dateien beim Import nicht und hält sie beim Export nicht fest. Lokale Releases sind ohnehin nur Dateien in deinen Ordnern. Releases in der Cloud lassen sich jederzeit wieder lokal machen, Byte für Byte. Und wenn du eine *andere* Form brauchst, etwa eine handytaugliche Kodierung, erzeugt Speichern unter … sie, ohne die Originale anzufassen.
 
 ## Zwei Exporte
 
-- **Track-Export**: Rechtsklick auf einen Track, **Speichern unter …**, Format wählen, fertig.
-- **Release-Export**: **Exportieren…** im Albummenü oder die Speicherverwaltung exportiert ein ganzes Release in einen Ordner. Läuft in einer Warteschlange mit Fortschritt, Pause und erneutem Versuch.
+- **Exportieren…**: im Albummenü oder in der Speicherverwaltung kopiert die Dateien eines Releases Byte für Byte in einen Ordner.
+- **Speichern unter …**: bei einem Titel, oder im Albummenü bei einem Release, konvertiert in ein Format deiner Wahl, etwa FLAC zu MP3 für Auto oder Handy. Es schreibt neue Dateien; die Originale bleiben, wie sie sind.
 
-Originaldateien werden so exportiert, wie sie sind. Alles andere wird beim Export kodiert.
+Beide laufen in einer Warteschlange mit Fortschritt. Du kannst sie pausieren und abbrechen; ein fehlgeschlagener Auftrag bleibt mit seinem Fehler in der Warteschlange, bis du ihn abbrichst. Ein Speichern behält das Format und die Einstellungen, mit denen es eingereiht wurde; spätere Änderungen betreffen nichts, was schon in der Warteschlange ist.
 
-## Vorgaben
+## Formate
 
-Exportformate sind Vorgaben, die du einmal unter Einstellungen, Formate definierst: FLAC, MP3, Opus, WAV oder AIFF, mit den Parametern des Codecs (Bittiefe bei verlustfreien Formaten, Bitrate bei verlustbehafteten) und einer Dateinamenvorlage aus Platzhaltern wie Titel, Künstler, Album, Jahr und Tracknummer. Lege eine Standardvorgabe für Tracks und eine für Releases fest und wähle, ob Release-Exporte immer nach einem Ziel fragen oder immer einen festen Ordner verwenden.
+Ein Format ist ein Name und ein Codec: FLAC, WAV, AIFF, MP3, AAC oder Opus. Sie liegen unter **Formate** in Einstellungen, Speichern unter. Mit **Format hinzufügen…** fügst du eines hinzu, über **Bearbeiten…** und **Löschen …** im Menü ändern oder entfernen es. Ein Format hat einen **Name**, ein **Format** und eine Qualitätseinstellung. Namen sind eindeutig, aber zwei Formate dürfen dasselbe schreiben. Ein neues Format heißt wie sein Codec, mit einer Nummer, wenn der Name vergeben ist („FLAC“, „FLAC (2)“). FLAC und MP3 sind von Anfang an da.
 
-## Pregaps in Exporten
+Jedes Format funktioniert für Titel und für Releases. Im Speichern unter-Fenster listet das Menü **Format** alle Formate und beginnt mit dem zuletzt benutzten. Sein letzter Eintrag, **Formate bearbeiten…**, öffnet die Einstellungen bei Speichern unter; das Menü folgt Änderungen dort, und ein dort hinzugefügtes Format ist sofort gewählt.
 
-CD-Rips mit Pregaps stellen beim Export eine echte Frage: Wohin kommt das versteckte Audio? In jeder Vorgabe wählt **Pregap** eine Regel:
+## Qualität
 
-- **Anhängen außer HTOA** und **Anhängen einschließlich HTOA** hängen jeden Pregap an das Ende des vorherigen Tracks, die übliche Konvention; sie unterscheiden sich darin, ob das vor Track eins versteckte Audio verworfen oder am Anfang von Track eins behalten wird.
-- **Ausschließen** lässt Pregaps ganz weg: saubere Trackgrenzen, verstecktes Audio ausgelassen.
-- **Einzeldatei + CUE**: die Disc als eine Audiodatei plus CUE-Sheet, mit exakt erhaltenem ursprünglichem Layout.
+- **Bittiefe** bei FLAC, WAV und AIFF: **Wie die Quelle** oder **16-bit**. Eine verlustbehaftete Quelle hat keine eigene Tiefe und wird mit 16 Bit geschrieben.
+- **Bitrate** bei MP3, AAC und Opus: eine Liste der Bitraten, die der Encoder des Codecs schreibt. MP3: 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320 kbps. AAC: 96, 128, 160, 192, 256, 320 kbps. Opus: 64, 96, 128, 160, 192, 256 kbps.
+
+## Namen
+
+Unter **Namen** in Einstellungen, Speichern unter gelten ein Muster für den **Dateiname** und eines für den **Ordnername** für alle Formate. Ein Muster ist eine Reihe von Bausteinen, die du umordnest, entfernst und hinzufügst, mit einer Vorschau auf den Namen, den es ergibt. Ein Dateiname kann Titel, Künstler, Album, Jahr, Titelnummer, Discnummer und Titelanzahl verwenden. Ein Ordnername kann Künstler, Album, Jahr, Label und Katalognummer verwenden; ein Baustein, den das Release nicht angibt, entfällt.
+
+Speichern unter … bei einem Titel schlägt den Namen des Musters vor, und ein anderes Format ändert nur die Endung. Beim Speichern eines Releases entstehen die Dateien in einem Ordner, den das Ordnermuster benennt. Ein Release-Speichern ersetzt nie eine Datei: Wären zwei Namen auf deinem Laufwerk dieselbe Datei, schlägt das Speichern fehl. Speichern unter … bei einem einzelnen Titel ersetzt eine vorhandene Datei nur nach deiner Bestätigung.
+
+## Eine Datei pro Titel
+
+Jedes Speichern schreibt eine Datei pro Titel, mit einer Regel für Lücken. Ein Pregap, gespeichert oder erzeugt, kommt ans Ende des vorigen Titels, und das versteckte Audio vor Titel eins bleibt am Anfang von Titel eins. Ein Release, das als ein Image mit CUE-Sheet vorliegt, wird an seinen Titelmarken geteilt. Speichern unter … schreibt kein CUE-Sheet.
+
+## Kopieren statt kodieren
+
+Ein Titel, der eine ganze Datei im gewählten verlustfreien Format ist, in der Tiefe, die das Format schreibt, wird kopiert statt neu kodiert. WAV und AIFF zählen mit 16 oder 24 Bit. Tags, Cover und Name werden neu geschrieben. Ein verlustbehaftetes Format kodiert immer.
+
+## Extras
+
+Unter **Extras** in Einstellungen, Speichern unter gelten drei Schalter für jedes Format. Alle sind anfangs an.
+
+- **Cover einbetten**: legt das Cover in jede Datei.
+- **Titelbild im Ordner**: ein Release-Speichern schreibt zusätzlich `cover.jpg` in seinen Ordner.
+- **Lautstärke-Tags**: schreibt für jede Datei ReplayGain-Gain und -Peak für Titel und Album, aus der Lautstärke, die bae beim Import gemessen hat.

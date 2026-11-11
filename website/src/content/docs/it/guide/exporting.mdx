@@ -3,23 +3,44 @@ title: Esportazione
 description: Estrai musica nella forma che ti serve
 ---
 
-L'assenza di vincoli vale in entrambi i sensi: bae non cambia i tuoi file quando entrano e non li tiene in ostaggio quando escono. Le release locali sono già soltanto file nelle tue cartelle. Le release nel cloud possono tornare locali in qualunque momento, byte per byte. E quando ti serve una forma *diversa*, una codifica adatta al telefono, un'immagine pronta da masterizzare, l'esportazione la produce senza toccare gli originali.
+L’assenza di vincoli vale in entrambe le direzioni: bae non modifica i tuoi file in entrata e non li trattiene in uscita. Le release locali sono già semplici file nelle tue cartelle. Le release nel cloud possono tornare locali in qualsiasi momento, byte per byte. E quando ti serve una forma *diversa*, come una codifica adatta al telefono, Salva con nome… la produce senza toccare gli originali.
 
 ## Due esportazioni
 
-- **Esportazione traccia**: fai clic destro su una traccia, **Salva con nome…**, scegli un formato, fatto.
-- **Esportazione release**: **Esporta…** nel menu dell'album, oppure Gestione archiviazione, esporta un'intera release in una cartella. Viene eseguita in coda con avanzamento, pausa e nuovo tentativo.
+- **Esporta…**: nel menu dell’album o in Gestione archiviazione, copia i file di una release byte per byte in una cartella.
+- **Salva con nome…**: su un brano, o nel menu dell’album per una release, converte in un formato a tua scelta, per esempio da FLAC a MP3 per l’auto o il telefono. Scrive file nuovi; gli originali restano come sono.
 
-I file originali vengono esportati così come sono. Tutto il resto viene codificato in uscita.
+Entrambe passano da una coda con avanzamento. Puoi metterle in pausa e annullarle; una che fallisce resta in coda con il suo errore finché non la annulli. Un salvataggio mantiene il formato e le impostazioni con cui è stato messo in coda, quindi modificarli dopo non cambia nulla di ciò che è già in coda.
 
-## Preimpostazioni
+## Formati
 
-I formati di esportazione sono preimpostazioni che definisci una volta in Impostazioni, Formati: FLAC, MP3, Opus, WAV o AIFF, con i parametri del codec (profondità in bit per i formati senza perdita, bitrate per quelli con perdita) e un modello di nome file costruito da token come titolo, artista, album, anno e numero di traccia. Imposta una preimpostazione predefinita per le tracce e una per le release, e scegli se le esportazioni di release chiedono sempre una destinazione o usano sempre una cartella fissa.
+Un formato è un nome e un codec: FLAC, WAV, AIFF, MP3, AAC oppure Opus. Si trovano in Impostazioni, Salva con nome, sotto **Formati**. **Aggiungi formato…** ne aggiunge uno, e le voci **Modifica…** e **Elimina…** del suo menu lo modificano o lo rimuovono. Un formato ha un **Nome**, un **Formato** e un’impostazione di qualità. I nomi sono unici, ma due formati possono scrivere la stessa cosa. Un nuovo formato prende il nome del suo codec, con un numero se quel nome è già usato («FLAC», «FLAC (2)»). FLAC e MP3 sono già presenti.
 
-## Pregap nelle esportazioni
+Ogni formato vale per i brani e per le release. Nella finestra Salva con nome, il menu **Formato** elenca tutti i formati e parte dall’ultimo usato. La sua ultima voce, **Modifica formati…**, apre le impostazioni su Salva con nome; il menu segue le modifiche fatte lì, e un formato aggiunto lì viene scelto subito.
 
-I rip di CD con pregap pongono una domanda reale in uscita: dove va l'audio nascosto? In ogni preimpostazione, **Pregap** sceglie una regola:
+## Qualità
 
-- **Aggiungi eccetto HTOA** e **Aggiungi includendo HTOA** aggiungono ogni pregap alla fine della traccia precedente, la convenzione comune; differiscono nel fatto che l'audio nascosto prima della traccia uno venga scartato o mantenuto all'inizio della traccia uno.
-- **Escludi** scarta del tutto i pregap: confini di traccia puliti, audio nascosto omesso.
-- **File singolo + CUE**: il disco come un file audio più un foglio CUE, preservando esattamente la disposizione originale.
+- **Profondità bit**, per FLAC, WAV e AIFF: **Come la sorgente** oppure **16-bit**. Una sorgente con perdita non ha una profondità propria, quindi si scrive a 16 bit.
+- **Bitrate**, per MP3, AAC e Opus: un elenco dei bitrate che l’encoder del codec scrive. MP3: 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320 kbps. AAC: 96, 128, 160, 192, 256, 320 kbps. Opus: 64, 96, 128, 160, 192, 256 kbps.
+
+## Nomi
+
+Sotto **Nomi** in Impostazioni, Salva con nome, un modello per il **Nome del file** e uno per il **Nome della cartella** valgono per tutti i formati. Un modello è una fila di elementi che riordini, rimuovi e aggiungi, con un’anteprima del nome che produce. Un nome di file può usare titolo, artista, album, anno, numero di traccia, numero di disco e totale tracce. Un nome di cartella può usare artista, album, anno, etichetta e numero di catalogo; un elemento che la release non indica viene omesso.
+
+Salva con nome… su un brano propone il nome del modello, e scegliere un altro formato cambia solo l’estensione. Il salvataggio di una release scrive i suoi file in una cartella chiamata dal modello cartella. Il salvataggio di una release non sostituisce mai un file: se due nomi sarebbero lo stesso file sul tuo disco, il salvataggio fallisce. Salva con nome… su un singolo brano sostituisce un file esistente solo se confermi.
+
+## Un file per brano
+
+Ogni salvataggio scrive un file per brano, con una sola regola per gli spazi. Un pregap, memorizzato o generato, va in fondo al brano precedente, e l’audio nascosto prima del brano uno resta all’inizio del brano uno. Una release memorizzata come un’unica immagine con foglio CUE viene divisa ai segni dei brani. Salva con nome… non scrive un foglio CUE.
+
+## Copiare invece di codificare
+
+Un brano che è un intero file già nel formato lossless scelto, alla profondità che il formato scrive, viene copiato invece di essere ricodificato. WAV e AIFF contano a 16 o 24 bit. Tag, copertina e nome sono scritti da capo. Un formato con perdita codifica sempre.
+
+## Extra
+
+Sotto **Extra** in Impostazioni, Salva con nome, tre interruttori valgono per ogni formato. Sono tutti attivi all’inizio.
+
+- **Incorpora copertina**: mette la copertina in ogni file.
+- **Immagine di copertina nella cartella**: il salvataggio di una release scrive anche `cover.jpg` nella sua cartella.
+- **Tag di volume**: scrive per ogni file guadagno e picco ReplayGain di brano e di album, dal volume misurato da bae all’importazione.

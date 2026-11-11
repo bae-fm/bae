@@ -3,23 +3,44 @@ title: Eksport
 description: Wyprowadź muzykę w potrzebnej postaci
 ---
 
-Brak uwięzienia działa w obie strony: bae nie zmienia plików przy imporcie i nie zatrzymuje ich przy eksporcie. Lokalne wydania są już zwykłymi plikami w Twoich folderach. Wydania w chmurze można w każdej chwili ponownie zapisać lokalnie, bajt w bajt. A gdy potrzebujesz *innej* postaci, kodowania na telefon albo obrazu gotowego do nagrania, eksport tworzy ją bez dotykania oryginałów.
+Brak uzależnienia działa w obie strony: bae nie zmienia twoich plików przy wejściu i nie przetrzymuje ich przy wyjściu. Lokalne wydania to już po prostu pliki w twoich folderach. Wydania w chmurze można w każdej chwili znów zrobić lokalnymi, bajt w bajt. A gdy potrzebujesz *innej* postaci, na przykład kodowania odpowiedniego dla telefonu, Zapisz jako… ją tworzy bez dotykania oryginałów.
 
 ## Dwa eksporty
 
-- **Eksport utworu**: kliknij utwór prawym przyciskiem, **Zapisz jako…**, wybierz format i gotowe.
-- **Eksport wydania**: **Eksportuj…** w menu albumu albo okno Menedżer magazynu eksportuje całe wydanie do folderu. Działa w kolejce z postępem, pauzą i ponowieniem.
+- **Eksportuj…**: w menu albumu lub w oknie Menedżer magazynu kopiuje pliki wydania bajt w bajt do folderu.
+- **Zapisz jako…**: przy utworze, a dla wydania w menu albumu, konwertuje do wybranego formatu, na przykład z FLAC do MP3 na samochód lub telefon. Zapisuje nowe pliki; oryginały zostają bez zmian.
 
-Oryginalne pliki eksportują się tak, jak są. Wszystko inne jest kodowane po drodze.
+Oba działają w kolejce z postępem. Można je wstrzymać i anulować; nieudane zadanie zostaje w kolejce z komunikatem błędu, dopóki go nie anulujesz. Zapis zachowuje format i ustawienia, z którymi trafił do kolejki, więc ich późniejsza zmiana nie wpływa na to, co już czeka w kolejce.
 
-## Presety
+## Formaty
 
-Formaty eksportu to presety definiowane raz w Ustawienia, Formaty: FLAC, MP3, Opus, WAV albo AIFF, z parametrami kodeka (głębia bitowa dla formatów bezstratnych, bitrate dla stratnych) i szablonem nazwy pliku zbudowanym z tokenów takich jak tytuł, wykonawca, album, rok i numer utworu. Ustaw domyślny preset dla utworów i osobny dla wydań oraz wybierz, czy eksporty wydań zawsze pytają o miejsce docelowe, czy zawsze używają stałego folderu.
+Format to nazwa i kodek: FLAC, WAV, AIFF, MP3, AAC lub Opus. Są przechowywane w Ustawienia, Zapisz jako, w sekcji **Formaty**. **Dodaj format…** dodaje nowy, a pozycje **Edytuj…** i **Usuń…** w jego menu zmieniają go lub usuwają. Format ma **Nazwa**, **Format** i jedno ustawienie jakości. Nazwy są unikalne, ale dwa formaty mogą zapisywać to samo. Nowy format dostaje nazwę swojego kodeka, z numerem, gdy ta nazwa jest zajęta („FLAC”, „FLAC (2)”). FLAC i MP3 są wbudowane.
 
-## Pregapy w eksporcie
+Każdy format działa dla utworów i dla wydań. W oknie Zapisz jako menu **Format** wymienia wszystkie formaty i zaczyna od ostatnio użytego. Jego ostatnia pozycja, **Edytuj formaty…**, otwiera ustawienia na Zapisz jako; menu podąża za zmianami wprowadzonymi tam, a dodany tam format jest od razu wybrany.
 
-Ripy CD z pregapami stawiają przy eksporcie realne pytanie: gdzie trafia ukryte audio? W każdym presecie zasadę wybiera ustawienie **Pregap**:
+## Jakość
 
-- **Dołącz z wyjątkiem HTOA** i **Dołącz wraz z HTOA** dołączają każdy pregap na końcu poprzedniego utworu, zgodnie z częstą konwencją; różnią się tym, czy audio ukryte przed pierwszym utworem jest pomijane, czy zostaje na początku pierwszego utworu.
-- **Wyklucz** całkowicie pomija pregapy: czyste granice utworów, bez ukrytego audio.
-- **Jeden plik + CUE**: płyta jako jeden plik audio plus arkusz CUE, z dokładnym zachowaniem pierwotnego układu.
+- **Głębia bitowa**, dla FLAC, WAV i AIFF: **Taka jak źródło** lub **16-bit**. Źródło stratne nie ma własnej głębi, więc jest zapisywane w 16 bitach.
+- **Szybkość transmisji**, dla MP3, AAC i Opus: lista przepływności, które zapisuje koder danego kodeka. MP3: 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320 kbps. AAC: 96, 128, 160, 192, 256, 320 kbps. Opus: 64, 96, 128, 160, 192, 256 kbps.
+
+## Nazwy
+
+W sekcji **Nazwy** w Ustawienia, Zapisz jako, jeden wzorzec **Nazwa pliku** i jeden wzorzec **Nazwa folderu** obsługują wszystkie formaty. Wzorzec to rząd elementów, które przestawiasz, usuwasz i dodajesz, z podglądem nazwy, jaką tworzy. Nazwa pliku może używać tytułu, wykonawcy, albumu, roku, numeru utworu, numeru dysku i liczby utworów. Nazwa folderu może używać wykonawcy, albumu, roku, wytwórni i numeru katalogowego; element, którego wydanie nie podaje, jest pomijany.
+
+Zapisz jako… przy utworze podpowiada nazwę z wzorca, a wybór innego formatu zmienia tylko rozszerzenie. Zapis wydania zapisuje jego pliki w folderze nazwanym według wzorca folderu. Zapis wydania nigdy nie zastępuje pliku: jeśli dwie nazwy oznaczałyby na twoim dysku ten sam plik, zapis się nie powiedzie. Zapisz jako… przy pojedynczym utworze zastępuje istniejący plik tylko po twoim potwierdzeniu.
+
+## Jeden plik na utwór
+
+Każdy zapis tworzy jeden plik na utwór, z jedną regułą dla przerw. Pregap, zapisany lub wygenerowany, trafia na koniec poprzedniego utworu, a ukryte audio przed utworem pierwszym zostaje na początku utworu pierwszego. Wydanie zapisane jako jeden obraz z arkuszem CUE jest dzielone na znacznikach utworów. Zapisz jako… nie zapisuje arkusza CUE.
+
+## Kopiowanie zamiast kodowania
+
+Utwór będący całym plikiem, który już jest w wybranym formacie bezstratnym, o głębi, jaką format zapisuje, jest kopiowany, a nie kodowany ponownie. WAV i AIFF liczą się przy 16 lub 24 bitach. Tagi, okładka i nazwa są zapisywane od nowa. Format stratny zawsze koduje.
+
+## Dodatki
+
+W sekcji **Dodatki** w Ustawienia, Zapisz jako, trzy przełączniki działają dla każdego formatu. Wszystkie są na początku włączone.
+
+- **Osadź okładkę**: umieszcza okładkę w każdym pliku.
+- **Okładka w folderze**: zapis wydania zapisuje też `cover.jpg` w jego folderze.
+- **Tagi głośności**: zapisuje w każdym pliku wzmocnienie i szczyt ReplayGain utworu i albumu, na podstawie głośności zmierzonej przez bae przy imporcie.

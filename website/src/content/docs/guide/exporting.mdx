@@ -3,23 +3,44 @@ title: Exporting
 description: Get music out, in the shape you need it
 ---
 
-No lock-in cuts both ways: bae doesn't change your files coming in, and it doesn't hold them hostage going out. Local releases are already just files in your folders. Releases in the cloud can be made local again at any time, byte-for-byte. And when you need a *different* shape, a phone-friendly encode, a burn-ready image, exporting produces it without touching the originals.
+No lock-in cuts both ways: bae doesn't change your files coming in, and it doesn't hold them hostage going out. Local releases are already just files in your folders. Releases in the cloud can be made local again at any time, byte-for-byte. And when you need a *different* shape, such as a phone-friendly encode, Save as produces it without touching the originals.
 
 ## Two exports
 
-- **Track export**: right-click a track, **Save as…**, pick a format, done.
-- **Release export**: **Export…** in the album menu, or the Storage manager, exports a whole release to a folder. Runs on a queue with progress, pause, and retry.
+- **Export…**: in the album menu or the Storage manager, copies a release's files byte for byte into a folder.
+- **Save as…**: on a track, or in the album menu for a release, converts to a format you choose, such as FLAC to MP3 for a car or a phone. It writes new files; the originals stay as they are.
 
-Original files export as they are. Everything else is encoded on the way out.
+Both run on a queue with progress. You can pause and cancel them; a failed one stays in the queue with its error until you cancel it. A save keeps the format and settings it was queued with, so editing them later changes nothing already queued.
 
-## Presets
+## Formats
 
-Export formats are presets you define once in Settings, Formats: FLAC, MP3, Opus, WAV, or AIFF, with the codec's parameters (bit depth for the lossless formats, bitrate for the lossy ones) and a filename template built from tokens like title, artist, album, year, and track number. Set a default preset for tracks and one for releases, and choose whether release exports always ask for a destination or always use a fixed folder.
+A format is a name and a codec: FLAC, WAV, AIFF, MP3, AAC, or Opus. They are kept in Settings, Save as, under **Formats**. **Add format…** adds one, and its **Edit…** and **Delete…** menu items change or remove one. A format has a **Name**, a **Format**, and one quality setting. Names are unique, but two formats may write the same thing. A new format is named after its codec, with a number added when that name is taken ("FLAC", "FLAC (2)"). FLAC and MP3 come built in.
 
-## Pregaps in exports
+Every format works for tracks and for releases. In the Save as window the **Format** pop-up lists every format and starts with the one you used last. Its last item, **Edit formats…**, opens Settings at Save as; the pop-up follows changes made there, and a format you add there is selected at once.
 
-CD rips with pregaps raise a real question on the way out: where does the hidden audio go? Each preset's **Pregap** picks a policy:
+## Quality
 
-- **Append except HTOA** and **Append including HTOA** add each pregap to the end of the previous track, the common convention; they differ in whether the audio hidden before track one is dropped or kept at the start of track one.
-- **Exclude** drops pregaps entirely: clean track boundaries, hidden audio omitted.
-- **Single file + CUE**: the disc as one audio file plus a CUE sheet, preserving the original layout exactly.
+- **Bit depth**, for FLAC, WAV, and AIFF: **Same as source** or **16-bit**. A lossy source has no depth of its own, so it is written at 16 bits.
+- **Bitrate**, for MP3, AAC, and Opus: a list of the bitrates that codec's encoder writes. MP3: 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, and 320 kbps. AAC: 96, 128, 160, 192, 256, and 320 kbps. Opus: 64, 96, 128, 160, 192, and 256 kbps.
+
+## Names
+
+Under **Names** in Settings, Save as, one **File name** pattern and one **Folder name** pattern serve every format. A pattern is a row of pieces you reorder, remove, and add, with a preview of the name it makes. A file name can use title, artist, album, year, track number, disc number, and track total. A folder name can use artist, album, year, label, and catalog number; a piece the release doesn't state is left out.
+
+A track's Save as suggests the pattern's name, and choosing another format changes only the extension. A release save writes its files into a folder named by the folder pattern. A release save never replaces a file: if two names would be the same file on your drive, the save fails. A single track's Save as replaces an existing file only when you confirm.
+
+## One file per track
+
+Every save writes one file per track, with one rule for gaps. A pregap, stored or generated, goes at the end of the track before it, and the hidden audio before track one stays at the start of track one. A release stored as one image with a CUE sheet is split at its track marks. Save as does not write a CUE sheet.
+
+## Copying instead of encoding
+
+A track that is a whole file already in the chosen lossless format, at the depth the format writes, is copied rather than re-encoded. WAV and AIFF count at 16 or 24 bits. Its tags, cover, and name are written fresh. A lossy format always encodes.
+
+## Extras
+
+Under **Extras** in Settings, Save as, three switches apply to every format. All start on.
+
+- **Embed cover art**: puts the cover in each file.
+- **Cover image in the folder**: a release save also writes `cover.jpg` in its folder.
+- **Loudness tags**: writes each file's ReplayGain track and album gain and peak, from the loudness bae measured at import.
