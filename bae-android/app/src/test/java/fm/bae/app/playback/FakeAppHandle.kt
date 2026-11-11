@@ -527,6 +527,10 @@ internal open class FakeAppHandle(
         unfaked("setLibraryFullWidth")
     }
 
+    override suspend fun setAskBeforeUnpinning(enabled: Boolean) {
+        unfaked("setAskBeforeUnpinning")
+    }
+
     override suspend fun setMaxConcurrentDownloads(n: UInt) {
         unfaked("setMaxConcurrentDownloads")
     }

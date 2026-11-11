@@ -31,6 +31,8 @@ CREATE TABLE IF NOT EXISTS preferences (
     max_concurrent_downloads INTEGER NOT NULL CHECK (max_concurrent_downloads BETWEEN 1 AND 8),
     show_remaining_time INTEGER NOT NULL CHECK (show_remaining_time IN (0, 1)),
     library_full_width  INTEGER NOT NULL CHECK (library_full_width IN (0, 1)),
+    -- Whether Unpin asks before removing a release's files from this device.
+    ask_before_unpinning INTEGER NOT NULL CHECK (ask_before_unpinning IN (0, 1)),
     -- Where an import goes: this device or the cloud.
     import_destination TEXT NOT NULL
         CHECK (import_destination IN ('this_device', 'cloud')),
@@ -114,10 +116,10 @@ INSERT OR IGNORE INTO preferences (
     singleton, discogs_key, replay_gain_mode, last_save_preset, save_embed_cover,
     save_cover_file, save_loudness_tags, pause_between_sides, side_pause_countdown_seconds,
     max_concurrent_uploads, max_concurrent_downloads, show_remaining_time,
-    library_full_width, import_destination, identify_automatically,
+    library_full_width, ask_before_unpinning, import_destination, identify_automatically,
     import_when_identified, ask_musicbrainz, ask_discogs, cast_enabled,
     cast_transcode_format, mcp_enabled, mcp_port, subsonic_enabled, subsonic_port,
     subsonic_username, subsonic_network, subsonic_network_interface)
 VALUES (
-    1, NULL, 'off', 'flac', 1, 1, 1, 1, NULL, 3, 3, 0, 0, 'cloud', 1, 0, 1, 1, 0, 'mp3', 0,
+    1, NULL, 'off', 'flac', 1, 1, 1, 1, NULL, 3, 3, 0, 0, 1, 'cloud', 1, 0, 1, 1, 0, 'mp3', 0,
     47777, 0, 4533, '', 'this_machine', NULL);

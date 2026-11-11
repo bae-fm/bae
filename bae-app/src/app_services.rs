@@ -423,6 +423,7 @@ impl AppServices {
     delegate_async!(manager, set_side_pause_countdown => set_side_pause_countdown(countdown: bae_preferences::SidePauseCountdown) -> Result<(), bae_preferences::PreferencesError>);
     delegate_async!(manager, set_show_remaining_time => set_show_remaining_time(enabled: bool) -> Result<(), bae_preferences::PreferencesError>);
     delegate_async!(manager, set_library_full_width => set_library_full_width(enabled: bool) -> Result<(), bae_preferences::PreferencesError>);
+    delegate_async!(manager, set_ask_before_unpinning => set_ask_before_unpinning(enabled: bool) -> Result<(), bae_preferences::PreferencesError>);
     delegate_async!(manager, set_identify_automatically => set_identify_automatically(enabled: bool) -> Result<(), bae_preferences::PreferencesError>);
     delegate_async!(manager, set_import_when_identified => set_import_when_identified(enabled: bool) -> Result<(), bae_preferences::PreferencesError>);
     delegate_async!(manager, set_import_destination => set_import_destination(destination: bae_preferences::ImportDestination) -> Result<(), bae_preferences::PreferencesError>);

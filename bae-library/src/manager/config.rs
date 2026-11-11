@@ -101,6 +101,13 @@ impl LibraryManager {
         library_full_width: bool
     );
 
+    pref_setter!(
+        /// Whether Unpin asks before removing a release's files from this
+        /// device.
+        set_ask_before_unpinning,
+        ask_before_unpinning: bool
+    );
+
     /// Whether releases found from now on are identified on its own. It
     /// affects no candidate already found or queued.
     pub async fn set_identify_automatically(

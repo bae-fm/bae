@@ -228,6 +228,7 @@ impl BridgeConfig {
             identification,
             show_remaining_time,
             library_full_width,
+            ask_before_unpinning,
             cast_enabled,
             cast_transcode_format,
             mcp,
@@ -265,6 +266,7 @@ impl BridgeConfig {
             has_source_to_search: bae_preferences::asks_a_source(&config.prefs.metadata_sources()),
             show_remaining_time: *show_remaining_time,
             library_full_width: *library_full_width,
+            ask_before_unpinning: *ask_before_unpinning,
             save_presets: save_presets.iter().map(BridgeSavePreset::from_core).collect(),
             filename_pieces: save_filename_pattern
                 .pieces()

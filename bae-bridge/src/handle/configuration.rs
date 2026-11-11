@@ -73,6 +73,11 @@ forward! { async this => {
         Ok(this.services.set_library_full_width(enabled).await?)
     }
 
+    /// Whether Unpin asks before removing a release's files from this device.
+    fn set_ask_before_unpinning(enabled: bool) -> () {
+        Ok(this.services.set_ask_before_unpinning(enabled).await?)
+    }
+
     fn set_save_presets(presets: Vec<crate::types::BridgeSavePreset>) -> () {
         Ok(this
             .services

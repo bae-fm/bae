@@ -307,6 +307,10 @@ pub struct Preferences {
     /// centering its content in a width-capped column. Defaults to `false`
     /// (capped).
     pub library_full_width: bool,
+    /// Whether Unpin asks before removing a release's files from this device.
+    /// Defaults to `true`; the dialog's "Don't show this again" turns it off
+    /// and Settings turns it back on.
+    pub ask_before_unpinning: bool,
     /// Where an import puts its release: this device or the cloud.
     pub import_destination: ImportDestination,
     /// How identification runs: on its own or not, what an automatic run goes
@@ -357,6 +361,7 @@ impl Default for Preferences {
             max_concurrent_downloads: default_transfer_concurrency(),
             show_remaining_time: false,
             library_full_width: false,
+            ask_before_unpinning: true,
             import_destination: ImportDestination::default(),
             identification: IdentificationPreferences::default(),
             cast_enabled: false,

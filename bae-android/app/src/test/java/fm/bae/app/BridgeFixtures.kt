@@ -285,6 +285,7 @@ object BridgeFixtures {
             hasSourceToSearch = true,
             showRemainingTime = false,
             libraryFullWidth = false,
+            askBeforeUnpinning = true,
             savePresets =
                 listOf(
                     BridgeSavePreset(

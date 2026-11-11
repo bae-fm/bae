@@ -48,6 +48,8 @@ public struct Config: Equatable {
     /// centering its content in a width-capped column. A synced preference,
     /// read here by the library page.
     public let libraryFullWidth: Bool
+    /// Whether Unpin asks before removing a release's files from this device.
+    public let askBeforeUnpinning: Bool
     /// Configured export presets offered by release and track export.
     public let savePresets: [BridgeSavePreset]
     /// The one file name pattern every save names its files by, whatever the
@@ -92,6 +94,7 @@ public struct Config: Equatable {
         hasSourceToSearch = bridge.hasSourceToSearch
         showRemainingTime = bridge.showRemainingTime
         libraryFullWidth = bridge.libraryFullWidth
+        askBeforeUnpinning = bridge.askBeforeUnpinning
         savePresets = bridge.savePresets
         filenamePieces = bridge.filenamePieces
         filenamePatternError = bridge.filenamePatternError

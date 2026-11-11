@@ -178,6 +178,7 @@ struct SyncStatusStoreTests {
             hasSourceToSearch: true,
             showRemainingTime: false,
             libraryFullWidth: false,
+            askBeforeUnpinning: true,
             savePresets: [],
             filenamePieces: [],
             filenamePatternError: .empty,

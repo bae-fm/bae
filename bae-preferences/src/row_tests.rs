@@ -111,6 +111,7 @@ async fn every_preference_reads_back_as_set() {
         max_concurrent_downloads: NonZeroU32::new(4).unwrap(),
         show_remaining_time: true,
         library_full_width: true,
+        ask_before_unpinning: false,
         import_destination: ImportDestination::ThisDevice,
         identification: IdentificationPreferences {
             automatic: false,

@@ -121,6 +121,7 @@ fn preferences_on(sql: &impl SqlRead) -> rusqlite::Result<Preferences> {
             max_concurrent_downloads: concurrency("max_concurrent_downloads")?,
             show_remaining_time: flag("show_remaining_time")?,
             library_full_width: flag("library_full_width")?,
+            ask_before_unpinning: flag("ask_before_unpinning")?,
             import_destination: match row.get::<_, String>("import_destination")?.as_str() {
                 "this_device" => ImportDestination::ThisDevice,
                 "cloud" => ImportDestination::Cloud,
@@ -244,6 +245,7 @@ fn write_preferences_on(
         max_concurrent_downloads,
         show_remaining_time,
         library_full_width,
+        ask_before_unpinning,
         import_destination,
         identification,
         cast_enabled,
@@ -258,6 +260,7 @@ fn write_preferences_on(
              pause_between_sides = ?, side_pause_countdown_seconds = ?, \
              max_concurrent_uploads = ?, max_concurrent_downloads = ?, \
              show_remaining_time = ?, library_full_width = ?, \
+             ask_before_unpinning = ?, \
              import_destination = ?, identify_automatically = ?, \
              import_when_identified = ?, ask_musicbrainz = ?, ask_discogs = ?, \
              cast_enabled = ?, cast_transcode_format = ?, mcp_enabled = ?, mcp_port = ?, \
@@ -284,6 +287,7 @@ fn write_preferences_on(
             max_concurrent_downloads.get(),
             show_remaining_time,
             library_full_width,
+            ask_before_unpinning,
             match import_destination {
                 ImportDestination::ThisDevice => "this_device",
                 ImportDestination::Cloud => "cloud",

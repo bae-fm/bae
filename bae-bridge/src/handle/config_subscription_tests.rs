@@ -11,6 +11,7 @@ fn the_preferences_follow_each_write_until_cancelled() {
 
     let first = pull_until(handle.handle(), || values.clone().next(), |_| true);
     assert!(!first.show_remaining_time);
+    assert!(first.ask_before_unpinning, "Unpin asks first until the person says not to");
     assert_eq!(first.max_concurrent_uploads, 3);
     assert_eq!(
         first.max_concurrent_transfers,
@@ -36,6 +37,14 @@ fn the_preferences_follow_each_write_until_cancelled() {
         |value| value.max_concurrent_uploads == 5,
     );
     assert!(changed.show_remaining_time, "the earlier write stands");
+    handle
+        .handle()
+        .runtime
+        .block_on(handle.handle().clone().set_ask_before_unpinning(false))
+        .unwrap();
+    let unasked =
+        pull_until(handle.handle(), || values.clone().next(), |value| !value.ask_before_unpinning);
+    assert!(unasked.show_remaining_time, "the earlier writes stand");
 
     handle.handle().runtime.block_on(values.clone().cancel()).unwrap();
     assert!(matches!(

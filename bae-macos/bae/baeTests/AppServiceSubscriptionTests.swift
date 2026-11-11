@@ -412,57 +412,63 @@ private func makeAppService(
             bugReporter: CoreBugReporter()
         ),
         uiStore: uiStore,
-        config: BridgeConfig(
-            libraryId: "lib-test",
-            libraryPath: "/tmp/test",
-            pauseBetweenSides: false,
-            sidePauseCountdown: .off,
-            maxConcurrentUploads: 3,
-            maxConcurrentDownloads: 3,
-            maxConcurrentTransfers: 8,
-            identifyAutomatically: true,
-            importWhenIdentified: false,
-            importDestination: .cloud,
-            lookupCatalogs: [
-                BridgeLookupCatalogSetting(
-                    catalog: .musicBrainz,
-                    availability: .on,
-                    canChange: true
-                ),
-                BridgeLookupCatalogSetting(
-                    catalog: .discogs,
-                    availability: .on,
-                    canChange: true
-                ),
-            ],
-            hasSourceToSearch: true,
-            showRemainingTime: false,
-            libraryFullWidth: false,
-            savePresets: [],
-            filenamePieces: [],
-            filenamePatternError: .empty,
-            folderPieces: [
-                .value(value: .artist), .text(text: " - "),
-                .value(value: .album),
-            ],
-            folderPatternError: nil,
-            saveExtras: PreviewData.saveExtras,
-            lastSavePreset: "flac",
-            castEnabled: false,
-            castTranscodeFormat: .mp3,
-            mcp: BridgeMcpConfig(enabled: false, port: 47777),
-            subsonic: BridgeSubsonicConfig(
-                enabled: false,
-                port: 4533,
-                username: "",
-                network: .thisMachine
-            ),
-            discogsTokenStatus: .notConfigured,
-            discogsUsable: false
-        ),
+        config: testBridgeConfig(),
         seed: emptySeed,
         deviceName: "Test Mac",
         host: TestHost.make()
+    )
+}
+
+/// The configuration of a freshly opened test library.
+private func testBridgeConfig() -> BridgeConfig {
+    BridgeConfig(
+        libraryId: "lib-test",
+        libraryPath: "/tmp/test",
+        pauseBetweenSides: false,
+        sidePauseCountdown: .off,
+        maxConcurrentUploads: 3,
+        maxConcurrentDownloads: 3,
+        maxConcurrentTransfers: 8,
+        identifyAutomatically: true,
+        importWhenIdentified: false,
+        importDestination: .cloud,
+        lookupCatalogs: [
+            BridgeLookupCatalogSetting(
+                catalog: .musicBrainz,
+                availability: .on,
+                canChange: true
+            ),
+            BridgeLookupCatalogSetting(
+                catalog: .discogs,
+                availability: .on,
+                canChange: true
+            ),
+        ],
+        hasSourceToSearch: true,
+        showRemainingTime: false,
+        libraryFullWidth: false,
+        askBeforeUnpinning: true,
+        savePresets: [],
+        filenamePieces: [],
+        filenamePatternError: .empty,
+        folderPieces: [
+            .value(value: .artist), .text(text: " - "),
+            .value(value: .album),
+        ],
+        folderPatternError: nil,
+        saveExtras: PreviewData.saveExtras,
+        lastSavePreset: "flac",
+        castEnabled: false,
+        castTranscodeFormat: .mp3,
+        mcp: BridgeMcpConfig(enabled: false, port: 47777),
+        subsonic: BridgeSubsonicConfig(
+            enabled: false,
+            port: 4533,
+            username: "",
+            network: .thisMachine
+        ),
+        discogsTokenStatus: .notConfigured,
+        discogsUsable: false
     )
 }
 

@@ -45,6 +45,10 @@ pub struct BridgeConfig {
     /// centering its content in a width-capped column. A synced preference;
     /// the library page reads it and never stores a copy.
     pub library_full_width: bool,
+    /// Whether Unpin asks before removing a release's files from this
+    /// device. Per device; Settings turns it back on after the dialog's
+    /// "Don't show this again" turned it off.
+    pub ask_before_unpinning: bool,
     /// Configured export presets offered by release and track export.
     pub save_presets: Vec<BridgeSavePreset>,
     /// The one file name pattern every save names its files by, whatever the

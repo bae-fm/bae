@@ -120,6 +120,7 @@
                         },
                         showRemainingTime: false,
                         libraryFullWidth: libraryFullWidth,
+                        askBeforeUnpinning: true,
                         savePresets: savePresets,
                         filenamePieces: filenamePieces,
                         filenamePatternError: filenamePatternError,
