@@ -37,7 +37,8 @@
     var list = kids(props.children);
     return h('div', { className: 'bae-a-card' }, list.map(function (c, i) {
       var place = list.length === 1 ? 'alone' : i === 0 ? 'first' : i === list.length - 1 ? 'last' : 'middle';
-      if (c && c.type === AndroidRow) return React.cloneElement(c, { place: place });
+      var row = inner(c);
+      if (row && row.type === AndroidRow) return rewrap(c, React.cloneElement(row, { place: place }));
       return h('div', { key: c && c.key != null ? c.key : i, className: cx('bae-a-card-tile', 'bae-a-card-tile-' + place) }, c);
     }));
   }

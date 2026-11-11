@@ -108,7 +108,7 @@
           // A queue held (Paused, Waiting for network) with nothing moving: the button stays, as a pause symbol, so the hold can be seen.
           props.sync === 'paused' ? h(MacIconButton, { icon: 'pause', label: 'Activity' }) : null,
           h(MacIconButton, { icon: 'gear', label: 'Settings' }))),
-      h('div', { className: 'bae-m-main-body' }, h('div', { className: 'bae-m-main-content' }, kids(props.children).filter(function (c) { return !(c && c.type === MacQueuePanel); })), kids(props.children).filter(function (c) { return c && c.type === MacQueuePanel; })),
+      h('div', { className: 'bae-m-main-body' }, h('div', { className: 'bae-m-main-content' }, kids(props.children).filter(function (c) { var p = inner(c); return !(p && p.type === MacQueuePanel); })), kids(props.children).filter(function (c) { var p = inner(c); return p && p.type === MacQueuePanel; })),
       h(MacNowPlayingBar, { title: props.trackTitle, artist: props.trackArtist, album: props.trackAlbum, playing: props.playing, waiting: props.waiting, position: props.position, held: props.held, elapsed: props.elapsed, duration: props.duration, shuffle: props.shuffle, repeat: props.repeat, casting: props.casting, queueOpen: props.queueOpen }));
   }
 

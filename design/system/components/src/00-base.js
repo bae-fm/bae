@@ -19,11 +19,23 @@
     return out;
   }
 
+  // The canvas draws each part inside a <div class="sc-host-x" style="display:contents">. A part that reads the parts inside it (their type, their props) reads the one inside that wrapper; `rewrap` puts a changed part back inside its wrapper, so the canvas can still select it.
+  function isHost(c) {
+    return !!(c && c.type === 'div' && c.props && c.props.className === 'sc-host-x');
+  }
+  function inner(c) {
+    return isHost(c) ? React.Children.only(c.props.children) : c;
+  }
+  function rewrap(c, changed) {
+    return isHost(c) ? React.cloneElement(c, null, changed) : changed;
+  }
+
   // A hairline between children.
   function divided(list) {
     var out = [];
     list.forEach(function (c, i) {
-      if (i > 0 && !(c && c.props && c.props.nested)) out.push(h('div', { key: 'd' + i, className: 'bae-divider', 'aria-hidden': true }));
+      var p = inner(c);
+      if (i > 0 && !(p && p.props && p.props.nested)) out.push(h('div', { key: 'd' + i, className: 'bae-divider', 'aria-hidden': true }));
       out.push(c);
     });
     return out;

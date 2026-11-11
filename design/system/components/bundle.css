@@ -64,7 +64,7 @@
 .bae-m-alert-title { font-weight: 700; }
 .bae-m-alert-message { font-size: 11px; line-height: 14px; color: var(--text-secondary); }
 .bae-m-alert-buttons { display: flex; flex-direction: row-reverse; gap: 8px; margin-top: 6px; }
-.bae-m-alert-buttons > * { flex: 1; min-width: 0; }
+.bae-m-alert-buttons > :not(.sc-host-x), .bae-m-alert-buttons > .sc-host-x > * { flex: 1; min-width: 0; }
 .bae-m-alert-buttons:has(> :nth-child(3)) { flex-direction: column; }
 .bae-m-sidebar { width: 190px; flex: none; margin: 8px 0 8px 8px; border-radius: 12px; background: var(--surface); box-shadow: 0 1px 4px var(--shadow); padding: 32px 8px 8px; box-sizing: border-box; display: flex; flex-direction: column; gap: 2px; position: relative; }
 .bae-m-lights { position: absolute; top: 14px; left: 14px; display: flex; gap: var(--space-related); }
@@ -80,7 +80,7 @@
 .bae-m-back { width: var(--size-control); height: var(--size-control); border-radius: 999px; border: 0; background: var(--control); display: flex; align-items: center; justify-content: center; padding: 0; fill: var(--text-primary); box-shadow: 0 0 0 0.5px var(--control-edge), 0 0.5px 1px var(--control-edge); }
 
 .bae-m-section { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; }
-.bae-m-heading + .bae-m-section { margin-top: 4px; }
+.bae-m-heading + .bae-m-section, .bae-m-heading + .sc-host-x > .bae-m-section { margin-top: 4px; }
 .bae-m-section-title { margin: 0 4px; font: 600 13px var(--font-sans); color: var(--text-primary); }
 
 .bae-m-box { display: flex; flex-direction: column; background: var(--surface); border-radius: 12px; overflow: hidden; color: var(--text-primary); font: 400 13px var(--font-sans); }
@@ -99,7 +99,7 @@
 .bae-m-fieldrow { align-items: flex-start; padding-top: 6px; padding-bottom: 6px; }
 .bae-m-fieldrow-label { flex: none; padding-top: 8px; }
 .bae-m-fieldrow-content { flex: 1; min-width: 0; display: flex; align-items: flex-start; gap: var(--space-related); }
-.bae-m-fieldrow-content > :first-child, .bae-m-fieldrow-content .bae-m-field { flex: 1; min-width: 0; }
+.bae-m-fieldrow-content > :first-child:not(.sc-host-x), .bae-m-fieldrow-content > .sc-host-x:first-child > *, .bae-m-fieldrow-content .bae-m-field { flex: 1; min-width: 0; }
 .bae-m-fieldrow-aligned .bae-m-field { margin-left: -10px; }
 /* A button beside the field (Save, Scan) is the field's height and corners, so the two read as one control. */
 .bae-m-fieldrow-content .bae-m-btn { flex: none; height: var(--size-field); line-height: var(--size-field); border-radius: 8px; }
@@ -222,8 +222,8 @@
 .bae-a-card-tile { background: var(--surface); border-radius: 4px; }
 .bae-a-card-tile-first, .bae-a-card-tile-alone { border-top-left-radius: 20px; border-top-right-radius: 20px; }
 .bae-a-card-tile-last, .bae-a-card-tile-alone { border-bottom-left-radius: 20px; border-bottom-right-radius: 20px; }
-.bae-a-main > .bae-a-card:first-child { margin-top: var(--space-edge); }
-.bae-a-section + .bae-a-card { margin-top: 0; }
+.bae-a-main > .bae-a-card:first-child, .bae-a-main > .sc-host-x:first-child > .bae-a-card { margin-top: var(--space-edge); }
+.bae-a-section + .bae-a-card, .bae-a-section + .sc-host-x > .bae-a-card, .sc-host-x:has(> .bae-a-section) + .bae-a-card, .sc-host-x:has(> .bae-a-section) + .sc-host-x > .bae-a-card { margin-top: 0; }
 
 .bae-a-row { display: flex; align-items: center; gap: var(--space-edge); min-height: 72px; padding: var(--space-group) var(--space-edge); box-sizing: border-box; color: var(--text-primary); }
 .bae-a-row-one { min-height: 56px; }
@@ -353,11 +353,13 @@
 .bae-m-row-nested { padding-top: 0; min-height: 0; }
 .bae-m-row-nested-off { opacity: 0.45; }
 /* MacNested: no line above it, a field row inside it keeps the row's padding, and its text sits on the rows' edge in secondary. */
-/* The canvas wraps each component in an x-import element, so each rule here also reaches through one. A nested row or block has no line above it: MacBox leaves it out when it can see the row is nested, and this rule hides it when a wrapper hides that. */
-.bae-m-box > .bae-divider:has(+ :is(.bae-m-nested, .bae-m-row-nested)), .bae-m-box > .bae-divider:has(+ x-import > :is(.bae-m-nested, .bae-m-row-nested)) { display: none; }
+/* The canvas draws each component inside a <div class="sc-host-x" style="display:contents">, so each rule here also reaches through one. A nested row or block has no line above it: MacBox leaves it out when it can see the row is nested, and this rule hides it when a wrapper hides that. */
+.bae-m-box > .bae-divider:has(+ :is(.bae-m-nested, .bae-m-row-nested)), .bae-m-box > .bae-divider:has(+ .sc-host-x > :is(.bae-m-nested, .bae-m-row-nested)) { display: none; }
 .bae-m-nested { display: flex; flex-direction: column; gap: var(--space-related); padding-bottom: var(--space-group); color: var(--text-secondary); }
-:is(.bae-m-nested, .bae-m-nested > x-import) > .bae-m-row { padding-top: 0; }
-:is(.bae-m-nested, .bae-m-nested > x-import) > :not(.bae-m-row, x-import) { margin: 0 var(--space-group); }
+:is(.bae-m-nested, .bae-m-nested > .sc-host-x) > .bae-m-row { padding-top: 0; }
+/* A field row in a nested block is as tall as its field: the block's own bottom padding is the space under it, as wide as the box's side inset. */
+:is(.bae-m-nested, .bae-m-nested > .sc-host-x) > .bae-m-fieldrow { padding-bottom: 0; min-height: 0; }
+:is(.bae-m-nested, .bae-m-nested > .sc-host-x) > :not(.bae-m-row, .sc-host-x) { margin: 0 var(--space-group); }
 /* A filled notice in a box keeps to the rows' edges, however deep it sits (the canvas wraps each component, so a child selector misses it): inset by the rows' padding, with the box's padding under it; in a nested block, whose own padding is under it, only at the sides; in a row, as the row lays it out. */
 .bae-m-box .bae-m-notice-box:not(.bae-notice-quiet) { margin: 0 var(--space-group) var(--space-group); }
 .bae-m-nested .bae-m-notice-box:not(.bae-notice-quiet) { margin: 0 var(--space-group); }
@@ -367,8 +369,8 @@
 /* A nested row joins the switch row above it into one piece of the card: no gap, no corners between them, and set in from the card's edge. */
 .bae-a-row-nested { padding-top: 0; min-height: 0; padding-left: calc(var(--space-edge) + var(--space-section)); }
 /* The card finds the pair itself, whether a row is the card's child or sits in a tile of its own: the tile above a nested row loses its bottom corners, the nested row's tile its top corners and the gap. */
-.bae-a-card > :has(+ .bae-a-row-nested), .bae-a-card > :has(+ * .bae-a-row-nested) { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
-.bae-a-card > .bae-a-row-nested, .bae-a-card > :has(.bae-a-row-nested) { margin-top: calc(-1 * var(--space-line)); border-top-left-radius: 0; border-top-right-radius: 0; }
+.bae-a-card > :not(.sc-host-x):has(+ .bae-a-row-nested), .bae-a-card > :not(.sc-host-x):has(+ * .bae-a-row-nested), .bae-a-card > .sc-host-x:has(+ .bae-a-row-nested) > *, .bae-a-card > .sc-host-x:has(+ * .bae-a-row-nested) > * { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.bae-a-card > .bae-a-row-nested, .bae-a-card > :not(.sc-host-x):has(.bae-a-row-nested), .bae-a-card > .sc-host-x > .bae-a-row-nested, .bae-a-card > .sc-host-x > :has(.bae-a-row-nested) { margin-top: calc(-1 * var(--space-line)); border-top-left-radius: 0; border-top-right-radius: 0; }
 .bae-spinner { animation: bae-spin 0.9s linear infinite; flex: none; }
 @keyframes bae-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .bae-spinner { animation-duration: 2.4s; } }
@@ -455,7 +457,7 @@
 .bae-m-track-artist { font: 400 11.5px var(--font-sans); color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bae-m-track-time { font: 400 11.5px var(--font-sans); font-variant-numeric: tabular-nums; color: var(--text-secondary); }
 .bae-m-eyebrow { padding: 16px 0 6px; font: 600 11px var(--font-sans); color: var(--text-secondary); }
-.bae-m-eyebrow:first-child { padding-top: 0; }
+.bae-m-eyebrow:first-child:not(.sc-host-x > *), .sc-host-x:first-child > .bae-m-eyebrow { padding-top: 0; }
 .bae-m-browse { display: flex; align-items: center; gap: 12px; padding: 8px; border-radius: var(--radius-control); }
 .bae-m-browse-hover { background: var(--hover); }
 .bae-m-browse-selected { background: var(--accent-tint); }
