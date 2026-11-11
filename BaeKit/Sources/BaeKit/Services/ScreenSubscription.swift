@@ -188,6 +188,7 @@ extension QueueUpcomingSubscription: PulledSubscription {}
     extension ImportCountsSubscription: PulledSubscription {}
     extension CandidateRuntimeSubscription: PulledSubscription {}
     extension FolderScansSubscription: PulledSubscription {}
+    extension SubsonicSubscription: PulledSubscription {}
     extension LibraryStatusSubscription: PulledSubscription {}
     extension StorageInspectorSubscription: PulledSubscription {}
     extension ImportCandidateSubscription: PulledSubscription {}

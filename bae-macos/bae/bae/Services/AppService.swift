@@ -54,6 +54,9 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
     private let discogs: Discogs
     private let automation: Automation
     private let subsonic: SubsonicServer
+    /// What the Subsonic server is doing, read by its settings, the Settings
+    /// sidebar and the Activity panel.
+    private let subsonicStore: SubsonicStore
     private let export: TrackSave
     #if BAE_OAUTH_PROVIDERS
         private let cloudSyncSetup: CloudSyncSetup
@@ -117,6 +120,8 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         discogs = Discogs(handle: appHandle)
         automation = Automation(handle: appHandle)
         subsonic = SubsonicServer(handle: appHandle)
+        let subsonicStore = SubsonicStore()
+        self.subsonicStore = subsonicStore
         export = TrackSave(handle: appHandle)
         #if BAE_OAUTH_PROVIDERS
             cloudSyncSetup = CloudSyncSetup(
@@ -139,6 +144,7 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
             outputStore: outputStore,
             outboxStore: outboxStore,
             downloadStore: downloadStore,
+            subsonicStore: subsonicStore,
             uiStore: uiStore
         )
         mainAppMenuTarget = MainAppMenuTarget(
@@ -219,6 +225,7 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
             .environment(discogs)
             .environment(automation)
             .environment(subsonic)
+            .environment(subsonicStore)
             .environment(export)
             .environment(outputStore)
             .environment(uiStore)

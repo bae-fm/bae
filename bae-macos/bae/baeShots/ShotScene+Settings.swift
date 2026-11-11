@@ -131,7 +131,63 @@ extension ShotScene {
         settingsSidebar("settings-sidebar-offline", .previewOffline),
         settingsSidebar("settings-sidebar-problem", .previewFailed),
         automationFailed,
-        subsonicRunning,
+        subsonicPane(
+            "settings-subsonic-off",
+            config: .previewSubsonic(enabled: false),
+            view: .previewSubsonic(.off)
+        ),
+        subsonicPane(
+            "settings-subsonic",
+            config: .previewSubsonic(network: .interface(interface: "en0")),
+            view: .previewSubsonic(.running(addresses: [.previewWiFi]))
+        ),
+        subsonicPane(
+            "settings-subsonic-every",
+            config: .previewSubsonic(network: .every),
+            view: .previewSubsonic(
+                .running(addresses: [.previewWiFi, .previewTailscale])
+            )
+        ),
+        subsonicPane(
+            "settings-subsonic-no-network",
+            config: .previewSubsonic(network: .interface(interface: "en0")),
+            view: .previewSubsonic(
+                .notRunning(causes: [.networkGone(interface: "en0")]),
+                networks: [
+                    BridgeNetworkChoice(interface: "en0", address: nil),
+                    BridgeNetworkChoice(
+                        interface: "utun4",
+                        address: "100.64.0.3"
+                    ),
+                ]
+            )
+        ),
+        subsonicPane(
+            "settings-subsonic-failed",
+            config: .previewSubsonic(network: .interface(interface: "en0")),
+            view: .previewSubsonic(
+                .notRunning(causes: [
+                    .failed(detail: "Permission denied (os error 13)")
+                ])
+            )
+        ),
+        subsonicPane(
+            "settings-subsonic-port-taken",
+            config: .previewSubsonic(network: .interface(interface: "en0")),
+            view: .previewSubsonic(.notRunning(causes: [.portTaken]))
+        ),
+        subsonicPane(
+            "settings-subsonic-refused",
+            config: .previewSubsonic(
+                network: .interface(interface: "en0"),
+                username: "",
+                port: 4533
+            ),
+            view: .previewSubsonic(
+                .notRunning(causes: [.missingUsername, .missingPassword]),
+                passwordSaved: false
+            )
+        ),
         syncPage("sync-status-synced", .previewSynced),
         syncPage("sync-status-waiting", .previewWaiting),
         syncPage("sync-status-offline", .previewOffline),
@@ -181,25 +237,33 @@ extension ShotScene {
         }
     }
 
-    /// The Subsonic pane with its server running: Port, Username and Password
-    /// each a labelled row over a boxed field.
-    private static let subsonicRunning = ShotScene(
-        id: "settings-subsonic",
-        size: CGSize(width: 690, height: 480)
-    ) {
-        ShotStage(
-            SubsonicSettingsContent(
-                subsonic: SubsonicServer(
-                    setEnabled: { _ in },
-                    setPort: { _ in },
-                    setUsername: { _ in },
-                    setNetwork: { _ in },
-                    setPassword: { _ in }
-                ),
-                configStore: PreviewData.configStore()
+    /// The Subsonic pane showing `view` over the settings in `config`.
+    private static func subsonicPane(
+        _ id: String,
+        config: BridgeSubsonicConfig,
+        view: BridgeSubsonicView
+    ) -> ShotScene {
+        ShotScene(id: id, size: CGSize(width: 500, height: 520)) {
+            ShotStage(
+                SubsonicSettingsContent(
+                    subsonic: SubsonicServer(
+                        setEnabled: { _ in },
+                        setPort: { _ in },
+                        setUsername: { _ in },
+                        setNetwork: { _ in },
+                        setPassword: { _ in }
+                    ),
+                    view: view,
+                    config: config,
+                    names: NetworkNames(byInterface: [
+                        "en0": "Wi-Fi", "utun4": "Tailscale",
+                    ]),
+                    copy: { _ in },
+                    showError: { _ in }
+                )
+                .environment(UiStore())
             )
-            .environment(UiStore())
-        )
+        }
     }
 
     /// The Casting tab with casting on and `receivers` found.
@@ -316,4 +380,49 @@ private final class StatusRead {
     private(set) var done = false
 
     func markDone() { done = true }
+}
+
+extension BridgeSubsonicConfig {
+    /// A Subsonic setting as a shot sets it: on, signed in as mara.
+    fileprivate static func previewSubsonic(
+        enabled: Bool = true,
+        network: BridgeSubsonicNetwork = .thisMachine,
+        username: String = "mara",
+        port: UInt32 = 4533
+    ) -> BridgeSubsonicConfig {
+        BridgeSubsonicConfig(
+            enabled: enabled,
+            port: port,
+            username: username,
+            network: network
+        )
+    }
+}
+
+extension BridgeSubsonicView {
+    fileprivate static func previewSubsonic(
+        _ status: BridgeSubsonicStatus,
+        networks: [BridgeNetworkChoice] = [
+            BridgeNetworkChoice(interface: "en0", address: "192.168.1.20"),
+            BridgeNetworkChoice(interface: "utun4", address: "100.64.0.3"),
+        ],
+        passwordSaved: Bool = true
+    ) -> BridgeSubsonicView {
+        BridgeSubsonicView(
+            status: status,
+            networks: networks,
+            passwordSaved: passwordSaved
+        )
+    }
+}
+
+extension BridgeServedAddress {
+    fileprivate static let previewWiFi = BridgeServedAddress(
+        url: "http://192.168.1.20:4533",
+        interface: "en0"
+    )
+    fileprivate static let previewTailscale = BridgeServedAddress(
+        url: "http://100.64.0.3:4533",
+        interface: "utun4"
+    )
 }

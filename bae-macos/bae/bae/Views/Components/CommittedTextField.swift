@@ -56,6 +56,13 @@ struct CommittedTextField: View {
     /// The typed value's color. The placeholder takes its own, by role.
     var textColor: NSColor = .controlTextColor
     var placeholderRole: PlaceholderRole = .hint
+    /// The field holds something that cannot be kept: its edge turns red.
+    var invalid = false
+    /// The typed characters are shown as dots.
+    var secret = false
+    /// What typing leaves of the text: a field that takes only some
+    /// characters drops the rest as they are typed.
+    var filter: @MainActor (String) -> String = { $0 }
     /// Set on surfaces that can replace the stored value while this field is
     /// focused.
     var editingCommands: EditingCommitCommands?
@@ -101,7 +108,9 @@ struct CommittedTextField: View {
 
     private var configuredField: some View {
         field
-            .modifier(FieldChrome(focused: focused, style: chrome))
+            .modifier(
+                FieldChrome(focused: focused, style: chrome, invalid: invalid)
+            )
             .onAppear { draft = value }
             .onChange(of: value) { _, next in
                 // A field being typed into owns what it shows; anything else
@@ -144,6 +153,8 @@ struct CommittedTextField: View {
             .overlay {
                 CommittedTextEditor(
                     text: $draft,
+                    secret: secret,
+                    filter: filter,
                     focused: $focused,
                     placeholder: placeholder,
                     placeholderRole: placeholderRole,
@@ -186,6 +197,8 @@ struct CommittedTextField: View {
 private struct CommittedTextEditor: NSViewRepresentable {
     @Binding
     var text: String
+    let secret: Bool
+    let filter: @MainActor (String) -> String
     @Binding
     var focused: Bool
     let placeholder: String
@@ -199,8 +212,11 @@ private struct CommittedTextEditor: NSViewRepresentable {
         Coordinator(self)
     }
 
-    func makeNSView(context: Context) -> EditorField {
-        let field = EditorField()
+    func makeNSView(context: Context) -> NSTextField {
+        let field: NSTextField =
+            secret
+            ? SecureEditorField(onEditingChange: onEditingChange(context))
+            : EditorField(onEditingChange: onEditingChange(context))
         field.isBordered = false
         field.isBezeled = false
         field.drawsBackground = false
@@ -209,15 +225,18 @@ private struct CommittedTextEditor: NSViewRepresentable {
         field.cell?.isScrollable = true
         field.cell?.wraps = false
         field.delegate = context.coordinator
-        field.onEditingChange = { [coordinator = context.coordinator] editing in
+        return field
+    }
+
+    private func onEditingChange(_ context: Context) -> (Bool) -> Void {
+        { [coordinator = context.coordinator] editing in
             if coordinator.parent.focused != editing {
                 coordinator.parent.focused = editing
             }
         }
-        return field
     }
 
-    func updateNSView(_ field: EditorField, context: Context) {
+    func updateNSView(_ field: NSTextField, context: Context) {
         context.coordinator.parent = self
         if field.stringValue != text {
             field.stringValue = text
@@ -241,7 +260,7 @@ private struct CommittedTextEditor: NSViewRepresentable {
                     ]
                 )
         }
-        if !focused, field.isEditing {
+        if !focused, (field as? any EditingField)?.isEditing == true {
             field.window?.makeFirstResponder(nil)
         }
     }
@@ -249,7 +268,7 @@ private struct CommittedTextEditor: NSViewRepresentable {
     /// Exactly the proposed size: the frame the Text laid out.
     func sizeThatFits(
         _ proposal: ProposedViewSize,
-        nsView: EditorField,
+        nsView: NSTextField,
         context: Context
     ) -> CGSize? {
         proposal.replacingUnspecifiedDimensions(by: .zero)
@@ -267,7 +286,10 @@ private struct CommittedTextEditor: NSViewRepresentable {
             guard let field = notification.object as? NSTextField else {
                 return
             }
-            parent.text = field.stringValue
+            let typed = field.stringValue
+            let kept = parent.filter(typed)
+            if kept != typed { field.stringValue = kept }
+            parent.text = kept
         }
 
         /// Return commits and keeps editing, since AppKit's own Return
@@ -287,27 +309,63 @@ private struct CommittedTextEditor: NSViewRepresentable {
 
     /// A text field that says when it gains and loses its field editor —
     /// which is what "focused" is for a field a person types into.
-    final class EditorField: NSTextField {
-        var onEditingChange: ((Bool) -> Void)?
+    final class EditorField: NSTextField, EditingField {
+        let onEditingChange: (Bool) -> Void
 
-        /// Whether the field's editor is the window's first responder.
-        var isEditing: Bool {
-            guard let editor = currentEditor() else { return false }
-            return window?.firstResponder === editor
+        init(onEditingChange: @escaping (Bool) -> Void) {
+            self.onEditingChange = onEditingChange
+            super.init(frame: .zero)
         }
+
+        @available(*, unavailable)
+        required init?(coder: NSCoder) { fatalError("not from a nib") }
 
         override func becomeFirstResponder() -> Bool {
             let became = super.becomeFirstResponder()
-            if became {
-                onEditingChange?(true)
-            }
+            if became { onEditingChange(true) }
             return became
         }
 
         override func textDidEndEditing(_ notification: Notification) {
             super.textDidEndEditing(notification)
-            onEditingChange?(false)
+            onEditingChange(false)
         }
+    }
+
+    /// The same, with the typed characters shown as dots.
+    final class SecureEditorField: NSSecureTextField, EditingField {
+        let onEditingChange: (Bool) -> Void
+
+        init(onEditingChange: @escaping (Bool) -> Void) {
+            self.onEditingChange = onEditingChange
+            super.init(frame: .zero)
+        }
+
+        @available(*, unavailable)
+        required init?(coder: NSCoder) { fatalError("not from a nib") }
+
+        override func becomeFirstResponder() -> Bool {
+            let became = super.becomeFirstResponder()
+            if became { onEditingChange(true) }
+            return became
+        }
+
+        override func textDidEndEditing(_ notification: Notification) {
+            super.textDidEndEditing(notification)
+            onEditingChange(false)
+        }
+    }
+}
+
+/// A field that says when its field editor is the window's first responder.
+@MainActor
+private protocol EditingField: NSTextField {}
+
+extension EditingField {
+    /// Whether the field's editor is the window's first responder.
+    fileprivate var isEditing: Bool {
+        guard let editor = currentEditor() else { return false }
+        return window?.firstResponder === editor
     }
 }
 

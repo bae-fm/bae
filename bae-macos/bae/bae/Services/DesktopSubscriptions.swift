@@ -165,12 +165,14 @@ final class DesktopSubscriptions {
     private let outputStore: OutputStore
     private let outboxStore: OutboxStore
     private let downloadStore: DownloadStore
+    private let subsonicStore: SubsonicStore
     private let uiStore: UiStore
     /// The import list's selection, installed in the view environment.
     let importSelection: ImportSelection
     /// The import counts' pulls, which stop when this is dropped.
     private var importCounts: ScreenSubscription<ImportCountsSubscription>?
     private var folderScans: ScreenSubscription<FolderScansSubscription>?
+    private var subsonic: ScreenSubscription<SubsonicSubscription>?
     /// The fast streams' feeds, which stop with these subscriptions.
     private var feeds: [LatestFeed] = []
 
@@ -180,6 +182,7 @@ final class DesktopSubscriptions {
         outputStore: OutputStore,
         outboxStore: OutboxStore,
         downloadStore: DownloadStore,
+        subsonicStore: SubsonicStore,
         uiStore: UiStore
     ) {
         self.appHandle = appHandle
@@ -187,6 +190,7 @@ final class DesktopSubscriptions {
         self.outputStore = outputStore
         self.outboxStore = outboxStore
         self.downloadStore = downloadStore
+        self.subsonicStore = subsonicStore
         self.uiStore = uiStore
         // The list's selection sink is the observations' one owner: it lives
         // as long as the list slot that calls it.
@@ -300,6 +304,13 @@ final class DesktopSubscriptions {
             appHandle.subscribeFolderScans(),
             onValue: { [importStore] scans in
                 importStore.applyFolderScans(scans)
+            },
+            onError: { [uiStore] error in uiStore.showError(error) }
+        )
+        subsonic = ScreenSubscription(
+            appHandle.subscribeSubsonic(),
+            onValue: { [subsonicStore] view in
+                subsonicStore.apply(view)
             },
             onError: { [uiStore] error in uiStore.showError(error) }
         )
