@@ -701,6 +701,7 @@ private struct PageLinkRow: View {
 /// Renames this device's person's profile, which everyone in the library
 /// sees. A failure stays in the sheet with the name as typed.
 private struct RenameProfileSheet: View {
+    let currentName: String
     let onDismiss: () -> Void
 
     @Environment(Sync.self)
@@ -714,6 +715,7 @@ private struct RenameProfileSheet: View {
     private var error: DisplayError?
 
     init(name: String, onDismiss: @escaping () -> Void) {
+        self.currentName = name
         self.onDismiss = onDismiss
         _name = State(initialValue: name)
     }
@@ -723,21 +725,24 @@ private struct RenameProfileSheet: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: ThemeSpace.group) {
-            FieldColumn {
-                FieldRow(
-                    "Name",
-                    note: "Everyone in the library sees this name."
-                ) {
-                    TextField("Name", text: $name)
-                        .labelsHidden()
-                        .boxedTextField()
+        MacSheet(verbatim: currentName, width: 420) {
+            VStack(alignment: .leading, spacing: ThemeSpace.group) {
+                FieldColumn {
+                    FieldRow(
+                        "Name",
+                        note: "Everyone in the library sees this name."
+                    ) {
+                        TextField("Name", text: $name)
+                            .labelsHidden()
+                            .boxedTextField()
+                    }
+                }
+                .disabled(task != nil)
+                if let error {
+                    Notice(error: error)
                 }
             }
-            .disabled(task != nil)
-            if let error {
-                Notice(error: error)
-            }
+        } footer: {
             MacSheetFooter {
                 Button("Cancel", action: onDismiss)
                     .keyboardShortcut(.cancelAction)
@@ -747,8 +752,6 @@ private struct RenameProfileSheet: View {
                     .disabled(task != nil || trimmed.isEmpty)
             }
         }
-        .padding()
-        .frame(width: 420)
         .onDisappear { task?.cancel() }
     }
 

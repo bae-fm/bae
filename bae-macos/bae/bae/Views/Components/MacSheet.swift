@@ -5,7 +5,7 @@ import SwiftUI
 /// secondary text, then its content and its footer. The line is what the
 /// sheet asks for or reports, as an alert's message is.
 struct MacSheet<Content: View, Footer: View>: View {
-    let title: LocalizedStringKey
+    let title: Text
     let message: LocalizedStringKey?
     let width: CGFloat
     private let content: Content
@@ -18,7 +18,23 @@ struct MacSheet<Content: View, Footer: View>: View {
         @ViewBuilder content: () -> Content,
         @ViewBuilder footer: () -> Footer
     ) {
-        self.title = title
+        self.title = Text(title)
+        self.message = message
+        self.width = width
+        self.content = content()
+        self.footer = footer()
+    }
+
+    /// A sheet titled with text that is not a localized key, such as a
+    /// person's name.
+    init(
+        verbatim title: String,
+        message: LocalizedStringKey? = nil,
+        width: CGFloat,
+        @ViewBuilder content: () -> Content,
+        @ViewBuilder footer: () -> Footer
+    ) {
+        self.title = Text(verbatim: title)
         self.message = message
         self.width = width
         self.content = content()
@@ -27,7 +43,7 @@ struct MacSheet<Content: View, Footer: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.group) {
-            Text(title)
+            title
                 .themeText(.strong)
             if let message {
                 SheetMessage(message)
