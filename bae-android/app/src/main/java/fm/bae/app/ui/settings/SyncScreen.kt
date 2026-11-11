@@ -47,10 +47,10 @@ import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidCard
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidRow
+import fm.bae.app.ui.components.AndroidScreen
 import fm.bae.app.ui.components.AndroidSection
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ErrorAction
-import fm.bae.app.ui.components.ScreenTopBar
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.library.LibraryDestination
 import fm.bae.app.ui.rememberScreenScope
@@ -297,8 +297,7 @@ internal fun SyncScreen(
             generate = { session.appHandle.generateRestoreCode().code },
         )
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        ScreenTopBar(title = stringResource(R.string.settings_sync), onBack = onBack)
+    AndroidScreen(title = stringResource(R.string.settings_sync), onBack = onBack, modifier = Modifier.fillMaxSize()) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(ThemeSpace.edge),

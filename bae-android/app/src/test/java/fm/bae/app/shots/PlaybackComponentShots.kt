@@ -23,7 +23,7 @@ import org.junit.Test
 import uniffi.bae_bridge.BridgeRepeatMode
 import uniffi.bae_bridge.BridgeTrackSpan
 
-private val playing = PlayerStaging(progress = 0.35, held = listOf(BridgeTrackSpan(0.0, 0.6)))
+internal val playing = PlayerStaging(progress = 0.35, held = listOf(BridgeTrackSpan(0.0, 0.6)))
 private val waiting = PlayerStaging(progress = 0.02, held = listOf(BridgeTrackSpan(0.0, 0.04)), waitsOnStorage = true)
 private val holes =
     PlayerStaging(progress = 0.2, held = listOf(BridgeTrackSpan(0.0, 0.3), BridgeTrackSpan(0.55, 0.7)))
@@ -115,11 +115,11 @@ class PlaybackComponentShots : BoardShot() {
 }
 
 @Composable
-private fun Images(content: @Composable () -> Unit) =
+internal fun Images(content: @Composable () -> Unit) =
     CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved(), content = content)
 
 @Composable
-private fun Bar(staging: PlayerStaging) =
+internal fun Bar(staging: PlayerStaging) =
     Images {
         AndroidNowPlayingBar(
             track = staging.track,

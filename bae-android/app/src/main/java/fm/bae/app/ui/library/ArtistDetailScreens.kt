@@ -1,7 +1,6 @@
 package fm.bae.app.ui.library
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -56,8 +55,10 @@ internal fun ArtistDetailScreen(
             query.delivered && detail == null -> stringResource(R.string.artist_detail_not_found)
             else -> null
         }
-    Column(modifier = Modifier.fillMaxSize()) {
-        LibraryDetailTopBar(onBack = onBack)
+    AndroidDetailScreen(
+        onBack = onBack,
+        nowPlayingBar = { AndroidNowPlayingBarContainer(session = session) },
+    ) {
         val loaded = detail
         val error = loadError
         when {
@@ -84,7 +85,6 @@ internal fun ArtistDetailScreen(
                 )
             }
         }
-        AndroidNowPlayingBarContainer(session = session)
     }
 }
 

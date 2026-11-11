@@ -78,8 +78,10 @@ internal fun ComposerDetailScreen(
             query.delivered && detail == null -> stringResource(R.string.composer_detail_not_found)
             else -> null
         }
-    Column(modifier = Modifier.fillMaxSize()) {
-        LibraryDetailTopBar(onBack = onBack)
+    AndroidDetailScreen(
+        onBack = onBack,
+        nowPlayingBar = { AndroidNowPlayingBarContainer(session = session) },
+    ) {
         val loaded = detail
         val error = loadError
         when {
@@ -108,7 +110,6 @@ internal fun ComposerDetailScreen(
                 )
             }
         }
-        AndroidNowPlayingBarContainer(session = session)
     }
 }
 
@@ -237,8 +238,10 @@ internal fun WorkDetailScreen(
             query.delivered && detail == null -> stringResource(R.string.work_detail_not_found)
             else -> null
         }
-    Column(modifier = Modifier.fillMaxSize()) {
-        LibraryDetailTopBar(onBack = onBack)
+    AndroidDetailScreen(
+        onBack = onBack,
+        nowPlayingBar = { AndroidNowPlayingBarContainer(session = session) },
+    ) {
         val loaded = detail
         val error = loadError
         when {
@@ -266,7 +269,6 @@ internal fun WorkDetailScreen(
                 )
             }
         }
-        AndroidNowPlayingBarContainer(session = session)
     }
 }
 

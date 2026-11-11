@@ -65,7 +65,7 @@ import fm.bae.app.ui.components.CoverImage
 import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.retryAction
-import fm.bae.app.ui.library.LibraryDetailTopBar
+import fm.bae.app.ui.library.AndroidDetailScreen
 import fm.bae.app.ui.playback.AndroidNowPlayingBarContainer
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.CoroutineName
@@ -124,12 +124,15 @@ fun AlbumDetailScreen(
 
     val loadError = query.error?.let(appContext::displayError)
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        LibraryDetailTopBar(onBack = onBack) {
+    AndroidDetailScreen(
+        onBack = onBack,
+        nowPlayingBar = { AndroidNowPlayingBarContainer(session = session) },
+        actions = {
             if (detail != null) {
                 AlbumOptionsMenu(onDelete = deletion::ask)
             }
-        }
+        },
+    ) {
         AlbumDeletionShown(deletion)
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             val loaded = detail
@@ -162,7 +165,6 @@ fun AlbumDetailScreen(
                 }
             }
         }
-        AndroidNowPlayingBarContainer(session = session)
     }
 }
 

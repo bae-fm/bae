@@ -31,8 +31,8 @@ import fm.bae.app.ui.components.AndroidNote
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidRadio
 import fm.bae.app.ui.components.AndroidRow
+import fm.bae.app.ui.components.AndroidScreen
 import fm.bae.app.ui.components.ButtonKind
-import fm.bae.app.ui.components.ScreenTopBar
 import fm.bae.app.ui.downloads.setDownloadConcurrency
 
 /**
@@ -69,8 +69,11 @@ internal fun TransfersContent(
     onSetUnmeteredOnly: (Boolean) -> Unit,
     onSelectConcurrency: (UInt) -> Unit,
 ) {
-    Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        ScreenTopBar(title = stringResource(R.string.settings_transfers), onBack = onBack)
+    AndroidScreen(
+        title = stringResource(R.string.settings_transfers),
+        onBack = onBack,
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+    ) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(ThemeSpace.edge),
             verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),

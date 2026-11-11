@@ -6,11 +6,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import fm.bae.app.data.ImageStore
-import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.albumdetail.AndroidAlbumHeader
 import fm.bae.app.ui.albumdetail.AndroidTrackRow
@@ -28,10 +25,6 @@ import uniffi.bae_bridge.BridgeLibraryPageWindow
 
 private val callbacks = TrackRowCallbacks(onClick = {}, onPlayNext = {}, onAddToQueue = {})
 private val section = BridgeLibraryBrowseSection("artist-1", "Mara Quill", null, BridgeLibraryPageWindow(0uL, 3uL))
-
-@Composable
-private fun Images(content: @Composable () -> Unit) =
-    CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved(), content = content)
 
 /** The component shots of the library's parts: the album grid and its tiles, the artist heading, the album header and track rows. */
 class LibraryComponentShots : BoardShot() {

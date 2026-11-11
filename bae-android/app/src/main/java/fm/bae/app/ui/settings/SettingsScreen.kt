@@ -28,8 +28,8 @@ import fm.bae.app.ui.SessionActions
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidCard
 import fm.bae.app.ui.components.AndroidRow
+import fm.bae.app.ui.components.AndroidScreen
 import fm.bae.app.ui.components.Logo
-import fm.bae.app.ui.components.ScreenTopBar
 import fm.bae.app.ui.library.LibraryDestination
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -75,11 +75,11 @@ internal fun SettingsScreen(
     BackHandler(enabled = page != null) { page = null }
 
     val open = page
-    Column(modifier = Modifier.fillMaxSize()) {
-        ScreenTopBar(
-            title = stringResource(open?.title ?: R.string.settings),
-            onBack = if (open == null) onBack else ({ page = null }),
-        )
+    AndroidScreen(
+        title = stringResource(open?.title ?: R.string.settings),
+        onBack = if (open == null) onBack else ({ page = null }),
+        modifier = Modifier.fillMaxSize(),
+    ) {
         Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
             when (open) {
                 null -> {

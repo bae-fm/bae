@@ -1,11 +1,8 @@
 package fm.bae.app.ui.library
 
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
@@ -32,40 +29,12 @@ import fm.bae.app.R
 import fm.bae.app.data.AlbumPageStore
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.components.AndroidButton
-import fm.bae.app.ui.components.ButtonKind
 
 /** A later page of the album grid that failed to load, above the rows that did, with Retry. */
 @Composable
 internal fun AndroidErrorBannerContainer(page: AlbumPageStore) {
     val appendError = (if (page.rows.isNotEmpty()) page.error else null) ?: return
     AndroidErrorBanner(error = appendError.error, onRetry = appendError.onRetry)
-}
-
-/**
- * A screen inside the library: its bar holds the one way back, labeled with
- * where it goes, and at its end the screen's own [actions], if it has any.
- */
-@Composable
-internal fun LibraryDetailTopBar(
-    onBack: () -> Unit,
-    actions: @Composable RowScope.() -> Unit = {},
-) {
-    Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 2.dp) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(ThemeSpace.related),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            // One button: the arrow and the label read together as "Back, Library".
-            AndroidButton(kind = ButtonKind.TEXT, onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
-                Spacer(modifier = Modifier.width(ThemeSpace.inline))
-                Text(text = stringResource(R.string.library))
-            }
-            Spacer(modifier = Modifier.weight(1f))
-            actions()
-        }
-    }
 }
 
 @Composable
@@ -115,14 +84,6 @@ internal fun LibrarySearchBar(
                 },
             )
         }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun LibraryDetailTopBarPreview() {
-    BaeTheme {
-        LibraryDetailTopBar(onBack = {})
     }
 }
 

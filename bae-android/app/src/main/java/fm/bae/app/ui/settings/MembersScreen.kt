@@ -38,8 +38,8 @@ import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidNotice
+import fm.bae.app.ui.components.AndroidScreen
 import fm.bae.app.ui.components.NoticeLook
-import fm.bae.app.ui.components.ScreenTopBar
 import fm.bae.app.ui.components.StatusChip
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.components.retryAction
@@ -251,8 +251,7 @@ fun MembersScreen(
     val goBack = { if (page == PeoplePage.People) onBack() else pageKey = PeoplePage.People.key() }
     BackHandler(enabled = page != PeoplePage.People, onBack = goBack)
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        ScreenTopBar(title = pageTitle(page, read), onBack = goBack)
+    AndroidScreen(title = pageTitle(page, read), onBack = goBack, modifier = Modifier.fillMaxSize()) {
         model.error?.let { shown ->
             AndroidNotice(
                 error = shown,

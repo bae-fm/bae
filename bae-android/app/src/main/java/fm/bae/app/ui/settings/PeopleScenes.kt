@@ -1,6 +1,5 @@
 package fm.bae.app.ui.settings
 
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -13,7 +12,7 @@ import fm.bae.app.ErrorDisplays
 import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
-import fm.bae.app.ui.components.ScreenTopBar
+import fm.bae.app.ui.components.AndroidScreen
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeMemberRole
 import uniffi.bae_bridge.BridgePerson
@@ -55,28 +54,28 @@ internal fun PeopleScene(
     val callbacks = MemberCallbacks({}, { _, _ -> }, { _, _ -> }, { _, _ -> }, {}, {})
     BaeTheme {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                ScreenTopBar(
-                    title =
-                        when (page) {
-                            PeoplePage.People -> {
-                                stringResource(R.string.members_title)
-                            }
+            AndroidScreen(
+                title =
+                    when (page) {
+                        PeoplePage.People -> {
+                            stringResource(R.string.members_title)
+                        }
 
-                            PeoplePage.Devices -> {
-                                stringResource(R.string.people_your_devices)
-                            }
+                        PeoplePage.Devices -> {
+                            stringResource(R.string.people_your_devices)
+                        }
 
-                            is PeoplePage.Person -> {
-                                people
-                                    .first { it.membership.id == page.memberId }
-                                    .profile
-                                    ?.name
-                                    .orEmpty()
-                            }
-                        },
-                    onBack = {},
-                )
+                        is PeoplePage.Person -> {
+                            people
+                                .first { it.membership.id == page.memberId }
+                                .profile
+                                ?.name
+                                .orEmpty()
+                        }
+                    },
+                onBack = {},
+                modifier = Modifier.fillMaxSize(),
+            ) {
                 when (page) {
                     PeoplePage.People -> {
                         PeopleHome(

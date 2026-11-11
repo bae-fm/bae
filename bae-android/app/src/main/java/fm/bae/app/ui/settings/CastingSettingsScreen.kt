@@ -31,10 +31,10 @@ import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidCard
 import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.AndroidRow
+import fm.bae.app.ui.components.AndroidScreen
 import fm.bae.app.ui.components.AndroidSection
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ButtonTone
-import fm.bae.app.ui.components.ScreenTopBar
 import fm.bae.app.ui.playback.CastReceiverPlace
 import fm.bae.app.ui.playback.CastReceiverRows
 import kotlinx.coroutines.CoroutineDispatcher
@@ -147,8 +147,11 @@ internal fun CastingPage(
     onEnabledChange: (Boolean) -> Unit,
     onTranscodeFormatChange: (BridgeCastTranscodeFormat) -> Unit,
 ) {
-    Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        ScreenTopBar(title = stringResource(R.string.settings_casting), onBack = onBack)
+    AndroidScreen(
+        title = stringResource(R.string.settings_casting),
+        onBack = onBack,
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+    ) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(ThemeSpace.edge),
             verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),

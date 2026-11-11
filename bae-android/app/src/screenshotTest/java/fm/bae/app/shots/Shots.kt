@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -19,7 +18,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -27,20 +25,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.BugReports
 import fm.bae.app.DisplayError
-import fm.bae.app.FailedStep
 import fm.bae.app.LocalBugReports
-import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.R
-import fm.bae.app.ScreenFailure
 import fm.bae.app.coreString
 import fm.bae.app.countLabelsText
 import fm.bae.app.data.LiveValue
-import fm.bae.app.data.SyncActivityStore
-import fm.bae.app.ui.AppProblem
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
-import fm.bae.app.ui.ResetOfferedScreen
-import fm.bae.app.ui.ResetUnfinishedScreen
 import fm.bae.app.ui.albumdetail.AlbumDetailScene
 import fm.bae.app.ui.albumdetail.AndroidDownloadControl
 import fm.bae.app.ui.albumdetail.AndroidUploadLine
@@ -52,12 +43,10 @@ import fm.bae.app.ui.appearance.AppearanceStore
 import fm.bae.app.ui.appearance.SurfaceTone
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidNotice
+import fm.bae.app.ui.components.AndroidScreen
 import fm.bae.app.ui.components.AndroidSheetBody
 import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.NoticeLook
-import fm.bae.app.ui.components.RemovalLoss
-import fm.bae.app.ui.components.RemoveLibraryText
-import fm.bae.app.ui.components.ScreenTopBar
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.downloads.AndroidDownloadRow
 import fm.bae.app.ui.downloads.DownloadsList
@@ -65,18 +54,6 @@ import fm.bae.app.ui.library.AndroidErrorBanner
 import fm.bae.app.ui.library.LibraryGridScene
 import fm.bae.app.ui.library.LibraryHeaderMenu
 import fm.bae.app.ui.library.SceneGrid
-import fm.bae.app.ui.onboarding.LibraryDetailsRows
-import fm.bae.app.ui.onboarding.PasteCodeDialog
-import fm.bae.app.ui.onboarding.PasteDialogText
-import fm.bae.app.ui.onboarding.RemovalFailedText
-import fm.bae.app.ui.onboarding.RestoreText
-import fm.bae.app.ui.onboarding.S3KeyDialog
-import fm.bae.app.ui.onboarding.S3KeyInput
-import fm.bae.app.ui.onboarding.StandingRead
-import fm.bae.app.ui.onboarding.WelcomeActions
-import fm.bae.app.ui.onboarding.WelcomeLibrariesScene
-import fm.bae.app.ui.onboarding.WelcomeRemovingScene
-import fm.bae.app.ui.onboarding.WelcomeScene
 import fm.bae.app.ui.playback.FullPlayerScene
 import fm.bae.app.ui.playback.MiniPlayerScene
 import fm.bae.app.ui.playback.PlayerSceneState
@@ -95,36 +72,16 @@ import fm.bae.app.ui.settings.SyncRowSummary
 import fm.bae.app.ui.settings.SyncStatusScene
 import fm.bae.app.ui.settings.TransfersContent
 import fm.bae.app.ui.settings.sceneOtherPerson
-import fm.bae.app.ui.signInSettingsProblem
-import fm.bae.app.ui.sync.ActivityWords
-import fm.bae.app.ui.sync.AndroidActivity
-import fm.bae.app.ui.sync.activityProblems
-import fm.bae.fastvalues.LatestStream
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeCountLabel
-import uniffi.bae_bridge.BridgeDownloadQueueActivity
 import uniffi.bae_bridge.BridgeDownloadState
-import uniffi.bae_bridge.BridgeDropboxLocation
-import uniffi.bae_bridge.BridgeErrorCategory
-import uniffi.bae_bridge.BridgeException
-import uniffi.bae_bridge.BridgeFolderLabel
-import uniffi.bae_bridge.BridgeLibrary
-import uniffi.bae_bridge.BridgeLibraryStanding
-import uniffi.bae_bridge.BridgeLibraryState
 import uniffi.bae_bridge.BridgeMessage
-import uniffi.bae_bridge.BridgeQueueWait
 import uniffi.bae_bridge.BridgeReleaseDownloadStatus
-import uniffi.bae_bridge.BridgeStandingState
-import uniffi.bae_bridge.BridgeStorageLocation
-import uniffi.bae_bridge.BridgeSyncActivity
 import uniffi.bae_bridge.BridgeSyncCause
 import uniffi.bae_bridge.BridgeSyncFix
 import uniffi.bae_bridge.BridgeSyncShown
 import uniffi.bae_bridge.BridgeSyncStatusWord
 import uniffi.bae_bridge.BridgeSyncTone
-import uniffi.bae_bridge.BridgeTransferBatch
-import uniffi.bae_bridge.BridgeUploadQueueActivity
-import uniffi.bae_bridge.BridgeUploadQueueWait
 import java.time.Instant
 
 // Screenshot scenes captured by scripts/shots/android.sh. Each function is one
@@ -465,8 +422,7 @@ internal fun syncShown(
 fun SettingsAbout() {
     BaeTheme {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            Column {
-                ScreenTopBar(title = stringResource(R.string.settings_about), onBack = {})
+            AndroidScreen(title = stringResource(R.string.settings_about), onBack = {}) {
                 SettingsAboutSection(version = "0.0-dev")
             }
         }
@@ -498,8 +454,7 @@ fun SettingsMenuProblem() {
 private fun SettingsMenuScene(library: String) {
     BaeTheme {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            Column {
-                ScreenTopBar(title = stringResource(R.string.settings), onBack = {})
+            AndroidScreen(title = stringResource(R.string.settings), onBack = {}) {
                 SettingsMenu(
                     summaries =
                         SettingsSummaries(
@@ -712,8 +667,7 @@ fun AlbumPinStates() {
                 ).forEach { status ->
                     AndroidDownloadControl(
                         status = status,
-                        releaseId = "rel-1",
-                        downloads = downloads,
+                        progress = downloads.latestProgress("rel-1"),
                         unpinning = false,
                         onDownload = {},
                         onCancel = {},
