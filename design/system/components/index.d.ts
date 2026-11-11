@@ -17,7 +17,7 @@ export declare function MacStep(props: MacStepProps): React.ReactElement;
 export declare function MacStepActions(props: { children?: React.ReactNode }): React.ReactElement;
 
 /** A macOS alert: title, message, and its buttons stacked full width as children. */
-export interface MacAlertProps { title: string; warning?: string; message?: string; details?: string; children?: React.ReactNode }
+export interface MacAlertProps { title: string; warning?: string; message?: string; details?: string; suppress?: string; suppressOn?: boolean; children?: React.ReactNode }
 export declare function MacAlert(props: MacAlertProps): React.ReactElement;
 
 /** A segmented control; options is comma-separated, selected names the chosen one. */
@@ -316,6 +316,10 @@ export declare function MacTableRow(props: { selected?: boolean; placeholder?: b
 export declare function MacReleaseCell(props: { title: string }): React.ReactElement;
 export declare function MacStorageChip(props: { state?: 'local' | 'pinned' | 'cloud' | 'uploading' | 'pinning' | 'detaching' | 'downloadFailed' | 'moveFailed' | 'makeLocalFailed' | 'queued' | 'uploadQueued' | 'uploadBlocked' | 'makeLocalQueued'; progress?: number; file?: string }): React.ReactElement;
 export declare function MacDownloadRow(props: { kind?: 'pin' | 'makeLocal'; title?: string; detail?: string; ago?: string }): React.ReactElement;
+/** What bae keeps on this device, heading Settings → Storage: the total, one bar split by kind, a legend line per kind. parts: "Label:size:share,…" in the kinds' fixed order; each kind keeps its colour. */
+export interface StorageUsageProps { total?: string; of?: string; parts?: string }
+export declare function MacStorageUsage(props: StorageUsageProps): React.ReactElement;
+export declare function AndroidStorageUsage(props: StorageUsageProps): React.ReactElement;
 export declare function MacStorageFooter(props: { releases?: string; total?: string; uploads?: string; pins?: string; exports?: string; uploadsWait?: string; pinsWait?: string; exportsWait?: string }): React.ReactElement;
 export declare function MacTransferSummary(props: { kind?: 'upload' | 'pin'; counts?: string; bytes?: string; rate?: string; progress?: number; cancel?: boolean }): React.ReactElement;
 export declare function MacTransferReadout(props: { kind?: 'upload' | 'pin'; bytes?: string; rate?: string; progress?: number }): React.ReactElement;

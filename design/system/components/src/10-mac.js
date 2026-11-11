@@ -1,6 +1,6 @@
   // ---- macOS ----
 
-  var PANES = ['Appearance', 'Library', 'Playback', 'Transfers', 'Import', 'Save as', 'Casting', 'Subsonic', 'Automation', 'About'];
+  var PANES = ['Appearance', 'Library', 'Playback', 'Transfers', 'Storage', 'Import', 'Save as', 'Casting', 'Subsonic', 'Automation', 'About'];
 
   function MacWindow(props) {
     return h('div', { className: 'bae-m-window bae-m-window-plain', style: { width: Number(props.width || 690), height: Number(props.height || 600) } },
@@ -30,6 +30,8 @@
         props.warning ? h(MacNotice, { quiet: true, flush: true, tone: 'warning', title: props.warning }) : null,
         props.message ? h('div', { className: 'bae-m-alert-message' }, props.message) : null,
         props.details ? h(MacErrorDetails, { details: props.details }) : null,
+        // `suppress`: the checkbox that stops the alert asking again ("Don't show this again"), under the message, as NSAlert's suppression button sits.
+        props.suppress ? h(MacCheckbox, { label: props.suppress, on: props.suppressOn }) : null,
         h('div', { className: 'bae-m-alert-buttons' }, props.children)));
   }
 

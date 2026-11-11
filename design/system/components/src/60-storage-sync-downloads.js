@@ -271,6 +271,21 @@
     var o = list(props.options);
     return h('div', { className: 'bae-a-seg', role: 'radiogroup' }, o.map(function (x) { var on = x === String(props.selected); return h('span', { key: x, role: 'radio', 'aria-checked': on, className: cx('bae-a-seg-btn', on && 'bae-a-seg-on') }, on ? h(Glyph, { name: 'check', size: 18 }) : null, x); }));
   }
+
+  // What bae keeps on this device, as Settings → Storage heads it: the total, one bar split by kind, and a legend line per kind with its size. `parts` is "Label:size:share,…" in the kinds' fixed order; each kind keeps its colour whatever its size or whichever kinds are shown: Pinned blue, Cache gold, Library orchid, From before the reset mint, anything else the neutral; in that order no two neighbours are hard to tell apart. The legend names every kind, so no colour stands alone.
+  var USAGE_KIND = { 'Pinned': 1, 'Cache': 2, 'Library': 3, 'From before the reset': 4 };
+  function storageUsage(props, p) {
+    var parts = list(props.parts || 'Pinned:6.1 GB:0.72,Cache:1.8 GB:0.21,Images:420 MB:0.05,Library:180 MB:0.02').map(function (r) { var a = r.split(':'); return { label: a[0], size: a[1], share: Number(a[2]) }; });
+    return h('div', { className: 'bae-usage bae-usage-' + p },
+      h('div', { className: 'bae-usage-total' }, h('span', { className: 'bae-usage-num' }, props.total || '8.5 GB'), h('span', { className: 'bae-usage-of' }, props.of || (p === 'm' ? 'on this Mac' : 'on this phone'))),
+      h('div', { className: 'bae-usage-bar', role: 'img', 'aria-label': parts.map(function (x) { return x.label + ' ' + x.size; }).join(', ') },
+        parts.map(function (x, i) { return h('span', { key: i, className: 'bae-usage-seg bae-usage-seg-' + (USAGE_KIND[x.label] || 5), style: { flexGrow: x.share } }); })),
+      h('div', { className: 'bae-usage-legend' }, parts.map(function (x, i) {
+        return h('span', { key: i, className: 'bae-usage-key' }, h('span', { className: 'bae-usage-dot bae-usage-seg-' + (USAGE_KIND[x.label] || 5), 'aria-hidden': true }), h('span', null, x.label), h('span', { className: 'bae-usage-size' }, x.size));
+      })));
+  }
+  function MacStorageUsage(props) { return storageUsage(props, 'm'); }
+  function AndroidStorageUsage(props) { return storageUsage(props, 'a'); }
   // The Pinning screen's bar: Back, the title, Retry and Pause or Resume.
   function AndroidDownloadsBar(props) {
     return h('header', { className: 'bae-a-dlbar' }, h(AndroidIconButton, { icon: 'back', label: 'Back' }), h('span', { className: 'bae-a-dlbar-title' }, 'Pinning'),

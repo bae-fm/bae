@@ -58,6 +58,14 @@
    "x": 492,
    "y": 14416
   },
+  "AlbAndroidUnpin.dc.html": {
+   "h": 916,
+   "page": "home",
+   "title": "Unpin, asking first",
+   "w": 412,
+   "x": 2460,
+   "y": 14416
+  },
   "AlbAndroidDeleteFailed.dc.html": {
    "h": 916,
    "page": "home",
@@ -3131,6 +3139,14 @@
    "x": 14080,
    "y": 15812
   },
+  "AlbMacUnpin.dc.html": {
+   "h": 1000,
+   "page": "home",
+   "title": "macOS: Unpin, asking first",
+   "w": 1200,
+   "x": 15612,
+   "y": 15812
+  },
   "LibAndroidAlbumStates.dc.html": {
    "h": 1000,
    "page": "home",
@@ -3642,6 +3658,54 @@
    "w": 690,
    "x": 2310,
    "y": 9376
+  },
+  "SetAndroidStorage.dc.html": {
+   "h": 916,
+   "page": "settings",
+   "title": "Storage",
+   "w": 412,
+   "x": 0,
+   "y": 12856
+  },
+  "SetAndroidStorageReset.dc.html": {
+   "h": 916,
+   "page": "settings",
+   "title": "Storage, data from before a reset",
+   "w": 412,
+   "x": 492,
+   "y": 12856
+  },
+  "SetMacStorage.dc.html": {
+   "h": 700,
+   "page": "settings",
+   "title": "macOS: Storage",
+   "w": 690,
+   "x": 984,
+   "y": 12856
+  },
+  "SetMacStorageReset.dc.html": {
+   "h": 820,
+   "page": "settings",
+   "title": "macOS: Storage, data from before a reset",
+   "w": 690,
+   "x": 1754,
+   "y": 12856
+  },
+  "SetMacStorageResetDelete.dc.html": {
+   "h": 820,
+   "page": "settings",
+   "title": "macOS: Storage, deleting data from before a reset",
+   "w": 690,
+   "x": 2524,
+   "y": 12856
+  },
+  "SetAndroidStorageResetDelete.dc.html": {
+   "h": 916,
+   "page": "settings",
+   "title": "Storage, deleting data from before a reset",
+   "w": 412,
+   "x": 3294,
+   "y": 12856
   }
  },
  "createdOnFiles": {
@@ -3801,7 +3865,9 @@
   "row-logo-accents",
   "code-logo",
   "activity-progress",
-  "set-import-discogs-tip"
+  "set-import-discogs-tip",
+  "row-set-storage",
+  "code-set-storage"
  ],
  "notes": {
   "canvas-key-library": {
@@ -5079,6 +5145,23 @@
    "w": 420,
    "size": 24,
    "text": "What the code needs for these boards:\n- The Formats pane is “Save as”, in the sidebar and its title (SettingsView.swift, `.formats`); its list keeps the heading “Formats”, and the note “Formats appear in Save as… on tracks and releases.” goes.\n- Each format row ends in a ⋯ button (MoreMenu) with Edit… and Delete…, in place of the Track and Release toggles and the minus (PresetRow, FormatsSettingsTab.swift). Clicking the row still opens the editor. Delete… asks as the minus does today.\n- A format keeps its Name, first in the editor, prefilled when added with the format's name and the next free number: “FLAC”, then “FLAC (2)”, “FLAC (3)”; while it is still that prefill, changing Format re-prefills it. Rows show only the name, no grey line; the save panel's Format pop-up lists the names, then a separator and Edit Formats…, which opens Settings at the Save as pane in front of the save panel; the panel's pop-up follows any change made there, and a format added there is chosen in it. Names are unique on every add and edit: a taken name turns the Name field red with “Another format is named “MP3”.” and Done off, and core refuses one; “(2)” is only the prefill. Two formats may save the same way. Names stay stored, not made from the settings: encoder settings to come will be more than a name can say.\n- “Add format…” is a button under the list, on the right, as Add library… is on Welcome; today “+ Add format” sits inside the box.\n- No Defaults section: Save as starts with the format last used for any save, track or release (one stored choice in place of default_track_save_preset and default_release_save_preset).\n- Track and Release go from the codebase: every format shows in Save as for tracks and releases. Core drops a preset's applies-to-track and applies-to-release.\n- The editor is Name, Format and its one quality setting, nothing else; Embed cover art moves to Extras, one setting for every format. Bit depth for FLAC, WAV and AIFF: “Same as source” (the default) or “16-bit”; core's SaveBitDepth becomes those two, so a CD stays 16-bit where a fixed 24 pads it today. Bitrate for MP3, AAC and Opus, a pop-up, not a text field.\n- The Format pop-up lists lossless first, then a separator, then lossy: FLAC, WAV, AIFF / MP3, AAC, Opus (core's SaveFormat::ALL order today: FLAC, MP3, AAC, Opus, WAV, AIFF).\n- Bitrates, from what each encoder does with bae's bit_rate (bae-audio/src/encode.rs sets bit_rate = kbps × 1000): MP3 is libmp3lame at a constant bitrate, which has only 14 legal values (32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320) and rounds anything between, so its pop-up lists exactly those; AAC (FFmpeg's own encoder) 96, 128, 160, 192, 256, 320; Opus (libopus, max 510) 64, 96, 128, 160, 192, 256.\n- No Advanced. Every save writes one file per track by one rule: a track's gap goes at the end of the track before, and hidden audio before track 1 stays at the start of track 1 (today's AppendToPreviousIncludingHtoa). An image + CUE source is split at its track marks. Core drops SavePregapPlacement and single file + CUE.\n- A release save of a track already in the chosen format at the same depth copies its audio without re-encoding, writing tags, cover and name fresh.\n- Names: one box on the pane, out of each format's editor, with two naming fields labeled above them. File name names each track's file in every format (one stored pattern in place of each preset's save_preset_filename_token). Folder name names the folder a release save makes. A pattern is text with values in it as chips, an NSTokenField as Finder's rename Format field is: the person types between chips, and Delete after a chip or Forward Delete (fn-Delete) before it takes the whole chip out; chips still drag to reorder and come from the Add line. Stored as ordered pieces, each a value or typed text (save_filename_token and save_folder_token rows); rendering fills each value and keeps the text as typed, no longer joining with spaces, and an empty value leaves its text. Defaults: file [Track №] [Title], with a typed space between; folder [Artist] - [Album]. Text is kept as typed: spaces are not collapsed or trimmed (sanitize_filename_stem collapses runs today). Typed text that can't make a name turns the field red, and the preview line, which now sits right under the field with the Add line below it, becomes the error: “A name can’t start with “.”.” (typed text first in the pattern starting with .), “A name can’t contain “/”.” (the first of \\ : ? * \" < > | / in typed text), “A name can’t be empty.” (no pieces). The pattern is stored as typed; while it is invalid, saves name by its default pattern, and the error says nothing about that. A value's own characters are still written as coven writes a name (Some/Weird:Title → Some／Weird：Title). Both patterns add Album year, the album's own year (album.year), beside Release year, the release's (shown_year: its own year, else the album's). Folder values: Artist, Album, Album year, Release year, Label, Catalog number; file values: Title, Artist, Album, Album year, Release year, Track №, Disc №, Track total.\n- Extras, all on: Embed cover art (from each format), Cover image in the folder (a release save writes cover.jpg) and Loudness tags (ReplayGain track and album gain and peak from the loudness measured at import).\n- Spec §4.6 lists Save as's cases: one track converted; a whole release converted; an exact copy is Export.\n- Deleting the format last used makes the first remaining one the last used, in the same write; the only format left can't be deleted: its ⋯ menu shows Delete… off (e23d69e33).\nbae change, every locale."
+  },
+  "row-set-storage": {
+   "page": "settings",
+   "x": 0,
+   "y": 12616,
+   "text": "Storage",
+   "kind": "title1",
+   "w": 240,
+   "maxW": 4246
+  },
+  "code-set-storage": {
+   "page": "settings",
+   "size": 24,
+   "text": "What the code needs for these boards:\n- A Storage page on both: on macOS a Settings pane after Transfers (SettingsView.swift); on Android a row after Transfers in the Settings list (SettingsMenu.kt:56-83), its second line the total. bae change.\n- Sizes on this device, from core; nothing measures them today. Pinned: the pinned entries of coven's file cache. Cache: its unpinned entries in every namespace (release files, covers, artist images, avatars), with the Mac's catalog image cache (.bae/libraries/<id>/cache/remote-images-v2). Library: store.db, inputs.db, coven's settings and key files and its files/ folder. From before the reset: coven's discarded-device-* folders. Read when the page opens and again as they change. coven change (its per-namespace total, file_cache.rs:328, is crate-private and doesn't split pinned from unpinned) and bae change.\n- Clear Cache removes every unpinned entry and the catalog image cache in one go; pinned copies stay. Dimmed while the cache is empty. Nothing clears the cache today: evict_file is wrapped for tests only (bae-store coven_capabilities.rs:380). The old remote-images folder, left by 939b1aa76, goes. coven change and bae change.\n- Keep up to: 1 GB, 5 GB, 10 GB, 20 GB (the default), 50 GB; the limit on cached release files, per device. Pinned copies don't count toward it: today a namespace's total adds its pinned entries (coven file_cache_schema.rs:39-44), so 20 GB pinned leaves no room to cache a played track. bae sets it with set_cache_budget, which it never calls; the 20 GiB is fixed in bae-records/src/synced.rs:21-25. coven change and bae change.\n- Unpin removes the release's copies from this device at once, even with room in the cache. Today unpinning releases the pins and evicts the namespace only down to its budget (coven.md, Unpinning), so the copies stay as cache. coven change.\n- Ask before unpinning, on by default, per device: while on, Unpin asks first (the Unpin boards on the Library page), and Don't show this again there turns it off. Mac: .dialogSuppressionToggle on the alert. bae change.\n- From before the reset: shown only while a discarded-device folder exists, which today stays forever (coven device_reset.rs:24, 125-128). Delete… asks, then removes it. coven change (a call that deletes it) and bae change.\n- Local releases' originals stay in the person's folders and aren't counted.\nEvery locale.",
+   "w": 460,
+   "x": 3786,
+   "y": 12856
   }
  },
  "order": [
@@ -5394,6 +5477,7 @@
   "SetMacAutomationFailed.dc.html",
   "AlbAndroidMenu.dc.html",
   "AlbAndroidDelete.dc.html",
+  "AlbAndroidUnpin.dc.html",
   "AlbAndroidDeleteFailed.dc.html",
   "AlbAndroidGallery.dc.html",
   "AlbAndroidGalleryLoading.dc.html",
@@ -5414,6 +5498,7 @@
   "AlbMacSaveAsEditAdded.dc.html",
   "AlbMacSaveAsEditBack.dc.html",
   "AlbMacStorageStates.dc.html",
+  "AlbMacUnpin.dc.html",
   "ErrAndroidSnackRetry.dc.html",
   "ErrAndroidSnackPlay.dc.html",
   "ErrAndroidSnackBug.dc.html",
@@ -5535,7 +5620,13 @@
   "AccentsPlum.dc.html",
   "AccentsMidnight.dc.html",
   "AccentsForest.dc.html",
-  "AccentsSand.dc.html"
+  "AccentsSand.dc.html",
+  "SetAndroidStorage.dc.html",
+  "SetAndroidStorageReset.dc.html",
+  "SetAndroidStorageResetDelete.dc.html",
+  "SetMacStorage.dc.html",
+  "SetMacStorageReset.dc.html",
+  "SetMacStorageResetDelete.dc.html"
  ],
  "pages": [
   {

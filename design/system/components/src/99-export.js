@@ -17,6 +17,6 @@
     MacImportSidebar: MacImportSidebar, MacImportGroupHeader: MacImportGroupHeader, MacImportRow: MacImportRow, MacImportFolderLine: MacImportFolderLine, MacImportDraft: MacImportDraft, MacImportDestination: MacImportDestination, MacImportTable: MacImportTable, MacImportImages: MacImportImages, MacReleaseFiles: MacReleaseFiles, MacImportTrackRow: MacImportTrackRow, MacImportSheetCaption: MacImportSheetCaption, MacFindOnline: MacFindOnline, MacIdentifierBand: MacIdentifierBand, MacReleaseCard: MacReleaseCard, MacPressingRow: MacPressingRow, MacImportBulk: MacImportBulk,
     MacModal: MacModal, MacModalHeader: MacModalHeader, MacCoverGallery: MacCoverGallery, MacLightbox: MacLightbox, MacStorageBand: MacStorageBand,
     Logo: Logo, AppIcon: AppIcon, ImportSheep: ImportSheep,
-    Stars: Stars, Avatar: Avatar, MacListRow: MacListRow, AndroidListRow: AndroidListRow
+    Stars: Stars, Avatar: Avatar, MacListRow: MacListRow, AndroidListRow: AndroidListRow, MacStorageUsage: MacStorageUsage, AndroidStorageUsage: AndroidStorageUsage
   });
 })();

@@ -111,3 +111,25 @@
 .bae-m-filename-add { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; font: 400 11.5px var(--font-sans); color: var(--text-secondary); }
 .bae-m-filename-preview { font: 400 11.5px var(--font-sans); color: var(--text-secondary); }
 .bae-m-tokenadd { padding: 1px 6px; border-radius: 5px; border: 1px dashed var(--hairline-strong); color: var(--text-primary); }
+/* Settings → Storage's usage: the total, one bar in kinds, a legend. Each kind keeps one of the accents' selection steps (Pinned blue, Cache gold, Library orchid, From before the reset mint, anything else neutral), the same in both themes, checked for colour-blind separation and 3:1 on the surface in that order. A 2px gap parts the segments. */
+.bae-usage { display: flex; flex-direction: column; gap: var(--space-related); padding: var(--space-group); }
+.bae-usage-total { display: flex; align-items: baseline; gap: var(--space-inline); }
+.bae-usage-num { font-weight: 700; color: var(--text-primary); }
+.bae-usage-of { color: var(--text-secondary); }
+.bae-usage-bar { display: flex; gap: 2px; height: 8px; }
+.bae-usage-seg { min-width: 4px; border-radius: 2px; }
+.bae-usage-bar > .bae-usage-seg:first-child { border-radius: 4px 2px 2px 4px; }
+.bae-usage-bar > .bae-usage-seg:last-child { border-radius: 2px 4px 4px 2px; }
+.bae-usage-seg-1 { background: var(--accent-blue-selection); }
+.bae-usage-seg-2 { background: var(--accent-gold-selection); }
+.bae-usage-seg-3 { background: var(--accent-orchid-selection); }
+.bae-usage-seg-4 { background: var(--accent-mint-selection); }
+.bae-usage-seg-5 { background: var(--hairline-strong); }
+.bae-usage-legend { display: flex; flex-wrap: wrap; column-gap: var(--space-group); row-gap: var(--space-inline); color: var(--text-secondary); }
+.bae-usage-key { display: inline-flex; align-items: center; gap: var(--space-inline); white-space: nowrap; }
+.bae-usage-dot { width: 8px; height: 8px; border-radius: 4px; flex: none; }
+.bae-usage-size { color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.bae-usage-m { font: 400 12px var(--font-sans); }
+.bae-usage-m .bae-usage-num { font-size: 22px; }
+.bae-usage-a { font: 400 14px/20px var(--font-android); padding: var(--space-edge) var(--space-edge) var(--space-group); }
+.bae-usage-a .bae-usage-num { font-size: 32px; line-height: 40px; font-weight: 400; }
