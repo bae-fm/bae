@@ -30,7 +30,7 @@ from ui_view_sources import (
     Sources,
     child_views,
     declaration_indexes,
-    declaration_source,
+    declaration_sources,
     discovered_render_leaves,
     leaf_fragments,
     leaf_key,
@@ -252,18 +252,18 @@ FORBIDDEN_SECONDARY_PROJECTIONS = (
 
 
 def leaf_violations(source: str, leaf: RenderLeaf) -> list[tuple[int, str]]:
-    declaration, offset = declaration_source(source, leaf)
-    masked = mask_comments_and_literals(declaration)
     violations: list[tuple[int, str]] = []
-    owners = set(ENTITY_DATA_OWNERS[leaf.language])
-    owners.update(OWNER_TYPE.findall(masked))
-    owners.difference_update(NON_ENTITY_UI_OWNERS)
-    for owner in sorted(owners):
-        match = re.search(rf"\b{re.escape(owner)}\b", masked)
-        if match is None:
-            continue
-        line = source.count("\n", 0, offset + match.start()) + 1
-        violations.append((line, owner))
+    for declaration, offset in declaration_sources(source, leaf):
+        masked = mask_comments_and_literals(declaration)
+        owners = set(ENTITY_DATA_OWNERS[leaf.language])
+        owners.update(OWNER_TYPE.findall(masked))
+        owners.difference_update(NON_ENTITY_UI_OWNERS)
+        for owner in sorted(owners):
+            match = re.search(rf"\b{re.escape(owner)}\b", masked)
+            if match is None:
+                continue
+            line = source.count("\n", 0, offset + match.start()) + 1
+            violations.append((line, owner))
     return violations
 
 

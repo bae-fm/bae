@@ -171,9 +171,10 @@ def matching_delimiter(source: str, start: int, opening: str, closing: str) -> i
     raise ValueError(f"unclosed {opening!r} at offset {start}")
 
 
-def declaration_source(
+def declaration_sources(
     source: str, leaf: RenderLeaf, masked: str | None = None
-) -> tuple[str, int]:
+) -> list[tuple[str, int]]:
+    """Every declaration of the leaf: several only for Kotlin overloads."""
     if masked is None:
         masked = mask_comments_and_literals(source)
     matches = list(re.finditer(leaf.declaration, masked))
@@ -185,23 +186,25 @@ def declaration_source(
             for match in matches
             if enclosing_type(spans, match.start()) == leaf.owner
         ]
-    if len(matches) != 1:
+    if not matches or (len(matches) > 1 and leaf.language != "kotlin"):
         raise ValueError(
             f"expected one declaration for {leaf.symbol}, found {len(matches)}"
         )
-    match = matches[0]
-    if leaf.callable_declaration or leaf.language == "kotlin":
-        parameters = masked.find("(", match.start(), match.end() + 1)
-        if parameters == -1:
-            raise ValueError(f"missing parameter list for {leaf.symbol}")
-        parameters_end = matching_delimiter(masked, parameters, "(", ")")
-        body_start = masked.find("{", parameters_end)
-    else:
-        body_start = masked.find("{", match.end())
-    if body_start == -1:
-        raise ValueError(f"missing body for {leaf.symbol}")
-    body_end = matching_delimiter(masked, body_start, "{", "}")
-    return source[match.start() : body_end + 1], match.start()
+    declarations: list[tuple[str, int]] = []
+    for match in matches:
+        if leaf.callable_declaration or leaf.language == "kotlin":
+            parameters = masked.find("(", match.start(), match.end() + 1)
+            if parameters == -1:
+                raise ValueError(f"missing parameter list for {leaf.symbol}")
+            parameters_end = matching_delimiter(masked, parameters, "(", ")")
+            body_start = masked.find("{", parameters_end)
+        else:
+            body_start = masked.find("{", match.end())
+        if body_start == -1:
+            raise ValueError(f"missing body for {leaf.symbol}")
+        body_end = matching_delimiter(masked, body_start, "{", "}")
+        declarations.append((source[match.start() : body_end + 1], match.start()))
+    return declarations
 
 
 def swift_root_for(path: str) -> str:
@@ -241,7 +244,6 @@ def swift_extension_fragments(
 def leaf_fragments(sources: Sources, leaf: RenderLeaf) -> list[SourceFragment]:
     source = sources.text(leaf.path)
     masked = sources.masked(leaf.path)
-    declaration, offset = declaration_source(source, leaf, masked)
     fragments = [
         SourceFragment(
             leaf.path,
@@ -250,6 +252,7 @@ def leaf_fragments(sources: Sources, leaf: RenderLeaf) -> list[SourceFragment]:
             source,
             offset,
         )
+        for declaration, offset in declaration_sources(source, leaf, masked)
     ]
     if leaf.language == "swift" and not leaf.callable_declaration:
         fragments.extend(swift_extension_fragments(sources, leaf))
@@ -385,6 +388,9 @@ def resolved_leaf(
     if len(same_file) == 1:
         return same_file[0]
     if len(declarations) == 1:
+        return declarations[0]
+    # Overloads declared in one file are one view.
+    if len(declarations) > 1 and len({leaf.path for leaf in declarations}) == 1:
         return declarations[0]
     if len(declarations) > 1:
         paths = ", ".join(sorted(leaf.path for leaf in declarations))

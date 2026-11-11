@@ -622,6 +622,44 @@ internal fun FixtureChildProgress(row: FixtureProjection) {
                 ],
             )
 
+    def test_compose_overloads_in_one_file_are_one_view(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.copied_inventory(root)
+            relative = Path(
+                "bae-android/app/src/main/java/fm/bae/app/ui/FixtureOverloadList.kt"
+            )
+            path = root / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(
+                """
+@Composable
+internal fun FixtureOverload(title: String) {
+    Text(title)
+}
+
+@Composable
+internal fun FixtureOverload(row: FixtureProjection) {
+    val outbox = LocalOutboxStore.current
+    Text(row.title)
+}
+
+@Composable
+internal fun FixtureOverloadList(rows: List<FixtureProjection>) {
+    LazyColumn {
+        items(rows) { row -> FixtureOverload(row) }
+    }
+}
+"""
+            )
+            self.assertEqual(
+                BOUNDARY.check(root),
+                [
+                    f"{relative}:9: FixtureOverload reaches entity-data owner "
+                    "LocalOutboxStore",
+                ],
+            )
+
     def test_alternate_swift_and_compose_repeat_forms_are_discovered(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

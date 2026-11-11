@@ -82,21 +82,17 @@ enum class NoticeButtons {
 
 /**
  * A failure as Android's notice draws it: a [tone] notice (danger unless told otherwise) with the
- * tone's glyph and a title. The title is the [error]'s own localized line, or, given [title], the
- * words the app chose for what failed, with [advice], what to do about it; [error] is then null when
- * core says the failure has nothing to show. A notice never shows the error itself: for a failure core
- * reported, a Details button opens the causes in a dialog (led by the category's line, under a [title]).
- * Details and [action] sit at the right of the title's line, Details first, or under the words when
- * [buttons] says so. Given [onOpenDetails], the notice has no Details button: tapping it hands the
- * details to the caller, who shows them; the notice is then its title alone, and what to do is the
- * message of what the caller shows. Mirrors the Apple apps' `Notice`.
+ * tone's glyph and the [error]'s own localized line as its title. A notice never shows the error
+ * itself: a Details button opens the causes in a dialog, led by the category's line. Details and
+ * [action] sit at the right of the title's line, Details first, or under the words when [buttons]
+ * says so. Given [onOpenDetails], the notice has no Details button: tapping it hands the details
+ * to the caller, who shows them; the notice is then its title alone, and what to do is the
+ * message of what the caller shows. Mirrors the Apple apps' `Notice(error:)`.
  */
 @Composable
 fun AndroidNotice(
-    error: DisplayError?,
+    error: DisplayError,
     modifier: Modifier = Modifier,
-    title: String? = null,
-    advice: String? = null,
     action: ErrorAction? = null,
     tone: StatusTone = StatusTone.DANGER,
     look: NoticeLook = NoticeLook.FILLED,
@@ -104,16 +100,44 @@ fun AndroidNotice(
     onOpenDetails: ((ErrorDetails) -> Unit)? = null,
     buttons: NoticeButtons = NoticeButtons.INLINE,
 ) {
-    val words = title ?: requireNotNull(error) { "a notice without a title shows the error's line" }.line
     ErrorNoticeContent(
-        title = words,
-        advice = if (title == null) null else advice,
-        details =
-            when {
-                error == null -> null
-                title == null -> ErrorDetails.of(error)
-                else -> ErrorDetails.titled(title, advice, error)
-            },
+        title = error.line,
+        advice = null,
+        details = ErrorDetails.of(error),
+        modifier = modifier,
+        action = action,
+        tone = tone,
+        look = look,
+        onDismiss = onDismiss,
+        onOpenDetails = onOpenDetails,
+        buttons = buttons,
+    )
+}
+
+/**
+ * A failure as Android's notice draws it, under the words the app chose: a [tone] notice with the
+ * tone's glyph, a [title] for what failed and [advice], what to do about it. [error] is null when
+ * core says the failure has nothing to show; otherwise a Details button opens the causes in a
+ * dialog, led by the title. The buttons and [onOpenDetails] are as in the overload that takes the
+ * error's own line. Mirrors the Apple apps' `Notice(title:advice:error:)`.
+ */
+@Composable
+fun AndroidNotice(
+    title: String,
+    advice: String?,
+    error: DisplayError?,
+    modifier: Modifier = Modifier,
+    action: ErrorAction? = null,
+    tone: StatusTone = StatusTone.DANGER,
+    look: NoticeLook = NoticeLook.FILLED,
+    onDismiss: (() -> Unit)? = null,
+    onOpenDetails: ((ErrorDetails) -> Unit)? = null,
+    buttons: NoticeButtons = NoticeButtons.INLINE,
+) {
+    ErrorNoticeContent(
+        title = title,
+        advice = advice,
+        details = error?.let { ErrorDetails.titled(title, advice, it) },
         modifier = modifier,
         action = action,
         tone = tone,
