@@ -183,13 +183,13 @@ private fun RenameLibraryDialogContent(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.settings_rename_library)) },
+        title = { Text(stringResource(R.string.settings_rename_library_title)) },
         text = {
             Column {
                 OutlinedTextField(
                     value = draft,
                     onValueChange = onDraftChange,
-                    label = { Text(stringResource(R.string.settings_library_name)) },
+                    label = { Text(stringResource(R.string.settings_library_new_name)) },
                     supportingText = { Text(stringResource(R.string.name_shown_to_everyone)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
@@ -199,7 +199,7 @@ private fun RenameLibraryDialogContent(
         },
         confirmButton = {
             TextButton(onClick = onSave, enabled = draft.isNotBlank() && !saving) {
-                Text(stringResource(R.string.save))
+                Text(stringResource(R.string.settings_rename_library))
             }
         },
         dismissButton = {

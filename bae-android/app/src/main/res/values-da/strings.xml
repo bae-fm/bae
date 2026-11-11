@@ -357,8 +357,9 @@
     <string name="invite_cancel">Annuller invitation</string>
     <string name="invite_share">Del</string>
     <string name="join_request_decline">Afvis</string>
+    <string name="settings_rename_library_title">Omdøb bibliotek</string>
     <string name="settings_rename_library">Omdøb</string>
-    <string name="settings_library_name">Bibliotekets navn</string>
+    <string name="settings_library_new_name">Nyt navn</string>
     <string name="settings_library_switch">Skift til et andet bibliotek på denne enhed</string>
     <string name="settings_libraries_load_failed">Dine biblioteker kunne ikke indlæses.</string>
     <string name="settings_history">Lyttehistorik</string>

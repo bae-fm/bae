@@ -371,8 +371,9 @@
     <string name="invite_cancel">Zrušiť pozvánku</string>
     <string name="invite_share">Zdieľať</string>
     <string name="join_request_decline">Odmietnuť</string>
+    <string name="settings_rename_library_title">Premenovať knižnicu</string>
     <string name="settings_rename_library">Premenovať</string>
-    <string name="settings_library_name">Názov knižnice</string>
+    <string name="settings_library_new_name">Nový názov</string>
     <string name="settings_library_switch">Prepnúť na inú knižnicu v tomto zariadení</string>
     <string name="settings_libraries_load_failed">Vaše knižnice sa nepodarilo načítať.</string>
     <string name="settings_history">História počúvania</string>

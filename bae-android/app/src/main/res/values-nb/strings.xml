@@ -357,8 +357,9 @@
     <string name="invite_cancel">Avbryt invitasjonen</string>
     <string name="invite_share">Del</string>
     <string name="join_request_decline">Avslå</string>
+    <string name="settings_rename_library_title">Gi biblioteket nytt navn</string>
     <string name="settings_rename_library">Gi nytt navn</string>
-    <string name="settings_library_name">Bibliotekets navn</string>
+    <string name="settings_library_new_name">Nytt navn</string>
     <string name="settings_library_switch">Bytt til et annet bibliotek på denne enheten</string>
     <string name="settings_libraries_load_failed">Kunne ikke laste inn bibliotekene dine.</string>
     <string name="settings_history">Lyttehistorikk</string>

@@ -415,8 +415,9 @@
     <string name="invite_cancel">Cancel invite</string>
     <string name="invite_share">Share</string>
     <string name="join_request_decline">Decline</string>
+    <string name="settings_rename_library_title">Rename library</string>
     <string name="settings_rename_library">Rename</string>
-    <string name="settings_library_name">Library name</string>
+    <string name="settings_library_new_name">New name</string>
     <string name="settings_library_switch">Switch to another library on this device</string>
     <string name="settings_libraries_load_failed">Couldn\'t load your libraries.</string>
     <string name="settings_history">Listening history</string>

@@ -366,8 +366,9 @@
     <string name="invite_cancel">Otkaži pozivnicu</string>
     <string name="invite_share">Podijeli</string>
     <string name="join_request_decline">Odbij</string>
+    <string name="settings_rename_library_title">Preimenuj fonoteku</string>
     <string name="settings_rename_library">Preimenuj</string>
-    <string name="settings_library_name">Naziv fonoteke</string>
+    <string name="settings_library_new_name">Novi naziv</string>
     <string name="settings_library_switch">Prijeđi na drugu fonoteku na ovom uređaju</string>
     <string name="settings_libraries_load_failed">Nije moguće učitati vaše fonoteke.</string>
     <string name="settings_history">Povijest slušanja</string>

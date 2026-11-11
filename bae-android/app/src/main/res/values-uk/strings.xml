@@ -373,8 +373,9 @@
     <string name="invite_cancel">Скасувати запрошення</string>
     <string name="invite_share">Поділитися</string>
     <string name="join_request_decline">Відхилити</string>
+    <string name="settings_rename_library_title">Перейменувати бібліотеку</string>
     <string name="settings_rename_library">Перейменувати</string>
-    <string name="settings_library_name">Назва бібліотеки</string>
+    <string name="settings_library_new_name">Нова назва</string>
     <string name="settings_library_switch">Перейти до іншої бібліотеки на цьому пристрої</string>
     <string name="settings_libraries_load_failed">Не вдалося завантажити ваші фонотеки.</string>
     <string name="settings_history">Історія прослуховування</string>
