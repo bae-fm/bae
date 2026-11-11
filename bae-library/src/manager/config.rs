@@ -399,6 +399,7 @@ impl LibraryManager {
 
     /// The last-used format must name a preset that exists, so it is never
     /// dangling.
+    #[cfg(desktop)]
     fn validate_last_save_preset(
         preset_id: &str,
         presets: &[bae_preferences::SavePreset],
