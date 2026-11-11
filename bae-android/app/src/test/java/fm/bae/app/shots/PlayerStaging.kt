@@ -10,20 +10,32 @@ import fm.bae.app.ui.playback.AndroidSeekBar
 import fm.bae.app.ui.playback.SeekBarState
 import fm.bae.fastvalues.LatestStream
 import uniffi.bae_bridge.BridgeDurationClock
+import uniffi.bae_bridge.BridgeTrackBuffered
+import uniffi.bae_bridge.BridgeTrackPosition
+import uniffi.bae_bridge.BridgeTrackSpan
 
 private const val TRACK_ID = "shot-track"
-private const val TRACK_MINUTES = 5u
-private const val TRACK_SECONDS = 3u
+private const val DURATION_MS = 303_000L
+private const val MILLIS_PER_SECOND = 1_000L
+private const val SECONDS_PER_MINUTE = 60L
 
-/**
- * A playing track as a player draws it. Its streams hold nothing: a View following a stream that holds a
- * value asks the Choreographer for a frame after every frame, so the test never goes idle. The seek row
- * shows its total time and no bar, and the play and pause control no wait arc.
- */
-internal class PlayerStaging {
-    val positions = LatestStream.trackPositions().source(TRACK_ID)
-    val buffered = LatestStream.trackBuffered().source(TRACK_ID)
-    val storageWait = LatestStream.trackStorageWaits().source(TRACK_ID)
+/** A playing track as a player draws it: where it is, which parts of it are here, whether its load waits on storage. */
+internal class PlayerStaging(
+    private val progress: Double,
+    held: List<BridgeTrackSpan>,
+    waitsOnStorage: Boolean = false,
+) {
+    private val position =
+        BridgeTrackPosition(
+            positionMs = (progress * DURATION_MS).toLong(),
+            durationMs = DURATION_MS.toULong(),
+            progress = progress,
+            seekRevision = 0uL,
+        )
+    val positions = LatestStream.trackPositions(mapOf(TRACK_ID to position)).source(TRACK_ID)
+    val buffered = LatestStream.trackBuffered(mapOf(TRACK_ID to BridgeTrackBuffered(held))).source(TRACK_ID)
+    val storageWait =
+        LatestStream.trackStorageWaits(if (waitsOnStorage) setOf(TRACK_ID) else emptySet()).source(TRACK_ID)
 
     val track =
         NowPlaying(
@@ -41,16 +53,26 @@ internal class PlayerStaging {
         AndroidSeekBar(
             position = positions,
             buffered = buffered,
-            state = {
+            state = { shown ->
                 SeekBarState(
-                    progress = 0.0,
-                    leading = "",
-                    trailing = clockText(BridgeDurationClock(false, null, TRACK_MINUTES, TRACK_SECONDS), locale),
+                    progress = shown?.progress ?: 0.0,
+                    leading = clockText(clock((shown?.positionMs ?: 0L)), locale),
+                    trailing = clockText(clock(DURATION_MS), locale),
                     seekable = true,
                 )
             },
             onSeekRatio = {},
             onToggleRemaining = {},
+        )
+    }
+
+    private fun clock(ms: Long): BridgeDurationClock {
+        val seconds = ms / MILLIS_PER_SECOND
+        return BridgeDurationClock(
+            negative = false,
+            hours = null,
+            minutes = (seconds / SECONDS_PER_MINUTE).toUInt(),
+            seconds = (seconds % SECONDS_PER_MINUTE).toUInt(),
         )
     }
 }

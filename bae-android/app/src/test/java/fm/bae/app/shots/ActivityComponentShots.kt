@@ -15,7 +15,7 @@ class ActivityComponentShots : BoardShot() {
     @Test
     fun androidComponentActivityDefault() =
         component("android.component.activity.default", wide = true) {
-            val store = remember { SyncActivityStore(LatestStream.activityBars()) }
+            val store = remember { SyncActivityStore(LatestStream.activityBars(mapOf("uploads" to 0.43, "pins" to 0.3))) }
             val activity = PreviewData.syncActivity(needsAttention = false)
             AndroidActivity(
                 problems = activityProblems(emptyList(), activity, null, emptySet()),

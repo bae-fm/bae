@@ -64,17 +64,21 @@ class LatestStream<V : Any> private constructor(
             }
         }
 
-    /** Whether [key] holds a value that is changing; a key at rest is read when a pull names it. */
+    /**
+     * Whether [key] holds a value that is changing; a key at rest is read when a pull names it. A
+     * preview's or a test's values change only by [write], which tells the Views watching the key,
+     * so they are always at rest.
+     */
     internal fun moving(key: String): Boolean =
         if (preview != null) {
-            preview.containsKey(key)
+            false
         } else {
             fed?.moving(key.encodeToByteArray()) ?: false
         }
 
     /**
      * A test's write of [key] into a stream [written] made, telling the Views
-     * watching it on the main thread when it starts or stops holding a value.
+     * watching it on the main thread when its value changes.
      * App code never writes a stream; only core does.
      */
     @VisibleForTesting
@@ -84,7 +88,7 @@ class LatestStream<V : Any> private constructor(
     ) {
         val values = checkNotNull(preview) { "only a written stream is written" }
         val held = if (value == null) values.remove(key) else values.put(key, value)
-        if ((held == null) != (value == null)) mainThread.post { activity.keysChanged(listOf(key.encodeToByteArray())) }
+        if (held != value) mainThread.post { activity.keysChanged(listOf(key.encodeToByteArray())) }
     }
 
     /**

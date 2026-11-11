@@ -10,7 +10,6 @@ import fm.bae.app.ui.albumdetail.UnplayableLine
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.downloads.AndroidDownloadRow
 import fm.bae.app.ui.downloads.AndroidDownloadsBar
-import fm.bae.fastvalues.LatestStream
 import org.junit.Test
 import uniffi.bae_bridge.BridgeDownloadState
 import uniffi.bae_bridge.BridgeMessage
@@ -52,13 +51,14 @@ class DownloadComponentShots : BoardShot() {
     @Test
     fun androidComponentDownloadRowDefault() =
         component("android.component.download-row.default", wide = true) {
+            val downloads = PreviewData.downloadStore(downloadingReleaseId = "rel-2")
             Column {
                 listOf(
                     PreviewData.downloadOp(releaseId = "rel-2", state = BridgeDownloadState.Active),
                     PreviewData.downloadOp(releaseId = "rel-1", state = BridgeDownloadState.Queued),
                     PreviewData.downloadOp(releaseId = "rel-3", state = BridgeDownloadState.Failed("Network unreachable")),
                 ).forEach { op ->
-                    AndroidDownloadRow(op, noProgress.source(op.releaseId), onCancel = {}, onRetry = {})
+                    AndroidDownloadRow(op, downloads.latestProgress(op.releaseId), onCancel = {}, onRetry = {})
                 }
             }
         }
@@ -107,15 +107,12 @@ class DownloadComponentShots : BoardShot() {
         }
 }
 
-/** Streams hold nothing, so no bar is drawn: a View following a stream that holds a value keeps the test from going idle. */
-private val noProgress = LatestStream.downloads()
-
 @Composable
 private fun Control(status: BridgeReleaseDownloadStatus) =
     Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.compact)) {
         AndroidDownloadControl(
             status = status,
-            progress = noProgress.source("rel-1"),
+            progress = PreviewData.downloadStore(downloadingReleaseId = "rel-1").latestProgress("rel-1"),
             unpinning = false,
             onDownload = {},
             onCancel = {},

@@ -72,6 +72,27 @@ class FrameFollowingTest {
         assertEquals(0, counted.reads - before)
     }
 
+    @Test
+    fun aPreviewKeyIsShownOnceAndAWriteIsShownWithoutFrames() {
+        ShadowChoreographer.setPaused(true)
+        ShadowChoreographer.setFrameDelay(FRAME)
+        val positions = LatestStream.written<BridgeTrackPosition>()
+        positions.write("track", BridgeTrackPosition(1, 10uL, 0.1, 0uL))
+        val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
+        val view = View(activity)
+        activity.setContentView(view)
+        val shown = mutableListOf<Long?>()
+        FrameFollowing<BridgeTrackPosition>(view) { shown += it?.positionMs }.follow(positions.source("track"))
+        val looper = shadowOf(Looper.getMainLooper())
+
+        repeat(3) { looper.idleFor(FRAME) }
+        assertEquals(listOf<Long?>(1L), shown)
+
+        positions.write("track", BridgeTrackPosition(5, 10uL, 0.5, 0uL))
+        looper.idleFor(FRAME)
+        assertEquals(listOf<Long?>(1L, 5L), shown)
+    }
+
     /** A View following the position of a track whose stream is [counted]. */
     private fun followed(counted: CountedReads): FrameFollowing<BridgeTrackPosition> {
         val positions = LatestStream.trackPositions()

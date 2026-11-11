@@ -21,13 +21,21 @@ import fm.bae.app.ui.playback.ExpandedVolumeRow
 import fm.bae.app.ui.playback.NowPlayingTransport
 import org.junit.Test
 import uniffi.bae_bridge.BridgeRepeatMode
+import uniffi.bae_bridge.BridgeTrackSpan
 
-internal val playing = PlayerStaging()
+internal val playing = PlayerStaging(progress = 0.35, held = listOf(BridgeTrackSpan(0.0, 0.6)))
+private val waiting = PlayerStaging(progress = 0.02, held = listOf(BridgeTrackSpan(0.0, 0.04)), waitsOnStorage = true)
+private val holes =
+    PlayerStaging(progress = 0.2, held = listOf(BridgeTrackSpan(0.0, 0.3), BridgeTrackSpan(0.55, 0.7)))
 
 /** The component shots of the player: the bar, its play and pause, the seek row, the full player and the queue's rows. */
 class PlaybackComponentShots : BoardShot() {
     @Test
     fun androidComponentNowPlayingBarPlaying() = component("android.component.now-playing-bar.playing", wide = true) { Bar(playing) }
+
+    @Test
+    fun androidComponentNowPlayingBarWaitingOnTheCloud() =
+        component("android.component.now-playing-bar.waiting-on-the-cloud", wide = true) { Bar(waiting) }
 
     @Test
     fun androidComponentPlayPausePaused() =
@@ -38,8 +46,18 @@ class PlaybackComponentShots : BoardShot() {
         component("android.component.play-pause.playing") { AndroidPlayPause(true, ThemeIcon.large, null) {} }
 
     @Test
+    fun androidComponentPlayPauseWaiting() =
+        component("android.component.play-pause.waiting") { AndroidPlayPause(true, ThemeIcon.large, waiting.storageWait) {} }
+
+    @Test
     fun androidComponentPlayPauseFullPlayer() =
         component("android.component.play-pause.full-player") { AndroidPlayPause(true, 48.dp, null) {} }
+
+    @Test
+    fun androidComponentSeekBarPlaying() = component("android.component.seek-bar.playing", wide = true) { playing.SeekRow() }
+
+    @Test
+    fun androidComponentSeekBarHoles() = component("android.component.seek-bar.holes", wide = true) { holes.SeekRow() }
 
     @Test
     fun androidComponentFullPlayerDefault() =
