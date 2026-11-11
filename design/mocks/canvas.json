@@ -3714,6 +3714,14 @@
    "w": 412,
    "x": 3294,
    "y": 12856
+  },
+  "MacCreateName.dc.html": {
+   "h": 600,
+   "page": "welcome",
+   "title": "macOS: Create: your name",
+   "w": 690,
+   "x": 0,
+   "y": 13272
   }
  },
  "createdOnFiles": {
@@ -3875,7 +3883,9 @@
   "activity-progress",
   "set-import-discogs-tip",
   "row-set-storage",
-  "code-set-storage"
+  "code-set-storage",
+  "row-welcome-create",
+  "code-welcome-create"
  ],
  "notes": {
   "canvas-key-library": {
@@ -5170,6 +5180,23 @@
    "w": 460,
    "x": 3786,
    "y": 12856
+  },
+  "row-welcome-create": {
+   "page": "welcome",
+   "x": 0,
+   "y": 13032,
+   "text": "Creating a library",
+   "kind": "title1",
+   "w": 240,
+   "maxW": 1250
+  },
+  "code-welcome-create": {
+   "page": "welcome",
+   "size": 24,
+   "text": "What the code needs for this board:\n- Create new library… (the first-run button and the Add library menu, both with the ellipsis now) opens this step before anything is created: “Start a new library”, Your name (placeholder “Appears on your profile, ratings and playlists”), Cancel and Create, as joining asks (MacJoinName). Today Create starts at once with nothing asked (WelcomeChooseView.swift:274-296). bae change.\n- Create makes the library and the creator's profile with that name in one go: create_library takes the name (bae-bridge/src/host.rs:557 takes only the library's name, generated when none). Every member then has a name, so an invite reads the profile's name with no case for a missing one. bae change.\n- Create stays dimmed while the name is blank. Then the creating steps, as today.\n- Android has no Create today; whether it gets one is the person's open question (todo §1). Its name step is drawn once that's answered.\nEvery locale.",
+   "w": 420,
+   "x": 770,
+   "y": 13272
   }
  },
  "order": [
@@ -5635,7 +5662,8 @@
   "SetAndroidStorageResetDelete.dc.html",
   "SetMacStorage.dc.html",
   "SetMacStorageReset.dc.html",
-  "SetMacStorageResetDelete.dc.html"
+  "SetMacStorageResetDelete.dc.html",
+  "MacCreateName.dc.html"
  ],
  "pages": [
   {
