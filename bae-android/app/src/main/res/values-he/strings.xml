@@ -223,13 +223,12 @@
     <string name="cast_turn_off_confirm">כבה</string>
     <string name="settings_casting">שידור</string>
     <string name="settings_enable_casting">הפעלת שידור</string>
-    <string name="settings_casting_help">מנגן במקלטי Cast‏, AirPlay ו‑UPnP ברשת שלך. כשהאפשרות כבויה, bae אינו מחפש מכשירים.</string>
+    <string name="settings_casting_help">סורק את הרשת שלך אחר מקלטי Cast‏, AirPlay ו‑UPnP.</string>
     <string name="settings_casting_receivers">מקלטים ברשת שלך</string>
     <string name="settings_casting_looking">מחפש מקלטים…</string>
-    <string name="settings_casting_receivers_help">מקלטים מופיעים כאן כל עוד הדף הזה פתוח.</string>
     <string name="settings_cast_transcode_format">פורמט ההמרה</string>
     <string name="settings_cast_transcode_wav">WAV (ללא אובדן)</string>
-    <string name="settings_cast_transcode_help">רצועות שמכשיר Cast או UPnP לא יכול לנגן ישירות, כמו רצועות מקובץ יחיד + CUE, מומרות בזמן הניגון. WAV הוא ללא אובדן, אך תופס פי כמה נתונים מ‑MP3. מכשירי UPnP תמיד מקבלים MP3, כי הם לא נדרשים לנגן WAV.</string>
+    <string name="settings_cast_transcode_help">לרצועות שמקלט אינו יכול לנגן כפי שהן. WAV שומר על איכות מלאה אך עלול להיקטע ב‑Wi‑Fi חלש; MP3 עמיד יותר.</string>
     <string name="appearance_title">מראה</string>
     <string name="appearance_theme">ערכת נושא</string>
     <string name="appearance_system">מערכת</string>

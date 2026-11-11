@@ -221,13 +221,12 @@
     <string name="cast_turn_off_confirm">Oprește</string>
     <string name="settings_casting">Transmisie</string>
     <string name="settings_enable_casting">Activează transmisia</string>
-    <string name="settings_casting_help">Redă către receptoare Cast, AirPlay și UPnP din rețeaua ta. Când e oprit, bae nu caută dispozitive.</string>
+    <string name="settings_casting_help">Caută receptoare Cast, AirPlay și UPnP în rețeaua ta.</string>
     <string name="settings_casting_receivers">Receptoare din rețeaua ta</string>
     <string name="settings_casting_looking">Se caută receptoare…</string>
-    <string name="settings_casting_receivers_help">Receptoarele apar aici cât timp această pagină este deschisă.</string>
     <string name="settings_cast_transcode_format">Convertește în</string>
     <string name="settings_cast_transcode_wav">WAV (fără pierderi)</string>
-    <string name="settings_cast_transcode_help">Piesele pe care un dispozitiv Cast sau UPnP nu le poate reda direct, cum ar fi piesele dintr-un singur fișier + CUE, sunt convertite în timpul redării. WAV este fără pierderi, dar ocupă de câteva ori mai multe date decât MP3. Dispozitivele UPnP primesc mereu MP3, deoarece nu sunt obligate să redea WAV.</string>
+    <string name="settings_cast_transcode_help">Pentru piesele pe care un receptor nu le poate reda ca atare. WAV păstrează calitatea completă, dar se poate întrerupe pe un Wi‑Fi slab; MP3 rezistă mai bine.</string>
     <string name="appearance_title">Aspect</string>
     <string name="appearance_theme">Temă</string>
     <string name="appearance_system">Sistem</string>

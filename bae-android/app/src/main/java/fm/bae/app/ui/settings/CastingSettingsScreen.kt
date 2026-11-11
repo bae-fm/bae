@@ -176,7 +176,6 @@ internal fun CastingPage(
                         looking = stringResource(R.string.settings_casting_looking),
                     )
                 }
-                CastingCaption(stringResource(R.string.settings_casting_receivers_help))
                 CastingCard {
                     CastTranscodeFormatPicker(selected = transcodeFormat, onSelect = onTranscodeFormatChange)
                 }

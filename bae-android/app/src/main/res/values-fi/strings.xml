@@ -215,13 +215,12 @@
     <string name="cast_turn_off_confirm">Ota pois käytöstä</string>
     <string name="settings_casting">Suoratoisto</string>
     <string name="settings_enable_casting">Ota suoratoisto käyttöön</string>
-    <string name="settings_casting_help">Toistaa verkkosi Cast-, AirPlay- ja UPnP-vastaanottimiin. Kun tämä on pois päältä, bae ei etsi laitteita.</string>
+    <string name="settings_casting_help">Etsii verkostasi Cast-, AirPlay- ja UPnP-vastaanottimia.</string>
     <string name="settings_casting_receivers">Verkkosi vastaanottimet</string>
     <string name="settings_casting_looking">Etsitään vastaanottimia…</string>
-    <string name="settings_casting_receivers_help">Vastaanottimet näkyvät tässä, kun tämä sivu on auki.</string>
     <string name="settings_cast_transcode_format">Muunna muotoon</string>
     <string name="settings_cast_transcode_wav">WAV (häviötön)</string>
-    <string name="settings_cast_transcode_help">Raidat, joita Cast- tai UPnP-laite ei voi toistaa suoraan, kuten raidat yhdestä tiedostosta + CUE, muunnetaan toiston aikana. WAV on häviötön, mutta vie moninkertaisesti dataa MP3:een verrattuna. UPnP-laitteet saavat aina MP3:n, koska niiden ei tarvitse toistaa WAV:ia.</string>
+    <string name="settings_cast_transcode_help">Kappaleille, joita vastaanotin ei voi toistaa sellaisenaan. WAV säilyttää täyden laadun, mutta voi katkeilla heikolla Wi‑Fi-yhteydellä; MP3 kestää sitä paremmin.</string>
     <string name="appearance_title">Ulkoasu</string>
     <string name="appearance_theme">Teema</string>
     <string name="appearance_system">Järjestelmä</string>

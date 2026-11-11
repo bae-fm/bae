@@ -42440,175 +42440,175 @@
         }
       }
     },
-    "Tracks a Cast or UPnP device can't play directly, such as tracks from a single file + CUE, are converted while they play. WAV is lossless but takes several times the data of MP3. UPnP devices always get MP3, since they aren't required to play WAV." : {
+    "For tracks a receiver can’t play as they are. WAV keeps full quality but can cut out on weak Wi‑Fi; MP3 holds up better." : {
       "comment" : "Casting settings footer under the conversion picker. UPnP devices get MP3 whatever the setting, since they aren't required to play WAV",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "المقاطع التي لا يستطيع جهاز Cast أو UPnP تشغيلها مباشرةً، مثل مقاطع ملف واحد + CUE، تُحوَّل أثناء تشغيلها. WAV بلا فقدان، لكنه يستهلك أضعاف بيانات MP3. تتلقى أجهزة UPnP دائمًا MP3، لأنها غير مُلزَمة بتشغيل WAV."
+            "value" : "للمقاطع التي لا يستطيع جهاز الاستقبال تشغيلها كما هي. يحافظ WAV على الجودة الكاملة لكنه قد ينقطع مع ضعف Wi‑Fi؛ أما MP3 فيصمد أفضل."
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Песните, които устройство Cast или UPnP не може да възпроизведе директно, например песни от един файл + CUE, се преобразуват по време на възпроизвеждане. WAV е без загуби, но заема няколко пъти повече данни от MP3. Устройствата UPnP винаги получават MP3, тъй като не са длъжни да възпроизвеждат WAV."
+            "value" : "За песни, които приемникът не може да възпроизведе в оригинален вид. WAV запазва пълното качество, но може да прекъсва при слаб Wi‑Fi; MP3 е по-устойчив."
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Skladby, které zařízení Cast nebo UPnP nedokáže přehrát přímo, například skladby z jednoho souboru + CUE, se převádějí během přehrávání. WAV je bezeztrátový, ale zabírá několikanásobek dat oproti MP3. Zařízení UPnP vždy dostanou MP3, protože WAV přehrávat nemusejí."
+            "value" : "Pro skladby, které přijímač nepřehraje v původní podobě. WAV zachová plnou kvalitu, ale při slabé síti Wi‑Fi může vypadávat; MP3 to snáší lépe."
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Spor, som en Cast- eller UPnP-enhed ikke kan afspille direkte, f.eks. spor fra én fil + CUE, konverteres, mens de afspilles. WAV er tabsfrit, men fylder flere gange så meget som MP3. UPnP-enheder får altid MP3, da de ikke er forpligtet til at afspille WAV."
+            "value" : "Til numre, som en modtager ikke kan afspille, som de er. WAV bevarer fuld kvalitet, men kan hakke på svagt Wi‑Fi; MP3 klarer det bedre."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tracks a Cast or UPnP device can't play directly, such as tracks from a single file + CUE, are converted while they play. WAV is lossless but takes several times the data of MP3. UPnP devices always get MP3, since they aren't required to play WAV."
+            "value" : "For tracks a receiver can’t play as they are. WAV keeps full quality but can cut out on weak Wi‑Fi; MP3 holds up better."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Titel, die ein Cast- oder UPnP-Gerät nicht direkt abspielen kann, etwa Titel aus einer Einzeldatei + CUE, werden während der Wiedergabe umgewandelt. WAV ist verlustfrei, braucht aber ein Vielfaches der Datenmenge von MP3. UPnP-Geräte erhalten immer MP3, da sie WAV nicht abspielen können müssen."
+            "value" : "Für Titel, die ein Empfänger nicht unverändert abspielen kann. WAV behält die volle Qualität, kann bei schwachem WLAN aber aussetzen; MP3 hält besser durch."
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Τα κομμάτια που μια συσκευή Cast ή UPnP δεν μπορεί να αναπαραγάγει απευθείας, όπως κομμάτια από ένα αρχείο + CUE, μετατρέπονται κατά την αναπαραγωγή. Το WAV είναι χωρίς απώλειες, αλλά καταλαμβάνει πολλαπλάσια δεδομένα από το MP3. Οι συσκευές UPnP λαμβάνουν πάντα MP3, καθώς δεν υποχρεούνται να αναπαράγουν WAV."
+            "value" : "Για κομμάτια που ένας δέκτης δεν μπορεί να αναπαραγάγει ως έχουν. Το WAV διατηρεί την πλήρη ποιότητα, αλλά μπορεί να κόβεται σε αδύναμο Wi‑Fi· το MP3 αντέχει καλύτερα."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Las pistas que un dispositivo Cast o UPnP no puede reproducir directamente, como las de un archivo único + CUE, se convierten mientras suenan. WAV no tiene pérdida, pero ocupa varias veces los datos de MP3. Los dispositivos UPnP siempre reciben MP3, ya que no están obligados a reproducir WAV."
+            "value" : "Para las pistas que un receptor no puede reproducir tal cual. WAV mantiene la calidad completa, pero puede cortarse con un Wi‑Fi débil; MP3 aguanta mejor."
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Raidat, joita Cast- tai UPnP-laite ei voi toistaa suoraan, kuten raidat yhdestä tiedostosta + CUE, muunnetaan toiston aikana. WAV on häviötön, mutta vie moninkertaisesti dataa MP3:een verrattuna. UPnP-laitteet saavat aina MP3:n, koska niiden ei tarvitse toistaa WAV:ia."
+            "value" : "Kappaleille, joita vastaanotin ei voi toistaa sellaisenaan. WAV säilyttää täyden laadun, mutta voi katkeilla heikolla Wi‑Fi-yhteydellä; MP3 kestää sitä paremmin."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Les pistes qu'un appareil Cast ou UPnP ne peut pas lire directement, comme celles d'un fichier unique + CUE, sont converties pendant la lecture. Le WAV est sans perte, mais pèse plusieurs fois plus lourd que le MP3. Les appareils UPnP reçoivent toujours du MP3, car ils ne sont pas tenus de lire le WAV."
+            "value" : "Pour les morceaux qu’un récepteur ne peut pas lire tels quels. Le WAV garde toute la qualité mais peut saccader en cas de Wi‑Fi faible ; le MP3 tient mieux."
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "רצועות שמכשיר Cast או UPnP לא יכול לנגן ישירות, כמו רצועות מקובץ יחיד + CUE, מומרות בזמן הניגון. WAV הוא ללא אובדן, אך תופס פי כמה נתונים מ‑MP3. מכשירי UPnP תמיד מקבלים MP3, כי הם לא נדרשים לנגן WAV."
+            "value" : "לרצועות שמקלט אינו יכול לנגן כפי שהן. WAV שומר על איכות מלאה אך עלול להיקטע ב‑Wi‑Fi חלש; MP3 עמיד יותר."
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pjesme koje uređaj Cast ili UPnP ne može reproducirati izravno, poput pjesama iz jedne datoteke + CUE, pretvaraju se tijekom reprodukcije. WAV je bez gubitaka, ali zauzima višestruko više podataka od MP3-a. UPnP uređaji uvijek dobivaju MP3 jer ne moraju reproducirati WAV."
+            "value" : "Za pjesme koje prijamnik ne može reproducirati onakve kakve jesu. WAV čuva punu kvalitetu, ali se može prekidati na slabom Wi‑Fi-ju; MP3 bolje izdržava."
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Azokat a számokat, amelyeket egy Cast- vagy UPnP-eszköz nem tud közvetlenül lejátszani – például egy fájl + CUE számait –, a bae lejátszás közben átalakítja. A WAV veszteségmentes, de az MP3 adatmennyiségének többszörösét foglalja. Az UPnP-eszközök mindig MP3-at kapnak, mert nem kötelesek lejátszani a WAV-ot."
+            "value" : "Olyan számokhoz, amelyeket a vevő nem tud úgy lejátszani, ahogy vannak. A WAV megőrzi a teljes minőséget, de gyenge Wi‑Fin megakadhat; az MP3 jobban bírja."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "I brani che un dispositivo Cast o UPnP non può riprodurre direttamente, come quelli di un file singolo + CUE, vengono convertiti durante la riproduzione. Il WAV è senza perdita, ma occupa diverse volte i dati dell'MP3. I dispositivi UPnP ricevono sempre MP3, perché non sono tenuti a riprodurre il WAV."
+            "value" : "Per i brani che un ricevitore non può riprodurre così come sono. WAV mantiene la qualità piena ma può interrompersi con un Wi‑Fi debole; MP3 regge meglio."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cast または UPnP デバイスが直接再生できないトラック（単一ファイル + CUE のトラックなど）は、再生中に変換されます。WAV はロスレスですが、MP3 の数倍のデータ量になります。UPnP デバイスは WAV の再生に対応している必要がないため、常に MP3 を受け取ります。"
+            "value" : "レシーバーがそのままでは再生できないトラック用です。WAV は音質を保ちますが、Wi‑Fi が弱いと途切れることがあります。MP3 のほうが途切れにくくなります。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cast 또는 UPnP 기기가 직접 재생할 수 없는 트랙(예: 단일 파일 + CUE의 트랙)은 재생 중에 변환됩니다. WAV는 무손실이지만 MP3보다 몇 배 많은 데이터를 사용합니다. UPnP 기기는 WAV 재생이 필수가 아니므로 항상 MP3를 받습니다."
+            "value" : "수신기가 그대로 재생할 수 없는 트랙에 사용합니다. WAV는 음질을 그대로 유지하지만 Wi‑Fi가 약하면 끊길 수 있고, MP3는 더 안정적입니다."
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Spor som en Cast- eller UPnP-enhet ikke kan spille av direkte, for eksempel spor fra én fil + CUE, konverteres mens de spilles. WAV er tapsfritt, men tar flere ganger så mye data som MP3. UPnP-enheter får alltid MP3, siden de ikke er pålagt å spille av WAV."
+            "value" : "For spor som en mottaker ikke kan spille av som de er. WAV beholder full kvalitet, men kan hakke på svakt Wi‑Fi; MP3 tåler det bedre."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nummers die een Cast- of UPnP-apparaat niet direct kan afspelen, zoals nummers uit één bestand + CUE, worden tijdens het afspelen omgezet. WAV is verliesvrij, maar kost een veelvoud van de data van MP3. UPnP-apparaten krijgen altijd MP3, omdat ze WAV niet hoeven af te spelen."
+            "value" : "Voor nummers die een ontvanger niet zoals ze zijn kan afspelen. WAV behoudt de volle kwaliteit, maar kan haperen bij zwak Wi‑Fi; MP3 houdt beter stand."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Utwory, których urządzenie Cast lub UPnP nie może odtworzyć bezpośrednio, np. utwory z jednego pliku + CUE, są konwertowane podczas odtwarzania. WAV jest bezstratny, ale zajmuje kilka razy więcej danych niż MP3. Urządzenia UPnP zawsze dostają MP3, bo nie muszą odtwarzać WAV."
+            "value" : "Dla utworów, których odbiornik nie może odtworzyć w oryginalnej postaci. WAV zachowuje pełną jakość, ale przy słabym Wi‑Fi może się urywać; MP3 radzi sobie lepiej."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Faixas que um dispositivo Cast ou UPnP não consegue reproduzir diretamente, como as de um arquivo único + CUE, são convertidas durante a reprodução. WAV é sem perdas, mas ocupa várias vezes os dados de um MP3. Dispositivos UPnP sempre recebem MP3, pois não são obrigados a reproduzir WAV."
+            "value" : "Para faixas que um receptor não consegue reproduzir como estão. O WAV mantém a qualidade total, mas pode falhar com Wi‑Fi fraco; o MP3 se sai melhor."
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "As faixas que um dispositivo Cast ou UPnP não consegue reproduzir diretamente, como as de um ficheiro único + CUE, são convertidas durante a reprodução. O WAV é sem perdas, mas ocupa várias vezes os dados de um MP3. Os dispositivos UPnP recebem sempre MP3, pois não são obrigados a reproduzir WAV."
+            "value" : "Para faixas que um recetor não consegue reproduzir tal como estão. O WAV mantém a qualidade total, mas pode falhar com Wi‑Fi fraco; o MP3 aguenta melhor."
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Piesele pe care un dispozitiv Cast sau UPnP nu le poate reda direct, cum ar fi piesele dintr-un singur fișier + CUE, sunt convertite în timpul redării. WAV este fără pierderi, dar ocupă de câteva ori mai multe date decât MP3. Dispozitivele UPnP primesc mereu MP3, deoarece nu sunt obligate să redea WAV."
+            "value" : "Pentru piesele pe care un receptor nu le poate reda ca atare. WAV păstrează calitatea completă, dar se poate întrerupe pe un Wi‑Fi slab; MP3 rezistă mai bine."
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Skladby, ktoré zariadenie Cast alebo UPnP nedokáže prehrať priamo, napríklad skladby z jedného súboru + CUE, sa počas prehrávania konvertujú. WAV je bezstratový, ale zaberá niekoľkonásobok dát oproti MP3. Zariadenia UPnP vždy dostanú MP3, pretože WAV prehrávať nemusia."
+            "value" : "Pre skladby, ktoré prijímač nedokáže prehrať tak, ako sú. WAV zachová plnú kvalitu, ale pri slabej sieti Wi‑Fi môže vypadávať; MP3 to zvláda lepšie."
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Spår som en Cast- eller UPnP-enhet inte kan spela direkt, till exempel spår från en fil + CUE, konverteras medan de spelas. WAV är förlustfritt men tar flera gånger så mycket data som MP3. UPnP-enheter får alltid MP3, eftersom de inte måste kunna spela WAV."
+            "value" : "För spår som en mottagare inte kan spela upp som de är. WAV behåller full kvalitet men kan hacka vid svagt Wi‑Fi; MP3 klarar det bättre."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bir Cast veya UPnP cihazının doğrudan çalamadığı parçalar, örneğin tek dosya + CUE parçaları, çalınırken dönüştürülür. WAV kayıpsızdır ancak MP3'ün birkaç katı veri kaplar. UPnP cihazları WAV çalmak zorunda olmadığından her zaman MP3 alır."
+            "value" : "Bir alıcının olduğu gibi çalamadığı parçalar için. WAV tam kaliteyi korur ancak zayıf Wi‑Fi’de kesilebilir; MP3 daha dayanıklıdır."
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Треки, які пристрій Cast або UPnP не може відтворити напряму, наприклад треки з одного файлу + CUE, перетворюються під час відтворення. WAV — без втрат, але займає в кілька разів більше даних, ніж MP3. Пристрої UPnP завжди отримують MP3, бо не зобов'язані відтворювати WAV."
+            "value" : "Для треків, які приймач не може відтворити як є. WAV зберігає повну якість, але може уриватися при слабкому Wi‑Fi; MP3 витримує краще."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cast 或 UPnP 设备无法直接播放的曲目（例如单个文件 + CUE 中的曲目）会在播放时转换。WAV 无损，但数据量是 MP3 的数倍。UPnP 设备不一定支持 WAV，因此始终接收 MP3。"
+            "value" : "用于接收设备无法直接播放的曲目。WAV 保留完整音质，但在 Wi‑Fi 信号弱时可能中断；MP3 则更稳定。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cast 或 UPnP 裝置無法直接播放的曲目（例如單一檔案 + CUE 中的曲目）會在播放時轉換。WAV 無損，但資料量是 MP3 的數倍。UPnP 裝置不一定支援 WAV，因此一律接收 MP3。"
+            "value" : "用於接收裝置無法直接播放的曲目。WAV 保留完整音質，但在 Wi‑Fi 訊號弱時可能中斷；MP3 則更穩定。"
           }
         }
       }
@@ -62225,175 +62225,175 @@
         }
       }
     },
-    "Plays to Cast, AirPlay, and UPnP receivers on your network. While off, bae does not look for devices." : {
+    "Scan for Cast, AirPlay, and UPnP receivers on your network." : {
       "comment" : "Casting settings: what the toggle does",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "يشغّل الصوت على أجهزة استقبال Cast وAirPlay وUPnP على شبكتك. عند إيقافه، لا يبحث bae عن أي أجهزة."
+            "value" : "يبحث عن أجهزة استقبال Cast وAirPlay وUPnP على شبكتك."
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Възпроизвежда на приемници Cast, AirPlay и UPnP в мрежата ви. Когато е изключено, bae не търси устройства."
+            "value" : "Търси приемници Cast, AirPlay и UPnP в мрежата ви."
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Přehrává na přijímače Cast, AirPlay a UPnP ve vaší síti. Když je vypnuto, bae žádná zařízení nehledá."
+            "value" : "Vyhledává přijímače Cast, AirPlay a UPnP ve vaší síti."
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Afspiller til Cast-, AirPlay- og UPnP-modtagere på dit netværk. Når det er slået fra, søger bae ikke efter enheder."
+            "value" : "Søg efter Cast-, AirPlay- og UPnP-modtagere på dit netværk."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Plays to Cast, AirPlay, and UPnP receivers on your network. While off, bae does not look for devices."
+            "value" : "Scan for Cast, AirPlay, and UPnP receivers on your network."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gibt auf Cast-, AirPlay- und UPnP-Empfängern in deinem Netzwerk wieder. Ist es aus, sucht bae nicht nach Geräten."
+            "value" : "Sucht nach Cast-, AirPlay- und UPnP-Empfängern in deinem Netzwerk."
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Αναπαράγει σε δέκτες Cast, AirPlay και UPnP στο δίκτυό σας. Όταν είναι ανενεργό, το bae δεν αναζητά συσκευές."
+            "value" : "Αναζήτηση δεκτών Cast, AirPlay και UPnP στο δίκτυό σας."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Reproduce en receptores Cast, AirPlay y UPnP de tu red. Cuando está desactivado, bae no busca dispositivos."
+            "value" : "Busca receptores Cast, AirPlay y UPnP en tu red."
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Toistaa verkkosi Cast-, AirPlay- ja UPnP-vastaanottimiin. Kun tämä on pois päältä, bae ei etsi laitteita."
+            "value" : "Etsii verkostasi Cast-, AirPlay- ja UPnP-vastaanottimia."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lit sur les récepteurs Cast, AirPlay et UPnP de votre réseau. Désactivé, bae ne recherche aucun appareil."
+            "value" : "Recherche les récepteurs Cast, AirPlay et UPnP de votre réseau."
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "מנגן במקלטי Cast‏, AirPlay ו‑UPnP ברשת שלך. כשהאפשרות כבויה, bae אינו מחפש מכשירים."
+            "value" : "סורק את הרשת שלך אחר מקלטי Cast‏, AirPlay ו‑UPnP."
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Reproducira na Cast, AirPlay i UPnP prijamnicima na vašoj mreži. Dok je isključeno, bae ne traži uređaje."
+            "value" : "Traži Cast, AirPlay i UPnP prijamnike na vašoj mreži."
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A hálózatodon lévő Cast-, AirPlay- és UPnP-vevőkre játszik. Kikapcsolva a bae nem keres eszközöket."
+            "value" : "Cast-, AirPlay- és UPnP-vevőket keres a hálózatodon."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Riproduce su ricevitori Cast, AirPlay e UPnP della tua rete. Quando è disattivato, bae non cerca dispositivi."
+            "value" : "Cerca ricevitori Cast, AirPlay e UPnP nella tua rete."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ネットワーク上の Cast、AirPlay、UPnP レシーバーで再生します。オフの間、bae はデバイスを探しません。"
+            "value" : "ネットワーク上の Cast、AirPlay、UPnP レシーバーを探します。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "네트워크의 Cast, AirPlay, UPnP 수신기로 재생합니다. 꺼져 있는 동안 bae는 기기를 찾지 않습니다."
+            "value" : "네트워크에서 Cast, AirPlay, UPnP 수신기를 검색합니다."
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Spiller av til Cast-, AirPlay- og UPnP-mottakere på nettverket ditt. Når det er av, leter ikke bae etter enheter."
+            "value" : "Søker etter Cast-, AirPlay- og UPnP-mottakere på nettverket ditt."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Speelt af op Cast-, AirPlay- en UPnP-ontvangers in je netwerk. Als dit uit staat, zoekt bae niet naar apparaten."
+            "value" : "Zoekt naar Cast-, AirPlay- en UPnP-ontvangers in je netwerk."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Odtwarza na odbiornikach Cast, AirPlay i UPnP w Twojej sieci. Gdy jest wyłączone, bae nie szuka urządzeń."
+            "value" : "Wyszukuje odbiorniki Cast, AirPlay i UPnP w Twojej sieci."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Reproduz em receptores Cast, AirPlay e UPnP da sua rede. Quando está desativado, o bae não procura dispositivos."
+            "value" : "Procura receptores Cast, AirPlay e UPnP na sua rede."
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Reproduz em recetores Cast, AirPlay e UPnP na sua rede. Quando está desligado, o bae não procura dispositivos."
+            "value" : "Procura recetores Cast, AirPlay e UPnP na sua rede."
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Redă către receptoare Cast, AirPlay și UPnP din rețeaua ta. Când e oprit, bae nu caută dispozitive."
+            "value" : "Caută receptoare Cast, AirPlay și UPnP în rețeaua ta."
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Prehráva na prijímače Cast, AirPlay a UPnP v tvojej sieti. Keď je vypnuté, bae zariadenia nevyhľadáva."
+            "value" : "Vyhľadáva prijímače Cast, AirPlay a UPnP v tvojej sieti."
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Spelar till Cast-, AirPlay- och UPnP-mottagare i ditt nätverk. När det är avstängt söker bae inte efter enheter."
+            "value" : "Söker efter Cast-, AirPlay- och UPnP-mottagare i ditt nätverk."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ağınızdaki Cast, AirPlay ve UPnP alıcılarında çalar. Kapalıyken bae cihaz aramaz."
+            "value" : "Ağınızdaki Cast, AirPlay ve UPnP alıcılarını tarar."
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Відтворює на приймачах Cast, AirPlay і UPnP у вашій мережі. Коли вимкнено, bae не шукає пристроїв."
+            "value" : "Шукає приймачі Cast, AirPlay і UPnP у вашій мережі."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "在你网络中的 Cast、AirPlay 和 UPnP 接收设备上播放。关闭时，bae 不会搜索设备。"
+            "value" : "在你的网络中搜索 Cast、AirPlay 和 UPnP 接收设备。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "在你網路中的 Cast、AirPlay 和 UPnP 接收裝置上播放。關閉時，bae 不會搜尋裝置。"
+            "value" : "在你的網路中搜尋 Cast、AirPlay 和 UPnP 接收裝置。"
           }
         }
       }
@@ -129701,180 +129701,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "正在尋找接收裝置…"
-          }
-        }
-      }
-    },
-    "Receivers show up here while this page is open." : {
-      "comment" : "Casting settings: under the receivers list; bae looks for receivers only while this page is open.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "تظهر أجهزة الاستقبال هنا ما دامت هذه الصفحة مفتوحة."
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Приемниците се показват тук, докато тази страница е отворена."
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Přijímače se zde zobrazují, dokud je tato stránka otevřená."
-          }
-        },
-        "da" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Modtagere vises her, så længe denne side er åben."
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Empfänger erscheinen hier, solange diese Seite geöffnet ist."
-          }
-        },
-        "el" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Οι δέκτες εμφανίζονται εδώ όσο αυτή η σελίδα είναι ανοιχτή."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Receivers show up here while this page is open."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Los receptores aparecen aquí mientras esta página está abierta."
-          }
-        },
-        "fi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vastaanottimet näkyvät tässä, kun tämä sivu on auki."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Les récepteurs s'affichent ici tant que cette page est ouverte."
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "מקלטים מופיעים כאן כל עוד הדף הזה פתוח."
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Prijamnici se ovdje prikazuju dok je ova stranica otvorena."
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "A vevők itt jelennek meg, amíg ez az oldal nyitva van."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "I ricevitori compaiono qui finché questa pagina è aperta."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "このページを開いている間、レシーバーがここに表示されます。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "이 페이지가 열려 있는 동안 수신기가 여기에 표시됩니다."
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mottakere vises her så lenge denne siden er åpen."
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ontvangers verschijnen hier zolang deze pagina open is."
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Odbiorniki pojawiają się tutaj, gdy ta strona jest otwarta."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Os receptores aparecem aqui enquanto esta página estiver aberta."
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Os recetores aparecem aqui enquanto esta página estiver aberta."
-          }
-        },
-        "ro" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Receptoarele apar aici cât timp această pagină este deschisă."
-          }
-        },
-        "sk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Prijímače sa tu zobrazujú, kým je táto stránka otvorená."
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mottagare visas här så länge den här sidan är öppen."
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Alıcılar, bu sayfa açık olduğu sürece burada görünür."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Приймачі з’являються тут, поки цю сторінку відкрито."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "此页面打开时，接收设备会显示在这里。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "此頁面開啟時，接收裝置會顯示在這裡。"
           }
         }
       }

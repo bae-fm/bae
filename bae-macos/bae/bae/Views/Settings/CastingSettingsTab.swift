@@ -27,7 +27,7 @@ struct CastingSettingsTab: View {
                 Toggle("Enable casting", isOn: enabledBinding)
             } footer: {
                 Text(
-                    "Plays to Cast, AirPlay, and UPnP receivers on your network. While off, bae does not look for devices."
+                    "Scan for Cast, AirPlay, and UPnP receivers on your network."
                 )
                 .themeText(.detail)
                 .foregroundStyle(.secondary)
@@ -54,7 +54,7 @@ struct CastingSettingsTab: View {
                     )
                 } footer: {
                     Text(
-                        "Tracks a Cast or UPnP device can't play directly, such as tracks from a single file + CUE, are converted while they play. WAV is lossless but takes several times the data of MP3. UPnP devices always get MP3, since they aren't required to play WAV."
+                        "For tracks a receiver can’t play as they are. WAV keeps full quality but can cut out on weak Wi‑Fi; MP3 holds up better."
                     )
                     .themeText(.detail)
                     .foregroundStyle(.secondary)
@@ -145,11 +145,6 @@ private struct CastReceiversSection: View {
             }
         } header: {
             Text("Receivers on your network")
-        } footer: {
-            Text("Receivers show up here while this page is open.")
-                .themeText(.detail)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }

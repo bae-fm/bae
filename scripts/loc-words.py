@@ -89,7 +89,7 @@ TITLE_SMALL_WORDS = {
 # Languages without letter case: nothing to check.
 UNCASED = {"ar", "he", "ja", "ko", "zh-Hans", "zh-Hant"}
 
-WORD_RE = re.compile(r"[^\W\d_][\w'’-]*")
+WORD_RE = re.compile(r"[^\W\d_][\w'’‑-]*")
 PLACEHOLDER_RE = re.compile(r"%\d+\$(?:lld|[a-zA-Z@])|%lld|%@|%[sd]|\{[\w]+\}")
 URL_RE = re.compile(r"\(?https?://\S+")
 # What may come right before a capitalized word that starts something.

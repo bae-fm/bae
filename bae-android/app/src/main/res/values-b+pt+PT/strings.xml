@@ -216,13 +216,12 @@
     <string name="cast_turn_off_confirm">Desligar</string>
     <string name="settings_casting">Transmissão</string>
     <string name="settings_enable_casting">Ativar transmissão</string>
-    <string name="settings_casting_help">Reproduz em recetores Cast, AirPlay e UPnP na sua rede. Quando está desligado, o bae não procura dispositivos.</string>
+    <string name="settings_casting_help">Procura recetores Cast, AirPlay e UPnP na sua rede.</string>
     <string name="settings_casting_receivers">Recetores na sua rede</string>
     <string name="settings_casting_looking">A procurar recetores…</string>
-    <string name="settings_casting_receivers_help">Os recetores aparecem aqui enquanto esta página estiver aberta.</string>
     <string name="settings_cast_transcode_format">Converter para</string>
     <string name="settings_cast_transcode_wav">WAV (sem perdas)</string>
-    <string name="settings_cast_transcode_help">As faixas que um dispositivo Cast ou UPnP não consegue reproduzir diretamente, como as de um ficheiro único + CUE, são convertidas durante a reprodução. O WAV é sem perdas, mas ocupa várias vezes os dados de um MP3. Os dispositivos UPnP recebem sempre MP3, pois não são obrigados a reproduzir WAV.</string>
+    <string name="settings_cast_transcode_help">Para faixas que um recetor não consegue reproduzir tal como estão. O WAV mantém a qualidade total, mas pode falhar com Wi‑Fi fraco; o MP3 aguenta melhor.</string>
     <string name="appearance_title">Aspeto</string>
     <string name="appearance_theme">Tema</string>
     <string name="appearance_system">Sistema</string>

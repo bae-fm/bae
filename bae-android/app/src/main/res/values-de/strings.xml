@@ -217,13 +217,12 @@
     <string name="cast_turn_off_confirm">Ausschalten</string>
     <string name="settings_casting">Übertragung</string>
     <string name="settings_enable_casting">Übertragung aktivieren</string>
-    <string name="settings_casting_help">Gibt auf Cast-, AirPlay- und UPnP-Empfängern in deinem Netzwerk wieder. Ist es aus, sucht bae nicht nach Geräten.</string>
+    <string name="settings_casting_help">Sucht nach Cast-, AirPlay- und UPnP-Empfängern in deinem Netzwerk.</string>
     <string name="settings_casting_receivers">Empfänger in deinem Netzwerk</string>
     <string name="settings_casting_looking">Empfänger werden gesucht …</string>
-    <string name="settings_casting_receivers_help">Empfänger erscheinen hier, solange diese Seite geöffnet ist.</string>
     <string name="settings_cast_transcode_format">Umwandeln in</string>
     <string name="settings_cast_transcode_wav">WAV (verlustfrei)</string>
-    <string name="settings_cast_transcode_help">Titel, die ein Cast- oder UPnP-Gerät nicht direkt abspielen kann, etwa Titel aus einer Einzeldatei + CUE, werden während der Wiedergabe umgewandelt. WAV ist verlustfrei, braucht aber ein Vielfaches der Datenmenge von MP3. UPnP-Geräte erhalten immer MP3, da sie WAV nicht abspielen können müssen.</string>
+    <string name="settings_cast_transcode_help">Für Titel, die ein Empfänger nicht unverändert abspielen kann. WAV behält die volle Qualität, kann bei schwachem WLAN aber aussetzen; MP3 hält besser durch.</string>
     <string name="appearance_title">Erscheinungsbild</string>
     <string name="appearance_theme">Design</string>
     <string name="appearance_system">System</string>

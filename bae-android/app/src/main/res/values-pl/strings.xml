@@ -229,13 +229,12 @@
     <string name="cast_turn_off_confirm">Wyłącz</string>
     <string name="settings_casting">Przesyłanie</string>
     <string name="settings_enable_casting">Włącz przesyłanie</string>
-    <string name="settings_casting_help">Odtwarza na odbiornikach Cast, AirPlay i UPnP w Twojej sieci. Gdy jest wyłączone, bae nie szuka urządzeń.</string>
+    <string name="settings_casting_help">Wyszukuje odbiorniki Cast, AirPlay i UPnP w Twojej sieci.</string>
     <string name="settings_casting_receivers">Odbiorniki w Twojej sieci</string>
     <string name="settings_casting_looking">Wyszukiwanie odbiorników…</string>
-    <string name="settings_casting_receivers_help">Odbiorniki pojawiają się tutaj, gdy ta strona jest otwarta.</string>
     <string name="settings_cast_transcode_format">Format konwersji</string>
     <string name="settings_cast_transcode_wav">WAV (bezstratny)</string>
-    <string name="settings_cast_transcode_help">Utwory, których urządzenie Cast lub UPnP nie może odtworzyć bezpośrednio, np. utwory z jednego pliku + CUE, są konwertowane podczas odtwarzania. WAV jest bezstratny, ale zajmuje kilka razy więcej danych niż MP3. Urządzenia UPnP zawsze dostają MP3, bo nie muszą odtwarzać WAV.</string>
+    <string name="settings_cast_transcode_help">Dla utworów, których odbiornik nie może odtworzyć w oryginalnej postaci. WAV zachowuje pełną jakość, ale przy słabym Wi‑Fi może się urywać; MP3 radzi sobie lepiej.</string>
     <string name="appearance_title">Wygląd</string>
     <string name="appearance_theme">Motyw</string>
     <string name="appearance_system">Systemowy</string>

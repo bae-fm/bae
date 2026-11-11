@@ -123,13 +123,12 @@ struct CastingSettingsTabTests {
         for key in [
             "Casting",
             "Enable casting",
-            "Plays to Cast, AirPlay, and UPnP receivers on your network. While off, bae does not look for devices.",
+            "Scan for Cast, AirPlay, and UPnP receivers on your network.",
             "Turn off casting?",
             "This will stop casting to %@.",
             "Turn off",
             "Receivers on your network",
             "Looking for receivers…",
-            "Receivers show up here while this page is open.",
         ] {
             #expect(try locales(key) == reference, "\(key) is missing locales")
         }
