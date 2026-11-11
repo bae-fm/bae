@@ -2,25 +2,25 @@ mac build ./bae-macos/run.sh --no-open
 mac app bae-macos/bae/.build/runApp/Build/Products/Debug/bae.app
 mac bundle fm.bae.desktop
 android build ./bae-android/run.sh
-step macos ./bae-macos/run.sh --no-open
-step macos-tests ./bae-macos/test.sh --build-only
-step macos-tests-run ./bae-macos/test.sh --run-only
-step macos-tests-all ./bae-macos/test.sh
-step android-bridge ./bae-bridge/build-android.sh --abi arm64-v8a
-step android ./bae-android/compile-all.sh
-step android-tests ./bae-android/test-unit.sh
-step notice-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene notice- --tone midnight
-step storage-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene storage-manager --tone midnight
-step android-shots ./scripts/shots/android.sh /Volumes/Builds/bae/shots/android
-step library-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene library-browse-list --tone midnight
-step welcome-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene welcome- --scene story-1 --tone midnight
-step folder-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene folder-picker- --tone midnight
-step import-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene import- --tone midnight
-step release-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene release-storage --tone midnight
-step release-files-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene release-files- --tone midnight
-step sync-setup-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene sync-setup --tone midnight
-step settings-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene settings- --tone midnight
-step cast-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene cast- --tone midnight
-step label-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene sheet-footer- --tone midnight
-step activity-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene activity- --tone midnight
-step people-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene people- --tone midnight
+step mac macos ./bae-macos/run.sh --no-open
+step mac macos-tests ./bae-macos/test.sh --build-only
+step mac macos-tests-run ./bae-macos/test.sh --run-only
+step mac macos-tests-all ./bae-macos/test.sh
+step android android-bridge ./bae-bridge/build-android.sh --abi arm64-v8a
+step android android ./bae-android/compile-all.sh
+step android android-tests ./bae-android/test-unit.sh
+step mac notice-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene notice- --tone midnight
+step mac storage-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene storage-manager --tone midnight
+step android android-shots ./scripts/shots/android.sh /Volumes/Builds/bae/shots/android
+step mac library-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene library-browse-list --tone midnight
+step mac welcome-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene welcome- --scene story-1 --tone midnight
+step mac folder-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene folder-picker- --tone midnight
+step mac import-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene import- --tone midnight
+step mac release-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene release-storage --tone midnight
+step mac release-files-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene release-files- --tone midnight
+step mac sync-setup-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene sync-setup --tone midnight
+step mac settings-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene settings- --tone midnight
+step mac cast-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene cast- --tone midnight
+step mac label-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene sheet-footer- --tone midnight
+step mac activity-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene activity- --tone midnight
+step mac people-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene people- --tone midnight

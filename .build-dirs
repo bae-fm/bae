@@ -7,9 +7,12 @@
 # scripts/cargo.sh, which records each build copy cargo uses, rebuilt or up to
 # date.
 #
-# The app checkout (side-1) builds without incremental compilation (the builds
-# tool passes --config build.incremental=false there), and an `app <cap>` field
-# is its cap. Measured there on 2026-11-06 under load: a full macOS bridge
+# The app checkouts (one per lane, mac and android) build without incremental
+# compilation (the builds tool passes --config build.incremental=false there),
+# and an `app <cap>` field is their cap. A `lane <lane>` field says that only that
+# lane's app checkout builds into the folder: it stays warm and takes the app cap
+# there, and is an ordinary side worktree's folder in the other lane's checkout.
+# A folder with no lane (host `target`) is every app checkout's. Measured there on 2026-11-06 under load: a full macOS bridge
 # build is 5.1G without incremental output against 8.0G with it (10.0G after
 # one switch to another branch), the Android bridge 5.2G against 6.9G (8.1G);
 # its host target held 7.5G with no incremental folders; its macOS .build holds
@@ -32,26 +35,26 @@
 # and proc macros there with `cargo check --workspace`; main's target held
 # about 5G of check metadata and build-script output, older copies included.
 #
-# path                                cap  [app cap]
+# path                                cap  [app cap]  [lane]
 target                                30G  app 15G
 target-ra                             10G
-target-macos                          15G  app 10G
-target-ios                            24G
-target-android                        13G  app 10G
-bae-macos/bae/.build                  20G  app 14G
-# The app the person launches (main) and tests (the app checkout) is built here;
-# builds never ages it out in those two checkouts.
+target-macos                          15G  app 10G  lane mac
+target-ios                            24G  lane mac
+target-android                        13G  app 10G  lane android
+bae-macos/bae/.build                  20G  app 14G  lane mac
+# The app the person launches (main) and tests (the mac lane's app checkout) is
+# built here; builds never ages it out in those two checkouts.
 keep bae-macos/bae/.build/runApp
-bae-ios/bae/.build                    10G
-BaeKit/.build                         9G
-BaeKit/Frameworks                     7G
-bae-android/.gradle                   1G
-bae-android/debug-symbols             2G
-bae-android/app/build                 2G
-bae-android/bridge/build              1G
-bae-android/fastvalues/build          1G
-bae-android/screensubscription/build  1G
-bae-avalonia/obj                      1G
-bae-avalonia/bin                      1G
-bae-avalonia/bae-avalonia.Tests/obj   1G
-bae-avalonia/bae-avalonia.Tests/bin   1G
+bae-ios/bae/.build                    10G  lane mac
+BaeKit/.build                         9G   lane mac
+BaeKit/Frameworks                     7G   lane mac
+bae-android/.gradle                   1G   lane android
+bae-android/debug-symbols             2G   lane android
+bae-android/app/build                 2G   lane android
+bae-android/bridge/build              1G   lane android
+bae-android/fastvalues/build          1G   lane android
+bae-android/screensubscription/build  1G   lane android
+bae-avalonia/obj                      1G   lane mac
+bae-avalonia/bin                      1G   lane mac
+bae-avalonia/bae-avalonia.Tests/obj   1G   lane mac
+bae-avalonia/bae-avalonia.Tests/bin   1G   lane mac

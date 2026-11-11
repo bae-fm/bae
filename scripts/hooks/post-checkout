@@ -3,7 +3,8 @@
 # On new-worktree creation, run per-worktree setup: build output links, the
 # CLAUDE.md and .claude/rules symlinks, the git merge drivers, shared FFmpeg, xcconfigs, Android
 # local.properties and the macOS app's resolved SwiftPM versions. It builds nothing: a side worktree
-# builds host Rust only, and app builds stay warm in the app checkout and main
+# builds host Rust only, and app builds stay warm in the app checkouts (one per
+# lane) and main
 # (projects/bae.md, "Worktrees and build output"). Skip on normal branch
 # checkouts.
 
