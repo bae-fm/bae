@@ -33,7 +33,7 @@ export interface MacBoxProps { elevated?: boolean; empty?: string; children?: Re
 export declare function MacBox(props: MacBoxProps): React.ReactElement;
 
 /** One line of a MacBox: label on the left, then value (grey, or in tone with a dot), controls passed as children, and a chevron when it opens something. action draws the label as an accent action ("Invite…"); destructive colors it danger, for an action that removes something. */
-export interface MacRowProps { label?: string; info?: boolean; destructive?: boolean; strong?: boolean; tag?: string; note?: string; noteTone?: 'danger' | 'warning' | 'success'; value?: string; tone?: 'success' | 'warning' | 'danger' | 'activity' | 'accent'; chevron?: boolean; selected?: boolean; action?: boolean; nested?: boolean; off?: boolean; onClick?: () => void; children?: React.ReactNode }
+export interface MacRowProps { label?: string; info?: boolean; destructive?: boolean; strong?: boolean; tag?: string; note?: string; /** Text after the note, as MacCopyText: selectable, with a copy button on hover. A list of more than one ends the note in a colon and puts each in a bullet under it, with `after` words that aren't copied (“(Wi-Fi)”). */ copy?: string | { text: string; after?: string }[]; copyHover?: boolean; noteTone?: 'danger' | 'warning' | 'success'; value?: string; tone?: 'success' | 'warning' | 'danger' | 'activity' | 'accent'; chevron?: boolean; selected?: boolean; action?: boolean; nested?: boolean; off?: boolean; onClick?: () => void; children?: React.ReactNode }
 /** What belongs to the row above it and is more than one setting (a field with its explanation): joined to that row with no line, text in secondary. */
 export declare function MacNested(props: { children?: React.ReactNode }): React.ReactElement;
 /** An ⓘ after a row's name that opens a popover saying what the name can't. */
@@ -41,6 +41,10 @@ export declare function MacInfoTip(props: { label?: string }): React.ReactElemen
 /** How Save as… names each track's file, one pattern for every format: chips, pieces to add, a preview. */
 export declare function MacFileNameField(props: { label?: string; /** The pattern's text, each value in brackets: "[Artist] - [Album]". */ pattern?: string; add?: string; preview?: string; /** Why the typed text makes no name; shown under the field, in place of the preview. */ error?: string }): React.ReactElement;
 export declare function MacRow(props: MacRowProps): React.ReactElement;
+/** A port number: a field five digits wide, digits only, its label hidden. What's wrong with it goes on the row's second line. */
+export declare function MacPortField(props: { value?: string; label?: string; state?: 'normal' | 'focused' | 'error' | 'off' }): React.ReactElement;
+/** Text someone may paste elsewhere (an address): selectable, with a copy button after it while the pointer is over it. `hover` draws that state. */
+export declare function MacCopyText(props: { text?: string; after?: string; label?: string; hover?: boolean; children?: React.ReactNode }): React.ReactElement;
 export declare function MacItem(props: { lead?: React.ReactNode; trail?: React.ReactNode; children?: React.ReactNode }): React.ReactElement;
 
 /** A MacBox row holding a field: the label in a column labelWidth px wide (90), the field filling the rest, then any controls. Leave out label for a field with its label inside. alignText moves the field left by its inner padding so its text lines up with the rows around it. */
@@ -76,7 +80,7 @@ export interface MacMenuProps { children?: React.ReactNode }
 export declare function MacMenu(props: MacMenuProps): React.ReactElement;
 
 /** One choice in a MacMenu: checked marks the current choice, highlighted the one under the pointer. */
-export interface MacMenuItemProps { checked?: boolean; highlighted?: boolean; divider?: boolean; children?: React.ReactNode }
+export interface MacMenuItemProps { checked?: boolean; highlighted?: boolean; divider?: boolean; children?: React.ReactNode; /** Can't be chosen now: greyed, as NSMenu disables an item. */ off?: boolean }
 export declare function MacMenuItem(props: MacMenuItemProps): React.ReactElement;
 
 /** A ▸ label that shows its children when opened. open sets how it starts. */

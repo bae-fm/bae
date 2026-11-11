@@ -2691,14 +2691,6 @@
    "x": 770,
    "y": 9376
   },
-  "SetMacFormatRefused.dc.html": {
-   "h": 960,
-   "page": "settings",
-   "title": "macOS: Save as, core refuses (the shared alert)",
-   "w": 690,
-   "x": 2310,
-   "y": 9376
-  },
   "SetMacFormats.dc.html": {
    "h": 960,
    "page": "settings",
@@ -2758,7 +2750,7 @@
   "SetMacSubsonicOn.dc.html": {
    "h": 600,
    "page": "settings",
-   "title": "macOS: Subsonic, running on the network",
+   "title": "macOS: Subsonic, running on Wi-Fi",
    "w": 690,
    "x": 770,
    "y": 10696
@@ -2766,7 +2758,7 @@
   "SetMacSubsonicRefused.dc.html": {
    "h": 600,
    "page": "settings",
-   "title": "macOS: Subsonic, turned on with no username",
+   "title": "macOS: Subsonic, on with no username or password",
    "w": 690,
    "x": 1540,
    "y": 10696
@@ -3602,6 +3594,62 @@
    "w": 690,
    "x": 9140,
    "y": 9376
+  },
+  "SetMacSubsonicFailed.dc.html": {
+   "h": 600,
+   "page": "settings",
+   "title": "macOS: Subsonic, could not start",
+   "w": 690,
+   "x": 2310,
+   "y": 10696
+  },
+  "SetMacSubsonicNetworks.dc.html": {
+   "h": 600,
+   "page": "settings",
+   "title": "macOS: Subsonic, where it listens",
+   "w": 690,
+   "x": 3080,
+   "y": 10696
+  },
+  "SetMacSubsonicEvery.dc.html": {
+   "h": 600,
+   "page": "settings",
+   "title": "macOS: Subsonic, running on every network",
+   "w": 690,
+   "x": 3850,
+   "y": 10696
+  },
+  "SetMacSubsonicNoNetwork.dc.html": {
+   "h": 600,
+   "page": "settings",
+   "title": "macOS: Subsonic, its network is gone",
+   "w": 690,
+   "x": 4620,
+   "y": 10696
+  },
+  "SetMacSubsonicPortInUse.dc.html": {
+   "h": 600,
+   "page": "settings",
+   "title": "macOS: Subsonic, its port is taken",
+   "w": 690,
+   "x": 5390,
+   "y": 10696
+  },
+  "SetMacSubsonicActivity.dc.html": {
+   "h": 760,
+   "page": "settings",
+   "title": "macOS: Subsonic not running, in the Activity panel",
+   "w": 1200,
+   "x": 6160,
+   "y": 10696
+  },
+  "SetMacFormatLast.dc.html": {
+   "h": 960,
+   "page": "settings",
+   "title": "macOS: Save as, the only format left",
+   "w": 690,
+   "x": 2310,
+   "y": 9376
   }
  },
  "createdOnFiles": {
@@ -3807,7 +3855,7 @@
   "code-appearance": {
    "page": "settings",
    "size": 24,
-   "text": "What the code needs for these boards:\n- Order Theme (System, Light, Dark), then Tone, then Accent. Today both apps show Mode (System, Light, Dark), Accent color, Background tone (AppearanceSection.kt:82-91, AppearanceControls.swift:15-59). bae change.\n- “Tone” and “Accent” in every locale. Today “Accent color” and “Background tone” (strings.xml:235-236, AppearanceControls.swift:21, :59). bae change.",
+   "text": "What the code needs for these boards:\n- Order Theme (System, Light, Dark), then Tone, then Accent. Today both apps show Mode (System, Light, Dark), Accent color, Background tone (AppearanceSection.kt:82-91, AppearanceControls.swift:15-59). bae change.\n- “Tone” and “Accent” in every locale. Today “Accent color” and “Background tone” (strings.xml:235-236, AppearanceControls.swift:21, :59). bae change.\n- The Accent row names the chosen colour on its second line, in secondary, as Theme and Tone show theirs: “Pink” (Android: the CardRow subtitle under “Accent”, from accent.label; macOS: under the Accent label, from accent.title). Both names exist already as the swatches' accessibility labels.",
    "w": 420,
    "x": 1422,
    "y": 1556
@@ -4602,9 +4650,9 @@
    "fill": "blue",
    "page": "settings",
    "size": 24,
-   "text": "What looks unintended:\n- A switch core refuses stays on.\n- On the network, Status shows http://0.0.0.0:4533, which no other device can use.\n- Port and Username each have a Save that saves both; Password saved shows above the password.",
+   "text": "What the code needs for these boards (SubsonicSettingsTab.swift):\n- The switch is what the person wants; the row's second line is what is happening, live from core as it changes (no Refresh): off, “Stream your library using a Subsonic app”; running, “Running”; on but not running, “Not running”, with why shown where it's fixed. The switch never springs back: core keeps it on and starts the server the moment nothing stands in the way.\n- No Save buttons. Port, Username and Password save on Return or on leaving the field (CommittedTextField), each on its own; the pop-up on choosing. A port or network change restarts the server, and the new address under Available on is the confirmation (no “Restarting…” step). A username or password change applies to the next sign-in without a restart. A saved password shows as dots; typing replaces it; no “Password saved” line.\n- Why it isn't running, where it's fixed: no username or no password marks that row (field red, row's second line “Required to start the server”, danger); today the server runs with no password and nobody can sign in, and a missing username is refused with a notice. A port another app holds marks Port: “Another app is using this port”; one out of range, “Use a number from 1 to 65535”. Port is MacPortField: five digits wide, digits only. The chosen network gone: the line reads “Not running: Wi-Fi isn’t connected”, no notice. Any other start failure: a danger notice under the switch, “Subsonic server could not start”, with Details.\n- “Available on” is a pop-up in place of the “Allow connections from other devices on your network” switch: This Mac only (127.0.0.1, the default), then each network interface that has an address, by the name System Settings gives it, with its IPv4 address (“Wi-Fi — 192.168.1.20”, “Tailscale — 100.64.0.3”), then Every network (0.0.0.0). The choice is stored as the interface (its BSD name, en0), not its address: a new address on it moves the server to that address. While it runs, the address an app connects to is the Available on row's second line, “Apps connect at http://<its address>:<port>” on one network, http://localhost:<port> on This Mac only; with more than one address (Every network), “Apps connect at:” and a bullet per address followed by its interface's name: “• http://192.168.1.20:4533 (Wi-Fi)”, “• http://100.64.0.3:4533 (Tailscale)”. Not running, no address. Never 0.0.0.0, and no /rest. Each address is MacCopyText: selectable, with a copy button after it while the pointer is over it. Core lists the interfaces and binds; the app names them. The menu lists only interfaces that have an address, except the chosen one: while it has none it stays, ticked, as “Wi-Fi — not connected”, and it drops out once another is chosen. Core watches address changes (the if-watch crate: macOS's network configuration notifications, Linux netlink, Windows' address-change notifications; it reports addresses only, so on each change core re-reads the interfaces with if-addrs, already in the build through mdns-sd) and moves, stops or starts the server as the chosen interface's IPv4 address comes, changes or goes. Today it binds once at start and never notices.\n- Username and Password sit together in a “Sign-in” box, with the note “Subsonic apps sign in with this username and password. The password is kept in this Mac’s keychain.”\n- On but not running, for any reason, it shows outside Settings too: the sidebar's Subsonic carries an “Offline” chip, as Library's does (warning; danger when it could not start), and the Activity panel's Needs Attention lists “Subsonic server isn’t running” (same tone) with “Open Subsonic Settings”, which closes the panel and opens this pane, and an × that takes it out of the panel without fixing it; it comes back if the server stops again after running. Clicking the row opens the alert with why and the causes. The toolbar's Activity button carries its warning mark while the row is listed. Off is a choice: no chip, no row.\nEvery locale.",
    "w": 460,
-   "x": 2310,
+   "x": 7440,
    "y": 10696
   },
   "row-settings-0": {
@@ -5038,7 +5086,7 @@
    "y": 9376,
    "w": 420,
    "size": 24,
-   "text": "What the code needs for these boards:\n- The Formats pane is “Save as”, in the sidebar and its title (SettingsView.swift, `.formats`); its list keeps the heading “Formats”, and the note “Formats appear in Save as… on tracks and releases.” goes.\n- Each format row ends in a ⋯ button (MoreMenu) with Edit… and Delete…, in place of the Track and Release toggles and the minus (PresetRow, FormatsSettingsTab.swift). Clicking the row still opens the editor. Delete… asks as the minus does today.\n- A format keeps its Name, first in the editor, prefilled when added with the format's name and the next free number: “FLAC”, then “FLAC (2)”, “FLAC (3)”; while it is still that prefill, changing Format re-prefills it. Rows show only the name, no grey line; the save panel's Format pop-up lists the names, then a separator and Edit Formats…, which opens Settings at the Save as pane in front of the save panel; the panel's pop-up follows any change made there, and a format added there is chosen in it. Names are unique on every add and edit: a taken name turns the Name field red with “Another format is named “MP3”.” and Done off, and core refuses one; “(2)” is only the prefill. Two formats may save the same way. Names stay stored, not made from the settings: encoder settings to come will be more than a name can say.\n- “Add format…” is a button under the list, on the right, as Add library… is on Welcome; today “+ Add format” sits inside the box.\n- No Defaults section: Save as starts with the format last used for any save, track or release (one stored choice in place of default_track_save_preset and default_release_save_preset).\n- Track and Release go from the codebase: every format shows in Save as for tracks and releases. Core drops a preset's applies-to-track and applies-to-release.\n- The editor is Name, Format and its one quality setting, nothing else; Embed cover art moves to Extras, one setting for every format. Bit depth for FLAC, WAV and AIFF: “Same as source” (the default) or “16-bit”; core's SaveBitDepth becomes those two, so a CD stays 16-bit where a fixed 24 pads it today. Bitrate for MP3, AAC and Opus, a pop-up, not a text field.\n- The Format pop-up lists lossless first, then a separator, then lossy: FLAC, WAV, AIFF / MP3, AAC, Opus (core's SaveFormat::ALL order today: FLAC, MP3, AAC, Opus, WAV, AIFF).\n- Bitrates, from what each encoder does with bae's bit_rate (bae-audio/src/encode.rs sets bit_rate = kbps × 1000): MP3 is libmp3lame at a constant bitrate, which has only 14 legal values (32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320) and rounds anything between, so its pop-up lists exactly those; AAC (FFmpeg's own encoder) 96, 128, 160, 192, 256, 320; Opus (libopus, max 510) 64, 96, 128, 160, 192, 256.\n- No Advanced. Every save writes one file per track by one rule: a track's gap goes at the end of the track before, and hidden audio before track 1 stays at the start of track 1 (today's AppendToPreviousIncludingHtoa). An image + CUE source is split at its track marks. Core drops SavePregapPlacement and single file + CUE.\n- A release save of a track already in the chosen format at the same depth copies its audio without re-encoding, writing tags, cover and name fresh.\n- Names: one box on the pane, out of each format's editor, with two naming fields labeled above them. File name names each track's file in every format (one stored pattern in place of each preset's save_preset_filename_token). Folder name names the folder a release save makes. A pattern is text with values in it as chips, an NSTokenField as Finder's rename Format field is: the person types between chips, and Delete after a chip or Forward Delete (fn-Delete) before it takes the whole chip out; chips still drag to reorder and come from the Add line. Stored as ordered pieces, each a value or typed text (save_filename_token and save_folder_token rows); rendering fills each value and keeps the text as typed, no longer joining with spaces, and an empty value leaves its text. Defaults: file [Track №] [Title], with a typed space between; folder [Artist] - [Album]. Text is kept as typed: spaces are not collapsed or trimmed (sanitize_filename_stem collapses runs today). Typed text that can't make a name turns the field red, and the preview line, which now sits right under the field with the Add line below it, becomes the error: “A name can’t start with “.”.” (typed text first in the pattern starting with .), “A name can’t contain “/”.” (the first of \\ : ? * \" < > | / in typed text), “A name can’t be empty.” (no pieces). The pattern is stored as typed; while it is invalid, saves name by its default pattern, and the error says nothing about that. A value's own characters are still written as coven writes a name (Some/Weird:Title → Some／Weird：Title). Both patterns add Album year, the album's own year (album.year), beside Release year, the release's (shown_year: its own year, else the album's). Folder values: Artist, Album, Album year, Release year, Label, Catalog number; file values: Title, Artist, Album, Album year, Release year, Track №, Disc №, Track total.\n- Extras, all on: Embed cover art (from each format), Cover image in the folder (a release save writes cover.jpg) and Loudness tags (ReplayGain track and album gain and peak from the loudness measured at import).\n- Spec §4.6 lists Save as's cases: one track converted; a whole release converted; an exact copy is Export.\nbae change, every locale."
+   "text": "What the code needs for these boards:\n- The Formats pane is “Save as”, in the sidebar and its title (SettingsView.swift, `.formats`); its list keeps the heading “Formats”, and the note “Formats appear in Save as… on tracks and releases.” goes.\n- Each format row ends in a ⋯ button (MoreMenu) with Edit… and Delete…, in place of the Track and Release toggles and the minus (PresetRow, FormatsSettingsTab.swift). Clicking the row still opens the editor. Delete… asks as the minus does today.\n- A format keeps its Name, first in the editor, prefilled when added with the format's name and the next free number: “FLAC”, then “FLAC (2)”, “FLAC (3)”; while it is still that prefill, changing Format re-prefills it. Rows show only the name, no grey line; the save panel's Format pop-up lists the names, then a separator and Edit Formats…, which opens Settings at the Save as pane in front of the save panel; the panel's pop-up follows any change made there, and a format added there is chosen in it. Names are unique on every add and edit: a taken name turns the Name field red with “Another format is named “MP3”.” and Done off, and core refuses one; “(2)” is only the prefill. Two formats may save the same way. Names stay stored, not made from the settings: encoder settings to come will be more than a name can say.\n- “Add format…” is a button under the list, on the right, as Add library… is on Welcome; today “+ Add format” sits inside the box.\n- No Defaults section: Save as starts with the format last used for any save, track or release (one stored choice in place of default_track_save_preset and default_release_save_preset).\n- Track and Release go from the codebase: every format shows in Save as for tracks and releases. Core drops a preset's applies-to-track and applies-to-release.\n- The editor is Name, Format and its one quality setting, nothing else; Embed cover art moves to Extras, one setting for every format. Bit depth for FLAC, WAV and AIFF: “Same as source” (the default) or “16-bit”; core's SaveBitDepth becomes those two, so a CD stays 16-bit where a fixed 24 pads it today. Bitrate for MP3, AAC and Opus, a pop-up, not a text field.\n- The Format pop-up lists lossless first, then a separator, then lossy: FLAC, WAV, AIFF / MP3, AAC, Opus (core's SaveFormat::ALL order today: FLAC, MP3, AAC, Opus, WAV, AIFF).\n- Bitrates, from what each encoder does with bae's bit_rate (bae-audio/src/encode.rs sets bit_rate = kbps × 1000): MP3 is libmp3lame at a constant bitrate, which has only 14 legal values (32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320) and rounds anything between, so its pop-up lists exactly those; AAC (FFmpeg's own encoder) 96, 128, 160, 192, 256, 320; Opus (libopus, max 510) 64, 96, 128, 160, 192, 256.\n- No Advanced. Every save writes one file per track by one rule: a track's gap goes at the end of the track before, and hidden audio before track 1 stays at the start of track 1 (today's AppendToPreviousIncludingHtoa). An image + CUE source is split at its track marks. Core drops SavePregapPlacement and single file + CUE.\n- A release save of a track already in the chosen format at the same depth copies its audio without re-encoding, writing tags, cover and name fresh.\n- Names: one box on the pane, out of each format's editor, with two naming fields labeled above them. File name names each track's file in every format (one stored pattern in place of each preset's save_preset_filename_token). Folder name names the folder a release save makes. A pattern is text with values in it as chips, an NSTokenField as Finder's rename Format field is: the person types between chips, and Delete after a chip or Forward Delete (fn-Delete) before it takes the whole chip out; chips still drag to reorder and come from the Add line. Stored as ordered pieces, each a value or typed text (save_filename_token and save_folder_token rows); rendering fills each value and keeps the text as typed, no longer joining with spaces, and an empty value leaves its text. Defaults: file [Track №] [Title], with a typed space between; folder [Artist] - [Album]. Text is kept as typed: spaces are not collapsed or trimmed (sanitize_filename_stem collapses runs today). Typed text that can't make a name turns the field red, and the preview line, which now sits right under the field with the Add line below it, becomes the error: “A name can’t start with “.”.” (typed text first in the pattern starting with .), “A name can’t contain “/”.” (the first of \\ : ? * \" < > | / in typed text), “A name can’t be empty.” (no pieces). The pattern is stored as typed; while it is invalid, saves name by its default pattern, and the error says nothing about that. A value's own characters are still written as coven writes a name (Some/Weird:Title → Some／Weird：Title). Both patterns add Album year, the album's own year (album.year), beside Release year, the release's (shown_year: its own year, else the album's). Folder values: Artist, Album, Album year, Release year, Label, Catalog number; file values: Title, Artist, Album, Album year, Release year, Track №, Disc №, Track total.\n- Extras, all on: Embed cover art (from each format), Cover image in the folder (a release save writes cover.jpg) and Loudness tags (ReplayGain track and album gain and peak from the loudness measured at import).\n- Spec §4.6 lists Save as's cases: one track converted; a whole release converted; an exact copy is Export.\n- Deleting the format last used makes the first remaining one the last used, in the same write; the only format left can't be deleted: its ⋯ menu shows Delete… off (e23d69e33).\nbae change, every locale."
   }
  },
  "order": [
@@ -5340,10 +5388,16 @@
   "SetMacFormatNameInvalid.dc.html",
   "SetMacFormatPicker.dc.html",
   "SetMacFormatDelete.dc.html",
-  "SetMacFormatRefused.dc.html",
+  "SetMacFormatLast.dc.html",
   "SetMacSubsonic.dc.html",
   "SetMacSubsonicOn.dc.html",
   "SetMacSubsonicRefused.dc.html",
+  "SetMacSubsonicFailed.dc.html",
+  "SetMacSubsonicNetworks.dc.html",
+  "SetMacSubsonicEvery.dc.html",
+  "SetMacSubsonicNoNetwork.dc.html",
+  "SetMacSubsonicPortInUse.dc.html",
+  "SetMacSubsonicActivity.dc.html",
   "SetMacAutomation.dc.html",
   "SetMacAutomationOn.dc.html",
   "SetMacAutomationFailed.dc.html",

@@ -74,12 +74,29 @@
     return h('button', { type: 'button', className: 'bae-m-infotip', 'aria-label': props.label || 'More info' }, h(StatusGlyph, { tone: 'info', set: 'mac', outline: true, muted: true, size: 13 }));
   }
 
+  // A port number: a field five digits wide that takes digits only, its label hidden (the row says Port). `state`: normal, focused, error, off. What's wrong with it goes on the row's second line, not under the field.
+  function MacPortField(props) {
+    return h('div', { className: 'bae-m-portfield' }, h(MacTextField, { label: props.label || 'Port', labelHidden: true, value: props.value, state: props.state }));
+  }
+
+  // Text someone may want to paste elsewhere (an address, an id): selectable, with a copy button after it that shows while the pointer is over the text or the button has focus. `after`: words that follow the text but aren't copied (“(Wi-Fi)”), before the button. `hover` draws that state.
+  function MacCopyText(props) {
+    return h('span', { className: cx('bae-m-copytext', props.hover && 'bae-m-copytext-hover') },
+      h('span', { className: 'bae-m-copytext-text' }, props.children != null ? props.children : props.text),
+      props.after ? h('span', null, props.after) : null,
+      h('button', { type: 'button', className: 'bae-m-copytext-btn', 'aria-label': props.label || 'Copy' }, h(CopyGlyph)));
+  }
+
   function MacRow(props) {
     var trail = kids(props.children);
+    // `copy`: one text, after the note; or a list of {text, after}: with more than one, the note ends in a colon and each is a bullet under it.
+    var copies = props.copy == null || props.copy === '' ? [] : Array.isArray(props.copy) ? props.copy : [{ text: props.copy }];
     return h('div', { className: cx('bae-m-row', props.nested && 'bae-m-row-nested', props.nested && props.off && 'bae-m-row-nested-off', props.selected && 'bae-m-row-selected', props.action && 'bae-m-row-action', props.destructive && 'bae-m-row-destructive'), onClick: props.onClick },
       props.label == null ? null : h('span', { className: 'bae-m-row-label' },
         h('span', { className: 'bae-m-row-title' }, h('span', { className: props.strong ? 'bae-m-row-strong' : null }, props.label), props.tag ? h(StatusChip, null, props.tag) : null, props.info ? h(MacInfoTip, { label: 'About ' + props.label }) : null),
-        props.note ? h('span', { className: cx('bae-m-row-note', props.noteTone && 'bae-tone-' + props.noteTone) }, props.note) : null),
+        props.note || copies.length ? h('span', { className: cx('bae-m-row-note', props.noteTone && 'bae-tone-' + props.noteTone) },
+          copies.length > 1 ? [props.note ? props.note + ':' : null, h('ul', { key: 'l', className: 'bae-m-row-notelist' }, copies.map(function (c, i) { return h('li', { key: i }, h(MacCopyText, { hover: props.copyHover, after: c.after }, c.text)); }))]
+            : [props.note, copies.length && props.note ? ' ' : null, copies.length ? h(MacCopyText, { key: 'c', hover: props.copyHover, after: copies[0].after }, copies[0].text) : null]) : null),
       props.value != null && props.value !== '' ? h('span', { className: cx('bae-m-row-value', props.tone && 'bae-tone-' + props.tone) }, props.tone ? h('span', { className: 'bae-dot', 'aria-hidden': true }) : null, props.value) : null,
       trail.length ? h('span', { className: 'bae-m-row-trail' }, trail) : null,
       props.chevron ? h(Chevron, { className: 'bae-m-row-chevron' }) : null);
@@ -226,14 +243,14 @@
     return h('div', { className: 'bae-m-note' }, props.children);
   }
 
-  // How Save as… names each track's file, one pattern for every format: the pattern's values as chips, each with ×, with the text typed between them, a preview of a name it makes right under the field, as its help line, and the values it can add. `pattern`: the text, with each value in brackets ("[Artist] - [Album]"); `add`: comma-separated; `preview`: the name it shows; `error`: why the typed text makes no name, in the preview's place.
+  // How Save as… names each track's file, one pattern for every format: the pattern's values as macOS's own tokens, with the text typed between them, a preview of a name it makes right under the field, as its help line, and the values it can add. `pattern`: the text, with each value in brackets ("[Artist] - [Album]"); `add`: comma-separated; `preview`: the name it shows; `error`: why the typed text makes no name, in the preview's place.
   function MacFileNameField(props) {
     var split = function (s) { return String(s || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean); };
     var pieces = String(props.pattern || '').split(/(\[[^\]]*\])/).filter(function (x) { return x !== ''; });
     // `label` sits above the field, at the row's leading edge where a MacRow's title sits, so the field runs the box's full width.
     return h('div', { className: 'bae-m-filename' },
       props.label == null ? null : h('span', { className: 'bae-m-filename-label' }, props.label),
-      h('div', { className: cx('bae-m-tokenfield', props.error && 'bae-m-tokenfield-error'), 'aria-label': props.label, 'aria-invalid': props.error ? true : null }, pieces.map(function (t, i) { return t.charAt(0) === '[' ? h('span', { key: i, className: 'bae-chip bae-tone-neutral' }, t.slice(1, -1) + ' ×') : h('span', { key: i, className: 'bae-m-tokentext' }, t); })),
+      h('div', { className: cx('bae-m-tokenfield', props.error && 'bae-m-tokenfield-error'), 'aria-label': props.label, 'aria-invalid': props.error ? true : null }, pieces.map(function (t, i) { return t.charAt(0) === '[' ? h('span', { key: i, className: 'bae-m-token' }, t.slice(1, -1)) : h('span', { key: i, className: 'bae-m-tokentext' }, t); })),
       props.error ? h('div', { className: 'bae-m-field-note bae-m-field-note-error' }, props.error)
         : props.preview ? h('div', { className: 'bae-m-filename-preview' }, 'Preview: ', h('span', { className: 'bae-mono' }, props.preview)) : null,
       h('div', { className: 'bae-m-filename-add' }, 'Add:', split(props.add).map(function (t) { return h('span', { key: t, className: 'bae-m-tokenadd' }, t); })));
@@ -266,10 +283,10 @@
     return h('div', { className: 'bae-m-menu', role: 'menu' }, props.children);
   }
 
-  // `divider`: a line between groups of items, as NSMenu's separator item.
+  // `divider`: a line between groups of items, as NSMenu's separator item. `off`: an item that can't be chosen now, greyed, as NSMenu disables one.
   function MacMenuItem(props) {
     if (props.divider) return h('div', { className: 'bae-m-menu-sep', role: 'separator' });
-    return h('div', { className: cx('bae-m-menu-item', props.highlighted && 'bae-m-menu-item-on'), role: 'menuitemradio', 'aria-checked': !!props.checked },
+    return h('div', { className: cx('bae-m-menu-item', props.highlighted && !props.off && 'bae-m-menu-item-on', props.off && 'bae-m-menu-item-off'), role: 'menuitemradio', 'aria-checked': !!props.checked, 'aria-disabled': props.off ? true : null },
       h('span', { className: 'bae-m-menu-check', 'aria-hidden': true }, props.checked ? h('svg', { width: 11, height: 11, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2.6, strokeLinecap: 'round', strokeLinejoin: 'round' }, h('path', { d: 'M5 12.5l4.5 4.5L19 7.5' })) : null),
       props.children);
   }

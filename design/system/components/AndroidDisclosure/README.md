@@ -4,4 +4,4 @@ Material's disclosure row: its own card, the label (and an optional `summary` un
 
 On macOS the same thing is `MacDisclosure`.
 
-**In the code:** Android: `FormerDevices` (`ui/settings/FormerDevices.kt`), which draws a label and an inset list; the canvas draws this card.
+**In the code:** Android: `FormerDevices` (`ui/settings/FormerDevices.kt`) draws this card: a `CardRow` with `ExpandMore`/`ExpandLess` that opens the devices as rows of the same `RowCard`.

@@ -6,12 +6,13 @@
 <div id="root" style="display: contents"></div>
 <script>
   var B = window.Bae, h = React.createElement;
-  ReactDOM.createRoot(document.getElementById('root')).render(h('div', { style: { width: 460 } },
-    h(B.MacBox, null,
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
+    W('Field and notice', h(B.MacBox, null,
       h(B.MacRow, { label: 'Search Discogs' }, h(B.MacSwitch, { on: false, off: true, label: 'Search Discogs' })),
       h(B.MacNested, null,
         h(B.MacFieldRow, null, h(B.MacTextField, { label: 'API key', labelHidden: true, placeholder: 'Your free Discogs key' }), h(B.MacButton, { off: true }, 'Save')),
-        h(B.MacNotice, { tone: 'danger', title: 'Invalid key.' })))));
+        h(B.MacNotice, { tone: 'danger', title: 'Invalid key.' }))))));
 </script>
 </body>
 </html>

@@ -4,4 +4,4 @@ A panel rounded on every corner, just under the title bar, with its title bold a
 
 `message` is the line under the title, in secondary text, as an alert's message: what the sheet asks for or reports. It's never drawn by hand in the body.
 
-**In the code:** macOS: SwiftUI's `.sheet`.
+**In the code:** macOS: `MacSheet` (`Views/Components/MacSheet.swift`), the sheet's face, inside SwiftUI's `.sheet`; some sheets still draw their own header (`JoinRequestSheet`, `SyncSetupWizard`).

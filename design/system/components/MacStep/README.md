@@ -4,6 +4,6 @@ A window that walks through one step of joining or adding a device. It sits cent
 
 The welcome window has no title bar text, so the headline is the only place that says where you are.
 
-A headline wraps balanced, so it never leaves one word alone on its last line, in any language (in the code: `NSParagraphStyle.lineBreakStrategy` `.pushOut` on the headline). A line under it wraps the same way.
+A headline wraps balanced, so it never leaves one word alone on its last line, in any language (the code should set `NSParagraphStyle.lineBreakStrategy` `.pushOut` on the headline). A line under it wraps the same way.
 
 **In the code:** macOS: none yet; the code needs one.

@@ -4,4 +4,4 @@ For a decision: changing a value, confirming an action, a choice that has to be 
 
 `message` is the line under the title, 8 apart, the dialog's supporting text; the content after it sits a section-step lower. It's never typed loose as the dialog's first child, which put it as far from the title as from the content.
 
-**In the code:** Android: Material's `AlertDialog`.
+**In the code:** Android: `BaeAlertDialog` (`ui/components/BaeAlertDialog.kt`), Material's `AlertDialog` with `DialogHead` setting `message` under the title; ten dialogs in `ui/settings/` still call Material's `AlertDialog` directly.

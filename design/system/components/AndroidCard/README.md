@@ -2,4 +2,4 @@
 
 Groups related rows on a screen. Each row is its own tile, 2dp apart, with the group's outer corners rounded and no dividers, as Android 16's Settings draws them.
 
-**In the code:** Android: none yet; the code needs one.
+**In the code:** Android: `RowCard` (`ui/components/RowCard.kt`), one rounded surface dividing its rows by hairlines; the 2dp tiles drawn here are not built.

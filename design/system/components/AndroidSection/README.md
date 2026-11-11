@@ -1,5 +1,5 @@
 # AndroidSection
 
-Names the card that follows: "You", "People". Sentence case in the accent color, as Material 3 and Android's Settings set them.
+Names the section that follows, a card of rows or anything else on the page (a restore code's box): "You", "People". A small label naming a column, a side or a group inside a list is `AndroidEyebrow`. Sentence case in the accent color, as Material 3 and Android's Settings set them.
 
-**In the code:** Android: `Eyebrow` (`ui/components/Eyebrow.kt`).
+**In the code:** Android: `SectionHeading` (`ui/components/SectionHeading.kt`), from the `[text.section]` role.

@@ -91,6 +91,10 @@ A component's sample is a set of named rows, each changing one thing.
 - When an axis is done, look for the next among the component's other props. Show each value once; don't multiply axes into combinations.
 - A container holds a plain stand-in, a dashed box, so the container is the only real thing on show.
 
+## Shots
+
+The code is checked against this system in two kinds of shot (agent-instructions `principles/design-to-implementation.md`). A component's code view has the component's name (`MacRow` in Swift, `AndroidRow` in Kotlin) and takes values as the component takes props. Each named row of its `preview.html` (`W('Nested, off', …)`) is a state; its shot is `<platform>.component.<thing>.<state>`: the platform, the name after the platform in lower-case words joined by `-`, and the row's name the same way (`mac.component.row.nested-off`). A row's name is its state's id: renaming a row retires its shot. Screens are checked as the canvas's boards draw them (`design/mocks`).
+
 ## Using this system
 
 Load `tokens.css`, then `components/bundle.css`, then `components/bundle.js`, which sets `window.Bae` and needs React 18 on the page. `bundle.js` is built from its sources in `components/src/`, one file per area, by `build-bundle.py`; edit the sources, not the bundle. Android boards also load Roboto from Google Fonts. On a Design canvas, mount components as `<x-import component-from-global-scope="Bae.MacButton" kind="primary">Set up</x-import>`; content inside becomes children, so a `Bae.MacBox` holds `Bae.MacRow`s and a `Bae.MacSheet` holds its content and a `Bae.MacSheetFooter`.

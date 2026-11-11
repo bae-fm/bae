@@ -4330,12 +4330,32 @@ connects to his laptop, lists the artists, opens an album and plays it.
   ended there. A bug among them, such as a read of the track that panics, is
   reported as one.
 - **Login.** Only token login is accepted: the client sends its username, a
-  salt of at least six characters, and the MD5 of password plus salt. With no
-  username or password set, nobody gets in. Failures come back as Subsonic
+  salt of at least six characters, and the MD5 of password plus salt. It doesn't run
+  without both a username and a password. Failures come back as Subsonic
   error documents, which clients read, not HTTP errors; a request that hits a
   bug is reported as one and answered with a generic error document.
-- **Where it listens.** On this machine by default; binding to every address
-  opens it to the network. The default port is 4533.
+- **Where it listens.** On this machine only by default. Available on
+  offers this machine only, each network the machine is on (Wi-Fi, a VPN),
+  by name and address, or every network. A network is kept as that network,
+  not its address, so the server follows it to a new address, stops when it
+  has none and starts when it has one again. A network with no address is
+  offered only while it is the one chosen, marked not connected. The default
+  port is 4533.
+- **Settings.** The switch is what the person wants; the line under it is
+  what is happening, as it changes: running, or not running and why, shown
+  where it is fixed. While it runs, Available on shows the address an app
+  connects to (`localhost` on this machine only; each network's own address,
+  never `0.0.0.0`). Why it isn't running: a
+  missing username or password at its field, a port another app holds at the
+  port, a network with no address on the line itself, any other failure
+  under the switch. The
+  server starts as soon as nothing stands in its way; the switch stays on.
+  Each field saves on its own when the person presses Return or leaves it; a
+  port or network change restarts the server at its new address, and a
+  username or password change applies to the next sign-in.
+  On but not running, it also shows outside Settings: a mark on the
+  Subsonic pane in Settings' sidebar, and a row under *Needs attention* in
+  the Activity panel that opens this pane.
 - **Ids** carry their kind: `ar-` an artist, `al-` a release, `tr-` a track. A
   cover's id adds a version, so a client caching art fetches a new cover.
 - **Out of scope.** Playlists, stars and ratings, play counts, podcasts,
@@ -5530,10 +5550,10 @@ the MCP and Subsonic servers as the row changes, and the store's transfer
 limits as the library opens and as either limit changes. The settings screens
 pull the row with the library's id and directory from a live query. The schema
 refuses what no setter writes: a last-used format that names no format, two
-formats of one name, an
-enabled Subsonic server with no username, a format its codec can't write, a
-name pattern piece that is not exactly one of a value and typed text, or is
-typed text of nothing.
+formats of one name, a format its codec can't write, a name pattern piece
+that is not exactly one of a value and typed text, or is typed text of
+nothing. A Subsonic server turned on with no username is kept on and doesn't
+run until it has one.
 Replay gain has no control in the apps.
 
 | Setting | Default | What it decides |
@@ -5557,7 +5577,7 @@ Replay gain has no control in the apps.
 | `cast_enabled` | off | casting to receivers |
 | `cast_transcode_format` | MP3 | what a receiver gets when a track needs converting |
 | `mcp_enabled`, `mcp_port` | off, 47777 | the MCP server; its token is in the keyring |
-| `subsonic_enabled`, `_port`, `_username`, `_bind_address` | off, 4533, none, 127.0.0.1 | the Subsonic server; its password is in the keyring |
+| `subsonic_enabled`, `_port`, `_username`, `_network` | off, 4533, none, this machine only | the Subsonic server; `_network` is this machine only, one network by its interface, or every network; its password is in the keyring |
 
 A save format holds a name and a codec: FLAC, WAV or AIFF at the source's
 depth or at 16 bits; MP3 at one of the 14 bitrates its encoder writes at a
@@ -5578,14 +5598,16 @@ the patterns it was queued with.
 
 Platform settings, such as the appearance and restoring playback on launch,
 live in each app. Appearance reads Theme (System, Light, Dark), then Tone, then
-Accent, so named in every locale. The apps start with the System theme, the Plum
-tone and the Pink accent. On the Mac Theme and Tone are pop-up buttons; on
+Accent, so named in every locale; Accent names the chosen colour under its
+title, as Theme and Tone show theirs. The apps start with the System theme, the
+Plum tone and the Pink accent. On the Mac Theme and Tone are pop-up buttons; on
 Android the Appearance page has no heading over its card, the top bar names it.
 Android's Settings rows each say where that setting stands under their title:
 Appearance's theme, tone and accent, the library's name and its sync state,
 which of pausing between sides and restoring on launch are on, how many pins
 run at once, whether casting is on, and the version. The Mac's sidebar names the
-sync state beside Library only while it is amber or red. About shows the bae
+sync state beside Library only while it is amber or red, and Offline beside
+Subsonic while it is on and not running. About shows the bae
 logo, the sheep over the word, 96 points wide and still, over the version:
 Android's Version is a row on a card, the Mac's a line with Check for updates….
 

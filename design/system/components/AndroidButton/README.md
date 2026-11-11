@@ -4,4 +4,4 @@
 
 A `text` button on its own line lines its words up with the text above it: `alignTo: 'text'` under plain text, flush with it; `alignTo: 'field'` under a field, with the field's text, 16dp in.
 
-**In the code:** Android: `PrimaryButton` (`ui/components/PrimaryButton.kt`) for filled; Material's `FilledTonalButton`, `OutlinedButton` and `TextButton`.
+**In the code:** Android: `PrimaryButton` (`ui/components/PrimaryButton.kt`) for filled; `DestructiveTextButton` and `NeutralTextButton` (`ui/components/DialogButtons.kt`) for a dialog's destructive and neutral text buttons; Material's `FilledTonalButton`, `OutlinedButton` and `TextButton` otherwise.

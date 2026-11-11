@@ -110,6 +110,16 @@
 .bae-m-row-title { display: flex; align-items: center; gap: 6px; }
 .bae-m-row-note { font-size: 11.5px; line-height: 16px; color: var(--text-secondary); }
 .bae-m-row-note[class*="bae-tone-"] { color: var(--bae-tone); }
+.bae-m-portfield { flex: none; width: 72px; }
+.bae-m-portfield .bae-m-input { font-variant-numeric: tabular-nums; }
+.bae-m-copytext { display: inline-flex; align-items: center; gap: 4px; color: var(--text-secondary); vertical-align: top; }
+.bae-m-copytext-text { user-select: text; }
+.bae-m-row-notelist { margin: 2px 0 0; padding-left: 16px; }
+/* The copy button keeps its place while hidden, so the text never moves when it shows. */
+.bae-m-copytext-btn { width: 16px; height: 16px; padding: 0; border: 0; border-radius: 4px; background: none; color: var(--text-secondary); display: inline-flex; align-items: center; justify-content: center; opacity: 0; cursor: pointer; }
+.bae-m-copytext-btn svg { width: 12px; height: 12px; }
+.bae-m-copytext:hover .bae-m-copytext-btn, .bae-m-copytext:focus-within .bae-m-copytext-btn, .bae-m-copytext-hover .bae-m-copytext-btn { opacity: 1; }
+.bae-m-copytext-btn:hover { color: var(--text-primary); }
 .bae-m-row-value { color: var(--text-secondary); white-space: nowrap; display: flex; align-items: center; gap: 6px; }
 .bae-m-row-value[class*="bae-tone-"] { color: var(--bae-tone); }
 .bae-m-row-value .bae-dot { width: 7px; height: 7px; }
@@ -325,6 +335,7 @@
 .bae-m-menu { display: flex; flex-direction: column; min-width: 190px; padding: 6px; border-radius: 12px; background: var(--tile); box-shadow: 0 8px 24px var(--shadow); font: 400 13px var(--font-sans); color: var(--text-primary); }
 .bae-m-menu-item { display: flex; align-items: center; gap: var(--space-compact); padding: 4px var(--space-related); border-radius: 6px; }
 .bae-m-menu-item-on { background: var(--accent-selection); color: var(--on-fill); }
+.bae-m-menu-item-off { color: var(--text-tertiary); }
 .bae-m-menu-check { width: 11px; display: flex; }
 
 /* Scan code: what to do, the QR code, its buttons, then when it ends. */
@@ -776,8 +787,8 @@
 
 /* Formats pane: button-style toggles, the token field */
 .bae-m-tokenfield { min-height: 24px; padding: 6px; border-radius: 7px; background: var(--field); box-shadow: inset 0 0 0 1px var(--hairline-strong); display: flex; row-gap: 6px; flex-wrap: wrap; align-items: center; }
-/* Typed text sits between the chips as typed, its spaces kept: they are the spacing, so a chip keeps only a hair of margin of its own. */
-.bae-m-tokenfield .bae-chip { margin: 0 1px; }
+/* A value is macOS's own token (NSTokenField's): the system's blue, its words in the field's font, small corners, no ×. Typed text sits between the tokens as typed, its spaces kept: they are the spacing, so a token keeps only a hair of margin of its own. */
+.bae-m-token { margin: 0 2px; padding: 0 8px; border-radius: 3px; background: var(--mac-token-fill); color: var(--mac-token-text); font: 400 13px/16px var(--font-sans); white-space: nowrap; }
 .bae-m-tokenfield-error { box-shadow: inset 0 0 0 1px var(--danger), 0 0 0 3px color-mix(in srgb, var(--danger) 35%, transparent); }
 /* The preview is the field's help line and the error takes its place, so the two line up, on the field's edge. */
 .bae-m-filename .bae-m-field-note { padding-left: 0; }

@@ -6,6 +6,6 @@ A step to read or fill in (your name, an invite or code that ended) is `top`: it
 
 A question goes in the field's helper line, not a sentence above it.
 
-The headline wraps balanced, so it never leaves one word alone on its last line, in any language (in the code: Compose's `LineBreak.Heading` on the headline, `LineBreak.Paragraph` on the line under it).
+The headline wraps balanced, so it never leaves one word alone on its last line, in any language (the code should set Compose's `LineBreak.Heading` on the headline and `LineBreak.Paragraph` on the line under it).
 
 **In the code:** Android: none yet; the code needs one.

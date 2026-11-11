@@ -1,0 +1,15 @@
+<!-- @dsCard group="macOS" height=170 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>MacPortField</title></head>
+<body class="bae-preview bae-preview-mac" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
+    W('Port', h(B.MacBox, null, h(B.MacRow, { label: 'Port' }, h(B.MacPortField, { value: '4533' })))),
+    W('Error', h(B.MacBox, null, h(B.MacRow, { label: 'Port', note: 'Another app is using this port', noteTone: 'danger' }, h(B.MacPortField, { value: '4533', state: 'error' }))))));
+</script>
+</body>
+</html>
