@@ -1,14 +1,15 @@
 import AppKit
 import Foundation
 
-/// Every key of an element but `text` is written, null when the tree has no
+/// Every key of an element but `text` and `placeholder` is written, null when the tree has no
 /// answer.
 private enum ElementKey: String, CodingKey {
-    case role, native, label, value, bounds, enabled, selected, focused
+    case role, native, label, value, placeholder, bounds, enabled, selected,
+        focused
     case text, parent
 }
 
-/// What a shot holds, as the hosted view's accessibility tree lists it: each
+/// What a shot holds, as its window's accessibility tree lists it: each
 /// element's role, words, value and box, written beside the shot's PNG as
 /// `<board>@macos.json` for the shot check to compare with the board. The
 /// shape is the one both platforms write (plans/briefs/design-names.md, "The
@@ -49,6 +50,9 @@ struct ShotElementList: Encodable {
         let native: String
         let label: String?
         let value: String?
+        /// The words a field shows while it is empty; absent when the tree
+        /// gives none.
+        let placeholder: String?
         let bounds: Bounds
         let enabled: Bool
         let selected: Bool?
@@ -64,6 +68,7 @@ struct ShotElementList: Encodable {
             try container.encode(native, forKey: .native)
             try container.encode(label, forKey: .label)
             try container.encode(value, forKey: .value)
+            try container.encodeIfPresent(placeholder, forKey: .placeholder)
             try container.encode(bounds, forKey: .bounds)
             try container.encode(enabled, forKey: .enabled)
             try container.encode(selected, forKey: .selected)
@@ -73,41 +78,36 @@ struct ShotElementList: Encodable {
         }
     }
 
-    /// The elements below `root`'s accessibility tree, boxed in points from
-    /// the top-left of `frame`, the view the shot's pixels are drawn from.
+    /// The elements of `window`'s accessibility tree, boxed in points from the
+    /// top-left of the window, which is the shot's top-left. The view the
+    /// pixels come from is `size` points big.
     @MainActor
     static func read(
         board: String,
-        root: NSView,
-        frame: NSView,
+        window: NSWindow,
+        size: CGSize,
         scale: Int
-    ) -> Self {
-        var reader = Reader(frame: frame)
-        reader.add(children: topElements(below: root), parent: nil)
+    ) throws -> Self {
+        // The accessibility API places a window by its top-left from the
+        // top of the main display.
+        guard let main = NSScreen.screens.first else {
+            throw ShotError.noScreen(board)
+        }
+        let frame = window.frame
+        let tree = try ShotAccessibilityTree.read(
+            windowAt: CGPoint(
+                x: frame.minX,
+                y: main.frame.maxY - frame.maxY
+            ),
+            size: frame.size,
+            sceneId: board
+        )
         return Self(
             board: board,
-            size: Size(
-                width: frame.bounds.width,
-                height: frame.bounds.height
-            ),
+            size: Size(width: size.width, height: size.height),
             scale: scale,
-            elements: reader.elements
+            elements: tree.nodes.map(Element.init(node:))
         )
-    }
-
-    /// The elements the tree starts with below `view`. The hosting view
-    /// lists none itself; what SwiftUI draws hangs from the first views
-    /// below it that are accessibility elements (its scroll view), whose
-    /// own children are SwiftUI's elements.
-    @MainActor
-    private static func topElements(below view: NSView) -> [Any] {
-        if let children = view.accessibilityChildren(), !children.isEmpty {
-            return children
-        }
-        return view.subviews.flatMap { subview in
-            subview.isAccessibilityElement()
-                ? [subview] : topElements(below: subview)
-        }
     }
 
     /// The JSON the list is written as.
@@ -116,164 +116,109 @@ struct ShotElementList: Encodable {
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         return try encoder.encode(self)
     }
+}
 
-    @MainActor
-    private struct Reader {
-        let frame: NSView
-        var elements: [Element] = []
-
-        mutating func add(children: [Any], parent: Int?) {
-            for child in children {
-                guard let object = child as? any NSAccessibilityProtocol else {
-                    continue
-                }
-                let index = elements.count
-                elements.append(element(of: object, parent: parent))
-                add(
-                    children: object.accessibilityChildren() ?? [],
-                    parent: index
-                )
-            }
-        }
-
-        private func element(
-            of object: any NSAccessibilityProtocol,
-            parent: Int?
-        ) -> Element {
-            let native = object.accessibilityRole()?.rawValue ?? "none"
-            let role = Self.role(
-                native: native,
-                subrole: object.accessibilitySubrole()
-            )
-            let label =
-                Self.words(object.accessibilityLabel())
-                ?? Self.words(object.accessibilityTitle())
-            return Element(
-                role: role,
-                native: native,
-                label: label,
-                value: Self.valueText(object.accessibilityValue()),
-                bounds: bounds(of: object.accessibilityFrame()),
-                enabled: object.isAccessibilityEnabled(),
-                selected: object.isAccessibilitySelected(),
-                focused: object.isAccessibilityFocused(),
-                text: role == "text"
-                    ? Self.style(of: object, words: label) : nil,
-                parent: parent
-            )
-        }
-
-        /// A screen rectangle as points from `frame`'s top-left.
-        private func bounds(of screen: NSRect) -> Bounds {
-            let inWindow = frame.window?.convertFromScreen(screen) ?? screen
-            var box = frame.convert(inWindow, from: nil)
-            if !frame.isFlipped {
-                box.origin.y = frame.bounds.height - box.maxY
-            }
-            return Bounds(
-                x: box.minX,
-                y: box.minY,
-                width: box.width,
-                height: box.height
-            )
-        }
-
-        private static func words(_ text: String?) -> String? {
-            guard let text, !text.isEmpty else { return nil }
-            return text
-        }
-
-        private static func valueText(_ value: Any?) -> String? {
-            switch value {
-            case let text as String: words(text)
-            case let number as NSNumber: number.stringValue
-            default: nil
-            }
-        }
-
-        private static func role(
-            native: String,
-            subrole: NSAccessibility.Subrole?
+extension ShotElementList.Element {
+    /// The element a tree node is: its role from the platform's own, its
+    /// words, value and look as the tree gives them.
+    init(node: ShotAccessibilityTree.Node) {
+        let role = Self.role(native: node.role, subrole: node.subrole)
+        self.init(
+            role: role,
+            native: node.role,
+            label: role == "text"
+                ? Self.words(node.value) : node.description ?? node.title,
+            value: role == "text"
+                ? nil : Self.valueText(node.value, role: role),
+            placeholder: node.placeholder,
+            bounds: ShotElementList.Bounds(
+                x: node.x,
+                y: node.y,
+                width: node.width,
+                height: node.height
+            ),
+            enabled: node.enabled,
+            selected: node.selected,
+            focused: node.focused,
+            text: role == "text" ? node.style.flatMap(Self.textStyle) : nil,
+            parent: node.parent
         )
-            -> String
-        {
-            if subrole?.rawValue == "AXTabButton" { return "tab" }
-            if subrole?.rawValue == "AXSwitch" { return "toggle" }
-            return roles[native] ?? "other"
-        }
+    }
 
-        /// The element roles by the platform's own role.
-        private static let roles: [String: String] = [
-            NSAccessibility.Role.staticText.rawValue: "text",
-            NSAccessibility.Role.button.rawValue: "button",
-            NSAccessibility.Role.checkBox.rawValue: "toggle",
-            NSAccessibility.Role.radioButton.rawValue: "radio",
-            NSAccessibility.Role.textField.rawValue: "field",
-            NSAccessibility.Role.textArea.rawValue: "field",
-            NSAccessibility.Role.comboBox.rawValue: "field",
-            NSAccessibility.Role.popUpButton.rawValue: "popup",
-            NSAccessibility.Role.menuButton.rawValue: "popup",
-            NSAccessibility.Role.link.rawValue: "link",
-            NSAccessibility.Role.image.rawValue: "image",
-            NSAccessibility.Role.slider.rawValue: "slider",
-            NSAccessibility.Role.progressIndicator.rawValue: "progress",
-        ]
+    private static func words(_ value: ShotAccessibilityTree.Value?) -> String?
+    {
+        guard case .text(let text)? = value, !text.isEmpty else { return nil }
+        return text
+    }
 
-        /// The style of `words` as the element's attributed string gives it
-        /// over its whole range, or nil when it gives no font or colour.
-        private static func style(
-            of object: any NSAccessibilityProtocol,
-            words: String?
-        ) -> TextStyle? {
-            guard let words,
-                let attributed = object.accessibilityAttributedString(
-                    for: NSRange(location: 0, length: words.utf16.count)
-                ),
-                attributed.length > 0
-            else { return nil }
-            let attributes = attributed.attributes(at: 0, effectiveRange: nil)
-            guard let font = attributes[.font] as? NSFont,
-                let color = attributes[.foregroundColor] as? NSColor,
-                let hex = hex(of: color)
-            else { return nil }
-            return TextStyle(
-                size: font.pointSize,
-                weight: weight(of: font),
-                color: hex
-            )
-        }
-
-        private static func hex(of color: NSColor) -> String? {
-            guard let rgb = color.usingColorSpace(.sRGB) else { return nil }
-            func byte(_ value: CGFloat) -> Int { Int((value * 255).rounded()) }
-            return String(
-                format: "#%02X%02X%02X%02X",
-                byte(rgb.redComponent),
-                byte(rgb.greenComponent),
-                byte(rgb.blueComponent),
-                byte(rgb.alphaComponent)
-            )
-        }
-
-        /// The font's weight on the 100 to 900 scale, from the descriptor's
-        /// weight trait.
-        private static func weight(of font: NSFont) -> Int {
-            let traits =
-                font.fontDescriptor.object(
-                    forKey: .traits
-                ) as? [NSFontDescriptor.TraitKey: Any]
-            let trait =
-                (traits?[.weight] as? NSNumber)
-                .map { CGFloat($0.doubleValue) } ?? 0
-            let scale: [(NSFont.Weight, Int)] = [
-                (.ultraLight, 100), (.thin, 200), (.light, 300),
-                (.regular, 400), (.medium, 500), (.semibold, 600),
-                (.bold, 700), (.heavy, 800), (.black, 900),
-            ]
-            return scale.min(by: {
-                abs($0.0.rawValue - trait) < abs($1.0.rawValue - trait)
-            })?
-            .1 ?? 400
+    /// A toggle's value is `"on"` or `"off"`; any other number is written as
+    /// the tree gives it.
+    private static func valueText(
+        _ value: ShotAccessibilityTree.Value?,
+        role: String
+    ) -> String? {
+        switch value {
+        case .text(let text)?: text.isEmpty ? nil : text
+        case .number(let number)?:
+            role == "toggle"
+                ? (number == 0 ? "off" : "on")
+                : (number == number.rounded()
+                    ? String(Int(number)) : String(number))
+        case nil: nil
         }
     }
+
+    private static func role(native: String, subrole: String?) -> String {
+        if subrole == "AXTabButton" { return "tab" }
+        if subrole == "AXSwitch" { return "toggle" }
+        return roles[native] ?? "other"
+    }
+
+    /// The element roles by the platform's own role.
+    private static let roles: [String: String] = [
+        NSAccessibility.Role.staticText.rawValue: "text",
+        NSAccessibility.Role.button.rawValue: "button",
+        NSAccessibility.Role.checkBox.rawValue: "toggle",
+        NSAccessibility.Role.radioButton.rawValue: "radio",
+        NSAccessibility.Role.textField.rawValue: "field",
+        NSAccessibility.Role.textArea.rawValue: "field",
+        NSAccessibility.Role.comboBox.rawValue: "field",
+        NSAccessibility.Role.popUpButton.rawValue: "popup",
+        NSAccessibility.Role.menuButton.rawValue: "popup",
+        NSAccessibility.Role.link.rawValue: "link",
+        NSAccessibility.Role.image.rawValue: "image",
+        NSAccessibility.Role.slider.rawValue: "slider",
+        NSAccessibility.Role.progressIndicator.rawValue: "progress",
+    ]
+
+    /// The look the tree reports, nil when its font's weight is not one of
+    /// the nine named weights.
+    private static func textStyle(
+        _ style: ShotAccessibilityTree.TextStyle
+    ) -> ShotElementList.TextStyle? {
+        let part = style.fontName.split(separator: "-").last.map(String.init)
+        let named = (part ?? "").replacingOccurrences(of: "Italic", with: "")
+        guard let weight = weights[named.isEmpty ? "Regular" : named] else {
+            return nil
+        }
+        func byte(_ value: Double) -> Int { Int((value * 255).rounded()) }
+        return ShotElementList.TextStyle(
+            size: style.size,
+            weight: weight,
+            color: String(
+                format: "#%02X%02X%02X%02X",
+                byte(style.red),
+                byte(style.green),
+                byte(style.blue),
+                byte(style.alpha)
+            )
+        )
+    }
+
+    /// The weight names a font name ends in, on the 100 to 900 scale.
+    private static let weights: [String: Int] = [
+        "Ultralight": 100, "Thin": 200, "Light": 300, "Regular": 400,
+        "Medium": 500, "Semibold": 600, "Bold": 700, "Heavy": 800,
+        "Black": 900,
+    ]
 }

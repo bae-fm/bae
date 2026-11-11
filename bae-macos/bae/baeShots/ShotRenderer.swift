@@ -70,39 +70,28 @@ enum ShotRenderer {
         host: NSView,
         scene: ShotScene
     ) async throws -> Capture {
+        let pixels: Data
         switch scene.frame {
         case .content:
-            return Capture(
-                png: try png(
-                    of: host,
-                    size: host.bounds.size,
-                    scene: scene
-                ),
-                elements: ShotElementList.read(
-                    board: scene.id,
-                    root: host,
-                    frame: host,
-                    scale: scale
-                )
-            )
+            pixels = try png(of: host, size: host.bounds.size, scene: scene)
         case .window:
             try await becomeKey(window, scene: scene)
-            guard let content = window.contentView else {
-                preconditionFailure("A titled window has content")
-            }
-            return Capture(
-                png: try await windowPNG(
-                    CGWindowID(window.windowNumber),
-                    sceneId: scene.id
-                ),
-                elements: ShotElementList.read(
-                    board: scene.id,
-                    root: content,
-                    frame: host,
-                    scale: scale
-                )
+            pixels = try await windowPNG(
+                CGWindowID(window.windowNumber),
+                sceneId: scene.id
             )
         }
+        // Nothing awaits between the pixels and the tree, so both read the
+        // same settled state.
+        return Capture(
+            png: pixels,
+            elements: try ShotElementList.read(
+                board: scene.id,
+                window: window,
+                size: host.bounds.size,
+                scale: scale
+            )
+        )
     }
 
     /// Wait for `window` to be the key window of the active app, asking for
@@ -307,6 +296,9 @@ enum ShotError: Error, CustomStringConvertible {
     case pngEncodingFailed(String)
     case windowNotShared(String)
     case windowNotKey(String)
+    case noScreen(String)
+    case accessibilityUnavailable(String, Int32)
+    case windowNotInAccessibilityTree(String)
     case unknownSelection(String, String)
 
     var description: String {
@@ -322,6 +314,13 @@ enum ShotError: Error, CustomStringConvertible {
             "the window server shares no window for scene \(id)"
         case .windowNotKey(let id):
             "another app kept the focus, so scene \(id) would draw inactive"
+        case .noScreen(let id):
+            "no display to place scene \(id)'s window against"
+        case .accessibilityUnavailable(let id, let status):
+            "the accessibility API listed no windows of this process for "
+                + "scene \(id) (error \(status))"
+        case .windowNotInAccessibilityTree(let id):
+            "the accessibility tree has no window where scene \(id)'s is"
         case .unknownSelection(let kind, let name):
             "no \(kind) matches \(name)"
         }
