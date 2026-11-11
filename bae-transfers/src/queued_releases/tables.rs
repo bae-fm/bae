@@ -313,6 +313,12 @@ pub(crate) fn release_queue_on<P: QueuedPayload>(
     Ok(ReleaseQueueSnapshot { rows, total: counts.total, paused })
 }
 
+/// Whether coven says the device has a usable network; `None` where nothing
+/// tells.
+pub(crate) fn network_usable_on(sql: &SqlReadContext<'_>) -> Result<Option<bool>, DbError> {
+    Ok(sql.query_row("SELECT (SELECT usable FROM coven_network)", [], |row| row.get(0))?)
+}
+
 pub fn release_queue_counts_on<P: QueuedPayload>(
     sql: &SqlReadContext<'_>,
 ) -> Result<ReleaseQueueCounts, DbError> {
@@ -326,11 +332,7 @@ pub fn release_queue_counts_on<P: QueuedPayload>(
         [],
         |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
     )?;
-    let network_usable: Option<bool> = if P::NEEDS_NETWORK {
-        sql.query_row("SELECT (SELECT usable FROM coven_network)", [], |row| row.get(0))?
-    } else {
-        None
-    };
+    let network_usable = if P::NEEDS_NETWORK { network_usable_on(sql)? } else { None };
     Ok(ReleaseQueueCounts {
         total: ReleaseQueueProgress { queued, active, failed },
         wait: QueueWait::of(paused_on(sql, P::QUEUE)?, network_usable),

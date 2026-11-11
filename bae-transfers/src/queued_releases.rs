@@ -87,38 +87,22 @@ impl<Extra: QueuedPayload> ActiveEntry<Extra> {
 #[derive(Debug)]
 pub struct Finished(());
 
-/// Coven's word on whether the device has a usable network, followed for a
-/// queue whose entries need one. It wakes the worker parked on a queue it
-/// holds back; a queue that does not need the network never wakes on it.
-struct NetworkWatch {
-    usable: Option<coven::LiveQuery<Option<bool>, DbError>>,
-}
-
-impl NetworkWatch {
-    /// Follow `coven_network` if `Extra`'s queue needs the network, having
-    /// read its value now, since the worker reads the queue itself next.
-    async fn start<Extra: QueuedPayload>(store: &Store) -> Self {
-        if !Extra::NEEDS_NETWORK {
-            return Self { usable: None };
-        }
-        let mut usable = store.subscribe(|sql| {
-            Ok(sql.query_row("SELECT usable FROM coven_network", [], |row| row.get(0))?)
-        });
-        // The first result is the value as it stands.
-        let followed = usable.next().await.is_some();
-        Self { usable: followed.then_some(usable) }
+/// Resolves once coven's word on whether the device has a usable network
+/// differs from `seen`, the value the worker's last read of the queue held it
+/// back by. A fresh subscription's first result is the value now, so a change
+/// that happened since that read counts, which one subscription kept across
+/// reads would miss: its results skip a change that has changed back, while
+/// the read saw the network in between. A failed read answers too: the
+/// worker's own read reports it. Never once the store has closed.
+async fn network_changed_from(store: &Store, seen: Option<bool>) {
+    let mut usable = store.subscribe(|sql| tables::network_usable_on(&sql));
+    match usable.next().await {
+        Some(Ok(now)) if now == seen => {}
+        Some(_) => return,
+        None => return std::future::pending().await,
     }
-
-    /// Resolves when the network's usability changed; never when the queue
-    /// does not need the network, or once the store has closed.
-    async fn changed(&mut self) {
-        let Some(usable) = &mut self.usable else {
-            return std::future::pending().await;
-        };
-        if usable.next().await.is_none() {
-            self.usable = None;
-            std::future::pending::<()>().await;
-        }
+    if usable.next().await.is_none() {
+        std::future::pending::<()>().await;
     }
 }
 
@@ -458,12 +442,18 @@ where
             }
         };
         let store = &self.store;
-        let mut network = NetworkWatch::start::<Extra>(store).await;
         loop {
-            let entry = match store.read(|sql| tables::next_queued_release_on::<Extra>(&sql)).await
-            {
-                Ok(Some(entry)) => entry,
-                Ok(None) => {
+            let read = store
+                .read(|sql| {
+                    Ok((
+                        tables::next_queued_release_on::<Extra>(&sql)?,
+                        tables::network_usable_on(&sql)?,
+                    ))
+                })
+                .await;
+            let entry = match read {
+                Ok((Some(entry), _)) => entry,
+                Ok((None, usable)) => {
                     #[cfg(test)]
                     self.shared.parks.send_modify(|parks| *parks += 1);
                     // Woken by a change to the queue, or, for a queue that
@@ -471,7 +461,7 @@ where
                     // it left waiting may be takeable now.
                     tokio::select! {
                         () = self.shared.wake.notified() => {}
-                        () = network.changed() => {}
+                        () = network_changed_from(store, usable), if Extra::NEEDS_NETWORK => {}
                     }
                     continue;
                 }
