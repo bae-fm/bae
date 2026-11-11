@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>macOS settings: Set up sync, OneDrive, choose a folder</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bae/tokens.css">
+<link rel="stylesheet" href="ds/bae/components/bundle.css">
+<script src="ds/bae/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+.side{display:block;width:100%;text-align:left;border:0;background:none;color:var(--text-primary);font:13px -apple-system,'SF Pro Text',system-ui,sans-serif;padding:5px 10px;border-radius:6px;cursor:pointer}
+.box{background:var(--surface);border-radius:8px;display:flex;flex-direction:column}
+.r{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:36px;padding:4px 12px;font-size:13px}
+.r+.r{border-top:1px solid var(--hairline)}
+.sec{margin:14px 4px 6px;font-size:13px;font-weight:600;color:var(--text-primary)}
+.v{color:var(--text-secondary)}
+.pop{height:22px;padding:0 8px;border-radius:5px;border:0;background:var(--tile);color:var(--text-primary);font:13px -apple-system,system-ui,sans-serif;display:flex;align-items:center;gap:6px}
+.btn{height:22px;padding:0 10px;border-radius:5px;border:0;background:var(--tile);color:var(--text-primary);font:13px -apple-system,system-ui,sans-serif}
+.foot{font-size:11px;color:var(--text-secondary);padding:6px 4px 0}
+.opt{display:flex;align-items:flex-start;gap:10px;padding:8px 12px;font-size:13px}
+.opt+.opt{border-top:1px solid var(--hairline)}
+.rad{width:14px;height:14px;border-radius:7px;flex:none;margin-top:1px;box-sizing:border-box;border:1.5px solid var(--text-tertiary)}
+.rad.on{border:4px solid var(--accent)}
+.sub{font-size:11px;color:var(--text-secondary);margin-top:2px}
+.fld{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:30px;padding:3px 12px;font-size:13px}
+.fld+.fld{border-top:1px solid var(--hairline)}
+.inp{width:220px;height:20px;border-radius:5px;background:var(--background);box-shadow:inset 0 0 0 1px rgba(255,255,255,0.12);color:var(--text-primary);font-size:12px;line-height:20px;padding:0 6px;box-sizing:border-box;white-space:nowrap;overflow:hidden}
+.pri{background:var(--accent) !important;color:var(--background) !important}
+</style>
+</helmet>
+<x-import component-from-global-scope="Bae.MacSettingsWindow" pane="Library" title="Library">
+  <x-import component-from-global-scope="Bae.MacBox">
+    <x-import component-from-global-scope="Bae.MacRow" label="Name" value="Home music">
+      <x-import component-from-global-scope="Bae.MacButton">Rename…</x-import>
+    </x-import>
+    <x-import component-from-global-scope="Bae.MacRow" label="Library folder">
+      <x-import component-from-global-scope="Bae.MacButton">Show in Finder</x-import>
+    </x-import>
+  </x-import>
+  <x-import component-from-global-scope="Bae.MacSection">
+    <x-import component-from-global-scope="Bae.MacBox">
+      <x-import component-from-global-scope="Bae.MacRow" label="Sync" value="Not synced" chevron="{{yes}}" note="This library is only on this Mac.">
+        <x-import component-from-global-scope="Bae.MacButton">Set up sync…</x-import>
+      </x-import>
+    </x-import>
+  </x-import>
+  <x-import component-from-global-scope="Bae.MacSheet" title="Set up sync: OneDrive" overlay="{{yes}}">
+    <dc-import name="android.parts.folder-picker" provider="onedrive" state="list" hint-size="460px,300px"></dc-import>
+  </x-import>
+</x-import>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":690,"height":600}}'>
+class Component extends DCLogic {
+  renderVals() { return { yes: true }; }
+}
+</script>
+</body>
+</html>

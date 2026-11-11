@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>macOS: Sync status: every state</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bae/tokens.css">
+<link rel="stylesheet" href="ds/bae/components/bundle.css">
+<script src="ds/bae/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:var(--elevated)}
+</style>
+</helmet>
+<div class="bae-mac" style="width: 1452px; box-sizing: border-box; padding: 8px 0 16px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; background: var(--elevated); font-family: var(--font-sans)">
+<div style="display: flex; flex-direction: column; gap: 16px">
+<div style="padding: 8px 20px 0; font: 600 13px/20px var(--font-sans); color: var(--text-secondary)">Gray and green</div>
+<dc-import name="mac.parts.sync-status" status="Not synced" tone="" cause="" fix="" last-synced="" hint-size="100%,110px"></dc-import>
+<dc-import name="mac.parts.sync-status" status="Syncing…" tone="" cause="" fix="" last-synced="" hint-size="100%,110px"></dc-import>
+<dc-import name="mac.parts.sync-status" status="Waiting to sync" tone="" cause="" fix="" last-synced="" hint-size="100%,110px"></dc-import>
+<dc-import name="mac.parts.sync-status" status="Synced" tone="success" cause="" fix="" last-synced="" hint-size="100%,110px"></dc-import>
+<dc-import name="mac.parts.sync-status" status="Waiting to sync" tone="" cause="Uploads are paused." fix="Resume uploads" last-synced="" hint-size="100%,110px"></dc-import>
+<dc-import name="mac.parts.sync-status" status="Waiting to sync" tone="" cause="An upload failed. bae will try again shortly." fix="Retry now" last-synced="" hint-size="100%,110px"></dc-import>
+</div>
+<div style="display: flex; flex-direction: column; gap: 16px">
+<div style="padding: 8px 20px 0; font: 600 13px/20px var(--font-sans); color: var(--text-secondary)">Amber</div>
+<dc-import name="mac.parts.sync-status" status="Offline · unsent changes" tone="warning" cause="" fix="" last-synced="2 hours ago" hint-size="100%,110px"></dc-import>
+<dc-import name="mac.parts.sync-status" status="Offline" tone="warning" cause="" fix="" last-synced="2 hours ago" hint-size="100%,110px"></dc-import>
+<dc-import name="mac.parts.sync-status" status="Waiting to sync" tone="warning" cause="Dropbox asked bae to wait. Syncing resumes at 3:40." fix="" last-synced="2 hours ago" hint-size="100%,110px"></dc-import>
+<dc-import name="mac.parts.sync-status" status="Update needed" tone="warning" cause="Update bae to keep syncing." fix="Check for updates…" last-synced="2 hours ago" hint-size="100%,110px"></dc-import>
+<dc-import name="mac.parts.sync-status" status="Signed out of Dropbox" tone="warning" cause="" fix="Sign in to Dropbox…" last-synced="3 days ago" hint-size="100%,110px"></dc-import>
+</div>
+<div style="display: flex; flex-direction: column; gap: 16px">
+<div style="padding: 8px 20px 0; font: 600 13px/20px var(--font-sans); color: var(--text-secondary)">Red</div>
+<dc-import name="mac.parts.sync-status" status="Device needs reset" tone="danger" cause="" fix="" last-synced="2 hours ago" hint-size="100%,110px"></dc-import>
+<dc-import name="mac.parts.sync-status" status="No access to the cloud" tone="danger" cause="Ask whoever manages this cloud home to give you access again." fix="" last-synced="2 hours ago" hint-size="100%,110px"></dc-import>
+<dc-import name="mac.parts.sync-status" status="Cloud folder missing" tone="danger" cause="" fix="" last-synced="2 hours ago" hint-size="100%,110px"></dc-import>
+<dc-import name="mac.parts.sync-status" status="Clock is wrong" tone="danger" cause="Check the date and time on this device." fix="" last-synced="2 hours ago" hint-size="100%,110px"></dc-import>
+<dc-import name="mac.parts.sync-status" status="Couldn't read sync status" tone="danger" cause="" fix="" last-synced="" hint-size="100%,110px"></dc-import>
+<dc-import name="mac.parts.sync-status" status="Removed from the library" tone="danger" cause="An admin removed this device. What’s here is an old copy." fix="Remove from this Mac…" last-synced="2 hours ago" hint-size="100%,110px"></dc-import>
+<dc-import name="mac.parts.sync-status" status="Cloud full" tone="danger" cause="Free up space in the cloud." fix="Open in browser" last-synced="2 hours ago" hint-size="100%,110px"></dc-import>
+<dc-import name="mac.parts.sync-status" status="Sync failed" tone="danger" cause="“Cover.jpg” is missing or changed. Put it back as it was." fix="Retry now" last-synced="2 hours ago" hint-size="100%,110px"></dc-import>
+<div style="padding: 8px 20px; font: 400 13px/20px var(--font-sans); color: var(--text-primary); display: flex; flex-direction: column"><div style="padding-bottom: 8px; color: var(--text-secondary)">The other causes, each in place of the line under Sync failed:</div>
+<div style="padding: 10px 0; border-top: 1px solid var(--hairline)">Couldn't read “Cover.jpg”: bae isn't allowed to open it.</div>
+<div style="padding: 10px 0; border-top: 1px solid var(--hairline)">There's no space left on this Mac. Free some space and bae will try again.</div>
+<div style="padding: 10px 0; border-top: 1px solid var(--hairline)">The keychain is locked. Unlock it to keep syncing.</div>
+<div style="padding: 10px 0; border-top: 1px solid var(--hairline)">bae couldn't read the library on this Mac.</div>
+<div style="padding: 10px 0; border-top: 1px solid var(--hairline)">Dropbox returned an error: Internal server error.</div>
+<div style="padding: 10px 0; border-top: 1px solid var(--hairline)">A change from another device is damaged and can't be applied.</div>
+<div style="padding: 10px 0; border-top: 1px solid var(--hairline)">Something went wrong in bae.</div>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1452,"height":1450}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

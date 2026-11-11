@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>macOS: Welcome: remove a library</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bae/tokens.css">
+<link rel="stylesheet" href="ds/bae/components/bundle.css">
+<script src="ds/bae/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+.side{display:block;width:100%;text-align:left;border:0;background:none;color:var(--text-primary);font:13px -apple-system,'SF Pro Text',system-ui,sans-serif;padding:5px 10px;border-radius:6px;cursor:pointer}
+.box{background:var(--surface);border-radius:8px;display:flex;flex-direction:column}
+.r{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:36px;padding:4px 12px;font-size:13px}
+.r+.r{border-top:1px solid var(--hairline)}
+.sec{margin:14px 4px 6px;font-size:13px;font-weight:600;color:var(--text-primary)}
+.v{color:var(--text-secondary)}
+.pop{height:22px;padding:0 8px;border-radius:5px;border:0;background:var(--tile);color:var(--text-primary);font:13px -apple-system,system-ui,sans-serif;display:flex;align-items:center;gap:6px}
+.btn{height:22px;padding:0 10px;border-radius:5px;border:0;background:var(--tile);color:var(--text-primary);font:13px -apple-system,system-ui,sans-serif}
+.foot{font-size:11px;color:var(--text-secondary);padding:6px 4px 0}
+</style>
+</helmet>
+<x-import component-from-global-scope="Bae.MacWindow">
+  <div style="position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 28px 0 48px"><x-import component-from-global-scope="Bae.Logo" size="72" bob="{{yes}}" glow="{{yes}}"></x-import><div style="margin-top: 10px; font-size: 15px; color: var(--text-secondary)">Your music, everywhere</div><div style="width: 420px; margin-top: 28px; display: flex; flex-direction: column; gap: 8px"><dc-import name="mac.parts.welcome-libraries" hint-size="100%,170px"></dc-import></div></div>
+  <x-import component-from-global-scope="Bae.MacAlert" title="Remove “Home music” from this Mac?" message="The library will remain in the cloud and on your other devices.">
+    <x-import component-from-global-scope="Bae.MacButton" kind="primary" size="alert">Remove</x-import>
+    <x-import component-from-global-scope="Bae.MacButton" size="alert">Cancel</x-import>
+  </x-import>
+</x-import>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":690,"height":600}}'>
+class Component extends DCLogic {
+  renderVals() { return { yes: true }; }
+}
+</script>
+</body>
+</html>

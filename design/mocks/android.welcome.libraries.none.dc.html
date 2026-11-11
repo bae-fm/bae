@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Welcome: a new device</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bae/tokens.css">
+<link rel="stylesheet" href="ds/bae/components/bundle.css">
+<script src="ds/bae/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:var(--accent)}a:hover{color:#F6BFD9}
+.ib{width:48px;height:48px;flex:none;display:flex;align-items:center;justify-content:center;background:none;border:0;padding:0;color:var(--text-primary);cursor:pointer}
+.ib svg{fill:currentColor}
+.row{display:flex;flex-direction:column;justify-content:center;min-height:72px;padding:12px 16px;color:var(--text-primary);text-decoration:none;box-sizing:border-box}
+.rt{font-size:16px;line-height:24px}
+.sec{margin:0;padding:24px 32px 8px;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-secondary)}
+.sw{width:52px;height:32px;border-radius:16px;flex:none;position:relative;border:0;cursor:pointer}
+.foot{padding:0 16px 8px;font-size:12px;line-height:16px;color:var(--text-secondary)}
+.rs{font-size:14px;line-height:20px;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card{margin:0 16px;border-radius:16px;background:var(--surface);overflow:hidden}.card:first-child{margin-top:16px}:not(h2)+.card{margin-top:8px}.card>*+*{border-top:1px solid var(--hairline)}
+</style>
+</helmet>
+<x-import component-from-global-scope="Bae.AndroidScreen">
+  <div style="flex: 1; display: flex; flex-direction: column; padding: 0 0 24px"><div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px"><x-import component-from-global-scope="Bae.Logo" size="150" bob="{{yes}}" glow="{{yes}}"></x-import><div style="font-size: 16px; line-height: 24px; color: var(--text-secondary)">Your music, everywhere</div></div><dc-import name="android.parts.welcome-buttons" hint-size="100%,106px"></dc-import></div>
+</x-import>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":412,"height":916}}'>
+class Component extends DCLogic {
+  renderVals() { return { yes: true }; }
+}
+</script>
+</body>
+</html>

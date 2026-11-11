@@ -2,7 +2,7 @@
  "v": 3,
  "attachments": {},
  "boards": {
-  "About.dc.html": {
+  "android.settings.about.dc.html": {
    "h": 916,
    "page": "settings",
    "title": "About",
@@ -10,7 +10,7 @@
    "x": 0,
    "y": 6740
   },
-  "AddDevice.dc.html": {
+  "android.settings.add-device.dc.html": {
    "h": 916,
    "page": "library",
    "title": "Add device: the code",
@@ -18,7 +18,7 @@
    "x": 0,
    "y": 20744
   },
-  "AddDeviceAdded.dc.html": {
+  "android.settings.add-device.added.dc.html": {
    "h": 916,
    "page": "library",
    "title": "Add device: added",
@@ -26,7 +26,7 @@
    "x": 984,
    "y": 20744
   },
-  "AddDeviceRequest.dc.html": {
+  "android.settings.add-device.request.dc.html": {
    "h": 916,
    "page": "library",
    "title": "Add device: the request",
@@ -34,7 +34,7 @@
    "x": 492,
    "y": 20744
   },
-  "AddEnded.dc.html": {
+  "android.welcome.add-this-device.ended.dc.html": {
    "h": 916,
    "page": "welcome",
    "title": "Add this device: code ended",
@@ -42,7 +42,7 @@
    "x": 492,
    "y": 4448
   },
-  "AddWaiting.dc.html": {
+  "android.welcome.add-this-device.waiting.dc.html": {
    "h": 916,
    "page": "welcome",
    "title": "Add this device: waiting",
@@ -50,7 +50,7 @@
    "x": 0,
    "y": 4448
   },
-  "AlbAndroidDelete.dc.html": {
+  "android.album.delete.dc.html": {
    "h": 916,
    "page": "home",
    "title": "Delete this album?",
@@ -58,7 +58,7 @@
    "x": 492,
    "y": 14416
   },
-  "AlbAndroidUnpin.dc.html": {
+  "android.album.unpin.dc.html": {
    "h": 916,
    "page": "home",
    "title": "Unpin, asking first",
@@ -66,7 +66,7 @@
    "x": 2460,
    "y": 14416
   },
-  "AlbAndroidDeleteFailed.dc.html": {
+  "android.album.delete.failed.dc.html": {
    "h": 916,
    "page": "home",
    "title": "Delete failed",
@@ -74,7 +74,7 @@
    "x": 984,
    "y": 14416
   },
-  "AlbAndroidGallery.dc.html": {
+  "android.album.gallery.dc.html": {
    "h": 916,
    "page": "home",
    "title": "The gallery",
@@ -82,7 +82,7 @@
    "x": 1476,
    "y": 14416
   },
-  "AlbAndroidGalleryLoading.dc.html": {
+  "android.album.gallery.loading.dc.html": {
    "h": 916,
    "page": "home",
    "title": "The gallery, loading",
@@ -90,7 +90,7 @@
    "x": 1968,
    "y": 14416
   },
-  "AlbAndroidMenu.dc.html": {
+  "android.album.menu.dc.html": {
    "h": 916,
    "page": "home",
    "title": "Album options: one item",
@@ -98,7 +98,7 @@
    "x": 0,
    "y": 14416
   },
-  "AlbMacCovers.dc.html": {
+  "mac.album.change-cover.dc.html": {
    "h": 1000,
    "page": "home",
    "title": "macOS: Change Cover",
@@ -106,7 +106,7 @@
    "x": 7680,
    "y": 15812
   },
-  "AlbMacCoversUnlinked.dc.html": {
+  "mac.album.change-cover.no-linked-release.dc.html": {
    "h": 1000,
    "page": "home",
    "title": "macOS: Change Cover, no linked release",
@@ -114,7 +114,7 @@
    "x": 8960,
    "y": 15812
   },
-  "AlbMacDeleteAlbum.dc.html": {
+  "mac.album.delete-album.dc.html": {
    "h": 1000,
    "page": "home",
    "title": "macOS: Delete Album…",
@@ -122,7 +122,7 @@
    "x": 5120,
    "y": 15812
   },
-  "AlbMacDeleteRelease.dc.html": {
+  "mac.album.delete-release.dc.html": {
    "h": 1000,
    "page": "home",
    "title": "macOS: Delete Release",
@@ -130,7 +130,7 @@
    "x": 6400,
    "y": 15812
   },
-  "AlbMacEditor.dc.html": {
+  "mac.album.edit.dc.html": {
    "h": 1120,
    "page": "home",
    "title": "macOS: Edit…",
@@ -138,7 +138,7 @@
    "x": 0,
    "y": 15812
   },
-  "AlbMacLightbox.dc.html": {
+  "mac.album.lightbox.dc.html": {
    "h": 1000,
    "page": "home",
    "title": "macOS: the cover in the lightbox",
@@ -146,7 +146,7 @@
    "x": 10240,
    "y": 15812
   },
-  "AlbMacLightboxFailed.dc.html": {
+  "mac.album.lightbox.failed.dc.html": {
    "h": 1000,
    "page": "home",
    "title": "macOS: lightbox, image failed",
@@ -154,7 +154,7 @@
    "x": 11520,
    "y": 15812
   },
-  "AlbMacSaveAs.dc.html": {
+  "mac.album.save-as.dc.html": {
    "h": 1000,
    "page": "home",
    "title": "macOS: Save as… on a track",
@@ -162,7 +162,7 @@
    "x": 12800,
    "y": 15812
   },
-  "AlbMacStorage.dc.html": {
+  "mac.album.storage.dc.html": {
    "h": 1000,
    "page": "home",
    "title": "macOS: Storage…",
@@ -170,7 +170,7 @@
    "x": 1280,
    "y": 15812
   },
-  "AlbMacStorageElsewhere.dc.html": {
+  "mac.album.storage.on-another-mac.dc.html": {
    "h": 1000,
    "page": "home",
    "title": "macOS: Storage…, on another Mac",
@@ -178,7 +178,7 @@
    "x": 3840,
    "y": 15812
   },
-  "AlbMacStorageUploading.dc.html": {
+  "mac.album.storage.uploading.dc.html": {
    "h": 1000,
    "page": "home",
    "title": "macOS: Storage…, uploading",
@@ -186,7 +186,7 @@
    "x": 2560,
    "y": 15812
   },
-  "Appearance.dc.html": {
+  "android.settings.appearance.dc.html": {
    "h": 916,
    "page": "settings",
    "title": "Appearance",
@@ -194,7 +194,7 @@
    "x": 0,
    "y": 1556
   },
-  "Casting.dc.html": {
+  "android.settings.casting.off.dc.html": {
    "h": 916,
    "page": "settings",
    "title": "Casting: off",
@@ -202,7 +202,7 @@
    "x": 0,
    "y": 5444
   },
-  "CastingLooking.dc.html": {
+  "android.settings.casting.looking.dc.html": {
    "h": 916,
    "page": "settings",
    "title": "Casting: on, looking",
@@ -210,7 +210,7 @@
    "x": 492,
    "y": 5444
   },
-  "CastingOn.dc.html": {
+  "android.settings.casting.found.dc.html": {
    "h": 916,
    "page": "settings",
    "title": "Casting: on, found",
@@ -218,7 +218,7 @@
    "x": 984,
    "y": 5444
   },
-  "CloudHome.dc.html": {
+  "android.settings.sync.s3.dc.html": {
    "h": 916,
    "page": "library",
    "title": "Sync: S3",
@@ -226,7 +226,7 @@
    "x": 0,
    "y": 7652
   },
-  "CodeAndroidEnter.dc.html": {
+  "android.welcome.add-code.entering.dc.html": {
    "h": 916,
    "page": "welcome",
    "title": "Enter code",
@@ -234,7 +234,7 @@
    "x": 0,
    "y": 8320
   },
-  "CodeAndroidRunning.dc.html": {
+  "android.welcome.add-code.adding.dc.html": {
    "h": 916,
    "page": "welcome",
    "title": "Adding this device",
@@ -242,7 +242,7 @@
    "x": 1476,
    "y": 8320
   },
-  "CodeAndroidS3.dc.html": {
+  "android.welcome.add-code.s3-key-needed.dc.html": {
    "h": 916,
    "page": "welcome",
    "title": "The code read, S3 key needed",
@@ -250,7 +250,7 @@
    "x": 984,
    "y": 8320
   },
-  "CodeAndroidScan.dc.html": {
+  "android.welcome.add-code.scanning.dc.html": {
    "h": 916,
    "page": "welcome",
    "title": "Scanning a code",
@@ -258,7 +258,7 @@
    "x": 492,
    "y": 8320
   },
-  "CodeMacEmpty.dc.html": {
+  "mac.welcome.add-code.entering.dc.html": {
    "h": 600,
    "page": "welcome",
    "title": "macOS: Enter code",
@@ -266,7 +266,7 @@
    "x": 0,
    "y": 9716
   },
-  "CodeMacRunning.dc.html": {
+  "mac.welcome.add-code.adding.dc.html": {
    "h": 600,
    "page": "welcome",
    "title": "macOS: adding, downloading the library",
@@ -274,7 +274,7 @@
    "x": 3920,
    "y": 9716
   },
-  "CodeMacS3.dc.html": {
+  "mac.welcome.add-code.s3-key-needed.dc.html": {
    "h": 600,
    "page": "welcome",
    "title": "macOS: the code read, S3 key needed",
@@ -282,7 +282,7 @@
    "x": 1960,
    "y": 9716
   },
-  "CodeMacScan.dc.html": {
+  "mac.welcome.add-code.scanning.dc.html": {
    "h": 600,
    "page": "welcome",
    "title": "macOS: scanning a code",
@@ -290,7 +290,7 @@
    "x": 2940,
    "y": 9716
   },
-  "CodeMacTyping.dc.html": {
+  "mac.welcome.add-code.half-typed.dc.html": {
    "h": 600,
    "page": "welcome",
    "title": "macOS: Enter code, half typed",
@@ -298,7 +298,7 @@
    "x": 980,
    "y": 9716
   },
-  "Devices.dc.html": {
+  "android.settings.devices.dc.html": {
    "h": 916,
    "page": "library",
    "title": "Your devices",
@@ -306,7 +306,7 @@
    "x": 984,
    "y": 11672
   },
-  "DownloadsAndroid.dc.html": {
+  "android.storage.pinning.dc.html": {
    "h": 916,
    "page": "storage",
    "title": "Pinning",
@@ -314,7 +314,7 @@
    "x": 0,
    "y": 5156
   },
-  "DownloadsAndroidEmpty.dc.html": {
+  "android.storage.pinning.none.dc.html": {
    "h": 916,
    "page": "storage",
    "title": "Pinning: none",
@@ -322,7 +322,7 @@
    "x": 984,
    "y": 5156
   },
-  "DownloadsAndroidFailed.dc.html": {
+  "android.storage.pinning.failed.dc.html": {
    "h": 916,
    "page": "storage",
    "title": "Pinning: one failed",
@@ -330,7 +330,7 @@
    "x": 492,
    "y": 5156
   },
-  "ErrAndroidBanner.dc.html": {
+  "android.library.albums.later-page-failed.dc.html": {
    "h": 916,
    "page": "home",
    "title": "Banner: a later page of albums failed",
@@ -338,7 +338,7 @@
    "x": 1476,
    "y": 17292
   },
-  "ErrAndroidBar.dc.html": {
+  "android.playback.bar.values-failed.dc.html": {
    "h": 916,
    "page": "home",
    "title": "Now-playing bar: playback values failed to read",
@@ -346,7 +346,7 @@
    "x": 1968,
    "y": 17292
   },
-  "ErrAndroidLaunch.dc.html": {
+  "android.activity.sheet.launch-problem.dc.html": {
    "h": 916,
    "page": "home",
    "title": "Android: a launch problem in the Activity sheet",
@@ -354,7 +354,7 @@
    "x": 2952,
    "y": 17292
   },
-  "ErrAndroidQueue.dc.html": {
+  "android.playback.queue.failed.dc.html": {
    "h": 916,
    "page": "home",
    "title": "Queue: a failed command, and the tail stopped reading",
@@ -362,7 +362,7 @@
    "x": 2460,
    "y": 17292
   },
-  "ErrAndroidSnackBug.dc.html": {
+  "android.errors.snackbar.bug.dc.html": {
    "h": 916,
    "page": "home",
    "title": "Snackbar: Something went wrong.",
@@ -370,7 +370,7 @@
    "x": 984,
    "y": 17292
   },
-  "ErrAndroidSnackPlay.dc.html": {
+  "android.errors.snackbar.play-failed.dc.html": {
    "h": 916,
    "page": "home",
    "title": "Snackbar: a failed play (line only, no details)",
@@ -378,7 +378,7 @@
    "x": 492,
    "y": 17292
   },
-  "ErrAndroidSnackRetry.dc.html": {
+  "android.errors.snackbar.retry.dc.html": {
    "h": 916,
    "page": "home",
    "title": "Snackbar: a failed action, Retry",
@@ -386,7 +386,7 @@
    "x": 0,
    "y": 17292
   },
-  "ErrMacAlert.dc.html": {
+  "mac.errors.alert.dc.html": {
    "h": 760,
    "page": "home",
    "title": "macOS: the Error alert (one slot; a second error replaces the first)",
@@ -394,7 +394,7 @@
    "x": 0,
    "y": 18688
   },
-  "ErrMacAlertNotError.dc.html": {
+  "mac.errors.alert.play-outcome.dc.html": {
    "h": 760,
    "page": "home",
    "title": "macOS: a play outcome, titled Error",
@@ -402,7 +402,7 @@
    "x": 1280,
    "y": 18688
   },
-  "ErrMacAlertTitled.dc.html": {
+  "mac.errors.alert.own-titles.dc.html": {
    "h": 760,
    "page": "home",
    "title": "macOS: the album page’s own titles",
@@ -410,7 +410,7 @@
    "x": 2560,
    "y": 18688
   },
-  "ErrMacLoadFailure.dc.html": {
+  "mac.library.view-failed.dc.html": {
    "h": 760,
    "page": "home",
    "title": "macOS: a view that failed to load",
@@ -418,7 +418,7 @@
    "x": 5120,
    "y": 18688
   },
-  "ErrMacNotices.dc.html": {
+  "mac.activity.panel.problems.dc.html": {
    "h": 760,
    "page": "home",
    "title": "macOS: problems in the Activity panel",
@@ -426,7 +426,7 @@
    "x": 3840,
    "y": 18688
   },
-  "ErrMacQueueTail.dc.html": {
+  "mac.playback.queue.tail-failed.dc.html": {
    "h": 760,
    "page": "home",
    "title": "macOS: the queue’s tail stopped reading",
@@ -434,7 +434,7 @@
    "x": 6400,
    "y": 18688
   },
-  "ExpAndroidArtistNames.dc.html": {
+  "android.library.artist.other-names.dc.html": {
    "h": 916,
    "page": "explore",
    "title": "Exploration: An artist’s other printed names",
@@ -442,7 +442,7 @@
    "x": 984,
    "y": 10548
   },
-  "ExpAndroidCredits.dc.html": {
+  "android.album.credits.dc.html": {
    "h": 916,
    "page": "explore",
    "title": "Exploration: Who did what, and the works",
@@ -450,7 +450,7 @@
    "x": 1280,
    "y": 8868
   },
-  "ExpAndroidHistory.dc.html": {
+  "android.history.plays.dc.html": {
    "h": 916,
    "page": "explore",
    "title": "Exploration: History",
@@ -458,7 +458,7 @@
    "x": 1280,
    "y": 3200
   },
-  "ExpAndroidLinksFiles.dc.html": {
+  "android.album.links-and-files.dc.html": {
    "h": 916,
    "page": "explore",
    "title": "Exploration: Catalog links and the release’s files",
@@ -466,7 +466,7 @@
    "x": 0,
    "y": 10548
   },
-  "ExpAndroidLoudness.dc.html": {
+  "android.settings.playback.loudness.dc.html": {
    "h": 916,
    "page": "explore",
    "title": "Exploration: Loudness in Playback settings",
@@ -474,7 +474,7 @@
    "x": 770,
    "y": 6076
   },
-  "ExpAndroidMultiSelect.dc.html": {
+  "android.library.albums.several-picked.dc.html": {
    "h": 916,
    "page": "explore",
    "title": "Exploration: Several albums picked",
@@ -482,7 +482,7 @@
    "x": 1476,
    "y": 10548
   },
-  "ExpAndroidPlaylist.dc.html": {
+  "android.playlists.playlist.dc.html": {
    "h": 916,
    "page": "explore",
    "title": "Exploration: A playlist",
@@ -490,7 +490,7 @@
    "x": 4332,
    "y": 1720
   },
-  "ExpAndroidPlaylists.dc.html": {
+  "android.playlists.list.dc.html": {
    "h": 916,
    "page": "explore",
    "title": "Exploration: Playlists",
@@ -498,7 +498,7 @@
    "x": 3840,
    "y": 1720
   },
-  "ExpAndroidPrimary.dc.html": {
+  "android.album.set-primary-release.dc.html": {
    "h": 916,
    "page": "explore",
    "title": "Exploration: Set as primary release",
@@ -506,7 +506,7 @@
    "x": 492,
    "y": 10548
   },
-  "ExpAndroidProfile.dc.html": {
+  "android.settings.your-picture.dc.html": {
    "h": 916,
    "page": "explore",
    "title": "Exploration: Your picture and name",
@@ -514,7 +514,7 @@
    "x": 770,
    "y": 7472
   },
-  "ExpAndroidRating.dc.html": {
+  "android.album.rating.dc.html": {
    "h": 916,
    "page": "explore",
    "title": "Exploration: rating an album",
@@ -522,7 +522,7 @@
    "x": 2560,
    "y": 240
   },
-  "ExpAndroidStorage.dc.html": {
+  "android.storage.releases.dc.html": {
    "h": 916,
    "page": "explore",
    "title": "Exploration: Storage on this phone",
@@ -530,7 +530,7 @@
    "x": 1968,
    "y": 10548
   },
-  "ExpMacAddToPlaylist.dc.html": {
+  "mac.playlists.add-to-playlist.dc.html": {
    "h": 1000,
    "page": "explore",
    "title": "Exploration: macOS: Add to Playlist",
@@ -538,7 +538,7 @@
    "x": 1280,
    "y": 1720
   },
-  "ExpMacCredits.dc.html": {
+  "mac.album.credits.dc.html": {
    "h": 1200,
    "page": "explore",
    "title": "Exploration: macOS: who did what, and the works, on the album",
@@ -546,7 +546,7 @@
    "x": 0,
    "y": 8868
   },
-  "ExpMacHistory.dc.html": {
+  "mac.history.plays.dc.html": {
    "h": 760,
    "page": "explore",
    "title": "Exploration: macOS: History, the household’s plays",
@@ -554,7 +554,7 @@
    "x": 0,
    "y": 3200
   },
-  "ExpMacLoudness.dc.html": {
+  "mac.settings.playback.loudness.dc.html": {
    "h": 600,
    "page": "explore",
    "title": "Exploration: macOS: loudness in Playback settings",
@@ -562,7 +562,7 @@
    "x": 0,
    "y": 6076
   },
-  "ExpMacNewPlaylist.dc.html": {
+  "mac.playlists.new-playlist.dc.html": {
    "h": 760,
    "page": "explore",
    "title": "Exploration: macOS: New Playlist",
@@ -570,7 +570,7 @@
    "x": 2560,
    "y": 1720
   },
-  "ExpMacPlayTracks.dc.html": {
+  "mac.album.play-picked-tracks.dc.html": {
    "h": 1000,
    "page": "explore",
    "title": "Exploration: macOS: three tracks picked, played together",
@@ -578,7 +578,7 @@
    "x": 0,
    "y": 4596
   },
-  "ExpMacPlaylists.dc.html": {
+  "mac.playlists.list.dc.html": {
    "h": 760,
    "page": "explore",
    "title": "Exploration: macOS: Playlists, one open",
@@ -586,7 +586,7 @@
    "x": 0,
    "y": 1720
   },
-  "ExpMacProfile.dc.html": {
+  "mac.settings.your-picture.dc.html": {
    "h": 600,
    "page": "explore",
    "title": "Exploration: macOS: your picture and name",
@@ -594,7 +594,7 @@
    "x": 0,
    "y": 7472
   },
-  "ExpMacRateMenu.dc.html": {
+  "mac.album.track-menu-rate.dc.html": {
    "h": 1000,
    "page": "explore",
    "title": "Exploration: macOS: a track’s menu, Rate",
@@ -602,7 +602,7 @@
    "x": 1280,
    "y": 240
   },
-  "ExpMacRating.dc.html": {
+  "mac.album.rating.dc.html": {
    "h": 1000,
    "page": "explore",
    "title": "Exploration: macOS: rating an album and its tracks",
@@ -610,7 +610,7 @@
    "x": 0,
    "y": 240
   },
-  "ExpMacTheseTracks.dc.html": {
+  "mac.playback.queue.these-tracks.dc.html": {
    "h": 760,
    "page": "explore",
    "title": "Exploration: macOS: the queue, These tracks",
@@ -618,7 +618,7 @@
    "x": 1280,
    "y": 4596
   },
-  "FolderPicker.dc.html": {
+  "android.parts.folder-picker.dc.html": {
    "h": 300,
    "page": "shared",
    "title": "Folder picker",
@@ -626,7 +626,7 @@
    "x": 0,
    "y": 160
   },
-  "HistoryChanged.dc.html": {
+  "android.settings.listening-history.changed.dc.html": {
    "h": 916,
    "page": "library",
    "title": "Listening history: changed",
@@ -634,7 +634,7 @@
    "x": 492,
    "y": 14264
   },
-  "HistoryChoice.dc.html": {
+  "android.settings.listening-history.choosing.dc.html": {
    "h": 916,
    "page": "library",
    "title": "Listening history: choosing",
@@ -642,7 +642,7 @@
    "x": 0,
    "y": 14264
   },
-  "HomeMenu.dc.html": {
+  "android.library.more-menu.libraries.dc.html": {
    "h": 916,
    "page": "home",
    "title": "Home: ⋮ menu with Libraries",
@@ -650,7 +650,7 @@
    "x": 0,
    "y": 19928
   },
-  "ImpMacBanners.dc.html": {
+  "mac.import.folder.already-in-library.dc.html": {
    "h": 900,
    "page": "import",
    "title": "macOS: already in the library",
@@ -658,7 +658,7 @@
    "x": 4440,
    "y": 1620
   },
-  "ImpMacBlank.dc.html": {
+  "mac.import.folder.nothing-read.dc.html": {
    "h": 900,
    "page": "import",
    "title": "macOS: a folder with nothing read",
@@ -666,7 +666,7 @@
    "x": 4240,
    "y": 240
   },
-  "ImpMacBulk.dc.html": {
+  "mac.import.several.dc.html": {
    "h": 900,
    "page": "import",
    "title": "macOS: several selected",
@@ -674,7 +674,7 @@
    "x": 0,
    "y": 3000
   },
-  "ImpMacBulkRunning.dc.html": {
+  "mac.import.several.identifying.dc.html": {
    "h": 900,
    "page": "import",
    "title": "macOS: several selected, identifying",
@@ -682,7 +682,7 @@
    "x": 1480,
    "y": 3000
   },
-  "ImpMacCue.dc.html": {
+  "mac.import.folder.cue-sheets.dc.html": {
    "h": 900,
    "page": "import",
    "title": "macOS: CUE sheets, one still needing its audio",
@@ -690,7 +690,7 @@
    "x": 5920,
    "y": 1620
   },
-  "ImpMacDone.dc.html": {
+  "mac.import.folder.imported.dc.html": {
    "h": 1300,
    "page": "import",
    "title": "macOS: Imported, uploading",
@@ -698,7 +698,7 @@
    "x": 4440,
    "y": 3000
   },
-  "ImpMacDraft.dc.html": {
+  "mac.import.folder.identified.dc.html": {
    "h": 1260,
    "page": "import",
    "title": "macOS: a release identified, ready to import",
@@ -706,7 +706,7 @@
    "x": 2760,
    "y": 240
   },
-  "ImpMacEmpty.dc.html": {
+  "mac.import.list.empty.dc.html": {
    "h": 760,
    "page": "import",
    "title": "macOS: Import, no folders yet",
@@ -714,7 +714,7 @@
    "x": 0,
    "y": 240
   },
-  "ImpMacFindAuto.dc.html": {
+  "mac.import.identify.automatic.dc.html": {
    "h": 900,
    "page": "import",
    "title": "macOS: Identify, Automatic found several",
@@ -722,7 +722,7 @@
    "x": 0,
    "y": 1620
   },
-  "ImpMacFindDiscogs.dc.html": {
+  "mac.import.identify.no-discogs-key.dc.html": {
    "h": 900,
    "page": "import",
    "title": "macOS: Identify, no Discogs key, nothing found",
@@ -730,7 +730,7 @@
    "x": 1480,
    "y": 1620
   },
-  "ImpMacFindSearch.dc.html": {
+  "mac.import.identify.search.dc.html": {
    "h": 900,
    "page": "import",
    "title": "macOS: Identify, Search",
@@ -738,7 +738,7 @@
    "x": 2960,
    "y": 1620
   },
-  "ImpMacFound.dc.html": {
+  "mac.import.folder.found.dc.html": {
    "h": 900,
    "page": "import",
    "title": "macOS: Found, nothing selected",
@@ -746,7 +746,7 @@
    "x": 1280,
    "y": 240
   },
-  "ImpMacImporting.dc.html": {
+  "mac.import.folder.importing.dc.html": {
    "h": 900,
    "page": "import",
    "title": "macOS: importing",
@@ -754,7 +754,7 @@
    "x": 2960,
    "y": 3000
   },
-  "ImpMacListFailed.dc.html": {
+  "mac.import.list.failed.dc.html": {
    "h": 760,
    "page": "import",
    "title": "macOS: the import list couldn’t be read",
@@ -762,7 +762,7 @@
    "x": 5720,
    "y": 240
   },
-  "ImpMacSkipped.dc.html": {
+  "mac.import.folder.skipped.dc.html": {
    "h": 900,
    "page": "import",
    "title": "macOS: Skipped",
@@ -770,7 +770,7 @@
    "x": 5920,
    "y": 3000
   },
-  "InviteCancel.dc.html": {
+  "android.settings.invite.cancel.dc.html": {
    "h": 916,
    "page": "library",
    "title": "Invite: Cancel invite",
@@ -778,7 +778,7 @@
    "x": 492,
    "y": 19448
   },
-  "InviteFields.dc.html": {
+  "android.parts.invite-fields.dc.html": {
    "h": 230,
    "page": "shared",
    "title": "Invite fields",
@@ -786,7 +786,7 @@
    "x": 1200,
    "y": 700
   },
-  "InviteFlow.dc.html": {
+  "android.settings.invite.flow.dc.html": {
    "h": 630,
    "page": "library",
    "title": "Invite: how the states connect",
@@ -794,7 +794,7 @@
    "x": 6138,
    "y": 15560
   },
-  "InviteForm.dc.html": {
+  "android.settings.invite.dropbox.dc.html": {
    "h": 916,
    "page": "library",
    "title": "Invite: Dropbox",
@@ -802,7 +802,7 @@
    "x": 0,
    "y": 15560
   },
-  "InviteFormOneDrive.dc.html": {
+  "android.settings.invite.onedrive.dc.html": {
    "h": 916,
    "page": "library",
    "title": "Invite: OneDrive",
@@ -810,7 +810,7 @@
    "x": 492,
    "y": 15560
   },
-  "InviteFormS3.dc.html": {
+  "android.settings.invite.s3.dc.html": {
    "h": 916,
    "page": "library",
    "title": "Invite: S3",
@@ -818,7 +818,7 @@
    "x": 984,
    "y": 15560
   },
-  "InviteFormS3Mine.dc.html": {
+  "android.settings.invite.s3-own-key.dc.html": {
    "h": 916,
    "page": "library",
    "title": "Invite: S3, your key",
@@ -826,7 +826,7 @@
    "x": 1476,
    "y": 15560
   },
-  "InviteJoining.dc.html": {
+  "android.settings.invite.joining.dc.html": {
    "h": 916,
    "page": "library",
    "title": "Invite: 5. joining",
@@ -834,7 +834,7 @@
    "x": 1968,
    "y": 16856
   },
-  "InviteOffline.dc.html": {
+  "android.settings.invite.no-code-yet.dc.html": {
    "h": 916,
    "page": "library",
    "title": "Invite: 1. no code yet",
@@ -842,7 +842,7 @@
    "x": 0,
    "y": 18152
   },
-  "InviteRequest.dc.html": {
+  "android.settings.invite.request.dc.html": {
    "h": 916,
    "page": "library",
    "title": "Invite: 4. their request",
@@ -850,7 +850,7 @@
    "x": 1476,
    "y": 16856
   },
-  "InviteSharing.dc.html": {
+  "android.settings.invite.sharing.dc.html": {
    "h": 916,
    "page": "library",
    "title": "Invite: 1. sharing",
@@ -858,7 +858,7 @@
    "x": 0,
    "y": 16856
   },
-  "InviteShown.dc.html": {
+  "android.settings.invite.code.dc.html": {
    "h": 916,
    "page": "library",
    "title": "Invite: 2. the code",
@@ -866,7 +866,7 @@
    "x": 492,
    "y": 16856
   },
-  "JoinEnded.dc.html": {
+  "android.welcome.join.ended.dc.html": {
    "h": 916,
    "page": "welcome",
    "title": "Join: invite ended",
@@ -874,7 +874,7 @@
    "x": 984,
    "y": 3052
   },
-  "JoinName.dc.html": {
+  "android.welcome.join.name.dc.html": {
    "h": 916,
    "page": "welcome",
    "title": "Join: your name",
@@ -882,7 +882,7 @@
    "x": 0,
    "y": 3052
   },
-  "JoinWaiting.dc.html": {
+  "android.welcome.join.waiting.dc.html": {
    "h": 916,
    "page": "welcome",
    "title": "Join: waiting",
@@ -890,7 +890,7 @@
    "x": 492,
    "y": 3052
   },
-  "LibAndroidAlbum.dc.html": {
+  "android.album.page.dc.html": {
    "h": 916,
    "page": "home",
    "title": "Album",
@@ -898,7 +898,7 @@
    "x": 492,
    "y": 240
   },
-  "LibAndroidAlbumElsewhere.dc.html": {
+  "android.album.page.on-another-device.dc.html": {
    "h": 916,
    "page": "home",
    "title": "Album: on another device",
@@ -906,7 +906,7 @@
    "x": 1476,
    "y": 8304
   },
-  "LibAndroidAlbumFailed.dc.html": {
+  "android.album.page.pin-failed.dc.html": {
    "h": 916,
    "page": "home",
    "title": "Album: couldn’t pin",
@@ -914,7 +914,7 @@
    "x": 984,
    "y": 8304
   },
-  "LibAndroidAlbumQueued.dc.html": {
+  "android.album.page.pin-queued.dc.html": {
    "h": 916,
    "page": "home",
    "title": "Album: queued to pin",
@@ -922,7 +922,7 @@
    "x": 492,
    "y": 8304
   },
-  "LibAndroidAlbumReleases.dc.html": {
+  "android.album.page.two-releases-pinning.dc.html": {
    "h": 916,
    "page": "home",
    "title": "Album: two releases, pinning",
@@ -930,7 +930,7 @@
    "x": 0,
    "y": 8304
   },
-  "LibAndroidAlbums.dc.html": {
+  "android.library.albums.dc.html": {
    "h": 916,
    "page": "home",
    "title": "Albums",
@@ -938,7 +938,7 @@
    "x": 0,
    "y": 240
   },
-  "LibAndroidArtist.dc.html": {
+  "android.library.artist.dc.html": {
    "h": 916,
    "page": "home",
    "title": "Artist",
@@ -946,7 +946,7 @@
    "x": 984,
    "y": 240
   },
-  "LibAndroidComposer.dc.html": {
+  "android.library.composer.dc.html": {
    "h": 916,
    "page": "home",
    "title": "Composer",
@@ -954,7 +954,7 @@
    "x": 492,
    "y": 11180
   },
-  "LibAndroidComposerFailed.dc.html": {
+  "android.library.composer.failed.dc.html": {
    "h": 916,
    "page": "home",
    "title": "Composer: failed to load",
@@ -962,7 +962,7 @@
    "x": 1968,
    "y": 11180
   },
-  "LibAndroidComposers.dc.html": {
+  "android.library.composers.dc.html": {
    "h": 916,
    "page": "home",
    "title": "Composers",
@@ -970,7 +970,7 @@
    "x": 0,
    "y": 11180
   },
-  "LibAndroidComposersEmpty.dc.html": {
+  "android.library.composers.empty.dc.html": {
    "h": 916,
    "page": "home",
    "title": "Composers: none",
@@ -978,7 +978,7 @@
    "x": 1476,
    "y": 11180
   },
-  "LibAndroidEmpty.dc.html": {
+  "android.library.albums.empty.dc.html": {
    "h": 916,
    "page": "home",
    "title": "Empty library",
@@ -986,7 +986,7 @@
    "x": 0,
    "y": 5668
   },
-  "LibAndroidFailed.dc.html": {
+  "android.library.albums.failed.dc.html": {
    "h": 916,
    "page": "home",
    "title": "The library failed to load",
@@ -994,7 +994,7 @@
    "x": 492,
    "y": 5668
   },
-  "LibAndroidGrouped.dc.html": {
+  "android.library.albums.grouped.dc.html": {
    "h": 916,
    "page": "home",
    "title": "Grouped by artist",
@@ -1002,7 +1002,7 @@
    "x": 1476,
    "y": 3032
   },
-  "LibAndroidGroupedPinned.dc.html": {
+  "android.library.albums.grouped-scrolled.dc.html": {
    "h": 916,
    "page": "home",
    "title": "Grouped, scrolled: the artist stays pinned",
@@ -1010,7 +1010,7 @@
    "x": 1968,
    "y": 3032
   },
-  "LibAndroidMoreMenu.dc.html": {
+  "android.library.more-menu.dc.html": {
    "h": 916,
    "page": "home",
    "title": "The ⋮ menu",
@@ -1018,7 +1018,7 @@
    "x": 984,
    "y": 3032
   },
-  "LibAndroidNoCovers.dc.html": {
+  "android.library.albums.no-covers.dc.html": {
    "h": 916,
    "page": "home",
    "title": "Albums without covers",
@@ -1026,7 +1026,7 @@
    "x": 984,
    "y": 5668
   },
-  "LibAndroidScrolled.dc.html": {
+  "android.library.albums.scrolled.dc.html": {
    "h": 916,
    "page": "home",
    "title": "Albums, scrolled",
@@ -1034,7 +1034,7 @@
    "x": 0,
    "y": 3032
   },
-  "LibAndroidSearch.dc.html": {
+  "android.search.open.dc.html": {
    "h": 916,
    "page": "search",
    "title": "Search open, before typing",
@@ -1042,7 +1042,7 @@
    "x": 0,
    "y": 240
   },
-  "LibAndroidViewMenu.dc.html": {
+  "android.library.view-menu.dc.html": {
    "h": 916,
    "page": "home",
    "title": "The view menu",
@@ -1050,7 +1050,7 @@
    "x": 492,
    "y": 3032
   },
-  "LibAndroidWork.dc.html": {
+  "android.library.work.dc.html": {
    "h": 916,
    "page": "home",
    "title": "Work (back still says Library)",
@@ -1058,7 +1058,7 @@
    "x": 984,
    "y": 11180
   },
-  "LibMacAlbumMenu.dc.html": {
+  "mac.library.album-menu.dc.html": {
    "h": 1000,
    "page": "home",
    "title": "macOS: the album menu",
@@ -1066,7 +1066,7 @@
    "x": 1280,
    "y": 9700
   },
-  "LibMacAlbumOpen.dc.html": {
+  "mac.library.albums.album-open.dc.html": {
    "h": 1000,
    "page": "home",
    "title": "macOS: Album, opened in the grid",
@@ -1074,7 +1074,7 @@
    "x": 1280,
    "y": 1636
   },
-  "LibMacAlbumReleases.dc.html": {
+  "mac.library.albums.album-two-releases.dc.html": {
    "h": 1000,
    "page": "home",
    "title": "macOS: album with two releases, on another Mac",
@@ -1082,7 +1082,7 @@
    "x": 0,
    "y": 9700
   },
-  "LibMacAlbums.dc.html": {
+  "mac.library.albums.dc.html": {
    "h": 760,
    "page": "home",
    "title": "macOS: Albums",
@@ -1090,7 +1090,7 @@
    "x": 0,
    "y": 1636
   },
-  "LibMacArtist.dc.html": {
+  "mac.library.artists.dc.html": {
    "h": 760,
    "page": "home",
    "title": "macOS: Artists",
@@ -1098,7 +1098,7 @@
    "x": 2560,
    "y": 1636
   },
-  "LibMacComposer.dc.html": {
+  "mac.library.composers.composer-open.dc.html": {
    "h": 1360,
    "page": "home",
    "title": "macOS: Composers, a composer open, its first work under the page",
@@ -1106,7 +1106,7 @@
    "x": 1280,
    "y": 12576
   },
-  "LibMacComposerNone.dc.html": {
+  "mac.library.composers.dc.html": {
    "h": 760,
    "page": "home",
    "title": "macOS: Composers, nothing selected",
@@ -1114,7 +1114,7 @@
    "x": 0,
    "y": 12576
   },
-  "LibMacComposersEmpty.dc.html": {
+  "mac.library.composers.none.dc.html": {
    "h": 760,
    "page": "home",
    "title": "macOS: Composers, nobody credited",
@@ -1122,7 +1122,7 @@
    "x": 3840,
    "y": 12576
   },
-  "LibMacEmpty.dc.html": {
+  "mac.library.albums.empty.dc.html": {
    "h": 760,
    "page": "home",
    "title": "macOS: empty library",
@@ -1130,7 +1130,7 @@
    "x": 0,
    "y": 7064
   },
-  "LibMacFailed.dc.html": {
+  "mac.library.albums.failed.dc.html": {
    "h": 760,
    "page": "home",
    "title": "macOS: the library failed to load",
@@ -1138,7 +1138,7 @@
    "x": 2560,
    "y": 7064
   },
-  "LibMacGrouped.dc.html": {
+  "mac.library.albums.grouped.dc.html": {
    "h": 760,
    "page": "home",
    "title": "macOS: grouped by artist",
@@ -1146,7 +1146,7 @@
    "x": 2560,
    "y": 4428
   },
-  "LibMacNoCovers.dc.html": {
+  "mac.library.albums.no-covers.dc.html": {
    "h": 760,
    "page": "home",
    "title": "macOS: albums without covers",
@@ -1154,7 +1154,7 @@
    "x": 3840,
    "y": 7064
   },
-  "LibMacNoCredits.dc.html": {
+  "mac.library.artists.none.dc.html": {
    "h": 760,
    "page": "home",
    "title": "macOS: Artists, nobody credited",
@@ -1162,7 +1162,7 @@
    "x": 1280,
    "y": 7064
   },
-  "LibMacScrolled.dc.html": {
+  "mac.library.albums.scrolled.dc.html": {
    "h": 760,
    "page": "home",
    "title": "macOS: Albums, scrolled",
@@ -1170,7 +1170,7 @@
    "x": 0,
    "y": 4428
   },
-  "LibMacSortTwo.dc.html": {
+  "mac.library.albums.sorted-two-fields.dc.html": {
    "h": 760,
    "page": "home",
    "title": "macOS: sorted by two fields",
@@ -1178,7 +1178,7 @@
    "x": 3840,
    "y": 4428
   },
-  "LibMacViewMenu.dc.html": {
+  "mac.library.view-menu.dc.html": {
    "h": 760,
    "page": "home",
    "title": "macOS: the view menu",
@@ -1186,7 +1186,7 @@
    "x": 1280,
    "y": 4428
   },
-  "LibMacWork.dc.html": {
+  "mac.library.work.dc.html": {
    "h": 760,
    "page": "home",
    "title": "macOS: a work opened from search",
@@ -1194,7 +1194,7 @@
    "x": 2560,
    "y": 12576
   },
-  "Libraries.dc.html": {
+  "android.library.libraries.dc.html": {
    "h": 916,
    "page": "home",
    "title": "Libraries (from ⋮)",
@@ -1202,7 +1202,7 @@
    "x": 492,
    "y": 19928
   },
-  "Library.dc.html": {
+  "android.settings.library.dc.html": {
    "h": 916,
    "page": "library",
    "title": "Library (admin)",
@@ -1210,7 +1210,7 @@
    "x": 0,
    "y": 260
   },
-  "LibraryMember.dc.html": {
+  "android.settings.library.member.dc.html": {
    "h": 916,
    "page": "library",
    "title": "Library (member)",
@@ -1218,7 +1218,7 @@
    "x": 492,
    "y": 260
   },
-  "LibraryProblem.dc.html": {
+  "android.settings.library.sync-problem.dc.html": {
    "h": 916,
    "page": "library",
    "title": "Library: sync problem (admin)",
@@ -1226,7 +1226,7 @@
    "x": 984,
    "y": 260
   },
-  "MacAbout.dc.html": {
+  "mac.settings.about.dc.html": {
    "h": 600,
    "page": "settings",
    "title": "macOS: About",
@@ -1234,7 +1234,7 @@
    "x": 652,
    "y": 6740
   },
-  "MacAddDevice.dc.html": {
+  "mac.settings.add-device.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Add device: the code",
@@ -1242,7 +1242,7 @@
    "x": 1476,
    "y": 20744
   },
-  "MacAddDeviceAdded.dc.html": {
+  "mac.settings.add-device.added.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Add device: added",
@@ -1250,7 +1250,7 @@
    "x": 3016,
    "y": 20744
   },
-  "MacAddDeviceRequest.dc.html": {
+  "mac.settings.add-device.request.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Add device: the request",
@@ -1258,7 +1258,7 @@
    "x": 2246,
    "y": 20744
   },
-  "MacAddEnded.dc.html": {
+  "mac.welcome.add-this-device.ended.dc.html": {
    "h": 600,
    "page": "welcome",
    "title": "macOS: Add this device: code ended",
@@ -1266,7 +1266,7 @@
    "x": 1914,
    "y": 4448
   },
-  "MacAddWaiting.dc.html": {
+  "mac.welcome.add-this-device.waiting.dc.html": {
    "h": 600,
    "page": "welcome",
    "title": "macOS: Add this device: waiting",
@@ -1274,7 +1274,7 @@
    "x": 1144,
    "y": 4448
   },
-  "MacAppearance.dc.html": {
+  "mac.settings.appearance.dc.html": {
    "h": 600,
    "page": "settings",
    "title": "macOS: Appearance",
@@ -1282,7 +1282,7 @@
    "x": 652,
    "y": 1556
   },
-  "MacCasting.dc.html": {
+  "mac.settings.casting.off.dc.html": {
    "h": 600,
    "page": "settings",
    "title": "macOS: Casting: off",
@@ -1290,7 +1290,7 @@
    "x": 1476,
    "y": 5444
   },
-  "MacCastingLooking.dc.html": {
+  "mac.settings.casting.looking.dc.html": {
    "h": 600,
    "page": "settings",
    "title": "macOS: Casting: on, looking",
@@ -1298,7 +1298,7 @@
    "x": 2246,
    "y": 5444
   },
-  "MacCastingOn.dc.html": {
+  "mac.settings.casting.found.dc.html": {
    "h": 600,
    "page": "settings",
    "title": "macOS: Casting: on, found",
@@ -1306,7 +1306,7 @@
    "x": 3016,
    "y": 5444
   },
-  "MacCloudHome.dc.html": {
+  "mac.settings.sync.s3.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Sync: S3",
@@ -1314,7 +1314,7 @@
    "x": 2620,
    "y": 7652
   },
-  "MacDevices.dc.html": {
+  "mac.settings.devices.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Your devices",
@@ -1322,7 +1322,7 @@
    "x": 4652,
    "y": 11672
   },
-  "MacHistoryChanged.dc.html": {
+  "mac.settings.listening-history.changed.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Listening history: changed",
@@ -1330,7 +1330,7 @@
    "x": 1914,
    "y": 14264
   },
-  "MacHistoryChoice.dc.html": {
+  "mac.settings.listening-history.choosing.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Listening history: choosing",
@@ -1338,7 +1338,7 @@
    "x": 1144,
    "y": 14264
   },
-  "MacInviteCancel.dc.html": {
+  "mac.settings.invite.cancel.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Invite: Cancel invite",
@@ -1346,7 +1346,7 @@
    "x": 1914,
    "y": 19448
   },
-  "MacInviteCode.dc.html": {
+  "mac.settings.invite.code.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Invite: 2. the code",
@@ -1354,7 +1354,7 @@
    "x": 3390,
    "y": 16856
   },
-  "MacInviteFields.dc.html": {
+  "mac.parts.invite-fields.dc.html": {
    "h": 130,
    "page": "shared",
    "title": "macOS: Invite fields",
@@ -1362,7 +1362,7 @@
    "x": 1572,
    "y": 700
   },
-  "MacInviteForm.dc.html": {
+  "mac.settings.invite.dropbox.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Invite: Dropbox",
@@ -1370,7 +1370,7 @@
    "x": 2128,
    "y": 15560
   },
-  "MacInviteFormICloud.dc.html": {
+  "mac.settings.invite.icloud.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Invite: iCloud",
@@ -1378,7 +1378,7 @@
    "x": 3668,
    "y": 15560
   },
-  "MacInviteFormOneDrive.dc.html": {
+  "mac.settings.invite.onedrive.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Invite: OneDrive",
@@ -1386,7 +1386,7 @@
    "x": 2898,
    "y": 15560
   },
-  "MacInviteFormS3.dc.html": {
+  "mac.settings.invite.s3.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Invite: S3",
@@ -1394,7 +1394,7 @@
    "x": 4438,
    "y": 15560
   },
-  "MacInviteFormS3Mine.dc.html": {
+  "mac.settings.invite.s3-own-key.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Invite: S3, your key",
@@ -1402,7 +1402,7 @@
    "x": 5208,
    "y": 15560
   },
-  "MacInviteJoining.dc.html": {
+  "mac.settings.invite.joining.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Invite: 5. joining",
@@ -1410,7 +1410,7 @@
    "x": 5700,
    "y": 16856
   },
-  "MacInviteOffline.dc.html": {
+  "mac.settings.invite.no-code-yet.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Invite: 1. no code yet",
@@ -1418,7 +1418,7 @@
    "x": 1144,
    "y": 18152
   },
-  "MacInviteRequest.dc.html": {
+  "mac.settings.invite.request.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Invite: 4. their request",
@@ -1426,7 +1426,7 @@
    "x": 4930,
    "y": 16856
   },
-  "MacInviteSharing.dc.html": {
+  "mac.settings.invite.sharing.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Invite: 1. sharing",
@@ -1434,7 +1434,7 @@
    "x": 2620,
    "y": 16856
   },
-  "MacJoinEnded.dc.html": {
+  "mac.welcome.join.ended.dc.html": {
    "h": 600,
    "page": "welcome",
    "title": "macOS: Join: invite ended",
@@ -1442,7 +1442,7 @@
    "x": 3176,
    "y": 3052
   },
-  "MacJoinName.dc.html": {
+  "mac.welcome.join.name.dc.html": {
    "h": 600,
    "page": "welcome",
    "title": "macOS: Join: your name",
@@ -1450,7 +1450,7 @@
    "x": 1636,
    "y": 3052
   },
-  "MacJoinWaiting.dc.html": {
+  "mac.welcome.join.waiting.dc.html": {
    "h": 600,
    "page": "welcome",
    "title": "macOS: Join: waiting",
@@ -1458,7 +1458,7 @@
    "x": 2406,
    "y": 3052
   },
-  "MacLibrary.dc.html": {
+  "mac.settings.library.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Library (admin)",
@@ -1466,7 +1466,7 @@
    "x": 2246,
    "y": 260
   },
-  "MacLibraryMember.dc.html": {
+  "mac.settings.library.member.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Library (member)",
@@ -1474,7 +1474,7 @@
    "x": 3016,
    "y": 260
   },
-  "MacLibraryNotSynced.dc.html": {
+  "mac.settings.library.not-synced.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Library: not synced",
@@ -1482,7 +1482,7 @@
    "x": 1476,
    "y": 260
   },
-  "MacLibraryProblem.dc.html": {
+  "mac.settings.library.sync-problem.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Library: sync problem (admin)",
@@ -1490,7 +1490,7 @@
    "x": 3786,
    "y": 260
   },
-  "MacMakeAdminDone.dc.html": {
+  "mac.settings.people.make-admin-done.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Make admin: done",
@@ -1498,7 +1498,7 @@
    "x": 1914,
    "y": 22040
   },
-  "MacMakeAdminWaiting.dc.html": {
+  "mac.settings.people.make-admin-waiting.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Make admin: waiting to sync",
@@ -1506,7 +1506,7 @@
    "x": 1144,
    "y": 22040
   },
-  "MacPeople.dc.html": {
+  "mac.settings.people.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: People and devices (admin)",
@@ -1514,7 +1514,7 @@
    "x": 3112,
    "y": 11672
   },
-  "MacPeopleInvited.dc.html": {
+  "mac.settings.people.invite-listed.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Invite: 3. in the list",
@@ -1522,7 +1522,7 @@
    "x": 4160,
    "y": 16856
   },
-  "MacPeopleInvitedFailed.dc.html": {
+  "mac.settings.people.invite-failed.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Invite: sharing failed for good",
@@ -1530,7 +1530,7 @@
    "x": 1144,
    "y": 19448
   },
-  "MacPeopleInvitedOffline.dc.html": {
+  "mac.settings.people.invite-waiting.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Invite: 2. in the list, waiting",
@@ -1538,7 +1538,7 @@
    "x": 1914,
    "y": 18152
   },
-  "MacPeopleMember.dc.html": {
+  "mac.settings.people.member.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: People and devices (member)",
@@ -1546,7 +1546,7 @@
    "x": 3882,
    "y": 11672
   },
-  "MacPerson.dc.html": {
+  "mac.settings.person.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: A person (admin)",
@@ -1554,7 +1554,7 @@
    "x": 5422,
    "y": 11672
   },
-  "MacPersonAdmin.dc.html": {
+  "mac.settings.person.admin.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: An admin (admin)",
@@ -1562,7 +1562,7 @@
    "x": 6192,
    "y": 11672
   },
-  "MacPlayback.dc.html": {
+  "mac.settings.playback.dc.html": {
    "h": 600,
    "page": "settings",
    "title": "macOS: Playback",
@@ -1570,7 +1570,7 @@
    "x": 652,
    "y": 2852
   },
-  "MacProfileRename.dc.html": {
+  "mac.settings.your-name.editing.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Your name: editing",
@@ -1578,7 +1578,7 @@
    "x": 2128,
    "y": 12968
   },
-  "MacProfileRenameBlank.dc.html": {
+  "mac.settings.your-name.blank.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Your name: blank, Save off",
@@ -1586,7 +1586,7 @@
    "x": 2898,
    "y": 12968
   },
-  "MacProfileRenameFailed.dc.html": {
+  "mac.settings.your-name.save-failed.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Your name: save failed",
@@ -1594,7 +1594,7 @@
    "x": 3668,
    "y": 12968
   },
-  "MacProfileRenamed.dc.html": {
+  "mac.settings.your-name.saved.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Your name: after Save",
@@ -1602,7 +1602,7 @@
    "x": 4438,
    "y": 12968
   },
-  "MacRecovery.dc.html": {
+  "mac.settings.restore-code.shown.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Restore code: shown",
@@ -1610,7 +1610,7 @@
    "x": 1754,
    "y": 23336
   },
-  "MacRecoveryHidden.dc.html": {
+  "mac.settings.restore-code.hidden.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Restore code: hidden",
@@ -1618,7 +1618,7 @@
    "x": 984,
    "y": 23336
   },
-  "MacRenameLibrary.dc.html": {
+  "mac.settings.library.rename.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Rename library (admin)",
@@ -1626,7 +1626,7 @@
    "x": 1144,
    "y": 1556
   },
-  "MacRenamed.dc.html": {
+  "mac.settings.library.renamed.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: After Rename (admin)",
@@ -1634,7 +1634,7 @@
    "x": 1914,
    "y": 1556
   },
-  "MacSettingsOffline.dc.html": {
+  "mac.settings.window.library-offline.dc.html": {
    "h": 600,
    "page": "settings",
    "title": "macOS: Settings: library offline",
@@ -1642,7 +1642,7 @@
    "x": 1636,
    "y": 260
   },
-  "MacSettingsProblem.dc.html": {
+  "mac.settings.window.sync-problem.dc.html": {
    "h": 600,
    "page": "settings",
    "title": "macOS: Settings: library sync problem",
@@ -1650,7 +1650,7 @@
    "x": 2406,
    "y": 260
   },
-  "MacSetupChoose.dc.html": {
+  "mac.settings.sync-setup.choose-cloud.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Set up sync: choose a cloud home",
@@ -1658,7 +1658,7 @@
    "x": 0,
    "y": 2852
   },
-  "MacSetupDropboxChecking.dc.html": {
+  "mac.settings.sync-setup.dropbox-checking-folder.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Set up sync: Dropbox, checking the folder",
@@ -1666,7 +1666,7 @@
    "x": 3080,
    "y": 4772
   },
-  "MacSetupDropboxChoose.dc.html": {
+  "mac.settings.sync-setup.dropbox-choose-home.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Set up sync: Dropbox, choose a cloud home",
@@ -1674,7 +1674,7 @@
    "x": 0,
    "y": 4772
   },
-  "MacSetupDropboxCode.dc.html": {
+  "mac.settings.sync-setup.dropbox-restore-code.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Set up sync: Dropbox, restore code",
@@ -1682,7 +1682,7 @@
    "x": 9240,
    "y": 4772
   },
-  "MacSetupDropboxDone.dc.html": {
+  "mac.settings.sync-setup.dropbox-done.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Set up sync: Dropbox, done",
@@ -1690,7 +1690,7 @@
    "x": 10010,
    "y": 4772
   },
-  "MacSetupDropboxFolder.dc.html": {
+  "mac.settings.sync-setup.dropbox-choose-folder.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Set up sync: Dropbox, choose a shared folder",
@@ -1698,7 +1698,7 @@
    "x": 2310,
    "y": 4772
   },
-  "MacSetupDropboxFolderMade.dc.html": {
+  "mac.settings.sync-setup.dropbox-folder-made.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Set up sync: Dropbox, new folder made",
@@ -1706,7 +1706,7 @@
    "x": 6160,
    "y": 4772
   },
-  "MacSetupDropboxListing.dc.html": {
+  "mac.settings.sync-setup.dropbox-reading-folders.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Set up sync: Dropbox, reading folders",
@@ -1714,7 +1714,7 @@
    "x": 1540,
    "y": 4772
   },
-  "MacSetupDropboxMakingFolder.dc.html": {
+  "mac.settings.sync-setup.dropbox-making-folder.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Set up sync: Dropbox, making the folder",
@@ -1722,7 +1722,7 @@
    "x": 5390,
    "y": 4772
   },
-  "MacSetupDropboxNewFolder.dc.html": {
+  "mac.settings.sync-setup.dropbox-naming-folder.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Set up sync: Dropbox, naming a new folder",
@@ -1730,7 +1730,7 @@
    "x": 4620,
    "y": 4772
   },
-  "MacSetupDropboxNone.dc.html": {
+  "mac.settings.sync-setup.dropbox-no-folders.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Set up sync: Dropbox, no shared folders",
@@ -1738,7 +1738,7 @@
    "x": 10780,
    "y": 4772
   },
-  "MacSetupDropboxNotEmpty.dc.html": {
+  "mac.settings.sync-setup.dropbox-folder-not-empty.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Set up sync: Dropbox, folder not empty",
@@ -1746,7 +1746,7 @@
    "x": 3850,
    "y": 4772
   },
-  "MacSetupDropboxSignIn.dc.html": {
+  "mac.settings.sync-setup.dropbox-signing-in.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Set up sync: Dropbox, signing in",
@@ -1754,7 +1754,7 @@
    "x": 770,
    "y": 4772
   },
-  "MacSetupDropboxStepConnecting.dc.html": {
+  "mac.settings.sync-setup.dropbox-step-2.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Set up sync: Dropbox, step 2 of 3",
@@ -1762,7 +1762,7 @@
    "x": 7700,
    "y": 4772
   },
-  "MacSetupDropboxStepCreating.dc.html": {
+  "mac.settings.sync-setup.dropbox-step-3.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Set up sync: Dropbox, step 3 of 3",
@@ -1770,7 +1770,7 @@
    "x": 8470,
    "y": 4772
   },
-  "MacSetupDropboxStepReadingAccount.dc.html": {
+  "mac.settings.sync-setup.dropbox-step-1.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Set up sync: Dropbox, step 1 of 3",
@@ -1778,7 +1778,7 @@
    "x": 6930,
    "y": 4772
   },
-  "MacSetupICloud.dc.html": {
+  "mac.settings.sync-setup.icloud.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Set up sync: iCloud",
@@ -1786,7 +1786,7 @@
    "x": 770,
    "y": 3812
   },
-  "MacSetupICloudChoose.dc.html": {
+  "mac.settings.sync-setup.icloud-choose-home.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Set up sync: iCloud, choose a cloud home",
@@ -1794,7 +1794,7 @@
    "x": 0,
    "y": 3812
   },
-  "MacSetupICloudCode.dc.html": {
+  "mac.settings.sync-setup.icloud-restore-code.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Set up sync: iCloud, restore code",
@@ -1802,7 +1802,7 @@
    "x": 3850,
    "y": 3812
   },
-  "MacSetupICloudDone.dc.html": {
+  "mac.settings.sync-setup.icloud-done.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Set up sync: iCloud, done",
@@ -1810,7 +1810,7 @@
    "x": 4620,
    "y": 3812
   },
-  "MacSetupICloudStepConnecting.dc.html": {
+  "mac.settings.sync-setup.icloud-step-2.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Set up sync: iCloud, step 2 of 3",
@@ -1818,7 +1818,7 @@
    "x": 2310,
    "y": 3812
   },
-  "MacSetupICloudStepCreating.dc.html": {
+  "mac.settings.sync-setup.icloud-step-3.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Set up sync: iCloud, step 3 of 3",
@@ -1826,7 +1826,7 @@
    "x": 3080,
    "y": 3812
   },
-  "MacSetupICloudStepPreparing.dc.html": {
+  "mac.settings.sync-setup.icloud-step-1.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Set up sync: iCloud, step 1 of 3",
@@ -1834,7 +1834,7 @@
    "x": 1540,
    "y": 3812
   },
-  "MacSetupOneDrive.dc.html": {
+  "mac.settings.sync-setup.onedrive-choose-folder.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Set up sync: OneDrive, choose a folder",
@@ -1842,7 +1842,7 @@
    "x": 2310,
    "y": 5732
   },
-  "MacSetupOneDriveChecking.dc.html": {
+  "mac.settings.sync-setup.onedrive-checking-folder.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Set up sync: OneDrive, checking the folder",
@@ -1850,7 +1850,7 @@
    "x": 3080,
    "y": 5732
   },
-  "MacSetupOneDriveChoose.dc.html": {
+  "mac.settings.sync-setup.onedrive-choose-home.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Set up sync: OneDrive, choose a cloud home",
@@ -1858,7 +1858,7 @@
    "x": 0,
    "y": 5732
   },
-  "MacSetupOneDriveCode.dc.html": {
+  "mac.settings.sync-setup.onedrive-restore-code.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Set up sync: OneDrive, restore code",
@@ -1866,7 +1866,7 @@
    "x": 9240,
    "y": 5732
   },
-  "MacSetupOneDriveDone.dc.html": {
+  "mac.settings.sync-setup.onedrive-done.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Set up sync: OneDrive, done",
@@ -1874,7 +1874,7 @@
    "x": 10010,
    "y": 5732
   },
-  "MacSetupOneDriveFolderMade.dc.html": {
+  "mac.settings.sync-setup.onedrive-folder-made.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Set up sync: OneDrive, new folder made",
@@ -1882,7 +1882,7 @@
    "x": 6160,
    "y": 5732
   },
-  "MacSetupOneDriveListing.dc.html": {
+  "mac.settings.sync-setup.onedrive-reading-folders.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Set up sync: OneDrive, reading folders",
@@ -1890,7 +1890,7 @@
    "x": 1540,
    "y": 5732
   },
-  "MacSetupOneDriveMakingFolder.dc.html": {
+  "mac.settings.sync-setup.onedrive-making-folder.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Set up sync: OneDrive, making the folder",
@@ -1898,7 +1898,7 @@
    "x": 5390,
    "y": 5732
   },
-  "MacSetupOneDriveNewFolder.dc.html": {
+  "mac.settings.sync-setup.onedrive-naming-folder.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Set up sync: OneDrive, naming a new folder",
@@ -1906,7 +1906,7 @@
    "x": 4620,
    "y": 5732
   },
-  "MacSetupOneDriveNone.dc.html": {
+  "mac.settings.sync-setup.onedrive-no-folders.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Set up sync: OneDrive, no folders",
@@ -1914,7 +1914,7 @@
    "x": 10780,
    "y": 5732
   },
-  "MacSetupOneDriveNotEmpty.dc.html": {
+  "mac.settings.sync-setup.onedrive-folder-not-empty.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Set up sync: OneDrive, folder not empty",
@@ -1922,7 +1922,7 @@
    "x": 3850,
    "y": 5732
   },
-  "MacSetupOneDriveSignIn.dc.html": {
+  "mac.settings.sync-setup.onedrive-signing-in.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Set up sync: OneDrive, signing in",
@@ -1930,7 +1930,7 @@
    "x": 770,
    "y": 5732
   },
-  "MacSetupOneDriveStepConnecting.dc.html": {
+  "mac.settings.sync-setup.onedrive-step-2.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Set up sync: OneDrive, step 2 of 3",
@@ -1938,7 +1938,7 @@
    "x": 7700,
    "y": 5732
   },
-  "MacSetupOneDriveStepCreating.dc.html": {
+  "mac.settings.sync-setup.onedrive-step-3.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Set up sync: OneDrive, step 3 of 3",
@@ -1946,7 +1946,7 @@
    "x": 8470,
    "y": 5732
   },
-  "MacSetupOneDriveStepReadingAccount.dc.html": {
+  "mac.settings.sync-setup.onedrive-step-1.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Set up sync: OneDrive, step 1 of 3",
@@ -1954,7 +1954,7 @@
    "x": 6930,
    "y": 5732
   },
-  "MacSetupS3.dc.html": {
+  "mac.settings.sync-setup.s3.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Set up sync: S3-compatible",
@@ -1962,7 +1962,7 @@
    "x": 770,
    "y": 6692
   },
-  "MacSetupS3AccessDenied.dc.html": {
+  "mac.settings.sync-setup.s3-access-denied.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Set up sync: S3-compatible, key can’t use the bucket",
@@ -1970,7 +1970,7 @@
    "x": 6930,
    "y": 6692
   },
-  "MacSetupS3BucketNotEmpty.dc.html": {
+  "mac.settings.sync-setup.s3-bucket-not-empty.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Set up sync: S3-compatible, bucket not empty",
@@ -1978,7 +1978,7 @@
    "x": 9240,
    "y": 6692
   },
-  "MacSetupS3BucketNotFound.dc.html": {
+  "mac.settings.sync-setup.s3-bucket-not-found.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Set up sync: S3-compatible, bucket not found",
@@ -1986,7 +1986,7 @@
    "x": 8470,
    "y": 6692
   },
-  "MacSetupS3Choose.dc.html": {
+  "mac.settings.sync-setup.s3-choose-home.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Set up sync: S3-compatible, choose a cloud home",
@@ -1994,7 +1994,7 @@
    "x": 0,
    "y": 6692
   },
-  "MacSetupS3Code.dc.html": {
+  "mac.settings.sync-setup.s3-restore-code.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Set up sync: S3-compatible, restore code",
@@ -2002,7 +2002,7 @@
    "x": 4620,
    "y": 6692
   },
-  "MacSetupS3Done.dc.html": {
+  "mac.settings.sync-setup.s3-done.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Set up sync: S3-compatible, done",
@@ -2010,7 +2010,7 @@
    "x": 5390,
    "y": 6692
   },
-  "MacSetupS3KeyNotAccepted.dc.html": {
+  "mac.settings.sync-setup.s3-key-not-accepted.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Set up sync: S3-compatible, key not accepted",
@@ -2018,7 +2018,7 @@
    "x": 6160,
    "y": 6692
   },
-  "MacSetupS3RegionMismatch.dc.html": {
+  "mac.settings.sync-setup.s3-region-mismatch.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Set up sync: S3-compatible, region doesn’t match",
@@ -2026,7 +2026,7 @@
    "x": 7700,
    "y": 6692
   },
-  "MacSetupS3StepCheckingLocation.dc.html": {
+  "mac.settings.sync-setup.s3-step-1.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Set up sync: S3-compatible, step 1 of 4",
@@ -2034,7 +2034,7 @@
    "x": 1540,
    "y": 6692
   },
-  "MacSetupS3StepConnecting.dc.html": {
+  "mac.settings.sync-setup.s3-step-3.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Set up sync: S3-compatible, step 3 of 4",
@@ -2042,7 +2042,7 @@
    "x": 3080,
    "y": 6692
   },
-  "MacSetupS3StepCreating.dc.html": {
+  "mac.settings.sync-setup.s3-step-4.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Set up sync: S3-compatible, step 4 of 4",
@@ -2050,7 +2050,7 @@
    "x": 3850,
    "y": 6692
   },
-  "MacSetupS3StepDetecting.dc.html": {
+  "mac.settings.sync-setup.s3-step-2.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Set up sync: S3-compatible, step 2 of 4",
@@ -2058,7 +2058,7 @@
    "x": 2310,
    "y": 6692
   },
-  "MacSyncDropbox.dc.html": {
+  "mac.settings.sync.dropbox.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Sync: Dropbox",
@@ -2066,7 +2066,7 @@
    "x": 3390,
    "y": 7652
   },
-  "MacSyncICloud.dc.html": {
+  "mac.settings.sync.icloud.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Sync: iCloud",
@@ -2074,7 +2074,7 @@
    "x": 4930,
    "y": 7652
   },
-  "MacSyncOneDrive.dc.html": {
+  "mac.settings.sync.onedrive.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Sync: OneDrive",
@@ -2082,7 +2082,7 @@
    "x": 4160,
    "y": 7652
   },
-  "MacSyncSignedOut.dc.html": {
+  "mac.settings.sync.signed-out-dropbox.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Sync: signed out (Dropbox)",
@@ -2090,7 +2090,7 @@
    "x": 5700,
    "y": 7652
   },
-  "MacSyncSignedOutICloud.dc.html": {
+  "mac.settings.sync.signed-out-icloud.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Sync: signed out (iCloud)",
@@ -2098,7 +2098,7 @@
    "x": 6470,
    "y": 7652
   },
-  "MacSyncSignedOutS3.dc.html": {
+  "mac.settings.sync.signed-out-s3.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Sync: signed out (S3)",
@@ -2106,7 +2106,7 @@
    "x": 7240,
    "y": 7652
   },
-  "MacSyncStates.dc.html": {
+  "mac.settings.sync.every-state.dc.html": {
    "h": 1450,
    "page": "library",
    "title": "macOS: Sync status: every state",
@@ -2114,7 +2114,7 @@
    "x": 1316,
    "y": 9392
   },
-  "MacSyncStatus.dc.html": {
+  "mac.parts.sync-status.dc.html": {
    "h": 150,
    "page": "shared",
    "title": "macOS: Sync status",
@@ -2122,7 +2122,7 @@
    "x": 1692,
    "y": 160
   },
-  "MacTransfers.dc.html": {
+  "mac.settings.transfers.dc.html": {
    "h": 600,
    "page": "settings",
    "title": "macOS: Transfers",
@@ -2130,7 +2130,7 @@
    "x": 652,
    "y": 4148
   },
-  "MacTransfersPaused.dc.html": {
+  "mac.settings.transfers.uploads-paused.dc.html": {
    "h": 600,
    "page": "settings",
    "title": "macOS: Transfers, uploads paused",
@@ -2138,7 +2138,7 @@
    "x": 1422,
    "y": 4148
   },
-  "MacWelcome.dc.html": {
+  "mac.welcome.libraries.dc.html": {
    "h": 600,
    "page": "welcome",
    "title": "macOS: Welcome: your libraries",
@@ -2146,7 +2146,7 @@
    "x": 4588,
    "y": 1656
   },
-  "MacWelcomeDelete.dc.html": {
+  "mac.welcome.delete-never-synced.dc.html": {
    "h": 600,
    "page": "welcome",
    "title": "macOS: Delete: never synced",
@@ -2154,7 +2154,7 @@
    "x": 9208,
    "y": 1656
   },
-  "MacWelcomeRemove.dc.html": {
+  "mac.welcome.remove.dc.html": {
    "h": 600,
    "page": "welcome",
    "title": "macOS: Remove: confirm",
@@ -2162,7 +2162,7 @@
    "x": 7668,
    "y": 1656
   },
-  "MacWelcomeRemoveFailed.dc.html": {
+  "mac.welcome.remove.failed.dc.html": {
    "h": 600,
    "page": "welcome",
    "title": "macOS: Remove: failed",
@@ -2170,7 +2170,7 @@
    "x": 10748,
    "y": 1656
   },
-  "MacWelcomeRemoveUnsent.dc.html": {
+  "mac.welcome.remove.unsent-changes.dc.html": {
    "h": 600,
    "page": "welcome",
    "title": "macOS: Remove: confirm, unsent changes",
@@ -2178,7 +2178,7 @@
    "x": 8438,
    "y": 1656
   },
-  "MacWelcomeRemoving.dc.html": {
+  "mac.welcome.remove.removing.dc.html": {
    "h": 600,
    "page": "welcome",
    "title": "macOS: Remove: removing",
@@ -2186,7 +2186,7 @@
    "x": 9978,
    "y": 1656
   },
-  "Main.dc.html": {
+  "android.settings.list.dc.html": {
    "h": 916,
    "page": "settings",
    "title": "Settings",
@@ -2194,7 +2194,7 @@
    "x": 0,
    "y": 260
   },
-  "MakeAdminDone.dc.html": {
+  "android.settings.person.make-admin-done.dc.html": {
    "h": 916,
    "page": "library",
    "title": "Make admin: done",
@@ -2202,7 +2202,7 @@
    "x": 492,
    "y": 22040
   },
-  "MakeAdminWaiting.dc.html": {
+  "android.settings.person.make-admin-waiting.dc.html": {
    "h": 916,
    "page": "library",
    "title": "Make admin: waiting to sync",
@@ -2210,7 +2210,7 @@
    "x": 0,
    "y": 22040
   },
-  "OpenAndroidFailed.dc.html": {
+  "android.welcome.opening.failed.dc.html": {
    "h": 916,
    "page": "welcome",
    "title": "The library didn’t open: no way out",
@@ -2218,7 +2218,7 @@
    "x": 984,
    "y": 5844
   },
-  "OpenAndroidFinding.dc.html": {
+  "android.welcome.opening.finding-libraries.dc.html": {
    "h": 916,
    "page": "welcome",
    "title": "Finding your libraries",
@@ -2226,7 +2226,7 @@
    "x": 0,
    "y": 5844
   },
-  "OpenAndroidStartFailed.dc.html": {
+  "android.welcome.opening.start-failed.dc.html": {
    "h": 916,
    "page": "welcome",
    "title": "bae couldn’t start",
@@ -2234,7 +2234,7 @@
    "x": 1476,
    "y": 5844
   },
-  "OpenAndroidSteps.dc.html": {
+  "android.welcome.opening.steps.dc.html": {
    "h": 916,
    "page": "welcome",
    "title": "Opening, rebuilding indexes",
@@ -2242,7 +2242,7 @@
    "x": 492,
    "y": 5844
   },
-  "OpenMacFinding.dc.html": {
+  "mac.welcome.opening.finding-libraries.dc.html": {
    "h": 600,
    "page": "welcome",
    "title": "macOS: finding your libraries",
@@ -2250,7 +2250,7 @@
    "x": 0,
    "y": 7240
   },
-  "OpenMacKeychain.dc.html": {
+  "mac.welcome.opening.library-locked.dc.html": {
    "h": 600,
    "page": "welcome",
    "title": "macOS: Library locked",
@@ -2258,7 +2258,7 @@
    "x": 1960,
    "y": 7240
   },
-  "OpenMacSteps.dc.html": {
+  "mac.welcome.opening.steps.dc.html": {
    "h": 600,
    "page": "welcome",
    "title": "macOS: opening, updating the library",
@@ -2266,7 +2266,7 @@
    "x": 980,
    "y": 7240
   },
-  "People.dc.html": {
+  "android.settings.people.dc.html": {
    "h": 916,
    "page": "library",
    "title": "People and devices (admin)",
@@ -2274,7 +2274,7 @@
    "x": 0,
    "y": 11672
   },
-  "PeopleInvited.dc.html": {
+  "android.settings.people.invite-listed.dc.html": {
    "h": 916,
    "page": "library",
    "title": "Invite: 3. in the list",
@@ -2282,7 +2282,7 @@
    "x": 984,
    "y": 16856
   },
-  "PeopleInvitedFailed.dc.html": {
+  "android.settings.people.invite-failed.dc.html": {
    "h": 916,
    "page": "library",
    "title": "Invite: sharing failed for good",
@@ -2290,7 +2290,7 @@
    "x": 0,
    "y": 19448
   },
-  "PeopleInvitedOffline.dc.html": {
+  "android.settings.people.invite-waiting.dc.html": {
    "h": 916,
    "page": "library",
    "title": "Invite: 2. in the list, waiting",
@@ -2298,7 +2298,7 @@
    "x": 492,
    "y": 18152
   },
-  "PeopleMember.dc.html": {
+  "android.settings.people.member.dc.html": {
    "h": 916,
    "page": "library",
    "title": "People and devices (member)",
@@ -2306,7 +2306,7 @@
    "x": 492,
    "y": 11672
   },
-  "Person.dc.html": {
+  "android.settings.person.dc.html": {
    "h": 916,
    "page": "library",
    "title": "A person (admin)",
@@ -2314,7 +2314,7 @@
    "x": 1476,
    "y": 11672
   },
-  "PersonAdmin.dc.html": {
+  "android.settings.person.admin.dc.html": {
    "h": 916,
    "page": "library",
    "title": "An admin (admin)",
@@ -2322,7 +2322,7 @@
    "x": 1968,
    "y": 11672
   },
-  "PlayAndroidCastPicker.dc.html": {
+  "android.playback.cast-picker.dc.html": {
    "h": 916,
    "page": "loading",
    "title": "The cast picker",
@@ -2330,7 +2330,7 @@
    "x": 984,
    "y": 2876
   },
-  "PlayAndroidCasting.dc.html": {
+  "android.playback.casting.dc.html": {
    "h": 916,
    "page": "loading",
    "title": "Casting",
@@ -2338,7 +2338,7 @@
    "x": 492,
    "y": 240
   },
-  "PlayAndroidFullPlayer.dc.html": {
+  "android.playback.full-player.dc.html": {
    "h": 916,
    "page": "loading",
    "title": "The full player",
@@ -2346,7 +2346,7 @@
    "x": 492,
    "y": 2876
   },
-  "PlayAndroidNothing.dc.html": {
+  "android.playback.bar.nothing-played.dc.html": {
    "h": 916,
    "page": "loading",
    "title": "Nothing played yet: no bar",
@@ -2354,7 +2354,7 @@
    "x": 984,
    "y": 240
   },
-  "PlayAndroidQueue.dc.html": {
+  "android.playback.queue.dc.html": {
    "h": 916,
    "page": "loading",
    "title": "The queue",
@@ -2362,7 +2362,7 @@
    "x": 0,
    "y": 2876
   },
-  "PlayAndroidSidePause.dc.html": {
+  "android.playback.bar.side-ended.dc.html": {
    "h": 916,
    "page": "loading",
    "title": "Side ended, with a countdown",
@@ -2370,7 +2370,7 @@
    "x": 1476,
    "y": 2876
   },
-  "PlayAndroidWaiting.dc.html": {
+  "android.playback.bar.waiting-on-cloud.dc.html": {
    "h": 916,
    "page": "loading",
    "title": "Waiting on the cloud",
@@ -2378,7 +2378,7 @@
    "x": 0,
    "y": 240
   },
-  "PlayMacCastPicker.dc.html": {
+  "mac.playback.cast-picker.dc.html": {
    "h": 760,
    "page": "loading",
    "title": "macOS: the cast popover",
@@ -2386,7 +2386,7 @@
    "x": 3840,
    "y": 4272
   },
-  "PlayMacCasting.dc.html": {
+  "mac.playback.casting.dc.html": {
    "h": 760,
    "page": "loading",
    "title": "macOS: casting",
@@ -2394,7 +2394,7 @@
    "x": 1280,
    "y": 1636
   },
-  "PlayMacNothing.dc.html": {
+  "mac.playback.bar.nothing-played.dc.html": {
    "h": 760,
    "page": "loading",
    "title": "macOS: nothing played yet",
@@ -2402,7 +2402,7 @@
    "x": 2560,
    "y": 1636
   },
-  "PlayMacQueue.dc.html": {
+  "mac.playback.queue.dc.html": {
    "h": 760,
    "page": "loading",
    "title": "macOS: the queue",
@@ -2410,7 +2410,7 @@
    "x": 0,
    "y": 4272
   },
-  "PlayMacQueueDrop.dc.html": {
+  "mac.playback.queue.dropping.dc.html": {
    "h": 760,
    "page": "loading",
    "title": "macOS: dropping into Up Next, shuffled, rows loading",
@@ -2418,7 +2418,7 @@
    "x": 2560,
    "y": 4272
   },
-  "PlayMacQueueEmpty.dc.html": {
+  "mac.playback.queue.nothing-up-next.dc.html": {
    "h": 760,
    "page": "loading",
    "title": "macOS: the queue, nothing up next",
@@ -2426,7 +2426,7 @@
    "x": 1280,
    "y": 4272
   },
-  "PlayMacSidePause.dc.html": {
+  "mac.playback.bar.side-ended.dc.html": {
    "h": 760,
    "page": "loading",
    "title": "macOS: side ended, with a countdown",
@@ -2434,7 +2434,7 @@
    "x": 5120,
    "y": 4272
   },
-  "PlayMacSidePauseOff.dc.html": {
+  "mac.playback.bar.side-ended-no-pause.dc.html": {
    "h": 760,
    "page": "loading",
    "title": "macOS: side ended, pausing turned off",
@@ -2442,7 +2442,7 @@
    "x": 6400,
    "y": 4272
   },
-  "PlayMacWaiting.dc.html": {
+  "mac.playback.bar.waiting-on-cloud.dc.html": {
    "h": 760,
    "page": "loading",
    "title": "macOS: waiting on the cloud",
@@ -2450,7 +2450,7 @@
    "x": 0,
    "y": 1636
   },
-  "Playback.dc.html": {
+  "android.settings.playback.dc.html": {
    "h": 916,
    "page": "settings",
    "title": "Playback",
@@ -2458,7 +2458,7 @@
    "x": 0,
    "y": 2852
   },
-  "ProfileRename.dc.html": {
+  "android.settings.your-name.editing.dc.html": {
    "h": 916,
    "page": "library",
    "title": "Your name: editing",
@@ -2466,7 +2466,7 @@
    "x": 0,
    "y": 12968
   },
-  "ProfileRenameBlank.dc.html": {
+  "android.settings.your-name.blank.dc.html": {
    "h": 916,
    "page": "library",
    "title": "Your name: blank, Save off",
@@ -2474,7 +2474,7 @@
    "x": 492,
    "y": 12968
   },
-  "ProfileRenameFailed.dc.html": {
+  "android.settings.your-name.save-failed.dc.html": {
    "h": 916,
    "page": "library",
    "title": "Your name: save failed",
@@ -2482,7 +2482,7 @@
    "x": 984,
    "y": 12968
   },
-  "ProfileRenamed.dc.html": {
+  "android.settings.your-name.saved.dc.html": {
    "h": 916,
    "page": "library",
    "title": "Your name: after Save",
@@ -2490,7 +2490,7 @@
    "x": 1476,
    "y": 12968
   },
-  "Recovery.dc.html": {
+  "android.settings.restore-code.shown.dc.html": {
    "h": 916,
    "page": "library",
    "title": "Restore code: shown",
@@ -2498,7 +2498,7 @@
    "x": 492,
    "y": 23336
   },
-  "RecoveryHidden.dc.html": {
+  "android.settings.restore-code.hidden.dc.html": {
    "h": 916,
    "page": "library",
    "title": "Restore code: hidden",
@@ -2506,7 +2506,7 @@
    "x": 0,
    "y": 23336
   },
-  "RenameLibrary.dc.html": {
+  "android.settings.library.rename.dc.html": {
    "h": 916,
    "page": "library",
    "title": "Rename library (admin)",
@@ -2514,7 +2514,7 @@
    "x": 0,
    "y": 1556
   },
-  "Renamed.dc.html": {
+  "android.settings.library.renamed.dc.html": {
    "h": 916,
    "page": "library",
    "title": "After Rename (admin)",
@@ -2522,7 +2522,7 @@
    "x": 492,
    "y": 1556
   },
-  "ResetAndroidDialog.dc.html": {
+  "android.welcome.reset.confirm.dc.html": {
    "h": 916,
    "page": "welcome",
    "title": "Reset this device?",
@@ -2530,7 +2530,7 @@
    "x": 492,
    "y": 10796
   },
-  "ResetAndroidOffered.dc.html": {
+  "android.welcome.reset.offered.dc.html": {
    "h": 916,
    "page": "welcome",
    "title": "Reset offered: no Back",
@@ -2538,7 +2538,7 @@
    "x": 0,
    "y": 10796
   },
-  "ResetAndroidUnfinished.dc.html": {
+  "android.welcome.reset.unfinished.dc.html": {
    "h": 916,
    "page": "welcome",
    "title": "Finish resetting",
@@ -2546,7 +2546,7 @@
    "x": 1476,
    "y": 10796
   },
-  "ResetAndroidWorking.dc.html": {
+  "android.welcome.opening.resetting.dc.html": {
    "h": 916,
    "page": "welcome",
    "title": "Resetting",
@@ -2554,7 +2554,7 @@
    "x": 984,
    "y": 10796
   },
-  "ResetMacFailed.dc.html": {
+  "mac.welcome.reset.failed.dc.html": {
    "h": 600,
    "page": "welcome",
    "title": "macOS: reset failed",
@@ -2562,7 +2562,7 @@
    "x": 2940,
    "y": 12192
   },
-  "ResetMacOffered.dc.html": {
+  "mac.welcome.reset.offered.dc.html": {
    "h": 600,
    "page": "welcome",
    "title": "macOS: Reset offered",
@@ -2570,7 +2570,7 @@
    "x": 0,
    "y": 12192
   },
-  "ResetMacUnfinished.dc.html": {
+  "mac.welcome.reset.unfinished.dc.html": {
    "h": 600,
    "page": "welcome",
    "title": "macOS: finish resetting",
@@ -2578,7 +2578,7 @@
    "x": 3920,
    "y": 12192
   },
-  "ResetMacWorking.dc.html": {
+  "mac.welcome.opening.resetting.dc.html": {
    "h": 600,
    "page": "welcome",
    "title": "macOS: resetting",
@@ -2586,7 +2586,7 @@
    "x": 1960,
    "y": 12192
   },
-  "RestoreCode.dc.html": {
+  "android.parts.restore-code.dc.html": {
    "h": 150,
    "is_interactive": true,
    "page": "shared",
@@ -2595,7 +2595,7 @@
    "x": 0,
    "y": 1520
   },
-  "RestoreCodePrint.dc.html": {
+  "android.settings.restore-code.printed.dc.html": {
    "h": 792,
    "page": "library",
    "title": "Restore code: printed",
@@ -2603,7 +2603,7 @@
    "x": 2524,
    "y": 23336
   },
-  "S3Form.dc.html": {
+  "android.parts.s3-form.dc.html": {
    "h": 420,
    "page": "shared",
    "title": "S3-compatible form",
@@ -2611,7 +2611,7 @@
    "x": 0,
    "y": 780
   },
-  "SearchAndroidFailed.dc.html": {
+  "android.search.results.failed.dc.html": {
    "h": 916,
    "page": "search",
    "title": "Search failed",
@@ -2619,7 +2619,7 @@
    "x": 1968,
    "y": 240
   },
-  "SearchAndroidNone.dc.html": {
+  "android.search.results.none.dc.html": {
    "h": 916,
    "page": "search",
    "title": "No results",
@@ -2627,7 +2627,7 @@
    "x": 1476,
    "y": 240
   },
-  "SearchAndroidResults.dc.html": {
+  "android.search.results.dc.html": {
    "h": 916,
    "page": "search",
    "title": "Results",
@@ -2635,7 +2635,7 @@
    "x": 984,
    "y": 240
   },
-  "SearchAndroidTyping.dc.html": {
+  "android.search.typing.dc.html": {
    "h": 916,
    "page": "search",
    "title": "Typing: blank until results land",
@@ -2643,7 +2643,7 @@
    "x": 492,
    "y": 240
   },
-  "SearchMacNone.dc.html": {
+  "mac.search.results.none.dc.html": {
    "h": 760,
    "page": "search",
    "title": "macOS: no matches",
@@ -2651,7 +2651,7 @@
    "x": 1280,
    "y": 1636
   },
-  "SearchMacResults.dc.html": {
+  "mac.search.results.dc.html": {
    "h": 760,
    "page": "search",
    "title": "macOS: results",
@@ -2659,7 +2659,7 @@
    "x": 0,
    "y": 1636
   },
-  "SetMacAutomation.dc.html": {
+  "mac.settings.automation.off.dc.html": {
    "h": 600,
    "page": "settings",
    "title": "macOS: Automation, off",
@@ -2667,7 +2667,7 @@
    "x": 0,
    "y": 11776
   },
-  "SetMacAutomationFailed.dc.html": {
+  "mac.settings.automation.start-failed.dc.html": {
    "h": 600,
    "page": "settings",
    "title": "macOS: Automation, server could not start",
@@ -2675,7 +2675,7 @@
    "x": 1540,
    "y": 11776
   },
-  "SetMacAutomationOn.dc.html": {
+  "mac.settings.automation.running.dc.html": {
    "h": 600,
    "page": "settings",
    "title": "macOS: Automation, on, token copied",
@@ -2683,7 +2683,7 @@
    "x": 770,
    "y": 11776
   },
-  "SetMacFormatDelete.dc.html": {
+  "mac.settings.save-as.delete-format.dc.html": {
    "h": 960,
    "page": "settings",
    "title": "macOS: Save as, delete a format",
@@ -2691,7 +2691,7 @@
    "x": 1540,
    "y": 9376
   },
-  "SetMacFormatEditor.dc.html": {
+  "mac.settings.save-as.format-editor.dc.html": {
    "h": 960,
    "page": "settings",
    "title": "macOS: Save as, editing a format",
@@ -2699,7 +2699,7 @@
    "x": 770,
    "y": 9376
   },
-  "SetMacFormats.dc.html": {
+  "mac.settings.save-as.dc.html": {
    "h": 960,
    "page": "settings",
    "title": "macOS: Save as",
@@ -2707,7 +2707,7 @@
    "x": 0,
    "y": 9376
   },
-  "SetMacImport.dc.html": {
+  "mac.settings.import.dc.html": {
    "h": 760,
    "page": "settings",
    "title": "macOS: Import, no Discogs key",
@@ -2715,7 +2715,7 @@
    "x": 0,
    "y": 8136
   },
-  "SetMacImportChecking.dc.html": {
+  "mac.settings.import.checking-key.dc.html": {
    "h": 760,
    "page": "settings",
    "title": "macOS: Import, checking the key",
@@ -2723,7 +2723,7 @@
    "x": 770,
    "y": 8136
   },
-  "SetMacImportConnected.dc.html": {
+  "mac.settings.import.discogs-connected.dc.html": {
    "h": 760,
    "page": "settings",
    "title": "macOS: Import, Discogs connected",
@@ -2731,7 +2731,7 @@
    "x": 2310,
    "y": 8136
   },
-  "SetMacImportRejected.dc.html": {
+  "mac.settings.import.key-rejected.dc.html": {
    "h": 760,
    "page": "settings",
    "title": "macOS: Import, key rejected",
@@ -2739,7 +2739,7 @@
    "x": 1540,
    "y": 8136
   },
-  "SetMacImportUnvalidated.dc.html": {
+  "mac.settings.import.key-unvalidated.dc.html": {
    "h": 760,
    "page": "settings",
    "title": "macOS: Import, key saved offline",
@@ -2747,7 +2747,7 @@
    "x": 3080,
    "y": 8136
   },
-  "SetMacSubsonic.dc.html": {
+  "mac.settings.subsonic.off.dc.html": {
    "h": 600,
    "page": "settings",
    "title": "macOS: Subsonic, off",
@@ -2755,7 +2755,7 @@
    "x": 0,
    "y": 10696
   },
-  "SetMacSubsonicOn.dc.html": {
+  "mac.settings.subsonic.running.dc.html": {
    "h": 600,
    "page": "settings",
    "title": "macOS: Subsonic, running on Wi-Fi",
@@ -2763,7 +2763,7 @@
    "x": 770,
    "y": 10696
   },
-  "SetMacSubsonicRefused.dc.html": {
+  "mac.settings.subsonic.no-sign-in.dc.html": {
    "h": 600,
    "page": "settings",
    "title": "macOS: Subsonic, on with no username or password",
@@ -2771,7 +2771,7 @@
    "x": 1540,
    "y": 10696
   },
-  "SettingsOffline.dc.html": {
+  "android.settings.list.library-offline.dc.html": {
    "h": 916,
    "page": "settings",
    "title": "Settings: library offline",
@@ -2779,7 +2779,7 @@
    "x": 492,
    "y": 260
   },
-  "SettingsProblem.dc.html": {
+  "android.settings.list.sync-problem.dc.html": {
    "h": 916,
    "page": "settings",
    "title": "Settings: library sync problem",
@@ -2787,7 +2787,7 @@
    "x": 984,
    "y": 260
   },
-  "StoreMacCloud.dc.html": {
+  "mac.storage.window.cloud-only.dc.html": {
    "h": 660,
    "page": "storage",
    "title": "macOS: In cloud only",
@@ -2795,7 +2795,7 @@
    "x": 4720,
    "y": 1380
   },
-  "StoreMacFile.dc.html": {
+  "mac.storage.window.file-selected.dc.html": {
    "h": 660,
    "page": "storage",
    "title": "macOS: a file selected",
@@ -2803,7 +2803,7 @@
    "x": 2360,
    "y": 240
   },
-  "StoreMacInspector.dc.html": {
+  "mac.storage.window.uploading-inspector.dc.html": {
    "h": 660,
    "page": "storage",
    "title": "macOS: a release uploading, in the inspector",
@@ -2811,7 +2811,7 @@
    "x": 1180,
    "y": 240
   },
-  "StoreMacLoading.dc.html": {
+  "mac.storage.window.loading.dc.html": {
    "h": 660,
    "page": "storage",
    "title": "macOS: rows still loading",
@@ -2819,7 +2819,7 @@
    "x": 3540,
    "y": 1380
   },
-  "StoreMacMenu.dc.html": {
+  "mac.storage.release-menu.dc.html": {
    "h": 660,
    "page": "storage",
    "title": "macOS: a release’s menu",
@@ -2827,7 +2827,7 @@
    "x": 0,
    "y": 1380
   },
-  "StoreMacMoveToCloud.dc.html": {
+  "mac.storage.move-to-cloud.dc.html": {
    "h": 660,
    "page": "storage",
    "title": "macOS: Move to cloud",
@@ -2835,7 +2835,7 @@
    "x": 1180,
    "y": 1380
   },
-  "StoreMacNoLibrary.dc.html": {
+  "mac.storage.window.no-library.dc.html": {
    "h": 200,
    "page": "storage",
    "title": "macOS: no library open",
@@ -2843,7 +2843,7 @@
    "x": 5900,
    "y": 1380
   },
-  "StoreMacNoMatch.dc.html": {
+  "mac.storage.window.filter-no-match.dc.html": {
    "h": 660,
    "page": "storage",
    "title": "macOS: Filter finds nothing",
@@ -2851,7 +2851,7 @@
    "x": 2360,
    "y": 1380
   },
-  "StoreMacPinning.dc.html": {
+  "mac.storage.window.pinning.dc.html": {
    "h": 660,
    "page": "storage",
    "title": "macOS: a release pinning",
@@ -2859,7 +2859,7 @@
    "x": 3540,
    "y": 240
   },
-  "StoreMacWindow.dc.html": {
+  "mac.storage.window.dc.html": {
    "h": 660,
    "page": "storage",
    "title": "macOS: Storage Manager",
@@ -2867,7 +2867,7 @@
    "x": 0,
    "y": 240
   },
-  "SyncAndroidAttention.dc.html": {
+  "android.activity.sheet.needs-attention.dc.html": {
    "h": 916,
    "page": "storage",
    "title": "Needs attention",
@@ -2875,7 +2875,7 @@
    "x": 492,
    "y": 3760
   },
-  "SyncAndroidFailed.dc.html": {
+  "android.activity.sheet.status-failed.dc.html": {
    "h": 916,
    "page": "storage",
    "title": "Android: bae couldn’t read sync’s status",
@@ -2883,7 +2883,7 @@
    "x": 984,
    "y": 3760
   },
-  "SyncAndroidMoving.dc.html": {
+  "android.activity.sheet.moving.dc.html": {
    "h": 916,
    "page": "storage",
    "title": "Sync activity, moving",
@@ -2891,7 +2891,7 @@
    "x": 0,
    "y": 3760
   },
-  "SyncDropbox.dc.html": {
+  "android.settings.sync.dropbox.dc.html": {
    "h": 916,
    "page": "library",
    "title": "Sync: Dropbox",
@@ -2899,7 +2899,7 @@
    "x": 492,
    "y": 7652
   },
-  "SyncMacAttention.dc.html": {
+  "mac.activity.panel.needs-attention.dc.html": {
    "h": 760,
    "page": "storage",
    "title": "macOS: needs attention",
@@ -2907,7 +2907,7 @@
    "x": 1280,
    "y": 2520
   },
-  "SyncMacFailed.dc.html": {
+  "mac.activity.panel.status-failed.dc.html": {
    "h": 760,
    "page": "storage",
    "title": "macOS: bae couldn’t read sync’s status",
@@ -2915,7 +2915,7 @@
    "x": 2560,
    "y": 2520
   },
-  "SyncMacIdle.dc.html": {
+  "mac.activity.panel.up-to-date.dc.html": {
    "h": 760,
    "page": "storage",
    "title": "macOS: up to date (button hidden; popover as it would show)",
@@ -2923,7 +2923,7 @@
    "x": 3840,
    "y": 2520
   },
-  "SyncMacMoving.dc.html": {
+  "mac.activity.panel.moving.dc.html": {
    "h": 760,
    "page": "storage",
    "title": "macOS: sync activity, moving",
@@ -2931,7 +2931,7 @@
    "x": 0,
    "y": 2520
   },
-  "SyncOneDrive.dc.html": {
+  "android.settings.sync.onedrive.dc.html": {
    "h": 916,
    "page": "library",
    "title": "Sync: OneDrive",
@@ -2939,7 +2939,7 @@
    "x": 984,
    "y": 7652
   },
-  "SyncSignedOut.dc.html": {
+  "android.settings.sync.signed-out-dropbox.dc.html": {
    "h": 916,
    "page": "library",
    "title": "Sync: signed out (Dropbox)",
@@ -2947,7 +2947,7 @@
    "x": 1476,
    "y": 7652
   },
-  "SyncSignedOutS3.dc.html": {
+  "android.settings.sync.signed-out-s3.dc.html": {
    "h": 916,
    "page": "library",
    "title": "Sync: signed out (S3)",
@@ -2955,7 +2955,7 @@
    "x": 1968,
    "y": 7652
   },
-  "SyncStates.dc.html": {
+  "android.settings.sync.every-state.dc.html": {
    "h": 1800,
    "page": "library",
    "title": "Sync status: every state",
@@ -2963,7 +2963,7 @@
    "x": 0,
    "y": 9392
   },
-  "SyncStatus.dc.html": {
+  "android.parts.sync-status.dc.html": {
    "h": 220,
    "page": "shared",
    "title": "Sync status",
@@ -2971,7 +2971,7 @@
    "x": 1200,
    "y": 160
   },
-  "Transfers.dc.html": {
+  "android.settings.transfers.dc.html": {
    "h": 916,
    "page": "settings",
    "title": "Transfers",
@@ -2979,7 +2979,7 @@
    "x": 0,
    "y": 4148
   },
-  "Welcome.dc.html": {
+  "android.welcome.libraries.dc.html": {
    "h": 916,
    "page": "welcome",
    "title": "Welcome: your libraries",
@@ -2987,7 +2987,7 @@
    "x": 0,
    "y": 1656
   },
-  "WelcomeRemove.dc.html": {
+  "android.welcome.remove.dc.html": {
    "h": 916,
    "page": "welcome",
    "title": "Remove: confirm",
@@ -2995,7 +2995,7 @@
    "x": 1968,
    "y": 1656
   },
-  "WelcomeRemoveFailed.dc.html": {
+  "android.welcome.remove.failed.dc.html": {
    "h": 916,
    "page": "welcome",
    "title": "Remove: failed",
@@ -3003,7 +3003,7 @@
    "x": 3444,
    "y": 1656
   },
-  "WelcomeRemoveUnsent.dc.html": {
+  "android.welcome.remove.unsent-changes.dc.html": {
    "h": 916,
    "page": "welcome",
    "title": "Remove: confirm, unsent changes",
@@ -3011,7 +3011,7 @@
    "x": 2460,
    "y": 1656
   },
-  "WelcomeRemoving.dc.html": {
+  "android.welcome.remove.removing.dc.html": {
    "h": 916,
    "page": "welcome",
    "title": "Remove: removing",
@@ -3019,7 +3019,7 @@
    "x": 2952,
    "y": 1656
   },
-  "storage/Main.dc.html": {
+  "mac.storage.proposal-today.dc.html": {
    "h": 900,
    "page": "storage",
    "radius": 10,
@@ -3028,7 +3028,7 @@
    "x": 0,
    "y": 6552
   },
-  "storage/PanelFile.dc.html": {
+  "mac.storage.proposal.file-selected.dc.html": {
    "h": 614,
    "page": "storage",
    "radius": 10,
@@ -3037,7 +3037,7 @@
    "x": 1040,
    "y": 6552
   },
-  "storage/PanelPin.dc.html": {
+  "mac.storage.proposal.pinning.dc.html": {
    "h": 614,
    "page": "storage",
    "radius": 10,
@@ -3046,7 +3046,7 @@
    "x": 1560,
    "y": 6552
   },
-  "storage/Proposed.dc.html": {
+  "mac.storage.proposal.dc.html": {
    "h": 900,
    "page": "storage",
    "radius": 10,
@@ -3055,7 +3055,7 @@
    "x": 520,
    "y": 6552
   },
-  "storage/Window.dc.html": {
+  "mac.storage.proposal-window-today.dc.html": {
    "h": 654,
    "page": "storage",
    "radius": 10,
@@ -3064,7 +3064,7 @@
    "x": 0,
    "y": 7892
   },
-  "storage/WindowBoth.dc.html": {
+  "mac.storage.proposal-window.both-ways.dc.html": {
    "h": 654,
    "page": "storage",
    "radius": 10,
@@ -3073,7 +3073,7 @@
    "x": 1120,
    "y": 8666
   },
-  "storage/WindowFilter.dc.html": {
+  "mac.storage.proposal-window.filtered.dc.html": {
    "h": 654,
    "page": "storage",
    "radius": 10,
@@ -3082,7 +3082,7 @@
    "x": 0,
    "y": 8666
   },
-  "storage/WindowProposed.dc.html": {
+  "mac.storage.proposal-window.dc.html": {
    "h": 654,
    "page": "storage",
    "radius": 10,
@@ -3091,7 +3091,7 @@
    "x": 1120,
    "y": 7892
   },
-  "WelcomeEmpty.dc.html": {
+  "android.welcome.libraries.none.dc.html": {
    "page": "welcome",
    "title": "Welcome: a new device",
    "x": 0,
@@ -3099,7 +3099,7 @@
    "w": 412,
    "h": 916
   },
-  "MacWelcomeEmpty.dc.html": {
+  "mac.welcome.libraries.none.dc.html": {
    "page": "welcome",
    "title": "macOS: Welcome: a new Mac",
    "x": 492,
@@ -3107,7 +3107,7 @@
    "w": 690,
    "h": 600
   },
-  "StoreMacStates.dc.html": {
+  "mac.storage.window.every-row-state.dc.html": {
    "h": 700,
    "page": "storage",
    "title": "macOS: every row state",
@@ -3115,7 +3115,7 @@
    "x": 6280,
    "y": 1380
   },
-  "StoreMacDownloadFailed.dc.html": {
+  "mac.storage.window.pin-failed.dc.html": {
    "h": 660,
    "page": "storage",
    "title": "macOS: a failed pin, in the inspector",
@@ -3123,7 +3123,7 @@
    "x": 7460,
    "y": 1380
   },
-  "StoreMacMoveFailedMenu.dc.html": {
+  "mac.storage.release-menu.move-failed.dc.html": {
    "h": 660,
    "page": "storage",
    "title": "macOS: a failed move’s menu",
@@ -3131,7 +3131,7 @@
    "x": 8640,
    "y": 1380
   },
-  "StoreMacUnpinSeveral.dc.html": {
+  "mac.storage.unpin-several.dc.html": {
    "h": 660,
    "page": "storage",
    "title": "macOS: Unpin several releases, asking first",
@@ -3139,7 +3139,7 @@
    "x": 9820,
    "y": 1380
   },
-  "AlbMacStorageStates.dc.html": {
+  "mac.album.storage.every-state.dc.html": {
    "h": 402,
    "page": "home",
    "title": "macOS: Storage…: every state",
@@ -3147,7 +3147,7 @@
    "x": 14080,
    "y": 15812
   },
-  "AlbMacUnpin.dc.html": {
+  "mac.album.storage.unpin.dc.html": {
    "h": 1000,
    "page": "home",
    "title": "macOS: Unpin, asking first",
@@ -3155,7 +3155,7 @@
    "x": 15612,
    "y": 15812
   },
-  "LibAndroidAlbumStates.dc.html": {
+  "android.album.page.every-storage-state.dc.html": {
    "h": 1000,
    "page": "home",
    "title": "Album: every storage state",
@@ -3163,7 +3163,7 @@
    "x": 1968,
    "y": 8304
   },
-  "CutOffStep.dc.html": {
+  "android.settings.devices.cut-off.dc.html": {
    "h": 916,
    "page": "library",
    "title": "Removed: cut it off",
@@ -3171,7 +3171,7 @@
    "x": 0,
    "y": 24632
   },
-  "CutOffOther.dc.html": {
+  "android.settings.devices.cut-off-other.dc.html": {
    "h": 916,
    "page": "library",
    "title": "Removed: someone else’s device",
@@ -3179,7 +3179,7 @@
    "x": 492,
    "y": 24632
   },
-  "CutOffRunning.dc.html": {
+  "android.settings.devices.cut-off-running.dc.html": {
    "h": 916,
    "page": "library",
    "title": "Cut off: a request running",
@@ -3187,7 +3187,7 @@
    "x": 984,
    "y": 24632
   },
-  "CutOffNotGone.dc.html": {
+  "android.settings.devices.cut-off-not-here.dc.html": {
    "h": 916,
    "page": "library",
    "title": "Cut off: not here yet",
@@ -3195,7 +3195,7 @@
    "x": 1476,
    "y": 24632
   },
-  "MacCutOffStep.dc.html": {
+  "mac.settings.devices.cut-off.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Removed: cut it off",
@@ -3203,7 +3203,7 @@
    "x": 1968,
    "y": 24632
   },
-  "MacCutOffOther.dc.html": {
+  "mac.settings.devices.cut-off-other.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Removed: someone else’s device",
@@ -3211,7 +3211,7 @@
    "x": 2738,
    "y": 24632
   },
-  "MacCutOffRunning.dc.html": {
+  "mac.settings.devices.cut-off-running.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Cut off: a request running",
@@ -3219,7 +3219,7 @@
    "x": 3508,
    "y": 24632
   },
-  "MacCutOffNotGone.dc.html": {
+  "mac.settings.devices.cut-off-not-here.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Cut off: not here yet",
@@ -3227,7 +3227,7 @@
    "x": 4278,
    "y": 24632
   },
-  "LogoForms.dc.html": {
+  "brand.logo.forms.dc.html": {
    "h": 640,
    "page": "logo",
    "title": "The logo",
@@ -3235,7 +3235,7 @@
    "x": 0,
    "y": 240
   },
-  "IconMac.dc.html": {
+  "mac.icon.app.dc.html": {
    "h": 640,
    "page": "logo",
    "title": "macOS: app icon",
@@ -3243,7 +3243,7 @@
    "x": 0,
    "y": 1200
   },
-  "IconIOS.dc.html": {
+  "ios.icon.app.dc.html": {
    "h": 640,
    "page": "logo",
    "title": "iOS: app icon",
@@ -3251,7 +3251,7 @@
    "x": 492,
    "y": 1200
   },
-  "IconAndroid.dc.html": {
+  "android.icon.app.dc.html": {
    "h": 640,
    "page": "logo",
    "title": "Android: app icon",
@@ -3259,7 +3259,7 @@
    "x": 984,
    "y": 1200
   },
-  "IconWindows.dc.html": {
+  "windows.icon.app.dc.html": {
    "h": 640,
    "page": "logo",
    "title": "Windows: app icon",
@@ -3267,7 +3267,7 @@
    "x": 1476,
    "y": 1200
   },
-  "IconLinux.dc.html": {
+  "linux.icon.app.dc.html": {
    "h": 640,
    "page": "logo",
    "title": "Linux: app icon",
@@ -3275,7 +3275,7 @@
    "x": 1968,
    "y": 1200
   },
-  "IconWeb.dc.html": {
+  "web.icon.favicon.dc.html": {
    "h": 640,
    "page": "logo",
    "title": "Web: favicon",
@@ -3283,7 +3283,7 @@
    "x": 2460,
    "y": 1200
   },
-  "AccentsNeutral.dc.html": {
+  "brand.accents.neutral.dc.html": {
    "h": 480,
    "page": "logo",
    "title": "Accents: Neutral",
@@ -3291,7 +3291,7 @@
    "x": 0,
    "y": 2160
   },
-  "AccentsSlate.dc.html": {
+  "brand.accents.slate.dc.html": {
    "h": 480,
    "page": "logo",
    "title": "Accents: Slate",
@@ -3299,7 +3299,7 @@
    "x": 0,
    "y": 2720
   },
-  "AccentsPlum.dc.html": {
+  "brand.accents.plum.dc.html": {
    "h": 480,
    "page": "logo",
    "title": "Accents: Plum",
@@ -3307,7 +3307,7 @@
    "x": 0,
    "y": 3280
   },
-  "AccentsForest.dc.html": {
+  "brand.accents.forest.dc.html": {
    "h": 480,
    "page": "logo",
    "title": "Accents: Forest",
@@ -3315,7 +3315,7 @@
    "x": 0,
    "y": 4400
   },
-  "AccentsSand.dc.html": {
+  "brand.accents.sand.dc.html": {
    "h": 480,
    "page": "logo",
    "title": "Accents: Sand",
@@ -3323,7 +3323,7 @@
    "x": 0,
    "y": 4960
   },
-  "AccentsMidnight.dc.html": {
+  "brand.accents.midnight.dc.html": {
    "h": 480,
    "page": "logo",
    "title": "Accents: Midnight",
@@ -3331,7 +3331,7 @@
    "x": 0,
    "y": 3840
   },
-  "WelcomeActions.dc.html": {
+  "android.parts.welcome-buttons.dc.html": {
    "h": 106,
    "page": "shared",
    "title": "Welcome buttons",
@@ -3339,7 +3339,7 @@
    "x": 1200,
    "y": 1250
   },
-  "MacWelcomeActions.dc.html": {
+  "mac.parts.welcome-buttons.dc.html": {
    "h": 70,
    "page": "shared",
    "title": "macOS: Welcome buttons",
@@ -3347,7 +3347,7 @@
    "x": 1692,
    "y": 1250
   },
-  "WelcomeLibraries.dc.html": {
+  "android.parts.welcome-libraries.dc.html": {
    "h": 290,
    "page": "shared",
    "title": "Welcome libraries",
@@ -3355,7 +3355,7 @@
    "x": 1200,
    "y": 1750
   },
-  "MacWelcomeLibraries.dc.html": {
+  "mac.parts.welcome-libraries.dc.html": {
    "h": 170,
    "page": "shared",
    "title": "macOS: Welcome libraries",
@@ -3363,7 +3363,7 @@
    "x": 1692,
    "y": 1750
   },
-  "WelcomeMenu.dc.html": {
+  "android.welcome.library-menu.dc.html": {
    "h": 916,
    "page": "welcome",
    "title": "Welcome: a library’s menu",
@@ -3371,7 +3371,7 @@
    "x": 492,
    "y": 1656
   },
-  "WelcomeInfo.dc.html": {
+  "android.welcome.library-details.dc.html": {
    "h": 916,
    "page": "welcome",
    "title": "Welcome: a library’s details",
@@ -3379,7 +3379,7 @@
    "x": 984,
    "y": 1656
   },
-  "WelcomeAdd.dc.html": {
+  "android.welcome.add-library.dc.html": {
    "h": 916,
    "page": "welcome",
    "title": "Welcome: add library",
@@ -3387,7 +3387,7 @@
    "x": 3936,
    "y": 1656
   },
-  "WelcomeInfoUnsent.dc.html": {
+  "android.welcome.library-details.unsent-changes.dc.html": {
    "h": 916,
    "page": "welcome",
    "title": "Welcome: a library’s details, unsent changes",
@@ -3395,7 +3395,7 @@
    "x": 1476,
    "y": 1656
   },
-  "MacWelcomeMenu.dc.html": {
+  "mac.welcome.library-menu.dc.html": {
    "h": 600,
    "page": "welcome",
    "title": "macOS: Welcome: a library’s menu",
@@ -3403,7 +3403,7 @@
    "x": 5358,
    "y": 1656
   },
-  "MacWelcomeInfo.dc.html": {
+  "mac.welcome.library-details.dc.html": {
    "h": 680,
    "page": "welcome",
    "title": "macOS: Welcome: a library’s details",
@@ -3411,7 +3411,7 @@
    "x": 6128,
    "y": 1656
   },
-  "MacWelcomeInfoUnsent.dc.html": {
+  "mac.welcome.library-details.unsent-changes.dc.html": {
    "h": 680,
    "page": "welcome",
    "title": "macOS: Welcome: a library’s details, unsent changes",
@@ -3419,7 +3419,7 @@
    "x": 6898,
    "y": 1656
   },
-  "MacWelcomeAdd.dc.html": {
+  "mac.welcome.add-library.dc.html": {
    "h": 600,
    "page": "welcome",
    "title": "macOS: Welcome: add library",
@@ -3427,7 +3427,7 @@
    "x": 11518,
    "y": 1656
   },
-  "ErrMacProblemOpen.dc.html": {
+  "mac.activity.panel.problem-open.dc.html": {
    "h": 760,
    "page": "home",
    "title": "macOS: a problem in the Activity panel, opened",
@@ -3435,7 +3435,7 @@
    "x": 7680,
    "y": 18688
   },
-  "ErrAndroidProblemOpen.dc.html": {
+  "android.activity.sheet.problem-open.dc.html": {
    "h": 916,
    "page": "home",
    "title": "Android: a problem in the Activity sheet, opened",
@@ -3443,7 +3443,7 @@
    "x": 3444,
    "y": 17292
   },
-  "SyncMacPaused.dc.html": {
+  "mac.activity.panel.paused.dc.html": {
    "h": 760,
    "page": "storage",
    "title": "macOS: sync activity, paused",
@@ -3451,7 +3451,7 @@
    "x": 5120,
    "y": 2520
   },
-  "SyncAndroidPaused.dc.html": {
+  "android.activity.sheet.paused.dc.html": {
    "h": 916,
    "page": "storage",
    "title": "Sync activity, paused",
@@ -3459,7 +3459,7 @@
    "x": 2060,
    "y": 3760
   },
-  "ResetMacDialog.dc.html": {
+  "mac.welcome.reset.confirm.dc.html": {
    "h": 600,
    "page": "welcome",
    "title": "macOS: Reset this device: confirm",
@@ -3467,7 +3467,7 @@
    "x": 980,
    "y": 12192
   },
-  "CastingMenu.dc.html": {
+  "android.settings.casting.receiver-menu.dc.html": {
    "h": 916,
    "page": "settings",
    "title": "Casting: a receiver’s menu",
@@ -3475,7 +3475,7 @@
    "x": 4286,
    "y": 5444
   },
-  "CastingInfo.dc.html": {
+  "android.settings.casting.receiver-details.dc.html": {
    "h": 916,
    "page": "settings",
    "title": "Casting: a receiver’s details",
@@ -3483,7 +3483,7 @@
    "x": 4778,
    "y": 5444
   },
-  "MacCastingMenu.dc.html": {
+  "mac.settings.casting.receiver-menu.dc.html": {
    "h": 600,
    "page": "settings",
    "title": "macOS: Casting: a receiver’s menu",
@@ -3491,7 +3491,7 @@
    "x": 5270,
    "y": 5444
   },
-  "MacCastingInfo.dc.html": {
+  "mac.settings.casting.receiver-details.dc.html": {
    "h": 600,
    "page": "settings",
    "title": "macOS: Casting: a receiver’s details",
@@ -3499,7 +3499,7 @@
    "x": 6040,
    "y": 5444
   },
-  "SetMacImportTurnOff.dc.html": {
+  "mac.settings.import.turn-off-discogs.dc.html": {
    "h": 760,
    "page": "settings",
    "title": "macOS: Import, turning Discogs off",
@@ -3507,7 +3507,7 @@
    "x": 4710,
    "y": 8136
   },
-  "SetMacFormatMenu.dc.html": {
+  "mac.settings.save-as.format-menu.dc.html": {
    "h": 960,
    "page": "settings",
    "title": "macOS: Save as, a format’s menu",
@@ -3515,7 +3515,7 @@
    "x": 3620,
    "y": 9376
   },
-  "SetMacFormatPicker.dc.html": {
+  "mac.settings.save-as.format-picker.dc.html": {
    "h": 960,
    "page": "settings",
    "title": "macOS: Save as, choosing a format",
@@ -3523,7 +3523,7 @@
    "x": 4890,
    "y": 9376
   },
-  "SetMacFormatBitrate.dc.html": {
+  "mac.settings.save-as.bitrate-menu.dc.html": {
    "h": 960,
    "page": "settings",
    "title": "macOS: Save as, an MP3 bitrate",
@@ -3531,7 +3531,7 @@
    "x": 5660,
    "y": 9376
   },
-  "SetMacFormatBitDepth.dc.html": {
+  "mac.settings.save-as.bit-depth-menu.dc.html": {
    "h": 960,
    "page": "settings",
    "title": "macOS: Save as, a FLAC bit depth",
@@ -3539,7 +3539,7 @@
    "x": 6430,
    "y": 9376
   },
-  "SetMacFormatEach.dc.html": {
+  "mac.settings.save-as.every-format-editor.dc.html": {
    "h": 760,
    "page": "settings",
    "title": "macOS: Save as, every format’s editor",
@@ -3547,7 +3547,7 @@
    "x": 7200,
    "y": 9376
   },
-  "AlbMacSaveAsFormats.dc.html": {
+  "mac.album.save-as.format-menu.dc.html": {
    "h": 1000,
    "page": "home",
    "title": "macOS: Save as… on a track, its Format menu",
@@ -3555,7 +3555,7 @@
    "x": 12800,
    "y": 16892
   },
-  "AlbMacSaveAsEdit.dc.html": {
+  "mac.album.save-as.edit-formats.dc.html": {
    "h": 1000,
    "page": "home",
    "title": "macOS: Save as… on a track, Edit Formats…",
@@ -3563,7 +3563,7 @@
    "x": 12800,
    "y": 17972
   },
-  "SetMacFormatNameTaken.dc.html": {
+  "mac.settings.save-as.format-name-taken.dc.html": {
    "h": 960,
    "page": "settings",
    "title": "macOS: Save as, a name already taken",
@@ -3571,7 +3571,7 @@
    "x": 8370,
    "y": 9376
   },
-  "AlbMacSaveAsEditAdd.dc.html": {
+  "mac.album.save-as.edit-formats-adding.dc.html": {
    "h": 1000,
    "page": "home",
    "title": "macOS: Save as… on a track, adding a format",
@@ -3579,7 +3579,7 @@
    "x": 14080,
    "y": 17972
   },
-  "AlbMacSaveAsEditAdded.dc.html": {
+  "mac.album.save-as.edit-formats-added.dc.html": {
    "h": 1000,
    "page": "home",
    "title": "macOS: Save as… on a track, the format added",
@@ -3587,7 +3587,7 @@
    "x": 15360,
    "y": 17972
   },
-  "AlbMacSaveAsEditBack.dc.html": {
+  "mac.album.save-as.new-format-chosen.dc.html": {
    "h": 1000,
    "page": "home",
    "title": "macOS: Save as… on a track, back with the new format",
@@ -3595,7 +3595,7 @@
    "x": 16640,
    "y": 17972
   },
-  "SetMacImportTips.dc.html": {
+  "mac.settings.import.info-popovers.dc.html": {
    "h": 280,
    "page": "settings",
    "title": "macOS: Import, the ⓘ popovers",
@@ -3603,7 +3603,7 @@
    "x": 4330,
    "y": 8136
   },
-  "SetMacFormatNameInvalid.dc.html": {
+  "mac.settings.save-as.name-invalid.dc.html": {
    "h": 960,
    "page": "settings",
    "title": "macOS: Save as, a name that can’t be made",
@@ -3611,7 +3611,7 @@
    "x": 9140,
    "y": 9376
   },
-  "SetMacSubsonicFailed.dc.html": {
+  "mac.settings.subsonic.start-failed.dc.html": {
    "h": 600,
    "page": "settings",
    "title": "macOS: Subsonic, could not start",
@@ -3619,7 +3619,7 @@
    "x": 2310,
    "y": 10696
   },
-  "SetMacSubsonicNetworks.dc.html": {
+  "mac.settings.subsonic.network-menu.dc.html": {
    "h": 600,
    "page": "settings",
    "title": "macOS: Subsonic, where it listens",
@@ -3627,7 +3627,7 @@
    "x": 3080,
    "y": 10696
   },
-  "SetMacSubsonicEvery.dc.html": {
+  "mac.settings.subsonic.every-network.dc.html": {
    "h": 600,
    "page": "settings",
    "title": "macOS: Subsonic, running on every network",
@@ -3635,7 +3635,7 @@
    "x": 3850,
    "y": 10696
   },
-  "SetMacSubsonicNoNetwork.dc.html": {
+  "mac.settings.subsonic.network-gone.dc.html": {
    "h": 600,
    "page": "settings",
    "title": "macOS: Subsonic, its network is gone",
@@ -3643,7 +3643,7 @@
    "x": 4620,
    "y": 10696
   },
-  "SetMacSubsonicPortInUse.dc.html": {
+  "mac.settings.subsonic.port-taken.dc.html": {
    "h": 600,
    "page": "settings",
    "title": "macOS: Subsonic, its port is taken",
@@ -3651,7 +3651,7 @@
    "x": 5390,
    "y": 10696
   },
-  "SetMacSubsonicActivity.dc.html": {
+  "mac.activity.panel.subsonic-not-running.dc.html": {
    "h": 760,
    "page": "settings",
    "title": "macOS: Subsonic not running, in the Activity panel",
@@ -3659,7 +3659,7 @@
    "x": 6160,
    "y": 10696
   },
-  "SetMacFormatLast.dc.html": {
+  "mac.settings.save-as.last-format.dc.html": {
    "h": 960,
    "page": "settings",
    "title": "macOS: Save as, the only format left",
@@ -3667,7 +3667,7 @@
    "x": 2310,
    "y": 9376
   },
-  "SetAndroidStorage.dc.html": {
+  "android.settings.storage.dc.html": {
    "h": 916,
    "page": "settings",
    "title": "Storage",
@@ -3675,7 +3675,7 @@
    "x": 0,
    "y": 12856
   },
-  "SetAndroidStorageReset.dc.html": {
+  "android.settings.storage.from-before-reset.dc.html": {
    "h": 916,
    "page": "settings",
    "title": "Storage, data from before a reset",
@@ -3683,7 +3683,7 @@
    "x": 492,
    "y": 12856
   },
-  "SetMacStorage.dc.html": {
+  "mac.settings.storage.dc.html": {
    "h": 700,
    "page": "settings",
    "title": "macOS: Storage",
@@ -3691,7 +3691,7 @@
    "x": 984,
    "y": 12856
   },
-  "SetMacStorageReset.dc.html": {
+  "mac.settings.storage.from-before-reset.dc.html": {
    "h": 820,
    "page": "settings",
    "title": "macOS: Storage, data from before a reset",
@@ -3699,7 +3699,7 @@
    "x": 1754,
    "y": 12856
   },
-  "SetMacStorageResetDelete.dc.html": {
+  "mac.settings.storage.delete-from-before-reset.dc.html": {
    "h": 820,
    "page": "settings",
    "title": "macOS: Storage, deleting data from before a reset",
@@ -3707,7 +3707,7 @@
    "x": 2524,
    "y": 12856
   },
-  "SetAndroidStorageResetDelete.dc.html": {
+  "android.settings.storage.delete-from-before-reset.dc.html": {
    "h": 916,
    "page": "settings",
    "title": "Storage, deleting data from before a reset",
@@ -3715,7 +3715,7 @@
    "x": 3294,
    "y": 12856
   },
-  "MacCreateName.dc.html": {
+  "mac.welcome.create.name.dc.html": {
    "h": 600,
    "page": "welcome",
    "title": "macOS: Create: your name",
@@ -5200,470 +5200,470 @@
   }
  },
  "order": [
-  "Main.dc.html",
-  "SettingsOffline.dc.html",
-  "SettingsProblem.dc.html",
-  "MacSettingsOffline.dc.html",
-  "MacSettingsProblem.dc.html",
-  "Appearance.dc.html",
-  "Playback.dc.html",
-  "Casting.dc.html",
-  "About.dc.html",
-  "MacAppearance.dc.html",
-  "MacPlayback.dc.html",
-  "MacCasting.dc.html",
-  "MacAbout.dc.html",
-  "MacTransfers.dc.html",
-  "Transfers.dc.html",
-  "MacTransfersPaused.dc.html",
-  "storage/Main.dc.html",
-  "storage/Proposed.dc.html",
-  "storage/PanelFile.dc.html",
-  "storage/PanelPin.dc.html",
-  "storage/Window.dc.html",
-  "storage/WindowProposed.dc.html",
-  "storage/WindowFilter.dc.html",
-  "storage/WindowBoth.dc.html",
-  "Library.dc.html",
-  "MacLibraryNotSynced.dc.html",
-  "MacLibrary.dc.html",
-  "CloudHome.dc.html",
-  "People.dc.html",
-  "PeopleMember.dc.html",
-  "Devices.dc.html",
-  "Person.dc.html",
-  "PersonAdmin.dc.html",
-  "MacCloudHome.dc.html",
-  "MacPeople.dc.html",
-  "RecoveryHidden.dc.html",
-  "Recovery.dc.html",
-  "MacRecoveryHidden.dc.html",
-  "MacRecovery.dc.html",
-  "RenameLibrary.dc.html",
-  "LibraryMember.dc.html",
-  "LibraryProblem.dc.html",
-  "MacRenameLibrary.dc.html",
-  "MacLibraryMember.dc.html",
-  "MacLibraryProblem.dc.html",
-  "Renamed.dc.html",
-  "MacRenamed.dc.html",
-  "MacSetupChoose.dc.html",
-  "FolderPicker.dc.html",
-  "S3Form.dc.html",
-  "MacSetupDropboxChoose.dc.html",
-  "MacSetupDropboxSignIn.dc.html",
-  "MacSetupDropboxListing.dc.html",
-  "MacSetupDropboxFolder.dc.html",
-  "MacSetupDropboxChecking.dc.html",
-  "MacSetupDropboxNotEmpty.dc.html",
-  "MacSetupDropboxNewFolder.dc.html",
-  "MacSetupDropboxMakingFolder.dc.html",
-  "MacSetupDropboxFolderMade.dc.html",
-  "MacSetupDropboxStepReadingAccount.dc.html",
-  "MacSetupDropboxStepConnecting.dc.html",
-  "MacSetupDropboxStepCreating.dc.html",
-  "MacSetupDropboxCode.dc.html",
-  "MacSetupDropboxDone.dc.html",
-  "MacSetupDropboxNone.dc.html",
-  "MacSetupOneDriveChoose.dc.html",
-  "MacSetupOneDriveSignIn.dc.html",
-  "MacSetupOneDriveListing.dc.html",
-  "MacSetupOneDrive.dc.html",
-  "MacSetupOneDriveChecking.dc.html",
-  "MacSetupOneDriveNotEmpty.dc.html",
-  "MacSetupOneDriveNewFolder.dc.html",
-  "MacSetupOneDriveMakingFolder.dc.html",
-  "MacSetupOneDriveFolderMade.dc.html",
-  "MacSetupOneDriveStepReadingAccount.dc.html",
-  "MacSetupOneDriveStepConnecting.dc.html",
-  "MacSetupOneDriveStepCreating.dc.html",
-  "MacSetupOneDriveCode.dc.html",
-  "MacSetupOneDriveDone.dc.html",
-  "MacSetupOneDriveNone.dc.html",
-  "MacSetupICloudChoose.dc.html",
-  "MacSetupICloud.dc.html",
-  "MacSetupICloudStepPreparing.dc.html",
-  "MacSetupICloudStepConnecting.dc.html",
-  "MacSetupICloudStepCreating.dc.html",
-  "RestoreCode.dc.html",
-  "MacSetupICloudCode.dc.html",
-  "MacSetupICloudDone.dc.html",
-  "MacSetupS3Choose.dc.html",
-  "MacSetupS3.dc.html",
-  "MacSetupS3StepCheckingLocation.dc.html",
-  "MacSetupS3StepDetecting.dc.html",
-  "MacSetupS3StepConnecting.dc.html",
-  "MacSetupS3StepCreating.dc.html",
-  "MacSetupS3Code.dc.html",
-  "MacSetupS3Done.dc.html",
-  "MacSetupS3KeyNotAccepted.dc.html",
-  "MacSetupS3AccessDenied.dc.html",
-  "MacSetupS3RegionMismatch.dc.html",
-  "MacSetupS3BucketNotFound.dc.html",
-  "MacSetupS3BucketNotEmpty.dc.html",
-  "SyncStates.dc.html",
-  "MacSyncStates.dc.html",
-  "InviteForm.dc.html",
-  "InviteShown.dc.html",
-  "PeopleInvited.dc.html",
-  "MacInviteForm.dc.html",
-  "MacInviteCode.dc.html",
-  "MacPeopleInvited.dc.html",
-  "AddDevice.dc.html",
-  "AddDeviceAdded.dc.html",
-  "MacAddDevice.dc.html",
-  "MacAddDeviceAdded.dc.html",
-  "MakeAdminWaiting.dc.html",
-  "MakeAdminDone.dc.html",
-  "MacMakeAdminWaiting.dc.html",
-  "MacMakeAdminDone.dc.html",
-  "ProfileRename.dc.html",
-  "ProfileRenamed.dc.html",
-  "MacProfileRename.dc.html",
-  "MacProfileRenamed.dc.html",
-  "ProfileRenameBlank.dc.html",
-  "ProfileRenameFailed.dc.html",
-  "MacProfileRenameBlank.dc.html",
-  "MacProfileRenameFailed.dc.html",
-  "MacPeopleMember.dc.html",
-  "MacDevices.dc.html",
-  "MacPerson.dc.html",
-  "MacPersonAdmin.dc.html",
-  "HistoryChoice.dc.html",
-  "HistoryChanged.dc.html",
-  "MacHistoryChoice.dc.html",
-  "MacHistoryChanged.dc.html",
-  "SyncDropbox.dc.html",
-  "MacSyncDropbox.dc.html",
-  "SyncOneDrive.dc.html",
-  "MacSyncOneDrive.dc.html",
-  "MacSyncICloud.dc.html",
-  "SyncSignedOut.dc.html",
-  "SyncSignedOutS3.dc.html",
-  "MacSyncSignedOut.dc.html",
-  "MacSyncSignedOutICloud.dc.html",
-  "MacSyncSignedOutS3.dc.html",
-  "HomeMenu.dc.html",
-  "Libraries.dc.html",
-  "SyncStatus.dc.html",
-  "MacSyncStatus.dc.html",
-  "InviteFormOneDrive.dc.html",
-  "InviteFormS3.dc.html",
-  "MacInviteFormOneDrive.dc.html",
-  "MacInviteFormICloud.dc.html",
-  "MacInviteFormS3.dc.html",
-  "InviteFields.dc.html",
-  "MacInviteFields.dc.html",
-  "WelcomeActions.dc.html",
-  "MacWelcomeActions.dc.html",
-  "WelcomeLibraries.dc.html",
-  "MacWelcomeLibraries.dc.html",
-  "InviteRequest.dc.html",
-  "MacInviteRequest.dc.html",
-  "InviteOffline.dc.html",
-  "PeopleInvitedOffline.dc.html",
-  "MacInviteOffline.dc.html",
-  "MacPeopleInvitedOffline.dc.html",
-  "PeopleInvitedFailed.dc.html",
-  "MacPeopleInvitedFailed.dc.html",
-  "InviteSharing.dc.html",
-  "MacInviteSharing.dc.html",
-  "InviteFlow.dc.html",
-  "InviteJoining.dc.html",
-  "MacInviteJoining.dc.html",
-  "InviteCancel.dc.html",
-  "MacInviteCancel.dc.html",
-  "InviteFormS3Mine.dc.html",
-  "MacInviteFormS3Mine.dc.html",
-  "AddDeviceRequest.dc.html",
-  "MacAddDeviceRequest.dc.html",
-  "RestoreCodePrint.dc.html",
-  "CutOffStep.dc.html",
-  "CutOffOther.dc.html",
-  "CutOffRunning.dc.html",
-  "CutOffNotGone.dc.html",
-  "MacCutOffStep.dc.html",
-  "MacCutOffOther.dc.html",
-  "MacCutOffRunning.dc.html",
-  "MacCutOffNotGone.dc.html",
-  "CastingOn.dc.html",
-  "MacCastingOn.dc.html",
-  "CastingLooking.dc.html",
-  "MacCastingLooking.dc.html",
-  "MacCastingInfo.dc.html",
-  "MacCastingMenu.dc.html",
-  "CastingInfo.dc.html",
-  "CastingMenu.dc.html",
-  "LibAndroidAlbums.dc.html",
-  "LibAndroidAlbum.dc.html",
-  "LibAndroidArtist.dc.html",
-  "LibMacAlbums.dc.html",
-  "LibMacAlbumOpen.dc.html",
-  "LibMacArtist.dc.html",
-  "LibAndroidScrolled.dc.html",
-  "LibAndroidViewMenu.dc.html",
-  "LibAndroidMoreMenu.dc.html",
-  "LibAndroidGrouped.dc.html",
-  "LibAndroidGroupedPinned.dc.html",
-  "LibAndroidSearch.dc.html",
-  "LibMacScrolled.dc.html",
-  "LibMacViewMenu.dc.html",
-  "LibMacGrouped.dc.html",
-  "LibMacSortTwo.dc.html",
-  "LibAndroidEmpty.dc.html",
-  "LibAndroidFailed.dc.html",
-  "LibAndroidNoCovers.dc.html",
-  "LibMacEmpty.dc.html",
-  "LibMacNoCredits.dc.html",
-  "LibMacFailed.dc.html",
-  "LibMacNoCovers.dc.html",
-  "LibAndroidAlbumReleases.dc.html",
-  "LibAndroidAlbumQueued.dc.html",
-  "LibAndroidAlbumFailed.dc.html",
-  "LibAndroidAlbumElsewhere.dc.html",
-  "LibAndroidAlbumStates.dc.html",
-  "LibMacAlbumReleases.dc.html",
-  "LibMacAlbumMenu.dc.html",
-  "SearchAndroidTyping.dc.html",
-  "SearchAndroidResults.dc.html",
-  "SearchAndroidNone.dc.html",
-  "SearchAndroidFailed.dc.html",
-  "SearchMacResults.dc.html",
-  "SearchMacNone.dc.html",
-  "PlayAndroidWaiting.dc.html",
-  "PlayAndroidCasting.dc.html",
-  "PlayAndroidNothing.dc.html",
-  "PlayMacWaiting.dc.html",
-  "PlayMacCasting.dc.html",
-  "PlayMacNothing.dc.html",
-  "PlayAndroidQueue.dc.html",
-  "PlayAndroidFullPlayer.dc.html",
-  "PlayAndroidCastPicker.dc.html",
-  "PlayAndroidSidePause.dc.html",
-  "PlayMacQueue.dc.html",
-  "PlayMacQueueEmpty.dc.html",
-  "PlayMacQueueDrop.dc.html",
-  "PlayMacCastPicker.dc.html",
-  "PlayMacSidePause.dc.html",
-  "PlayMacSidePauseOff.dc.html",
-  "LibAndroidComposers.dc.html",
-  "LibAndroidComposer.dc.html",
-  "LibAndroidWork.dc.html",
-  "LibAndroidComposersEmpty.dc.html",
-  "LibAndroidComposerFailed.dc.html",
-  "LibMacComposerNone.dc.html",
-  "LibMacComposer.dc.html",
-  "LibMacWork.dc.html",
-  "LibMacComposersEmpty.dc.html",
-  "StoreMacWindow.dc.html",
-  "StoreMacInspector.dc.html",
-  "StoreMacFile.dc.html",
-  "StoreMacPinning.dc.html",
-  "StoreMacMenu.dc.html",
-  "StoreMacMoveToCloud.dc.html",
-  "StoreMacNoMatch.dc.html",
-  "StoreMacLoading.dc.html",
-  "StoreMacCloud.dc.html",
-  "StoreMacNoLibrary.dc.html",
-  "StoreMacStates.dc.html",
-  "StoreMacDownloadFailed.dc.html",
-  "StoreMacMoveFailedMenu.dc.html",
-  "StoreMacUnpinSeveral.dc.html",
-  "SyncMacMoving.dc.html",
-  "SyncMacAttention.dc.html",
-  "SyncMacFailed.dc.html",
-  "SyncMacIdle.dc.html",
-  "SyncMacPaused.dc.html",
-  "SyncAndroidMoving.dc.html",
-  "SyncAndroidAttention.dc.html",
-  "SyncAndroidFailed.dc.html",
-  "SyncAndroidPaused.dc.html",
-  "DownloadsAndroid.dc.html",
-  "DownloadsAndroidFailed.dc.html",
-  "DownloadsAndroidEmpty.dc.html",
-  "SetMacImport.dc.html",
-  "SetMacImportChecking.dc.html",
-  "SetMacImportRejected.dc.html",
-  "SetMacImportConnected.dc.html",
-  "SetMacImportUnvalidated.dc.html",
-  "SetMacImportTips.dc.html",
-  "SetMacImportTurnOff.dc.html",
-  "SetMacFormats.dc.html",
-  "SetMacFormatMenu.dc.html",
-  "SetMacFormatEditor.dc.html",
-  "SetMacFormatBitrate.dc.html",
-  "SetMacFormatBitDepth.dc.html",
-  "SetMacFormatEach.dc.html",
-  "SetMacFormatNameTaken.dc.html",
-  "SetMacFormatNameInvalid.dc.html",
-  "SetMacFormatPicker.dc.html",
-  "SetMacFormatDelete.dc.html",
-  "SetMacFormatLast.dc.html",
-  "SetMacSubsonic.dc.html",
-  "SetMacSubsonicOn.dc.html",
-  "SetMacSubsonicRefused.dc.html",
-  "SetMacSubsonicFailed.dc.html",
-  "SetMacSubsonicNetworks.dc.html",
-  "SetMacSubsonicEvery.dc.html",
-  "SetMacSubsonicNoNetwork.dc.html",
-  "SetMacSubsonicPortInUse.dc.html",
-  "SetMacSubsonicActivity.dc.html",
-  "SetMacAutomation.dc.html",
-  "SetMacAutomationOn.dc.html",
-  "SetMacAutomationFailed.dc.html",
-  "AlbAndroidMenu.dc.html",
-  "AlbAndroidDelete.dc.html",
-  "AlbAndroidUnpin.dc.html",
-  "AlbAndroidDeleteFailed.dc.html",
-  "AlbAndroidGallery.dc.html",
-  "AlbAndroidGalleryLoading.dc.html",
-  "AlbMacEditor.dc.html",
-  "AlbMacStorage.dc.html",
-  "AlbMacStorageUploading.dc.html",
-  "AlbMacStorageElsewhere.dc.html",
-  "AlbMacDeleteAlbum.dc.html",
-  "AlbMacDeleteRelease.dc.html",
-  "AlbMacCovers.dc.html",
-  "AlbMacCoversUnlinked.dc.html",
-  "AlbMacLightbox.dc.html",
-  "AlbMacLightboxFailed.dc.html",
-  "AlbMacSaveAs.dc.html",
-  "AlbMacSaveAsFormats.dc.html",
-  "AlbMacSaveAsEdit.dc.html",
-  "AlbMacSaveAsEditAdd.dc.html",
-  "AlbMacSaveAsEditAdded.dc.html",
-  "AlbMacSaveAsEditBack.dc.html",
-  "AlbMacStorageStates.dc.html",
-  "AlbMacUnpin.dc.html",
-  "ErrAndroidSnackRetry.dc.html",
-  "ErrAndroidSnackPlay.dc.html",
-  "ErrAndroidSnackBug.dc.html",
-  "ErrAndroidBanner.dc.html",
-  "ErrAndroidBar.dc.html",
-  "ErrAndroidQueue.dc.html",
-  "ErrAndroidLaunch.dc.html",
-  "ErrAndroidProblemOpen.dc.html",
-  "ErrMacAlert.dc.html",
-  "ErrMacAlertNotError.dc.html",
-  "ErrMacAlertTitled.dc.html",
-  "ErrMacNotices.dc.html",
-  "ErrMacProblemOpen.dc.html",
-  "ErrMacLoadFailure.dc.html",
-  "ErrMacQueueTail.dc.html",
-  "ImpMacEmpty.dc.html",
-  "ImpMacFound.dc.html",
-  "ImpMacDraft.dc.html",
-  "ImpMacBlank.dc.html",
-  "ImpMacListFailed.dc.html",
-  "ImpMacFindAuto.dc.html",
-  "ImpMacFindDiscogs.dc.html",
-  "ImpMacFindSearch.dc.html",
-  "ImpMacBanners.dc.html",
-  "ImpMacCue.dc.html",
-  "ImpMacBulk.dc.html",
-  "ImpMacBulkRunning.dc.html",
-  "ImpMacImporting.dc.html",
-  "ImpMacDone.dc.html",
-  "ImpMacSkipped.dc.html",
-  "ExpMacRating.dc.html",
-  "ExpMacRateMenu.dc.html",
-  "ExpAndroidRating.dc.html",
-  "ExpMacPlaylists.dc.html",
-  "ExpMacAddToPlaylist.dc.html",
-  "ExpMacNewPlaylist.dc.html",
-  "ExpAndroidPlaylists.dc.html",
-  "ExpAndroidPlaylist.dc.html",
-  "ExpMacHistory.dc.html",
-  "ExpAndroidHistory.dc.html",
-  "ExpMacPlayTracks.dc.html",
-  "ExpMacTheseTracks.dc.html",
-  "ExpMacLoudness.dc.html",
-  "ExpAndroidLoudness.dc.html",
-  "ExpMacProfile.dc.html",
-  "ExpAndroidProfile.dc.html",
-  "ExpMacCredits.dc.html",
-  "ExpAndroidCredits.dc.html",
-  "ExpAndroidLinksFiles.dc.html",
-  "ExpAndroidPrimary.dc.html",
-  "ExpAndroidArtistNames.dc.html",
-  "ExpAndroidMultiSelect.dc.html",
-  "ExpAndroidStorage.dc.html",
-  "Welcome.dc.html",
-  "WelcomeMenu.dc.html",
-  "WelcomeInfo.dc.html",
-  "WelcomeInfoUnsent.dc.html",
-  "WelcomeRemove.dc.html",
-  "WelcomeRemoveUnsent.dc.html",
-  "WelcomeRemoving.dc.html",
-  "WelcomeRemoveFailed.dc.html",
-  "WelcomeAdd.dc.html",
-  "MacWelcome.dc.html",
-  "MacWelcomeMenu.dc.html",
-  "MacWelcomeInfo.dc.html",
-  "MacWelcomeInfoUnsent.dc.html",
-  "MacWelcomeRemove.dc.html",
-  "MacWelcomeRemoveUnsent.dc.html",
-  "MacWelcomeDelete.dc.html",
-  "MacWelcomeRemoving.dc.html",
-  "MacWelcomeRemoveFailed.dc.html",
-  "MacWelcomeAdd.dc.html",
-  "JoinName.dc.html",
-  "JoinWaiting.dc.html",
-  "MacJoinName.dc.html",
-  "MacJoinWaiting.dc.html",
-  "JoinEnded.dc.html",
-  "MacJoinEnded.dc.html",
-  "AddWaiting.dc.html",
-  "AddEnded.dc.html",
-  "MacAddWaiting.dc.html",
-  "MacAddEnded.dc.html",
-  "OpenAndroidFinding.dc.html",
-  "OpenAndroidSteps.dc.html",
-  "OpenAndroidFailed.dc.html",
-  "OpenAndroidStartFailed.dc.html",
-  "OpenMacFinding.dc.html",
-  "OpenMacSteps.dc.html",
-  "OpenMacKeychain.dc.html",
-  "CodeAndroidEnter.dc.html",
-  "CodeAndroidScan.dc.html",
-  "CodeAndroidS3.dc.html",
-  "CodeAndroidRunning.dc.html",
-  "CodeMacEmpty.dc.html",
-  "CodeMacTyping.dc.html",
-  "CodeMacS3.dc.html",
-  "CodeMacScan.dc.html",
-  "CodeMacRunning.dc.html",
-  "ResetAndroidOffered.dc.html",
-  "ResetAndroidDialog.dc.html",
-  "ResetAndroidWorking.dc.html",
-  "ResetAndroidUnfinished.dc.html",
-  "ResetMacOffered.dc.html",
-  "ResetMacDialog.dc.html",
-  "ResetMacWorking.dc.html",
-  "ResetMacFailed.dc.html",
-  "ResetMacUnfinished.dc.html",
-  "WelcomeEmpty.dc.html",
-  "MacWelcomeEmpty.dc.html",
-  "LogoForms.dc.html",
-  "IconMac.dc.html",
-  "IconIOS.dc.html",
-  "IconAndroid.dc.html",
-  "IconWindows.dc.html",
-  "IconLinux.dc.html",
-  "IconWeb.dc.html",
-  "AccentsNeutral.dc.html",
-  "AccentsSlate.dc.html",
-  "AccentsPlum.dc.html",
-  "AccentsMidnight.dc.html",
-  "AccentsForest.dc.html",
-  "AccentsSand.dc.html",
-  "SetAndroidStorage.dc.html",
-  "SetAndroidStorageReset.dc.html",
-  "SetAndroidStorageResetDelete.dc.html",
-  "SetMacStorage.dc.html",
-  "SetMacStorageReset.dc.html",
-  "SetMacStorageResetDelete.dc.html",
-  "MacCreateName.dc.html"
+  "android.settings.list.dc.html",
+  "android.settings.list.library-offline.dc.html",
+  "android.settings.list.sync-problem.dc.html",
+  "mac.settings.window.library-offline.dc.html",
+  "mac.settings.window.sync-problem.dc.html",
+  "android.settings.appearance.dc.html",
+  "android.settings.playback.dc.html",
+  "android.settings.casting.off.dc.html",
+  "android.settings.about.dc.html",
+  "mac.settings.appearance.dc.html",
+  "mac.settings.playback.dc.html",
+  "mac.settings.casting.off.dc.html",
+  "mac.settings.about.dc.html",
+  "mac.settings.transfers.dc.html",
+  "android.settings.transfers.dc.html",
+  "mac.settings.transfers.uploads-paused.dc.html",
+  "mac.storage.proposal-today.dc.html",
+  "mac.storage.proposal.dc.html",
+  "mac.storage.proposal.file-selected.dc.html",
+  "mac.storage.proposal.pinning.dc.html",
+  "mac.storage.proposal-window-today.dc.html",
+  "mac.storage.proposal-window.dc.html",
+  "mac.storage.proposal-window.filtered.dc.html",
+  "mac.storage.proposal-window.both-ways.dc.html",
+  "android.settings.library.dc.html",
+  "mac.settings.library.not-synced.dc.html",
+  "mac.settings.library.dc.html",
+  "android.settings.sync.s3.dc.html",
+  "android.settings.people.dc.html",
+  "android.settings.people.member.dc.html",
+  "android.settings.devices.dc.html",
+  "android.settings.person.dc.html",
+  "android.settings.person.admin.dc.html",
+  "mac.settings.sync.s3.dc.html",
+  "mac.settings.people.dc.html",
+  "android.settings.restore-code.hidden.dc.html",
+  "android.settings.restore-code.shown.dc.html",
+  "mac.settings.restore-code.hidden.dc.html",
+  "mac.settings.restore-code.shown.dc.html",
+  "android.settings.library.rename.dc.html",
+  "android.settings.library.member.dc.html",
+  "android.settings.library.sync-problem.dc.html",
+  "mac.settings.library.rename.dc.html",
+  "mac.settings.library.member.dc.html",
+  "mac.settings.library.sync-problem.dc.html",
+  "android.settings.library.renamed.dc.html",
+  "mac.settings.library.renamed.dc.html",
+  "mac.settings.sync-setup.choose-cloud.dc.html",
+  "android.parts.folder-picker.dc.html",
+  "android.parts.s3-form.dc.html",
+  "mac.settings.sync-setup.dropbox-choose-home.dc.html",
+  "mac.settings.sync-setup.dropbox-signing-in.dc.html",
+  "mac.settings.sync-setup.dropbox-reading-folders.dc.html",
+  "mac.settings.sync-setup.dropbox-choose-folder.dc.html",
+  "mac.settings.sync-setup.dropbox-checking-folder.dc.html",
+  "mac.settings.sync-setup.dropbox-folder-not-empty.dc.html",
+  "mac.settings.sync-setup.dropbox-naming-folder.dc.html",
+  "mac.settings.sync-setup.dropbox-making-folder.dc.html",
+  "mac.settings.sync-setup.dropbox-folder-made.dc.html",
+  "mac.settings.sync-setup.dropbox-step-1.dc.html",
+  "mac.settings.sync-setup.dropbox-step-2.dc.html",
+  "mac.settings.sync-setup.dropbox-step-3.dc.html",
+  "mac.settings.sync-setup.dropbox-restore-code.dc.html",
+  "mac.settings.sync-setup.dropbox-done.dc.html",
+  "mac.settings.sync-setup.dropbox-no-folders.dc.html",
+  "mac.settings.sync-setup.onedrive-choose-home.dc.html",
+  "mac.settings.sync-setup.onedrive-signing-in.dc.html",
+  "mac.settings.sync-setup.onedrive-reading-folders.dc.html",
+  "mac.settings.sync-setup.onedrive-choose-folder.dc.html",
+  "mac.settings.sync-setup.onedrive-checking-folder.dc.html",
+  "mac.settings.sync-setup.onedrive-folder-not-empty.dc.html",
+  "mac.settings.sync-setup.onedrive-naming-folder.dc.html",
+  "mac.settings.sync-setup.onedrive-making-folder.dc.html",
+  "mac.settings.sync-setup.onedrive-folder-made.dc.html",
+  "mac.settings.sync-setup.onedrive-step-1.dc.html",
+  "mac.settings.sync-setup.onedrive-step-2.dc.html",
+  "mac.settings.sync-setup.onedrive-step-3.dc.html",
+  "mac.settings.sync-setup.onedrive-restore-code.dc.html",
+  "mac.settings.sync-setup.onedrive-done.dc.html",
+  "mac.settings.sync-setup.onedrive-no-folders.dc.html",
+  "mac.settings.sync-setup.icloud-choose-home.dc.html",
+  "mac.settings.sync-setup.icloud.dc.html",
+  "mac.settings.sync-setup.icloud-step-1.dc.html",
+  "mac.settings.sync-setup.icloud-step-2.dc.html",
+  "mac.settings.sync-setup.icloud-step-3.dc.html",
+  "android.parts.restore-code.dc.html",
+  "mac.settings.sync-setup.icloud-restore-code.dc.html",
+  "mac.settings.sync-setup.icloud-done.dc.html",
+  "mac.settings.sync-setup.s3-choose-home.dc.html",
+  "mac.settings.sync-setup.s3.dc.html",
+  "mac.settings.sync-setup.s3-step-1.dc.html",
+  "mac.settings.sync-setup.s3-step-2.dc.html",
+  "mac.settings.sync-setup.s3-step-3.dc.html",
+  "mac.settings.sync-setup.s3-step-4.dc.html",
+  "mac.settings.sync-setup.s3-restore-code.dc.html",
+  "mac.settings.sync-setup.s3-done.dc.html",
+  "mac.settings.sync-setup.s3-key-not-accepted.dc.html",
+  "mac.settings.sync-setup.s3-access-denied.dc.html",
+  "mac.settings.sync-setup.s3-region-mismatch.dc.html",
+  "mac.settings.sync-setup.s3-bucket-not-found.dc.html",
+  "mac.settings.sync-setup.s3-bucket-not-empty.dc.html",
+  "android.settings.sync.every-state.dc.html",
+  "mac.settings.sync.every-state.dc.html",
+  "android.settings.invite.dropbox.dc.html",
+  "android.settings.invite.code.dc.html",
+  "android.settings.people.invite-listed.dc.html",
+  "mac.settings.invite.dropbox.dc.html",
+  "mac.settings.invite.code.dc.html",
+  "mac.settings.people.invite-listed.dc.html",
+  "android.settings.add-device.dc.html",
+  "android.settings.add-device.added.dc.html",
+  "mac.settings.add-device.dc.html",
+  "mac.settings.add-device.added.dc.html",
+  "android.settings.person.make-admin-waiting.dc.html",
+  "android.settings.person.make-admin-done.dc.html",
+  "mac.settings.people.make-admin-waiting.dc.html",
+  "mac.settings.people.make-admin-done.dc.html",
+  "android.settings.your-name.editing.dc.html",
+  "android.settings.your-name.saved.dc.html",
+  "mac.settings.your-name.editing.dc.html",
+  "mac.settings.your-name.saved.dc.html",
+  "android.settings.your-name.blank.dc.html",
+  "android.settings.your-name.save-failed.dc.html",
+  "mac.settings.your-name.blank.dc.html",
+  "mac.settings.your-name.save-failed.dc.html",
+  "mac.settings.people.member.dc.html",
+  "mac.settings.devices.dc.html",
+  "mac.settings.person.dc.html",
+  "mac.settings.person.admin.dc.html",
+  "android.settings.listening-history.choosing.dc.html",
+  "android.settings.listening-history.changed.dc.html",
+  "mac.settings.listening-history.choosing.dc.html",
+  "mac.settings.listening-history.changed.dc.html",
+  "android.settings.sync.dropbox.dc.html",
+  "mac.settings.sync.dropbox.dc.html",
+  "android.settings.sync.onedrive.dc.html",
+  "mac.settings.sync.onedrive.dc.html",
+  "mac.settings.sync.icloud.dc.html",
+  "android.settings.sync.signed-out-dropbox.dc.html",
+  "android.settings.sync.signed-out-s3.dc.html",
+  "mac.settings.sync.signed-out-dropbox.dc.html",
+  "mac.settings.sync.signed-out-icloud.dc.html",
+  "mac.settings.sync.signed-out-s3.dc.html",
+  "android.library.more-menu.libraries.dc.html",
+  "android.library.libraries.dc.html",
+  "android.parts.sync-status.dc.html",
+  "mac.parts.sync-status.dc.html",
+  "android.settings.invite.onedrive.dc.html",
+  "android.settings.invite.s3.dc.html",
+  "mac.settings.invite.onedrive.dc.html",
+  "mac.settings.invite.icloud.dc.html",
+  "mac.settings.invite.s3.dc.html",
+  "android.parts.invite-fields.dc.html",
+  "mac.parts.invite-fields.dc.html",
+  "android.parts.welcome-buttons.dc.html",
+  "mac.parts.welcome-buttons.dc.html",
+  "android.parts.welcome-libraries.dc.html",
+  "mac.parts.welcome-libraries.dc.html",
+  "android.settings.invite.request.dc.html",
+  "mac.settings.invite.request.dc.html",
+  "android.settings.invite.no-code-yet.dc.html",
+  "android.settings.people.invite-waiting.dc.html",
+  "mac.settings.invite.no-code-yet.dc.html",
+  "mac.settings.people.invite-waiting.dc.html",
+  "android.settings.people.invite-failed.dc.html",
+  "mac.settings.people.invite-failed.dc.html",
+  "android.settings.invite.sharing.dc.html",
+  "mac.settings.invite.sharing.dc.html",
+  "android.settings.invite.flow.dc.html",
+  "android.settings.invite.joining.dc.html",
+  "mac.settings.invite.joining.dc.html",
+  "android.settings.invite.cancel.dc.html",
+  "mac.settings.invite.cancel.dc.html",
+  "android.settings.invite.s3-own-key.dc.html",
+  "mac.settings.invite.s3-own-key.dc.html",
+  "android.settings.add-device.request.dc.html",
+  "mac.settings.add-device.request.dc.html",
+  "android.settings.restore-code.printed.dc.html",
+  "android.settings.devices.cut-off.dc.html",
+  "android.settings.devices.cut-off-other.dc.html",
+  "android.settings.devices.cut-off-running.dc.html",
+  "android.settings.devices.cut-off-not-here.dc.html",
+  "mac.settings.devices.cut-off.dc.html",
+  "mac.settings.devices.cut-off-other.dc.html",
+  "mac.settings.devices.cut-off-running.dc.html",
+  "mac.settings.devices.cut-off-not-here.dc.html",
+  "android.settings.casting.found.dc.html",
+  "mac.settings.casting.found.dc.html",
+  "android.settings.casting.looking.dc.html",
+  "mac.settings.casting.looking.dc.html",
+  "mac.settings.casting.receiver-details.dc.html",
+  "mac.settings.casting.receiver-menu.dc.html",
+  "android.settings.casting.receiver-details.dc.html",
+  "android.settings.casting.receiver-menu.dc.html",
+  "android.library.albums.dc.html",
+  "android.album.page.dc.html",
+  "android.library.artist.dc.html",
+  "mac.library.albums.dc.html",
+  "mac.library.albums.album-open.dc.html",
+  "mac.library.artists.dc.html",
+  "android.library.albums.scrolled.dc.html",
+  "android.library.view-menu.dc.html",
+  "android.library.more-menu.dc.html",
+  "android.library.albums.grouped.dc.html",
+  "android.library.albums.grouped-scrolled.dc.html",
+  "android.search.open.dc.html",
+  "mac.library.albums.scrolled.dc.html",
+  "mac.library.view-menu.dc.html",
+  "mac.library.albums.grouped.dc.html",
+  "mac.library.albums.sorted-two-fields.dc.html",
+  "android.library.albums.empty.dc.html",
+  "android.library.albums.failed.dc.html",
+  "android.library.albums.no-covers.dc.html",
+  "mac.library.albums.empty.dc.html",
+  "mac.library.artists.none.dc.html",
+  "mac.library.albums.failed.dc.html",
+  "mac.library.albums.no-covers.dc.html",
+  "android.album.page.two-releases-pinning.dc.html",
+  "android.album.page.pin-queued.dc.html",
+  "android.album.page.pin-failed.dc.html",
+  "android.album.page.on-another-device.dc.html",
+  "android.album.page.every-storage-state.dc.html",
+  "mac.library.albums.album-two-releases.dc.html",
+  "mac.library.album-menu.dc.html",
+  "android.search.typing.dc.html",
+  "android.search.results.dc.html",
+  "android.search.results.none.dc.html",
+  "android.search.results.failed.dc.html",
+  "mac.search.results.dc.html",
+  "mac.search.results.none.dc.html",
+  "android.playback.bar.waiting-on-cloud.dc.html",
+  "android.playback.casting.dc.html",
+  "android.playback.bar.nothing-played.dc.html",
+  "mac.playback.bar.waiting-on-cloud.dc.html",
+  "mac.playback.casting.dc.html",
+  "mac.playback.bar.nothing-played.dc.html",
+  "android.playback.queue.dc.html",
+  "android.playback.full-player.dc.html",
+  "android.playback.cast-picker.dc.html",
+  "android.playback.bar.side-ended.dc.html",
+  "mac.playback.queue.dc.html",
+  "mac.playback.queue.nothing-up-next.dc.html",
+  "mac.playback.queue.dropping.dc.html",
+  "mac.playback.cast-picker.dc.html",
+  "mac.playback.bar.side-ended.dc.html",
+  "mac.playback.bar.side-ended-no-pause.dc.html",
+  "android.library.composers.dc.html",
+  "android.library.composer.dc.html",
+  "android.library.work.dc.html",
+  "android.library.composers.empty.dc.html",
+  "android.library.composer.failed.dc.html",
+  "mac.library.composers.dc.html",
+  "mac.library.composers.composer-open.dc.html",
+  "mac.library.work.dc.html",
+  "mac.library.composers.none.dc.html",
+  "mac.storage.window.dc.html",
+  "mac.storage.window.uploading-inspector.dc.html",
+  "mac.storage.window.file-selected.dc.html",
+  "mac.storage.window.pinning.dc.html",
+  "mac.storage.release-menu.dc.html",
+  "mac.storage.move-to-cloud.dc.html",
+  "mac.storage.window.filter-no-match.dc.html",
+  "mac.storage.window.loading.dc.html",
+  "mac.storage.window.cloud-only.dc.html",
+  "mac.storage.window.no-library.dc.html",
+  "mac.storage.window.every-row-state.dc.html",
+  "mac.storage.window.pin-failed.dc.html",
+  "mac.storage.release-menu.move-failed.dc.html",
+  "mac.storage.unpin-several.dc.html",
+  "mac.activity.panel.moving.dc.html",
+  "mac.activity.panel.needs-attention.dc.html",
+  "mac.activity.panel.status-failed.dc.html",
+  "mac.activity.panel.up-to-date.dc.html",
+  "mac.activity.panel.paused.dc.html",
+  "android.activity.sheet.moving.dc.html",
+  "android.activity.sheet.needs-attention.dc.html",
+  "android.activity.sheet.status-failed.dc.html",
+  "android.activity.sheet.paused.dc.html",
+  "android.storage.pinning.dc.html",
+  "android.storage.pinning.failed.dc.html",
+  "android.storage.pinning.none.dc.html",
+  "mac.settings.import.dc.html",
+  "mac.settings.import.checking-key.dc.html",
+  "mac.settings.import.key-rejected.dc.html",
+  "mac.settings.import.discogs-connected.dc.html",
+  "mac.settings.import.key-unvalidated.dc.html",
+  "mac.settings.import.info-popovers.dc.html",
+  "mac.settings.import.turn-off-discogs.dc.html",
+  "mac.settings.save-as.dc.html",
+  "mac.settings.save-as.format-menu.dc.html",
+  "mac.settings.save-as.format-editor.dc.html",
+  "mac.settings.save-as.bitrate-menu.dc.html",
+  "mac.settings.save-as.bit-depth-menu.dc.html",
+  "mac.settings.save-as.every-format-editor.dc.html",
+  "mac.settings.save-as.format-name-taken.dc.html",
+  "mac.settings.save-as.name-invalid.dc.html",
+  "mac.settings.save-as.format-picker.dc.html",
+  "mac.settings.save-as.delete-format.dc.html",
+  "mac.settings.save-as.last-format.dc.html",
+  "mac.settings.subsonic.off.dc.html",
+  "mac.settings.subsonic.running.dc.html",
+  "mac.settings.subsonic.no-sign-in.dc.html",
+  "mac.settings.subsonic.start-failed.dc.html",
+  "mac.settings.subsonic.network-menu.dc.html",
+  "mac.settings.subsonic.every-network.dc.html",
+  "mac.settings.subsonic.network-gone.dc.html",
+  "mac.settings.subsonic.port-taken.dc.html",
+  "mac.activity.panel.subsonic-not-running.dc.html",
+  "mac.settings.automation.off.dc.html",
+  "mac.settings.automation.running.dc.html",
+  "mac.settings.automation.start-failed.dc.html",
+  "android.album.menu.dc.html",
+  "android.album.delete.dc.html",
+  "android.album.unpin.dc.html",
+  "android.album.delete.failed.dc.html",
+  "android.album.gallery.dc.html",
+  "android.album.gallery.loading.dc.html",
+  "mac.album.edit.dc.html",
+  "mac.album.storage.dc.html",
+  "mac.album.storage.uploading.dc.html",
+  "mac.album.storage.on-another-mac.dc.html",
+  "mac.album.delete-album.dc.html",
+  "mac.album.delete-release.dc.html",
+  "mac.album.change-cover.dc.html",
+  "mac.album.change-cover.no-linked-release.dc.html",
+  "mac.album.lightbox.dc.html",
+  "mac.album.lightbox.failed.dc.html",
+  "mac.album.save-as.dc.html",
+  "mac.album.save-as.format-menu.dc.html",
+  "mac.album.save-as.edit-formats.dc.html",
+  "mac.album.save-as.edit-formats-adding.dc.html",
+  "mac.album.save-as.edit-formats-added.dc.html",
+  "mac.album.save-as.new-format-chosen.dc.html",
+  "mac.album.storage.every-state.dc.html",
+  "mac.album.storage.unpin.dc.html",
+  "android.errors.snackbar.retry.dc.html",
+  "android.errors.snackbar.play-failed.dc.html",
+  "android.errors.snackbar.bug.dc.html",
+  "android.library.albums.later-page-failed.dc.html",
+  "android.playback.bar.values-failed.dc.html",
+  "android.playback.queue.failed.dc.html",
+  "android.activity.sheet.launch-problem.dc.html",
+  "android.activity.sheet.problem-open.dc.html",
+  "mac.errors.alert.dc.html",
+  "mac.errors.alert.play-outcome.dc.html",
+  "mac.errors.alert.own-titles.dc.html",
+  "mac.activity.panel.problems.dc.html",
+  "mac.activity.panel.problem-open.dc.html",
+  "mac.library.view-failed.dc.html",
+  "mac.playback.queue.tail-failed.dc.html",
+  "mac.import.list.empty.dc.html",
+  "mac.import.folder.found.dc.html",
+  "mac.import.folder.identified.dc.html",
+  "mac.import.folder.nothing-read.dc.html",
+  "mac.import.list.failed.dc.html",
+  "mac.import.identify.automatic.dc.html",
+  "mac.import.identify.no-discogs-key.dc.html",
+  "mac.import.identify.search.dc.html",
+  "mac.import.folder.already-in-library.dc.html",
+  "mac.import.folder.cue-sheets.dc.html",
+  "mac.import.several.dc.html",
+  "mac.import.several.identifying.dc.html",
+  "mac.import.folder.importing.dc.html",
+  "mac.import.folder.imported.dc.html",
+  "mac.import.folder.skipped.dc.html",
+  "mac.album.rating.dc.html",
+  "mac.album.track-menu-rate.dc.html",
+  "android.album.rating.dc.html",
+  "mac.playlists.list.dc.html",
+  "mac.playlists.add-to-playlist.dc.html",
+  "mac.playlists.new-playlist.dc.html",
+  "android.playlists.list.dc.html",
+  "android.playlists.playlist.dc.html",
+  "mac.history.plays.dc.html",
+  "android.history.plays.dc.html",
+  "mac.album.play-picked-tracks.dc.html",
+  "mac.playback.queue.these-tracks.dc.html",
+  "mac.settings.playback.loudness.dc.html",
+  "android.settings.playback.loudness.dc.html",
+  "mac.settings.your-picture.dc.html",
+  "android.settings.your-picture.dc.html",
+  "mac.album.credits.dc.html",
+  "android.album.credits.dc.html",
+  "android.album.links-and-files.dc.html",
+  "android.album.set-primary-release.dc.html",
+  "android.library.artist.other-names.dc.html",
+  "android.library.albums.several-picked.dc.html",
+  "android.storage.releases.dc.html",
+  "android.welcome.libraries.dc.html",
+  "android.welcome.library-menu.dc.html",
+  "android.welcome.library-details.dc.html",
+  "android.welcome.library-details.unsent-changes.dc.html",
+  "android.welcome.remove.dc.html",
+  "android.welcome.remove.unsent-changes.dc.html",
+  "android.welcome.remove.removing.dc.html",
+  "android.welcome.remove.failed.dc.html",
+  "android.welcome.add-library.dc.html",
+  "mac.welcome.libraries.dc.html",
+  "mac.welcome.library-menu.dc.html",
+  "mac.welcome.library-details.dc.html",
+  "mac.welcome.library-details.unsent-changes.dc.html",
+  "mac.welcome.remove.dc.html",
+  "mac.welcome.remove.unsent-changes.dc.html",
+  "mac.welcome.delete-never-synced.dc.html",
+  "mac.welcome.remove.removing.dc.html",
+  "mac.welcome.remove.failed.dc.html",
+  "mac.welcome.add-library.dc.html",
+  "android.welcome.join.name.dc.html",
+  "android.welcome.join.waiting.dc.html",
+  "mac.welcome.join.name.dc.html",
+  "mac.welcome.join.waiting.dc.html",
+  "android.welcome.join.ended.dc.html",
+  "mac.welcome.join.ended.dc.html",
+  "android.welcome.add-this-device.waiting.dc.html",
+  "android.welcome.add-this-device.ended.dc.html",
+  "mac.welcome.add-this-device.waiting.dc.html",
+  "mac.welcome.add-this-device.ended.dc.html",
+  "android.welcome.opening.finding-libraries.dc.html",
+  "android.welcome.opening.steps.dc.html",
+  "android.welcome.opening.failed.dc.html",
+  "android.welcome.opening.start-failed.dc.html",
+  "mac.welcome.opening.finding-libraries.dc.html",
+  "mac.welcome.opening.steps.dc.html",
+  "mac.welcome.opening.library-locked.dc.html",
+  "android.welcome.add-code.entering.dc.html",
+  "android.welcome.add-code.scanning.dc.html",
+  "android.welcome.add-code.s3-key-needed.dc.html",
+  "android.welcome.add-code.adding.dc.html",
+  "mac.welcome.add-code.entering.dc.html",
+  "mac.welcome.add-code.half-typed.dc.html",
+  "mac.welcome.add-code.s3-key-needed.dc.html",
+  "mac.welcome.add-code.scanning.dc.html",
+  "mac.welcome.add-code.adding.dc.html",
+  "android.welcome.reset.offered.dc.html",
+  "android.welcome.reset.confirm.dc.html",
+  "android.welcome.opening.resetting.dc.html",
+  "android.welcome.reset.unfinished.dc.html",
+  "mac.welcome.reset.offered.dc.html",
+  "mac.welcome.reset.confirm.dc.html",
+  "mac.welcome.opening.resetting.dc.html",
+  "mac.welcome.reset.failed.dc.html",
+  "mac.welcome.reset.unfinished.dc.html",
+  "android.welcome.libraries.none.dc.html",
+  "mac.welcome.libraries.none.dc.html",
+  "brand.logo.forms.dc.html",
+  "mac.icon.app.dc.html",
+  "ios.icon.app.dc.html",
+  "android.icon.app.dc.html",
+  "windows.icon.app.dc.html",
+  "linux.icon.app.dc.html",
+  "web.icon.favicon.dc.html",
+  "brand.accents.neutral.dc.html",
+  "brand.accents.slate.dc.html",
+  "brand.accents.plum.dc.html",
+  "brand.accents.midnight.dc.html",
+  "brand.accents.forest.dc.html",
+  "brand.accents.sand.dc.html",
+  "android.settings.storage.dc.html",
+  "android.settings.storage.from-before-reset.dc.html",
+  "android.settings.storage.delete-from-before-reset.dc.html",
+  "mac.settings.storage.dc.html",
+  "mac.settings.storage.from-before-reset.dc.html",
+  "mac.settings.storage.delete-from-before-reset.dc.html",
+  "mac.welcome.create.name.dc.html"
  ],
  "pages": [
   {

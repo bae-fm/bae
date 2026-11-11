@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>macOS: the code read, S3 key needed</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bae/tokens.css">
+<link rel="stylesheet" href="ds/bae/components/bundle.css">
+<script src="ds/bae/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:var(--background)}
+
+</style>
+</helmet>
+<x-import component-from-global-scope="Bae.MacWindow">
+  <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 0 36px"><x-import component-from-global-scope="Bae.Logo" size="120" bob="{{yes}}" glow="{{yes}}"></x-import><div style="margin-top: 12px; font-size: 15px; color: var(--text-secondary)">Your music, everywhere</div><div style="margin-top: 40px; width: 240px"><dc-import name="mac.parts.welcome-buttons" hint-size="100%,66px"></dc-import></div></div>
+  <x-import component-from-global-scope="Bae.MacSheet" title="S3 key" overlay="{{yes}}" width="440" message="Enter your credentials for the S3 bucket.">
+    <x-import component-from-global-scope="Bae.MacTextField" label="Access key ID" label-width="120" value="AKIA4EXAMPLE"></x-import>
+    <x-import component-from-global-scope="Bae.MacTextField" label="Secret access key" label-width="120" secret="{{yes}}" state="focused"></x-import>
+    <x-import component-from-global-scope="Bae.MacSheetFooter"><x-import component-from-global-scope="Bae.MacButton">Back</x-import><x-import component-from-global-scope="Bae.MacButton" kind="primary">Add</x-import></x-import>
+  </x-import>
+</x-import>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":690,"height":600}}'>
+class Component extends DCLogic {
+  renderVals() { return { yes: true }; }
+}
+</script>
+</body>
+</html>
