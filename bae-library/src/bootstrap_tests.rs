@@ -14,6 +14,8 @@ async fn creating_a_library_establishes_its_identity_without_marking_it_active()
     let handle = create_library(
         bae_store::test_devices::test_builder(&installation),
         bae_store::EnteredName::parse("Created Library").unwrap(),
+        bae_store::EnteredName::parse("Creator").unwrap(),
+        bae_store::TestSources::system().clock().clone(),
         &bae_diagnostics::Diagnostics::noop(),
     )
     .await
@@ -62,6 +64,8 @@ async fn a_library_s_connections_keep_bae_s_page_cache_size() {
     let handle = create_library(
         bae_store::test_devices::test_builder(&installation),
         bae_store::EnteredName::parse("Cached Library").unwrap(),
+        bae_store::EnteredName::parse("Creator").unwrap(),
+        bae_store::TestSources::system().clock().clone(),
         &bae_diagnostics::Diagnostics::noop(),
     )
     .await
@@ -77,6 +81,58 @@ async fn a_library_s_connections_keep_bae_s_page_cache_size() {
     handle.close().await.unwrap();
 }
 
+/// The creator is no member until storage is set up, so the library keeps
+/// the name they typed, trimmed, and asks for their profile under it once
+/// they are one.
+#[tokio::test]
+async fn a_created_library_keeps_its_creator_s_name_for_their_profile() {
+    let temp = tempfile::TempDir::new().unwrap();
+    let app_dir = AppDir::at(temp.path()).unwrap();
+    let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
+    let sources = bae_store::TestSources::system();
+    let handle = create_library(
+        sources.builder(&installation),
+        bae_store::EnteredName::parse("Created Library").unwrap(),
+        bae_store::EnteredName::parse("  Robin ").unwrap(),
+        sources.clock().clone(),
+        &bae_diagnostics::Diagnostics::noop(),
+    )
+    .await
+    .unwrap();
+    let store = bae_store::test_devices::store_under(handle.clone(), sources.clock().clone());
+    let kept = store
+        .read(|sql| {
+            Ok(sql.query_row("SELECT name FROM creator_name", [], |row| row.get::<_, String>(0))?)
+        })
+        .await
+        .unwrap();
+    assert_eq!(kept, "Robin");
+    handle.close().await.unwrap();
+}
+
+/// A creator's name that can't be kept leaves no library behind.
+#[tokio::test]
+async fn a_creator_s_name_that_cant_be_kept_leaves_no_library() {
+    let temp = tempfile::TempDir::new().unwrap();
+    let app_dir = AppDir::at(temp.path()).unwrap();
+    let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
+    let sources = bae_store::TestSources::system();
+    let error = create_keeping(
+        sources.builder(&installation),
+        bae_store::EnteredName::parse("Failed Library").unwrap(),
+        sources.clock().clone(),
+        &bae_diagnostics::Diagnostics::noop(),
+        |_| async {
+            Err(bae_store::DbError::from(coven::CovenError::Database(coven::DbError::StoreClosed)))
+        },
+    )
+    .await
+    .err()
+    .unwrap();
+    assert!(matches!(error, CreateLibraryError::CreatorName(_)), "{error:?}");
+    assert!(installation.stores().await.unwrap().is_empty());
+}
+
 #[tokio::test]
 async fn failed_creation_removes_the_partial_library() {
     let temp = tempfile::TempDir::new().unwrap();
@@ -86,6 +142,8 @@ async fn failed_creation_removes_the_partial_library() {
     let error = create_library(
         bae_store::test_devices::test_builder(&installation),
         bae_store::EnteredName::parse("Failed Library").unwrap(),
+        bae_store::EnteredName::parse("Creator").unwrap(),
+        bae_store::TestSources::system().clock().clone(),
         &bae_diagnostics::Diagnostics::noop(),
     )
     .await
@@ -104,6 +162,8 @@ async fn resetting_an_unconnected_store_replaces_the_device_and_keeps_its_name()
     let handle = create_library(
         bae_store::test_devices::test_builder(&installation),
         bae_store::EnteredName::parse("Local Library").unwrap(),
+        bae_store::EnteredName::parse("Creator").unwrap(),
+        bae_store::TestSources::system().clock().clone(),
         &bae_diagnostics::Diagnostics::noop(),
     )
     .await

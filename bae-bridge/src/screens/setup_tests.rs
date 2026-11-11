@@ -44,7 +44,9 @@ fn creating_a_library_reports_its_step() {
     let host = crate::handle::tests::test_host(root.path());
     let setup = BridgeLibrarySetup::new(host.clone());
     let caller = tokio::runtime::Runtime::new().unwrap();
-    caller.block_on(host.create_library(Some("Created".into()), setup.clone())).unwrap();
+    caller
+        .block_on(host.create_library(Some("Created".into()), "Creator".into(), setup.clone()))
+        .unwrap();
     assert_eq!(
         setup.written(),
         vec![
@@ -58,6 +60,23 @@ fn creating_a_library_reports_its_step() {
             None,
         ]
     );
+}
+
+/// A blank creator's name fails the call before anything is made: no library
+/// is listed and no step ran.
+#[test]
+fn a_blank_creator_name_creates_nothing() {
+    let root = tempfile::tempdir().unwrap();
+    let host = crate::handle::tests::test_host(root.path());
+    let setup = BridgeLibrarySetup::new(host.clone());
+    let caller = tokio::runtime::Runtime::new().unwrap();
+    let error = caller
+        .block_on(host.clone().create_library(None, "  ".into(), setup.clone()))
+        .err()
+        .expect("a blank name is refused");
+    assert!(matches!(error, crate::BridgeError::Diagnostic { .. }), "{error:?}");
+    assert!(caller.block_on(host.list_libraries()).unwrap().is_empty());
+    assert!(setup.written().is_empty());
 }
 
 /// Where a restore stands reaches its subscription as each state changes,

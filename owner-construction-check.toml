@@ -687,7 +687,7 @@ OpenCalls = "LibrarySessions"
     "start_manual_playback",
     "start_manual_playback_with_clock",
 ]
-"bae-library/src/test_libraries/storage.rs" = ["storage_library"]
+"bae-library/src/test_libraries/storage.rs" = ["storage_library", "storage_library_of"]
 # The writer thread of an output stream: the stream's handle stops it and
 # joins it when dropped.
 "bae-playback/src/aaudio_output.rs" = ["AAudioOutput::create_stream", "AAudioOutput::new"]
@@ -1034,6 +1034,7 @@ OpenCalls = "LibrarySessions"
 ]
 "bae-library/src/bootstrap.rs" = [
     "JoinControl::new",
+    "create_library",
     "join_with_invite",
     "resume_join",
 ]
@@ -1264,6 +1265,7 @@ tables = [
     "history",
     "local_history",
     "profile_request",
+    "creator_name",
 ]
 
 [[database.domains]]

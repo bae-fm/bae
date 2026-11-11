@@ -14,6 +14,17 @@ pub async fn storage_library(
     providers: Providers,
     http: bae_util::http::Http,
 ) -> (super::TestLibrary, Arc<MemoryStorage>) {
+    storage_library_of(directory, providers, http, None).await
+}
+
+/// [`storage_library`] of a creator who typed `creator`, whose name it keeps
+/// as `create_library` does.
+pub async fn storage_library_of(
+    directory: &std::path::Path,
+    providers: Providers,
+    http: bae_util::http::Http,
+    creator: Option<&str>,
+) -> (super::TestLibrary, Arc<MemoryStorage>) {
     let app_dir = bae_app_dir::AppDir::under_home(directory).unwrap();
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let sources = super::TestSources::system();
@@ -24,6 +35,15 @@ pub async fn storage_library(
         .create_store("Test Library")
         .await
         .unwrap();
+    if let Some(creator) = creator {
+        bae_people::People::new(bae_store::test_devices::store_under(
+            handle.clone(),
+            sources.clock().clone(),
+        ))
+        .keep_creator_name(&bae_store::EnteredName::parse(creator).unwrap())
+        .await
+        .unwrap();
+    }
     let library =
         super::test_library_from_handle(handle, directory, providers, http, &sources).await;
     library.manager().start().unwrap();

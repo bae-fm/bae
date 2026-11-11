@@ -73,6 +73,8 @@ fn local_startup_returns_while_storage_is_pending_and_reports_its_failure() {
         let handle = bae_library::create_library(
             bae_store::test_devices::test_builder(&installation).storage_connector(storage.clone()),
             bae_store::EnteredName::parse("Test Library").unwrap(),
+            bae_store::EnteredName::parse("Creator").unwrap(),
+            bae_store::TestSources::system().clock().clone(),
             &bae_diagnostics::Diagnostics::noop(),
         )
         .await

@@ -29,6 +29,8 @@ impl Home {
             let handle = bae_library::create_library(
                 self.library_builder(),
                 bae_store::EnteredName::parse(name).unwrap(),
+                bae_store::EnteredName::parse("Creator").unwrap(),
+                bae_store::TestSources::system().clock().clone(),
                 &bae_diagnostics::Diagnostics::noop(),
             )
             .await
@@ -187,6 +189,8 @@ fn bootstrap_of_locked_library_leaves_active_pointer() {
         let handle = bae_library::create_library(
             home.library_builder().storage_connector(storage.clone()),
             bae_store::EnteredName::parse("Locked Library").unwrap(),
+            bae_store::EnteredName::parse("Creator").unwrap(),
+            bae_store::TestSources::system().clock().clone(),
             &bae_diagnostics::Diagnostics::noop(),
         )
         .await

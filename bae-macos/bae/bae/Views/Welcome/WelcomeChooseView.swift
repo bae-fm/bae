@@ -1,8 +1,5 @@
 import BaeKit
 import SwiftUI
-import os.log
-
-private let logger = Logger.bae("WelcomeChooseView")
 
 /// The first screen: open a library on this device, restore one from a code
 /// saved in iCloud Keychain, create one, or scan or enter a code that joins
@@ -20,6 +17,8 @@ struct WelcomeChooseView: View {
     /// Finish the reset or restore of a library's copy on this Mac that
     /// stopped partway, with the one call that finishes it.
     let onFinishReplacement: (String, BridgeReplacedBy) -> Void
+    /// Go to the step that asks the creator's name and creates a library.
+    let onCreate: () -> Void
     let onRestoreSaved: (BridgeSavedRestoreCode) -> Void
     let onScanCode: () -> Void
     let onEnterCode: () -> Void
@@ -29,15 +28,6 @@ struct WelcomeChooseView: View {
     @Environment(LibraryRemovals.self)
     private var removals
 
-    @State
-    private var isCreating = false
-    /// The running create's steps, which show under the buttons.
-    @State
-    private var createSteps: LibrarySetupSteps?
-    @State
-    private var createTask: Task<Void, Never>?
-    @State
-    private var error: DisplayError?
     /// Libraries on this Mac and the restore codes saved for others, read on
     /// appear.
     @State
@@ -59,7 +49,7 @@ struct WelcomeChooseView: View {
     }
 
     private var isBusy: Bool {
-        isCreating || removals.removing != nil || removals.isRetrying
+        removals.removing != nil || removals.isRetrying
     }
 
     var body: some View {
@@ -76,7 +66,6 @@ struct WelcomeChooseView: View {
             .scrollBounceBehavior(.basedOnSize)
         }
         .task { await listings.load(from: setup) }
-        .onDisappear { createTask?.cancel() }
     }
 
     /// Read what removing `library` would lose, ask, and remove it. A failure
@@ -187,7 +176,7 @@ struct WelcomeChooseView: View {
                         Task { await askToRemove(library) }
                     },
                     readStanding: setup.libraryStanding,
-                    onCreate: doCreate,
+                    onCreate: onCreate,
                     onScanCode: onScanCode,
                     onEnterCode: onEnterCode
                 )
@@ -223,13 +212,6 @@ struct WelcomeChooseView: View {
             if showsFirstRunActions {
                 firstRunActions
             }
-            if let createSteps {
-                StepProgressLine(steps: createSteps.steps) { EmptyView() }
-                    .frame(maxWidth: StepProgressLayout.width)
-            }
-            if let error {
-                Notice(error: error)
-            }
             Spacer()
         }
         .padding()
@@ -237,7 +219,7 @@ struct WelcomeChooseView: View {
 
     /// The Create button's label.
     private var createButtonLabel: some View {
-        Text("Create new library")
+        Text("Create new library…")
             .frame(maxWidth: .infinity)
     }
 
@@ -248,7 +230,7 @@ struct WelcomeChooseView: View {
     /// code side by side.
     private var firstRunActions: some View {
         VStack(spacing: ThemeSpace.related + ThemeSpace.line) {
-            Button(action: doCreate) { createButtonLabel }
+            Button(action: onCreate) { createButtonLabel }
                 .buttonStyle(PrimaryButtonStyle())
                 .disabled(isBusy)
                 .keyboardShortcut(.defaultAction)
@@ -265,35 +247,6 @@ struct WelcomeChooseView: View {
         }
         .controlSize(.large)
         .frame(width: Self.firstRunButtonWidth)
-    }
-}
-
-// MARK: - Actions
-
-extension WelcomeChooseView {
-    private func doCreate() {
-        createTask?.cancel()
-        isCreating = true
-        error = nil
-        let create = setup.createLibrary
-        let steps = setup.setupSteps()
-        createSteps = steps
-        createTask = Task {
-            defer {
-                isCreating = false
-                createSteps = nil
-            }
-            do {
-                let library = try await create(steps.setup)
-                onLibraryReady(library, nil)
-            }
-            catch {
-                logger.error(
-                    "Library creation failed: \(String(reflecting: error))"
-                )
-                self.error = DisplayError(error)
-            }
-        }
     }
 }
 
@@ -340,6 +293,7 @@ private struct UnfinishedRemovalNotice: View {
                 onLibraryReady: { _, _ in },
                 onOpenLibrary: { _ in },
                 onFinishReplacement: { _, _ in },
+                onCreate: {},
                 onRestoreSaved: { _ in },
                 onScanCode: {},
                 onEnterCode: {}
@@ -357,6 +311,7 @@ private struct UnfinishedRemovalNotice: View {
                 onLibraryReady: { _, _ in },
                 onOpenLibrary: { _ in },
                 onFinishReplacement: { _, _ in },
+                onCreate: {},
                 onRestoreSaved: { _ in },
                 onScanCode: {},
                 onEnterCode: {}
@@ -377,6 +332,7 @@ private struct UnfinishedRemovalNotice: View {
                 onLibraryReady: { _, _ in },
                 onOpenLibrary: { _ in },
                 onFinishReplacement: { _, _ in },
+                onCreate: {},
                 onRestoreSaved: { _ in },
                 onScanCode: {},
                 onEnterCode: {}
@@ -402,6 +358,7 @@ private struct UnfinishedRemovalNotice: View {
                     onLibraryReady: { _, _ in },
                     onOpenLibrary: { _ in },
                     onFinishReplacement: { _, _ in },
+                    onCreate: {},
                     onRestoreSaved: { _ in },
                     onScanCode: {},
                     onEnterCode: {}

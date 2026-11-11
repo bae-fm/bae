@@ -2572,8 +2572,17 @@ history setting.
   `MemberId` is the same: that invite carries no name, and coven keeps
   none.
 - **The person who made the library** becomes a member when it gets a cloud
-  home. Until then there is no member to credit. Settings then asks for their
-  name and creates their profile.
+  home. Until then there is no member to credit. **Create new library…** on a
+  Mac asks their name first, and the new library keeps it on this device only
+  (`creator_name`, never synced), the way coven keeps a joiner's. That is a
+  recorded intent, not a profile: nothing reads it as one. Every open of the
+  library reads it: once the library knows the person (storage is set up), one
+  write asks for the profile as above and deletes the kept name, so the two
+  commit or roll back together; a person who made their profile, or asked for
+  one, in Settings meanwhile gets only the deletion. A write that fails leaves
+  the name kept, and the next open asks again. If the name can't be kept, the
+  new library is deleted again and creating fails, so a library either keeps
+  its creator's name or doesn't exist.
 - **Making a profile makes the person's circle**, the one only they are in
   (§5.3), and moves any plays waiting in `local_history` into it. Rows go into
   a circle only once its entry has applied
@@ -2752,7 +2761,7 @@ library that is open shows its live sync status; any other is read as it last
 stood, without opening it, and one that is closing once its close has ended.
 A library stops counting as open as its close begins, even while the app
 still holds it. A Mac's first screen
-shows the sheep and the name over "Your music, everywhere", and offers the same two under **Create new library**, and its File menu offers
+shows the sheep and the name over "Your music, everywhere", and offers the same two under **Create new library…**, which asks for the person's name on a step of its own, **Start a new library** (**Your name**, **Cancel** and **Create**, off while the name is blank), before it creates anything, and its File menu offers
 them as **Scan Code…** and **Enter Code…**; the code decides the same way.
 Once it lists libraries, the three are the items of **Add library…** under the
 list. On a Mac, **Enter Code…** opens a sheet over the first screen, titled
@@ -4383,7 +4392,7 @@ library is registered there by id.
 
 | Call | What it does |
 |---|---|
-| `create_library` | creates a new library's store and gives this device its identity; given no name, the bridge generates one |
+| `create_library` | creates a new library's store and gives this device its identity, and keeps the creator's name for their profile (§5.4); given no library name, the bridge generates one; a blank creator's name fails before anything is made, and a name that can't be kept removes the new library again |
 | `restore_from_code`, `restore_from_saved_code` | opens a library on a new device from a restore code, typed or scanned, or saved in iCloud Keychain or the phone's Block Store (§5.6) |
 | `saved_restore_codes` | lists the restore codes coven saved in iCloud Keychain, or in this device's Block Store on Android, for libraries not already on this device, each with its library's saved name, its location and the provider sign-in restoring it needs; an entry coven can't restore from is listed with its library id and why, for deleting only; a device with no Block Store lists none |
 | `forget_saved_restore_code` | deletes a saved restore code, readable or not, and the S3 key beside it from iCloud Keychain on all the person's Apple devices, or from this device's Block Store; no library, storage or device's copy changes, and an absent code succeeds (§5.6) |

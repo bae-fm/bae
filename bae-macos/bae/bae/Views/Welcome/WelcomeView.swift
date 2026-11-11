@@ -28,6 +28,8 @@ struct WelcomeView: View {
 
     enum Mode {
         case choose
+        /// The step that asks the creator's name, then creates a library.
+        case create
         /// Restore from a code coven saved in iCloud Keychain.
         case restoreSaved(BridgeSavedRestoreCode)
         /// The Enter code sheet for a code the person types or pastes, or the
@@ -80,6 +82,11 @@ struct WelcomeView: View {
         case .choose:
             chooser
                 .task { await resumeUnfinished() }
+        case .create:
+            CreateNameView(
+                form: setup.createForm { onLibraryReady($0, nil) },
+                onCancel: { mode = .choose }
+            )
         case .restoreSaved(let saved):
             BootstrapCodeView(
                 form: codeForm(.restoreSaved(saved)),
@@ -107,6 +114,7 @@ struct WelcomeView: View {
                 onLibraryReady: onLibraryReady,
                 onOpenLibrary: onOpenLibrary,
                 onFinishReplacement: onFinishReplacement,
+                onCreate: { mode = .create },
                 onRestoreSaved: { mode = .restoreSaved($0) },
                 onScanCode: { mode = .code(scanning: true) },
                 onEnterCode: { mode = .code(scanning: false) }
@@ -168,6 +176,13 @@ struct WelcomeView: View {
     #Preview("Choose") {
         PreviewScenes.welcome(
             initialMode: .choose,
+            setup: PreviewData.welcomeSetup()
+        )
+    }
+
+    #Preview("Create: your name") {
+        PreviewScenes.welcome(
+            initialMode: .create,
             setup: PreviewData.welcomeSetup()
         )
     }

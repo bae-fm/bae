@@ -13,10 +13,12 @@ public final class LibrarySetup: Sendable, Observable {
     public let libraryStanding:
         @Sendable (_ libraryId: String) async throws ->
             BridgeLibraryStanding
-    /// Create a library named by core's default generator, returning its open
-    /// store, its step written into the setup's stream.
+    /// Create a library named by core's default generator, and the profile of
+    /// its creator, named by the first argument; returns its open store, its
+    /// step written into the setup's stream.
     public let createLibrary:
-        @Sendable (BridgeLibrarySetup) async throws -> OpenedLibrary
+        @Sendable (_ creatorName: String, BridgeLibrarySetup) async throws ->
+            OpenedLibrary
     /// Restore codes coven saved in iCloud Keychain, including ones bae
     /// can't read. Throws when the keychain refuses the lookup — locked, or
     /// the display asleep — which a screen listing them must not read as "no
@@ -46,8 +48,8 @@ public final class LibrarySetup: Sendable, Observable {
             @escaping @Sendable (_ libraryId: String) async throws ->
             BridgeLibraryStanding,
         createLibrary:
-            @escaping @Sendable (BridgeLibrarySetup) async throws ->
-            OpenedLibrary,
+            @escaping @Sendable (_ creatorName: String, BridgeLibrarySetup)
+            async throws -> OpenedLibrary,
         savedRestoreCodes:
             @escaping @Sendable () async throws -> [BridgeSavedRestoreEntry],
         forgetSavedRestoreCode:
@@ -83,7 +85,11 @@ public final class LibrarySetup: Sendable, Observable {
                 try await host.libraryStanding(libraryId: $0)
             },
             createLibrary: {
-                try await host.createLibrary(name: nil, setup: $0)
+                try await host.createLibrary(
+                    name: nil,
+                    creatorName: $0,
+                    setup: $1
+                )
             },
             savedRestoreCodes: { try await host.savedRestoreCodes() },
             forgetSavedRestoreCode: {
@@ -95,6 +101,19 @@ public final class LibrarySetup: Sendable, Observable {
                 LibraryBootstrap(host: host, deviceName: deviceName)
             },
             makeSetupSteps: { LibrarySetupSteps(host: host) }
+        )
+    }
+
+    /// The state of the step that asks the creator's name and creates the
+    /// library, handing it to `onLibraryReady` once made.
+    @MainActor
+    public func createForm(
+        onLibraryReady: @escaping @MainActor (OpenedLibrary) -> Void
+    ) -> CreateLibraryForm {
+        CreateLibraryForm(
+            createLibrary: createLibrary,
+            makeSteps: makeSetupSteps,
+            onLibraryReady: onLibraryReady
         )
     }
 
@@ -125,7 +144,7 @@ public final class LibrarySetup: Sendable, Observable {
             LibrarySetup(
                 listLibraries: { libraries },
                 libraryStanding: { _ in throw StubError.notImplemented },
-                createLibrary: { _ in throw StubError.notImplemented },
+                createLibrary: { _, _ in throw StubError.notImplemented },
                 savedRestoreCodes: { savedCodes },
                 forgetSavedRestoreCode: { _ in
                     throw StubError.notImplemented

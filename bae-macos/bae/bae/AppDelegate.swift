@@ -36,6 +36,7 @@ private func discoverInitialLibraries(
             // launch opens it by id.
             let created = try await host.createLibrary(
                 name: nil,
+                creatorName: "UI Test",
                 setup: BridgeLibrarySetup(host: host)
             )
             let app = try created.open(

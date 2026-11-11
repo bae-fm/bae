@@ -60,7 +60,7 @@ struct SavedRestoreCodesTests {
         return LibrarySetup(
             listLibraries: { throw SavedCodesTestError.notUsed },
             libraryStanding: { _ in throw SavedCodesTestError.notUsed },
-            createLibrary: { _ in throw SavedCodesTestError.notUsed },
+            createLibrary: { _, _ in throw SavedCodesTestError.notUsed },
             savedRestoreCodes: { await keychain.list() },
             forgetSavedRestoreCode: { try await keychain.forget($0) },
             unfinishedJoins: { [] },

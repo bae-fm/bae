@@ -62,7 +62,7 @@ struct LocalLibrariesSection: View {
             .card()
             MacSheetFooter {
                 Menu {
-                    Button("Create new library", action: onCreate)
+                    Button("Create new library…", action: onCreate)
                     Button("Scan code…", action: onScanCode)
                     Button("Enter code…", action: onEnterCode)
                 } label: {

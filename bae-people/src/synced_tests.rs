@@ -60,6 +60,9 @@ const DEVICE_LOCAL_TABLES: &[&str] = &[
     // The profile this device's person asked for, while their private
     // circle is being made.
     "profile_request",
+    // The name the library's creator typed, kept until they are a member and
+    // a write asks for their profile under it.
+    "creator_name",
     // What each admin change this device asked for changes, while coven
     // lists its operation.
     "admin_operations",

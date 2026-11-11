@@ -7,6 +7,7 @@ use crate::{BridgeError, BridgeS3Profile, BridgeSaveSyncConfig};
 #[derive(uniffi::Record)]
 pub struct BridgeDevResetProfile {
     pub library_name: String,
+    pub creator_name: String,
     pub sync_config: BridgeSaveSyncConfig,
     pub discogs_token: String,
     pub identify_automatically: bool,
@@ -18,6 +19,7 @@ pub struct BridgeDevResetProfile {
 pub fn read_dev_reset_profile(path: String) -> Result<BridgeDevResetProfile, BridgeError> {
     let bae_library::dev_reset::DevResetProfile {
         library_name,
+        creator_name,
         s3,
         discogs_token,
         identify_automatically,
@@ -26,6 +28,7 @@ pub fn read_dev_reset_profile(path: String) -> Result<BridgeDevResetProfile, Bri
         .map_err(profile_error)?;
     Ok(BridgeDevResetProfile {
         library_name: library_name.into_string(),
+        creator_name: creator_name.into_string(),
         sync_config: BridgeSaveSyncConfig {
             bucket: s3.bucket,
             region: s3.region,

@@ -69,6 +69,16 @@ CREATE TABLE local_history (
     played_ms INTEGER NOT NULL CHECK (played_ms > 0)
 ) STRICT;
 
+-- The name the library's creator typed when they made it, kept until they are
+-- a member (storage set up) and one write asks for their profile under it and
+-- deletes the row, as coven keeps a joiner's name until a write acknowledges
+-- it. It is an intent, not a profile: nothing reads it as one. At most one,
+-- and only on the device that made the library. Never synced.
+CREATE TABLE creator_name (
+    singleton INTEGER PRIMARY KEY NOT NULL CHECK (singleton = 1),
+    name TEXT NOT NULL CHECK (length(trim(name)) > 0)
+) STRICT;
+
 -- The profile this device's person asked for while their private circle is
 -- being made: the operation coven journaled for the circle (as
 -- `coven_operations` lists it), the circle it makes, and the name they gave.

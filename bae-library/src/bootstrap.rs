@@ -39,12 +39,22 @@ impl RestoreFromCodeError {
 pub enum CreateLibraryError {
     #[error(transparent)]
     Store(#[from] coven::StoreCreationError),
+    /// The creator's name couldn't be kept, so the library was not kept.
+    #[error("keeping the creator's name: {0}")]
+    CreatorName(#[source] bae_store::DbError),
+    /// The library made, and the creator's name not kept, couldn't be taken
+    /// back: the store stays on this device.
+    #[error("keeping the creator's name: {name}; and the new library was not removed: {removal}")]
+    NotRemoved { name: bae_store::DbError, removal: coven::StoreDeletionError },
 }
 
 impl CreateLibraryError {
     pub fn category(&self) -> bae_diagnostics::UiErrorCategory {
         match self {
             Self::Store(error) => bae_diagnostics::creation_category(error),
+            Self::CreatorName(error) | Self::NotRemoved { name: error, .. } => {
+                bae_diagnostics::database_category(error)
+            }
         }
     }
 }
@@ -67,16 +77,50 @@ fn loading_builder(builder: coven::CovenBuilder) -> coven::CovenBuilder {
     )
 }
 
-/// Create a store and retain its open handle, including its identity custody.
+/// Create a store named `name`, and keep the name of its creator, `creator`,
+/// for their profile: the creator is no member until storage is set up, so
+/// the library asks for their profile when it has one (§5.4). Retains the
+/// store's open handle, including its identity custody. If the name can't be
+/// kept, the new library is deleted again and the call fails: a library
+/// either keeps its creator's name or doesn't exist.
 pub async fn create_library(
     builder: coven::CovenBuilder,
     name: bae_store::EnteredName,
+    creator: bae_store::EnteredName,
+    clock: coven::ClockRef,
     diagnostics: &bae_diagnostics::Diagnostics,
 ) -> Result<coven::CovenHandle, CreateLibraryError> {
-    configure_store(builder, crate::SCHEMA)
+    create_keeping(builder, name, clock, diagnostics, |store| async move {
+        bae_people::People::new(store).keep_creator_name(&creator).await
+    })
+    .await
+}
+
+/// [`create_library`] with the write that keeps the creator's name given, so
+/// a test can make it fail.
+async fn create_keeping<Keep, Kept>(
+    builder: coven::CovenBuilder,
+    name: bae_store::EnteredName,
+    clock: coven::ClockRef,
+    diagnostics: &bae_diagnostics::Diagnostics,
+    keep: Keep,
+) -> Result<coven::CovenHandle, CreateLibraryError>
+where
+    Keep: FnOnce(bae_store::Store) -> Kept,
+    Kept: std::future::Future<Output = Result<(), bae_store::DbError>>,
+{
+    let handle = configure_store(builder, crate::SCHEMA)
         .create_store(name.as_str())
         .await
-        .map_err(|error| CreateLibraryError::Store(coven::task::reported(diagnostics, error)))
+        .map_err(|error| CreateLibraryError::Store(coven::task::reported(diagnostics, error)))?;
+    let store = bae_store::Store::new(handle.clone(), clock, diagnostics.bug_sink());
+    match keep(store.clone()).await {
+        Ok(()) => Ok(handle),
+        Err(name) => match store.delete_store().await {
+            Ok(()) => Err(CreateLibraryError::CreatorName(name)),
+            Err(removal) => Err(CreateLibraryError::NotRemoved { name, removal }),
+        },
+    }
 }
 
 /// Restore with a separately entered S3 key and coven's own OAuth presentation.

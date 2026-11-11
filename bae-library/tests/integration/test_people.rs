@@ -47,6 +47,33 @@ async fn profile_requires_membership_and_is_idempotent_after_setup() {
     library.manager().close().await.unwrap();
 }
 
+/// The creator's name waits with the library until storage makes them a
+/// member, and then becomes their profile in one write that also deletes it.
+#[tokio::test]
+async fn a_creator_s_kept_name_becomes_their_profile_once_storage_is_set_up() {
+    let directory = tempfile::tempdir().unwrap();
+    let (library, storage) = bae_library::test_libraries::storage_library_of(
+        directory.path(),
+        bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
+        bae_util::http::Http::for_test(),
+        Some("Robin"),
+    )
+    .await;
+    assert!(library.people().profiles().await.unwrap().is_empty());
+    connect_storage(library.manager(), library.store(), &storage).await;
+    let profile = requested_profile(library.manager(), library.people()).await;
+    assert_eq!(profile.name, "Robin");
+    let kept = library
+        .store()
+        .read(|sql| {
+            Ok(sql.query_row("SELECT count(*) FROM creator_name", [], |row| row.get::<_, i64>(0))?)
+        })
+        .await
+        .unwrap();
+    assert_eq!(kept, 0);
+    library.manager().close().await.unwrap();
+}
+
 /// Run a test body on the worker stack the app gives native invite and
 /// bootstrap futures.
 pub(super) fn on_app_runtime(body: impl std::future::Future<Output = ()> + Send + 'static) {
@@ -123,13 +150,12 @@ impl Household {
             Some(sign_in) => sign_in.configure(builder),
             None => builder,
         };
-        let owner = bae_library::create_library(
-            builder,
-            bae_store::EnteredName::parse("Household").unwrap(),
-            &NO_DIAGNOSTICS,
-        )
-        .await
-        .unwrap();
+        // Made without the creator's profile `create_library` asks for, so
+        // these tests start from a member with none.
+        let owner = bae_store::configure_store(builder, bae_library::SCHEMA)
+            .create_store("Household")
+            .await
+            .unwrap();
         match storage.config().oauth_access() {
             Some(access) => {
                 owner.authenticate(access).await.unwrap();

@@ -156,6 +156,63 @@ impl People {
         made.into_result()
     }
 
+    /// Keep the name the library's creator typed, in a write of its own on a
+    /// library that has no member yet, until [`Self::ask_for_creator_profile`]
+    /// asks for their profile under it (§5.4).
+    pub async fn keep_creator_name(&self, name: &bae_store::EnteredName) -> Result<(), DbError> {
+        let name = name.as_str().to_owned();
+        self.inner
+            .store
+            .call(move |sql| {
+                sql.execute(
+                    "INSERT INTO creator_name (singleton, name) VALUES (1, ?1)",
+                    params![name],
+                )?;
+                Ok(())
+            })
+            .await
+    }
+
+    /// Ask for the profile of the person who made the library, under the
+    /// name they typed, which this device keeps (`creator_name`) until a
+    /// write acknowledges it, as coven keeps a joiner's. Once the library
+    /// knows the person (storage is set up), one write asks for the profile
+    /// as [`Self::create_profile`] does and deletes the kept name; a person
+    /// who already has a profile, or a request for one, gets only the
+    /// deletion. With no name kept there is nothing to ask for. A failed
+    /// write leaves the name kept, and the library's next open asks again.
+    pub async fn ask_for_creator_profile(&self) -> Result<(), ProfileError> {
+        if self.inner.store.read(|sql| Ok(creator_name_on(&sql)?)).await?.is_none() {
+            return Ok(());
+        }
+        let member = self.known_member().await?;
+        let _creation = self.inner.profile_creation.lock().await;
+        let _registration = self.inner.history_registration.lock().await;
+        let made = self
+            .inner
+            .store
+            .call(move |sql| {
+                let Some(name) = creator_name_on(sql)? else {
+                    return Ok(ProfileWrite::Written);
+                };
+                let profile =
+                    sql.query_row(&profile_sql(), [member.to_string()], profile_row).optional()?;
+                let made = match (profile, profile_request_on(sql)?) {
+                    (None, None) => ask_for_profile(sql, member, name)?,
+                    // The person made their profile, or asked for one, in
+                    // Settings since.
+                    _ => ProfileWrite::Written,
+                };
+                if let ProfileWrite::Written = made {
+                    sql.execute("DELETE FROM creator_name", [])?;
+                }
+                Ok(made)
+            })
+            .await
+            .map_err(profile_write_error)?;
+        made.into_result()
+    }
+
     /// The member using this device, once the library knows them: at once
     /// when their registration has applied, or when sync applies it.
     async fn known_member(&self) -> Result<coven::MemberId, DbError> {
@@ -379,6 +436,11 @@ fn ask_for_profile(
         _ => return Ok(ProfileWrite::InvalidPrivateCircle),
     }
     Ok(ProfileWrite::Written)
+}
+
+/// The name the library's creator typed, while it waits for their profile.
+pub(super) fn creator_name_on(sql: &impl coven::SqlRead) -> rusqlite::Result<Option<String>> {
+    sql.query("SELECT name FROM creator_name", [], |row| row.get(0)).map(|mut found| found.pop())
 }
 
 /// A new profile, private until the person shares their history.

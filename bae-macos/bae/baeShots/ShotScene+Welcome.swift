@@ -168,6 +168,14 @@ extension ShotScene {
                 }
             )
         },
+        ShotScene(id: "mac.welcome.create-name", size: WelcomeWindow.size) {
+            ShotStage(
+                PreviewScenes.welcome(
+                    initialMode: .create,
+                    setup: PreviewData.welcomeSetup()
+                )
+            )
+        },
         ShotScene(
             id: "mac.welcome.add-code.entering",
             size: CGSize(width: 400, height: 190)
@@ -335,7 +343,7 @@ private final class CountedReads {
                 return libraries
             },
             libraryStanding: { _ in throw UnservedReadError() },
-            createLibrary: { _ in throw UnservedReadError() },
+            createLibrary: { _, _ in throw UnservedReadError() },
             savedRestoreCodes: { [self] in
                 await answer()
                 return []

@@ -3,6 +3,7 @@ use std::os::unix::fs::PermissionsExt;
 
 const PROFILE: &str = r#"
 library_name = "dev"
+creator_name = "Dev Creator"
 identify_automatically = false
 import_when_identified = true
 
@@ -30,6 +31,7 @@ fn a_private_profile_reads_into_the_library_it_describes() {
     let profile = DevResetProfile::read(&write(&dir, PROFILE, 0o600)).unwrap();
 
     assert_eq!(profile.library_name.as_str(), "dev");
+    assert_eq!(profile.creator_name.as_str(), "Dev Creator");
     assert!(!profile.identify_automatically);
     assert!(profile.import_when_identified);
     assert_eq!(profile.discogs_token, "discogs-token");

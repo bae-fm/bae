@@ -1,5 +1,5 @@
 //! The profile a debug build's dev reset recreates its library from: the
-//! library's name, the S3 storage it connects to, the Discogs token, and the
+//! library's name, its creator's name, the S3 storage it connects to, the Discogs token, and the
 //! two metadata preferences. The file holds credentials, so it is read only
 //! when no one but its owner can read or write it, and no error repeats its
 //! contents.
@@ -11,6 +11,8 @@ use std::path::{Path, PathBuf};
 /// A dev library's profile, read from its TOML file.
 pub struct DevResetProfile {
     pub library_name: bae_store::EnteredName,
+    /// The name of the person the library's first profile is made for.
+    pub creator_name: bae_store::EnteredName,
     /// The storage setup the library connects to, with the profile coven
     /// picks from the endpoint, as the storage setup form's default does.
     pub s3: S3ConfigData,
@@ -51,6 +53,7 @@ pub enum DevResetProfileError {
 #[serde(deny_unknown_fields)]
 struct ProfileFile {
     library_name: String,
+    creator_name: String,
     identify_automatically: bool,
     import_when_identified: bool,
     s3: S3Section,
@@ -107,8 +110,13 @@ impl DevResetProfile {
             bae_store::EnteredName::parse(&file.library_name).map_err(|bae_store::BlankName| {
                 DevResetProfileError::Empty { path: path.to_path_buf(), field: "library_name" }
             })?;
+        let creator_name =
+            bae_store::EnteredName::parse(&file.creator_name).map_err(|bae_store::BlankName| {
+                DevResetProfileError::Empty { path: path.to_path_buf(), field: "creator_name" }
+            })?;
         Ok(Self {
             library_name,
+            creator_name,
             s3: S3ConfigData {
                 bucket: required("s3.bucket", file.s3.bucket)?,
                 region: required("s3.region", file.s3.region)?,

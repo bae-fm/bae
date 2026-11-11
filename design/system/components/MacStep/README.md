@@ -6,4 +6,4 @@ The welcome window has no title bar text, so the headline is the only place that
 
 A headline wraps balanced, so it never leaves one word alone on its last line, in any language (the code should set `NSParagraphStyle.lineBreakStrategy` `.pushOut` on the headline). A line under it wraps the same way.
 
-**In the code:** macOS: none yet; the code needs one.
+**In the code:** macOS: `MacStep` (`Views/Components/MacStep.swift`), headline and line as AppKit text views with `lineBreakStrategy = .pushOut`.

@@ -88,6 +88,7 @@ impl LibraryManager {
         manager.start_queue_workers().expect("a manager being opened has not closed");
         manager.start_profile_requests().expect("a manager being opened has not closed");
         manager.start_joined_profile().expect("a manager being opened has not closed");
+        manager.start_creator_profile().expect("a manager being opened has not closed");
         Ok(manager)
     }
 
@@ -105,6 +106,24 @@ impl LibraryManager {
                     manager
                         .diagnostics
                         .report_failure("ask for the joined person's profile", &error);
+                }
+            },
+            |_| {},
+        )
+    }
+
+    /// Ask for the profile of the person who made the library, under the
+    /// name they typed, once the library knows them (§5.4): every open of a
+    /// library that still keeps that name does, until a write has asked. A
+    /// failed read or write is reported; the name stays kept, and the next
+    /// open asks again.
+    fn start_creator_profile(&self) -> Result<(), LibraryError> {
+        let manager = self.clone();
+        self.spawn_supervised_task(
+            "creator profile worker",
+            async move {
+                if let Err(error) = manager.people.ask_for_creator_profile().await {
+                    manager.diagnostics.report_failure("ask for the creator's profile", &error);
                 }
             },
             |_| {},

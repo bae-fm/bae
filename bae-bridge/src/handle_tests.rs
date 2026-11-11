@@ -221,10 +221,11 @@ pub(crate) fn create_opened_library(
     name: &str,
 ) -> Arc<crate::OpenedLibrary> {
     caller
-        .block_on(
-            host.clone()
-                .create_library(Some(name.into()), crate::BridgeLibrarySetup::new(host.clone())),
-        )
+        .block_on(host.clone().create_library(
+            Some(name.into()),
+            "Creator".into(),
+            crate::BridgeLibrarySetup::new(host.clone()),
+        ))
         .unwrap()
 }
 

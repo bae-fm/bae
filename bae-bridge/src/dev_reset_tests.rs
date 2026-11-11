@@ -7,6 +7,7 @@ fn profile(dir: &tempfile::TempDir) -> String {
         &path,
         r#"
 library_name = "dev"
+creator_name = "Dev Creator"
 identify_automatically = false
 import_when_identified = false
 
@@ -51,12 +52,11 @@ fn a_dev_reset_reports_each_step_until_one_fails() {
     let caller = tokio::runtime::Runtime::new().unwrap();
     for name in ["First", "Second"] {
         caller
-            .block_on(
-                host.clone().create_library(
-                    Some(name.into()),
-                    crate::BridgeLibrarySetup::new(host.clone()),
-                ),
-            )
+            .block_on(host.clone().create_library(
+                Some(name.into()),
+                "Creator".into(),
+                crate::BridgeLibrarySetup::new(host.clone()),
+            ))
             .unwrap();
     }
     let stray = root.path().join(".bae").join("stray-file");
@@ -67,6 +67,7 @@ fn a_dev_reset_reports_each_step_until_one_fails() {
         .block_on(host.clone().dev_reset(
             BridgeDevResetProfile {
                 library_name: "Dev".into(),
+                creator_name: "Creator".into(),
                 sync_config: crate::BridgeSaveSyncConfig {
                     bucket: "bucket".into(),
                     region: "us-east-1".into(),
