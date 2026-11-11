@@ -85,10 +85,10 @@ RENDER_LEAVES = (
         r"\bfun\s+AndroidQueueRow\s*\(",
     ),
     RenderLeaf(
-        "bae-android/app/src/main/java/fm/bae/app/ui/library/LibraryGrid.kt",
-        "AndroidAlbumTileContainer",
+        "bae-android/app/src/main/java/fm/bae/app/ui/library/AndroidAlbumTile.kt",
+        "AndroidAlbumTile",
         "kotlin",
-        r"\bfun\s+AndroidAlbumTileContainer\s*\(",
+        r"\bfun\s+AndroidAlbumTile\s*\(",
     ),
     RenderLeaf(
         "bae-android/app/src/main/java/fm/bae/app/ui/library/ArtistBrowser.kt",

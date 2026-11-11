@@ -120,32 +120,19 @@ private fun LazyGridScope.albumItems(
         val index = positions.first + local
         val row = rowAt(index)
         if (row != null) {
-            AndroidAlbumTileContainer(row = row, grouped = grouped, onClick = { onSelectAlbum(row.album.id) })
+            AndroidAlbumTile(
+                title = row.album.title,
+                line = if (grouped) groupedCardLine(row) else row.album.artistNames,
+                cover = row.album.cover,
+                onClick = { onSelectAlbum(row.album.id) },
+            )
         } else {
             Spacer(modifier = Modifier.fillMaxWidth().aspectRatio(1f))
         }
     }
 }
 
-/**
- * An album's tile for [row]: its cover, title, and under it the album's artists, or in a group of the
- * grid grouped by artist, its year and the album's other credits.
- */
-@Composable
-private fun AndroidAlbumTileContainer(
-    row: BridgeAlbumAppearance,
-    grouped: Boolean,
-    onClick: () -> Unit,
-) {
-    AndroidAlbumTile(
-        title = row.album.title,
-        line = if (grouped) groupedCardLine(row) else row.album.artistNames,
-        cover = row.album.cover,
-        onClick = onClick,
-    )
-}
-
-/** A grouped card's line: the year, and the album's other credits when it has any. */
+/** A grouped card's line under an album's title: the year, and the album's other credits when it has any. */
 @Composable
 private fun groupedCardLine(row: BridgeAlbumAppearance): String {
     val year = row.album.year?.toString()
@@ -162,9 +149,11 @@ private fun groupedCardLine(row: BridgeAlbumAppearance): String {
 private fun AlbumGridCardPreview() {
     BaeTheme {
         CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
-            AndroidAlbumTileContainer(
-                row = BridgeAlbumAppearance(album = PreviewData.album(), creditedWith = "Another Artist"),
-                grouped = true,
+            val row = BridgeAlbumAppearance(album = PreviewData.album(), creditedWith = "Another Artist")
+            AndroidAlbumTile(
+                title = row.album.title,
+                line = groupedCardLine(row),
+                cover = row.album.cover,
                 onClick = {},
             )
         }
