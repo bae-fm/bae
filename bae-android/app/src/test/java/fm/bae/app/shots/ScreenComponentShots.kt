@@ -8,6 +8,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import fm.bae.app.ui.PreviewData
@@ -15,6 +16,9 @@ import fm.bae.app.ui.albumdetail.AndroidAlbumHeader
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidScreen
 import fm.bae.app.ui.library.AndroidDetailScreen
+import fm.bae.app.ui.library.AndroidLibraryScreen
+import fm.bae.app.ui.library.LibraryBrowserState
+import fm.bae.app.ui.library.LibraryGridSceneAlbums
 import org.junit.Test
 
 /** The component shots of the two screen frames: a settings screen's, and a library detail page's. */
@@ -24,6 +28,25 @@ class ScreenComponentShots : BoardShot() {
         component("android.component.screen.default", wide = true) {
             AndroidScreen(title = "Transfers", onBack = {}, modifier = Modifier.height(280.dp)) {
                 Text("The screen's content", modifier = Modifier.padding(ThemeSpace.edge))
+            }
+        }
+
+    @Test
+    fun androidComponentLibraryScreenDefault() =
+        shot("android.component.library-screen.default") {
+            ScreenScene {
+                Images {
+                    val state = remember { LibraryBrowserState() }
+                    AndroidLibraryScreen(
+                        state = state,
+                        onShuffleLibrary = {},
+                        onSettings = {},
+                        syncActivity = {},
+                        nowPlayingBar = { Bar(playing) },
+                    ) { modifier ->
+                        Box(modifier) { LibraryGridSceneAlbums(state.gridState) }
+                    }
+                }
             }
         }
 

@@ -60,8 +60,9 @@ internal class LibraryBrowserState {
     }
 }
 
+/** The library's screen reading [session]: the browser [state] over what the session holds. */
 @Composable
-internal fun LibraryBrowser(
+internal fun AndroidLibraryScreenContainer(
     session: OpenLibrary,
     state: LibraryBrowserState,
     launchProblems: List<AppProblem>,
@@ -72,6 +73,55 @@ internal fun LibraryBrowser(
     onSettings: () -> Unit,
     onDownloads: () -> Unit,
     onSyncStatus: () -> Unit,
+) {
+    AndroidLibraryScreen(
+        state = state,
+        onShuffleLibrary = {
+            session.messages.play("play the library shuffled") { session.appHandle.playLibraryShuffled() }
+        },
+        onSettings = onSettings,
+        syncActivity = {
+            ActivityButton(
+                store = session.syncActivityStore,
+                app = launchProblems,
+                dismissed = state.activityDismissed,
+                onDismissProblem = { state.activityDismissed += it },
+                onOpenSettings = onSyncStatus,
+                onOpenDownloads = onDownloads,
+                onSetDownloadsPaused = { paused ->
+                    session.messages.perform("pause or resume downloads") {
+                        session.appHandle.setDownloadsPaused(paused)
+                    }
+                },
+            )
+        },
+        nowPlayingBar = { AndroidNowPlayingBarContainer(session = session) },
+    ) { modifier ->
+        LibraryBrowserContent(
+            modifier = modifier,
+            session = session,
+            state = state,
+            onSelectAlbum = onSelectAlbum,
+            onSelectComposer = onSelectComposer,
+            onSelectArtist = onSelectArtist,
+            onSelectWork = onSelectWork,
+        )
+    }
+}
+
+/**
+ * The library's screen: its header, or the search bar when search is open, over the [content] (given
+ * the room that is left), then the [nowPlayingBar]. [syncActivity] fills the header's place for the
+ * Activity button.
+ */
+@Composable
+internal fun AndroidLibraryScreen(
+    state: LibraryBrowserState,
+    onShuffleLibrary: () -> Unit,
+    onSettings: () -> Unit,
+    syncActivity: @Composable () -> Unit,
+    nowPlayingBar: @Composable () -> Unit,
+    content: @Composable (Modifier) -> Unit,
 ) {
     BackHandler(enabled = state.searchOpen) { state.closeSearch() }
     Column(modifier = Modifier.fillMaxSize()) {
@@ -86,37 +136,13 @@ internal fun LibraryBrowser(
             LibraryHeader(
                 state = state,
                 collapse = { collapse.value },
-                onShuffleLibrary = {
-                    session.messages.play("play the library shuffled") { session.appHandle.playLibraryShuffled() }
-                },
+                onShuffleLibrary = onShuffleLibrary,
                 onSettings = onSettings,
-                syncActivity = {
-                    ActivityButton(
-                        store = session.syncActivityStore,
-                        app = launchProblems,
-                        dismissed = state.activityDismissed,
-                        onDismissProblem = { state.activityDismissed += it },
-                        onOpenSettings = onSyncStatus,
-                        onOpenDownloads = onDownloads,
-                        onSetDownloadsPaused = { paused ->
-                            session.messages.perform("pause or resume downloads") {
-                                session.appHandle.setDownloadsPaused(paused)
-                            }
-                        },
-                    )
-                },
+                syncActivity = syncActivity,
             )
         }
-        LibraryBrowserContent(
-            modifier = Modifier.fillMaxWidth().weight(1f),
-            session = session,
-            state = state,
-            onSelectAlbum = onSelectAlbum,
-            onSelectComposer = onSelectComposer,
-            onSelectArtist = onSelectArtist,
-            onSelectWork = onSelectWork,
-        )
-        AndroidNowPlayingBarContainer(session = session)
+        content(Modifier.fillMaxWidth().weight(1f))
+        nowPlayingBar()
     }
 }
 

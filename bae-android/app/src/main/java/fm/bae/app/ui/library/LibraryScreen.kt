@@ -45,7 +45,7 @@ internal fun LibraryScreen(
     BackHandler(enabled = navigator.entries.isNotEmpty()) { popEntry() }
     when (val entry = navigator.top) {
         null -> {
-            LibraryBrowser(
+            AndroidLibraryScreenContainer(
                 session = session,
                 state = browserState,
                 launchProblems = launchProblems,
