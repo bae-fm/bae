@@ -7,7 +7,7 @@ import kotlin.time.Duration.Companion.seconds
  * hang a failure. It bounds a hang and paces nothing: a wait ends on its own
  * event, as soon as the event comes.
  */
-val HANG_GUARD = 300.seconds
+val HANG_GUARD = 45.seconds
 
 /** [HANG_GUARD] for the waits that take milliseconds. */
 val HANG_GUARD_MS = HANG_GUARD.inWholeMilliseconds

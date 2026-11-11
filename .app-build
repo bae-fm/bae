@@ -24,3 +24,21 @@ step mac cast-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene 
 step mac label-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene sheet-footer- --tone midnight
 step mac activity-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene activity- --tone midnight
 step mac people-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene people- --tone midnight
+
+limit macos-tests-run 10m
+limit android-tests 10m
+limit notice-shots 20m
+limit storage-shots 20m
+limit android-shots 20m
+limit library-shots 20m
+limit welcome-shots 20m
+limit folder-shots 20m
+limit import-shots 20m
+limit release-shots 20m
+limit release-files-shots 20m
+limit sync-setup-shots 20m
+limit settings-shots 20m
+limit cast-shots 20m
+limit label-shots 20m
+limit activity-shots 20m
+limit people-shots 20m

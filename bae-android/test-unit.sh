@@ -3,9 +3,13 @@
 # `compile-all.sh` built, extra arguments going to Gradle, such as
 # `--tests '*SyncScreenTest'`. The `android-tests` step of `.app-build` runs
 # this, after the `android` step.
+#
+# A test that runs past a minute has its test JVM killed by the watchdog in
+# build.gradle.kts, which names the test; `--continue` lets the other modules'
+# tests run after that module's task fails.
 set -euo pipefail
 
 cd "$(dirname "$0")"
 # shellcheck source=toolchain.sh
 source toolchain.sh
-./gradlew testFullDebugUnitTest "$@"
+./gradlew --continue testFullDebugUnitTest "$@"

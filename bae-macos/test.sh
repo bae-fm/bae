@@ -12,6 +12,12 @@
 # compiling anything: the `macos-tests-run` step of `.app-build` follows the
 # `macos-tests` step with it.
 #
+# Every test has a minute to finish (`-test-timeouts-enabled`): a test that
+# runs past it is killed, reported failed by name, and the run goes on with the
+# rest. XCTest rounds an allowance up to whole minutes, so 60 is the least there
+# is. A test that legitimately needs longer sets `executionTimeAllowance` itself
+# (the UI tests would, in `setUp`).
+#
 # Usage: bae-macos/test.sh [--build-only | --run-only] [<Type>[/<test>] ...]
 set -euo pipefail
 
@@ -89,6 +95,7 @@ if [[ "$ACTION" != test-without-building ]]; then
 fi
 if [[ "$ACTION" != build-for-testing ]]; then
     xcodebuild_tests -resultBundlePath "$BUNDLE" \
+        -test-timeouts-enabled YES -default-test-execution-time-allowance 60 \
         ${ONLY_TESTING[@]+"${ONLY_TESTING[@]}"} test-without-building || status=$?
 fi
 

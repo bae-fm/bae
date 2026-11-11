@@ -21,7 +21,7 @@ import java.time.Duration
  *
  * A test with a compose rule is not paced: the rule drives its own clock, and
  * with the Choreographer paced its idle wait never finishes
- * (`ClosingScreenTest` hung for the 360 s watchdog).
+ * (`ClosingScreenTest` hung for the watchdog).
  */
 class BaeRobolectricTestRunner(
     testClass: Class<*>,

@@ -11,13 +11,14 @@ plugins {
 }
 
 // A JVM unit test that hangs fails the run within testTimeoutSeconds and names itself.
-// The limit sits above the tests' HANG_GUARD (300 s), so a test stuck on a bounded wait
-// fails with that wait's message; this is for hangs nothing bounds.
+// The limit sits above the tests' HANG_GUARD (45 s), so a test stuck on a bounded wait
+// fails with that wait's message; this is for hangs nothing bounds. A test that
+// legitimately needs longer than the limit cannot say so: split it.
 // Gradle's Test task times out only as a whole, and JUnit 4 has no global per-test
 // timeout, so the build watches each test from outside: once one has run past the
 // limit, the watchdog logs its name, asks the test JVM for a thread dump, and kills
 // the JVM, which Gradle reports as a failed test run.
-val testTimeoutSeconds = 360L
+val testTimeoutSeconds = 60L
 
 subprojects {
     tasks.withType<Test>().configureEach {
