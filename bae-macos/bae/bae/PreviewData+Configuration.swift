@@ -86,7 +86,13 @@
             importDestination: BridgeImportDestination = .cloudPinned,
             storage: BridgeStorageLocation? = nil,
             savePresets: [BridgeSavePreset] = PreviewData.savePresets,
-            lastSavePreset: String = "flac"
+            lastSavePreset: String = "flac",
+            filenamePieces: [BridgeSaveFilenamePiece] = PreviewData
+                .exportFilenamePieces,
+            filenamePatternError: BridgeNamePatternError? = nil,
+            folderPieces: [BridgeSaveFolderPiece] = PreviewData
+                .exportFolderPieces,
+            folderPatternError: BridgeNamePatternError? = nil
         ) -> ConfigStore {
             let tokenStatus =
                 discogsTokenStatus ?? (discogsUsable ? .valid : .notConfigured)
@@ -115,8 +121,10 @@
                         showRemainingTime: false,
                         libraryFullWidth: libraryFullWidth,
                         savePresets: savePresets,
-                        filenameTokens: exportFilenameTokens,
-                        folderTokens: [.artist, .album],
+                        filenamePieces: filenamePieces,
+                        filenamePatternError: filenamePatternError,
+                        folderPieces: folderPieces,
+                        folderPatternError: folderPatternError,
                         saveExtras: PreviewData.saveExtras,
                         lastSavePreset: lastSavePreset,
                         castEnabled: castEnabled,

@@ -59,25 +59,18 @@ struct FormatsSettingsTab: View {
             VStack(alignment: .leading, spacing: ThemeSpace.section) {
                 SaveNameField(
                     title: "File name",
-                    tokens: configStore.config.filenameTokens,
-                    setTokens: { tokens in
-                        set { try await outputs.setFilenameTokens(tokens) }
-                    },
-                    preview: BridgeSaveFilenameToken.previewName(
-                        tokens: configStore.config.filenameTokens,
-                        fallback: .title
-                    ) + nextFileExtension
+                    pieces: configStore.config.filenamePieces,
+                    error: configStore.config.filenamePatternError,
+                    previewSuffix: nextFileExtension,
+                    setPieces: outputs.setFilenamePieces,
+                    fail: { uiStore.showError($0) }
                 )
                 SaveNameField(
                     title: "Folder name",
-                    tokens: configStore.config.folderTokens,
-                    setTokens: { tokens in
-                        set { try await outputs.setFolderTokens(tokens) }
-                    },
-                    preview: BridgeSaveFolderToken.previewName(
-                        tokens: configStore.config.folderTokens,
-                        fallback: .album
-                    )
+                    pieces: configStore.config.folderPieces,
+                    error: configStore.config.folderPatternError,
+                    setPieces: outputs.setFolderPieces,
+                    fail: { uiStore.showError($0) }
                 )
             }
             .frame(maxWidth: .infinity, alignment: .leading)

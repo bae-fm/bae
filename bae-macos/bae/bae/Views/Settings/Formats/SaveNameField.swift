@@ -1,79 +1,116 @@
 import BaeKit
 import SwiftUI
 
-/// A piece a save name is made of, as the pane's chips offer it.
-protocol SaveNameToken: Hashable {
-    /// Every token, in the order the "Add:" row offers them.
-    static var allTokens: [Self] { get }
+/// A value a save name pattern fills in, as the pane's chips offer it.
+protocol SaveNameValue: Hashable {
+    /// Every value, in the order the "Add:" row offers them.
+    static var allValues: [Self] { get }
     var label: String { get }
-    /// This token's value in the settings preview.
+    /// This value in the settings preview.
     var sampleValue: String { get }
     /// The string a chip drag carries; it never leaves the drag session.
     var dragId: String { get }
 }
 
-extension SaveNameToken {
-    static func token(dragId: String) -> Self? {
-        allTokens.first { $0.dragId == dragId }
-    }
+/// What a piece of a pattern is.
+enum SaveNamePieceContent<Value> {
+    case value(Value)
+    case text(String)
+}
 
-    /// The settings preview of a pattern's name; an empty pattern shows
-    /// `fallback`, as a save names by it.
-    static func previewName(tokens: [Self], fallback: Self) -> String {
-        let name = tokens.map(\.sampleValue).joined(separator: " ")
-        return name.isEmpty ? fallback.sampleValue : name
+/// A piece of a save name pattern: a value, shown as a chip, or the text the
+/// person typed.
+protocol SaveNamePiece: Hashable {
+    associatedtype Value: SaveNameValue
+    init(value: Value)
+    init(text: String)
+    var content: SaveNamePieceContent<Value> { get }
+}
+
+extension SaveNamePiece {
+    /// The settings preview of a pattern's name: each value as its sample,
+    /// the typed text as typed.
+    static func previewName(pieces: [Self]) -> String {
+        pieces.map { piece in
+            switch piece.content {
+            case .value(let value): value.sampleValue
+            case .text(let text): text
+            }
+        }
+        .joined()
     }
 }
 
-/// A name pattern Save as… writes with: its title above, the pattern's
-/// pieces as reorderable chips, an "Add:" row of unused pieces, and a preview
-/// of a name it makes.
-struct SaveNameField<Token: SaveNameToken>: View {
+extension BridgeNamePatternError {
+    /// Why the pattern can't make a name, in the field's words.
+    var message: String {
+        switch self {
+        case .empty:
+            String(localized: "A name can’t be empty.")
+        case .startsWithDot:
+            String(localized: "A name can’t start with “.”.")
+        case .forbiddenCharacter(let character):
+            String(localized: "A name can’t contain “\(character)”.")
+        }
+    }
+}
+
+/// A name pattern Save as… writes with: its title above, the pattern as a
+/// field to type in with its values as chips, a preview of a name it makes
+/// (the reason it can't make one, while it can't), and an "Add:" row of the
+/// values it doesn't hold.
+struct SaveNameField<Piece: SaveNamePiece>: View {
     let title: LocalizedStringKey
-    let tokens: [Token]
-    let setTokens: ([Token]) -> Void
-    /// A name the pattern makes, shown under the field.
-    let preview: String
+    let pieces: [Piece]
+    /// Why core says the pattern can't make a name.
+    let error: BridgeNamePatternError?
+    /// What follows the preview's name: the extension of the file it names.
+    var previewSuffix = ""
+    /// Store the pattern, in the order the field changes it.
+    let setPieces: @MainActor ([Piece]) async throws -> Void
+    let fail: @MainActor (Error) -> Void
+
+    @State
+    private var handle = SaveNameFieldHandle<Piece>()
+    @State
+    private var focused = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
             Text(title)
                 .themeText(.rowTitle)
-            chipField
-            if !availableTokens.isEmpty {
+            SaveNameTokenField(
+                pieces: pieces,
+                handle: handle,
+                focused: $focused,
+                setPieces: setPieces,
+                fail: fail
+            )
+            .accessibilityLabel(Text(title))
+            .modifier(
+                FieldChrome(
+                    focused: focused,
+                    style: .boxedMultiline,
+                    invalid: error != nil
+                )
+            )
+            if let error {
+                Text(error.message)
+                    .themeText(.detail)
+                    .foregroundStyle(Theme.danger)
+                    .padding(.leading, ThemeSpace.fieldInset)
+            }
+            else {
+                Text(
+                    "Preview: \(Text(Piece.previewName(pieces: pieces) + previewSuffix).monospaced())"
+                )
+                .fieldNote()
+            }
+            if !availableValues.isEmpty {
                 addRow
             }
-            Text(
-                "Preview: \(Text(preview).monospaced())"
-            )
-            .fieldNote()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private var chipField: some View {
-        FlowLayout(spacing: ThemeSpace.compact) {
-            ForEach(tokens, id: \.self) { token in
-                TokenChip(token: token) {
-                    setTokens(tokens.filter { $0 != token })
-                }
-                .draggable(token.dragId)
-                .dropDestination(for: String.self) { items, _ in
-                    dropToken(items, before: token)
-                }
-            }
-        }
-        .frame(maxWidth: .infinity, minHeight: 24, alignment: .leading)
-        .padding(ThemeSpace.compact)
-        .background(
-            // A text field's fill, so the pattern reads as an input.
-            RoundedRectangle(cornerRadius: ThemeRadius.control)
-                .fill(Color(nsColor: .textBackgroundColor))
-                .stroke(.separator)
-        )
-        .dropDestination(for: String.self) { items, _ in
-            dropToken(items, before: nil)
-        }
     }
 
     private var addRow: some View {
@@ -81,9 +118,9 @@ struct SaveNameField<Token: SaveNameToken>: View {
             Text("Add:")
                 .themeText(.detail)
                 .foregroundStyle(.secondary)
-            ForEach(availableTokens, id: \.self) { token in
-                Button(token.label) {
-                    setTokens(tokens + [token])
+            ForEach(availableValues, id: \.self) { value in
+                Button(value.label) {
+                    handle.append(value)
                 }
                 .buttonStyle(.plain)
                 .themeText(.chip)
@@ -102,58 +139,55 @@ struct SaveNameField<Token: SaveNameToken>: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private var availableTokens: [Token] {
-        Token.allTokens.filter { !tokens.contains($0) }
-    }
-
-    /// Reinsert a dragged chip before `target`, or at the end when the drop
-    /// landed on the field background rather than a chip.
-    private func dropToken(_ items: [String], before target: Token?) -> Bool {
-        guard let id = items.first,
-            let dragged = Token.token(dragId: id),
-            tokens.contains(dragged),
-            dragged != target
-        else { return false }
-        var reordered = tokens.filter { $0 != dragged }
-        if let target, let index = reordered.firstIndex(of: target) {
-            reordered.insert(dragged, at: index)
-        }
-        else {
-            reordered.append(dragged)
-        }
-        setTokens(reordered)
-        return true
-    }
-}
-
-private struct TokenChip<Token: SaveNameToken>: View {
-    let token: Token
-    let remove: () -> Void
-
-    var body: some View {
-        HStack(spacing: ThemeSpace.inline) {
-            Text(token.label)
-                .themeText(.chip)
-            Button(action: remove) {
-                Image(systemName: "xmark")
-                    .themeIcon(.badge)
-                    .foregroundStyle(.secondary)
+    private var availableValues: [Piece.Value] {
+        let held = Set(
+            pieces.compactMap { piece -> Piece.Value? in
+                guard case .value(let value) = piece.content else { return nil }
+                return value
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel(Text("Remove \(token.label)"))
-        }
-        .padding(.horizontal, ThemeSpace.compact)
-        .padding(.vertical, ThemeSpace.line)
-        .background(
-            StatusTone.neutral.fill,
-            in: RoundedRectangle(cornerRadius: ThemeRadius.chip)
         )
+        return Piece.Value.allValues.filter { !held.contains($0) }
     }
 }
 
-extension BridgeSaveFilenameToken: SaveNameToken {
-    static let allTokens: [Self] = [
-        .trackNumber, .title, .artist, .album, .year, .discNumber, .trackTotal,
+extension BridgeSaveFilenamePiece: SaveNamePiece {
+    init(value: BridgeSaveFilenameValue) {
+        self = .value(value: value)
+    }
+
+    init(text: String) {
+        self = .text(text: text)
+    }
+
+    var content: SaveNamePieceContent<BridgeSaveFilenameValue> {
+        switch self {
+        case .value(let value): .value(value)
+        case .text(let text): .text(text)
+        }
+    }
+}
+
+extension BridgeSaveFolderPiece: SaveNamePiece {
+    init(value: BridgeSaveFolderValue) {
+        self = .value(value: value)
+    }
+
+    init(text: String) {
+        self = .text(text: text)
+    }
+
+    var content: SaveNamePieceContent<BridgeSaveFolderValue> {
+        switch self {
+        case .value(let value): .value(value)
+        case .text(let text): .text(text)
+        }
+    }
+}
+
+extension BridgeSaveFilenameValue: SaveNameValue {
+    static let allValues: [Self] = [
+        .trackNumber, .title, .artist, .album, .albumYear, .releaseYear,
+        .discNumber, .trackTotal,
     ]
 
     var label: String {
@@ -161,7 +195,8 @@ extension BridgeSaveFilenameToken: SaveNameToken {
         case .title: String(localized: "Title")
         case .artist: String(localized: "Artist")
         case .album: String(localized: "Album")
-        case .year: String(localized: "Release year")
+        case .albumYear: String(localized: "Album year")
+        case .releaseYear: String(localized: "Release year")
         case .trackNumber: String(localized: "Track №")
         case .discNumber: String(localized: "Disc №")
         case .trackTotal: String(localized: "Track total")
@@ -174,7 +209,8 @@ extension BridgeSaveFilenameToken: SaveNameToken {
         case .title: String(localized: "Track title")
         case .artist: String(localized: "Artist name")
         case .album: String(localized: "Album title")
-        case .year: "2020"
+        case .albumYear: "1992"
+        case .releaseYear: "2020"
         case .trackNumber: "04"
         case .discNumber: "1"
         case .trackTotal: "12"
@@ -186,7 +222,8 @@ extension BridgeSaveFilenameToken: SaveNameToken {
         case .title: "title"
         case .artist: "artist"
         case .album: "album"
-        case .year: "year"
+        case .albumYear: "albumYear"
+        case .releaseYear: "releaseYear"
         case .trackNumber: "trackNumber"
         case .discNumber: "discNumber"
         case .trackTotal: "trackTotal"
@@ -194,16 +231,17 @@ extension BridgeSaveFilenameToken: SaveNameToken {
     }
 }
 
-extension BridgeSaveFolderToken: SaveNameToken {
-    static let allTokens: [Self] = [
-        .artist, .album, .year, .label, .catalogNumber,
+extension BridgeSaveFolderValue: SaveNameValue {
+    static let allValues: [Self] = [
+        .artist, .album, .albumYear, .releaseYear, .label, .catalogNumber,
     ]
 
     var label: String {
         switch self {
         case .artist: String(localized: "Artist")
         case .album: String(localized: "Album")
-        case .year: String(localized: "Release year")
+        case .albumYear: String(localized: "Album year")
+        case .releaseYear: String(localized: "Release year")
         case .label: String(localized: "Label")
         case .catalogNumber: String(localized: "Catalog number")
         }
@@ -214,7 +252,8 @@ extension BridgeSaveFolderToken: SaveNameToken {
         switch self {
         case .artist: String(localized: "Artist name")
         case .album: String(localized: "Album title")
-        case .year: "2020"
+        case .albumYear: "1992"
+        case .releaseYear: "2020"
         case .label: String(localized: "Label name")
         case .catalogNumber: "HR-1042"
         }
@@ -224,7 +263,8 @@ extension BridgeSaveFolderToken: SaveNameToken {
         switch self {
         case .artist: "artist"
         case .album: "album"
-        case .year: "year"
+        case .albumYear: "albumYear"
+        case .releaseYear: "releaseYear"
         case .label: "label"
         case .catalogNumber: "catalogNumber"
         }
@@ -235,28 +275,25 @@ extension BridgeSaveFolderToken: SaveNameToken {
     #Preview("Save name fields") {
         @Previewable
         @State
-        var fileTokens: [BridgeSaveFilenameToken] = [.trackNumber, .title]
+        var filePieces = PreviewData.exportFilenamePieces
         @Previewable
         @State
-        var folderTokens: [BridgeSaveFolderToken] = [.artist, .album]
+        var folderPieces = PreviewData.exportFolderPieces
         Form {
             SaveNameField(
                 title: "File name",
-                tokens: fileTokens,
-                setTokens: { fileTokens = $0 },
-                preview: BridgeSaveFilenameToken.previewName(
-                    tokens: fileTokens,
-                    fallback: .title
-                ) + ".flac"
+                pieces: filePieces,
+                error: nil,
+                previewSuffix: ".flac",
+                setPieces: { filePieces = $0 },
+                fail: { _ in }
             )
             SaveNameField(
                 title: "Folder name",
-                tokens: folderTokens,
-                setTokens: { folderTokens = $0 },
-                preview: BridgeSaveFolderToken.previewName(
-                    tokens: folderTokens,
-                    fallback: .album
-                )
+                pieces: folderPieces,
+                error: nil,
+                setPieces: { folderPieces = $0 },
+                fail: { _ in }
             )
         }
         .formStyle(.grouped)

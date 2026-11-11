@@ -31,9 +31,9 @@ final class Outputs: Sendable, Observable {
     /// Replace configured export presets.
     let setSavePresets:
         @Sendable (_ presets: [BridgeSavePreset]) async throws -> Void
-    /// Set the one filename pattern every save names its files by.
-    let setFilenameTokens:
-        @Sendable (_ tokens: [BridgeSaveFilenameToken]) async throws -> Void
+    /// Set the one file name pattern every save names its files by.
+    let setFilenamePieces:
+        @Sendable (_ pieces: [BridgeSaveFilenamePiece]) async throws -> Void
     /// Set whether each saved file embeds the release's cover.
     let setSaveEmbedCover: @Sendable (_ on: Bool) async throws -> Void
     /// Set whether a release save writes the cover as cover.jpg in its folder.
@@ -41,8 +41,8 @@ final class Outputs: Sendable, Observable {
     /// Set whether each saved file carries ReplayGain tags.
     let setSaveLoudnessTags: @Sendable (_ on: Bool) async throws -> Void
     /// Set the folder name pattern a release save names its folder by.
-    let setFolderTokens:
-        @Sendable (_ tokens: [BridgeSaveFolderToken]) async throws -> Void
+    let setFolderPieces:
+        @Sendable (_ pieces: [BridgeSaveFolderPiece]) async throws -> Void
 
     init(
         newSavePreset:
@@ -67,12 +67,12 @@ final class Outputs: Sendable, Observable {
             @escaping @Sendable ([BridgeSavePreset]) async throws -> Void = {
                 _ in
             },
-        setFilenameTokens:
-            @escaping @Sendable ([BridgeSaveFilenameToken]) async throws
+        setFilenamePieces:
+            @escaping @Sendable ([BridgeSaveFilenamePiece]) async throws
             -> Void = { _ in
             },
-        setFolderTokens:
-            @escaping @Sendable ([BridgeSaveFolderToken]) async throws
+        setFolderPieces:
+            @escaping @Sendable ([BridgeSaveFolderPiece]) async throws
             -> Void = { _ in
             },
         setSaveEmbedCover: @escaping @Sendable (Bool) async throws -> Void = {
@@ -91,8 +91,8 @@ final class Outputs: Sendable, Observable {
         self.setOutputsPaused = setOutputsPaused
         self.cancelOutput = cancelOutput
         self.setSavePresets = setSavePresets
-        self.setFilenameTokens = setFilenameTokens
-        self.setFolderTokens = setFolderTokens
+        self.setFilenamePieces = setFilenamePieces
+        self.setFolderPieces = setFolderPieces
         self.setSaveEmbedCover = setSaveEmbedCover
         self.setSaveCoverFile = setSaveCoverFile
         self.setSaveLoudnessTags = setSaveLoudnessTags
@@ -117,11 +117,11 @@ final class Outputs: Sendable, Observable {
             setOutputsPaused: { try await handle.setOutputsPaused(paused: $0) },
             cancelOutput: { try await handle.cancelOutput(releaseId: $0) },
             setSavePresets: { try await handle.setSavePresets(presets: $0) },
-            setFilenameTokens: {
-                try await handle.setFilenameTokens(tokens: $0)
+            setFilenamePieces: {
+                try await handle.setFilenamePieces(pieces: $0)
             },
-            setFolderTokens: {
-                try await handle.setFolderTokens(tokens: $0)
+            setFolderPieces: {
+                try await handle.setFolderPieces(pieces: $0)
             },
             setSaveEmbedCover: { try await handle.setSaveEmbedCover(on: $0) },
             setSaveCoverFile: { try await handle.setSaveCoverFile(on: $0) },

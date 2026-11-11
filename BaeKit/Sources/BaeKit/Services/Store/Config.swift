@@ -50,11 +50,16 @@ public struct Config: Equatable {
     public let libraryFullWidth: Bool
     /// Configured export presets offered by release and track export.
     public let savePresets: [BridgeSavePreset]
-    /// The one filename pattern every save names its files by, whatever the
-    /// format.
-    public let filenameTokens: [BridgeSaveFilenameToken]
-    /// The folder name pattern a release save names its folder by.
-    public let folderTokens: [BridgeSaveFolderToken]
+    /// The one file name pattern every save names its files by, whatever the
+    /// format, as typed.
+    public let filenamePieces: [BridgeSaveFilenamePiece]
+    /// Why the file name pattern can't make a name, when it can't; saves name
+    /// by the default pattern until it is fixed.
+    public let filenamePatternError: BridgeNamePatternError?
+    /// The folder name pattern a release save names its folder by, as typed.
+    public let folderPieces: [BridgeSaveFolderPiece]
+    /// Why the folder name pattern can't make a name, when it can't.
+    public let folderPatternError: BridgeNamePatternError?
     /// The cover and loudness settings every save format shares.
     public let saveExtras: BridgeSaveExtras
     /// Id of the preset the last save, of a track or a release, used: the one
@@ -88,8 +93,10 @@ public struct Config: Equatable {
         showRemainingTime = bridge.showRemainingTime
         libraryFullWidth = bridge.libraryFullWidth
         savePresets = bridge.savePresets
-        filenameTokens = bridge.filenameTokens
-        folderTokens = bridge.folderTokens
+        filenamePieces = bridge.filenamePieces
+        filenamePatternError = bridge.filenamePatternError
+        folderPieces = bridge.folderPieces
+        folderPatternError = bridge.folderPatternError
         saveExtras = bridge.saveExtras
         lastSavePreset = bridge.lastSavePreset
         castEnabled = bridge.castEnabled

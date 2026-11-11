@@ -220,8 +220,13 @@ extension LibrarySessionOpenerTests {
             showRemainingTime: false,
             libraryFullWidth: false,
             savePresets: [],
-            filenameTokens: [],
-            folderTokens: [.artist, .album],
+            filenamePieces: [],
+            filenamePatternError: .empty,
+            folderPieces: [
+                .value(value: .artist), .text(text: " - "),
+                .value(value: .album),
+            ],
+            folderPatternError: nil,
             saveExtras: BridgeSaveExtras(
                 embedCover: true,
                 coverFile: true,

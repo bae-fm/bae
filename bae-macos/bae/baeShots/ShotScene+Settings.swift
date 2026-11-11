@@ -45,6 +45,34 @@ extension ShotScene {
             )
         },
         ShotScene(
+            id: "settings-formats-name-invalid",
+            size: CGSize(width: 500, height: 640)
+        ) {
+            // Typed text a name can't hold turns its field red and takes the
+            // preview's place with why, as core answers it.
+            ShotStage(
+                FormatsSettingsTab()
+                    .environment(
+                        PreviewData.makeConfigStore(
+                            libraryFullWidth: false,
+                            filenamePieces: [
+                                .value(value: .title), .text(text: " / "),
+                                .value(value: .artist),
+                            ],
+                            filenamePatternError: .forbiddenCharacter(
+                                character: "/"
+                            ),
+                            folderPieces: [
+                                .text(text: ".hidden "), .value(value: .album),
+                            ],
+                            folderPatternError: .startsWithDot
+                        )
+                    )
+                    .environment(Outputs.stub())
+                    .environment(UiStore())
+            )
+        },
+        ShotScene(
             id: "settings-format-name-taken",
             size: CGSize(width: 480, height: 540)
         ) {

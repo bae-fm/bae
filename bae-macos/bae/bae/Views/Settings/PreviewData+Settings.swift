@@ -10,10 +10,15 @@
     extension PreviewData {
         // MARK: - Formats
 
-        /// The filename pattern a new library starts with, for seeding
-        /// preview configs (mirrors bae-preferences' `default_save_filename_tokens`).
-        static let exportFilenameTokens: [BridgeSaveFilenameToken] = [
-            .trackNumber, .title,
+        /// The file name pattern a new library starts with, for seeding
+        /// preview configs (mirrors bae-preferences' default).
+        static let exportFilenamePieces: [BridgeSaveFilenamePiece] = [
+            .value(value: .trackNumber), .text(text: " "),
+            .value(value: .title),
+        ]
+        /// The folder name pattern a new library starts with.
+        static let exportFolderPieces: [BridgeSaveFolderPiece] = [
+            .value(value: .artist), .text(text: " - "), .value(value: .album),
         ]
         /// The cover and loudness settings a new library starts with: all on.
         static let saveExtras = BridgeSaveExtras(
