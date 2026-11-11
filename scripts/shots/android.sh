@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
-# Capture the Android screenshot scenes as flat <scene>@android.png files.
+# Capture the Android shots as flat <scene>@android.png files.
 #
 # Usage: scripts/shots/android.sh <output-dir>
+#
+# A board's shot (android.*) is the real composable drawn by a Robolectric test with Roborazzi
+# (bae-android/app/src/test/java/fm/bae/app/shots): <board>@android.png and its element list
+# <board>@android.json. The older scenes below are still @Preview scenes.
 #
 # Renders the @Preview scenes in bae-android/app/src/screenshotTest via the
 # Compose Preview Screenshot Testing plugin (layoutlib on the JVM — no emulator
@@ -46,7 +50,7 @@ find app/src -type d -path '*screenshotTest*/reference' -prune -exec rm -rf {} +
 echo "android shots: rendering scenes (updateFullDebugScreenshotTest)..."
 ./gradlew --no-daemon updateFullDebugScreenshotTest
 
-# Scene registry: <preview-function-name>:<scene-id>. The plugin writes each
+# Scene registry of the old @Preview scenes: <preview-function-name>:<scene-id>. The plugin writes each
 # rendered PNG under reference/<package path>/ named "<function>_<hashes>.png",
 # so the basename starts with the preview function name. One entry per line,
 # sorted by function name, so parallel branches adding scenes merge cleanly.
@@ -79,7 +83,6 @@ CastingSettingsLooking:settings-casting-looking
 CastingSettingsMenu:settings-casting-menu
 DeleteAlbumDialogScene:delete-album-dialog
 DownloadEntries:download-entries
-EnterCodeDialogScene:onboarding-enter-code
 FolderChoiceDropbox:folder-choice-dropbox
 FolderChoiceOneDrive:folder-choice-onedrive
 FullPlayerAllHere:full-player-all-here
@@ -105,16 +108,10 @@ PeopleAndDevicesMember:people-and-devices-member
 PeopleAndDevicesPerson:people-and-devices-person
 PeopleAndDevicesYours:people-and-devices-yours
 PinningList:pinning-list
-RemoveLibrary:remove-library
-RemoveLibraryFailed:remove-library-failed
-RemoveLibraryUnsent:remove-library-unsent
 ResetFailed:reset-failed
-ResetOffered:reset-offered
-ResetOfferedLight:reset-offered-light
 ResetUnfinished:reset-unfinished
 RestoreCodeMasked:restore-code-masked
 RestoreCodeShown:restore-code-shown
-S3KeyDialogScene:onboarding-s3-key
 S3SetupRegionMismatch:s3-setup-region-mismatch
 SettingsAbout:settings-about
 SettingsMenu:settings
@@ -127,13 +124,6 @@ SyncStatusSynced:sync-status-synced
 SyncStatusWaiting:sync-status-waiting
 Transfers:transfers
 TransfersWifiOnly:transfers-wifi-only
-Welcome:welcome
-WelcomeAddLibrary:welcome-add-library
-WelcomeLibraries:welcome-libraries
-WelcomeLibraryDetails:welcome-library-details
-WelcomeLibraryDetailsUnsent:welcome-library-details-unsent
-WelcomeLight:welcome-light
-WelcomeRemoving:welcome-removing
 EOF
 )
 
@@ -152,3 +142,18 @@ for entry in $SCENES; do
 done
 
 echo "android shots: wrote $(echo "$SCENES" | wc -w | tr -d ' ') scene(s) to $OUT_DIR"
+
+# The board shots: every board a shot test names must have written its PNG and its element list.
+rm -f "$OUT_DIR"/android.*@android.png "$OUT_DIR"/android.*@android.json
+echo "android shots: drawing board shots (testFullDebugUnitTest --tests 'fm.bae.app.shots.*')..."
+./gradlew --no-daemon :app:testFullDebugUnitTest --tests 'fm.bae.app.shots.*' "-Pbae.shotsDir=$OUT_DIR"
+BOARDS=$(grep -rhoE 'shot\("android\.[a-z0-9.-]+"' app/src/test/java/fm/bae/app/shots | sed -E 's/shot\("(.*)"/\1/' | sort)
+for board in $BOARDS; do
+    for extension in png json; do
+        if [ ! -f "$OUT_DIR/$board@android.$extension" ]; then
+            echo "android shots: board '$board' wrote no $board@android.$extension" >&2
+            exit 1
+        fi
+    done
+done
+echo "android shots: wrote $(echo "$BOARDS" | wc -l | tr -d ' ') board shot(s) to $OUT_DIR"

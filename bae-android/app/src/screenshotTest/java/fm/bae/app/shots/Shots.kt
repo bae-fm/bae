@@ -131,72 +131,14 @@ import java.time.Instant
 
 // Screenshot scenes captured by scripts/shots/android.sh. Each function is one
 // scene: the plugin renders it to a PNG named after the function, and the script
-// copies it to <scene-id>@android.png. Every scene renders a shared, session-free
+// copies it to <scene-id>@android.png. A board's preview is named by the board:
+// the function is the board name in PascalCase (android.welcome.libraries.none
+// is AndroidWelcomeLibrariesNone), and the script checks that the scene id it
+// registers spells the same words. Every scene renders a shared, session-free
 // composition from the production UI (defined in main next to its @Preview) in
-// the app chrome — never a capture-only re-layout. Rendered at a current phone
-// size, with additional light and tinted appearance captures. Function name ⇒ scene id:
-//   Welcome ⇒ welcome, WelcomeLibraries ⇒ welcome-libraries, WelcomeRemoving ⇒ welcome-removing, WelcomeLibraryDetails ⇒ welcome-library-details,
-//   WelcomeLibraryDetailsUnsent ⇒ welcome-library-details-unsent, WelcomeAddLibrary ⇒ welcome-add-library,
-//   RemoveLibraryUnsent ⇒ remove-library-unsent, RemoveLibrary ⇒ remove-library,
-//   RemoveLibraryFailed ⇒ remove-library-failed,
-//   LibraryGrid ⇒ library-grid, LibraryGridScrolled ⇒ library-grid-scrolled, LibraryGrouped ⇒ library-grouped, LibraryGroupedPinned ⇒
-//   library-grouped-pinned, LibraryMoreMenu ⇒ library-more-menu, LibraryViewMenu ⇒
-//   library-view-menu, AlbumDetail ⇒ album-detail, CastPicker ⇒ cast-picker, CastingSettingsFound ⇒
-//   settings-casting, CastingSettingsLooking ⇒ settings-casting-looking, CastingSettingsMenu ⇒
-//   settings-casting-menu, CastingReceiverDetails ⇒ settings-casting-details, LibrarySettings ⇒ settings-library,
-//   LibrarySettingsProblem ⇒ settings-library-problem, LibrarySettingsNotSynced ⇒ settings-library-not-synced,
-//   SettingsAbout ⇒ settings-about, SettingsMenu ⇒ settings, SettingsMenuOffline ⇒ settings-offline, SettingsMenuProblem ⇒ settings-problem,
-//   PeopleAndDevices ⇒ people-and-devices, PeopleAndDevicesMember ⇒ people-and-devices-member,
-//   PeopleAndDevicesPerson ⇒ people-and-devices-person, PeopleAndDevicesYours ⇒ people-and-devices-yours,
-//   SyncStatusSynced/Waiting/Offline/SignedOut/Failed ⇒ sync-status-synced, -waiting, -offline, -signed-out, -failed.
+// the app chrome, rendered at a current phone size.
 
 internal const val PHONE_SPEC = "spec:width=411dp,height=914dp,dpi=420"
-
-@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-fun Welcome() {
-    WelcomeScene()
-}
-
-/** The welcome on a phone that holds libraries, one of them never synced. */
-@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-fun WelcomeLibraries() {
-    WelcomeLibrariesScene()
-}
-
-/** The welcome while a library is being removed: its row shows the step, with a spinner where the ⋮ was. */
-@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-fun WelcomeRemoving() {
-    WelcomeRemovingScene()
-}
-
-/** A library's details sheet, over a Dropbox library that synced two hours ago. */
-@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-fun WelcomeLibraryDetails() {
-    LibraryDetailsScene(
-        BridgeStandingState.Sync(syncShown(BridgeSyncStatusWord.SYNCED, "core.sync.synced", BridgeSyncTone.SUCCESS)),
-    )
-}
-
-/** A library's details sheet, over a library holding changes it hasn't uploaded. */
-@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-fun WelcomeLibraryDetailsUnsent() {
-    LibraryDetailsScene(BridgeStandingState.UnsentChanges)
-}
-
-/** The Add library sheet over the welcome's list: Scan code and Enter code. */
-@OptIn(ExperimentalMaterial3Api::class)
-@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-fun WelcomeAddLibrary() {
-    TitledSheetShot(stringResource(R.string.welcome_add_library)) {
-        WelcomeActions(onScan = {}, onEnter = {})
-    }
-}
 
 /** A titled sheet's body on the sheet's surface: the sheet's own window isn't rendered by screenshot tests. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -210,39 +152,6 @@ internal fun TitledSheetShot(
             ContentSheetBody { TitledSheetContent(title, content) }
         }
     }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun LibraryDetailsScene(state: BridgeStandingState) {
-    TitledSheetShot("Home music") {
-        LibraryDetailsRows(
-            storage =
-                BridgeStorageLocation.Dropbox(
-                    location = BridgeDropboxLocation.AppFolder,
-                    accountLabel = "mara.quill@example.com",
-                    folderLabel = BridgeFolderLabel(name = "Music", webUrl = "https://www.dropbox.com/home/Music"),
-                ),
-            standing =
-                StandingRead.Loaded(
-                    BridgeLibraryStanding(state, Instant.now().minusSeconds(TWO_HOURS_SECONDS)),
-                ),
-        )
-    }
-}
-
-/** The confirmation to remove a library that holds changes it hasn't sent. */
-@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-fun RemoveLibraryUnsent() {
-    DialogScene { RemoveLibraryText(sceneLibrary, RemovalLoss.Counted(holdsUnsent = true)) }
-}
-
-/** The confirmation to remove a library with nothing unsent. */
-@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-fun RemoveLibrary() {
-    DialogScene { RemoveLibraryText(sceneLibrary, RemovalLoss.Counted(holdsUnsent = false)) }
 }
 
 /** A screen of its own, on the screen's background. */
@@ -260,50 +169,6 @@ fun DeleteAlbumDialogScene() {
     BaeTheme { DeleteAlbumDialog(onConfirm = {}, onDismiss = {}) }
 }
 
-/** The dialog asking for the S3 access key a restore code lacks. */
-@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-fun S3KeyDialogScene() {
-    BaeTheme {
-        S3KeyDialog(
-            text = RestoreText.ADD,
-            keys = S3KeyInput(accessKeyId = "AKIA4EXAMPLE"),
-            error = null,
-            onRestore = {},
-            onBack = {},
-        )
-    }
-}
-
-/** The dialog asking for a restore code or an invite, with a code typed in and shown in groups of four. */
-@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-fun EnterCodeDialogScene() {
-    BaeTheme {
-        PasteCodeDialog(
-            text =
-                PasteDialogText(
-                    title = stringResource(R.string.onboarding_enter_code),
-                    instructions = stringResource(R.string.onboarding_enter_code_instructions),
-                    label = stringResource(R.string.onboarding_code_label),
-                    confirmLabel = stringResource(R.string.continue_action),
-                ),
-            pasteInput =
-                "CVR1 UJZD EGXD NCF3 2EPF 3DHO DZDO CIS2 JHTL GMXG EDN7 3U55 XTPL PFT7",
-            onInputChange = {},
-            onConfirm = {},
-            onDismiss = {},
-        )
-    }
-}
-
-/** The dialog for a removal that failed. */
-@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-fun RemoveLibraryFailed() {
-    DialogScene { RemovalFailedText(sceneLibrary, DisplayError("Couldn’t reach the cloud.")) }
-}
-
 /** A request to join: the code to check under the line asking to make sure it is showing, Decline in the text colour. */
 @Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
@@ -316,38 +181,6 @@ fun JoinRequestDialogScene() {
             onDecline = {},
             onClose = {},
         )
-    }
-}
-
-private val sceneLibrary =
-    BridgeLibrary(
-        id = "home",
-        name = "Home music",
-        path = "/libraries/home",
-        state =
-            BridgeLibraryState.Openable(
-                BridgeStorageLocation.Dropbox(
-                    location = BridgeDropboxLocation.AppFolder,
-                    accountLabel = "mara.quill@example.com",
-                    folderLabel = null,
-                ),
-            ),
-        isActive = false,
-    )
-
-/** A dialog's words on the dialog's own surface: the dialog opens a window the screenshot tests don't render. */
-@Composable
-private fun DialogScene(content: @Composable () -> Unit) {
-    BaeTheme {
-        Box(modifier = Modifier.fillMaxSize().padding(ThemeSpace.page), contentAlignment = Alignment.Center) {
-            Surface(
-                shape = AlertDialogDefaults.shape,
-                color = AlertDialogDefaults.containerColor,
-                tonalElevation = AlertDialogDefaults.TonalElevation,
-            ) {
-                Box(modifier = Modifier.padding(ThemeSpace.section)) { content() }
-            }
-        }
     }
 }
 
@@ -397,12 +230,6 @@ fun LibraryViewMenu() {
 @Composable
 fun AlbumDetail() {
     AlbumDetailScene()
-}
-
-@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_NO)
-@Composable
-fun WelcomeLight() {
-    WelcomeScene()
 }
 
 @Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_NO)
@@ -616,9 +443,9 @@ fun SyncStatusFailed() {
     )
 }
 
-private const val TWO_HOURS_SECONDS = 7_200L
+internal const val TWO_HOURS_SECONDS = 7_200L
 
-private fun syncShown(
+internal fun syncShown(
     status: BridgeSyncStatusWord,
     statusKey: String,
     tone: BridgeSyncTone,

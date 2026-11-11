@@ -218,6 +218,17 @@ extensions.configure<ApplicationAndroidComponentsExtension> {
     }
 }
 
+// scripts/shots/android.sh passes -Pbae.shotsDir=<dir>: the shot tests then write
+// <board>@android.png there; without it they skip, so the ordinary unit test run
+// draws nothing.
+tasks.withType<Test>().configureEach {
+    providers.gradleProperty("bae.shotsDir").orNull?.let { dir ->
+        systemProperty("bae.shotsDir", dir)
+        systemProperty("roborazzi.test.record", "true")
+        outputs.upToDateWhen { false }
+    }
+}
+
 dependencies {
     val composeBom = platform("androidx.compose:compose-bom:2026.06.01")
     implementation(composeBom)
@@ -274,6 +285,10 @@ dependencies {
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.0")
     testImplementation("org.robolectric:robolectric:4.15.1")
     testImplementation("androidx.compose.ui:ui-test-junit4")
+    // Draws a shot's real composable to a PNG in a Robolectric test; the shot tests
+    // (src/test/.../shots) read nothing from the plugin, only call captureRoboImage.
+    testImplementation("io.github.takahirom.roborazzi:roborazzi:1.32.0")
+    testImplementation("io.github.takahirom.roborazzi:roborazzi-compose:1.32.0")
     // The screenshotTest source set renders previews with the tooling.
     screenshotTestImplementation(composeBom)
     screenshotTestImplementation("androidx.compose.ui:ui-tooling")

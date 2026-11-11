@@ -13,7 +13,7 @@ import fm.bae.app.ui.ResetUnfinishedScreen
 
 /** The reset-offered screen as a scene: nothing on it is tapped. */
 @Composable
-private fun ResetOfferedScene(failure: ScreenFailure) {
+internal fun ResetOfferedScene(failure: ScreenFailure) {
     ResetOfferedScreen(
         libraryId = "home",
         error = failure,
@@ -22,26 +22,6 @@ private fun ResetOfferedScene(failure: ScreenFailure) {
         onReset = {},
         onLeave = {},
     )
-}
-
-private val sceneResetRequired =
-    ScreenFailure(
-        FailedStep.LIBRARY_OPEN,
-        DisplayError("This device must be reset before syncing.", "this installation is another copy of a device"),
-    )
-
-/** Opening found this device's copy unusable: why, centred, with Reset this device…. */
-@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-fun ResetOffered() {
-    ScreenScene { ResetOfferedScene(sceneResetRequired) }
-}
-
-/** The reset offered, in light. */
-@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_NO)
-@Composable
-fun ResetOfferedLight() {
-    ScreenScene { ResetOfferedScene(sceneResetRequired) }
 }
 
 /** A reset that failed: what failed, with Details and Retry. */
