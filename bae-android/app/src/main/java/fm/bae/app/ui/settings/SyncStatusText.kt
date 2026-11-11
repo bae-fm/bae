@@ -22,25 +22,40 @@ internal fun syncStatusText(
 ): String = context.coreString(shown.statusKey)
 
 /**
- * Why the state is what it is, in core's words. A cause that names when sync resumes takes that time as its last
- * argument, written as the device's locale writes a time.
+ * Why the state is what it is, in core's words but for the causes that name the device, which this app words. A cause
+ * that names when sync resumes takes that time as its last argument, written as the device's locale writes a time.
  */
 internal fun syncCauseText(
     context: Context,
     cause: BridgeSyncCause,
-): String {
-    val args =
-        cause.message.args
-            .associate { it.name to it.value as Any }
-            .toMutableMap()
-    cause.resumesAt?.let { moment ->
-        args["time"] =
-            DateFormat
-                .getTimeInstance(DateFormat.SHORT, context.currentLocale())
-                .format(Date.from(moment))
+): String =
+    when (cause) {
+        is BridgeSyncCause.Message -> {
+            val args =
+                cause.message.args
+                    .associate { it.name to it.value as Any }
+                    .toMutableMap()
+            cause.resumesAt?.let { moment ->
+                args["time"] =
+                    DateFormat
+                        .getTimeInstance(DateFormat.SHORT, context.currentLocale())
+                        .format(Date.from(moment))
+            }
+            context.coreString(cause.message.key, args)
+        }
+
+        BridgeSyncCause.DeviceDiskFull -> {
+            context.getString(R.string.sync_cause_disk_full)
+        }
+
+        BridgeSyncCause.DeviceKeysUnreadable -> {
+            context.getString(R.string.sync_cause_keys_unreadable)
+        }
+
+        BridgeSyncCause.LibraryUnreadable -> {
+            context.getString(R.string.sync_cause_library_unreadable)
+        }
     }
-    return context.coreString(cause.message.key, args)
-}
 
 /** When sync last finished, as "2 hours ago". */
 internal fun syncLastSyncedText(

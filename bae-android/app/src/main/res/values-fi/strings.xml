@@ -425,6 +425,9 @@
     <string name="sync_fix_sign_in">Kirjaudu palveluun %1$s</string>
     <string name="sync_fix_enter_key">Anna käyttöavain</string>
     <string name="sync_fix_remove">Poista tältä laitteelta</string>
+    <string name="sync_cause_disk_full">Laitteen tila on loppu. Vapauta tilaa, niin bae yrittää uudelleen.</string>
+    <string name="sync_cause_keys_unreadable">bae ei voinut lukea tallennettuja avaimiaan tällä laitteella.</string>
+    <string name="sync_cause_library_unreadable">bae ei voinut lukea kirjastoa tällä laitteella.</string>
     <string name="pins_at_once">Samanaikaiset kiinnitykset</string>
     <string name="pinning_empty">Ei kiinnitettävää</string>
     <string name="pinning_load_failed">Kiinnityksiä ei voitu ladata.</string>

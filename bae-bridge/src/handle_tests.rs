@@ -597,7 +597,10 @@ fn a_failed_start_crosses_as_sync_failed_with_its_category_line() {
     assert_eq!(bridge.shown.status, crate::types::BridgeSyncStatusWord::SyncFailed);
     assert_eq!(bridge.shown.tone, crate::types::BridgeSyncTone::Danger);
     assert_eq!(
-        bridge.shown.cause.map(|cause| cause.message.key),
+        bridge.shown.cause.map(|cause| match cause {
+            crate::types::BridgeSyncCause::Message { message, .. } => message.key,
+            other => panic!("expected a catalog message, got {other:?}"),
+        }),
         Some("core.error.category.internal".to_string())
     );
     assert_eq!(bridge.shown.fix, Some(crate::types::BridgeSyncFix::RetryNow));
@@ -716,10 +719,12 @@ fn a_provider_failure_crosses_as_sync_failed_with_the_providers_words() {
     let bridge = crate::types::BridgeSyncStatusSnapshot::from_core(snapshot);
 
     assert_eq!(bridge.pending.len(), 1);
-    let cause = bridge.shown.cause.expect("a failure says why");
-    assert_eq!(cause.message.key, "core.sync.cause.provider_error");
+    let Some(crate::types::BridgeSyncCause::Message { message, .. }) = bridge.shown.cause else {
+        panic!("a failure says why in a catalog message");
+    };
+    assert_eq!(message.key, "core.sync.cause.provider_error");
     assert_eq!(
-        cause.message.args,
+        message.args,
         vec![
             crate::types::BridgeMessageArg { name: "provider".into(), value: "S3".into() },
             crate::types::BridgeMessageArg {

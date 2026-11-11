@@ -425,6 +425,9 @@
     <string name="sync_fix_sign_in">Logg inn på %1$s</string>
     <string name="sync_fix_enter_key">Skriv inn tilgangsnøkkel</string>
     <string name="sync_fix_remove">Fjern fra denne enheten</string>
+    <string name="sync_cause_disk_full">Denne enheten er tom for plass. Frigjør litt, så prøver bae igjen.</string>
+    <string name="sync_cause_keys_unreadable">bae kunne ikke lese de lagrede nøklene sine på denne enheten.</string>
+    <string name="sync_cause_library_unreadable">bae kunne ikke lese biblioteket på denne enheten.</string>
     <string name="pins_at_once">Samtidige festinger</string>
     <string name="pinning_empty">Ingenting å feste</string>
     <string name="pinning_load_failed">Kunne ikke laste inn festingene dine.</string>

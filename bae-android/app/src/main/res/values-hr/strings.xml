@@ -434,6 +434,9 @@
     <string name="sync_fix_sign_in">Prijava na %1$s</string>
     <string name="sync_fix_enter_key">Unesi pristupni ključ</string>
     <string name="sync_fix_remove">Ukloni s ovog uređaja</string>
+    <string name="sync_cause_disk_full">Na ovom uređaju je ponestalo prostora. Oslobodite malo i bae će pokušati ponovno.</string>
+    <string name="sync_cause_keys_unreadable">bae nije mogao pročitati svoje spremljene ključeve na ovom uređaju.</string>
+    <string name="sync_cause_library_unreadable">bae nije mogao pročitati fonoteku na ovom uređaju.</string>
     <string name="pins_at_once">Istodobna prikvačivanja</string>
     <string name="pinning_empty">Ništa za prikvačivanje</string>
     <string name="pinning_load_failed">Prikvačivanja nije moguće učitati.</string>

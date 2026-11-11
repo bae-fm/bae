@@ -150770,6 +150770,528 @@
           }
         }
       }
+    },
+    "There's no space left on this Mac. Free some space and bae will try again." : {
+      "comment" : "Sync failed: the Mac's disk is full; bae retries once there is room.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "لا توجد مساحة متبقية على هذا الـ Mac. أفرِغ بعض المساحة وسيعيد bae المحاولة."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На този Mac не е останало място. Освободете малко място и bae ще опита отново."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Na tomto Macu nezbývá žádné místo. Uvolněte trochu místa a bae to zkusí znovu."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der er ikke mere plads på denne Mac. Frigør noget plads, så prøver bae igen."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf diesem Mac ist kein Speicherplatz mehr frei. Gib etwas Platz frei, dann versucht bae es erneut."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Δεν έχει απομείνει χώρος σε αυτό το Mac. Ελευθερώστε λίγο χώρο και το bae θα δοκιμάσει ξανά."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "There's no space left on this Mac. Free some space and bae will try again."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No queda espacio en este Mac. Libera algo de espacio y bae volverá a intentarlo."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Macissa ei ole tilaa jäljellä. Vapauta tilaa, niin bae yrittää uudelleen."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Il n’y a plus d’espace sur ce Mac. Libérez-en et bae réessaiera."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לא נשאר מקום ב-Mac הזה. פנה מקום ו-bae ינסה שוב."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Na ovom Macu nema više slobodnog prostora. Oslobodite malo prostora i bae će pokušati ponovno."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nincs több szabad hely ezen a Mac gépen. Szabadíts fel egy kis helyet, és a bae újra megpróbálja."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Non c’è più spazio su questo Mac. Libera un po’ di spazio e bae riproverà."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "この Mac に空き容量がありません。空き容量を増やすと、bae が再試行します。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 Mac에 남은 저장 공간이 없습니다. 공간을 확보하면 bae가 다시 시도합니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Det er ikke mer plass igjen på denne Macen. Frigjør litt plass, så prøver bae igjen."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Er is geen ruimte meer op deze Mac. Maak wat ruimte vrij en bae probeert het opnieuw."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Na tym Macu nie ma już wolnego miejsca. Zwolnij trochę miejsca, a bae spróbuje ponownie."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não há mais espaço neste Mac. Libere espaço e o bae tentará novamente."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Já não há espaço neste Mac. Liberte algum espaço e o bae tentará novamente."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nu mai este spațiu pe acest Mac. Eliberează puțin spațiu și bae va încerca din nou."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Na tomto Macu nezostalo žiadne miesto. Uvoľnite trochu miesta a bae to skúsi znova."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Det finns inget utrymme kvar på den här Macen. Frigör lite utrymme så försöker bae igen."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bu Mac’te hiç yer kalmadı. Biraz yer açın, bae yeniden deneyecek."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На цьому Mac не залишилося місця. Звільніть трохи місця, і bae повторить спробу."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此 Mac 已没有剩余空间。释放一些空间后，bae 会重试。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此 Mac 已沒有剩餘空間。釋放一些空間後，bae 會重試。"
+          }
+        }
+      }
+    },
+    "The keychain is locked. Unlock it to keep syncing." : {
+      "comment" : "Sync failed: the keychain holding bae's saved keys can't be read while it is locked.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "سلسلة المفاتيح مقفلة. افتح قفلها لمواصلة المزامنة."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ключодържателят е заключен. Отключете го, за да продължи синхронизирането."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Klíčenka je zamčená. Odemkněte ji, aby synchronizace mohla pokračovat."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nøglering er låst. Lås den op for at fortsætte med at synkronisere."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Schlüsselbund ist gesperrt. Entsperre ihn, um weiter zu synchronisieren."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Το Keychain είναι κλειδωμένο. Ξεκλειδώστε το για να συνεχιστεί ο συγχρονισμός."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The keychain is locked. Unlock it to keep syncing."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El llavero está bloqueado. Desbloquéalo para seguir sincronizando."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avainnippu on lukittu. Avaa se, jotta synkronointi jatkuu."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le trousseau est verrouillé. Déverrouillez-le pour continuer à synchroniser."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מחזיק המפתחות נעול. בטל את הנעילה כדי להמשיך בסנכרון."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Privjesak ključeva je zaključan. Otključajte ga da se sinkronizacija nastavi."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A kulcskarika zárolva van. Oldd fel a szinkronizálás folytatásához."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Il portachiavi è bloccato. Sbloccalo per continuare a sincronizzare."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "キーチェーンがロックされています。同期を続けるにはロックを解除してください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "키체인이 잠겨 있습니다. 계속 동기화하려면 잠금을 해제하세요."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nøkkelringen er låst. Lås den opp for å fortsette å synkronisere."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "De sleutelhanger is vergrendeld. Ontgrendel hem om te blijven synchroniseren."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pęk kluczy jest zablokowany. Odblokuj go, aby synchronizacja trwała dalej."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O chaveiro está bloqueado. Desbloqueie-o para continuar sincronizando."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O porta-chaves está bloqueado. Desbloqueie-o para continuar a sincronizar."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Breloul de chei este blocat. Deblochează-l pentru a continua sincronizarea."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kľúčenka je zamknutá. Odomknite ju, aby synchronizácia mohla pokračovať."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nyckelringen är låst. Lås upp den för att fortsätta synkronisera."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anahtar Zinciri kilitli. Eşitlemeye devam etmek için kilidini açın."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ланцюжок ключів заблоковано. Розблокуйте його, щоб синхронізація тривала."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "钥匙串已锁定。解锁后才能继续同步。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "鑰匙圈已鎖定。解鎖後才能繼續同步。"
+          }
+        }
+      }
+    },
+    "bae couldn't read the library on this Mac." : {
+      "comment" : "Sync failed: the library's database on this Mac couldn't be read.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تعذّر على bae قراءة المكتبة على هذا الـ Mac."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae не успя да прочете библиотеката на този Mac."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae nemohl na tomto Macu přečíst knihovnu."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae kunne ikke læse biblioteket på denne Mac."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae konnte die Mediathek auf diesem Mac nicht lesen."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Το bae δεν μπόρεσε να διαβάσει τη βιβλιοθήκη σε αυτό το Mac."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae couldn't read the library on this Mac."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae no pudo leer la biblioteca en este Mac."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae ei voinut lukea kirjastoa tällä Macilla."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae n’a pas pu lire la bibliothèque sur ce Mac."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae לא הצליח לקרוא את הספרייה ב-Mac הזה."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae nije mogao pročitati fonoteku na ovom Macu."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A bae nem tudta elolvasni a könyvtárat ezen a Mac gépen."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae non è riuscito a leggere la libreria su questo Mac."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae がこの Mac 上のライブラリを読み取れませんでした。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae가 이 Mac에서 라이브러리를 읽지 못했습니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae kunne ikke lese biblioteket på denne Macen."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae kon de bibliotheek op deze Mac niet lezen."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae nie mógł odczytać biblioteki na tym Macu."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O bae não conseguiu ler a biblioteca neste Mac."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O bae não conseguiu ler a biblioteca neste Mac."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae nu a putut citi biblioteca de pe acest Mac."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae nemohol na tomto Macu prečítať knižnicu."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae kunde inte läsa biblioteket på den här Macen."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae, bu Mac’teki kitaplığı okuyamadı."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae не зміг прочитати бібліотеку на цьому Mac."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae 无法读取此 Mac 上的音乐库。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae 無法讀取此 Mac 上的音樂庫。"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

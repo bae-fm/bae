@@ -6,11 +6,6 @@ extension BridgeSyncShown {
         localizedCoreString(statusKey)
     }
 
-    /// Why the state is what it is, in the person's language.
-    public var causeLine: String? {
-        cause?.localizedLine
-    }
-
     /// The color the state reads in.
     public var statusTone: StatusTone {
         switch tone {
@@ -37,18 +32,18 @@ extension Date {
     }
 }
 
-extension BridgeSyncCause {
-    /// The cause's message with its arguments formatted in, a time sync
-    /// resumes at last, in the person's locale.
-    public var localizedLine: String {
-        var arguments: [CVarArg] = message.args.map(\.value)
+extension BridgeMessage {
+    /// A sync cause's message with its arguments formatted in, the time sync
+    /// resumes at last when the cause names one, in the person's locale.
+    public func syncCauseLine(resumesAt: Date?) -> String {
+        var arguments: [CVarArg] = args.map(\.value)
         if let resumesAt {
             arguments.append(
                 resumesAt.formatted(date: .omitted, time: .shortened)
             )
         }
         return String(
-            format: localizedCoreString(message.key),
+            format: localizedCoreString(key),
             locale: Locale.current,
             arguments: arguments
         )

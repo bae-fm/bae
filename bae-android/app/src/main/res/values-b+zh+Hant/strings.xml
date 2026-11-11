@@ -420,6 +420,9 @@
     <string name="sync_fix_sign_in">登入 %1$s</string>
     <string name="sync_fix_enter_key">輸入存取金鑰</string>
     <string name="sync_fix_remove">從此裝置移除</string>
+    <string name="sync_cause_disk_full">此裝置空間不足。釋放一些空間後，bae 會重試。</string>
+    <string name="sync_cause_keys_unreadable">bae 無法讀取此裝置上儲存的金鑰。</string>
+    <string name="sync_cause_library_unreadable">bae 無法讀取此裝置上的音樂庫。</string>
     <string name="pins_at_once">同時釘選數</string>
     <string name="pinning_empty">沒有要釘選的內容</string>
     <string name="pinning_load_failed">無法載入釘選項目。</string>

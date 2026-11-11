@@ -425,6 +425,9 @@
     <string name="sync_fix_sign_in">Log ind på %1$s</string>
     <string name="sync_fix_enter_key">Indtast adgangsnøgle</string>
     <string name="sync_fix_remove">Fjern fra denne enhed</string>
+    <string name="sync_cause_disk_full">Denne enhed er løbet tør for plads. Frigør noget, så prøver bae igen.</string>
+    <string name="sync_cause_keys_unreadable">bae kunne ikke læse sine gemte nøgler på denne enhed.</string>
+    <string name="sync_cause_library_unreadable">bae kunne ikke læse biblioteket på denne enhed.</string>
     <string name="pins_at_once">Samtidige fastgørelser</string>
     <string name="pinning_empty">Intet at fastgøre</string>
     <string name="pinning_load_failed">Kunne ikke indlæse dine fastgørelser.</string>

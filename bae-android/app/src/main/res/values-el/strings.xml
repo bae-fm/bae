@@ -425,6 +425,9 @@
     <string name="sync_fix_sign_in">Σύνδεση στο %1$s</string>
     <string name="sync_fix_enter_key">Εισαγωγή κλειδιού πρόσβασης</string>
     <string name="sync_fix_remove">Αφαίρεση από αυτή τη συσκευή</string>
+    <string name="sync_cause_disk_full">Η συσκευή δεν έχει άλλο χώρο. Ελευθερώστε λίγο και το bae θα δοκιμάσει ξανά.</string>
+    <string name="sync_cause_keys_unreadable">Το bae δεν μπόρεσε να διαβάσει τα αποθηκευμένα κλειδιά του σε αυτή τη συσκευή.</string>
+    <string name="sync_cause_library_unreadable">Το bae δεν μπόρεσε να διαβάσει τη βιβλιοθήκη σε αυτή τη συσκευή.</string>
     <string name="pins_at_once">Ταυτόχρονα καρφιτσώματα</string>
     <string name="pinning_empty">Τίποτα για καρφίτσωμα</string>
     <string name="pinning_load_failed">Δεν ήταν δυνατή η φόρτωση των καρφιτσωμάτων.</string>

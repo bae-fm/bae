@@ -432,6 +432,9 @@
     <string name="sync_fix_sign_in">Se connecter à %1$s</string>
     <string name="sync_fix_enter_key">Saisir la clé d’accès</string>
     <string name="sync_fix_remove">Retirer de cet appareil</string>
+    <string name="sync_cause_disk_full">Cet appareil n’a plus d’espace. Libérez-en et bae réessaiera.</string>
+    <string name="sync_cause_keys_unreadable">bae n’a pas pu lire ses clés enregistrées sur cet appareil.</string>
+    <string name="sync_cause_library_unreadable">bae n’a pas pu lire la bibliothèque sur cet appareil.</string>
     <string name="pins_at_once">Épinglages simultanés</string>
     <string name="pinning_empty">Rien à épingler</string>
     <string name="pinning_load_failed">Impossible de charger vos épinglages.</string>

@@ -441,6 +441,9 @@
     <string name="sync_fix_sign_in">Přihlásit se k %1$s</string>
     <string name="sync_fix_enter_key">Zadat přístupový klíč</string>
     <string name="sync_fix_remove">Odebrat z tohoto zařízení</string>
+    <string name="sync_cause_disk_full">Na tomto zařízení došlo místo. Uvolněte trochu a bae to zkusí znovu.</string>
+    <string name="sync_cause_keys_unreadable">bae nemohl na tomto zařízení přečíst své uložené klíče.</string>
+    <string name="sync_cause_library_unreadable">bae nemohl na tomto zařízení přečíst knihovnu.</string>
     <string name="pins_at_once">Souběžná připnutí</string>
     <string name="pinning_empty">Nic k připnutí</string>
     <string name="pinning_load_failed">Připnutí se nepodařilo načíst.</string>

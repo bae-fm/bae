@@ -485,6 +485,9 @@
     <string name="sync_fix_sign_in">Sign in to %1$s</string>
     <string name="sync_fix_enter_key">Enter access key</string>
     <string name="sync_fix_remove">Remove from this device</string>
+    <string name="sync_cause_disk_full">This device is out of space. Free some up and bae will try again.</string>
+    <string name="sync_cause_keys_unreadable">bae couldn\'t read its saved keys on this device.</string>
+    <string name="sync_cause_library_unreadable">bae couldn\'t read the library on this device.</string>
     <string name="pins_at_once">Pins at once</string>
     <string name="pinning_empty">Nothing to pin</string>
     <string name="pinning_load_failed">Couldn\'t load your pins.</string>

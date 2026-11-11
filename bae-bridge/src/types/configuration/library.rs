@@ -491,14 +491,24 @@ pub enum BridgeSyncStatusWord {
     SyncFailed,
 }
 
-/// Why a sync state is what it is: a catalog message, whose arguments are
-/// the message's own. A cause that names when sync resumes also carries that
-/// moment: the UI formats it in the person's locale and passes it as the
-/// message's last argument.
-#[derive(Debug, Clone, PartialEq, uniffi::Record)]
-pub struct BridgeSyncCause {
-    pub message: BridgeMessage,
-    pub resumes_at: Option<std::time::SystemTime>,
+/// Why a sync state is what it is. Most causes are a catalog message, whose
+/// arguments are the message's own; a cause that names when sync resumes also
+/// carries that moment: the UI formats it in the person's locale and passes
+/// it as the message's last argument. The three causes that name the device
+/// (its disk, its saved keys, its library) are worded by each platform in its
+/// own terms ("this Mac" and the keychain, "this device").
+#[derive(Debug, Clone, PartialEq, uniffi::Enum)]
+pub enum BridgeSyncCause {
+    Message {
+        message: BridgeMessage,
+        resumes_at: Option<std::time::SystemTime>,
+    },
+    /// The disk on this device is full.
+    DeviceDiskFull,
+    /// The keys bae saved on this device couldn't be read.
+    DeviceKeysUnreadable,
+    /// bae couldn't read the library on this device.
+    LibraryUnreadable,
 }
 
 /// What the person can do about a sync state. The button's words are the
@@ -619,15 +629,15 @@ impl BridgeSyncCause {
                 args: vec![BridgeMessageArg::new("file", file)],
             },
             C::FileMissingOrChanged { file: None } => plain("core.sync.cause.file_changed_unnamed"),
-            C::DeviceDiskFull => plain("core.sync.cause.disk_full"),
+            C::DeviceDiskFull => return Self::DeviceDiskFull,
             C::DeviceDiskDenied { file: Some(file) } => BridgeMessage {
                 key: "core.sync.cause.disk_denied".to_string(),
                 args: vec![BridgeMessageArg::new("file", file)],
             },
             C::DeviceDiskDenied { file: None } => plain("core.sync.cause.disk_denied_unnamed"),
             C::DeviceDiskFailed => plain("core.sync.cause.disk_failed"),
-            C::DeviceKeysUnreadable => plain("core.sync.cause.keys_unreadable"),
-            C::LibraryUnreadable => plain("core.sync.cause.library_unreadable"),
+            C::DeviceKeysUnreadable => return Self::DeviceKeysUnreadable,
+            C::LibraryUnreadable => return Self::LibraryUnreadable,
             C::ProviderError { provider, detail } => BridgeMessage {
                 key: "core.sync.cause.provider_error".to_string(),
                 args: vec![
@@ -647,7 +657,7 @@ impl BridgeSyncCause {
                 }
             },
         };
-        Self { message, resumes_at }
+        Self::Message { message, resumes_at }
     }
 }
 

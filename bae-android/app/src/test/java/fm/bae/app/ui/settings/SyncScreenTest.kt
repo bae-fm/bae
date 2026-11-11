@@ -26,6 +26,7 @@ import uniffi.bae_bridge.BridgePendingAction
 import uniffi.bae_bridge.BridgePendingReason
 import uniffi.bae_bridge.BridgePendingRecord
 import uniffi.bae_bridge.BridgeStorageLocation
+import uniffi.bae_bridge.BridgeSyncCause
 import uniffi.bae_bridge.BridgeSyncShown
 import uniffi.bae_bridge.BridgeSyncStatusSnapshot
 import uniffi.bae_bridge.BridgeSyncStatusWord
@@ -85,6 +86,45 @@ class SyncScreenTest {
             .onNodeWithText("This library is stored in an S3-compatible bucket. Enter the access key you use for it.")
             .assertExists()
         compose.onNodeWithText("This library needs cloud sign-in, which isn't configured on this build.").assertDoesNotExist()
+    }
+
+    /** A full disk is worded for a phone: "This device", not "this Mac". */
+    @Test
+    fun aFullDiskIsWordedForThePhone() {
+        val handle =
+            object : FakeAppHandle() {
+                override fun closeLibrary(closing: BridgeLibraryClosing?) = Unit
+
+                override fun close() = Unit
+            }
+        val status = SyncStatusStore()
+        val session = openTestLibrary(handle, status)
+        status.apply(
+            BridgeSyncStatusSnapshot(
+                shown =
+                    BridgeSyncShown(
+                        status = BridgeSyncStatusWord.SYNC_FAILED,
+                        statusKey = "core.sync.failed",
+                        tone = BridgeSyncTone.DANGER,
+                        cause = BridgeSyncCause.DeviceDiskFull,
+                        fix = null,
+                        lastSynced = null,
+                    ),
+                pending = emptyList(),
+                setupRunning = false,
+                undoneSetup = null,
+            ),
+            NoErrorDisplays,
+        )
+        compose.setContent {
+            BaeTheme {
+                CompositionLocalProvider(LocalBugReports provides session.bugs) {
+                    SyncScreen(session = session, actions = actions(), onBack = {}, onPush = {})
+                }
+            }
+        }
+
+        compose.onNodeWithText("This device is out of space. Free some up and bae will try again.").assertExists()
     }
 
     private val notSynced =

@@ -92,6 +92,22 @@ struct SyncStatusStoreTests {
 
     /// The state's words, cause and last sync are core's, in the person's
     /// language: a provider's wait names it and when sync resumes.
+    @Test("the causes that name the device are worded for the Mac")
+    func deviceCausesAreWordedForTheMac() {
+        #expect(
+            BridgeSyncCause.deviceDiskFull.macLine
+                == "There's no space left on this Mac. Free some space and bae will try again."
+        )
+        #expect(
+            BridgeSyncCause.deviceKeysUnreadable.macLine
+                == "The keychain is locked. Unlock it to keep syncing."
+        )
+        #expect(
+            BridgeSyncCause.libraryUnreadable.macLine
+                == "bae couldn't read the library on this Mac."
+        )
+    }
+
     @MainActor
     @Test("a state is worded from core's keys and arguments")
     func aStateIsWordedFromCoresKeys() throws {
@@ -100,7 +116,7 @@ struct SyncStatusStoreTests {
             status: .waitingToSync,
             statusKey: "core.sync.status.waiting_to_sync",
             tone: .warning,
-            cause: BridgeSyncCause(
+            cause: .message(
                 message: BridgeMessage(
                     key: "core.sync.cause.provider_wait",
                     args: [BridgeMessageArg(name: "provider", value: "Dropbox")]

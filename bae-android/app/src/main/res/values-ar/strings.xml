@@ -455,6 +455,9 @@
     <string name="sync_fix_sign_in">تسجيل الدخول إلى %1$s</string>
     <string name="sync_fix_enter_key">إدخال مفتاح الوصول</string>
     <string name="sync_fix_remove">إزالة من هذا الجهاز</string>
+    <string name="sync_cause_disk_full">نفدت المساحة على هذا الجهاز. أفرِغ بعضها وسيعيد bae المحاولة.</string>
+    <string name="sync_cause_keys_unreadable">تعذّر على bae قراءة مفاتيحه المحفوظة على هذا الجهاز.</string>
+    <string name="sync_cause_library_unreadable">تعذّر على bae قراءة المكتبة على هذا الجهاز.</string>
     <string name="pins_at_once">عمليات التثبيت المتزامنة</string>
     <string name="pinning_empty">لا شيء للتثبيت</string>
     <string name="pinning_load_failed">تعذر تحميل عمليات التثبيت.</string>

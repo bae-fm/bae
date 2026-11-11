@@ -434,6 +434,9 @@
     <string name="sync_fix_sign_in">היכנס ל-%1$s</string>
     <string name="sync_fix_enter_key">הזן מפתח גישה</string>
     <string name="sync_fix_remove">הסר ממכשיר זה</string>
+    <string name="sync_cause_disk_full">במכשיר הזה נגמר המקום. פנה קצת מקום ו-bae ינסה שוב.</string>
+    <string name="sync_cause_keys_unreadable">bae לא הצליח לקרוא את המפתחות ששמר במכשיר הזה.</string>
+    <string name="sync_cause_library_unreadable">bae לא הצליח לקרוא את הספרייה במכשיר הזה.</string>
     <string name="pins_at_once">הצמדות בו-זמניות</string>
     <string name="pinning_empty">אין מה להצמיד</string>
     <string name="pinning_load_failed">לא ניתן לטעון את ההצמדות.</string>

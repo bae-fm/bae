@@ -441,6 +441,9 @@
     <string name="sync_fix_sign_in">Увійти в %1$s</string>
     <string name="sync_fix_enter_key">Ввести ключ доступу</string>
     <string name="sync_fix_remove">Вилучити з цього пристрою</string>
+    <string name="sync_cause_disk_full">На цьому пристрої закінчилося місце. Звільніть трохи, і bae повторить спробу.</string>
+    <string name="sync_cause_keys_unreadable">bae не зміг прочитати збережені ключі на цьому пристрої.</string>
+    <string name="sync_cause_library_unreadable">bae не зміг прочитати бібліотеку на цьому пристрої.</string>
     <string name="pins_at_once">Одночасні закріплення</string>
     <string name="pinning_empty">Нічого закріплювати</string>
     <string name="pinning_load_failed">Не вдалося завантажити закріплення.</string>

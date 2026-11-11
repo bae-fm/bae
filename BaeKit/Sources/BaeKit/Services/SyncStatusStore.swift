@@ -75,7 +75,7 @@ public final class SyncStatusStore {
             status: .syncFailed,
             statusKey: "core.sync.failed",
             tone: .danger,
-            cause: BridgeSyncCause(
+            cause: .message(
                 message: BridgeMessage(
                     key: "core.sync.cause.file_changed",
                     args: [BridgeMessageArg(name: "file", value: "Cover.jpg")]

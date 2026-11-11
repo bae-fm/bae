@@ -427,6 +427,9 @@
     <string name="sync_fix_sign_in">Bei %1$s anmelden</string>
     <string name="sync_fix_enter_key">Zugriffsschlüssel eingeben</string>
     <string name="sync_fix_remove">Von diesem Gerät entfernen</string>
+    <string name="sync_cause_disk_full">Auf diesem Gerät ist der Speicherplatz voll. Gib etwas frei, dann versucht bae es erneut.</string>
+    <string name="sync_cause_keys_unreadable">bae konnte seine gespeicherten Schlüssel auf diesem Gerät nicht lesen.</string>
+    <string name="sync_cause_library_unreadable">bae konnte die Mediathek auf diesem Gerät nicht lesen.</string>
     <string name="pins_at_once">Gleichzeitiges Anheften</string>
     <string name="pinning_empty">Nichts zum Anheften</string>
     <string name="pinning_load_failed">Deine Anheftungen konnten nicht geladen werden.</string>

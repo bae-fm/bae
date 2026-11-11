@@ -426,6 +426,9 @@
     <string name="sync_fix_sign_in">Iniciar sessão no %1$s</string>
     <string name="sync_fix_enter_key">Introduzir chave de acesso</string>
     <string name="sync_fix_remove">Remover deste dispositivo</string>
+    <string name="sync_cause_disk_full">Este dispositivo ficou sem espaço. Liberte algum e o bae tentará novamente.</string>
+    <string name="sync_cause_keys_unreadable">O bae não conseguiu ler as chaves guardadas neste dispositivo.</string>
+    <string name="sync_cause_library_unreadable">O bae não conseguiu ler a biblioteca neste dispositivo.</string>
     <string name="pins_at_once">Fixações em simultâneo</string>
     <string name="pinning_empty">Nada para fixar</string>
     <string name="pinning_load_failed">Não foi possível carregar as suas fixações.</string>

@@ -432,6 +432,9 @@
     <string name="sync_fix_sign_in">Conectează-te la %1$s</string>
     <string name="sync_fix_enter_key">Introdu cheia de acces</string>
     <string name="sync_fix_remove">Elimină de pe acest dispozitiv</string>
+    <string name="sync_cause_disk_full">Acest dispozitiv a rămas fără spațiu. Eliberează puțin și bae va încerca din nou.</string>
+    <string name="sync_cause_keys_unreadable">bae nu a putut citi cheile salvate pe acest dispozitiv.</string>
+    <string name="sync_cause_library_unreadable">bae nu a putut citi biblioteca de pe acest dispozitiv.</string>
     <string name="pins_at_once">Fixări simultane</string>
     <string name="pinning_empty">Nimic de fixat</string>
     <string name="pinning_load_failed">Nu s-au putut încărca fixările.</string>

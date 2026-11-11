@@ -420,6 +420,9 @@
     <string name="sync_fix_sign_in">%1$s にサインイン</string>
     <string name="sync_fix_enter_key">アクセスキーを入力</string>
     <string name="sync_fix_remove">このデバイスから削除</string>
+    <string name="sync_cause_disk_full">このデバイスは容量不足です。空き容量を増やすと、bae が再試行します。</string>
+    <string name="sync_cause_keys_unreadable">bae がこのデバイスに保存されたキーを読み取れませんでした。</string>
+    <string name="sync_cause_library_unreadable">bae がこのデバイス上のライブラリを読み取れませんでした。</string>
     <string name="pins_at_once">同時ピン留め数</string>
     <string name="pinning_empty">ピン留めするものはありません</string>
     <string name="pinning_load_failed">ピン留めを読み込めませんでした。</string>

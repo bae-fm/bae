@@ -432,6 +432,9 @@
     <string name="sync_fix_sign_in">Accedi a %1$s</string>
     <string name="sync_fix_enter_key">Inserisci chiave di accesso</string>
     <string name="sync_fix_remove">Rimuovi da questo dispositivo</string>
+    <string name="sync_cause_disk_full">Questo dispositivo ha esaurito lo spazio. Liberane un po’ e bae riproverà.</string>
+    <string name="sync_cause_keys_unreadable">bae non è riuscito a leggere le chiavi salvate su questo dispositivo.</string>
+    <string name="sync_cause_library_unreadable">bae non è riuscito a leggere la libreria su questo dispositivo.</string>
     <string name="pins_at_once">Fissaggi simultanei</string>
     <string name="pinning_empty">Niente da fissare</string>
     <string name="pinning_load_failed">Impossibile caricare i fissaggi.</string>

@@ -698,12 +698,9 @@ fn sync_cause_messages() -> Vec<BridgeMessage> {
         C::SignInToICloud,
         C::FileMissingOrChanged { file: Some("Cover.jpg".to_string()) },
         C::FileMissingOrChanged { file: None },
-        C::DeviceDiskFull,
         C::DeviceDiskDenied { file: Some("Cover.jpg".to_string()) },
         C::DeviceDiskDenied { file: None },
         C::DeviceDiskFailed,
-        C::DeviceKeysUnreadable,
-        C::LibraryUnreadable,
         C::ProviderError {
             provider: coven::CloudProvider::Dropbox,
             detail: "Internal server error".to_string(),
@@ -713,13 +710,33 @@ fn sync_cause_messages() -> Vec<BridgeMessage> {
     ]
     .into_iter()
     .map(|cause| {
-        let BridgeSyncCause { mut message, resumes_at } = BridgeSyncCause::from_core(cause);
+        let BridgeSyncCause::Message { mut message, resumes_at } =
+            BridgeSyncCause::from_core(cause)
+        else {
+            panic!("a cause with a catalog message is a Message");
+        };
         if resumes_at.is_some() {
             message.args.push(BridgeMessageArg { name: "time".to_string(), value: "3:40".into() });
         }
         message
     })
     .collect()
+}
+
+/// The three causes that name the device reach a UI as themselves, not as a
+/// catalog message, so each platform words them.
+#[test]
+fn device_causes_are_the_platforms_to_word() {
+    use bae_sync_status::SyncCauseLine as C;
+    assert_eq!(BridgeSyncCause::from_core(C::DeviceDiskFull), BridgeSyncCause::DeviceDiskFull);
+    assert_eq!(
+        BridgeSyncCause::from_core(C::DeviceKeysUnreadable),
+        BridgeSyncCause::DeviceKeysUnreadable
+    );
+    assert_eq!(
+        BridgeSyncCause::from_core(C::LibraryUnreadable),
+        BridgeSyncCause::LibraryUnreadable
+    );
 }
 
 fn catalog() -> bae_loc::Catalog {

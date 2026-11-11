@@ -427,6 +427,9 @@
     <string name="sync_fix_sign_in">Влизане в %1$s</string>
     <string name="sync_fix_enter_key">Въвеждане на ключ за достъп</string>
     <string name="sync_fix_remove">Премахване от това устройство</string>
+    <string name="sync_cause_disk_full">На това устройство свърши мястото. Освободете малко и bae ще опита отново.</string>
+    <string name="sync_cause_keys_unreadable">bae не успя да прочете запазените си ключове на това устройство.</string>
+    <string name="sync_cause_library_unreadable">bae не успя да прочете библиотеката на това устройство.</string>
     <string name="pins_at_once">Едновременни закачания</string>
     <string name="pinning_empty">Няма нищо за закачане</string>
     <string name="pinning_load_failed">Закачанията не можаха да се заредят.</string>

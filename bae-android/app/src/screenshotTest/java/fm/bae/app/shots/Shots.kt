@@ -604,7 +604,7 @@ fun SyncStatusFailed() {
             BridgeSyncStatusWord.SYNC_FAILED,
             "core.sync.failed",
             BridgeSyncTone.DANGER,
-            cause = BridgeSyncCause(BridgeMessage("core.sync.cause.disk_failed", emptyList()), null),
+            cause = BridgeSyncCause.Message(BridgeMessage("core.sync.cause.disk_failed", emptyList()), null),
             fix = BridgeSyncFix.RetryNow,
             lastSynced = true,
         ),
