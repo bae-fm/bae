@@ -64,6 +64,7 @@ extension ShotScene {
             shown: .previewNotSynced
         ),
         automationFailed,
+        subsonicRunning,
         syncPage("sync-status-synced", .previewSynced),
         syncPage("sync-status-waiting", .previewWaiting),
         syncPage("sync-status-offline", .previewOffline),
@@ -110,6 +111,27 @@ extension ShotScene {
         ) {
             statusRead.done
         }
+    }
+
+    /// The Subsonic pane with its server running: Port, Username and Password
+    /// each a labelled row over a boxed field.
+    private static let subsonicRunning = ShotScene(
+        id: "settings-subsonic",
+        size: CGSize(width: 690, height: 480)
+    ) {
+        ShotStage(
+            SubsonicSettingsContent(
+                subsonic: SubsonicServer(
+                    setServerConfig: { _, _, _, _ in },
+                    getServerStatus: {
+                        .running(url: "http://127.0.0.1:4533/rest")
+                    },
+                    setPassword: { _ in }
+                ),
+                configStore: PreviewData.configStore()
+            )
+            .environment(UiStore())
+        )
     }
 
     /// The Casting tab with casting on and `receivers` found.

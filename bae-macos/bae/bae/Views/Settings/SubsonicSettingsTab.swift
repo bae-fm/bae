@@ -63,25 +63,23 @@ struct SubsonicSettingsContent: View {
                         set: { setEnabled($0) }
                     )
                 )
-                LabeledContent("Port") {
-                    HStack(spacing: ThemeSpace.related) {
-                        TextField("Port", text: $portText)
-                            .boxedTextField()
-                            .frame(width: 88)
-                            .onSubmit(applyConfig)
-                        Button("Save", action: applyConfig)
-                            .disabled(isWorking)
-                    }
+                LabeledFieldRow("Port") {
+                    TextField("Port", text: $portText)
+                        .labelsHidden()
+                        .boxedTextField()
+                        .frame(width: 88)
+                        .onSubmit(applyConfig)
+                    Button("Save", action: applyConfig)
+                        .disabled(isWorking)
                 }
-                LabeledContent("Username") {
-                    HStack(spacing: ThemeSpace.related) {
-                        TextField("Username", text: $username)
-                            .boxedTextField()
-                            .frame(width: Self.credentialFieldWidth)
-                            .onSubmit(applyConfig)
-                        Button("Save", action: applyConfig)
-                            .disabled(isWorking)
-                    }
+                LabeledFieldRow("Username") {
+                    TextField("Username", text: $username)
+                        .labelsHidden()
+                        .boxedTextField()
+                        .frame(width: Self.credentialFieldWidth)
+                        .onSubmit(applyConfig)
+                    Button("Save", action: applyConfig)
+                        .disabled(isWorking)
                 }
                 Toggle(
                     "Allow connections from other devices on your network",
@@ -103,15 +101,14 @@ struct SubsonicSettingsContent: View {
                 }
             }
             Section {
-                LabeledContent("Password") {
-                    HStack(spacing: ThemeSpace.related) {
-                        SecureField("Password", text: $password)
-                            .boxedTextField()
-                            .frame(width: Self.credentialFieldWidth)
-                            .onSubmit(savePassword)
-                        Button("Save", action: savePassword)
-                            .disabled(isWorking)
-                    }
+                LabeledFieldRow("Password") {
+                    SecureField("Password", text: $password)
+                        .labelsHidden()
+                        .boxedTextField()
+                        .frame(width: Self.credentialFieldWidth)
+                        .onSubmit(savePassword)
+                    Button("Save", action: savePassword)
+                        .disabled(isWorking)
                 }
             } footer: {
                 Text(

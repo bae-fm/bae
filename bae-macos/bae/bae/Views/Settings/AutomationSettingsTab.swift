@@ -81,15 +81,14 @@ struct AutomationSettingsContent: View {
                         set: { setEnabled($0) }
                     )
                 )
-                LabeledContent("Port") {
-                    HStack(spacing: ThemeSpace.related) {
-                        TextField("Port", text: $portText)
-                            .boxedTextField()
-                            .frame(width: 88)
-                            .onSubmit(applyPort)
-                        Button("Save", action: applyPort)
-                            .disabled(isWorking)
-                    }
+                LabeledFieldRow("Port") {
+                    TextField("Port", text: $portText)
+                        .labelsHidden()
+                        .boxedTextField()
+                        .frame(width: 88)
+                        .onSubmit(applyPort)
+                    Button("Save", action: applyPort)
+                        .disabled(isWorking)
                 }
                 statusRow
                 if case .error(let error) = status {
