@@ -729,8 +729,8 @@ private struct RenameProfileSheet: View {
                     "Name",
                     note: "Everyone in the library sees this name."
                 ) {
-                    TextField("", text: $name)
-                        .accessibilityLabel("Name")
+                    TextField("Name", text: $name)
+                        .labelsHidden()
                         .boxedTextField()
                 }
             }

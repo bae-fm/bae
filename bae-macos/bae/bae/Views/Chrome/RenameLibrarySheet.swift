@@ -26,13 +26,13 @@ struct RenameLibrarySheet: View {
                         note: "Everyone in the library sees this name."
                     ) {
                         TextField(
-                            "",
+                            "New name",
                             text: Binding(
                                 get: { state.newName },
                                 set: { state.newName = $0 }
                             )
                         )
-                        .accessibilityLabel("New name")
+                        .labelsHidden()
                         .boxedTextField()
                     }
                 }
