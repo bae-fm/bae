@@ -16042,7 +16042,7 @@ fi = "Säilytä"
 
 [messages."core.library.open_step.rebuilding"]
 comment = "Opening a library: the line over its progress bar while bae rebuilds the library's search indexes after an app or database update."
-value = "Rebuilding the library's indexes…"
+value = "Rebuilding the library’s indexes…"
 
 [messages."core.library.open_step.rebuilding".translations]
 es = "Reconstruyendo los índices de la biblioteca…"
