@@ -44,13 +44,11 @@ import fm.bae.app.ui.appearance.SurfaceTone
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSize
 import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.appearance.colors
 import fm.bae.app.ui.components.CardRow
 import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.RadioRow
 import fm.bae.app.ui.components.RowCard
-import fm.bae.app.ui.components.cardRowDivider
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.launch
 import java.io.IOException
@@ -94,12 +92,11 @@ internal fun AppearanceSection() {
                 label = { it.label },
                 onSelect = { save { store.setTone(it) } },
             )
-            Column(modifier = Modifier.cardRowDivider().padding(top = ThemeSpace.group, bottom = ThemeSpace.related)) {
-                Text(
-                    text = stringResource(R.string.appearance_accent),
-                    style = ThemeText.rowTitle.style,
-                    modifier = Modifier.padding(horizontal = ThemeSpace.edge),
-                )
+            CardRow(
+                title = stringResource(R.string.appearance_accent),
+                subtitle = stringResource(preferences.accent.label),
+            )
+            Box(modifier = Modifier.padding(horizontal = ThemeSpace.edge).padding(bottom = ThemeSpace.related)) {
                 AccentPicker(preferences.accent) { accent -> save { store.setAccent(accent) } }
             }
         }

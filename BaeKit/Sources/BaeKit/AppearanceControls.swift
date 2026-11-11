@@ -23,8 +23,14 @@ public struct AppearanceControls: View {
             Text("Tone", tableName: "Appearance", bundle: .module)
         }
 
-        VStack(alignment: .leading, spacing: ThemeSpace.related) {
-            Text("Accent", tableName: "Appearance", bundle: .module)
+        HStack(alignment: .center, spacing: ThemeSpace.group) {
+            VStack(alignment: .leading, spacing: ThemeSpace.line) {
+                Text("Accent", tableName: "Appearance", bundle: .module)
+                Text(preferences.accent.title)
+                    .themeText(.detail)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 0)
             HStack(spacing: 0) {
                 ForEach(AccentChoice.allCases, id: \.self) { accent in
                     Button {
@@ -42,7 +48,7 @@ public struct AppearanceControls: View {
                                     )
                             }
                             .frame(
-                                maxWidth: .infinity,
+                                minWidth: ThemeSize.hitTarget,
                                 minHeight: ThemeSize.hitTarget
                             )
                             .contentShape(Rectangle())
