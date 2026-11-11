@@ -3,7 +3,6 @@ package fm.bae.app.ui.settings
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -20,6 +19,7 @@ import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.components.AndroidButton
+import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidRadio
 import fm.bae.app.ui.components.ButtonKind
@@ -38,10 +38,10 @@ internal fun ListeningHistoryDialog(
     onChoose: (BridgeHistorySharing) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AlertDialog(
+    AndroidDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.settings_history)) },
-        text = {
+        title = stringResource(R.string.settings_history),
+        content = {
             Column {
                 BridgeHistorySharing.entries.forEach { choice ->
                     AndroidRadio(
@@ -115,10 +115,10 @@ private fun RenameProfileDialogContent(
     onSave: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AlertDialog(
+    AndroidDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.onboarding_person_name)) },
-        text = {
+        title = stringResource(R.string.onboarding_person_name),
+        content = {
             Column {
                 OutlinedTextField(
                     value = draft,

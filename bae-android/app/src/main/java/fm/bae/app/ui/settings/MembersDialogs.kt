@@ -2,7 +2,6 @@ package fm.bae.app.ui.settings
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -299,10 +298,10 @@ private fun SignOutDialog(
 ) {
     val context = LocalContext.current
     val instruction = step.instruction
-    AlertDialog(
+    AndroidDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.device_removed_title)) },
-        text = {
+        title = stringResource(R.string.device_removed_title),
+        content = {
             Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
                 if (instruction is BridgeProviderSignOut.RemoveAppAccess) {
                     AndroidRow(

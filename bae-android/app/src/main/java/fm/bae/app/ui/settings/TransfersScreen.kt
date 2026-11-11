@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -27,6 +26,7 @@ import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidCard
+import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.AndroidNote
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidRadio
@@ -123,10 +123,10 @@ private fun ConcurrencyRow(
     val title = stringResource(R.string.pins_at_once)
     AndroidRow(title = title, subtitle = value.toString(), onClick = { open = true })
     if (open) {
-        AlertDialog(
+        AndroidDialog(
             onDismissRequest = { open = false },
-            title = { Text(title) },
-            text = {
+            title = title,
+            content = {
                 Column(modifier = Modifier.selectableGroup()) {
                     for (option in 1u..limit) {
                         AndroidRadio(

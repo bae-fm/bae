@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -28,6 +27,7 @@ import fm.bae.app.R
 import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidButton
+import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ButtonTone
@@ -161,10 +161,10 @@ private fun InviteFormDialog(
 ) {
     val fields = remember { InviteFields() }
     val input = remember { InviteAccessInput() }
-    AlertDialog(
+    AndroidDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.members_invite)) },
-        text = {
+        title = stringResource(R.string.members_invite),
+        content = {
             InviteFormFields(
                 storage = storage,
                 fields = fields,

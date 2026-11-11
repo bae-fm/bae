@@ -1,6 +1,5 @@
 package fm.bae.app.ui.playback
 
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -20,16 +19,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.durationClockLabel
-import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidEyebrow
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.NoticeLook
@@ -49,7 +45,7 @@ private val logger = BaeLogger(TAG)
  */
 private const val QUEUE_UPCOMING_LOAD_BATCH_SIZE = 100
 
-/** The play queue in a bottom sheet: the playing track, then the drag-reorderable lanes. */
+/** The play queue for a sheet that names it: the playing track, then the drag-reorderable lanes. */
 @Composable
 fun QueueScreen(
     session: OpenLibrary,
@@ -62,10 +58,7 @@ fun QueueScreen(
     LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(bottom = ThemeSpace.section),
     ) {
-        // Each lane's Clear sits in its own section label; this header only names the sheet.
-        item(key = "header") { QueueHeader() }
         nowPlaying?.let { np ->
             item(key = "nowplaying") {
                 AndroidEyebrow(
@@ -294,15 +287,6 @@ private fun LazyListScope.queueRows(
     }
 }
 
-@Composable
-private fun QueueHeader() {
-    Text(
-        text = stringResource(R.string.queue),
-        style = ThemeText.heading.style,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.group),
-    )
-}
-
 // The manual lane's label with its Clear.
 @Composable
 private fun UpNextSectionLabel(
@@ -333,12 +317,4 @@ private fun ContextSectionLabel(
         shuffled = shuffled,
         onShuffle = { failures.run("setShuffle ${!shuffled}") { session.appHandle.setShuffle(!shuffled) } },
     )
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun QueueHeaderPreview() {
-    BaeTheme {
-        QueueHeader()
-    }
 }

@@ -8,10 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -39,6 +36,7 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidDialog
+import fm.bae.app.ui.components.AndroidSheet
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ButtonTone
 import fm.bae.app.ui.components.StatusTone
@@ -57,7 +55,6 @@ import uniffi.bae_bridge.bridgeNextRepeatMode
  * longer known to be current; a cast whose link was lost says so under it
  * until playback moves on.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @Composable
 fun AndroidNowPlayingBarContainer(session: OpenLibrary) {
@@ -71,12 +68,8 @@ fun AndroidNowPlayingBarContainer(session: OpenLibrary) {
     if (failure == null && track == null) return
 
     var queueOpen by remember { mutableStateOf(false) }
-    val sheetState = rememberModalBottomSheetState()
     if (queueOpen) {
-        ModalBottomSheet(
-            onDismissRequest = { queueOpen = false },
-            sheetState = sheetState,
-        ) {
+        AndroidSheet(title = stringResource(R.string.queue), onDismiss = { queueOpen = false }) {
             QueueScreen(session = session, onDismiss = { queueOpen = false })
         }
     }

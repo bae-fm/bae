@@ -14,7 +14,6 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -46,6 +45,7 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.colors
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidCard
+import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidRadio
 import fm.bae.app.ui.components.AndroidRow
@@ -151,10 +151,10 @@ private fun <T> AppearancePicker(
     var open by remember { mutableStateOf(false) }
     AndroidRow(title = title, subtitle = stringResource(label(selected)), onClick = { open = true })
     if (open) {
-        AlertDialog(
+        AndroidDialog(
             onDismissRequest = { open = false },
-            title = { Text(title) },
-            text = {
+            title = title,
+            content = {
                 Column(modifier = Modifier.selectableGroup()) {
                     choices.forEach { choice ->
                         AndroidRadio(
