@@ -789,9 +789,6 @@ private struct FormerDevicesDisclosure: View {
         FormDisclosure(isExpanded: $isExpanded) {
             ForEach(devices, id: \.id) { device in
                 HStack(spacing: ThemeSpace.related) {
-                    Image(systemName: "laptopcomputer.and.iphone")
-                        .themeIcon(.small)
-                        .foregroundStyle(.secondary)
                     Text(device.name)
                         .themeText(.body)
                         .foregroundStyle(.secondary)
