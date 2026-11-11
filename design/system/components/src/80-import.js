@@ -40,7 +40,7 @@
   function MacImportFolderLine(props) {
     return h('div', { className: 'bae-m-ifl' }, h(StatusChip, { tone: 'accent' }, props.tab || 'Found'), h(Sym, { name: 'right', size: 10, className: 'bae-m-tertiary' }), h(Sym, { name: 'folder', size: 15, className: 'bae-muted' }), h('span', { className: 'bae-ellipsis bae-strong', style: { fontSize: 15 } }, props.folder));
   }
-  // Where an import goes, one choice of three, as the person last chose it: This Mac, Cloud, or Cloud, pinned (kept whole here too). One stored choice, shown wherever Import is (the draft card, the bulk pane's Import row) and in Settings → Import, so changing it in one place changes it in all.
+  // Where an import goes, one choice of two, as the person last chose it: This Mac or Cloud. One stored choice, shown wherever Import is (the draft card, the bulk pane's Import row) and in Settings → Import, so changing it in one place changes it in all.
   function MacImportDestination(props) { return h(MacPopUpButton, { value: props.to || 'Cloud', off: props.off }); }
   // The draft card: Identify with Automatic, Search and ⋯; where the import goes and Import; the folder's check in a warning notice; the cover well and identity; the Release grid; the linked records.
   function MacImportDraft(props) {

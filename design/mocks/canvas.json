@@ -3123,16 +3123,8 @@
    "x": 8640,
    "y": 1380
   },
-  "StoreMacCopyingMenu.dc.html": {
-   "h": 660,
-   "page": "storage",
-   "title": "macOS: a release copying here, its menu",
-   "w": 1100,
-   "x": 9820,
-   "y": 1380
-  },
   "AlbMacStorageStates.dc.html": {
-   "h": 770,
+   "h": 402,
    "page": "home",
    "title": "macOS: Storage…: every state",
    "w": 1452,
@@ -5358,7 +5350,6 @@
   "StoreMacStates.dc.html",
   "StoreMacDownloadFailed.dc.html",
   "StoreMacMoveFailedMenu.dc.html",
-  "StoreMacCopyingMenu.dc.html",
   "SyncMacMoving.dc.html",
   "SyncMacAttention.dc.html",
   "SyncMacFailed.dc.html",

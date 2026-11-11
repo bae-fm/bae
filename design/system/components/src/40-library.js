@@ -332,7 +332,7 @@
         props.pressing ? h('div', { className: 'bae-a-albumhead-fact bae-a-albumhead-gap' }, props.pressing) : null, props.labels ? h('div', { className: 'bae-a-albumhead-fact' }, props.labels) : null));
   }
 
-  // The album page's pin control for one release, as ReleaseDownloadControl draws it: Pin; Queued to pin, with Cancel; Pinning with its bar and bytes and Cancel pinning; Couldn't pin with Details and Retry, and Cancel; Pinned with Unpin. A release moved to the cloud to be kept here reads Pinning too. On a release this phone can't play, one line saying where it is. Nothing says how many wait ahead or what holds the queue back.
+  // The album page's pin control for one release, as ReleaseDownloadControl draws it: Pin; Queued to pin, with Cancel; Pinning with its bar and bytes and Cancel pinning; Couldn't pin with Details and Retry, and Cancel; Pinned with Unpin. On a release this phone can't play, one line saying where it is. Nothing says how many wait ahead or what holds the queue back.
   function AndroidDownloadControl(props) {
     var s = props.state || 'available';
     function btn(icon, text) { return h('button', { type: 'button', className: 'bae-a-btn bae-a-btn-outlined bae-a-btn-icon' }, h(Glyph, { name: icon, size: 20 }), text); }
@@ -340,7 +340,7 @@
     var body =
       s === 'elsewhere' ? line(props.where || 'On Ana’s Mac') :
       s === 'queued' ? h('div', { className: 'bae-a-dlrow' }, line('Queued to pin'), btn('close', 'Cancel')) :
-      s === 'downloading' || s === 'copying' ? [h(AndroidProgress, { key: 'p', value: Number(props.progress || 0.4) }), h('span', { key: 'b', className: 'bae-a-fine' }, 'Pinning · ' + (props.bytes || '120 MB of 300 MB')), h('div', { key: 'c' }, btn('close', 'Cancel pinning'))] :
+      s === 'downloading' ? [h(AndroidProgress, { key: 'p', value: Number(props.progress || 0.4) }), h('span', { key: 'b', className: 'bae-a-fine' }, 'Pinning · ' + (props.bytes || '120 MB of 300 MB')), h('div', { key: 'c' }, btn('close', 'Cancel pinning'))] :
       s === 'failed' ? [h(AndroidNotice, { key: 'e', quiet: true, tone: 'danger', title: 'Couldn’t pin', secondary: 'Details', action: 'Retry' }), h('div', { key: 'r' }, btn('close', 'Cancel'))] :
       s === 'downloaded' ? h('div', { className: 'bae-a-dlrow' }, h(Glyph, { name: 'pin', size: 16, className: 'bae-muted' }), line('Pinned'), btn('unpin', 'Unpin')) :
       btn('pin', 'Pin');

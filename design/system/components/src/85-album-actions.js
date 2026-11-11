@@ -30,7 +30,7 @@
       h('div', { className: 'bae-m-lb-cap' }, h('div', null, props.label || 'cover.jpg'), h('div', { style: { opacity: 0.7, fontSize: 11.5 } }, props.source || 'Release Files')),
       h('div', { className: 'bae-m-lb-strip' }, ['Low Tide Hours', 'Low Tide Hours back', 'Low Tide Hours disc', 'Low Tide Hours booklet'].map(function (t, i) { return h('span', { key: i, className: cx('bae-m-lb-thumb', i === 0 && 'bae-m-lb-thumb-on') }, h(Artwork, { title: t, size: 56, radius: 6 })); })));
   }
-  // The release's Storage sheet, as StorageStatusBand draws it: one line, the release's state at rest (Local, Pinned, In cloud) and beside it at most one pill for a change on its way: Queued to upload or Uploading (`state`: waiting, uploading; the release is Local), Queued to pin or Pinning (`download`: queued, downloading, copying), Queued to make local or Making local… (`makeLocal`: queued, making); the moving ones fill with `progress`. A failed pin (Couldn't pin) or make-local is a danger notice under the line, with Details; an upload held by a missing original (`missing`, the file's name) is a warning notice naming it. What holds a whole queue back shows on the Storage Manager's footer, not here. Then why this Mac can't play it, and the storage actions. Nothing says how many wait ahead or what holds the queue back.
+  // The release's Storage sheet, as StorageStatusBand draws it: one line, the release's state at rest (Local, Pinned, In cloud) and beside it at most one pill for a change on its way: Queued to upload or Uploading (`state`: waiting, uploading; the release is Local), Queued to pin or Pinning (`download`: queued, downloading), Queued to make local or Making local… (`makeLocal`: queued, making); the moving ones fill with `progress`. A failed pin (Couldn't pin) or make-local is a danger notice under the line, with Details; an upload held by a missing original (`missing`, the file's name) is a warning notice naming it. What holds a whole queue back shows on the Storage Manager's footer, not here. Then why this Mac can't play it, and the storage actions. Nothing says how many wait ahead or what holds the queue back.
   function MacStorageBand(props) {
     var s = props.state || 'cloud';
     var d = props.download, m = props.makeLocal;
@@ -39,7 +39,7 @@
     var pill = s === 'uploading' ? h(MacStorageChip, { state: 'uploading', progress: props.progress })
       : s === 'waiting' ? h(MacStorageChip, { state: 'uploadQueued' })
       : d === 'queued' ? h(MacStorageChip, { state: 'queued' })
-      : d === 'downloading' || d === 'copying' ? h(MacStorageChip, { state: 'pinning', progress: props.progress })
+      : d === 'downloading' ? h(MacStorageChip, { state: 'pinning', progress: props.progress })
       : m === 'queued' ? h(MacStorageChip, { state: 'makeLocalQueued' })
       : m === 'making' ? h(MacStorageChip, { state: 'detaching', progress: props.progress })
       : null;
