@@ -40,11 +40,13 @@ internal fun RowCard(
                 .clip(RoundedCornerShape(ThemeRadius.card))
                 .background(MaterialTheme.colorScheme.surfaceContainer)
                 // Each row draws a hairline on its top edge; the first row's
-                // sits one hairline above the card, where the clip cuts it.
+                // sits one hairline above the card, where the clip cuts it. A card
+                // with no rows has no hairline to cut and measures 0 high.
                 .layout { measurable, constraints ->
                     val hairline = HAIRLINE.roundToPx()
                     val placeable = measurable.measure(constraints)
-                    layout(placeable.width, placeable.height - hairline) { placeable.place(0, -hairline) }
+                    val height = (placeable.height - hairline).coerceAtLeast(0)
+                    layout(placeable.width, height) { placeable.place(0, -hairline) }
                 },
     ) {
         CompositionLocalProvider(LocalInRowCard provides true) { content() }
