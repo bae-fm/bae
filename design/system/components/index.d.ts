@@ -39,7 +39,7 @@ export declare function MacNested(props: { children?: React.ReactNode }): React.
 /** An ⓘ after a row's name that opens a popover saying what the name can't. */
 export declare function MacInfoTip(props: { label?: string }): React.ReactElement;
 /** How Save as… names each track's file, one pattern for every format: chips, pieces to add, a preview. */
-export declare function MacFileNameField(props: { label?: string; tokens?: string; add?: string; preview?: string }): React.ReactElement;
+export declare function MacFileNameField(props: { label?: string; /** The pattern's text, each value in brackets: "[Artist] - [Album]". */ pattern?: string; add?: string; preview?: string; /** Why the typed text makes no name; shown under the field, in place of the preview. */ error?: string }): React.ReactElement;
 export declare function MacRow(props: MacRowProps): React.ReactElement;
 export declare function MacItem(props: { lead?: React.ReactNode; trail?: React.ReactNode; children?: React.ReactNode }): React.ReactElement;
 

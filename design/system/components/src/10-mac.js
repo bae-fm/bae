@@ -226,15 +226,17 @@
     return h('div', { className: 'bae-m-note' }, props.children);
   }
 
-  // How Save as… names each track's file, one pattern for every format: the pattern's pieces as chips, each with ×, the pieces it can add, and a preview of a name it makes. `tokens`, `add`: comma-separated; `preview`: the name it shows.
+  // How Save as… names each track's file, one pattern for every format: the pattern's values as chips, each with ×, with the text typed between them, a preview of a name it makes right under the field, as its help line, and the values it can add. `pattern`: the text, with each value in brackets ("[Artist] - [Album]"); `add`: comma-separated; `preview`: the name it shows; `error`: why the typed text makes no name, in the preview's place.
   function MacFileNameField(props) {
     var split = function (s) { return String(s || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean); };
+    var pieces = String(props.pattern || '').split(/(\[[^\]]*\])/).filter(function (x) { return x !== ''; });
     // `label` sits above the field, at the row's leading edge where a MacRow's title sits, so the field runs the box's full width.
     return h('div', { className: 'bae-m-filename' },
       props.label == null ? null : h('span', { className: 'bae-m-filename-label' }, props.label),
-      h('div', { className: 'bae-m-tokenfield', 'aria-label': props.label }, split(props.tokens).map(function (t) { return h('span', { key: t, className: 'bae-chip bae-tone-neutral' }, t + ' ×'); })),
-      h('div', { className: 'bae-m-filename-add' }, 'Add:', split(props.add).map(function (t) { return h('span', { key: t, className: 'bae-m-tokenadd' }, t); })),
-      props.preview ? h('div', { className: 'bae-m-filename-preview' }, 'Preview: ', h('span', { className: 'bae-mono' }, props.preview)) : null);
+      h('div', { className: cx('bae-m-tokenfield', props.error && 'bae-m-tokenfield-error'), 'aria-label': props.label, 'aria-invalid': props.error ? true : null }, pieces.map(function (t, i) { return t.charAt(0) === '[' ? h('span', { key: i, className: 'bae-chip bae-tone-neutral' }, t.slice(1, -1) + ' ×') : h('span', { key: i, className: 'bae-m-tokentext' }, t); })),
+      props.error ? h('div', { className: 'bae-m-field-note bae-m-field-note-error' }, props.error)
+        : props.preview ? h('div', { className: 'bae-m-filename-preview' }, 'Preview: ', h('span', { className: 'bae-mono' }, props.preview)) : null,
+      h('div', { className: 'bae-m-filename-add' }, 'Add:', split(props.add).map(function (t) { return h('span', { key: t, className: 'bae-m-tokenadd' }, t); })));
   }
 
   function MacSwitch(props) {

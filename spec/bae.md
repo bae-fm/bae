@@ -2374,14 +2374,21 @@ Two ways put a release back on disk, from desktop:
   stays open behind it; the menu follows any change made there, and a format
   added there is chosen in it at once.
   One file name pattern and one folder name pattern serve every format. A
-  file's name is its pattern's text, with runs of spaces made one and no
-  leading `.`, written as a copy-out writes a name (§4.4), so a title
+  pattern is text with values in it, each value one chip: the person types
+  between the chips (`Artist - Album`), and Delete after a chip or Forward
+  Delete before it takes the whole chip out. A value the track or release
+  does not state comes out empty and the text around it stays. Typed text
+  that can't make a name turns the field red with why: text that starts the
+  name with `.`, one of `\ : ? * " < > | /`, or no pattern at all. Until it
+  is fixed, saves name by the default pattern. A file's name is its pattern's
+  text as typed, spaces and all, with each value filled in and no leading
+  `.`, written as a copy-out writes a name (§4.4), so a title
   `Some/Weird:Title` saves as `Some／Weird：Title.flac`; a single track's Save
   as suggests the same name, whatever format it starts in, and choosing
   another format changes only its extension. A release save writes its files into a folder
-  named by the folder pattern, written the same way; its pieces are the
-  artist, album, release year, label and catalog number, and one the release
-  does not state drops out.
+  named by the folder pattern, written the same way. The album year is the
+  year the album first came out; the release year is the year this release
+  came out, or the album's year when the release states none.
   A release save creates each track's file new, like export, so two names a
   drive holds as one (`Track Title` and `track title` on a drive that folds
   case) fail the save rather than one track replacing the other; a single
@@ -5424,8 +5431,8 @@ queue opens empty and running.
 |---|---|
 | `preferences` | the one row of this device's settings for the library (Appendix C) |
 | `save_preset` | save format, in the order listed: its name, unique, and its codec with the source's depth, 16 bits, or a bitrate (§4.6) |
-| `save_filename_token` | token of the one file name pattern every save names its files by, in order |
-| `save_folder_token` | token of the folder name pattern, in order |
+| `save_filename_token` | piece of the one file name pattern every save names its files by, a value or typed text, in order |
+| `save_folder_token` | piece of the folder name pattern, a value or typed text, in order |
 
 ### A.11 Sync status (bae-sync-status)
 
@@ -5514,8 +5521,8 @@ Replay gain has no control in the apps.
 | `replay_gain_mode` | off | loudness: off, track or album (§7.5) |
 | `save_preset` rows | FLAC (the source's depth), MP3 (320 kbps) | the save formats (§4.6), in order |
 | `last_save_preset` | FLAC | which format a save starts with: the one last used |
-| `save_filename_token` rows | track number, title | the file name pattern (§4.6) |
-| `save_folder_token` rows | artist, album | the folder name pattern of a release save (§4.6) |
+| `save_filename_token` rows | track number, “ ”, title | the file name pattern (§4.6) |
+| `save_folder_token` rows | artist, “ - ”, album | the folder name pattern of a release save (§4.6) |
 | `save_embed_cover`, `save_cover_file`, `save_loudness_tags` | on, on, on | the cover in each file, `cover.jpg` in a release's folder, ReplayGain tags (§4.6) |
 | `pause_between_sides` | on | pausing between sides and discs (§7.3) |
 | `side_pause_countdown_seconds` | none | when such a pause ends on its own: 5, 15, 30, 45 or 60 seconds, or none to wait for Play |
@@ -5541,13 +5548,12 @@ offers it; otherwise it starts at the source's depth, or MP3 at 320, AAC at
 256 and Opus at 192 kbps, and a name still as it was made follows the new
 codec. A format the person adds starts as core makes it: FLAC at the
 source's depth, named "FLAC" or the first free "FLAC (n)". Its files'
-extension comes from core too. The file pattern's tokens are title, artist,
-album, year, track number, disc number and track total; the folder
-pattern's are artist, album, year, label and catalog number.
-
-The filename pattern is an ordered list of tokens (title, artist, album, year,
-track number, disc number, track total), which the Formats settings pane edits
-under "File names" and a save captures with its preset when it is queued.
+extension comes from core too. A name pattern is an ordered list of pieces,
+each a value or typed text. The file pattern's values are title, artist,
+album, album year, release year, track number, disc number and track total;
+the folder pattern's are artist, album, album year, release year, label and
+catalog number. Settings → Save as edits both under Names, and a save keeps
+the patterns it was queued with.
 
 Platform settings, such as the appearance and restoring playback on launch,
 live in each app. Appearance reads Theme (System, Light, Dark), then Tone, then

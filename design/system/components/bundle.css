@@ -342,10 +342,11 @@
 .bae-m-row-nested { padding-top: 0; min-height: 0; }
 .bae-m-row-nested-off { opacity: 0.45; }
 /* MacNested: no line above it, a field row inside it keeps the row's padding, and its text sits on the rows' edge in secondary. */
-.bae-m-box > .bae-divider:has(+ .bae-m-nested) { display: none; }
+/* The canvas wraps each component in an x-import element, so each rule here also reaches through one. A nested row or block has no line above it: MacBox leaves it out when it can see the row is nested, and this rule hides it when a wrapper hides that. */
+.bae-m-box > .bae-divider:has(+ :is(.bae-m-nested, .bae-m-row-nested)), .bae-m-box > .bae-divider:has(+ x-import > :is(.bae-m-nested, .bae-m-row-nested)) { display: none; }
 .bae-m-nested { display: flex; flex-direction: column; gap: var(--space-related); padding-bottom: var(--space-group); color: var(--text-secondary); }
-.bae-m-nested > .bae-m-row { padding-top: 0; }
-.bae-m-nested > :not(.bae-m-row) { margin: 0 var(--space-group); }
+:is(.bae-m-nested, .bae-m-nested > x-import) > .bae-m-row { padding-top: 0; }
+:is(.bae-m-nested, .bae-m-nested > x-import) > :not(.bae-m-row, x-import) { margin: 0 var(--space-group); }
 /* A filled notice in a box keeps to the rows' edges, however deep it sits (the canvas wraps each component, so a child selector misses it): inset by the rows' padding, with the box's padding under it; in a nested block, whose own padding is under it, only at the sides; in a row, as the row lays it out. */
 .bae-m-box .bae-m-notice-box:not(.bae-notice-quiet) { margin: 0 var(--space-group) var(--space-group); }
 .bae-m-nested .bae-m-notice-box:not(.bae-notice-quiet) { margin: 0 var(--space-group); }
@@ -774,7 +775,13 @@
 .bae-m-switch-off { opacity: 0.45; }
 
 /* Formats pane: button-style toggles, the token field */
-.bae-m-tokenfield { min-height: 24px; padding: 6px; border-radius: 7px; background: var(--field); box-shadow: inset 0 0 0 1px var(--hairline-strong); display: flex; gap: 6px; flex-wrap: wrap; }
+.bae-m-tokenfield { min-height: 24px; padding: 6px; border-radius: 7px; background: var(--field); box-shadow: inset 0 0 0 1px var(--hairline-strong); display: flex; row-gap: 6px; flex-wrap: wrap; align-items: center; }
+/* Typed text sits between the chips as typed, its spaces kept: they are the spacing, so a chip keeps only a hair of margin of its own. */
+.bae-m-tokenfield .bae-chip { margin: 0 1px; }
+.bae-m-tokenfield-error { box-shadow: inset 0 0 0 1px var(--danger), 0 0 0 3px color-mix(in srgb, var(--danger) 35%, transparent); }
+/* The preview is the field's help line and the error takes its place, so the two line up, on the field's edge. */
+.bae-m-filename .bae-m-field-note { padding-left: 0; }
+.bae-m-tokentext { white-space: pre; font: 400 13px var(--font-sans); color: var(--text-primary); }
 .bae-m-filename { padding: 10px var(--space-group); display: flex; flex-direction: column; gap: var(--space-related); }
 .bae-m-filename-label { font: 400 13px var(--font-sans); color: var(--text-primary); }
 .bae-m-filename-add { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; font: 400 11.5px var(--font-sans); color: var(--text-secondary); }
