@@ -7,9 +7,9 @@
 
 use super::{
     CastTranscodeFormat, DiscogsValidation, IdentificationPreferences, ImportDestination,
-    LookupCatalogPreferences, McpConfig, Preferences, PreferencesError, ReplayGainMode,
-    SaveBitDepth, SaveCodec, SaveExtras, SaveFilenameToken, SaveFolderToken, SavePreset,
-    SidePauseCountdown, SubsonicConfig,
+    LookupCatalogPreferences, McpConfig, NamePattern, NamePiece, Preferences, PreferencesError,
+    ReplayGainMode, SaveBitDepth, SaveCodec, SaveExtras, SaveFilenameValue, SaveFolderValue,
+    SavePreset, SidePauseCountdown, SubsonicConfig,
 };
 use bae_store::{DbError, Store};
 use coven::{BulkSqlContext, CovenWrite, SqlRead};
@@ -74,16 +74,8 @@ pub fn carry_preferences(sql: &BulkSqlContext<'_>, carried: &Preferences) -> rus
 
 fn preferences_on(sql: &impl SqlRead) -> rusqlite::Result<Preferences> {
     let save_presets = save_presets_on(sql)?;
-    let save_filename_tokens =
-        sql.query("SELECT token FROM save_filename_token ORDER BY position", [], |row| {
-            let token: String = row.get("token")?;
-            filename_token(&token).ok_or_else(|| invalid(row, "token", token))
-        })?;
-    let save_folder_tokens =
-        sql.query("SELECT token FROM save_folder_token ORDER BY position", [], |row| {
-            let token: String = row.get("token")?;
-            folder_token(&token).ok_or_else(|| invalid(row, "token", token))
-        })?;
+    let save_filename_pattern = pattern_on(sql)?;
+    let save_folder_pattern = pattern_on(sql)?;
     sql.query_row("SELECT * FROM preferences", [], |row| {
         let flag = |column: &str| row.get::<_, bool>(column);
         let concurrency = |column: &str| {
@@ -107,8 +99,8 @@ fn preferences_on(sql: &impl SqlRead) -> rusqlite::Result<Preferences> {
                 other => return Err(invalid(row, "replay_gain_mode", other)),
             },
             save_presets,
-            save_filename_tokens,
-            save_folder_tokens,
+            save_filename_pattern,
+            save_folder_pattern,
             last_save_preset: row.get("last_save_preset")?,
             save_extras: SaveExtras {
                 embed_cover: flag("save_embed_cover")?,
@@ -225,30 +217,18 @@ fn write_preferences_on(
             )?;
         }
     }
-    if edited.save_filename_tokens != stored.save_filename_tokens {
-        sql.execute("DELETE FROM save_filename_token", [])?;
-        for (position, token) in edited.save_filename_tokens.iter().enumerate() {
-            sql.execute(
-                "INSERT INTO save_filename_token (position, token) VALUES (?, ?)",
-                params![position as i64, filename_token_column(*token)],
-            )?;
-        }
+    if edited.save_filename_pattern != stored.save_filename_pattern {
+        write_pattern(sql, &edited.save_filename_pattern)?;
     }
-    if edited.save_folder_tokens != stored.save_folder_tokens {
-        sql.execute("DELETE FROM save_folder_token", [])?;
-        for (position, token) in edited.save_folder_tokens.iter().enumerate() {
-            sql.execute(
-                "INSERT INTO save_folder_token (position, token) VALUES (?, ?)",
-                params![position as i64, folder_token_column(*token)],
-            )?;
-        }
+    if edited.save_folder_pattern != stored.save_folder_pattern {
+        write_pattern(sql, &edited.save_folder_pattern)?;
     }
     let Preferences {
         discogs,
         replay_gain_mode,
         save_presets: _,
-        save_filename_tokens: _,
-        save_folder_tokens: _,
+        save_filename_pattern: _,
+        save_folder_pattern: _,
         last_save_preset,
         save_extras,
         pause_between_sides,
@@ -340,50 +320,112 @@ impl Execute for BulkSqlContext<'_> {
     }
 }
 
-fn filename_token(column: &str) -> Option<SaveFilenameToken> {
-    Some(match column {
-        "title" => SaveFilenameToken::Title,
-        "artist" => SaveFilenameToken::Artist,
-        "album" => SaveFilenameToken::Album,
-        "year" => SaveFilenameToken::Year,
-        "track_number" => SaveFilenameToken::TrackNumber,
-        "disc_number" => SaveFilenameToken::DiscNumber,
-        "track_total" => SaveFilenameToken::TrackTotal,
-        _ => return None,
-    })
+/// A value a name pattern holds, and the table its pattern's pieces are
+/// rows of.
+trait PatternValue: Copy {
+    const TABLE: &'static str;
+    fn from_column(column: &str) -> Option<Self>;
+    fn column(self) -> &'static str;
 }
 
-fn filename_token_column(token: SaveFilenameToken) -> &'static str {
-    match token {
-        SaveFilenameToken::Title => "title",
-        SaveFilenameToken::Artist => "artist",
-        SaveFilenameToken::Album => "album",
-        SaveFilenameToken::Year => "year",
-        SaveFilenameToken::TrackNumber => "track_number",
-        SaveFilenameToken::DiscNumber => "disc_number",
-        SaveFilenameToken::TrackTotal => "track_total",
+impl PatternValue for SaveFilenameValue {
+    const TABLE: &'static str = "save_filename_token";
+
+    fn from_column(column: &str) -> Option<Self> {
+        Some(match column {
+            "title" => Self::Title,
+            "artist" => Self::Artist,
+            "album" => Self::Album,
+            "album_year" => Self::AlbumYear,
+            "release_year" => Self::ReleaseYear,
+            "track_number" => Self::TrackNumber,
+            "disc_number" => Self::DiscNumber,
+            "track_total" => Self::TrackTotal,
+            _ => return None,
+        })
+    }
+
+    fn column(self) -> &'static str {
+        match self {
+            Self::Title => "title",
+            Self::Artist => "artist",
+            Self::Album => "album",
+            Self::AlbumYear => "album_year",
+            Self::ReleaseYear => "release_year",
+            Self::TrackNumber => "track_number",
+            Self::DiscNumber => "disc_number",
+            Self::TrackTotal => "track_total",
+        }
     }
 }
 
-fn folder_token(column: &str) -> Option<SaveFolderToken> {
-    Some(match column {
-        "artist" => SaveFolderToken::Artist,
-        "album" => SaveFolderToken::Album,
-        "year" => SaveFolderToken::Year,
-        "label" => SaveFolderToken::Label,
-        "catalog_number" => SaveFolderToken::CatalogNumber,
-        _ => return None,
-    })
+impl PatternValue for SaveFolderValue {
+    const TABLE: &'static str = "save_folder_token";
+
+    fn from_column(column: &str) -> Option<Self> {
+        Some(match column {
+            "artist" => Self::Artist,
+            "album" => Self::Album,
+            "album_year" => Self::AlbumYear,
+            "release_year" => Self::ReleaseYear,
+            "label" => Self::Label,
+            "catalog_number" => Self::CatalogNumber,
+            _ => return None,
+        })
+    }
+
+    fn column(self) -> &'static str {
+        match self {
+            Self::Artist => "artist",
+            Self::Album => "album",
+            Self::AlbumYear => "album_year",
+            Self::ReleaseYear => "release_year",
+            Self::Label => "label",
+            Self::CatalogNumber => "catalog_number",
+        }
+    }
 }
 
-fn folder_token_column(token: SaveFolderToken) -> &'static str {
-    match token {
-        SaveFolderToken::Artist => "artist",
-        SaveFolderToken::Album => "album",
-        SaveFolderToken::Year => "year",
-        SaveFolderToken::Label => "label",
-        SaveFolderToken::CatalogNumber => "catalog_number",
+/// The stored pattern of `Value`'s table, its pieces in order.
+fn pattern_on<Value: PatternValue>(sql: &impl SqlRead) -> rusqlite::Result<NamePattern<Value>> {
+    let pieces = sql.query(
+        &format!("SELECT value, text FROM {} ORDER BY position", Value::TABLE),
+        [],
+        |row| {
+            let value: Option<String> = row.get("value")?;
+            let text: Option<String> = row.get("text")?;
+            match (value, text) {
+                (Some(value), None) => Value::from_column(&value)
+                    .map(NamePiece::Value)
+                    .ok_or_else(|| invalid(row, "value", value)),
+                (None, Some(text)) => Ok(NamePiece::Text(text)),
+                (value, text) => {
+                    Err(invalid(row, "value", format!("{value:?} with text {text:?}")))
+                }
+            }
+        },
+    )?;
+    Ok(NamePattern::new(pieces))
+}
+
+/// Replace the stored pattern of `Value`'s table with `pattern`, piece by
+/// piece.
+fn write_pattern<Value: PatternValue>(
+    sql: &impl Execute,
+    pattern: &NamePattern<Value>,
+) -> rusqlite::Result<()> {
+    sql.execute(&format!("DELETE FROM {}", Value::TABLE), [])?;
+    for (position, piece) in pattern.pieces().iter().enumerate() {
+        let (value, text) = match piece {
+            NamePiece::Value(value) => (Some(value.column()), None),
+            NamePiece::Text(text) => (None, Some(text.as_str())),
+        };
+        sql.execute(
+            &format!("INSERT INTO {} (position, value, text) VALUES (?, ?, ?)", Value::TABLE),
+            params![position as i64, value, text],
+        )?;
     }
+    Ok(())
 }
 
 /// A stored value the schema's checks should have refused.

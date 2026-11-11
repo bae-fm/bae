@@ -11,55 +11,48 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tracing::{debug, warn};
 
-/// Render a saved track's filename stem (no extension) from the ordered token
-/// list and the track's tag data. Each token substitutes its value; an absent
-/// value (no year, say) drops out, and the non-empty values join with single
-/// spaces. The result goes through `sanitize_filename_stem`; if that leaves it
-/// empty, fall back to the sanitized title, then to "track". The stem is text:
-/// a file takes it through `save_file_name`.
+/// Render a saved track's filename stem (no extension) from the file name
+/// pattern and the track's tag data: each value filled in, the pattern's text
+/// as typed (see [`rendered_name`]). If that leaves nothing, fall back to the
+/// sanitized title, then to "track". The stem is text: a file takes it through
+/// `save_file_name`.
 pub fn render_save_filename(
-    tokens: &[bae_preferences::SaveFilenameToken],
+    pattern: &bae_preferences::SaveFilenamePattern,
     resolved: &crate::manager::ResolvedSaveTags,
 ) -> String {
-    use bae_preferences::SaveFilenameToken;
+    use bae_preferences::SaveFilenameValue;
 
     let tags = &resolved.tags;
-    let rendered = tokens
-        .iter()
-        .map(|token| match token {
-            SaveFilenameToken::Title => tags.title.clone(),
-            SaveFilenameToken::Artist => tags.artist.clone(),
-            SaveFilenameToken::Album => tags.album.clone(),
-            // An absent year or disc renders empty and drops out of the join.
-            // That is a legitimate state for a filename pattern, not an error.
-            SaveFilenameToken::Year => tags.year.map(|y| y.to_string()).unwrap_or_default(),
-            // Zero-padded to two digits so tracks sort lexically.
-            SaveFilenameToken::TrackNumber => format!("{:02}", resolved.track_number),
-            SaveFilenameToken::DiscNumber => tags.disc.map(|d| d.to_string()).unwrap_or_default(),
-            SaveFilenameToken::TrackTotal => resolved.total_tracks.to_string(),
-        })
-        .filter(|value| !value.is_empty())
-        .collect::<Vec<_>>()
-        .join(" ");
-
-    let stem = sanitize_filename_stem(&rendered);
+    let stem = rendered_name(pattern, |value| match value {
+        SaveFilenameValue::Title => tags.title.clone(),
+        SaveFilenameValue::Artist => tags.artist.clone(),
+        SaveFilenameValue::Album => tags.album.clone(),
+        // An absent year or disc renders empty. That is a legitimate state
+        // for a filename pattern, not an error.
+        SaveFilenameValue::AlbumYear => tags.album_year.map(|y| y.to_string()).unwrap_or_default(),
+        SaveFilenameValue::ReleaseYear => tags.year.map(|y| y.to_string()).unwrap_or_default(),
+        // Zero-padded to two digits so tracks sort lexically.
+        SaveFilenameValue::TrackNumber => format!("{:02}", resolved.track_number),
+        SaveFilenameValue::DiscNumber => tags.disc.map(|d| d.to_string()).unwrap_or_default(),
+        SaveFilenameValue::TrackTotal => resolved.total_tracks.to_string(),
+    });
     if !stem.is_empty() {
         return stem;
     }
-    // The template rendered nothing usable (every value it referenced was empty).
-    // Log rather than silently invent a name, then fall back to the track title,
-    // and finally to a fixed stem.
+    // The pattern rendered nothing usable (every value it referenced was
+    // empty). Log rather than silently invent a name, then fall back to the
+    // track title, and finally to a fixed stem.
     let title_stem = sanitize_filename_stem(&tags.title);
     if !title_stem.is_empty() {
         debug!(
             track_title = %tags.title,
-            "export filename template rendered empty; using track title"
+            "export filename pattern rendered empty; using track title"
         );
         return title_stem;
     }
     debug!(
         track_title = %tags.title,
-        "export filename template and track title both empty; using \"track\""
+        "export filename pattern and track title both empty; using \"track\""
     );
     "track".to_string()
 }
@@ -69,7 +62,10 @@ pub struct SaveFolderTags {
     /// The album's line (ALBUMARTIST).
     pub artist: String,
     pub album: String,
-    pub year: Option<i32>,
+    /// The year the album first came out.
+    pub album_year: Option<i32>,
+    /// The year this release came out, else the album's.
+    pub release_year: Option<i32>,
     /// The first label the pressing states a name for.
     pub label: Option<String>,
     /// The first catalog number the pressing states.
@@ -77,31 +73,28 @@ pub struct SaveFolderTags {
 }
 
 /// Render the folder name (one name, no extension) a release save writes into
-/// from the ordered token list and the release's data: each token's value, the
-/// non-empty values joined with single spaces, through `sanitize_filename_stem`.
-/// A pattern that renders nothing usable falls back to the album, then to
-/// "release". The name is text: the folder takes it through `coven`'s rule for
-/// a stored name.
+/// from the folder name pattern and the release's data, as a file's is
+/// ([`rendered_name`]). A pattern that renders nothing usable falls back to the
+/// album, then to "release". The name is text: the folder takes it through
+/// `coven`'s rule for a stored name.
 pub fn render_save_folder_name(
-    tokens: &[bae_preferences::SaveFolderToken],
+    pattern: &bae_preferences::SaveFolderPattern,
     tags: &SaveFolderTags,
 ) -> String {
-    use bae_preferences::SaveFolderToken;
+    use bae_preferences::SaveFolderValue;
 
-    let rendered = tokens
-        .iter()
-        .map(|token| match token {
-            SaveFolderToken::Artist => tags.artist.clone(),
-            SaveFolderToken::Album => tags.album.clone(),
-            SaveFolderToken::Year => tags.year.map(|year| year.to_string()).unwrap_or_default(),
-            SaveFolderToken::Label => tags.label.clone().unwrap_or_default(),
-            SaveFolderToken::CatalogNumber => tags.catalog_number.clone().unwrap_or_default(),
-        })
-        .filter(|value| !value.is_empty())
-        .collect::<Vec<_>>()
-        .join(" ");
-
-    let name = sanitize_filename_stem(&rendered);
+    let name = rendered_name(pattern, |value| match value {
+        SaveFolderValue::Artist => tags.artist.clone(),
+        SaveFolderValue::Album => tags.album.clone(),
+        SaveFolderValue::AlbumYear => {
+            tags.album_year.map(|year| year.to_string()).unwrap_or_default()
+        }
+        SaveFolderValue::ReleaseYear => {
+            tags.release_year.map(|year| year.to_string()).unwrap_or_default()
+        }
+        SaveFolderValue::Label => tags.label.clone().unwrap_or_default(),
+        SaveFolderValue::CatalogNumber => tags.catalog_number.clone().unwrap_or_default(),
+    });
     if !name.is_empty() {
         return name;
     }
@@ -114,18 +107,35 @@ pub fn render_save_folder_name(
     "release".to_string()
 }
 
-/// Tidy a rendered filename stem: whitespace runs collapse to one space,
-/// leading and trailing spaces are trimmed, and a leading '.' is stripped so
-/// the file isn't hidden. What a name may hold on a volume is coven's rule,
-/// which [`save_file_name`] applies.
+/// What `pattern` makes of the values `value_of` fills in: its text as typed,
+/// spaces and all, nothing added between pieces, then [`sanitize_filename_stem`].
+/// A pattern that can't make a name ([`bae_preferences::NamePattern::validate`])
+/// is not used: the default pattern makes the name. Empty when nothing usable
+/// is left.
+fn rendered_name<Value>(
+    pattern: &bae_preferences::NamePattern<Value>,
+    value_of: impl Fn(&Value) -> String,
+) -> String
+where
+    bae_preferences::NamePattern<Value>: Default,
+{
+    if pattern.validate().is_err() {
+        debug!("a name pattern can't make a name; naming by the default pattern");
+        return sanitize_filename_stem(&bae_preferences::NamePattern::default().fill(value_of));
+    }
+    sanitize_filename_stem(&pattern.fill(value_of))
+}
+
+/// Make a rendered name safe to write: a leading '.' is stripped so the file
+/// isn't hidden, and a name of nothing but whitespace is no name. Spacing is
+/// kept as typed. What a name may hold on a volume is coven's rule, which
+/// [`save_file_name`] applies.
 pub(crate) fn sanitize_filename_stem(input: &str) -> String {
-    input
-        .split_whitespace()
-        .collect::<Vec<_>>()
-        .join(" ")
-        .trim_start_matches('.')
-        .trim_start()
-        .to_string()
+    let name = input.trim_start_matches('.');
+    if name.trim().is_empty() {
+        return String::new();
+    }
+    name.to_string()
 }
 
 /// The name a save writes for a file of `stem` and `extension`: coven's name

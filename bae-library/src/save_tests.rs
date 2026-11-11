@@ -14,6 +14,7 @@ fn resolved(
             artist: "Artist Name".to_string(),
             album_artist: "Artist Name".to_string(),
             album: "Album Title".to_string(),
+            album_year: Some(1999),
             year,
             disc,
         },
@@ -22,27 +23,83 @@ fn resolved(
     }
 }
 
-use bae_preferences::SaveFilenameToken::{Album, Artist, Title, TrackNumber, Year};
+use bae_preferences::{
+    NamePattern, NamePiece, SaveFilenamePattern, SaveFilenameValue, SaveFolderPattern,
+    SaveFolderValue,
+};
+
+fn file_pattern(pieces: &[NamePiece<SaveFilenameValue>]) -> SaveFilenamePattern {
+    NamePattern::new(pieces.to_vec())
+}
+
+fn folder_pattern(pieces: &[NamePiece<SaveFolderValue>]) -> SaveFolderPattern {
+    NamePattern::new(pieces.to_vec())
+}
+
+fn value<V>(value: V) -> NamePiece<V> {
+    NamePiece::Value(value)
+}
+
+fn text<V>(text: &str) -> NamePiece<V> {
+    NamePiece::Text(text.to_string())
+}
+
+use SaveFilenameValue::{Album, AlbumYear, Artist, DiscNumber, ReleaseYear, Title, TrackNumber};
 
 #[test]
 fn default_pattern_all_present_pads_track_number() {
     let r = resolved("Track Title", 3, 10, None, Some(2001));
-    assert_eq!(render_save_filename(&[TrackNumber, Title], &r), "03 Track Title");
+    assert_eq!(render_save_filename(&SaveFilenamePattern::default(), &r), "03 Track Title");
 }
 
 #[test]
-fn absent_values_drop_out_of_the_join() {
+fn typed_text_is_kept_as_typed_with_no_spaces_added_or_collapsed() {
     let r = resolved("Track Title", 3, 10, None, None);
-    assert_eq!(render_save_filename(&[TrackNumber, Title, Year], &r), "03 Track Title");
+    let pattern = file_pattern(&[
+        value(Artist),
+        text("  -   "),
+        value(Title),
+        text("(live)"),
+        value(TrackNumber),
+    ]);
+    assert_eq!(render_save_filename(&pattern, &r), "Artist Name  -   Track Title(live)03");
 }
 
 #[test]
-fn full_pattern_substitutes_every_token() {
+fn an_empty_value_leaves_only_its_neighbours_text() {
+    let r = resolved("Track Title", 3, 10, None, None);
+    let pattern = file_pattern(&[
+        value(DiscNumber),
+        text(" - "),
+        value(TrackNumber),
+        text(" "),
+        value(Title),
+    ]);
+    assert_eq!(render_save_filename(&pattern, &r), " - 03 Track Title");
+}
+
+#[test]
+fn the_album_year_and_the_release_year_are_two_values() {
+    let r = resolved("Track Title", 3, 10, None, Some(2001));
+    let pattern = file_pattern(&[value(AlbumYear), text(" "), value(ReleaseYear)]);
+    assert_eq!(render_save_filename(&pattern, &r), "1999 2001");
+    let unstated = resolved("Track Title", 3, 10, None, None);
+    assert_eq!(render_save_filename(&pattern, &unstated), "1999 ");
+}
+
+#[test]
+fn full_pattern_substitutes_every_value() {
     let r = resolved("Track Title", 3, 10, Some(2), Some(2001));
-    assert_eq!(
-        render_save_filename(&[Artist, Album, TrackNumber, Title], &r),
-        "Artist Name Album Title 03 Track Title"
-    );
+    let pattern = file_pattern(&[
+        value(Artist),
+        text(" - "),
+        value(Album),
+        text(" "),
+        value(DiscNumber),
+        value(TrackNumber),
+        value(Title),
+    ]);
+    assert_eq!(render_save_filename(&pattern, &r), "Artist Name - Album Title 203Track Title");
 }
 
 /// The stem is the title's text; its file takes the name coven writes, where
@@ -50,7 +107,7 @@ fn full_pattern_substitutes_every_token() {
 #[test]
 fn slash_and_colon_are_written_as_coven_writes_them() {
     let r = resolved("Some/Weird:Title", 1, 1, None, None);
-    let stem = render_save_filename(&[Title], &r);
+    let stem = render_save_filename(&file_pattern(&[value(Title)]), &r);
     assert_eq!(stem, "Some/Weird:Title");
     assert_eq!(save_file_name(&stem, "flac"), Path::new("Some／Weird：Title.flac"));
 }
@@ -58,21 +115,42 @@ fn slash_and_colon_are_written_as_coven_writes_them() {
 #[test]
 fn path_escape_leaves_one_name() {
     let r = resolved("../secret", 1, 1, None, None);
-    let name = save_file_name(&render_save_filename(&[Title], &r), "flac");
+    let name = save_file_name(&render_save_filename(&file_pattern(&[value(Title)]), &r), "flac");
     assert_eq!(name, Path::new("／secret.flac"));
     assert_eq!(name.components().count(), 1, "one name: {name:?}");
 }
 
 #[test]
-fn a_stem_is_tidied_and_never_hidden() {
-    let r = resolved("  ..  Track   Title  ", 1, 1, None, None);
-    assert_eq!(render_save_filename(&[Title], &r), "Track Title");
+fn a_name_is_never_hidden_and_keeps_its_spacing() {
+    let r = resolved("..Track   Title  ", 1, 1, None, None);
+    assert_eq!(render_save_filename(&file_pattern(&[value(Title)]), &r), "Track   Title  ");
 }
 
 #[test]
 fn empty_render_falls_back_to_title() {
     let r = resolved("Fallback Title", 1, 1, None, None);
-    assert_eq!(render_save_filename(&[Year], &r), "Fallback Title");
+    assert_eq!(render_save_filename(&file_pattern(&[value(ReleaseYear)]), &r), "Fallback Title");
+    assert_eq!(
+        render_save_filename(&file_pattern(&[text("  "), value(ReleaseYear)]), &r),
+        "Fallback Title",
+        "a name of nothing but spaces is no name"
+    );
+}
+
+/// A pattern that can't make a name is not used: a save names by the default
+/// pattern.
+#[test]
+fn an_invalid_pattern_names_by_the_default_pattern() {
+    let r = resolved("Track Title", 3, 10, None, None);
+    let default = render_save_filename(&SaveFilenamePattern::default(), &r);
+    for invalid in [
+        file_pattern(&[]),
+        file_pattern(&[text(".hidden "), value(Title)]),
+        file_pattern(&[value(Title), text(" a/b")]),
+        file_pattern(&[value(Title), text("?")]),
+    ] {
+        assert_eq!(render_save_filename(&invalid, &r), default, "{invalid:?}");
+    }
 }
 
 /// Encode a short FLAC and run the real `write_tags` over it with `cover`.
@@ -95,6 +173,7 @@ fn write_tags_to_encoded_flac(cover: Option<&[u8]>) -> (tempfile::TempDir, std::
         artist: "Artist Name".to_string(),
         album_artist: "Artist Name".to_string(),
         album: "Album Title".to_string(),
+        album_year: Some(1999),
         year: Some(2001),
         disc: Some(1),
     };
@@ -181,6 +260,7 @@ fn write_tags_round_trips_through_mp4_ilst() {
         artist: "Artist Name".to_string(),
         album_artist: "Artist Name".to_string(),
         album: "Album Title".to_string(),
+        album_year: Some(1999),
         year: Some(2001),
         disc: Some(1),
     };
@@ -274,48 +354,87 @@ fn folder_tags() -> SaveFolderTags {
     SaveFolderTags {
         artist: "Mara Quill".to_string(),
         album: "Low Tide Hours".to_string(),
-        year: Some(1992),
+        album_year: Some(1992),
+        release_year: Some(2004),
         label: Some("Harbor Records".to_string()),
         catalog_number: Some("HR-1042".to_string()),
     }
 }
 
-/// A folder name is its pattern's values joined with single spaces, and a value
-/// a release does not state drops out.
+/// A folder name is its pattern's text as typed with each value filled in; a
+/// value a release does not state leaves only the text around it.
 #[test]
-fn a_folder_name_joins_the_values_its_pattern_names() {
-    use bae_preferences::SaveFolderToken::*;
+fn a_folder_name_fills_the_values_its_pattern_names() {
+    use SaveFolderValue::*;
     let tags = folder_tags();
-    assert_eq!(render_save_folder_name(&[Artist, Album], &tags), "Mara Quill Low Tide Hours");
     assert_eq!(
-        render_save_folder_name(&[Year, Label, CatalogNumber, Album], &tags),
-        "1992 Harbor Records HR-1042 Low Tide Hours"
+        render_save_folder_name(&SaveFolderPattern::default(), &tags),
+        "Mara Quill - Low Tide Hours"
     );
-    let unstated = SaveFolderTags { year: None, label: None, catalog_number: None, ..tags };
     assert_eq!(
-        render_save_folder_name(&[Artist, Year, Label, CatalogNumber, Album], &unstated),
-        "Mara Quill Low Tide Hours"
+        render_save_folder_name(
+            &folder_pattern(&[
+                value(AlbumYear),
+                text("  "),
+                value(ReleaseYear),
+                text(" ["),
+                value(Label),
+                text("] "),
+                value(CatalogNumber),
+                text(" "),
+                value(Album),
+            ]),
+            &tags
+        ),
+        "1992  2004 [Harbor Records] HR-1042 Low Tide Hours"
+    );
+    let unstated = SaveFolderTags { release_year: None, label: None, catalog_number: None, ..tags };
+    assert_eq!(
+        render_save_folder_name(
+            &folder_pattern(&[value(Artist), text(" - "), value(Label), text(" - "), value(Album)]),
+            &unstated
+        ),
+        "Mara Quill -  - Low Tide Hours"
     );
 }
 
-/// A pattern that renders nothing falls back to the album, then to a fixed name.
+/// A pattern that renders nothing falls back to the album, then to a fixed
+/// name; one that can't make a name names by the default pattern.
 #[test]
 fn an_empty_folder_name_falls_back_to_the_album() {
-    use bae_preferences::SaveFolderToken::*;
+    use SaveFolderValue::*;
     let tags = folder_tags();
-    assert_eq!(render_save_folder_name(&[], &tags), "Low Tide Hours");
     assert_eq!(
-        render_save_folder_name(&[Label], &SaveFolderTags { label: None, ..tags }),
+        render_save_folder_name(
+            &folder_pattern(&[value(Label)]),
+            &SaveFolderTags { label: None, ..tags }
+        ),
         "Low Tide Hours"
     );
     let nothing = SaveFolderTags {
         artist: String::new(),
         album: String::new(),
-        year: None,
+        album_year: None,
+        release_year: None,
         label: None,
         catalog_number: None,
     };
-    assert_eq!(render_save_folder_name(&[Artist], &nothing), "release");
+    assert_eq!(render_save_folder_name(&folder_pattern(&[value(Artist)]), &nothing), "release");
+}
+
+#[test]
+fn an_invalid_folder_pattern_names_by_the_default_pattern() {
+    use SaveFolderValue::*;
+    let tags = folder_tags();
+    let default = render_save_folder_name(&SaveFolderPattern::default(), &tags);
+    for invalid in [
+        folder_pattern(&[]),
+        folder_pattern(&[text(".x"), value(Album)]),
+        folder_pattern(&[value(Album), text("\\")]),
+        folder_pattern(&[value(Album), text("<>")]),
+    ] {
+        assert_eq!(render_save_folder_name(&invalid, &tags), default, "{invalid:?}");
+    }
 }
 
 /// ReplayGain tags are the gain in dB to two places and the peak as a linear

@@ -298,29 +298,45 @@ impl LibraryManager {
         .await
     }
 
-    /// Set the one filename pattern every save names its files by, whatever
-    /// the format.
-    pub async fn set_save_filename_tokens(
+    /// Set the one file name pattern every save names its files by, whatever
+    /// the format. A pattern that can't make a name is stored as typed (a save
+    /// names by the default pattern until it is fixed); a piece of typed text
+    /// with nothing in it is refused.
+    pub async fn set_save_filename_pattern(
         &self,
-        tokens: Vec<bae_preferences::SaveFilenameToken>,
+        pattern: bae_preferences::SaveFilenamePattern,
     ) -> Result<(), bae_preferences::PreferencesError> {
+        Self::refuse_empty_text(&pattern)?;
         self.update_preferences(move |prefs| {
-            prefs.save_filename_tokens = tokens;
+            prefs.save_filename_pattern = pattern;
             Ok(())
         })
         .await
     }
 
-    /// Set the folder name pattern a release save names its folder by.
-    pub async fn set_save_folder_tokens(
+    /// Set the folder name pattern a release save names its folder by, stored
+    /// as typed like the file name pattern.
+    pub async fn set_save_folder_pattern(
         &self,
-        tokens: Vec<bae_preferences::SaveFolderToken>,
+        pattern: bae_preferences::SaveFolderPattern,
     ) -> Result<(), bae_preferences::PreferencesError> {
+        Self::refuse_empty_text(&pattern)?;
         self.update_preferences(move |prefs| {
-            prefs.save_folder_tokens = tokens;
+            prefs.save_folder_pattern = pattern;
             Ok(())
         })
         .await
+    }
+
+    fn refuse_empty_text<Value>(
+        pattern: &bae_preferences::NamePattern<Value>,
+    ) -> Result<(), bae_preferences::PreferencesError> {
+        if pattern.has_empty_text() {
+            return Err(bae_preferences::PreferencesError::Invalid(
+                "a name pattern holds typed text of nothing".to_string(),
+            ));
+        }
+        Ok(())
     }
 
     /// Set whether each saved file embeds the release's cover.

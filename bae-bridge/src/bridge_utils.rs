@@ -2,9 +2,10 @@
 use crate::types::BridgeOutputKind;
 use crate::types::{
     BridgeCastTranscodeFormat, BridgeConfig, BridgeDiscogsTokenStatus, BridgeImportDestination,
-    BridgeLookupCatalog, BridgeLookupCatalogSetting, BridgeMcpConfig, BridgeSaveBitDepth,
-    BridgeSaveCodec, BridgeSaveExtras, BridgeSaveFilenameToken, BridgeSaveFolderToken,
-    BridgeSavePreset, BridgeSidePauseCountdown, BridgeSourceAvailability, BridgeSubsonicConfig,
+    BridgeLookupCatalog, BridgeLookupCatalogSetting, BridgeMcpConfig, BridgeNamePatternError,
+    BridgeSaveBitDepth, BridgeSaveCodec, BridgeSaveExtras, BridgeSaveFilenamePiece,
+    BridgeSaveFilenameValue, BridgeSaveFolderPiece, BridgeSaveFolderValue, BridgeSavePreset,
+    BridgeSidePauseCountdown, BridgeSourceAvailability, BridgeSubsonicConfig,
 };
 
 mirror_enum! {
@@ -99,17 +100,73 @@ impl BridgeSaveExtras {
 }
 
 mirror_enum! {
-    BridgeSaveFolderToken = bae_preferences::SaveFolderToken,
+    BridgeSaveFolderValue = bae_preferences::SaveFolderValue,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
-    variants: { Artist, Album, Year, Label, CatalogNumber },
+    variants: { Artist, Album, AlbumYear, ReleaseYear, Label, CatalogNumber },
 }
 
 mirror_enum! {
-    BridgeSaveFilenameToken = bae_preferences::SaveFilenameToken,
+    BridgeSaveFilenameValue = bae_preferences::SaveFilenameValue,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
-    variants: { Title, Artist, Album, Year, TrackNumber, DiscNumber, TrackTotal },
+    variants: { Title, Artist, Album, AlbumYear, ReleaseYear, TrackNumber, DiscNumber, TrackTotal },
+}
+
+impl BridgeSaveFilenamePiece {
+    pub(crate) fn from_core(
+        piece: &bae_preferences::NamePiece<bae_preferences::SaveFilenameValue>,
+    ) -> Self {
+        match piece {
+            bae_preferences::NamePiece::Value(value) => {
+                Self::Value { value: BridgeSaveFilenameValue::from_core(*value) }
+            }
+            bae_preferences::NamePiece::Text(text) => Self::Text { text: text.clone() },
+        }
+    }
+
+    pub(crate) fn into_core(
+        self,
+    ) -> bae_preferences::NamePiece<bae_preferences::SaveFilenameValue> {
+        match self {
+            Self::Value { value } => bae_preferences::NamePiece::Value(value.into_core()),
+            Self::Text { text } => bae_preferences::NamePiece::Text(text),
+        }
+    }
+}
+
+impl BridgeSaveFolderPiece {
+    pub(crate) fn from_core(
+        piece: &bae_preferences::NamePiece<bae_preferences::SaveFolderValue>,
+    ) -> Self {
+        match piece {
+            bae_preferences::NamePiece::Value(value) => {
+                Self::Value { value: BridgeSaveFolderValue::from_core(*value) }
+            }
+            bae_preferences::NamePiece::Text(text) => Self::Text { text: text.clone() },
+        }
+    }
+
+    pub(crate) fn into_core(self) -> bae_preferences::NamePiece<bae_preferences::SaveFolderValue> {
+        match self {
+            Self::Value { value } => bae_preferences::NamePiece::Value(value.into_core()),
+            Self::Text { text } => bae_preferences::NamePiece::Text(text),
+        }
+    }
+}
+
+impl BridgeNamePatternError {
+    /// Core's answer on `pattern`: why it can't make a name, or `None`.
+    pub(crate) fn of<Value>(pattern: &bae_preferences::NamePattern<Value>) -> Option<Self> {
+        match pattern.validate() {
+            Ok(()) => None,
+            Err(bae_preferences::NamePatternError::Empty) => Some(Self::Empty),
+            Err(bae_preferences::NamePatternError::StartsWithDot) => Some(Self::StartsWithDot),
+            Err(bae_preferences::NamePatternError::ForbiddenCharacter(character)) => {
+                Some(Self::ForbiddenCharacter { character: character.to_string() })
+            }
+        }
+    }
 }
 
 // The output queue and its bridge functions are desktop-only (handle.rs gates
@@ -158,8 +215,8 @@ impl BridgeConfig {
             // Playback loudness policy; not surfaced on the config screen.
             replay_gain_mode: _,
             save_presets,
-            save_filename_tokens,
-            save_folder_tokens,
+            save_filename_pattern,
+            save_folder_pattern,
             save_extras,
             last_save_preset,
             pause_between_sides,
@@ -208,16 +265,18 @@ impl BridgeConfig {
             show_remaining_time: *show_remaining_time,
             library_full_width: *library_full_width,
             save_presets: save_presets.iter().map(BridgeSavePreset::from_core).collect(),
-            filename_tokens: save_filename_tokens
+            filename_pieces: save_filename_pattern
+                .pieces()
                 .iter()
-                .copied()
-                .map(BridgeSaveFilenameToken::from_core)
+                .map(BridgeSaveFilenamePiece::from_core)
                 .collect(),
-            folder_tokens: save_folder_tokens
+            filename_pattern_error: BridgeNamePatternError::of(save_filename_pattern),
+            folder_pieces: save_folder_pattern
+                .pieces()
                 .iter()
-                .copied()
-                .map(BridgeSaveFolderToken::from_core)
+                .map(BridgeSaveFolderPiece::from_core)
                 .collect(),
+            folder_pattern_error: BridgeNamePatternError::of(save_folder_pattern),
             save_extras: BridgeSaveExtras::from_core(save_extras),
             last_save_preset: last_save_preset.clone(),
             cast_enabled: *cast_enabled,

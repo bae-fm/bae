@@ -11,6 +11,7 @@ use std::path::PathBuf;
 mod catalog_availability;
 mod identification;
 mod import_destination;
+mod name_pattern;
 mod presentation;
 mod row;
 mod save;
@@ -21,19 +22,21 @@ pub use catalog_availability::{
 };
 pub use identification::{IdentificationPreferences, LookupCatalogPreferences};
 pub use import_destination::ImportDestination;
+pub use name_pattern::{NamePattern, NamePatternError, NamePiece};
 pub use presentation::LookupCatalogSetting;
 pub use row::{carry_preferences, preferences, subscribe_preferences, PreferencesRow};
 #[cfg(any(test, feature = "test-utils"))]
 pub use row::{fail_preferences_writes_for_test, plant_unknown_replay_gain_mode_for_test};
 pub use save::{
-    SaveBitDepth, SaveCodec, SaveExtras, SaveFilenameToken, SaveFolderToken, SaveFormat, SavePreset,
+    SaveBitDepth, SaveCodec, SaveExtras, SaveFilenamePattern, SaveFilenameValue, SaveFolderPattern,
+    SaveFolderValue, SaveFormat, SavePreset,
 };
 pub use server::{
     McpConfig, SubsonicConfig, SubsonicCredential, MCP_DEFAULT_PORT, SUBSONIC_DEFAULT_PORT,
 };
 
 #[cfg(any(test, feature = "test-utils"))]
-use save::{default_save_filename_tokens, default_save_folder_tokens, default_save_presets};
+use save::default_save_presets;
 
 /// The preferences' part of the library's schema.
 pub const SCHEMA_PARTS: &[bae_store::SchemaPart] = &[row::SCHEMA];
@@ -272,11 +275,13 @@ pub struct Preferences {
     pub replay_gain_mode: ReplayGainMode,
     /// Configured export presets offered by release and track export.
     pub save_presets: Vec<SavePreset>,
-    /// The one filename pattern every save names its files by, whatever the
-    /// format: tokens in order, rendered by the library's save.
-    pub save_filename_tokens: Vec<SaveFilenameToken>,
-    /// The folder name pattern a release save names its folder by.
-    pub save_folder_tokens: Vec<SaveFolderToken>,
+    /// The one file name pattern every save names its files by, whatever the
+    /// format, stored as typed: one that can't make a name is kept, and saves
+    /// name by the default pattern until it is fixed.
+    pub save_filename_pattern: SaveFilenamePattern,
+    /// The folder name pattern a release save names its folder by, stored as
+    /// typed like the file name pattern.
+    pub save_folder_pattern: SaveFolderPattern,
     /// The cover and loudness settings every save format shares.
     pub save_extras: SaveExtras,
     /// Id of the preset the last save, of a track or a release, used; the
@@ -342,8 +347,8 @@ impl Default for Preferences {
             discogs: None,
             replay_gain_mode: ReplayGainMode::Off,
             save_presets: default_save_presets(),
-            save_filename_tokens: default_save_filename_tokens(),
-            save_folder_tokens: default_save_folder_tokens(),
+            save_filename_pattern: SaveFilenamePattern::default(),
+            save_folder_pattern: SaveFolderPattern::default(),
             save_extras: SaveExtras::default(),
             last_save_preset: "flac".to_string(),
             pause_between_sides: true,

@@ -47,11 +47,16 @@ pub struct BridgeConfig {
     pub library_full_width: bool,
     /// Configured export presets offered by release and track export.
     pub save_presets: Vec<BridgeSavePreset>,
-    /// The one filename pattern every save names its files by, whatever the
-    /// format.
-    pub filename_tokens: Vec<BridgeSaveFilenameToken>,
-    /// The folder name pattern a release save names its folder by.
-    pub folder_tokens: Vec<BridgeSaveFolderToken>,
+    /// The one file name pattern every save names its files by, whatever the
+    /// format, as typed.
+    pub filename_pieces: Vec<BridgeSaveFilenamePiece>,
+    /// Why the file name pattern can't make a name, when it can't; saves name
+    /// by the default pattern until it is fixed.
+    pub filename_pattern_error: Option<BridgeNamePatternError>,
+    /// The folder name pattern a release save names its folder by, as typed.
+    pub folder_pieces: Vec<BridgeSaveFolderPiece>,
+    /// Why the folder name pattern can't make a name, when it can't.
+    pub folder_pattern_error: Option<BridgeNamePatternError>,
     /// The cover and loudness settings every save format shares.
     pub save_extras: BridgeSaveExtras,
     /// Id of the preset the last save, of a track or a release, used, the one a

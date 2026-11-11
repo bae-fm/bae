@@ -42,14 +42,22 @@ async fn a_new_library_starts_at_the_defaults() {
         "the default FLAC preset writes the source's depth"
     );
     assert_eq!(
-        prefs.save_filename_tokens,
-        vec![SaveFilenameToken::TrackNumber, SaveFilenameToken::Title],
-        "every format starts named by track number, then title"
+        prefs.save_filename_pattern.pieces(),
+        [
+            NamePiece::Value(SaveFilenameValue::TrackNumber),
+            NamePiece::Text(" ".to_string()),
+            NamePiece::Value(SaveFilenameValue::Title),
+        ],
+        "every format starts named by track number, a space, then title"
     );
     assert_eq!(
-        prefs.save_folder_tokens,
-        vec![SaveFolderToken::Artist, SaveFolderToken::Album],
-        "a release save starts naming its folder by artist, then album"
+        prefs.save_folder_pattern.pieces(),
+        [
+            NamePiece::Value(SaveFolderValue::Artist),
+            NamePiece::Text(" - ".to_string()),
+            NamePiece::Value(SaveFolderValue::Album),
+        ],
+        "a release save starts naming its folder by artist, \" - \", then album"
     );
 }
 
@@ -74,22 +82,27 @@ async fn every_preference_reads_back_as_set() {
                 codec: SaveCodec::Flac { bit_depth: SaveBitDepth::Bits16 },
             },
         ],
-        save_filename_tokens: vec![
-            SaveFilenameToken::Artist,
-            SaveFilenameToken::Album,
-            SaveFilenameToken::Year,
-            SaveFilenameToken::DiscNumber,
-            SaveFilenameToken::TrackNumber,
-            SaveFilenameToken::TrackTotal,
-            SaveFilenameToken::Title,
-        ],
-        save_folder_tokens: vec![
-            SaveFolderToken::CatalogNumber,
-            SaveFolderToken::Label,
-            SaveFolderToken::Year,
-            SaveFolderToken::Album,
-            SaveFolderToken::Artist,
-        ],
+        save_filename_pattern: NamePattern::new(vec![
+            NamePiece::Value(SaveFilenameValue::Artist),
+            NamePiece::Text("  /  ".to_string()),
+            NamePiece::Value(SaveFilenameValue::Album),
+            NamePiece::Value(SaveFilenameValue::AlbumYear),
+            NamePiece::Value(SaveFilenameValue::ReleaseYear),
+            NamePiece::Value(SaveFilenameValue::DiscNumber),
+            NamePiece::Value(SaveFilenameValue::TrackNumber),
+            NamePiece::Value(SaveFilenameValue::TrackTotal),
+            NamePiece::Text(".\\ \"設定\"".to_string()),
+            NamePiece::Value(SaveFilenameValue::Title),
+        ]),
+        save_folder_pattern: NamePattern::new(vec![
+            NamePiece::Text(" [".to_string()),
+            NamePiece::Value(SaveFolderValue::CatalogNumber),
+            NamePiece::Value(SaveFolderValue::Label),
+            NamePiece::Value(SaveFolderValue::AlbumYear),
+            NamePiece::Value(SaveFolderValue::ReleaseYear),
+            NamePiece::Value(SaveFolderValue::Album),
+            NamePiece::Value(SaveFolderValue::Artist),
+        ]),
         save_extras: SaveExtras { embed_cover: false, cover_file: false, loudness_tags: false },
         last_save_preset: "sixteen".to_string(),
         pause_between_sides: false,
@@ -207,8 +220,8 @@ async fn concurrent_edits_keep_both_changes() {
 }
 
 /// The schema refuses what the setters check before writing: a last-used format
-/// that names no preset, a server that could let no one in, and a preset its codec
-/// can't write.
+/// that names no preset, a server that could let no one in, a preset its codec
+/// can't write, and a pattern piece of typed text with nothing in it.
 #[tokio::test]
 async fn the_schema_refuses_preferences_no_setter_writes() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
@@ -255,6 +268,22 @@ async fn the_schema_refuses_preferences_no_setter_writes() {
             }),
         ),
         (
+            "typed text of nothing in the file name pattern",
+            Box::new(|prefs: &mut Preferences| {
+                prefs.save_filename_pattern =
+                    NamePattern::new(vec![NamePiece::Text(String::new())]);
+            }),
+        ),
+        (
+            "typed text of nothing in the folder name pattern",
+            Box::new(|prefs: &mut Preferences| {
+                prefs.save_folder_pattern = NamePattern::new(vec![
+                    NamePiece::Value(SaveFolderValue::Album),
+                    NamePiece::Text(String::new()),
+                ]);
+            }),
+        ),
+        (
             "an Opus bitrate above 256",
             Box::new(|prefs: &mut Preferences| {
                 prefs.save_presets[1].codec = SaveCodec::OpusOgg { bitrate_kbps: 320 };
@@ -270,4 +299,24 @@ async fn the_schema_refuses_preferences_no_setter_writes() {
         assert!(matches!(refused, Err(PreferencesError::Database(_))), "{what}: {refused:?}");
         assert_eq!(preferences(&db).await.unwrap(), Preferences::default(), "{what} wrote nothing");
     }
+}
+
+/// A pattern that can't make a name is stored as typed, as is one with no
+/// pieces: the schema refuses only a piece that is not one thing.
+#[tokio::test]
+async fn a_pattern_that_cant_make_a_name_is_stored_as_typed() {
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
+    let invalid = NamePattern::new(vec![
+        NamePiece::Text(".a/b".to_string()),
+        NamePiece::Value(SaveFilenameValue::Title),
+    ]);
+    let edited = invalid.clone();
+    set(&db, move |prefs| {
+        prefs.save_filename_pattern = edited;
+        prefs.save_folder_pattern = NamePattern::new(vec![]);
+    })
+    .await;
+    let prefs = preferences(&db).await.unwrap();
+    assert_eq!(prefs.save_filename_pattern, invalid);
+    assert!(prefs.save_folder_pattern.pieces().is_empty());
 }

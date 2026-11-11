@@ -86,22 +86,22 @@ impl QueuedPayload for OutputRequest {
     const QUEUE: &'static str = "output";
     const TABLE: &'static str = "output_queue";
     const COLUMNS: &'static [&'static str] =
-        &["target_dir", "kind", "preset", "filename_tokens", "folder_tokens", "extras"];
+        &["target_dir", "kind", "preset", "filename_pattern", "folder_pattern", "extras"];
     const NEEDS_NETWORK: bool = false;
 
     #[cfg(desktop)]
     fn values(&self) -> Result<Vec<Value>, DbError> {
-        let (kind, preset, filename_tokens, folder_tokens, extras) = match &self.kind {
+        let (kind, preset, filename_pattern, folder_pattern, extras) = match &self.kind {
             OutputKind::Export => ("export", None, None, None, None),
-            OutputKind::Save { preset, filename_tokens, folder_tokens, extras } => (
+            OutputKind::Save { preset, filename_pattern, folder_pattern, extras } => (
                 "save",
                 Some(serde_json::to_string(preset).map_err(|error| {
                     DbError::encode(format!("save preset {}", preset.id), error)
                 })?),
-                Some(serde_json::to_string(filename_tokens).map_err(|error| {
+                Some(serde_json::to_string(filename_pattern).map_err(|error| {
                     DbError::encode(format!("save filename pattern of {}", preset.id), error)
                 })?),
-                Some(serde_json::to_string(folder_tokens).map_err(|error| {
+                Some(serde_json::to_string(folder_pattern).map_err(|error| {
                     DbError::encode(format!("save folder pattern of {}", preset.id), error)
                 })?),
                 Some(serde_json::to_string(extras).map_err(|error| {
@@ -113,8 +113,8 @@ impl QueuedPayload for OutputRequest {
             Value::Blob(coven::path_bytes(&self.target_dir)),
             Value::Text(kind.to_string()),
             preset.map_or(Value::Null, Value::Text),
-            filename_tokens.map_or(Value::Null, Value::Text),
-            folder_tokens.map_or(Value::Null, Value::Text),
+            filename_pattern.map_or(Value::Null, Value::Text),
+            folder_pattern.map_or(Value::Null, Value::Text),
             extras.map_or(Value::Null, Value::Text),
         ])
     }
@@ -123,30 +123,30 @@ impl QueuedPayload for OutputRequest {
         let target_dir = bae_store::path_column::get(row, at)?;
         let kind: String = row.get(at + 1)?;
         let preset: Option<String> = row.get(at + 2)?;
-        let filename_tokens: Option<String> = row.get(at + 3)?;
-        let folder_tokens: Option<String> = row.get(at + 4)?;
+        let filename_pattern: Option<String> = row.get(at + 3)?;
+        let folder_pattern: Option<String> = row.get(at + 4)?;
         let extras: Option<String> = row.get(at + 5)?;
-        let kind = match (kind.as_str(), preset, filename_tokens, folder_tokens, extras) {
+        let kind = match (kind.as_str(), preset, filename_pattern, folder_pattern, extras) {
             ("export", None, None, None, None) => OutputKind::Export,
-            ("save", Some(preset), Some(filename_tokens), Some(folder_tokens), Some(extras)) => {
+            ("save", Some(preset), Some(filename_pattern), Some(folder_pattern), Some(extras)) => {
                 OutputKind::Save {
                     preset: serde_json::from_str(&preset)
                         .map_err(|error| column_conversion_error(row, at + 2, error))?,
-                    filename_tokens: serde_json::from_str(&filename_tokens)
+                    filename_pattern: serde_json::from_str(&filename_pattern)
                         .map_err(|error| column_conversion_error(row, at + 3, error))?,
-                    folder_tokens: serde_json::from_str(&folder_tokens)
+                    folder_pattern: serde_json::from_str(&folder_pattern)
                         .map_err(|error| column_conversion_error(row, at + 4, error))?,
                     extras: serde_json::from_str(&extras)
                         .map_err(|error| column_conversion_error(row, at + 5, error))?,
                 }
             }
-            (kind, preset, filename_tokens, folder_tokens, extras) => {
+            (kind, preset, filename_pattern, folder_pattern, extras) => {
                 return Err(column_conversion_error(
                     row,
                     at + 1,
                     format!(
                         "output kind {kind:?} with preset {preset:?}, filename pattern \
-                         {filename_tokens:?}, folder pattern {folder_tokens:?} and extras {extras:?}"
+                         {filename_pattern:?}, folder pattern {folder_pattern:?} and extras {extras:?}"
                     ),
                 ))
             }

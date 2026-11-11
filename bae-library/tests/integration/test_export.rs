@@ -5,7 +5,8 @@
 //! item key — the same verified read pin and unmanage use.
 
 use bae_preferences::{
-    SaveBitDepth, SaveCodec, SaveExtras, SaveFilenameToken, SaveFolderToken, SavePreset,
+    NamePattern, NamePiece, SaveBitDepth, SaveCodec, SaveExtras, SaveFilenamePattern,
+    SaveFilenameValue, SaveFolderPattern, SavePreset,
 };
 use bae_transfers::OutputKind;
 use coven::MemoryStorage;
@@ -14,15 +15,15 @@ use std::path::Path;
 use std::sync::Arc;
 use tempfile::TempDir;
 
-struct ExportFixture {
-    library: bae_library::test_libraries::TestLibrary,
+pub(super) struct ExportFixture {
+    pub(super) library: bae_library::test_libraries::TestLibrary,
     handle: bae_import::ImportServiceHandle,
     cloud: Arc<MemoryStorage>,
     _temp: TempDir,
 }
 
 impl ExportFixture {
-    async fn new() -> Self {
+    pub(super) async fn new() -> Self {
         let temp = TempDir::new().unwrap();
         let db_dir = temp.path().join("db");
         fs::create_dir_all(&db_dir).unwrap();
@@ -40,7 +41,7 @@ impl ExportFixture {
         Self { library, handle, cloud, _temp: temp }
     }
 
-    fn temp_path(&self) -> &Path {
+    pub(super) fn temp_path(&self) -> &Path {
         self._temp.path()
     }
 }
@@ -79,7 +80,7 @@ async fn import_then_strand_in_cloud(f: &ExportFixture, album_dir: &Path) -> (St
     (release_id, original_bytes)
 }
 
-async fn import_unknown_local(f: &ExportFixture, album_dir: &Path) -> String {
+pub(super) async fn import_unknown_local(f: &ExportFixture, album_dir: &Path) -> String {
     let import_id = "import-unknown-local".to_string();
     f.handle
         .send_command(bae_import::test_imports::folder_import(
@@ -197,56 +198,6 @@ async fn a_lossless_format_writes_the_depth_of_the_track_it_saves() {
     assert_eq!(depths(&sixteen).await, vec![16, 16]);
 }
 
-/// A release save writes into a folder named by the folder name pattern, from
-/// the release's own data, not the folder it was imported from.
-#[tokio::test]
-async fn a_release_save_names_its_folder_by_the_folder_pattern() {
-    bae_util::test_logs::install();
-    let f = ExportFixture::new().await;
-    let album_dir = f.temp_path().join("source folder");
-    fs::create_dir_all(&album_dir).unwrap();
-    bae_import::test_fixtures::write_tagged_flac(&album_dir, "01.flac", "Track One");
-    let release_id = import_unknown_local(&f, &album_dir).await;
-    let manager = f.library.manager();
-    let release = manager.get_release_by_id(&release_id).await.unwrap().unwrap();
-    let album = f.library.records().get_album_for_release(&release).await.unwrap();
-    let flac = manager.save_presets().await.unwrap().remove(0);
-
-    let saved_folder = |tokens: Vec<SaveFolderToken>, directory: &str| {
-        let (f, release_id, flac) = (&f, &release_id, &flac);
-        let directory = directory.to_string();
-        async move {
-            let target = f.temp_path().join(directory);
-            fs::create_dir_all(&target).unwrap();
-            f.library
-                .manager()
-                .export_release(
-                    release_id,
-                    &target,
-                    OutputKind::Save {
-                        preset: flac.clone(),
-                        filename_tokens: default_tokens(),
-                        folder_tokens: tokens,
-                        extras: SaveExtras::default(),
-                    },
-                )
-                .await
-                .expect("the release save succeeds");
-            let entries: Vec<_> = fs::read_dir(&target).unwrap().collect();
-            assert_eq!(entries.len(), 1, "one folder per save");
-            entries[0].as_ref().unwrap().file_name().to_string_lossy().to_string()
-        }
-    };
-
-    assert_eq!(saved_folder(vec![SaveFolderToken::Album], "by-album").await, album.title);
-    assert_ne!(album.title, "source folder", "the name is not the import's folder");
-    assert_eq!(
-        saved_folder(Vec::new(), "by-nothing").await,
-        album.title,
-        "a pattern that renders nothing names the folder by the album"
-    );
-}
-
 /// A release save writes the release's cover as `cover.jpg` in its folder when
 /// the extras ask for it, and not otherwise.
 #[tokio::test]
@@ -272,8 +223,8 @@ async fn a_release_save_writes_the_cover_file_only_when_asked() {
                     &target,
                     OutputKind::Save {
                         preset: flac.clone(),
-                        filename_tokens: default_tokens(),
-                        folder_tokens: default_folder_tokens(),
+                        filename_pattern: SaveFilenamePattern::default(),
+                        folder_pattern: SaveFolderPattern::default(),
                         extras: SaveExtras { embed_cover: true, cover_file, loudness_tags: true },
                     },
                 )
@@ -344,78 +295,6 @@ async fn a_track_save_records_its_format_as_last_used() {
     f.library.manager().save_track(&tracks[0].id, &out, "mp3").await.expect("track saves");
 
     assert_eq!(f.library.manager().preferences().await.unwrap().last_save_preset, "mp3");
-}
-
-/// The one filename pattern names every file a save writes, whatever the
-/// format: a single track's suggested name and each file of a release save in
-/// FLAC and in MP3 come from it, and setting the pattern changes all of them.
-/// The suggestion is DB-only — no audio or cloud read.
-#[tokio::test]
-async fn one_filename_pattern_names_every_format() {
-    bae_util::test_logs::install();
-    let f = ExportFixture::new().await;
-    let album_dir = f.temp_path().join("album");
-    fs::create_dir_all(&album_dir).unwrap();
-    bae_import::test_fixtures::write_tagged_flac(&album_dir, "01.flac", "Track One");
-    bae_import::test_fixtures::write_tagged_flac(&album_dir, "02.flac", "Track Two");
-    let release_id = import_unknown_local(&f, &album_dir).await;
-    let tracks = f.library.records().get_tracks_for_release(&release_id).await.unwrap();
-    let manager = f.library.manager();
-
-    let saved_names = |preset: SavePreset, tokens: Vec<SaveFilenameToken>| {
-        let (f, release_id) = (&f, &release_id);
-        async move {
-            let target = f.temp_path().join(format!("out-{}-{}", preset.id, tokens.len()));
-            fs::create_dir_all(&target).unwrap();
-            f.library
-                .manager()
-                .export_release(
-                    release_id,
-                    &target,
-                    OutputKind::Save {
-                        preset,
-                        filename_tokens: tokens,
-                        folder_tokens: default_folder_tokens(),
-                        extras: SaveExtras::default(),
-                    },
-                )
-                .await
-                .expect("the release save succeeds");
-            let folder = fs::read_dir(&target).unwrap().next().unwrap().unwrap().path();
-            let mut names: Vec<String> = fs::read_dir(folder)
-                .unwrap()
-                .map(|entry| entry.unwrap().file_name().to_string_lossy().to_string())
-                .filter(|name| name != ".bae-output")
-                .collect();
-            names.sort();
-            names
-        }
-    };
-    let presets = manager.save_presets().await.unwrap();
-    let flac = presets.iter().find(|preset| preset.id == "flac").unwrap().clone();
-    let mp3 = presets.iter().find(|preset| preset.id == "mp3").unwrap().clone();
-
-    // A new library names files by track number, then title.
-    let default_tokens = manager.preferences().await.unwrap().save_filename_tokens;
-    assert_eq!(default_tokens, vec![SaveFilenameToken::TrackNumber, SaveFilenameToken::Title]);
-    assert_eq!(manager.save_track_suggested_name(&tracks[0].id).await.unwrap(), "01 Track One");
-    assert_eq!(
-        saved_names(flac.clone(), default_tokens.clone()).await,
-        vec!["01 Track One.flac", "01 Track Two.flac"]
-    );
-    assert_eq!(
-        saved_names(mp3.clone(), default_tokens).await,
-        vec!["01 Track One.mp3", "01 Track Two.mp3"]
-    );
-
-    // Set once, the new pattern names a track's suggestion and both formats'
-    // release saves.
-    manager.set_save_filename_tokens(vec![SaveFilenameToken::Title]).await.unwrap();
-    let tokens = manager.preferences().await.unwrap().save_filename_tokens;
-    assert_eq!(tokens, vec![SaveFilenameToken::Title]);
-    assert_eq!(manager.save_track_suggested_name(&tracks[0].id).await.unwrap(), "Track One");
-    assert_eq!(saved_names(flac, tokens.clone()).await, vec!["Track One.flac", "Track Two.flac"]);
-    assert_eq!(saved_names(mp3, tokens).await, vec!["Track One.mp3", "Track Two.mp3"]);
 }
 
 /// A save reads the cover for embedding only when asked: with art on the
@@ -612,8 +491,8 @@ async fn a_release_save_copies_a_track_already_in_the_format_and_converts_the_re
             &target,
             OutputKind::Save {
                 preset: flac,
-                filename_tokens: default_tokens(),
-                folder_tokens: default_folder_tokens(),
+                filename_pattern: SaveFilenamePattern::default(),
+                folder_pattern: SaveFolderPattern::default(),
                 extras: SaveExtras::default(),
             },
         )
@@ -749,8 +628,8 @@ async fn a_cue_image_saves_one_file_per_track_with_each_gap_before_its_track() {
             &target,
             OutputKind::Save {
                 preset: flac,
-                filename_tokens: default_tokens(),
-                folder_tokens: default_folder_tokens(),
+                filename_pattern: SaveFilenamePattern::default(),
+                folder_pattern: SaveFolderPattern::default(),
                 extras: SaveExtras::default(),
             },
         )
@@ -816,8 +695,10 @@ async fn a_release_save_of_two_names_one_drive_holds_as_one_fails() {
             &target,
             OutputKind::Save {
                 preset,
-                filename_tokens: vec![SaveFilenameToken::Title],
-                folder_tokens: default_folder_tokens(),
+                filename_pattern: NamePattern::new(vec![NamePiece::Value(
+                    SaveFilenameValue::Title,
+                )]),
+                folder_pattern: SaveFolderPattern::default(),
                 extras: SaveExtras::default(),
             },
         )
@@ -860,16 +741,6 @@ async fn export_release_missing_file_is_hard_error() {
     );
 }
 
-/// The folder name pattern a new library starts with.
-fn default_folder_tokens() -> Vec<SaveFolderToken> {
-    vec![SaveFolderToken::Artist, SaveFolderToken::Album]
-}
-
-/// The pattern a new library starts with.
-fn default_tokens() -> Vec<SaveFilenameToken> {
-    vec![SaveFilenameToken::TrackNumber, SaveFilenameToken::Title]
-}
-
 /// A release save preset of FLAC at 16 bits.
 fn flac_save_preset(id: &str) -> SavePreset {
     SavePreset {
@@ -902,8 +773,8 @@ async fn peak_sources_open_saving(
             &target,
             OutputKind::Save {
                 preset,
-                filename_tokens: default_tokens(),
-                folder_tokens: default_folder_tokens(),
+                filename_pattern: SaveFilenamePattern::default(),
+                folder_pattern: SaveFolderPattern::default(),
                 extras: SaveExtras::default(),
             },
         )

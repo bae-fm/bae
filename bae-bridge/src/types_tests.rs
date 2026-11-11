@@ -385,36 +385,70 @@ mod conversion_roundtrip {
         assert!(!BridgeConfig::from_core(&config).save_extras.cover_file);
     }
 
-    #[test]
-    fn the_config_carries_the_folder_name_pattern() {
-        let mut config = bae_preferences::Config::with_defaults(
+    fn defaults() -> bae_preferences::Config {
+        bae_preferences::Config::with_defaults(
             coven::StoreId("00000000-0000-4000-8000-000000000001".parse().unwrap()),
             "/library",
-        );
-        config.prefs.save_folder_tokens = vec![
-            bae_preferences::SaveFolderToken::Label,
-            bae_preferences::SaveFolderToken::CatalogNumber,
-        ];
-        assert_eq!(
-            BridgeConfig::from_core(&config).folder_tokens,
-            vec![BridgeSaveFolderToken::Label, BridgeSaveFolderToken::CatalogNumber]
-        );
+        )
     }
 
     #[test]
-    fn the_config_carries_the_one_filename_pattern() {
-        let mut config = bae_preferences::Config::with_defaults(
-            coven::StoreId("00000000-0000-4000-8000-000000000001".parse().unwrap()),
-            "/library",
-        );
-        config.prefs.save_filename_tokens = vec![
-            bae_preferences::SaveFilenameToken::Artist,
-            bae_preferences::SaveFilenameToken::Title,
-        ];
+    fn the_config_carries_the_folder_name_pattern_as_typed() {
+        let mut config = defaults();
+        let pattern = bae_preferences::NamePattern::new(vec![
+            bae_preferences::NamePiece::Value(bae_preferences::SaveFolderValue::Label),
+            bae_preferences::NamePiece::Text(" / ".to_string()),
+            bae_preferences::NamePiece::Value(bae_preferences::SaveFolderValue::AlbumYear),
+        ]);
+        config.prefs.save_folder_pattern = pattern;
+        let bridge = BridgeConfig::from_core(&config);
         assert_eq!(
-            BridgeConfig::from_core(&config).filename_tokens,
-            vec![BridgeSaveFilenameToken::Artist, BridgeSaveFilenameToken::Title]
+            bridge.folder_pieces,
+            vec![
+                BridgeSaveFolderPiece::Value { value: BridgeSaveFolderValue::Label },
+                BridgeSaveFolderPiece::Text { text: " / ".to_string() },
+                BridgeSaveFolderPiece::Value { value: BridgeSaveFolderValue::AlbumYear },
+            ]
         );
+        assert_eq!(
+            bridge.folder_pattern_error,
+            Some(BridgeNamePatternError::ForbiddenCharacter { character: "/".to_string() })
+        );
+        assert_eq!(bridge.filename_pattern_error, None);
+    }
+
+    #[test]
+    fn the_config_carries_the_one_file_name_pattern_and_why_it_cant_make_a_name() {
+        let mut config = defaults();
+        let bridge = BridgeConfig::from_core(&config);
+        assert_eq!(
+            bridge.filename_pieces,
+            vec![
+                BridgeSaveFilenamePiece::Value { value: BridgeSaveFilenameValue::TrackNumber },
+                BridgeSaveFilenamePiece::Text { text: " ".to_string() },
+                BridgeSaveFilenamePiece::Value { value: BridgeSaveFilenameValue::Title },
+            ]
+        );
+        assert_eq!(bridge.filename_pattern_error, None);
+        assert_eq!(bridge.folder_pattern_error, None);
+
+        config.prefs.save_filename_pattern = bae_preferences::NamePattern::new(vec![
+            bae_preferences::NamePiece::Text(".x".to_string()),
+            bae_preferences::NamePiece::Value(bae_preferences::SaveFilenameValue::Title),
+        ]);
+        config.prefs.save_folder_pattern = bae_preferences::NamePattern::new(vec![]);
+        let bridge = BridgeConfig::from_core(&config);
+        assert_eq!(bridge.filename_pattern_error, Some(BridgeNamePatternError::StartsWithDot));
+        assert_eq!(bridge.folder_pattern_error, Some(BridgeNamePatternError::Empty));
+    }
+
+    #[test]
+    fn a_piece_round_trips_through_the_bridge() {
+        let piece = bae_preferences::NamePiece::Text("  - ".to_string());
+        assert_eq!(BridgeSaveFilenamePiece::from_core(&piece).into_core(), piece);
+        let piece =
+            bae_preferences::NamePiece::Value(bae_preferences::SaveFolderValue::ReleaseYear);
+        assert_eq!(BridgeSaveFolderPiece::from_core(&piece).into_core(), piece);
     }
 
     #[cfg(desktop)]

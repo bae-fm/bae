@@ -26,29 +26,61 @@ pub enum BridgeSaveBitDepth {
     Bits16,
 }
 
-/// One piece of an export filename pattern — an ordered token list; rendering
-/// substitutes each token's value and joins the non-empty values with single
-/// spaces. Mirror of bae-library's `SaveFilenameToken`.
+/// A value a file name pattern fills in from the track being saved. Mirror of
+/// bae-preferences' `SaveFilenameValue`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeSaveFilenameToken {
+pub enum BridgeSaveFilenameValue {
     Title,
     Artist,
     Album,
-    Year,
+    /// The year the album first came out.
+    AlbumYear,
+    /// The year this release came out, else the album's.
+    ReleaseYear,
     TrackNumber,
     DiscNumber,
     TrackTotal,
 }
 
-/// One piece of the folder name pattern a release save names its folder by.
-/// Mirror of bae-preferences' `SaveFolderToken`.
+/// A value the folder name pattern of a release save fills in from the
+/// release. Mirror of bae-preferences' `SaveFolderValue`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeSaveFolderToken {
+pub enum BridgeSaveFolderValue {
     Artist,
     Album,
-    Year,
+    /// The year the album first came out.
+    AlbumYear,
+    /// The year this release came out, else the album's.
+    ReleaseYear,
     Label,
     CatalogNumber,
+}
+
+/// One piece of the file name pattern: a value the save fills in, or text the
+/// person typed, kept as typed. Mirror of bae-preferences' `NamePiece`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeSaveFilenamePiece {
+    Value { value: BridgeSaveFilenameValue },
+    Text { text: String },
+}
+
+/// One piece of the folder name pattern, like [`BridgeSaveFilenamePiece`].
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeSaveFolderPiece {
+    Value { value: BridgeSaveFolderValue },
+    Text { text: String },
+}
+
+/// Why a name pattern can't make a name, as core's validation answers.
+/// Mirror of bae-preferences' `NamePatternError`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeNamePatternError {
+    /// The pattern has no pieces.
+    Empty,
+    /// The first piece is typed text starting with ".".
+    StartsWithDot,
+    /// Typed text holds this character, which a name can't have.
+    ForbiddenCharacter { character: String },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]

@@ -34,8 +34,10 @@ import uniffi.bae_bridge.BridgeRendererKind
 import uniffi.bae_bridge.BridgeSaveBitDepth
 import uniffi.bae_bridge.BridgeSaveCodec
 import uniffi.bae_bridge.BridgeSaveExtras
-import uniffi.bae_bridge.BridgeSaveFilenameToken
-import uniffi.bae_bridge.BridgeSaveFolderToken
+import uniffi.bae_bridge.BridgeSaveFilenamePiece
+import uniffi.bae_bridge.BridgeSaveFilenameValue
+import uniffi.bae_bridge.BridgeSaveFolderPiece
+import uniffi.bae_bridge.BridgeSaveFolderValue
 import uniffi.bae_bridge.BridgeSavePreset
 import uniffi.bae_bridge.BridgeSearchResults
 import uniffi.bae_bridge.BridgeSidePauseCountdown
@@ -291,16 +293,20 @@ object BridgeFixtures {
                         codec = BridgeSaveCodec.Flac(bitDepth = BridgeSaveBitDepth.SAME_AS_SOURCE),
                     ),
                 ),
-            filenameTokens =
+            filenamePieces =
                 listOf(
-                    BridgeSaveFilenameToken.TRACK_NUMBER,
-                    BridgeSaveFilenameToken.TITLE,
+                    BridgeSaveFilenamePiece.Value(BridgeSaveFilenameValue.TRACK_NUMBER),
+                    BridgeSaveFilenamePiece.Text(" "),
+                    BridgeSaveFilenamePiece.Value(BridgeSaveFilenameValue.TITLE),
                 ),
-            folderTokens =
+            filenamePatternError = null,
+            folderPieces =
                 listOf(
-                    BridgeSaveFolderToken.ARTIST,
-                    BridgeSaveFolderToken.ALBUM,
+                    BridgeSaveFolderPiece.Value(BridgeSaveFolderValue.ARTIST),
+                    BridgeSaveFolderPiece.Text(" - "),
+                    BridgeSaveFolderPiece.Value(BridgeSaveFolderValue.ALBUM),
                 ),
+            folderPatternError = null,
             saveExtras =
                 BridgeSaveExtras(
                     embedCover = true,

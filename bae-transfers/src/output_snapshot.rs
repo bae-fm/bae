@@ -42,8 +42,8 @@ pub enum OutputKind {
     Export,
     Save {
         preset: bae_preferences::SavePreset,
-        filename_tokens: Vec<bae_preferences::SaveFilenameToken>,
-        folder_tokens: Vec<bae_preferences::SaveFolderToken>,
+        filename_pattern: bae_preferences::SaveFilenamePattern,
+        folder_pattern: bae_preferences::SaveFolderPattern,
         extras: bae_preferences::SaveExtras,
     },
 }

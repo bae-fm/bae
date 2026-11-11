@@ -699,6 +699,9 @@ pub struct SaveTags {
     /// The album's line (ALBUMARTIST).
     pub album_artist: String,
     pub album: String,
+    /// The year the album first came out.
+    pub album_year: Option<i32>,
+    /// The year this release came out, else the album's: the file's YEAR.
     pub year: Option<i32>,
     /// The track's medium among its release's, for a release of several
     /// mediums. `None` for a release of one, which writes no disc tag.

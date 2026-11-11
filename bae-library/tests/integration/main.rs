@@ -37,6 +37,7 @@ mod test_profile_request;
 mod test_release_edit_validation;
 mod test_restore_cost;
 mod test_restore_resume;
+mod test_save_names;
 mod test_save_s3_config;
 mod test_scrub_points;
 mod test_sql_read_tripwire;

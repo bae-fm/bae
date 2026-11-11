@@ -1,47 +1,65 @@
-use super::PreferencesError;
+use super::{NamePattern, NamePiece, PreferencesError};
 use std::num::NonZeroU32;
 
 use serde::{Deserialize, Serialize};
 
-/// One piece of an export filename pattern. A pattern is an ordered token list;
-/// rendering substitutes each token's value from the track's metadata and joins
-/// the non-empty values with single spaces (see `render_save_filename`). The
+/// A value a file name pattern fills in from the track being saved. The
 /// extension is added by the exporter from the chosen format, not the pattern.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum SaveFilenameToken {
+pub enum SaveFilenameValue {
     Title,
     Artist,
     Album,
-    Year,
+    /// The year the album first came out.
+    AlbumYear,
+    /// The year this release came out, else the album's.
+    ReleaseYear,
     TrackNumber,
     DiscNumber,
     TrackTotal,
 }
 
-/// The filename pattern the schema starts a library with: the zero-padded
-/// track number, then the title.
-#[cfg(any(test, feature = "test-utils"))]
-pub(super) fn default_save_filename_tokens() -> Vec<SaveFilenameToken> {
-    vec![SaveFilenameToken::TrackNumber, SaveFilenameToken::Title]
+/// The pattern every save names its files by.
+pub type SaveFilenamePattern = NamePattern<SaveFilenameValue>;
+
+/// The pattern a library starts with: the zero-padded track number, a space,
+/// then the title.
+impl Default for SaveFilenamePattern {
+    fn default() -> Self {
+        NamePattern::new(vec![
+            NamePiece::Value(SaveFilenameValue::TrackNumber),
+            NamePiece::Text(" ".to_string()),
+            NamePiece::Value(SaveFilenameValue::Title),
+        ])
+    }
 }
 
-/// One piece of the folder name pattern a release save names its folder by.
-/// Rendered like a filename pattern: each token's value, the non-empty values
-/// joined with single spaces.
+/// A value the folder name pattern of a release save fills in from the
+/// release.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum SaveFolderToken {
+pub enum SaveFolderValue {
     Artist,
     Album,
-    Year,
+    /// The year the album first came out.
+    AlbumYear,
+    /// The year this release came out, else the album's.
+    ReleaseYear,
     Label,
     CatalogNumber,
 }
 
-/// The folder name pattern the schema starts a library with: the artist, then
-/// the album.
-#[cfg(any(test, feature = "test-utils"))]
-pub(super) fn default_save_folder_tokens() -> Vec<SaveFolderToken> {
-    vec![SaveFolderToken::Artist, SaveFolderToken::Album]
+/// The pattern a release save names its folder by.
+pub type SaveFolderPattern = NamePattern<SaveFolderValue>;
+
+/// The pattern a library starts with: the artist, " - ", then the album.
+impl Default for SaveFolderPattern {
+    fn default() -> Self {
+        NamePattern::new(vec![
+            NamePiece::Value(SaveFolderValue::Artist),
+            NamePiece::Text(" - ".to_string()),
+            NamePiece::Value(SaveFolderValue::Album),
+        ])
+    }
 }
 
 /// The bit depth a lossless save format writes: the depth of the track being

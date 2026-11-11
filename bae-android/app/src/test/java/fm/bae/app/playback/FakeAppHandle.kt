@@ -62,8 +62,8 @@ import uniffi.bae_bridge.BridgeRendererServiceType
 import uniffi.bae_bridge.BridgeRepeatMode
 import uniffi.bae_bridge.BridgeReportedRenderer
 import uniffi.bae_bridge.BridgeRestoreCodeShare
-import uniffi.bae_bridge.BridgeSaveFilenameToken
-import uniffi.bae_bridge.BridgeSaveFolderToken
+import uniffi.bae_bridge.BridgeSaveFilenamePiece
+import uniffi.bae_bridge.BridgeSaveFolderPiece
 import uniffi.bae_bridge.BridgeSavePreset
 import uniffi.bae_bridge.BridgeSaveSyncConfig
 import uniffi.bae_bridge.BridgeSearchResults
@@ -450,12 +450,12 @@ internal open class FakeAppHandle(
         unfaked("setSaveLoudnessTags")
     }
 
-    override suspend fun setFolderTokens(tokens: List<BridgeSaveFolderToken>) {
-        unfaked("setFolderTokens")
+    override suspend fun setFolderPieces(pieces: List<BridgeSaveFolderPiece>) {
+        unfaked("setFolderPieces")
     }
 
-    override suspend fun setFilenameTokens(tokens: List<BridgeSaveFilenameToken>) {
-        unfaked("setFilenameTokens")
+    override suspend fun setFilenamePieces(pieces: List<BridgeSaveFilenamePiece>) {
+        unfaked("setFilenamePieces")
     }
 
     override suspend fun setPrimaryRelease(

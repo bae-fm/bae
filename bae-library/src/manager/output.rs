@@ -46,8 +46,8 @@ impl LibraryManager {
             target_dir,
             bae_transfers::OutputKind::Save {
                 preset,
-                filename_tokens: preferences.save_filename_tokens,
-                folder_tokens: preferences.save_folder_tokens,
+                filename_pattern: preferences.save_filename_pattern,
+                folder_pattern: preferences.save_folder_pattern,
                 extras: preferences.save_extras,
             },
         )
@@ -211,8 +211,8 @@ impl LibraryManager {
                     ))
                 })?
             }
-            bae_transfers::OutputKind::Save { folder_tokens, .. } => {
-                self.save_folder_name(&release, folder_tokens).await?
+            bae_transfers::OutputKind::Save { folder_pattern, .. } => {
+                self.save_folder_name(&release, folder_pattern).await?
             }
         };
         let final_dir = request
@@ -231,7 +231,7 @@ impl LibraryManager {
             bae_transfers::OutputKind::Export => {
                 self.copy_release_files_to_staging(release_id, &folder, staging.path()).await?;
             }
-            bae_transfers::OutputKind::Save { preset, filename_tokens, extras, .. } => {
+            bae_transfers::OutputKind::Save { preset, filename_pattern, extras, .. } => {
                 info!(
                     release_id,
                     folder = folder.as_str(),
@@ -242,7 +242,7 @@ impl LibraryManager {
                 self.save_release_tracks_to_dir(
                     &release,
                     preset,
-                    &filename_tokens,
+                    &filename_pattern,
                     extras,
                     staging.path(),
                 )
@@ -295,14 +295,15 @@ impl LibraryManager {
     async fn save_folder_name(
         &self,
         release: &DbRelease,
-        tokens: &[bae_preferences::SaveFolderToken],
+        pattern: &bae_preferences::SaveFolderPattern,
     ) -> Result<String, LibraryError> {
         let album = self.records.get_album_for_release(release).await?;
         let album_artists = self.records.get_artists_for_album(&album.id).await?;
         let labels = &release.pressing.labels;
         let tags = crate::save::SaveFolderTags {
             artist: bae_records::credits::library_line(&album_artists),
-            year: release.shown_year(album.year),
+            album_year: album.year,
+            release_year: release.shown_year(album.year),
             album: album.title,
             label: labels.iter().find_map(|label| label.name()).map(str::to_string),
             catalog_number: labels
@@ -310,7 +311,7 @@ impl LibraryManager {
                 .find_map(|label| label.catalog_number())
                 .map(str::to_string),
         };
-        Ok(crate::save::render_save_folder_name(tokens, &tags))
+        Ok(crate::save::render_save_folder_name(pattern, &tags))
     }
 
     /// Write a release's output to `target_dir`, bypassing the output queue.

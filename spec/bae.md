@@ -5524,7 +5524,9 @@ limits as the library opens and as either limit changes. The settings screens
 pull the row with the library's id and directory from a live query. The schema
 refuses what no setter writes: a last-used format that names no format, two
 formats of one name, an
-enabled Subsonic server with no username, a format its codec can't write.
+enabled Subsonic server with no username, a format its codec can't write, a
+name pattern piece that is not exactly one of a value and typed text, or is
+typed text of nothing.
 Replay gain has no control in the apps.
 
 | Setting | Default | What it decides |

@@ -74,19 +74,27 @@ CREATE TABLE IF NOT EXISTS save_preset (
     CHECK (codec <> 'opus_ogg' OR bitrate_kbps IN (64, 96, 128, 160, 192, 256))
 ) STRICT;
 
--- The filename pattern every save names its files by, whatever the format:
--- its tokens in order.
+-- The file name pattern every save names its files by, whatever the format:
+-- its pieces in order, each a value or text typed as it is. No rows is a
+-- pattern of no pieces, which can't make a name; a save then names by the
+-- default pattern.
 CREATE TABLE IF NOT EXISTS save_filename_token (
     position INTEGER PRIMARY KEY CHECK (position >= 0),
-    token    TEXT NOT NULL CHECK (token IN (
-        'title', 'artist', 'album', 'year', 'track_number', 'disc_number', 'track_total'))
+    value    TEXT CHECK (value IN (
+        'title', 'artist', 'album', 'album_year', 'release_year', 'track_number',
+        'disc_number', 'track_total')),
+    text     TEXT CHECK (text <> ''),
+    CHECK ((value IS NULL) <> (text IS NULL))
 ) STRICT;
 
--- The folder name pattern a release save names its folder by: its tokens in
--- order.
+-- The folder name pattern a release save names its folder by, in pieces like
+-- the file name pattern.
 CREATE TABLE IF NOT EXISTS save_folder_token (
     position INTEGER PRIMARY KEY CHECK (position >= 0),
-    token    TEXT NOT NULL CHECK (token IN ('artist', 'album', 'year', 'label', 'catalog_number'))
+    value    TEXT CHECK (value IN (
+        'artist', 'album', 'album_year', 'release_year', 'label', 'catalog_number')),
+    text     TEXT CHECK (text <> ''),
+    CHECK ((value IS NULL) <> (text IS NULL))
 ) STRICT;
 
 INSERT OR IGNORE INTO save_preset (
@@ -94,10 +102,10 @@ INSERT OR IGNORE INTO save_preset (
 VALUES
     ('flac', 0, 'FLAC', 'flac', 'same_as_source', NULL),
     ('mp3', 1, 'MP3', 'mp3', NULL, 320);
-INSERT OR IGNORE INTO save_filename_token (position, token)
-VALUES (0, 'track_number'), (1, 'title');
-INSERT OR IGNORE INTO save_folder_token (position, token)
-VALUES (0, 'artist'), (1, 'album');
+INSERT OR IGNORE INTO save_filename_token (position, value, text)
+VALUES (0, 'track_number', NULL), (1, NULL, ' '), (2, 'title', NULL);
+INSERT OR IGNORE INTO save_folder_token (position, value, text)
+VALUES (0, 'artist', NULL), (1, NULL, ' - '), (2, 'album', NULL);
 INSERT OR IGNORE INTO preferences (
     singleton, discogs_key, replay_gain_mode, last_save_preset, save_embed_cover,
     save_cover_file, save_loudness_tags, pause_between_sides, side_pause_countdown_seconds,

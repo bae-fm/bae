@@ -97,27 +97,24 @@ forward! { async this => {
         Ok(this.services.set_save_loudness_tags(on).await?)
     }
 
-    fn set_folder_tokens(tokens: Vec<crate::types::BridgeSaveFolderToken>) -> () {
+    fn set_folder_pieces(pieces: Vec<crate::types::BridgeSaveFolderPiece>) -> () {
         Ok(this
             .services
-            .set_save_folder_tokens(
-                tokens
-                    .into_iter()
-                    .map(crate::types::BridgeSaveFolderToken::into_core)
-                    .collect(),
-            )
+            .set_save_folder_pattern(bae_preferences::NamePattern::new(
+                pieces.into_iter().map(crate::types::BridgeSaveFolderPiece::into_core).collect(),
+            ))
             .await?)
     }
 
-    fn set_filename_tokens(tokens: Vec<crate::types::BridgeSaveFilenameToken>) -> () {
+    fn set_filename_pieces(pieces: Vec<crate::types::BridgeSaveFilenamePiece>) -> () {
         Ok(this
             .services
-            .set_save_filename_tokens(
-                tokens
+            .set_save_filename_pattern(bae_preferences::NamePattern::new(
+                pieces
                     .into_iter()
-                    .map(crate::types::BridgeSaveFilenameToken::into_core)
+                    .map(crate::types::BridgeSaveFilenamePiece::into_core)
                     .collect(),
-            )
+            ))
             .await?)
     }
 } }

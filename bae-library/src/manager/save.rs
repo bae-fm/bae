@@ -43,6 +43,7 @@ impl LibraryManager {
             artist,
             album_artist,
             album: album.title,
+            album_year: album.year,
             year,
             disc,
         };
@@ -124,10 +125,10 @@ impl LibraryManager {
     /// audio and no cover — only the database — so seeding a save panel never
     /// touches a whole file or the cloud.
     pub async fn save_track_suggested_name(&self, track_id: &str) -> Result<String, LibraryError> {
-        let filename_tokens = self.preferences().await?.save_filename_tokens;
+        let pattern = self.preferences().await?.save_filename_pattern;
         let meta = TrackAudioMeta::resolve(&self.records, track_id).await?;
         let resolved = self.resolve_save_tags(&meta.release, &meta.track).await?;
-        let stem = crate::save::render_save_filename(&filename_tokens, &resolved);
+        let stem = crate::save::render_save_filename(&pattern, &resolved);
         // coven's name for a file depends on its extension only when a name
         // is cut to fit; `flac` and `aiff` are the longest, so the stem fits
         // under every format's extension.
@@ -187,12 +188,12 @@ impl LibraryManager {
     }
 
     /// Save `release` into `staging_dir` under `preset`, each file named by
-    /// `filename_tokens`.
+    /// `filename_pattern`.
     pub(super) async fn save_release_tracks_to_dir(
         &self,
         release: &DbRelease,
         preset: bae_preferences::SavePreset,
-        filename_tokens: &[bae_preferences::SaveFilenameToken],
+        filename_pattern: &bae_preferences::SaveFilenamePattern,
         extras: bae_preferences::SaveExtras,
         staging_dir: &std::path::Path,
     ) -> Result<(), LibraryError> {
@@ -218,7 +219,7 @@ impl LibraryManager {
                     extras.loudness_tags,
                 )
                 .await?;
-            let stem = crate::save::render_save_filename(filename_tokens, &plan.resolved);
+            let stem = crate::save::render_save_filename(filename_pattern, &plan.resolved);
             let output_path =
                 unique_output_path(staging_dir, &stem, preset.codec.extension(), &mut used_paths);
             saves.push((plan, output_path));
