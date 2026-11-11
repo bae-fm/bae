@@ -83,7 +83,16 @@ internal fun SettingsScreen(
         Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
             when (open) {
                 null -> {
-                    SettingsMenu(onOpen = { page = it }, onPush = onPush)
+                    val libraryModel = rememberSettingsLibraryModel(session)
+                    LaunchedEffect(libraryModel) { libraryModel.loadStorage() }
+                    val line by session.syncStatusStore.line.collectAsState()
+                    val setupRunning by session.syncStatusStore.setupRunning.collectAsState()
+                    val sync = syncRowSummary(libraryModel.storage, line, setupRunning)
+                    SettingsMenu(
+                        summaries = rememberSettingsSummaries(config, libraryModel.name, sync),
+                        onOpen = { page = it },
+                        onPush = onPush,
+                    )
                     SettingsLibrarySwitcher(
                         session = session,
                         listing = listing,
@@ -101,7 +110,7 @@ internal fun SettingsScreen(
                 }
 
                 SettingsPage.About -> {
-                    SettingsAboutSection()
+                    SettingsAboutSection(version = installedVersion())
                 }
             }
         }
@@ -114,7 +123,7 @@ internal fun SectionDivider() {
 }
 
 @Composable
-private fun SettingsAboutSection() {
+internal fun SettingsAboutSection(version: String) {
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = ThemeSpace.edge)) {
         Box(
             modifier = Modifier.fillMaxWidth().padding(top = ThemeSpace.page, bottom = ThemeSpace.edge),
@@ -123,7 +132,7 @@ private fun SettingsAboutSection() {
             Logo(size = ABOUT_LOGO_SIZE, bob = false, glow = false)
         }
         RowCard {
-            CardRow(title = stringResource(R.string.settings_version), subtitle = installedVersion())
+            CardRow(title = stringResource(R.string.settings_version), subtitle = version)
         }
     }
 }

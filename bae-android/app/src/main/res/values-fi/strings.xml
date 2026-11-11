@@ -120,6 +120,15 @@
     <string name="settings_playback">Toisto</string>
     <string name="settings_about">Tietoja</string>
     <string name="settings_version">Versio</string>
+    <string name="settings_summary_off">Pois</string>
+    <string name="settings_summary_on">Päällä</string>
+    <string name="settings_summary_pauses_between_sides">Tauko puolten välissä</string>
+    <string name="settings_summary_restores_on_launch">Palauta käynnistyksessä</string>
+    <string name="settings_about_summary">Versio %1$s</string>
+    <plurals name="transfers_pins_summary">
+        <item quantity="one">%1$d kiinnitys kerrallaan</item>
+        <item quantity="other">%1$d kiinnitystä kerrallaan</item>
+    </plurals>
     <string name="copy_code">Kopioi koodi</string>
     <string name="copy">Kopioi</string>
     <string name="hide">Piilota</string>

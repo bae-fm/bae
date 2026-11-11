@@ -128,6 +128,19 @@
     <string name="settings_playback">التشغيل</string>
     <string name="settings_about">حول</string>
     <string name="settings_version">الإصدار</string>
+    <string name="settings_summary_off">إيقاف</string>
+    <string name="settings_summary_on">تشغيل</string>
+    <string name="settings_summary_pauses_between_sides">إيقاف مؤقت بين الجوانب</string>
+    <string name="settings_summary_restores_on_launch">الاستعادة عند التشغيل</string>
+    <string name="settings_about_summary">الإصدار %1$s</string>
+    <plurals name="transfers_pins_summary">
+        <item quantity="zero">%1$d عمليات تثبيت في آن واحد</item>
+        <item quantity="one">عملية تثبيت واحدة في آن واحد</item>
+        <item quantity="two">عمليتا تثبيت في آن واحد</item>
+        <item quantity="few">%1$d عمليات تثبيت في آن واحد</item>
+        <item quantity="many">%1$d عملية تثبيت في آن واحد</item>
+        <item quantity="other">%1$d عملية تثبيت في آن واحد</item>
+    </plurals>
     <string name="copy_code">نسخ الرمز</string>
     <string name="copy">نسخ</string>
     <string name="hide">إخفاء</string>

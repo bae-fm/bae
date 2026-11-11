@@ -50,14 +50,9 @@ internal fun LibrarySettingsScreen(
     onPush: (LibraryDestination) -> Unit,
 ) {
     val scope = rememberScreenScope()
-    val model = remember(session) { SettingsLibraryModel(session.appHandle, session.errors, scope) }
+    val model = rememberSettingsLibraryModel(session)
     val members = remember(session) { MembersModel(session.appHandle, session.errors, scope) }
     LaunchedEffect(model) { model.load() }
-    ReloadStorageWhenSetupEnds(session = session, model = model)
-    DisposableEffect(model) {
-        model.watchName()
-        onDispose { model.stopWatchingName() }
-    }
     DisposableEffect(members) { onDispose(members.subscribe()) }
     val line by session.syncStatusStore.line.collectAsState()
     val setupRunning by session.syncStatusStore.setupRunning.collectAsState()
@@ -167,7 +162,7 @@ internal data class SyncRowSummary(
  * gives it.
  */
 @Composable
-private fun syncRowSummary(
+internal fun syncRowSummary(
     storage: Storage,
     line: SyncLine,
     setupRunning: Boolean,
@@ -209,22 +204,5 @@ internal fun RestoreCodeScreen(
                 generate = { session.appHandle.generateRestoreCode().code },
             )
         }
-    }
-}
-
-/**
- * A storage setup records the library's location as it ends, and one can end with no setup screen to hear it: one
- * sync finishes after a relaunch, or one whose screen closed past its point of no return.
- */
-@Composable
-private fun ReloadStorageWhenSetupEnds(
-    session: OpenLibrary,
-    model: SettingsLibraryModel,
-) {
-    val setupRunning by session.syncStatusStore.setupRunning.collectAsState()
-    var setupWasRunning by remember { mutableStateOf(setupRunning) }
-    LaunchedEffect(setupRunning) {
-        if (setupWasRunning && !setupRunning) model.loadStorage()
-        setupWasRunning = setupRunning
     }
 }

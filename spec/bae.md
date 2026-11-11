@@ -5574,9 +5574,13 @@ live in each app. Appearance reads Theme (System, Light, Dark), then Tone, then
 Accent, so named in every locale. The apps start with the System theme, the Plum
 tone and the Pink accent. On the Mac Theme and Tone are pop-up buttons; on
 Android the Appearance page has no heading over its card, the top bar names it.
-About shows the bae logo, the sheep over the word, 96
-points wide and still, over the version: Android's Version is a row on a card,
-the Mac's a line with Check for updates….
+Android's Settings rows each say where that setting stands under their title:
+Appearance's theme, tone and accent, the library's name and its sync state,
+which of pausing between sides and restoring on launch are on, how many pins
+run at once, whether casting is on, and the version. The Mac's sidebar names the
+sync state beside Library only while it is amber or red. About shows the bae
+logo, the sheep over the word, 96 points wide and still, over the version:
+Android's Version is a row on a card, the Mac's a line with Check for updates….
 
 ---
 

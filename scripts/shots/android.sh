@@ -116,6 +116,10 @@ RestoreCodeMasked:restore-code-masked
 RestoreCodeShown:restore-code-shown
 S3KeyDialogScene:onboarding-s3-key
 S3SetupRegionMismatch:s3-setup-region-mismatch
+SettingsAbout:settings-about
+SettingsMenu:settings
+SettingsMenuOffline:settings-offline
+SettingsMenuProblem:settings-problem
 SyncStatusFailed:sync-status-failed
 SyncStatusOffline:sync-status-offline
 SyncStatusSignedOut:sync-status-signed-out

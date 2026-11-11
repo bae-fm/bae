@@ -119,6 +119,16 @@
     <string name="settings_playback">Lecture</string>
     <string name="settings_about">À propos</string>
     <string name="settings_version">Version</string>
+    <string name="settings_summary_off">Désactivé</string>
+    <string name="settings_summary_on">Activé</string>
+    <string name="settings_summary_pauses_between_sides">Pause entre les faces</string>
+    <string name="settings_summary_restores_on_launch">Restaurer au lancement</string>
+    <string name="settings_about_summary">Version %1$s</string>
+    <plurals name="transfers_pins_summary">
+        <item quantity="one">%1$d épinglage à la fois</item>
+        <item quantity="many">%1$d d\'épinglages à la fois</item>
+        <item quantity="other">%1$d épinglages à la fois</item>
+    </plurals>
     <string name="copy_code">Copier le code</string>
     <string name="copy">Copier</string>
     <string name="hide">Masquer</string>

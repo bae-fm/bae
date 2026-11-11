@@ -119,6 +119,16 @@
     <string name="settings_playback">Reprodução</string>
     <string name="settings_about">Sobre</string>
     <string name="settings_version">Versão</string>
+    <string name="settings_summary_off">Desativado</string>
+    <string name="settings_summary_on">Ativado</string>
+    <string name="settings_summary_pauses_between_sides">Pausa entre lados</string>
+    <string name="settings_summary_restores_on_launch">Restaurar ao abrir</string>
+    <string name="settings_about_summary">Versão %1$s</string>
+    <plurals name="transfers_pins_summary">
+        <item quantity="one">%1$d fixação por vez</item>
+        <item quantity="many">%1$d de fixações por vez</item>
+        <item quantity="other">%1$d fixações por vez</item>
+    </plurals>
     <string name="copy_code">Copiar código</string>
     <string name="copy">Copiar</string>
     <string name="hide">Ocultar</string>

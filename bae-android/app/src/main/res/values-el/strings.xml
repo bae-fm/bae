@@ -120,6 +120,15 @@
     <string name="settings_playback">Αναπαραγωγή</string>
     <string name="settings_about">Σχετικά</string>
     <string name="settings_version">Έκδοση</string>
+    <string name="settings_summary_off">Ανενεργό</string>
+    <string name="settings_summary_on">Ενεργό</string>
+    <string name="settings_summary_pauses_between_sides">Παύση ανάμεσα σε πλευρές</string>
+    <string name="settings_summary_restores_on_launch">Επαναφορά κατά την εκκίνηση</string>
+    <string name="settings_about_summary">Έκδοση %1$s</string>
+    <plurals name="transfers_pins_summary">
+        <item quantity="one">%1$d καρφίτσωμα ταυτόχρονα</item>
+        <item quantity="other">%1$d καρφιτσώματα ταυτόχρονα</item>
+    </plurals>
     <string name="copy_code">Αντιγραφή κωδικού</string>
     <string name="copy">Αντιγραφή</string>
     <string name="hide">Απόκρυψη</string>

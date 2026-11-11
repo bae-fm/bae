@@ -68,6 +68,62 @@ private struct PausedBadge: View {
     }
 }
 
+/// The sync state beside Library in the sidebar, in core's words and the color
+/// it gives them, shown only while the state is amber or red.
+private struct SyncBadge: View {
+    let shown: BridgeSyncShown
+
+    var body: some View {
+        Text(shown.statusLine)
+            .themeText(.detail)
+            .foregroundStyle(shown.statusTone.color)
+    }
+}
+
+/// The panes down the side of the settings window, with the state some of them
+/// carry beside their title.
+struct SettingsSidebar: View {
+    @Binding
+    var selection: SettingsTab
+
+    @Environment(DownloadStore.self)
+    private var downloadStore
+    @Environment(OutboxStore.self)
+    private var outboxStore
+    @Environment(SyncStatusStore.self)
+    private var syncStatus
+
+    var body: some View {
+        List(SettingsTab.allCases, id: \.self, selection: $selection) { tab in
+            HStack {
+                Label(tab.title, systemImage: tab.symbol)
+                if tab == .transfers,
+                    let paused = PausedTransfers(
+                        uploads: outboxStore.uploadsPaused,
+                        downloads: downloadStore.downloadsPaused
+                    )
+                {
+                    Spacer()
+                    PausedBadge(paused: paused)
+                }
+                if tab == .library, let shown = troubledSync {
+                    Spacer()
+                    SyncBadge(shown: shown)
+                }
+            }
+            .tag(tab)
+        }
+    }
+
+    /// The sync state, while it is amber or red.
+    private var troubledSync: BridgeSyncShown? {
+        guard let shown = syncStatus.shown,
+            shown.statusTone == .warning || shown.statusTone == .danger
+        else { return nil }
+        return shown
+    }
+}
+
 /// The settings window: the panes down the side, the chosen one beside them.
 ///
 /// A sidebar and not the toolbar strip a settings window usually has, because
@@ -87,36 +143,13 @@ struct SettingsView: View {
 
     @Environment(SettingsNavigation.self)
     private var navigation
-    @Environment(DownloadStore.self)
-    private var downloadStore
-    @Environment(OutboxStore.self)
-    private var outboxStore
 
     var body: some View {
         @Bindable
         var navigation = navigation
         NavigationSplitView(columnVisibility: .constant(.all)) {
-            List(
-                SettingsTab.allCases,
-                id: \.self,
-                selection: $navigation.selectedTab
-            ) {
-                tab in
-                HStack {
-                    Label(tab.title, systemImage: tab.symbol)
-                    if tab == .transfers,
-                        let paused = PausedTransfers(
-                            uploads: outboxStore.uploadsPaused,
-                            downloads: downloadStore.downloadsPaused
-                        )
-                    {
-                        Spacer()
-                        PausedBadge(paused: paused)
-                    }
-                }
-                .tag(tab)
-            }
-            .navigationSplitViewColumnWidth(190)
+            SettingsSidebar(selection: $navigation.selectedTab)
+                .navigationSplitViewColumnWidth(190)
         } detail: {
             pane(for: navigation.selectedTab)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)

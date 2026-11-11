@@ -120,6 +120,15 @@
     <string name="settings_playback">Uppspelning</string>
     <string name="settings_about">Om</string>
     <string name="settings_version">Version</string>
+    <string name="settings_summary_off">Av</string>
+    <string name="settings_summary_on">På</string>
+    <string name="settings_summary_pauses_between_sides">Paus mellan sidor</string>
+    <string name="settings_summary_restores_on_launch">Återställ vid start</string>
+    <string name="settings_about_summary">Version %1$s</string>
+    <plurals name="transfers_pins_summary">
+        <item quantity="one">%1$d fästning åt gången</item>
+        <item quantity="other">%1$d fästningar åt gången</item>
+    </plurals>
     <string name="copy_code">Kopiera koden</string>
     <string name="copy">Kopiera</string>
     <string name="hide">Dölj</string>

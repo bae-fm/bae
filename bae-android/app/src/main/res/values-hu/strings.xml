@@ -120,6 +120,15 @@
     <string name="settings_playback">Lejátszás</string>
     <string name="settings_about">Névjegy</string>
     <string name="settings_version">Verzió</string>
+    <string name="settings_summary_off">Ki</string>
+    <string name="settings_summary_on">Be</string>
+    <string name="settings_summary_pauses_between_sides">Szünet a lemezoldalak között</string>
+    <string name="settings_summary_restores_on_launch">Visszaállítás indításkor</string>
+    <string name="settings_about_summary">%1$s verzió</string>
+    <plurals name="transfers_pins_summary">
+        <item quantity="one">%1$d rögzítés egyszerre</item>
+        <item quantity="other">%1$d rögzítés egyszerre</item>
+    </plurals>
     <string name="copy_code">Kód másolása</string>
     <string name="copy">Másolás</string>
     <string name="hide">Elrejtés</string>

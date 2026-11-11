@@ -151,6 +151,15 @@
     <string name="settings_playback">Playback</string>
     <string name="settings_about">About</string>
     <string name="settings_version">Version</string>
+    <string name="settings_summary_off">Off</string>
+    <string name="settings_summary_on">On</string>
+    <string name="settings_summary_pauses_between_sides">Pauses between sides</string>
+    <string name="settings_summary_restores_on_launch">Restores on launch</string>
+    <string name="settings_about_summary">Version %1$s</string>
+    <plurals name="transfers_pins_summary">
+        <item quantity="one">%1$d pin at once</item>
+        <item quantity="other">%1$d pins at once</item>
+    </plurals>
     <string name="copy_code">Copy code</string>
     <string name="copy">Copy</string>
     <string name="hide">Hide</string>

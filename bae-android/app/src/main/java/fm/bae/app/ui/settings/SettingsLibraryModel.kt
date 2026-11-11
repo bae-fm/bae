@@ -1,11 +1,18 @@
 package fm.bae.app.ui.settings
 
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.ErrorDisplays
+import fm.bae.app.OpenLibrary
+import fm.bae.app.ui.rememberScreenScope
 import fm.bae.screensubscription.ScreenSubscription
 import fm.bae.screensubscription.pulled
 import kotlinx.coroutines.CancellationException
@@ -121,5 +128,39 @@ internal class SettingsLibraryModel(
         nameGeneration++
         nameSubscription?.stop()
         nameSubscription = null
+    }
+}
+
+/**
+ * A [SettingsLibraryModel] following the library's name while the caller shows, and reading its storage again whenever
+ * a storage setup ends. Its first reads are the caller's: [SettingsLibraryModel.loadStorage] and
+ * [SettingsLibraryModel.loadSelf] for what it shows.
+ */
+@Composable
+internal fun rememberSettingsLibraryModel(session: OpenLibrary): SettingsLibraryModel {
+    val scope = rememberScreenScope()
+    val model = remember(session) { SettingsLibraryModel(session.appHandle, session.errors, scope) }
+    ReloadStorageWhenSetupEnds(session = session, model = model)
+    DisposableEffect(model) {
+        model.watchName()
+        onDispose { model.stopWatchingName() }
+    }
+    return model
+}
+
+/**
+ * A storage setup records the library's location as it ends, and one can end with no setup screen to hear it: one
+ * sync finishes after a relaunch, or one whose screen closed past its point of no return.
+ */
+@Composable
+private fun ReloadStorageWhenSetupEnds(
+    session: OpenLibrary,
+    model: SettingsLibraryModel,
+) {
+    val setupRunning by session.syncStatusStore.setupRunning.collectAsState()
+    var setupWasRunning by remember { mutableStateOf(setupRunning) }
+    LaunchedEffect(setupRunning) {
+        if (setupWasRunning && !setupRunning) model.loadStorage()
+        setupWasRunning = setupRunning
     }
 }

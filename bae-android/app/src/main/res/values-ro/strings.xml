@@ -124,6 +124,16 @@
     <string name="settings_playback">Redare</string>
     <string name="settings_about">Despre</string>
     <string name="settings_version">Versiune</string>
+    <string name="settings_summary_off">Oprit</string>
+    <string name="settings_summary_on">Pornit</string>
+    <string name="settings_summary_pauses_between_sides">Pauză între fețe</string>
+    <string name="settings_summary_restores_on_launch">Restaurează la pornire</string>
+    <string name="settings_about_summary">Versiunea %1$s</string>
+    <plurals name="transfers_pins_summary">
+        <item quantity="one">%1$d fixare simultan</item>
+        <item quantity="few">%1$d fixări simultan</item>
+        <item quantity="other">%1$d de fixări simultan</item>
+    </plurals>
     <string name="copy_code">Copiază codul</string>
     <string name="copy">Copiază</string>
     <string name="hide">Ascunde</string>

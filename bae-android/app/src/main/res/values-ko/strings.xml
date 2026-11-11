@@ -113,6 +113,14 @@
     <string name="settings_playback">재생</string>
     <string name="settings_about">정보</string>
     <string name="settings_version">버전</string>
+    <string name="settings_summary_off">끔</string>
+    <string name="settings_summary_on">켬</string>
+    <string name="settings_summary_pauses_between_sides">면 사이에 일시정지</string>
+    <string name="settings_summary_restores_on_launch">시작 시 복원</string>
+    <string name="settings_about_summary">버전 %1$s</string>
+    <plurals name="transfers_pins_summary">
+        <item quantity="other">동시 고정 %1$d개</item>
+    </plurals>
     <string name="copy_code">코드 복사</string>
     <string name="copy">복사</string>
     <string name="hide">가리기</string>

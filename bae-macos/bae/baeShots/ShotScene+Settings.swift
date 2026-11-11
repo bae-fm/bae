@@ -110,6 +110,26 @@ extension ShotScene {
             storage: nil,
             shown: .previewNotSynced
         ),
+        ShotScene(
+            id: "settings-appearance",
+            size: CGSize(width: 500, height: 300)
+        ) {
+            ShotStage(AppearanceSettingsTab())
+        },
+        ShotScene(
+            id: "settings-about",
+            size: CGSize(width: 500, height: 300)
+        ) {
+            ShotStage(
+                AboutSettingsTab(
+                    canCheckForUpdates: true,
+                    onCheckForUpdates: {}
+                )
+            )
+        },
+        settingsSidebar("settings-sidebar", .previewSynced),
+        settingsSidebar("settings-sidebar-offline", .previewOffline),
+        settingsSidebar("settings-sidebar-problem", .previewFailed),
         automationFailed,
         subsonicRunning,
         syncPage("sync-status-synced", .previewSynced),
@@ -219,6 +239,31 @@ extension ShotScene {
                     .environment(OutboxStore(uploadsPaused: uploadsPaused))
                     .environment(Sync.stub())
                     .environment(UiStore())
+            )
+        }
+    }
+
+    /// The Settings sidebar of a library whose sync is `shown`, which names
+    /// the state beside Library when it is amber or red.
+    private static func settingsSidebar(
+        _ id: String,
+        _ shown: BridgeSyncShown
+    ) -> ShotScene {
+        ShotScene(id: id, size: CGSize(width: 190, height: 330)) {
+            ShotStage(
+                SettingsSidebar(selection: .constant(.appearance))
+                    .environment(DownloadStore())
+                    .environment(OutboxStore(uploadsPaused: false))
+                    .environment(
+                        SyncStatusStore(
+                            snapshot: BridgeSyncStatusSnapshot(
+                                shown: shown,
+                                pending: [],
+                                setupRunning: false,
+                                undoneSetup: nil
+                            )
+                        )
+                    )
             )
         }
     }

@@ -120,6 +120,15 @@
     <string name="settings_playback">Reprodução</string>
     <string name="settings_about">Acerca</string>
     <string name="settings_version">Versão</string>
+    <string name="settings_summary_off">Desligado</string>
+    <string name="settings_summary_on">Ligado</string>
+    <string name="settings_summary_pauses_between_sides">Pausa entre lados</string>
+    <string name="settings_summary_restores_on_launch">Restaurar ao iniciar</string>
+    <string name="settings_about_summary">Versão %1$s</string>
+    <plurals name="transfers_pins_summary">
+        <item quantity="one">%1$d fixação em simultâneo</item>
+        <item quantity="other">%1$d fixações em simultâneo</item>
+    </plurals>
     <string name="copy_code">Copiar código</string>
     <string name="copy">Copiar</string>
     <string name="hide">Ocultar</string>

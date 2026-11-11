@@ -116,6 +116,15 @@
     <string name="settings_playback">Afspelen</string>
     <string name="settings_about">Over</string>
     <string name="settings_version">Versie</string>
+    <string name="settings_summary_off">Uit</string>
+    <string name="settings_summary_on">Aan</string>
+    <string name="settings_summary_pauses_between_sides">Pauze tussen kanten</string>
+    <string name="settings_summary_restores_on_launch">Herstellen bij starten</string>
+    <string name="settings_about_summary">Versie %1$s</string>
+    <plurals name="transfers_pins_summary">
+        <item quantity="one">%1$d tegelijk vastzetten</item>
+        <item quantity="other">%1$d tegelijk vastzetten</item>
+    </plurals>
     <string name="copy_code">Code kopiëren</string>
     <string name="copy">Kopiëren</string>
     <string name="hide">Verbergen</string>

@@ -57,6 +57,7 @@ import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.RemovalLoss
 import fm.bae.app.ui.components.RemoveLibraryText
+import fm.bae.app.ui.components.ScreenTopBar
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.components.TitledErrorNotice
 import fm.bae.app.ui.components.TitledSheetContent
@@ -89,6 +90,9 @@ import fm.bae.app.ui.settings.PeoplePage
 import fm.bae.app.ui.settings.PeopleScene
 import fm.bae.app.ui.settings.RestoreCodeScene
 import fm.bae.app.ui.settings.S3SetupFormScene
+import fm.bae.app.ui.settings.SettingsAboutSection
+import fm.bae.app.ui.settings.SettingsMenu
+import fm.bae.app.ui.settings.SettingsSummaries
 import fm.bae.app.ui.settings.SyncRowSummary
 import fm.bae.app.ui.settings.SyncStatusScene
 import fm.bae.app.ui.settings.TransfersContent
@@ -141,6 +145,7 @@ import java.time.Instant
 //   settings-casting, CastingSettingsLooking ⇒ settings-casting-looking, CastingSettingsMenu ⇒
 //   settings-casting-menu, CastingReceiverDetails ⇒ settings-casting-details, LibrarySettings ⇒ settings-library,
 //   LibrarySettingsProblem ⇒ settings-library-problem, LibrarySettingsNotSynced ⇒ settings-library-not-synced,
+//   SettingsAbout ⇒ settings-about, SettingsMenu ⇒ settings, SettingsMenuOffline ⇒ settings-offline, SettingsMenuProblem ⇒ settings-problem,
 //   PeopleAndDevices ⇒ people-and-devices, PeopleAndDevicesMember ⇒ people-and-devices-member,
 //   PeopleAndDevicesPerson ⇒ people-and-devices-person, PeopleAndDevicesYours ⇒ people-and-devices-yours,
 //   SyncStatusSynced/Waiting/Offline/SignedOut/Failed ⇒ sync-status-synced, -waiting, -offline, -signed-out, -failed.
@@ -628,6 +633,65 @@ private fun syncShown(
     fix = fix,
     lastSynced = if (lastSynced) Instant.now().minusSeconds(TWO_HOURS_SECONDS) else null,
 )
+
+/** The About page. */
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun SettingsAbout() {
+    BaeTheme {
+        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+            Column {
+                ScreenTopBar(title = stringResource(R.string.settings_about), onBack = {})
+                SettingsAboutSection(version = "0.0-dev")
+            }
+        }
+    }
+}
+
+/** The Settings menu of a synced library. */
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun SettingsMenu() {
+    SettingsMenuScene(library = "Home music · Synced")
+}
+
+/** The Settings menu of a library whose storage this phone can't reach. */
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun SettingsMenuOffline() {
+    SettingsMenuScene(library = "Home music · Offline")
+}
+
+/** The Settings menu of a library whose cloud storage is full. */
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun SettingsMenuProblem() {
+    SettingsMenuScene(library = "Home music · Cloud full")
+}
+
+@Composable
+private fun SettingsMenuScene(library: String) {
+    BaeTheme {
+        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+            Column {
+                ScreenTopBar(title = stringResource(R.string.settings), onBack = {})
+                SettingsMenu(
+                    summaries =
+                        SettingsSummaries(
+                            appearance = "System · Midnight · Pink",
+                            library = library,
+                            playback = "Pauses between sides · Restores on launch",
+                            transfers = "3 pins at once",
+                            casting = "Off",
+                            about = "Version 0.0-dev",
+                        ),
+                    onOpen = {},
+                    onPush = {},
+                )
+            }
+        }
+    }
+}
 
 /** The Library page of a synced library, for an admin. */
 @Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)

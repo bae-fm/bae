@@ -128,6 +128,17 @@
     <string name="settings_playback">Prehrávanie</string>
     <string name="settings_about">O aplikácii</string>
     <string name="settings_version">Verzia</string>
+    <string name="settings_summary_off">Vypnuté</string>
+    <string name="settings_summary_on">Zapnuté</string>
+    <string name="settings_summary_pauses_between_sides">Pauza medzi stranami</string>
+    <string name="settings_summary_restores_on_launch">Obnoviť pri spustení</string>
+    <string name="settings_about_summary">Verzia %1$s</string>
+    <plurals name="transfers_pins_summary">
+        <item quantity="one">%1$d pripnutie naraz</item>
+        <item quantity="few">%1$d pripnutia naraz</item>
+        <item quantity="many">%1$d pripnutia naraz</item>
+        <item quantity="other">%1$d pripnutí naraz</item>
+    </plurals>
     <string name="copy_code">Kopírovať kód</string>
     <string name="copy">Kopírovať</string>
     <string name="hide">Skryť</string>

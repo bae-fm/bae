@@ -119,6 +119,16 @@
     <string name="settings_playback">הפעלה</string>
     <string name="settings_about">אודות</string>
     <string name="settings_version">גרסה</string>
+    <string name="settings_summary_off">כבוי</string>
+    <string name="settings_summary_on">פועל</string>
+    <string name="settings_summary_pauses_between_sides">השהיה בין צדדים</string>
+    <string name="settings_summary_restores_on_launch">שחזר בהפעלה</string>
+    <string name="settings_about_summary">גרסה %1$s</string>
+    <plurals name="transfers_pins_summary">
+        <item quantity="one">הצמדה אחת בו-זמנית</item>
+        <item quantity="two">שתי הצמדות בו-זמנית</item>
+        <item quantity="other">%1$d הצמדות בו-זמנית</item>
+    </plurals>
     <string name="copy_code">העתק קוד</string>
     <string name="copy">העתקה</string>
     <string name="hide">הסתרה</string>

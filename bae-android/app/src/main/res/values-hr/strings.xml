@@ -119,6 +119,16 @@
     <string name="settings_playback">Reprodukcija</string>
     <string name="settings_about">O aplikaciji</string>
     <string name="settings_version">Verzija</string>
+    <string name="settings_summary_off">Isključeno</string>
+    <string name="settings_summary_on">Uključeno</string>
+    <string name="settings_summary_pauses_between_sides">Pauza između strana</string>
+    <string name="settings_summary_restores_on_launch">Vrati pri pokretanju</string>
+    <string name="settings_about_summary">Verzija %1$s</string>
+    <plurals name="transfers_pins_summary">
+        <item quantity="one">%1$d prikvačivanje istodobno</item>
+        <item quantity="few">%1$d prikvačivanja istodobno</item>
+        <item quantity="other">%1$d prikvačivanja istodobno</item>
+    </plurals>
     <string name="copy_code">Kopiraj kod</string>
     <string name="copy">Kopiraj</string>
     <string name="hide">Sakrij</string>

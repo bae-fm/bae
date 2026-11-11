@@ -113,6 +113,14 @@
     <string name="settings_playback">播放</string>
     <string name="settings_about">关于</string>
     <string name="settings_version">版本</string>
+    <string name="settings_summary_off">关闭</string>
+    <string name="settings_summary_on">开启</string>
+    <string name="settings_summary_pauses_between_sides">面之间暂停</string>
+    <string name="settings_summary_restores_on_launch">启动时恢复</string>
+    <string name="settings_about_summary">版本 %1$s</string>
+    <plurals name="transfers_pins_summary">
+        <item quantity="other">同时固定 %1$d 项</item>
+    </plurals>
     <string name="copy_code">复制代码</string>
     <string name="copy">复制</string>
     <string name="hide">隐藏</string>

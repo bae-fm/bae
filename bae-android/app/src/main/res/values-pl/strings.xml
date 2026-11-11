@@ -122,6 +122,17 @@
     <string name="settings_playback">Odtwarzanie</string>
     <string name="settings_about">O aplikacji</string>
     <string name="settings_version">Wersja</string>
+    <string name="settings_summary_off">Wyłączone</string>
+    <string name="settings_summary_on">Włączone</string>
+    <string name="settings_summary_pauses_between_sides">Pauza między stronami</string>
+    <string name="settings_summary_restores_on_launch">Przywracaj przy uruchomieniu</string>
+    <string name="settings_about_summary">Wersja %1$s</string>
+    <plurals name="transfers_pins_summary">
+        <item quantity="one">%1$d przypięcie naraz</item>
+        <item quantity="few">%1$d przypięcia naraz</item>
+        <item quantity="many">%1$d przypięć naraz</item>
+        <item quantity="other">%1$d przypięcia naraz</item>
+    </plurals>
     <string name="copy_code">Kopiuj kod</string>
     <string name="copy">Kopiuj</string>
     <string name="hide">Ukryj</string>

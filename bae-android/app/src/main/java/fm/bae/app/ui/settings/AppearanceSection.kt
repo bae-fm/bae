@@ -176,7 +176,7 @@ private fun <T> AppearancePicker(
     }
 }
 
-private val AppearanceMode.label: Int
+internal val AppearanceMode.label: Int
     @StringRes get() =
         when (this) {
             AppearanceMode.SYSTEM -> R.string.appearance_system
@@ -184,7 +184,7 @@ private val AppearanceMode.label: Int
             AppearanceMode.DARK -> R.string.appearance_dark
         }
 
-private val SurfaceTone.label: Int
+internal val SurfaceTone.label: Int
     @StringRes get() =
         when (this) {
             SurfaceTone.NEUTRAL -> R.string.appearance_neutral
@@ -195,7 +195,7 @@ private val SurfaceTone.label: Int
             SurfaceTone.SAND -> R.string.appearance_sand
         }
 
-private val AccentChoice.label: Int
+internal val AccentChoice.label: Int
     @StringRes get() =
         when (this) {
             AccentChoice.BLUE -> R.string.appearance_blue

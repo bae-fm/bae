@@ -113,6 +113,14 @@
     <string name="settings_playback">再生</string>
     <string name="settings_about">情報</string>
     <string name="settings_version">バージョン</string>
+    <string name="settings_summary_off">オフ</string>
+    <string name="settings_summary_on">オン</string>
+    <string name="settings_summary_pauses_between_sides">面の間で一時停止</string>
+    <string name="settings_summary_restores_on_launch">起動時に復元</string>
+    <string name="settings_about_summary">バージョン %1$s</string>
+    <plurals name="transfers_pins_summary">
+        <item quantity="other">同時に %1$d 件ピン留め</item>
+    </plurals>
     <string name="copy_code">コードをコピー</string>
     <string name="copy">コピー</string>
     <string name="hide">非表示</string>

@@ -120,6 +120,15 @@
     <string name="settings_playback">Afspilning</string>
     <string name="settings_about">Om</string>
     <string name="settings_version">Version</string>
+    <string name="settings_summary_off">Fra</string>
+    <string name="settings_summary_on">Til</string>
+    <string name="settings_summary_pauses_between_sides">Pause mellem sider</string>
+    <string name="settings_summary_restores_on_launch">Gendan ved start</string>
+    <string name="settings_about_summary">Version %1$s</string>
+    <plurals name="transfers_pins_summary">
+        <item quantity="one">%1$d fastgørelse ad gangen</item>
+        <item quantity="other">%1$d fastgørelser ad gangen</item>
+    </plurals>
     <string name="copy_code">Kopier koden</string>
     <string name="copy">Kopier</string>
     <string name="hide">Skjul</string>
