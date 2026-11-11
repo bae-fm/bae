@@ -18,8 +18,8 @@ struct WelcomeView: View {
     /// stopped partway, with the one call that finishes it.
     let onFinishReplacement: (String, BridgeReplacedBy) -> Void
     /// A failed library open or dev reset, shown as the chooser's inline
-    /// callout. Only the first-run bootstrap carries it; a flow a menu item
-    /// opens directly shows its own errors.
+    /// callout, shown again when Back returns to the chooser from a flow a
+    /// menu item opened directly.
     let loadError: LoadError?
     /// What launch found wrong, shown above `loadError` and never replaced by
     /// it.

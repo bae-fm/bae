@@ -60,27 +60,15 @@ struct MainWindowRoot: View {
         loadError: LoadError?,
         launchProblems: LaunchProblems
     ) -> some View {
-        Group {
-            if let mode = appDelegate.welcomeInitialMode {
-                WelcomeView(
-                    onLibraryReady: appDelegate.openOpenedLibrary,
-                    onOpenLibrary: appDelegate.openLocalLibrary(id:),
-                    onFinishReplacement: appDelegate.presentFinishing,
-                    initialMode: mode,
-                    canDeleteActiveLibrary: !appDelegate.hasShell
-                )
-            }
-            else {
-                WelcomeView(
-                    onLibraryReady: appDelegate.openOpenedLibrary,
-                    onOpenLibrary: appDelegate.openLocalLibrary(id:),
-                    onFinishReplacement: appDelegate.presentFinishing,
-                    loadError: loadError,
-                    launchProblems: launchProblems,
-                    canDeleteActiveLibrary: !appDelegate.hasShell
-                )
-            }
-        }
+        WelcomeView(
+            onLibraryReady: appDelegate.openOpenedLibrary,
+            onOpenLibrary: appDelegate.openLocalLibrary(id:),
+            onFinishReplacement: appDelegate.presentFinishing,
+            loadError: loadError,
+            launchProblems: launchProblems,
+            initialMode: appDelegate.welcomeInitialMode ?? .choose,
+            canDeleteActiveLibrary: !appDelegate.hasShell
+        )
         .environment(applicationServices.librarySetup)
         .environment(applicationServices.libraryRemovals)
     }
