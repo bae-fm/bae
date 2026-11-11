@@ -36,9 +36,9 @@ struct AutomationSettingsContent: View {
     let copyToPasteboard: @MainActor (String) -> Void
 
     @State
-    private var enabled = false
+    private var enabled: Bool
     @State
-    private var portText = ""
+    private var portText: String
     @State
     private var status: BridgeServerStatus = .disabled
     @State
@@ -54,6 +54,19 @@ struct AutomationSettingsContent: View {
     private enum AutomationSettingsMessage {
         case feedback(String)
         case error(DisplayError)
+    }
+
+    init(
+        automation: Automation,
+        configStore: ConfigStore,
+        copyToPasteboard: @escaping @MainActor (String) -> Void
+    ) {
+        self.automation = automation
+        self.configStore = configStore
+        self.copyToPasteboard = copyToPasteboard
+        let mcp = configStore.config.mcp
+        _enabled = State(initialValue: mcp.enabled)
+        _portText = State(initialValue: String(mcp.port))
     }
 
     private var isWorking: Bool { mutationTask != nil }
