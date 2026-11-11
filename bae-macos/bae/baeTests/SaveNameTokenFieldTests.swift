@@ -1,6 +1,7 @@
 import AppKit
 import BaeKit
 import Foundation
+import SwiftUI
 import Testing
 
 @testable import bae
@@ -176,4 +177,31 @@ struct SaveNameTokenFieldTests {
     }
 
     struct RefusedWrite: Error {}
+}
+
+@Suite("Save as names in a window")
+@MainActor
+struct SaveNameFieldLayoutTests {
+    /// Clicking into a name field settles: the layout it causes comes to
+    /// rest, rather than invalidating the hosting view on every pass.
+    @Test("clicking into a name field leaves the layout at rest")
+    func focusingANameFieldSettlesLayout() async throws {
+        try await SnapshotTestSupport.withHostedWindow(
+            FormatsSettingsTab()
+                .environment(PreviewData.configStore())
+                .environment(Outputs.stub())
+                .environment(UiStore()),
+            size: NSSize(width: 690, height: 632)
+        ) { window, host in
+            try await SnapshotTestSupport.settle(host)
+            let fields = SnapshotTestSupport.descendants(of: host)
+                .compactMap { $0 as? NSTokenField }
+            #expect(fields.count == 2)
+            for field in fields {
+                window.makeFirstResponder(field)
+                try await SnapshotTestSupport.settle(host)
+                #expect(field.currentEditor() != nil)
+            }
+        }
+    }
 }
