@@ -120,7 +120,8 @@ extension ShotScene {
                 )
             )
         },
-        ShotScene(id: "mac.welcome.reset.resetting", size: WelcomeWindow.size) {
+        ShotScene(id: "mac.welcome.opening.resetting", size: WelcomeWindow.size)
+        {
             let progress = BridgeLoadProgress(
                 step: .streamingLibrary,
                 done: 5,
