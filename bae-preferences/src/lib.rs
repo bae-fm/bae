@@ -32,7 +32,8 @@ pub use save::{
     SaveFolderValue, SaveFormat, SavePreset,
 };
 pub use server::{
-    McpConfig, SubsonicConfig, SubsonicCredential, MCP_DEFAULT_PORT, SUBSONIC_DEFAULT_PORT,
+    McpConfig, SubsonicConfig, SubsonicCredential, SubsonicNetwork, MCP_DEFAULT_PORT,
+    SUBSONIC_DEFAULT_PORT,
 };
 
 #[cfg(any(test, feature = "test-utils"))]

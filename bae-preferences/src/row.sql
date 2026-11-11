@@ -45,13 +45,18 @@ CREATE TABLE IF NOT EXISTS preferences (
     -- The MCP server; its token is in the keyring.
     mcp_enabled INTEGER NOT NULL CHECK (mcp_enabled IN (0, 1)),
     mcp_port    INTEGER NOT NULL CHECK (mcp_port BETWEEN 1 AND 65535),
-    -- The Subsonic server; its password is in the keyring. The address it
-    -- binds is an IP address, which the setter checks.
-    subsonic_enabled      INTEGER NOT NULL CHECK (subsonic_enabled IN (0, 1)),
-    subsonic_port         INTEGER NOT NULL CHECK (subsonic_port BETWEEN 1 AND 65535),
-    subsonic_username     TEXT NOT NULL,
-    subsonic_bind_address TEXT NOT NULL,
-    CHECK (NOT subsonic_enabled OR subsonic_username <> '')
+    -- The Subsonic server, as the person set it; its password is in the
+    -- keyring. The port is kept as typed, and the server says when it can't
+    -- run on it. The network is this machine, every network, or one network by
+    -- its interface (its BSD name), never by address.
+    subsonic_enabled           INTEGER NOT NULL CHECK (subsonic_enabled IN (0, 1)),
+    subsonic_port              INTEGER NOT NULL CHECK (subsonic_port >= 0),
+    subsonic_username          TEXT NOT NULL,
+    subsonic_network           TEXT NOT NULL
+        CHECK (subsonic_network IN ('this_machine', 'interface', 'every')),
+    subsonic_network_interface TEXT,
+    CHECK ((subsonic_network = 'interface') = (subsonic_network_interface IS NOT NULL)),
+    CHECK (subsonic_network_interface IS NULL OR subsonic_network_interface <> '')
 ) STRICT;
 
 -- The save presets, in the order the settings list them (§4.6). The editor
@@ -112,7 +117,7 @@ INSERT OR IGNORE INTO preferences (
     library_full_width, import_destination, identify_automatically,
     import_when_identified, ask_musicbrainz, ask_discogs, cast_enabled,
     cast_transcode_format, mcp_enabled, mcp_port, subsonic_enabled, subsonic_port,
-    subsonic_username, subsonic_bind_address)
+    subsonic_username, subsonic_network, subsonic_network_interface)
 VALUES (
     1, NULL, 'off', 'flac', 1, 1, 1, 1, NULL, 3, 3, 0, 0, 'cloud', 1, 0, 1, 1, 0, 'mp3', 0,
-    47777, 0, 4533, '', '127.0.0.1');
+    47777, 0, 4533, '', 'this_machine', NULL);

@@ -89,9 +89,7 @@ impl McpServerController {
             Err(e) => {
                 return self
                     .server
-                    .record_error(ServerError::BindFailed {
-                        detail: format!("failed to bind 127.0.0.1:{port}: {e}"),
-                    })
+                    .record_error(ServerError::from_bind(format!("127.0.0.1:{port}"), &e))
                     .await;
             }
         };

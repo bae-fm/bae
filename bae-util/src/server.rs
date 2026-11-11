@@ -16,7 +16,7 @@ use std::fmt::Display;
 use std::future::{Future, IntoFuture};
 use std::sync::Arc;
 
-use tokio::sync::Mutex;
+use tokio::sync::{watch, Mutex};
 
 use coven::task::{spawn_owned, BugSinkRef, OwnedTask};
 use tokio_util::sync::CancellationToken;
@@ -31,17 +31,32 @@ pub enum ServerError {
     /// The server's own secret could not be read from the keychain: the MCP
     /// bearer token, the Subsonic password.
     CredentialUnavailable { detail: String },
-    /// The address could not be bound.
+    /// The port is held by another program.
+    PortInUse { detail: String },
+    /// The address could not be bound, for a reason other than its port being
+    /// held.
     BindFailed { detail: String },
     /// The server stopped while running.
     ServerFailed { detail: String },
 }
 
 impl ServerError {
+    /// Why `error` stopped the server binding `address`: its port is held by
+    /// another program, or something else went wrong.
+    pub fn from_bind(address: impl Display, error: &std::io::Error) -> Self {
+        let detail = format!("failed to bind {address}: {error}");
+        if error.kind() == std::io::ErrorKind::AddrInUse {
+            Self::PortInUse { detail }
+        } else {
+            Self::BindFailed { detail }
+        }
+    }
+
     pub fn detail(&self) -> &str {
         match self {
             Self::InvalidConfig { detail }
             | Self::CredentialUnavailable { detail }
+            | Self::PortInUse { detail }
             | Self::BindFailed { detail }
             | Self::ServerFailed { detail } => detail,
         }
@@ -50,11 +65,27 @@ impl ServerError {
 
 /// What the app reports for a server: off, reachable at a URL, or stopped with
 /// the reason it failed.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ServerStatus {
     Disabled,
     Running { url: String },
     Error { error: ServerError },
+}
+
+/// One follower's watch on a server's status.
+pub struct ServerWatch(watch::Receiver<ServerStatus>);
+
+impl ServerWatch {
+    /// The status now, which a later [`Self::changed`] waits past.
+    pub fn current(&mut self) -> ServerStatus {
+        self.0.borrow_and_update().clone()
+    }
+
+    /// Wait until the server settles in another status; fails once the
+    /// server is gone.
+    pub async fn changed(&mut self) -> Result<(), watch::error::RecvError> {
+        self.0.changed().await
+    }
 }
 
 enum ServerState<I> {
@@ -93,6 +124,10 @@ pub struct ServerController<I> {
     inner: Arc<Mutex<ServerState<I>>>,
     /// Where a panic of the serve future goes: the owner's bug sink.
     bugs: BugSinkRef,
+    /// The status as of the last state the server settled in, for whoever
+    /// follows it. A restart's stop is not a state of its own: it is not
+    /// published, only the state the restart ends in.
+    published: Arc<watch::Sender<ServerStatus>>,
     /// Woken when a serve future's ending moves the state, for a test.
     #[cfg(test)]
     ended: Arc<tokio::sync::Notify>,
@@ -107,6 +142,7 @@ where
             name,
             inner: Arc::new(Mutex::new(ServerState::Disabled)),
             bugs,
+            published: Arc::new(watch::Sender::new(ServerStatus::Disabled)),
             #[cfg(test)]
             ended: Arc::default(),
         }
@@ -114,6 +150,12 @@ where
 
     pub async fn status(&self) -> ServerStatus {
         self.inner.lock().await.status()
+    }
+
+    /// A watch on the server's status: now, then each time it settles in
+    /// another, which is a start, a stop, and a serve future failing on its own.
+    pub fn follow(&self) -> ServerWatch {
+        ServerWatch(self.published.subscribe())
     }
 
     /// Stop whatever is running and report the server off.
@@ -137,11 +179,19 @@ where
             }
         }
 
-        self.shutdown().await;
+        self.stop().await;
         start(identity).await
     }
 
+    /// Stop what is running and settle the server as off.
     pub async fn shutdown(&self) {
+        self.stop().await;
+        publish(&self.published, ServerStatus::Disabled);
+    }
+
+    /// Stop what is running without saying so: the caller settles the server
+    /// in the state it moves to.
+    async fn stop(&self) {
         let task = {
             let mut state = self.inner.lock().await;
             match std::mem::replace(&mut *state, ServerState::Disabled) {
@@ -159,10 +209,12 @@ where
 
     /// Record a failure to start: nothing runs, and the status carries why.
     pub async fn record_error(&self, error: ServerError) -> ServerStatus {
-        self.shutdown().await;
+        self.stop().await;
         let mut state = self.inner.lock().await;
         *state = ServerState::Error { error: error.clone() };
-        ServerStatus::Error { error }
+        let status = ServerStatus::Error { error };
+        publish(&self.published, status.clone());
+        status
     }
 
     /// Spawn the serve future and mark the server running at `url`.
@@ -195,6 +247,7 @@ where
         let name = self.name;
         let stopped = Stopped {
             state: self.inner.clone(),
+            published: self.published.clone(),
             identity: identity.clone(),
             #[cfg(test)]
             ended: self.ended.clone(),
@@ -223,14 +276,27 @@ where
 
         let status = ServerStatus::Running { url: url.clone() };
         *state = ServerState::Running { identity, url, cancellation, task };
+        publish(&self.published, status.clone());
         status
     }
+}
+
+/// Make `status` the one followers see, waking them only if it differs.
+fn publish(published: &watch::Sender<ServerStatus>, status: ServerStatus) {
+    published.send_if_modified(|current| {
+        let changed = *current != status;
+        if changed {
+            *current = status;
+        }
+        changed
+    });
 }
 
 /// How a serve future that stopped records it: the controller's state, and
 /// the config the server was started for.
 struct Stopped<I> {
     state: Arc<Mutex<ServerState<I>>>,
+    published: Arc<watch::Sender<ServerStatus>>,
     identity: I,
     /// Woken once the state is moved, for a test.
     #[cfg(test)]
@@ -241,6 +307,7 @@ impl<I: Clone> Clone for Stopped<I> {
     fn clone(&self) -> Self {
         Self {
             state: self.state.clone(),
+            published: self.published.clone(),
             identity: self.identity.clone(),
             #[cfg(test)]
             ended: self.ended.clone(),
@@ -255,7 +322,8 @@ impl<I: PartialEq> Stopped<I> {
         let mut state = self.state.lock().await;
         if let ServerState::Running { identity: running, .. } = &*state {
             if *running == self.identity {
-                *state = ServerState::Error { error };
+                *state = ServerState::Error { error: error.clone() };
+                publish(&self.published, ServerStatus::Error { error });
             }
         }
         #[cfg(test)]

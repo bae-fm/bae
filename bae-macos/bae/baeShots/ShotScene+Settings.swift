@@ -190,10 +190,10 @@ extension ShotScene {
         ShotStage(
             SubsonicSettingsContent(
                 subsonic: SubsonicServer(
-                    setServerConfig: { _, _, _, _ in },
-                    getServerStatus: {
-                        .running(url: "http://127.0.0.1:4533/rest")
-                    },
+                    setEnabled: { _ in },
+                    setPort: { _ in },
+                    setUsername: { _ in },
+                    setNetwork: { _ in },
                     setPassword: { _ in }
                 ),
                 configStore: PreviewData.configStore()

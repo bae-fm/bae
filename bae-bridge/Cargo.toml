@@ -60,6 +60,8 @@ libsqlite3-sys = { workspace = true, features = ["session", "bundled"] }
 # queue and the release-edit model the editors mirror.
 [target.'cfg(not(any(target_os = "ios", target_os = "android")))'.dependencies]
 bae-desktop = { workspace = true }
+# The Subsonic server's state the bridge mirrors.
+bae-subsonic = { workspace = true }
 bae-identify = { workspace = true }
 bae-import = { workspace = true }
 

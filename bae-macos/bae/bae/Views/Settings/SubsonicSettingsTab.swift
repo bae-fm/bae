@@ -37,8 +37,6 @@ struct SubsonicSettingsContent: View {
     @State
     private var allowNetwork = false
     @State
-    private var status: BridgeServerStatus = .disabled
-    @State
     private var mutationTask: Task<Void, Never>?
     @State
     private var message: SubsonicSettingsMessage?
@@ -88,7 +86,6 @@ struct SubsonicSettingsContent: View {
                         set: { setAllowNetwork($0) }
                     )
                 )
-                statusRow
                 switch message {
                 case .feedback(let text):
                     Text(text)
@@ -120,51 +117,15 @@ struct SubsonicSettingsContent: View {
         .formStyle(.grouped)
         .task(id: configStore.config.subsonic) {
             syncFromConfig(configStore.config.subsonic)
-            do {
-                status = try await subsonic.getServerStatus()
-            }
-            catch is CancellationError {
-                logger.debug("Subsonic status task cancelled")
-            }
-            catch {
-                showError(error)
-            }
         }
         .onDisappear { mutationTask?.cancel() }
-    }
-
-    @ViewBuilder
-    private var statusRow: some View {
-        LabeledContent("Status") {
-            HStack(spacing: ThemeSpace.related) {
-                switch status {
-                case .disabled:
-                    Text("Disabled")
-                        .foregroundStyle(.secondary)
-                case .running(let url):
-                    Text(url)
-                        .textSelection(.enabled)
-                case .error(let error):
-                    VStack(alignment: .leading, spacing: ThemeSpace.line) {
-                        ErrorText(error.subsonicSummary)
-                        Text(error.detail)
-                            .themeText(.mono)
-                            .foregroundStyle(.secondary)
-                            .textSelection(.enabled)
-                    }
-                }
-                Button("Refresh", action: refreshStatus)
-                    .disabled(isWorking)
-            }
-        }
     }
 
     private func syncFromConfig(_ config: BridgeSubsonicConfig) {
         enabled = config.enabled
         portText = String(config.port)
         username = config.username
-        // Any address but loopback is reachable from the network.
-        allowNetwork = config.bindAddress != "127.0.0.1"
+        allowNetwork = config.network != .thisMachine
     }
 
     private func setEnabled(_ target: Bool) {
@@ -184,17 +145,18 @@ struct SubsonicSettingsContent: View {
         let targetEnabled = enabled
         let portText = portText
         let username = username
-        let bindAddress = allowNetwork ? "0.0.0.0" : "127.0.0.1"
+        let network: BridgeSubsonicNetwork =
+            allowNetwork ? .every : .thisMachine
         mutationTask = Task {
             defer { mutationTask = nil }
             do {
-                try await subsonic.setServerConfig(
-                    targetEnabled,
-                    portText,
-                    username,
-                    bindAddress
-                )
-                status = try await subsonic.getServerStatus()
+                guard let port = UInt32(portText) else {
+                    throw SubsonicValidationError.invalidPort
+                }
+                try await subsonic.setEnabled(targetEnabled)
+                try await subsonic.setPort(port)
+                try await subsonic.setUsername(username)
+                try await subsonic.setNetwork(network)
             }
             catch is CancellationError {
                 logger.debug("Subsonic settings update task cancelled")
@@ -223,7 +185,6 @@ struct SubsonicSettingsContent: View {
             defer { mutationTask = nil }
             do {
                 try await subsonic.setPassword(password)
-                status = try await subsonic.getServerStatus()
                 message = .feedback(String(localized: "Password saved"))
             }
             catch is CancellationError {
@@ -250,24 +211,6 @@ struct SubsonicSettingsContent: View {
         }
     }
 
-    private func refreshStatus() {
-        mutationTask?.cancel()
-        clearErrorMessage()
-        let subsonic = subsonic
-        mutationTask = Task {
-            defer { mutationTask = nil }
-            do {
-                status = try await subsonic.getServerStatus()
-            }
-            catch is CancellationError {
-                logger.debug("Subsonic status task cancelled")
-            }
-            catch {
-                showError(error)
-            }
-        }
-    }
-
     private func showError(_ error: any Error) {
         guard let failure = DisplayError(error) else { return }
         message = .error(failure)
@@ -278,10 +221,10 @@ struct SubsonicSettingsContent: View {
     #Preview("Subsonic") {
         SubsonicSettingsContent(
             subsonic: SubsonicServer(
-                setServerConfig: { _, _, _, _ in },
-                getServerStatus: {
-                    .running(url: "http://127.0.0.1:4533/rest")
-                },
+                setEnabled: { _ in },
+                setPort: { _ in },
+                setUsername: { _ in },
+                setNetwork: { _ in },
                 setPassword: { _ in }
             ),
             configStore: PreviewData.configStore()
@@ -290,17 +233,13 @@ struct SubsonicSettingsContent: View {
     }
 #endif
 
-extension BridgeServerError {
-    fileprivate var subsonicSummary: String {
+private enum SubsonicValidationError: LocalizedError {
+    case invalidPort
+
+    var errorDescription: String? {
         switch self {
-        case .invalidConfig:
-            String(localized: "Invalid Subsonic server configuration")
-        case .credentialUnavailable:
-            String(localized: "Subsonic credential unavailable")
-        case .bindFailed:
-            String(localized: "Subsonic server could not start")
-        case .serverFailed:
-            String(localized: "Subsonic server stopped")
+        case .invalidPort:
+            String(localized: "Enter a port from 1 to 65535.")
         }
     }
 }

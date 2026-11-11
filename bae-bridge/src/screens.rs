@@ -284,6 +284,16 @@ pulled_read! {
     built by cast_receivers
 }
 
+#[cfg(desktop)]
+pulled_read! {
+    /// The Subsonic server besides the settings: what it is doing, the
+    /// networks to choose from, and whether a password is saved.
+    SubsonicSubscription:
+        LiveValues<bae_subsonic::SubsonicView> => crate::types::BridgeSubsonicView,
+    converted by crate::types::BridgeSubsonicView::from_core,
+    built by subsonic
+}
+
 pulled_read! {
     /// This device's preferences for the library, as the settings screens
     /// show them.

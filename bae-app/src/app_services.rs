@@ -409,7 +409,10 @@ impl AppServices {
     delegate_async!(manager, set_mcp_config => set_mcp_config(config: bae_preferences::McpConfig) -> Result<(), bae_preferences::PreferencesError>);
     delegate_async!(manager, get_subsonic_password => get_subsonic_password() -> Result<Option<String>, bae_library::LibraryError>);
     delegate_async!(manager, set_subsonic_password => set_subsonic_password(password: String) -> Result<(), bae_library::LibraryError>);
-    delegate_async!(manager, set_subsonic_config => set_subsonic_config(config: bae_preferences::SubsonicConfig) -> Result<(), bae_preferences::PreferencesError>);
+    delegate_async!(manager, set_subsonic_enabled => set_subsonic_enabled(enabled: bool) -> Result<(), bae_preferences::PreferencesError>);
+    delegate_async!(manager, set_subsonic_port => set_subsonic_port(port: u32) -> Result<(), bae_preferences::PreferencesError>);
+    delegate_async!(manager, set_subsonic_username => set_subsonic_username(username: String) -> Result<(), bae_preferences::PreferencesError>);
+    delegate_async!(manager, set_subsonic_network => set_subsonic_network(network: bae_preferences::SubsonicNetwork) -> Result<(), bae_preferences::PreferencesError>);
     delegate_async!(manager, set_cast_enabled => set_cast_enabled(enabled: bool) -> Result<(), bae_preferences::PreferencesError>);
     delegate_async!(manager, set_cast_transcode_format => set_cast_transcode_format(format: bae_preferences::CastTranscodeFormat) -> Result<(), bae_preferences::PreferencesError>);
     pub fn store_key_state(&self) -> Result<coven::StoreKeyState, bae_library::LibraryError> {
@@ -787,6 +790,16 @@ impl AppServices {
     /// after each change.
     pub fn subscribe_uploads_paused(&self) -> bae_store::live_query::LiveValues<bool> {
         self.inner.manager.values_until_closed(self.inner.views.subscribe_uploads_paused())
+    }
+
+    /// `source`'s values as a surface pulls them: the first at once, then
+    /// each the source follows with, until the surface cancels or the
+    /// library closes.
+    pub fn follow_source<T: Clone + PartialEq + Send + 'static>(
+        &self,
+        source: impl bae_store::live_query::LiveSource<T> + 'static,
+    ) -> bae_store::live_query::LiveValues<T> {
+        self.inner.manager.values_until_closed(source)
     }
 
     /// Whether files move only on unmetered networks: the first value at

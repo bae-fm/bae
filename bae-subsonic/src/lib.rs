@@ -15,13 +15,12 @@
 //! Implemented from the Subsonic API doc (subsonic.org) and the OpenSubsonic
 //! spec (opensubsonic.netlify.app) only.
 
-use std::sync::Arc;
-
 use axum::extract::FromRef;
 use axum::Router;
 use bae_app::AppServices;
 use bae_diagnostics::Diagnostics;
 use bae_preferences::SubsonicCredential;
+use tokio::sync::watch;
 
 mod auth;
 mod controller;
@@ -31,22 +30,28 @@ mod error;
 mod id;
 mod library_map;
 mod model;
+mod network;
 mod params;
+mod status;
 
 pub use auth::token;
 pub use controller::SubsonicServerController;
 pub use id::{album_cover_art_id, song_id};
+pub use network::{machine_addresses, AddressChanges, NetworkAddress, NetworkLister};
+pub use status::{
+    NetworkChoice, NotRunning, ServedAddress, SubsonicStatus, SubsonicView, SubsonicWatch,
+};
 
 /// Shared handler state: the library, the one accepted credential, and where a
 /// panic in a request or a stream is reported.
 #[derive(Clone)]
 pub(crate) struct AppState {
     services: AppServices,
-    credential: Arc<SubsonicCredential>,
+    credential: watch::Receiver<SubsonicCredential>,
     diagnostics: Diagnostics,
 }
 
-impl FromRef<AppState> for Arc<SubsonicCredential> {
+impl FromRef<AppState> for watch::Receiver<SubsonicCredential> {
     fn from_ref(state: &AppState) -> Self {
         state.credential.clone()
     }
@@ -55,15 +60,26 @@ impl FromRef<AppState> for Arc<SubsonicCredential> {
 /// Build the Subsonic router: every endpoint under `/rest/`, behind the
 /// salted-token auth middleware. Each endpoint is reachable both as `/rest/<n>`
 /// and `/rest/<n>.view` — Subsonic clients append `.view` to the method name.
-/// [`SubsonicServerController`] mounts this on a listener; it is also the seam
-/// integration tests drive directly. A request whose handling panics is
-/// reported to `diagnostics` and answered with a Subsonic error document.
+/// It accepts the one `credential`, which is also the seam integration tests
+/// drive it with. A request whose handling panics is reported to `diagnostics`
+/// and answered with a Subsonic error document.
 pub fn router(
     services: AppServices,
     credential: SubsonicCredential,
     diagnostics: Diagnostics,
 ) -> Router {
-    let state = AppState { services, credential: Arc::new(credential), diagnostics };
+    router_following(services, watch::Sender::new(credential).subscribe(), diagnostics)
+}
+
+/// The router, accepting whatever credential `credential` holds as each
+/// request arrives. [`SubsonicServerController`] mounts this on a listener, so
+/// a changed username or password applies to the next sign-in.
+pub fn router_following(
+    services: AppServices,
+    credential: watch::Receiver<SubsonicCredential>,
+    diagnostics: Diagnostics,
+) -> Router {
+    let state = AppState { services, credential, diagnostics };
 
     Router::new()
         .nest("/rest", endpoints::mount())

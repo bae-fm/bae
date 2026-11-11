@@ -124,7 +124,7 @@ async fn every_preference_reads_back_as_set() {
             enabled: true,
             port: 4534,
             username: "listener".to_string(),
-            bind_address: "::1".to_string(),
+            network: SubsonicNetwork::Interface("en0".to_string()),
         },
     };
     let written = edited.clone();
@@ -218,7 +218,7 @@ async fn concurrent_edits_keep_both_changes() {
 }
 
 /// The schema refuses what the setters check before writing: a last-used format
-/// that names no preset, a server that could let no one in, a preset its codec
+/// that names no preset, a network named nothing, a preset its codec
 /// can't write, and a pattern piece of typed text with nothing in it.
 #[tokio::test]
 async fn the_schema_refuses_preferences_no_setter_writes() {
@@ -242,9 +242,9 @@ async fn the_schema_refuses_preferences_no_setter_writes() {
             }),
         ),
         (
-            "an enabled Subsonic server with no username",
+            "a Subsonic network that is an interface named nothing",
             Box::new(|prefs: &mut Preferences| {
-                prefs.subsonic.enabled = true;
+                prefs.subsonic.network = SubsonicNetwork::Interface(String::new());
             }),
         ),
         (
@@ -297,6 +297,23 @@ async fn the_schema_refuses_preferences_no_setter_writes() {
         assert!(matches!(refused, Err(PreferencesError::Database(_))), "{what}: {refused:?}");
         assert_eq!(preferences(&db).await.unwrap(), Preferences::default(), "{what} wrote nothing");
     }
+}
+
+/// The Subsonic settings are kept as the person set them, whether or not the
+/// server can run on them: switched on with no username, and a port outside
+/// 1 to 65535.
+#[tokio::test]
+async fn subsonic_settings_are_stored_whether_or_not_the_server_can_run_on_them() {
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
+    let unrunnable = SubsonicConfig {
+        enabled: true,
+        port: 70000,
+        username: String::new(),
+        network: SubsonicNetwork::Every,
+    };
+    let written = unrunnable.clone();
+    set(&db, move |prefs| prefs.subsonic = written).await;
+    assert_eq!(preferences(&db).await.unwrap().subsonic, unrunnable);
 }
 
 /// A pattern that can't make a name is stored as typed, as is one with no

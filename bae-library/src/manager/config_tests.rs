@@ -197,30 +197,39 @@ async fn subsonic_password_is_keyring_backed() {
     assert_eq!(manager.get_subsonic_password().await.unwrap().as_deref(), Some("rotated"));
 }
 
+/// Each Subsonic setting is stored on its own and as set, so a setting saved
+/// after another never writes the other back, and nothing is refused for
+/// what the server can't run on.
 #[tokio::test]
-async fn subsonic_config_rejects_invalid_and_persists_valid() {
+async fn each_subsonic_setting_is_stored_on_its_own_and_as_set() {
     let (test, _temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
-    let enabled_without_username = bae_preferences::SubsonicConfig {
-        enabled: true,
-        port: bae_preferences::SUBSONIC_DEFAULT_PORT,
-        username: String::new(),
-        bind_address: "127.0.0.1".to_string(),
-    };
-    assert!(manager.set_subsonic_config(enabled_without_username).await.is_err());
+
+    manager.set_subsonic_enabled(true).await.unwrap();
     assert_eq!(
         manager.preferences().await.unwrap().subsonic,
-        bae_preferences::SubsonicConfig::disabled_default()
+        bae_preferences::SubsonicConfig {
+            enabled: true,
+            ..bae_preferences::SubsonicConfig::disabled_default()
+        },
+        "switched on with no username"
     );
 
-    let valid = bae_preferences::SubsonicConfig {
-        enabled: true,
-        port: bae_preferences::SUBSONIC_DEFAULT_PORT + 1,
-        username: "listener".to_string(),
-        bind_address: "0.0.0.0".to_string(),
-    };
-    manager.set_subsonic_config(valid.clone()).await.unwrap();
-    assert_eq!(manager.preferences().await.unwrap().subsonic, valid);
+    manager.set_subsonic_port(70000).await.unwrap();
+    manager.set_subsonic_username("listener".to_string()).await.unwrap();
+    manager
+        .set_subsonic_network(bae_preferences::SubsonicNetwork::Interface("en0".to_string()))
+        .await
+        .unwrap();
+    assert_eq!(
+        manager.preferences().await.unwrap().subsonic,
+        bae_preferences::SubsonicConfig {
+            enabled: true,
+            port: 70000,
+            username: "listener".to_string(),
+            network: bae_preferences::SubsonicNetwork::Interface("en0".to_string()),
+        }
+    );
 }
 
 /// Something has to be asked. Core refuses the write that would leave nothing,

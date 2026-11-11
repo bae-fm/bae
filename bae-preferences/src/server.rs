@@ -4,7 +4,7 @@ pub const MCP_DEFAULT_PORT: u16 = 47777;
 
 /// The port Subsonic clients default to. bae's Subsonic server binds it unless
 /// the user picks another.
-pub const SUBSONIC_DEFAULT_PORT: u16 = 4533;
+pub const SUBSONIC_DEFAULT_PORT: u32 = 4533;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct McpConfig {
@@ -36,19 +36,30 @@ impl SubsonicCredential {
     }
 }
 
-/// On-disk Subsonic server settings. The password is keyring-only (like the MCP
-/// bearer token), so it is not here; only the non-secret `enabled`, `port`,
-/// `username`, and `bind_address` persist. The server controller combines this
-/// `username` with the keyring password into the runtime [`SubsonicCredential`].
+/// Where the Subsonic server listens: on this machine only, on one network by
+/// its interface, or on every network. A network is kept as its interface (the
+/// BSD name, such as `en0`), never as its address, so the server follows it to
+/// a new address.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SubsonicNetwork {
+    ThisMachine,
+    Interface(String),
+    Every,
+}
+
+/// On-disk Subsonic server settings: what the person wants, kept as they set
+/// it. The password is keyring-only (like the MCP bearer token), so it is not
+/// here. Whether the server can run on these is the server's to say, not a
+/// reason to refuse them: `enabled` stays on while something stands in the
+/// way, and the server starts as soon as nothing does.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SubsonicConfig {
     pub enabled: bool,
-    pub port: u16,
+    /// The port as typed. A value outside 1 to 65535 is kept, and the server
+    /// reports that it can't run on it.
+    pub port: u32,
     pub username: String,
-    /// The IP address the server binds. `127.0.0.1` (the default) keeps it on
-    /// this machine; `0.0.0.0` opens it to other devices on the network. Stored
-    /// as a string but validated to parse as an [`std::net::IpAddr`].
-    pub bind_address: String,
+    pub network: SubsonicNetwork,
 }
 
 impl SubsonicConfig {
@@ -57,31 +68,8 @@ impl SubsonicConfig {
             enabled: false,
             port: SUBSONIC_DEFAULT_PORT,
             username: String::new(),
-            bind_address: "127.0.0.1".to_string(),
+            network: SubsonicNetwork::ThisMachine,
         }
-    }
-
-    pub fn validate(&self) -> Result<(), PreferencesError> {
-        if self.port == 0 {
-            return Err(PreferencesError::Invalid(
-                "Subsonic port must be between 1 and 65535".to_string(),
-            ));
-        }
-        // An enabled server with no username can authenticate no client — the
-        // salted-token check compares against this username. Refuse to enable a
-        // server that would reject every login.
-        if self.enabled && self.username.is_empty() {
-            return Err(PreferencesError::Invalid(
-                "Subsonic server requires a username when enabled".to_string(),
-            ));
-        }
-        if self.bind_address.parse::<std::net::IpAddr>().is_err() {
-            return Err(PreferencesError::Invalid(format!(
-                "Subsonic bind address {:?} is not a valid IP address",
-                self.bind_address
-            )));
-        }
-        Ok(())
     }
 }
 

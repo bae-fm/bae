@@ -38,56 +38,15 @@ fn a_new_library_imports_nothing_on_its_own() {
     assert!(!prefs.import_when_identified);
 }
 
+/// A new library keeps the Subsonic server off, on this machine, at the port
+/// Subsonic apps expect, with nothing to sign in with yet.
 #[test]
-fn subsonic_config_rejects_port_zero() {
-    let config = SubsonicConfig {
-        enabled: true,
-        port: 0,
-        username: "listener".to_string(),
-        bind_address: "127.0.0.1".to_string(),
-    };
-    assert!(config.validate().is_err(), "port 0 is not a real endpoint");
-}
-
-#[test]
-fn subsonic_config_rejects_enabled_without_username() {
-    let config = SubsonicConfig {
-        enabled: true,
-        port: SUBSONIC_DEFAULT_PORT,
-        username: String::new(),
-        bind_address: "127.0.0.1".to_string(),
-    };
-    assert!(config.validate().is_err(), "an enabled server with no username authenticates no one");
-}
-
-#[test]
-fn subsonic_config_rejects_non_ip_bind_address() {
-    let config = SubsonicConfig {
-        enabled: true,
-        port: SUBSONIC_DEFAULT_PORT,
-        username: "listener".to_string(),
-        bind_address: "not-an-ip".to_string(),
-    };
-    assert!(config.validate().is_err(), "a bind address that isn't an IP must be rejected");
-}
-
-#[test]
-fn subsonic_config_allows_lan_bind_address() {
-    let config = SubsonicConfig {
-        enabled: true,
-        port: SUBSONIC_DEFAULT_PORT,
-        username: "listener".to_string(),
-        bind_address: "0.0.0.0".to_string(),
-    };
-    assert!(config.validate().is_ok(), "0.0.0.0 opens the server to the network and is valid");
-}
-
-#[test]
-fn subsonic_config_allows_disabled_without_username() {
+fn a_new_library_keeps_subsonic_off_on_this_machine() {
     let config = SubsonicConfig::disabled_default();
+    assert!(!config.enabled);
+    assert_eq!(config.port, SUBSONIC_DEFAULT_PORT);
     assert!(config.username.is_empty());
-    assert_eq!(config.bind_address, "127.0.0.1");
-    assert!(config.validate().is_ok(), "a disabled server needs no username");
+    assert_eq!(config.network, SubsonicNetwork::ThisMachine);
 }
 
 /// The row names a column per catalog, but nothing else reads them by name:

@@ -5,54 +5,36 @@ import Foundation
 /// The password is write-only from here (committed to the keyring); it is never
 /// read back into observable state.
 final class SubsonicServer: Sendable, Observable {
-    let setServerConfig:
-        @Sendable (
-            _ enabled: Bool, _ portText: String, _ username: String,
-            _ bindAddress: String
-        )
-            async throws -> Void
-    let getServerStatus: @Sendable () async throws -> BridgeServerStatus
+    let setEnabled: @Sendable (_ enabled: Bool) async throws -> Void
+    let setPort: @Sendable (_ port: UInt32) async throws -> Void
+    let setUsername: @Sendable (_ username: String) async throws -> Void
+    let setNetwork:
+        @Sendable (_ network: BridgeSubsonicNetwork) async throws -> Void
     let setPassword: @Sendable (_ password: String) async throws -> Void
 
     init(
-        setServerConfig:
-            @escaping @Sendable (Bool, String, String, String) async throws ->
+        setEnabled: @escaping @Sendable (Bool) async throws -> Void,
+        setPort: @escaping @Sendable (UInt32) async throws -> Void,
+        setUsername: @escaping @Sendable (String) async throws -> Void,
+        setNetwork:
+            @escaping @Sendable (BridgeSubsonicNetwork) async throws ->
             Void,
-        getServerStatus:
-            @escaping @Sendable () async throws -> BridgeServerStatus,
         setPassword: @escaping @Sendable (String) async throws -> Void
     ) {
-        self.setServerConfig = setServerConfig
-        self.getServerStatus = getServerStatus
+        self.setEnabled = setEnabled
+        self.setPort = setPort
+        self.setUsername = setUsername
+        self.setNetwork = setNetwork
         self.setPassword = setPassword
     }
 
     convenience init(handle: any AppHandleProtocol) {
         self.init(
-            setServerConfig: {
-                guard let port = UInt16($1), port > 0 else {
-                    throw SubsonicValidationError.invalidPort
-                }
-                try await handle.setSubsonicServerConfig(
-                    enabled: $0,
-                    port: port,
-                    username: $2,
-                    bindAddress: $3
-                )
-            },
-            getServerStatus: { try await handle.getSubsonicServerStatus() },
+            setEnabled: { try await handle.setSubsonicEnabled(enabled: $0) },
+            setPort: { try await handle.setSubsonicPort(port: $0) },
+            setUsername: { try await handle.setSubsonicUsername(username: $0) },
+            setNetwork: { try await handle.setSubsonicNetwork(network: $0) },
             setPassword: { try await handle.setSubsonicPassword(password: $0) }
         )
-    }
-}
-
-private enum SubsonicValidationError: LocalizedError {
-    case invalidPort
-
-    var errorDescription: String? {
-        switch self {
-        case .invalidPort:
-            String(localized: "Enter a port from 1 to 65535.")
-        }
     }
 }

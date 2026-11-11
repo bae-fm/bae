@@ -10,6 +10,8 @@ publish = false
 bae-app = { workspace = true }
 # The errors a live settings read ends with.
 bae-store = { workspace = true }
+# The error a keyring write ends with.
+bae-library = { workspace = true }
 bae-diagnostics = { workspace = true }
 # The MCP and Subsonic servers' settings and the preferences they are read from.
 bae-preferences = { workspace = true }

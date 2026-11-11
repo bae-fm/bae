@@ -77,3 +77,48 @@ async fn a_serve_future_that_fails_at_once_leaves_the_server_in_error() {
     };
     assert!(error.detail().contains("bind lost"), "{error:?}");
 }
+
+/// A bind refused because the port is held is told apart from any other
+/// refusal.
+#[test]
+fn a_held_port_is_told_apart_from_other_bind_failures() {
+    let held = std::io::Error::from(std::io::ErrorKind::AddrInUse);
+    let denied = std::io::Error::from(std::io::ErrorKind::PermissionDenied);
+    assert!(matches!(ServerError::from_bind("127.0.0.1:1", &held), ServerError::PortInUse { .. }));
+    assert!(matches!(
+        ServerError::from_bind("127.0.0.1:1", &denied),
+        ServerError::BindFailed { .. }
+    ));
+}
+
+/// Followers hear a server settle in each state: a start, a failure on its
+/// own, and a stop. A restart between two starts is not a state they hear.
+#[tokio::test]
+async fn followers_hear_each_state_the_server_settles_in_and_not_a_restart_between() {
+    let controller = ServerController::<u16>::new("Test", coven::task::HeardBugs::shared());
+    let mut followed = controller.follow();
+    assert_eq!(followed.current(), ServerStatus::Disabled);
+
+    let running = |stop: &CancellationToken| {
+        let stop = stop.clone();
+        async move {
+            stop.cancelled().await;
+            Ok::<(), std::io::Error>(())
+        }
+    };
+    controller.apply(1, |port| controller.start(port, "one".to_string(), running)).await;
+    followed.changed().await.unwrap();
+    assert_eq!(followed.current(), ServerStatus::Running { url: "one".to_string() });
+
+    controller.apply(2, |port| controller.start(port, "two".to_string(), running)).await;
+    followed.changed().await.unwrap();
+    assert_eq!(
+        followed.current(),
+        ServerStatus::Running { url: "two".to_string() },
+        "the restart's stop was not published"
+    );
+
+    controller.shutdown().await;
+    followed.changed().await.unwrap();
+    assert_eq!(followed.current(), ServerStatus::Disabled);
+}

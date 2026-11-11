@@ -22,6 +22,16 @@ forward! { async this => {
     }
 } }
 
+#[uniffi::export]
+impl AppHandle {
+    /// The Subsonic server besides the settings: what it is doing, the
+    /// networks to choose from and whether a password is saved. The first
+    /// value at once, then one each time any of it changes.
+    pub fn subscribe_subsonic(&self) -> std::sync::Arc<crate::SubsonicSubscription> {
+        crate::screens::subsonic(self.desktop.subscribe_subsonic(), self.runtime.clone())
+    }
+}
+
 forward! { async this => {
     fn set_mcp_server_config(enabled: bool, port: u16) -> () {
         this.desktop
@@ -36,34 +46,24 @@ forward! { async this => {
         ))
     }
 
-    fn set_subsonic_server_config(
-        enabled: bool,
-        port: u16,
-        username: String,
-        bind_address: String,
-    ) -> () {
-        this.desktop
-            .set_subsonic_config(bae_preferences::SubsonicConfig {
-                enabled,
-                port,
-                username,
-                bind_address,
-            })
-            .await
-            .map_err(BridgeError::config)
+    fn set_subsonic_enabled(enabled: bool) -> () {
+        Ok(this.desktop.set_subsonic_enabled(enabled).await?)
     }
 
-    fn get_subsonic_server_status() -> BridgeServerStatus {
-        Ok(BridgeServerStatus::from_core(
-            this.desktop.subsonic_server_status().await,
-        ))
+    fn set_subsonic_port(port: u32) -> () {
+        Ok(this.desktop.set_subsonic_port(port).await?)
+    }
+
+    fn set_subsonic_username(username: String) -> () {
+        Ok(this.desktop.set_subsonic_username(username).await?)
+    }
+
+    fn set_subsonic_network(network: crate::types::BridgeSubsonicNetwork) -> () {
+        Ok(this.desktop.set_subsonic_network(network.into_core()).await?)
     }
 
     fn set_subsonic_password(password: String) -> () {
-        this.desktop
-            .set_subsonic_password(&password)
-            .await
-            .map_err(BridgeError::config)
+        Ok(this.desktop.set_subsonic_password(&password).await?)
     }
 
     /// Validate then persist a Discogs API token, returning what happened so the

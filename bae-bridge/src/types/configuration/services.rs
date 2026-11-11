@@ -190,21 +190,147 @@ pub enum BridgeServerStatus {
 pub enum BridgeServerError {
     InvalidConfig { detail: String },
     CredentialUnavailable { detail: String },
+    PortInUse { detail: String },
     BindFailed { detail: String },
     ServerFailed { detail: String },
 }
 
-/// On-disk Subsonic server settings surfaced to the UI. The password is
-/// keyring-only and is set through `set_subsonic_password`, so it is not here.
-#[derive(Debug, Clone, uniffi::Record)]
+/// Where the Subsonic server listens, as the person chose it. A network is
+/// kept as its interface, so the server follows it to a new address.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeSubsonicNetwork {
+    /// This machine only.
+    ThisMachine,
+    /// One network, by its interface's BSD name, such as `en0`.
+    Interface { interface: String },
+    /// Every network the machine is on.
+    Every,
+}
+
+mirror_enum! {
+    BridgeSubsonicNetwork = bae_preferences::SubsonicNetwork,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    variants: { ThisMachine, Interface(interface), Every },
+}
+
+/// The Subsonic server settings as the person set them, whether or not the
+/// server can run on them. The password is keyring-only and is set through
+/// `set_subsonic_password`, so it is not here.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeSubsonicConfig {
     pub enabled: bool,
-    pub port: u16,
+    /// The port as typed; a number outside 1 to 65535 is kept, and the server
+    /// reports it can't run on it.
+    pub port: u32,
     pub username: String,
-    /// The IP the server binds. `127.0.0.1` keeps it on this machine; `0.0.0.0`
-    /// opens it to other devices on the network. The UI presents this as a
-    /// network-access toggle rather than a raw address field.
-    pub bind_address: String,
+    pub network: BridgeSubsonicNetwork,
+}
+
+/// What the Subsonic server is doing.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeSubsonicStatus {
+    /// Switched off.
+    Off,
+    /// Serving, at these addresses.
+    Running { addresses: Vec<BridgeServedAddress> },
+    /// Switched on and not serving, for these reasons.
+    NotRunning { causes: Vec<BridgeSubsonicNotRunning> },
+}
+
+/// An address a Subsonic app connects to.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeServedAddress {
+    /// With its port, no path: `http://192.168.1.20:4533`.
+    pub url: String,
+    /// The BSD name of the interface it is on; none for this machine itself.
+    pub interface: Option<String>,
+}
+
+/// One reason the Subsonic server is switched on and not serving.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeSubsonicNotRunning {
+    MissingUsername,
+    MissingPassword,
+    PortOutOfRange,
+    PortTaken,
+    /// The network chosen has no address: it is not connected.
+    NetworkGone {
+        interface: String,
+    },
+    /// Anything else, as the system told it.
+    Failed {
+        detail: String,
+    },
+}
+
+/// A network to choose to listen on.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeNetworkChoice {
+    /// The interface's BSD name.
+    pub interface: String,
+    /// Its IPv4 address; none when it is the network chosen and has none now.
+    pub address: Option<String>,
+}
+
+/// The Subsonic server besides what the person set: what it is doing, the
+/// networks to choose from, and whether a password is saved.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeSubsonicView {
+    pub status: BridgeSubsonicStatus,
+    pub networks: Vec<BridgeNetworkChoice>,
+    pub password_saved: bool,
+}
+
+#[cfg(desktop)]
+mirror_struct! {
+    BridgeServedAddress = bae_subsonic::ServedAddress,
+    from_core: pub(crate) fn,
+    fields: { url, interface },
+}
+
+#[cfg(desktop)]
+mirror_enum! {
+    BridgeSubsonicNotRunning = bae_subsonic::NotRunning,
+    from_core: pub(crate) fn,
+    variants: {
+        MissingUsername,
+        MissingPassword,
+        PortOutOfRange,
+        PortTaken,
+        NetworkGone { interface },
+        Failed { detail },
+    },
+}
+
+#[cfg(desktop)]
+mirror_enum! {
+    BridgeSubsonicStatus = bae_subsonic::SubsonicStatus,
+    from_core: pub(crate) fn,
+    variants: {
+        Off,
+        Running { addresses: (each BridgeServedAddress) },
+        NotRunning { causes: (each BridgeSubsonicNotRunning) },
+    },
+}
+
+#[cfg(desktop)]
+impl BridgeNetworkChoice {
+    pub(crate) fn from_core(choice: bae_subsonic::NetworkChoice) -> Self {
+        let bae_subsonic::NetworkChoice { interface, address } = choice;
+        Self { interface, address: address.map(|address| address.to_string()) }
+    }
+}
+
+#[cfg(desktop)]
+mirror_struct! {
+    BridgeSubsonicView = bae_subsonic::SubsonicView,
+    from_core: pub(crate) fn,
+    fields: {
+        status: (BridgeSubsonicStatus),
+        networks: (each BridgeNetworkChoice),
+        password_saved,
+    },
 }
 
 /// A receiver playback can be cast to, wherever bae names one: in the

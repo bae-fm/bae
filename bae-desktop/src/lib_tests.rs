@@ -1,6 +1,6 @@
 use super::*;
 
-use bae_preferences::SubsonicConfig;
+use bae_subsonic::{NotRunning, SubsonicStatus};
 
 #[test]
 fn desktop_initialization_does_not_reenter_the_owned_runtime() {
@@ -28,58 +28,59 @@ fn desktop_controller_calls_do_not_reenter_the_owned_runtime() {
 
     runtime.block_on(async {
         assert!(matches!(desktop.mcp_server_status().await, ServerStatus::Disabled));
-        assert!(matches!(desktop.subsonic_server_status().await, ServerStatus::Disabled));
+        assert_eq!(desktop.subscribe_subsonic().next().await.unwrap().status, SubsonicStatus::Off);
         desktop.shutdown().await;
     });
 }
 
-/// When the runtime apply fails (here: the configured port is already bound,
-/// so the bind fails), `set_subsonic_config` must surface the error and leave
-/// the persisted config untouched — no half-applied enable.
+/// The Subsonic switch is what the person wants: it stays on while the server
+/// can't run, the view says why, and the server starts once nothing stands in
+/// the way, with the switch never having moved.
 #[test]
-fn set_subsonic_config_rolls_back_persisted_config_on_runtime_error() {
+fn the_subsonic_switch_stays_on_while_the_server_cannot_run() {
     let (runtime, services, _tmp) = bae_app::test_services::runtime_with_services();
-    runtime
-        .block_on(services.set_subsonic_password("s3cret".to_string()))
-        .expect("seed keyring password");
+    runtime.block_on(async {
+        let desktop = DesktopServices::start(
+            services.clone(),
+            tokio::runtime::Handle::current(),
+            Diagnostics::noop(),
+        )
+        .await;
+        let subsonic = desktop.subscribe_subsonic();
+        let next = || async { subsonic.next().await.expect("the view arrives") };
+        assert_eq!(next().await.status, SubsonicStatus::Off);
 
-    let password_services = services.clone();
-    let controller = SubsonicServerController::new(
-        services.clone(),
-        Arc::new(move || {
-            let password_services = password_services.clone();
-            Box::pin(async move {
-                password_services.get_subsonic_password().await.map_err(|e| e.to_string())
-            })
-        }),
-        Diagnostics::noop(),
-    );
+        desktop.set_subsonic_enabled(true).await.unwrap();
+        assert_eq!(
+            next().await.status,
+            SubsonicStatus::NotRunning {
+                causes: vec![NotRunning::MissingUsername, NotRunning::MissingPassword]
+            }
+        );
+        assert!(services.preferences().await.unwrap().subsonic.enabled);
 
-    // Occupy the port so the runtime bind fails.
-    let occupied = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-    let port = occupied.local_addr().unwrap().port();
+        let occupied = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = occupied.local_addr().unwrap().port();
+        desktop.set_subsonic_port(u32::from(port)).await.unwrap();
+        desktop.set_subsonic_username("listener".to_string()).await.unwrap();
+        desktop.set_subsonic_password("s3cret").await.unwrap();
+        let view = loop {
+            let view = next().await;
+            if view.status == (SubsonicStatus::NotRunning { causes: vec![NotRunning::PortTaken] }) {
+                break view;
+            }
+        };
+        assert!(view.password_saved);
+        assert!(services.preferences().await.unwrap().subsonic.enabled);
 
-    let before = runtime.block_on(services.preferences()).unwrap().subsonic;
-    let result = runtime.block_on(apply_service_config(
-        "Subsonic",
-        SubsonicConfig {
-            enabled: true,
-            port,
-            username: "listener".to_string(),
-            bind_address: "127.0.0.1".to_string(),
-        },
-        before.clone(),
-        |config| controller.apply_config(config),
-        |config| services.set_subsonic_config(config),
-    ));
-
-    assert!(
-        matches!(result, Err(DesktopConfigError::Server(_))),
-        "a failed bind must surface as a server error, got {result:?}"
-    );
-    assert_eq!(
-        runtime.block_on(services.preferences()).unwrap().subsonic,
-        before,
-        "a runtime apply failure must not persist the new config"
-    );
+        drop(occupied);
+        desktop.set_subsonic_port(u32::from(port) + 1).await.unwrap();
+        desktop.set_subsonic_port(u32::from(port)).await.unwrap();
+        loop {
+            if matches!(next().await.status, SubsonicStatus::Running { .. }) {
+                break;
+            }
+        }
+        desktop.shutdown().await;
+    });
 }

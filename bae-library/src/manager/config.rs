@@ -449,16 +449,50 @@ impl LibraryManager {
         self.set_host_secret(crate::keys::MCP_BEARER_TOKEN, token).await
     }
 
-    /// Set the Subsonic server config. Rejects `port == 0` (no real endpoint)
-    /// and an enabled server with no username (it could authenticate no one)
-    /// before persisting.
-    pub async fn set_subsonic_config(
+    /// Switch the Subsonic server on or off: what the person wants. It stays
+    /// as set whether or not the server can run, which the server reports.
+    pub async fn set_subsonic_enabled(
         &self,
-        config: bae_preferences::SubsonicConfig,
+        enabled: bool,
     ) -> Result<(), bae_preferences::PreferencesError> {
-        config.validate()?;
         self.update_preferences(move |prefs| {
-            prefs.subsonic = config;
+            prefs.subsonic.enabled = enabled;
+            Ok(())
+        })
+        .await
+    }
+
+    /// Set the port the Subsonic server listens on, as typed.
+    pub async fn set_subsonic_port(
+        &self,
+        port: u32,
+    ) -> Result<(), bae_preferences::PreferencesError> {
+        self.update_preferences(move |prefs| {
+            prefs.subsonic.port = port;
+            Ok(())
+        })
+        .await
+    }
+
+    /// Set the username Subsonic apps sign in with.
+    pub async fn set_subsonic_username(
+        &self,
+        username: String,
+    ) -> Result<(), bae_preferences::PreferencesError> {
+        self.update_preferences(move |prefs| {
+            prefs.subsonic.username = username;
+            Ok(())
+        })
+        .await
+    }
+
+    /// Set where the Subsonic server listens.
+    pub async fn set_subsonic_network(
+        &self,
+        network: bae_preferences::SubsonicNetwork,
+    ) -> Result<(), bae_preferences::PreferencesError> {
+        self.update_preferences(move |prefs| {
+            prefs.subsonic.network = network;
             Ok(())
         })
         .await

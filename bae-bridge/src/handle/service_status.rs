@@ -16,6 +16,7 @@ mirror_enum! {
     variants: {
         InvalidConfig { detail },
         CredentialUnavailable { detail },
+        PortInUse { detail },
         BindFailed { detail },
         ServerFailed { detail },
     },

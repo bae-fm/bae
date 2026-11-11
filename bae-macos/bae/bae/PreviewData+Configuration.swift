@@ -134,7 +134,7 @@
                             enabled: false,
                             port: 4533,
                             username: "",
-                            bindAddress: "127.0.0.1"
+                            network: .thisMachine
                         ),
                         discogsTokenStatus: tokenStatus,
                         discogsUsable: tokenStatus == .valid

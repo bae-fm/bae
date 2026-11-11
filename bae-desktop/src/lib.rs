@@ -8,8 +8,8 @@ use std::sync::Arc;
 use bae_app::AppServices;
 use bae_diagnostics::Diagnostics;
 use bae_mcp::{Automation, McpServerController};
-use bae_preferences::{McpConfig, PreferencesError, SubsonicConfig};
-use bae_subsonic::SubsonicServerController;
+use bae_preferences::{McpConfig, PreferencesError, SubsonicNetwork};
+use bae_subsonic::{AddressChanges, SubsonicServerController, SubsonicView};
 pub use bae_util::server::{ServerError, ServerStatus};
 use bae_util::task_failure::caught;
 use tokio::runtime::Handle;
@@ -60,6 +60,7 @@ impl DesktopServices {
                     password_manager.get_subsonic_password().await.map_err(|e| e.to_string())
                 })
             }),
+            Arc::new(bae_subsonic::machine_addresses),
             diagnostics.clone(),
         );
         // The servers' settings now, applied before this returns, then each
@@ -77,6 +78,8 @@ impl DesktopServices {
 
         let config_controller = controller.clone();
         let config_subsonic_controller = subsonic_controller.clone();
+        let address_controller = subsonic_controller.clone();
+        let address_diagnostics = diagnostics.clone();
         let watcher_diagnostics = diagnostics.clone();
         // Each change is applied under its own catch, so a panic applying one
         // is reported and the next change is still applied.
@@ -114,6 +117,31 @@ impl DesktopServices {
             |_| {},
         ));
 
+        // The Subsonic server follows its network as the machine's addresses
+        // change. The system reports that an address changed, and the server
+        // reads the addresses again.
+        drop(diagnostics.spawn_reported(
+            &runtime,
+            "follow this machine's network addresses",
+            async move {
+                let mut changes = match AddressChanges::start() {
+                    Ok(changes) => changes,
+                    Err(failure) => {
+                        address_diagnostics.report_bug("watch network addresses", &failure);
+                        return;
+                    }
+                };
+                loop {
+                    if let Err(failure) = changes.changed().await {
+                        address_diagnostics.report_bug("watch network addresses", &failure);
+                        return;
+                    }
+                    address_controller.networks_changed().await;
+                }
+            },
+            |_| {},
+        ));
+
         Self { services, mcp_controller: controller, subsonic_controller }
     }
 
@@ -133,38 +161,40 @@ impl DesktopServices {
         .await
     }
 
-    pub async fn subsonic_server_status(&self) -> ServerStatus {
-        self.subsonic_controller.status().await
+    /// The Subsonic server as Settings shows it, now and as it changes: what it
+    /// is doing, the networks to choose from, and whether a password is saved.
+    pub fn subscribe_subsonic(&self) -> bae_store::live_query::LiveValues<SubsonicView> {
+        self.services.follow_source(self.subsonic_controller.watch())
     }
 
-    pub async fn set_subsonic_config(
+    pub async fn set_subsonic_enabled(&self, enabled: bool) -> Result<(), PreferencesError> {
+        self.services.set_subsonic_enabled(enabled).await
+    }
+
+    pub async fn set_subsonic_port(&self, port: u32) -> Result<(), PreferencesError> {
+        self.services.set_subsonic_port(port).await
+    }
+
+    pub async fn set_subsonic_username(&self, username: String) -> Result<(), PreferencesError> {
+        self.services.set_subsonic_username(username).await
+    }
+
+    pub async fn set_subsonic_network(
         &self,
-        config: SubsonicConfig,
-    ) -> Result<(), DesktopConfigError> {
-        config.validate().map_err(DesktopConfigError::Config)?;
-        apply_service_config(
-            "Subsonic",
-            config,
-            self.stored_preferences().await?.subsonic,
-            |config| self.subsonic_controller.apply_config(config),
-            |config| self.services.set_subsonic_config(config),
-        )
-        .await
+        network: SubsonicNetwork,
+    ) -> Result<(), PreferencesError> {
+        self.services.set_subsonic_network(network).await
     }
 
-    /// Store a new Subsonic server password in the keyring, then restart the
-    /// running server so it authenticates against the new password. The password
-    /// is not in config, so `apply_config` cannot see the change — the restart
-    /// is how a running server picks it up.
-    pub async fn set_subsonic_password(&self, password: &str) -> Result<(), DesktopConfigError> {
-        self.services
-            .set_subsonic_password(password.to_string())
-            .await
-            .map_err(|e| DesktopConfigError::Config(PreferencesError::Invalid(e.to_string())))?;
-        let config = self.stored_preferences().await?.subsonic;
-        if let ServerStatus::Error { error } = self.subsonic_controller.restart(config).await {
-            return Err(DesktopConfigError::Server(error));
-        }
+    /// Store a new Subsonic server password in the keyring. The running server
+    /// checks the next sign-in against it, and one that was waiting for a
+    /// password starts.
+    pub async fn set_subsonic_password(
+        &self,
+        password: &str,
+    ) -> Result<(), bae_library::LibraryError> {
+        self.services.set_subsonic_password(password.to_string()).await?;
+        self.subsonic_controller.password_changed().await;
         Ok(())
     }
 

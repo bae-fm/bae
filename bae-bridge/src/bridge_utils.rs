@@ -6,6 +6,7 @@ use crate::types::{
     BridgeSaveBitDepth, BridgeSaveCodec, BridgeSaveExtras, BridgeSaveFilenamePiece,
     BridgeSaveFilenameValue, BridgeSaveFolderPiece, BridgeSaveFolderValue, BridgeSavePreset,
     BridgeSidePauseCountdown, BridgeSourceAvailability, BridgeSubsonicConfig,
+    BridgeSubsonicNetwork,
 };
 
 mirror_enum! {
@@ -246,7 +247,7 @@ impl BridgeConfig {
             enabled: subsonic_enabled,
             port: subsonic_port,
             username: subsonic_username,
-            bind_address: subsonic_bind_address,
+            network: subsonic_network,
         } = subsonic;
 
         BridgeConfig {
@@ -286,7 +287,7 @@ impl BridgeConfig {
                 enabled: *subsonic_enabled,
                 port: *subsonic_port,
                 username: subsonic_username.clone(),
-                bind_address: subsonic_bind_address.clone(),
+                network: BridgeSubsonicNetwork::from_core(subsonic_network.clone()),
             },
             discogs_usable: discogs_status.is_usable(),
             discogs_token_status: match discogs_status {

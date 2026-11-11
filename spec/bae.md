@@ -5536,8 +5536,9 @@ pull the row with the library's id and directory from a live query. The schema
 refuses what no setter writes: a last-used format that names no format, two
 formats of one name, a format its codec can't write, a name pattern piece
 that is not exactly one of a value and typed text, or is typed text of
-nothing. A Subsonic server turned on with no username is kept on and doesn't
-run until it has one.
+nothing. A Subsonic server turned on with no username or password, or at a port
+outside 1 to 65535 (kept as typed), is kept on and doesn't run until nothing
+stands in its way.
 Replay gain has no control in the apps.
 
 | Setting | Default | What it decides |

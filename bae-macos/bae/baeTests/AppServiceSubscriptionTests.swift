@@ -455,7 +455,7 @@ private func makeAppService(
                 enabled: false,
                 port: 4533,
                 username: "",
-                bindAddress: "127.0.0.1"
+                network: .thisMachine
             ),
             discogsTokenStatus: .notConfigured,
             discogsUsable: false

@@ -9,7 +9,7 @@ use super::{
     CastTranscodeFormat, DiscogsValidation, IdentificationPreferences, ImportDestination,
     LookupCatalogPreferences, McpConfig, NamePattern, NamePiece, Preferences, PreferencesError,
     ReplayGainMode, SaveBitDepth, SaveCodec, SaveExtras, SaveFilenameValue, SaveFolderValue,
-    SavePreset, SidePauseCountdown, SubsonicConfig,
+    SavePreset, SidePauseCountdown, SubsonicConfig, SubsonicNetwork,
 };
 use bae_store::{DbError, Store};
 use coven::{BulkSqlContext, CovenWrite, SqlRead};
@@ -145,7 +145,15 @@ fn preferences_on(sql: &impl SqlRead) -> rusqlite::Result<Preferences> {
                 enabled: flag("subsonic_enabled")?,
                 port: row.get("subsonic_port")?,
                 username: row.get("subsonic_username")?,
-                bind_address: row.get("subsonic_bind_address")?,
+                network: match (
+                    row.get::<_, String>("subsonic_network")?.as_str(),
+                    row.get::<_, Option<String>>("subsonic_network_interface")?,
+                ) {
+                    ("this_machine", None) => SubsonicNetwork::ThisMachine,
+                    ("every", None) => SubsonicNetwork::Every,
+                    ("interface", Some(interface)) => SubsonicNetwork::Interface(interface),
+                    (other, _) => return Err(invalid(row, "subsonic_network", other)),
+                },
             },
         })
     })
@@ -254,7 +262,7 @@ fn write_preferences_on(
              import_when_identified = ?, ask_musicbrainz = ?, ask_discogs = ?, \
              cast_enabled = ?, cast_transcode_format = ?, mcp_enabled = ?, mcp_port = ?, \
              subsonic_enabled = ?, subsonic_port = ?, subsonic_username = ?, \
-             subsonic_bind_address = ?",
+             subsonic_network = ?, subsonic_network_interface = ?",
         params![
             discogs.map(|state| match state {
                 DiscogsValidation::Unvalidated => "unvalidated",
@@ -294,7 +302,15 @@ fn write_preferences_on(
             subsonic.enabled,
             subsonic.port,
             subsonic.username,
-            subsonic.bind_address,
+            match &subsonic.network {
+                SubsonicNetwork::ThisMachine => "this_machine",
+                SubsonicNetwork::Interface(_) => "interface",
+                SubsonicNetwork::Every => "every",
+            },
+            match &subsonic.network {
+                SubsonicNetwork::Interface(interface) => Some(interface.as_str()),
+                SubsonicNetwork::ThisMachine | SubsonicNetwork::Every => None,
+            },
         ],
     )?;
     Ok(())

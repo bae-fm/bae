@@ -44,6 +44,7 @@ import uniffi.bae_bridge.BridgeSidePauseCountdown
 import uniffi.bae_bridge.BridgeSourceAudioSummary
 import uniffi.bae_bridge.BridgeSourceAvailability
 import uniffi.bae_bridge.BridgeSubsonicConfig
+import uniffi.bae_bridge.BridgeSubsonicNetwork
 import uniffi.bae_bridge.BridgeTrackGroup
 import uniffi.bae_bridge.BridgeTrackSearchResult
 import uniffi.bae_bridge.BridgeWorkSummary
@@ -323,7 +324,7 @@ object BridgeFixtures {
                     enabled = false,
                     port = 4533u,
                     username = "",
-                    bindAddress = "127.0.0.1",
+                    network = BridgeSubsonicNetwork.ThisMachine,
                 ),
         )
 }

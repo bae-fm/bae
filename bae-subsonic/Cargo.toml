@@ -29,6 +29,10 @@ bae-util = { workspace = true }
 axum = { workspace = true, features = ["http1", "tokio", "query"] }
 bytes = { workspace = true }
 hex = { workspace = true }
+# The networks the server can listen on, read from the machine, and the
+# notice of one gaining, losing or changing its address.
+if-addrs = { workspace = true }
+if-watch = { workspace = true }
 # Keyed `md5` (its lib name) so cargo-machete resolves `use md5::…` — the crate
 # is `md-5` but exposes `md5`, which machete's package-name heuristic misreads.
 md5 = { workspace = true }

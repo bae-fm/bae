@@ -315,6 +315,7 @@ task_types = [
     "StorageBrowseSubscription",
     "StorageInspectorSubscription",
     "StorageSetupFinishingSubscription",
+    "SubsonicSubscription",
     "SyncActivitySubscription",
     "SyncStatusSubscription",
     "UnmeteredOnlySubscription",
@@ -322,6 +323,9 @@ task_types = [
     "WorkDetailSubscription",
     # One fast-changing value feed a screen pulls from while it is open.
     "KeyedValueStream",
+    # One subscriber's watch on the Subsonic server, and on a server's status.
+    "SubsonicWatch",
+    "ServerWatch",
     # One subscriber's watch on the outbox's transfers.
     "OutboxTransfersWatch",
     # One subscriber's watch on the Activity transfer lines' bars.
@@ -500,6 +504,10 @@ HeldRangesWatch = "SparseStreamingBuffer"
 TrackBufferedFollow = "PlaybackHandle"
 # A watch on one discovery's device list.
 DeviceListWatch = "PublishedDevices"
+# A watch on a server's status, and on the Subsonic server with the networks
+# and password it adds.
+ServerWatch = "ServerController"
+SubsonicWatch = "SubsonicServerController"
 # Import events off the bus, and one import's progress and the scan events
 # the bus filters from them; the percents of the running imports, and a
 # test's feeds of the runtime's changes and counts; and the snapshots of the

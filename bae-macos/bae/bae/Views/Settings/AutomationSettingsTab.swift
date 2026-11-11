@@ -318,7 +318,7 @@ extension BridgeServerError {
             String(localized: "Invalid MCP server configuration")
         case .credentialUnavailable:
             String(localized: "MCP token unavailable")
-        case .bindFailed:
+        case .portInUse, .bindFailed:
             String(localized: "MCP server could not start")
         case .serverFailed:
             String(localized: "MCP server stopped")

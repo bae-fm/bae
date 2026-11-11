@@ -5,6 +5,7 @@ extension BridgeServerError {
         switch self {
         case .invalidConfig(let detail),
             .credentialUnavailable(let detail),
+            .portInUse(let detail),
             .bindFailed(let detail),
             .serverFailed(let detail):
             detail

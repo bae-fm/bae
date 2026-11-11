@@ -11,13 +11,13 @@
 //! because Subsonic clients read the error code out of the envelope body.
 
 use std::collections::HashMap;
-use std::sync::Arc;
 
 use axum::extract::{Query, Request, State};
 use axum::middleware::Next;
 use axum::response::Response;
 use bae_preferences::SubsonicCredential;
 use md5::{Digest, Md5};
+use tokio::sync::watch;
 
 use crate::envelope::error_response;
 use crate::error::SubError;
@@ -30,7 +30,7 @@ const MIN_SALT_LEN: usize = 6;
 /// Verify a request against `credential`. On success the request proceeds; on
 /// failure the response is a Subsonic error envelope in the requested format.
 pub(crate) async fn require_auth(
-    State(credential): State<Arc<SubsonicCredential>>,
+    State(credential): State<watch::Receiver<SubsonicCredential>>,
     request: Request,
     next: Next,
 ) -> Response {
@@ -39,7 +39,7 @@ pub(crate) async fn require_auth(
         Err(_) => Params(HashMap::new()),
     };
     let format = params.format();
-    if let Err(error) = check(&params, &credential) {
+    if let Err(error) = check(&params, &credential.borrow()) {
         return error_response(&format, &error);
     }
     next.run(request).await
