@@ -227,12 +227,16 @@
         h(ProgressBar, { value: known ? value : null, android: prefix === 'bae-a' }));
     };
   }
+  // macOS draws its indeterminate spinner as eight spokes fading round the wheel, turning a spoke at a time; Android draws Material's ring with an arc.
   function Spinner(prefix, size) {
     return function (props) {
       var s = Number(props.size || size);
-      var spin = h('svg', { className: 'bae-spinner', width: s, height: s, viewBox: '0 0 24 24', role: 'progressbar', 'aria-label': props.label || 'Loading', fill: 'none' },
-        h('circle', { cx: 12, cy: 12, r: 10.5, stroke: 'currentColor', strokeOpacity: 0.2, strokeWidth: 2.5 }),
-        h('path', { d: 'M12 1.5a10.5 10.5 0 0 1 10.5 10.5', stroke: 'currentColor', strokeWidth: 2.5, strokeLinecap: 'round' }));
+      var spin = prefix === 'bae-m'
+        ? h('svg', { className: 'bae-spinner bae-spinner-spokes', width: s, height: s, viewBox: '0 0 24 24', role: 'progressbar', 'aria-label': props.label || 'Loading', fill: 'none' },
+          [0, 1, 2, 3, 4, 5, 6, 7].map(function (i) { return h('line', { key: i, x1: 12, y1: 2.5, x2: 12, y2: 7.5, stroke: 'currentColor', strokeWidth: 2.4, strokeLinecap: 'round', strokeOpacity: 1 - i * 0.11, transform: 'rotate(' + (-i * 45) + ' 12 12)' }); }))
+        : h('svg', { className: 'bae-spinner', width: s, height: s, viewBox: '0 0 24 24', role: 'progressbar', 'aria-label': props.label || 'Loading', fill: 'none' },
+          h('circle', { cx: 12, cy: 12, r: 10.5, stroke: 'currentColor', strokeOpacity: 0.2, strokeWidth: 2.5 }),
+          h('path', { d: 'M12 1.5a10.5 10.5 0 0 1 10.5 10.5', stroke: 'currentColor', strokeWidth: 2.5, strokeLinecap: 'round' }));
       return props.label ? h('span', { className: prefix + '-spinner' }, spin, h('span', null, props.label)) : h('span', { className: prefix + '-spinner' }, spin);
     };
   }

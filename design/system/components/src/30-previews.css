@@ -60,6 +60,7 @@
 .bae-a-card > :not(.sc-host-x):has(+ .bae-a-row-nested), .bae-a-card > :not(.sc-host-x):has(+ * .bae-a-row-nested), .bae-a-card > .sc-host-x:has(+ .bae-a-row-nested) > *, .bae-a-card > .sc-host-x:has(+ * .bae-a-row-nested) > * { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
 .bae-a-card > .bae-a-row-nested, .bae-a-card > :not(.sc-host-x):has(.bae-a-row-nested), .bae-a-card > .sc-host-x > .bae-a-row-nested, .bae-a-card > .sc-host-x > :has(.bae-a-row-nested) { margin-top: calc(-1 * var(--space-line)); border-top-left-radius: 0; border-top-right-radius: 0; }
 .bae-spinner { animation: bae-spin 0.9s linear infinite; flex: none; }
+.bae-spinner-spokes { animation-duration: 0.8s; animation-timing-function: steps(8); }
 @keyframes bae-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .bae-spinner { animation-duration: 2.4s; } }
 .bae-m-spinner { display: inline-flex; align-items: center; gap: var(--space-related); color: var(--text-secondary); font: 400 11.5px var(--font-sans); }
