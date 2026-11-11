@@ -22,11 +22,11 @@ import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidCard
 import fm.bae.app.ui.components.AndroidDialog
+import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidSection
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ButtonTone
-import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.storageLocationLabel
 import uniffi.bae_bridge.BridgeDropboxAccess
 import uniffi.bae_bridge.BridgeDropboxLocation
@@ -92,7 +92,7 @@ private fun SavedCodesContent(
         is SavedCodesList.Failed -> {
             Column(modifier = column, verticalArrangement = Arrangement.spacedBy(ThemeSpace.inline)) {
                 Text(text = stringResource(R.string.onboarding_saved_codes_failed), style = ThemeText.heading.style)
-                ErrorNotice(list.error)
+                AndroidNotice(list.error)
             }
         }
 
@@ -110,7 +110,7 @@ private fun SavedCodesContent(
                         text = stringResource(R.string.onboarding_saved_code_delete_failed),
                         style = ThemeText.heading.style,
                     )
-                    ErrorNotice(error)
+                    AndroidNotice(error)
                 }
                 AndroidCard {
                     list.entries.forEach { entry ->

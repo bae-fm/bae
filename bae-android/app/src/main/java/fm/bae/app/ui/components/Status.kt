@@ -169,7 +169,7 @@ fun StatusChip(
 
 /**
  * How a notice sits on its screen: on its tone's fill; with no fill and an outline glyph; or, for a
- * view that failed whole, centred in the space it's given (drawn by [ErrorNotice], not by [Notice]).
+ * view that failed whole, centred in the space it's given (drawn by [AndroidNotice], not by [NoticeFrame]).
  */
 enum class NoticeLook { FILLED, QUIET, CENTERED }
 
@@ -179,7 +179,7 @@ enum class NoticeLook { FILLED, QUIET, CENTERED }
  * [NoticeLook.QUIET] on the screen, with an outline glyph and no side padding.
  */
 @Composable
-fun Notice(
+internal fun NoticeFrame(
     tone: StatusTone,
     modifier: Modifier = Modifier,
     look: NoticeLook = NoticeLook.FILLED,

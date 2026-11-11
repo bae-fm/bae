@@ -59,9 +59,9 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidEyebrow
+import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.CoverImage
-import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.retryAction
@@ -140,7 +140,7 @@ fun AlbumDetailScreen(
                 )
             } else {
                 loadError?.let {
-                    ErrorNotice(
+                    AndroidNotice(
                         error = it,
                         modifier = Modifier.align(Alignment.TopCenter).padding(ThemeSpace.related),
                     )
@@ -198,7 +198,7 @@ private fun BoxScope.AlbumDetailPlaceholderBox(
 ) {
     when (placeholder) {
         is AlbumDetailPlaceholder.Failed -> {
-            ErrorNotice(
+            AndroidNotice(
                 error = placeholder.error,
                 look = NoticeLook.CENTERED,
                 action = placeholder.error.retryAction(onClick = onRetry),

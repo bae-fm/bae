@@ -13,7 +13,7 @@ fun ScreenFailureNotice(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    TitledErrorNotice(
+    AndroidNotice(
         title = context.coreString(failure.step.titleKey),
         advice = failure.step.adviceKey?.let(context::coreString),
         error = failure.error,

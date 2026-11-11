@@ -37,9 +37,9 @@ import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSize
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.CoverImage
 import fm.bae.app.ui.components.NoticeLook
-import fm.bae.app.ui.components.TitledErrorNotice
 import fm.bae.app.ui.components.retryAction
 import uniffi.bae_bridge.BridgeAlbumSearchResult
 import uniffi.bae_bridge.BridgeSearchResults
@@ -81,7 +81,7 @@ fun SearchResultsScreen(
     val context = LocalContext.current
     val failure: @Composable (NoticeLook, Modifier) -> Unit = { look, modifier ->
         val shown = state.error?.let(context::displayError)
-        TitledErrorNotice(
+        AndroidNotice(
             title = stringResource(R.string.search_failed),
             advice = null,
             error = shown,

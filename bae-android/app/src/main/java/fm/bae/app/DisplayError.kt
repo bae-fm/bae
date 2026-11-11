@@ -4,7 +4,7 @@ package fm.bae.app
  * A failure ready to show a person: the localized line, and for a failure core
  * reported, the opaque diagnostic text behind it — the Rust error chain, never
  * translated — which the notice's Details button opens in a dialog, with a
- * copy action ([fm.bae.app.ui.components.ErrorNotice]). A failure this app
+ * copy action ([fm.bae.app.ui.components.AndroidNotice]). A failure this app
  * words itself carries no detail. Mirrors the Apple apps' `DisplayError`.
  */
 data class DisplayError(

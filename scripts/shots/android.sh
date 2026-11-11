@@ -147,7 +147,7 @@ echo "android shots: wrote $(echo "$SCENES" | wc -w | tr -d ' ') scene(s) to $OU
 rm -f "$OUT_DIR"/android.*@android.png "$OUT_DIR"/android.*@android.json
 echo "android shots: drawing board shots (testFullDebugUnitTest --tests 'fm.bae.app.shots.*')..."
 ./gradlew --no-daemon :app:testFullDebugUnitTest --tests 'fm.bae.app.shots.*' "-Pbae.shotsDir=$OUT_DIR"
-BOARDS=$(grep -rhoE 'shot\("android\.[a-z0-9.-]+"' app/src/test/java/fm/bae/app/shots | sed -E 's/shot\("(.*)"/\1/' | sort)
+BOARDS=$(grep -rhoE '(shot|component)\("android\.[a-z0-9.-]+"' app/src/test/java/fm/bae/app/shots | sed -E 's/(shot|component)\("(.*)"/\2/' | sort)
 for board in $BOARDS; do
     for extension in png json; do
         if [ ! -f "$OUT_DIR/$board@android.$extension" ]; then

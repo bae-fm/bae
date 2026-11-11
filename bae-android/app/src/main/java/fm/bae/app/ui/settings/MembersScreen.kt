@@ -37,7 +37,7 @@ import fm.bae.app.coreString
 import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.ErrorNotice
+import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.ScreenTopBar
 import fm.bae.app.ui.components.StatusChip
@@ -254,7 +254,7 @@ fun MembersScreen(
     Column(modifier = Modifier.fillMaxSize()) {
         ScreenTopBar(title = pageTitle(page, read), onBack = goBack)
         model.error?.let { shown ->
-            ErrorNotice(
+            AndroidNotice(
                 error = shown,
                 modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
             )
@@ -285,7 +285,7 @@ private fun PeopleContent(
 
         is PeopleRead.Failed -> {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                ErrorNotice(
+                AndroidNotice(
                     error = read.error,
                     look = NoticeLook.CENTERED,
                     action = read.error.retryAction(onClick = model::retry),

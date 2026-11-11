@@ -6,4 +6,4 @@
 | --- | --- |
 | `details` | The causes, one a line. |
 
-**In the code:** Android: `CausesPanel` (`ui/components/ErrorNotice.kt`), in `ErrorDetailsDialog` (`ui/components/ErrorDetails.kt`).
+**In the code:** Android: `AndroidErrorDetails` (`ui/components/AndroidNotice.kt`), in `ErrorDetailsDialog` (`ui/components/ErrorDetails.kt`).

@@ -20,10 +20,10 @@ import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.components.AndroidButton
+import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidRadio
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ButtonTone
-import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.launch
@@ -128,7 +128,7 @@ private fun RenameProfileDialogContent(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                error?.let { ErrorNotice(it, look = NoticeLook.QUIET) }
+                error?.let { AndroidNotice(it, look = NoticeLook.QUIET) }
             }
         },
         confirmButton = {

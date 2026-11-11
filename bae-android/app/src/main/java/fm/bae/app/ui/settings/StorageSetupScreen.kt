@@ -43,9 +43,9 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.cloudProviderLabel
 import fm.bae.app.ui.components.AndroidButton
+import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidSpinner
 import fm.bae.app.ui.components.ButtonKind
-import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.QRCodeImage
 import fm.bae.app.ui.rememberScreenScope
 import fm.bae.fastvalues.LatestSource
@@ -127,7 +127,7 @@ internal fun StorageSetupScreen(
             modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(ThemeSpace.edge),
             verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
         ) {
-            flow.error?.let { ErrorNotice(it) }
+            flow.error?.let { AndroidNotice(it) }
             SetupStepContent(
                 step = flow.step,
                 session = session,

@@ -43,19 +43,18 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidEyebrow
+import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidSheet
 import fm.bae.app.ui.components.AndroidSpinner
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.ErrorDetails
 import fm.bae.app.ui.components.ErrorDetailsDialog
-import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.NoticeButtons
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.NoticeTextInset
 import fm.bae.app.ui.components.StatusGlyph
 import fm.bae.app.ui.components.StatusTone
-import fm.bae.app.ui.components.TitledErrorNotice
 import fm.bae.fastvalues.LatestSource
 import uniffi.bae_bridge.BridgePendingRecord
 import uniffi.bae_bridge.BridgeSyncActivity
@@ -285,7 +284,7 @@ private fun ProblemRow(
     val context = LocalContext.current
     val appProblem = app.firstOrNull { it.id == id }
     if (appProblem != null) {
-        TitledErrorNotice(
+        AndroidNotice(
             title = appProblem.title,
             advice = appProblem.advice,
             error = appProblem.error,
@@ -295,7 +294,7 @@ private fun ProblemRow(
         )
     } else if (id == ActivityProblemId.SYNC_STATUS_UNREAD) {
         error?.let { unread ->
-            TitledErrorNotice(
+            AndroidNotice(
                 title = stringResource(R.string.settings_sync_unreadable),
                 advice = null,
                 error = unread,
@@ -307,7 +306,7 @@ private fun ProblemRow(
     } else {
         failure?.let {
             val open = ErrorAction(context.coreString("core.activity.open_settings"), onClick = onOpenSettings)
-            ErrorNotice(
+            AndroidNotice(
                 error = it,
                 action = open,
                 tone = StatusTone.WARNING,
@@ -331,7 +330,7 @@ private fun PendingRecords(
         records.forEach { record ->
             Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.inline)) {
                 Text(text = context.coreString(record.subject), style = ThemeText.strong.style)
-                ErrorNotice(
+                AndroidNotice(
                     error = DisplayError(context.coreString(record.reason.key), record.reason.detail),
                     tone = StatusTone.WARNING,
                 )

@@ -35,9 +35,9 @@ import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
+import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidSpinner
 import fm.bae.app.ui.components.ButtonKind
-import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.QRCodeImage
 import fm.bae.app.ui.components.rememberCopyText
@@ -152,7 +152,7 @@ internal fun AddDeviceDialogContent(
                 }
                 error?.let {
                     Spacer(modifier = Modifier.height(ThemeSpace.related))
-                    ErrorNotice(it, look = NoticeLook.QUIET)
+                    AndroidNotice(it, look = NoticeLook.QUIET)
                 }
             }
         },

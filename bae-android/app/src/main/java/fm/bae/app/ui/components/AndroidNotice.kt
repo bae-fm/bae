@@ -81,53 +81,22 @@ enum class NoticeButtons {
 }
 
 /**
- * A failure as Android's error notice draws it: a [tone] notice (danger unless
- * told otherwise) with the tone's glyph and the localized line. A notice never
- * shows the error itself: for a failure core reported, a Details button opens
- * the causes in a dialog. Details and [action] sit at the right of the title's
- * line, Details first, or under the words when [buttons] says so. Given
- * [onOpenDetails], the notice has no Details button: tapping it hands the
- * details to the caller, who shows them; the notice is then its title alone, and
- * what to do is the message of what the caller shows. Mirrors the Apple apps' `Notice`.
+ * A failure as Android's notice draws it: a [tone] notice (danger unless told otherwise) with the
+ * tone's glyph and a title. The title is the [error]'s own localized line, or, given [title], the
+ * words the app chose for what failed, with [advice], what to do about it; [error] is then null when
+ * core says the failure has nothing to show. A notice never shows the error itself: for a failure core
+ * reported, a Details button opens the causes in a dialog (led by the category's line, under a [title]).
+ * Details and [action] sit at the right of the title's line, Details first, or under the words when
+ * [buttons] says so. Given [onOpenDetails], the notice has no Details button: tapping it hands the
+ * details to the caller, who shows them; the notice is then its title alone, and what to do is the
+ * message of what the caller shows. Mirrors the Apple apps' `Notice`.
  */
 @Composable
-fun ErrorNotice(
-    error: DisplayError,
-    modifier: Modifier = Modifier,
-    action: ErrorAction? = null,
-    tone: StatusTone = StatusTone.DANGER,
-    look: NoticeLook = NoticeLook.FILLED,
-    onDismiss: (() -> Unit)? = null,
-    onOpenDetails: ((ErrorDetails) -> Unit)? = null,
-    buttons: NoticeButtons = NoticeButtons.INLINE,
-) {
-    ErrorNoticeContent(
-        title = error.line,
-        advice = null,
-        details = ErrorDetails.of(error),
-        modifier = modifier,
-        action = action,
-        tone = tone,
-        look = look,
-        onDismiss = onDismiss,
-        onOpenDetails = onOpenDetails,
-        buttons = buttons,
-    )
-}
-
-/**
- * A failure under a title the app words for what failed, with [advice], what
- * to do about it. [error] is null when core says the failure has nothing to
- * show; with one, Details opens its causes led by the category's line, or a
- * tap hands them to [onOpenDetails], as [ErrorNotice] says: the notice is then
- * the title alone, and [advice] is the message of the details it hands over.
- */
-@Composable
-fun TitledErrorNotice(
-    title: String,
-    advice: String?,
+fun AndroidNotice(
     error: DisplayError?,
     modifier: Modifier = Modifier,
+    title: String? = null,
+    advice: String? = null,
     action: ErrorAction? = null,
     tone: StatusTone = StatusTone.DANGER,
     look: NoticeLook = NoticeLook.FILLED,
@@ -135,10 +104,16 @@ fun TitledErrorNotice(
     onOpenDetails: ((ErrorDetails) -> Unit)? = null,
     buttons: NoticeButtons = NoticeButtons.INLINE,
 ) {
+    val words = title ?: requireNotNull(error) { "a notice without a title shows the error's line" }.line
     ErrorNoticeContent(
-        title = title,
-        advice = advice,
-        details = error?.let { ErrorDetails.titled(title, advice, it) },
+        title = words,
+        advice = if (title == null) null else advice,
+        details =
+            when {
+                error == null -> null
+                title == null -> ErrorDetails.of(error)
+                else -> ErrorDetails.titled(title, advice, error)
+            },
         modifier = modifier,
         action = action,
         tone = tone,
@@ -262,7 +237,7 @@ private fun FramedNotice(
     buttons: NoticeButtons,
 ) {
     val hasButtons = hasDetails || action != null
-    Notice(tone = tone, modifier = modifier, look = look) {
+    NoticeFrame(tone = tone, modifier = modifier, look = look) {
         Row(
             modifier = Modifier.weight(1f),
             verticalAlignment = Alignment.Top,
@@ -333,7 +308,7 @@ private fun ErrorActionButton(action: ErrorAction) {
 
 /** The causes, one a line, in an inset panel with a copy button at its corner. */
 @Composable
-fun CausesPanel(
+fun AndroidErrorDetails(
     text: String,
     copyText: String,
     modifier: Modifier = Modifier,
@@ -372,9 +347,9 @@ private val CAUSES_COPY_INSET = ThemeSpace.page + ThemeSpace.group
 
 @Preview(showBackground = true)
 @Composable
-private fun ErrorNoticePreview() {
+private fun AndroidNoticePreview() {
     BaeTheme {
-        ErrorNotice(
+        AndroidNotice(
             DisplayError(
                 "Couldn't reach the network.",
                 "MusicBrainz network error: error sending request for url (https://musicbrainz.org/…): " +
@@ -387,9 +362,9 @@ private fun ErrorNoticePreview() {
 
 @Preview(showBackground = true)
 @Composable
-private fun TitledErrorNoticePreview() {
+private fun TitledAndroidNoticePreview() {
     BaeTheme {
-        TitledErrorNotice(
+        AndroidNotice(
             title = "Couldn't read the sign-in settings",
             advice = "Dropbox and OneDrive sign-in are unavailable until this build is reinstalled.",
             error = DisplayError("OAuthConfig: missing client id"),

@@ -29,9 +29,9 @@ import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidDialog
+import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ButtonTone
-import fm.bae.app.ui.components.ErrorNotice
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.AppHandleInterface
@@ -118,7 +118,7 @@ internal fun AlbumOptionsMenu(onDelete: () -> Unit) {
 @Composable
 internal fun AlbumDeletionShown(deletion: AlbumDeletion) {
     deletion.error?.let {
-        ErrorNotice(
+        AndroidNotice(
             error = it,
             modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
         )

@@ -45,11 +45,11 @@ import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.cloudProviderLabel
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidCard
+import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidSection
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ErrorAction
-import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.ScreenTopBar
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.library.LibraryDestination
@@ -309,8 +309,8 @@ internal fun SyncScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
                     UndoneSetupNotice(session)
                     runner.signIns.steps?.let { StorageSetupLine(it) }
-                    runner.error?.let { ErrorNotice(it) }
-                    locationError?.let { ErrorNotice(it) }
+                    runner.error?.let { AndroidNotice(it) }
+                    locationError?.let { AndroidNotice(it) }
                 }
             }
             location?.let { place -> storageItems(place, restoreCode) }
@@ -367,7 +367,7 @@ private fun UndoneSetupNotice(session: OpenLibrary) {
     var dismissing by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<DisplayError?>(null) }
     undone?.let { setup ->
-        ErrorNotice(
+        AndroidNotice(
             setup.error,
             action =
                 ErrorAction(stringResource(R.string.dismiss), enabled = !dismissing) {
@@ -387,7 +387,7 @@ private fun UndoneSetupNotice(session: OpenLibrary) {
                 },
         )
     }
-    error?.let { ErrorNotice(it) }
+    error?.let { AndroidNotice(it) }
 }
 
 /** The dialogs a fix or a pending action opens. */
@@ -526,7 +526,7 @@ private fun PendingRow(
     val context = LocalContext.current
     Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.inline)) {
         Text(text = context.coreString(record.subject), style = ThemeText.strong.style)
-        ErrorNotice(
+        AndroidNotice(
             error =
                 DisplayError(
                     context.coreString(record.reason.key),

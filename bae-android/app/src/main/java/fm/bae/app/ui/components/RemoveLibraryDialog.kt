@@ -152,7 +152,7 @@ private fun removalWords(
             if (loss.holdsUnsent) {
                 RemovalWords(title, null) {
                     Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.group)) {
-                        TitledErrorNotice(
+                        AndroidNotice(
                             title = stringResource(R.string.library_unsent_changes_lost),
                             advice = null,
                             error = null,

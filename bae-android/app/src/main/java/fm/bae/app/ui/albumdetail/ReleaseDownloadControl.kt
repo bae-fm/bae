@@ -35,12 +35,11 @@ import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
+import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidSpinner
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ErrorAction
-import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.NoticeLook
-import fm.bae.app.ui.components.TitledErrorNotice
 import fm.bae.app.ui.downloads.ActiveDownloadProgress
 import fm.bae.app.ui.downloads.PinQueuedText
 import fm.bae.app.ui.rememberScreenScope
@@ -121,7 +120,7 @@ private fun PlayableReleaseDownloadControl(
             },
         )
         unpinError?.let { shown ->
-            ErrorNotice(shown)
+            AndroidNotice(shown)
         }
     }
 }
@@ -195,7 +194,7 @@ private fun DownloadFailedControl(
     onRetry: () -> Unit,
     onCancel: () -> Unit,
 ) {
-    TitledErrorNotice(
+    AndroidNotice(
         title = stringResource(R.string.pin_failed),
         advice = null,
         error = DisplayError(error),

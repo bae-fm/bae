@@ -7,10 +7,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import fm.bae.app.R
 import fm.bae.app.ui.appearance.ThemeSpace
+import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidSheet
 import fm.bae.app.ui.components.AndroidSpinner
-import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.settings.StorageRows
 import fm.bae.app.ui.settings.statusTone
@@ -58,7 +58,7 @@ internal fun LibraryDetailsRows(
         }
 
         is StandingRead.Failed -> {
-            ErrorNotice(read.error, modifier = Modifier.padding(horizontal = ThemeSpace.edge))
+            AndroidNotice(read.error, modifier = Modifier.padding(horizontal = ThemeSpace.edge))
         }
 
         is StandingRead.Loaded -> {

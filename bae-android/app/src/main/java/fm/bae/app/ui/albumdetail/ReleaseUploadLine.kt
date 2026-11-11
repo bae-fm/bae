@@ -14,9 +14,9 @@ import fm.bae.app.coreString
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.StatusTone
-import fm.bae.app.ui.components.TitledErrorNotice
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeUploadProgress
 import uniffi.bae_bridge.bridgeUploadActivityKey
@@ -61,7 +61,7 @@ internal fun UploadLineBody(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         if (missing != null) {
-            TitledErrorNotice(
+            AndroidNotice(
                 title = stringResource(R.string.upload_missing_title, missing),
                 advice = stringResource(R.string.upload_missing_advice),
                 error = null,

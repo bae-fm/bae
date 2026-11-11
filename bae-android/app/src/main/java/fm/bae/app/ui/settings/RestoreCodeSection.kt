@@ -29,10 +29,10 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidCard
+import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidSection
 import fm.bae.app.ui.components.AndroidSpinner
 import fm.bae.app.ui.components.ButtonKind
-import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.rememberCopyText
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.CancellationException
@@ -206,7 +206,7 @@ private fun RestoreCodeSectionContent(
             }
 
             is RestoreCodeState.Failed -> {
-                ErrorNotice(state.error)
+                AndroidNotice(state.error)
             }
         }
     }

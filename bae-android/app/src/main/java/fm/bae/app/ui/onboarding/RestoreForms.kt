@@ -26,9 +26,9 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidDialog
+import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ButtonTone
-import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.LabeledValueRow
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.S3KeyFields
@@ -131,7 +131,7 @@ internal fun S3KeyDialog(
                     onAccessKeyIdChange = { keys.accessKeyId = it.trim() },
                     onSecretAccessKeyChange = { keys.secretAccessKey = it.trim() },
                 )
-                error?.let { ErrorNotice(it, look = NoticeLook.QUIET) }
+                error?.let { AndroidNotice(it, look = NoticeLook.QUIET) }
             }
         },
         confirmButton = {
@@ -224,7 +224,7 @@ private fun OnboardingForm(
     ) {
         Text(text = title, style = ThemeText.title.style, textAlign = TextAlign.Center)
         content()
-        error?.let { ErrorNotice(it) }
+        error?.let { AndroidNotice(it) }
         AndroidButton(kind = ButtonKind.TEXT, onClick = onBack) { Text(stringResource(R.string.back)) }
     }
 }

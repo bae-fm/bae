@@ -40,9 +40,9 @@ import fm.bae.app.ui.BaeAppChrome
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
+import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidSheet
 import fm.bae.app.ui.components.ButtonKind
-import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.Logo
 import uniffi.bae_bridge.codeAsEntered
 import uniffi.bae_bridge.codeInGroups
@@ -167,7 +167,7 @@ private fun CodeScreenContent(
             }
             error?.let {
                 Spacer(modifier = Modifier.height(ThemeSpace.related))
-                ErrorNotice(it)
+                AndroidNotice(it)
             }
         }
     } else {
@@ -269,7 +269,7 @@ private fun ListedWelcome(
             ) {
                 libraries { adding = true }
                 savedCodes()
-                error?.let { ErrorNotice(it) }
+                error?.let { AndroidNotice(it) }
             }
         }
     }
@@ -314,7 +314,7 @@ private fun EmptyWelcome(
             savedCodes()
             error?.let {
                 Spacer(modifier = Modifier.height(ThemeSpace.related))
-                ErrorNotice(it)
+                AndroidNotice(it)
             }
         }
         WelcomeActions(onScan = callbacks.onScan, onEnter = callbacks.onShowCodeDialog)

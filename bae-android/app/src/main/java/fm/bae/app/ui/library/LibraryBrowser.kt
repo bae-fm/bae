@@ -201,7 +201,7 @@ private fun AlbumBrowserContent(
             gridState = gridState,
         )
     Column(modifier = Modifier.fillMaxSize()) {
-        LibraryErrorBanner(page = page)
+        AndroidErrorBannerContainer(page = page)
         LibraryGridContent(
             session = session,
             page = page,

@@ -33,14 +33,13 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidDialog
+import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ButtonTone
 import fm.bae.app.ui.components.ErrorAction
-import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.ScreenFailureNotice
 import fm.bae.app.ui.components.StatusTone
-import fm.bae.app.ui.components.TitledErrorNotice
 import fm.bae.app.ui.components.retryAction
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeDeviceReset
@@ -118,7 +117,7 @@ internal fun ResetOfferedScreen(
     val reason = shown?.error
     when {
         shown != null && shown.step == FailedStep.DEVICE_RESET -> {
-            TitledErrorNotice(
+            AndroidNotice(
                 title = context.coreString(shown.step.titleKey),
                 advice = null,
                 error = reason,
@@ -128,11 +127,11 @@ internal fun ResetOfferedScreen(
         }
 
         reason != null -> {
-            ErrorNotice(reason, look = NoticeLook.CENTERED, action = offer)
+            AndroidNotice(reason, look = NoticeLook.CENTERED, action = offer)
         }
 
         else -> {
-            TitledErrorNotice(
+            AndroidNotice(
                 title = context.coreString(bridgeErrorCategoryKey(BridgeErrorCategory.DeviceResetRequired)),
                 advice = null,
                 error = null,
@@ -188,7 +187,7 @@ internal fun ResetUnfinishedScreen(
     BackHandler(onBack = onLeave)
     val finish = ErrorAction(stringResource(R.string.finish_reset), onClick = onFinish)
     if (error == null) {
-        TitledErrorNotice(
+        AndroidNotice(
             title =
                 context.coreString(
                     bridgeErrorCategoryKey(BridgeErrorCategory.ReplacementUnfinished(BridgeReplacedBy.RESET)),
@@ -200,7 +199,7 @@ internal fun ResetUnfinishedScreen(
             action = finish,
         )
     } else {
-        TitledErrorNotice(
+        AndroidNotice(
             title = context.coreString(error.step.titleKey),
             advice = null,
             error = error.error,
@@ -238,7 +237,7 @@ internal fun RemovalIncompleteScreen(
 ) {
     val context = LocalContext.current
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        TitledErrorNotice(
+        AndroidNotice(
             title = context.coreString("ui.load_error.removal.title"),
             advice = null,
             error = error,

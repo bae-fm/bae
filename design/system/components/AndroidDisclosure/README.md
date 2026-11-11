@@ -4,4 +4,4 @@ Material's disclosure row: its own card, the label (and an optional `summary` un
 
 On macOS the same thing is `MacDisclosure`.
 
-**In the code:** Android: `FormerDevices` (`ui/settings/FormerDevices.kt`) draws this card: an `AndroidRow` with `ExpandMore`/`ExpandLess` that opens the devices as rows of the same `AndroidCard`.
+**In the code:** Android: `AndroidDisclosure` (`ui/components/AndroidDisclosure.kt`), an `AndroidRow` with `ExpandMore`/`ExpandLess` that opens its rows in the same `AndroidCard`; `FormerDevices` (`ui/settings/FormerDevices.kt`) holds whether it is open.

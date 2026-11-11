@@ -24,10 +24,10 @@ import fm.bae.app.formatFileSize
 import fm.bae.app.requireDisplayableByteCount
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.InlineIconButton
 import fm.bae.app.ui.components.NoticeLook
-import fm.bae.app.ui.components.TitledErrorNotice
 import fm.bae.fastvalues.LatestSource
 import uniffi.bae_bridge.BridgeDownloadOp
 import uniffi.bae_bridge.BridgeDownloadState
@@ -98,7 +98,7 @@ private fun DownloadRowState(
         }
 
         is BridgeDownloadState.Failed -> {
-            TitledErrorNotice(
+            AndroidNotice(
                 title = stringResource(R.string.pin_failed),
                 advice = null,
                 error = DisplayError(state.error),

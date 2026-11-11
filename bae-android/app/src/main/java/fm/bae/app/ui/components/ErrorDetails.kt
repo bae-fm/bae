@@ -55,7 +55,7 @@ fun ErrorDetailsDialog(
         onDismissRequest = onDismiss,
         title = details.title,
         message = details.message,
-        content = { CausesPanel(text = details.causes, copyText = details.copyText) },
+        content = { AndroidErrorDetails(text = details.causes, copyText = details.copyText) },
         confirmButton = {
             AndroidButton(
                 kind = ButtonKind.TEXT,

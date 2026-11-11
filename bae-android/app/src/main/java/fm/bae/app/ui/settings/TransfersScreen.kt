@@ -1,6 +1,5 @@
 package fm.bae.app.ui.settings
 
-import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -10,7 +9,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -27,13 +25,13 @@ import fm.bae.app.R
 import fm.bae.app.data.LiveValue
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidCard
+import fm.bae.app.ui.components.AndroidNote
+import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidRadio
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.ButtonKind
-import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.ScreenTopBar
 import fm.bae.app.ui.downloads.setDownloadConcurrency
 
@@ -78,11 +76,11 @@ internal fun TransfersContent(
             verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
         ) {
             WifiOnlyRows(unmeteredOnly, onSetUnmeteredOnly)
-            Footer(R.string.transfers_wifi_only_footer)
+            AndroidNote(stringResource(R.string.transfers_wifi_only_footer))
             AndroidCard {
                 ConcurrencyRow(value = concurrency, limit = limit, onSelect = onSelectConcurrency)
             }
-            Footer(R.string.transfers_concurrency_footer)
+            AndroidNote(stringResource(R.string.transfers_concurrency_footer))
         }
     }
 }
@@ -106,7 +104,7 @@ private fun WifiOnlyRows(
         // Whether pins wait for Wi-Fi is unknown while its read has failed.
         is LiveValue.Failed -> {
             Text(stringResource(R.string.transfers_wifi_only))
-            ErrorNotice(unmeteredOnly.error)
+            AndroidNotice(unmeteredOnly.error)
         }
     }
 }
@@ -148,18 +146,6 @@ private fun ConcurrencyRow(
             },
         )
     }
-}
-
-@Composable
-private fun Footer(
-    @StringRes text: Int,
-) {
-    Text(
-        text = stringResource(text),
-        style = ThemeText.detail.style,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(horizontal = ThemeSpace.related),
-    )
 }
 
 @Preview(showBackground = true)

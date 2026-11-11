@@ -35,10 +35,10 @@ import fm.bae.app.ui.BaeAppChrome
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
+import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidSpinner
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ButtonTone
-import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.retryAction
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.launch
@@ -97,7 +97,7 @@ internal fun FolderChoiceBody(
         val retry = { scope.launch { failure.retry() } }
         val error = failure.error
         if (error != null) {
-            ErrorNotice(error, action = error.retryAction(enabled = !browser.busy) { retry() })
+            AndroidNotice(error, action = error.retryAction(enabled = !browser.busy) { retry() })
         } else {
             AndroidButton(
                 kind = ButtonKind.TEXT,

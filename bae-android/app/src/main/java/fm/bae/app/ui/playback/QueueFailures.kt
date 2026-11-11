@@ -19,9 +19,8 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.coreString
 import fm.bae.app.displayError
 import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.components.ErrorNotice
+import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.NoticeLook
-import fm.bae.app.ui.components.TitledErrorNotice
 import fm.bae.app.ui.components.retryAction
 import kotlinx.coroutines.CancellationException
 import uniffi.bae_bridge.BridgeException
@@ -100,7 +99,7 @@ internal fun rememberQueueFailures(): QueueFailures {
 @Composable
 internal fun QueueCommandFailure(failures: QueueFailures) {
     val failure = failures.command ?: return
-    ErrorNotice(
+    AndroidNotice(
         error = failure,
         modifier = Modifier.fillMaxWidth().padding(horizontal = ThemeSpace.edge),
         look = NoticeLook.QUIET,
@@ -118,7 +117,7 @@ internal fun UpcomingFailureNotice(session: OpenLibrary) {
     val failure by upcoming.failure.collectAsState()
     val context = LocalContext.current
     val shown = failure?.let { context.displayError(it) } ?: return
-    TitledErrorNotice(
+    AndroidNotice(
         title = context.coreString("ui.queue.upcoming_failed"),
         advice = null,
         error = shown,

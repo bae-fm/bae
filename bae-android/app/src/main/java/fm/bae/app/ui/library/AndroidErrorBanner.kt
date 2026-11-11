@@ -7,16 +7,16 @@ import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.DisplayError
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.components.ErrorNotice
+import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.retryAction
 
 @Composable
-internal fun ErrorBanner(
+internal fun AndroidErrorBanner(
     error: DisplayError,
     onRetry: (() -> Unit)? = null,
 ) {
-    ErrorNotice(
+    AndroidNotice(
         error = error,
         modifier = Modifier.padding(horizontal = ThemeSpace.edge),
         action = onRetry?.let { error.retryAction(onClick = it) },
@@ -26,9 +26,9 @@ internal fun ErrorBanner(
 
 @Preview(showBackground = true)
 @Composable
-private fun ErrorBannerPreview() {
+private fun AndroidErrorBannerPreview() {
     BaeTheme {
-        ErrorBanner(
+        AndroidErrorBanner(
             error = DisplayError("Couldn't reach the library.", "database error: disk I/O error"),
             onRetry = {},
         )
@@ -37,8 +37,8 @@ private fun ErrorBannerPreview() {
 
 @Preview(showBackground = true)
 @Composable
-private fun ErrorBannerNoRetryPreview() {
+private fun AndroidErrorBannerNoRetryPreview() {
     BaeTheme {
-        ErrorBanner(error = DisplayError("Couldn't reach the library."))
+        AndroidErrorBanner(error = DisplayError("Couldn't reach the library."))
     }
 }

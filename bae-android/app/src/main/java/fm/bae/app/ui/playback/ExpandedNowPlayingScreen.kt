@@ -53,8 +53,8 @@ import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.CoverImage
-import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.rememberScreenScope
 import fm.bae.fastvalues.LatestSource
 import kotlinx.coroutines.launch
@@ -192,7 +192,7 @@ internal fun ExpandedPlayerContent(
         Spacer(modifier = Modifier.height(ThemeSpace.related))
 
         if (failure != null) {
-            ErrorNotice(failure)
+            AndroidNotice(failure)
         } else {
             CoverImage(
                 cover = track.coverImage,
@@ -265,7 +265,7 @@ private fun ExpandedSeekSection(
             }
         },
     )
-    failure?.let { ErrorNotice(it) }
+    failure?.let { AndroidNotice(it) }
 }
 
 @Composable

@@ -42,8 +42,8 @@ import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
+import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.ButtonKind
-import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.retryAction
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -117,14 +117,14 @@ private fun DownloadsBody(
         val pageError = page.error
         when {
             state is LiveValue.Failed -> {
-                ErrorNotice(
+                AndroidNotice(
                     error = state.error,
                     modifier = Modifier.align(Alignment.Center).padding(ThemeSpace.page),
                 )
             }
 
             pageError != null && page.rows.isEmpty() -> {
-                ErrorNotice(
+                AndroidNotice(
                     error = pageError.error,
                     look = NoticeLook.CENTERED,
                     action = pageError.error.retryAction(onClick = pageError.onRetry),

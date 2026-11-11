@@ -51,18 +51,17 @@ import fm.bae.app.ui.appearance.AppearancePreferences
 import fm.bae.app.ui.appearance.AppearanceStore
 import fm.bae.app.ui.appearance.SurfaceTone
 import fm.bae.app.ui.appearance.ThemeSpace
+import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidSheetBody
 import fm.bae.app.ui.components.ErrorAction
-import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.RemovalLoss
 import fm.bae.app.ui.components.RemoveLibraryText
 import fm.bae.app.ui.components.ScreenTopBar
 import fm.bae.app.ui.components.StatusTone
-import fm.bae.app.ui.components.TitledErrorNotice
 import fm.bae.app.ui.downloads.DownloadQueueRow
 import fm.bae.app.ui.downloads.DownloadsList
-import fm.bae.app.ui.library.ErrorBanner
+import fm.bae.app.ui.library.AndroidErrorBanner
 import fm.bae.app.ui.library.LibraryGridScene
 import fm.bae.app.ui.library.LibraryHeaderMenu
 import fm.bae.app.ui.library.SceneGrid
@@ -386,7 +385,7 @@ private fun RestoreCodeShot(shown: Boolean) {
 @Composable
 fun SyncUpdateRequired() {
     BaeTheme {
-        ErrorBanner(error = DisplayError(LocalContext.current.coreString("core.error.sync_update_required")))
+        AndroidErrorBanner(error = DisplayError(LocalContext.current.coreString("core.error.sync_update_required")))
     }
 }
 
@@ -666,21 +665,21 @@ fun NoticeLooks() {
                 modifier = Modifier.padding(ThemeSpace.edge),
                 verticalArrangement = Arrangement.spacedBy(ThemeSpace.group),
             ) {
-                ErrorNotice(error, action = ErrorAction("Retry") {})
-                TitledErrorNotice(
+                AndroidNotice(error, action = ErrorAction("Retry") {})
+                AndroidNotice(
                     title = "bae couldn’t open your library",
                     advice = "Check your connection, then quit and reopen bae.",
                     error = error,
                 )
-                TitledErrorNotice(
+                AndroidNotice(
                     title = "Couldn't pin",
                     advice = null,
                     error = error,
                     action = ErrorAction("Retry") {},
                     look = NoticeLook.QUIET,
                 )
-                ErrorNotice(error, action = ErrorAction("Retry") {}, look = NoticeLook.QUIET, onDismiss = {})
-                TitledErrorNotice(
+                AndroidNotice(error, action = ErrorAction("Retry") {}, look = NoticeLook.QUIET, onDismiss = {})
+                AndroidNotice(
                     title = "Couldn’t read your library",
                     advice = null,
                     error = error,

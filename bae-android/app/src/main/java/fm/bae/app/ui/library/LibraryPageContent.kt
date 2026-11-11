@@ -25,7 +25,7 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.data.WindowedBrowserPageStore
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.ErrorNotice
+import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.retryAction
 import fm.bae.app.ui.rememberScreenScope
@@ -78,7 +78,7 @@ internal fun LibraryPageContent(
         when {
             pageError != null && page.rows.isEmpty() -> {
                 ListPlaceholder {
-                    ErrorNotice(
+                    AndroidNotice(
                         error = pageError.error,
                         look = NoticeLook.CENTERED,
                         action = pageError.error.retryAction(onClick = pageError.onRetry),

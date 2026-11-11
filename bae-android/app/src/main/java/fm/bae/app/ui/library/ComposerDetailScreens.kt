@@ -38,8 +38,8 @@ import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSize
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.CoverImage
-import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.retryAction
@@ -137,7 +137,7 @@ private fun ComposerDetailContent(
     }
     Column(modifier = Modifier.fillMaxSize()) {
         rows.error?.let { failure ->
-            ErrorNotice(
+            AndroidNotice(
                 error = failure.error,
                 modifier = Modifier.padding(horizontal = ThemeSpace.edge),
                 action = failure.error.retryAction(onClick = failure.onRetry),

@@ -19,9 +19,9 @@ import fm.bae.app.R
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.cloudProviderLabel
 import fm.bae.app.ui.components.AndroidCard
+import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidSection
-import fm.bae.app.ui.components.ErrorNotice
 import uniffi.bae_bridge.BridgeFolderLabel
 import uniffi.bae_bridge.BridgeStorageLocation
 
@@ -80,7 +80,7 @@ private fun FolderRows(folder: BridgeFolderLabel) {
         title = stringResource(R.string.settings_open_in_browser),
         onClick = { openFailure = openInBrowser(context, folder.webUrl) },
     )
-    openFailure?.let { ErrorNotice(it) }
+    openFailure?.let { AndroidNotice(it) }
 }
 
 /** Open `webUrl` in the browser; the error to show when no app on this device opens it. */

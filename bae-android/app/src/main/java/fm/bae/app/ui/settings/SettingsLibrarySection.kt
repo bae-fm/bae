@@ -31,10 +31,10 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidCard
+import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ButtonTone
-import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.components.retryAction
@@ -133,7 +133,7 @@ internal fun ReadFailure(
     error: DisplayError,
     onRetry: () -> Unit,
 ) {
-    ErrorNotice(error, action = error.retryAction(onClick = onRetry))
+    AndroidNotice(error, action = error.retryAction(onClick = onRetry))
 }
 
 @Composable
@@ -195,7 +195,7 @@ private fun RenameLibraryDialogContent(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                error?.let { ErrorNotice(it, look = NoticeLook.QUIET) }
+                error?.let { AndroidNotice(it, look = NoticeLook.QUIET) }
             }
         },
         confirmButton = {

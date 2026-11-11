@@ -25,8 +25,8 @@ import fm.bae.app.data.CastStart
 import fm.bae.app.data.castEndedFailure
 import fm.bae.app.data.castingDevice
 import fm.bae.app.ui.appearance.ThemeSpace
+import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidSheet
-import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.StatusTone
 import uniffi.bae_bridge.BridgeBrowsingFor
 
@@ -115,14 +115,14 @@ private fun PickerFailures(
     castFailure: DisplayError?,
 ) {
     endedFailure?.let { failure ->
-        ErrorNotice(
+        AndroidNotice(
             error = failure,
             tone = StatusTone.WARNING,
             modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
         )
     }
     castFailure?.let { failure ->
-        ErrorNotice(
+        AndroidNotice(
             error = failure,
             modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
         )

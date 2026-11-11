@@ -37,9 +37,9 @@ import fm.bae.app.ui.components.ButtonKind
 
 /** A later page of the album grid that failed to load, above the rows that did, with Retry. */
 @Composable
-internal fun LibraryErrorBanner(page: AlbumPageStore) {
+internal fun AndroidErrorBannerContainer(page: AlbumPageStore) {
     val appendError = (if (page.rows.isNotEmpty()) page.error else null) ?: return
-    ErrorBanner(error = appendError.error, onRetry = appendError.onRetry)
+    AndroidErrorBanner(error = appendError.error, onRetry = appendError.onRetry)
 }
 
 /**

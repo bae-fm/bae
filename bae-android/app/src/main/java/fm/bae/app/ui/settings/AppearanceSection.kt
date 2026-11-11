@@ -46,10 +46,10 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.colors
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidCard
+import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidRadio
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.ButtonKind
-import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.launch
 import java.io.IOException
@@ -98,15 +98,15 @@ internal fun AppearanceSection() {
                 subtitle = stringResource(preferences.accent.label),
             )
             Box(modifier = Modifier.padding(horizontal = ThemeSpace.edge).padding(bottom = ThemeSpace.related)) {
-                AccentPicker(preferences.accent) { accent -> save { store.setAccent(accent) } }
+                AndroidAccentPicker(preferences.accent) { accent -> save { store.setAccent(accent) } }
             }
         }
-        error?.let { ErrorNotice(it) }
+        error?.let { AndroidNotice(it) }
     }
 }
 
 @Composable
-private fun AccentPicker(
+internal fun AndroidAccentPicker(
     selectedAccent: AccentChoice,
     onSelect: (AccentChoice) -> Unit,
 ) {

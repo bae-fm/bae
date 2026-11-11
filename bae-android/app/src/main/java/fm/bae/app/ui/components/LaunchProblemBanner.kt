@@ -17,7 +17,7 @@ import fm.bae.app.ui.appearance.ThemeSpace
 fun LaunchProblemBanner(problems: List<AppProblem>) {
     Column {
         problems.forEach { problem ->
-            TitledErrorNotice(
+            AndroidNotice(
                 title = problem.title,
                 advice = problem.advice,
                 error = problem.error,

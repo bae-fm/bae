@@ -27,10 +27,10 @@ import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidCard
+import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidSection
 import fm.bae.app.ui.components.AndroidSpinner
-import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.LibraryEnding
 import fm.bae.app.ui.components.MoreMenu
 import fm.bae.app.ui.components.OpenProgressLine
@@ -116,7 +116,7 @@ internal fun WelcomeLibrariesContent(
         is WelcomeLibrariesList.Failed -> {
             Column(modifier = column, verticalArrangement = Arrangement.spacedBy(ThemeSpace.inline)) {
                 Text(text = stringResource(R.string.settings_libraries_load_failed), style = ThemeText.heading.style)
-                ErrorNotice(list.error)
+                AndroidNotice(list.error)
             }
         }
 
