@@ -14,7 +14,8 @@
         /// can go back to the chooser, which reads both lists from `setup`.
         static func welcome(
             initialMode: WelcomeView.Mode,
-            setup: LibrarySetup
+            setup: LibrarySetup,
+            removals: LibraryRemovals = PreviewData.welcomeRemovals()
         ) -> some View {
             WelcomeWindowChrome {
                 WelcomeView(
@@ -26,18 +27,19 @@
                 )
             }
             .environment(setup)
-            .environment(PreviewData.welcomeRemovals())
+            .environment(removals)
         }
 
-        /// What the details popover of a Dropbox library holds, its status
-        /// read through `readStanding`.
+        /// What the details popover of `library` holds, its status read
+        /// through `readStanding`.
         static func welcomeLibraryDetails(
+            _ library: BridgeLibrary,
             readStanding:
                 @escaping @Sendable (String) async throws
                 -> BridgeLibraryStanding
         ) -> some View {
             WelcomeLibraryDetails(
-                library: PreviewData.welcomeDropboxLibrary,
+                library: library,
                 readStanding: readStanding
             )
             .windowBackground()

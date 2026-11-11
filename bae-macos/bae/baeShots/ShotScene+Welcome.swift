@@ -5,65 +5,63 @@ import SwiftUI
 @testable import bae
 
 extension ShotScene {
-    /// The welcome's list of this Mac's libraries, its window over a Mac that
-    /// holds libraries and over one that holds none and no saved restore
-    /// code, the screen that offers a reset and the one a failed reset lands
-    /// on, a library's details, and the list while a library is removed.
+    /// The welcome boards (`mac.welcome.*`): the welcome window over this
+    /// Mac's libraries or none, a library's details, the alerts of removing
+    /// one, the screens a library opens or resets behind, and the code sheets.
+    /// Not shot: the library menu and the Add library menu (system menus),
+    /// the reset confirmation (a SwiftUI alert over the screen), the scanner
+    /// (the camera), and Add this device and Join, which aren't built.
     static let welcomeScenes: [ShotScene] = [
-        ShotScene(
-            id: "welcome-libraries",
-            size: CGSize(width: 452, height: 362)
-        ) {
-            ShotStage(PreviewScenes.welcomeLibraries())
-        },
-        ShotScene(
-            id: "welcome-removing",
-            size: CGSize(width: 452, height: 170)
-        ) {
-            ShotStage(
-                PreviewScenes.welcomeLibraries(
-                    Array(PreviewData.welcomeLibraries.prefix(2)),
-                    removing: .leavingLibrary
-                )
-            )
-        },
-        ShotScene(id: "story-1-first-run", size: WelcomeWindow.size) {
-            let reads = CountedReads()
-            return ShotStage(
-                PreviewScenes.welcome(
-                    initialMode: .choose,
-                    setup: reads.setup
-                )
-            ) { reads.answered == 2 }
-        },
-        ShotScene(id: "welcome-populated", size: WelcomeWindow.size) {
-            let reads = CountedReads(libraries: PreviewData.welcomeLibraries)
-            return ShotStage(
-                PreviewScenes.welcome(
-                    initialMode: .choose,
-                    setup: reads.setup
-                )
-            ) { reads.answered == 2 }
-        },
-        removalAlert("welcome-remove", PreviewData.welcomeLibraries[0]),
+        welcomeWindow(
+            "mac.welcome.libraries",
+            libraries: PreviewData.boardLibraries
+        ),
+        welcomeWindow("mac.welcome.libraries.none", libraries: []),
+        detailsScene("mac.welcome.library-details", PreviewData.standingSynced),
+        detailsScene(
+            "mac.welcome.library-details.unsent-changes",
+            PreviewData.standingUnsent
+        ),
         removalAlert(
-            "welcome-remove-unsent",
-            PreviewData.welcomeLibraries[0],
+            "mac.welcome.delete-never-synced",
+            PreviewData.odilesRecords
+        ),
+        removalAlert("mac.welcome.remove", PreviewData.homeMusic),
+        removalAlert(
+            "mac.welcome.remove.unsent-changes",
+            PreviewData.homeMusic,
             losing: .counted(holdsUnsent: true)
         ),
-        removalAlert("welcome-delete", PreviewData.welcomeLibraries[1]),
+        ShotScene(id: "mac.welcome.remove.removing", size: WelcomeWindow.size) {
+            let reads = CountedReads(libraries: PreviewData.boardLibraries)
+            let removals = PreviewData.welcomeRemovals(
+                stoppedAt: .leavingLibrary
+            )
+            removals.remove(
+                closedLibrary: PreviewData.homeMusic,
+                losing: .counted(holdsUnsent: false),
+                onFinished: {}
+            )
+            return ShotStage(
+                PreviewScenes.welcome(
+                    initialMode: .choose,
+                    setup: reads.setup,
+                    removals: removals
+                )
+            ) { reads.answered == 2 }
+        },
         ShotScene(
-            id: "welcome-remove-failed",
+            id: "mac.welcome.remove.failed",
             size: CGSize(width: 340, height: 160)
         ) {
             ShotStage(
                 NSAlertShot {
                     LibraryRemovalAlerts.failure(
                         FailedRemoval(
-                            library: PreviewData.welcomeLibraries[0],
+                            library: PreviewData.homeMusic,
                             error: DisplayError(
                                 line:
-                                    "Couldn't reach the cloud. Check your connection and try again."
+                                    "Couldn’t reach the cloud. Check your connection and try again."
                             ),
                             retry: .ask
                         )
@@ -71,7 +69,48 @@ extension ShotScene {
                 }
             )
         },
-        ShotScene(id: "welcome-reset-offered", size: WelcomeWindow.size) {
+        ShotScene(
+            id: "mac.welcome.opening.finding-libraries",
+            size: WelcomeWindow.size
+        ) {
+            ShotStage(
+                WelcomeWindowChrome {
+                    MacWelcomeOpening<BridgeOpenProgress>(
+                        title: AppScreen.LoadingWork.findingLibraries.title,
+                        leading: nil,
+                        opening: nil,
+                        reset: nil
+                    )
+                }
+            )
+        },
+        ShotScene(id: "mac.welcome.opening.steps", size: WelcomeWindow.size) {
+            ShotStage(
+                WelcomeWindowChrome {
+                    MacWelcomeOpening<BridgeOpenProgress>(
+                        title: AppScreen.LoadingWork.opening.title,
+                        leading: nil,
+                        opening:
+                            LatestStream.openProgress(
+                                holding: BridgeOpenProgress(
+                                    step: .rebuilding,
+                                    done: 45,
+                                    total: 100
+                                )
+                            )
+                            .only,
+                        reset: nil
+                    )
+                }
+            )
+        },
+        ShotScene(
+            id: "mac.welcome.opening.library-locked",
+            size: WelcomeWindow.size
+        ) {
+            ShotStage(WelcomeWindowChrome { KeychainLockedView(onRetry: {}) })
+        },
+        ShotScene(id: "mac.welcome.reset.offered", size: WelcomeWindow.size) {
             ShotStage(
                 PreviewScenes.deviceReset(
                     error: LoadError(
@@ -81,7 +120,31 @@ extension ShotScene {
                 )
             )
         },
-        ShotScene(id: "welcome-reset-failed", size: WelcomeWindow.size) {
+        ShotScene(id: "mac.welcome.reset.resetting", size: WelcomeWindow.size) {
+            let progress = BridgeLoadProgress(
+                step: .streamingLibrary,
+                done: 5,
+                total: 10
+            )
+            return ShotStage(
+                WelcomeWindowChrome {
+                    MacWelcomeOpening<BridgeOpenProgress>(
+                        title: AppScreen.LoadingWork.resetting.title,
+                        leading: nil,
+                        opening: nil,
+                        reset: MacWelcomeOpeningReset(
+                            steps:
+                                LatestStream.bootstrapSteps(
+                                    holding: .loading(progress: progress)
+                                )
+                                .only,
+                            status: .loading
+                        )
+                    )
+                }
+            )
+        },
+        ShotScene(id: "mac.welcome.reset.failed", size: WelcomeWindow.size) {
             ShotStage(
                 PreviewScenes.deviceReset(
                     error: LoadError(
@@ -91,8 +154,21 @@ extension ShotScene {
                 )
             )
         },
+        ShotScene(id: "mac.welcome.reset.unfinished", size: WelcomeWindow.size)
+        {
+            ShotStage(
+                WelcomeWindowChrome {
+                    DeviceResetView(
+                        prompt: .unfinished,
+                        error: nil,
+                        onReset: {},
+                        onCancel: {}
+                    )
+                }
+            )
+        },
         ShotScene(
-            id: "welcome-enter-code",
+            id: "mac.welcome.add-code.entering",
             size: CGSize(width: 400, height: 190)
         ) {
             ShotStage(
@@ -101,7 +177,7 @@ extension ShotScene {
             )
         },
         ShotScene(
-            id: "welcome-enter-code-typed",
+            id: "mac.welcome.add-code.half-typed",
             size: CGSize(width: 400, height: 190)
         ) {
             let form = enterCodeForm()
@@ -111,13 +187,16 @@ extension ShotScene {
                     .windowBackground()
             )
         },
-        ShotScene(id: "welcome-s3-key", size: CGSize(width: 440, height: 210)) {
+        ShotScene(
+            id: "mac.welcome.add-code.s3-key-needed",
+            size: CGSize(width: 440, height: 210)
+        ) {
             let form = enterCodeForm(reading: .restore(metadata: s3Metadata))
             form.acceptCode(PreviewData.restoreCode)
             form.accessKey = "AKIA4EXAMPLE"
             return ShotStage(RestoreS3KeySheet(form: form).windowBackground())
         },
-        ShotScene(id: "welcome-code-running", size: WelcomeWindow.size) {
+        ShotScene(id: "mac.welcome.add-code.adding", size: WelcomeWindow.size) {
             ShotStage(
                 WelcomeWindowChrome {
                     CodeRunningView(
@@ -139,12 +218,23 @@ extension ShotScene {
                 }
             )
         },
-        detailsScene("welcome-library-details", PreviewData.standingSynced),
-        detailsScene(
-            "welcome-library-details-unsent",
-            PreviewData.standingUnsent
-        ),
     ]
+
+    /// The welcome window over `libraries`, on the first screen.
+    private static func welcomeWindow(
+        _ id: String,
+        libraries: [BridgeLibrary]
+    ) -> ShotScene {
+        ShotScene(id: id, size: WelcomeWindow.size) {
+            let reads = CountedReads(libraries: libraries)
+            return ShotStage(
+                PreviewScenes.welcome(
+                    initialMode: .choose,
+                    setup: reads.setup
+                )
+            ) { reads.answered == 2 }
+        }
+    }
 
     /// The Enter code sheet's state: the code is read as `info` when the
     /// person chooses Continue, and nothing it starts reaches a library.
@@ -203,7 +293,7 @@ extension ShotScene {
         }
     }
 
-    /// The details popover's content for a Dropbox library, once its status
+    /// The details popover's content for Home music, once its status
     /// is in.
     private static func detailsScene(
         _ id: String,
@@ -213,6 +303,7 @@ extension ShotScene {
             let reads = CountedReads()
             return ShotStage(
                 PreviewScenes.welcomeLibraryDetails(
+                    PreviewData.homeMusic,
                     readStanding: reads.readStanding(status)
                 )
             ) { reads.answered == 1 }

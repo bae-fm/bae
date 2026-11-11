@@ -13,7 +13,7 @@ step mac notice-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scen
 step mac storage-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene storage-manager --tone midnight
 step android android-shots ./scripts/shots/android.sh /Volumes/Builds/bae/shots/android
 step mac library-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene library-browse-list --tone midnight
-step mac welcome-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene welcome- --scene story-1 --tone midnight
+step mac welcome-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene mac.welcome. --tone midnight
 step mac folder-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene folder-picker- --tone midnight
 step mac import-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene import- --tone midnight
 step mac release-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene release-storage --tone midnight

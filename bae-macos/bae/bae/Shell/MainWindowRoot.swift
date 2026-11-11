@@ -78,21 +78,16 @@ struct MainWindowRoot: View {
     private var detailContent: some View {
         switch appDelegate.screen {
         case .loading(let work):
-            StepProgressLine(steps: appDelegate.closingSteps?.steps) {
-                StepProgressLine(steps: appDelegate.openProgress?.steps) {
-                    if let reset = appDelegate.resetSteps,
-                        let status = reset.status
-                    {
-                        StepProgressLine(steps: reset.steps) {
-                            BootstrapStatusView(status: status)
-                        }
-                    }
-                    else {
-                        WaitingIndicator(Text(work.title))
+            MacWelcomeOpening(
+                title: work.title,
+                leading: appDelegate.closingSteps?.steps,
+                opening: appDelegate.openProgress?.steps,
+                reset: appDelegate.resetSteps.flatMap { reset in
+                    reset.status.map {
+                        MacWelcomeOpeningReset(steps: reset.steps, status: $0)
                     }
                 }
-            }
-            .frame(maxWidth: StepProgressLayout.width)
+            )
         case .home:
             MainAppView()
         case .resetRequired(let libraryId):
@@ -193,21 +188,16 @@ struct MainWindowRoot: View {
         switch appDelegate.screen {
         case .loading(let work):
             Spacer()
-            StepProgressLine(steps: appDelegate.setupSteps?.steps) {
-                StepProgressLine(steps: appDelegate.openProgress?.steps) {
-                    if let reset = appDelegate.resetSteps,
-                        let status = reset.status
-                    {
-                        StepProgressLine(steps: reset.steps) {
-                            BootstrapStatusView(status: status)
-                        }
-                    }
-                    else {
-                        WaitingIndicator(Text(work.title))
+            MacWelcomeOpening(
+                title: work.title,
+                leading: appDelegate.setupSteps?.steps,
+                opening: appDelegate.openProgress?.steps,
+                reset: appDelegate.resetSteps.flatMap { reset in
+                    reset.status.map {
+                        MacWelcomeOpeningReset(steps: reset.steps, status: $0)
                     }
                 }
-            }
-            .frame(maxWidth: StepProgressLayout.width)
+            )
             Spacer()
         case .home:
             welcomeView(

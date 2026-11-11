@@ -59,11 +59,15 @@
             ),
         ]
 
-        /// A library stored in the person's Dropbox, for the details popover.
-        static let welcomeDropboxLibrary = BridgeLibrary(
-            id: "lib-06",
-            name: "Low Tide Hours",
-            path: "/Users/preview/Music/bae/Low Tide Hours",
+        /// The libraries the welcome boards show: Home music, stored in the
+        /// person's Dropbox, and Odile's records, which never synced.
+        static let boardLibraries: [BridgeLibrary] = [homeMusic, odilesRecords]
+
+        /// A library stored in the person's Dropbox.
+        static let homeMusic = BridgeLibrary(
+            id: "lib-home-music",
+            name: "Home music",
+            path: "/Users/preview/Music/bae/Home music",
             state: .openable(
                 storage: .dropbox(
                     location: .appFolder,
@@ -74,6 +78,16 @@
                     )
                 )
             ),
+            isActive: false
+        )
+
+        /// A library with no cloud home, which offers Delete in place of
+        /// Remove.
+        static let odilesRecords = BridgeLibrary(
+            id: "lib-odiles-records",
+            name: "Odile’s records",
+            path: "/Users/preview/Music/bae/Odile’s records",
+            state: .openable(storage: nil),
             isActive: false
         )
 
@@ -115,21 +129,31 @@
             )
         }
 
-        /// Removals whose every attempt fails, for the welcome previews.
+        /// Removals whose every attempt fails, for the welcome previews; with
+        /// `step`, a removal started on them stays at that step and never
+        /// ends.
         @MainActor
-        static func welcomeRemovals() -> LibraryRemovals {
+        static func welcomeRemovals(
+            stoppedAt step: BridgeClosingStep? = nil
+        ) -> LibraryRemovals {
             LibraryRemovals(
                 makeOpenProgress: {
                     LibraryOpenProgress(host: BaeHost.preview())
                 },
                 makeRemovalSteps: {
-                    LibraryClosingSteps(host: BaeHost.preview())
+                    step.map {
+                        LibraryClosingSteps(host: BaeHost.preview(), at: $0)
+                    } ?? LibraryClosingSteps(host: BaeHost.preview())
                 },
                 makeFinishingSteps: {
                     LibrarySetupSteps(host: BaeHost.preview())
                 },
                 unsentOfClosed: { _, _ in throw StubError.notImplemented },
-                removeClosed: { _, _, _ in throw StubError.notImplemented },
+                removeClosed: { _, _, _ in
+                    guard step != nil else { throw StubError.notImplemented }
+                    try await Task.sleep(for: .seconds(3_600))
+                    throw StubError.notImplemented
+                },
                 removeUnopenable: { _, _ in throw StubError.notImplemented },
                 finishDeletion: { _, _ in throw StubError.notImplemented },
                 findUnfinished: { nil },
