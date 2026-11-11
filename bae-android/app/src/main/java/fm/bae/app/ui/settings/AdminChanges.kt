@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -16,7 +15,9 @@ import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.SectionHeading
+import fm.bae.app.ui.components.AndroidButton
+import fm.bae.app.ui.components.AndroidSection
+import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.StatusChip
 import fm.bae.app.ui.components.StatusTone
 import uniffi.bae_bridge.BridgeAdminChange
@@ -43,7 +44,7 @@ internal fun AdminChangesList(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
     ) {
-        SectionHeading(text = stringResource(R.string.admin_changes_title))
+        AndroidSection(text = stringResource(R.string.admin_changes_title))
         changes.forEach { change -> AdminChangeRow(change = change, onDismiss = { onDismiss(change) }) }
     }
 }
@@ -78,7 +79,7 @@ private fun AdminChangeRow(
                 }
             }
             if (change.state != BridgeAdminChangeState.Waiting) {
-                TextButton(onClick = onDismiss) { Text(stringResource(R.string.dismiss)) }
+                AndroidButton(kind = ButtonKind.TEXT, onClick = onDismiss) { Text(stringResource(R.string.dismiss)) }
             }
         }
         change.state.whyRes()?.let { why ->

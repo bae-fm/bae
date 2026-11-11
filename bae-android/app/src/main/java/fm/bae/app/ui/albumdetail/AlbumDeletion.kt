@@ -27,10 +27,11 @@ import fm.bae.app.R
 import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.components.BaeAlertDialog
-import fm.bae.app.ui.components.DestructiveTextButton
+import fm.bae.app.ui.components.AndroidButton
+import fm.bae.app.ui.components.AndroidDialog
+import fm.bae.app.ui.components.ButtonKind
+import fm.bae.app.ui.components.ButtonTone
 import fm.bae.app.ui.components.ErrorNotice
-import fm.bae.app.ui.components.NeutralTextButton
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.AppHandleInterface
@@ -133,17 +134,21 @@ internal fun DeleteAlbumDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    BaeAlertDialog(
+    AndroidDialog(
         onDismissRequest = onDismiss,
         title = stringResource(R.string.delete_album_confirm_title),
         message = stringResource(R.string.delete_album_confirm_body),
         confirmButton = {
-            DestructiveTextButton(onClick = onConfirm) {
+            AndroidButton(kind = ButtonKind.TEXT, tone = ButtonTone.DESTRUCTIVE, onClick = onConfirm) {
                 Text(stringResource(R.string.delete_album_confirm))
             }
         },
         dismissButton = {
-            NeutralTextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+            AndroidButton(
+                kind = ButtonKind.TEXT,
+                tone = ButtonTone.NEUTRAL,
+                onClick = onDismiss,
+            ) { Text(stringResource(R.string.cancel)) }
         },
     )
 }

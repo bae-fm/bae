@@ -11,7 +11,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -30,12 +29,14 @@ import fm.bae.app.currentLocale
 import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.BaeAlertDialog
+import fm.bae.app.ui.components.AndroidButton
+import fm.bae.app.ui.components.AndroidDialog
+import fm.bae.app.ui.components.AndroidSpinner
+import fm.bae.app.ui.components.ButtonKind
+import fm.bae.app.ui.components.ButtonTone
 import fm.bae.app.ui.components.ErrorNotice
-import fm.bae.app.ui.components.NeutralTextButton
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.QRCodeImage
-import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.components.rememberCopyText
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.launch
@@ -109,15 +110,17 @@ private fun CancelInviteConfirmDialog(
         (invite.access as? BridgeMemberAccess.S3AccessKey)?.let { key ->
             context.coreString("core.access_key.forget", mapOf("key" to key.accessKeyId))
         }
-    BaeAlertDialog(
+    AndroidDialog(
         onDismissRequest = onDismiss,
         title = context.coreString("core.invite.cancel_confirm.title"),
         message = forgetLine,
         confirmButton = {
-            TextButton(onClick = onConfirm) { Text(stringResource(R.string.invite_cancel)) }
+            AndroidButton(kind = ButtonKind.TEXT, onClick = onConfirm) { Text(stringResource(R.string.invite_cancel)) }
         },
         dismissButton = {
-            NeutralTextButton(onClick = onDismiss) { Text(context.coreString("core.invite.cancel_confirm.keep")) }
+            AndroidButton(kind = ButtonKind.TEXT, tone = ButtonTone.NEUTRAL, onClick = onDismiss) {
+                Text(context.coreString("core.invite.cancel_confirm.keep"))
+            }
         },
     )
 }
@@ -175,10 +178,15 @@ private fun InviteCodeDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.done)) }
+            AndroidButton(kind = ButtonKind.TEXT, onClick = onDismiss) { Text(stringResource(R.string.done)) }
         },
         dismissButton = {
-            NeutralTextButton(onClick = onCancelInvite, enabled = !busy) {
+            AndroidButton(
+                kind = ButtonKind.TEXT,
+                tone = ButtonTone.NEUTRAL,
+                onClick = onCancelInvite,
+                enabled = !busy,
+            ) {
                 Text(stringResource(R.string.invite_cancel))
             }
         },
@@ -191,7 +199,7 @@ private fun InviteGranting(held: BridgePendingWait?) {
     val context = LocalContext.current
     when (held) {
         null -> {
-            WaitingIndicator(text = stringResource(R.string.invite_granting))
+            AndroidSpinner(text = stringResource(R.string.invite_granting))
         }
 
         else -> {
@@ -220,8 +228,8 @@ private fun InviteCode(
     val context = LocalContext.current
     QRCodeImage(text = code, contentDescription = title)
     Row(horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
-        TextButton(onClick = onCopy) { Text(stringResource(R.string.copy_code)) }
-        TextButton(onClick = { context.shareInviteCode(code) }) {
+        AndroidButton(kind = ButtonKind.TEXT, onClick = onCopy) { Text(stringResource(R.string.copy_code)) }
+        AndroidButton(kind = ButtonKind.TEXT, onClick = { context.shareInviteCode(code) }) {
             Text(stringResource(R.string.invite_share))
         }
     }

@@ -17,7 +17,6 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -45,10 +44,12 @@ import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSize
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.colors
-import fm.bae.app.ui.components.CardRow
+import fm.bae.app.ui.components.AndroidButton
+import fm.bae.app.ui.components.AndroidCard
+import fm.bae.app.ui.components.AndroidRadio
+import fm.bae.app.ui.components.AndroidRow
+import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ErrorNotice
-import fm.bae.app.ui.components.RadioRow
-import fm.bae.app.ui.components.RowCard
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.launch
 import java.io.IOException
@@ -77,7 +78,7 @@ internal fun AppearanceSection() {
         modifier = Modifier.fillMaxWidth().padding(ThemeSpace.edge),
         verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
     ) {
-        RowCard {
+        AndroidCard {
             AppearancePicker(
                 title = stringResource(R.string.appearance_theme),
                 selected = preferences.mode,
@@ -92,7 +93,7 @@ internal fun AppearanceSection() {
                 label = { it.label },
                 onSelect = { save { store.setTone(it) } },
             )
-            CardRow(
+            AndroidRow(
                 title = stringResource(R.string.appearance_accent),
                 subtitle = stringResource(preferences.accent.label),
             )
@@ -148,7 +149,7 @@ private fun <T> AppearancePicker(
     onSelect: (T) -> Unit,
 ) {
     var open by remember { mutableStateOf(false) }
-    CardRow(title = title, subtitle = stringResource(label(selected)), onClick = { open = true })
+    AndroidRow(title = title, subtitle = stringResource(label(selected)), onClick = { open = true })
     if (open) {
         AlertDialog(
             onDismissRequest = { open = false },
@@ -156,7 +157,7 @@ private fun <T> AppearancePicker(
             text = {
                 Column(modifier = Modifier.selectableGroup()) {
                     choices.forEach { choice ->
-                        RadioRow(
+                        AndroidRadio(
                             label = stringResource(label(choice)),
                             checked = choice == selected,
                             onClick = {
@@ -168,7 +169,12 @@ private fun <T> AppearancePicker(
                 }
             },
             confirmButton = {},
-            dismissButton = { TextButton(onClick = { open = false }) { Text(stringResource(R.string.cancel)) } },
+            dismissButton = {
+                AndroidButton(
+                    kind = ButtonKind.TEXT,
+                    onClick = { open = false },
+                ) { Text(stringResource(R.string.cancel)) }
+            },
         )
     }
 }

@@ -18,10 +18,10 @@ import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.cloudProviderLabel
-import fm.bae.app.ui.components.CardRow
+import fm.bae.app.ui.components.AndroidCard
+import fm.bae.app.ui.components.AndroidRow
+import fm.bae.app.ui.components.AndroidSection
 import fm.bae.app.ui.components.ErrorNotice
-import fm.bae.app.ui.components.RowCard
-import fm.bae.app.ui.components.SectionHeading
 import uniffi.bae_bridge.BridgeFolderLabel
 import uniffi.bae_bridge.BridgeStorageLocation
 
@@ -35,32 +35,32 @@ private val logger = BaeLogger("bae.SyncStorageRows")
 @Composable
 internal fun StorageSection(location: BridgeStorageLocation) {
     Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
-        SectionHeading(text = stringResource(R.string.sync_cloud_home))
-        RowCard { StorageRows(location) }
+        AndroidSection(text = stringResource(R.string.sync_cloud_home))
+        AndroidCard { StorageRows(location) }
     }
 }
 
 /** The rows of [StorageSection]'s card, which the welcome's library details sheet shows too. */
 @Composable
 internal fun StorageRows(location: BridgeStorageLocation) {
-    CardRow(
+    AndroidRow(
         title = stringResource(R.string.settings_provider),
         subtitle = cloudProviderLabel(storageProvider(location)),
     )
     when (location) {
         is BridgeStorageLocation.S3 -> {
-            location.endpoint?.let { CardRow(title = stringResource(R.string.settings_endpoint), subtitle = it) }
-            CardRow(title = stringResource(R.string.settings_region), subtitle = location.region)
-            CardRow(title = stringResource(R.string.settings_bucket), subtitle = location.bucket)
+            location.endpoint?.let { AndroidRow(title = stringResource(R.string.settings_endpoint), subtitle = it) }
+            AndroidRow(title = stringResource(R.string.settings_region), subtitle = location.region)
+            AndroidRow(title = stringResource(R.string.settings_bucket), subtitle = location.bucket)
         }
 
         is BridgeStorageLocation.Dropbox -> {
-            location.accountLabel?.let { CardRow(title = stringResource(R.string.settings_account), subtitle = it) }
+            location.accountLabel?.let { AndroidRow(title = stringResource(R.string.settings_account), subtitle = it) }
             location.folderLabel?.let { FolderRows(it) }
         }
 
         is BridgeStorageLocation.OneDrive -> {
-            location.accountLabel?.let { CardRow(title = stringResource(R.string.settings_account), subtitle = it) }
+            location.accountLabel?.let { AndroidRow(title = stringResource(R.string.settings_account), subtitle = it) }
             location.folderLabel?.let { FolderRows(it) }
         }
 
@@ -75,8 +75,8 @@ internal fun StorageRows(location: BridgeStorageLocation) {
 private fun FolderRows(folder: BridgeFolderLabel) {
     val context = LocalContext.current
     var openFailure by remember { mutableStateOf<DisplayError?>(null) }
-    CardRow(title = stringResource(R.string.settings_folder), subtitle = folder.name)
-    CardRow(
+    AndroidRow(title = stringResource(R.string.settings_folder), subtitle = folder.name)
+    AndroidRow(
         title = stringResource(R.string.settings_open_in_browser),
         onClick = { openFailure = openInBrowser(context, folder.webUrl) },
     )

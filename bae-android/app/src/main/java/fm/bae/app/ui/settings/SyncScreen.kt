@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -44,13 +43,14 @@ import fm.bae.app.ui.SessionActions
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.cloudProviderLabel
-import fm.bae.app.ui.components.CardRow
+import fm.bae.app.ui.components.AndroidButton
+import fm.bae.app.ui.components.AndroidCard
+import fm.bae.app.ui.components.AndroidRow
+import fm.bae.app.ui.components.AndroidSection
+import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.ErrorNotice
-import fm.bae.app.ui.components.PrimaryButton
-import fm.bae.app.ui.components.RowCard
 import fm.bae.app.ui.components.ScreenTopBar
-import fm.bae.app.ui.components.SectionHeading
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.library.LibraryDestination
 import fm.bae.app.ui.rememberScreenScope
@@ -319,7 +319,7 @@ internal fun SyncScreen(
             }
             // What is waiting is a local read; nothing shows until it lands.
             pending?.takeIf { it.isNotEmpty() }?.let { records ->
-                item { SectionHeading(text = stringResource(R.string.sync_pending)) }
+                item { AndroidSection(text = stringResource(R.string.sync_pending)) }
                 itemsIndexed(records) { index, record ->
                     if (index > 0) HorizontalDivider()
                     PendingRow(record = record, onAction = runner::run)
@@ -355,7 +355,7 @@ private fun LocalOnly(onSetUp: () -> Unit) {
             style = ThemeText.detail.style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        PrimaryButton(onClick = onSetUp) { Text(stringResource(R.string.storage_setup_title)) }
+        AndroidButton(onClick = onSetUp) { Text(stringResource(R.string.storage_setup_title)) }
     }
 }
 
@@ -431,8 +431,8 @@ internal fun SyncStatusBlock(
         }
 
         SyncLine.Unreadable -> {
-            RowCard {
-                CardRow(
+            AndroidCard {
+                AndroidRow(
                     title = stringResource(R.string.sync_status),
                     subtitle = stringResource(R.string.settings_sync_unreadable),
                     tone = StatusTone.DANGER,
@@ -442,8 +442,8 @@ internal fun SyncStatusBlock(
 
         is SyncLine.Read -> {
             val shown = line.shown
-            RowCard {
-                CardRow(
+            AndroidCard {
+                AndroidRow(
                     title = stringResource(R.string.sync_status),
                     subtitle = syncStatusText(context, shown),
                     tone = shown.tone.statusTone(),
@@ -457,7 +457,7 @@ internal fun SyncStatusBlock(
                 }
                 shown.fix?.let { fix ->
                     syncFixLabel(fix)?.let { label ->
-                        PrimaryButton(
+                        AndroidButton(
                             onClick = { onFix(fix) },
                             modifier = Modifier.padding(BLOCK_PADDING),
                         ) {
@@ -560,7 +560,7 @@ private fun PendingRow(
                 }
 
                 else -> {
-                    FilledTonalButton(onClick = { onAction(record.action) }) {
+                    AndroidButton(kind = ButtonKind.TONAL, onClick = { onAction(record.action) }) {
                         Text(context.coreString(checkNotNull(actionKey) { "${record.action} has a label" }))
                     }
                 }

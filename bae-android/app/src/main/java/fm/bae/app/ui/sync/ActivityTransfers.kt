@@ -30,7 +30,7 @@ import fm.bae.app.coreString
 import fm.bae.app.data.ActivityLine
 import fm.bae.app.releasesDoneText
 import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.components.Eyebrow
+import fm.bae.app.ui.components.AndroidEyebrow
 import fm.bae.fastvalues.LatestSource
 import uniffi.bae_bridge.BridgeSyncActivity
 
@@ -42,7 +42,7 @@ internal fun LazyListScope.transferRows(
     onSetDownloadsPaused: (Boolean) -> Unit,
 ) {
     if (!(activity.syncing || activity.uploads != null || activity.pins != null)) return
-    item { Eyebrow(LocalContext.current.coreString("core.activity.transfers")) }
+    item { AndroidEyebrow(LocalContext.current.coreString("core.activity.transfers")) }
     if (activity.syncing) {
         item {
             TransferLine(title = LocalContext.current.coreString("core.activity.syncing"), count = null, share = null)

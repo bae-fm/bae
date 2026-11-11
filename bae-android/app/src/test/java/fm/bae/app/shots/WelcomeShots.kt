@@ -69,7 +69,7 @@ class WelcomeShots : BoardShot() {
     @Test
     fun androidWelcomeAddLibrary() =
         shot("android.welcome.add-library") {
-            TitledSheetShot(stringResource(R.string.welcome_add_library)) { WelcomeActions(onScan = {}, onEnter = {}) }
+            SheetScene(stringResource(R.string.welcome_add_library)) { WelcomeActions(onScan = {}, onEnter = {}) }
         }
 
     /** The confirmation to remove a library with nothing unsent. */
@@ -186,7 +186,7 @@ private const val MILLIS_PER_SECOND = 1_000L
 
 @Composable
 private fun LibraryDetailsScene(state: BridgeStandingState) {
-    TitledSheetShot("Home music") {
+    SheetScene("Home music") {
         LibraryDetailsRows(
             storage = sceneDropbox,
             standing = StandingRead.Loaded(BridgeLibraryStanding(state, Instant.now().minusSeconds(TWO_HOURS_SECONDS))),

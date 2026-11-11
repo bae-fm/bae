@@ -25,7 +25,7 @@ import fm.bae.app.ui.appearance.ThemeText
  * wait whose length is known, or a step of a flow, draws a bar instead.
  */
 @Composable
-internal fun WaitingIndicator(
+internal fun AndroidSpinner(
     text: String,
     modifier: Modifier = Modifier,
     size: Dp = ThemeIcon.large,
@@ -35,7 +35,7 @@ internal fun WaitingIndicator(
         horizontalArrangement = Arrangement.spacedBy(ThemeSpace.group),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        WaitingIndicator(size = size)
+        AndroidSpinner(size = size)
         Text(
             text = text,
             style = ThemeText.body.style,
@@ -50,7 +50,7 @@ internal fun WaitingIndicator(
  * fill, where the default does not read.
  */
 @Composable
-internal fun WaitingIndicator(
+internal fun AndroidSpinner(
     modifier: Modifier = Modifier,
     size: Dp = ThemeIcon.large,
     color: Color = ProgressIndicatorDefaults.circularColor,
@@ -60,8 +60,8 @@ internal fun WaitingIndicator(
 
 @Preview(showBackground = true)
 @Composable
-private fun WaitingIndicatorPreview() {
+private fun AndroidSpinnerPreview() {
     BaeTheme {
-        WaitingIndicator(text = "Making your restore code…")
+        AndroidSpinner(text = "Making your restore code…")
     }
 }

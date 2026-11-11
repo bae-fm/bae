@@ -11,7 +11,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -25,12 +24,13 @@ import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.BaeAlertDialog
+import fm.bae.app.ui.components.AndroidButton
+import fm.bae.app.ui.components.AndroidDialog
+import fm.bae.app.ui.components.ButtonKind
+import fm.bae.app.ui.components.ButtonTone
 import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.LabeledValueRow
-import fm.bae.app.ui.components.NeutralTextButton
 import fm.bae.app.ui.components.NoticeLook
-import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.S3KeyFields
 import fm.bae.app.ui.storageLocationLabel
 import uniffi.bae_bridge.BridgeCloudProvider
@@ -119,7 +119,7 @@ internal fun S3KeyDialog(
     onRestore: (BridgeS3Credentials) -> Unit,
     onBack: () -> Unit,
 ) {
-    BaeAlertDialog(
+    AndroidDialog(
         onDismissRequest = onBack,
         title = stringResource(R.string.onboarding_s3_key_title),
         message = stringResource(R.string.onboarding_s3_key_prompt),
@@ -135,7 +135,8 @@ internal fun S3KeyDialog(
             }
         },
         confirmButton = {
-            TextButton(
+            AndroidButton(
+                kind = ButtonKind.TEXT,
                 onClick = { onRestore(BridgeS3Credentials(keys.accessKeyId, keys.secretAccessKey)) },
                 enabled = keys.accessKeyId.isNotEmpty() && keys.secretAccessKey.isNotEmpty(),
             ) {
@@ -143,7 +144,11 @@ internal fun S3KeyDialog(
             }
         },
         dismissButton = {
-            NeutralTextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
+            AndroidButton(
+                kind = ButtonKind.TEXT,
+                tone = ButtonTone.NEUTRAL,
+                onClick = onBack,
+            ) { Text(stringResource(R.string.back)) }
         },
     )
 }
@@ -194,7 +199,7 @@ private fun RestoreAction(
             onSecretAccessKeyChange = { secretAccessKey = it.trim() },
         )
     }
-    PrimaryButton(
+    AndroidButton(
         onClick = {
             onRestore(if (needsKey) BridgeS3Credentials(accessKeyId, secretAccessKey) else null)
         },
@@ -220,6 +225,6 @@ private fun OnboardingForm(
         Text(text = title, style = ThemeText.title.style, textAlign = TextAlign.Center)
         content()
         error?.let { ErrorNotice(it) }
-        TextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
+        AndroidButton(kind = ButtonKind.TEXT, onClick = onBack) { Text(stringResource(R.string.back)) }
     }
 }

@@ -11,7 +11,6 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -23,10 +22,12 @@ import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.CardRow
+import fm.bae.app.ui.components.AndroidButton
+import fm.bae.app.ui.components.AndroidCard
+import fm.bae.app.ui.components.AndroidRow
+import fm.bae.app.ui.components.AndroidSection
+import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.MoreMenu
-import fm.bae.app.ui.components.RowCard
-import fm.bae.app.ui.components.SectionHeading
 import uniffi.bae_bridge.BridgeActiveDevice
 import uniffi.bae_bridge.BridgeMember
 import uniffi.bae_bridge.BridgeMemberAccess
@@ -49,14 +50,14 @@ internal fun PersonPage(
         verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
     ) {
         item {
-            RowCard {
-                CardRow(
+            AndroidCard {
+                AndroidRow(
                     title = stringResource(R.string.people_role),
                     subtitle = stringResource(member.role.labelRes()),
                     trailing = if (selfIsAdmin && !member.isSelf) ({ RoleToggle(member, callbacks) }) else null,
                 )
                 if (member.canRemove) {
-                    CardRow(
+                    AndroidRow(
                         title = stringResource(R.string.members_remove_person),
                         action = true,
                         destructive = true,
@@ -74,7 +75,7 @@ internal fun PersonPage(
                 )
             }
         }
-        item { SectionHeading(text = stringResource(R.string.people_devices)) }
+        item { AndroidSection(text = stringResource(R.string.people_devices)) }
         item { DevicesCard(member = member, callbacks = callbacks, addLast = false) }
         item { FormerDevicesIfAny(member) }
     }
@@ -91,7 +92,10 @@ private fun RoleToggle(
             BridgeMemberRole.ADMIN -> BridgeMemberRole.MEMBER to R.string.members_make_member
             BridgeMemberRole.MEMBER -> BridgeMemberRole.ADMIN to R.string.members_make_admin
         }
-    TextButton(onClick = { callbacks.onSetRole(member, nextRole) }) { Text(stringResource(label)) }
+    AndroidButton(
+        kind = ButtonKind.TEXT,
+        onClick = { callbacks.onSetRole(member, nextRole) },
+    ) { Text(stringResource(label)) }
 }
 
 /** This person's own devices: this one reads "This device" with no Remove, and Add device is last. */
@@ -121,16 +125,16 @@ private fun DevicesCard(
     callbacks: MemberCallbacks,
     addLast: Boolean,
 ) {
-    RowCard {
+    AndroidCard {
         member.activeDevices.forEach { device ->
-            CardRow(
+            AndroidRow(
                 title = device.name,
                 subtitle = if (device.isSelf) stringResource(R.string.members_this_device) else null,
                 trailing = if (device.canRemove) ({ RemoveDeviceButton(device, member.isSelf, callbacks) }) else null,
             )
         }
         if (addLast && member.isSelf) {
-            CardRow(
+            AndroidRow(
                 title = stringResource(R.string.members_add_device),
                 action = true,
                 leadingIcon = Icons.Filled.Add,

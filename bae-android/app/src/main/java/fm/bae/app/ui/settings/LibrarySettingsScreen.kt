@@ -27,8 +27,8 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.data.SyncLine
 import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.components.CardRow
-import fm.bae.app.ui.components.RowCard
+import fm.bae.app.ui.components.AndroidCard
+import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.ScreenTopBar
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.library.LibraryDestination
@@ -103,9 +103,9 @@ internal fun LibrarySettingsContent(
             verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
         ) {
             aboveRows()
-            RowCard {
+            AndroidCard {
                 if (name != null) {
-                    CardRow(
+                    AndroidRow(
                         title = stringResource(R.string.library_name_row),
                         subtitle = name,
                         onClick = if (canRename) onRename else null,
@@ -118,19 +118,19 @@ internal fun LibrarySettingsContent(
                             },
                     )
                 }
-                CardRow(
+                AndroidRow(
                     title = stringResource(R.string.settings_sync),
                     subtitle = sync.text,
                     tone = sync.tone,
                     onClick = onOpenSync,
                 )
                 if (hasStorage) {
-                    CardRow(
+                    AndroidRow(
                         title = stringResource(R.string.members_title),
                         subtitle = peopleAndDevices,
                         onClick = onOpenPeople,
                     )
-                    CardRow(
+                    AndroidRow(
                         title = stringResource(R.string.restore_code_title),
                         subtitle = stringResource(R.string.restore_code_summary),
                         onClick = onOpenRestoreCode,

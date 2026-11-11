@@ -18,9 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -41,10 +39,11 @@ import fm.bae.app.R
 import fm.bae.app.ui.BaeAppChrome
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.AndroidButton
+import fm.bae.app.ui.components.AndroidSheet
+import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.Logo
-import fm.bae.app.ui.components.PrimaryButton
-import fm.bae.app.ui.components.TitledSheet
 import uniffi.bae_bridge.codeAsEntered
 import uniffi.bae_bridge.codeInGroups
 
@@ -163,7 +162,7 @@ private fun CodeScreenContent(
         OnboardingStartColumn(title = text.title, message = text.message) {
             CodeButtons(callbacks)
             Spacer(modifier = Modifier.height(ThemeSpace.related))
-            TextButton(onClick = text.onBack, modifier = Modifier.width(actionWidth)) {
+            AndroidButton(kind = ButtonKind.TEXT, onClick = text.onBack, modifier = Modifier.width(actionWidth)) {
                 Text(stringResource(R.string.back))
             }
             error?.let {
@@ -203,11 +202,15 @@ private fun CodeScreenContent(
  */
 @Composable
 private fun CodeButtons(callbacks: CodeScreenCallbacks) {
-    PrimaryButton(onClick = callbacks.onScan, modifier = Modifier.width(actionWidth)) {
+    AndroidButton(onClick = callbacks.onScan, modifier = Modifier.width(actionWidth)) {
         Text(stringResource(R.string.onboarding_scan_code))
     }
     Spacer(modifier = Modifier.height(ThemeSpace.related))
-    OutlinedButton(onClick = callbacks.onShowCodeDialog, modifier = Modifier.width(actionWidth)) {
+    AndroidButton(
+        kind = ButtonKind.OUTLINED,
+        onClick = callbacks.onShowCodeDialog,
+        modifier = Modifier.width(actionWidth),
+    ) {
         Text(stringResource(R.string.onboarding_enter_code))
     }
 }
@@ -271,7 +274,7 @@ private fun ListedWelcome(
         }
     }
     if (adding) {
-        TitledSheet(title = stringResource(R.string.welcome_add_library), onDismiss = { adding = false }) {
+        AndroidSheet(title = stringResource(R.string.welcome_add_library), onDismiss = { adding = false }) {
             WelcomeActions(
                 onScan = {
                     adding = false

@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -18,11 +17,12 @@ import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.cloudProviderLabel
-import fm.bae.app.ui.components.BaeAlertDialog
-import fm.bae.app.ui.components.DestructiveTextButton
+import fm.bae.app.ui.components.AndroidButton
+import fm.bae.app.ui.components.AndroidDialog
+import fm.bae.app.ui.components.AndroidMatchCode
+import fm.bae.app.ui.components.ButtonKind
+import fm.bae.app.ui.components.ButtonTone
 import fm.bae.app.ui.components.LabeledValueRow
-import fm.bae.app.ui.components.MatchCode
-import fm.bae.app.ui.components.NeutralTextButton
 import kotlinx.coroutines.CancellationException
 import uniffi.bae_bridge.BridgeActiveDevice
 import uniffi.bae_bridge.BridgeDeviceCutOff
@@ -199,7 +199,7 @@ private fun CutOffRetryDialog(
     onDismiss: () -> Unit,
 ) {
     val notGone = reason == BridgeDeviceCutOff.DEVICE_NOT_GONE
-    BaeAlertDialog(
+    AndroidDialog(
         onDismissRequest = onDismiss,
         title =
             stringResource(
@@ -209,9 +209,16 @@ private fun CutOffRetryDialog(
             stringResource(
                 if (notGone) R.string.device_cut_off_not_gone_body else R.string.device_cut_off_running_body,
             ),
-        confirmButton = { TextButton(onClick = onTryAgain) { Text(stringResource(R.string.retry)) } },
+        confirmButton = {
+            AndroidButton(
+                kind = ButtonKind.TEXT,
+                onClick = onTryAgain,
+            ) { Text(stringResource(R.string.retry)) }
+        },
         dismissButton = {
-            NeutralTextButton(onClick = onDismiss) { Text(stringResource(R.string.device_cut_off_not_yet)) }
+            AndroidButton(kind = ButtonKind.TEXT, tone = ButtonTone.NEUTRAL, onClick = onDismiss) {
+                Text(stringResource(R.string.device_cut_off_not_yet))
+            }
         },
     )
 }
@@ -258,7 +265,7 @@ private fun RemovalConfirmDialog(
         }
     // Removing a person ends their S3 key's use; bae keeps no record of it.
     val forgottenKey = ((removal as? PendingRemoval.Person)?.member?.access as? BridgeMemberAccess.S3AccessKey)
-    BaeAlertDialog(
+    AndroidDialog(
         onDismissRequest = onDismiss,
         title = title,
         message = body,
@@ -267,10 +274,18 @@ private fun RemovalConfirmDialog(
                 { Text(context.coreString("core.access_key.forget", mapOf("key" to key.accessKeyId))) }
             },
         confirmButton = {
-            DestructiveTextButton(onClick = onConfirm) { Text(stringResource(R.string.members_remove)) }
+            AndroidButton(
+                kind = ButtonKind.TEXT,
+                tone = ButtonTone.DESTRUCTIVE,
+                onClick = onConfirm,
+            ) { Text(stringResource(R.string.members_remove)) }
         },
         dismissButton = {
-            NeutralTextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+            AndroidButton(
+                kind = ButtonKind.TEXT,
+                tone = ButtonTone.NEUTRAL,
+                onClick = onDismiss,
+            ) { Text(stringResource(R.string.cancel)) }
         },
     )
 }
@@ -300,14 +315,21 @@ private fun SignOutDialog(
         },
         confirmButton = {
             if (step.offersCutOff) {
-                TextButton(onClick = onConfirm) { Text(stringResource(R.string.device_cut_off_confirm)) }
+                AndroidButton(
+                    kind = ButtonKind.TEXT,
+                    onClick = onConfirm,
+                ) { Text(stringResource(R.string.device_cut_off_confirm)) }
             } else {
-                TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) }
+                AndroidButton(kind = ButtonKind.TEXT, onClick = onDismiss) { Text(stringResource(R.string.close)) }
             }
         },
         dismissButton =
             if (step.offersCutOff) {
-                { NeutralTextButton(onClick = onDismiss) { Text(stringResource(R.string.device_cut_off_not_yet)) } }
+                {
+                    AndroidButton(kind = ButtonKind.TEXT, tone = ButtonTone.NEUTRAL, onClick = onDismiss) {
+                        Text(stringResource(R.string.device_cut_off_not_yet))
+                    }
+                }
             } else {
                 null
             },
@@ -346,14 +368,21 @@ internal fun JoinRequestDialogContent(
     onDecline: () -> Unit,
     onClose: () -> Unit,
 ) {
-    BaeAlertDialog(
+    AndroidDialog(
         onDismissRequest = onClose,
         title = title,
         message = stringResource(R.string.join_request_match),
-        content = { MatchCode(confirmation) },
-        confirmButton = { TextButton(onClick = onApprove) { Text(stringResource(R.string.join_request_approve)) } },
+        content = { AndroidMatchCode(confirmation) },
+        confirmButton = {
+            AndroidButton(
+                kind = ButtonKind.TEXT,
+                onClick = onApprove,
+            ) { Text(stringResource(R.string.join_request_approve)) }
+        },
         dismissButton = {
-            NeutralTextButton(onClick = onDecline) { Text(stringResource(R.string.join_request_decline)) }
+            AndroidButton(kind = ButtonKind.TEXT, tone = ButtonTone.NEUTRAL, onClick = onDecline) {
+                Text(stringResource(R.string.join_request_decline))
+            }
         },
     )
 }

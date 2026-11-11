@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -28,10 +27,12 @@ import fm.bae.app.displayError
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.AndroidButton
+import fm.bae.app.ui.components.AndroidCard
+import fm.bae.app.ui.components.AndroidSection
+import fm.bae.app.ui.components.AndroidSpinner
+import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ErrorNotice
-import fm.bae.app.ui.components.RowCard
-import fm.bae.app.ui.components.SectionHeading
-import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.components.rememberCopyText
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.CancellationException
@@ -184,14 +185,14 @@ private fun RestoreCodeSectionContent(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(ThemeSpace.group),
     ) {
-        SectionHeading(text = stringResource(R.string.restore_code_title))
+        AndroidSection(text = stringResource(R.string.restore_code_title))
         when (state) {
             RestoreCodeState.Closed -> {
                 Unit
             }
 
             RestoreCodeState.Loading -> {
-                WaitingIndicator(text = stringResource(R.string.restore_code_making))
+                AndroidSpinner(text = stringResource(R.string.restore_code_making))
             }
 
             is RestoreCodeState.Masked -> {
@@ -239,7 +240,7 @@ private fun CodeBox(
 ) {
     val copy = rememberCopyText()
     val hiddenLabel = stringResource(R.string.restore_code_partly_hidden)
-    RowCard {
+    AndroidCard {
         if (shown) {
             SelectionContainer {
                 Text(
@@ -261,13 +262,13 @@ private fun CodeBox(
         }
     }
     Row(horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
-        OutlinedButton(onClick = onToggle) {
+        AndroidButton(kind = ButtonKind.OUTLINED, onClick = onToggle) {
             Text(stringResource(if (shown) R.string.hide else R.string.restore_code_show))
         }
-        OutlinedButton(onClick = { copy(code) }) {
+        AndroidButton(kind = ButtonKind.OUTLINED, onClick = { copy(code) }) {
             Text(stringResource(R.string.copy))
         }
-        OutlinedButton(onClick = { onPrint(code) }) {
+        AndroidButton(kind = ButtonKind.OUTLINED, onClick = { onPrint(code) }) {
             Text(stringResource(R.string.restore_code_print))
         }
     }

@@ -1,7 +1,6 @@
 package fm.bae.app.ui.settings
 
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -11,8 +10,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import fm.bae.app.R
 import fm.bae.app.coreString
-import fm.bae.app.ui.components.BaeAlertDialog
-import fm.bae.app.ui.components.NeutralTextButton
+import fm.bae.app.ui.components.AndroidButton
+import fm.bae.app.ui.components.AndroidDialog
+import fm.bae.app.ui.components.ButtonKind
+import fm.bae.app.ui.components.ButtonTone
 import fm.bae.app.ui.components.S3KeyFields
 import uniffi.bae_bridge.BridgeSaveSyncConfig
 import uniffi.bae_bridge.BridgeStorageLocation
@@ -30,7 +31,7 @@ internal fun S3KeyDialog(
     val context = LocalContext.current
     var accessKeyId by remember { mutableStateOf("") }
     var secretAccessKey by remember { mutableStateOf("") }
-    BaeAlertDialog(
+    AndroidDialog(
         onDismissRequest = onDismiss,
         title = context.coreString("core.pending.action.sign_in"),
         message = stringResource(R.string.onboarding_s3_key_explanation),
@@ -43,7 +44,8 @@ internal fun S3KeyDialog(
             )
         },
         confirmButton = {
-            TextButton(
+            AndroidButton(
+                kind = ButtonKind.TEXT,
                 enabled = accessKeyId.isNotEmpty() && secretAccessKey.isNotEmpty(),
                 onClick = { onSignIn(location.withKey(accessKeyId, secretAccessKey)) },
             ) {
@@ -51,7 +53,11 @@ internal fun S3KeyDialog(
             }
         },
         dismissButton = {
-            NeutralTextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+            AndroidButton(
+                kind = ButtonKind.TEXT,
+                tone = ButtonTone.NEUTRAL,
+                onClick = onDismiss,
+            ) { Text(stringResource(R.string.cancel)) }
         },
     )
 }

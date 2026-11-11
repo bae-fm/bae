@@ -13,7 +13,6 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -28,12 +27,14 @@ import fm.bae.app.R
 import fm.bae.app.data.castingDeviceName
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.BaeAlertDialog
-import fm.bae.app.ui.components.CardRow
-import fm.bae.app.ui.components.NeutralTextButton
-import fm.bae.app.ui.components.RowCard
+import fm.bae.app.ui.components.AndroidButton
+import fm.bae.app.ui.components.AndroidCard
+import fm.bae.app.ui.components.AndroidDialog
+import fm.bae.app.ui.components.AndroidRow
+import fm.bae.app.ui.components.AndroidSection
+import fm.bae.app.ui.components.ButtonKind
+import fm.bae.app.ui.components.ButtonTone
 import fm.bae.app.ui.components.ScreenTopBar
-import fm.bae.app.ui.components.SectionHeading
 import fm.bae.app.ui.playback.CastReceiverPlace
 import fm.bae.app.ui.playback.CastReceiverRows
 import kotlinx.coroutines.CoroutineDispatcher
@@ -152,13 +153,13 @@ internal fun CastingPage(
             modifier = Modifier.fillMaxWidth().padding(ThemeSpace.edge),
             verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
         ) {
-            RowCard {
+            AndroidCard {
                 CastEnabledRow(enabled = enabled, onChange = onEnabledChange)
             }
             CastingCaption(stringResource(R.string.settings_casting_help))
             if (enabled) {
-                SectionHeading(text = stringResource(R.string.settings_casting_receivers))
-                RowCard {
+                AndroidSection(text = stringResource(R.string.settings_casting_receivers))
+                AndroidCard {
                     CastReceiverRows(
                         place = CastReceiverPlace.PAGE,
                         receivers = receivers,
@@ -168,7 +169,7 @@ internal fun CastingPage(
                         looking = stringResource(R.string.settings_casting_looking),
                     )
                 }
-                RowCard {
+                AndroidCard {
                     CastTranscodeFormatPicker(selected = transcodeFormat, onSelect = onTranscodeFormatChange)
                 }
                 CastingCaption(stringResource(R.string.settings_cast_transcode_help))
@@ -196,7 +197,7 @@ private fun CastTranscodeFormatPicker(
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box {
-        CardRow(
+        AndroidRow(
             title = stringResource(R.string.settings_cast_transcode_format),
             subtitle = castTranscodeFormatLabel(selected),
             onClick = { expanded = true },
@@ -228,7 +229,7 @@ private fun CastEnabledRow(
     enabled: Boolean,
     onChange: (Boolean) -> Unit,
 ) {
-    CardRow(
+    AndroidRow(
         title = stringResource(R.string.settings_enable_casting),
         trailing = { Switch(checked = enabled, onCheckedChange = onChange) },
     )
@@ -240,17 +241,17 @@ private fun CastDisconnectDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    BaeAlertDialog(
+    AndroidDialog(
         onDismissRequest = onDismiss,
         title = stringResource(R.string.cast_turn_off_title),
         message = stringResource(R.string.cast_turn_off_message, device),
         confirmButton = {
-            TextButton(onClick = onConfirm) {
+            AndroidButton(kind = ButtonKind.TEXT, onClick = onConfirm) {
                 Text(stringResource(R.string.cast_turn_off_confirm))
             }
         },
         dismissButton = {
-            NeutralTextButton(onClick = onDismiss) {
+            AndroidButton(kind = ButtonKind.TEXT, tone = ButtonTone.NEUTRAL, onClick = onDismiss) {
                 Text(stringResource(R.string.cancel))
             }
         },

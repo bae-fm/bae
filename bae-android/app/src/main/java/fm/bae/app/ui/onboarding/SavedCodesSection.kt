@@ -19,13 +19,14 @@ import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.BaeAlertDialog
-import fm.bae.app.ui.components.CardRow
-import fm.bae.app.ui.components.DestructiveTextButton
+import fm.bae.app.ui.components.AndroidButton
+import fm.bae.app.ui.components.AndroidCard
+import fm.bae.app.ui.components.AndroidDialog
+import fm.bae.app.ui.components.AndroidRow
+import fm.bae.app.ui.components.AndroidSection
+import fm.bae.app.ui.components.ButtonKind
+import fm.bae.app.ui.components.ButtonTone
 import fm.bae.app.ui.components.ErrorNotice
-import fm.bae.app.ui.components.NeutralTextButton
-import fm.bae.app.ui.components.RowCard
-import fm.bae.app.ui.components.SectionHeading
 import fm.bae.app.ui.storageLocationLabel
 import uniffi.bae_bridge.BridgeDropboxAccess
 import uniffi.bae_bridge.BridgeDropboxLocation
@@ -98,7 +99,7 @@ private fun SavedCodesContent(
         is SavedCodesList.Loaded -> {
             if (list.entries.isEmpty()) return
             Column(modifier = column, verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
-                SectionHeading(stringResource(R.string.onboarding_saved_codes_title))
+                AndroidSection(stringResource(R.string.onboarding_saved_codes_title))
                 Text(
                     text = stringResource(R.string.onboarding_saved_codes_explanation),
                     style = ThemeText.detail.style,
@@ -111,7 +112,7 @@ private fun SavedCodesContent(
                     )
                     ErrorNotice(error)
                 }
-                RowCard {
+                AndroidCard {
                     list.entries.forEach { entry ->
                         SavedCodeRow(
                             entry = entry,
@@ -153,13 +154,18 @@ private fun SavedCodeRow(
             subtitle = "${stringResource(entry.reason.labelRes())} · ${entry.libraryId}"
         }
     }
-    CardRow(
+    AndroidRow(
         title = title,
         subtitle = subtitle,
         onClick = onClick,
         onClickLabel = stringResource(R.string.onboarding_restore_action),
     ) {
-        DestructiveTextButton(onClick = { callbacks.onDelete(entry) }, enabled = enabled) {
+        AndroidButton(
+            kind = ButtonKind.TEXT,
+            tone = ButtonTone.DESTRUCTIVE,
+            onClick = { callbacks.onDelete(entry) },
+            enabled = enabled,
+        ) {
             Text(stringResource(R.string.onboarding_saved_code_delete))
         }
     }
@@ -185,17 +191,21 @@ private fun DeleteSavedCodeDialog(
                 stringResource(R.string.onboarding_saved_code_delete_body_unusable)
             }
         }
-    BaeAlertDialog(
+    AndroidDialog(
         onDismissRequest = onDismiss,
         title = stringResource(R.string.onboarding_saved_code_delete_title),
         message = body,
         confirmButton = {
-            DestructiveTextButton(onClick = onConfirm) {
+            AndroidButton(kind = ButtonKind.TEXT, tone = ButtonTone.DESTRUCTIVE, onClick = onConfirm) {
                 Text(stringResource(R.string.onboarding_saved_code_delete))
             }
         },
         dismissButton = {
-            NeutralTextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+            AndroidButton(
+                kind = ButtonKind.TEXT,
+                tone = ButtonTone.NEUTRAL,
+                onClick = onDismiss,
+            ) { Text(stringResource(R.string.cancel)) }
         },
     )
 }

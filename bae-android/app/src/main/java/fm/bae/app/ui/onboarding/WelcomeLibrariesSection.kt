@@ -26,16 +26,16 @@ import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.CardRow
+import fm.bae.app.ui.components.AndroidCard
+import fm.bae.app.ui.components.AndroidRow
+import fm.bae.app.ui.components.AndroidSection
+import fm.bae.app.ui.components.AndroidSpinner
 import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.LibraryEnding
 import fm.bae.app.ui.components.MoreMenu
 import fm.bae.app.ui.components.OpenProgressLine
 import fm.bae.app.ui.components.RemoveLibraryDialog
-import fm.bae.app.ui.components.RowCard
-import fm.bae.app.ui.components.SectionHeading
 import fm.bae.app.ui.components.StepProgressLine
-import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.settings.libraryDetail
 import uniffi.bae_bridge.BridgeDropboxLocation
 import uniffi.bae_bridge.BridgeLibrary
@@ -123,8 +123,8 @@ internal fun WelcomeLibrariesContent(
         is WelcomeLibrariesList.Loaded -> {
             if (list.libraries.isEmpty()) return
             Column(modifier = column, verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
-                SectionHeading(stringResource(R.string.onboarding_libraries_title))
-                RowCard {
+                AndroidSection(stringResource(R.string.onboarding_libraries_title))
+                AndroidCard {
                     list.libraries.forEach { library ->
                         WelcomeLibraryRow(
                             library = library,
@@ -133,7 +133,7 @@ internal fun WelcomeLibrariesContent(
                             callbacks = callbacks,
                         )
                     }
-                    CardRow(
+                    AndroidRow(
                         title = stringResource(R.string.welcome_add_library),
                         action = true,
                         leadingIcon = Icons.Filled.Add,
@@ -163,7 +163,7 @@ private fun WelcomeLibraryRow(
         return
     }
     val problem = libraryDetail(library.state).takeIf { library.state !is BridgeLibraryState.Openable }
-    CardRow(
+    AndroidRow(
         title = library.name,
         subtitle = problem?.text,
         tone = problem?.tone,
@@ -228,7 +228,7 @@ private fun RunningLibraryRow(
     val context = LocalContext.current
     val waiting =
         if (running.removing) R.string.loading_removing_library else R.string.loading_opening_library
-    CardRow(
+    AndroidRow(
         title = library.name,
         subtitleContent = {
             StepProgressLine(
@@ -249,7 +249,7 @@ private fun RunningLibraryRow(
             }
         },
     ) {
-        Box(modifier = Modifier.size(SPINNER_SLOT), contentAlignment = Alignment.Center) { WaitingIndicator() }
+        Box(modifier = Modifier.size(SPINNER_SLOT), contentAlignment = Alignment.Center) { AndroidSpinner() }
     }
 }
 

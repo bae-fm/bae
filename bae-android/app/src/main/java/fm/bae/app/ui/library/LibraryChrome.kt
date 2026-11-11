@@ -14,7 +14,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
@@ -33,6 +32,8 @@ import fm.bae.app.R
 import fm.bae.app.data.AlbumPageStore
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
+import fm.bae.app.ui.components.AndroidButton
+import fm.bae.app.ui.components.ButtonKind
 
 /** A later page of the album grid that failed to load, above the rows that did, with Retry. */
 @Composable
@@ -56,7 +57,7 @@ internal fun LibraryDetailTopBar(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             // One button: the arrow and the label read together as "Back, Library".
-            TextButton(onClick = onBack) {
+            AndroidButton(kind = ButtonKind.TEXT, onClick = onBack) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                 Spacer(modifier = Modifier.width(ThemeSpace.inline))
                 Text(text = stringResource(R.string.library))

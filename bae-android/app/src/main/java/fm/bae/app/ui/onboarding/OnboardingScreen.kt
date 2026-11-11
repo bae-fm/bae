@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -37,10 +36,12 @@ import fm.bae.app.displayError
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.AndroidButton
+import fm.bae.app.ui.components.AndroidSpinner
+import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.Logo
 import fm.bae.app.ui.components.OpenProgressLine
 import fm.bae.app.ui.components.QRScannerScreen
-import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.countdownSecondsLeft
 import fm.bae.app.ui.rememberCountdownNow
 import fm.bae.app.ui.rememberScreenScope
@@ -328,7 +329,7 @@ internal fun OnboardingProgress(
                 modifier = Modifier.widthIn(max = STEP_LINE_MAX_WIDTH),
                 onStepping = { stepping = it },
             ) {
-                if (!counting) WaitingIndicator()
+                if (!counting) AndroidSpinner()
             }
             Spacer(modifier = Modifier.height(ThemeSpace.section))
         }
@@ -362,7 +363,7 @@ internal fun OnboardingProgress(
         }
         onCancel?.let {
             Spacer(modifier = Modifier.height(ThemeSpace.section))
-            FilledTonalButton(onClick = it) { Text(stringResource(R.string.cancel)) }
+            AndroidButton(kind = ButtonKind.TONAL, onClick = it) { Text(stringResource(R.string.cancel)) }
         }
     }
 }
@@ -411,7 +412,7 @@ private fun WaitingForApproval(
         }
     Text(text = countdown, style = ThemeText.body.style, color = MaterialTheme.colorScheme.onSurfaceVariant)
     Spacer(modifier = Modifier.height(ThemeSpace.section))
-    FilledTonalButton(onClick = onCheckNow, enabled = status.nextCheck is BridgeNextCheck.At) {
+    AndroidButton(kind = ButtonKind.TONAL, onClick = onCheckNow, enabled = status.nextCheck is BridgeNextCheck.At) {
         Text(stringResource(R.string.onboarding_check_now))
     }
 }

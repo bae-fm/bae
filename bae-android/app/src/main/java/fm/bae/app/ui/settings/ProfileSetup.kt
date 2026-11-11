@@ -18,9 +18,9 @@ import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.AndroidButton
+import fm.bae.app.ui.components.AndroidSpinner
 import fm.bae.app.ui.components.PersonNameField
-import fm.bae.app.ui.components.PrimaryButton
-import fm.bae.app.ui.components.WaitingIndicator
 import uniffi.bae_bridge.BridgeOperationRejection
 import uniffi.bae_bridge.BridgeRequestedProfile
 import uniffi.bae_bridge.BridgeRequestedProfileState
@@ -37,7 +37,7 @@ internal fun ProfileSetup(
     ) {
         when (val state = requested?.state) {
             is BridgeRequestedProfileState.Making -> {
-                WaitingIndicator(text = stringResource(R.string.settings_profile_making))
+                AndroidSpinner(text = stringResource(R.string.settings_profile_making))
                 Text(
                     text = stringResource(R.string.settings_profile_making_detail),
                     style = ThemeText.detail.style,
@@ -60,7 +60,7 @@ internal fun ProfileSetup(
                 )
                 var name by rememberSaveable { mutableStateOf("") }
                 PersonNameField(name) { name = it }
-                PrimaryButton(onClick = { onCreate(name.trim()) }, enabled = name.isNotBlank()) {
+                AndroidButton(onClick = { onCreate(name.trim()) }, enabled = name.isNotBlank()) {
                     Text(stringResource(R.string.settings_profile_create))
                 }
             }

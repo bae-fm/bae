@@ -15,7 +15,7 @@ import fm.bae.app.ui.appearance.ThemeText
  * edge) and the rest of the gap that sets a section apart.
  */
 @Composable
-fun SectionHeading(
+fun AndroidSection(
     text: String,
     modifier: Modifier = Modifier,
 ) {

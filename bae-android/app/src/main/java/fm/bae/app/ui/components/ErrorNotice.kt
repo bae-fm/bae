@@ -19,7 +19,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
@@ -233,9 +232,15 @@ private fun CenteredNotice(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (hasDetails) {
-                TextButton(onClick = onDetails) { Text(stringResource(R.string.details)) }
+                AndroidButton(kind = ButtonKind.TEXT, onClick = onDetails) { Text(stringResource(R.string.details)) }
             }
-            action?.let { FilledTonalButton(onClick = it.onClick, enabled = it.enabled) { Text(it.label) } }
+            action?.let {
+                AndroidButton(
+                    kind = ButtonKind.TONAL,
+                    onClick = it.onClick,
+                    enabled = it.enabled,
+                ) { Text(it.label) }
+            }
         }
     }
 }

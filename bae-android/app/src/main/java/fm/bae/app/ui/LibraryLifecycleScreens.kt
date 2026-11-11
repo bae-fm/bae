@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,13 +31,13 @@ import fm.bae.app.ScreenFailure
 import fm.bae.app.coreString
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.BaeAlertDialog
-import fm.bae.app.ui.components.DestructiveTextButton
+import fm.bae.app.ui.components.AndroidButton
+import fm.bae.app.ui.components.AndroidDialog
+import fm.bae.app.ui.components.ButtonKind
+import fm.bae.app.ui.components.ButtonTone
 import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.ErrorNotice
-import fm.bae.app.ui.components.NeutralTextButton
 import fm.bae.app.ui.components.NoticeLook
-import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.ScreenFailureNotice
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.components.TitledErrorNotice
@@ -62,15 +61,21 @@ internal fun DeviceResetDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    BaeAlertDialog(
+    AndroidDialog(
         onDismissRequest = onDismiss,
         title = stringResource(R.string.reset_device_confirm_title),
         message = LocalContext.current.coreString(reset.warningKey()),
         confirmButton = {
-            DestructiveTextButton(onClick = onConfirm) { Text(stringResource(R.string.reset_device_confirm)) }
+            AndroidButton(kind = ButtonKind.TEXT, tone = ButtonTone.DESTRUCTIVE, onClick = onConfirm) {
+                Text(stringResource(R.string.reset_device_confirm))
+            }
         },
         dismissButton = {
-            NeutralTextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+            AndroidButton(
+                kind = ButtonKind.TEXT,
+                tone = ButtonTone.NEUTRAL,
+                onClick = onDismiss,
+            ) { Text(stringResource(R.string.cancel)) }
         },
     )
 }
@@ -220,8 +225,8 @@ internal fun DeletionUnfinishedScreen(
     BackHandler(onBack = onLeave)
     LifecycleMessage(context.coreString(bridgeErrorCategoryKey(BridgeErrorCategory.DeletionUnfinished))) {
         error?.let { ScreenFailureNotice(it) }
-        PrimaryButton(onClick = onFinish) { Text(stringResource(R.string.finish_removal)) }
-        TextButton(onClick = onLeave) { Text(stringResource(R.string.cancel)) }
+        AndroidButton(onClick = onFinish) { Text(stringResource(R.string.finish_removal)) }
+        AndroidButton(kind = ButtonKind.TEXT, onClick = onLeave) { Text(stringResource(R.string.cancel)) }
     }
 }
 

@@ -35,6 +35,16 @@ abstract class BoardShot {
     @get:Rule
     val test = TestName()
 
+    /**
+     * Draws a design-system component in one of its states, as [id] (`android.component.<thing>.<state>`) names
+     * it, on the page colour. A [wide] state is drawn as wide as the phone, as the preview's wide rows are.
+     */
+    protected fun component(
+        id: String,
+        wide: Boolean = false,
+        content: @Composable () -> Unit,
+    ) = shot(id) { ComponentScene(wide, content) }
+
     /** Draws [content] as [board]. */
     protected fun shot(
         board: String,
@@ -44,6 +54,7 @@ abstract class BoardShot {
         require(spelled.replaceFirstChar(Char::lowercase) == test.methodName) {
             "shot '${test.methodName}' is not the camelCase of board '$board' ($spelled)"
         }
+        ComponentIds.check(board)
         val directory = System.getProperty("bae.shotsDir")
         assumeNotNull(directory)
         compose.settle(content)

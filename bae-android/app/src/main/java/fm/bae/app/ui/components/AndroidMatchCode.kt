@@ -22,7 +22,7 @@ private val dialogDigits =
  * a dialog uses.
  */
 @Composable
-fun MatchCode(
+fun AndroidMatchCode(
     code: String,
     modifier: Modifier = Modifier,
 ) {

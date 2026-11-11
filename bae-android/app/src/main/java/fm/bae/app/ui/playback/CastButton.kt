@@ -25,9 +25,9 @@ import fm.bae.app.data.CastStart
 import fm.bae.app.data.castEndedFailure
 import fm.bae.app.data.castingDevice
 import fm.bae.app.ui.appearance.ThemeSpace
+import fm.bae.app.ui.components.AndroidSheet
 import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.StatusTone
-import fm.bae.app.ui.components.TitledSheet
 import uniffi.bae_bridge.BridgeBrowsingFor
 
 /** The now-playing bar's cast control, absent when casting is turned off. */
@@ -92,7 +92,7 @@ private fun CastPickerSheet(
         if (session.castStart.didStart(asked)) onDismiss()
     }
 
-    TitledSheet(title = stringResource(R.string.cast), onDismiss = onDismiss) {
+    AndroidSheet(title = stringResource(R.string.cast), onDismiss = onDismiss) {
         PickerFailures(endedFailure = endedFailure, castFailure = castFailure)
         CastReceiverRows(
             place = CastReceiverPlace.PICKER,

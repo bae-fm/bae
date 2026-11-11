@@ -24,8 +24,8 @@ import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.AndroidSpinner
 import fm.bae.app.ui.components.StepProgressLine
-import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.components.stepFraction
 import fm.bae.fastvalues.LatestSource
 import uniffi.bae_bridge.BridgeBootstrapStatus
@@ -131,7 +131,7 @@ internal fun ResettingScreen(
             // A counted step's own bar stands in for the spinner.
             var counting by remember(steps) { mutableStateOf(false) }
             if (!counting) {
-                WaitingIndicator()
+                AndroidSpinner()
                 Spacer(modifier = Modifier.height(ThemeSpace.related))
             }
             BootstrapStepLine(

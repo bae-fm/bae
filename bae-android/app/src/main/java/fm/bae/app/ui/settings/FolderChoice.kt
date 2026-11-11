@@ -14,10 +14,8 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -36,10 +34,11 @@ import fm.bae.app.R
 import fm.bae.app.ui.BaeAppChrome
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.AndroidButton
+import fm.bae.app.ui.components.AndroidSpinner
+import fm.bae.app.ui.components.ButtonKind
+import fm.bae.app.ui.components.ButtonTone
 import fm.bae.app.ui.components.ErrorNotice
-import fm.bae.app.ui.components.NeutralTextButton
-import fm.bae.app.ui.components.PrimaryButton
-import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.components.retryAction
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.launch
@@ -100,7 +99,11 @@ internal fun FolderChoiceBody(
         if (error != null) {
             ErrorNotice(error, action = error.retryAction(enabled = !browser.busy) { retry() })
         } else {
-            TextButton(onClick = { retry() }, enabled = !browser.busy) { Text(stringResource(R.string.retry)) }
+            AndroidButton(
+                kind = ButtonKind.TEXT,
+                onClick = { retry() },
+                enabled = !browser.busy,
+            ) { Text(stringResource(R.string.retry)) }
         }
     }
     FolderWorkLine(browser.work, words, setup, onCancel)
@@ -121,7 +124,11 @@ private fun FolderHeading(
     if (browser.nests) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (shown.path.size > 1) {
-                TextButton(onClick = { scope.launch { browser.up(shown) } }, enabled = !browser.busy) {
+                AndroidButton(
+                    kind = ButtonKind.TEXT,
+                    onClick = { scope.launch { browser.up(shown) } },
+                    enabled = !browser.busy,
+                ) {
                     Text(stringResource(R.string.back))
                 }
             }
@@ -167,13 +174,17 @@ private fun FolderActions(
     val scope = rememberScreenScope()
     var naming by remember { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
-        OutlinedButton(onClick = { naming = true }, enabled = !browser.busy) {
+        AndroidButton(kind = ButtonKind.OUTLINED, onClick = { naming = true }, enabled = !browser.busy) {
             Text(stringResource(R.string.storage_new_folder))
         }
-        OutlinedButton(onClick = { scope.launch { browser.openTop() } }, enabled = !browser.busy) {
+        AndroidButton(
+            kind = ButtonKind.OUTLINED,
+            onClick = { scope.launch { browser.openTop() } },
+            enabled = !browser.busy,
+        ) {
             Text(stringResource(R.string.storage_refresh))
         }
-        PrimaryButton(
+        AndroidButton(
             enabled = browser.target != null && !browser.busy,
             onClick = { onSetUp(checkNotNull(browser.target) { "Set up needs a chosen folder" }) },
         ) {
@@ -201,11 +212,11 @@ private fun FolderWorkLine(
 ) {
     when (work) {
         FolderWork.LISTING -> {
-            WaitingIndicator(text = stringResource(words.reading))
+            AndroidSpinner(text = stringResource(words.reading))
         }
 
         FolderWork.CREATING -> {
-            WaitingIndicator(text = stringResource(R.string.storage_creating_folder))
+            AndroidSpinner(text = stringResource(R.string.storage_creating_folder))
         }
 
         FolderWork.SETTING_UP -> {
@@ -266,12 +277,16 @@ private fun NewFolderDialog(
             )
         },
         confirmButton = {
-            TextButton(onClick = { onCreate(name.trim()) }, enabled = name.isNotBlank()) {
+            AndroidButton(kind = ButtonKind.TEXT, onClick = { onCreate(name.trim()) }, enabled = name.isNotBlank()) {
                 Text(stringResource(R.string.storage_create_folder))
             }
         },
         dismissButton = {
-            NeutralTextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+            AndroidButton(
+                kind = ButtonKind.TEXT,
+                tone = ButtonTone.NEUTRAL,
+                onClick = onDismiss,
+            ) { Text(stringResource(R.string.cancel)) }
         },
     )
 }

@@ -22,10 +22,10 @@ import androidx.compose.ui.res.stringResource
 import fm.bae.app.ErrorDisplays
 import fm.bae.app.R
 import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.components.CardRow
-import fm.bae.app.ui.components.PrimaryButton
-import fm.bae.app.ui.components.RowCard
-import fm.bae.app.ui.components.SectionHeading
+import fm.bae.app.ui.components.AndroidButton
+import fm.bae.app.ui.components.AndroidCard
+import fm.bae.app.ui.components.AndroidRow
+import fm.bae.app.ui.components.AndroidSection
 import uniffi.bae_bridge.BridgeAdminChange
 import uniffi.bae_bridge.BridgeHistorySharing
 import uniffi.bae_bridge.BridgeInvite
@@ -91,14 +91,14 @@ internal fun PeopleHome(
         verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
     ) {
         item { AdminChangesList(changes = adminChanges, onDismiss = callbacks.onDismissChange) }
-        item { SectionHeading(text = stringResource(R.string.members_you)) }
+        item { AndroidSection(text = stringResource(R.string.members_you)) }
         item { YouCard(you = you, me = me, requested = requested, onOpenDevices = { onOpen(PeoplePage.Devices) }) }
-        item { SectionHeading(text = stringResource(R.string.people_people)) }
+        item { AndroidSection(text = stringResource(R.string.people_people)) }
         item {
-            RowCard {
+            AndroidCard {
                 people.filterNot { it.membership.isSelf }.forEach { person ->
                     val member = person.membership
-                    CardRow(
+                    AndroidRow(
                         title = person.profile?.name ?: stringResource(R.string.members_unnamed),
                         subtitle =
                             stringResource(
@@ -121,7 +121,7 @@ internal fun PeopleHome(
         }
         if (selfIsAdmin) {
             item {
-                PrimaryButton(onClick = callbacks.onInvite) {
+                AndroidButton(onClick = callbacks.onInvite) {
                     Text(stringResource(R.string.members_invite))
                 }
             }
@@ -149,9 +149,9 @@ private fun YouCard(
     var renaming by rememberSaveable { mutableStateOf(false) }
     var choosingHistory by rememberSaveable { mutableStateOf(false) }
     val profile = me?.profile
-    RowCard {
+    AndroidCard {
         if (profile != null) {
-            CardRow(
+            AndroidRow(
                 title = stringResource(R.string.invite_name),
                 subtitle = profile.name,
                 onClick = { renaming = true },
@@ -165,13 +165,13 @@ private fun YouCard(
             )
         }
         me?.let { person ->
-            CardRow(
+            AndroidRow(
                 title = stringResource(R.string.people_role),
                 subtitle = stringResource(person.membership.role.labelRes()),
             )
         }
         if (profile != null) {
-            CardRow(
+            AndroidRow(
                 title = stringResource(R.string.settings_history),
                 subtitle = stringResource(profile.historySharing.labelRes()),
                 onClick = { choosingHistory = true },
@@ -202,7 +202,7 @@ private fun DevicesRow(
     member: BridgeMember,
     onOpen: () -> Unit,
 ) {
-    CardRow(
+    AndroidRow(
         title = stringResource(R.string.people_devices),
         subtitle =
             pluralStringResource(

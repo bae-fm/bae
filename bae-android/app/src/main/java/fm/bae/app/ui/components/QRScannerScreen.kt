@@ -243,7 +243,7 @@ private fun QRScannerOverlay(
                         .padding(ThemeSpace.related),
             )
         }
-        PrimaryButton(onClick = onDismiss, modifier = Modifier.padding(top = ThemeSpace.edge)) {
+        AndroidButton(onClick = onDismiss, modifier = Modifier.padding(top = ThemeSpace.edge)) {
             Text(stringResource(R.string.cancel))
         }
     }

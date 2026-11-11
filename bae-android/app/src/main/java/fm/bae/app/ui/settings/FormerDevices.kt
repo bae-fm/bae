@@ -13,8 +13,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import fm.bae.app.R
-import fm.bae.app.ui.components.CardRow
-import fm.bae.app.ui.components.RowCard
+import fm.bae.app.ui.components.AndroidCard
+import fm.bae.app.ui.components.AndroidRow
 import uniffi.bae_bridge.BridgeFormerDevice
 import uniffi.bae_bridge.BridgeFormerDeviceState
 
@@ -26,8 +26,8 @@ import uniffi.bae_bridge.BridgeFormerDeviceState
 @Composable
 internal fun FormerDevices(devices: List<BridgeFormerDevice>) {
     var expanded by rememberSaveable { mutableStateOf(false) }
-    RowCard {
-        CardRow(
+    AndroidCard {
+        AndroidRow(
             title = pluralStringResource(R.plurals.members_former_devices, devices.size, devices.size),
             onClick = { expanded = !expanded },
             trailing = {
@@ -40,7 +40,7 @@ internal fun FormerDevices(devices: List<BridgeFormerDevice>) {
         )
         if (expanded) {
             devices.forEach { device ->
-                CardRow(title = device.name, subtitle = stringResource(device.state.labelRes()))
+                AndroidRow(title = device.name, subtitle = stringResource(device.state.labelRes()))
             }
         }
     }

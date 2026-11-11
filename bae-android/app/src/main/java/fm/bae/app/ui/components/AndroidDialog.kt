@@ -37,7 +37,7 @@ fun DialogHead(
  * [message] (see [DialogHead]); [content] is whatever follows it.
  */
 @Composable
-fun BaeAlertDialog(
+fun AndroidDialog(
     onDismissRequest: () -> Unit,
     confirmButton: @Composable () -> Unit,
     dismissButton: @Composable (() -> Unit)? = null,

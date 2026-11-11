@@ -61,7 +61,7 @@ Apple views use `Theme`, `ThemeOpacity`, `PrimaryButtonStyle`, and
 `.appAppearance()` at every scene root; Apple's hierarchical label styles stay
 native. Native controls retain their platform geometry and interaction.
 Android maps the theme to Material colors, reads the other roles through
-`BaeTheme.colors` and `BaeTheme.surfaces`, and uses `PrimaryButton`, with tonal
+`BaeTheme.colors` and `BaeTheme.surfaces`, and uses `AndroidButton`, with tonal
 elevation disabled so surfaces retain the selected tone. Navigation
 and transport controls use neutral surfaces; selection and progress use the
 accent. Action buttons do not add accent shadows or decorative gradients.

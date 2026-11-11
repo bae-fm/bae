@@ -14,7 +14,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -35,10 +34,12 @@ import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.AndroidButton
+import fm.bae.app.ui.components.AndroidSpinner
+import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.QRCodeImage
-import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.components.rememberCopyText
 import fm.bae.app.ui.rememberScreenScope
 import fm.bae.screensubscription.ScreenSubscription
@@ -146,7 +147,7 @@ internal fun AddDeviceDialogContent(
                     }
 
                     error == null -> {
-                        WaitingIndicator(text = stringResource(R.string.add_device_making_code))
+                        AndroidSpinner(text = stringResource(R.string.add_device_making_code))
                     }
                 }
                 error?.let {
@@ -156,7 +157,7 @@ internal fun AddDeviceDialogContent(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.done)) }
+            AndroidButton(kind = ButtonKind.TEXT, onClick = onDismiss) { Text(stringResource(R.string.done)) }
         },
     )
 }
@@ -182,7 +183,7 @@ private fun AddDeviceShareContent(share: BridgeRestoreCodeShare) {
     SelectionContainer {
         Text(text = share.code, style = ThemeText.mono.style, textAlign = TextAlign.Center)
     }
-    TextButton(onClick = { copy(share.code) }) {
+    AndroidButton(kind = ButtonKind.TEXT, onClick = { copy(share.code) }) {
         Icon(
             Icons.Filled.ContentCopy,
             contentDescription = null,

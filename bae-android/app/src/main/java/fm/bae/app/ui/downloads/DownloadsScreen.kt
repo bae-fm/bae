@@ -18,7 +18,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -42,6 +41,8 @@ import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.AndroidButton
+import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.retryAction
@@ -201,10 +202,10 @@ private fun DownloadsTopBar(
                 style = ThemeText.title.style,
                 modifier = Modifier.weight(1f),
             )
-            TextButton(onClick = onRetry, enabled = hasFailures) {
+            AndroidButton(kind = ButtonKind.TEXT, onClick = onRetry, enabled = hasFailures) {
                 Text(stringResource(R.string.retry))
             }
-            TextButton(onClick = onPauseToggle, enabled = hasDownloads) {
+            AndroidButton(kind = ButtonKind.TEXT, onClick = onPauseToggle, enabled = hasDownloads) {
                 Text(stringResource(if (paused) R.string.resume else R.string.pause))
             }
         }

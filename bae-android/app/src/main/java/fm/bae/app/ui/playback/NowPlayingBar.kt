@@ -37,9 +37,10 @@ import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.BaeAlertDialog
-import fm.bae.app.ui.components.NeutralTextButton
-import fm.bae.app.ui.components.PrimaryButton
+import fm.bae.app.ui.components.AndroidButton
+import fm.bae.app.ui.components.AndroidDialog
+import fm.bae.app.ui.components.ButtonKind
+import fm.bae.app.ui.components.ButtonTone
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.components.color
 import fm.bae.app.ui.countdownSecondsLeft
@@ -170,7 +171,7 @@ fun SidePauseAlert(
             if (!keepPausing) onTurnOffPauseBetweenSides()
             if (play) onPlay() else onClose()
         }
-        BaeAlertDialog(
+        AndroidDialog(
             onDismissRequest = { answer(false) },
             title =
                 context.coreString(
@@ -195,12 +196,12 @@ fun SidePauseAlert(
                 }
             },
             confirmButton = {
-                PrimaryButton(onClick = { answer(true) }) {
+                AndroidButton(onClick = { answer(true) }) {
                     Text(stringResource(R.string.play))
                 }
             },
             dismissButton = {
-                NeutralTextButton(onClick = { answer(false) }) {
+                AndroidButton(kind = ButtonKind.TEXT, tone = ButtonTone.NEUTRAL, onClick = { answer(false) }) {
                     Text(stringResource(R.string.close))
                 }
             },

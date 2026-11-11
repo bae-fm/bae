@@ -8,7 +8,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -30,11 +29,13 @@ import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.CardRow
+import fm.bae.app.ui.components.AndroidButton
+import fm.bae.app.ui.components.AndroidCard
+import fm.bae.app.ui.components.AndroidRow
+import fm.bae.app.ui.components.ButtonKind
+import fm.bae.app.ui.components.ButtonTone
 import fm.bae.app.ui.components.ErrorNotice
-import fm.bae.app.ui.components.NeutralTextButton
 import fm.bae.app.ui.components.NoticeLook
-import fm.bae.app.ui.components.RowCard
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.components.retryAction
 import fm.bae.app.ui.rememberScreenScope
@@ -103,12 +104,12 @@ private fun LibrarySwitcher(
         style = ThemeText.detail.style,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
-    RowCard {
+    AndroidCard {
         libraries.forEach { library ->
             // The active library comes from the open session; BridgeLibrary.isActive goes stale after an in-app switch.
             val isActive = library.id == activeLibraryId
             val detail = libraryDetail(library.state)
-            CardRow(
+            AndroidRow(
                 title = library.name,
                 subtitle = detail.text,
                 tone = detail.tone,
@@ -198,12 +199,16 @@ private fun RenameLibraryDialogContent(
             }
         },
         confirmButton = {
-            TextButton(onClick = onSave, enabled = draft.isNotBlank() && !saving) {
+            AndroidButton(kind = ButtonKind.TEXT, onClick = onSave, enabled = draft.isNotBlank() && !saving) {
                 Text(stringResource(R.string.settings_rename_library))
             }
         },
         dismissButton = {
-            NeutralTextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+            AndroidButton(
+                kind = ButtonKind.TEXT,
+                tone = ButtonTone.NEUTRAL,
+                onClick = onDismiss,
+            ) { Text(stringResource(R.string.cancel)) }
         },
     )
 }

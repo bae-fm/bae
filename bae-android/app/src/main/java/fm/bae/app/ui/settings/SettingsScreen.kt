@@ -26,9 +26,9 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.ui.SessionActions
 import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.components.CardRow
+import fm.bae.app.ui.components.AndroidCard
+import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.Logo
-import fm.bae.app.ui.components.RowCard
 import fm.bae.app.ui.components.ScreenTopBar
 import fm.bae.app.ui.library.LibraryDestination
 import kotlinx.coroutines.CoroutineDispatcher
@@ -131,8 +131,8 @@ internal fun SettingsAboutSection(version: String) {
         ) {
             Logo(size = ABOUT_LOGO_SIZE, bob = false, glow = false)
         }
-        RowCard {
-            CardRow(title = stringResource(R.string.settings_version), subtitle = version)
+        AndroidCard {
+            AndroidRow(title = stringResource(R.string.settings_version), subtitle = version)
         }
     }
 }

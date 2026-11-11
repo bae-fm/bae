@@ -15,7 +15,6 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -30,10 +29,12 @@ import fm.bae.app.R
 import fm.bae.app.data.isEmpty
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.CardRow
+import fm.bae.app.ui.components.AndroidButton
+import fm.bae.app.ui.components.AndroidRow
+import fm.bae.app.ui.components.AndroidSheet
+import fm.bae.app.ui.components.AndroidSpinner
+import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.MoreMenu
-import fm.bae.app.ui.components.TitledSheet
-import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.components.cardRowDivider
 import uniffi.bae_bridge.BridgeCastReceiver
 import uniffi.bae_bridge.BridgeCastReceiverList
@@ -102,7 +103,7 @@ internal fun CastReceiverRow(
         CastReceiverEnd(role = role, place = place, onDetails = { showsDetails = true })
     }
     if (showsDetails) {
-        TitledSheet(title = receiver.name, onDismiss = { showsDetails = false }) {
+        AndroidSheet(title = receiver.name, onDismiss = { showsDetails = false }) {
             CastReceiverDetailsRows(receiver)
         }
     }
@@ -148,7 +149,7 @@ private fun CastReceiverEnd(
     when (place) {
         CastReceiverPlace.PICKER -> {
             if (role is CastReceiverRole.Casting) {
-                TextButton(onClick = role.onDisconnect) {
+                AndroidButton(kind = ButtonKind.TEXT, onClick = role.onDisconnect) {
                     Text(stringResource(R.string.cast_disconnect))
                 }
             }
@@ -190,11 +191,11 @@ internal fun CastReceiverMenuItems(
 /** What the Details sheet shows of a receiver: its type, its model when it states one, and its address. */
 @Composable
 internal fun CastReceiverDetailsRows(receiver: BridgeCastReceiver) {
-    CardRow(title = stringResource(R.string.cast_receiver_type), subtitle = receiver.kind.productName)
+    AndroidRow(title = stringResource(R.string.cast_receiver_type), subtitle = receiver.kind.productName)
     receiver.model?.let { model ->
-        CardRow(title = stringResource(R.string.cast_receiver_model), subtitle = model)
+        AndroidRow(title = stringResource(R.string.cast_receiver_model), subtitle = model)
     }
-    CardRow(title = stringResource(R.string.cast_receiver_address), subtitle = receiver.address)
+    AndroidRow(title = stringResource(R.string.cast_receiver_address), subtitle = receiver.address)
 }
 
 /**
@@ -229,7 +230,7 @@ internal fun CastReceiverRows(
 /** A row for a wait: a spinner and what it waits on. */
 @Composable
 private fun WaitingRow(text: String) {
-    WaitingIndicator(
+    AndroidSpinner(
         text = text,
         modifier = Modifier.fillMaxWidth().padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.group),
     )

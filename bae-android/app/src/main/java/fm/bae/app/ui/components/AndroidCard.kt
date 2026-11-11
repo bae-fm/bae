@@ -24,12 +24,12 @@ import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSpace
 
 /**
- * Groups related [CardRow]s on a screen: one surface with rounded corners,
- * dividing the rows it holds by hairlines. A child that isn't a [CardRow] takes
+ * Groups related [AndroidRow]s on a screen: one surface with rounded corners,
+ * dividing the rows it holds by hairlines. A child that isn't a [AndroidRow] takes
  * [cardRowDivider] to join the division.
  */
 @Composable
-internal fun RowCard(
+internal fun AndroidCard(
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -49,16 +49,16 @@ internal fun RowCard(
                     layout(placeable.width, height) { placeable.place(0, -hairline) }
                 },
     ) {
-        CompositionLocalProvider(LocalInRowCard provides true) { content() }
+        CompositionLocalProvider(LocalInAndroidCard provides true) { content() }
     }
 }
 
-private val LocalInRowCard = staticCompositionLocalOf { false }
+private val LocalInAndroidCard = staticCompositionLocalOf { false }
 
-/** The hairline on a row's top edge, between it and the row above it in a [RowCard]; none outside one. */
+/** The hairline on a row's top edge, between it and the row above it in a [AndroidCard]; none outside one. */
 @Composable
 internal fun Modifier.cardRowDivider(): Modifier {
-    if (!LocalInRowCard.current) return this
+    if (!LocalInAndroidCard.current) return this
     val color = MaterialTheme.colorScheme.outlineVariant
     return drawBehind { drawLine(color, Offset(0f, 0f), Offset(size.width, 0f), strokeWidth = HAIRLINE.toPx()) }
 }
@@ -67,12 +67,12 @@ private val HAIRLINE = 1.dp
 
 @Preview(showBackground = true)
 @Composable
-private fun RowCardPreview() {
+private fun AndroidCardPreview() {
     BaeTheme {
-        RowCard(modifier = Modifier.padding(ThemeSpace.edge)) {
-            CardRow(title = "Status", subtitle = "Up to date", tone = StatusTone.SUCCESS)
-            CardRow(title = "Library Name", subtitle = "Dropbox · name@example.com", selected = true, onClick = {})
-            CardRow(title = "Add device", action = true, leadingIcon = Icons.Filled.Add, onClick = {})
+        AndroidCard(modifier = Modifier.padding(ThemeSpace.edge)) {
+            AndroidRow(title = "Status", subtitle = "Up to date", tone = StatusTone.SUCCESS)
+            AndroidRow(title = "Library Name", subtitle = "Dropbox · name@example.com", selected = true, onClick = {})
+            AndroidRow(title = "Add device", action = true, leadingIcon = Icons.Filled.Add, onClick = {})
         }
     }
 }

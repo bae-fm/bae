@@ -17,10 +17,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -44,10 +42,11 @@ import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.cloudProviderLabel
+import fm.bae.app.ui.components.AndroidButton
+import fm.bae.app.ui.components.AndroidSpinner
+import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ErrorNotice
-import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.QRCodeImage
-import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.rememberScreenScope
 import fm.bae.fastvalues.LatestSource
 import kotlinx.coroutines.CoroutineScope
@@ -230,7 +229,7 @@ private fun ColumnScope.SetupStepContent(
         }
 
         is SetupStep.SigningIn -> {
-            WaitingIndicator(text = stringResource(R.string.signing_in))
+            AndroidSpinner(text = stringResource(R.string.signing_in))
         }
 
         SetupStep.DropboxFolders -> {
@@ -288,7 +287,11 @@ private fun SetupTopBar(
 private fun ProviderChoice(onChoose: (BridgeCloudProvider) -> Unit) {
     Text(stringResource(R.string.storage_setup_choose))
     availableCloudProviders().forEach { provider ->
-        OutlinedButton(onClick = { onChoose(provider) }, modifier = Modifier.fillMaxWidth()) {
+        AndroidButton(
+            kind = ButtonKind.OUTLINED,
+            onClick = { onChoose(provider) },
+            modifier = Modifier.fillMaxWidth(),
+        ) {
             Text(cloudProviderLabel(provider))
         }
     }
@@ -308,7 +311,7 @@ private fun ColumnScope.SetupDone(
     SelectionContainer {
         Text(text = restoreCode, style = ThemeText.mono.style)
     }
-    PrimaryButton(onClick = onDone) { Text(stringResource(R.string.done)) }
+    AndroidButton(onClick = onDone) { Text(stringResource(R.string.done)) }
 }
 
 /**
@@ -452,11 +455,11 @@ internal fun StorageSetupRunLine(
     onCancel: () -> Unit,
 ) {
     if (runner.cancelling) {
-        WaitingIndicator(text = stringResource(R.string.storage_setup_cancelling))
+        AndroidSpinner(text = stringResource(R.string.storage_setup_cancelling))
         return
     }
     runner.steps?.let { StorageSetupLine(it) }
     if (runner.cancelOffered) {
-        TextButton(onClick = onCancel) { Text(stringResource(R.string.cancel)) }
+        AndroidButton(kind = ButtonKind.TEXT, onClick = onCancel) { Text(stringResource(R.string.cancel)) }
     }
 }

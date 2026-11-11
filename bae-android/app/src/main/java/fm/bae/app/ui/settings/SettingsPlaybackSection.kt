@@ -27,8 +27,8 @@ import fm.bae.app.RestorePlaybackPref
 import fm.bae.app.currentLocale
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.components.CardRow
-import fm.bae.app.ui.components.RowCard
+import fm.bae.app.ui.components.AndroidCard
+import fm.bae.app.ui.components.AndroidRow
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.BridgeConfig
@@ -41,7 +41,7 @@ internal fun SettingsPlaybackSection(
     ioDispatcher: CoroutineDispatcher,
 ) {
     Column(modifier = Modifier.fillMaxWidth().padding(ThemeSpace.edge)) {
-        RowCard {
+        AndroidCard {
             PauseBetweenSidesRow(session = session, config = config, ioDispatcher = ioDispatcher)
             SidePauseCountdownRow(session = session, config = config, ioDispatcher = ioDispatcher)
             RestoreOnLaunchRow()
@@ -55,7 +55,7 @@ private fun PauseBetweenSidesRow(
     config: BridgeConfig,
     ioDispatcher: CoroutineDispatcher,
 ) {
-    CardRow(
+    AndroidRow(
         title = stringResource(R.string.settings_pause_between_sides),
         trailing = {
             Switch(
@@ -105,7 +105,7 @@ internal fun SidePauseCountdownPicker(
     val context = LocalContext.current
     var expanded by remember { mutableStateOf(false) }
     Box {
-        CardRow(
+        AndroidRow(
             title = stringResource(R.string.settings_resume_automatically),
             subtitle = context.sidePauseCountdownLabel(selected),
             nested = true,
@@ -153,7 +153,7 @@ internal fun Context.sidePauseCountdownLabel(countdown: BridgeSidePauseCountdown
 private fun RestoreOnLaunchRow() {
     val context = LocalContext.current
     var restoreOnLaunch by remember { mutableStateOf(RestorePlaybackPref.load(context)) }
-    CardRow(
+    AndroidRow(
         title = stringResource(R.string.settings_restore_on_launch),
         subtitle = stringResource(R.string.settings_restore_on_launch_help),
         trailing = {

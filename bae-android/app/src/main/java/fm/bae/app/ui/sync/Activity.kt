@@ -15,7 +15,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -42,19 +41,21 @@ import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.ContentSheet
+import fm.bae.app.ui.components.AndroidButton
+import fm.bae.app.ui.components.AndroidEyebrow
+import fm.bae.app.ui.components.AndroidSheet
+import fm.bae.app.ui.components.AndroidSpinner
+import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.ErrorDetails
 import fm.bae.app.ui.components.ErrorDetailsDialog
 import fm.bae.app.ui.components.ErrorNotice
-import fm.bae.app.ui.components.Eyebrow
 import fm.bae.app.ui.components.NoticeButtons
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.NoticeTextInset
 import fm.bae.app.ui.components.StatusGlyph
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.components.TitledErrorNotice
-import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.fastvalues.LatestSource
 import uniffi.bae_bridge.BridgePendingRecord
 import uniffi.bae_bridge.BridgeSyncActivity
@@ -137,7 +138,7 @@ private fun ActivityGlyph(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (moving) {
-            WaitingIndicator(size = ThemeIcon.small)
+            AndroidSpinner(size = ThemeIcon.small)
         }
         if (held) {
             Icon(imageVector = Icons.Filled.Pause, contentDescription = null, modifier = Modifier.size(ThemeIcon.large))
@@ -163,7 +164,7 @@ private fun ActivitySheet(
     onOpenDownloads: () -> Unit,
     onSetDownloadsPaused: (Boolean) -> Unit,
 ) {
-    ContentSheet(onDismiss = onDismiss) {
+    AndroidSheet(onDismiss = onDismiss) {
         ActivityList(
             problems = problems,
             app = app,
@@ -246,7 +247,7 @@ private fun NeedsAttention(
 ) {
     val context = LocalContext.current
     Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.inline)) {
-        Eyebrow(context.coreString("core.activity.attention"))
+        AndroidEyebrow(context.coreString("core.activity.attention"))
         Column {
             problems.shown.forEachIndexed { index, id ->
                 if (index > 0) HorizontalDivider(modifier = Modifier.padding(start = NoticeTextInset))
@@ -336,7 +337,7 @@ private fun PendingRecords(
                 )
             }
         }
-        TextButton(onClick = onOpenSettings) {
+        AndroidButton(kind = ButtonKind.TEXT, onClick = onOpenSettings) {
             Text(context.coreString("core.activity.open_settings"))
         }
     }

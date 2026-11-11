@@ -17,7 +17,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -58,12 +57,13 @@ import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.AndroidButton
+import fm.bae.app.ui.components.AndroidEyebrow
+import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.CoverImage
 import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.ErrorText
-import fm.bae.app.ui.components.Eyebrow
 import fm.bae.app.ui.components.NoticeLook
-import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.retryAction
 import fm.bae.app.ui.library.LibraryDetailTopBar
 import fm.bae.app.ui.playback.NowPlayingBar
@@ -434,18 +434,18 @@ private fun AlbumDetailHeader(
 private fun AlbumActionButtons(callbacks: AlbumDetailCallbacks) {
     Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
         Row(horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
-            PrimaryButton(onClick = callbacks.onPlayRelease) {
+            AndroidButton(onClick = callbacks.onPlayRelease) {
                 Text(stringResource(R.string.play))
             }
-            OutlinedButton(onClick = callbacks.onShuffleRelease) {
+            AndroidButton(kind = ButtonKind.OUTLINED, onClick = callbacks.onShuffleRelease) {
                 Text(stringResource(R.string.shuffle))
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
-            OutlinedButton(onClick = callbacks.onPlayReleaseNext) {
+            AndroidButton(kind = ButtonKind.OUTLINED, onClick = callbacks.onPlayReleaseNext) {
                 Text(stringResource(R.string.play_next))
             }
-            OutlinedButton(onClick = callbacks.onAddReleaseToQueue) {
+            AndroidButton(kind = ButtonKind.OUTLINED, onClick = callbacks.onAddReleaseToQueue) {
                 Text(stringResource(R.string.add_to_queue))
             }
         }
@@ -463,7 +463,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.albumTrackGroups(
         val header = group.sideHeaderText(context)
         if (header.isNotEmpty()) {
             item {
-                Eyebrow(text = header, modifier = Modifier.padding(top = ThemeSpace.related))
+                AndroidEyebrow(text = header, modifier = Modifier.padding(top = ThemeSpace.related))
             }
         }
         items(group.tracks, key = { it.id }) { track ->

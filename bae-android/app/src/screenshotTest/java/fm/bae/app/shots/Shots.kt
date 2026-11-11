@@ -51,7 +51,7 @@ import fm.bae.app.ui.appearance.AppearancePreferences
 import fm.bae.app.ui.appearance.AppearanceStore
 import fm.bae.app.ui.appearance.SurfaceTone
 import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.components.ContentSheetBody
+import fm.bae.app.ui.components.AndroidSheetBody
 import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.NoticeLook
@@ -60,7 +60,6 @@ import fm.bae.app.ui.components.RemoveLibraryText
 import fm.bae.app.ui.components.ScreenTopBar
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.components.TitledErrorNotice
-import fm.bae.app.ui.components.TitledSheetContent
 import fm.bae.app.ui.downloads.DownloadQueueRow
 import fm.bae.app.ui.downloads.DownloadsList
 import fm.bae.app.ui.library.ErrorBanner
@@ -149,7 +148,7 @@ internal fun TitledSheetShot(
 ) {
     BaeTheme {
         Surface(color = BottomSheetDefaults.ContainerColor) {
-            ContentSheetBody { TitledSheetContent(title, content) }
+            AndroidSheetBody(title, content)
         }
     }
 }

@@ -65,7 +65,7 @@ import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.components.WaitingIndicator
+import fm.bae.app.ui.components.AndroidSpinner
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -294,7 +294,7 @@ private fun GalleryImage(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
                 ) {
-                    WaitingIndicator(color = BaeTheme.colors.onFill)
+                    AndroidSpinner(color = BaeTheme.colors.onFill)
                     Text(
                         text = stringResource(R.string.gallery_loading_image),
                         color = BaeTheme.colors.onFillSecondary,

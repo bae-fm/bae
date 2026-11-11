@@ -15,8 +15,8 @@ import fm.bae.app.R
 import fm.bae.app.RestorePlaybackPref
 import fm.bae.app.ui.appearance.LocalAppearanceStore
 import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.components.CardRow
-import fm.bae.app.ui.components.RowCard
+import fm.bae.app.ui.components.AndroidCard
+import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.library.LibraryDestination
 import uniffi.bae_bridge.BridgeConfig
 
@@ -52,33 +52,33 @@ internal fun SettingsMenu(
     onPush: (LibraryDestination) -> Unit,
 ) {
     Column(modifier = Modifier.padding(ThemeSpace.edge)) {
-        RowCard {
-            CardRow(
+        AndroidCard {
+            AndroidRow(
                 title = stringResource(R.string.appearance_title),
                 subtitle = summaries.appearance,
                 onClick = { onOpen(SettingsPage.Appearance) },
             )
-            CardRow(
+            AndroidRow(
                 title = stringResource(R.string.settings_library),
                 subtitle = summaries.library,
                 onClick = { onPush(LibraryDestination.Library) },
             )
-            CardRow(
+            AndroidRow(
                 title = stringResource(R.string.settings_playback),
                 subtitle = summaries.playback,
                 onClick = { onOpen(SettingsPage.Playback) },
             )
-            CardRow(
+            AndroidRow(
                 title = stringResource(R.string.settings_transfers),
                 subtitle = summaries.transfers,
                 onClick = { onPush(LibraryDestination.Transfers) },
             )
-            CardRow(
+            AndroidRow(
                 title = stringResource(R.string.settings_casting),
                 subtitle = summaries.casting,
                 onClick = { onPush(LibraryDestination.Casting) },
             )
-            CardRow(
+            AndroidRow(
                 title = stringResource(R.string.settings_about),
                 subtitle = summaries.about,
                 onClick = { onOpen(SettingsPage.About) },

@@ -7,11 +7,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import fm.bae.app.R
 import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.components.CardRow
+import fm.bae.app.ui.components.AndroidRow
+import fm.bae.app.ui.components.AndroidSheet
+import fm.bae.app.ui.components.AndroidSpinner
 import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.StatusTone
-import fm.bae.app.ui.components.TitledSheet
-import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.settings.StorageRows
 import fm.bae.app.ui.settings.statusTone
 import fm.bae.app.ui.settings.syncLastSyncedText
@@ -29,7 +29,7 @@ internal fun LibraryDetailsSheet(
     details: LibraryDetails,
     onDismiss: () -> Unit,
 ) {
-    TitledSheet(title = details.library.name, onDismiss = onDismiss) {
+    AndroidSheet(title = details.library.name, onDismiss = onDismiss) {
         LibraryDetailsRows((details.library.state as? BridgeLibraryState.Openable)?.storage, details.standing)
     }
 }
@@ -47,14 +47,14 @@ internal fun LibraryDetailsRows(
     standing: StandingRead?,
 ) {
     if (storage == null) {
-        CardRow(title = stringResource(R.string.sync_status), subtitle = stringResource(R.string.library_not_synced))
+        AndroidRow(title = stringResource(R.string.sync_status), subtitle = stringResource(R.string.library_not_synced))
         return
     }
     val context = LocalContext.current
     val read = checkNotNull(standing) { "a library with storage has its standing read" }
     when (read) {
         StandingRead.Loading -> {
-            WaitingIndicator(modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.group))
+            AndroidSpinner(modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.group))
         }
 
         is StandingRead.Failed -> {
@@ -65,7 +65,7 @@ internal fun LibraryDetailsRows(
             val loaded = read.standing
             when (val state = loaded.state) {
                 BridgeStandingState.UnsentChanges -> {
-                    CardRow(
+                    AndroidRow(
                         title = stringResource(R.string.sync_status),
                         subtitle = stringResource(R.string.library_unsent_changes),
                         tone = StatusTone.WARNING,
@@ -73,7 +73,7 @@ internal fun LibraryDetailsRows(
                 }
 
                 is BridgeStandingState.Sync -> {
-                    CardRow(
+                    AndroidRow(
                         title = stringResource(R.string.sync_status),
                         subtitle = syncStatusText(context, state.shown),
                         tone = state.shown.tone.statusTone(),
@@ -81,7 +81,7 @@ internal fun LibraryDetailsRows(
                 }
             }
             loaded.lastSynced?.let { moment ->
-                CardRow(
+                AndroidRow(
                     title = stringResource(R.string.library_last_synced),
                     subtitle = syncLastSyncedText(moment).toString(),
                 )

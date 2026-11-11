@@ -23,7 +23,7 @@ import fm.bae.app.ui.appearance.ThemeText
  * the whole row selectable. Exactly one of a dialog's rows is [checked].
  */
 @Composable
-internal fun RadioRow(
+internal fun AndroidRadio(
     label: String,
     checked: Boolean,
     onClick: () -> Unit,
@@ -47,12 +47,12 @@ private val MIN_HEIGHT = 48.dp
 
 @Preview(showBackground = true)
 @Composable
-private fun RadioRowPreview() {
+private fun AndroidRadioPreview() {
     BaeTheme {
         Column {
-            RadioRow(label = "Off", checked = false, onClick = {})
-            RadioRow(label = "Per track", checked = false, onClick = {})
-            RadioRow(label = "Per album", checked = true, onClick = {})
+            AndroidRadio(label = "Off", checked = false, onClick = {})
+            AndroidRadio(label = "Per track", checked = false, onClick = {})
+            AndroidRadio(label = "Per album", checked = true, onClick = {})
         }
     }
 }

@@ -12,7 +12,6 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -28,8 +27,10 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.appearance.ThemeSpace
+import fm.bae.app.ui.components.AndroidButton
+import fm.bae.app.ui.components.ButtonKind
+import fm.bae.app.ui.components.ButtonTone
 import fm.bae.app.ui.components.ErrorNotice
-import fm.bae.app.ui.components.NeutralTextButton
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.S3KeyFields
 import fm.bae.app.ui.rememberScreenScope
@@ -174,7 +175,8 @@ private fun InviteFormDialog(
         confirmButton = {
             val access = storage?.let(input::access)
             val name = fields.name.trim()
-            TextButton(
+            AndroidButton(
+                kind = ButtonKind.TEXT,
                 enabled = access != null && name.isNotEmpty() && !busy,
                 onClick = { access?.let { onCreate(InviteForm(name, fields.role, it, fields.lifetime)) } },
             ) {
@@ -182,7 +184,11 @@ private fun InviteFormDialog(
             }
         },
         dismissButton = {
-            NeutralTextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+            AndroidButton(
+                kind = ButtonKind.TEXT,
+                tone = ButtonTone.NEUTRAL,
+                onClick = onDismiss,
+            ) { Text(stringResource(R.string.cancel)) }
         },
     )
 }

@@ -4,4 +4,4 @@ The six digits two devices both show while one lets the other in: adding a devic
 
 The same part draws the code on both sides of the match, so the two screens can't drift apart.
 
-**In the code:** Android: `MatchCode` (`ui/components/MatchCode.kt`), the digits in a dialog's size.
+**In the code:** Android: `AndroidMatchCode` (`ui/components/AndroidMatchCode.kt`), the digits in a dialog's size.

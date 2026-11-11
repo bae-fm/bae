@@ -48,7 +48,7 @@ private fun OpenProgressLineMigratingPreview() {
         OpenProgressLine(
             steps = LatestStream.openProgress(BridgeOpenProgress(BridgeOpenStep.MIGRATING, 1uL, 3uL)).only,
             modifier = Modifier.widthIn(max = 360.dp).padding(16.dp),
-        ) { WaitingIndicator() }
+        ) { AndroidSpinner() }
     }
 }
 
@@ -59,7 +59,7 @@ private fun OpenProgressLineRebuildingPreview() {
         OpenProgressLine(
             steps = LatestStream.openProgress(BridgeOpenProgress(BridgeOpenStep.REBUILDING, 4uL, 9uL)).only,
             modifier = Modifier.widthIn(max = 360.dp).padding(16.dp),
-        ) { WaitingIndicator() }
+        ) { AndroidSpinner() }
     }
 }
 
@@ -70,6 +70,6 @@ private fun OpenProgressLineBetweenStepsPreview() {
         OpenProgressLine(
             steps = LatestStream.openProgress().only,
             modifier = Modifier.widthIn(max = 360.dp).padding(16.dp),
-        ) { WaitingIndicator() }
+        ) { AndroidSpinner() }
     }
 }

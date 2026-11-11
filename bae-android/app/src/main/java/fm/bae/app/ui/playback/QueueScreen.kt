@@ -16,7 +16,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -38,8 +37,10 @@ import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.AndroidButton
+import fm.bae.app.ui.components.AndroidEyebrow
+import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ErrorNotice
-import fm.bae.app.ui.components.Eyebrow
 import fm.bae.app.ui.components.NoticeLook
 import kotlinx.coroutines.launch
 import sh.calvin.reorderable.ReorderableItem
@@ -76,7 +77,7 @@ fun QueueScreen(
         item(key = "header") { QueueHeader() }
         nowPlaying?.let { np ->
             item(key = "nowplaying") {
-                Eyebrow(
+                AndroidEyebrow(
                     text = stringResource(R.string.queue_section_now_playing),
                     modifier =
                         Modifier
@@ -317,7 +318,7 @@ private fun SectionLabelRow(
         modifier = Modifier.fillMaxWidth().padding(start = ThemeSpace.edge, end = ThemeSpace.related),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Eyebrow(text = text, modifier = Modifier.weight(1f))
+        AndroidEyebrow(text = text, modifier = Modifier.weight(1f))
         trailing()
     }
 }
@@ -329,7 +330,8 @@ private fun ClearLaneButton(
     onClear: () -> Unit,
 ) {
     val description = stringResource(contentDescriptionRes)
-    TextButton(
+    AndroidButton(
+        kind = ButtonKind.TEXT,
         onClick = onClear,
         modifier = Modifier.semantics { this.contentDescription = description },
     ) {

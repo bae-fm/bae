@@ -29,11 +29,11 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 
 /**
- * One row of a list, in a [RowCard] or a sheet: the [title] with an optional [subtitle] under it,
+ * One row of a list, in a [AndroidCard] or a sheet: the [title] with an optional [subtitle] under it,
  * whose [tone] colours it and puts a dot before it, and [trailing] content at
  * the far end. [action] makes the row itself the action ("Add device", last in
  * its card), with [leadingIcon] before it when it adds to the list; [selected]
- * tints the row for the one choice made. In a [RowCard] a hairline divides the
+ * tints the row for the one choice made. In a [AndroidCard] a hairline divides the
  * row from the one above it. The [subtitle] wraps, read whole, as Material's supporting
  * text does; [subtitleContent] draws the line itself where its words change as the row runs. A
  * [nested] row is a setting that belongs to the switch row above it: joined to it
@@ -41,7 +41,7 @@ import fm.bae.app.ui.appearance.ThemeText
  * with an [onClick] opens or changes something, which [onClickLabel] names for screen readers.
  */
 @Composable
-internal fun CardRow(
+internal fun AndroidRow(
     title: String,
     modifier: Modifier = Modifier,
     subtitle: String? = null,

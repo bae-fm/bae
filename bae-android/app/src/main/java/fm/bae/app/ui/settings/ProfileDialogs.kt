@@ -7,7 +7,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -20,10 +19,12 @@ import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.performBridgeAction
+import fm.bae.app.ui.components.AndroidButton
+import fm.bae.app.ui.components.AndroidRadio
+import fm.bae.app.ui.components.ButtonKind
+import fm.bae.app.ui.components.ButtonTone
 import fm.bae.app.ui.components.ErrorNotice
-import fm.bae.app.ui.components.NeutralTextButton
 import fm.bae.app.ui.components.NoticeLook
-import fm.bae.app.ui.components.RadioRow
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeHistorySharing
@@ -43,7 +44,7 @@ internal fun ListeningHistoryDialog(
         text = {
             Column {
                 BridgeHistorySharing.entries.forEach { choice ->
-                    RadioRow(
+                    AndroidRadio(
                         label = stringResource(choice.labelRes()),
                         checked = choice == current,
                         onClick = { onChoose(choice) },
@@ -58,7 +59,12 @@ internal fun ListeningHistoryDialog(
             }
         },
         confirmButton = {},
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+        dismissButton = {
+            AndroidButton(
+                kind = ButtonKind.TEXT,
+                onClick = onDismiss,
+            ) { Text(stringResource(R.string.cancel)) }
+        },
     )
 }
 
@@ -126,10 +132,16 @@ private fun RenameProfileDialogContent(
             }
         },
         confirmButton = {
-            TextButton(onClick = onSave, enabled = draft.isNotBlank() && !saving) {
+            AndroidButton(kind = ButtonKind.TEXT, onClick = onSave, enabled = draft.isNotBlank() && !saving) {
                 Text(stringResource(R.string.save))
             }
         },
-        dismissButton = { NeutralTextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+        dismissButton = {
+            AndroidButton(
+                kind = ButtonKind.TEXT,
+                tone = ButtonTone.NEUTRAL,
+                onClick = onDismiss,
+            ) { Text(stringResource(R.string.cancel)) }
+        },
     )
 }

@@ -9,7 +9,7 @@ import fm.bae.app.ui.appearance.ThemeText
 
 /** The small capitalised label that names a section, a group or a column. */
 @Composable
-fun Eyebrow(
+fun AndroidEyebrow(
     text: String,
     modifier: Modifier = Modifier,
 ) {

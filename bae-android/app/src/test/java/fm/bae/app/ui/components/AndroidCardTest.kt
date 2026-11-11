@@ -15,16 +15,16 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 
-/** A [RowCard] holds for any content, including none: it hides the first row's top hairline without going below 0 high. */
+/** A [AndroidCard] holds for any content, including none: it hides the first row's top hairline without going below 0 high. */
 @RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
-class RowCardTest {
+class AndroidCardTest {
     @get:Rule
     val compose = createAndroidComposeRule<ComponentActivity>()
 
     @Test
     fun aCardWithNoRowsMeasuresZeroHigh() {
-        compose.setContent { BaeTheme { RowCard(modifier = Modifier.testTag("card")) {} } }
+        compose.setContent { BaeTheme { AndroidCard(modifier = Modifier.testTag("card")) {} } }
 
         compose.onNodeWithTag("card").assertHeightIsEqualTo(0.dp)
     }

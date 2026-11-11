@@ -1,7 +1,6 @@
 package fm.bae.app.ui.components
 
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import fm.bae.app.DisplayError
@@ -52,11 +51,16 @@ fun ErrorDetailsDialog(
     details: ErrorDetails,
     onDismiss: () -> Unit,
 ) {
-    BaeAlertDialog(
+    AndroidDialog(
         onDismissRequest = onDismiss,
         title = details.title,
         message = details.message,
         content = { CausesPanel(text = details.causes, copyText = details.copyText) },
-        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.ok)) } },
+        confirmButton = {
+            AndroidButton(
+                kind = ButtonKind.TEXT,
+                onClick = onDismiss,
+            ) { Text(stringResource(android.R.string.ok)) }
+        },
     )
 }

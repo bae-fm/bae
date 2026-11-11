@@ -16,9 +16,9 @@ import fm.bae.app.AppScreen
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.ui.appearance.ThemeSpace
+import fm.bae.app.ui.components.AndroidSpinner
 import fm.bae.app.ui.components.OpenProgressLine
 import fm.bae.app.ui.components.StepProgressLine
-import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.components.stepFraction
 import fm.bae.app.ui.onboarding.ResettingScreen
 import fm.bae.fastvalues.LatestSource
@@ -79,7 +79,7 @@ private fun LoadingScreen(
 ) {
     Box(modifier = Modifier.fillMaxSize().padding(ThemeSpace.page), contentAlignment = Alignment.Center) {
         OpenProgressLine(steps = steps, modifier = Modifier.widthIn(max = OPEN_PROGRESS_MAX_WIDTH)) {
-            WaitingIndicator(text = stringResource(title))
+            AndroidSpinner(text = stringResource(title))
         }
     }
 }
@@ -107,7 +107,7 @@ internal fun ClosingScreen(
             fraction = { null },
             modifier = Modifier.widthIn(max = OPEN_PROGRESS_MAX_WIDTH),
         ) {
-            WaitingIndicator(text = stringResource(title))
+            AndroidSpinner(text = stringResource(title))
         }
     }
 }
@@ -132,7 +132,7 @@ internal fun SetupStepScreen(
             fraction = { stepFraction(it.done, it.total)?.toDouble() },
             modifier = Modifier.widthIn(max = OPEN_PROGRESS_MAX_WIDTH),
         ) {
-            WaitingIndicator(text = stringResource(title))
+            AndroidSpinner(text = stringResource(title))
         }
     }
 }

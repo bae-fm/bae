@@ -21,7 +21,7 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.ui.BaeAppChrome
 import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.components.PrimaryButton
+import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.S3KeyFields
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.launch
@@ -103,7 +103,7 @@ internal fun S3SetupForm(
 
     S3FormFields(input)
     StorageSetupRunLine(setup, onCancel)
-    PrimaryButton(
+    AndroidButton(
         enabled = input.complete && !busy,
         onClick = {
             busy = true

@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -61,7 +60,7 @@ internal fun RemoveLibraryDialog(
     onDismiss: () -> Unit,
 ) {
     val words = removalWords(library, loss)
-    BaeAlertDialog(
+    AndroidDialog(
         onDismissRequest = onDismiss,
         title = words.title,
         message = words.lead,
@@ -70,16 +69,27 @@ internal fun RemoveLibraryDialog(
             // Removing loses nothing, so it is the accent action; only Delete is red.
             when (LibraryEnding.of(library.state)) {
                 LibraryEnding.REMOVE -> {
-                    TextButton(onClick = onConfirm) { Text(stringResource(R.string.settings_remove)) }
+                    AndroidButton(
+                        kind = ButtonKind.TEXT,
+                        onClick = onConfirm,
+                    ) { Text(stringResource(R.string.settings_remove)) }
                 }
 
                 LibraryEnding.DELETE -> {
-                    DestructiveTextButton(onClick = onConfirm) { Text(stringResource(R.string.library_delete)) }
+                    AndroidButton(
+                        kind = ButtonKind.TEXT,
+                        tone = ButtonTone.DESTRUCTIVE,
+                        onClick = onConfirm,
+                    ) { Text(stringResource(R.string.library_delete)) }
                 }
             }
         },
         dismissButton = {
-            NeutralTextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+            AndroidButton(
+                kind = ButtonKind.TEXT,
+                tone = ButtonTone.NEUTRAL,
+                onClick = onDismiss,
+            ) { Text(stringResource(R.string.cancel)) }
         },
     )
 }

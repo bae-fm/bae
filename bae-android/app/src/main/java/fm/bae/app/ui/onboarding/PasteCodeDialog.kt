@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -13,8 +12,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.BaeAlertDialog
-import fm.bae.app.ui.components.NeutralTextButton
+import fm.bae.app.ui.components.AndroidButton
+import fm.bae.app.ui.components.AndroidDialog
+import fm.bae.app.ui.components.ButtonKind
+import fm.bae.app.ui.components.ButtonTone
 
 /** The lines a code field is tall at least, and the most it grows to before it scrolls. */
 private const val CODE_FIELD_LINES = 3
@@ -36,7 +37,7 @@ fun PasteCodeDialog(
     onConfirm: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    BaeAlertDialog(
+    AndroidDialog(
         onDismissRequest = onDismiss,
         title = text.title,
         message = text.instructions,
@@ -53,12 +54,20 @@ fun PasteCodeDialog(
             )
         },
         confirmButton = {
-            TextButton(onClick = { onConfirm(pasteInput.trim()) }, enabled = pasteInput.trim().isNotEmpty()) {
+            AndroidButton(
+                kind = ButtonKind.TEXT,
+                onClick = { onConfirm(pasteInput.trim()) },
+                enabled = pasteInput.trim().isNotEmpty(),
+            ) {
                 Text(text.confirmLabel)
             }
         },
         dismissButton = {
-            NeutralTextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+            AndroidButton(
+                kind = ButtonKind.TEXT,
+                tone = ButtonTone.NEUTRAL,
+                onClick = onDismiss,
+            ) { Text(stringResource(R.string.cancel)) }
         },
     )
 }

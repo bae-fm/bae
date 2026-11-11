@@ -13,7 +13,6 @@ import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -35,11 +34,13 @@ import fm.bae.app.displayError
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.AndroidButton
+import fm.bae.app.ui.components.AndroidSpinner
+import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.ErrorNotice
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.TitledErrorNotice
-import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.downloads.ActiveDownloadProgress
 import fm.bae.app.ui.downloads.PinQueuedText
 import fm.bae.app.ui.rememberScreenScope
@@ -225,7 +226,7 @@ private fun DownloadedControl(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         if (unpinning) {
-            WaitingIndicator(size = ThemeIcon.medium)
+            AndroidSpinner(size = ThemeIcon.medium)
             Text(
                 text = LocalContext.current.coreString(bridgeTransferActionKey(BridgeReleaseStorageAction.UNPIN)),
                 style = ThemeText.detail.style,
@@ -244,7 +245,7 @@ private fun DownloadActionButton(
     icon: ImageVector,
     onClick: () -> Unit,
 ) {
-    OutlinedButton(onClick = onClick) {
+    AndroidButton(kind = ButtonKind.OUTLINED, onClick = onClick) {
         Icon(icon, contentDescription = null, modifier = Modifier.size(ThemeIcon.medium))
         Spacer(modifier = Modifier.width(ThemeSpace.related))
         Text(text)

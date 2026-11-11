@@ -13,7 +13,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -29,10 +28,12 @@ import fm.bae.app.data.LiveValue
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.CardRow
+import fm.bae.app.ui.components.AndroidButton
+import fm.bae.app.ui.components.AndroidCard
+import fm.bae.app.ui.components.AndroidRadio
+import fm.bae.app.ui.components.AndroidRow
+import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ErrorNotice
-import fm.bae.app.ui.components.RadioRow
-import fm.bae.app.ui.components.RowCard
 import fm.bae.app.ui.components.ScreenTopBar
 import fm.bae.app.ui.downloads.setDownloadConcurrency
 
@@ -78,7 +79,7 @@ internal fun TransfersContent(
         ) {
             WifiOnlyRows(unmeteredOnly, onSetUnmeteredOnly)
             Footer(R.string.transfers_wifi_only_footer)
-            RowCard {
+            AndroidCard {
                 ConcurrencyRow(value = concurrency, limit = limit, onSelect = onSelectConcurrency)
             }
             Footer(R.string.transfers_concurrency_footer)
@@ -94,8 +95,8 @@ private fun WifiOnlyRows(
 ) {
     when (unmeteredOnly) {
         is LiveValue.Current -> {
-            RowCard {
-                CardRow(
+            AndroidCard {
+                AndroidRow(
                     title = stringResource(R.string.transfers_wifi_only),
                     trailing = { Switch(checked = unmeteredOnly.value, onCheckedChange = onSet) },
                 )
@@ -119,7 +120,7 @@ private fun ConcurrencyRow(
 ) {
     var open by remember { mutableStateOf(false) }
     val title = stringResource(R.string.pins_at_once)
-    CardRow(title = title, subtitle = value.toString(), onClick = { open = true })
+    AndroidRow(title = title, subtitle = value.toString(), onClick = { open = true })
     if (open) {
         AlertDialog(
             onDismissRequest = { open = false },
@@ -127,7 +128,7 @@ private fun ConcurrencyRow(
             text = {
                 Column(modifier = Modifier.selectableGroup()) {
                     for (option in 1u..limit) {
-                        RadioRow(
+                        AndroidRadio(
                             label = option.toString(),
                             checked = option == value,
                             onClick = {
@@ -139,7 +140,12 @@ private fun ConcurrencyRow(
                 }
             },
             confirmButton = {},
-            dismissButton = { TextButton(onClick = { open = false }) { Text(stringResource(R.string.cancel)) } },
+            dismissButton = {
+                AndroidButton(
+                    kind = ButtonKind.TEXT,
+                    onClick = { open = false },
+                ) { Text(stringResource(R.string.cancel)) }
+            },
         )
     }
 }
