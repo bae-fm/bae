@@ -93,7 +93,7 @@
     var trail = kids(props.children);
     // `copy`: one text, after the note; or a list of {text, after}: with more than one, the note ends in a colon and each is a bullet under it.
     var copies = props.copy == null || props.copy === '' ? [] : Array.isArray(props.copy) ? props.copy : [{ text: props.copy }];
-    return h('div', { className: cx('bae-m-row', props.nested && 'bae-m-row-nested', props.nested && props.off && 'bae-m-row-nested-off', props.selected && 'bae-m-row-selected', props.action && 'bae-m-row-action', props.destructive && 'bae-m-row-destructive'), onClick: props.onClick },
+    return h('div', { className: cx('bae-m-row', props.nested && 'bae-m-row-nested', props.nested && props.off && 'bae-m-row-nested-off', !props.nested && props.off && 'bae-off', props.selected && 'bae-m-row-selected', props.action && 'bae-m-row-action', props.destructive && 'bae-m-row-destructive'), onClick: props.onClick },
       props.label == null ? null : h('span', { className: 'bae-m-row-label' },
         h('span', { className: 'bae-m-row-title' }, h('span', { className: props.strong ? 'bae-m-row-strong' : null }, props.label), props.tag ? h(StatusChip, null, props.tag) : null, props.info ? h(MacInfoTip, { label: 'About ' + props.label }) : null),
         props.note || copies.length ? h('span', { className: cx('bae-m-row-note', props.noteTone && 'bae-tone-' + props.noteTone) },
