@@ -175,7 +175,7 @@ private fun ComposerDetailRowContent(
     onSelectAlbum: (String, String) -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        row.heading?.let { LibrarySectionHeader(stringResource(it.titleRes)) }
+        row.heading?.let { AndroidSearchSection(stringResource(it.titleRes)) }
         when (val item = row.item) {
             is BridgeComposerDetailItem.Work -> {
                 WorkSummaryRow(
@@ -280,7 +280,7 @@ private fun WorkDetailContent(
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         item { WorkSummaryRow(work = detail.work, part = false, onClick = null) }
         if (detail.childWorks.isNotEmpty()) {
-            item { LibrarySectionHeader(stringResource(R.string.search_section_works)) }
+            item { AndroidSearchSection(stringResource(R.string.search_section_works)) }
             items(detail.childWorks, key = { it.workId }) { work ->
                 WorkSummaryRow(
                     work = work,
@@ -290,7 +290,7 @@ private fun WorkDetailContent(
             }
         }
         if (detail.releases.isNotEmpty()) {
-            item { LibrarySectionHeader(stringResource(R.string.search_section_releases)) }
+            item { AndroidSearchSection(stringResource(R.string.search_section_releases)) }
             items(detail.releases, key = { it.releaseId }) { release ->
                 Row(
                     modifier =
@@ -313,7 +313,7 @@ private fun WorkDetailContent(
             }
         }
         if (detail.tracks.isNotEmpty()) {
-            item { LibrarySectionHeader(stringResource(R.string.search_section_recordings)) }
+            item { AndroidSearchSection(stringResource(R.string.search_section_recordings)) }
             items(detail.tracks, key = { it.trackId }) { track ->
                 TwoLineText(title = track.trackTitle, subtitle = track.albumTitle)
             }
@@ -368,7 +368,7 @@ internal fun TwoLineText(
 }
 
 @Composable
-internal fun LibrarySectionHeader(title: String) {
+internal fun AndroidSearchSection(title: String) {
     Text(
         text = title,
         style = ThemeText.heading.style,
@@ -391,6 +391,6 @@ private fun WorkSummaryRowPreview() {
 @Composable
 private fun LibrarySectionHeaderPreview() {
     BaeTheme {
-        LibrarySectionHeader(title = "Works")
+        AndroidSearchSection(title = "Works")
     }
 }

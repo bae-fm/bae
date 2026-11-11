@@ -45,7 +45,7 @@ private val PINNED_PICTURE = 32.dp
  * the albums beneath.
  */
 @Composable
-internal fun ArtistGroupHeader(
+internal fun AndroidArtistHeading(
     section: BridgeLibraryBrowseSection,
     pinned: Boolean,
     gridPadding: Dp,

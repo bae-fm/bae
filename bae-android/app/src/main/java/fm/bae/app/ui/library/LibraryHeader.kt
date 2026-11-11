@@ -194,7 +194,7 @@ private fun LibraryViewHeading(
 @Composable
 internal fun LibraryViewMenuItems(state: LibraryBrowserState) {
     LibraryBrowserMode.entries.forEach { mode ->
-        ChoiceMenuItem(
+        AndroidMenuItem(
             label = stringResource(mode.label),
             selected = mode == state.mode,
             onClick = {
@@ -207,7 +207,7 @@ internal fun LibraryViewMenuItems(state: LibraryBrowserState) {
 
 /** One of a menu's choices, the chosen one in the accent color. */
 @Composable
-internal fun ChoiceMenuItem(
+internal fun AndroidMenuItem(
     label: String,
     selected: Boolean,
     onClick: () -> Unit,

@@ -211,7 +211,7 @@ private fun <F> SortItems(
     onChange: (F, BridgeSortDirection) -> Unit,
 ) {
     fields.forEach { choice ->
-        ChoiceMenuItem(
+        AndroidMenuItem(
             label = stringResource(label(choice)),
             selected = choice == field,
             onClick = { onChange(choice, direction) },

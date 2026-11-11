@@ -43,7 +43,7 @@ class LibraryGridTest {
         compose.setContent {
             BaeTheme {
                 CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
-                    LibraryGridBacking(
+                    AndroidAlbumGrid(
                         count = rows.size,
                         sections = sections,
                         rowAt = rows::getOrNull,

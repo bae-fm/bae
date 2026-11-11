@@ -164,7 +164,7 @@ private fun ActivitySheet(
     onSetDownloadsPaused: (Boolean) -> Unit,
 ) {
     AndroidSheet(onDismiss = onDismiss) {
-        ActivityList(
+        AndroidActivity(
             problems = problems,
             app = app,
             activity = activity,
@@ -185,7 +185,7 @@ private fun ActivitySheet(
  * a tap that opens its explanation, then what is moving, or that everything is up to date.
  */
 @Composable
-internal fun ActivityList(
+internal fun AndroidActivity(
     problems: ActivityProblems,
     app: List<AppProblem>,
     activity: BridgeSyncActivity?,
@@ -352,7 +352,7 @@ private fun SecondaryLine(text: String) {
 private fun ActivityListPreview() {
     BaeTheme {
         val activity = PreviewData.syncActivity(needsAttention = true)
-        ActivityList(
+        AndroidActivity(
             problems = activityProblems(emptyList(), activity, null, emptySet()),
             app = emptyList(),
             activity = activity,

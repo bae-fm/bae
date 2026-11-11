@@ -121,7 +121,7 @@ private fun BoxScope.SceneMenu(
 /** The grouped fixture's albums under their artists, scrolled by [gridState]. */
 @Composable
 private fun SceneGroupedAlbums(gridState: LazyGridState) {
-    LibraryGridBacking(
+    AndroidAlbumGrid(
         count = SCENE_SECTIONS.sumOf { it.window.limit.toInt() },
         sections = SCENE_SECTIONS,
         rowAt = ::sceneGroupedRow,
@@ -138,7 +138,7 @@ private fun SceneGroupedAlbums(gridState: LazyGridState) {
  */
 @Composable
 internal fun LibraryGridSceneAlbums(gridState: LazyGridState) {
-    LibraryGridBacking(
+    AndroidAlbumGrid(
         count = SCENE_ALBUM_COUNT,
         sections = emptyList(),
         rowAt = ::sceneFlatRow,

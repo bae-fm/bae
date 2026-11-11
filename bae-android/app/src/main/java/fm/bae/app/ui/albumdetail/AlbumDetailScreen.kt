@@ -342,7 +342,7 @@ internal fun AlbumDetailContent(
         verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
     ) {
         item {
-            AlbumDetailHeader(
+            AndroidAlbumHeader(
                 detail = detail,
                 selectedRelease = selectedRelease,
                 cover = cover,
@@ -372,7 +372,7 @@ internal fun AlbumDetailContent(
 }
 
 @Composable
-private fun AlbumDetailHeader(
+internal fun AndroidAlbumHeader(
     detail: BridgeAlbumDetail,
     selectedRelease: BridgeRelease,
     cover: BridgeImageRef?,
@@ -468,7 +468,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.albumTrackGroups(
         }
         items(group.tracks, key = { it.id }) { track ->
             val isCurrent = track.id == playback.currentTrackId
-            TrackRow(
+            AndroidTrackRow(
                 data =
                     TrackRowData(
                         positionLabel = track.positionText,
@@ -514,7 +514,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.albumTrackGroups(
 private fun AlbumDetailHeaderPreview() {
     BaeTheme {
         CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
-            AlbumDetailHeader(
+            AndroidAlbumHeader(
                 detail = PreviewData.albumDetail(),
                 selectedRelease = PreviewData.release(),
                 cover = PreviewData.imageRef(),

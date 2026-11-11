@@ -136,7 +136,7 @@ private fun SearchResultsList(
 ) {
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         if (results.albums.isNotEmpty()) {
-            item { LibrarySectionHeader(stringResource(R.string.search_section_albums)) }
+            item { AndroidSearchSection(stringResource(R.string.search_section_albums)) }
             items(results.albums, key = { "album:${it.id}" }) { album ->
                 AlbumResultRow(
                     album = album,
@@ -145,7 +145,7 @@ private fun SearchResultsList(
             }
         }
         if (results.artists.isNotEmpty()) {
-            item { LibrarySectionHeader(stringResource(R.string.search_section_artists)) }
+            item { AndroidSearchSection(stringResource(R.string.search_section_artists)) }
             items(results.artists, key = { "artist:${it.artistId}" }) { artist ->
                 ArtistSummaryRow(
                     artist = artist,
@@ -154,7 +154,7 @@ private fun SearchResultsList(
             }
         }
         if (results.tracks.isNotEmpty()) {
-            item { LibrarySectionHeader(stringResource(R.string.search_section_tracks)) }
+            item { AndroidSearchSection(stringResource(R.string.search_section_tracks)) }
             items(results.tracks, key = { "track:${it.id}" }) { track ->
                 TrackResultRow(
                     track = track,
@@ -163,7 +163,7 @@ private fun SearchResultsList(
             }
         }
         if (results.composers.isNotEmpty()) {
-            item { LibrarySectionHeader(stringResource(R.string.search_section_composers)) }
+            item { AndroidSearchSection(stringResource(R.string.search_section_composers)) }
             items(results.composers, key = { "composer:${it.artistId}" }) { composer ->
                 ComposerSummaryRow(
                     composer = composer,
@@ -172,7 +172,7 @@ private fun SearchResultsList(
             }
         }
         if (results.works.isNotEmpty()) {
-            item { LibrarySectionHeader(stringResource(R.string.search_section_works)) }
+            item { AndroidSearchSection(stringResource(R.string.search_section_works)) }
             items(results.works, key = { "work:${it.workId}" }) { work ->
                 WorkResultRow(
                     work = work,

@@ -18,8 +18,8 @@ import fm.bae.app.ui.library.LibraryGridScene
 import fm.bae.app.ui.library.SceneGrid
 import fm.bae.app.ui.signInSettingsProblem
 import fm.bae.app.ui.sync.ActivityButton
-import fm.bae.app.ui.sync.ActivityList
 import fm.bae.app.ui.sync.ActivityWords
+import fm.bae.app.ui.sync.AndroidActivity
 import fm.bae.app.ui.sync.activityProblems
 import fm.bae.fastvalues.LatestStream
 import uniffi.bae_bridge.BridgeDownloadQueueActivity
@@ -148,7 +148,7 @@ private fun ActivityListShot(
     val store = remember { SyncActivityStore(LatestStream.activityBars(bars)) }
     BaeTheme {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            ActivityList(
+            AndroidActivity(
                 problems = activityProblems(app, activity, null, emptySet()),
                 app = app,
                 activity = activity,

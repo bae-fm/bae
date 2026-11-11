@@ -71,7 +71,7 @@ internal data class TrackRowCallbacks(
 )
 
 @Composable
-internal fun TrackRow(
+internal fun AndroidTrackRow(
     data: TrackRowData,
     callbacks: TrackRowCallbacks,
     positionColumnWidth: Dp,
@@ -195,7 +195,7 @@ private val previewPositionLabels = listOf("1", "2")
 @Composable
 private fun TrackRowPreview() {
     BaeTheme {
-        TrackRow(
+        AndroidTrackRow(
             data =
                 TrackRowData(
                     positionLabel = "1",
@@ -215,7 +215,7 @@ private fun TrackRowPreview() {
 @Composable
 private fun TrackRowCurrentPreview() {
     BaeTheme {
-        TrackRow(
+        AndroidTrackRow(
             data =
                 TrackRowData(
                     positionLabel = "2",

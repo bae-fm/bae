@@ -96,8 +96,8 @@ import fm.bae.app.ui.settings.SyncStatusScene
 import fm.bae.app.ui.settings.TransfersContent
 import fm.bae.app.ui.settings.sceneOtherPerson
 import fm.bae.app.ui.signInSettingsProblem
-import fm.bae.app.ui.sync.ActivityList
 import fm.bae.app.ui.sync.ActivityWords
+import fm.bae.app.ui.sync.AndroidActivity
 import fm.bae.app.ui.sync.activityProblems
 import fm.bae.fastvalues.LatestStream
 import uniffi.bae_bridge.BridgeCloudProvider

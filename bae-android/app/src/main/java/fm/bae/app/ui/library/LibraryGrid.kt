@@ -1,20 +1,15 @@
 package fm.bae.app.ui.library
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.derivedStateOf
@@ -22,7 +17,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.OpenLibrary
@@ -32,15 +26,12 @@ import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
-import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.CoverImage
 import uniffi.bae_bridge.BridgeAlbumAppearance
 import uniffi.bae_bridge.BridgeLibraryBrowseSection
 
 @Composable
-internal fun LibraryGridContent(
+internal fun AndroidAlbumGridContainer(
     session: OpenLibrary,
     page: AlbumPageStore,
     gridState: LazyGridState,
@@ -53,7 +44,7 @@ internal fun LibraryGridContent(
         page = page,
         emptyMessage = stringResource(R.string.library_empty_albums),
     ) {
-        LibraryGridBacking(
+        AndroidAlbumGrid(
             count = page.totalCount,
             sections = if (groupByArtist) page.sections else emptyList(),
             rowAt = page.rows::get,
@@ -71,7 +62,7 @@ internal fun LibraryGridContent(
  * scroll by.
  */
 @Composable
-internal fun LibraryGridBacking(
+internal fun AndroidAlbumGrid(
     count: Int,
     sections: List<BridgeLibraryBrowseSection>,
     rowAt: (Int) -> BridgeAlbumAppearance?,
@@ -98,7 +89,7 @@ internal fun LibraryGridBacking(
                                 (gridState.firstVisibleItemIndex == index && gridState.firstVisibleItemScrollOffset > 0)
                         }
                     }
-                    ArtistGroupHeader(
+                    AndroidArtistHeading(
                         section = section,
                         pinned = pinned,
                         gridPadding = ThemeSpace.group,
@@ -129,7 +120,7 @@ private fun LazyGridScope.albumItems(
         val index = positions.first + local
         val row = rowAt(index)
         if (row != null) {
-            AlbumGridCard(row = row, grouped = grouped, onClick = { onSelectAlbum(row.album.id) })
+            AndroidAlbumTileContainer(row = row, grouped = grouped, onClick = { onSelectAlbum(row.album.id) })
         } else {
             Spacer(modifier = Modifier.fillMaxWidth().aspectRatio(1f))
         }
@@ -137,39 +128,21 @@ private fun LazyGridScope.albumItems(
 }
 
 /**
- * An album's card: its cover, title, and under it the album's artists, or in a
- * group of the grid grouped by artist, its year and the album's other credits.
+ * An album's tile for [row]: its cover, title, and under it the album's artists, or in a group of the
+ * grid grouped by artist, its year and the album's other credits.
  */
 @Composable
-private fun AlbumGridCard(
+private fun AndroidAlbumTileContainer(
     row: BridgeAlbumAppearance,
     grouped: Boolean,
     onClick: () -> Unit,
 ) {
-    val album = row.album
-    Column(modifier = Modifier.clickable(onClick = onClick)) {
-        CoverImage(
-            cover = album.cover,
-            cornerRadius = ThemeRadius.cover,
-            iconPadding = 40.dp,
-            modifier = Modifier.fillMaxWidth().aspectRatio(1f),
-            contentDescription = album.title,
-        )
-        Spacer(modifier = Modifier.height(ThemeSpace.compact))
-        Text(
-            text = album.title,
-            style = ThemeText.rowTitle.style,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-        Text(
-            text = if (grouped) groupedCardLine(row) else album.artistNames,
-            style = ThemeText.detail.style,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-    }
+    AndroidAlbumTile(
+        title = row.album.title,
+        line = if (grouped) groupedCardLine(row) else row.album.artistNames,
+        cover = row.album.cover,
+        onClick = onClick,
+    )
 }
 
 /** A grouped card's line: the year, and the album's other credits when it has any. */
@@ -189,7 +162,7 @@ private fun groupedCardLine(row: BridgeAlbumAppearance): String {
 private fun AlbumGridCardPreview() {
     BaeTheme {
         CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
-            AlbumGridCard(
+            AndroidAlbumTileContainer(
                 row = BridgeAlbumAppearance(album = PreviewData.album(), creditedWith = "Another Artist"),
                 grouped = true,
                 onClick = {},

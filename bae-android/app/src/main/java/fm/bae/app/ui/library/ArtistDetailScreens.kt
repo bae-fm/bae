@@ -101,7 +101,7 @@ private fun ArtistDetailContent(
             )
         }
         if (detail.albums.isNotEmpty()) {
-            item { LibrarySectionHeader(stringResource(R.string.search_section_albums)) }
+            item { AndroidSearchSection(stringResource(R.string.search_section_albums)) }
             items(detail.albums, key = { it.id }) { album ->
                 Row(
                     modifier =

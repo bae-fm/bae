@@ -73,10 +73,10 @@ RENDER_LEAVES = (
         r"\bstruct\s+BrowseSummaryRow\s*<[^>{}]+>\s*:\s*View\b",
     ),
     RenderLeaf(
-        "bae-android/app/src/main/java/fm/bae/app/ui/albumdetail/AlbumTrackRow.kt",
-        "TrackRow",
+        "bae-android/app/src/main/java/fm/bae/app/ui/albumdetail/AndroidTrackRow.kt",
+        "AndroidTrackRow",
         "kotlin",
-        r"\bfun\s+TrackRow\s*\(",
+        r"\bfun\s+AndroidTrackRow\s*\(",
     ),
     RenderLeaf(
         "bae-android/app/src/main/java/fm/bae/app/ui/playback/AndroidQueueRow.kt",
@@ -86,9 +86,9 @@ RENDER_LEAVES = (
     ),
     RenderLeaf(
         "bae-android/app/src/main/java/fm/bae/app/ui/library/LibraryGrid.kt",
-        "AlbumGridCard",
+        "AndroidAlbumTileContainer",
         "kotlin",
-        r"\bfun\s+AlbumGridCard\s*\(",
+        r"\bfun\s+AndroidAlbumTileContainer\s*\(",
     ),
     RenderLeaf(
         "bae-android/app/src/main/java/fm/bae/app/ui/library/ArtistBrowser.kt",
