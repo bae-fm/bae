@@ -1,0 +1,163 @@
+//! Board and shot names: `<platform>.<area>.<screen>[.<state>]` for a screen
+//! and `<platform>.component.<thing>.<state>` for a design-system component's
+//! state. Each segment is lower-case words joined by `-`.
+
+use std::fmt;
+
+#[derive(Debug, thiserror::Error, PartialEq, Eq)]
+pub(crate) enum NameError {
+    #[error("'{0}' is not a board name: {1}")]
+    Invalid(String, &'static str),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) enum Platform {
+    Mac,
+    Android,
+}
+
+impl Platform {
+    fn parse(word: &str) -> Option<Self> {
+        match word {
+            "mac" => Some(Self::Mac),
+            "android" => Some(Self::Android),
+            _ => None,
+        }
+    }
+
+    /// The first segment of every name on this platform.
+    fn word(self) -> &'static str {
+        match self {
+            Self::Mac => "mac",
+            Self::Android => "android",
+        }
+    }
+
+    /// The prefix of this platform's component names in the design system
+    /// (`MacRow`, `AndroidCastRow`).
+    fn component_prefix(self) -> &'static str {
+        match self {
+            Self::Mac => "Mac",
+            Self::Android => "Android",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) enum Name {
+    Screen(ScreenName),
+    Component(ComponentName),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) struct ScreenName {
+    platform: Platform,
+    area: String,
+    screen: String,
+    state: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) struct ComponentName {
+    platform: Platform,
+    thing: String,
+    state: String,
+}
+
+impl Name {
+    pub(crate) fn parse(text: &str) -> Result<Self, NameError> {
+        let invalid = |why| NameError::Invalid(text.to_string(), why);
+        let segments: Vec<&str> = text.split('.').collect();
+        if !segments.iter().all(|s| is_segment(s)) {
+            return Err(invalid("every segment is lower-case words joined by '-'"));
+        }
+        let platform = Platform::parse(segments[0])
+            .ok_or_else(|| invalid("it starts with no platform (mac, android)"))?;
+        match segments[1..] {
+            ["component", thing, state] => Ok(Self::Component(ComponentName {
+                platform,
+                thing: thing.to_string(),
+                state: state.to_string(),
+            })),
+            ["component", ..] => Err(invalid("a component is component.<thing>.<state>")),
+            [area, screen] => Ok(Self::Screen(ScreenName {
+                platform,
+                area: area.to_string(),
+                screen: screen.to_string(),
+                state: None,
+            })),
+            [area, screen, state] => Ok(Self::Screen(ScreenName {
+                platform,
+                area: area.to_string(),
+                screen: screen.to_string(),
+                state: Some(state.to_string()),
+            })),
+            _ => Err(invalid("a screen is <area>.<screen>[.<state>]")),
+        }
+    }
+}
+
+impl ComponentName {
+    /// The design-system component the shot draws: `cast-row` on Android is
+    /// `AndroidCastRow`.
+    pub(crate) fn component(&self) -> String {
+        let words = self.thing.split('-').map(|word| {
+            let mut chars = word.chars();
+            chars
+                .next()
+                .map(|first| first.to_uppercase().chain(chars).collect::<String>())
+                .unwrap_or_default()
+        });
+        std::iter::once(self.platform.component_prefix().to_string()).chain(words).collect()
+    }
+
+    pub(crate) fn state(&self) -> &str {
+        &self.state
+    }
+}
+
+fn is_segment(segment: &str) -> bool {
+    !segment.is_empty()
+        && segment.split('-').all(|word| {
+            !word.is_empty() && word.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit())
+        })
+}
+
+impl fmt::Display for Name {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Screen(s) => {
+                write!(f, "{}.{}.{}", s.platform.word(), s.area, s.screen)?;
+                match &s.state {
+                    Some(state) => write!(f, ".{state}"),
+                    None => Ok(()),
+                }
+            }
+            Self::Component(c) => {
+                write!(f, "{}.component.{}.{}", c.platform.word(), c.thing, c.state)
+            }
+        }
+    }
+}
+
+/// The id of a preview row's state: its name in lower-case words joined by
+/// `-` (`Nested, off` is `nested-off`).
+pub(crate) fn state_id(row_name: &str) -> String {
+    let mut words = Vec::new();
+    let mut word = String::new();
+    for c in row_name.chars() {
+        if c.is_ascii_alphanumeric() {
+            word.push(c.to_ascii_lowercase());
+        } else if !word.is_empty() {
+            words.push(std::mem::take(&mut word));
+        }
+    }
+    if !word.is_empty() {
+        words.push(word);
+    }
+    words.join("-")
+}
+
+#[cfg(test)]
+#[path = "names_tests.rs"]
+mod tests;

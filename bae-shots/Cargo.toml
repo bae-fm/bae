@@ -1,0 +1,22 @@
+[package]
+name = "bae-shots"
+version = "0.0.0-dev"
+authors = ["dima"]
+edition = "2021"
+license = "LicenseRef-UNLICENSED"
+publish = false
+
+[[bin]]
+name = "bae-shots"
+path = "src/main.rs"
+
+[dependencies]
+clap = { workspace = true }
+regex = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+
+[lints]
+workspace = true
