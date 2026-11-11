@@ -48,7 +48,6 @@ pub enum SyncStatusWord {
 /// Why a state is what it is, in words.
 #[derive(Debug, Clone, PartialEq)]
 pub enum SyncCauseLine {
-    UploadsPaused,
     UploadFailedWillRetry,
     /// The provider asked every request to wait until `until`.
     ProviderWait {
@@ -97,7 +96,6 @@ pub enum SyncCauseLine {
 /// What the person can do about the state.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SyncFix {
-    ResumeUploads,
     RetryNow,
     /// Start sync again after a start that failed.
     Reconnect,
@@ -233,9 +231,6 @@ impl SyncStatusSnapshot {
         use SyncStatusWord::WaitingToSync;
         let neutral = SyncShown::new(WaitingToSync, SyncTone::Neutral);
         match wait {
-            SyncWait::Paused => {
-                neutral.because(SyncCauseLine::UploadsPaused).fixed_by(SyncFix::ResumeUploads)
-            }
             SyncWait::Retrying { .. } => {
                 neutral.because(SyncCauseLine::UploadFailedWillRetry).fixed_by(SyncFix::RetryNow)
             }
@@ -248,9 +243,11 @@ impl SyncStatusSnapshot {
                     None => amber,
                 }
             }
-            SyncWait::NotSyncing | SyncWait::Blocked | SyncWait::Metered | SyncWait::Queued => {
-                neutral
-            }
+            SyncWait::NotSyncing
+            | SyncWait::Blocked
+            | SyncWait::Paused
+            | SyncWait::Metered
+            | SyncWait::Queued => neutral,
         }
     }
 

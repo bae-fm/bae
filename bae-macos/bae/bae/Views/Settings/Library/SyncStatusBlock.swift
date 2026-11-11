@@ -118,8 +118,6 @@ struct SyncFixButton: View {
 
     private var title: String {
         switch fix {
-        case .resumeUploads:
-            localizedCoreString("core.pending.action.resume_uploads")
         case .retryNow:
             localizedCoreString("core.activity.retry_now")
         case .reconnect:
@@ -144,8 +142,6 @@ struct SyncFixButton: View {
     private func run() {
         error = nil
         switch fix {
-        case .resumeUploads:
-            attempt { try await sync.setSyncPaused(false) }
         case .retryNow:
             attempt {
                 error = try await sync.nudges.retryNow().failure

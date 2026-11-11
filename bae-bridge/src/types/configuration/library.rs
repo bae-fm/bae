@@ -505,7 +505,6 @@ pub struct BridgeSyncCause {
 /// platform's own.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeSyncFix {
-    ResumeUploads,
     RetryNow,
     /// Start sync again after a start that failed.
     Reconnect,
@@ -600,7 +599,6 @@ impl BridgeSyncCause {
         let plain = |key: &str| BridgeMessage { key: key.to_string(), args: Vec::new() };
         let mut resumes_at = None;
         let message = match cause {
-            C::UploadsPaused => plain("core.sync.cause.uploads_paused"),
             C::UploadFailedWillRetry => plain("core.sync.cause.upload_failed"),
             C::ProviderWait { provider, until } => {
                 resumes_at = Some(until);
@@ -657,7 +655,6 @@ impl BridgeSyncFix {
     pub(crate) fn from_core(fix: bae_sync_status::SyncFix) -> Self {
         use bae_sync_status::SyncFix as F;
         match fix {
-            F::ResumeUploads => Self::ResumeUploads,
             F::RetryNow => Self::RetryNow,
             F::Reconnect => Self::Reconnect,
             F::CheckForUpdates => Self::CheckForUpdates,

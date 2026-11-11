@@ -113,10 +113,6 @@ private class PendingActionRunner(
     fun runFix(fix: BridgeSyncFix) {
         val handle = session.appHandle
         when (fix) {
-            BridgeSyncFix.ResumeUploads -> {
-                perform("resume uploads") { handle.setSyncPaused(false) }
-            }
-
             BridgeSyncFix.RetryNow -> {
                 session.messages.startRetrySync(handle::retryNow)
             }
@@ -463,8 +459,6 @@ internal fun SyncStatusBlock(
 private fun syncFixLabel(fix: BridgeSyncFix): String? {
     val context = LocalContext.current
     return when (fix) {
-        BridgeSyncFix.ResumeUploads -> context.coreString("core.pending.action.resume_uploads")
-
         BridgeSyncFix.RetryNow -> context.coreString("core.activity.retry_now")
 
         BridgeSyncFix.Reconnect -> context.coreString("core.pending.action.reconnect")

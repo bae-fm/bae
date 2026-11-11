@@ -50,13 +50,7 @@ fn every_state_shows_its_words_color_cause_and_fix() {
     let waits = |wait| dropbox(coven::SyncState::WaitingToSync(wait));
     check(waits(coven::SyncWait::Queued), W::WaitingToSync, T::Neutral, None, None);
     check(waits(coven::SyncWait::Blocked), W::WaitingToSync, T::Neutral, None, None);
-    check(
-        waits(coven::SyncWait::Paused),
-        W::WaitingToSync,
-        T::Neutral,
-        Some(C::UploadsPaused),
-        Some(F::ResumeUploads),
-    );
+    check(waits(coven::SyncWait::Paused), W::WaitingToSync, T::Neutral, None, None);
     check(
         waits(coven::SyncWait::Retrying { at: finished() }),
         W::WaitingToSync,

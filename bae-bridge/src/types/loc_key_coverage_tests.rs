@@ -687,7 +687,6 @@ fn playback_error_reason_lines() -> Vec<BridgeMessage> {
 fn sync_cause_messages() -> Vec<BridgeMessage> {
     use bae_sync_status::SyncCauseLine as C;
     [
-        C::UploadsPaused,
         C::UploadFailedWillRetry,
         C::ProviderWait { provider: coven::CloudProvider::Dropbox, until: std::time::UNIX_EPOCH },
         C::UpdateBae,

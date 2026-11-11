@@ -3361,10 +3361,10 @@ words of a button, which are each platform's.
 
 - **Gray.** Not synced, on the Mac only: a phone joins a library and never
   makes one. Syncing…, only while something is sent or received, not on quiet
-  passes. Waiting to sync, online with changes held back: with *Uploads are
-  paused.* and *Resume uploads* when uploads are paused, with *An upload
+  passes. Waiting to sync, online with changes held back: with *An upload
   failed. bae will try again shortly.* and *Retry now* when an upload waits to
-  retry, and with nothing else when sync waits its turn. A phone never
+  retry, and with nothing else when sync waits its turn, paused uploads
+  included: the pause shows in Transfers (§4.2), not on the Sync row. A phone never
   uploads files, so its only reason to wait is the provider's. While a cloud home
   setup runs, "Setting up your cloud home…" takes the place of any state that is no
   problem (§6.2).
