@@ -97,6 +97,13 @@ struct ShotAccessibilityTree: Sendable {
 
         mutating func add(children: [AXUIElement], parent: Int?) {
             for child in children {
+                // An element the tree gives an infinite position has no box
+                // to list, and JSON has no infinity to write one as.
+                // The elements it holds are listed under its parent.
+                if let frame = Self.frame(of: child), !frame.isFinite {
+                    add(children: Self.children(of: child), parent: parent)
+                    continue
+                }
                 let index = nodes.count
                 guard let node = node(of: child, parent: parent) else {
                     continue
@@ -242,5 +249,12 @@ struct ShotAccessibilityTree: Sendable {
                 alpha: c[3]
             )
         }
+    }
+}
+
+extension CGRect {
+    fileprivate var isFinite: Bool {
+        origin.x.isFinite && origin.y.isFinite && size.width.isFinite
+            && size.height.isFinite
     }
 }
