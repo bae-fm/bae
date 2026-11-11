@@ -3131,6 +3131,14 @@
    "x": 8640,
    "y": 1380
   },
+  "StoreMacUnpinSeveral.dc.html": {
+   "h": 660,
+   "page": "storage",
+   "title": "macOS: Unpin several releases, asking first",
+   "w": 1100,
+   "x": 9820,
+   "y": 1380
+  },
   "AlbMacStorageStates.dc.html": {
    "h": 402,
    "page": "home",
@@ -5433,6 +5441,7 @@
   "StoreMacStates.dc.html",
   "StoreMacDownloadFailed.dc.html",
   "StoreMacMoveFailedMenu.dc.html",
+  "StoreMacUnpinSeveral.dc.html",
   "SyncMacMoving.dc.html",
   "SyncMacAttention.dc.html",
   "SyncMacFailed.dc.html",
