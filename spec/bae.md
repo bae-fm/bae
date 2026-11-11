@@ -3346,8 +3346,9 @@ fix does.
 **The Sync page.** Sync has a page of its own, off the Library page. Its top
 is one block: *Status* with the state in words, then the state's cause and its
 fix, in that order, each only when it has one; on the Mac the fix is a primary
-button. *Last synced* follows the block, on the Mac as a row of its own below
-it. It shows under a state that is a problem, amber or red, and never under
+button. On the Mac a state in a color (green, amber or red) has a dot before
+its words, here and on the Library page's Sync row, and gray has none. *Last
+synced* follows the fix, in the same box on the Mac. It shows under a state that is a problem, amber or red, and never under
 Synced.
 Under the block are the library's storage rows (§6.2).
 coven gives the state
@@ -4678,9 +4679,9 @@ with *Rename…* for an admin, or for anyone when the library isn't synced, and
 **Library folder** has *Show in Finder*. For a library with storage, three
 rows follow, **Sync**, **People and devices** and **Restore code**, each
 opening its page, and the first two show where they stand: Sync the state of the sync,
-green for Synced and red for Failed, People and devices "2 people · 3
+with its dot in the state's color, People and devices "2 people · 3
 devices". A library with no storage has one row in place of those three,
-**Sync** saying "Not synced" with *Set up sync…* and a note that the library
+**Sync** saying "Not synced", with a chevron, *Set up sync…* and a note that the library
 is only on this Mac. Removing the library is not in Settings; it is on the
 first screen's list (§6.4).
 

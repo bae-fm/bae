@@ -17,7 +17,8 @@ struct SyncFixActions {
 }
 
 /// The top of the Sync page: the state in words and the color core gives it,
-/// then its cause and its fix, each only when core sends one. Until the status is first read it shows nothing.
+/// then its cause, its fix and when sync last finished, each only when core
+/// sends one. Until the status is first read it shows nothing.
 struct SyncStatusBlock: View {
     /// The library's storage, which a fix connects again or opens.
     let location: BridgeStorageLocation?
@@ -29,21 +30,15 @@ struct SyncStatusBlock: View {
     var body: some View {
         if status.unreadable {
             LabeledContent("Status") {
-                Text("Couldn't read sync status")
-                    .foregroundStyle(StatusTone.danger.color)
+                ToneDotValue(
+                    text: String(localized: "Couldn't read sync status"),
+                    tone: .danger
+                )
             }
         }
         else if let shown = status.shown {
             LabeledContent("Status") {
-                HStack(spacing: ThemeSpace.inline) {
-                    if shown.status == .synced {
-                        Circle()
-                            .fill(StatusTone.success.color)
-                            .frame(width: 8, height: 8)
-                    }
-                    Text(shown.statusLine)
-                        .foregroundStyle(shown.statusTone.color)
-                }
+                ToneDotValue(text: shown.statusLine, tone: shown.statusTone)
             }
             if let cause = shown.causeLine {
                 Text(cause)
@@ -53,19 +48,7 @@ struct SyncStatusBlock: View {
             if let fix = shown.fix {
                 SyncFixButton(fix: fix, location: location, actions: actions)
             }
-        }
-    }
-}
-
-/// When sync last finished, in a box of its own under the status block, only
-/// when core sends it.
-struct SyncLastSyncedSection: View {
-    @Environment(SyncStatusStore.self)
-    private var status
-
-    var body: some View {
-        if let lastSynced = status.shown?.lastSyncedLine {
-            Section {
+            if let lastSynced = shown.lastSyncedLine {
                 LabeledContent("Last synced", value: lastSynced)
             }
         }

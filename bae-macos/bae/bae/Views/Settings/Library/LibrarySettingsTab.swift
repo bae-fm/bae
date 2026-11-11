@@ -148,19 +148,23 @@ struct LibrarySettingsTab: View {
             NavigationLink(value: Page.sync) {
                 LabeledContent("Sync") {
                     if let shown = syncStatus.shown {
-                        Text(shown.statusLine)
-                            .foregroundStyle(shown.statusTone.color)
+                        ToneDotValue(
+                            text: shown.statusLine,
+                            tone: shown.statusTone
+                        )
                     }
                 }
             }
         }
         else {
-            LabeledContent("Sync") {
-                HStack {
-                    Text("Not synced")
-                        .foregroundStyle(.secondary)
-                    Button("Set up sync…") {
-                        showSyncSetup = true
+            NavigationLink(value: Page.sync) {
+                LabeledContent("Sync") {
+                    HStack {
+                        Text("Not synced")
+                            .foregroundStyle(.secondary)
+                        Button("Set up sync…") {
+                            showSyncSetup = true
+                        }
                     }
                 }
             }
@@ -223,7 +227,6 @@ private struct SyncSettingsPage: View {
                     )
                 )
             }
-            SyncLastSyncedSection()
             if let location = configStore.storage {
                 Section("Cloud home") {
                     CloudProviderConnectedSection(location: location)
