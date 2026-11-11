@@ -125,7 +125,7 @@ internal fun MiniPlayerScene(state: PlayerSceneState) {
                 Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
                     LibraryGridSceneAlbums(rememberLazyGridState())
                 }
-                NowPlayingBarStrip(
+                AndroidNowPlayingBar(
                     track = sceneTrack,
                     failure = null,
                     onExpand = {},
@@ -158,7 +158,7 @@ internal fun FullPlayerScene(state: PlayerSceneState) {
     BaeAppChrome {
         CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                ExpandedPlayerContent(
+                AndroidFullPlayer(
                     track = sceneTrack,
                     failure = null,
                     onCollapse = {},
@@ -193,7 +193,7 @@ internal fun FullPlayerScene(state: PlayerSceneState) {
 @Composable
 private fun SceneSeekRow(streams: PlayerSceneStreams) {
     val locale = LocalContext.current.currentLocale()
-    PlaybackProgressLine(
+    AndroidSeekBar(
         position = streams.positions,
         buffered = streams.buffered,
         state = { streams.seekBarState(it, locale) },

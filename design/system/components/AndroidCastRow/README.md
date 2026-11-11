@@ -4,4 +4,4 @@ A receiver, in the cast picker and on Settings → Casting alike: its kind's ico
 
 On the Casting page (`menu`) every row ends in ⋮ instead, so the page reads as a list of receivers, not of actions: the menu holds Details…, a sheet with what bae knows of the receiver, and, on the one being cast to, Disconnect. The picker keeps Disconnect on the row, since stopping is what you open it for.
 
-**In the code:** Android: `CastReceiverRow` (`ui/playback/CastReceiverRow.kt`), in the cast picker and the Casting page.
+**In the code:** Android: `AndroidCastRow` (`ui/playback/AndroidCastRow.kt`), in the cast picker and the Casting page.

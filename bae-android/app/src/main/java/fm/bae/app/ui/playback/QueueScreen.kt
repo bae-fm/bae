@@ -1,7 +1,6 @@
 package fm.bae.app.ui.playback
 
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -9,10 +8,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Shuffle
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -22,25 +17,21 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.durationClockLabel
 import fm.bae.app.ui.BaeTheme
-import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidEyebrow
 import fm.bae.app.ui.components.AndroidNotice
-import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.NoticeLook
 import kotlinx.coroutines.launch
 import sh.calvin.reorderable.ReorderableItem
@@ -84,7 +75,7 @@ fun QueueScreen(
                             .fillMaxWidth()
                             .padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.inline),
                 )
-                NowPlayingRow(np)
+                AndroidQueueRow(title = np.title, artist = np.artist, cover = np.coverImage, current = true)
             }
         }
         queueContent(
@@ -274,8 +265,12 @@ private fun LazyListScope.queueRows(
         } else {
             ReorderableItem(reorderState, key = item.entryId) { isDragging ->
                 Surface(tonalElevation = if (isDragging) 4.dp else 0.dp, color = MaterialTheme.colorScheme.surface) {
-                    QueueRow(
-                        item = item,
+                    AndroidQueueRow(
+                        title = item.display.title,
+                        artist = item.display.artistNames,
+                        album = item.display.albumTitle,
+                        cover = item.display.coverImage,
+                        duration = LocalContext.current.durationClockLabel(item.durationClock),
                         dragHandleModifier = Modifier.draggableHandle(),
                         onClick = {
                             scope.launch {
@@ -308,37 +303,6 @@ private fun QueueHeader() {
     )
 }
 
-// A section label with controls beside it — the shape both lane headers share.
-@Composable
-private fun SectionLabelRow(
-    text: String,
-    trailing: @Composable () -> Unit,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(start = ThemeSpace.edge, end = ThemeSpace.related),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        AndroidEyebrow(text = text, modifier = Modifier.weight(1f))
-        trailing()
-    }
-}
-
-// A lane's Clear, whose content description names the lane because a screen reader reads the button alone.
-@Composable
-private fun ClearLaneButton(
-    contentDescriptionRes: Int,
-    onClear: () -> Unit,
-) {
-    val description = stringResource(contentDescriptionRes)
-    AndroidButton(
-        kind = ButtonKind.TEXT,
-        onClick = onClear,
-        modifier = Modifier.semantics { this.contentDescription = description },
-    ) {
-        Text(stringResource(R.string.queue_clear))
-    }
-}
-
 // The manual lane's label with its Clear.
 @Composable
 private fun UpNextSectionLabel(
@@ -346,11 +310,11 @@ private fun UpNextSectionLabel(
     failures: QueueFailures,
 ) {
     val scope = rememberCoroutineScope()
-    SectionLabelRow(text = stringResource(R.string.queue_section_up_next)) {
-        ClearLaneButton(R.string.queue_clear_up_next) {
-            scope.launch { failures.answer("clearUpNext") { session.appHandle.clearUpNext() } }
-        }
-    }
+    AndroidQueueLabel(
+        title = stringResource(R.string.queue_section_up_next),
+        clearDescription = stringResource(R.string.queue_clear_up_next),
+        onClear = { scope.launch { failures.answer("clearUpNext") { session.appHandle.clearUpNext() } } },
+    )
 }
 
 // The context section's label with its Clear and shuffle toggle; the playing track keeps playing through both.
@@ -362,29 +326,13 @@ private fun ContextSectionLabel(
     shuffled: Boolean,
 ) {
     val scope = rememberCoroutineScope()
-    SectionLabelRow(text = text) {
-        ClearLaneButton(R.string.queue_clear_playing_from) {
-            scope.launch { failures.answer("clearPlayingFrom") { session.appHandle.clearPlayingFrom() } }
-        }
-        IconButton(
-            onClick = { failures.run("setShuffle ${!shuffled}") { session.appHandle.setShuffle(!shuffled) } },
-        ) {
-            Icon(
-                imageVector = Icons.Filled.Shuffle,
-                contentDescription =
-                    stringResource(
-                        if (shuffled) R.string.queue_shuffle_off else R.string.queue_shuffle_on,
-                    ),
-                tint =
-                    if (shuffled) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                modifier = Modifier.size(ThemeIcon.medium),
-            )
-        }
-    }
+    AndroidQueueLabel(
+        title = text,
+        clearDescription = stringResource(R.string.queue_clear_playing_from),
+        onClear = { scope.launch { failures.answer("clearPlayingFrom") { session.appHandle.clearPlayingFrom() } } },
+        shuffled = shuffled,
+        onShuffle = { failures.run("setShuffle ${!shuffled}") { session.appHandle.setShuffle(!shuffled) } },
+    )
 }
 
 @Preview(showBackground = true)

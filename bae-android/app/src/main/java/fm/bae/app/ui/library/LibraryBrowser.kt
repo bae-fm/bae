@@ -16,7 +16,7 @@ import androidx.compose.ui.Modifier
 import fm.bae.app.OpenLibrary
 import fm.bae.app.ui.ActivityProblemId
 import fm.bae.app.ui.AppProblem
-import fm.bae.app.ui.playback.NowPlayingBar
+import fm.bae.app.ui.playback.AndroidNowPlayingBarContainer
 import fm.bae.app.ui.sync.ActivityButton
 import uniffi.bae_bridge.BridgeArtistSortCriterion
 import uniffi.bae_bridge.BridgeArtistSortField
@@ -116,7 +116,7 @@ internal fun LibraryBrowser(
             onSelectArtist = onSelectArtist,
             onSelectWork = onSelectWork,
         )
-        NowPlayingBar(session = session)
+        AndroidNowPlayingBarContainer(session = session)
     }
 }
 

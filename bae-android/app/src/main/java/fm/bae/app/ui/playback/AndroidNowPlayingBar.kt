@@ -53,7 +53,7 @@ import uniffi.bae_bridge.BridgeRepeatMode
  * [transport], over the seek row ([progress]) and why a cast ended.
  */
 @Composable
-internal fun NowPlayingBarStrip(
+internal fun AndroidNowPlayingBar(
     track: NowPlaying?,
     failure: DisplayError?,
     onExpand: () -> Unit,
@@ -146,7 +146,7 @@ internal fun NowPlayingTransport(
     IconButton(onClick = onPrevious) {
         Icon(Icons.Filled.SkipPrevious, contentDescription = stringResource(R.string.previous_track))
     }
-    PlayPauseControl(
+    AndroidPlayPause(
         isPlaying = isPlaying,
         iconSize = ThemeIcon.large,
         storageWait = storageWait,

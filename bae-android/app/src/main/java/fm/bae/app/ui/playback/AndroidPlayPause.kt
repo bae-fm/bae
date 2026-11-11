@@ -31,7 +31,7 @@ private val arcClearance = 8.dp
  * holds, an arc turns around it.
  */
 @Composable
-fun PlayPauseControl(
+fun AndroidPlayPause(
     isPlaying: Boolean,
     iconSize: Dp,
     storageWait: LatestSource<Boolean>?,
@@ -67,7 +67,7 @@ fun PlayPauseControl(
 @Composable
 private fun PlayPauseControlPlayingPreview() {
     BaeTheme {
-        PlayPauseControl(isPlaying = true, iconSize = 48.dp, storageWait = null, onToggle = {})
+        AndroidPlayPause(isPlaying = true, iconSize = 48.dp, storageWait = null, onToggle = {})
     }
 }
 
@@ -75,6 +75,6 @@ private fun PlayPauseControlPlayingPreview() {
 @Composable
 private fun PlayPauseControlPausedPreview() {
     BaeTheme {
-        PlayPauseControl(isPlaying = false, iconSize = 48.dp, storageWait = null, onToggle = {})
+        AndroidPlayPause(isPlaying = false, iconSize = 48.dp, storageWait = null, onToggle = {})
     }
 }

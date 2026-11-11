@@ -61,17 +61,17 @@ import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeRepeatMode
 import uniffi.bae_bridge.bridgeNextRepeatMode
 
-private val logger = BaeLogger("bae.ExpandedNowPlayingScreen")
+private val logger = BaeLogger("bae.AndroidFullPlayerContainer")
 
 private val skipGlyphSize = 36.dp
 
 /**
- * Full-screen player in a [ModalBottomSheet] opened from [NowPlayingBar], with
+ * Full-screen player in a [ModalBottomSheet] opened from [AndroidNowPlayingBarContainer], with
  * the upcoming queue below it in the same scroll.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ExpandedNowPlayingScreen(
+fun AndroidFullPlayerContainer(
     session: OpenLibrary,
     onDismiss: () -> Unit,
 ) {
@@ -136,7 +136,7 @@ private fun ExpandedPlayer(
     val repeatMode by player.repeatMode.collectAsState()
     val volume by player.volume.collectAsState()
     val isMuted by player.isMuted.collectAsState()
-    ExpandedPlayerContent(
+    AndroidFullPlayer(
         track = track,
         failure = failure,
         onCollapse = onCollapse,
@@ -175,7 +175,7 @@ private fun ExpandedPlayer(
  * current.
  */
 @Composable
-internal fun ExpandedPlayerContent(
+internal fun AndroidFullPlayer(
     track: fm.bae.app.playback.NowPlaying,
     failure: DisplayError?,
     onCollapse: () -> Unit,
@@ -254,7 +254,7 @@ private fun ExpandedSeekSection(
 ) {
     val scope = rememberScreenScope()
     var failure by remember { mutableStateOf<DisplayError?>(null) }
-    PlaybackProgressAndroidView(
+    AndroidSeekBarContainer(
         session = session,
         player = player,
         modifier = Modifier.fillMaxWidth(),
@@ -289,7 +289,7 @@ internal fun ExpandedTransportRow(
             )
         }
         Spacer(modifier = Modifier.width(ThemeSpace.section))
-        PlayPauseControl(
+        AndroidPlayPause(
             isPlaying = isPlaying,
             iconSize = 48.dp,
             storageWait = storageWait,

@@ -122,8 +122,8 @@ class NoticeComponentShots : BoardShot() {
         }
 
     @Test
-    fun androidComponentNoticeDangerCentred() =
-        component("android.component.notice.danger-centred", wide = true) {
+    fun androidComponentNoticeDangerCentredAFailedView() =
+        component("android.component.notice.danger-centred-a-failed-view", wide = true) {
             AndroidNotice(
                 title = "Couldn’t read your library",
                 advice = null,

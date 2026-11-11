@@ -60,7 +60,7 @@ import uniffi.bae_bridge.bridgeNextRepeatMode
 @OptIn(ExperimentalMaterial3Api::class)
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @Composable
-fun NowPlayingBar(session: OpenLibrary) {
+fun AndroidNowPlayingBarContainer(session: OpenLibrary) {
     val player = session.playback
     val nowPlaying by player.nowPlaying.collectAsState()
     val valuesFailure by player.readFailures.values.collectAsState()
@@ -85,11 +85,11 @@ fun NowPlayingBar(session: OpenLibrary) {
     // player.
     var expanded by remember { mutableStateOf(false) }
     if (expanded) {
-        ExpandedNowPlayingScreen(session = session, onDismiss = { expanded = false })
+        AndroidFullPlayerContainer(session = session, onDismiss = { expanded = false })
     }
     track?.let { SidePauseAlert(session = session, track = it) }
 
-    NowPlayingBarStrip(
+    AndroidNowPlayingBar(
         track = track,
         failure = failure,
         onExpand = { expanded = true },
@@ -102,7 +102,7 @@ fun NowPlayingBar(session: OpenLibrary) {
             )
         },
         progress = {
-            PlaybackProgressAndroidView(
+            AndroidSeekBarContainer(
                 session = session,
                 player = player,
                 modifier = Modifier.fillMaxWidth(),

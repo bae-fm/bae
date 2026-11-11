@@ -79,10 +79,10 @@ RENDER_LEAVES = (
         r"\bfun\s+TrackRow\s*\(",
     ),
     RenderLeaf(
-        "bae-android/app/src/main/java/fm/bae/app/ui/playback/QueueRow.kt",
-        "QueueRow",
+        "bae-android/app/src/main/java/fm/bae/app/ui/playback/AndroidQueueRow.kt",
+        "AndroidQueueRow",
         "kotlin",
-        r"\bfun\s+QueueRow\s*\(",
+        r"\bfun\s+AndroidQueueRow\s*\(",
     ),
     RenderLeaf(
         "bae-android/app/src/main/java/fm/bae/app/ui/library/LibraryGrid.kt",

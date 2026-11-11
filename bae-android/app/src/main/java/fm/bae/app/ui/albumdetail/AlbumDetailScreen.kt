@@ -66,7 +66,7 @@ import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.retryAction
 import fm.bae.app.ui.library.LibraryDetailTopBar
-import fm.bae.app.ui.playback.NowPlayingBar
+import fm.bae.app.ui.playback.AndroidNowPlayingBarContainer
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
@@ -162,7 +162,7 @@ fun AlbumDetailScreen(
                 }
             }
         }
-        NowPlayingBar(session = session)
+        AndroidNowPlayingBarContainer(session = session)
     }
 }
 

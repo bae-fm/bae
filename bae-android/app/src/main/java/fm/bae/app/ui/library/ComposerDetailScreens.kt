@@ -43,7 +43,7 @@ import fm.bae.app.ui.components.CoverImage
 import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.retryAction
-import fm.bae.app.ui.playback.NowPlayingBar
+import fm.bae.app.ui.playback.AndroidNowPlayingBarContainer
 import kotlinx.coroutines.flow.distinctUntilChanged
 import uniffi.bae_bridge.BridgeComposerDetail
 import uniffi.bae_bridge.BridgeComposerDetailItem
@@ -108,7 +108,7 @@ internal fun ComposerDetailScreen(
                 )
             }
         }
-        NowPlayingBar(session = session)
+        AndroidNowPlayingBarContainer(session = session)
     }
 }
 
@@ -266,7 +266,7 @@ internal fun WorkDetailScreen(
                 )
             }
         }
-        NowPlayingBar(session = session)
+        AndroidNowPlayingBarContainer(session = session)
     }
 }
 

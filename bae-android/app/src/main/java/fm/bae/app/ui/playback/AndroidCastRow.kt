@@ -68,7 +68,7 @@ internal enum class CastReceiverPlace {
  * On the page every row also has a ⋮ menu whose Details opens a sheet on the receiver.
  */
 @Composable
-internal fun CastReceiverRow(
+internal fun AndroidCastRow(
     receiver: BridgeCastReceiver,
     role: CastReceiverRole,
     place: CastReceiverPlace,
@@ -219,10 +219,10 @@ internal fun CastReceiverRows(
         WaitingRow(text = looking)
     } else {
         receivers.casting?.let { casting ->
-            CastReceiverRow(receiver = casting, role = CastReceiverRole.Casting(onDisconnect), place = place)
+            AndroidCastRow(receiver = casting, role = CastReceiverRole.Casting(onDisconnect), place = place)
         }
         receivers.found.forEach { receiver ->
-            CastReceiverRow(receiver = receiver, role = CastReceiverRole.Found { onCast(receiver) }, place = place)
+            AndroidCastRow(receiver = receiver, role = CastReceiverRole.Found { onCast(receiver) }, place = place)
         }
     }
 }

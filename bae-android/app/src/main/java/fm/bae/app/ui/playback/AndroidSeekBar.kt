@@ -68,7 +68,7 @@ internal fun Context.seekBarState(
 
 @Composable
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
-fun PlaybackProgressAndroidView(
+fun AndroidSeekBarContainer(
     session: OpenLibrary,
     player: BaeCorePlayer,
     modifier: Modifier = Modifier,
@@ -82,7 +82,7 @@ fun PlaybackProgressAndroidView(
     val config by session.configStore.config.collectAsState()
     val showRemaining = config.showRemainingTime
     val nowPlaying by player.nowPlaying.collectAsState()
-    PlaybackProgressLine(
+    AndroidSeekBar(
         position = nowPlaying?.let { player.trackPositions.source(it.trackId) },
         buffered = nowPlaying?.let { player.trackBuffered.source(it.trackId) },
         state = { context.seekBarState(it, showRemaining) },
@@ -108,7 +108,7 @@ fun PlaybackProgressAndroidView(
  * both streams each display frame.
  */
 @Composable
-internal fun PlaybackProgressLine(
+internal fun AndroidSeekBar(
     position: LatestSource<BridgeTrackPosition>?,
     buffered: LatestSource<BridgeTrackBuffered>?,
     state: (BridgeTrackPosition?) -> SeekBarState,
