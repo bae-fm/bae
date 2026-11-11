@@ -2,6 +2,8 @@ import BaeKit
 import Foundation
 import Testing
 
+@testable import bae
+
 @Suite("SyncStatusStore")
 struct SyncStatusStoreTests {
     @MainActor
