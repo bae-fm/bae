@@ -4,7 +4,8 @@ import Observation
 /// The S3 setup form's state: the endpoint, region, bucket and access key.
 /// coven knows a service by its endpoint and fills in how to talk to it. The
 /// library takes the whole bucket. A failed setup leaves the fields as typed;
-/// the failures that name one of them show under it.
+/// the failures that name one of them show under it, and a refused key shows
+/// at the top.
 @MainActor
 @Observable
 public final class S3SetupFields {
@@ -12,6 +13,15 @@ public final class S3SetupFields {
     public enum Field: Equatable {
         case region
         case bucket
+    }
+
+    /// Why the service refused the access key, which no one field names: it
+    /// shows at the top of the form, in words that name the key.
+    public enum KeyRejection: Equatable {
+        /// The service doesn't know the key, or the secret doesn't match.
+        case notAccepted
+        /// The key is valid but isn't allowed to use the bucket.
+        case cannotUseBucket
     }
 
     /// A failed setup's reason and the field it sits under.
@@ -68,6 +78,17 @@ public final class S3SetupFields {
         }
         fieldFailure = FieldFailure(field: field, error: shown)
         return true
+    }
+
+    /// The refusal of the access key `error` is, nil for any other failure.
+    public static func keyRejection(_ error: any Error) -> KeyRejection? {
+        guard case .Diagnostic(.storage(let failure), _) = error as? BridgeError
+        else { return nil }
+        switch failure {
+        case .authentication: return .notAccepted
+        case .permissionDenied: return .cannotUseBucket
+        default: return nil
+        }
     }
 
     public func clearFailure() {

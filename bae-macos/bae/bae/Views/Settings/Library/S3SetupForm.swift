@@ -14,6 +14,9 @@ struct S3SetupForm: View {
 
     @State
     private var fields: S3SetupFields
+    #if DEBUG
+        private var stagedFailure: DisplayError?
+    #endif
 
     init(
         leave: @escaping () -> Void,
@@ -28,10 +31,12 @@ struct S3SetupForm: View {
         /// A form whose fields are staged, for a preview or a shot.
         init(
             staged fields: S3SetupFields,
+            failure: DisplayError?,
             leave: @escaping () -> Void,
             onConnected: @escaping (BridgeStorageSetup) -> Void
         ) {
             _fields = State(initialValue: fields)
+            stagedFailure = failure
             self.leave = leave
             self.onConnected = onConnected
         }
@@ -40,7 +45,7 @@ struct S3SetupForm: View {
     var body: some View {
         @Bindable
         var fields = fields
-        SetupStep(
+        let step = SetupStep(
             ready: fields.ready,
             operation: { [sync, fields] setup in
                 fields.clearFailure()
@@ -49,6 +54,12 @@ struct S3SetupForm: View {
             leave: leave,
             onConnected: onConnected,
             claim: { fields.place($0) },
+            describe: { error in
+                S3SetupFields.keyRejection(error)
+                    .map {
+                        DisplayError(line: $0.words)
+                    }
+            },
             fields: {
                 Section("Location") {
                     TextField("Endpoint", text: $fields.endpoint)
@@ -62,6 +73,11 @@ struct S3SetupForm: View {
                 }
             }
         )
+        #if DEBUG
+            step.staging(error: stagedFailure)
+        #else
+            step
+        #endif
     }
 
     /// A text field whose row also holds the reason a failed setup gives for
@@ -83,6 +99,28 @@ struct S3SetupForm: View {
                         .multilineTextAlignment(.trailing)
                 }
             }
+        }
+    }
+}
+
+extension S3SetupFields.KeyRejection {
+    /// What the form says at the top about the refused key.
+    var words: String {
+        switch self {
+        case .notAccepted:
+            String(
+                localized:
+                    "This key wasn’t accepted. Check the access key ID and secret access key.",
+                comment:
+                    "S3 setup, at the top of the form: the service refused the access key."
+            )
+        case .cannotUseBucket:
+            String(
+                localized:
+                    "This key can’t use the bucket. Give it read and write access, or use another key.",
+                comment:
+                    "S3 setup, at the top of the form: the key is valid but isn't allowed to use the bucket."
+            )
         }
     }
 }

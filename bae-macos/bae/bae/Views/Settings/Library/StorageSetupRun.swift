@@ -123,16 +123,34 @@ final class StorageSetupRun {
 }
 
 /// What the running setup shows above its sheet's buttons: the step it runs
-/// over its bar, or the person's cancel under way.
+/// over its bar, or the person's cancel under way. Where the setup checks a
+/// folder the person chose, the check names it.
 struct StorageSetupRunLine: View {
     let run: StorageSetupRun
+    let folder: String?
 
     var body: some View {
         switch run.state {
         case .idle:
             EmptyView()
         case .running(let following):
-            StepProgressLine(steps: following.steps) { EmptyView() }
+            StepProgressLine(
+                steps: following.steps,
+                titled: { progress in
+                    if let folder, case .checkingLocation = progress.step {
+                        String(
+                            localized:
+                                "Checking the folder “\(folder)”…",
+                            comment:
+                                "Dropbox or OneDrive setup, while bae checks the folder the person chose holds nothing else; the argument is the folder's name."
+                        )
+                    }
+                    else {
+                        progress.title
+                    }
+                },
+                idle: { EmptyView() }
+            )
         case .cancelling:
             WaitingIndicator("Cancelling…")
                 .frame(maxWidth: .infinity, alignment: .leading)

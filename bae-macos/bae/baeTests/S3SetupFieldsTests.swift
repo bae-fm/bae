@@ -37,4 +37,17 @@ struct S3SetupFieldsTests {
         #expect(!fields.place(failure(.permissionDenied)))
         #expect(fields.fieldFailure == nil)
     }
+
+    @Test("a refused key is worded for the top of the form, not placed")
+    func wordsRefusedKeys() {
+        #expect(
+            S3SetupFields.keyRejection(failure(.authentication))
+                == .notAccepted
+        )
+        #expect(
+            S3SetupFields.keyRejection(failure(.permissionDenied))
+                == .cannotUseBucket
+        )
+        #expect(S3SetupFields.keyRejection(failure(.regionMismatch)) == nil)
+    }
 }

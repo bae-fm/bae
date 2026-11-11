@@ -45,6 +45,14 @@ extension ShotScene {
                 .failed(.containerNotFound)
             ),
             syncSetup(
+                "sync-setup-s3-key-not-accepted",
+                .refusedKey(.notAccepted)
+            ),
+            syncSetup(
+                "sync-setup-s3-key-cannot-use-bucket",
+                .refusedKey(.cannotUseBucket)
+            ),
+            syncSetup(
                 "sync-setup-s3-bucket-not-empty",
                 .failed(.ownLocationRequired)
             ),

@@ -76,6 +76,8 @@ struct SyncSetupWizard: View {
             /// The folder picker, when a preview or a shot stages it.
             private var stagedBrowser: StorageFolderBrowser?
         #endif
+        /// The failure the S3 form shows at its top, when a shot stages one.
+        private var stagedTopFailure: DisplayError?
     #endif
 
     init(onDone: @escaping () -> Void) {
@@ -251,6 +253,7 @@ struct SyncSetupWizard: View {
             if let stagedS3 {
                 return S3SetupForm(
                     staged: stagedS3,
+                    failure: stagedTopFailure,
                     leave: leave,
                     onConnected: connected
                 )
@@ -336,6 +339,8 @@ extension SetupStep where Leading == EmptyView {
         leave: @escaping () -> Void,
         onConnected: @escaping (BridgeStorageSetup) -> Void,
         claim: @escaping (any Error) -> Bool = { _ in false },
+        describe: @escaping (any Error) -> DisplayError? = { _ in nil },
+        folder: String? = nil,
         @ViewBuilder fields: () -> Fields
     ) {
         self.init(
@@ -344,6 +349,8 @@ extension SetupStep where Leading == EmptyView {
             leave: leave,
             onConnected: onConnected,
             claim: claim,
+            describe: describe,
+            folder: folder,
             leading: { EmptyView() },
             fields: fields
         )
@@ -351,10 +358,11 @@ extension SetupStep where Leading == EmptyView {
 }
 
 /// A setup step's fields above its footer: Cancel, which goes back one screen
-/// and, while the connection is set up, stops it, and the one action. The
-/// error stays below the fields while they scroll. While the connection is set
-/// up, the step it runs shows over its bar in place of the fields, with only
-/// Cancel under it, and a cancel under way shows there in its place.
+/// and, while the connection is set up, stops it, and the one action. A
+/// failure shows at the top of the form, over the fields. While the
+/// connection is set up, the step it runs shows over its bar in place of the
+/// fields, with only Cancel under it, and a cancel under way shows there in
+/// its place.
 struct SetupStep<Fields: View, Leading: View>: View {
     let ready: Bool
     /// Set the storage up, writing each step into the setup's stream.
@@ -365,6 +373,11 @@ struct SetupStep<Fields: View, Leading: View>: View {
     /// Offered a failed setup before the step shows it at the top: true when
     /// the fields show it instead.
     let claim: (any Error) -> Bool
+    /// The words a failed setup shows at the top, for the failures the step
+    /// words itself; nil leaves core's.
+    let describe: (any Error) -> DisplayError?
+    /// The folder the person chose, which the setup's check of it names.
+    let folder: String?
     /// What sits at the left of the footer, opposite the actions.
     let leading: Leading
     let fields: Fields
@@ -376,6 +389,8 @@ struct SetupStep<Fields: View, Leading: View>: View {
         leave: @escaping () -> Void,
         onConnected: @escaping (BridgeStorageSetup) -> Void,
         claim: @escaping (any Error) -> Bool = { _ in false },
+        describe: @escaping (any Error) -> DisplayError? = { _ in nil },
+        folder: String? = nil,
         @ViewBuilder leading: () -> Leading,
         @ViewBuilder fields: () -> Fields
     ) {
@@ -384,6 +399,8 @@ struct SetupStep<Fields: View, Leading: View>: View {
         self.leave = leave
         self.onConnected = onConnected
         self.claim = claim
+        self.describe = describe
+        self.folder = folder
         self.leading = leading()
         self.fields = fields()
     }
@@ -394,26 +411,43 @@ struct SetupStep<Fields: View, Leading: View>: View {
     private var run
     @State
     private var error: DisplayError?
+    #if DEBUG
+        /// A failure a preview or a shot shows at the top in place of a run's.
+        private var stagedError: DisplayError?
+
+        func staging(error: DisplayError?) -> Self {
+            var step = self
+            step.stagedError = error
+            return step
+        }
+    #endif
+
+    /// The failure the form shows at its top.
+    private var shownError: DisplayError? {
+        #if DEBUG
+            if let stagedError { return stagedError }
+        #endif
+        return error
+    }
 
     var body: some View {
         VStack(spacing: 0) {
             if run.isRunning {
-                StorageSetupRunLine(run: run)
+                StorageSetupRunLine(run: run, folder: folder)
                     .padding()
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Spacer(minLength: 0)
             }
             else {
+                if let shownError {
+                    Notice(error: shownError)
+                        .padding(.horizontal, ThemeSpace.section)
+                        .padding(.top, ThemeSpace.section)
+                }
                 Form {
                     fields
                 }
                 .formStyle(.grouped)
-
-                if let error {
-                    Notice(error: error)
-                        .padding(.horizontal)
-                        .padding(.bottom, ThemeSpace.related)
-                }
             }
             MacSheetFooter(
                 lead: { if !run.isRunning { leading } },
@@ -453,7 +487,9 @@ struct SetupStep<Fields: View, Leading: View>: View {
             operation: operation,
             onConnected: onConnected,
             onFailed: { failure in
-                if !claim(failure) { error = DisplayError(failure) }
+                if !claim(failure) {
+                    error = describe(failure) ?? DisplayError(failure)
+                }
             }
         )
     }
@@ -473,6 +509,19 @@ struct SetupStep<Fields: View, Leading: View>: View {
             case cancelling
             /// The setup failed with `failure`, the form as typed.
             case failed(BridgeStorageFailure)
+            /// The service refused the key, which shows at the top.
+            case refusedKey(S3SetupFields.KeyRejection)
+        }
+
+        /// The S3 form's fields as a shot types them.
+        private static func stagedFields() -> S3SetupFields {
+            let fields = S3SetupFields()
+            fields.endpoint = "https://s3.home.lan"
+            fields.region = "us-east-1"
+            fields.bucket = "my-bucket"
+            fields.accessKey = "a1b2c3d4e5f6"
+            fields.secretKey = "abcdefghijkl"
+            return fields
         }
 
         /// The wizard on the S3 form, its setup staged at `staging` in
@@ -483,10 +532,12 @@ struct SetupStep<Fields: View, Leading: View>: View {
                 switch staging {
                 case .running(let step): (step, false)
                 case .finishing(let step): (step, true)
-                case .cancelling, .failed: (.connecting, false)
+                case .cancelling, .failed, .refusedKey: (.connecting, false)
                 }
             let run = StorageSetupRun(onCancelled: {})
             if case .failed = staging {
+            }
+            else if case .refusedKey = staging {
             }
             else {
                 run.start(
@@ -508,12 +559,7 @@ struct SetupStep<Fields: View, Leading: View>: View {
             }
             var wizard = SyncSetupWizard(provider: .s3, run: run, onDone: {})
             if case .failed(let failure) = staging {
-                let fields = S3SetupFields()
-                fields.endpoint = "https://s3.home.lan"
-                fields.region = "us-east-1"
-                fields.bucket = "my-bucket"
-                fields.accessKey = "a1b2c3d4e5f6"
-                fields.secretKey = "abcdefghijkl"
+                let fields = stagedFields()
                 _ = fields.place(
                     BridgeError.Diagnostic(
                         category: .storage(failure: failure),
@@ -521,6 +567,11 @@ struct SetupStep<Fields: View, Leading: View>: View {
                     )
                 )
                 wizard.stagedS3 = fields
+            }
+            if case .refusedKey(let rejection) = staging {
+                let fields = stagedFields()
+                wizard.stagedS3 = fields
+                wizard.stagedTopFailure = DisplayError(line: rejection.words)
             }
             return
                 wizard

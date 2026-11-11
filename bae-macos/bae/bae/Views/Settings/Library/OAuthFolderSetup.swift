@@ -96,6 +96,7 @@
                 leave: leave,
                 onConnected: onConnected,
                 claim: { browser.place($0) },
+                folder: browser.target?.name,
                 leading: {
                     Button("New folder…") { browser.startNaming() }
                         .disabled(browser.isNaming || browser.isWorking)

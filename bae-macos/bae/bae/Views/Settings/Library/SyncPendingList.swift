@@ -291,7 +291,7 @@ struct S3KeySheet: View {
             }
             .formStyle(.grouped)
             if run.isRunning {
-                StorageSetupRunLine(run: run)
+                StorageSetupRunLine(run: run, folder: nil)
                     .padding(.horizontal)
             }
             if let error {

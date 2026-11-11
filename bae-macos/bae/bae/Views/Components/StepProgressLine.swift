@@ -93,6 +93,8 @@ final class StepProgressNSView<Step: ProgressStep>: NSView {
         view: self
     ) { [weak self] progress in self?.show(progress) }
     var onStepping: (Bool) -> Void = { _ in }
+    /// The words a step shows under.
+    var titled: (Step) -> String = { $0.title }
     /// Whether the line shows a step.
     private(set) var stepping = false
     /// Whether the line is starting to follow a stream, which shows what the
@@ -155,7 +157,7 @@ final class StepProgressNSView<Step: ProgressStep>: NSView {
 
     private func show(_ progress: Step?) {
         if let progress {
-            let title = progress.title
+            let title = titled(progress)
             if label.stringValue != title {
                 label.stringValue = title
             }
@@ -180,11 +182,13 @@ private struct StepProgressBar<Step: ProgressStep>: NSViewRepresentable {
     private var colorScheme
     let steps: LatestSource<Step>
     let showsBar: Bool
+    let titled: (Step) -> String
     let onStepping: (Bool) -> Void
 
     func makeNSView(context _: Context) -> StepProgressNSView<Step> {
         let view = StepProgressNSView<Step>(accent: fill, showsBar: showsBar)
         view.onStepping = onStepping
+        view.titled = titled
         view.follow(steps)
         return view
     }
@@ -192,6 +196,7 @@ private struct StepProgressBar<Step: ProgressStep>: NSViewRepresentable {
     func updateNSView(_ view: StepProgressNSView<Step>, context _: Context) {
         view.accent = fill
         view.onStepping = onStepping
+        view.titled = titled
         view.follow(steps)
     }
 
@@ -221,12 +226,14 @@ private struct StepProgressBar<Step: ProgressStep>: NSViewRepresentable {
 /// What shows while a library opens or a setup call runs: `idle` until the
 /// call runs a step, then the step's name over a bar of how much of it is
 /// done, in its place; with `showsBar` off, the name alone, for a line whose
-/// row shows a spinner already. With no call to follow, `idle` alone. Whether a step
+/// row shows a spinner already. `titled` words each step; by default its own
+/// title. With no call to follow, `idle` alone. Whether a step
 /// runs is read from the call's stream as the line starts to follow it, and
 /// set as the native line tells a step starting or ending.
 struct StepProgressLine<Step: ProgressStep, Idle: View>: View {
     let steps: LatestSource<Step>?
     let showsBar: Bool
+    let titled: (Step) -> String
     let idle: Idle
     @State
     private var stepping: Bool
@@ -234,10 +241,12 @@ struct StepProgressLine<Step: ProgressStep, Idle: View>: View {
     init(
         steps: LatestSource<Step>?,
         showsBar: Bool = true,
+        titled: @escaping (Step) -> String = { $0.title },
         @ViewBuilder idle: () -> Idle
     ) {
         self.steps = steps
         self.showsBar = showsBar
+        self.titled = titled
         self.idle = idle()
         _stepping = State(initialValue: steps?.holdsValue ?? false)
     }
@@ -248,7 +257,11 @@ struct StepProgressLine<Step: ProgressStep, Idle: View>: View {
                 idle
             }
             if let steps {
-                StepProgressBar(steps: steps, showsBar: showsBar) { started in
+                StepProgressBar(
+                    steps: steps,
+                    showsBar: showsBar,
+                    titled: titled
+                ) { started in
                     stepping = started
                 }
             }

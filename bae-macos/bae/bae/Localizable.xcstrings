@@ -1,6 +1,180 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Checking the folder “%@”…" : {
+      "comment" : "Dropbox or OneDrive setup, while bae checks the folder the person chose holds nothing else; %@ is the folder's name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "جارٍ التحقق من المجلد «%@»…"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Папката „%@“ се проверява…"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kontroluje se složka „%@“…"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tjekker mappen “%@”…"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ordner „%@“ wird geprüft …"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Έλεγχος του φακέλου «%@»…"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Checking the folder “%@”…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comprobando la carpeta «%@»…"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tarkistetaan kansiota “%@”…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vérification du dossier « %@ »…"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "בודק את התיקייה ״%@״…"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Provjera mape „%@“…"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A(z) „%@” mappa ellenőrzése…"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Controllo della cartella “%@”…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "フォルダ「%@」を確認しています…"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” 폴더를 확인하는 중…"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sjekker mappen «%@»…"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Map “%@” wordt gecontroleerd…"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sprawdzanie folderu „%@”…"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verificando a pasta “%@”…"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A verificar a pasta “%@”…"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se verifică dosarul „%@”…"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kontroluje sa priečinok „%@“…"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kontrollerar mappen ”%@”…"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” klasörü denetleniyor…"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перевірка папки «%@»…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在检查文件夹“%@”…"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在檢查資料夾「%@」…"
+          }
+        }
+      }
+    },
     "Every release of this album will be permanently deleted from your devices and the cloud. Original files in your folders won't be touched." : {
       "comment" : "Album grid and album detail: what deleting an album deletes and keeps",
       "localizations" : {
@@ -5820,6 +5994,354 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "此裝置的移除尚未傳到這部 Mac"
+          }
+        }
+      }
+    },
+    "This key can’t use the bucket. Give it read and write access, or use another key." : {
+      "comment" : "S3 setup, at the top of the form: the key is valid but isn't allowed to use the bucket.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "لا يستطيع هذا المفتاح استخدام الحاوية. امنحه صلاحية القراءة والكتابة، أو استخدم مفتاحًا آخر."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Този ключ не може да използва кофата. Дайте му достъп за четене и запис или използвайте друг ключ."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tento klíč nemůže používat bucket. Dejte mu oprávnění ke čtení a zápisu, nebo použijte jiný klíč."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nøglen kan ikke bruge bucket'en. Giv den læse- og skriveadgang, eller brug en anden nøgle."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieser Schlüssel kann den Bucket nicht verwenden. Gib ihm Lese- und Schreibzugriff oder verwende einen anderen Schlüssel."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Αυτό το κλειδί δεν μπορεί να χρησιμοποιήσει τον κάδο. Δώστε του πρόσβαση ανάγνωσης και εγγραφής ή χρησιμοποιήστε άλλο κλειδί."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This key can’t use the bucket. Give it read and write access, or use another key."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta clave no puede usar el bucket. Dale acceso de lectura y escritura, o usa otra clave."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avain ei voi käyttää säilöä. Anna sille luku- ja kirjoitusoikeus tai käytä toista avainta."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cette clé ne peut pas utiliser le bucket. Donnez-lui un accès en lecture et en écriture, ou utilisez une autre clé."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "המפתח הזה לא יכול להשתמש בדלי. תן לו הרשאת קריאה וכתיבה, או השתמש במפתח אחר."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ovaj ključ ne može koristiti spremnik. Dajte mu pristup za čitanje i pisanje ili upotrijebite drugi ključ."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ez a kulcs nem használhatja a tárolót. Adj neki olvasási és írási jogot, vagy használj másik kulcsot."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Questa chiave non può usare il bucket. Dalle accesso in lettura e scrittura, oppure usa un’altra chiave."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このキーではバケットを使用できません。読み取りと書き込みの権限を付与するか、別のキーを使用してください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 키로는 버킷을 사용할 수 없습니다. 읽기 및 쓰기 권한을 부여하거나 다른 키를 사용하세요."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nøkkelen kan ikke bruke bøtten. Gi den lese- og skrivetilgang, eller bruk en annen nøkkel."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deze sleutel kan de bucket niet gebruiken. Geef de sleutel lees- en schrijftoegang of gebruik een andere sleutel."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ten klucz nie może używać zasobnika. Nadaj mu dostęp do odczytu i zapisu lub użyj innego klucza."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta chave não pode usar o bucket. Dê a ela acesso de leitura e gravação ou use outra chave."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta chave não pode usar o contentor. Dê-lhe acesso de leitura e escrita ou use outra chave."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Această cheie nu poate folosi containerul. Acordă-i acces de citire și scriere sau folosește altă cheie."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tento kľúč nemôže používať kontajner. Udeľte mu oprávnenie na čítanie a zápis alebo použite iný kľúč."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nyckeln kan inte använda bucketen. Ge den läs- och skrivåtkomst, eller använd en annan nyckel."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bu anahtar bucket'ı kullanamıyor. Ona okuma ve yazma erişimi ver veya başka bir anahtar kullan."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Цей ключ не може використовувати бакет. Надайте йому доступ на читання й запис або скористайтеся іншим ключем."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此密钥无法使用该存储桶。请授予它读取和写入权限，或使用其他密钥。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此金鑰無法使用該儲存桶。請授予它讀取和寫入權限，或使用其他金鑰。"
+          }
+        }
+      }
+    },
+    "This key wasn’t accepted. Check the access key ID and secret access key." : {
+      "comment" : "S3 setup, at the top of the form: the service refused the access key.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "لم يُقبل هذا المفتاح. تحقق من معرّف مفتاح الوصول ومفتاح الوصول السري."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Този ключ не беше приет. Проверете ИД на ключа за достъп и тайния ключ за достъп."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tento klíč nebyl přijat. Zkontrolujte ID přístupového klíče a tajný přístupový klíč."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nøglen blev ikke accepteret. Tjek adgangsnøgle-ID og hemmelig adgangsnøgle."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieser Schlüssel wurde nicht akzeptiert. Prüfe die Zugriffsschlüssel-ID und den geheimen Zugriffsschlüssel."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Αυτό το κλειδί δεν έγινε δεκτό. Ελέγξτε το αναγνωριστικό κλειδιού πρόσβασης και το μυστικό κλειδί πρόσβασης."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This key wasn’t accepted. Check the access key ID and secret access key."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se aceptó esta clave. Comprueba el ID de la clave de acceso y la clave de acceso secreta."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avainta ei hyväksytty. Tarkista käyttöavaimen tunnus ja salainen käyttöavain."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cette clé n'a pas été acceptée. Vérifiez l'ID de la clé d'accès et la clé d'accès secrète."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "המפתח הזה לא התקבל. בדוק את מזהה מפתח הגישה ואת מפתח הגישה הסודי."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ovaj ključ nije prihvaćen. Provjerite ID pristupnog ključa i tajni pristupni ključ."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ez a kulcs nem lett elfogadva. Ellenőrizd a hozzáférési kulcs azonosítóját és a titkos hozzáférési kulcsot."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Questa chiave non è stata accettata. Controlla l’ID chiave di accesso e la chiave di accesso segreta."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このキーは受け付けられませんでした。アクセスキー ID とシークレットアクセスキーを確認してください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 키가 허용되지 않았습니다. 액세스 키 ID와 비밀 액세스 키를 확인하세요."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nøkkelen ble ikke godtatt. Sjekk tilgangsnøkkel-ID-en og den hemmelige tilgangsnøkkelen."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deze sleutel is niet geaccepteerd. Controleer de toegangssleutel-ID en de geheime toegangssleutel."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ten klucz nie został zaakceptowany. Sprawdź identyfikator klucza dostępu i tajny klucz dostępu."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta chave não foi aceita. Verifique o ID da chave de acesso e a chave de acesso secreta."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta chave não foi aceite. Verifique o ID da chave de acesso e a chave de acesso secreta."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Această cheie nu a fost acceptată. Verifică ID-ul cheii de acces și cheia de acces secretă."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tento kľúč nebol prijatý. Skontrolujte ID prístupového kľúča a tajný prístupový kľúč."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nyckeln godkändes inte. Kontrollera åtkomstnyckel-ID och hemlig åtkomstnyckel."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bu anahtar kabul edilmedi. Erişim anahtarı kimliğini ve gizli erişim anahtarını kontrol et."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Цей ключ не прийнято. Перевірте ідентифікатор ключа доступу та секретний ключ доступу."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此密钥未被接受。请检查访问密钥 ID 和私密访问密钥。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此金鑰未被接受。請檢查存取金鑰 ID 和秘密存取金鑰。"
           }
         }
       }

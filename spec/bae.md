@@ -3095,8 +3095,11 @@ in how to talk to it
 When coven refuses a setup, bae says why in plain words, and the form stays as
 typed. A region or endpoint that doesn't match the bucket shows its reason under
 Region; a bucket that isn't there, or that holds other files, under Bucket;
-any other reason at the top of the form. The reason sits in its field's own
-row on macOS, and under the field on Android.
+any other reason at the top of the form, above the fields on macOS. The reason
+sits in its field's own row on macOS, and under the field on Android. On macOS a
+refused key reads "This key wasn’t accepted. Check the access key ID and secret
+access key.", and a key the bucket doesn't allow reads "This key can’t use the
+bucket. Give it read and write access, or use another key."
 
 **Choosing where, on macOS.** *Set up sync…* opens a sheet that lists the
 providers this build offers, in the order iCloud, Dropbox, OneDrive and
@@ -3137,7 +3140,8 @@ recording changed access. The apps show the step's name over a bar in place of
 a spinner, counted for loading's steps. Signing in to Dropbox or OneDrive in
 the browser, listing the provider's folders, and making a new folder (which
 Dropbox also shares) each say so while they run, on both apps, the last naming
-the folder. The dev reset connects its
+the folder. On macOS the check of a folder the person chose on Dropbox or
+OneDrive names it too, "Checking the folder “Music”…". The dev reset connects its
 storage without such a stream: it reports connecting storage as its own step.
 
 **Cancelling, and a setup bae was stopped partway through.** coven journals
