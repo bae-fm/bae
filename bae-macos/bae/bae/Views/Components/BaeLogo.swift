@@ -1,14 +1,17 @@
 import BaeKit
 import SwiftUI
 
-/// The sheep over the word "bae", as Welcome draws them: a soft pink and
-/// purple glow behind the sheep and a pool of light under it, both still,
-/// while the sheep and the word each float and tilt. The README's Logo section
+/// The sheep over the word "bae". With `glow` a soft pink and purple glow sits
+/// behind the sheep and a pool of light under it, both still; with `bob` the
+/// sheep and the word each float and tilt (unless motion is reduced). The
+/// README's Logo section
 /// (`design/system/README.md`) is the source of every proportion and timing
 /// here; the colours are `Theme`'s `logoGlow…`, `logoPool…` and `logoWord…`.
-struct WelcomeLogo: View {
+struct BaeLogo: View {
     /// The sheep's width; the word and the glow scale with it.
     let size: CGFloat
+    let bob: Bool
+    let glow: Bool
 
     @Environment(\.accessibilityReduceMotion)
     private var reduceMotion
@@ -43,21 +46,25 @@ struct WelcomeLogo: View {
     private var wordHeight: CGFloat { wordWidth / Proportion.wordAspect }
 
     var body: some View {
-        TimelineView(.animation(paused: reduceMotion)) { timeline in
+        TimelineView(.animation(paused: reduceMotion || !bob)) { timeline in
             let t = timeline.date.timeIntervalSinceReferenceDate
             VStack(spacing: size * Proportion.gap) {
                 // The sheep's slot is the glow's anchor, so the glow stays
                 // still while the sheep floats over it.
                 Color.clear
                     .frame(width: size, height: sheepHeight)
-                    .background { glow }
+                    .background {
+                        if glow {
+                            glowLayers
+                        }
+                    }
                     .overlay {
                         Image("Sheep")
                             .resizable()
                             .scaledToFit()
                             .modifier(
                                 Bob(
-                                    reduced: reduceMotion,
+                                    reduced: reduceMotion || !bob,
                                     time: t,
                                     rise: Proportion.sheepRise * sheepHeight
                                 )
@@ -71,7 +78,7 @@ struct WelcomeLogo: View {
                     .frame(width: wordWidth, height: wordHeight)
                     .modifier(
                         Bob(
-                            reduced: reduceMotion,
+                            reduced: reduceMotion || !bob,
                             time: t - Motion.wordDelay,
                             rise: Proportion.wordRise * wordHeight
                         )
@@ -82,7 +89,7 @@ struct WelcomeLogo: View {
 
     /// The disc of light centred 65% down the sheep and the pool under it,
     /// which take no layout.
-    private var glow: some View {
+    private var glowLayers: some View {
         ZStack {
             Circle()
                 .fill(
@@ -153,8 +160,8 @@ struct WelcomeLogo: View {
 }
 
 #if DEBUG
-    #Preview("Welcome logo") {
-        WelcomeLogo(size: 120)
+    #Preview("Logo") {
+        BaeLogo(size: 120, bob: true, glow: true)
             .padding(80)
             .windowBackground()
     }

@@ -135,7 +135,11 @@ struct WelcomeChooseView: View {
                 spacing: showsFirstRunActions
                     ? ThemeSpace.group : ThemeSpace.related + ThemeSpace.line
             ) {
-                WelcomeLogo(size: showsFirstRunActions ? 120 : 72)
+                BaeLogo(
+                    size: showsFirstRunActions ? 120 : 72,
+                    bob: true,
+                    glow: true
+                )
                 Text("Your music, everywhere")
                     .themeText(.heading)
                     .fontWeight(.regular)

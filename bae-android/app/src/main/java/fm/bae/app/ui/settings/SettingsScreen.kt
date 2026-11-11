@@ -1,17 +1,14 @@
 package fm.bae.app.ui.settings
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -19,15 +16,19 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import fm.bae.app.DisplayError
 import fm.bae.app.LibraryListing
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.ui.SessionActions
 import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.components.Eyebrow
+import fm.bae.app.ui.components.CardRow
+import fm.bae.app.ui.components.Logo
+import fm.bae.app.ui.components.RowCard
 import fm.bae.app.ui.components.ScreenTopBar
 import fm.bae.app.ui.library.LibraryDestination
 import kotlinx.coroutines.CoroutineDispatcher
@@ -114,20 +115,17 @@ internal fun SectionDivider() {
 
 @Composable
 private fun SettingsAboutSection() {
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(ThemeSpace.edge),
-        verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
-    ) {
-        Eyebrow(text = stringResource(R.string.settings_about))
-        Row(modifier = Modifier.fillMaxWidth()) {
-            Text(
-                text = stringResource(R.string.settings_version),
-                modifier = Modifier.weight(1f),
-            )
-            Text(
-                text = installedVersion(),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = ThemeSpace.edge)) {
+        Box(
+            modifier = Modifier.fillMaxWidth().padding(top = ThemeSpace.page, bottom = ThemeSpace.edge),
+            contentAlignment = Alignment.Center,
+        ) {
+            Logo(size = ABOUT_LOGO_SIZE, bob = false, glow = false)
+        }
+        RowCard {
+            CardRow(title = stringResource(R.string.settings_version), subtitle = installedVersion())
         }
     }
 }
+
+private val ABOUT_LOGO_SIZE = 96.dp

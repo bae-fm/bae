@@ -5572,7 +5572,9 @@ the patterns it was queued with.
 Platform settings, such as the appearance and restoring playback on launch,
 live in each app. Appearance reads Theme (System, Light, Dark), then Tone, then
 Accent, so named in every locale. The apps start with the System theme, the Plum
-tone and the Pink accent.
+tone and the Pink accent. About shows the bae logo, the sheep over the word, 96
+points wide and still, over the version: Android's Version is a row on a card,
+the Mac's a line with Check for updates….
 
 ---
 

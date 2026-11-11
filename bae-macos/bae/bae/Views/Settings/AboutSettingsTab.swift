@@ -6,10 +6,8 @@ struct AboutSettingsTab: View {
     let onCheckForUpdates: () -> Void
 
     var body: some View {
-        VStack(spacing: ThemeSpace.edge) {
-            Spacer()
-            Text(verbatim: "bae")
-                .themeText(.wordmark)
+        VStack(spacing: ThemeSpace.related) {
+            BaeLogo(size: 96, bob: false, glow: false)
             if let version = Bundle.main.infoDictionary?[
                 "CFBundleShortVersionString"
             ] as? String {
@@ -27,9 +25,9 @@ struct AboutSettingsTab: View {
                 onCheckForUpdates()
             }
             .disabled(!canCheckForUpdates)
-            Spacer()
         }
-        .frame(maxWidth: .infinity)
+        .padding(.top, ThemeSpace.page + ThemeSpace.related)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 }
 
