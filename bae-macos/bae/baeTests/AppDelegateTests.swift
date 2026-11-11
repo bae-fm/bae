@@ -21,7 +21,7 @@ struct AppDelegateTests {
             transitionResult: false
         )
 
-        AppDelegate.setRegularActivationPolicyIfNeeded(application)
+        AppDelegate.adoptActivationPolicyIfNeeded(.regular, application)
 
         #expect(application.requestedPolicies.isEmpty)
     }
@@ -33,7 +33,7 @@ struct AppDelegateTests {
             transitionResult: true
         )
 
-        AppDelegate.setRegularActivationPolicyIfNeeded(application)
+        AppDelegate.adoptActivationPolicyIfNeeded(.regular, application)
 
         #expect(application.requestedPolicies == [.regular])
     }
@@ -69,13 +69,26 @@ struct AppDelegateTests {
         #expect(application.requestedPolicies.isEmpty)
     }
 
-    @Test("unit-test host adopts the regular activation policy")
-    func testHostAdoptsRegularPolicy() {
+    @Test("unit-test host adopts the accessory activation policy")
+    func testHostAdoptsAccessoryPolicy() {
+        let application = FakeActivationPolicyApplication(
+            policy: .regular,
+            transitionResult: true
+        )
+        let delegate = AppDelegate(runtime: .testHost)
+
+        delegate.prepareApplicationForLaunch(application)
+
+        #expect(application.requestedPolicies == [.accessory])
+    }
+
+    @Test("the installed application adopts the regular activation policy")
+    func applicationAdoptsRegularPolicy() {
         let application = FakeActivationPolicyApplication(
             policy: .accessory,
             transitionResult: true
         )
-        let delegate = AppDelegate(runtime: .testHost)
+        let delegate = AppDelegate(runtime: .application)
 
         delegate.prepareApplicationForLaunch(application)
 

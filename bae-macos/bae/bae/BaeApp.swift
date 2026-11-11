@@ -20,6 +20,10 @@ enum BaeApp {
     static func main() {
         let delegate = AppDelegate()
         NSApplication.shared.delegate = delegate
+        // Before the run starts, so a test host's Dock icon never shows.
+        if delegate.runtime == .testHost {
+            delegate.prepareApplicationForLaunch(NSApplication.shared)
+        }
         // The application holds its delegate weakly, and the run never
         // returns.
         withExtendedLifetime(delegate) {

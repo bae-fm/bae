@@ -27,19 +27,29 @@ extension AppDelegate {
     func prepareApplicationForLaunch(
         _ application: any ApplicationActivationPolicy
     ) {
-        guard runtime != .preview else { return }
-        Self.setRegularActivationPolicyIfNeeded(application)
+        switch runtime {
+        case .preview:
+            return
+        case .testHost:
+            Self.adoptActivationPolicyIfNeeded(.accessory, application)
+        case .application:
+            Self.adoptActivationPolicyIfNeeded(.regular, application)
+        }
     }
 
-    static func setRegularActivationPolicyIfNeeded(
+    /// A test host is an accessory app, with no Dock icon or menu bar, so the
+    /// copy of bae a test run starts is not mistaken for the person's own; it
+    /// can still make a window key and activate, as the window shots need.
+    static func adoptActivationPolicyIfNeeded(
+        _ policy: NSApplication.ActivationPolicy,
         _ application: any ApplicationActivationPolicy
     ) {
-        if application.activationPolicy() == .regular {
+        if application.activationPolicy() == policy {
             return
         }
         precondition(
-            application.setActivationPolicy(.regular),
-            "The application could not adopt the regular activation policy"
+            application.setActivationPolicy(policy),
+            "The application could not adopt the \(policy) activation policy"
         )
     }
 
