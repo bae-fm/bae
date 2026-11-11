@@ -6,8 +6,8 @@ import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
-import fm.bae.app.R
 import fm.bae.app.BaeRobolectricTestRunner
+import fm.bae.app.R
 import fm.bae.fastvalues.LatestStream
 import org.junit.Assert.assertTrue
 import org.junit.Rule
