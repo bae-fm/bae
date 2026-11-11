@@ -16,12 +16,19 @@ enum ShotRenderer {
     /// screen so a headless or non-Retina host produces the same pixels.
     nonisolated static let scale = 2
 
-    static func renderPNG(
+    /// What one capture of a scene yields: its pixels, and the elements its
+    /// hosted view's accessibility tree lists, read in the same settled state.
+    struct Capture {
+        let png: Data
+        let elements: ShotElementList
+    }
+
+    static func render(
         _ scene: ShotScene,
         mode: AppearanceMode,
         tone: SurfaceTone,
         accent: AccentChoice
-    ) async throws -> Data {
+    ) async throws -> Capture {
         let suite = "fm.bae.appearance-shots"
         guard let defaults = UserDefaults(suiteName: suite) else {
             preconditionFailure("Cannot create screenshot preferences")
@@ -54,18 +61,46 @@ enum ShotRenderer {
 
         try await settle(host: captured, until: stage.isReady)
 
+        return try await capture(window, host: captured, scene: scene)
+    }
+
+    /// The pixels of `host` and the elements below it, once settled.
+    private static func capture(
+        _ window: NSWindow,
+        host: NSView,
+        scene: ShotScene
+    ) async throws -> Capture {
         switch scene.frame {
         case .content:
-            return try png(
-                of: captured,
-                size: captured.bounds.size,
-                scene: scene
+            return Capture(
+                png: try png(
+                    of: host,
+                    size: host.bounds.size,
+                    scene: scene
+                ),
+                elements: ShotElementList.read(
+                    board: scene.id,
+                    root: host,
+                    frame: host,
+                    scale: scale
+                )
             )
         case .window:
             try await becomeKey(window, scene: scene)
-            return try await windowPNG(
-                CGWindowID(window.windowNumber),
-                sceneId: scene.id
+            guard let content = window.contentView else {
+                preconditionFailure("A titled window has content")
+            }
+            return Capture(
+                png: try await windowPNG(
+                    CGWindowID(window.windowNumber),
+                    sceneId: scene.id
+                ),
+                elements: ShotElementList.read(
+                    board: scene.id,
+                    root: content,
+                    frame: host,
+                    scale: scale
+                )
             )
         }
     }
@@ -177,6 +212,9 @@ enum ShotRenderer {
                 backing: .buffered,
                 defer: false
             )
+            // Ordering a window in plays its zoom-in, which the window
+            // server's capture can catch partway.
+            window.animationBehavior = .none
             window.contentViewController = hosting
             window.setContentSize(scene.size)
             window.title = title

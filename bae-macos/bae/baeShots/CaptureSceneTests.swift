@@ -4,7 +4,8 @@ import Testing
 
 @testable import bae
 
-/// Captures every registered scene to `<id>@macos.png` in the directory the
+/// Captures every registered scene to `<id>@macos.png`, with the elements its
+/// view lists beside it as `<id>@macos.json`, in the directory the
 /// harness passes through `TEST_RUNNER_BAE_SHOTS_OUT`. Every scene is attempted;
 /// any failure — a scene that fails to render, encode, or write — fails the run
 /// with the full list, so a broken scene can never be a silent skip.
@@ -36,13 +37,13 @@ struct CaptureSceneTests {
                             ? .standard
                             : tone == .plum
                                 ? .purple : tone == .slate ? .teal : .blue
-                        let data = try await ShotRenderer.renderPNG(
+                        let capture = try await ShotRenderer.render(
                             scene,
                             mode: mode,
                             tone: tone,
                             accent: accent
                         )
-                        guard !data.isEmpty else {
+                        guard !capture.png.isEmpty else {
                             failures.append("\(scene.id): rendered no bytes")
                             continue
                         }
@@ -53,7 +54,12 @@ struct CaptureSceneTests {
                         let url = out.appendingPathComponent(
                             "\(scene.id)\(suffix)@macos.png"
                         )
-                        try data.write(to: url)
+                        try capture.png.write(to: url)
+                        try capture.elements.json()
+                            .write(
+                                to: url.deletingPathExtension()
+                                    .appendingPathExtension("json")
+                            )
                     }
                     catch {
                         failures.append("\(scene.id): \(error)")
