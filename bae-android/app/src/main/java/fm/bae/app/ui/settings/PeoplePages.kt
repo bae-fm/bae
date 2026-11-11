@@ -23,9 +23,9 @@ import fm.bae.app.ErrorDisplays
 import fm.bae.app.R
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.CardRow
-import fm.bae.app.ui.components.Eyebrow
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.RowCard
+import fm.bae.app.ui.components.SectionHeading
 import uniffi.bae_bridge.BridgeAdminChange
 import uniffi.bae_bridge.BridgeHistorySharing
 import uniffi.bae_bridge.BridgeInvite
@@ -91,9 +91,9 @@ internal fun PeopleHome(
         verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
     ) {
         item { AdminChangesList(changes = adminChanges, onDismiss = callbacks.onDismissChange) }
-        item { Eyebrow(text = stringResource(R.string.members_you)) }
+        item { SectionHeading(text = stringResource(R.string.members_you)) }
         item { YouCard(you = you, me = me, requested = requested, onOpenDevices = { onOpen(PeoplePage.Devices) }) }
-        item { Eyebrow(text = stringResource(R.string.people_people)) }
+        item { SectionHeading(text = stringResource(R.string.people_people)) }
         item {
             RowCard {
                 people.filterNot { it.membership.isSelf }.forEach { person ->

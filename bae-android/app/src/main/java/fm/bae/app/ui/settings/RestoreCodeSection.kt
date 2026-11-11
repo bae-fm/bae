@@ -29,8 +29,8 @@ import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorNotice
-import fm.bae.app.ui.components.Eyebrow
 import fm.bae.app.ui.components.RowCard
+import fm.bae.app.ui.components.SectionHeading
 import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.components.rememberCopyText
 import fm.bae.app.ui.rememberScreenScope
@@ -184,7 +184,7 @@ private fun RestoreCodeSectionContent(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(ThemeSpace.group),
     ) {
-        Eyebrow(text = stringResource(R.string.restore_code_title))
+        SectionHeading(text = stringResource(R.string.restore_code_title))
         when (state) {
             RestoreCodeState.Closed -> {
                 Unit

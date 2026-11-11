@@ -113,7 +113,9 @@ pub struct IconRole {
 }
 
 /// A text role: weight, tracking, case and monospacing shared by every
-/// platform, and a size for each.
+/// platform, and a size for each platform that uses it. Apple's code takes
+/// macOS and iOS together; a platform whose code reads a role it lacks fails
+/// to compile.
 #[derive(Debug)]
 pub struct TextRole {
     pub weight: Weight,
@@ -121,12 +123,21 @@ pub struct TextRole {
     pub tracking: f64,
     pub uppercase: bool,
     pub monospaced: bool,
+    pub apple: Option<AppleSize>,
+    /// sp.
+    pub android: Option<f64>,
+    /// Android's line height in sp, for a role whose lines are not the font's
+    /// own height.
+    pub android_line: Option<f64>,
+}
+
+/// What macOS and iOS draw a text role at.
+#[derive(Debug)]
+pub struct AppleSize {
     /// Points.
     pub macos: f64,
     /// A Dynamic Type style, so iOS text follows the person's text size.
     pub ios: String,
-    /// sp.
-    pub android: f64,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
@@ -254,6 +265,7 @@ struct RawTextRole {
     macos: Option<f64>,
     ios: Option<String>,
     android: Option<f64>,
+    android_line: Option<f64>,
 }
 
 #[derive(Deserialize)]
@@ -405,22 +417,26 @@ impl Theme {
             .text
             .iter()
             .map(|(name, role)| {
-                let mut lacks =
-                    |platform: &str| problems.push(format!("text {name} has no {platform} size"));
-                let macos = role.macos.unwrap_or_else(|| {
-                    lacks("macos");
-                    0.0
-                });
-                let ios = role.ios.clone().unwrap_or_else(|| {
-                    lacks("ios");
-                    String::new()
-                });
-                let android = role.android.unwrap_or_else(|| {
-                    lacks("android");
-                    0.0
-                });
-                if !ios.is_empty() && !IOS_TEXT_STYLES.contains(&ios.as_str()) {
-                    problems.push(format!("text {name}: `{ios}` is not a Dynamic Type style"));
+                let apple = match (role.macos, role.ios.as_ref()) {
+                    (Some(macos), Some(ios)) => {
+                        if !IOS_TEXT_STYLES.contains(&ios.as_str()) {
+                            problems
+                                .push(format!("text {name}: `{ios}` is not a Dynamic Type style"));
+                        }
+                        Some(AppleSize { macos, ios: ios.clone() })
+                    }
+                    (None, None) => None,
+                    (Some(_), None) => {
+                        problems.push(format!("text {name} has a macos size but no ios size"));
+                        None
+                    }
+                    (None, Some(_)) => {
+                        problems.push(format!("text {name} has an ios size but no macos size"));
+                        None
+                    }
+                };
+                if apple.is_none() && role.android.is_none() {
+                    problems.push(format!("text {name} has no size on any platform"));
                 }
                 (
                     name.clone(),
@@ -429,9 +445,9 @@ impl Theme {
                         tracking: role.tracking.unwrap_or(0.0),
                         uppercase: role.uppercase.unwrap_or(false),
                         monospaced: role.monospaced.unwrap_or(false),
-                        macos,
-                        ios,
-                        android,
+                        apple,
+                        android: role.android,
+                        android_line: role.android_line,
                     },
                 )
             })

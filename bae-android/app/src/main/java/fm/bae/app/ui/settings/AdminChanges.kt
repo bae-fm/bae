@@ -16,7 +16,7 @@ import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.Eyebrow
+import fm.bae.app.ui.components.SectionHeading
 import fm.bae.app.ui.components.StatusChip
 import fm.bae.app.ui.components.StatusTone
 import uniffi.bae_bridge.BridgeAdminChange
@@ -43,7 +43,7 @@ internal fun AdminChangesList(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
     ) {
-        Eyebrow(text = stringResource(R.string.admin_changes_title))
+        SectionHeading(text = stringResource(R.string.admin_changes_title))
         changes.forEach { change -> AdminChangeRow(change = change, onDismiss = { onDismiss(change) }) }
     }
 }

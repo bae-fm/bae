@@ -143,12 +143,12 @@ fn both_platforms_carry_every_radius() {
 }
 
 #[test]
-fn a_text_role_needs_every_platforms_size() {
+fn a_text_role_names_macos_and_ios_together() {
     let theme = Theme::from_toml(&THEME.replace(
         "[text.body]\nweight = \"regular\"\nmacos = 13\n",
         "[text.body]\nweight = \"regular\"\n",
     ));
-    assert_eq!(theme.unwrap_err(), ["text body has no macos size"]);
+    assert_eq!(theme.unwrap_err(), ["text body has an ios size but no macos size"]);
 }
 
 #[test]
@@ -165,9 +165,12 @@ fn both_platforms_carry_every_text_role() {
     let theme = Theme::from_toml(THEME).unwrap();
     let swift = apple::swift(&theme);
     let kotlin = android::kotlin(&theme);
-    for role in theme.text.keys() {
-        assert!(swift.contains(&format!("    public static let {role} = ThemeText(\n")));
-        assert!(kotlin.contains(&format!("        val {role} =\n")));
+    for (role, text) in &theme.text {
+        assert_eq!(
+            swift.contains(&format!("    public static let {role} = ThemeText(\n")),
+            text.apple.is_some()
+        );
+        assert_eq!(kotlin.contains(&format!("        val {role} =\n")), text.android.is_some());
     }
 }
 
@@ -208,4 +211,24 @@ fn the_launch_background_is_the_standard_tones() {
     assert!(resources[0].1.contains(">#FFEFE4F1<"));
     assert_eq!(resources[1].0, "res/values-night/theme_colors.xml");
     assert!(resources[1].1.contains(">#FF201B25<"));
+}
+
+#[test]
+fn a_text_role_with_an_android_line_height_carries_it_into_kotlin() {
+    let theme = Theme::from_toml(&THEME.replace(
+        "[text.body]\nweight = \"regular\"\nmacos = 13\nios = \"body\"\nandroid = 14\n",
+        "[text.body]\nweight = \"regular\"\nmacos = 13\nios = \"body\"\nandroid = 14\nandroid_line = 20\n",
+    ))
+    .unwrap();
+    let kotlin = android::kotlin(&theme);
+    assert!(kotlin.contains("fontSize = 14.sp,\n                    lineHeight = 20.sp,\n"));
+}
+
+#[test]
+fn a_text_role_needs_a_size_somewhere() {
+    let theme = Theme::from_toml(&THEME.replace(
+        "[text.body]\nweight = \"regular\"\nmacos = 13\nios = \"body\"\nandroid = 14\n",
+        "[text.body]\nweight = \"regular\"\n",
+    ));
+    assert_eq!(theme.unwrap_err(), ["text body has no size on any platform"]);
 }

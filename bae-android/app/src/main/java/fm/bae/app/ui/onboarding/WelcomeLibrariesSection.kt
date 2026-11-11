@@ -28,12 +28,12 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.CardRow
 import fm.bae.app.ui.components.ErrorNotice
-import fm.bae.app.ui.components.Eyebrow
 import fm.bae.app.ui.components.LibraryEnding
 import fm.bae.app.ui.components.MoreMenu
 import fm.bae.app.ui.components.OpenProgressLine
 import fm.bae.app.ui.components.RemoveLibraryDialog
 import fm.bae.app.ui.components.RowCard
+import fm.bae.app.ui.components.SectionHeading
 import fm.bae.app.ui.components.StepProgressLine
 import fm.bae.app.ui.components.WaitingIndicator
 import fm.bae.app.ui.settings.libraryDetail
@@ -123,7 +123,7 @@ internal fun WelcomeLibrariesContent(
         is WelcomeLibrariesList.Loaded -> {
             if (list.libraries.isEmpty()) return
             Column(modifier = column, verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
-                Eyebrow(stringResource(R.string.onboarding_libraries_title))
+                SectionHeading(stringResource(R.string.onboarding_libraries_title))
                 RowCard {
                     list.libraries.forEach { library ->
                         WelcomeLibraryRow(

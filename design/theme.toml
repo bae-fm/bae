@@ -414,6 +414,15 @@ macos = 10
 ios = "caption2"
 android = 11
 
+# A card's section heading on Android (Material's list section header), in the
+# accent colour and sentence case. A role names only the platforms that use it:
+# macOS and iOS together, and Android. `android_line` is Android's line height
+# in sp, for a role whose lines are not the font's own height.
+[text.section]
+weight = "medium"
+android = 14
+android_line = 20
+
 [text.mono]
 weight = "regular"
 monospaced = true

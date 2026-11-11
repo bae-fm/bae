@@ -117,14 +117,19 @@ fn write_kotlin(out: &mut String, theme: &Theme) -> std::fmt::Result {
          class ThemeText(\n    val style: TextStyle,\n    val uppercase: Boolean,\n) {\n    companion object {\n",
     );
     for (role, text) in &theme.text {
+        let Some(android) = text.android else { continue };
         let family = if text.monospaced { "FontFamily.Monospace" } else { "FontFamily.Default" };
+        let line = text
+            .android_line
+            .map(|line| format!("                    lineHeight = {line}.sp,\n"))
+            .unwrap_or_default();
         writeln!(
             out,
             "        val {role} =\n            ThemeText(\n                TextStyle(\n                    \
-             fontSize = {}.sp,\n                    fontWeight = {},\n                    \
+             fontSize = {}.sp,\n{line}                    fontWeight = {},\n                    \
              letterSpacing = ({}).sp,\n                    fontFamily = {family},\n                ),\n                \
              uppercase = {},\n            )",
-            text.android,
+            android,
             text.weight.kotlin(),
             text.tracking,
             text.uppercase

@@ -47,10 +47,10 @@ import fm.bae.app.ui.cloudProviderLabel
 import fm.bae.app.ui.components.CardRow
 import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.ErrorNotice
-import fm.bae.app.ui.components.Eyebrow
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.RowCard
 import fm.bae.app.ui.components.ScreenTopBar
+import fm.bae.app.ui.components.SectionHeading
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.library.LibraryDestination
 import fm.bae.app.ui.rememberScreenScope
@@ -319,7 +319,7 @@ internal fun SyncScreen(
             }
             // What is waiting is a local read; nothing shows until it lands.
             pending?.takeIf { it.isNotEmpty() }?.let { records ->
-                item { Eyebrow(text = stringResource(R.string.sync_pending)) }
+                item { SectionHeading(text = stringResource(R.string.sync_pending)) }
                 itemsIndexed(records) { index, record ->
                     if (index > 0) HorizontalDivider()
                     PendingRow(record = record, onAction = runner::run)

@@ -173,7 +173,7 @@ class WelcomeLibrariesTest {
     fun theListNamesEachLibraryAndNothingElse() {
         showLibraries(FakeLibraries(listOf(synced, neverSynced)))
 
-        compose.onNodeWithText("YOUR LIBRARIES").assertIsDisplayed()
+        compose.onNodeWithText("Your libraries").assertIsDisplayed()
         compose.onNodeWithText("Home Library").assertIsDisplayed()
         compose.onNodeWithText("Local Library").assertIsDisplayed()
         compose.onNodeWithText("Dropbox: ana@example.com").assertDoesNotExist()

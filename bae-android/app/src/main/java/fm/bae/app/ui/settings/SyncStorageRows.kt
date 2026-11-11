@@ -20,8 +20,8 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.cloudProviderLabel
 import fm.bae.app.ui.components.CardRow
 import fm.bae.app.ui.components.ErrorNotice
-import fm.bae.app.ui.components.Eyebrow
 import fm.bae.app.ui.components.RowCard
+import fm.bae.app.ui.components.SectionHeading
 import uniffi.bae_bridge.BridgeFolderLabel
 import uniffi.bae_bridge.BridgeStorageLocation
 
@@ -35,7 +35,7 @@ private val logger = BaeLogger("bae.SyncStorageRows")
 @Composable
 internal fun StorageSection(location: BridgeStorageLocation) {
     Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
-        Eyebrow(text = stringResource(R.string.sync_cloud_home))
+        SectionHeading(text = stringResource(R.string.sync_cloud_home))
         RowCard { StorageRows(location) }
     }
 }

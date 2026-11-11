@@ -30,10 +30,10 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.BaeAlertDialog
 import fm.bae.app.ui.components.CardRow
-import fm.bae.app.ui.components.Eyebrow
 import fm.bae.app.ui.components.NeutralTextButton
 import fm.bae.app.ui.components.RowCard
 import fm.bae.app.ui.components.ScreenTopBar
+import fm.bae.app.ui.components.SectionHeading
 import fm.bae.app.ui.playback.CastReceiverPlace
 import fm.bae.app.ui.playback.CastReceiverRows
 import kotlinx.coroutines.CoroutineDispatcher
@@ -157,10 +157,7 @@ internal fun CastingPage(
             }
             CastingCaption(stringResource(R.string.settings_casting_help))
             if (enabled) {
-                Eyebrow(
-                    text = stringResource(R.string.settings_casting_receivers),
-                    modifier = Modifier.padding(horizontal = ThemeSpace.edge),
-                )
+                SectionHeading(text = stringResource(R.string.settings_casting_receivers))
                 RowCard {
                     CastReceiverRows(
                         place = CastReceiverPlace.PAGE,

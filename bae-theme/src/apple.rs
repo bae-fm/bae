@@ -101,6 +101,7 @@ fn write_swift(out: &mut String, theme: &Theme) -> std::fmt::Result {
          extension ThemeText {\n",
     );
     for (role, text) in &theme.text {
+        let Some(apple) = &text.apple else { continue };
         let design = if text.monospaced { ".monospaced" } else { ".default" };
         writeln!(
             out,
@@ -108,13 +109,13 @@ fn write_swift(out: &mut String, theme: &Theme) -> std::fmt::Result {
              iOS: .{},\n            weight: {},\n            design: {design}\n        ),\n        \
              tracking: {},\n        uppercase: {},\n        macOSSize: {},\n        iOSStyle: .{},\n        weight: {},\n        \
              monospaced: {}\n    )",
-            text.macos,
-            text.ios,
+            apple.macos,
+            apple.ios,
             text.weight.swift(),
             text.tracking,
             text.uppercase,
-            text.macos,
-            text.ios,
+            apple.macos,
+            apple.ios,
             text.weight.swift(),
             text.monospaced
         )?;

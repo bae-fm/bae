@@ -23,9 +23,9 @@ import fm.bae.app.ui.components.BaeAlertDialog
 import fm.bae.app.ui.components.CardRow
 import fm.bae.app.ui.components.DestructiveTextButton
 import fm.bae.app.ui.components.ErrorNotice
-import fm.bae.app.ui.components.Eyebrow
 import fm.bae.app.ui.components.NeutralTextButton
 import fm.bae.app.ui.components.RowCard
+import fm.bae.app.ui.components.SectionHeading
 import fm.bae.app.ui.storageLocationLabel
 import uniffi.bae_bridge.BridgeDropboxAccess
 import uniffi.bae_bridge.BridgeDropboxLocation
@@ -98,7 +98,7 @@ private fun SavedCodesContent(
         is SavedCodesList.Loaded -> {
             if (list.entries.isEmpty()) return
             Column(modifier = column, verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
-                Eyebrow(stringResource(R.string.onboarding_saved_codes_title))
+                SectionHeading(stringResource(R.string.onboarding_saved_codes_title))
                 Text(
                     text = stringResource(R.string.onboarding_saved_codes_explanation),
                     style = ThemeText.detail.style,

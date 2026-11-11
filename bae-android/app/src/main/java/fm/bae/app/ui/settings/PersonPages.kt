@@ -24,9 +24,9 @@ import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.CardRow
-import fm.bae.app.ui.components.Eyebrow
 import fm.bae.app.ui.components.MoreMenu
 import fm.bae.app.ui.components.RowCard
+import fm.bae.app.ui.components.SectionHeading
 import uniffi.bae_bridge.BridgeActiveDevice
 import uniffi.bae_bridge.BridgeMember
 import uniffi.bae_bridge.BridgeMemberAccess
@@ -74,7 +74,7 @@ internal fun PersonPage(
                 )
             }
         }
-        item { Eyebrow(text = stringResource(R.string.people_devices)) }
+        item { SectionHeading(text = stringResource(R.string.people_devices)) }
         item { DevicesCard(member = member, callbacks = callbacks, addLast = false) }
         item { FormerDevicesIfAny(member) }
     }
