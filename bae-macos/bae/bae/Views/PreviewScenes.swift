@@ -284,7 +284,7 @@
                 in: PreviewData.importTabScene().store
             )
             return ImportCandidateBulkSelectionPane(
-                importDestination: .constant(.cloudPinned),
+                importDestination: .constant(.cloud),
                 onPerform: { _ in }
             )
             .environment(selection)

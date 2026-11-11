@@ -1,10 +1,9 @@
 import BaeKit
 import SwiftUI
 
-/// Where an import goes, as one pop-up of three choices: this Mac, the cloud,
-/// or the cloud with a whole copy kept on this Mac. The one stored choice,
-/// shown beside Import on the card, on the bulk pane's Import row and in
-/// Settings.
+/// Where an import goes, as one pop-up of two choices: this Mac or the cloud.
+/// The one stored choice, shown beside Import on the card, on the bulk pane's
+/// Import row and in Settings.
 struct ImportDestinationPicker: View {
     @Binding
     var destination: BridgeImportDestination
@@ -24,14 +23,13 @@ struct ImportDestinationPicker: View {
 extension BridgeImportDestination {
     /// The choices in the order the pop-up lists them.
     static var choices: [BridgeImportDestination] {
-        [.thisDevice, .cloud, .cloudPinned]
+        [.thisDevice, .cloud]
     }
 
     fileprivate var title: LocalizedStringKey {
         switch self {
         case .thisDevice: "This Mac"
         case .cloud: "Cloud"
-        case .cloudPinned: "Cloud, pinned"
         }
     }
 }

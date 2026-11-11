@@ -1,6 +1,5 @@
-//! Pinning a release: what a pin keeps, how its failures read, a release
-//! kept here once its copies land, and the pinned count each release's
-//! storage row keeps. What a pin's progress counts is in
+//! Pinning a release: what a pin keeps, how its failures read, and the
+//! pinned count each release's storage row keeps. What a pin's progress counts is in
 //! `pin_progress_tests.rs`.
 
 #![expect(
@@ -10,7 +9,6 @@
 
 use super::*;
 use crate::manager::tests::*;
-use bae_records::DbRelease;
 /// Each release whose storage row's pinned or file count differs from the
 /// one probed from its files, or that has no storage row, and each whose
 /// listing row is missing or holds a pinned or file count other than its
@@ -95,8 +93,6 @@ async fn the_listed_pinned_count_follows_every_pin_and_file_write() {
     connect_test_cloud(&test).await;
     let mut rng = rand::rngs::StdRng::seed_from_u64(0x5eed);
     let mut releases: Vec<HarnessRelease> = Vec::new();
-    // The releases moving to the cloud to be kept here.
-    let mut kept_moves: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
     let mut ran: std::collections::BTreeMap<&'static str, usize> =
         std::collections::BTreeMap::new();
     let mut most_pinned = 0usize;
@@ -127,29 +123,15 @@ async fn the_listed_pinned_count_follows_every_pin_and_file_write() {
                 let Some(index) = pick(&mut rng, &releases, HarnessStage::Local) else {
                     continue;
                 };
-                let pin = rng.random_bool(0.5);
-                manager.upload_release(&releases[index].id, pin).await.unwrap();
+                manager.upload_release(&releases[index].id).await.unwrap();
                 releases[index].stage = HarnessStage::Attached;
-                if pin {
-                    kept_moves.insert(releases[index].id.clone());
-                }
-                if pin {
-                    "attach pinned"
-                } else {
-                    "attach"
-                }
+                "attach"
             }
             3 => {
                 if !releases.iter().any(|release| release.stage == HarnessStage::Attached) {
                     continue;
                 }
                 manager.drain_uploads_expecting_work().await.unwrap();
-                // coven keeps a release moved to be kept here by fetching its
-                // copy after the move ends; until it has, a later step's
-                // reads race that write.
-                for release in std::mem::take(&mut kept_moves) {
-                    wait_for_kept_release(manager, &release).await;
-                }
                 for release in &mut releases {
                     if release.stage == HarnessStage::Attached {
                         release.stage = HarnessStage::Remote;
@@ -206,16 +188,9 @@ async fn the_listed_pinned_count_follows_every_pin_and_file_write() {
             "pinned markers after step {step}, {op}"
         );
     }
-    for op in [
-        "add release",
-        "attach",
-        "attach pinned",
-        "complete uploads",
-        "pin",
-        "unpin",
-        "evict",
-        "delete release",
-    ] {
+    for op in
+        ["add release", "attach", "complete uploads", "pin", "unpin", "evict", "delete release"]
+    {
         assert!(ran.contains_key(op), "the walk never ran {op}: {ran:?}");
     }
     assert!(most_pinned > 0, "no release was ever wholly pinned");
@@ -254,7 +229,7 @@ fn a_release_s_storage_counts_its_pins_and_queued_files_on_each_device() {
             &[("track.flac", b"track-bytes")],
         )
         .await;
-        devices.b().manager().upload_release(&theirs.id, false).await.unwrap();
+        devices.b().manager().upload_release(&theirs.id).await.unwrap();
         let in_the_cloud =
             vec!["1 files, 11 bytes, stored 1, 0 pinned, 0 queued, first place as queued"
                 .to_string()];
@@ -286,7 +261,7 @@ fn a_release_s_storage_counts_its_pins_and_queued_files_on_each_device() {
             &[("one.flac", b"first audio"), ("two.flac", b"second audio")],
         )
         .await;
-        manager.upload_release(&ours.id, false).await.unwrap();
+        manager.upload_release(&ours.id).await.unwrap();
         assert_eq!(
             storage_row(&manager.store, &ours.id).await,
             vec!["2 files, 23 bytes, stored 0, 0 pinned, 2 queued, first place as queued"]
@@ -390,10 +365,10 @@ async fn album_detail_releases_carry_their_own_pin_state() {
             &[("track.flac", b"track-bytes")],
         )
         .await;
-        manager.upload_release(&release.id, pin).await.unwrap();
+        manager.upload_release(&release.id).await.unwrap();
         wait_for_landed_upload(manager, &release.id).await;
         if pin {
-            wait_for_kept_release(manager, &release.id).await;
+            pin_directly(manager, &release.id).await;
         }
         pressings.push((release.id, pin));
     }
@@ -437,7 +412,7 @@ async fn a_pin_the_provider_refuses_is_a_storage_setup_failure() {
         &[("track.flac", b"track-bytes")],
     )
     .await;
-    manager.upload_release(&release.id, false).await.unwrap();
+    manager.upload_release(&release.id).await.unwrap();
     manager.drain_uploads_expecting_work().await.unwrap();
     let file = release_files(manager, &release.id).await[0].file;
     manager.evict_file_for_test(file).await.unwrap();
@@ -493,7 +468,7 @@ async fn a_pin_the_cloud_cannot_serve_is_a_network_failure() {
         &[("track.flac", b"track-bytes")],
     )
     .await;
-    manager.upload_release(&release.id, false).await.unwrap();
+    manager.upload_release(&release.id).await.unwrap();
     manager.drain_uploads_expecting_work().await.unwrap();
     let file = release_files(manager, &release.id).await[0].file;
     manager.evict_file_for_test(file).await.unwrap();
@@ -515,61 +490,6 @@ async fn a_pin_the_cloud_cannot_serve_is_a_network_failure() {
     );
 }
 
-/// A release moved to the cloud to be kept here, whose move finished, and
-/// whose files coven keeps here by downloading their copies: the stored files
-/// can't be read, so coven can't fetch their copies until the test clears
-/// the storage's faults. The manager must already be connected via
-/// [`connect_test_cloud`].
-async fn release_kept_here_waiting_for_its_copy(
-    manager: &TestManager,
-    dir: &std::path::Path,
-    album_title: &str,
-) -> DbRelease {
-    let release = insert_local_release_with_files(
-        manager.library.manager(),
-        dir,
-        album_title,
-        &[("track.flac", b"kept-bytes")],
-    )
-    .await;
-    manager.library.manager().upload_release(&release.id, true).await.unwrap();
-
-    // Hold the file's upload as it is created, and from then on refuse every
-    // read of the stored file, so coven's pin keeping it here can't fetch
-    // its copy.
-    let home = &manager.storage;
-    let (started, created) = tokio::sync::oneshot::channel();
-    let (resume, resumed) = tokio::sync::oneshot::channel();
-    home.hold_next_creation(
-        coven::ObjectPrefix::files(manager.library.manager().store.store_id_for_test()),
-        started,
-        resumed,
-    )
-    .await;
-    let drain = tokio::spawn({
-        let manager = manager.library.manager().clone();
-        async move { manager.drain_uploads_expecting_work().await }
-    });
-    created.await.unwrap();
-    let stored = home
-        .request_trace()
-        .into_iter()
-        .rev()
-        .find_map(|request| match request {
-            coven::MemoryRequest::Create(path) => Some(path),
-            _ => None,
-        })
-        .expect("the held upload is the last creation");
-    home.set_faults(coven::Faults {
-        read_failures: [(stored, coven::StorageFailure::Network)].into(),
-        ..coven::Faults::none()
-    })
-    .await;
-    resume.send(()).unwrap();
-    drain.await.unwrap().unwrap();
-    release
-}
-
 /// The coven file each of a release's files carries.
 async fn release_file_refs(manager: &LibraryManager, release_id: &str) -> Vec<coven::FileRef> {
     let mut refs = Vec::new();
@@ -577,204 +497,4 @@ async fn release_file_refs(manager: &LibraryManager, release_id: &str) -> Vec<co
         refs.push(manager.release_file_ref(&file.id).await.unwrap());
     }
     refs
-}
-
-/// A release moved to the cloud to be kept here goes through no download
-/// queue entry: once its move finishes, coven keeps each file whole on this
-/// device itself, and the release is pinned.
-#[tokio::test]
-async fn a_release_kept_here_is_pinned_once_its_move_finishes() {
-    let (test, temp) = setup_test_manager().await;
-    let manager = test.library.manager();
-    connect_test_cloud(&test).await;
-    let release = insert_local_release_with_files(
-        manager,
-        &temp.path().join("kept"),
-        "Album",
-        &[("audio.flac", b"audio")],
-    )
-    .await;
-    manager.upload_release(&release.id, true).await.unwrap();
-    assert_eq!(moving_file_count(manager, &release.id).await, 1);
-    assert!(download_queue_now(manager).await.rows.is_empty());
-    assert_eq!(manager.drain_uploads_expecting_work().await.unwrap(), 1);
-    wait_for_kept_release(manager, &release.id).await;
-    assert!(
-        views(manager)
-            .find_release_detail(&release.id)
-            .await
-            .unwrap()
-            .unwrap()
-            .summary
-            .storage_state
-            == bae_views::album_detail::ReleaseStorageState::InStorage { pinned: true }
-    );
-}
-
-/// A release kept here as it moves to the cloud is pinned only once its
-/// files are whole on this device. The write switching its files to the cloud
-/// asks coven to keep each, and coven downloads its copy from storage; until
-/// that copy lands, the Storage Manager's list and the release's own summary
-/// both read the release as not pinned, and the copy landing pins it.
-#[tokio::test]
-async fn a_kept_release_is_pinned_once_its_copy_lands() {
-    let (test, temp_dir) = setup_test_manager().await;
-    let manager = test.library.manager();
-    let home = connect_test_cloud(&test).await;
-    let release =
-        release_kept_here_waiting_for_its_copy(&test, &temp_dir.path().join("kept"), "Album Title")
-            .await;
-    let file_id = release_files(manager, &release.id).await[0].id.clone();
-    let file = manager.release_file_ref(&file_id).await.unwrap();
-    assert_eq!(
-        manager.store.files_pinned(&[file.id()]).await.unwrap(),
-        [Some(false)],
-        "the file's copy hasn't landed"
-    );
-    let summary_pinned = || async {
-        views(manager)
-            .find_release_detail(&release.id)
-            .await
-            .unwrap()
-            .expect("the library holds the release")
-            .summary
-            .storage_state
-            == bae_views::album_detail::ReleaseStorageState::InStorage { pinned: true }
-    };
-    assert!(!summary_pinned().await, "the release's summary");
-    assert!(
-        !listed_pinned_releases(manager).await.contains(&release.id),
-        "the Storage Manager's list"
-    );
-
-    home.set_faults(coven::Faults::none()).await;
-    manager.store.pin(std::slice::from_ref(&file)).await.unwrap();
-    assert!(summary_pinned().await, "the release's summary");
-    assert!(
-        listed_pinned_releases(manager).await.contains(&release.id),
-        "the Storage Manager's list"
-    );
-}
-
-/// A release whose kept copies haven't landed sorts with the releases being
-/// pinned, ahead of those in the cloud only, and as pinned once they land.
-#[tokio::test]
-async fn a_kept_release_sorts_as_pinned_once_its_copies_land() {
-    let (test, temp_dir) = setup_test_manager().await;
-    let manager = test.library.manager();
-    let home = connect_test_cloud(&test).await;
-    let cloud =
-        uploaded_release(manager, &temp_dir.path().join("cloud"), "Album Title A", false).await;
-    let waiting = release_kept_here_waiting_for_its_copy(
-        &test,
-        &temp_dir.path().join("waiting"),
-        "Album Title B",
-    )
-    .await;
-    let by_storage = || async {
-        bae_views::LibraryViews::new(manager.store.clone())
-            .get_storage_page(
-                &bae_views::StorageSortCriterion {
-                    field: bae_views::StorageSortField::Storage,
-                    direction: bae_store::SortDirection::Ascending,
-                },
-                bae_views::StorageFilter::All,
-                0,
-                100,
-            )
-            .await
-            .unwrap()
-            .rows
-            .into_iter()
-            .map(|row| (row.release.id, row.status))
-            .collect::<Vec<_>>()
-    };
-    use bae_views::album_detail::StorageRowStatus;
-    assert_eq!(
-        by_storage().await,
-        [
-            (waiting.id.clone(), StorageRowStatus::CopyingHere),
-            (cloud.clone(), StorageRowStatus::InStorage),
-        ]
-    );
-
-    home.set_faults(coven::Faults::none()).await;
-    let refs = release_file_refs(manager, &waiting.id).await;
-    manager.store.pin(&refs).await.unwrap();
-    assert_eq!(
-        by_storage().await,
-        [
-            (waiting.id.clone(), StorageRowStatus::Pinned),
-            (cloud.clone(), StorageRowStatus::InStorage),
-        ]
-    );
-    inspector_rows_until(manager, &waiting.id, |rows| {
-        rows.files.iter().all(|file| file.pin == Some(bae_views::album_detail::FilePin::Kept))
-    })
-    .await;
-}
-
-/// A release moved to the cloud to be kept here reads Copying here while
-/// coven's request to keep its files is open, and Stop keeping here, the
-/// release's unpin, ends the request in its write, so coven does not pin the
-/// file when its copy can be fetched.
-#[tokio::test]
-async fn stop_keeping_here_ends_the_request_a_release_reads_copying_here_for() {
-    use bae_views::album_detail::StorageRowStatus;
-    let (test, temp_dir) = setup_test_manager().await;
-    let manager = test.library.manager();
-    let home = connect_test_cloud(&test).await;
-    let release =
-        release_kept_here_waiting_for_its_copy(&test, &temp_dir.path().join("kept"), "Album Title")
-            .await;
-    let requests = || async {
-        manager.store.query_texts_for_test("SELECT file FROM coven_pin_requests").await.unwrap()
-    };
-    let row_status = || async {
-        bae_views::LibraryViews::new(manager.store.clone())
-            .get_storage_page(
-                &bae_views::StorageSortCriterion {
-                    field: bae_views::StorageSortField::Storage,
-                    direction: bae_store::SortDirection::Ascending,
-                },
-                bae_views::StorageFilter::All,
-                0,
-                100,
-            )
-            .await
-            .unwrap()
-            .rows
-            .into_iter()
-            .find(|row| row.release.id == release.id)
-            .map(|row| row.status)
-    };
-
-    assert_eq!(requests().await.len(), 1, "coven's request to keep the file is open");
-    assert_eq!(row_status().await, Some(StorageRowStatus::CopyingHere));
-    let summary = views(manager).find_release_detail(&release.id).await.unwrap().unwrap().summary;
-    assert!(summary.keeping_here);
-    assert_eq!(
-        summary.storage_actions,
-        [ReleaseStorageAction::Unpin, ReleaseStorageAction::DetachAudio]
-    );
-
-    manager.unpin_releases(std::slice::from_ref(&release.id)).await.unwrap();
-
-    assert!(requests().await.is_empty(), "the unpin ends coven's request");
-    assert_eq!(row_status().await, Some(StorageRowStatus::InStorage));
-    let detail = views(manager).find_release_detail(&release.id).await.unwrap().unwrap();
-    assert!(!detail.summary.keeping_here);
-    assert_eq!(
-        detail.summary.storage_actions,
-        [ReleaseStorageAction::Pin, ReleaseStorageAction::DetachAudio]
-    );
-
-    // Coven could now fetch the copy, and has no request to make a pin for.
-    home.set_faults(coven::Faults::none()).await;
-    let refs = release_file_refs(manager, &release.id).await;
-    assert_eq!(
-        manager.store.files_pinned(&[refs[0].id()]).await.unwrap(),
-        [Some(false)],
-        "the file stays unpinned"
-    );
 }

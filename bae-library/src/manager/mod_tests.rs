@@ -222,7 +222,7 @@ pub(super) async fn insert_release_with_queued_uploads(
     files: &[(&str, &[u8])],
 ) -> DbRelease {
     let release = insert_local_release_with_files(manager, dir, album_title, files).await;
-    manager.upload_release(&release.id, false).await.unwrap();
+    manager.upload_release(&release.id).await.unwrap();
     assert_eq!(
         manager.records.queued_upload_count_for_release_for_test(&release.id).await.unwrap(),
         files.len(),
@@ -276,7 +276,7 @@ pub(super) async fn wait_for_published_file(manager: &LibraryManager, table: &st
 }
 
 /// Create a Remote release the real way: a Local release with one source file
-/// on disk, attached for upload (`pin` keeps its offline copy), then uploaded.
+/// on disk, attached for upload (`pin` pins it once uploaded), then uploaded.
 /// Returns its id. The manager
 /// must already be connected via [`connect_test_cloud`].
 pub(super) async fn uploaded_release(
@@ -297,17 +297,25 @@ pub(super) async fn uploaded_release_with_files(
     pin: bool,
 ) -> String {
     let release = insert_local_release_with_files(manager, dir, album_title, files).await;
-    manager.upload_release(&release.id, pin).await.unwrap();
+    manager.upload_release(&release.id).await.unwrap();
     let uploaded = manager.drain_uploads_expecting_work().await.unwrap();
     assert_eq!(uploaded, files.len(), "each release file uploaded");
     if pin {
-        wait_for_kept_release(manager, &release.id).await;
+        pin_directly(manager, &release.id).await;
     }
     release.id
 }
 
-/// Wait for every file of a release kept here as it moved to the cloud to be
-/// kept whole on this device.
+/// Pin a release stored in the cloud as the download worker does: its entry
+/// started, and ended in the write that pins every file. The queue is left
+/// paused.
+pub(super) async fn pin_directly(manager: &LibraryManager, release_id: &str) {
+    let entry = started_pin_entry(manager, release_id).await;
+    manager.pin_release_files_with_progress(release_id, entry, |_| {}).await.unwrap();
+}
+
+/// Wait for every file of a release being pinned to be kept whole on this
+/// device.
 pub(super) async fn wait_for_kept_release(manager: &LibraryManager, release_id: &str) {
     manager.wait_for_kept_release_for_test(release_id).await;
 }
@@ -329,10 +337,10 @@ pub(super) async fn upload_release_unpaused(
         &[("track.flac", b"track-bytes")],
     )
     .await;
-    manager.upload_release(&release.id, pin).await.unwrap();
+    manager.upload_release(&release.id).await.unwrap();
     wait_for_landed_upload(manager, &release.id).await;
     if pin {
-        wait_for_kept_release(manager, &release.id).await;
+        pin_directly(manager, &release.id).await;
     }
     release.id
 }

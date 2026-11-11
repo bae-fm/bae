@@ -12,7 +12,7 @@ mirror_enum! {
     BridgeImportDestination = bae_preferences::ImportDestination,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
-    variants: { ThisDevice, Cloud, CloudPinned },
+    variants: { ThisDevice, Cloud },
 }
 
 mirror_enum! {

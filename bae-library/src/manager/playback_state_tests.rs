@@ -19,7 +19,7 @@ async fn insert_partially_uploaded_release(
     )
     .await;
 
-    manager.upload_release(&release.id, true).await.unwrap();
+    manager.upload_release(&release.id).await.unwrap();
     assert_eq!(queued_upload_count(manager).await, 2);
 
     std::fs::remove_file(source_dir.join("b.flac")).unwrap();

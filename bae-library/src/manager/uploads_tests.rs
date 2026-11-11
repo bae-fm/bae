@@ -8,7 +8,6 @@
 
 use super::*;
 use crate::manager::tests::*;
-use bae_preferences::ImportDestination;
 use bae_records::{DbLibraryImage, DbRelease, NewReleaseFile};
 use chrono::Utc;
 use tempfile::TempDir;
@@ -367,7 +366,7 @@ async fn upload_keeps_every_file_in_the_queue() {
     }
     let files = release_files(manager, &release.id).await;
 
-    manager.upload_release(&release.id, false).await.unwrap();
+    manager.upload_release(&release.id).await.unwrap();
 
     assert_eq!(
         manager
@@ -664,7 +663,7 @@ async fn a_releases_cover_is_no_file_of_its_upload() {
     let cover_bytes = b"cover-bytes";
     let cover = DbLibraryImage::cover(&release.id);
     manager.store_library_image(&cover, cover_bytes).await.unwrap();
-    manager.upload_release(&release.id, false).await.unwrap();
+    manager.upload_release(&release.id).await.unwrap();
     finish_bound_uploads(manager).await;
 
     assert_eq!(
@@ -738,7 +737,7 @@ async fn moving_a_selection_queues_every_movable_release_in_one_write() {
         .await;
         ids.push(release.id);
     }
-    manager.upload_release(&ids[4], false).await.unwrap();
+    manager.upload_release(&ids[4]).await.unwrap();
 
     let rows = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
     let mut transitions = manager.store.subscribe(|sql| {
@@ -818,7 +817,7 @@ async fn a_release_in_storage_already_does_not_block_sibling_cloud_admissions() 
         &[("third.flac", b"third-bytes")],
     )
     .await;
-    manager.upload_release(&moving_release.id, false).await.unwrap();
+    manager.upload_release(&moving_release.id).await.unwrap();
 
     let outcome = manager
         .upload_releases(&[
@@ -918,51 +917,6 @@ async fn retry_outbox_surfaces_a_provider_failure_and_can_be_retried() {
     assert_eq!(manager.library.manager().store.queued_upload_count_for_test().await.unwrap(), 0);
 }
 
-/// A move to the cloud keeps the release here as the stored import storage
-/// choice says at the moment it moves, with nothing passed beside the releases.
-#[tokio::test]
-async fn upload_pins_as_the_stored_choice_says() {
-    let (test, temp_dir) = setup_test_manager().await;
-    let manager = test.library.manager();
-    connect_test_cloud(&test).await;
-    let kept = insert_local_release_with_files(
-        manager,
-        &temp_dir.path().join("kept"),
-        "Album Title",
-        &[("track.flac", b"kept-bytes")],
-    )
-    .await;
-    let evictable = insert_local_release_with_files(
-        manager,
-        &temp_dir.path().join("evictable"),
-        "Other Album Title",
-        &[("track.flac", b"evictable-bytes")],
-    )
-    .await;
-    manager.set_import_destination(ImportDestination::CloudPinned).await.unwrap();
-    manager.upload_releases(std::slice::from_ref(&kept.id)).await.unwrap();
-    manager.set_import_destination(ImportDestination::Cloud).await.unwrap();
-    manager.upload_releases(std::slice::from_ref(&evictable.id)).await.unwrap();
-
-    manager.drain_uploads_expecting_work().await.unwrap();
-    wait_for_kept_release(manager, &kept.id).await;
-    let pinned = |release_id: String| {
-        let manager = test.library.manager().clone();
-        async move {
-            bae_views::LibraryViews::new(manager.store.clone())
-                .find_release_detail(&release_id)
-                .await
-                .unwrap()
-                .expect("the library holds the release")
-                .summary
-                .storage_state
-                == bae_views::album_detail::ReleaseStorageState::InStorage { pinned: true }
-        }
-    };
-    assert!(pinned(kept.id.clone()).await);
-    assert!(!pinned(evictable.id.clone()).await);
-}
-
 /// The import list's version of the releases' storage.
 async fn release_storage_version(manager: &LibraryManager) -> i64 {
     manager
@@ -995,6 +949,6 @@ async fn a_release_joining_the_upload_queue_moves_the_import_list_s_version() {
     )
     .await;
     let before = release_storage_version(manager).await;
-    manager.upload_release(&release.id, false).await.unwrap();
+    manager.upload_release(&release.id).await.unwrap();
     assert!(release_storage_version(manager).await > before);
 }

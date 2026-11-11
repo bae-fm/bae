@@ -20,17 +20,15 @@ pub fn release_detail_rows_on(
     let records = get_release_records_on(sql, &release.id)?;
     let unstored_audio = unstored_audio_on(sql, &release.id)?;
     let mediums = release_mediums_on(sql, &release.id)?;
-    let (pinned, keeping_here, remote) = sql.query_row(
+    let (pinned, remote) = sql.query_row(
         &format!(
             "SELECT EXISTS (SELECT 1 FROM release_storage storage \
                             WHERE storage.release_id = ?1 AND {RELEASE_STORAGE_PINNED}), \
                     EXISTS (SELECT 1 FROM release_storage storage \
-                            WHERE storage.release_id = ?1 AND {RELEASE_STORAGE_KEEPING}), \
-                    EXISTS (SELECT 1 FROM release_storage storage \
                             WHERE storage.release_id = ?1 AND storage.stored = 1)"
         ),
         params![release.id],
-        |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+        |row| Ok((row.get(0)?, row.get(1)?)),
     )?;
     let cover_version = sql.query_row(
         &format!("SELECT {}", cover_version_sql("?1")),
@@ -47,7 +45,6 @@ pub fn release_detail_rows_on(
         records,
         unstored_audio,
         pinned,
-        keeping_here,
         remote,
         upload,
         cover_version,
@@ -64,7 +61,6 @@ pub struct DbReleaseDetailRows {
     records: Vec<bae_catalogs::records::ReleaseRecord>,
     unstored_audio: Vec<DbUnstoredAudio>,
     pinned: bool,
-    keeping_here: bool,
     remote: bool,
     upload: Option<DbReleaseUpload>,
     cover_version: Option<String>,
@@ -81,7 +77,6 @@ impl DbReleaseDetailRows {
             records: self.records,
             unstored_audio: self.unstored_audio,
             pinned: self.pinned,
-            keeping_here: self.keeping_here,
             remote: self.remote,
             upload: self.upload,
             cover_version: self.cover_version,

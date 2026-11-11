@@ -185,10 +185,6 @@ internal fun DownloadControlBody(
         BridgeReleaseDownloadStatus.Downloaded -> {
             DownloadedControl(unpinning, onRemove)
         }
-
-        BridgeReleaseDownloadStatus.CopyingHere -> {
-            CopyingHereControl(unpinning, onRemove)
-        }
     }
 }
 
@@ -237,32 +233,6 @@ private fun DownloadedControl(
             )
         } else {
             DownloadActionButton(stringResource(R.string.unpin), Icons.Outlined.PushPin, onRemove)
-        }
-    }
-}
-
-/**
- * A release moved to the cloud to be kept here, whose copies coven is still
- * downloading: the download queue holds no entry for it, so it has no progress
- * to show. Cancelling unpins it, which ends coven's request.
- */
-@Composable
-private fun CopyingHereControl(
-    unpinning: Boolean,
-    onStop: () -> Unit,
-) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        WaitingIndicator(size = ThemeIcon.medium)
-        Text(
-            text = stringResource(R.string.pinning),
-            style = ThemeText.detail.style,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        if (!unpinning) {
-            DownloadActionButton(stringResource(R.string.pin_cancel), Icons.Filled.Close, onStop)
         }
     }
 }

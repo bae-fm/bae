@@ -206,7 +206,7 @@ struct ImportCandidateBulkSelectionPaneTests {
             offers: offers,
             isRunning: false,
             showsStorageChoices: showsStorageChoices,
-            importDestination: .constant(.cloudPinned),
+            importDestination: .constant(.cloud),
             onPerform: { _ in }
         )
     }
@@ -220,7 +220,7 @@ struct ImportCandidateBulkSelectionPaneTests {
         try await SnapshotTestSupport.withHostedWindow(
             AnyView(
                 ImportCandidateBulkSelectionPane(
-                    importDestination: .constant(.cloudPinned),
+                    importDestination: .constant(.cloud),
                     onPerform: { _ in }
                 )
                 .environment(selection())

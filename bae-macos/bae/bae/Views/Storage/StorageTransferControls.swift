@@ -45,8 +45,6 @@ struct StorageTransferControls: View {
                     }
                 }
             )
-        case .pinFetch(let summary):
-            StoragePinSummary(summary: summary, download: nil)
         case .download(let operation, nil):
             // A failed download: the row says why and offers its retry and
             // its cancel.

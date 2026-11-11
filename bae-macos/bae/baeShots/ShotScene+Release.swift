@@ -120,14 +120,6 @@ private struct StorageBandStatesShot: View {
             release: release(actions: [], downloadStatus: .downloading)
         ),
         BandState(
-            name: "copying",
-            release: release(
-                actions: [.unpin, .detachAudio],
-                keepingHere: true,
-                downloadStatus: .copyingHere
-            )
-        ),
-        BandState(
             name: "failed pin",
             release: release(
                 actions: [.pin, .detachAudio],
@@ -195,7 +187,6 @@ private struct StorageBandStatesShot: View {
     private static func release(
         storageState: BridgeReleaseStorageState = .inStorage(pinned: false),
         actions: [BridgeReleaseStorageAction],
-        keepingHere: Bool = false,
         upload: BridgeReleaseUpload? = nil,
         downloadStatus: BridgeReleaseDownloadStatus? = nil,
         makeLocal: BridgeMakeLocalStatus? = nil
@@ -203,7 +194,6 @@ private struct StorageBandStatesShot: View {
         var bridge = PreviewData.storageBridgeRelease(
             storageState: storageState,
             storageActions: actions,
-            keepingHere: keepingHere,
             playability: .playable
         )
         bridge.upload = upload

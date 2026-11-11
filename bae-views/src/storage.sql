@@ -10,15 +10,14 @@
 -- `album_title` and the credit keys copied from its album's `album_listing`
 -- row; `media_empty` and `media_key` as `release_media_sort` works them out
 -- from its `release_media`; `created_at`, when the release was added; its
--- files' count and total size, `stored`, `pinned_count`, `keeping_count` and
+-- files' count and total size, `stored`, `pinned_count` and
 -- `queued_count`, copied from its `release_storage` row; `download_queued`, 1 while this
 -- device's download queue holds it waiting or downloading; `download_failed`,
 -- 1 while that queue holds it failed; `move_failed`, copied from its
 -- `release_storage` row; and `storage_order`, where it sorts by
 -- storage, worked out from those in the same write: a failed download or move
 -- first (0), uploading (1), pinning (2) while the download queue brings its files
--- to this device or coven keeps copies of them here that it has not finished
--- (a request open for a file of a release not wholly pinned), local (3), pinned (4), in the cloud only (5).
+-- to this device, local (3), pinned (4), in the cloud only (5).
 CREATE TABLE IF NOT EXISTS release_listing (
     release_id TEXT PRIMARY KEY REFERENCES releases (id) ON DELETE CASCADE,
     album_id TEXT NOT NULL,
@@ -32,7 +31,6 @@ CREATE TABLE IF NOT EXISTS release_listing (
     total_size INTEGER NOT NULL,
     stored INTEGER NOT NULL,
     pinned_count INTEGER NOT NULL,
-    keeping_count INTEGER NOT NULL,
     queued_count INTEGER NOT NULL,
     download_queued INTEGER NOT NULL CHECK (download_queued IN (0, 1)),
     download_failed INTEGER NOT NULL CHECK (download_failed IN (0, 1)),
@@ -40,7 +38,7 @@ CREATE TABLE IF NOT EXISTS release_listing (
     storage_order INTEGER GENERATED ALWAYS AS (CASE
         WHEN download_failed = 1 OR move_failed = 1 THEN 0
         WHEN queued_count > 0 THEN 1
-        WHEN download_queued = 1 OR (keeping_count > 0 AND pinned_count < file_count) THEN 2
+        WHEN download_queued = 1 THEN 2
         WHEN stored = 0 THEN 3
         WHEN file_count > 0 AND pinned_count = file_count THEN 4
         ELSE 5 END) VIRTUAL
@@ -135,7 +133,7 @@ BEGIN
     INSERT INTO release_listing (
         release_id, album_id, album_title, credit_sort_names, credit_artist_ids,
         media_empty, media_key, created_at, file_count, total_size, stored, pinned_count,
-        keeping_count, queued_count, download_queued, download_failed, move_failed)
+        queued_count, download_queued, download_failed, move_failed)
     SELECT r.id, r.album_id, album.title, album.credit_sort_names, album.credit_artist_ids,
            media.media_empty,
            media.media_key,
@@ -144,7 +142,6 @@ BEGIN
            storage.total_size,
            storage.stored,
            storage.pinned_count,
-           storage.keeping_count,
            storage.queued_count,
            EXISTS (SELECT 1 FROM download_queue download
                    WHERE download.release_id = r.id AND download.state IN ('queued', 'active')),
@@ -167,7 +164,6 @@ BEGIN
         total_size = excluded.total_size,
         stored = excluded.stored,
         pinned_count = excluded.pinned_count,
-        keeping_count = excluded.keeping_count,
         queued_count = excluded.queued_count,
         download_queued = excluded.download_queued,
         download_failed = excluded.download_failed,
@@ -270,11 +266,11 @@ BEGIN
         WHERE r.id = NEW.release_id);
 END;
 
-CREATE TRIGGER IF NOT EXISTS release_listing_storage_changed AFTER UPDATE OF file_count, total_size, stored, pinned_count, keeping_count, queued_count, move_failed ON release_storage
+CREATE TRIGGER IF NOT EXISTS release_listing_storage_changed AFTER UPDATE OF file_count, total_size, stored, pinned_count, queued_count, move_failed ON release_storage
 BEGIN
     UPDATE release_listing SET file_count = NEW.file_count, total_size = NEW.total_size,
         stored = NEW.stored, pinned_count = NEW.pinned_count,
-        keeping_count = NEW.keeping_count, queued_count = NEW.queued_count,
+        queued_count = NEW.queued_count,
         move_failed = NEW.move_failed
     WHERE release_id = NEW.release_id;
 END;

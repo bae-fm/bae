@@ -434,7 +434,6 @@ impl ImportService {
             )?;
             let place = match destination {
                 ImportDestination::ThisDevice => coven::Place::DeviceOnly,
-                ImportDestination::CloudPinned => coven::Place::CloudKeptHere,
                 ImportDestination::Cloud => coven::Place::Cloud,
             };
             bytes_read += u128::from(file.version.size);
@@ -607,13 +606,11 @@ impl ImportService {
         .await?;
 
         let progress = match destination {
-            ImportDestination::Cloud | ImportDestination::CloudPinned => {
-                ImportProgress::RemoteUploadQueued {
-                    id: db_release.id.to_string(),
-                    import_id: import_id.to_string(),
-                    album_id: album_id.to_string(),
-                }
-            }
+            ImportDestination::Cloud => ImportProgress::RemoteUploadQueued {
+                id: db_release.id.to_string(),
+                import_id: import_id.to_string(),
+                album_id: album_id.to_string(),
+            },
             ImportDestination::ThisDevice => ImportProgress::Complete {
                 id: db_release.id.to_string(),
                 import_id: import_id.to_string(),
@@ -633,8 +630,7 @@ impl ImportService {
 impl ImportService {
     /// Insert all of an import's data in one transaction, so the release
     /// exists complete or not at all. A Remote import stages its files for
-    /// the cloud in the same write, kept here once stored when it asks for
-    /// that.
+    /// the cloud in the same write.
     ///
     /// The pictures of the artists the import creates are staged from
     /// `artist_images` ([`Self::staged_artist_pictures`]); the write fails

@@ -19,15 +19,6 @@ extension BridgeReleaseStorageAction {
         String(localized: "Cancel pinning")
     }
 
-    /// `label`, except that Unpin of a release coven is still copying files of
-    /// to this Mac reads Cancel pinning: it ends the copying.
-    func label(keepingHere: Bool) -> String {
-        if self == .unpin && keepingHere {
-            return Self.cancelPinningLabel
-        }
-        return label
-    }
-
     /// SF Symbol name paired with `label`.
     var systemImage: String {
         switch self {

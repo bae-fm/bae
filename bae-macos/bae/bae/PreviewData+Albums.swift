@@ -181,7 +181,6 @@
                 pressingDetails: bridgePressingDetails(facts: facts),
                 storageState: .onOneDevice,
                 storageActions: [],
-                keepingHere: false,
                 upload: nil,
                 transitioning: false,
                 tracks: tracks,

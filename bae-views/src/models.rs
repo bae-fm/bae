@@ -272,10 +272,6 @@ pub struct DbReleaseSummary {
     /// Whether this device keeps every file of the release pinned, as the
     /// release's listing counts its pinned files.
     pub pinned: bool,
-    /// Whether coven is still copying the release's files to this device
-    /// because it was moved to the cloud to be kept here, as the release's
-    /// storage row counts the requests.
-    pub keeping_here: bool,
     /// What of the release waits in this device's upload queue; `None` when
     /// nothing does.
     pub upload: Option<DbReleaseUpload>,

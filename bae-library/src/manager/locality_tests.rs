@@ -49,7 +49,7 @@ async fn check_release_detachment(devices: &crate::test_libraries::TwoDevices, u
     manager.records.set_source_folder_name_for_test(&release.id, FOLDER).await.unwrap();
     store_test_cover(manager, &release.id, b"cover").await;
     let cover = cover_file(manager, &release.id).await.id();
-    manager.upload_release(&release.id, false).await.unwrap();
+    manager.upload_release(&release.id).await.unwrap();
     let files = release_files(manager, &release.id).await;
     assert_eq!(files.len(), 2);
     assert_eq!(moving_file_count(manager, &release.id).await, 2);
@@ -127,25 +127,6 @@ async fn check_release_detachment(devices: &crate::test_libraries::TwoDevices, u
     }
 }
 
-/// Cancelling the move of a release to be kept here leaves it on this device
-/// only: nothing is left to keep, and it plays from its original.
-#[tokio::test]
-async fn cancelling_the_upload_of_a_release_kept_here_detaches_audio() {
-    let (test, temp) = setup_test_manager().await;
-    let manager = test.library.manager();
-    connect_test_cloud(&test).await;
-    let release =
-        insert_local_release_with_files(manager, temp.path(), "Album", &[("track.flac", b"audio")])
-            .await;
-    manager.upload_release(&release.id, true).await.unwrap();
-    manager.cancel_release_transition(&release.id).await.unwrap();
-    assert!(download_queue_now(manager).await.rows.is_empty());
-    assert_eq!(manager.store.queued_upload_count_for_test().await.unwrap(), 0);
-    let files = release_files(manager, &release.id).await;
-    assert!(files.iter().all(|file| !file.stored));
-    assert_eq!(manager.records.read_release_file(&files[0].id).await.unwrap(), b"audio");
-}
-
 /// The next value of a release's live read for which `wanted` holds.
 async fn next_playability(
     live: &mut coven::ReconfigurableLiveQuery<
@@ -194,7 +175,7 @@ fn the_live_release_names_the_device_its_audio_is_on_until_it_moves_to_the_cloud
             ReleasePlayability::OnOtherDevice(OtherDevice::Active { name: "Device A".to_string() })
         );
 
-        devices.a().manager().upload_release(&release.id, false).await.unwrap();
+        devices.a().manager().upload_release(&release.id).await.unwrap();
         devices
             .converge(
                 "SELECT f.id, f.file, c.coordinates FROM release_files AS f \
@@ -222,7 +203,7 @@ fn pin_is_offered_only_for_a_release_in_the_cloud() {
         );
         assert_eq!(offered(devices.b().manager(), &release.id).await, (Vec::new(), None));
 
-        devices.a().manager().upload_release(&release.id, false).await.unwrap();
+        devices.a().manager().upload_release(&release.id).await.unwrap();
         devices
             .settle("the release in the cloud", async |_, database| {
                 matches!(
@@ -320,14 +301,14 @@ async fn unpin_release_releases_audio_and_keeps_cover_evictable() {
     store_test_cover(manager, &release.id, b"cover-bytes").await;
     finish_bound_uploads(manager).await;
 
-    manager.upload_release(&release.id, true).await.unwrap();
+    manager.upload_release(&release.id).await.unwrap();
     let uploaded = manager.drain_uploads_expecting_work().await.unwrap();
     assert_eq!(uploaded, 1, "the release's file uploads; its cover is stored already");
-    wait_for_kept_release(manager, &release.id).await;
+    pin_directly(manager, &release.id).await;
     let file_id = release_files(manager, &release.id).await[0].id.clone();
     assert!(
         file_pinned(manager, bae_records::synced::RELEASE_FILES_NAMESPACE, &file_id).await,
-        "a move to be kept here leaves the release file pinned"
+        "pinning the release pins its file"
     );
     assert!(
         !file_pinned(manager, bae_records::synced::COVERS_NAMESPACE, &release.id).await,
@@ -362,9 +343,9 @@ async fn unpinning_a_selection_releases_every_pin_in_one_write() {
             &[("track.flac", name.as_bytes())],
         )
         .await;
-        manager.upload_release(&release.id, true).await.unwrap();
+        manager.upload_release(&release.id).await.unwrap();
         manager.drain_uploads_expecting_work().await.unwrap();
-        wait_for_kept_release(manager, &release.id).await;
+        pin_directly(manager, &release.id).await;
         let file = release_files(manager, &release.id).await.remove(0);
         assert!(file_pinned(manager, bae_records::synced::RELEASE_FILES_NAMESPACE, &file.id).await);
         pinned.push((release.id, file.id));
@@ -417,7 +398,7 @@ async fn the_write_that_switches_a_releases_files_ends_its_entry() {
     )
     .await;
     manager.records.set_source_folder_name_for_test(&release.id, FOLDER).await.unwrap();
-    manager.upload_release(&release.id, false).await.unwrap();
+    manager.upload_release(&release.id).await.unwrap();
     manager.drain_uploads_expecting_work().await.unwrap();
     let files = release_files(manager, &release.id).await;
     assert!(files.iter().all(|file| file.stored));
@@ -485,11 +466,11 @@ async fn the_write_that_queues_a_moves_files_is_the_move() {
         &[("track.flac", b"track-bytes")],
     )
     .await;
-    manager.upload_release(&release.id, false).await.unwrap();
+    manager.upload_release(&release.id).await.unwrap();
     assert_eq!(moving_file_count(manager, &release.id).await, 1);
 
     let empty = insert_release_without_files(&test).await;
-    let refused = manager.upload_release(&empty, false).await;
+    let refused = manager.upload_release(&empty).await;
     assert!(refused.is_err(), "a release with no files has none to queue");
 }
 

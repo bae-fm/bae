@@ -274,7 +274,6 @@ fn row_to_release_summary(row: &Row<'_>) -> rusqlite::Result<DbReleaseSummary> {
         media: read_media(row, "release_media")?,
         remote: row.get("remote")?,
         pinned: row.get("pinned")?,
-        keeping_here: row.get("keeping_here")?,
         upload: bae_records::records::queued_uploads::release_upload_in_row(row)?,
         download: bae_transfers::download_entry_column(row)?,
         file_count: row.get("file_count")?,
@@ -305,8 +304,7 @@ fn storage_status(row: &Row<'_>) -> rusqlite::Result<crate::album_detail::Storag
     };
     let download = bae_transfers::download_entry_column(row)?;
     let failed_move_file = bae_records::records::queued_uploads::changed_original_in_row(row)?;
-    let keeping: bool = row.get("keeping_here")?;
-    StorageRowStatus::of(place, download, failed_move_file, keeping)
+    StorageRowStatus::of(place, download, failed_move_file)
         .map_err(|reason| bae_store::read::column_conversion_error(row, column, reason))
 }
 
@@ -367,7 +365,6 @@ fn storage_row_columns(extra: &str) -> String {
          storage.file_count, \
          storage.total_size, \
          {RELEASE_STORAGE_PINNED} AS pinned, \
-         {RELEASE_STORAGE_KEEPING} AS keeping_here, \
          listing.storage_order, \
          listing.created_at AS date_added, \
          {release_cover} AS release_cover_version, \

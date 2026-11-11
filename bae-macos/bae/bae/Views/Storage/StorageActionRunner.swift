@@ -149,7 +149,7 @@ final class StorageActionRunner {
     }
 
     /// Confirm callback for `MoveToCloudConfirmSheet`: admit each pending
-    /// release independently; core pins them as the stored choice says.
+    /// release independently.
     func confirmMoveToCloud() {
         guard let releaseIds = pendingMoveToCloud else {
             preconditionFailure("move-to-cloud confirmation has no releases")

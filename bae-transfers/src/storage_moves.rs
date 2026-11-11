@@ -53,13 +53,11 @@ const RELEASE_MOVE_FILES: &str = "SELECT f.file, \
 /// coven reads no original now, since each upload checks the bytes it sends
 /// against the hashes the import's read recorded, and switches a release's
 /// files to the cloud together once all are stored, changing no row.
-/// `keep_here` keeps each file whole on this device too once stored. A
-/// release that cannot move is named with why and changes nothing; the rest
+/// A release that cannot move is named with why and changes nothing; the rest
 /// move. Without storage set up the write moves nothing and is refused.
 pub async fn move_releases_to_cloud(
     store: &Store,
     release_ids: Vec<String>,
-    keep_here: bool,
 ) -> Result<MovedToCloud, StorageMoveError> {
     store
         .write(move |sql| {
@@ -94,13 +92,8 @@ pub async fn move_releases_to_cloud(
                     continue;
                 }
                 let count = u32::try_from(files.len()).expect("a release's files fit a u32");
-                let moving = files
-                    .into_iter()
-                    .map(|(file, _, _)| match keep_here {
-                        true => coven::MoveFile::UserKeptHere(file),
-                        false => coven::MoveFile::User(file),
-                    })
-                    .collect();
+                let moving =
+                    files.into_iter().map(|(file, _, _)| coven::MoveFile::User(file)).collect();
                 sql.move_to_cloud(moving)?;
                 outcome.moved.push((release_id, count));
             }

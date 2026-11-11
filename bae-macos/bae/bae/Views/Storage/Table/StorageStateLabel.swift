@@ -39,8 +39,6 @@ struct StorageStateLabel: View {
             StatusChip("Queued to make local", tone: .activity)
         case .makingLocal(.running):
             StorageMakingLocalChip(releaseId: release.id)
-        case .copyingHere:
-            StorageProgressChip(label: "Pinning", kind: .pin, fill: nil)
         case .onOneDevice:
             StatusChip("Local", symbol: "folder")
         case .pinned:
@@ -195,15 +193,6 @@ struct StorageMakingLocalChip: View {
                     transitioning: true
                 ),
                 status: .makingLocal(step: .queued)
-            )
-            // A release moved to the cloud to be kept here, whose copies
-            // coven is still downloading.
-            StorageStateLabel(
-                release: PreviewData.storageRelease(
-                    id: "r-copying-here",
-                    storageState: .inStorage(pinned: false)
-                ),
-                status: .copyingHere
             )
             // A make-local that failed.
             StorageStateLabel(

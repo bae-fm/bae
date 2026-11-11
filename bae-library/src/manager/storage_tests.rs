@@ -141,7 +141,7 @@ async fn the_listed_queue_counts_follow_every_upload_and_file_write() {
                 let Some(index) = pick(&mut rng, &releases, HarnessStage::Local) else {
                     continue;
                 };
-                manager.upload_release(&releases[index].id, false).await.unwrap();
+                manager.upload_release(&releases[index].id).await.unwrap();
                 releases[index].stage = HarnessStage::Attached;
                 "attach"
             }
@@ -439,7 +439,7 @@ async fn storage_count_matches_filtered_page_total() {
         if i == 1 {
             inserted_local = Some(release.id);
         } else {
-            manager.upload_release(&release.id, false).await.unwrap();
+            manager.upload_release(&release.id).await.unwrap();
             manager.drain_uploads_expecting_work().await.unwrap();
         }
     }

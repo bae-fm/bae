@@ -267,7 +267,7 @@ async fn a_pin_reaches_the_storage_view_without_a_sync_cycle() {
         &[("track.flac", b"track-bytes")],
     )
     .await;
-    manager.manager().upload_release(&release.id, false).await.unwrap();
+    manager.manager().upload_release(&release.id).await.unwrap();
     manager.manager().drain_uploads_expecting_work().await.unwrap();
 
     let values = bae_app::live_reads::subscribe_storage_browse(
@@ -396,7 +396,7 @@ async fn a_make_local_entry_reaches_the_reads() {
     )
     .await;
     manager.records().set_source_folder_name_for_test(&release_id, "Folder").await.unwrap();
-    manager.manager().upload_release(&release_id, false).await.unwrap();
+    manager.manager().upload_release(&release_id).await.unwrap();
     manager.manager().drain_uploads_expecting_work().await.unwrap();
     let album_id =
         manager.records().find_release_by_id(&release_id).await.unwrap().unwrap().album_id;

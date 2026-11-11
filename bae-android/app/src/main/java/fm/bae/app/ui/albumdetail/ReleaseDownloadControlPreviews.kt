@@ -56,14 +56,6 @@ private fun DownloadControlDownloadedPreview() {
 
 @Preview(showBackground = true)
 @Composable
-private fun DownloadControlCopyingHerePreview() {
-    BaeTheme {
-        DownloadControlBodyStub(BridgeReleaseDownloadStatus.CopyingHere)
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
 private fun DownloadControlFailedPreview() {
     BaeTheme {
         DownloadControlBodyStub(BridgeReleaseDownloadStatus.Failed("Network unreachable"))

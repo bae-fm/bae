@@ -125,16 +125,11 @@ pub fn storage_state(stored: bool, pinned: bool) -> ReleaseStorageState {
 /// truthfully queued until a cycle can drain it, and does not remove the
 /// action. Pin / Unpin / DetachAudio gate on the library syncing alone.
 ///
-/// A release `keeping_here` is stored, not wholly pinned, and has coven
-/// downloading the copies a move to the cloud asked it to keep: it offers
-/// Unpin, which ends coven's request, in place of Pin.
-///
 /// A release mid-transition offers none of these: its summary empties them
 /// while its files wait to upload or a transfer runs.
 pub fn available_storage_actions(
     state: ReleaseStorageState,
     playability: &ReleasePlayability,
-    keeping_here: bool,
     syncs: bool,
 ) -> Vec<ReleaseStorageAction> {
     use ReleaseStorageAction::*;
@@ -147,9 +142,6 @@ pub fn available_storage_actions(
         }
         ReleaseStorageState::OnOneDevice => Vec::new(),
         ReleaseStorageState::InStorage { pinned: true } => vec![Unpin, DetachAudio],
-        ReleaseStorageState::InStorage { pinned: false } if keeping_here => {
-            vec![Unpin, DetachAudio]
-        }
         ReleaseStorageState::InStorage { pinned: false } => vec![Pin, DetachAudio],
     }
 }
@@ -173,10 +165,6 @@ pub enum ReleaseDownloadStatus {
     Failed {
         error: String,
     },
-    /// Coven is downloading the copies its move to the cloud asked to keep
-    /// here; the download queue holds no entry for it. Unpin ends the
-    /// request.
-    CopyingHere,
     /// Not kept offline, but it could be.
     Available,
 }
@@ -223,7 +211,6 @@ pub fn release_make_local_status(
 pub fn release_download_status(
     state: ReleaseStorageState,
     storage_actions: &[ReleaseStorageAction],
-    keeping_here: bool,
     download: Option<&bae_transfers::DownloadEntry>,
 ) -> Option<ReleaseDownloadStatus> {
     use bae_transfers::{DownloadEntry, DownloadKind, DownloadStep};
@@ -241,7 +228,6 @@ pub fn release_download_status(
         None if state == (ReleaseStorageState::InStorage { pinned: true }) => {
             Some(ReleaseDownloadStatus::Downloaded)
         }
-        None if keeping_here => Some(ReleaseDownloadStatus::CopyingHere),
         None if storage_actions.contains(&ReleaseStorageAction::Pin) => {
             Some(ReleaseDownloadStatus::Available)
         }

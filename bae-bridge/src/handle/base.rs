@@ -131,8 +131,7 @@ forward! { async this => {
         Ok(this.services.unpin_releases(&release_ids).await?)
     }
 
-    /// Move the releases to the cloud, pinned here as the stored import
-    /// destination says.
+    /// Move the releases to the cloud.
     fn upload_releases(release_ids: Vec<String>) -> BridgeUploadReleasesOutcome {
         this.services
             .upload_releases(&release_ids)

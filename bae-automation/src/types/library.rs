@@ -33,9 +33,6 @@ pub struct AutomationReleaseSummary {
     pub storage_state: AutomationReleaseStorageState,
     /// The transitions available right now, derived by the core.
     pub storage_actions: Vec<AutomationReleaseStorageAction>,
-    /// Whether coven is still copying the release's files to this device
-    /// because it was moved to the cloud to be kept here.
-    pub keeping_here: bool,
     /// How many of the release's files wait in this device's upload queue,
     /// and how many of those are being sent now; `None` when none waits.
     pub upload: Option<AutomationReleaseUpload>,

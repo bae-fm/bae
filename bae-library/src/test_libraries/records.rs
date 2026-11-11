@@ -72,7 +72,7 @@ pub async fn insert_release_with_queued_uploads(
     files: &[(&str, &[u8])],
 ) -> DbRelease {
     let release = insert_local_release_with_files(library, dir, album_title, files).await;
-    library.manager().upload_release(&release.id, false).await.unwrap();
+    library.manager().upload_release(&release.id).await.unwrap();
     assert_eq!(
         library.records().queued_upload_count_for_release_for_test(&release.id).await.unwrap(),
         files.len(),

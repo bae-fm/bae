@@ -145,9 +145,7 @@ async fn each_choice_of_each_setting_reads_back() {
         set(&db, move |prefs| prefs.discogs = discogs).await;
         assert_eq!(preferences(&db).await.unwrap().discogs, discogs);
     }
-    for destination in
-        [ImportDestination::ThisDevice, ImportDestination::Cloud, ImportDestination::CloudPinned]
-    {
+    for destination in [ImportDestination::ThisDevice, ImportDestination::Cloud] {
         set(&db, move |prefs| prefs.import_destination = destination).await;
         assert_eq!(preferences(&db).await.unwrap().import_destination, destination);
     }

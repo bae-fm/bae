@@ -50,8 +50,8 @@ forward! { async this => {
         Ok(this.services.set_import_when_identified(enabled).await?)
     }
 
-    /// Where an import goes: this device, the cloud, or the cloud with a whole
-    /// copy kept here. One choice, shared by every place that offers it.
+    /// Where an import goes: this device or the cloud. One choice, shared by
+    /// every place that offers it.
     fn set_import_destination(destination: crate::types::BridgeImportDestination) -> () {
         Ok(this.services.set_import_destination(destination.into_core()).await?)
     }

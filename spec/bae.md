@@ -1730,8 +1730,7 @@ fetches them (step 2). Every stored image is downscaled to at most 600 pixels
 on a side and stored as JPEG.
 
 **Where it goes.** Each import lands on this device or goes to storage, as
-the person last chose (§4.2): This Mac, Cloud, or Cloud, pinned, one choice, and
-an import to storage stays whole here too once stored when it is Cloud, pinned. Either import stages its files with
+the person last chose (§4.2): This Mac or Cloud, one choice. Either import stages its files with
 coven in the same transaction as its rows: on this device only for a local
 import, and for storage for an import to storage, which queues their upload, so
 the choice is never lost, and needs no connection to record it.
@@ -2019,16 +2018,9 @@ one that kept its size and modification time: the rows describe the file as
 imported, and a changed file would give every device audio that doesn't
 match them. A release moves only when every one of its files is on
 this device only and none is moving already; a release made local again
-(§4.4) moves like one imported here. The stored Cloud, pinned choice (Appendix C)
-asks coven to keep each file whole on this device once the move finishes:
-coven pins it itself and downloads its copy from storage, never reading the
-original for the cache, and retries a failed download by itself. Until each
-file is pinned, coven lists a request to keep it in `coven_pin_requests`,
-which the release's storage row counts, so the release reads Pinning
-beside In cloud while the download queue holds nothing of it; its
-action is Cancel pinning, the release's unpin, which ends coven's
-requests in its own write so coven does not pin the files when their copies
-can be fetched.
+(§4.4) moves like one imported here. A move never keeps a copy on this
+device: once it finishes the files are in storage and unpinned, and the
+release is pinned afterwards like any other (§4.3).
 
 If an original goes missing before its upload, the move waits for it, the
 pending list and the release's row naming the file. If one changed, its upload stops before a
@@ -2045,7 +2037,7 @@ Other devices go on showing the release without playing it.
 
 - **An import to storage** (§3.7) stages its files for storage in the same write as
   its rows, each read whole once and compared with the scan as a local
-  import's are, kept here once stored when the choice is Cloud, pinned. Its
+  import's are. Its
   files are one move, as a release moved to storage is: other devices see
   them on the importing device until all are stored, and cancelling its upload
   leaves it a local release on that device.
@@ -2103,8 +2095,7 @@ release is pinned, here and in the album and release details, is read from
 how many of its files coven's `coven_pins` lists, whole on this device, a
 count bae keeps per release in the transaction that changes a pin, so each
 view's own query follows a pin as it lands. coven lists a pin only once its
-whole copy is kept, whether the download queue pinned the file or coven keeps
-it here after a move. Whether a release is uploaded is kept the same way, from
+whole copy is kept. Whether a release is uploaded is kept the same way, from
 coven's `coven_files`, in the transaction that records a file, switches it to
 storage or deletes it, on this device or as another device's write applies.
 How many of a release's files
@@ -2163,9 +2154,7 @@ original changed since import, first; Uploading, its chip filled as far
 as its bytes have come while any file is being sent, or Queued to upload while its files only wait; Pinning, filled as far
 as its download has come once it starts, or Queued to pin before; making local, Making local… filled as far as its copies have downloaded
 (§4.4), or Queued to make local before, or Couldn't make local, its error behind *Details*, in the first place with
-Couldn't pin; Pinning too while coven downloads the copies a move to the
-cloud asked to keep here, unless the download queue
-holds an entry for the release, which the row shows instead; Local, Pinned or
+Couldn't pin; Local, Pinned or
 In cloud at rest. No rate shows beside it, nor how many entries wait ahead
 of it or what holds the queue back: a row's storage is its state and at most
 the one change on its way, every waiting state naming what it waits to do.
@@ -3507,8 +3496,7 @@ retries the upload. A file that changed instead stops its release's move to
 storage, and its record offers *Cancel upload*, which ends the move and
 leaves every file of the release on this device only (§4.2). A pin the download queue couldn't
 finish offers *Retry*, which queues the release's pin again, the failed entry
-in its place or the release anew if it left the queue (§4.3); a file coven
-keeps here after a move retries its own download. Other records offer
+in its place or the release anew if it left the queue (§4.3). Other records offer
 *Retry*, *Reconnect*, *Update app* or *Restore with code*. bae never asks for a storage
 administrator's credentials: the person makes and deletes S3 access keys in the
 provider's console, and no record asks them to delete one
@@ -4552,14 +4540,12 @@ Reads come two ways:
   with the error behind that while this process holds it; how far it has got
   arrives apart, by file; and while the release waits in or runs through the
   download queue, whether the file is kept whole on this device yet, as
-  coven's `coven_pins` says, or out of that queue, while coven downloads the
-  files it keeps here after a move (§4.2), whether each is kept yet;
+  coven's `coven_pins` says;
   and whether coven is downloading the file now to be kept, as
   `coven_downloading` says, how far it has got arriving apart, by file, from
   coven's download watch), and its entry in the download, export and upload
   queues, a download with how many of its files are downloading, wait and
-  are kept, and coven's fetch of the files it keeps here, with how many are
-  downloading and kept, all read for that release alone and at once, so its queue entries
+  are kept, all read for that release alone and at once, so its queue entries
   and its files' pins are as they stood together. It shows nothing of a
   whole queue, which the list's footer pauses (§4.2): its upload shows how
   many of its files are uploading, queued and stored, a count of none left
@@ -4574,9 +4560,7 @@ Reads come two ways:
   out a count of none; a control that
   cancels the pin, and while it downloads the bytes it holds of its size and
   how fast it goes; a file downloading shows a ring filling as it comes, and
-  one waiting its turn a dashed circle. Coven's fetch
-  shows the same counts and marks, with no control and no bytes: no queue
-  entry of bae's holds it. A failed pin says it
+  one waiting its turn a dashed circle. A failed pin says it
   failed instead, its error behind *Details* (§9.7), with a control that
   retries it (§4.3) and one that cancels it. Selecting a file shows its details under the list,
   closed by a button or by selecting nothing: its name and the folder it
@@ -5272,7 +5256,7 @@ Beside them, device-local tables:
 | Table | One row per |
 |---|---|
 | `artist_shown_as` | artist, keyed by the artist: the artist it shows as (§2.3) |
-| `release_storage` | release, keyed by the release: its files' count and size, whether they are uploaded, how many of them this device keeps pinned and whole, how many coven still has a request to keep here, how many wait in this device's upload queue and the place of the first, and whether coven lists a file of it in a failed move, with an index of the releases uploading in queue order, which the import list's Done tab reads (§3.2) |
+| `release_storage` | release, keyed by the release: its files' count and size, whether they are uploaded, how many of them this device keeps pinned and whole, how many wait in this device's upload queue and the place of the first, and whether coven lists a file of it in a failed move, with an index of the releases uploading in queue order, which the import list's Done tab reads (§3.2) |
 
 What the library lists, bae-views' part, kept by its triggers:
 
@@ -5286,7 +5270,7 @@ What the library lists, bae-views' part, kept by its triggers:
 | `album_listing` | album the grid shows (§2.1), keyed by the album: its title, year and date added, and its credits' sort names and ids in credit order, with an index for each of the grid's sorts |
 | `album_artist_link` | album the grid shows and artist its credits show: the album's title, year and date added from its `album_listing` row, with an index for each sort of an artist's albums in the grid grouped by artist |
 | `artist_listing` | artist the artist list shows (§2.1): its name, its sort name (else name) and how many shown albums credit it, with an index for each of the list's sorts and the grid's grouping |
-| `release_listing` | release, keyed by the release: what the Storage manager (§4.2) sorts and filters it by — its album's title and credit keys, its media, when it was added, and from its `release_storage` row its files' count and size, whether they are uploaded and how many are pinned, requested to be kept here and queued — with an index for each sort, alone and under the uploaded filter; whether the download queue holds it waiting or downloading, and whether it holds it failed; whether a move of it failed; and where it sorts by storage, worked out from those: a failed download or move, uploading, pinning (a download in the queue, or copies coven keeps here of a release not wholly pinned), local, pinned, in storage only |
+| `release_listing` | release, keyed by the release: what the Storage manager (§4.2) sorts and filters it by — its album's title and credit keys, its media, when it was added, and from its `release_storage` row its files' count and size, whether they are uploaded and how many are pinned and queued — with an index for each sort, alone and under the uploaded filter; whether the download queue holds it waiting or downloading, and whether it holds it failed; whether a move of it failed; and where it sorts by storage, worked out from those: a failed download or move, uploading, pinning (a download in the queue), local, pinned, in storage only |
 | `release_listing_totals` | uploaded or not: how many releases are, and their files' total size |
 | `upload_batch` | release with files queued to upload since none had any, which the Activity panel's Uploading line counts; whether it is done is read from its `release_storage` row |
 | `upload_batch_number` | one row: how many upload batches have begun, the number of the one `upload_batch` holds, advanced as its first release joins, by which the Uploading line's bar tells a new batch from the one whose bytes it held (§6.4) |
@@ -5570,7 +5554,7 @@ Replay gain has no control in the apps.
 | `max_concurrent_uploads`, `max_concurrent_downloads` | 3 | files moved at once, 1 to 8; adding this device, joining, and a restore or reset of this device's copy read the library from storage at the default, since the row is in the store being read; the library opens at the row's limits |
 | `show_remaining_time` | off | the seek bar counts down |
 | `library_full_width` | off | the library page spans the window |
-| `import_destination` | cloud, pinned | where an import goes: this device, the cloud, or the cloud with a whole copy kept here; one choice, offered as a pop-up on the import card, on the bulk pane's Import row and as Import to in Settings, which dims while automatic import is off; with no cloud storage in the library, an import stays on this device whatever it says, and the pop-up is not shown |
+| `import_destination` | cloud | where an import goes: this device or the cloud; one choice, offered as a pop-up on the import card, on the bulk pane's Import row and as Import to in Settings, which dims while automatic import is off; with no cloud storage in the library, an import stays on this device whatever it says, and the pop-up is not shown |
 | `identify_automatically` | on | identifying found releases on their own |
 | `import_when_identified` | off | importing what any run picks unattended |
 | `ask_musicbrainz`, `ask_discogs` | both on | which catalogs are asked |

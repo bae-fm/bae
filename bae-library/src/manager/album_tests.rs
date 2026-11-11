@@ -61,7 +61,7 @@ async fn delete_album_deletes_its_releases_and_what_they_own() {
     let (test, temp) = setup_test_manager().await;
     let manager = test.library.manager();
     connect_test_cloud(&test).await;
-    // The album holds a release uploaded and kept on this device and one
+    // The album holds a release uploaded and pinned on this device and one
     // whose files are on this device only.
     let kept = uploaded_release(manager, &temp.path().join("kept"), "Deleted", true).await;
     let album_id = find_release(manager, &kept).await.unwrap().album_id;
@@ -109,7 +109,7 @@ async fn delete_album_deletes_its_releases_and_what_they_own() {
     for file in &deleted_files {
         pinned += manager.store.count_rows_for_test("coven_pins", "file", file).await.unwrap();
     }
-    assert!(pinned > 0, "the kept release's file is pinned here");
+    assert!(pinned > 0, "the pinned release's file is pinned here");
     let kept_files =
         manager.store.query_texts_for_test(&coven_files_of(&[&other.id])).await.unwrap();
 

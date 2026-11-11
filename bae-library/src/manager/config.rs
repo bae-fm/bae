@@ -130,8 +130,7 @@ impl LibraryManager {
         .await
     }
 
-    /// Where an import goes: this device, the cloud, or the cloud with a
-    /// whole copy kept here.
+    /// Where an import goes: this device or the cloud.
     pub async fn set_import_destination(
         &self,
         destination: bae_preferences::ImportDestination,

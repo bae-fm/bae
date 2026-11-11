@@ -97,7 +97,7 @@ async fn done_with_two_uploading(
         )
         .await;
         if name == "C" || name == "B" {
-            manager.library.manager().upload_release(&release_id, false).await.unwrap();
+            manager.library.manager().upload_release(&release_id).await.unwrap();
         }
         keys.push((name.to_string(), bae_import::CandidateKey::folder(&folder)));
     }

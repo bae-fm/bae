@@ -22,9 +22,7 @@ impl LibraryManager {
     /// each as one move of its own: no release shows a transition on the way,
     /// and none waits to be reached. Empty and duplicate selections are
     /// invalid commands; a release that cannot move is returned beside the
-    /// durable receipt for the releases that did. The stored import storage
-    /// choice says whether coven keeps the files whole here once stored
-    /// (offline) or only in the evictable cache. Once a move finishes, coven
+    /// durable receipt for the releases that did. Once a move finishes, coven
     /// no longer reads the user's original; the source file itself remains
     /// untouched.
     pub async fn upload_releases(
@@ -44,8 +42,7 @@ impl LibraryManager {
             }
         }
 
-        let pin = self.preferences().await?.import_destination.keeps_files_here();
-        let moved = match self.move_releases(release_ids, pin).await {
+        let moved = match self.move_releases(release_ids).await {
             Ok(moved) => moved,
             // Without storage nothing moved, and every release of the
             // selection is told so.
@@ -104,33 +101,31 @@ impl LibraryManager {
     }
 
     /// The write that moves `release_ids`, run to its end on a task of its
-    /// own, so a dismissed view leaves no move half made; coven keeps the
-    /// files here once stored when `pin` asks it to.
+    /// own, so a dismissed view leaves no move half made.
     async fn move_releases(
         &self,
         release_ids: &[String],
-        pin: bool,
     ) -> Result<bae_transfers::storage_moves::MovedToCloud, LibraryError> {
         let store = self.store.clone();
         let release_ids = release_ids.to_vec();
         self.run_file_operation("move releases to the cloud", move |_closing| async move {
-            bae_transfers::storage_moves::move_releases_to_cloud(&store, release_ids, pin)
-                .await
-                .map_err(|error| match error {
+            bae_transfers::storage_moves::move_releases_to_cloud(&store, release_ids).await.map_err(
+                |error| match error {
                     bae_store::WriteError::Refused(
                         bae_transfers::StorageMoveRefusal::NoStorage,
                     ) => coven::SyncError::NoStorage.into(),
                     error => error.into(),
-                })
+                },
+            )
         })
         .await
     }
 
     /// Move one release's files to the cloud, as a selection of one, for a
-    /// test that sets one up and states `pin` itself.
+    /// test that sets one up.
     #[cfg(any(test, feature = "test-utils"))]
-    pub async fn upload_release(&self, release_id: &str, pin: bool) -> Result<(), LibraryError> {
-        let moved = self.move_releases(std::slice::from_ref(&release_id.to_string()), pin).await?;
+    pub async fn upload_release(&self, release_id: &str) -> Result<(), LibraryError> {
+        let moved = self.move_releases(std::slice::from_ref(&release_id.to_string())).await?;
         match moved.refused.into_iter().next() {
             Some((release_id, refusal)) => Err(move_refusal_error(&release_id, refusal)),
             None => Ok(()),

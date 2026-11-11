@@ -561,11 +561,10 @@ extension StorageTableView.Coordinator: NSMenuDelegate {
             )
             return
         }
-        let keepingHere = targets.allSatisfy(\.release.keepingHere)
         for action in actions {
             addMenuItem(
                 to: menu,
-                title: action.label(keepingHere: keepingHere),
+                title: action.label,
                 action: #selector(runStorageAction(_:)),
                 symbol: action.systemImage,
                 representedObject: StorageActionInvocation(

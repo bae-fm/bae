@@ -119,7 +119,7 @@ async fn upload_cancellation_keeps_the_file_on_this_device_with_its_original() {
         chrono::Utc::now(),
     );
     library.manager().add_external_file_for_test(&file, &source).await.unwrap();
-    library.manager().upload_release(&release.id, false).await.unwrap();
+    library.manager().upload_release(&release.id).await.unwrap();
     assert_eq!(library.store().uploads().await.unwrap().files.len(), 1, "the file waits to upload");
     library.manager().cancel_release_transition(&release.id).await.unwrap();
     // Cancelling the move retires its uploads; the file stays on this

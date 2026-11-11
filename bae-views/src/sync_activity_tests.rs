@@ -463,10 +463,9 @@ pub(crate) async fn write_releases_with_files(
 
 /// Move `release` to the cloud, queueing its files to upload.
 pub(crate) async fn queue_upload(store: &bae_store::Store, release: &str) {
-    let moved =
-        bae_transfers::storage_moves::move_releases_to_cloud(store, vec![release.into()], false)
-            .await
-            .unwrap();
+    let moved = bae_transfers::storage_moves::move_releases_to_cloud(store, vec![release.into()])
+        .await
+        .unwrap();
     assert_eq!(moved.moved, vec![(release.to_string(), 1)]);
 }
 

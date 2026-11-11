@@ -36,24 +36,11 @@ async fn an_import_goes_where_the_stored_choice_says_as_it_starts() {
         f.handle.select_candidate_file_tags(key.clone()).await.unwrap();
     }
 
-    f.library.manager().set_import_destination(ImportDestination::CloudPinned).await.unwrap();
+    f.library.manager().set_import_destination(ImportDestination::Cloud).await.unwrap();
     let outcome = import_outcome(&f, &keys[0]).await;
     let bae_import::ImportProgress::RemoteUploadQueued { id, .. } = outcome else {
         panic!("the cloud choice queues the release's upload: {outcome:?}");
     };
-    // The import stages its files to be kept here: no entry of the download
-    // queue pins them, and once the move finishes coven keeps each whole.
-    assert!(
-        !f.library
-            .manager()
-            .download_snapshot()
-            .await
-            .unwrap()
-            .rows
-            .iter()
-            .any(|row| row.op.release_id == id),
-        "a kept import needs no download"
-    );
     // No sync loop runs behind this connection, so the test drives the
     // release's upload itself.
     assert_eq!(
@@ -61,7 +48,6 @@ async fn an_import_goes_where_the_stored_choice_says_as_it_starts() {
         1,
         "the release's one file uploads"
     );
-    f.library.manager().wait_for_kept_release_for_test(&id).await;
     let storage = bae_views::LibraryViews::new(f.library.store().clone())
         .find_release_detail(&id)
         .await
@@ -70,8 +56,8 @@ async fn an_import_goes_where_the_stored_choice_says_as_it_starts() {
         .summary;
     assert_eq!(
         storage.storage_state,
-        bae_views::album_detail::ReleaseStorageState::InStorage { pinned: true },
-        "the import keeps the selected offline pin"
+        bae_views::album_detail::ReleaseStorageState::InStorage { pinned: false },
+        "the cloud import is kept in the cloud only"
     );
 
     f.library.manager().set_import_destination(ImportDestination::ThisDevice).await.unwrap();

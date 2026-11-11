@@ -31,10 +31,9 @@ CREATE TABLE IF NOT EXISTS preferences (
     max_concurrent_downloads INTEGER NOT NULL CHECK (max_concurrent_downloads BETWEEN 1 AND 8),
     show_remaining_time INTEGER NOT NULL CHECK (show_remaining_time IN (0, 1)),
     library_full_width  INTEGER NOT NULL CHECK (library_full_width IN (0, 1)),
-    -- Where an import goes: this device, the cloud, or the cloud with a whole
-    -- copy kept here.
+    -- Where an import goes: this device or the cloud.
     import_destination TEXT NOT NULL
-        CHECK (import_destination IN ('this_device', 'cloud', 'cloud_pinned')),
+        CHECK (import_destination IN ('this_device', 'cloud')),
     -- Whether a found release is identified on its own, whether what a run
     -- picks unattended is imported, and which catalogs identification asks.
     identify_automatically INTEGER NOT NULL CHECK (identify_automatically IN (0, 1)),
@@ -115,5 +114,5 @@ INSERT OR IGNORE INTO preferences (
     cast_transcode_format, mcp_enabled, mcp_port, subsonic_enabled, subsonic_port,
     subsonic_username, subsonic_bind_address)
 VALUES (
-    1, NULL, 'off', 'flac', 1, 1, 1, 1, NULL, 3, 3, 0, 0, 'cloud_pinned', 1, 0, 1, 1, 0, 'mp3', 0,
+    1, NULL, 'off', 'flac', 1, 1, 1, 1, NULL, 3, 3, 0, 0, 'cloud', 1, 0, 1, 1, 0, 'mp3', 0,
     47777, 0, 4533, '', '127.0.0.1');

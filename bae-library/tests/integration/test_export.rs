@@ -69,7 +69,7 @@ async fn import_then_strand_in_cloud(f: &ExportFixture, album_dir: &Path) -> (St
     assert_eq!(files.len(), 1);
     let original_bytes = fs::read(album_dir.join(&files[0].original_filename)).unwrap();
 
-    f.library.manager().upload_release(&release_id, false).await.unwrap();
+    f.library.manager().upload_release(&release_id).await.unwrap();
     let uploaded = f.library.manager().drain_uploads_expecting_work().await.unwrap();
     assert_eq!(uploaded, files.len(), "each release file uploaded");
 

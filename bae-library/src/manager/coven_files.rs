@@ -35,10 +35,8 @@ impl LibraryManager {
         self.library_image_file(id, image_type).await
     }
 
-    /// Wait for every file of a release kept here as it moved to the cloud
-    /// to be kept whole on this device. The write switching its files to
-    /// the cloud asks coven to keep each, and coven fetches its copy from
-    /// storage after that.
+    /// Wait for every file of a release being pinned to be kept whole on
+    /// this device.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn wait_for_kept_release_for_test(&self, release_id: &str) {
         let mut kept = self.records.subscribe_release_files_kept(release_id);

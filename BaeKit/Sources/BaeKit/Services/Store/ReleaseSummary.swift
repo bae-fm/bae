@@ -30,10 +30,6 @@ public struct ReleaseSummary: Identifiable, Sendable {
     /// "Storage…" sheet and the Storage Manager row context menu render these;
     /// neither re-derives availability.
     public let storageActions: [BridgeReleaseStorageAction]
-    /// Whether coven is still copying the release's files to this Mac because
-    /// the release was moved to the cloud to be kept here. Its Unpin action
-    /// then reads Cancel pinning.
-    public let keepingHere: Bool
     public let fileCount: Int64
     public let totalSize: UInt64
     /// Reference to this release's own cover image (id + content version), or
@@ -67,7 +63,6 @@ public struct ReleaseSummary: Identifiable, Sendable {
         mediaTerms = bridge.mediaTerms
         storageState = bridge.storageState
         storageActions = bridge.storageActions
-        keepingHere = bridge.keepingHere
         fileCount = bridge.fileCount
         totalSize = bridge.totalSize
         cover = bridge.cover
@@ -84,7 +79,6 @@ public struct ReleaseSummary: Identifiable, Sendable {
         mediaTerms = bridge.mediaTerms
         storageState = bridge.storageState
         storageActions = bridge.storageActions
-        keepingHere = bridge.keepingHere
         fileCount = bridge.fileCount
         totalSize = bridge.totalSize
         cover = bridge.cover

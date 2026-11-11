@@ -82,9 +82,8 @@ struct PreparedMetadata {
 }
 
 /// A release-file row and its original, read whole once, with where its
-/// destination stages it: on this device only, or for the cloud, kept whole
-/// here too once stored when the import asks for that. coven records the
-/// original on this device either way, with the hashes its read found.
+/// destination stages it: on this device only, or for the cloud. coven records
+/// the original on this device either way, with the hashes its read found.
 pub(crate) struct PreparedImportFile {
     pub(crate) row: NewReleaseFile,
     pub(crate) original: coven::PreparedUserFile,
@@ -93,7 +92,7 @@ pub(crate) struct PreparedImportFile {
 
 fn destination_label(destination: ImportDestination) -> &'static str {
     match destination {
-        ImportDestination::Cloud | ImportDestination::CloudPinned => "remote",
+        ImportDestination::Cloud => "remote",
         ImportDestination::ThisDevice => "local",
     }
 }

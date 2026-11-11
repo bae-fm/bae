@@ -43,7 +43,7 @@ async fn create_remote_release(
     files: &[(&str, &[u8])],
 ) -> String {
     let (release_id, named) = crate::create_local_release(mgr, source_dir, files).await;
-    mgr.upload_release(&release_id, false).await.unwrap();
+    mgr.upload_release(&release_id).await.unwrap();
     let count = mgr.drain_uploads_expecting_work().await.unwrap();
     assert_eq!(count, named.len(), "all files uploaded");
     assert_eq!(
@@ -154,7 +154,7 @@ async fn uploads_are_counted_before_drain() {
     .await;
 
     // Enqueue upload through the real coven path; do NOT drain.
-    mgr.manager().upload_release(&release_id, false).await.unwrap();
+    mgr.manager().upload_release(&release_id).await.unwrap();
 
     assert_eq!(
         mgr.manager().count_pending_uploads_for_release(&release_id).await.unwrap(),
@@ -482,7 +482,7 @@ async fn transition_completions_deliver_storage_values() {
     );
     expect_storage_state(&values, &release_id, ReleaseStorageState::OnOneDevice).await;
 
-    mgr.manager().upload_release(&release_id, false).await.unwrap();
+    mgr.manager().upload_release(&release_id).await.unwrap();
     mgr.manager().drain_uploads_expecting_work().await.unwrap();
     expect_storage_state(&values, &release_id, ReleaseStorageState::InStorage { pinned: false })
         .await;
@@ -516,8 +516,8 @@ async fn selected_releases_leave_the_local_list_with_their_upload() {
         &[("b.flac", b"second")],
     )
     .await;
-    mgr.manager().upload_release(&first, false).await.unwrap();
-    mgr.manager().upload_release(&second, false).await.unwrap();
+    mgr.manager().upload_release(&first).await.unwrap();
+    mgr.manager().upload_release(&second).await.unwrap();
 
     let views = bae_views::LibraryViews::new(mgr.store().clone());
     let selected: std::collections::BTreeSet<String> =

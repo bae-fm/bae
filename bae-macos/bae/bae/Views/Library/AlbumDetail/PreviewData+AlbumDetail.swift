@@ -245,14 +245,12 @@
         static func storageRelease(
             storageState: BridgeReleaseStorageState,
             storageActions: [BridgeReleaseStorageAction],
-            keepingHere: Bool = false,
             playability: BridgeReleasePlayability
         ) -> ReleaseDetail {
             ReleaseDetail(
                 bridge: storageBridgeRelease(
                     storageState: storageState,
                     storageActions: storageActions,
-                    keepingHere: keepingHere,
                     playability: playability
                 )
             )
@@ -262,7 +260,6 @@
         static func storageBridgeRelease(
             storageState: BridgeReleaseStorageState,
             storageActions: [BridgeReleaseStorageAction],
-            keepingHere: Bool = false,
             playability: BridgeReleasePlayability
         ) -> BridgeRelease {
             let files = previewReleaseFiles
@@ -290,7 +287,6 @@
                 pressingDetails: bridgePressingDetails(facts: facts),
                 storageState: storageState,
                 storageActions: storageActions,
-                keepingHere: keepingHere,
                 upload: nil,
                 transitioning: false,
                 tracks: [],

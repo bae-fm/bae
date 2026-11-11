@@ -97,7 +97,6 @@ object BridgeFixtures {
             pressingDetails = emptyList(),
             storageState = BridgeReleaseStorageState.OnOneDevice,
             storageActions = emptyList(),
-            keepingHere = false,
             upload = null,
             transitioning = false,
             tracks = trackGroups.flatMap { it.tracks },
@@ -264,7 +263,7 @@ object BridgeFixtures {
             maxConcurrentTransfers = 8u,
             identifyAutomatically = true,
             importWhenIdentified = false,
-            importDestination = BridgeImportDestination.CLOUD_PINNED,
+            importDestination = BridgeImportDestination.CLOUD,
             // Every source in core's order, matching this fixture's Discogs
             // state below: MusicBrainz is asked and, as the only source still
             // being asked, cannot be switched off; Discogs holds no key, so its

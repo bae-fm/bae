@@ -161,7 +161,6 @@ object PreviewData {
             pressingDetails = emptyList(),
             storageState = BridgeReleaseStorageState.OnOneDevice,
             storageActions = emptyList(),
-            keepingHere = false,
             upload = null,
             transitioning = false,
             tracks = trackGroups.flatMap { it.tracks },

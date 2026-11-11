@@ -28,12 +28,6 @@ impl crate::types::BridgeStorageInspectorTransfer {
                     summary.into_iter().map(crate::types::BridgeTransferCount::from_core).collect()
                 }),
             },
-            StorageInspectorTransfer::PinFetch { summary } => Self::PinFetch {
-                summary: summary
-                    .into_iter()
-                    .map(crate::types::BridgeTransferCount::from_core)
-                    .collect(),
-            },
             StorageInspectorTransfer::Output { operation } => {
                 Self::Output { operation: crate::types::BridgeOutputOp::from_core(operation) }
             }

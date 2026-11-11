@@ -83,7 +83,7 @@
             discogs: BridgeSourceAvailability? = nil,
             discogsTokenStatus: BridgeDiscogsTokenStatus? = nil,
             importWhenIdentified: Bool = false,
-            importDestination: BridgeImportDestination = .cloudPinned,
+            importDestination: BridgeImportDestination = .cloud,
             storage: BridgeStorageLocation? = nil,
             savePresets: [BridgeSavePreset] = PreviewData.savePresets,
             lastSavePreset: String = "flac",

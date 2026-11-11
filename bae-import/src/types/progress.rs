@@ -12,8 +12,7 @@
 //!
 //! An import always lands as a local, playable release. An
 //! import to the cloud
-//! ([`ImportDestination::Cloud`](super::ImportDestination::Cloud) or
-//! [`ImportDestination::CloudPinned`](super::ImportDestination::CloudPinned))
+//! ([`ImportDestination::Cloud`](super::ImportDestination::Cloud))
 //! then uploads to the cloud in the background.
 
 /// Progress updates during import

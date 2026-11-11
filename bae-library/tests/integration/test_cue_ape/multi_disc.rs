@@ -245,7 +245,7 @@ async fn wait_for_multi_disc_cue_ape_import_ready(
 ) -> (String, String) {
     match destination {
         ImportDestination::ThisDevice => wait_for_import_complete(progress_rx).await,
-        ImportDestination::Cloud | ImportDestination::CloudPinned => {
+        ImportDestination::Cloud => {
             let (release_id, album_id) = wait_for_import_complete(progress_rx).await;
             library_manager
                 .drain_uploads_expecting_work()
@@ -272,7 +272,7 @@ async fn wait_for_multi_disc_cue_ape_import_ready(
 /// was overwritten by CD2's. Every `audio_formats.file_id` ended up pointing at
 /// CD2's APE, so playing any disc 1 track decoded disc 2's audio.
 ///
-/// The same structural bug lived in all three byte-placement strategies, so we
+/// The same structural bug lived in both byte-placement strategies, so we
 /// cover each explicitly to prevent a regression on any one path.
 #[tokio::test]
 async fn test_multi_disc_cue_ape_local() {
@@ -280,11 +280,6 @@ async fn test_multi_disc_cue_ape_local() {
 }
 
 #[tokio::test]
-async fn test_multi_disc_cue_ape_remote_pin() {
-    assert_multi_disc_cue_ape_per_disc_mapping(ImportDestination::CloudPinned).await;
-}
-
-#[tokio::test]
-async fn test_multi_disc_cue_ape_remote_unpin() {
+async fn test_multi_disc_cue_ape_remote() {
     assert_multi_disc_cue_ape_per_disc_mapping(ImportDestination::Cloud).await;
 }

@@ -286,15 +286,13 @@ fn validation_folds_validate_token_outcomes() {
 /// there is a home to go to.
 #[test]
 fn an_import_goes_to_the_cloud_only_where_there_is_storage() {
-    assert_eq!(ImportDestination::default(), ImportDestination::CloudPinned);
-    for destination in [ImportDestination::Cloud, ImportDestination::CloudPinned] {
-        assert_eq!(destination.with_storage(true), destination);
-        assert_eq!(
-            destination.with_storage(false),
-            ImportDestination::ThisDevice,
-            "without storage, imports stay on this device"
-        );
-    }
+    assert_eq!(ImportDestination::default(), ImportDestination::Cloud);
+    assert_eq!(ImportDestination::Cloud.with_storage(true), ImportDestination::Cloud);
+    assert_eq!(
+        ImportDestination::Cloud.with_storage(false),
+        ImportDestination::ThisDevice,
+        "without storage, imports stay on this device"
+    );
     for storage in [true, false] {
         assert_eq!(
             ImportDestination::ThisDevice.with_storage(storage),
@@ -303,13 +301,9 @@ fn an_import_goes_to_the_cloud_only_where_there_is_storage() {
     }
 }
 
-/// Only the pinned choice keeps the files whole here once they are stored.
+/// Only the cloud choice uploads the files.
 #[test]
-fn only_the_pinned_choice_keeps_files_here() {
+fn only_the_cloud_choice_goes_to_the_cloud() {
     assert!(!ImportDestination::ThisDevice.goes_to_cloud());
     assert!(ImportDestination::Cloud.goes_to_cloud());
-    assert!(ImportDestination::CloudPinned.goes_to_cloud());
-    assert!(!ImportDestination::Cloud.keeps_files_here());
-    assert!(ImportDestination::CloudPinned.keeps_files_here());
-    assert!(!ImportDestination::ThisDevice.keeps_files_here());
 }

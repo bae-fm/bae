@@ -124,7 +124,6 @@ fn preferences_on(sql: &impl SqlRead) -> rusqlite::Result<Preferences> {
             import_destination: match row.get::<_, String>("import_destination")?.as_str() {
                 "this_device" => ImportDestination::ThisDevice,
                 "cloud" => ImportDestination::Cloud,
-                "cloud_pinned" => ImportDestination::CloudPinned,
                 other => return Err(invalid(row, "import_destination", other)),
             },
             identification: IdentificationPreferences {
@@ -280,7 +279,6 @@ fn write_preferences_on(
             match import_destination {
                 ImportDestination::ThisDevice => "this_device",
                 ImportDestination::Cloud => "cloud",
-                ImportDestination::CloudPinned => "cloud_pinned",
             },
             identification.automatic,
             identification.import_when_identified,

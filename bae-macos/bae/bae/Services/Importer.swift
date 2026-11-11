@@ -797,8 +797,7 @@ extension Importer {
         try await operations.setImportWhenIdentified(enabled)
     }
 
-    /// Where an import goes: this device, the cloud, or the cloud with a
-    /// whole copy kept here.
+    /// Where an import goes: this device or the cloud.
     @MainActor
     func setImportDestination(_ destination: BridgeImportDestination)
         async throws

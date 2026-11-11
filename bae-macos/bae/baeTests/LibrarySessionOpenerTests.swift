@@ -203,7 +203,7 @@ extension LibrarySessionOpenerTests {
             maxConcurrentTransfers: 8,
             identifyAutomatically: true,
             importWhenIdentified: false,
-            importDestination: .cloudPinned,
+            importDestination: .cloud,
             lookupCatalogs: [
                 BridgeLookupCatalogSetting(
                     catalog: .musicBrainz,

@@ -11,11 +11,8 @@ pub enum ImportDestination {
     ThisDevice,
     /// The files are uploaded, so every device can play them. This device
     /// keeps them only until they are stored.
-    Cloud,
-    /// The files are uploaded, and this device keeps them whole once they are
-    /// stored.
     #[default]
-    CloudPinned,
+    Cloud,
 }
 
 impl ImportDestination {
@@ -33,13 +30,7 @@ impl ImportDestination {
     pub fn goes_to_cloud(self) -> bool {
         match self {
             Self::ThisDevice => false,
-            Self::Cloud | Self::CloudPinned => true,
+            Self::Cloud => true,
         }
-    }
-
-    /// Whether this device keeps the files whole once they are stored,
-    /// pinned rather than evictable.
-    pub fn keeps_files_here(self) -> bool {
-        matches!(self, Self::CloudPinned)
     }
 }

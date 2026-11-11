@@ -306,8 +306,7 @@ pub struct Preferences {
     /// centering its content in a width-capped column. Defaults to `false`
     /// (capped).
     pub library_full_width: bool,
-    /// Where an import puts its release: this device, the cloud, or the cloud
-    /// with a whole copy kept here.
+    /// Where an import puts its release: this device or the cloud.
     pub import_destination: ImportDestination,
     /// How identification runs: on its own or not, what an automatic run goes
     /// on to do, and the catalogs it asks.

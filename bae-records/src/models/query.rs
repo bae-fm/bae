@@ -18,11 +18,6 @@ pub struct DbReleaseDetail {
     /// Whether this device keeps every file of the release pinned, as the
     /// release's storage row counts its pinned files.
     pub pinned: bool,
-    /// Whether coven is still copying the release's files to this device
-    /// because it was moved to the cloud to be kept here: a request to keep a
-    /// file is open and the release is not wholly pinned, as the release's
-    /// storage row counts them.
-    pub keeping_here: bool,
     /// Whether every file of the release names its stored file, as the
     /// release's storage row says.
     pub remote: bool,

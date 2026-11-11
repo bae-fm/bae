@@ -123,8 +123,6 @@ pub enum BridgeImportDestination {
     ThisDevice,
     /// The files are uploaded, so every device can play them.
     Cloud,
-    /// The files are uploaded, and this device keeps a whole copy too.
-    CloudPinned,
 }
 
 /// Whether Find online asks one catalog, and when it does not, why not. Mirrors

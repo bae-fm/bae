@@ -123,7 +123,7 @@
         let images: ImageStore
 
         @State
-        private var importDestination = BridgeImportDestination.cloudPinned
+        private var importDestination = BridgeImportDestination.cloud
 
         var body: some View {
             ImportMappingPreview.make(
@@ -138,7 +138,7 @@
     #Preview("Mapping pane — blank draft") {
         @Previewable
         @State
-        var importDestination = BridgeImportDestination.cloudPinned
+        var importDestination = BridgeImportDestination.cloud
         ImportMappingPreview.make(
             candidate: PreviewData.blankDraftMappingCandidate,
             importDestination: $importDestination
@@ -150,7 +150,7 @@
     #Preview("Mapping pane — a release picked") {
         @Previewable
         @State
-        var importDestination = BridgeImportDestination.cloudPinned
+        var importDestination = BridgeImportDestination.cloud
         ImportMappingPreview.make(
             candidate: PreviewData.mappingCandidate,
             importDestination: $importDestination,
@@ -168,7 +168,7 @@
     #Preview("Mapping pane — Discogs applied") {
         @Previewable
         @State
-        var importDestination = BridgeImportDestination.cloudPinned
+        var importDestination = BridgeImportDestination.cloud
         ImportMappingPreview.make(
             candidate: PreviewData.discogsMappingCandidate,
             importDestination: $importDestination
@@ -180,7 +180,7 @@
     #Preview("Mapping pane — both sources applied") {
         @Previewable
         @State
-        var importDestination = BridgeImportDestination.cloudPinned
+        var importDestination = BridgeImportDestination.cloud
         ImportMappingPreview.make(
             candidate: PreviewData.pairedMappingCandidate,
             importDestination: $importDestination
@@ -192,7 +192,7 @@
     #Preview("Mapping pane — Lookup, no search") {
         @Previewable
         @State
-        var importDestination = BridgeImportDestination.cloudPinned
+        var importDestination = BridgeImportDestination.cloud
         ImportMappingPreview.make(
             candidate: PreviewData.unidentifiedMappingCandidate,
             importDestination: $importDestination
@@ -204,7 +204,7 @@
     #Preview("Mapping pane — direct entry") {
         @Previewable
         @State
-        var importDestination = BridgeImportDestination.cloudPinned
+        var importDestination = BridgeImportDestination.cloud
         ImportMappingPreview.make(
             candidate: PreviewData.directEntryMappingCandidate,
             importDestination: $importDestination
@@ -216,7 +216,7 @@
     #Preview("Mapping pane — several matches to pick") {
         @Previewable
         @State
-        var importDestination = BridgeImportDestination.cloudPinned
+        var importDestination = BridgeImportDestination.cloud
         ImportMappingPreview.make(
             candidate: PreviewData.severalMatchesMappingCandidate,
             importDestination: $importDestination
@@ -242,7 +242,7 @@
     #Preview("Mapping pane — CUE ignored") {
         @Previewable
         @State
-        var importDestination = BridgeImportDestination.cloudPinned
+        var importDestination = BridgeImportDestination.cloud
         ImportMappingPreview.make(
             candidate: PreviewData.moreTracksMappingCandidate,
             importDestination: $importDestination
@@ -254,7 +254,7 @@
     #Preview("Mapping pane — CUE ignored, narrow") {
         @Previewable
         @State
-        var importDestination = BridgeImportDestination.cloudPinned
+        var importDestination = BridgeImportDestination.cloud
         ImportMappingPreview.make(
             candidate: PreviewData.moreTracksMappingCandidate,
             importDestination: $importDestination
@@ -266,7 +266,7 @@
     #Preview("Mapping pane — File tags selected") {
         @Previewable
         @State
-        var importDestination = BridgeImportDestination.cloudPinned
+        var importDestination = BridgeImportDestination.cloud
         ImportMappingPreview.make(
             candidate: PreviewData.fileMetadataMappingCandidate,
             importDestination: $importDestination

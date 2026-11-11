@@ -70,7 +70,7 @@ fn replace_output_dir_replaces_marked_directory() {
 
 /// Create a Remote, pinned, exportable release: a Local release with
 /// known-byte source files on disk (device-local paths) and a
-/// `source_folder_name`, made Remote with pin so its files stay readable from
+/// `source_folder_name`, made Remote and pinned so its files stay readable from
 /// the offline cache. Returns its id. The manager must already be connected via
 /// [`connect_test_cloud`].
 async fn make_exportable_release(
@@ -80,11 +80,12 @@ async fn make_exportable_release(
     files: &[(&str, &[u8])],
 ) -> String {
     let (release, _) = insert_export_release_rows(manager, source_dir, folder_name, files).await;
-    manager.upload_release(&release.id, true).await.unwrap();
+    manager.upload_release(&release.id).await.unwrap();
     // The uploads this fixture's tests leave running drain the queue, so
     // wait for the upload to finish rather than counting a drain pass this
     // test does not own.
     wait_for_landed_upload(manager, &release.id).await;
+    pin_directly(manager, &release.id).await;
     release.id
 }
 

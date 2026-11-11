@@ -80,13 +80,6 @@ pub const UPLOADING_RELEASES: &str =
 pub const RELEASE_STORAGE_PINNED: &str =
     "(storage.file_count > 0 AND storage.pinned_count = storage.file_count)";
 
-/// Whether coven is still keeping copies of the files of the release whose
-/// storage row is `release_storage storage` here: a request to keep a file
-/// whole on this device is open, which `keeping_count` counts from
-/// `coven_pin_requests`, and the release is not wholly pinned already.
-pub const RELEASE_STORAGE_KEEPING: &str =
-    "(storage.keeping_count > 0 AND storage.pinned_count < storage.file_count)";
-
 /// The credits of `owner_expr` in `table` (`album_artists` or
 /// `track_artists`), in list order, as a JSON array (see
 /// [`super::read::credits_from_json`]): each the artist it shows after merges,

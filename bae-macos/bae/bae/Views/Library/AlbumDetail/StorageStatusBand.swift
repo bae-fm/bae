@@ -63,8 +63,6 @@ struct StorageStatusBand: View {
                 StatusChip("Queued to pin", tone: .activity)
             case .downloading:
                 StoragePinningChip(releaseId: release.summary.id)
-            case .copyingHere:
-                StorageProgressChip(label: "Pinning", kind: .pin, fill: nil)
             case .downloaded, .available, .failed:
                 makeLocalPill
             }
@@ -144,12 +142,7 @@ struct StorageStatusBand: View {
                 }
                 else {
                     Button(action: { onAction(action) }) {
-                        Label(
-                            action.label(
-                                keepingHere: release.summary.keepingHere
-                            ),
-                            systemImage: action.systemImage
-                        )
+                        Label(action.label, systemImage: action.systemImage)
                     }
                 }
             }
@@ -228,28 +221,6 @@ struct StorageStatusBand: View {
             storageActions: [.pin, .detachAudio],
             playability: .playable
         )
-        .preferredColorScheme(.dark)
-    }
-
-    // Moved to the cloud to be kept here, its copies still downloading: can
-    // stop keeping it or pull it back local.
-    #Preview("Storage Band — Copying Here") {
-        StorageStatusBand(
-            release: PreviewData.storageRelease(
-                storageState: .inStorage(pinned: false),
-                storageActions: [.unpin, .detachAudio],
-                keepingHere: true,
-                playability: .playable
-            ),
-            onAction: { _ in },
-            onCancelPin: {},
-            onExport: {},
-            onSaveAs: {}
-        )
-        .frame(width: 560)
-        .background(Theme.background)
-        .environment(OutboxStore(uploadsPaused: false))
-        .environment(PreviewData.downloadStore())
         .preferredColorScheme(.dark)
     }
 

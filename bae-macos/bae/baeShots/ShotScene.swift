@@ -283,7 +283,7 @@ extension ShotScene {
             return ShotStage(
                 ImportMappingPreview.make(
                     candidate: PreviewData.mappingCandidate,
-                    importDestination: .constant(.cloudPinned),
+                    importDestination: .constant(.cloud),
                     libraryStatus: libraryStatus
                 )
                 .importPreviewEnvironment(images: images),
@@ -365,7 +365,7 @@ extension ShotScene {
                             discogsTokenStatus: discogsTokenStatus,
                             importWhenIdentified: importsAutomatically,
                             importDestination: importsAutomatically
-                                ? .cloudPinned : .cloud,
+                                ? .cloud : .thisDevice,
                             storage: PreviewData.previewStorage
                         )
                     )

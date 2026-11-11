@@ -671,8 +671,7 @@ pub struct ReleaseIdInput {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationStorageAction {
-    /// Upload a local release's audio from this device's originals, kept
-    /// offline on this device as the stored import destination says.
+    /// Upload a local release's audio from this device's originals.
     Upload,
     /// Keep a cloud release offline on this device.
     Pin,

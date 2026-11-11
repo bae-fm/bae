@@ -272,7 +272,7 @@ async fn a_failed_files_bytes_never_count() {
         &[("1.flac", whole_bytes.as_slice()), ("2.flac", failing_bytes.as_slice())],
     )
     .await;
-    manager.upload_release(&release.id, false).await.unwrap();
+    manager.upload_release(&release.id).await.unwrap();
     manager.drain_uploads_expecting_work().await.unwrap();
     let mut files = Vec::new();
     for file in release_files(manager, &release.id).await {
@@ -393,7 +393,7 @@ async fn pin_release_counts_audio_and_keeps_cover_evictable() {
     .await;
     store_test_cover(manager, &release.id, cover_bytes).await;
 
-    manager.upload_release(&release.id, false).await.unwrap();
+    manager.upload_release(&release.id).await.unwrap();
     manager.drain_uploads_expecting_work().await.unwrap();
     assert!(
         !file_pinned(manager, bae_records::synced::COVERS_NAMESPACE, &release.id).await,

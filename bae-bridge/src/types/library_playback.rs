@@ -338,10 +338,6 @@ pub struct BridgeReleaseSummary {
     /// syncs, and empty while the release is `transitioning`. The Storage
     /// Manager row context menu renders these.
     pub storage_actions: Vec<BridgeReleaseStorageAction>,
-    /// Whether coven is still copying the release's files to this device
-    /// because it was moved to the cloud to be kept here. Its Unpin action
-    /// then reads Stop keeping here.
-    pub keeping_here: bool,
     /// What of the release waits in this device's upload queue; `None` when
     /// nothing does.
     pub upload: Option<BridgeReleaseUpload>,
@@ -399,10 +395,6 @@ pub struct BridgeRelease {
     /// Storage transitions available right now, gated by the core on whether the library
     /// syncs, and empty while the release is `transitioning`.
     pub storage_actions: Vec<BridgeReleaseStorageAction>,
-    /// Whether coven is still copying the release's files to this device
-    /// because it was moved to the cloud to be kept here. Its Unpin action
-    /// then reads Stop keeping here.
-    pub keeping_here: bool,
     /// What of the release waits in this device's upload queue; `None` when
     /// nothing does.
     pub upload: Option<BridgeReleaseUpload>,

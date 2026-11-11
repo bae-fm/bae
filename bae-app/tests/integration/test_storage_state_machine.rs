@@ -60,7 +60,7 @@ async fn create_remote_cloud_only_release(
         captured.push((file.id.clone(), file.original_filename.clone(), plaintext));
     }
 
-    mgr.upload_release(&release_id, false).await.unwrap();
+    mgr.upload_release(&release_id).await.unwrap();
     mgr.drain_uploads_expecting_work().await.unwrap();
     assert_eq!(db.queued_upload_count_for_test().await.unwrap(), 0);
     assert_eq!(
@@ -121,8 +121,8 @@ async fn test_multiple_releases_independent_completion() {
         &[("track.flac", b"bbb")],
     )
     .await;
-    mgr.manager().upload_release(&release_a, true).await.unwrap();
-    mgr.manager().upload_release(&release_b, true).await.unwrap();
+    mgr.manager().upload_release(&release_a).await.unwrap();
+    mgr.manager().upload_release(&release_b).await.unwrap();
 
     assert_eq!(mgr.manager().count_pending_uploads_for_release(&release_a).await.unwrap(), 1);
     assert_eq!(mgr.manager().count_pending_uploads_for_release(&release_b).await.unwrap(), 1);
@@ -130,53 +130,12 @@ async fn test_multiple_releases_independent_completion() {
     assert_eq!(mgr.manager().count_pending_uploads_for_release(&release_a).await.unwrap(), 0);
     assert_eq!(mgr.manager().count_pending_uploads_for_release(&release_b).await.unwrap(), 0);
 
-    let mut downloads = mgr.manager().subscribe_download_snapshot();
-    let settled = tokio::time::timeout(HANG_GUARD, async {
-        loop {
-            let queue = downloads.next().await.expect("the query stays open").unwrap();
-            if queue
-                .rows
-                .iter()
-                .all(|row| matches!(row.op.state, bae_transfers::DownloadPhase::Failed { .. }))
-            {
-                return queue;
-            }
-        }
-    })
-    .await
-    .expect("both offline copies finish");
-    assert!(settled.rows.is_empty(), "offline copy failed: {settled:?}");
-    // Each completed upload carried its file's pin to the stored file, which
-    // is pinned once its copy from storage lands.
-    let views = bae_views::LibraryViews::new(mgr.store().clone());
     for release_id in [&release_a, &release_b] {
-        let release = bae_app::live_reads::subscribe_release_detail(mgr.manager(), &views);
-        release.set(Some(release_id.clone())).unwrap();
-        tokio::time::timeout(HANG_GUARD, async {
-            loop {
-                let value = release.next().await.expect("the release detail resolves");
-                if value.value.is_some_and(|detail| {
-                    matches!(
-                        detail.summary.storage_state,
-                        bae_views::album_detail::ReleaseStorageState::InStorage { pinned: true }
-                    )
-                }) {
-                    break;
-                }
-            }
-        })
-        .await
-        .expect("each release's copy lands");
+        assert_eq!(
+            crate::release_storage(mgr.store(), release_id).await,
+            ReleaseStorageState::InStorage { pinned: false }
+        );
     }
-
-    assert_eq!(
-        crate::release_storage(mgr.store(), &release_a).await,
-        ReleaseStorageState::InStorage { pinned: true }
-    );
-    assert_eq!(
-        crate::release_storage(mgr.store(), &release_b).await,
-        ReleaseStorageState::InStorage { pinned: true }
-    );
 }
 
 // ---------------------------------------------------------------------------
@@ -237,7 +196,7 @@ async fn attached_release_turns_remote_once_its_uploads_finish() {
     )
     .await;
 
-    mgr.manager().upload_release(&release_id, false).await.unwrap();
+    mgr.manager().upload_release(&release_id).await.unwrap();
 
     // Queued uploads leave every row without a stored file.
     assert_eq!(crate::release_storage(&db, &release_id).await, ReleaseStorageState::OnOneDevice);
@@ -266,7 +225,7 @@ async fn upload_failure_keeps_attachment_and_pending_work() {
     )
     .await;
 
-    mgr.manager().upload_release(&release_id, false).await.unwrap();
+    mgr.manager().upload_release(&release_id).await.unwrap();
 
     // The connect bootstrap already wrote through the home; arm the failure only
     // now, so the upload drain fails every file.
@@ -299,7 +258,7 @@ async fn truncated_source_fails_its_move_without_sending() {
     let changed = source_dir.join("a.flac");
     tokio::fs::write(&changed, b"x").await.unwrap();
 
-    mgr.manager().upload_release(&release_id, false).await.unwrap();
+    mgr.manager().upload_release(&release_id).await.unwrap();
     assert_eq!(mgr.manager().drain_uploads_expecting_work().await.unwrap(), 0);
     assert_eq!(db.queued_upload_count_for_test().await.unwrap(), 0);
     let pending = mgr.manager().sync_status().await.unwrap().pending;
