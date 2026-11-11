@@ -3018,7 +3018,8 @@ requests to the storage, about 24 a minute, only while the sheet is open
 ([coven §6.7](https://github.com/bae-fm/coven/blob/main/spec/coven.md#67-waiting-and-retrying)).
 Settings keeps
 the code on the **Restore code** page of Library settings on a Mac and of
-Settings' Library page on Android, for the day she loses every device. It is
+Settings' Library page on Android, and on the Sync page in a **Restore code**
+section, for the day she loses every device. It is
 made when Settings opens, one local read of her keys that the section names
 while it runs, never a bare spinner: the sheet says it is making a code for her
 new device, and the section that it is making her restore code. It shows
@@ -3122,9 +3123,9 @@ Setup ends on the library's restore code, for every provider, because bae
 can't tell whether the Mac's keychain carries the code anywhere else, and
 losing the Mac could otherwise lose the library. Once the storage is connected
 the sheet shows the code masked, as Settings does, with Show, Copy and Print…
-and *Done*, which lands on the Sync page; the code can be shown again from
-Settings. On Android, setup is a screen, and *Done* leaves it for the Sync page
-too.
+and *Done*, which lands on the Sync page, whose Restore code section holds the
+same code; Settings keeps it too, on the Restore code page. On Android, setup
+is a screen, and *Done* leaves it for the Sync page too.
 
 **What setup shows while it runs.** Setting storage up, or reconnecting
 it after signing in again or with a new S3 key, waits on the provider, at

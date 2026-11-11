@@ -32,6 +32,9 @@ struct LibrarySettingsTab: View {
 
     @State
     private var showSyncSetup = false
+    /// The pages open over the Library pane.
+    @State
+    private var path: [Page] = []
     /// The restore code section's reveal, closed whenever this pane goes away.
     @State
     private var restoreCode = RestoreCodeReveal()
@@ -45,7 +48,7 @@ struct LibrarySettingsTab: View {
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             Form {
                 Section {
                     LabeledContent("Name") {
@@ -91,6 +94,7 @@ struct LibrarySettingsTab: View {
                 switch page {
                 case .sync:
                     SyncSettingsPage(
+                        restoreCode: restoreCode,
                         storageReadError: storageReadError,
                         onResetDevice: onResetDevice,
                         onRestoreFromCode: onRestoreFromCode,
@@ -124,7 +128,11 @@ struct LibrarySettingsTab: View {
             membership.hide()
         }
         .sheet(isPresented: $showSyncSetup) {
-            SyncSetupWizard(onDone: { showSyncSetup = false })
+            // Setup ends on the Sync page, which holds the restore code.
+            SyncSetupWizard(onDone: {
+                showSyncSetup = false
+                path = [.sync]
+            })
         }
     }
 
@@ -200,8 +208,10 @@ struct LibrarySettingsTab: View {
 }
 
 /// The Sync page: the state sync is in, with its cause, its fix and when it
-/// last finished, then where the library is stored and what sync waits on.
+/// last finished, then where the library is stored, its restore code and what
+/// sync waits on.
 private struct SyncSettingsPage: View {
+    let restoreCode: RestoreCodeReveal
     let storageReadError: DisplayError?
     let onResetDevice: () -> Void
     let onRestoreFromCode: () -> Void
@@ -231,6 +241,7 @@ private struct SyncSettingsPage: View {
                 Section("Cloud home") {
                     CloudProviderConnectedSection(location: location)
                 }
+                LibraryRestoreCodeSection(reveal: restoreCode)
                 SyncPendingList(
                     location: location,
                     onRestoreFromCode: onRestoreFromCode,
@@ -259,23 +270,33 @@ private struct PeopleAndDevicesDestination: View {
 private struct RestoreCodeSettingsPage: View {
     let reveal: RestoreCodeReveal
 
+    var body: some View {
+        Form {
+            LibraryRestoreCodeSection(reveal: reveal)
+        }
+        .formStyle(.grouped)
+        .navigationTitle("Restore code")
+    }
+}
+
+/// The restore code section as Library settings shows it, on the Sync page
+/// and on the Restore code page: printing names where the library is stored.
+private struct LibraryRestoreCodeSection: View {
+    let reveal: RestoreCodeReveal
+
     @Environment(ConfigStore.self)
     private var configStore
 
     var body: some View {
-        Form {
-            RestoreCodeSection(
-                reveal: reveal,
-                onPrint: { code in
-                    RestoreCodePrinting.print(
-                        code: code,
-                        location: configStore.storage?.accountLine ?? ""
-                    )
-                }
-            )
-        }
-        .formStyle(.grouped)
-        .navigationTitle("Restore code")
+        RestoreCodeSection(
+            reveal: reveal,
+            onPrint: { code in
+                RestoreCodePrinting.print(
+                    code: code,
+                    location: configStore.storage?.accountLine ?? ""
+                )
+            }
+        )
     }
 }
 
@@ -348,6 +369,9 @@ private struct RestoreCodeSettingsPage: View {
     ) -> some View {
         NavigationStack {
             SyncSettingsPage(
+                restoreCode: RestoreCodeReveal(
+                    previewState: .masked(code: PreviewData.restoreCodeGrouped)
+                ),
                 storageReadError: nil,
                 onResetDevice: {},
                 onRestoreFromCode: {},

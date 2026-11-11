@@ -119,31 +119,56 @@ internal class RestoreCodeReveal(
 }
 
 /**
- * The person's restore code, for when they lose every device: made when the
- * section opens and held masked, with Show and Hide, Copy and Print. Adding a
- * device while one is at hand goes through Add device in People instead. The
- * code is dropped when the section leaves the screen, so leaving Settings
- * hides it. [location] is where the library is stored, for the printed page.
+ * The restore code's reveal for a screen: made once [enabled], held masked until the screen leaves, so a section that
+ * scrolls out of a lazy list and back shows the same code and never makes it again. Leaving the screen drops the code.
  */
 @Composable
-internal fun RestoreCodeSection(
-    needsS3Key: Boolean,
-    location: String,
+internal fun rememberRestoreCodeReveal(
+    enabled: Boolean,
     generate: suspend () -> String,
-) {
+): RestoreCodeReveal {
     val context = LocalContext.current
     val scope = rememberScreenScope()
     val reveal = remember { RestoreCodeReveal(scope, generate) { context.displayError(it) } }
-    DisposableEffect(reveal) {
-        reveal.open()
+    DisposableEffect(reveal, enabled) {
+        if (enabled) reveal.open()
         onDispose { reveal.close() }
     }
+    return reveal
+}
+
+/**
+ * The person's restore code, for when they lose every device: [reveal] holds it masked, with Show and Hide, Copy and
+ * Print. Adding a device while one is at hand goes through Add device in People instead. [location] is where the
+ * library is stored, for the printed page.
+ */
+@Composable
+internal fun RestoreCodeSection(
+    reveal: RestoreCodeReveal,
+    needsS3Key: Boolean,
+    location: String,
+) {
+    val context = LocalContext.current
     RestoreCodeSectionContent(
         needsS3Key = needsS3Key,
         state = reveal.state,
         onShow = reveal::show,
         onHide = reveal::hide,
         onPrint = { code -> printRestoreCode(context, RestoreCodePage.of(context, code, location)) },
+    )
+}
+
+/** The section over a reveal of its own, made when the section opens and dropped when it leaves the screen. */
+@Composable
+internal fun RestoreCodeSection(
+    needsS3Key: Boolean,
+    location: String,
+    generate: suspend () -> String,
+) {
+    RestoreCodeSection(
+        reveal = rememberRestoreCodeReveal(enabled = true, generate = generate),
+        needsS3Key = needsS3Key,
+        location = location,
     )
 }
 
@@ -156,7 +181,7 @@ private fun RestoreCodeSectionContent(
     onPrint: (String) -> Unit,
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(ThemeSpace.edge),
+        modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(ThemeSpace.group),
     ) {
         Eyebrow(text = stringResource(R.string.restore_code_title))

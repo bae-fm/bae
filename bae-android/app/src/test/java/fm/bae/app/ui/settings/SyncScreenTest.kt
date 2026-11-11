@@ -1,11 +1,14 @@
 package fm.bae.app.ui.settings
 
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performScrollToNode
 import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.LocalBugReports
@@ -15,6 +18,7 @@ import fm.bae.app.openTestLibrary
 import fm.bae.app.playback.FakeAppHandle
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.SessionActions
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -25,6 +29,7 @@ import uniffi.bae_bridge.BridgeMessage
 import uniffi.bae_bridge.BridgePendingAction
 import uniffi.bae_bridge.BridgePendingReason
 import uniffi.bae_bridge.BridgePendingRecord
+import uniffi.bae_bridge.BridgeRestoreCodeShare
 import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeSyncCause
 import uniffi.bae_bridge.BridgeSyncShown
@@ -93,6 +98,10 @@ class SyncScreenTest {
     fun aFullDiskIsWordedForThePhone() {
         val handle =
             object : FakeAppHandle() {
+                override suspend fun storageLocation(): BridgeStorageLocation = s3Location
+
+                override suspend fun generateRestoreCode() = restoreCodeShare
+
                 override fun closeLibrary(closing: BridgeLibraryClosing?) = Unit
 
                 override fun close() = Unit
@@ -126,6 +135,56 @@ class SyncScreenTest {
 
         compose.onNodeWithText("This device is out of space. Free some up and bae will try again.").assertExists()
     }
+
+    /**
+     * The Sync page holds the library's restore code, masked until shown, where setup's Done lands. The code is made
+     * once per visit: scrolling its section away and back shows the same code without making it again.
+     */
+    @Test
+    fun theSyncPageHoldsTheRestoreCodeItMadeOnce() {
+        var made = 0
+        val handle =
+            object : FakeAppHandle() {
+                override suspend fun storageLocation(): BridgeStorageLocation = s3Location
+
+                override suspend fun generateRestoreCode(): BridgeRestoreCodeShare {
+                    made += 1
+                    return restoreCodeShare
+                }
+
+                override fun closeLibrary(closing: BridgeLibraryClosing?) = Unit
+
+                override fun close() = Unit
+            }
+        val session = openTestLibrary(handle, SyncStatusStore())
+        compose.setContent {
+            BaeTheme {
+                CompositionLocalProvider(LocalBugReports provides session.bugs) {
+                    SyncScreen(session = session, actions = actions(), onBack = {}, onPush = {})
+                }
+            }
+        }
+
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText("Show code"))
+        compose.onNodeWithContentDescription("Restore code, partly hidden").assertIsDisplayed()
+        compose.onNode(hasScrollAction()).performScrollToIndex(0)
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText("Show code"))
+
+        compose.onNodeWithContentDescription("Restore code, partly hidden").assertIsDisplayed()
+        compose.onNodeWithText("Making your restore code…").assertDoesNotExist()
+        assertEquals(1, made)
+    }
+
+    private val s3Location =
+        BridgeStorageLocation.S3(
+            bucket = "music-library",
+            region = "us-east-1",
+            endpoint = null,
+            profile = null,
+        )
+
+    private val restoreCodeShare =
+        BridgeRestoreCodeShare(code = "CVR1 ABCD EFGH JKMN", qrText = "qr", qrCarriesS3Key = true)
 
     private val notSynced =
         BridgeSyncShown(

@@ -198,11 +198,13 @@ internal fun RestoreCodeScreen(
         ScreenTopBar(title = stringResource(R.string.restore_code_title), onBack = onBack)
         // The code is made once the library's storage is read, which prints on its page.
         location?.let {
-            RestoreCodeSection(
-                needsS3Key = it is BridgeStorageLocation.S3,
-                location = storageLocationLabel(it),
-                generate = { session.appHandle.generateRestoreCode().code },
-            )
+            Column(modifier = Modifier.padding(ThemeSpace.edge)) {
+                RestoreCodeSection(
+                    needsS3Key = it is BridgeStorageLocation.S3,
+                    location = storageLocationLabel(it),
+                    generate = { session.appHandle.generateRestoreCode().code },
+                )
+            }
         }
     }
 }

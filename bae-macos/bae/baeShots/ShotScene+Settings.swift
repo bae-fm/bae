@@ -141,6 +141,7 @@ extension ShotScene {
             storage: PreviewData.previewDropboxStorage
         ),
         syncPage("sync-status-failed", .previewFailed),
+        syncPage("settings-sync-restore-code", .previewSynced),
     ]
 
     /// The Automation pane whose MCP server could not start: Status reads

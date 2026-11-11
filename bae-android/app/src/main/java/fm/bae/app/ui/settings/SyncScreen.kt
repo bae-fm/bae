@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
@@ -53,6 +54,7 @@ import fm.bae.app.ui.components.ScreenTopBar
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.library.LibraryDestination
 import fm.bae.app.ui.rememberScreenScope
+import fm.bae.app.ui.storageLocationLabel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeCloudProvider
@@ -288,6 +290,13 @@ internal fun SyncScreen(
         }
     }
 
+    // The restore code is made once per visit, whether or not its section is on screen.
+    val restoreCode =
+        rememberRestoreCodeReveal(
+            enabled = location != null,
+            generate = { session.appHandle.generateRestoreCode().code },
+        )
+
     Column(modifier = Modifier.fillMaxSize()) {
         ScreenTopBar(title = stringResource(R.string.settings_sync), onBack = onBack)
         LazyColumn(
@@ -304,7 +313,7 @@ internal fun SyncScreen(
                     locationError?.let { ErrorNotice(it) }
                 }
             }
-            location?.let { place -> item { StorageSection(place) } }
+            location?.let { place -> storageItems(place, restoreCode) }
             if (locationRead && location == null && !setupRunning) {
                 item { LocalOnly(onSetUp = { onPush(LibraryDestination.StorageSetup) }) }
             }
@@ -319,6 +328,21 @@ internal fun SyncScreen(
         }
     }
     SyncDialogs(runner = runner, actions = actions)
+}
+
+/** Where the library is stored, and its restore code. */
+private fun LazyListScope.storageItems(
+    place: BridgeStorageLocation,
+    restoreCode: RestoreCodeReveal,
+) {
+    item { StorageSection(place) }
+    item {
+        RestoreCodeSection(
+            reveal = restoreCode,
+            needsS3Key = place is BridgeStorageLocation.S3,
+            location = storageLocationLabel(place),
+        )
+    }
 }
 
 /** A library with no storage lives on this device only; storage is set up from here. */
