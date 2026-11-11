@@ -42,9 +42,9 @@ import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.ResetOfferedScreen
 import fm.bae.app.ui.ResetUnfinishedScreen
 import fm.bae.app.ui.albumdetail.AlbumDetailScene
+import fm.bae.app.ui.albumdetail.AndroidDownloadControl
+import fm.bae.app.ui.albumdetail.AndroidUploadLine
 import fm.bae.app.ui.albumdetail.DeleteAlbumDialog
-import fm.bae.app.ui.albumdetail.DownloadControlBody
-import fm.bae.app.ui.albumdetail.UploadLineBody
 import fm.bae.app.ui.appearance.AccentChoice
 import fm.bae.app.ui.appearance.AppearanceMode
 import fm.bae.app.ui.appearance.AppearancePreferences
@@ -59,7 +59,7 @@ import fm.bae.app.ui.components.RemovalLoss
 import fm.bae.app.ui.components.RemoveLibraryText
 import fm.bae.app.ui.components.ScreenTopBar
 import fm.bae.app.ui.components.StatusTone
-import fm.bae.app.ui.downloads.DownloadQueueRow
+import fm.bae.app.ui.downloads.AndroidDownloadRow
 import fm.bae.app.ui.downloads.DownloadsList
 import fm.bae.app.ui.library.AndroidErrorBanner
 import fm.bae.app.ui.library.LibraryGridScene
@@ -710,7 +710,7 @@ fun AlbumPinStates() {
                     BridgeReleaseDownloadStatus.Failed("Network unreachable"),
                     BridgeReleaseDownloadStatus.Downloaded,
                 ).forEach { status ->
-                    DownloadControlBody(
+                    AndroidDownloadControl(
                         status = status,
                         releaseId = "rel-1",
                         downloads = downloads,
@@ -722,8 +722,8 @@ fun AlbumPinStates() {
                     )
                 }
                 val queued = LocalContext.current.coreString("core.outbox.phase.queued")
-                UploadLineBody(queued, null)
-                UploadLineBody(queued, "01 Track Title.flac")
+                AndroidUploadLine(queued, null)
+                AndroidUploadLine(queued, "01 Track Title.flac")
             }
         }
     }
@@ -792,7 +792,7 @@ fun DownloadEntries() {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             Column {
                 ops.forEach { op ->
-                    DownloadQueueRow(
+                    AndroidDownloadRow(
                         op = op,
                         progress = downloads.latestProgress(op.releaseId),
                         onCancel = {},

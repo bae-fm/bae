@@ -28,8 +28,8 @@ internal fun ReleaseTransferLines(
     release: BridgeRelease,
 ) {
     Column {
-        ReleaseUploadLine(release.upload?.progress, release.upload?.missing)
-        ReleaseDownloadControl(session = session, release = release)
+        AndroidUploadLineContainer(release.upload?.progress, release.upload?.missing)
+        AndroidDownloadControlContainer(session = session, release = release)
     }
 }
 
@@ -40,17 +40,17 @@ internal fun ReleaseTransferLines(
  * Nothing when no file of it is queued.
  */
 @Composable
-internal fun ReleaseUploadLine(
+internal fun AndroidUploadLineContainer(
     progress: BridgeUploadProgress?,
     missing: String?,
 ) {
     if (progress == null) return
-    UploadLineBody(LocalContext.current.coreString(bridgeUploadActivityKey(progress.activity)), missing)
+    AndroidUploadLine(LocalContext.current.coreString(bridgeUploadActivityKey(progress.activity)), missing)
 }
 
 /** The upload line from its [phase] words, so a preview draws it without a call into the bridge. */
 @Composable
-internal fun UploadLineBody(
+internal fun AndroidUploadLine(
     phase: String,
     missing: String?,
 ) {
@@ -75,11 +75,11 @@ internal fun UploadLineBody(
 @Preview(showBackground = true)
 @Composable
 private fun UploadLineQueuedPreview() {
-    BaeTheme { UploadLineBody(LocalContext.current.coreString("core.outbox.phase.queued"), null) }
+    BaeTheme { AndroidUploadLine(LocalContext.current.coreString("core.outbox.phase.queued"), null) }
 }
 
 @Preview(showBackground = true)
 @Composable
 private fun UploadLineMissingPreview() {
-    BaeTheme { UploadLineBody(LocalContext.current.coreString("core.outbox.phase.queued"), "01 Track.flac") }
+    BaeTheme { AndroidUploadLine(LocalContext.current.coreString("core.outbox.phase.queued"), "01 Track.flac") }
 }

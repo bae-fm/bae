@@ -71,7 +71,7 @@ internal fun DownloadsScreen(
         onDispose(page::deactivate)
     }
     Column(modifier = Modifier.fillMaxSize()) {
-        DownloadsTopBar(
+        AndroidDownloadsBar(
             paused = paused,
             hasDownloads = counts != null && counts.total.queued + counts.total.active + counts.total.failed > 0u,
             hasFailures = counts != null && counts.total.failed > 0u,
@@ -181,7 +181,7 @@ private fun ReportVisibleDownloads(
 }
 
 @Composable
-private fun DownloadsTopBar(
+internal fun AndroidDownloadsBar(
     paused: Boolean,
     hasDownloads: Boolean,
     hasFailures: Boolean,
@@ -248,7 +248,7 @@ internal fun DownloadsList(
         items(count, key = { index -> index }) { index ->
             val op = row(index) ?: return@items
             // The row's progress View reads the release's latest bytes each frame; nothing recomposes for them.
-            DownloadQueueRow(
+            AndroidDownloadRow(
                 op = op,
                 progress = downloads.latestProgress(op.releaseId),
                 onCancel = { onCancel(op.releaseId) },

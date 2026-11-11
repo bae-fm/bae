@@ -29,7 +29,6 @@ import fm.bae.app.DisplayError
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
-import fm.bae.app.data.DownloadStore
 import fm.bae.app.displayError
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
@@ -40,11 +39,13 @@ import fm.bae.app.ui.components.AndroidSpinner
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.NoticeLook
-import fm.bae.app.ui.downloads.ActiveDownloadProgress
+import fm.bae.app.ui.downloads.DownloadProgress
 import fm.bae.app.ui.downloads.PinQueuedText
 import fm.bae.app.ui.rememberScreenScope
+import fm.bae.fastvalues.LatestSource
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
+import uniffi.bae_bridge.BridgeDownloadTransferProgress
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeMessage
 import uniffi.bae_bridge.BridgeRelease
@@ -53,7 +54,7 @@ import uniffi.bae_bridge.BridgeReleaseStorageAction
 import uniffi.bae_bridge.bridgeReleasePlayabilityLine
 import uniffi.bae_bridge.bridgeTransferActionKey
 
-private val logger = BaeLogger("bae.ReleaseDownloadControl")
+private val logger = BaeLogger("bae.AndroidDownloadControlContainer")
 
 /**
  * The shown release's download control; nothing when core offers none for the
@@ -61,7 +62,7 @@ private val logger = BaeLogger("bae.ReleaseDownloadControl")
  * it: the device its audio is on ("On Ana's Mac"), or its originals gone.
  */
 @Composable
-internal fun ReleaseDownloadControl(
+internal fun AndroidDownloadControlContainer(
     session: OpenLibrary,
     release: BridgeRelease,
 ) {
@@ -98,10 +99,9 @@ private fun PlayableReleaseDownloadControl(
     var unpinError by remember(release.id) { mutableStateOf<DisplayError?>(null) }
 
     Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.compact)) {
-        DownloadControlBody(
+        AndroidDownloadControl(
             status = status,
-            releaseId = release.id,
-            downloads = session.downloadStore,
+            progress = session.downloadStore.latestProgress(release.id),
             unpinning = unpinning,
             // Progress arrives through the download snapshot; core skips ids already queued or pinned.
             onDownload = {
@@ -148,10 +148,9 @@ private suspend fun runUnpin(
     }
 
 @Composable
-internal fun DownloadControlBody(
+internal fun AndroidDownloadControl(
     status: BridgeReleaseDownloadStatus,
-    releaseId: String,
-    downloads: DownloadStore,
+    progress: LatestSource<BridgeDownloadTransferProgress>,
     unpinning: Boolean,
     onDownload: () -> Unit,
     onCancel: () -> Unit,
@@ -174,7 +173,7 @@ internal fun DownloadControlBody(
         }
 
         BridgeReleaseDownloadStatus.Downloading -> {
-            ActiveDownloadProgress(releaseId, downloads, label = stringResource(R.string.pinning))
+            DownloadProgress(progress, label = stringResource(R.string.pinning), modifier = Modifier.fillMaxWidth())
             DownloadActionButton(stringResource(R.string.pin_cancel), Icons.Filled.Close, onCancel)
         }
 

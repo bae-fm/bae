@@ -19,7 +19,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.coreString
-import fm.bae.app.data.DownloadStore
 import fm.bae.app.formatFileSize
 import fm.bae.app.requireDisplayableByteCount
 import fm.bae.app.ui.appearance.ThemeSpace
@@ -35,7 +34,7 @@ import uniffi.bae_bridge.BridgeDownloadTransferProgress
 import uniffi.bae_bridge.BridgeQueuedRelease
 
 @Composable
-internal fun DownloadQueueRow(
+internal fun AndroidDownloadRow(
     op: BridgeDownloadOp,
     progress: LatestSource<BridgeDownloadTransferProgress>,
     onCancel: () -> Unit,
@@ -117,16 +116,6 @@ internal fun PinQueuedText() {
         style = ThemeText.detail.style,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
-}
-
-/** [releaseId]'s download progress, which a View reads from its latest value each display frame. */
-@Composable
-internal fun ActiveDownloadProgress(
-    releaseId: String,
-    downloads: DownloadStore,
-    label: String?,
-) {
-    DownloadProgress(downloads.latestProgress(releaseId), label, Modifier.fillMaxWidth())
 }
 
 private fun BridgeQueuedRelease.detailText(context: Context): String {

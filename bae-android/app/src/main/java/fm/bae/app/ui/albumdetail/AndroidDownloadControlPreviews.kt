@@ -10,10 +10,9 @@ import uniffi.bae_bridge.BridgeReleaseDownloadStatus
 
 @Composable
 private fun DownloadControlBodyStub(status: BridgeReleaseDownloadStatus) {
-    DownloadControlBody(
+    AndroidDownloadControl(
         status = status,
-        releaseId = "rel-1",
-        downloads = PreviewData.downloadStore(),
+        progress = PreviewData.downloadStore().latestProgress("rel-1"),
         unpinning = false,
         onDownload = {},
         onCancel = {},

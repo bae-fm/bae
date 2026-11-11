@@ -2,7 +2,6 @@ package fm.bae.app.ui.playback
 
 import android.app.Application
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -21,7 +20,7 @@ import uniffi.bae_bridge.BridgeTrackDisplay
 
 @RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
-class QueueRowTest {
+class AndroidQueueRowTest {
     @get:Rule
     val compose = createComposeRule()
 
@@ -45,7 +44,13 @@ class QueueRowTest {
         compose.setContent {
             BaeTheme {
                 CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
-                    QueueRow(item, Modifier, onClick = {}, onRemove = {})
+                    AndroidQueueRow(
+                        title = item.display.title,
+                        artist = item.display.artistNames,
+                        cover = item.display.coverImage,
+                        album = item.display.albumTitle,
+                        duration = "3:00",
+                    )
                 }
             }
         }
