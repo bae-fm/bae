@@ -27,9 +27,9 @@ import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.AndroidNotice
+import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ButtonTone
-import fm.bae.app.ui.components.LabeledValueRow
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.S3KeyFields
 import fm.bae.app.ui.storageLocationLabel
@@ -85,7 +85,10 @@ internal fun RestoreForm(
 ) {
     val text = RestoreText.of(step.entry)
     OnboardingForm(title = stringResource(text.title), error = error, onBack = onBack) {
-        LabeledValueRow(stringResource(R.string.settings_stored_in), storageLocationLabel(step.metadata.location))
+        AndroidRow(
+            title = stringResource(R.string.settings_stored_in),
+            value = storageLocationLabel(step.metadata.location),
+        )
         if (step.metadata.provider == BridgeCloudProvider.S3 && step.metadata.carriesS3Key) {
             Text(
                 text = stringResource(R.string.onboarding_s3_key_scanned),
@@ -168,8 +171,8 @@ internal fun SavedRestoreForm(
     val info = step.saved.info
     val text = RestoreText.RESTORE
     OnboardingForm(title = stringResource(text.title), error = error, onBack = onBack) {
-        LabeledValueRow(stringResource(R.string.onboarding_saved_library), info.name)
-        LabeledValueRow(stringResource(R.string.settings_stored_in), storageLocationLabel(info.location))
+        AndroidRow(title = stringResource(R.string.onboarding_saved_library), value = info.name)
+        AndroidRow(title = stringResource(R.string.settings_stored_in), value = storageLocationLabel(info.location))
         RestoreAction(needsKey = step.saved.needsS3Key, action = text.action, onRestore = onRestore)
     }
 }

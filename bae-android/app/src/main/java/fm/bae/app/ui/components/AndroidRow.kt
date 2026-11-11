@@ -30,21 +30,22 @@ import fm.bae.app.ui.appearance.ThemeText
 
 /**
  * One row of a list, in a [AndroidCard] or a sheet: the [title] with an optional [subtitle] under it,
- * whose [tone] colours it and puts a dot before it, and [trailing] content at
- * the far end. [action] makes the row itself the action ("Add device", last in
- * its card), with [leadingIcon] before it when it adds to the list; [selected]
- * tints the row for the one choice made. In a [AndroidCard] a hairline divides the
- * row from the one above it. The [subtitle] wraps, read whole, as Material's supporting
- * text does; [subtitleContent] draws the line itself where its words change as the row runs. A
- * [nested] row is a setting that belongs to the switch row above it: joined to it
- * with no hairline and set in. A row that is not [enabled] shows dimmed and does nothing. A row
- * with an [onClick] opens or changes something, which [onClickLabel] names for screen readers.
+ * whose [tone] colours it and puts a dot before it, and [trailing] content at the far end. [action]
+ * makes the row itself the action ("Add device", last in its card), with [leadingIcon] before it when
+ * it adds to the list; [selected] tints the row for the one choice made; a [value] is the title's value
+ * at the row's far end, in the secondary colour. In a [AndroidCard] a hairline divides the row from the
+ * one above it. The [subtitle] wraps, read whole, as Material's supporting text does;
+ * [subtitleContent] draws the line itself where its words change as the row runs. A [nested] row is a
+ * setting that belongs to the switch row above it: joined to it with no hairline and set in. A row that
+ * is not [enabled] shows dimmed and does nothing. A row with an [onClick] opens or changes something,
+ * which [onClickLabel] names for screen readers.
  */
 @Composable
 internal fun AndroidRow(
     title: String,
     modifier: Modifier = Modifier,
     subtitle: String? = null,
+    value: String? = null,
     subtitleContent: (@Composable () -> Unit)? = null,
     tone: StatusTone? = null,
     leadingIcon: ImageVector? = null,
@@ -92,6 +93,9 @@ internal fun AndroidRow(
             )
             subtitle?.let { Subtitle(it, tone) }
             subtitleContent?.invoke()
+        }
+        value?.let {
+            Text(text = it, style = ThemeText.body.style, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         trailing?.invoke(this)
     }

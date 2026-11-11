@@ -20,9 +20,9 @@ import fm.bae.app.ui.cloudProviderLabel
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.AndroidMatchCode
+import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ButtonTone
-import fm.bae.app.ui.components.LabeledValueRow
 import kotlinx.coroutines.CancellationException
 import uniffi.bae_bridge.BridgeActiveDevice
 import uniffi.bae_bridge.BridgeDeviceCutOff
@@ -305,9 +305,9 @@ private fun SignOutDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
                 if (instruction is BridgeProviderSignOut.RemoveAppAccess) {
-                    LabeledValueRow(
-                        stringResource(R.string.settings_provider),
-                        cloudProviderLabel(instruction.provider),
+                    AndroidRow(
+                        title = stringResource(R.string.settings_provider),
+                        value = cloudProviderLabel(instruction.provider),
                     )
                 }
                 Text(context.coreString(bridgeProviderSignOutKey(instruction)))

@@ -126,6 +126,10 @@ class BasicComponentShots : BoardShot() {
         }
 
     @Test
+    fun androidComponentRowValue() =
+        component("android.component.row.value", wide = true) { RowInCard { AndroidRow(title = "Joined", value = "March 2026") } }
+
+    @Test
     fun androidComponentRowControls() =
         component("android.component.row.controls", wide = true) {
             RowInCard { AndroidRow(title = "Sync", trailing = { Switch(checked = true, onCheckedChange = {}) }) }
