@@ -10,12 +10,16 @@ on:
     branches: [main]
   workflow_dispatch:
 
-# The gallery shows main as it is now, so a newer push replaces a capture
-# still running: every push's capture otherwise holds a macOS runner for
-# hours and starves the Build workflow's macOS and iOS jobs.
+# A capture takes about half an hour, and main moves faster than that, so
+# cancelling a running capture for each push meant none ever finished and the
+# gallery never published. A run that has started now finishes. GitHub keeps at
+# most one run waiting in a group and replaces it with each newer push, so a
+# push while a capture runs queues one capture, which takes the newest main.
+# (The capture holds a macOS runner for its whole length, so queueing at most
+# one keeps the Build workflow's macOS and iOS jobs from starving.)
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 env:
   CARGO_TERM_COLOR: always
