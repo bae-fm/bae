@@ -316,6 +316,11 @@ impl SavePreset {
         }
     }
 
+    /// Whether a format of `presets` can be deleted: the only one left cannot.
+    pub fn can_delete(presets: &[SavePreset]) -> bool {
+        presets.len() > 1
+    }
+
     /// Whether a format other than `own_id` is already named `name`.
     pub fn name_taken(name: &str, own_id: &str, presets: &[SavePreset]) -> bool {
         presets.iter().any(|preset| preset.id != own_id && preset.name == name)

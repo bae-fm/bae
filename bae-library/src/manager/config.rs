@@ -287,11 +287,18 @@ impl LibraryManager {
                 )));
             }
         }
-        // The last-used format is a required, valid preset id: re-validate the
-        // stored one against the new list so deleting its preset is refused
-        // rather than leaving it dangling.
+        let Some(first) = presets.first().map(|preset| preset.id.clone()) else {
+            return Err(bae_preferences::PreferencesError::Invalid(
+                "at least one export preset must remain".to_string(),
+            ));
+        };
+        // The last-used format is a required, valid preset id: when the new
+        // list no longer holds it, the first remaining format becomes it in
+        // the same write.
         self.update_preferences(move |prefs| {
-            Self::validate_last_save_preset(&prefs.last_save_preset, &presets)?;
+            if !presets.iter().any(|preset| preset.id == prefs.last_save_preset) {
+                prefs.last_save_preset = first;
+            }
             prefs.save_presets = presets;
             Ok(())
         })

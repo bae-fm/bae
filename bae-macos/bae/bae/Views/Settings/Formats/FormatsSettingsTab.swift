@@ -132,6 +132,9 @@ struct FormatsSettingsTab: View {
             ForEach(configStore.config.savePresets, id: \.id) { preset in
                 PresetRow(
                     preset: preset,
+                    canDelete: bridgeSavePresetCanDelete(
+                        presets: configStore.config.savePresets
+                    ),
                     edit: { editingPreset = EditingPreset(id: preset.id) },
                     delete: { deletePreset(id: preset.id) }
                 )
@@ -185,6 +188,8 @@ struct FormatsSettingsTab: View {
 /// ⋯ menu offers Edit… and Delete….
 private struct PresetRow: View {
     let preset: BridgeSavePreset
+    /// Core's answer for the list: the only format left can't be deleted.
+    let canDelete: Bool
     let edit: () -> Void
     let delete: () -> Void
 
@@ -203,6 +208,7 @@ private struct PresetRow: View {
                 Button("Delete…") {
                     confirmingDelete = true
                 }
+                .disabled(!canDelete)
             }
             .confirmationDialog(
                 "Delete the “\(preset.name)” format?",

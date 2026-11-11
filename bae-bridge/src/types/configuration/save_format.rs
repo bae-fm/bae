@@ -71,6 +71,13 @@ pub fn bridge_save_name_after_format_change(
     bae_preferences::SaveFormat::name_after_change(&name, from.into_core(), to.into_core(), &taken)
 }
 
+/// Whether a format of `presets` can be deleted: the only one left cannot.
+#[uniffi::export]
+pub fn bridge_save_preset_can_delete(presets: Vec<BridgeSavePreset>) -> bool {
+    let presets: Vec<_> = presets.into_iter().map(BridgeSavePreset::into_core).collect();
+    bae_preferences::SavePreset::can_delete(&presets)
+}
+
 /// Whether a format other than `own_id` among `presets` is already named
 /// `name`.
 #[uniffi::export]

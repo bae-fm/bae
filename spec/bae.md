@@ -2372,7 +2372,9 @@ Two ways put a release back on disk, from desktop:
   and for a release, starting with the one last used; its Format menu ends in
   Edit Formats…, which opens Settings at Save as in front of the panel, which
   stays open behind it; the menu follows any change made there, and a format
-  added there is chosen in it at once.
+  added there is chosen in it at once. Deleting the format last used makes the
+  first format left the last used, in the same write; the only format left
+  can't be deleted, and its Delete… is off.
   One file name pattern and one folder name pattern serve every format. A
   pattern is text with values in it, each value one chip: the person types
   between the chips (`Artist - Album`), and Delete after a chip or Forward
@@ -5534,7 +5536,7 @@ Replay gain has no control in the apps.
 | `discogs_key` | none | the stored Discogs key's state: unvalidated (checked while offline), valid or rejected; the key is in the keyring |
 | `replay_gain_mode` | off | loudness: off, track or album (§7.5) |
 | `save_preset` rows | FLAC (the source's depth), MP3 (320 kbps) | the save formats (§4.6), in order |
-| `last_save_preset` | FLAC | which format a save starts with: the one last used |
+| `last_save_preset` | FLAC | which format a save starts with: the one last used; deleting that format makes the first format left the one last used |
 | `save_filename_token` rows | track number, “ ”, title | the file name pattern (§4.6) |
 | `save_folder_token` rows | artist, “ - ”, album | the folder name pattern of a release save (§4.6) |
 | `save_embed_cover`, `save_cover_file`, `save_loudness_tags` | on, on, on | the cover in each file, `cover.jpg` in a release's folder, ReplayGain tags (§4.6) |

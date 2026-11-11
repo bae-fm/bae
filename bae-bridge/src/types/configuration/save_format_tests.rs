@@ -82,5 +82,7 @@ fn the_name_rules_cross_as_core_states_them() {
     };
     let presets = vec![preset("a", "FLAC"), preset("b", "MP3")];
     assert!(bridge_save_name_taken("MP3".to_string(), "a".to_string(), presets.clone()));
-    assert!(!bridge_save_name_taken("MP3".to_string(), "b".to_string(), presets));
+    assert!(!bridge_save_name_taken("MP3".to_string(), "b".to_string(), presets.clone()));
+    assert!(bridge_save_preset_can_delete(presets.clone()));
+    assert!(!bridge_save_preset_can_delete(presets[..1].to_vec()));
 }

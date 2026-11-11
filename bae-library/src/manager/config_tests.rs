@@ -59,8 +59,10 @@ async fn a_key_checked_offline_is_stored_unvalidated() {
     assert_eq!(manager.preferences().await.unwrap().discogs, Some(DiscogsValidation::Unvalidated));
 }
 
+/// Deleting the format last used moves the last-used mark to the first format
+/// left, in the same write, so the next save starts there.
 #[tokio::test]
-async fn set_save_presets_rejects_removing_the_last_used_format() {
+async fn deleting_the_last_used_format_makes_the_first_remaining_the_last_used() {
     let (test, _temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     manager.set_last_save_preset("mp3".to_string()).await.unwrap();
@@ -72,13 +74,43 @@ async fn set_save_presets_rejects_removing_the_last_used_format() {
         .into_iter()
         .filter(|preset| preset.id != "mp3")
         .collect();
-    let err = manager
-        .set_save_presets(presets_without_mp3)
-        .await
-        .expect_err("the last-used format's preset cannot be removed");
+    let first_remaining = presets_without_mp3[0].id.clone();
+    manager.set_save_presets(presets_without_mp3).await.unwrap();
 
-    assert!(err.to_string().contains("unknown export preset mp3"));
-    assert!(manager.save_presets().await.unwrap().iter().any(|preset| preset.id == "mp3"));
+    let prefs = manager.preferences().await.unwrap();
+    assert!(prefs.save_presets.iter().all(|preset| preset.id != "mp3"));
+    assert_eq!(prefs.last_save_preset, first_remaining);
+}
+
+/// A format that is not the last used leaves the last used alone.
+#[tokio::test]
+async fn deleting_another_format_keeps_the_last_used() {
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    manager.set_last_save_preset("flac".to_string()).await.unwrap();
+
+    let without_mp3: Vec<_> = manager
+        .save_presets()
+        .await
+        .unwrap()
+        .into_iter()
+        .filter(|preset| preset.id != "mp3")
+        .collect();
+    manager.set_save_presets(without_mp3).await.unwrap();
+
+    assert_eq!(manager.preferences().await.unwrap().last_save_preset, "flac");
+}
+
+/// The only format left is never deleted.
+#[tokio::test]
+async fn set_save_presets_refuses_an_empty_list() {
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+
+    let err = manager.set_save_presets(Vec::new()).await.expect_err("no format left is refused");
+
+    assert!(err.to_string().contains("at least one"), "{err}");
+    assert!(!manager.save_presets().await.unwrap().is_empty());
 }
 
 /// The last-used format must name a preset that exists; any format can be it,
