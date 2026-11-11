@@ -125,9 +125,38 @@ struct ShotElementListTests {
         #expect(chosen.map(\.label) == [accentName], "\(json)")
     }
 
+    /// An alert is drawn from AppKit's views; its title, message and
+    /// buttons are listed where the image draws them.
+    @Test
+    func listsAnAlertsWordsAndButtons() async throws {
+        let list = try await list("mac.welcome.remove.failed")
+        let json = try json(list)
+
+        let texts = list.elements.filter { $0.role == "text" }
+        #expect(
+            texts.compactMap(\.label) == [
+                "Couldn't remove “Home music”",
+                "Couldn’t reach the cloud. Check your connection and try again.",
+            ],
+            "\(json)"
+        )
+        #expect(texts.first?.text?.weight == 700, "\(json)")
+        let buttons = list.elements.filter { $0.role == "button" }
+        #expect(buttons.compactMap(\.label) == ["Cancel", "Retry"], "\(json)")
+        try #require(buttons.count == 2, "\(json)")
+        // The buttons sit side by side below the message, inside the shot.
+        #expect(buttons[0].bounds.y == buttons[1].bounds.y, "\(json)")
+        #expect(buttons[0].bounds.x < buttons[1].bounds.x, "\(json)")
+        let message = try #require(texts.last, "\(json)")
+        #expect(buttons[0].bounds.y > message.bounds.y, "\(json)")
+    }
+
     @Test
     func everyBoxLiesInTheShotAndEveryParentComesFirst() async throws {
-        for id in ["mac.welcome.add-code.entering", "appearance"] {
+        for id in [
+            "mac.welcome.add-code.entering", "appearance",
+            "mac.welcome.remove.failed",
+        ] {
             let list = try await list(id)
             for (index, element) in list.elements.enumerated() {
                 #expect(element.bounds.x >= -1)

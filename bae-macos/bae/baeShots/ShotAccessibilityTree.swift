@@ -73,6 +73,10 @@ struct ShotAccessibilityTree: Sendable {
         guard status == .success, let list = windows as? [AXUIElement] else {
             throw ShotError.accessibilityUnavailable(sceneId, status.rawValue)
         }
+        // A locked screen lists no window of any app.
+        guard !list.isEmpty else {
+            throw ShotError.accessibilityListsNoWindow(sceneId)
+        }
         guard
             let window = list.first(where: {
                 guard let frame = Reader.frame(of: $0) else { return false }

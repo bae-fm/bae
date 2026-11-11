@@ -298,6 +298,7 @@ enum ShotError: Error, CustomStringConvertible {
     case windowNotKey(String)
     case noScreen(String)
     case accessibilityUnavailable(String, Int32)
+    case accessibilityListsNoWindow(String)
     case windowNotInAccessibilityTree(String)
     case unknownSelection(String, String)
 
@@ -319,6 +320,9 @@ enum ShotError: Error, CustomStringConvertible {
         case .accessibilityUnavailable(let id, let status):
             "the accessibility API listed no windows of this process for "
                 + "scene \(id) (error \(status))"
+        case .accessibilityListsNoWindow(let id):
+            "the accessibility API lists no window of this process for scene "
+                + "\(id); it lists none while the screen is locked"
         case .windowNotInAccessibilityTree(let id):
             "the accessibility tree has no window where scene \(id)'s is"
         case .unknownSelection(let kind, let name):
