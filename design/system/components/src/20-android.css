@@ -34,6 +34,7 @@
 /* Supporting text wraps, as Material's list items let it run to more lines: a setting's explanation is read whole, never cut off. */
 .bae-a-row-subtitle { font-size: 14px; line-height: 20px; color: var(--text-secondary); display: flex; align-items: baseline; gap: 6px; }
 .bae-a-row-subtitle[class*="bae-tone-"] { color: var(--bae-tone); }
+.bae-a-row-value { flex: none; max-width: 60%; text-align: end; font-size: 14px; line-height: 20px; color: var(--text-secondary); }
 .bae-a-row-trail { display: flex; align-items: center; gap: var(--space-edge); font-size: 14px; color: var(--text-secondary); }
 .bae-a-row-icon { flex: none; fill: var(--text-secondary); }
 .bae-a-row-lead { flex: none; fill: var(--text-secondary); }

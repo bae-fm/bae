@@ -58,6 +58,8 @@
     return h('div', { className: cx('bae-a-row', props.place && 'bae-a-card-tile bae-a-card-tile-' + props.place, props.nested && 'bae-a-row-nested', !props.subtitle && 'bae-a-row-one', props.selected && 'bae-a-row-selected'), role: props.onClick ? 'button' : null, onClick: props.onClick },
       props.leadingIcon ? h(Material, { name: props.leadingIcon, className: cx('bae-a-row-lead', props.action && 'bae-a-row-lead-action') }) : null,
       lines,
+      // `value`: the label's value at the row's far end, as MacRow's: “Joined · March 2026” in a member's details.
+      props.value ? h('span', { className: 'bae-a-row-value' }, props.value) : null,
       trail.length ? h('span', { className: 'bae-a-row-trail' }, trail) : null,
       props.icon ? h(Material, { name: props.icon, size: props.icon === 'edit' ? 20 : 24, className: 'bae-a-row-icon' }) : null);
   }
