@@ -363,8 +363,10 @@
     <string name="settings_library_switch">Vaihda toiseen tämän laitteen kirjastoon</string>
     <string name="settings_libraries_load_failed">Kirjastojasi ei voitu ladata.</string>
     <string name="settings_history">Kuunteluhistoria</string>
+    <string name="settings_history_off">Pois</string>
     <string name="settings_history_private">Vain minä</string>
-    <string name="settings_history_household">Kaikki kirjastossa</string>
+    <string name="settings_history_household">Kaikki</string>
+    <string name="settings_history_note">Kuka näkee, mitä kuuntelet, tai Pois, jos mitään ei tallenneta. Muutos koskee toistoja tästä eteenpäin; aiemmat toistot säilyttävät sen, ketkä ne näkivät.</string>
     <string name="settings_stored_in">Tallennettu</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>

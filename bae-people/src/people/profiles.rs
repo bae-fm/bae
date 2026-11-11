@@ -4,7 +4,7 @@ use super::profile_request::{
 };
 use super::*;
 use crate::membership::{member_columns, member_row, SELF_IS_ADMIN};
-use crate::people::{Avatar, Person, PersonProfile, ProfileError, Sharing};
+use crate::people::{Avatar, HistorySharing, Person, PersonProfile, ProfileError};
 
 /// The columns [`profile_row`] reads of the `people` row `p`: its own, and
 /// its avatar's version; [`PROFILE_COLUMN_COUNT`] of them.
@@ -265,7 +265,7 @@ impl People {
             .await
     }
 
-    pub async fn set_history_sharing(&self, sharing: Sharing) -> Result<(), ProfileError> {
+    pub async fn set_history_sharing(&self, sharing: HistorySharing) -> Result<(), ProfileError> {
         let person = self.own_profile().await?.id;
         self.inner
             .store
@@ -387,7 +387,7 @@ fn new_profile(member: coven::MemberId, name: String, circle: coven::CircleId) -
         id: member,
         name,
         private_circle: circle,
-        history_sharing: Sharing::Private,
+        history_sharing: HistorySharing::Private,
         avatar: None,
     }
 }
@@ -424,7 +424,7 @@ fn profile_row(row: &Row<'_>) -> rusqlite::Result<PersonProfile> {
         id: coven::MemberId(uuid_column(row, 0)?),
         name: row.get(1)?,
         private_circle: coven::CircleId(uuid_column(row, 2)?),
-        history_sharing: Sharing::from_sql(&row.get::<_, String>(3)?)?,
+        history_sharing: HistorySharing::from_sql(&row.get::<_, String>(3)?)?,
         avatar: avatar_columns(row, 4)?,
     })
 }

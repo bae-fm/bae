@@ -7,7 +7,7 @@ use bae_people::people::Sharing;
 impl AppServices {
     delegate_async!(people, create_profile => create_profile(name: &str) -> Result<(), bae_people::people::ProfileError>);
     delegate_async!(people, rename_profile => rename_profile(name: &str) -> Result<(), bae_people::people::ProfileError>);
-    delegate_async!(people, set_history_sharing => set_history_sharing(sharing: bae_people::people::Sharing) -> Result<(), bae_people::people::ProfileError>);
+    delegate_async!(people, set_history_sharing => set_history_sharing(sharing: bae_people::people::HistorySharing) -> Result<(), bae_people::people::ProfileError>);
     delegate_async!(manager, set_avatar => set_avatar(bytes: Option<Vec<u8>>) -> Result<(), bae_library::people::AvatarError>);
     delegate_async!(people, avatar => avatar(person: coven::MemberId) -> Result<Option<Vec<u8>>, bae_people::people::ProfileError>);
     delegate_values!(subscribe_profiles => subscribe_profiles() -> Vec<bae_people::people::PersonProfile>);

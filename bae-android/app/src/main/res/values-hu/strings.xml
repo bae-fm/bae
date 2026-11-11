@@ -363,8 +363,10 @@
     <string name="settings_library_switch">Váltás egy másik könyvtárra ezen az eszközön</string>
     <string name="settings_libraries_load_failed">Nem sikerült betölteni a könyvtáraidat.</string>
     <string name="settings_history">Hallgatási előzmények</string>
+    <string name="settings_history_off">Ki</string>
     <string name="settings_history_private">Csak én</string>
-    <string name="settings_history_household">Mindenki a könyvtárban</string>
+    <string name="settings_history_household">Mindenki</string>
+    <string name="settings_history_note">Ki látja, mit hallgatsz, vagy Ki, ha nem akarsz előzményt őrizni. A módosítás a mostantól induló lejátszásokra vonatkozik; a korábbiak megtartják, hogy kik láthatták őket.</string>
     <string name="settings_stored_in">Tárolás helye</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>

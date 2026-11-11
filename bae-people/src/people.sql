@@ -8,7 +8,7 @@ CREATE TABLE people (
     id TEXT PRIMARY KEY NOT NULL,
     name TEXT NOT NULL CHECK (length(trim(name)) > 0),
     private_circle TEXT NOT NULL,
-    history_sharing TEXT NOT NULL CHECK (history_sharing IN ('private', 'household')),
+    history_sharing TEXT NOT NULL CHECK (history_sharing IN ('off', 'private', 'household')),
     avatar_id TEXT
 ) STRICT;
 -- Profiles list by name.

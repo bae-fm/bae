@@ -372,8 +372,10 @@
     <string name="settings_library_switch">מעבר לספרייה אחרת במכשיר הזה</string>
     <string name="settings_libraries_load_failed">לא ניתן לטעון את הספריות שלך.</string>
     <string name="settings_history">היסטוריית האזנה</string>
+    <string name="settings_history_off">כבוי</string>
     <string name="settings_history_private">רק אני</string>
-    <string name="settings_history_household">כולם בספרייה</string>
+    <string name="settings_history_household">כולם</string>
+    <string name="settings_history_note">מי רואה מה אתם מנגנים, או כבוי כדי לא לשמור שום רישום. שינוי חל על השמעות מעכשיו והלאה; השמעות קודמות שומרות על מי שיכול היה לראות אותן.</string>
     <string name="settings_stored_in">מאוחסן ב</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>

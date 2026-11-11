@@ -421,8 +421,10 @@
     <string name="settings_library_switch">Switch to another library on this device</string>
     <string name="settings_libraries_load_failed">Couldn\'t load your libraries.</string>
     <string name="settings_history">Listening history</string>
+    <string name="settings_history_off">Off</string>
     <string name="settings_history_private">Only me</string>
-    <string name="settings_history_household">Everyone in the library</string>
+    <string name="settings_history_household">Everyone</string>
+    <string name="settings_history_note">Who sees what you play, or “Off” to keep no record. A change applies to plays from now on; earlier plays keep who could see them.</string>
     <string name="settings_stored_in">Stored in</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>

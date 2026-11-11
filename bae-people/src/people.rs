@@ -65,8 +65,28 @@ pub enum Sharing {
 }
 
 impl Sharing {
+    pub fn audience(self, circle: coven::CircleId) -> coven::Audience {
+        match self {
+            Self::Private => coven::Audience::Circle(circle),
+            Self::Household => coven::Audience::Store,
+        }
+    }
+}
+
+/// Who sees a person's listening history, or that none is kept (§5.3).
+/// Playlists take only [`Sharing`]: a playlist has no "off".
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum HistorySharing {
+    /// New plays are not recorded at all.
+    Off,
+    Private,
+    Household,
+}
+
+impl HistorySharing {
     pub(crate) fn as_str(self) -> &'static str {
         match self {
+            Self::Off => "off",
             Self::Private => "private",
             Self::Household => "household",
         }
@@ -74,16 +94,19 @@ impl Sharing {
 
     pub(crate) fn from_sql(value: &str) -> rusqlite::Result<Self> {
         match value {
+            "off" => Ok(Self::Off),
             "private" => Ok(Self::Private),
             "household" => Ok(Self::Household),
             _ => Err(rusqlite::Error::InvalidQuery),
         }
     }
 
-    pub fn audience(self, circle: coven::CircleId) -> coven::Audience {
+    /// Where a play begun under this setting goes; `None` when none is kept.
+    pub fn audience(self, circle: coven::CircleId) -> Option<coven::Audience> {
         match self {
-            Self::Private => coven::Audience::Circle(circle),
-            Self::Household => coven::Audience::Store,
+            Self::Off => None,
+            Self::Private => Some(Sharing::Private.audience(circle)),
+            Self::Household => Some(Sharing::Household.audience(circle)),
         }
     }
 }
@@ -93,7 +116,7 @@ pub struct PersonProfile {
     pub id: coven::MemberId,
     pub name: String,
     pub private_circle: coven::CircleId,
-    pub history_sharing: Sharing,
+    pub history_sharing: HistorySharing,
     /// The avatar the row references, if any.
     pub avatar: Option<Avatar>,
 }

@@ -2485,7 +2485,7 @@ Each person's own data:
 | Table | One row per | Where |
 |---|---|---|
 | `ratings` | person and album, or person and track | always household |
-| `history` | play | private or household: one setting per person |
+| `history` | play | private or household: one setting per person, which can also be off |
 | `playlists` | playlist | each one private or household |
 | `playlist_entries` | place in a playlist | where its playlist is |
 
@@ -2521,8 +2521,10 @@ lose plays: two devices adding to it at once merge cell by cell, and the later
 write wins
 ([coven §8](https://github.com/bae-fm/coven/blob/main/spec/coven.md#8-merging)).
 
-**Changing the history setting** applies to new plays only. A play takes its
-audience from the setting when it begins, and keeps it. Ben switches his history
+**Changing the history setting** applies to new plays only. The setting is *Off*,
+*Only me* (private) or *Everyone* (household). A play takes its audience from
+the setting when it begins, and keeps it. With *Off*, a play that begins records
+nothing, here or on any device; plays recorded before keep who could see them. Ben switches his history
 to household on Friday; what he played before Friday stays in his circle.
 Moving old plays would publish what he played in private, and switching back
 couldn't take from the household what its devices have already read. A new
@@ -2652,8 +2654,11 @@ editable by every member.
 own, with two sections. *You* holds the person's name, with *Change…*, which
 renames their profile in a sheet that says everyone in the library sees the name
 and keeps the name as typed when the rename fails; their role, which only an
-admin changes, and from another person's page; their listening history, *Only
-me* or *Everyone in the library* (§5.3); and *Devices*, which opens *Your
+admin changes, and from another person's page; their listening history, *Off*,
+*Only me* or *Everyone* (§5.3), with a note, under the box on a Mac and in
+the dialog on Android: "Who sees what you play, or “Off” to keep no record.
+Applies to new plays; earlier plays keep who could see them." (Android: "A
+change applies to plays from now on; …"); and *Devices*, which opens *Your
 devices*: each of the person's devices, this one reading *This device* with no
 menu since a device leaves by removing the library from it, and each other
 device with a ⋯ menu (⋮ on Android) holding *Remove…*. On a Mac, *Add device…*

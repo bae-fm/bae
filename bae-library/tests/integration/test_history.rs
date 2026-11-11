@@ -1,6 +1,6 @@
 use bae_library::test_libraries::{connect_storage, storage_library};
 use bae_people::history::HistoryAudience;
-use bae_people::people::Sharing;
+use bae_people::people::HistorySharing;
 use bae_util::test_ids::test_uuid;
 use std::time::Duration;
 
@@ -33,7 +33,8 @@ async fn qualifying_plays_keep_their_identity_and_original_audience() {
             started,
         )
         .await
-        .unwrap();
+        .unwrap()
+        .expect("recorded");
     local.set_played(Duration::from_secs(19));
     assert!(!people.record_play(&local).await.unwrap());
     assert!(people.history().await.unwrap().is_empty());
@@ -54,7 +55,7 @@ async fn qualifying_plays_keep_their_identity_and_original_audience() {
     assert_eq!(rows[0].audience, private);
     assert_eq!(rows[0].started_at, started);
     assert!(store.query_texts_for_test("SELECT id FROM local_history").await.unwrap().is_empty());
-    library.people().set_history_sharing(Sharing::Household).await.unwrap();
+    library.people().set_history_sharing(HistorySharing::Household).await.unwrap();
     local.set_played(Duration::from_secs(24));
     people.record_play(&local).await.unwrap();
     assert_eq!(people.history().await.unwrap()[0].audience, private);
@@ -66,8 +67,9 @@ async fn qualifying_plays_keep_their_identity_and_original_audience() {
             started,
         )
         .await
-        .unwrap();
-    library.people().set_history_sharing(Sharing::Private).await.unwrap();
+        .unwrap()
+        .expect("recorded");
+    library.people().set_history_sharing(HistorySharing::Private).await.unwrap();
     shared.set_played(Duration::from_secs(29));
     assert!(!people.record_play(&shared).await.unwrap());
     shared.set_played(Duration::from_secs(30));
@@ -87,11 +89,71 @@ async fn qualifying_plays_keep_their_identity_and_original_audience() {
     let mut unknown = people
         .begin_play(coven::IdSource::new_id(&coven::UuidIds), &track, None, started)
         .await
-        .unwrap();
+        .unwrap()
+        .expect("recorded");
     unknown.set_played(Duration::from_secs(8));
     assert!(!people.record_play(&unknown).await.unwrap());
     unknown.finish_at(Duration::from_secs(8));
     assert!(people.record_play(&unknown).await.unwrap());
+    library.manager().close().await.unwrap();
+}
+
+/// Off keeps no record of new plays: not on this device, not in any circle.
+/// A play begun before Off keeps the audience it began with.
+#[tokio::test]
+async fn off_records_no_new_plays_and_earlier_plays_keep_their_audience() {
+    let directory = tempfile::tempdir().unwrap();
+    let (library, storage) = storage_library(
+        directory.path(),
+        bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
+        bae_util::http::Http::for_test(),
+    )
+    .await;
+    let people = bae_people::People::new(library.store().clone());
+    let release = test_uuid("off-release");
+    let track = test_uuid("off-track");
+    bae_records::test_fixtures::album_with_tracks(
+        library.records(),
+        (&test_uuid("off-album"), "Listening"),
+        &release,
+        &[(&track, "Interlude")],
+    )
+    .await;
+    connect_storage(library.manager(), library.store(), &storage).await;
+    let person =
+        bae_library::test_libraries::made_profile(library.manager(), library.people(), "Robin")
+            .await;
+    let started = "2026-10-18T16:30:00Z".parse().unwrap();
+    let mut before = people
+        .begin_play(coven::IdSource::new_id(&coven::UuidIds), &track, None, started)
+        .await
+        .unwrap()
+        .expect("a private setting keeps plays");
+
+    library.people().set_history_sharing(HistorySharing::Off).await.unwrap();
+    let off = people
+        .begin_play(coven::IdSource::new_id(&coven::UuidIds), &track, None, started)
+        .await
+        .unwrap();
+    assert!(off.is_none());
+    before.set_played(Duration::from_secs(40));
+    assert!(people.record_play(&before).await.unwrap());
+    let rows = people.history().await.unwrap();
+    assert_eq!(rows.len(), 1);
+    assert_eq!(
+        rows[0].audience,
+        HistoryAudience::Person {
+            person: person.id,
+            audience: coven::Audience::Circle(person.private_circle)
+        }
+    );
+
+    library.people().set_history_sharing(HistorySharing::Household).await.unwrap();
+    assert!(people
+        .begin_play(coven::IdSource::new_id(&coven::UuidIds), &track, None, started)
+        .await
+        .unwrap()
+        .is_some());
     library.manager().close().await.unwrap();
 }
 
@@ -121,7 +183,8 @@ fn retrying_profile_setup_adopts_listening_from_before_the_profile_arrived() {
                 started,
             )
             .await
-            .unwrap();
+            .unwrap()
+            .expect("recorded");
         awaiting_profile.set_played(Duration::from_secs(30));
         assert!(people.record_play(&awaiting_profile).await.unwrap());
 

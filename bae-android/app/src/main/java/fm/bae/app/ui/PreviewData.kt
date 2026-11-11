@@ -25,6 +25,7 @@ import uniffi.bae_bridge.BridgeFormerDevice
 import uniffi.bae_bridge.BridgeFormerDeviceState
 import uniffi.bae_bridge.BridgeGalleryItem
 import uniffi.bae_bridge.BridgeGallerySource
+import uniffi.bae_bridge.BridgeHistorySharing
 import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeLabelLine
 import uniffi.bae_bridge.BridgeLibrary
@@ -52,7 +53,6 @@ import uniffi.bae_bridge.BridgeReleaseName
 import uniffi.bae_bridge.BridgeReleasePlayability
 import uniffi.bae_bridge.BridgeReleaseStorageState
 import uniffi.bae_bridge.BridgeSearchResults
-import uniffi.bae_bridge.BridgeSharing
 import uniffi.bae_bridge.BridgeSidePausePrompt
 import uniffi.bae_bridge.BridgeSyncActivity
 import uniffi.bae_bridge.BridgeTermLabel
@@ -437,7 +437,7 @@ object PreviewData {
                     id = member.id,
                     name = "Person Name",
                     privateCircle = "circle-1",
-                    historySharing = BridgeSharing.PRIVATE,
+                    historySharing = BridgeHistorySharing.PRIVATE,
                     avatarVersion = null,
                 ),
             membership = member,

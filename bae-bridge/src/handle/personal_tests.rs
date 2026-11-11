@@ -57,7 +57,7 @@ fn profiles_ratings_playlists_and_history_use_the_same_store() {
         // Asking again for the profile the person has, by its name, is done.
         app.clone().create_profile("Robin".into()).await.unwrap();
         let profile = BridgePersonProfile::from_core(made.clone());
-        app.clone().set_history_sharing(BridgeSharing::Household).await.unwrap();
+        app.clone().set_history_sharing(BridgeHistorySharing::Household).await.unwrap();
         assert_eq!(
             people
                 .profile(coven::MemberId(profile.id.parse().unwrap()))
@@ -65,7 +65,7 @@ fn profiles_ratings_playlists_and_history_use_the_same_store() {
                 .unwrap()
                 .unwrap()
                 .history_sharing,
-            bae_people::people::Sharing::Household
+            bae_people::people::HistorySharing::Household
         );
         let album = bae_records::DbAlbum::new_test("Album", &coven::UuidIds);
         records.insert_album(&album).await.unwrap();

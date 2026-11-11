@@ -3,7 +3,7 @@ use super::test_joined_library::loaded;
 use bae_library::test_libraries::{
     connect_storage, made_profile, made_profile_on, requested_profile, storage_library,
 };
-use bae_people::people::{ProfileError, Sharing};
+use bae_people::people::{HistorySharing, ProfileError};
 
 mod avatars;
 
@@ -28,7 +28,7 @@ async fn profile_requires_membership_and_is_idempotent_after_setup() {
     assert!(people.profiles().await.unwrap().is_empty());
     connect_storage(library.manager(), library.store(), &storage).await;
     let profile = made_profile(library.manager(), library.people(), "Robin").await;
-    assert_eq!(profile.history_sharing, Sharing::Private);
+    assert_eq!(profile.history_sharing, HistorySharing::Private);
     library.people().create_profile("Robin").await.unwrap();
     assert_eq!(people.profile(profile.id).await.unwrap(), Some(profile.clone()));
     assert!(matches!(
@@ -40,10 +40,10 @@ async fn profile_requires_membership_and_is_idempotent_after_setup() {
     assert_eq!(listed[0].profile.as_ref(), Some(&profile));
     assert!(listed[0].membership.is_self);
     library.people().rename_profile("New Name").await.unwrap();
-    library.people().set_history_sharing(Sharing::Household).await.unwrap();
+    library.people().set_history_sharing(HistorySharing::Household).await.unwrap();
     let profile = people.profile(profile.id).await.unwrap().unwrap();
     assert_eq!(profile.name, "New Name");
-    assert_eq!(profile.history_sharing, Sharing::Household);
+    assert_eq!(profile.history_sharing, HistorySharing::Household);
     library.manager().close().await.unwrap();
 }
 

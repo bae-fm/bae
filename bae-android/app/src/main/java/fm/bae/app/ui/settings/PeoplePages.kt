@@ -27,12 +27,12 @@ import fm.bae.app.ui.components.Eyebrow
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.RowCard
 import uniffi.bae_bridge.BridgeAdminChange
+import uniffi.bae_bridge.BridgeHistorySharing
 import uniffi.bae_bridge.BridgeInvite
 import uniffi.bae_bridge.BridgeMember
 import uniffi.bae_bridge.BridgePerson
 import uniffi.bae_bridge.BridgePersonProfile
 import uniffi.bae_bridge.BridgeRequestedProfile
-import uniffi.bae_bridge.BridgeSharing
 
 /** The pages of People and devices: the first, a person's, and this person's own devices. */
 internal sealed interface PeoplePage {
@@ -64,7 +64,7 @@ internal fun peoplePage(key: String): PeoplePage =
 internal class YouActions(
     val errors: ErrorDisplays,
     val rename: suspend (String) -> Unit,
-    val setHistory: (BridgeSharing) -> Unit,
+    val setHistory: (BridgeHistorySharing) -> Unit,
     val createProfile: (String) -> Unit,
 )
 
@@ -239,8 +239,9 @@ private fun YouDialogs(
     }
 }
 
-internal fun BridgeSharing.labelRes(): Int =
+internal fun BridgeHistorySharing.labelRes(): Int =
     when (this) {
-        BridgeSharing.PRIVATE -> R.string.settings_history_private
-        BridgeSharing.HOUSEHOLD -> R.string.settings_history_household
+        BridgeHistorySharing.OFF -> R.string.settings_history_off
+        BridgeHistorySharing.PRIVATE -> R.string.settings_history_private
+        BridgeHistorySharing.HOUSEHOLD -> R.string.settings_history_household
     }

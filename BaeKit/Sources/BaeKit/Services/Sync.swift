@@ -47,7 +47,8 @@ public final class Sync: Sendable, Observable {
     public let declineJoinRequest:
         @Sendable (BridgeJoinRequest) async throws -> Void
     public let cancelInvite: @Sendable (String) async throws -> Void
-    public let setHistorySharing: @Sendable (BridgeSharing) async throws -> Void
+    public let setHistorySharing:
+        @Sendable (BridgeHistorySharing) async throws -> Void
     public let createProfile: @Sendable (String) async throws -> Void
     /// Rename this device's person's profile, which everyone in the library
     /// sees.
@@ -127,7 +128,8 @@ public final class Sync: Sendable, Observable {
             throw StubError.notImplemented
         },
         setHistorySharing:
-            @escaping @Sendable (BridgeSharing) async throws -> Void = { _ in
+            @escaping @Sendable (BridgeHistorySharing) async throws -> Void = {
+                _ in
                 throw StubError.notImplemented
             },
         createProfile: @escaping @Sendable (String) async throws -> Void = {

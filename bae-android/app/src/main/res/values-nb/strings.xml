@@ -363,8 +363,10 @@
     <string name="settings_library_switch">Bytt til et annet bibliotek på denne enheten</string>
     <string name="settings_libraries_load_failed">Kunne ikke laste inn bibliotekene dine.</string>
     <string name="settings_history">Lyttehistorikk</string>
+    <string name="settings_history_off">Av</string>
     <string name="settings_history_private">Bare meg</string>
-    <string name="settings_history_household">Alle i biblioteket</string>
+    <string name="settings_history_household">Alle</string>
+    <string name="settings_history_note">Hvem som ser hva du spiller av, eller Av for å ikke lagre noe. En endring gjelder avspillinger fra nå av; tidligere avspillinger beholder hvem som kunne se dem.</string>
     <string name="settings_stored_in">Lagret i</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>

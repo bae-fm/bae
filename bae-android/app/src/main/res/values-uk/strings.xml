@@ -379,8 +379,10 @@
     <string name="settings_library_switch">Перейти до іншої бібліотеки на цьому пристрої</string>
     <string name="settings_libraries_load_failed">Не вдалося завантажити ваші фонотеки.</string>
     <string name="settings_history">Історія прослуховування</string>
+    <string name="settings_history_off">Вимкнено</string>
     <string name="settings_history_private">Лише я</string>
-    <string name="settings_history_household">Усі в бібліотеці</string>
+    <string name="settings_history_household">Усі</string>
+    <string name="settings_history_note">Хто бачить, що ви слухаєте, або Вимкнено, щоб нічого не записувати. Зміна стосується відтворень відтепер; попередні зберігають тих, хто міг їх бачити.</string>
     <string name="settings_stored_in">Зберігається в</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>

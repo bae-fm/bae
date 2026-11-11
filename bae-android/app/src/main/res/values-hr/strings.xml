@@ -372,8 +372,10 @@
     <string name="settings_library_switch">Prijeđi na drugu fonoteku na ovom uređaju</string>
     <string name="settings_libraries_load_failed">Nije moguće učitati vaše fonoteke.</string>
     <string name="settings_history">Povijest slušanja</string>
+    <string name="settings_history_off">Isključeno</string>
     <string name="settings_history_private">Samo ja</string>
-    <string name="settings_history_household">Svi u fonoteci</string>
+    <string name="settings_history_household">Svi</string>
+    <string name="settings_history_note">Tko vidi što slušate, ili Isključeno da se ništa ne bilježi. Promjena vrijedi za slušanja od sada; ranija slušanja zadržavaju tko ih je mogao vidjeti.</string>
     <string name="settings_stored_in">Pohranjeno u</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>

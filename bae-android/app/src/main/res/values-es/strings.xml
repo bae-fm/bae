@@ -370,8 +370,10 @@
     <string name="settings_library_switch">Cambiar a otra biblioteca de este dispositivo</string>
     <string name="settings_libraries_load_failed">No se pudieron cargar tus bibliotecas.</string>
     <string name="settings_history">Historial de escucha</string>
+    <string name="settings_history_off">Desactivado</string>
     <string name="settings_history_private">Solo yo</string>
-    <string name="settings_history_household">Todos en la biblioteca</string>
+    <string name="settings_history_household">Todos</string>
+    <string name="settings_history_note">Quién ve lo que reproduces, o Desactivado para no guardar ningún registro. Un cambio se aplica a las reproducciones a partir de ahora; las anteriores conservan quién podía verlas.</string>
     <string name="settings_stored_in">Guardado en</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>

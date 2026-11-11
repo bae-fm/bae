@@ -4,23 +4,25 @@ use std::time::Duration;
 
 impl People {
     /// Capture the person's setting once. A later setting change cannot publish this play.
+    /// `None` when the setting is Off: the play is not recorded at all.
     pub async fn begin_play(
         &self,
         id: uuid::Uuid,
         track_id: &str,
         duration: Option<Duration>,
         started_at: DateTime<Utc>,
-    ) -> Result<HistoryPlay, DbError> {
+    ) -> Result<Option<HistoryPlay>, DbError> {
         let audience = match self.own_person().await? {
             Some(crate::people::Person { profile: Some(profile), membership }) => {
-                HistoryAudience::Person {
-                    person: membership.id,
-                    audience: profile.history_sharing.audience(profile.private_circle),
-                }
+                let Some(audience) = profile.history_sharing.audience(profile.private_circle)
+                else {
+                    return Ok(None);
+                };
+                HistoryAudience::Person { person: membership.id, audience }
             }
             Some(_) | None => HistoryAudience::DevicePrivate,
         };
-        Ok(HistoryPlay {
+        Ok(Some(HistoryPlay {
             entry: HistoryEntry {
                 id,
                 track_id: track_id.to_owned(),
@@ -29,7 +31,7 @@ impl People {
                 audience,
             },
             duration,
-        })
+        }))
     }
 
     /// Upsert the same play as more audio is heard; unqualified skips write no row.

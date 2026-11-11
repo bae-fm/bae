@@ -95189,168 +95189,168 @@
         }
       }
     },
-    "Everyone in the library" : {
+    "Everyone" : {
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "الجميع في المكتبة"
+            "value" : "الجميع"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Всички в библиотеката"
+            "value" : "Всички"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Všichni v knihovně"
+            "value" : "Všichni"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Alle i biblioteket"
+            "value" : "Alle"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Alle in der Bibliothek"
+            "value" : "Alle"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Όλοι στη βιβλιοθήκη"
+            "value" : "Όλοι"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Todos en la biblioteca"
+            "value" : "Todos"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kaikki kirjastossa"
+            "value" : "Kaikki"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tout le monde dans la bibliothèque"
+            "value" : "Tout le monde"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "כולם בספרייה"
+            "value" : "כולם"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Svi u fonoteci"
+            "value" : "Svi"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mindenki a könyvtárban"
+            "value" : "Mindenki"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tutti nella libreria"
+            "value" : "Tutti"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ライブラリの全員"
+            "value" : "全員"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "라이브러리의 모든 사람"
+            "value" : "모든 사람"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Alle i biblioteket"
+            "value" : "Alle"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Iedereen in de bibliotheek"
+            "value" : "Iedereen"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Wszyscy w bibliotece"
+            "value" : "Wszyscy"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Todos na biblioteca"
+            "value" : "Todos"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Todos na biblioteca"
+            "value" : "Todos"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Toată lumea din bibliotecă"
+            "value" : "Toată lumea"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Všetci v knižnici"
+            "value" : "Všetci"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Alla i biblioteket"
+            "value" : "Alla"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kitaplıktaki herkes"
+            "value" : "Herkes"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Усі в бібліотеці"
+            "value" : "Усі"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "库中的所有人"
+            "value" : "所有人"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "資料庫中的所有人"
+            "value" : "所有人"
           }
         }
       }
@@ -95849,6 +95849,172 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "收聽記錄"
+          }
+        }
+      }
+    },
+    "Who sees what you play, or “Off” to keep no record. Applies to new plays; earlier plays keep who could see them." : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "من يرى ما تشغّله، أو «إيقاف» لعدم الاحتفاظ بأي سجل. ينطبق على التشغيلات الجديدة؛ وتحتفظ التشغيلات السابقة بمن كان يمكنه رؤيتها."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Кой вижда какво слушате, или Изкл., за да не се пази запис. Важи за новите изпълнения; по-старите запазват кой е можел да ги вижда."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kdo vidí, co posloucháte, nebo Vypnuto, aby se nic neukládalo. Platí pro nová přehrání; dřívější přehrání si ponechají, kdo je mohl vidět."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hvem der kan se, hvad du afspiller, eller Fra for ikke at gemme noget. Gælder nye afspilninger; tidligere afspilninger beholder, hvem der kunne se dem."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wer sieht, was du abspielst, oder Aus, um nichts aufzuzeichnen. Gilt für neue Wiedergaben; frühere Wiedergaben behalten, wer sie sehen konnte."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ποιος βλέπει τι ακούτε, ή Ανενεργό για να μην κρατείται καταγραφή. Ισχύει για τις νέες αναπαραγωγές· οι προηγούμενες διατηρούν όσους μπορούσαν να τις δουν."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quién ve lo que reproduces, o Desactivado para no guardar ningún registro. Se aplica a las nuevas reproducciones; las anteriores conservan quién podía verlas."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kuka näkee, mitä kuuntelet, tai Pois, jos mitään ei tallenneta. Koskee uusia toistoja; aiemmat toistot säilyttävät sen, ketkä ne näkivät."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Qui voit ce que vous écoutez, ou Désactivé pour ne rien enregistrer. S’applique aux nouvelles lectures ; les lectures précédentes gardent ceux qui pouvaient les voir."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מי רואה מה אתם מנגנים, או כבוי כדי לא לשמור שום רישום. חל על השמעות חדשות; השמעות קודמות שומרות על מי שיכול היה לראות אותן."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tko vidi što slušate, ili Isključeno da se ništa ne bilježi. Vrijedi za nova slušanja; ranija slušanja zadržavaju tko ih je mogao vidjeti."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ki látja, mit hallgatsz, vagy Ki, ha nem akarsz előzményt őrizni. Az új lejátszásokra vonatkozik; a korábbiak megtartják, hogy kik láthatták őket."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chi vede cosa ascolti, oppure Disattivato per non conservare alcuna cronologia. Vale per i nuovi ascolti; quelli precedenti mantengono chi poteva vederli."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "再生した内容を誰に見せるか。履歴を残さない場合は「オフ」を選びます。今後の再生に適用され、これまでの再生は当時の公開範囲のままです。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "재생한 내용을 누가 볼 수 있는지 정합니다. 기록을 남기지 않으려면 끔을 선택하세요. 이후 재생에 적용되며, 이전 재생은 볼 수 있던 사람이 그대로 유지됩니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hvem som ser hva du spiller av, eller Av for å ikke lagre noe. Gjelder nye avspillinger; tidligere avspillinger beholder hvem som kunne se dem."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wie ziet wat je afspeelt, of Uit om niets te bewaren. Geldt voor nieuwe afspeelbeurten; eerdere blijven zichtbaar voor wie ze kon zien."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kto widzi, czego słuchasz, albo Wyłączone, aby nic nie zapisywać. Dotyczy nowych odtworzeń; wcześniejsze zachowują to, kto mógł je zobaczyć."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quem vê o que você toca, ou Desativado para não guardar nenhum registro. Vale para as novas reproduções; as anteriores mantêm quem podia vê-las."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quem vê o que reproduz, ou Desligado para não guardar nenhum registo. Aplica-se às novas reproduções; as anteriores mantêm quem as podia ver."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cine vede ce asculți, sau Oprit pentru a nu păstra nicio înregistrare. Se aplică redărilor noi; cele anterioare păstrează cine le putea vedea."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kto vidí, čo počúvate, alebo Vypnuté, aby sa nič neukladalo. Platí pre nové prehrania; staršie prehrania si ponechajú, kto ich mohol vidieť."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vem som ser vad du spelar, eller Av för att inte spara något. Gäller nya uppspelningar; tidigare uppspelningar behåller vem som kunde se dem."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Çaldıklarınızı kimin gördüğü ya da hiçbir kayıt tutulmaması için Kapalı. Yeni çalmalar için geçerlidir; önceki çalmalar onları kimin görebildiğini korur."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Хто бачить, що ви слухаєте, або Вимкнено, щоб нічого не записувати. Стосується нових відтворень; попередні зберігають тих, хто міг їх бачити."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "谁能看到你播放的内容，选择“关闭”则不保留记录。对之后的播放生效；之前的播放保持原来的可见范围。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "誰能看到你播放的內容，選擇「關閉」則不保留紀錄。對之後的播放生效；之前的播放維持原本的可見範圍。"
           }
         }
       }

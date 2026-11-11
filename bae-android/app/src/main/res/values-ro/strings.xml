@@ -370,8 +370,10 @@
     <string name="settings_library_switch">Comută la altă bibliotecă de pe acest dispozitiv</string>
     <string name="settings_libraries_load_failed">Bibliotecile tale nu au putut fi încărcate.</string>
     <string name="settings_history">Istoric de ascultare</string>
+    <string name="settings_history_off">Oprit</string>
     <string name="settings_history_private">Doar eu</string>
-    <string name="settings_history_household">Toată lumea din bibliotecă</string>
+    <string name="settings_history_household">Toată lumea</string>
+    <string name="settings_history_note">Cine vede ce asculți, sau Oprit pentru a nu păstra nicio înregistrare. O modificare se aplică redărilor de acum încolo; cele anterioare păstrează cine le putea vedea.</string>
     <string name="settings_stored_in">Stocat în</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>

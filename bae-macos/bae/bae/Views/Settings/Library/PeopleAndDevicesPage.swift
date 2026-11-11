@@ -316,7 +316,7 @@ extension PeopleAndDevicesPage {
     // MARK: - You
 
     private var youSection: some View {
-        Section("You") {
+        Section {
             if let profile = store.selfProfile {
                 LabeledContent("Name") {
                     HStack(spacing: ThemeSpace.related) {
@@ -342,8 +342,9 @@ extension PeopleAndDevicesPage {
                         }
                     )
                 ) {
-                    Text("Only me").tag(BridgeSharing.private)
-                    Text("Everyone in the library").tag(BridgeSharing.household)
+                    Text("Off").tag(BridgeHistorySharing.off)
+                    Text("Only me").tag(BridgeHistorySharing.private)
+                    Text("Everyone").tag(BridgeHistorySharing.household)
                 }
                 .disabled(task != nil)
             }
@@ -352,6 +353,14 @@ extension PeopleAndDevicesPage {
                     title: "Devices",
                     value: deviceCount(me.membership),
                     action: { subpage = .devices }
+                )
+            }
+        } header: {
+            Text("You")
+        } footer: {
+            if store.selfProfile != nil {
+                Text(
+                    "Who sees what you play, or “Off” to keep no record. Applies to new plays; earlier plays keep who could see them."
                 )
             }
         }

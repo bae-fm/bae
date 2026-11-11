@@ -31,6 +31,7 @@ import uniffi.bae_bridge.BridgeDownloadCounts
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeFastValue
 import uniffi.bae_bridge.BridgeGallerySource
+import uniffi.bae_bridge.BridgeHistorySharing
 import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeImportDestination
 import uniffi.bae_bridge.BridgeInvite
@@ -719,7 +720,7 @@ internal open class FakeAppHandle(
         unfaked("setAvatar")
     }
 
-    override suspend fun setHistorySharing(sharing: BridgeSharing) {
+    override suspend fun setHistorySharing(sharing: BridgeHistorySharing) {
         unfaked("setHistorySharing")
     }
 

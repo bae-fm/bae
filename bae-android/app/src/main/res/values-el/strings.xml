@@ -363,8 +363,10 @@
     <string name="settings_library_switch">Εναλλαγή σε άλλη βιβλιοθήκη σε αυτή τη συσκευή</string>
     <string name="settings_libraries_load_failed">Δεν ήταν δυνατή η φόρτωση των βιβλιοθηκών σας.</string>
     <string name="settings_history">Ιστορικό ακρόασης</string>
+    <string name="settings_history_off">Ανενεργό</string>
     <string name="settings_history_private">Μόνο εγώ</string>
-    <string name="settings_history_household">Όλοι στη βιβλιοθήκη</string>
+    <string name="settings_history_household">Όλοι</string>
+    <string name="settings_history_note">Ποιος βλέπει τι ακούτε, ή Ανενεργό για να μην κρατείται καταγραφή. Μια αλλαγή ισχύει για τις αναπαραγωγές από εδώ και πέρα· οι προηγούμενες διατηρούν όσους μπορούσαν να τις δουν.</string>
     <string name="settings_stored_in">Αποθηκεύεται σε</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>

@@ -101,7 +101,9 @@ impl PlaybackService {
         let duration = cur.prepared.timeline.duration();
         let now = self.clock.now();
         match self.people.begin_play(self.ids.new_id(), &track, duration, now).await {
-            Ok(play) => {
+            // The person keeps no listening history: nothing of this play is metered.
+            Ok(None) => true,
+            Ok(Some(play)) => {
                 let meter = if self.renderer.is_remote() {
                     ListeningMeter::Remote { position, reported_at: now }
                 } else {

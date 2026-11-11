@@ -365,8 +365,10 @@
     <string name="settings_library_switch">Превключване към друга библиотека на това устройство</string>
     <string name="settings_libraries_load_failed">Библиотеките ви не могат да бъдат заредени.</string>
     <string name="settings_history">История на слушането</string>
+    <string name="settings_history_off">Изкл.</string>
     <string name="settings_history_private">Само аз</string>
-    <string name="settings_history_household">Всички в библиотеката</string>
+    <string name="settings_history_household">Всички</string>
+    <string name="settings_history_note">Кой вижда какво слушате, или Изкл., за да не се пази запис. Промяната важи за изпълненията оттук нататък; по-старите запазват кой е можел да ги вижда.</string>
     <string name="settings_stored_in">Съхранява се в</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>

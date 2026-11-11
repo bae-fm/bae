@@ -11,6 +11,17 @@ mirror_enum! { BridgeSharing = bae_people::people::Sharing,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeHistorySharing {
+    Off,
+    Private,
+    Household,
+}
+mirror_enum! { BridgeHistorySharing = bae_people::people::HistorySharing,
+    from_core: pub(crate) fn, into_core: pub(crate) fn,
+    variants: { Off, Private, Household },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeStars {
     One,
     Two,
@@ -52,7 +63,7 @@ pub struct BridgePersonProfile {
     pub id: String,
     pub name: String,
     pub private_circle: String,
-    pub history_sharing: BridgeSharing,
+    pub history_sharing: BridgeHistorySharing,
     /// The version of the person's avatar, which an app caches the image
     /// `AppHandle::avatar` reads under; it moves whenever the avatar's bytes
     /// do, and when an avatar this device couldn't read becomes readable, as
@@ -67,7 +78,7 @@ impl BridgePersonProfile {
             id: id.0.to_string(),
             name,
             private_circle: private_circle.0.to_string(),
-            history_sharing: BridgeSharing::from_core(history_sharing),
+            history_sharing: BridgeHistorySharing::from_core(history_sharing),
             avatar_version: avatar.map(|avatar| avatar.version),
         }
     }

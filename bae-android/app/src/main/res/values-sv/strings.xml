@@ -363,8 +363,10 @@
     <string name="settings_library_switch">Byt till ett annat bibliotek på den här enheten</string>
     <string name="settings_libraries_load_failed">Dina bibliotek kunde inte läsas in.</string>
     <string name="settings_history">Lyssningshistorik</string>
+    <string name="settings_history_off">Av</string>
     <string name="settings_history_private">Bara jag</string>
-    <string name="settings_history_household">Alla i biblioteket</string>
+    <string name="settings_history_household">Alla</string>
+    <string name="settings_history_note">Vem som ser vad du spelar, eller Av för att inte spara något. En ändring gäller uppspelningar från och med nu; tidigare uppspelningar behåller vem som kunde se dem.</string>
     <string name="settings_stored_in">Lagras i</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>

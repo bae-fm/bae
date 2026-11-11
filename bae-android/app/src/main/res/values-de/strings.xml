@@ -365,8 +365,10 @@
     <string name="settings_library_switch">Zu einer anderen Bibliothek auf diesem Gerät wechseln</string>
     <string name="settings_libraries_load_failed">Deine Mediatheken konnten nicht geladen werden.</string>
     <string name="settings_history">Hörverlauf</string>
+    <string name="settings_history_off">Aus</string>
     <string name="settings_history_private">Nur ich</string>
-    <string name="settings_history_household">Alle in der Bibliothek</string>
+    <string name="settings_history_household">Alle</string>
+    <string name="settings_history_note">Wer sieht, was du abspielst, oder Aus, um nichts aufzuzeichnen. Eine Änderung gilt für Wiedergaben ab jetzt; frühere Wiedergaben behalten, wer sie sehen konnte.</string>
     <string name="settings_stored_in">Gespeichert in</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>

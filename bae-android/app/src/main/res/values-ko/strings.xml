@@ -358,8 +358,10 @@
     <string name="settings_library_switch">이 기기의 다른 라이브러리로 전환</string>
     <string name="settings_libraries_load_failed">보관함을 불러올 수 없습니다.</string>
     <string name="settings_history">감상 기록</string>
+    <string name="settings_history_off">끔</string>
     <string name="settings_history_private">나만</string>
-    <string name="settings_history_household">라이브러리의 모든 사람</string>
+    <string name="settings_history_household">모든 사람</string>
+    <string name="settings_history_note">재생한 내용을 누가 볼 수 있는지 정합니다. 기록을 남기지 않으려면 끔을 선택하세요. 변경 사항은 이후 재생에 적용되며, 이전 재생은 볼 수 있던 사람이 그대로 유지됩니다.</string>
     <string name="settings_stored_in">저장 위치</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>

@@ -370,8 +370,10 @@
     <string name="settings_library_switch">Passer à une autre bibliothèque de cet appareil</string>
     <string name="settings_libraries_load_failed">Impossible de charger vos bibliothèques.</string>
     <string name="settings_history">Historique d’écoute</string>
+    <string name="settings_history_off">Désactivé</string>
     <string name="settings_history_private">Moi uniquement</string>
-    <string name="settings_history_household">Tout le monde dans la bibliothèque</string>
+    <string name="settings_history_household">Tout le monde</string>
+    <string name="settings_history_note">Qui voit ce que vous écoutez, ou Désactivé pour ne rien enregistrer. Un changement s’applique aux lectures à partir de maintenant ; les lectures précédentes gardent ceux qui pouvaient les voir.</string>
     <string name="settings_stored_in">Stocké dans</string>
     <string name="storage_location_account">%1$s : %2$s</string>
     <string name="storage_location_bucket">%1$s : %2$s (%3$s)</string>

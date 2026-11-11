@@ -2,7 +2,7 @@
 //! request coven's operation answers, and the write that ends it (§5.4).
 
 use bae_library::test_libraries::{connect_storage, requested_profile, storage_library};
-use bae_people::people::{ProfileError, Sharing};
+use bae_people::people::{HistorySharing, ProfileError};
 
 /// Robin asks for her profile with sync stopped. The write journals her
 /// private circle and records the request, offline too; she has no profile
@@ -34,7 +34,11 @@ async fn a_profile_asked_for_offline_is_written_once_its_circle_lands() {
     .await;
     // A play before any profile stays on this device.
     let started = "2026-10-18T16:00:00Z".parse().unwrap();
-    let mut played = people.begin_play(play.parse().unwrap(), &track, None, started).await.unwrap();
+    let mut played = people
+        .begin_play(play.parse().unwrap(), &track, None, started)
+        .await
+        .unwrap()
+        .expect("recorded");
     played.set_played(std::time::Duration::from_secs(30));
     assert!(people.record_play(&played).await.unwrap());
 
@@ -61,7 +65,7 @@ async fn a_profile_asked_for_offline_is_written_once_its_circle_lands() {
 
     let profile = requested_profile(library.manager(), library.people()).await;
     assert_eq!(profile.name, "Robin");
-    assert_eq!(profile.history_sharing, Sharing::Private);
+    assert_eq!(profile.history_sharing, HistorySharing::Private);
     let members = db
         .query_texts_for_test(&format!(
             "SELECT member FROM coven_circle_members WHERE circle = '{}'",
