@@ -112,7 +112,7 @@ struct SubsonicSettingsContent: View {
                 }
             } footer: {
                 Text(
-                    "The password is stored in the keyring, not in the config file. Clients authenticate with the username and password."
+                    "The password is kept in this Mac’s keychain. Clients sign in with the username and password."
                 )
                 .fieldNote()
             }

@@ -80201,175 +80201,175 @@
         }
       }
     },
-    "The password is stored in the keyring, not in the config file. Clients authenticate with the username and password." : {
+    "The password is kept in this Mac’s keychain. Clients sign in with the username and password." : {
       "comment" : "Subsonic settings: password section footer",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "تُخزَّن كلمة السر في حلقة المفاتيح، لا في ملف التكوين. تُوثِّق البرامج العميلة نفسها باسم المستخدم وكلمة السر."
+            "value" : "تُحفظ كلمة السر في سلسلة مفاتيح هذا الـ Mac. تُسجّل البرامج العميلة الدخول باسم المستخدم وكلمة السر."
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Паролата се съхранява в ключодържателя, а не в конфигурационния файл. Клиентите се удостоверяват с потребителското име и паролата."
+            "value" : "Паролата се пази в ключодържателя на този Mac. Клиентите влизат с потребителското име и паролата."
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Heslo je uloženo v klíčence, ne v konfiguračním souboru. Klienti se ověřují uživatelským jménem a heslem."
+            "value" : "Heslo je uloženo v klíčence tohoto Macu. Klienti se přihlašují uživatelským jménem a heslem."
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Adgangskoden gemmes i nøgleringen, ikke i konfigurationsfilen. Klienterne godkendes med brugernavnet og adgangskoden."
+            "value" : "Adgangskoden opbevares i denne Macs nøglering. Klienterne logger ind med brugernavnet og adgangskoden."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The password is stored in the keyring, not in the config file. Clients authenticate with the username and password."
+            "value" : "The password is kept in this Mac’s keychain. Clients sign in with the username and password."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Das Passwort liegt im Schlüsselbund, nicht in der Konfigurationsdatei. Clients authentifizieren sich mit Benutzername und Passwort."
+            "value" : "Das Passwort wird im Schlüsselbund dieses Mac aufbewahrt. Clients melden sich mit Benutzername und Passwort an."
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ο κωδικός πρόσβασης αποθηκεύεται στο μπρελόκ, όχι στο αρχείο διαμόρφωσης. Οι πελάτες πιστοποιούνται με το όνομα χρήστη και τον κωδικό πρόσβασης."
+            "value" : "Ο κωδικός πρόσβασης φυλάσσεται στην Κλειδοθήκη αυτού του Mac. Οι πελάτες συνδέονται με το όνομα χρήστη και τον κωδικό πρόσβασης."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La contraseña se guarda en el llavero, no en el archivo de configuración. Los clientes se autentican con el nombre de usuario y la contraseña."
+            "value" : "La contraseña se guarda en el llavero de este Mac. Los clientes inician sesión con el nombre de usuario y la contraseña."
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Salasana tallennetaan avainnippuun, ei asetustiedostoon. Asiakkaat tunnistautuvat käyttäjätunnuksella ja salasanalla."
+            "value" : "Salasana säilytetään tämän Macin avainnipussa. Asiakkaat kirjautuvat sisään käyttäjätunnuksella ja salasanalla."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Le mot de passe est stocké dans le trousseau, pas dans le fichier de configuration. Les clients s'authentifient avec le nom d'utilisateur et le mot de passe."
+            "value" : "Le mot de passe est conservé dans le trousseau de ce Mac. Les clients se connectent avec le nom d’utilisateur et le mot de passe."
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "הסיסמה נשמרת במחזיק המפתחות, לא בקובץ התצורה. לקוחות מזדהים עם שם המשתמש והסיסמה."
+            "value" : "הסיסמה נשמרת בצרור המפתחות של ה-Mac הזה. לקוחות מתחברים עם שם המשתמש והסיסמה."
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lozinka se pohranjuje u privjesku ključeva, ne u konfiguracijskoj datoteci. Klijenti se autentificiraju korisničkim imenom i lozinkom."
+            "value" : "Lozinka se čuva u privjesku ključeva ovog Maca. Klijenti se prijavljuju korisničkim imenom i lozinkom."
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A jelszó a kulcstartóban tárolódik, nem a konfigurációs fájlban. A kliensek felhasználónévvel és jelszóval hitelesítenek."
+            "value" : "A jelszó a Mac kulcstartójában van tárolva. A kliensek felhasználónévvel és jelszóval jelentkeznek be."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La password è conservata nel portachiavi, non nel file di configurazione. I client si autenticano con nome utente e password."
+            "value" : "La password viene conservata nel portachiavi di questo Mac. I client accedono con nome utente e password."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "パスワードは構成ファイルではなくキーリングに保存されます。クライアントはユーザー名とパスワードで認証します。"
+            "value" : "パスワードはこの Mac のキーチェーンに保管されます。クライアントはユーザー名とパスワードでサインインします。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "암호는 구성 파일이 아닌 키링에 저장됩니다. 클라이언트는 사용자 이름과 암호로 인증합니다."
+            "value" : "암호는 이 Mac의 키체인에 보관됩니다. 클라이언트는 사용자 이름과 암호로 로그인합니다."
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Passordet lagres i nøkkelringen, ikke i oppsettfilen. Klientene autentiseres med brukernavnet og passordet."
+            "value" : "Passordet lagres i nøkkelringen på denne Macen. Klientene logger inn med brukernavnet og passordet."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Het wachtwoord staat in de sleutelring, niet in het configuratiebestand. Clients verifiëren zich met de gebruikersnaam en het wachtwoord."
+            "value" : "Het wachtwoord wordt bewaard in de sleutelhanger van deze Mac. Clients loggen in met de gebruikersnaam en het wachtwoord."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hasło jest przechowywane w pęku kluczy, nie w pliku konfiguracyjnym. Klienci uwierzytelniają się nazwą użytkownika i hasłem."
+            "value" : "Hasło jest przechowywane w pęku kluczy tego Maca. Klienci logują się nazwą użytkownika i hasłem."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A senha fica armazenada no chaveiro, não no arquivo de configuração. Os clientes se autenticam com o nome de usuário e a senha."
+            "value" : "A senha fica guardada no chaveiro deste Mac. Os clientes entram com o nome de usuário e a senha."
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A palavra-passe fica guardada no porta-chaves, não no ficheiro de configuração. Os clientes autenticam-se com o nome de utilizador e a palavra-passe."
+            "value" : "A palavra-passe é guardada na keychain deste Mac. Os clientes iniciam sessão com o nome de utilizador e a palavra-passe."
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Parola este stocată în breloc, nu în fișierul de configurare. Clienții se autentifică cu numele de utilizator și parola."
+            "value" : "Parola este păstrată în Keychain-ul acestui Mac. Clienții se conectează cu numele de utilizator și parola."
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Heslo je uložené v kľúčenke, nie v konfiguračnom súbore. Klienti sa overujú menom a heslom."
+            "value" : "Heslo sa uchováva v kľúčenke tohto Macu. Klienti sa prihlasujú menom a heslom."
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lösenordet sparas i nyckelringen, inte i konfigurationsfilen. Klienterna autentiserar sig med användarnamnet och lösenordet."
+            "value" : "Lösenordet sparas i nyckelringen på den här Macen. Klienterna loggar in med användarnamnet och lösenordet."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Parola yapılandırma dosyasında değil, anahtarlıkta saklanır. İstemciler kullanıcı adı ve parolayla kimlik doğrular."
+            "value" : "Parola bu Mac’in anahtar zincirinde saklanır. İstemciler kullanıcı adı ve parolayla oturum açar."
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Пароль зберігається у в'язці ключів, а не у файлі конфігурації. Клієнти автентифікуються за іменем користувача та паролем."
+            "value" : "Пароль зберігається у в’язці ключів цього Mac. Клієнти входять за іменем користувача та паролем."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "密码存储在密钥环中，而不是配置文件里。客户端使用用户名和密码进行认证。"
+            "value" : "密码保存在这台 Mac 的钥匙串中。客户端使用用户名和密码登录。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "密碼儲存於鑰匙圈中，而非設定檔。用戶端以使用者名稱與密碼進行驗證。"
+            "value" : "密碼保存在這台 Mac 的鑰匙圈中。用戶端以使用者名稱與密碼登入。"
           }
         }
       }
