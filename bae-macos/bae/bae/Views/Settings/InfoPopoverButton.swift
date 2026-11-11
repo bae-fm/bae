@@ -40,7 +40,6 @@ struct MusicBrainzInfoTip: View {
             Text(
                 "[MusicBrainz](https://musicbrainz.org) is an open music database that anyone can add to and edit."
             )
-            Text("It takes one request a second and is sometimes unavailable.")
             Text("It needs no account or key.")
         }
     }
@@ -52,9 +51,6 @@ struct DiscogsInfoTip: View {
         InfoPopoverButton(label: "About Discogs") {
             Text(
                 "[Discogs](https://www.discogs.com) is a music database with detailed release info."
-            )
-            Text(
-                "It takes one request a second and is more available than MusicBrainz."
             )
             VStack(alignment: .leading, spacing: 0) {
                 Text(
