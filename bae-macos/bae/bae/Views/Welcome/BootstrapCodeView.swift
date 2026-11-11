@@ -3,7 +3,7 @@ import SwiftUI
 
 /// Restores a library over this device's copy, or from a code saved in iCloud
 /// Keychain. The code is typed, pasted or scanned, or is the saved one; it
-/// waits for Restore. coven runs any provider sign-in in the browser.
+/// is read when the person chooses Restore. coven runs any provider sign-in in the browser.
 struct BootstrapCodeView: View {
     let onBack: () -> Void
 
@@ -94,15 +94,14 @@ struct BootstrapCodeView: View {
                     }
                 }
                 .buttonStyle(.bordered)
-                Button(primaryTitle) { form.start() }
+                Button(primaryTitle) { form.submit() }
                     .buttonStyle(PrimaryButtonStyle())
-                    .disabled(!form.ready)
+                    .disabled(!form.canContinue)
                     .keyboardShortcut(.defaultAction)
             }
             .padding(.bottom, ThemeSpace.section)
         }
         .padding(.horizontal)
-        .onChange(of: form.codeInput) { form.decodeCode() }
         .sheet(isPresented: $showScanner) {
             CodeScannerSheet(
                 onScan: { code in

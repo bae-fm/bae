@@ -210,6 +210,54 @@ struct BootstrapCodeFormTests {
         #expect(await codes.next() == Self.code)
     }
 
+    @Test("a code on the restore screen is read when the person continues")
+    func restoreScreenReadsOnContinue() {
+        let form = form(
+            reading: Self.restoreCode(carriesS3Key: false),
+            entry: .restoreOver(libraryId: "library-1")
+        )
+
+        form.edit(code: Self.code)
+
+        #expect(form.attempt == nil)
+        #expect(form.canContinue)
+
+        form.submit()
+
+        #expect(form.attempt?.needsS3Key == true)
+        #expect(!form.canContinue)
+    }
+
+    @Test("continuing with a code that does not read says so")
+    func continuingWithAnUnreadableCode() {
+        let host = host
+        let form = BootstrapCodeForm(
+            entry: .restoreOver(libraryId: "library-1"),
+            decodeCode: { _ in throw CocoaError(.fileReadCorruptFile) },
+            makeBootstrap: {
+                LibraryBootstrap(host: host, deviceName: "Test Mac")
+            },
+            unfinishedJoins: { [] },
+            unfinishedRestores: { [] },
+            onLibraryReady: { _, _ in }
+        )
+
+        form.edit(code: "half a code")
+
+        #expect(form.decodeError == nil)
+
+        form.submit()
+
+        #expect(form.decodeError != nil)
+    }
+
+    @Test("an empty field cannot continue")
+    func emptyFieldCannotContinue() {
+        let form = form(reading: Self.restoreCode(carriesS3Key: true))
+
+        #expect(!form.canContinue)
+    }
+
     @Test("a typed code shows in groups of four")
     func typedCodeShowsInGroups() {
         let form = form(reading: Self.restoreCode(carriesS3Key: true))

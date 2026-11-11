@@ -2778,7 +2778,9 @@ under way, whose code bae kept, offers **Join** there to resume it. On Android t
 code screen calls a restore code's action adding this device: the button is
 **Add**, and a typed restore code waits for it. A saved code, in iCloud Keychain
 or on an Android phone, and a restore over this device's copy (§6.4), say
-**Restore**. A scanned code on Android starts at once, as an invite does, and
+**Restore**. On a Mac the restore over this device's copy reads its code
+when the person chooses **Restore**, not as it is typed, so a half-typed code
+shows no error; **Restore** is off until the field holds something. A scanned code on Android starts at once, as an invite does, and
 only an S3 code without the key stops first, to ask for it over the access
 key's two fields. A code that doesn't read says so on the code screen, and a
 restore that fails shows its error beside **Add**, to try again.

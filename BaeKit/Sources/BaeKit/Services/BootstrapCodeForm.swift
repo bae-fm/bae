@@ -185,6 +185,26 @@ public final class BootstrapCodeForm {
         return true
     }
 
+    /// Whether the primary action can run: the attempt has what it needs, or
+    /// a code is typed that it would read first.
+    public var canContinue: Bool {
+        if attempt != nil { return ready }
+        return !isRunning
+            && !codeAsEntered(text: codeInput).isEmpty
+    }
+
+    /// The primary action of a screen that reads the typed code only when the
+    /// person chooses it: start the attempt, or read the code first, which
+    /// starts it unless it still needs the S3 key.
+    public func submit() {
+        if attempt != nil {
+            start()
+        }
+        else {
+            acceptCode(codeInput)
+        }
+    }
+
     /// Take `text`, a scanned QR code or a code the person chose Continue on,
     /// and go on at once: an invite joins, and a restore starts, unless it
     /// is an S3 code without the key, which waits for the key. A code from
