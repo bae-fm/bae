@@ -48,7 +48,6 @@ import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.appearance.colors
 import fm.bae.app.ui.components.CardRow
 import fm.bae.app.ui.components.ErrorNotice
-import fm.bae.app.ui.components.Eyebrow
 import fm.bae.app.ui.components.RadioRow
 import fm.bae.app.ui.components.RowCard
 import fm.bae.app.ui.components.cardRowDivider
@@ -80,7 +79,6 @@ internal fun AppearanceSection() {
         modifier = Modifier.fillMaxWidth().padding(ThemeSpace.edge),
         verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
     ) {
-        Eyebrow(text = stringResource(R.string.appearance_title))
         RowCard {
             AppearancePicker(
                 title = stringResource(R.string.appearance_theme),

@@ -39,68 +39,6 @@ struct AppearanceRenderingTests {
             }
         }
     }
-
-    /// The segmented mode picker fills its selected segment with the accent's
-    /// button fill, which carries white labels, not the lighter accent used
-    /// for text.
-    ///
-    /// Stated as the colour the control is handed rather than read back from
-    /// its pixels: AppKit paints a segment's fill only while its window is
-    /// key in the active app, which a test host behind whatever the person
-    /// running the suite is working in never is, and which SwiftUI's
-    /// `controlActiveState` does not stand in for.
-    @Test(
-        "The selected mode uses the swatch fill, not the text accent",
-        arguments: [AppearanceMode.system, .dark]
-    )
-    func selectedModeFill(mode: AppearanceMode) async throws {
-        let suite = "fm.bae.tests.appearance-controls"
-        let defaults = try #require(UserDefaults(suiteName: suite))
-        defer { defaults.removePersistentDomain(forName: suite) }
-        defaults.set(mode.rawValue, forKey: "appearance.mode")
-        defaults.set("blue", forKey: "appearance.accent")
-        let size = NSSize(width: 500, height: 300)
-        try await SnapshotTestSupport.withHostedWindow(
-            AppearanceSettingsTab().appAppearance()
-                .defaultAppStorage(defaults),
-            size: size
-        ) { _, host in
-            try await SnapshotTestSupport.settle(host)
-            let picker = try #require(
-                SnapshotTestSupport.descendants(of: host)
-                    .compactMap { $0 as? NSSegmentedControl }
-                    .first
-            )
-            let space = try #require(NSColorSpace.extendedSRGB)
-            let bezel = try #require(
-                picker.selectedSegmentBezelColor?.usingColorSpace(space)
-            )
-            let fill = try #require(
-                NSColor(AccentChoice.blue.buttonColor).usingColorSpace(space)
-            )
-            let text = try #require(
-                NSColor(AccentChoice.blue.color(in: .dark))
-                    .usingColorSpace(space)
-            )
-            #expect(
-                distance(bezel, fill) < 0.01,
-                "bezel \(bezel), fill \(fill)"
-            )
-            #expect(
-                distance(bezel, text) > 0.03,
-                "bezel \(bezel), text \(text)"
-            )
-        }
-    }
-
-    /// How far apart two colours' components are, both in one colour space.
-    private func distance(_ a: NSColor, _ b: NSColor) -> CGFloat {
-        max(
-            abs(a.redComponent - b.redComponent),
-            abs(a.greenComponent - b.greenComponent),
-            abs(a.blueComponent - b.blueComponent)
-        )
-    }
 }
 
 /// The appearance an open view was last handed.

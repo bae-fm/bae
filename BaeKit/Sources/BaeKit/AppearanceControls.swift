@@ -14,8 +14,6 @@ public struct AppearanceControls: View {
         } label: {
             Text("Theme", tableName: "Appearance", bundle: .module)
         }
-        .pickerStyle(.segmented)
-        .tint(preferences.accent.buttonColor)
 
         Picker(selection: preferences.$tone) {
             ForEach(SurfaceTone.allCases, id: \.self) { tone in
