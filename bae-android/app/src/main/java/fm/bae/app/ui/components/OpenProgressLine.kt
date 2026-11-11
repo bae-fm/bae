@@ -30,7 +30,7 @@ internal fun OpenProgressLine(
     idle: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
-    StepProgressLine(
+    AndroidProgress(
         steps = steps,
         title = { context.coreString(bridgeOpenStepKey(it.step)) },
         fraction = { if (it.total > 0uL) it.done.toDouble() / it.total.toDouble() else 0.0 },

@@ -3,7 +3,7 @@ package fm.bae.app.ui.settings
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import fm.bae.app.coreString
-import fm.bae.app.ui.components.StepProgressLine
+import fm.bae.app.ui.components.AndroidProgress
 import fm.bae.fastvalues.LatestSource
 import uniffi.bae_bridge.BridgeStorageSetupProgress
 import uniffi.bae_bridge.bridgeStorageSetupStepKey
@@ -16,7 +16,7 @@ import uniffi.bae_bridge.bridgeStorageSetupStepKey
 @Composable
 internal fun StorageSetupLine(steps: LatestSource<BridgeStorageSetupProgress>) {
     val context = LocalContext.current
-    StepProgressLine(
+    AndroidProgress(
         steps = steps,
         title = { context.coreString(bridgeStorageSetupStepKey(it.step)) },
         fraction = { if (it.total > 1uL) it.done.toDouble() / it.total.toDouble() else null },

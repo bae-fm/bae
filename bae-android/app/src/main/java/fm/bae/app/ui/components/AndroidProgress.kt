@@ -37,7 +37,7 @@ private const val BAR_MAX = 10_000
  * spinner beside it already says it runs.
  */
 @Composable
-internal fun <Step : Any> StepProgressLine(
+internal fun <Step : Any> AndroidProgress(
     steps: LatestSource<Step>?,
     title: (Step) -> String,
     fraction: (Step) -> Double?,
@@ -153,3 +153,9 @@ internal class StepProgressView<Step : Any>(
         post { onStepping(started) }
     }
 }
+
+/** [done] of [total] as a bar's fraction, or null when [total] counts nothing. */
+internal fun stepFraction(
+    done: ULong,
+    total: ULong,
+): Float? = if (total == 0uL) null else minOf(done, total).toFloat() / total.toFloat()

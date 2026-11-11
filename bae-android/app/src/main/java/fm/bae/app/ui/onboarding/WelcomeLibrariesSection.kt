@@ -28,6 +28,7 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidCard
 import fm.bae.app.ui.components.AndroidNotice
+import fm.bae.app.ui.components.AndroidProgress
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidSection
 import fm.bae.app.ui.components.AndroidSpinner
@@ -35,7 +36,6 @@ import fm.bae.app.ui.components.LibraryEnding
 import fm.bae.app.ui.components.MoreMenu
 import fm.bae.app.ui.components.OpenProgressLine
 import fm.bae.app.ui.components.RemoveLibraryDialog
-import fm.bae.app.ui.components.StepProgressLine
 import fm.bae.app.ui.settings.libraryDetail
 import uniffi.bae_bridge.BridgeDropboxLocation
 import uniffi.bae_bridge.BridgeLibrary
@@ -231,7 +231,7 @@ private fun RunningLibraryRow(
     AndroidRow(
         title = library.name,
         subtitleContent = {
-            StepProgressLine(
+            AndroidProgress(
                 steps = running.closing,
                 title = { context.coreString(bridgeClosingStepKey(it)) },
                 fraction = { null },

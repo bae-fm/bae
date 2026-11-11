@@ -16,9 +16,9 @@ import fm.bae.app.AppScreen
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.ui.appearance.ThemeSpace
+import fm.bae.app.ui.components.AndroidProgress
 import fm.bae.app.ui.components.AndroidSpinner
 import fm.bae.app.ui.components.OpenProgressLine
-import fm.bae.app.ui.components.StepProgressLine
 import fm.bae.app.ui.components.stepFraction
 import fm.bae.app.ui.onboarding.ResettingScreen
 import fm.bae.fastvalues.LatestSource
@@ -101,7 +101,7 @@ internal fun ClosingScreen(
 ) {
     val context = LocalContext.current
     Box(modifier = Modifier.fillMaxSize().padding(ThemeSpace.page), contentAlignment = Alignment.Center) {
-        StepProgressLine(
+        AndroidProgress(
             steps = steps,
             title = { context.coreString(stepKey(it)) },
             fraction = { null },
@@ -126,7 +126,7 @@ internal fun SetupStepScreen(
 ) {
     val context = LocalContext.current
     Box(modifier = Modifier.fillMaxSize().padding(ThemeSpace.page), contentAlignment = Alignment.Center) {
-        StepProgressLine(
+        AndroidProgress(
             steps = steps,
             title = { context.coreString(stepKey(it.step)) },
             fraction = { stepFraction(it.done, it.total)?.toDouble() },

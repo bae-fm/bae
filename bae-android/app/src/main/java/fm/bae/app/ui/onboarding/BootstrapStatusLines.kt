@@ -24,8 +24,8 @@ import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.AndroidProgress
 import fm.bae.app.ui.components.AndroidSpinner
-import fm.bae.app.ui.components.StepProgressLine
 import fm.bae.app.ui.components.stepFraction
 import fm.bae.fastvalues.LatestSource
 import uniffi.bae_bridge.BridgeBootstrapStatus
@@ -51,7 +51,7 @@ internal fun BootstrapStepLine(
     idle: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
-    StepProgressLine(
+    AndroidProgress(
         steps = steps,
         title = { step ->
             when (step) {
