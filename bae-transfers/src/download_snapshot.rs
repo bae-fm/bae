@@ -52,19 +52,19 @@ pub struct DownloadProgressError {
     problem: &'static str,
 }
 
-/// Where a download began, what its rate is measured from: the time it
-/// began and the bytes it held then, beside the bytes it last held. The bytes
+/// Where a download began, what its rate is measured from: the time on
+/// coven's monotonic clock (`elapsed()`) it began and the bytes it held then, beside the bytes it last held. The bytes
 /// a download holds move as each file lands, so its rate is what it moved
 /// since it began over the time since.
 #[derive(Debug, Clone, Copy)]
 pub struct DownloadRate {
-    began: std::time::SystemTime,
+    began: std::time::Duration,
     bytes_then: u64,
     bytes_last: u64,
 }
 
 impl DownloadRate {
-    pub fn begin(now: std::time::SystemTime, bytes_done: u64) -> Self {
+    pub fn begin(now: std::time::Duration, bytes_done: u64) -> Self {
         Self { began: now, bytes_then: bytes_done, bytes_last: bytes_done }
     }
 
@@ -74,14 +74,14 @@ impl DownloadRate {
     pub fn measure(
         &mut self,
         progress: DownloadTransferProgress,
-        now: std::time::SystemTime,
+        now: std::time::Duration,
     ) -> DownloadTransferProgress {
         if progress.bytes_done < self.bytes_last {
             *self = Self::begin(now, progress.bytes_done);
         }
         self.bytes_last = progress.bytes_done;
         let moved = progress.bytes_done - self.bytes_then;
-        let elapsed = now.duration_since(self.began).expect("download clock regressed");
+        let elapsed = now.checked_sub(self.began).expect("download clock regressed");
         let throughput_bps = (moved > 0 && !elapsed.is_zero())
             .then(|| (moved as f64 / elapsed.as_secs_f64()) as u64);
         DownloadTransferProgress { throughput_bps, ..progress }

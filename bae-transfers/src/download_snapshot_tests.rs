@@ -1,5 +1,5 @@
 use super::*;
-use std::time::{Duration, SystemTime};
+use std::time::Duration;
 
 fn progress(bytes_done: u64) -> DownloadTransferProgress {
     DownloadTransferProgress::new("release", bytes_done, 1_000).unwrap()
@@ -10,7 +10,7 @@ fn progress(bytes_done: u64) -> DownloadTransferProgress {
 /// again.
 #[test]
 fn a_download_rate_counts_from_where_it_began() {
-    let began = SystemTime::UNIX_EPOCH + Duration::from_secs(100);
+    let began = Duration::from_secs(100);
     let mut rate = DownloadRate::begin(began, 100);
     assert_eq!(rate.measure(progress(100), began).throughput_bps, None);
     let later = began + Duration::from_secs(2);

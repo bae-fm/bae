@@ -169,7 +169,7 @@ impl LibraryManager {
                     return Ok(());
                 };
                 let next = bae_transfers::DownloadTransferProgress::new(&release, bytes, total)?;
-                let now = manager.clock.now();
+                let now = manager.clock.elapsed();
                 let next = rate
                     .get_or_insert_with(|| bae_transfers::DownloadRate::begin(now, next.bytes_done))
                     .measure(next, now);
