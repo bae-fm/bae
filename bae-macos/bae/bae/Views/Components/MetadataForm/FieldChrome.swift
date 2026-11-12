@@ -40,6 +40,17 @@ struct FieldChrome: ViewModifier {
                 RoundedRectangle(cornerRadius: cornerRadius)
                     .strokeBorder(ring, lineWidth: ringWidth)
             }
+            .overlay {
+                if let halo {
+                    // Outside the edge, as the boards draw it.
+                    RoundedRectangle(
+                        cornerRadius: cornerRadius + Self.haloWidth / 2
+                    )
+                    .stroke(halo, lineWidth: Self.haloWidth)
+                    .padding(-Self.haloWidth / 2)
+                    .allowsHitTesting(false)
+                }
+            }
             .onHover { hovering = $0 }
             .onChange(of: hovering && style == .inline) { _, wantsIBeam in
                 // The I-beam covers the inline field's padding too.
@@ -99,21 +110,33 @@ struct FieldChrome: ViewModifier {
         }
     }
 
-    /// The field's edge: the accent while focused; at rest none in Dark, where
-    /// the fill already sets a boxed field apart, and a soft line in Light.
+    /// The field's edge: red while it holds something that cannot be kept;
+    /// otherwise, for an inline field, the accent while focused; at rest none
+    /// in Dark, where the fill already sets a boxed field apart, and a soft
+    /// line in Light.
     private var ring: Color {
         switch style {
         case .boxed, .boxedMultiline:
-            invalid ? Theme.danger : focused ? Theme.accent : Theme.fieldEdge
+            invalid ? Theme.danger : Theme.fieldEdge
         case .inline:
             focused ? Theme.accent : .clear
         }
     }
 
-    private var ringWidth: CGFloat {
+    private var ringWidth: CGFloat { 1 }
+
+    /// The width of the glow a boxed field draws outside its edge.
+    private static let haloWidth: CGFloat = 3
+
+    /// A boxed field's glow outside its edge: red at 35% while it holds
+    /// something that cannot be kept, else the accent at 45% while focused.
+    private var halo: Color? {
         switch style {
-        case .boxed, .boxedMultiline: focused ? 1.5 : 1
-        case .inline: 1
+        case .boxed, .boxedMultiline:
+            if invalid { return Theme.danger.opacity(0.35) }
+            return focused ? Theme.accent.opacity(0.45) : nil
+        case .inline:
+            return nil
         }
     }
 }
