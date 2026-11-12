@@ -35,6 +35,13 @@ extension View {
 }
 
 extension View {
+    /// Places a filled notice in a settings box as the boards do: no space
+    /// above it, 12 below, and the line above it kept; the notice has its own
+    /// padding.
+    func settingsNoticeRow() -> some View {
+        settingsRowInset(0).padding(.bottom, ThemeSpace.group)
+    }
+
     /// Sets the space over and under this row's content, for a row that holds
     /// a field.
     func settingsRowInset(_ inset: CGFloat) -> some View {

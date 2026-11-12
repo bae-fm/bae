@@ -50,6 +50,9 @@ struct SubsonicSettingsContent: View {
     @State
     private var passwordSaves = 0
 
+    /// How far a list of addresses is indented.
+    private static let bulletIndent: CGFloat = 16
+
     /// The username and password fields' width.
     private static let credentialFieldWidth: CGFloat = 180
 
@@ -85,6 +88,8 @@ struct SubsonicSettingsContent: View {
                             detail: detail
                         )
                     )
+                    .joiningRowAbove()
+                    .settingsNoticeRow()
                 }
                 networkRow
                 portRow
@@ -98,35 +103,12 @@ struct SubsonicSettingsContent: View {
                 Text(
                     "Subsonic apps sign in with this username and password. The password is kept in this Mac’s keychain."
                 )
-                .fieldNote()
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .formStyle(.settings)
     }
 
     // MARK: Rows
-
-    private var networkRow: some View {
-        SubsonicFieldRow(title: "Available on") {
-            connectNote
-        } control: {
-            Picker("Available on", selection: networkChoice) {
-                Text("This Mac only").tag(NetworkChoice.thisMachine)
-                if !view.networks.isEmpty {
-                    Divider()
-                    ForEach(view.networks, id: \.interface) { network in
-                        networkLabel(network)
-                            .tag(NetworkChoice.interface(network.interface))
-                    }
-                }
-                Divider()
-                Text("Every network").tag(NetworkChoice.every)
-            }
-            .labelsHidden()
-            .fixedSize()
-        }
-    }
 
     private var portRow: some View {
         SubsonicFieldRow(title: "Port") {
@@ -204,17 +186,27 @@ struct SubsonicSettingsContent: View {
                 .foregroundStyle(.secondary)
             }
             else if !addresses.isEmpty {
-                VStack(alignment: .leading, spacing: ThemeSpace.line) {
+                VStack(alignment: .leading, spacing: 0) {
                     Text("Apps connect at:")
-                    ForEach(addresses, id: \.url) { address in
-                        HStack(
-                            alignment: .firstTextBaseline,
-                            spacing: ThemeSpace.inline
-                        ) {
-                            Text(verbatim: "•")
-                            copyText(address)
+                    // A list under the words: the bullets hang in the 16
+                    // points the addresses are indented by.
+                    VStack(alignment: .leading, spacing: 0) {
+                        ForEach(addresses, id: \.url) { address in
+                            HStack(
+                                alignment: .firstTextBaseline,
+                                spacing: ThemeSpace.inline
+                            ) {
+                                Text(verbatim: "•")
+                                    .frame(
+                                        width: Self.bulletIndent
+                                            - ThemeSpace.inline,
+                                        alignment: .trailing
+                                    )
+                                copyText(address)
+                            }
                         }
                     }
+                    .padding(.top, 2)
                 }
                 .themeText(.detail)
                 .foregroundStyle(.secondary)
@@ -274,9 +266,61 @@ struct SubsonicSettingsContent: View {
         return nil
     }
 
+    // MARK: Saving
+
+    private func perform(_ save: @escaping @Sendable () async throws -> Void) {
+        Task { await self.save(save) }
+    }
+
+    private func save(_ save: () async throws -> Void) async {
+        do { try await save() }
+        catch { showError(error) }
+    }
+}
+
+/// The Available on row and the choice it makes.
+extension SubsonicSettingsContent {
+    private var networkRow: some View {
+        SubsonicFieldRow(title: "Available on") {
+            connectNote
+        } control: {
+            ClosedTitlePopUp(
+                entries: networkEntries,
+                selection: networkChoice,
+                accessibilityLabel: String(localized: "Available on")
+            )
+        }
+    }
+
+    /// The menu: this Mac, each network with its address, every network. The
+    /// closed button names only the network.
+    private var networkEntries: [ClosedTitlePopUp<NetworkChoice>.Entry] {
+        let thisMachine = String(localized: "This Mac only")
+        var entries: [ClosedTitlePopUp<NetworkChoice>.Entry] = [
+            .choice(.thisMachine, title: thisMachine, closedTitle: thisMachine)
+        ]
+        if !view.networks.isEmpty {
+            entries.append(.separator)
+            for network in view.networks {
+                let name = names.name(of: network.interface)
+                entries.append(
+                    .choice(
+                        .interface(network.interface),
+                        title: networkTitle(network, name: name),
+                        closedTitle: name
+                    )
+                )
+            }
+        }
+        let every = String(localized: "Every network")
+        entries.append(.separator)
+        entries.append(.choice(.every, title: every, closedTitle: every))
+        return entries
+    }
+
     // MARK: The network
 
-    private enum NetworkChoice: Hashable {
+    fileprivate enum NetworkChoice: Hashable {
         case thisMachine
         case interface(String)
         case every
@@ -304,23 +348,13 @@ struct SubsonicSettingsContent: View {
         )
     }
 
-    private func networkLabel(_ network: BridgeNetworkChoice) -> Text {
-        let name = names.name(of: network.interface)
+    private func networkTitle(_ network: BridgeNetworkChoice, name: String)
+        -> String
+    {
         guard let address = network.address else {
-            return Text("\(name) · not connected")
+            return String(localized: "\(name) · not connected")
         }
-        return Text(verbatim: FactList.joined([name, address]))
-    }
-
-    // MARK: Saving
-
-    private func perform(_ save: @escaping @Sendable () async throws -> Void) {
-        Task { await self.save(save) }
-    }
-
-    private func save(_ save: () async throws -> Void) async {
-        do { try await save() }
-        catch { showError(error) }
+        return FactList.joined([name, address])
     }
 }
 
@@ -334,11 +368,14 @@ private struct SubsonicFieldRow<Second: View, Control: View>: View {
     let control: Control
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: ThemeSpace.group) {
-            VStack(alignment: .leading, spacing: ThemeSpace.line) {
+        HStack(alignment: .center, spacing: ThemeSpace.group) {
+            VStack(alignment: .leading, spacing: ThemeSpace.inline) {
                 Text(title)
                 second
             }
+            // The words keep their line while the control beside them takes
+            // what is left.
+            .layoutPriority(1)
             Spacer(minLength: 0)
             control
         }

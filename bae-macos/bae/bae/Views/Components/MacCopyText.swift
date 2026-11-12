@@ -36,7 +36,9 @@ struct MacCopyText: View {
             .opacity(hover || buttonFocused ? 1 : 0)
             .accessibilityLabel(Text("Copy"))
         }
-        .fixedSize(horizontal: false, vertical: true)
+        // An address is one line: it never breaks at its punctuation.
+        .lineLimit(1)
+        .fixedSize()
     }
 }
 

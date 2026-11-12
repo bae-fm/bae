@@ -4516,7 +4516,8 @@ connects to his laptop, lists the artists, opens an album and plays it.
   what is happening, as it changes: running, or not running and why, shown
   where it is fixed. While it runs, Available on shows the address an app
   connects to (`localhost` on this machine only; each network's own address,
-  never `0.0.0.0`). Why it isn't running: a
+  never `0.0.0.0`), as one line that can be copied. Its pop-up names the
+  network alone when closed ("Wi-Fi") and with its address in its menu. Why it isn't running: a
   missing username or password at its field, a port another app holds at the
   port, a network with no address on the line itself, any other failure
   under the switch. The
