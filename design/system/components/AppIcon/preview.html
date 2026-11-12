@@ -6,7 +6,7 @@
 <div id="root" style="display: contents"></div>
 <script>
   var B = window.Bae, h = React.createElement;
-  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, N('macOS', h(B.AppIcon, { platform: 'macos' })), N('iOS', h(B.AppIcon, { platform: 'ios' })), N('Android, circle', h(B.AppIcon, { platform: 'android', mask: 'circle' })), N('Android, squircle', h(B.AppIcon, { platform: 'android', mask: 'squircle' })), N('Android, rounded', h(B.AppIcon, { platform: 'android', mask: 'rounded' })), N('Windows', h(B.AppIcon, { platform: 'windows' })), N('Linux', h(B.AppIcon, { platform: 'linux' }))));
 </script>
 </body>

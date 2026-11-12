@@ -6,7 +6,7 @@
 <div id="root" style="display: contents"></div>
 <script>
   var B = window.Bae, h = React.createElement;
-  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
     W('Field and notice', h(B.MacBox, null,
       h(B.MacRow, { label: 'Search Discogs' }, h(B.MacSwitch, { on: false, off: true, label: 'Search Discogs' })),

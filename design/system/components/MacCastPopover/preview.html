@@ -6,8 +6,8 @@
 <div id="root" style="display: contents"></div>
 <script>
   var B = window.Bae, h = React.createElement;
-  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
-  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
   ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, h('div', { style: { position: 'relative', height: 260 } }, h(B.MacCastPopover, { right: 0, bottom: 0, casting: 'Living Room', devices: 'Living Room:cast, Kitchen:airplay, Den receiver:upnp' })), h('div', { style: { position: 'relative', height: 260 } }, h(B.MacCastPopover, { right: 0, bottom: 0, casting: 'Upstairs Living Room Sonos Arc Soundbar', devices: 'Upstairs Living Room Sonos Arc Soundbar:cast, Kitchen:airplay, Denon AVR-X3800H Home Theater Receiver (Basement):upnp' }))));
 </script>

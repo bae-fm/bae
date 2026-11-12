@@ -6,8 +6,8 @@
 <div id="root" style="display: contents"></div>
 <script>
   var B = window.Bae, h = React.createElement;
-  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
-  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
   ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, N('Sizes', h('div', { style: { display: 'flex', alignItems: 'center', gap: 8 } }, h(B.MacButton, { kind: 'primary', size: 'small' }, 'Small'), h(B.MacButton, { kind: 'primary' }, 'Regular'), h(B.MacButton, { kind: 'primary', size: 'large' }, 'Large'))), h('div', { className: 'bae-divider' }), N('Primary', h(B.MacButton, { kind: 'primary' }, 'Set up')), N('Secondary', h(B.MacButton, null, 'Set up')), N('Destructive', h(B.MacButton, { destructive: true }, 'Set up')), N('Borderless', h(B.MacButton, { kind: 'borderless' }, 'Set up')), N('Borderless destructive', h(B.MacButton, { kind: 'borderless', destructive: true }, 'Set up')), N('Off', h(B.MacButton, { kind: 'primary', off: true }, 'Set up')), N('Icon', h('div', { style: { display: 'flex', gap: 8 } }, h(B.MacButton, { kind: 'icon', icon: 'copy', label: 'Copy' }), h(B.MacButton, { kind: 'icon', icon: 'check', label: 'Copied' })))));
 </script>

@@ -6,7 +6,7 @@
 <div id="root" style="display: contents"></div>
 <script>
   var B = window.Bae, h = React.createElement;
-  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
     W('Usual', h(B.MacStorageUsage, { total: '8.3 GB', parts: 'Pinned:6.1 GB:0.73,Cache:1.8 GB:0.22,Library:420 MB:0.05' })),
     W('From before a reset', h(B.MacStorageUsage, { total: '9.3 GB', parts: 'Pinned:6.1 GB:0.66,Cache:1.8 GB:0.19,Library:420 MB:0.05,From before the reset:960 MB:0.10' })),

@@ -6,7 +6,7 @@
 <div id="root" style="display: contents"></div>
 <script>
   var B = window.Bae, h = React.createElement;
-  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, h('div', { style: { width: 380 } }, c))); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, h('div', { style: { width: 380 } }, c))); }
   ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
     W('Search: album', h(B.MacLibraryRow, { title: 'Low Tide Hours', subtitle: 'Mara Quill (1992)' })),
     W('Search: track', h(B.MacLibraryRow, { title: 'Harbor Lights', subtitle: 'Mara Quill - Low Tide Hours', trailing: '4:32', art: 'Low Tide Hours' })),
