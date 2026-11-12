@@ -8,7 +8,7 @@ struct ToneDotValue: View {
     let tone: StatusTone
 
     var body: some View {
-        HStack(spacing: ThemeSpace.related) {
+        HStack(spacing: ThemeSpace.compact) {
             if tone != .neutral {
                 Circle()
                     .fill(tone.color)

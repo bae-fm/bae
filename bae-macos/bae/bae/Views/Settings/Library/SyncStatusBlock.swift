@@ -37,16 +37,32 @@ struct SyncStatusBlock: View {
             }
         }
         else if let shown = status.shown {
-            LabeledContent("Status") {
-                ToneDotValue(text: shown.statusLine, tone: shown.statusTone)
-            }
-            if let cause = shown.causeLine {
-                Text(cause)
-                    .themeText(.detail)
-                    .foregroundStyle(.secondary)
-            }
-            if let fix = shown.fix {
-                SyncFixButton(fix: fix, location: location, actions: actions)
+            // One row: the state, its cause and its fix are a single box
+            // with no line between them, and only Last synced sits under a
+            // divider.
+            VStack(
+                alignment: .leading,
+                spacing: ThemeSpace.related + ThemeSpace.line
+            ) {
+                LabeledContent("Status") {
+                    ToneDotValue(
+                        text: shown.statusLine,
+                        tone: shown.statusTone
+                    )
+                }
+                if let cause = shown.causeLine {
+                    Text(cause)
+                        .themeText(.detail)
+                        .lineSpacing(ThemeSpace.line)
+                        .foregroundStyle(.secondary)
+                }
+                if let fix = shown.fix {
+                    SyncFixButton(
+                        fix: fix,
+                        location: location,
+                        actions: actions
+                    )
+                }
             }
             if let lastSynced = shown.lastSyncedLine {
                 LabeledContent("Last synced", value: lastSynced)
