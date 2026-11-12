@@ -738,7 +738,10 @@ again only the folder directly under the watched root that it reached, and
 only after that folder has been quiet for a second, so a download writing into
 one album for an hour holds back only that album. If gathering the watches'
 reports panics, it is reported as a bug and every watch stops; scans, refreshes
-and the network check go on. A directory that cannot be watched
+and the network check go on. A watch report that arrives while the watched
+folders cannot be read is reported as a bug and reads nothing, since no folder
+can be matched to it; the next change under the folder, a refresh, or the next
+launch reads it. A directory that cannot be watched
 (inotify's watch limit on a large tree, or the watches not starting) is not
 hidden: the tree is read and stored as usual, and the folder's status is *not
 watched*, with the first directory that failed and the system's reason. The
