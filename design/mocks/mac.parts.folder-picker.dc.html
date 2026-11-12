@@ -17,7 +17,7 @@ body{margin:0;background:var(--elevated)}
 </helmet>
 <div style="width: 100%; display: flex; flex-direction: column; gap: 10px; color: var(--text-primary); font: 13px var(--font-sans)">
 <div style="color: var(--text-secondary); line-height: 17px">{{heading}}</div>
-<sc-if value="{{showPath}}" hint-placeholder-val="{{ false }}"><div style="color: var(--text-secondary)">{{rootName}} › <span style="color: var(--text-primary)">Music</span></div></sc-if>
+<sc-if value="{{showPath}}" hint-placeholder-val="{{ false }}"><div style="display: flex; align-items: center; justify-content: space-between; gap: 8px"><div style="color: var(--text-secondary)">{{rootName}} › <span style="color: var(--text-primary)">Music</span></div><x-import component-from-global-scope="Bae.MacButton" kind="borderless" off="{{naming}}">Up</x-import></div></sc-if>
 <x-import component-from-global-scope="Bae.MacBox" empty="{{emptyText}}">
 <sc-for list="{{rows}}" as="row" hint-placeholder-count="3"><x-import component-from-global-scope="Bae.MacRow" label="{{row.name}}" selected="{{row.selected}}" chevron="{{row.caret}}"></x-import></sc-for>
 <sc-if value="{{naming}}" hint-placeholder-val="{{ false }}"><x-import component-from-global-scope="Bae.MacFieldRow" align-text="{{yes}}"><x-import component-from-global-scope="Bae.MacTextField" label="Folder name" label-hidden="{{yes}}" value="bae" state="focused"></x-import><x-import component-from-global-scope="Bae.MacButton">Create</x-import></x-import></sc-if>
@@ -25,7 +25,7 @@ body{margin:0;background:var(--elevated)}
 <sc-if value="{{notEmpty}}" hint-placeholder-val="{{ false }}"><x-import component-from-global-scope="Bae.MacNotice" tone="danger" title="{{notEmptyText}}"></x-import></sc-if>
 
 <x-import component-from-global-scope="Bae.MacSheetFooter" split="{{yes}}">
-<x-import component-from-global-scope="Bae.MacButton" off="{{naming}}">New folder…</x-import>
+<div style="display: flex; gap: 8px"><x-import component-from-global-scope="Bae.MacButton" off="{{naming}}">New folder…</x-import><x-import component-from-global-scope="Bae.MacButton" off="{{naming}}">Look again</x-import></div>
 <x-import component-from-global-scope="Bae.MacButton">Cancel</x-import>
 <x-import component-from-global-scope="Bae.MacButton" kind="primary" off="{{setUpOff}}">Set up</x-import>
 </x-import>
