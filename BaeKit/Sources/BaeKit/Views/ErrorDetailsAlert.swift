@@ -18,7 +18,7 @@
             alert.messageText = details.title
             alert.informativeText = details.message ?? ""
             alert.accessoryView = AlertAccessory.view(
-                MacErrorDetails(
+                HoverErrorDetails(
                     detail: details.copyText,
                     excerpt: details.causes
                 )
@@ -52,15 +52,21 @@
     /// The inset panel of an error's causes, one a line and ending in the fault,
     /// with Copy details in its corner, shown under the pointer or keyboard
     /// focus.
-    private struct MacErrorDetails: View {
+    public struct MacErrorDetails: View {
         let detail: String
         let excerpt: String
-        @State
-        private var hovering = false
+        /// Whether the pointer is over the panel, which shows Copy details.
+        let hover: Bool
         @FocusState
         private var copyFocused: Bool
 
-        var body: some View {
+        public init(detail: String, excerpt: String, hover: Bool = false) {
+            self.detail = detail
+            self.excerpt = excerpt
+            self.hover = hover
+        }
+
+        public var body: some View {
             let text = Color.secondary
             Text(excerpt)
                 .themeText(.mono)
@@ -86,9 +92,21 @@
                     .buttonStyle(.borderless)
                     .help("Copy details")
                     .focused($copyFocused)
-                    .opacity(hovering || copyFocused ? 1 : 0)
+                    .opacity(hover || copyFocused ? 1 : 0)
                     .padding(ThemeSpace.related)
                 }
+        }
+    }
+
+    /// A `MacErrorDetails` that follows the pointer.
+    private struct HoverErrorDetails: View {
+        let detail: String
+        let excerpt: String
+        @State
+        private var hovering = false
+
+        var body: some View {
+            MacErrorDetails(detail: detail, excerpt: excerpt, hover: hovering)
                 .onHover { hovering = $0 }
         }
     }

@@ -3,18 +3,18 @@ import SwiftUI
 
 /// Text someone may want to paste elsewhere, such as the address a Subsonic
 /// app connects to: selectable, with a copy button after it that shows while
-/// the pointer is over the text, or while the button has keyboard focus. The
-/// button keeps its place while hidden, so the text never moves. Copying puts
-/// the text on the pasteboard and says nothing; the text is right there.
+/// the pointer is over the text (`hover`), or while the button has keyboard
+/// focus. The button keeps its place while hidden, so the text never moves.
+/// Copying puts the text on the pasteboard and says nothing; the text is
+/// right there.
 struct MacCopyText: View {
     let text: String
     /// Words that follow the text but aren't copied, such as which network an
     /// address is on.
     var after: String?
+    var hover = false
     let copy: @MainActor (String) -> Void
 
-    @State
-    private var hovering = false
     @FocusState
     private var buttonFocused: Bool
 
@@ -33,11 +33,26 @@ struct MacCopyText: View {
             }
             .buttonStyle(IconHoverButtonStyle())
             .focused($buttonFocused)
-            .opacity(hovering || buttonFocused ? 1 : 0)
+            .opacity(hover || buttonFocused ? 1 : 0)
             .accessibilityLabel(Text("Copy"))
         }
         .fixedSize(horizontal: false, vertical: true)
-        .onHover { hovering = $0 }
+    }
+}
+
+/// A `MacCopyText` that follows the pointer: its copy button shows while the
+/// pointer is over it.
+struct HoverCopyText: View {
+    let text: String
+    var after: String?
+    let copy: @MainActor (String) -> Void
+
+    @State
+    private var hovering = false
+
+    var body: some View {
+        MacCopyText(text: text, after: after, hover: hovering, copy: copy)
+            .onHover { hovering = $0 }
     }
 }
 

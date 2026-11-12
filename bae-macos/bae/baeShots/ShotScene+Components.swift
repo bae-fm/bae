@@ -7,7 +7,8 @@ import SwiftUI
 extension ShotScene {
     /// The Mac components (`mac.component.<thing>.<state>`), each state a
     /// row of the component's `preview.html`, drawn at the preview's width.
-    static let componentScenes: [ShotScene] = libraryRowScenes
+    static let componentScenes: [ShotScene] =
+        libraryRowScenes + settingsComponentScenes
 
     /// `MacLibraryRow`'s states.
     private static let libraryRowScenes: [ShotScene] = [
@@ -122,5 +123,42 @@ extension ShotScene {
                 images: images
             )
         }
+    }
+
+    /// A component's state: `view` at the top left of a frame `width` points
+    /// wide, which is the preview's column with the 8pt it leaves round a
+    /// row.
+    static func component<Content: View>(
+        _ id: String,
+        width: CGFloat = 396,
+        height: CGFloat,
+        @ViewBuilder view: @escaping @MainActor () -> Content
+    ) -> ShotScene {
+        ShotScene(id: id, size: CGSize(width: width, height: height)) {
+            ShotStage(
+                view()
+                    .padding(8)
+                    .frame(
+                        maxWidth: .infinity,
+                        maxHeight: .infinity,
+                        alignment: .topLeading
+                    )
+            )
+        }
+    }
+}
+
+/// A `MacBox`: the box a grouped form draws round its rows, as the design's
+/// preview shows a row among others.
+struct ShotBox<Content: View>: View {
+    @ViewBuilder
+    let content: Content
+
+    var body: some View {
+        Form {
+            Section { content }
+        }
+        .formStyle(.grouped)
+        .scrollDisabled(true)
     }
 }

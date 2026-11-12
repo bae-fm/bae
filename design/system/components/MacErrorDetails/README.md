@@ -6,4 +6,4 @@ An error's causes, one a line, in monospace in an inset panel, with Copy in its 
 | --- | --- |
 | `details` | The causes, one a line. |
 
-**In the code:** macOS: `MacErrorDetails`, private in BaeKit's `Views/ErrorDetailsAlert.swift`.
+**In the code:** macOS: `MacErrorDetails` in BaeKit's `Views/ErrorDetailsAlert.swift`, the accessory of the alert a notice's Details opens.

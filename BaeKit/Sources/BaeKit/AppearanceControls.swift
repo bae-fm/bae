@@ -31,35 +31,53 @@ public struct AppearanceControls: View {
                     .foregroundStyle(.secondary)
             }
             Spacer(minLength: 0)
-            HStack(spacing: 0) {
-                ForEach(AccentChoice.allCases, id: \.self) { accent in
-                    Button {
-                        preferences.accent = accent
-                    } label: {
-                        Circle()
-                            .fill(accent.colors.fill)
-                            .frame(width: 22, height: 22)
-                            .overlay {
-                                Image(systemName: "checkmark")
-                                    .themeIcon(.small)
-                                    .foregroundStyle(accent.colors.onFill)
-                                    .opacity(
-                                        preferences.accent == accent ? 1 : 0
-                                    )
-                            }
-                            .frame(
-                                minWidth: ThemeSize.hitTarget,
-                                minHeight: ThemeSize.hitTarget
-                            )
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(accent.title)
-                    .accessibilityAddTraits(
-                        preferences.accent == accent ? .isSelected : []
-                    )
-                    .help(accent.title)
+            MacAccentPicker(
+                selected: preferences.accent,
+                onSelect: { preferences.accent = $0 }
+            )
+        }
+    }
+}
+
+/// The accent swatches at the end of the Accent row: a circle of each colour,
+/// the chosen one ticked.
+public struct MacAccentPicker: View {
+    let selected: AccentChoice
+    let onSelect: (AccentChoice) -> Void
+
+    public init(
+        selected: AccentChoice,
+        onSelect: @escaping (AccentChoice) -> Void
+    ) {
+        self.selected = selected
+        self.onSelect = onSelect
+    }
+
+    public var body: some View {
+        HStack(spacing: 0) {
+            ForEach(AccentChoice.allCases, id: \.self) { accent in
+                Button {
+                    onSelect(accent)
+                } label: {
+                    Circle()
+                        .fill(accent.colors.fill)
+                        .frame(width: 22, height: 22)
+                        .overlay {
+                            Image(systemName: "checkmark")
+                                .themeIcon(.small)
+                                .foregroundStyle(accent.colors.onFill)
+                                .opacity(selected == accent ? 1 : 0)
+                        }
+                        .frame(
+                            minWidth: ThemeSize.hitTarget,
+                            minHeight: ThemeSize.hitTarget
+                        )
+                        .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel(accent.title)
+                .accessibilityAddTraits(selected == accent ? .isSelected : [])
+                .help(accent.title)
             }
         }
     }

@@ -4,4 +4,4 @@ Text someone may want to paste elsewhere, such as the address a Subsonic app con
 
 `after` adds words that follow the text but aren't copied, such as which network an address is on: “(Wi-Fi)”. A row takes it after its note with `copy` (“Apps connect at” then the address, or a list of them), or as its trailing part in place of a `value`.
 
-**In the code:** macOS: `MacCopyText` (Views/Components/MacCopyText.swift), which Settings → Subsonic shows each address in. It takes the text, its `after` words and a copy action, and reads no app state.
+**In the code:** macOS: `MacCopyText` (Views/Components/MacCopyText.swift), which Settings → Subsonic shows each address in. It takes the text, its `after` words, `hover` (the copy button shown) and a copy action, and reads no app state; `HoverCopyText` follows the pointer for it.

@@ -216,8 +216,8 @@ struct SubsonicSettingsContent: View {
         }
     }
 
-    private func copyText(_ address: BridgeServedAddress) -> MacCopyText {
-        MacCopyText(
+    private func copyText(_ address: BridgeServedAddress) -> HoverCopyText {
+        HoverCopyText(
             text: address.url,
             after: address.interface.map { "(\(names.name(of: $0)))" },
             copy: copy
