@@ -718,3 +718,46 @@ fn search_library_follows_an_artist_named_otherwise_on_another_device() {
         assert_eq!(found(devices.a(), "renamed artist").await[0], vec![SEARCHED_ALBUM.to_string()]);
     });
 }
+
+const WORK_NO_ARTISTS: &str = "0f6b8b9c-5d0e-4c53-a2e0-2a1e5a6a3a41";
+
+/// A track performing two works lists both in the order it performs them, a
+/// work with no artists has no composer names, and a track performing none
+/// lists none.
+#[tokio::test]
+async fn a_release_names_the_works_each_track_performs_in_order() {
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
+    RecordsFixture::new()
+        .artist(ARTIST_ALBUM, "Album Artist A")
+        .artist(ARTIST_COMPOSER, "Composer A")
+        .album(ALBUM_A, "Album Title A", None, &[ARTIST_ALBUM])
+        .release(ALBUM_A, RELEASE_A)
+        .tracks(RELEASE_A, &[(TRACK_A, "Track A"), (TRACK_B, "Track B")])
+        .work(WORK_A, "Zeta Work")
+        .composer(WORK_A, ARTIST_COMPOSER)
+        .work(WORK_NO_ARTISTS, "Alpha Work")
+        .performs(TRACK_A, WORK_A)
+        .performs(TRACK_A, WORK_NO_ARTISTS)
+        .write(&test_records(&db))
+        .await;
+
+    let detail =
+        crate::LibraryViews::new(db.clone()).find_release_detail(RELEASE_A).await.unwrap().unwrap();
+
+    assert_eq!(
+        detail.tracks[0].works,
+        [
+            crate::album_detail::TrackWork {
+                work_id: WORK_A.to_string(),
+                title: "Zeta Work".to_string(),
+                composer_names: Some("Composer A".to_string()),
+            },
+            crate::album_detail::TrackWork {
+                work_id: WORK_NO_ARTISTS.to_string(),
+                title: "Alpha Work".to_string(),
+                composer_names: None,
+            },
+        ]
+    );
+    assert!(detail.tracks[1].works.is_empty());
+}

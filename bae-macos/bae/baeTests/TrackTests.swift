@@ -14,7 +14,8 @@ struct TrackTests {
                 durationClock: bridgeLengthClock(ms: 180_000),
                 artistLine: .named("Artist Name"),
                 displayArtist: nil,
-                positionText: "A"
+                positionText: "A",
+                works: [],
             )
         )
 

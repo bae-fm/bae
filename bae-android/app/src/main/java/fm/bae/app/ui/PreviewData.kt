@@ -121,6 +121,7 @@ object PreviewData {
             artistLine = creditLineNamed("Artist Name"),
             displayArtist = null,
             positionText = number.toString(),
+            works = emptyList(),
         )
 
     fun trackGroup(

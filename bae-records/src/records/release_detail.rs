@@ -110,13 +110,48 @@ fn get_tracks_with_artists_for_release_on(
         own = track_own_credits_json_sql("track"),
         shown = track_credits_json_sql("track"),
     );
+    let mut works = performed_works_on(sql, release_id)?;
     Ok(sql.query(&query, params![release_id], |row| {
+        let track = row_to_track_with_prefix(row, "track_")?;
         Ok(DbTrackWithArtists {
-            track: row_to_track_with_prefix(row, "track_")?,
+            works: works.remove(&track.id).unwrap_or_default(),
+            track,
             artists: credits_column(row, "own_credits")?,
             shown_artists: credits_column(row, "shown_credits")?,
         })
     })?)
+}
+
+/// The works each of the release's tracks performs, by track id, each
+/// track's in the order it performs them.
+fn performed_works_on(
+    sql: &SqlReadContext<'_>,
+    release_id: &str,
+) -> Result<HashMap<String, Vec<DbPerformedWork>>, DbError> {
+    let query = format!(
+        "SELECT tw.track_id, w.id, w.title, {composer_names}
+         FROM track_works tw
+         JOIN tracks track ON track.id = tw.track_id
+         JOIN works w ON w.id = tw.work_id
+         WHERE track.release_id = ?
+         ORDER BY tw.track_id, tw.position, tw.id",
+        composer_names = work_composer_names_sql("w.id"),
+    );
+    let rows = sql.query(&query, params![release_id], |row| {
+        Ok((
+            row.get::<_, String>(0)?,
+            DbPerformedWork {
+                work_id: row.get(1)?,
+                title: row.get(2)?,
+                composer_names: row.get(3)?,
+            },
+        ))
+    })?;
+    let mut by_track: HashMap<String, Vec<DbPerformedWork>> = HashMap::new();
+    for (track_id, work) in rows {
+        by_track.entry(track_id).or_default().push(work);
+    }
+    Ok(by_track)
 }
 
 /// What coven records this device holding for each of a release's audio

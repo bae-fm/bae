@@ -185,7 +185,8 @@
                     durationClock: bridgeLengthClock(ms: durationMs),
                     artistLine: .named(displayArtist ?? "Artist Name"),
                     displayArtist: displayArtist.map(BridgeCreditLine.named),
-                    positionText: position
+                    positionText: position,
+                    works: [],
                 )
             )
         }

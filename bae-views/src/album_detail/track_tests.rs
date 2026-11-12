@@ -13,6 +13,7 @@ fn track(id: &str, position: TrackPosition) -> TrackDetail {
         display_artist: None,
         position_text: position.text(),
         position,
+        works: Vec::new(),
     }
 }
 

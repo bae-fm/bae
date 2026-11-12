@@ -200,6 +200,15 @@ impl ReleaseDetail {
                     display_artist,
                     position_text,
                     position,
+                    works: entry
+                        .works
+                        .into_iter()
+                        .map(|work| TrackWork {
+                            work_id: work.work_id,
+                            title: work.title,
+                            composer_names: work.composer_names,
+                        })
+                        .collect(),
                 }
             })
             .collect();

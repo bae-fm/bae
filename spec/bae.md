@@ -531,7 +531,8 @@ Works are compositions. Tracks link to them, in the order a track performs
 them, and they nest: a movement is part of a symphony, in the symphony's order.
 Works come from MusicBrainz, which names them; a work's artists come with it.
 No write deletes a work: one no track performs any more stays, as an album
-with no release does (§2.1).
+with no release does (§2.1). A release's detail names the works each of its
+tracks performs, in the track's order, each with its composers.
 
 **The composer list** shows every artist credited on a work, and every artist
 holding a catalog role credit that none of their works links: a release's

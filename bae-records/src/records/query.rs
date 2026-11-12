@@ -38,6 +38,25 @@ pub fn shown_artist_id(artist_id: &str) -> String {
     format!("(SELECT shown_artist_id FROM artist_shown_as WHERE artist_id = {artist_id})")
 }
 
+/// The names of the artists credited on the work `work_id` (an SQL
+/// expression), each once as the artist it shows after merges, joined by ", "
+/// in credit order; NULL when the work has no artists.
+pub fn work_composer_names_sql(work_id: &str) -> String {
+    format!(
+        "(
+                    SELECT GROUP_CONCAT(composer.name, ', ' ORDER BY credit.position)
+                    FROM (
+                        SELECT {work_artist} AS artist_id, MIN(wa.position) AS position
+                        FROM work_artists wa
+                        WHERE wa.work_id = {work_id}
+                        GROUP BY 1
+                    ) credit
+                    JOIN artists composer ON composer.id = credit.artist_id
+                )",
+        work_artist = shown_artist_id("wa.artist_id"),
+    )
+}
+
 /// Whether the `artists` row aliased `alias` shows as itself — it was not
 /// merged into another artist — so listings include it.
 pub fn artist_is_shown(alias: &str) -> String {

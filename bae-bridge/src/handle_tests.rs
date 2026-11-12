@@ -23,6 +23,7 @@ fn track_detail(
         display_artist: None,
         position_text: "1".to_string(),
         position,
+        works: Vec::new(),
     }
 }
 

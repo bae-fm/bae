@@ -120,6 +120,7 @@ fn one_track(
             track: track.clone(),
             artists: Vec::new(),
             shown_artists: Vec::new(),
+            works: Vec::new(),
         }],
         files: Vec::new(),
         records: Vec::new(),

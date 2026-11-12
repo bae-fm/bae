@@ -24,6 +24,18 @@ pub struct TrackDetail {
     pub position_text: String,
     /// Structured position retained for side/disc grouping.
     pub position: TrackPosition,
+    /// The works the track performs, in the order it performs them.
+    pub works: Vec<TrackWork>,
+}
+
+/// A work a track performs.
+#[derive(Debug, Clone, PartialEq)]
+pub struct TrackWork {
+    pub work_id: String,
+    pub title: String,
+    /// The work's composers printed in credit order, as a work's summary
+    /// prints them; `None` when the work has none.
+    pub composer_names: Option<String>,
 }
 
 /// The tracks of one side. A single-side release has one `Flat` group.

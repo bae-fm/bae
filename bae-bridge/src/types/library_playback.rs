@@ -531,6 +531,17 @@ pub struct BridgeTrack {
     /// Core-rendered position string: "A1"/"3"/"5", or the stable prefix
     /// when the source has no track number.
     pub position_text: String,
+    /// The works the track performs, in the order it performs them.
+    pub works: Vec<BridgeTrackWork>,
+}
+
+/// A work a track performs.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeTrackWork {
+    pub work_id: String,
+    pub title: String,
+    /// The work's composers in credit order; `None` when it has none.
+    pub composer_names: Option<String>,
 }
 
 /// Mirror of bae-library's `DurationClock` — the fields a clock label shows, for
@@ -755,42 +766,8 @@ mirror_enum! {
 }
 
 #[cfg(test)]
-mod source_audio_bridge_tests {
-    use super::*;
-
-    #[test]
-    fn mixed_source_audio_crosses_with_every_difference() {
-        let summary = bae_records::source_audio::SourceAudioSummary::Mixed {
-            differences: vec![
-                bae_records::source_audio::SourceAudioDifference::Layout {
-                    layouts: vec![
-                        bae_records::source_audio::SourceAudioLayout::Cue,
-                        bae_records::source_audio::SourceAudioLayout::File,
-                    ],
-                },
-                bae_records::source_audio::SourceAudioDifference::Codec {
-                    codecs: vec!["FLAC".to_string(), "MP3".to_string()],
-                },
-            ],
-        };
-
-        let BridgeSourceAudioSummary::Mixed { differences } =
-            BridgeSourceAudioSummary::from_core(summary)
-        else {
-            panic!("mixed source audio became uniform");
-        };
-        assert!(matches!(
-            differences.as_slice(),
-            [
-                BridgeSourceAudioDifference::Layout { layouts },
-                BridgeSourceAudioDifference::Codec { codecs },
-            ] if matches!(
-                layouts.as_slice(),
-                [BridgeSourceAudioLayout::Cue, BridgeSourceAudioLayout::File]
-            ) && codecs == &["FLAC", "MP3"]
-        ));
-    }
-}
+#[path = "library_playback_tests.rs"]
+mod source_audio_bridge_tests;
 
 /// Mirror of bae-library's `AudioFormat`. The UI composes "FLAC · 44.1 kHz ·
 /// 16-bit · stereo" from these parts: the codec is a proper noun, the channel

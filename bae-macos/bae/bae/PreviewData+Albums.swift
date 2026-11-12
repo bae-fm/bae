@@ -24,6 +24,7 @@
                         artistLine: .named(artist),
                         displayArtist: nil,
                         positionText: positionText(index),
+                        works: [],
                     )
                 }
         }

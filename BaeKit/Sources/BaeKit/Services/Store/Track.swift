@@ -10,6 +10,8 @@ public struct Track: Identifiable, Sendable {
     /// that is navigation context, decided at the view, not here.
     public var displayArtist: BridgeCreditLine?
     public var positionText: String
+    /// The works the track performs, in the order it performs them.
+    public var works: [BridgeTrackWork]
 
     public var durationLabel: String { DurationClock.label(durationClock) }
 
@@ -20,5 +22,6 @@ public struct Track: Identifiable, Sendable {
         artistLine = bridge.artistLine
         displayArtist = bridge.displayArtist
         positionText = bridge.positionText
+        works = bridge.works
     }
 }

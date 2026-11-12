@@ -66,6 +66,7 @@ impl BridgeTrack {
             // Structured position drives core-side grouping (`track_groups`); the
             // UI renders `position_text` and the group headers, not this.
             position: _,
+            works,
         } = t;
         BridgeTrack {
             id,
@@ -75,6 +76,14 @@ impl BridgeTrack {
             artist_line: crate::types::BridgeCreditLine::from_core(artist_line),
             display_artist: display_artist.map(crate::types::BridgeCreditLine::from_core),
             position_text,
+            works: works
+                .into_iter()
+                .map(|work| crate::types::BridgeTrackWork {
+                    work_id: work.work_id,
+                    title: work.title,
+                    composer_names: work.composer_names,
+                })
+                .collect(),
         }
     }
 }

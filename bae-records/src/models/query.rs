@@ -113,6 +113,18 @@ pub struct DbTrackWithArtists {
     pub artists: Vec<crate::credits::LibraryCredit>,
     /// The credits the track shows: its own, else its album's.
     pub shown_artists: Vec<crate::credits::LibraryCredit>,
+    /// The works the track performs, in the order it performs them.
+    pub works: Vec<DbPerformedWork>,
+}
+
+/// A work a track performs, as a release's detail names it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DbPerformedWork {
+    pub work_id: String,
+    pub title: String,
+    /// The work's artists printed in credit order, the way a work's summary
+    /// prints them; `None` when it has none.
+    pub composer_names: Option<String>,
 }
 
 /// A release's files in this device's upload queue, as one read finds them:

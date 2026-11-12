@@ -292,23 +292,14 @@ pub(crate) fn work_summary_columns() -> String {
                 w.created_at AS work_created_at,
                 {representative_release} AS representative_release_id,
                 {representative_cover} AS representative_cover_version,
-                (
-                    SELECT GROUP_CONCAT(composer.name, ', ' ORDER BY credit.position)
-                    FROM (
-                        SELECT {work_artist} AS artist_id, MIN(wa.position) AS position
-                        FROM work_artists wa
-                        WHERE wa.work_id = w.id
-                        GROUP BY 1
-                    ) credit
-                    JOIN artists composer ON composer.id = credit.artist_id
-                ) AS composer_names,
+                {composer_names} AS composer_names,
                 (
                     SELECT COUNT(DISTINCT tr.release_id)
                     FROM track_works tw
                     JOIN tracks tr ON tr.id = tw.track_id
                     WHERE tw.work_id = w.id
                 ) AS linked_release_count",
-        work_artist = shown_artist_id("wa.artist_id"),
+        composer_names = work_composer_names_sql("w.id"),
         representative_release = work_representative_release(),
         representative_cover = cover_version_sql(&work_representative_release()),
     )

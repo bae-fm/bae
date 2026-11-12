@@ -54,7 +54,7 @@ pub use release::*;
 pub use search::*;
 pub use storage::*;
 pub(crate) use track::group_tracks_by_side;
-pub use track::{TrackDetail, TrackGroup};
+pub use track::{TrackDetail, TrackGroup, TrackWork};
 
 /// What a release is called where a list of an album's releases names it.
 /// Each surface words it in the reader's language.
