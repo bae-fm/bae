@@ -103,6 +103,16 @@ if [[ "$ACTION" != test-without-building ]]; then
     codesign --force --sign - "$UI_TEST_RUNNER"
 fi
 if [[ "$ACTION" != build-for-testing ]]; then
+    # A Swift Testing exit test (the Handle-less fakes suite) re-launches the host
+    # app, which loads "the most recent test bundle" in its PlugIns by
+    # modification time. baeShots.xctest sits next to baeTests.xctest in
+    # bae.app, and whichever was built last wins: when that is baeShots (a
+    # bae-shots run or the build-for-testing above builds it last), the child
+    # runs the shot scenes instead of the exit-test body and exits 1. Deleting
+    # baeShots from the app leaves one bundle to pick; the next build of it
+    # (bae-shots' own xcodebuild, or the next build-for-testing here) copies it
+    # back.
+    rm -rf "$XCODE_MACOS_UNSIGNED_TREE/Build/Products/Debug/bae.app/Contents/PlugIns/baeShots.xctest"
     xcodebuild_tests bae -resultBundlePath "$BUNDLE" \
         -test-timeouts-enabled YES -default-test-execution-time-allowance 60 \
         ${ONLY_TESTING[@]+"${ONLY_TESTING[@]}"} test-without-building || status=$?
