@@ -85,7 +85,13 @@ struct ShotAccessibilityTree: Sendable {
                     && abs(frame.width - size.width) <= 1
                     && abs(frame.height - size.height) <= 1
             })
-        else { throw ShotError.windowNotInAccessibilityTree(sceneId) }
+        else {
+            throw ShotError.windowNotInAccessibilityTree(
+                sceneId,
+                wanted: CGRect(origin: origin, size: size),
+                listed: list.compactMap(Reader.frame(of:))
+            )
+        }
         var reader = Reader(origin: origin)
         reader.add(children: Reader.children(of: window), parent: nil)
         return Self(nodes: reader.nodes)
