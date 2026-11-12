@@ -149,12 +149,8 @@ struct SaveNameTokenField<Piece: SaveNamePiece>: NSViewRepresentable {
         private var lastSubmitted: [Piece]?
         /// The newest pattern waiting for the write in flight.
         private var queued: [Piece]?
-        private var writing = false
-
-        /// Whether every pattern handed over has been stored or refused.
-        var isIdle: Bool {
-            !writing
-        }
+        /// Whether a write is in flight or queued.
+        private(set) var writing = false
 
         private static var pasteboardType: NSPasteboard.PasteboardType {
             NSPasteboard.PasteboardType("fm.bae.save-name-chip")
@@ -236,7 +232,7 @@ struct SaveNameTokenField<Piece: SaveNamePiece>: NSViewRepresentable {
         }
 
         @objc
-        func fieldChanged(_ sender: Any?) {
+        func fieldChanged(_: Any?) {
             changed()
         }
 

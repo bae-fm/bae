@@ -205,3 +205,11 @@ struct SaveNameFieldLayoutTests {
         }
     }
 }
+
+extension SaveNameTokenField.Coordinator
+where Piece == BridgeSaveFilenamePiece {
+    /// Whether every pattern handed over has been stored or refused.
+    var isIdle: Bool {
+        !writing
+    }
+}
