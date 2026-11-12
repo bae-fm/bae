@@ -52,7 +52,7 @@ export interface MacFieldRowProps { label?: string; labelWidth?: number; alignTe
 export declare function MacFieldRow(props: MacFieldRowProps): React.ReactElement;
 
 /** size alert is the button of a MacAlert; tinted is a secondary button on a filled notice. kind: primary is the one action a screen is for; secondary is everything else; borderless is words with no chrome, for an action at the end of a row; icon is a glyph-only button (label is its accessible name). destructive colors the words danger. */
-export interface MacButtonProps { kind?: 'primary' | 'secondary' | 'borderless' | 'icon'; icon?: 'copy' | 'check'; size?: 'small' | 'regular' | 'large' | 'alert'; label?: string; destructive?: boolean; muted?: boolean; tinted?: boolean; off?: boolean; onClick?: () => void; children?: React.ReactNode }
+export interface MacButtonProps { kind?: 'primary' | 'secondary' | 'borderless' | 'icon'; icon?: 'copy' | 'check'; size?: 'small' | 'regular' | 'large' | 'alert'; label?: string; destructive?: boolean; muted?: boolean; tinted?: boolean; off?: boolean; /** It opens a menu, as Add library… does: read as a pop-up button. */ menu?: boolean; onClick?: () => void; children?: React.ReactNode }
 export declare function MacButton(props: MacButtonProps): React.ReactElement;
 
 /** A text field with its label on the left (labelWidth px), or the label as a placeholder (labelHidden). note is a grey line under it; error a red one, shown when state is error. Leave out label when a MacFieldRow holds the field and gives the label. Children sit after the field. */
