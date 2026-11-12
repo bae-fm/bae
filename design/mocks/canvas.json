@@ -3786,6 +3786,22 @@
    "w": 412,
    "x": 2850,
    "y": 25888
+  },
+  "mac.settings.person.s3.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: A person on an S3 library",
+   "w": 690,
+   "x": 7000,
+   "y": 11672
+  },
+  "android.settings.person.s3.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "A person on an S3 library",
+   "w": 412,
+   "x": 8250,
+   "y": 11672
   }
  },
  "createdOnFiles": {
