@@ -26,10 +26,21 @@ import org.junit.Test
 import uniffi.bae_bridge.BridgeRepeatMode
 import uniffi.bae_bridge.BridgeTrackSpan
 
-internal val playing = PlayerStaging(progress = 0.35, held = listOf(BridgeTrackSpan(0.0, 0.6)))
-private val waiting = PlayerStaging(progress = 0.02, held = listOf(BridgeTrackSpan(0.0, 0.04)), waitsOnStorage = true)
+internal val playing =
+    PlayerStaging(progress = 0.35, elapsedSeconds = 102, held = listOf(BridgeTrackSpan(0.0, 0.6)))
+private val waiting =
+    PlayerStaging(
+        progress = 0.02,
+        elapsedSeconds = 5,
+        held = listOf(BridgeTrackSpan(0.0, 0.04)),
+        waitsOnStorage = true,
+    )
 private val holes =
-    PlayerStaging(progress = 0.2, held = listOf(BridgeTrackSpan(0.0, 0.3), BridgeTrackSpan(0.55, 0.7)))
+    PlayerStaging(
+        progress = 0.2,
+        elapsedSeconds = 61,
+        held = listOf(BridgeTrackSpan(0.0, 0.3), BridgeTrackSpan(0.55, 0.7)),
+    )
 
 /** The component shots of the player: the bar, its play and pause, the seek row, the full player and the queue's rows. */
 class PlaybackComponentShots : BoardShot() {
