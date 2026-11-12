@@ -124,8 +124,7 @@ struct FindOnlineSectionGlyphView: View {
                     .themeIcon(.small)
                     .foregroundStyle(.secondary)
             case .working:
-                ProgressView()
-                    .controlSize(.mini)
+                MacSpinner()
             case .empty:
                 StatusChip(verbatim: 0.formatted())
             case .failed:

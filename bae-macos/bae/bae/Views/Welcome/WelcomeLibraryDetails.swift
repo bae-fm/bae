@@ -39,8 +39,7 @@ struct WelcomeLibraryDetails: View {
         if let storage {
             switch status {
             case .loading:
-                ProgressView()
-                    .controlSize(.small)
+                MacSpinner()
             case .failed(let failure):
                 Notice(error: failure)
             case .loaded(let status):

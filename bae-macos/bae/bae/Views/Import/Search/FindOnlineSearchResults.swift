@@ -71,8 +71,7 @@ struct FindOnlineSearchResults: View {
                 switch entry.state {
                 case .searching:
                     HStack(spacing: ThemeSpace.compact) {
-                        ProgressView()
-                            .controlSize(.mini)
+                        MacSpinner()
                             .frame(
                                 width: ThemeIcon.small.size,
                                 height: ThemeIcon.small.size

@@ -109,8 +109,7 @@ private struct LibraryRow: View {
         HStack(spacing: ThemeSpace.group) {
             label
             if removalSteps != nil || openSteps != nil {
-                ProgressView()
-                    .controlSize(.small)
+                MacSpinner()
                     .frame(
                         width: ThemeSize.hitTarget,
                         height: ThemeSize.hitTarget
