@@ -122,10 +122,8 @@ private struct InlineCompletionTextFieldNS: NSViewRepresentable {
             let currentText = field.stringValue
             parent.text = currentText
 
-            let lowerCurrent = currentText.lowercased()
-            let lowerPrefix = userTypedPrefix.lowercased()
             let extended =
-                lowerCurrent.hasPrefix(lowerPrefix)
+                currentText.hasPrefixIgnoringCase(userTypedPrefix)
                 && currentText.count > userTypedPrefix.count
 
             if !extended {
@@ -137,7 +135,7 @@ private struct InlineCompletionTextFieldNS: NSViewRepresentable {
 
             let match = parent.suggestions.first {
                 $0.count > currentText.count
-                    && $0.lowercased().hasPrefix(lowerCurrent)
+                    && $0.hasPrefixIgnoringCase(currentText)
             }
             guard let match else {
                 return
@@ -179,3 +177,20 @@ private struct InlineCompletionTextFieldNS: NSViewRepresentable {
         .windowBackground()
     }
 #endif
+
+extension String {
+    /// Whether the string starts with `prefix`, ignoring case by the rules of
+    /// `locale` (in Turkish "I" matches "ı" and "İ" matches "i"). An empty
+    /// prefix is a prefix of everything.
+    func hasPrefixIgnoringCase(
+        _ prefix: String,
+        locale: Locale = .current
+    ) -> Bool {
+        prefix.isEmpty
+            || range(
+                of: prefix,
+                options: [.caseInsensitive, .anchored],
+                locale: locale
+            ) != nil
+    }
+}
