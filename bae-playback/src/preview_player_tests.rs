@@ -438,11 +438,14 @@ async fn preview_listener_ends_a_preview_whose_output_failed() {
 }
 
 /// A preview seek whose stream rebuild fails tears the preview down outright
-/// (no zombie) and surfaces `PreviewState::Idle` so the UI stops showing it.
+/// (no zombie), surfaces `PreviewState::Idle` so the UI stops showing it, and
+/// tells why with `PreviewFailed`, asking the service to end the preview so
+/// the main player gets back any resume it was owed. Sabotage: drop the
+/// `preview_failed` call after the Idle, and the screens see no reason.
 #[tokio::test]
 async fn failed_preview_seek_surfaces_idle() {
     let (progress_tx, mut progress_rx) = tokio_mpsc::unbounded_channel();
-    let (command_tx, _command_rx) = OwnCommands::channel();
+    let (command_tx, mut command_rx) = OwnCommands::channel();
     let mut player = PreviewPlayer::new(
         tokio::runtime::Handle::current(),
         progress_tx,
@@ -469,13 +472,27 @@ async fn failed_preview_seek_surfaces_idle() {
     player.seek(crate::StreamPosition::from_millis(500), &device).await;
 
     assert!(!player.is_active(), "a failed seek leaves no active preview");
-    let mut saw_idle = false;
+    let mut told = Vec::new();
     while let Ok(progress) = progress_rx.try_recv() {
-        if matches!(progress, PlaybackProgress::PreviewStateChanged(PreviewState::Idle)) {
-            saw_idle = true;
-        }
+        told.push(progress);
     }
-    assert!(saw_idle, "a failed preview seek surfaces PreviewState::Idle to the UI");
+    assert!(
+        told.iter().any(|progress| matches!(
+            progress,
+            PlaybackProgress::PreviewStateChanged(PreviewState::Idle)
+        )),
+        "a failed preview seek surfaces PreviewState::Idle to the UI: {told:?}"
+    );
+    assert!(
+        told.iter().any(|progress| matches!(progress, PlaybackProgress::PreviewFailed { .. })),
+        "a failed preview seek tells why: {told:?}"
+    );
+    assert!(
+        !told.iter().any(|progress| matches!(progress, PlaybackProgress::PlaybackError { .. })),
+        "{told:?}"
+    );
+    let cmd = command_rx.try_recv().expect("the preview is asked to end");
+    assert!(matches!(cmd, PlaybackMessage::Own { command: PlaybackCommand::PreviewStop, .. }));
 }
 
 /// Neither shape of "no usable probe" — the prober ran and found nothing

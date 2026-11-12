@@ -4272,7 +4272,8 @@ receiver. A panic folding one progress event into what the screens show
 loses that event, and the next one shows. A preview whose event listener
 panics ends with an error.
 A preview that can't start (its file can't be read, or its audio stream won't
-open) or that fails as it plays ends with an error of its own, which the
+open) or that fails as it plays or as it is moved (a seek, or starting again on
+a new device) ends with an error of its own, which the
 screens show as they show a playback error. It never stops the main player: that
 plays on, or gets back the resume the preview owed it. A buffer a panic left partway through a change
 drops its bytes, and its fill fetches them again.

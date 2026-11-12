@@ -69,12 +69,14 @@ async fn an_invalidated_preview_that_cant_restart_ends_and_resumes_main() {
         "the main player got its resume back"
     );
     let mut saw_idle = false;
+    let mut saw_failure = false;
     while let Ok(progress) = progress_rx.try_recv() {
-        if matches!(progress, PlaybackProgress::PreviewStateChanged(crate::PreviewState::Idle)) {
-            saw_idle = true;
-        }
+        saw_idle |=
+            matches!(progress, PlaybackProgress::PreviewStateChanged(crate::PreviewState::Idle));
+        saw_failure |= matches!(progress, PlaybackProgress::PreviewFailed { .. });
     }
     assert!(saw_idle, "the UI is told the preview is idle");
+    assert!(saw_failure, "the UI is told why");
 }
 
 /// A preview that fails to start is the preview's failure alone: the screens

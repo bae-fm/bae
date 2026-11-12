@@ -331,6 +331,11 @@ impl PreviewPlayer {
                 &self.progress_tx,
                 PlaybackProgress::PreviewStateChanged(PreviewState::Idle),
             );
+            preview_failed(
+                &self.progress_tx,
+                &self.command_tx,
+                crate::PlaybackErrorReason::internal("the preview's audio stream couldn't restart"),
+            );
             return;
         }
 
