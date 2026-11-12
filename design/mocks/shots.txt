@@ -257,11 +257,11 @@ mac.settings.people
 mac.settings.people.invite-failed
 mac.settings.people.invite-listed
 mac.settings.people.invite-waiting
-mac.settings.people.make-admin-done
-mac.settings.people.make-admin-waiting
 mac.settings.people.member
 mac.settings.person
 mac.settings.person.admin
+mac.settings.person.make-admin-done
+mac.settings.person.make-admin-waiting
 mac.settings.playback
 mac.settings.restore-code.hidden
 mac.settings.restore-code.shown

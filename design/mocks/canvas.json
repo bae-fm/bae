@@ -1490,7 +1490,7 @@
    "x": 3786,
    "y": 260
   },
-  "mac.settings.people.make-admin-done.dc.html": {
+  "mac.settings.person.make-admin-done.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Make admin: done",
@@ -1498,7 +1498,7 @@
    "x": 1914,
    "y": 22040
   },
-  "mac.settings.people.make-admin-waiting.dc.html": {
+  "mac.settings.person.make-admin-waiting.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Make admin: waiting to sync",
@@ -5315,8 +5315,8 @@
   "mac.settings.add-device.added.dc.html",
   "android.settings.person.make-admin-waiting.dc.html",
   "android.settings.person.make-admin-done.dc.html",
-  "mac.settings.people.make-admin-waiting.dc.html",
-  "mac.settings.people.make-admin-done.dc.html",
+  "mac.settings.person.make-admin-waiting.dc.html",
+  "mac.settings.person.make-admin-done.dc.html",
   "android.settings.your-name.editing.dc.html",
   "android.settings.your-name.saved.dc.html",
   "mac.settings.your-name.editing.dc.html",
