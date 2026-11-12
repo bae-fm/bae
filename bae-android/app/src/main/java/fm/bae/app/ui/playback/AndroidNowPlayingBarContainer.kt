@@ -3,6 +3,8 @@ package fm.bae.app.ui.playback
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -18,6 +20,7 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
@@ -32,7 +35,6 @@ import fm.bae.app.ui.components.AndroidCheckbox
 import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.AndroidSheet
 import fm.bae.app.ui.components.ButtonKind
-import fm.bae.app.ui.components.ButtonTone
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.components.color
 import fm.bae.app.ui.countdownSecondsLeft
@@ -63,7 +65,14 @@ fun AndroidNowPlayingBarContainer(session: OpenLibrary) {
 
     var queueOpen by remember { mutableStateOf(false) }
     if (queueOpen) {
-        AndroidSheet(title = stringResource(R.string.queue), onDismiss = { queueOpen = false }) {
+        AndroidSheet(onDismiss = { queueOpen = false }) {
+            // The queue's title is a heading over its lanes, not a sheet title.
+            Text(
+                text = stringResource(R.string.queue),
+                style = ThemeText.heading.style,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(start = ThemeSpace.edge, end = ThemeSpace.edge, bottom = ThemeSpace.group),
+            )
             QueueScreen(session = session, onDismiss = { queueOpen = false })
         }
     }
@@ -135,6 +144,8 @@ private fun SidePauseAlert(
     )
 }
 
+private val SIDE_PAUSE_DIALOG_WIDTH = 340.dp
+
 /**
  * The prompt core raises when playback pauses at the end of a side or disc; its
  * box starts checked because the prompt only appears while the setting is on.
@@ -165,9 +176,15 @@ fun SidePauseAlert(
                     wording.titleKey,
                     mapOf("label" to prompt.sideLabel),
                 ),
-            message = context.coreString("core.playback.pause.message"),
+            width = SIDE_PAUSE_DIALOG_WIDTH,
             content = {
+                // The message is the first line of the content, a section step under the title.
                 Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
+                    Text(
+                        text = context.coreString("core.playback.pause.message"),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                     prompt.countdown?.let { countdown ->
                         SidePauseCountdownLine(
                             messageKey = wording.countdownKey,
@@ -188,7 +205,7 @@ fun SidePauseAlert(
                 }
             },
             dismissButton = {
-                AndroidButton(kind = ButtonKind.TEXT, tone = ButtonTone.NEUTRAL, onClick = { answer(false) }) {
+                AndroidButton(kind = ButtonKind.TEXT, onClick = { answer(false) }) {
                     Text(stringResource(R.string.close))
                 }
             },
@@ -212,6 +229,7 @@ private fun SidePauseCountdownLine(
                 mapOf("seconds" to countdownSecondsLeft(countdown.resumesAtMs, now)),
             ),
         style = ThemeText.strong.style,
+        color = MaterialTheme.colorScheme.onSurface,
         modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
     )
 }
