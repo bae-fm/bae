@@ -163,7 +163,14 @@ enum ShotRenderer {
             contentFilter: filter,
             configuration: configuration
         )
-        let rep = NSBitmapImageRep(cgImage: image)
+        let rep = NSBitmapImageRep(
+            cgImage: try ShotImage.scaled(
+                image,
+                width: configuration.width,
+                height: configuration.height,
+                sceneId: sceneId
+            )
+        )
         rep.size = filter.contentRect.size
         guard let data = rep.representation(using: .png, properties: [:])
         else {
