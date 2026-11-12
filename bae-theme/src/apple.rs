@@ -37,9 +37,9 @@ fn write_swift(out: &mut String, theme: &Theme) -> std::fmt::Result {
         writeln!(out, "    let {role}: Color")?;
     }
     out.push_str(
-        "}\n\n/// One accent's colours: text and glyphs in each appearance, and the\n\
-         /// fill behind white button labels.\n\
-         struct AccentColors: Sendable {\n    let dark: Color\n    let fill: Color\n    let light: Color\n}\n",
+        "}\n\n/// One accent's colours: text and glyphs in each appearance, its swatch in\n\
+         /// the picker and what is drawn on it, and the fill behind white labels.\n\
+         struct AccentColors: Sendable {\n    let dark: Color\n    let fill: Color\n    let light: Color\n    let onFill: Color\n    let selection: Color\n}\n",
     );
 
     out.push_str(

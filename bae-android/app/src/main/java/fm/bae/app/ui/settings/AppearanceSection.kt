@@ -34,7 +34,6 @@ import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.R
-import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.AccentChoice
 import fm.bae.app.ui.appearance.AppearanceMode
 import fm.bae.app.ui.appearance.LocalAppearanceStore
@@ -130,7 +129,7 @@ internal fun AndroidAccentPicker(
                     Icon(
                         Icons.Default.Check,
                         contentDescription = null,
-                        tint = BaeTheme.colors.onFill,
+                        tint = accent.colors.onFill,
                         modifier = Modifier.size(ThemeIcon.badge).alpha(if (selected) 1f else 0f),
                     )
                 }
@@ -202,11 +201,11 @@ internal val AccentChoice.label: Int
     @StringRes get() =
         when (this) {
             AccentChoice.BLUE -> R.string.appearance_blue
-            AccentChoice.INDIGO -> R.string.appearance_indigo
-            AccentChoice.PURPLE -> R.string.appearance_purple
+            AccentChoice.ORCHID -> R.string.appearance_orchid
             AccentChoice.PINK -> R.string.appearance_pink
-            AccentChoice.RED -> R.string.appearance_red
-            AccentChoice.AMBER -> R.string.appearance_amber
-            AccentChoice.GREEN -> R.string.appearance_green
-            AccentChoice.TEAL -> R.string.appearance_teal
+            AccentChoice.CORAL -> R.string.appearance_coral
+            AccentChoice.GOLD -> R.string.appearance_gold
+            AccentChoice.LIME -> R.string.appearance_lime
+            AccentChoice.MINT -> R.string.appearance_mint
+            AccentChoice.SKY -> R.string.appearance_sky
         }

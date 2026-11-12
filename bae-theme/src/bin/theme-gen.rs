@@ -1,8 +1,9 @@
 //! `theme-gen emit --target {apple|android} --out-dir <dir> [--theme <path>]`
 //! writes the platform's generated theme under `<dir>`.
 //!
-//! `--theme` defaults to `design/theme.toml`, relative to the repo root the
-//! build scripts run from.
+//! `--theme` defaults to `design/theme.toml` and `--tokens` to
+//! `design/system/tokens.json`, which holds the accents, relative to the repo
+//! root the build scripts run from.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -23,6 +24,7 @@ fn main() -> ExitCode {
 fn run() -> Result<(), String> {
     let raw: Vec<String> = std::env::args().skip(1).collect();
     let mut theme_path = PathBuf::from("design/theme.toml");
+    let mut tokens_path = PathBuf::from("design/system/tokens.json");
     let mut target = None;
     let mut out_dir = None;
     let mut emit_asked = false;
@@ -32,6 +34,7 @@ fn run() -> Result<(), String> {
         match arg.as_str() {
             "emit" if !emit_asked => emit_asked = true,
             "--theme" => theme_path = PathBuf::from(value()?),
+            "--tokens" => tokens_path = PathBuf::from(value()?),
             "--target" => target = Some(value()?),
             "--out-dir" => out_dir = Some(PathBuf::from(value()?)),
             other => return Err(format!("unexpected argument `{other}`")),
@@ -43,11 +46,14 @@ fn run() -> Result<(), String> {
 
     let source = fs::read_to_string(&theme_path)
         .map_err(|error| format!("reading {}: {error}", theme_path.display()))?;
-    let theme = Theme::from_toml(&source).map_err(|problems| {
+    let tokens = fs::read_to_string(&tokens_path)
+        .map_err(|error| format!("reading {}: {error}", tokens_path.display()))?;
+    let theme = Theme::from_sources(&source, &tokens).map_err(|problems| {
         format!(
-            "{} problem(s) in {}:\n  - {}",
+            "{} problem(s) in {} and {}:\n  - {}",
             problems.len(),
             theme_path.display(),
+            tokens_path.display(),
             problems.join("\n  - ")
         )
     })?;

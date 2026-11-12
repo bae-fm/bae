@@ -5602,7 +5602,9 @@ Platform settings, such as the appearance and restoring playback on launch,
 live in each app. Appearance reads Theme (System, Light, Dark), then Tone, then
 Accent, so named in every locale; Accent names the chosen colour under its
 title, as Theme and Tone show theirs. The apps start with the System theme, the
-Plum tone and the Pink accent. On the Mac Theme and Tone are pop-up buttons; on
+Plum tone and the Pink accent. The accents are Blue, Orchid, Pink, Coral, Gold,
+Lime, Mint and Sky, in that order, each named in every locale; a stored accent
+the app doesn't have reads as Pink. On the Mac Theme and Tone are pop-up buttons; on
 Android the Appearance page has no heading over its card, the top bar names it.
 Android's Settings rows each say where that setting stands under their title:
 Appearance's theme, tone and accent, the library's name and its sync state,

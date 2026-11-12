@@ -1,10 +1,11 @@
 # The apps' colors, read by every platform through code theme-gen generates
-# from this file (see notes/appearance.md). Tones and accents are listed in the
-# order the appearance settings offer them.
+# from this file and from design/system/tokens.json, which holds the accents
+# (see notes/appearance.md). Tones are listed in the order the appearance
+# settings offer them; the accents come in tokens.json's order.
 
-# The tone and accent a new installation shows until the person chooses, each
-# one listed below. The standard tone also colors Android's launch window
-# before the app has read the chosen one.
+# The tone and accent a new installation shows until the person chooses: a tone
+# listed below, an accent tokens.json defines. The standard tone also colors
+# Android's launch window before the app has read the chosen one.
 [standard]
 tone = "plum"
 accent = "pink"
@@ -146,54 +147,6 @@ fieldHover = "#2C251D"
 placeholder = "#3D3327"
 well = "#14110D"
 tile = "#483C2E"
-
-[[accents]]
-name = "blue"
-light = "#2463C7"
-dark = "#87B5FF"
-fill = "#2463C7"
-
-[[accents]]
-name = "indigo"
-light = "#5254BD"
-dark = "#ACAAFF"
-fill = "#5254BD"
-
-[[accents]]
-name = "purple"
-light = "#814CB1"
-dark = "#CAA1EF"
-fill = "#814CB1"
-
-[[accents]]
-name = "pink"
-light = "#AE3973"
-dark = "#EE98C1"
-fill = "#AE3973"
-
-[[accents]]
-name = "red"
-light = "#B43E43"
-dark = "#F29C9F"
-fill = "#B43E43"
-
-[[accents]]
-name = "amber"
-light = "#8C5D14"
-dark = "#E6BE77"
-fill = "#94651C"
-
-[[accents]]
-name = "green"
-light = "#2D7447"
-dark = "#8BCBA4"
-fill = "#337A4D"
-
-[[accents]]
-name = "teal"
-light = "#1F7274"
-dark = "#80CCCE"
-fill = "#277A7C"
 
 # Colors that mean the same in every tone. `activity` marks work in progress,
 # such as a transfer, an upload among them; `pinning` marks files downloading

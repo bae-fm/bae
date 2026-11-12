@@ -1,17 +1,18 @@
 # Appearance
 
-Every colour the apps draw with is defined once, in `design/theme.toml`. The
-`theme-gen` tool (`bae-theme`) turns it into typed Swift for BaeKit and Kotlin
-for Android; `build-macos.sh`, `build-ios.sh` and `build-android.sh` run it, and
+Every colour the apps draw with is defined once: the accents in
+`design/system/tokens.json`, the design system's own file, and the rest in
+`design/theme.toml`. The `theme-gen` tool (`bae-theme`) turns them into typed
+Swift for BaeKit and Kotlin for Android; `build-macos.sh`, `build-ios.sh` and `build-android.sh` run it, and
 its output is not checked in. Both platforms get the same roles, so change
 values there rather than adding a platform palette.
 
 Appearance settings have three independent choices: System/Light/Dark mode,
-Blue/Indigo/Purple/Pink/Red/Amber/Green/Teal accent, and
+Blue/Orchid/Pink/Coral/Gold/Lime/Mint/Sky accent, and
 Neutral/Slate/Plum/Midnight/Forest/Sand background tone. A new installation
 shows System mode, the Pink accent and the Plum tone. The mode default is
 each app's own. The accent and tone are the ones `[standard]` in
-`design/theme.toml` names, which theme-gen emits as `standard` on the Swift
+`design/theme.toml` names (the accent is one tokens.json defines), which theme-gen emits as `standard` on the Swift
 enums and `STANDARD` on the Kotlin ones; the standard tone also colours
 Android's launch window before the app has read the chosen one. Each tone
 defines both light and dark surfaces. Preferences belong to the app
@@ -22,9 +23,15 @@ Surface roles describe their use: background is the window or screen; surface
 and elevated hold content; field and fieldHover hold inputs; placeholder holds
 missing artwork; well and tile distinguish recessed controls from raised
 controls. Accent text, glyphs, and slider fills use the mode-specific accent.
-Primary buttons use the separate fill color with white text to preserve
-contrast in both modes. The macOS mode selector uses that fill for its selected
-segment.
+An accent is four tokens in tokens.json: `accent-<name>` (text and glyphs, per
+appearance), `accent-<name>-fill` with `on-accent-<name>-fill` (its swatch in
+the picker and the check drawn on it) and `accent-<name>-selection`. The
+swatch, its check and the selection are one colour in both appearances, and
+theme-gen refuses a tokens.json where they differ. Primary buttons use the
+selection colour with white text to preserve contrast in both modes. The macOS
+mode selector uses it for its selected segment. The picker lists the accents in
+tokens.json's order. A stored accent the apps no longer have reads as the
+standard one.
 Semantic colours do not change with the tone or accent: danger for errors,
 warning for what needs attention, success, info, activity for work in
 progress such as a transfer, an upload among them, and pinning for files

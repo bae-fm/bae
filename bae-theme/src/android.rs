@@ -69,8 +69,8 @@ fn write_kotlin(out: &mut String, theme: &Theme) -> std::fmt::Result {
         &theme.tones[0].surfaces.light,
     )?;
     out.push_str(
-        "\n/** One accent's colours: text and glyphs in each appearance, and the fill behind white button labels. */\n\
-         class AccentColors(\n    val dark: Color,\n    val fill: Color,\n    val light: Color,\n)\n",
+        "\n/** One accent's colours: text and glyphs in each appearance, its swatch in the picker and what is drawn on it, and the fill behind white labels. */\n\
+         class AccentColors(\n    val dark: Color,\n    val fill: Color,\n    val light: Color,\n    val onFill: Color,\n    val selection: Color,\n)\n",
     );
     roles_class(
         out,

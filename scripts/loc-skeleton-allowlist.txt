@@ -173,10 +173,6 @@ tr	MP3 %lld kbps
 tr	Opus %lld kbps
 tr	Pregap
 
-# Dutch color names retain the same spelling as English.
-nl	appearance_indigo
-nl	appearance_amber
-
 # Technical labels and example values that every locale keeps verbatim: AWS
 # field names (Access key, Secret key, S3 bucket), the S3-compatible provider
 # label, and the barcode / catalogue-number examples shown under an input.

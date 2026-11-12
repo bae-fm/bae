@@ -13,6 +13,7 @@ name = "theme-gen"
 path = "src/bin/theme-gen.rs"
 
 [dependencies]
+serde_json = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 toml = { workspace = true }
 

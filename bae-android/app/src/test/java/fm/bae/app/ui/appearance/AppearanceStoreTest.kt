@@ -13,7 +13,7 @@ class AppearanceStoreTest {
     @Test
     fun refusedWriteKeepsThePreviousSelection() {
         val store = AppearanceStore(AppearancePreferences()) { throw IOException("refused") }
-        assertThrows(IOException::class.java) { runBlocking { store.setAccent(AccentChoice.TEAL) } }
+        assertThrows(IOException::class.java) { runBlocking { store.setAccent(AccentChoice.SKY) } }
         assertEquals(AppearancePreferences(), store.preferences.value)
     }
 
@@ -29,13 +29,13 @@ class AppearanceStoreTest {
                     release.await()
                     saved.add(it)
                 }
-            val accent = launch { store.setAccent(AccentChoice.TEAL) }
+            val accent = launch { store.setAccent(AccentChoice.SKY) }
             entered.await()
             val tone = launch { store.setTone(SurfaceTone.PLUM) }
             release.complete(Unit)
             accent.join()
             tone.join()
-            val expected = AppearancePreferences(accent = AccentChoice.TEAL, tone = SurfaceTone.PLUM)
+            val expected = AppearancePreferences(accent = AccentChoice.SKY, tone = SurfaceTone.PLUM)
             assertEquals(expected, store.preferences.value)
             assertEquals(expected, saved.last())
         }

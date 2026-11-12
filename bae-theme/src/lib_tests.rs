@@ -1,12 +1,76 @@
 use super::*;
 
 const THEME: &str = include_str!("../../design/theme.toml");
+const TOKENS: &str = include_str!("../../design/system/tokens.json");
+
+fn from_toml(source: &str) -> Result<Theme, Vec<String>> {
+    Theme::from_sources(source, TOKENS)
+}
+
+/// tokens.json with only the accent `name`, in the given colours.
+fn tokens_with_accent(
+    name: &str,
+    text: &str,
+    fill: &str,
+    on_fill: &str,
+    selection: &str,
+) -> String {
+    let token = |token: &str, light: &str, dark: &str| {
+        format!("{{\"name\": \"{token}\", \"value\": {{\"light\": \"{light}\", \"dark\": \"{dark}\"}}}}")
+    };
+    format!(
+        "{{\"color\": {{\"tokens\": [{}, {}, {}, {}]}}}}",
+        token(&format!("accent-{name}"), text, text),
+        token(&format!("accent-{name}-fill"), fill, fill),
+        token(&format!("on-accent-{name}-fill"), on_fill, on_fill),
+        token(&format!("accent-{name}-selection"), selection, selection),
+    )
+}
 
 #[test]
 fn the_shipped_theme_is_valid() {
-    let theme = Theme::from_toml(THEME).unwrap();
+    let theme = from_toml(THEME).unwrap();
     assert_eq!(theme.tones[0].name, "neutral");
-    assert_eq!(theme.accents[0].name, "blue");
+    let names: Vec<&str> = theme.accents.iter().map(|accent| accent.name.as_str()).collect();
+    assert_eq!(names, ["blue", "orchid", "pink", "coral", "gold", "lime", "mint", "sky"]);
+    assert_eq!(theme.accents[theme.standard.accent].name, "pink");
+}
+
+#[test]
+fn an_accent_reads_its_four_tokens() {
+    let theme = from_toml(THEME).unwrap();
+    let blue = &theme.accents[0];
+    assert_eq!(blue.light, Argb(0xFF42_60C4));
+    assert_eq!(blue.dark, Argb(0xFF99_B5FE));
+    assert_eq!(blue.fill, Argb(0xFF8C_AAFE));
+    assert_eq!(blue.on_fill, Argb(0xFF17_2455));
+    assert_eq!(blue.selection, Argb(0xFF42_60C4));
+}
+
+#[test]
+fn an_accent_missing_a_token_is_refused() {
+    let tokens = tokens_with_accent("blue", "#000001", "#000002", "#000003", "#000004")
+        .replace("accent-blue-selection", "accent-blue-selected");
+    let problems =
+        Theme::from_sources(&THEME.replace("accent = \"pink\"", "accent = \"blue\""), &tokens)
+            .unwrap_err();
+    assert_eq!(
+        problems[0],
+        "tokens.json has no `accent-blue-selection`, which accent `blue` needs"
+    );
+}
+
+#[test]
+fn a_swatch_that_differs_between_appearances_is_refused() {
+    let tokens = tokens_with_accent("blue", "#000001", "#000002", "#000003", "#000004")
+        .replace("\"#000002\"}", "\"#0000FF\"}");
+    let problems =
+        Theme::from_sources(&THEME.replace("accent = \"pink\"", "accent = \"blue\""), &tokens)
+            .unwrap_err();
+    assert_eq!(
+        problems,
+        ["tokens.json `accent-blue-fill` differs between appearances; the apps draw it as one colour"]
+    );
 }
 
 #[test]
@@ -19,10 +83,12 @@ fn colours_read_with_and_without_alpha() {
 }
 
 fn theme_with(standard: &str, tones: &str, semantics: &str) -> Result<Theme, Vec<String>> {
-    Theme::from_toml(&format!(
+    Theme::from_sources(&format!(
         "{standard}\n[opacity]\ntint = 0.14\n\n[radius]\nchip = 5\n\n[space]\nrelated = 8\n\n[icon.small]\nweight = \"semibold\"\nmacos = 11\nios = 13\nandroid = 16\n\n\
-         [size.hitTarget]\nmacos = 28\nios = 44\nandroid = 44\n\n{TEXT}\n{tones}\n[[accents]]\nname = \"blue\"\nlight = \"#000000\"\ndark = \"#000000\"\nfill = \"#000000\"\n\n{semantics}"
-    ))
+         [size.hitTarget]\nmacos = 28\nios = 44\nandroid = 44\n\n{TEXT}\n{tones}\n{semantics}"
+    ),
+        &tokens_with_accent("blue", "#000000", "#000000", "#000000", "#000000"),
+    )
 }
 
 const STANDARD: &str = "[standard]\ntone = \"neutral\"\naccent = \"blue\"\n";
@@ -75,7 +141,7 @@ fn the_standard_choices_must_be_listed() {
 
 #[test]
 fn both_platforms_carry_the_standard_choices() {
-    let theme = Theme::from_toml(THEME).unwrap();
+    let theme = from_toml(THEME).unwrap();
     let tone = &theme.tones[theme.standard.tone].name;
     let accent = &theme.accents[theme.standard.accent].name;
     let swift = apple::swift(&theme);
@@ -103,7 +169,7 @@ fn names_must_become_identifiers() {
 
 #[test]
 fn both_platforms_carry_every_role() {
-    let theme = Theme::from_toml(THEME).unwrap();
+    let theme = from_toml(THEME).unwrap();
     let swift = apple::swift(&theme);
     let kotlin = android::kotlin(&theme);
     for tone in &theme.tones {
@@ -122,7 +188,7 @@ fn both_platforms_carry_every_role() {
 
 #[test]
 fn both_platforms_carry_every_opacity() {
-    let theme = Theme::from_toml(THEME).unwrap();
+    let theme = from_toml(THEME).unwrap();
     let swift = apple::swift(&theme);
     let kotlin = android::kotlin(&theme);
     for (role, value) in &theme.opacity {
@@ -133,7 +199,7 @@ fn both_platforms_carry_every_opacity() {
 
 #[test]
 fn both_platforms_carry_every_radius() {
-    let theme = Theme::from_toml(THEME).unwrap();
+    let theme = from_toml(THEME).unwrap();
     let swift = apple::swift(&theme);
     let kotlin = android::kotlin(&theme);
     for (role, value) in &theme.radius {
@@ -144,7 +210,7 @@ fn both_platforms_carry_every_radius() {
 
 #[test]
 fn a_text_role_names_macos_and_ios_together() {
-    let theme = Theme::from_toml(&THEME.replace(
+    let theme = from_toml(&THEME.replace(
         "[text.body]\nweight = \"regular\"\nmacos = 13\n",
         "[text.body]\nweight = \"regular\"\n",
     ));
@@ -153,7 +219,7 @@ fn a_text_role_names_macos_and_ios_together() {
 
 #[test]
 fn an_ios_size_names_a_dynamic_type_style() {
-    let theme = Theme::from_toml(&THEME.replace(
+    let theme = from_toml(&THEME.replace(
         "[text.body]\nweight = \"regular\"\nmacos = 13\nios = \"body\"",
         "[text.body]\nweight = \"regular\"\nmacos = 13\nios = \"huge\"",
     ));
@@ -162,7 +228,7 @@ fn an_ios_size_names_a_dynamic_type_style() {
 
 #[test]
 fn both_platforms_carry_every_text_role() {
-    let theme = Theme::from_toml(THEME).unwrap();
+    let theme = from_toml(THEME).unwrap();
     let swift = apple::swift(&theme);
     let kotlin = android::kotlin(&theme);
     for (role, text) in &theme.text {
@@ -176,7 +242,7 @@ fn both_platforms_carry_every_text_role() {
 
 #[test]
 fn an_icon_needs_every_platforms_size() {
-    let theme = Theme::from_toml(&THEME.replace(
+    let theme = from_toml(&THEME.replace(
         "[icon.small]\nweight = \"semibold\"\nmacos = 11\nios = 13\nandroid = 16\n",
         "[icon.small]\nweight = \"semibold\"\nmacos = 11\nios = 13\n",
     ));
@@ -185,7 +251,7 @@ fn an_icon_needs_every_platforms_size() {
 
 #[test]
 fn both_platforms_carry_every_space_icon_and_size() {
-    let theme = Theme::from_toml(THEME).unwrap();
+    let theme = from_toml(THEME).unwrap();
     let swift = apple::swift(&theme);
     let kotlin = android::kotlin(&theme);
     for (role, value) in &theme.space {
@@ -204,7 +270,7 @@ fn both_platforms_carry_every_space_icon_and_size() {
 
 #[test]
 fn the_launch_background_is_the_standard_tones() {
-    let theme = Theme::from_toml(THEME).unwrap();
+    let theme = from_toml(THEME).unwrap();
     let resources = android::launch_resources(&theme).unwrap();
     // Plum's backgrounds.
     assert_eq!(resources[0].0, "res/values/theme_colors.xml");
@@ -215,7 +281,7 @@ fn the_launch_background_is_the_standard_tones() {
 
 #[test]
 fn a_text_role_with_an_android_line_height_carries_it_into_kotlin() {
-    let theme = Theme::from_toml(&THEME.replace(
+    let theme = from_toml(&THEME.replace(
         "[text.body]\nweight = \"regular\"\nmacos = 13\nios = \"body\"\nandroid = 14\n",
         "[text.body]\nweight = \"regular\"\nmacos = 13\nios = \"body\"\nandroid = 14\nandroid_line = 20\n",
     ))
@@ -226,7 +292,7 @@ fn a_text_role_with_an_android_line_height_carries_it_into_kotlin() {
 
 #[test]
 fn a_text_role_needs_a_size_somewhere() {
-    let theme = Theme::from_toml(&THEME.replace(
+    let theme = from_toml(&THEME.replace(
         "[text.body]\nweight = \"regular\"\nmacos = 13\nios = \"body\"\nandroid = 14\n",
         "[text.body]\nweight = \"regular\"\n",
     ));

@@ -37,12 +37,12 @@ public struct AppearanceControls: View {
                         preferences.accent = accent
                     } label: {
                         Circle()
-                            .fill(accent.buttonColor)
+                            .fill(accent.colors.fill)
                             .frame(width: 22, height: 22)
                             .overlay {
                                 Image(systemName: "checkmark")
                                     .themeIcon(.small)
-                                    .foregroundStyle(Theme.onFill)
+                                    .foregroundStyle(accent.colors.onFill)
                                     .opacity(
                                         preferences.accent == accent ? 1 : 0
                                     )
@@ -102,20 +102,20 @@ extension AccentChoice {
         switch self {
         case .blue:
             String(localized: "Blue", table: "Appearance", bundle: .module)
-        case .indigo:
-            String(localized: "Indigo", table: "Appearance", bundle: .module)
-        case .purple:
-            String(localized: "Purple", table: "Appearance", bundle: .module)
+        case .orchid:
+            String(localized: "Orchid", table: "Appearance", bundle: .module)
         case .pink:
             String(localized: "Pink", table: "Appearance", bundle: .module)
-        case .red:
-            String(localized: "Red", table: "Appearance", bundle: .module)
-        case .amber:
-            String(localized: "Amber", table: "Appearance", bundle: .module)
-        case .green:
-            String(localized: "Green", table: "Appearance", bundle: .module)
-        case .teal:
-            String(localized: "Teal", table: "Appearance", bundle: .module)
+        case .coral:
+            String(localized: "Coral", table: "Appearance", bundle: .module)
+        case .gold:
+            String(localized: "Gold", table: "Appearance", bundle: .module)
+        case .lime:
+            String(localized: "Lime", table: "Appearance", bundle: .module)
+        case .mint:
+            String(localized: "Mint", table: "Appearance", bundle: .module)
+        case .sky:
+            String(localized: "Sky", table: "Appearance", bundle: .module)
         }
     }
 }

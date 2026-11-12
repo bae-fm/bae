@@ -105,7 +105,7 @@ fun BaeTheme(
     }
     CompositionLocalProvider(
         LocalAppearanceStore provides appearance,
-        LocalPrimaryFill provides preferences.accent.colors.fill,
+        LocalPrimaryFill provides preferences.accent.colors.selection,
         LocalSemanticColors provides semanticColors(isDark),
         LocalIsDark provides isDark,
         LocalToneSurfaces provides preferences.tone.surfaces(isDark),

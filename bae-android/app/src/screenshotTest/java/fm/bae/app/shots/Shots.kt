@@ -208,13 +208,13 @@ fun AppearanceLightNeutral() {
 @Preview(device = PHONE_SPEC)
 @Composable
 fun AppearanceLightSlate() {
-    AppearanceScene(AppearanceMode.LIGHT, SurfaceTone.SLATE, AccentChoice.TEAL)
+    AppearanceScene(AppearanceMode.LIGHT, SurfaceTone.SLATE, AccentChoice.SKY)
 }
 
 @Preview(device = PHONE_SPEC)
 @Composable
 fun AppearanceLightPlum() {
-    AppearanceScene(AppearanceMode.LIGHT, SurfaceTone.PLUM, AccentChoice.PURPLE)
+    AppearanceScene(AppearanceMode.LIGHT, SurfaceTone.PLUM, AccentChoice.ORCHID)
 }
 
 @Preview(device = PHONE_SPEC)
@@ -226,13 +226,13 @@ fun AppearanceDarkNeutral() {
 @Preview(device = PHONE_SPEC)
 @Composable
 fun AppearanceDarkSlate() {
-    AppearanceScene(AppearanceMode.DARK, SurfaceTone.SLATE, AccentChoice.TEAL)
+    AppearanceScene(AppearanceMode.DARK, SurfaceTone.SLATE, AccentChoice.SKY)
 }
 
 @Preview(device = PHONE_SPEC)
 @Composable
 fun AppearanceDarkPlum() {
-    AppearanceScene(AppearanceMode.DARK, SurfaceTone.PLUM, AccentChoice.PURPLE)
+    AppearanceScene(AppearanceMode.DARK, SurfaceTone.PLUM, AccentChoice.ORCHID)
 }
 
 @Preview(device = PHONE_SPEC)
@@ -250,25 +250,25 @@ fun AppearanceDarkMidnight() {
 @Preview(device = PHONE_SPEC)
 @Composable
 fun AppearanceLightForest() {
-    AppearanceScene(AppearanceMode.LIGHT, SurfaceTone.FOREST, AccentChoice.GREEN)
+    AppearanceScene(AppearanceMode.LIGHT, SurfaceTone.FOREST, AccentChoice.MINT)
 }
 
 @Preview(device = PHONE_SPEC)
 @Composable
 fun AppearanceDarkForest() {
-    AppearanceScene(AppearanceMode.DARK, SurfaceTone.FOREST, AccentChoice.GREEN)
+    AppearanceScene(AppearanceMode.DARK, SurfaceTone.FOREST, AccentChoice.MINT)
 }
 
 @Preview(device = PHONE_SPEC)
 @Composable
 fun AppearanceLightSand() {
-    AppearanceScene(AppearanceMode.LIGHT, SurfaceTone.SAND, AccentChoice.AMBER)
+    AppearanceScene(AppearanceMode.LIGHT, SurfaceTone.SAND, AccentChoice.GOLD)
 }
 
 @Preview(device = PHONE_SPEC)
 @Composable
 fun AppearanceDarkSand() {
-    AppearanceScene(AppearanceMode.DARK, SurfaceTone.SAND, AccentChoice.AMBER)
+    AppearanceScene(AppearanceMode.DARK, SurfaceTone.SAND, AccentChoice.GOLD)
 }
 
 @Composable

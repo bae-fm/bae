@@ -7,6 +7,6 @@ extension AccentChoice {
 
     /// The fill behind white button labels.
     public var buttonColor: Color {
-        colors.fill
+        colors.selection
     }
 }

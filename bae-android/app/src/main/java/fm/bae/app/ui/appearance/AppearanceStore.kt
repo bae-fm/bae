@@ -34,7 +34,7 @@ fun readAppearancePreferences(file: File): AppearancePreferences {
     val json = JSONObject(file.readBytes().toString(Charsets.UTF_8))
     return AppearancePreferences(
         mode = AppearanceMode.valueOf(json.getString("mode")),
-        accent = AccentChoice.valueOf(json.getString("accent")),
+        accent = AccentChoice.entries.firstOrNull { it.name == json.getString("accent") } ?: AccentChoice.STANDARD,
         tone = SurfaceTone.valueOf(json.getString("tone")),
     )
 }
