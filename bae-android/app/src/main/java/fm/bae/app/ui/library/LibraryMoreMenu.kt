@@ -230,7 +230,7 @@ private fun <F> SortItems(
 
 /** Group by artist, its check showing whether the grid is grouped. */
 @Composable
-private fun GroupByArtistItem(
+internal fun GroupByArtistItem(
     grouped: Boolean,
     onChange: (Boolean) -> Unit,
 ) {

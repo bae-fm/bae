@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.material3.MenuDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -22,6 +24,7 @@ import fm.bae.app.ui.library.AndroidAlbumTile
 import fm.bae.app.ui.library.AndroidArtistHeading
 import fm.bae.app.ui.library.AndroidMenuItem
 import fm.bae.app.ui.library.AndroidSearchSection
+import fm.bae.app.ui.library.GroupByArtistItem
 import org.junit.Test
 import uniffi.bae_bridge.BridgeAlbumAppearance
 import uniffi.bae_bridge.BridgeAlbumDetail
@@ -169,12 +172,15 @@ class LibraryComponentShots : BoardShot() {
     @Test
     fun androidComponentMenuItemDefault() =
         component("android.component.menu-item.default") {
-            Column {
-                AndroidMenuItem("Albums", selected = true, onClick = {})
-                AndroidMenuItem("Artists", selected = false, onClick = {})
-                AndroidMenuItem("Composers (pressed)", selected = false, onClick = {})
-                AndroidMenuItem("Group by artist", selected = false, onClick = {})
-                AndroidMenuItem("Group by artist", selected = true, onClick = {})
+            // The menu's own window isn't drawn in a test: its surface is drawn here.
+            Surface(color = MenuDefaults.containerColor, shape = MenuDefaults.shape) {
+                Column {
+                    AndroidMenuItem("Albums", selected = true, onClick = {})
+                    AndroidMenuItem("Artists", selected = false, onClick = {})
+                    AndroidMenuItem("Composers (pressed)", selected = false, onClick = {})
+                    GroupByArtistItem(grouped = false, onChange = {})
+                    GroupByArtistItem(grouped = true, onChange = {})
+                }
             }
         }
 }
