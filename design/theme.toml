@@ -394,6 +394,12 @@ weight = "medium"
 android = 14
 android_line = 20
 
+# Android's top bar title: regular, 22 over a 28 line, on the page colour.
+[text.androidBarTitle]
+weight = "regular"
+android = 22
+android_line = 28
+
 [text.mono]
 weight = "regular"
 monospaced = true
