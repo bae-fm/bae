@@ -875,7 +875,7 @@ async fn cancelling_a_pin_removes_what_it_downloaded() {
     manager.evict_file_for_test(file.file).await.unwrap();
 
     let (observed, stalled) = tokio::sync::oneshot::channel();
-    let (_resume, resumed) = tokio::sync::oneshot::channel::<()>();
+    let (resume, resumed) = tokio::sync::oneshot::channel::<()>();
     home.hold_body_at(last_stored_path(&home, manager), 2 * 1024 * 1024, observed, resumed).await;
     let pin = tokio::spawn({
         let manager = manager.clone();
@@ -892,6 +892,10 @@ async fn cancelling_a_pin_removes_what_it_downloaded() {
     let after_cancel = manager.store.local_bytes().await.unwrap();
     assert_eq!(after_cancel.pinning, 0, "the cancel removed the partial download");
 
+    // The cancel reaches the pin when its held body read next yields, so the
+    // body is let go; a body held for good leaves the pin waiting on it. The
+    // body may be gone already, when the cancel reached it first.
+    let _ = resume.send(());
     pin.await.unwrap().expect_err("the cancel ended the download the pin waited on");
     let local = manager.store.local_bytes().await.unwrap();
     let audio = local
