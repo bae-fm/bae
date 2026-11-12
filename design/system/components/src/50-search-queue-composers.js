@@ -91,7 +91,7 @@
   function AndroidQueueRow(props) {
     return h('div', { className: cx('bae-a-qrow', props.dragging && 'bae-a-qrow-drag') }, h(Artwork, { title: props.album || props.title, size: 48, radius: 6 }),
       h('div', { className: 'bae-a-qrow-text' }, h('div', { className: cx('bae-a-track-title', props.current && 'bae-accent') }, props.title), h('div', { className: 'bae-a-track-artist' }, props.artist), props.current ? null : h('div', { className: 'bae-a-track-artist' }, props.album)),
-      props.current ? null : [h('span', { key: 'd', className: 'bae-a-track-time', style: { padding: '0 8px' } }, props.duration), h(AndroidIconButton, { key: 'x', icon: 'close', label: 'Remove', tone: 'muted' }), h(Glyph, { key: 'h', name: 'drag', size: 20, className: 'bae-muted' })]);
+      props.current ? null : [h('span', { key: 'd', className: 'bae-a-track-time', style: { padding: '0 8px' } }, props.duration), h(AndroidIconButton, { key: 'x', icon: 'close', label: 'Remove from queue', tone: 'muted' }), h(Glyph, { key: 'h', name: 'drag', size: 20, className: 'bae-muted' })]);
   }
   // A queued track not loaded yet: the cover's tile and a bar for each of the row's three lines.
   function AndroidQueuePlaceholderRow() {
@@ -104,7 +104,7 @@
       h(Artwork, { title: props.album || props.title, radius: 10 }),
       h('div', { className: 'bae-a-fp-title' }, props.title), h('div', { className: 'bae-a-fp-artist' }, props.artist),
       h(AndroidSeekBar, { large: true, position: props.position, held: props.held, elapsed: props.elapsed, duration: props.duration }),
-      h('div', { className: 'bae-a-fp-transport' }, h(AndroidIconButton, { box: 56, icon: 'previous', size: 36, label: 'Previous' }), h(AndroidPlayPause, { playing: props.playing, waiting: props.waiting, size: 48 }), h(AndroidIconButton, { box: 56, icon: 'next', size: 36, label: 'Next' })),
+      h('div', { className: 'bae-a-fp-transport' }, h(AndroidIconButton, { box: 56, icon: 'previous', size: 36, label: 'Previous track' }), h(AndroidPlayPause, { playing: props.playing, waiting: props.waiting, size: 48 }), h(AndroidIconButton, { box: 56, icon: 'next', size: 36, label: 'Next track' })),
       h('div', { className: 'bae-a-fp-repeat' }, h(AndroidIconButton, { icon: 'repeat', label: 'Repeat mode', tone: props.repeat ? 'accent' : 'muted' })),
       h('div', { className: 'bae-a-fp-volume' }, h(AndroidIconButton, { icon: 'nowplaying', label: 'Mute', tone: 'muted' }), h('div', { className: 'bae-a-fp-slider' }, h('div', { style: { width: '70%' } }), h('span', { style: { left: '70%' } }))));
   }

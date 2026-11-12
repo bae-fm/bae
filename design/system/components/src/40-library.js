@@ -84,8 +84,9 @@
   }
 
   function MacPlayPause(props) {
-    return h('span', { className: 'bae-m-playpause' },
-      props.waiting ? h('svg', { className: 'bae-waitarc', width: 48, height: 48, viewBox: '0 0 48 48', 'aria-label': 'Downloading the track…' }, h('path', { d: 'M24 1.25A22.75 22.75 0 0 1 46.75 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2.5, strokeLinecap: 'round' })) : null,
+    // A button named by what it does, as the app's: the arc around it while the track waits on storage is drawing only, with no words of its own.
+    return h('button', { type: 'button', className: 'bae-m-playpause', 'aria-label': props.playing ? 'Pause' : 'Play' },
+      props.waiting ? h('svg', { className: 'bae-waitarc', width: 48, height: 48, viewBox: '0 0 48 48', 'aria-hidden': true }, h('path', { d: 'M24 1.25A22.75 22.75 0 0 1 46.75 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2.5, strokeLinecap: 'round' })) : null,
       h(Glyph, { set: 'mac', name: props.playing ? 'pause' : 'play', size: 20 }));
   }
 
@@ -98,10 +99,10 @@
       h('div', { className: 'bae-m-np-center' },
         h('div', { className: 'bae-m-np-transport' },
           h(MacIconButton, { icon: 'shuffle', label: 'Shuffle', active: props.shuffle }),
-          h(MacIconButton, { icon: 'previous', label: 'Previous' }),
+          h(MacIconButton, { icon: 'previous', label: 'Previous track' }),
           h(MacPlayPause, { playing: props.playing, waiting: props.waiting }),
-          h(MacIconButton, { icon: 'next', label: 'Next' }),
-          h(MacIconButton, { icon: 'repeat', label: 'Repeat', active: props.repeat })),
+          h(MacIconButton, { icon: 'next', label: 'Next track' }),
+          h(MacIconButton, { icon: 'repeat', label: props.repeat ? 'Repeat: all' : 'Repeat: off', active: props.repeat })),
         h(MacSeekBar, { position: props.position, held: props.held, elapsed: props.elapsed, duration: props.duration, off: none })),
       h('div', { className: 'bae-m-np-right' },
         h(MacIconButton, { icon: 'cast', label: props.casting ? 'Casting to ' + props.casting : 'Cast', active: !!props.casting }),
@@ -263,8 +264,8 @@
 
   function AndroidPlayPause(props) {
     var icon = Number(props.size || 24), box = icon + 16;
-    return h('span', { className: 'bae-a-playpause', style: { width: box, height: box } },
-      props.waiting ? h('svg', { className: 'bae-waitarc', width: box, height: box, viewBox: '0 0 48 48', 'aria-label': 'Downloading the track…' }, h('path', { d: 'M24 1.25A22.75 22.75 0 0 1 46.75 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2.5, strokeLinecap: 'round' })) : null,
+    return h('button', { type: 'button', className: 'bae-a-playpause', style: { width: box, height: box }, 'aria-label': props.playing || props.waiting ? 'Pause' : 'Play' },
+      props.waiting ? h('svg', { className: 'bae-waitarc', width: box, height: box, viewBox: '0 0 48 48', 'aria-hidden': true }, h('path', { d: 'M24 1.25A22.75 22.75 0 0 1 46.75 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2.5, strokeLinecap: 'round' })) : null,
       h(Glyph, { name: props.playing || props.waiting ? 'pause' : 'play', size: icon }));
   }
 
@@ -274,12 +275,12 @@
       h('div', { className: 'bae-a-np-row' },
         props.error ? h('div', { className: 'bae-a-np-info bae-a-np-error' }, props.error) : h('div', { className: 'bae-a-np-info' }, h(Artwork, { title: props.album || props.title, size: 48, radius: 6 }),
           h('div', { className: 'bae-a-np-text' }, h('div', { className: 'bae-a-np-title' }, props.title), h('div', { className: 'bae-a-np-sub' }, props.artist))),
-        h(AndroidIconButton, { box: 40, icon: 'previous', label: 'Previous' }),
+        h(AndroidIconButton, { box: 40, icon: 'previous', label: 'Previous track' }),
         h(AndroidPlayPause, { playing: props.playing, waiting: props.waiting }),
-        h(AndroidIconButton, { box: 40, icon: 'next', label: 'Next' }),
+        h(AndroidIconButton, { box: 40, icon: 'next', label: 'Next track' }),
         props.castOff ? null : h(AndroidIconButton, { box: 40, icon: 'cast', label: 'Cast', tone: props.casting ? 'accent' : 'muted' }),
         h(AndroidIconButton, { box: 40, icon: 'queue', label: 'Queue' }),
-        h(AndroidIconButton, { box: 40, icon: 'repeat', label: 'Repeat', tone: props.repeat ? 'accent' : 'muted' })),
+        h(AndroidIconButton, { box: 40, icon: 'repeat', label: 'Repeat mode', tone: props.repeat ? 'accent' : 'muted' })),
       h(AndroidSeekBar, { position: props.position, held: props.held, elapsed: props.elapsed, duration: props.duration }));
   }
 
