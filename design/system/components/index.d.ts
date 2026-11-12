@@ -254,6 +254,8 @@ export interface AndroidDownloadControlProps { state?: 'available' | 'queued' | 
 export declare function AndroidDownloadControl(props: AndroidDownloadControlProps): React.ReactElement;
 export declare function AndroidUploadLine(props: { phase?: string; missing?: string }): React.ReactElement;
 export interface MacAlbumPanelProps { title: string; artist?: string; year?: string; releases?: string; release?: string; pressing?: string; labels?: string; unplayable?: string; noCover?: boolean; coverSize?: number; children?: React.ReactNode }
+/** The close control of a docked pane and of an open album. */
+export declare function MacCloseButton(props: { label?: string }): React.ReactElement;
 export declare function MacAlbumPanel(props: MacAlbumPanelProps): React.ReactElement;
 export declare function MacTrackColumns(props: { children?: React.ReactNode }): React.ReactElement;
 export declare function MacBrowseSplit(props: { children?: React.ReactNode }): React.ReactElement;

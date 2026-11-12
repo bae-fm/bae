@@ -170,11 +170,16 @@
   }
 
 
+  // The close control of a docked pane and of an open album: an × in a round, quiet fill.
+  function MacCloseButton(props) {
+    return h('button', { type: 'button', className: 'bae-m-close', 'aria-label': props.label || 'Close', title: props.label || 'Close' }, h(Glyph, { set: 'mac', name: 'close', size: 13 }));
+  }
+
   // The album opened in the grid: a panel under the album's row.
   function MacAlbumPanel(props) {
     var releases = props.releases ? String(props.releases).split(',').map(function (r) { return r.trim(); }) : null;
     return h('section', { className: 'bae-m-albumpanel' },
-      h('span', { className: 'bae-m-albumpanel-close', 'aria-label': 'Close' }, h(Glyph, { set: 'mac', name: 'close', size: 13 })),
+      h('span', { className: 'bae-m-albumpanel-close' }, h(MacCloseButton)),
       h(Artwork, { title: props.title, size: Number(props.coverSize || 340), radius: 10, missing: props.noCover, className: 'bae-m-albumpanel-cover' }),
       h('div', { className: 'bae-m-albumpanel-body' },
         h('h2', { className: 'bae-m-albumpanel-title' }, props.title),

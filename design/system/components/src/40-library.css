@@ -167,7 +167,8 @@
 .bae-a-fine { font: 400 11px var(--font-android); color: var(--text-secondary); }
 .bae-m-tertiary { color: var(--text-tertiary); }
 .bae-m-albumpanel { position: relative; display: flex; align-items: flex-start; gap: 32px; padding: 32px; border-radius: var(--radius-panel); background: var(--elevated); box-shadow: inset 0 0 0 1px var(--hairline), 0 18px 28px var(--shadow); }
-.bae-m-albumpanel-close { position: absolute; top: 16px; right: 16px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 14px; background: var(--hover); color: var(--text-secondary); fill: currentColor; }
+.bae-m-close { width: 28px; height: 28px; flex: none; display: flex; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 14px; background: var(--hover); color: var(--text-secondary); fill: currentColor; cursor: pointer; }
+.bae-m-albumpanel-close { position: absolute; top: 16px; right: 16px; }
 .bae-m-albumpanel-cover { box-shadow: 0 12px 20px var(--shadow); }
 .bae-m-albumpanel-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .bae-m-albumpanel-title { margin: 0; font: 700 30px var(--font-sans); letter-spacing: -0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

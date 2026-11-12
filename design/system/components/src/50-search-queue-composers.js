@@ -22,7 +22,7 @@
   // ---- Queue and playback (macOS) ----
   function MacQueuePanel(props) {
     return h('aside', { className: 'bae-m-queue' },
-      h('div', { className: 'bae-m-queue-head' }, h('h2', null, 'Queue'), h('span', { className: 'bae-m-albumpanel-close', style: { position: 'static' }, 'aria-label': 'Close' }, h(Glyph, { set: 'mac', name: 'close', size: 13 }))),
+      h('div', { className: 'bae-m-queue-head' }, h('h2', null, 'Queue'), h(MacCloseButton)),
       props.title ? h('div', { className: 'bae-m-queue-np' },
         h(Artwork, { title: props.album || props.title, size: 56, radius: 6, shadow: 'bar' }),
         h('div', { className: 'bae-m-queue-np-text' },
