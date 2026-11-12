@@ -97,6 +97,14 @@ impl CandidateKey {
     pub(crate) fn test(folder: &str) -> Self {
         Self::folder(Path::new(folder))
     }
+
+    /// The key of the release read from the folder a test spells as the
+    /// POSIX path `posix`, rooted for the host the test runs on as
+    /// `host_root` roots a watched folder: a scan of `host_root("/watch")`
+    /// reads the key `test_rooted("/watch/a")` below it.
+    pub(crate) fn test_rooted(posix: &str) -> Self {
+        Self::folder(&crate::tables::watched_path::host_root(posix))
+    }
 }
 
 #[cfg(any(test, feature = "test-utils"))]

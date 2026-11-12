@@ -18,17 +18,17 @@ use bae_util::test_channels::HANG_GUARD;
 #[tokio::test]
 async fn a_late_reader_reads_every_running_key() {
     let runtime = CandidateRuntime::for_test().await;
-    claim(&runtime, &crate::CandidateKey::test("/watch/a/rel1")).await;
-    measuring(&runtime, &crate::CandidateKey::test("/watch/a/rel1"), 10).await;
-    claim(&runtime, &crate::CandidateKey::test("/watch/a/rel2")).await;
+    claim(&runtime, &crate::CandidateKey::test_rooted("/watch/a/rel1")).await;
+    measuring(&runtime, &crate::CandidateKey::test_rooted("/watch/a/rel1"), 10).await;
+    claim(&runtime, &crate::CandidateKey::test_rooted("/watch/a/rel2")).await;
 
     let running = runtime.snapshots().await.unwrap();
     assert_eq!(running.len(), 2);
     assert_eq!(
-        running[&crate::CandidateKey::test("/watch/a/rel1")].import,
+        running[&crate::CandidateKey::test_rooted("/watch/a/rel1")].import,
         Some(ImportInFlight { step: ImportStep::Running(ImportPhase::MeasuringLoudness) })
     );
-    assert!(running[&crate::CandidateKey::test("/watch/a/rel2")].import.is_some());
+    assert!(running[&crate::CandidateKey::test_rooted("/watch/a/rel2")].import.is_some());
 }
 
 /// What the runtime says identification is doing for `key`.
@@ -45,7 +45,7 @@ async fn in_flight(
 #[tokio::test]
 async fn a_queued_key_reads_as_queued_until_its_run_reports() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = &crate::CandidateKey::test("/watch/a/rel1");
+    let key = &crate::CandidateKey::test_rooted("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
 
     runtime.admit(vec![(key.clone(), files.clone())], Admission::Automatic).await.unwrap();
@@ -74,7 +74,7 @@ async fn a_queued_key_reads_as_queued_until_its_run_reports() {
 #[tokio::test]
 async fn a_request_over_an_answer_being_written_waits_for_the_next_run() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = &crate::CandidateKey::test("/watch/a/rel1");
+    let key = &crate::CandidateKey::test_rooted("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
     runtime.admit(vec![(key.clone(), files.clone())], Admission::Automatic).await.unwrap();
     report(&runtime, key, &files, run(1), manual_only()).await;
@@ -160,7 +160,7 @@ fn import_step(runtime: &Option<crate::CandidateRuntimeSnapshot>) -> Option<Impo
 #[tokio::test]
 async fn a_key_s_runtime_query_shows_queued_then_running_from_the_table() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = &crate::CandidateKey::test("/watch/a/rel1");
+    let key = &crate::CandidateKey::test_rooted("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
     let mut query = runtime.tables.subscribe_candidate_runtime(key);
     assert_eq!(next_runtime(&mut query).await, None);
@@ -194,8 +194,8 @@ async fn a_key_s_runtime_query_shows_queued_then_running_from_the_table() {
 async fn the_import_counts_query_delivers_each_write_that_moves_them() {
     let runtime = CandidateRuntime::for_test().await;
     let mut counts = runtime.tables.subscribe_import_counts();
-    let first = &crate::CandidateKey::test("/watch/a/rel1");
-    let second = &crate::CandidateKey::test("/watch/a/rel2");
+    let first = &crate::CandidateKey::test_rooted("/watch/a/rel1");
+    let second = &crate::CandidateKey::test_rooted("/watch/a/rel2");
     let marks = vec![
         (first.clone(), scanned_key(&runtime, first).await),
         (second.clone(), scanned_key(&runtime, second).await),
@@ -221,7 +221,7 @@ async fn the_import_counts_query_delivers_each_write_that_moves_them() {
         crate::ImportCounts { identified: 1, admitted: 2, imports_in_flight: 0 }
     );
 
-    claim(&runtime, &crate::CandidateKey::test("/watch/a/rel3")).await;
+    claim(&runtime, &crate::CandidateKey::test_rooted("/watch/a/rel3")).await;
     assert_eq!(
         next_counts().await,
         crate::ImportCounts { identified: 1, admitted: 2, imports_in_flight: 1 }
@@ -232,8 +232,8 @@ async fn the_import_counts_query_delivers_each_write_that_moves_them() {
 #[tokio::test]
 async fn a_key_s_runtime_query_hears_only_its_key() {
     let runtime = CandidateRuntime::for_test().await;
-    let first = &crate::CandidateKey::test("/watch/a/rel1");
-    let second = &crate::CandidateKey::test("/watch/a/rel2");
+    let first = &crate::CandidateKey::test_rooted("/watch/a/rel1");
+    let second = &crate::CandidateKey::test_rooted("/watch/a/rel2");
     claim(&runtime, first).await;
     let mut query = runtime.tables.subscribe_candidate_runtime(first);
     assert_eq!(
@@ -259,8 +259,8 @@ async fn a_key_s_runtime_query_hears_only_its_key() {
 #[tokio::test]
 async fn an_import_percent_moves_the_percents_not_the_runtime() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = &crate::CandidateKey::test("/watch/a/rel1");
-    let other = &crate::CandidateKey::test("/watch/a/rel2");
+    let key = &crate::CandidateKey::test_rooted("/watch/a/rel1");
+    let other = &crate::CandidateKey::test_rooted("/watch/a/rel2");
     claim(&runtime, key).await;
     claim(&runtime, other).await;
     let mut percents = runtime.watch_import_percents();

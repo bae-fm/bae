@@ -18,7 +18,7 @@ use bae_catalogs::catalog::LookupCatalog;
 #[tokio::test]
 async fn a_finished_import_keeps_a_key_whose_answer_is_still_being_written() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = &crate::CandidateKey::test("/watch/a/rel1");
+    let key = &crate::CandidateKey::test_rooted("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
     runtime.admit(vec![(key.clone(), files.clone())], Admission::Automatic).await.unwrap();
     report(&runtime, key, &files, run(1), manual_only()).await;
@@ -45,7 +45,7 @@ async fn a_finished_import_keeps_a_key_whose_answer_is_still_being_written() {
 #[tokio::test]
 async fn a_preparing_step_is_the_step_written() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = &crate::CandidateKey::test("/watch/a/rel1");
+    let key = &crate::CandidateKey::test_rooted("/watch/a/rel1");
     claim(&runtime, key).await;
 
     runtime
@@ -69,8 +69,8 @@ async fn a_preparing_step_is_the_step_written() {
 #[tokio::test]
 async fn an_admission_is_one_write_and_each_key_leaves_on_its_own() {
     let runtime = CandidateRuntime::for_test().await;
-    let first = &crate::CandidateKey::test("/watch/a/rel1");
-    let second = &crate::CandidateKey::test("/watch/a/rel2");
+    let first = &crate::CandidateKey::test_rooted("/watch/a/rel1");
+    let second = &crate::CandidateKey::test_rooted("/watch/a/rel2");
     let marks = vec![
         (first.clone(), scanned_key(&runtime, first).await),
         (second.clone(), scanned_key(&runtime, second).await),
@@ -98,7 +98,7 @@ async fn an_admission_is_one_write_and_each_key_leaves_on_its_own() {
 #[tokio::test]
 async fn a_terminal_state_moves_the_run_to_being_written() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = &crate::CandidateKey::test("/watch/a/rel1");
+    let key = &crate::CandidateKey::test_rooted("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
     runtime.admit(vec![(key.clone(), files.clone())], Admission::Automatic).await.unwrap();
 
@@ -133,7 +133,7 @@ async fn a_terminal_state_moves_the_run_to_being_written() {
 #[tokio::test]
 async fn a_run_s_end_ends_only_that_run() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = &crate::CandidateKey::test("/watch/a/rel1");
+    let key = &crate::CandidateKey::test_rooted("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
     runtime.admit(vec![(key.clone(), files.clone())], Admission::Automatic).await.unwrap();
     report(&runtime, key, &files, run(2), triangulating()).await;
@@ -158,7 +158,7 @@ async fn a_run_s_end_ends_only_that_run() {
 #[tokio::test]
 async fn a_write_ends_the_answer_it_ran_for_and_no_other() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = &crate::CandidateKey::test("/watch/a/rel1");
+    let key = &crate::CandidateKey::test_rooted("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
     runtime.admit(vec![(key.clone(), files.clone())], Admission::Automatic).await.unwrap();
     report(&runtime, key, &files, run(1), manual_only()).await;
@@ -184,7 +184,7 @@ fn not_written(error: &str) -> SaveFailure {
 #[tokio::test]
 async fn a_failed_write_stands_until_the_next_run_starts() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = &crate::CandidateKey::test("/watch/a/rel1");
+    let key = &crate::CandidateKey::test_rooted("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
     runtime.admit(vec![(key.clone(), files.clone())], Admission::Automatic).await.unwrap();
     report(&runtime, key, &files, run(1), manual_only()).await;
@@ -214,7 +214,7 @@ async fn a_failed_write_stands_until_the_next_run_starts() {
 #[tokio::test]
 async fn a_finished_answer_keeps_a_key_whose_import_is_running() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = &crate::CandidateKey::test("/watch/a/rel1");
+    let key = &crate::CandidateKey::test_rooted("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
     runtime.admit(vec![(key.clone(), files.clone())], Admission::Automatic).await.unwrap();
     report(&runtime, key, &files, run(1), manual_only()).await;
@@ -232,7 +232,7 @@ async fn a_finished_answer_keeps_a_key_whose_import_is_running() {
 #[tokio::test]
 async fn a_cancel_ends_the_run_and_what_it_published() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = &crate::CandidateKey::test("/watch/a/rel1");
+    let key = &crate::CandidateKey::test_rooted("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
     runtime.admit(vec![(key.clone(), files.clone())], Admission::Automatic).await.unwrap();
     report(&runtime, key, &files, run(1), manual_only()).await;
@@ -246,7 +246,7 @@ async fn a_cancel_ends_the_run_and_what_it_published() {
 #[tokio::test]
 async fn a_second_claim_on_an_owned_candidate_is_refused_and_changes_nothing() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = &crate::CandidateKey::test("/watch/a/rel1");
+    let key = &crate::CandidateKey::test_rooted("/watch/a/rel1");
     runtime.claim_for_import(key, "imp-1", false).await.unwrap();
     let claimed = runtime.snapshot(key).await.unwrap();
 
@@ -262,7 +262,7 @@ async fn a_second_claim_on_an_owned_candidate_is_refused_and_changes_nothing() {
 #[tokio::test]
 async fn a_claim_is_refused_by_the_claim_the_table_holds() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = &crate::CandidateKey::test("/watch/a/rel1");
+    let key = &crate::CandidateKey::test_rooted("/watch/a/rel1");
     runtime.claim_for_import(key, "imp-1", false).await.unwrap();
 
     let holding_nothing = runtime.over_the_same_library_for_test();
@@ -276,7 +276,7 @@ async fn a_claim_is_refused_by_the_claim_the_table_holds() {
 #[tokio::test]
 async fn a_claim_is_the_queued_step_until_the_worker_takes_it_up() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = &crate::CandidateKey::test("/watch/a/rel1");
+    let key = &crate::CandidateKey::test_rooted("/watch/a/rel1");
 
     runtime.claim_for_import(key, "imp-1", false).await.unwrap();
     assert_eq!(
@@ -296,7 +296,7 @@ async fn a_claim_is_the_queued_step_until_the_worker_takes_it_up() {
 #[tokio::test]
 async fn only_the_claiming_import_moves_its_claim() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = &crate::CandidateKey::test("/watch/a/rel1");
+    let key = &crate::CandidateKey::test_rooted("/watch/a/rel1");
     claim(&runtime, key).await;
     measuring(&runtime, key, 60).await;
     runtime.move_import(key, "imp-1", None).await.unwrap();
@@ -344,7 +344,7 @@ async fn only_the_claiming_import_moves_its_claim() {
 /// meanwhile.
 #[tokio::test]
 async fn an_import_outlives_its_candidate_leaving_the_scan() {
-    let key = &crate::CandidateKey::test("/watch/a/rel1");
+    let key = &crate::CandidateKey::test_rooted("/watch/a/rel1");
     let mut reshaped = folder_candidate(key, "/watch/a");
     reshaped.file_edit_revision = 1;
     let departures = [
@@ -393,7 +393,7 @@ async fn an_import_outlives_its_candidate_leaving_the_scan() {
 #[tokio::test]
 async fn a_claim_that_ends_identification_ends_it_in_its_own_write() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = &crate::CandidateKey::test("/watch/a/rel1");
+    let key = &crate::CandidateKey::test_rooted("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
     runtime.admit(vec![(key.clone(), files.clone())], Admission::Requested).await.unwrap();
     report(&runtime, key, &files, run(1), triangulating()).await;
@@ -425,7 +425,7 @@ async fn counts(runtime: &CandidateRuntime, last: &mut (u32, u32)) -> Vec<(u32, 
 async fn a_lookup_started_by_hand_opens_a_batch() {
     let runtime = CandidateRuntime::for_test().await;
     let mut last = (0, 0);
-    let key = &crate::CandidateKey::test("/watch/a/rel1");
+    let key = &crate::CandidateKey::test_rooted("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
 
     runtime.admit(vec![(key.clone(), files.clone())], Admission::Requested).await.unwrap();
@@ -460,8 +460,8 @@ async fn a_lookup_started_by_hand_opens_a_batch() {
 async fn the_sweeps_queue_is_counted_and_drains_to_nothing() {
     let runtime = CandidateRuntime::for_test().await;
     let mut last = (0, 0);
-    let first = &crate::CandidateKey::test("/watch/a/rel1");
-    let second = &crate::CandidateKey::test("/watch/a/rel2");
+    let first = &crate::CandidateKey::test_rooted("/watch/a/rel1");
+    let second = &crate::CandidateKey::test_rooted("/watch/a/rel2");
     let first_files = scanned_key(&runtime, first).await;
     let second_files = scanned_key(&runtime, second).await;
 
@@ -489,8 +489,8 @@ async fn the_sweeps_queue_is_counted_and_drains_to_nothing() {
 async fn a_key_dropped_from_the_queue_before_it_ran_is_over() {
     let runtime = CandidateRuntime::for_test().await;
     let mut last = (0, 0);
-    let first = &crate::CandidateKey::test("/watch/a/rel1");
-    let second = &crate::CandidateKey::test("/watch/a/rel2");
+    let first = &crate::CandidateKey::test_rooted("/watch/a/rel1");
+    let second = &crate::CandidateKey::test_rooted("/watch/a/rel2");
     let marks = vec![
         (first.clone(), scanned_key(&runtime, first).await),
         (second.clone(), scanned_key(&runtime, second).await),
@@ -516,7 +516,7 @@ async fn a_key_dropped_from_the_queue_before_it_ran_is_over() {
 async fn a_failed_write_ends_the_identification() {
     let runtime = CandidateRuntime::for_test().await;
     let mut last = (0, 0);
-    let key = &crate::CandidateKey::test("/watch/a/rel1");
+    let key = &crate::CandidateKey::test_rooted("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
 
     runtime.admit(vec![(key.clone(), files.clone())], Admission::Requested).await.unwrap();
@@ -540,7 +540,7 @@ async fn a_failed_write_ends_the_identification() {
 async fn a_cancelled_run_s_end_ends_its_identification() {
     let runtime = CandidateRuntime::for_test().await;
     let mut last = (0, 0);
-    let key = &crate::CandidateKey::test("/watch/a/rel1");
+    let key = &crate::CandidateKey::test_rooted("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
 
     runtime.admit(vec![(key.clone(), files.clone())], Admission::Requested).await.unwrap();
@@ -557,8 +557,8 @@ async fn a_cancelled_run_s_end_ends_its_identification() {
 async fn a_batch_after_a_drain_starts_from_zero() {
     let runtime = CandidateRuntime::for_test().await;
     let mut last = (0, 0);
-    let first = &crate::CandidateKey::test("/watch/a/rel1");
-    let second = &crate::CandidateKey::test("/watch/a/rel2");
+    let first = &crate::CandidateKey::test_rooted("/watch/a/rel1");
+    let second = &crate::CandidateKey::test_rooted("/watch/a/rel2");
     let first_files = scanned_key(&runtime, first).await;
     let second_files = scanned_key(&runtime, second).await;
 
@@ -615,7 +615,7 @@ async fn fail_writes_of(runtime: &CandidateRuntime, stage: &str) {
 #[tokio::test]
 async fn a_start_that_cannot_be_written_fails_and_leaves_the_table_as_it_was() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = &crate::CandidateKey::test("/watch/a/rel1");
+    let key = &crate::CandidateKey::test_rooted("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
     runtime.admit(vec![(key.clone(), files.clone())], Admission::Requested).await.unwrap();
     let before = runtime.stored_standing_for_test(key).await;
@@ -637,8 +637,8 @@ async fn a_start_that_cannot_be_written_fails_and_leaves_the_table_as_it_was() {
 #[tokio::test]
 async fn an_admission_that_cannot_be_written_marks_nothing() {
     let runtime = CandidateRuntime::for_test().await;
-    let first = &crate::CandidateKey::test("/watch/a/rel1");
-    let second = &crate::CandidateKey::test("/watch/a/rel2");
+    let first = &crate::CandidateKey::test_rooted("/watch/a/rel1");
+    let second = &crate::CandidateKey::test_rooted("/watch/a/rel2");
     let marks = vec![
         (first.clone(), scanned_key(&runtime, first).await),
         (second.clone(), scanned_key(&runtime, second).await),
@@ -681,7 +681,7 @@ fn found_over(pressings: Vec<u32>) -> bae_identify::IdentifyState {
 #[tokio::test]
 async fn an_answer_that_picks_reads_as_its_pick_being_read_and_carries_an_import_ask() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = &crate::CandidateKey::test("/watch/a/rel1");
+    let key = &crate::CandidateKey::test_rooted("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
     runtime.admit(vec![(key.clone(), files.clone())], Admission::Automatic).await.unwrap();
     report(&runtime, key, &files, run(1), found_over(vec![0])).await;
@@ -713,7 +713,7 @@ async fn an_answer_that_picks_reads_as_its_pick_being_read_and_carries_an_import
 #[tokio::test]
 async fn an_answer_that_picks_nothing_reads_as_finalizing_and_takes_no_ask() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = &crate::CandidateKey::test("/watch/a/rel1");
+    let key = &crate::CandidateKey::test_rooted("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
     runtime.admit(vec![(key.clone(), files.clone())], Admission::Automatic).await.unwrap();
     report(&runtime, key, &files, run(1), found_over(vec![0, 1])).await;
@@ -733,7 +733,7 @@ async fn an_answer_that_picks_nothing_reads_as_finalizing_and_takes_no_ask() {
 #[tokio::test]
 async fn an_import_ask_goes_with_the_answer_it_was_asked_of() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = &crate::CandidateKey::test("/watch/a/rel1");
+    let key = &crate::CandidateKey::test_rooted("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
     runtime.admit(vec![(key.clone(), files.clone())], Admission::Automatic).await.unwrap();
     report(&runtime, key, &files, run(2), found_over(vec![0])).await;

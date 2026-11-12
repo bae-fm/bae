@@ -45,16 +45,16 @@ async fn every_standing_reads_back_as_written() {
     let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let admit = |key: &str| IdentificationChange::Admit {
-        files: files_of(&crate::CandidateKey::test(key)),
+        files: files_of(&crate::CandidateKey::test_rooted(key)),
         admission: Admission::Requested,
     };
     let start = |key: &str| IdentificationChange::RunStarted {
-        files: files_of(&crate::CandidateKey::test(key)),
+        files: files_of(&crate::CandidateKey::test_rooted(key)),
         run: run(1),
     };
     let answer = |reads_pick| IdentificationChange::RunAnswered { run: run(1), reads_pick };
     let fail = |key: &str, failure| IdentificationChange::AnswerFailed {
-        files: files_of(&crate::CandidateKey::test(key)),
+        files: files_of(&crate::CandidateKey::test_rooted(key)),
         run: run(1),
         failure,
     };
@@ -98,7 +98,7 @@ async fn every_standing_reads_back_as_written() {
         ),
     ];
     for (key, changes, stage) in cases {
-        let key = &crate::CandidateKey::test(key);
+        let key = &crate::CandidateKey::test_rooted(key);
         scanned(&db, key).await;
         change(&db, key, changes).await;
         assert_eq!(
@@ -111,7 +111,7 @@ async fn every_standing_reads_back_as_written() {
         );
     }
 
-    let key = &crate::CandidateKey::test("/music/Import");
+    let key = &crate::CandidateKey::test_rooted("/music/Import");
     tables.claim_candidate_import(key, "import-1", None).await.unwrap();
     for step in [
         crate::ImportStep::Preparing(crate::PrepareStep::Queued),
@@ -136,7 +136,7 @@ async fn every_standing_reads_back_as_written() {
 async fn nothing_running_removes_the_row() {
     let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
-    let key = &crate::CandidateKey::test("/music/Album");
+    let key = &crate::CandidateKey::test_rooted("/music/Album");
     scanned(&db, key).await;
     change(
         &db,
@@ -160,7 +160,7 @@ async fn nothing_running_removes_the_row() {
 async fn a_claim_while_another_stands_is_refused_whole() {
     let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
-    let key = &crate::CandidateKey::test("/music/Album");
+    let key = &crate::CandidateKey::test_rooted("/music/Album");
     scanned(&db, key).await;
     change(
         &db,
@@ -190,7 +190,7 @@ async fn clearing_removes_every_standing() {
     let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     for key in ["/music/One", "/music/Two"] {
-        let key = &crate::CandidateKey::test(key);
+        let key = &crate::CandidateKey::test_rooted(key);
         scanned(&db, key).await;
         change(
             &db,
@@ -203,7 +203,7 @@ async fn clearing_removes_every_standing() {
         .await;
     }
     tables
-        .claim_candidate_import(&crate::CandidateKey::test("/music/Two"), "import-1", None)
+        .claim_candidate_import(&crate::CandidateKey::test_rooted("/music/Two"), "import-1", None)
         .await
         .unwrap();
     tables.clear_candidate_standings().await.unwrap();
@@ -231,7 +231,7 @@ async fn the_imports_in_flight_are_the_rows_an_import_holds() {
     let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     for key in ["/music/One", "/music/Two", "/music/Three"] {
-        let key = &crate::CandidateKey::test(key);
+        let key = &crate::CandidateKey::test_rooted(key);
         scanned(&db, key).await;
         change(
             &db,
@@ -246,16 +246,16 @@ async fn the_imports_in_flight_are_the_rows_an_import_holds() {
     assert_eq!(imports_in_flight(&db).await, 0);
 
     tables
-        .claim_candidate_import(&crate::CandidateKey::test("/music/One"), "import-1", None)
+        .claim_candidate_import(&crate::CandidateKey::test_rooted("/music/One"), "import-1", None)
         .await
         .unwrap();
     tables
-        .claim_candidate_import(&crate::CandidateKey::test("/music/Two"), "import-2", None)
+        .claim_candidate_import(&crate::CandidateKey::test_rooted("/music/Two"), "import-2", None)
         .await
         .unwrap();
     tables
         .move_candidate_import(
-            &crate::CandidateKey::test("/music/Two"),
+            &crate::CandidateKey::test_rooted("/music/Two"),
             "import-2",
             Some(crate::ImportStep::Running(crate::ImportPhase::Finalizing)),
         )
@@ -264,7 +264,7 @@ async fn the_imports_in_flight_are_the_rows_an_import_holds() {
     assert_eq!(imports_in_flight(&db).await, 2);
 
     tables
-        .move_candidate_import(&crate::CandidateKey::test("/music/One"), "import-1", None)
+        .move_candidate_import(&crate::CandidateKey::test_rooted("/music/One"), "import-1", None)
         .await
         .unwrap();
     assert_eq!(imports_in_flight(&db).await, 1);

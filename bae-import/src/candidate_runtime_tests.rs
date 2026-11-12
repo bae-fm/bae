@@ -20,13 +20,14 @@ pub(super) fn empty_categorized() -> CategorizedFiles {
 
 pub(super) fn folder_candidate(key: &crate::CandidateKey, watched: &str) -> FolderCandidate {
     let path = key.test_folder();
+    let watched = host_root(watched);
     FolderCandidate {
-        relative_folder: crate::RelativeFolder::of(path.strip_prefix(watched).unwrap()).unwrap(),
+        relative_folder: crate::RelativeFolder::of(path.strip_prefix(&watched).unwrap()).unwrap(),
         name: format!("Candidate {}", path.display()),
         file_root: path.clone(),
         path,
         files: empty_categorized(),
-        watched_folder_path: PathBuf::from(watched),
+        watched_folder_path: watched,
         scope: ReleaseFileScope::Recursive,
         file_edit_revision: 0,
         grouping: None,
@@ -182,9 +183,9 @@ pub(crate) fn extracted_signals() -> bae_identify::signals::Signals {
 #[tokio::test]
 async fn an_import_s_step_is_its_claim_s_and_its_percent_is_held_per_key() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = &crate::CandidateKey::test("/watch/a/rel1");
+    let key = &crate::CandidateKey::test_rooted("/watch/a/rel1");
     claim(&runtime, key).await;
-    claim(&runtime, &crate::CandidateKey::test("/watch/a/rel2")).await;
+    claim(&runtime, &crate::CandidateKey::test_rooted("/watch/a/rel2")).await;
 
     measuring(&runtime, key, 42).await;
 
@@ -194,7 +195,7 @@ async fn an_import_s_step_is_its_claim_s_and_its_percent_is_held_per_key() {
     );
     assert_eq!(
         runtime
-            .snapshot(&crate::CandidateKey::test("/watch/a/rel2"))
+            .snapshot(&crate::CandidateKey::test_rooted("/watch/a/rel2"))
             .await
             .unwrap()
             .and_then(|runtime| runtime.import),
@@ -213,7 +214,7 @@ async fn an_import_s_step_is_its_claim_s_and_its_percent_is_held_per_key() {
 /// ended — so the key stops being in flight.
 #[tokio::test]
 async fn a_finished_import_leaves_nothing_in_flight() {
-    let key = &crate::CandidateKey::test("/watch/a/rel1");
+    let key = &crate::CandidateKey::test_rooted("/watch/a/rel1");
     let endings = [
         ImportProgress::Complete {
             id: "rel1".to_string(),
@@ -249,7 +250,7 @@ async fn a_finished_import_leaves_nothing_in_flight() {
 #[tokio::test]
 async fn a_claim_survives_the_scan_reporting_the_key() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = &crate::CandidateKey::test("/watch/a/rel1");
+    let key = &crate::CandidateKey::test_rooted("/watch/a/rel1");
     claim(&runtime, key).await;
     runtime.record_event(&progress(key, 42));
 
@@ -264,7 +265,7 @@ async fn a_claim_survives_the_scan_reporting_the_key() {
 #[tokio::test]
 async fn a_rescan_reporting_new_files_ends_the_key_s_work() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = &crate::CandidateKey::test("/watch/a/rel1");
+    let key = &crate::CandidateKey::test_rooted("/watch/a/rel1");
     runtime.record_event(&scanned(folder_candidate(key, "/watch/a")));
     let work = runtime.start_work(CandidateWork::Identify, key.clone(), |token, _| token);
 
@@ -307,7 +308,7 @@ fn invalid(candidate: &FolderCandidate) -> ImportEvent {
 async fn a_candidate_leaving_or_reshaped_ends_its_work() {
     for grouping in [None, Some(crate::CandidateKey::grouping("group-1"))] {
         let mut candidate =
-            folder_candidate(&crate::CandidateKey::test("/watch/a/rel1"), "/watch/a");
+            folder_candidate(&crate::CandidateKey::test_rooted("/watch/a/rel1"), "/watch/a");
         candidate.grouping = grouping;
         let key = candidate.key();
         let mut reshaped = candidate.clone();
@@ -334,7 +335,7 @@ async fn a_candidate_leaving_or_reshaped_ends_its_work() {
             let runtime = CandidateRuntime::for_test().await;
             runtime.record_event(&scanned(candidate.clone()));
             let tokens = start_both(&runtime, &key);
-            let other = start_both(&runtime, &crate::CandidateKey::test("/watch/a/other"));
+            let other = start_both(&runtime, &crate::CandidateKey::test_rooted("/watch/a/other"));
 
             runtime.record_event(&departure);
 
