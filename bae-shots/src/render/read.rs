@@ -178,9 +178,19 @@ struct Geometry {
     weight: Option<u32>,
     color: Option<String>,
     placeholder: Option<String>,
+    /// What a text field holds, from the DOM: an input's value, or a
+    /// `role=textbox` element's text without its placeholder span.
+    field_value: Option<String>,
 }
 
 const GEOMETRY: &str = r#"function() {
+  // What a role=textbox element holds: its text without the placeholder span
+  // the design system's code field draws inside it.
+  const typed = (field) => {
+    const copy = field.cloneNode(true);
+    copy.querySelectorAll('.bae-codetext-placeholder').forEach((n) => n.remove());
+    return copy.textContent;
+  };
   const isText = this.nodeType === 3;
   let rect;
   if (isText) {
@@ -201,6 +211,9 @@ const GEOMETRY: &str = r#"function() {
     color: style ? style.color : null,
     placeholder: !isText && typeof this.placeholder === 'string' && this.placeholder
       ? this.placeholder : null,
+    field_value: isText ? null
+      : (this.tagName === 'INPUT' || this.tagName === 'TEXTAREA') ? this.value
+      : this.getAttribute('role') === 'textbox' ? typed(this) : null,
   };
 }"#;
 
@@ -341,6 +354,13 @@ async fn gather(page: &Page) -> Result<Vec<Raw>, ReadError> {
                                 _ => None,
                             };
                             raw.placeholder = geometry.placeholder;
+                            // Chrome gives an empty field its placeholder as its
+                            // accessibility value; the DOM holds what is typed.
+                            if matches!(raw.chrome_role.as_str(), "textbox" | "searchbox") {
+                                if let Some(value) = geometry.field_value {
+                                    raw.value = Some(value);
+                                }
+                            }
                         }
                     }
                 }
