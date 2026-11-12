@@ -36,6 +36,13 @@ fn a_platform_with_no_selected_shot_fails() {
     assert!(matches!(error, CaptureError::NothingSelected(Platform::Android)));
 }
 
+/// A shot's valid pair of files, drawn at 2 pixels to the point.
+fn write_shot(dir: &Path, name: &str) {
+    let name = Name::parse(name).unwrap();
+    let list = crate::shots::tests::LIST.replace("mac.welcome.a", &name.to_string());
+    crate::shots::tests::write_pair(dir, &name, &list, 800, 380);
+}
+
 fn write(dir: &Path, files: &[&str]) {
     for file in files {
         std::fs::write(dir.join(file), "x").unwrap();
@@ -45,7 +52,7 @@ fn write(dir: &Path, files: &[&str]) {
 #[test]
 fn a_capture_is_complete_when_every_selected_shot_wrote_both_files() {
     let out = tempfile::tempdir().unwrap();
-    write(out.path(), &["mac.welcome.a@macos.png", "mac.welcome.a@macos.json"]);
+    write_shot(out.path(), "mac.welcome.a");
     let declared = names(&["mac.welcome.a", "mac.welcome.b"]);
     check_complete(out.path(), Platform::Mac, &declared[..1], &declared).unwrap();
 }
@@ -66,11 +73,10 @@ fn a_selected_shot_with_a_file_missing_fails() {
 #[test]
 fn a_shot_file_no_harness_declares_fails() {
     let out = tempfile::tempdir().unwrap();
+    write_shot(out.path(), "mac.welcome.a");
     write(
         out.path(),
         &[
-            "mac.welcome.a@macos.png",
-            "mac.welcome.a@macos.json",
             "mac.welcome.old@macos.png",
             "Not A Name@macos.json",
             "notes.txt",
@@ -103,4 +109,37 @@ fn clearing_removes_the_selected_shots_files_only() {
     assert!(!out.path().join("mac.welcome.a@macos.png").exists());
     assert!(!out.path().join("mac.welcome.a@macos.json").exists());
     assert!(out.path().join("mac.welcome.b@macos.png").exists());
+}
+
+#[test]
+fn a_shot_that_does_not_read_back_fails() {
+    let out = tempfile::tempdir().unwrap();
+    write_shot(out.path(), "mac.welcome.a");
+    write_shot(out.path(), "mac.welcome.b");
+    std::fs::write(out.path().join("mac.welcome.b@macos.json"), "{").unwrap();
+    let declared = names(&["mac.welcome.a", "mac.welcome.b"]);
+    let CaptureError::Incomplete(problems) =
+        check_complete(out.path(), Platform::Mac, &declared, &declared).unwrap_err()
+    else {
+        panic!("not incomplete");
+    };
+    assert_eq!(problems.len(), 1, "{problems:?}");
+    assert!(problems[0].starts_with("unreadable: mac.welcome.b: mac.welcome.b@macos.json:"));
+}
+
+#[test]
+fn a_shot_whose_files_disagree_fails() {
+    let out = tempfile::tempdir().unwrap();
+    write_shot(out.path(), "mac.welcome.a");
+    let name = Name::parse("mac.welcome.a").unwrap();
+    std::fs::write(out.path().join(name.file_name("png")), crate::shots::tests::png(100, 100))
+        .unwrap();
+    let declared = names(&["mac.welcome.a"]);
+    let CaptureError::Incomplete(problems) =
+        check_complete(out.path(), Platform::Mac, &declared, &declared).unwrap_err()
+    else {
+        panic!("not incomplete");
+    };
+    assert_eq!(problems.len(), 1, "{problems:?}");
+    assert!(problems[0].starts_with("inconsistent: mac.welcome.a: its picture is 100x100"));
 }

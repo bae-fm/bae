@@ -7,6 +7,7 @@ mod design;
 mod lint;
 mod names;
 mod render;
+mod shots;
 
 use clap::{Args, Parser, Subcommand};
 use names::{Name, Platform, Prefix};

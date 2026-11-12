@@ -41,6 +41,11 @@ impl Platform {
         }
     }
 
+    /// The platform whose word in a shot's file name is `word`.
+    pub(crate) fn from_file_word(word: &str) -> Option<Self> {
+        [Self::Mac, Self::Android].into_iter().find(|platform| platform.file_word() == word)
+    }
+
     /// The prefix of this platform's component names in the design system
     /// (`MacRow`, `AndroidCastRow`).
     fn component_prefix(self) -> &'static str {

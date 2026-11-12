@@ -10,15 +10,15 @@
 //! node's box is the range of its words, not its parent's), and for text its
 //! computed font.
 
+use crate::shots::{words, Bounds, Element, Role, TextStyle};
 use chromiumoxide::cdp::browser_protocol::accessibility::{
     AxNode, AxNodeId, AxPropertyName, EnableParams, GetFullAxTreeParams,
 };
 use chromiumoxide::cdp::browser_protocol::dom::ResolveNodeParams;
 use chromiumoxide::cdp::js_protocol::runtime::CallFunctionOnParams;
 use chromiumoxide::Page;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::collections::HashMap;
-use unicode_normalization::UnicodeNormalization;
 
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum ReadError {
@@ -30,23 +30,6 @@ pub(crate) enum ReadError {
 
 fn protocol(error: impl std::fmt::Display) -> ReadError {
     ReadError::Protocol(error.to_string())
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "lowercase")]
-pub(crate) enum Role {
-    Text,
-    Button,
-    Toggle,
-    Radio,
-    Field,
-    Popup,
-    Tab,
-    Link,
-    Image,
-    Slider,
-    Progress,
-    Other,
 }
 
 impl Role {
@@ -87,43 +70,6 @@ impl Role {
 const STRUCTURE: [&str; 6] =
     ["generic", "none", "presentation", "RootWebArea", "InlineTextBox", "LineBreak"];
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-pub(crate) struct Bounds {
-    pub(crate) x: f64,
-    pub(crate) y: f64,
-    pub(crate) width: f64,
-    pub(crate) height: f64,
-}
-
-/// A text element's style: size in points, weight 100-900, colour as sRGB
-/// `#RRGGBBAA`.
-#[derive(Debug, Clone, PartialEq, Serialize)]
-pub(crate) struct TextStyle {
-    pub(crate) size: f64,
-    pub(crate) weight: u32,
-    pub(crate) color: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize)]
-pub(crate) struct Element {
-    pub(crate) role: Role,
-    /// Chrome's own role string.
-    pub(crate) native: String,
-    pub(crate) label: Option<String>,
-    pub(crate) value: Option<String>,
-    pub(crate) bounds: Bounds,
-    pub(crate) enabled: bool,
-    pub(crate) selected: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) text: Option<TextStyle>,
-    /// The index in the list of the enclosing element.
-    pub(crate) parent: Option<usize>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) focused: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) placeholder: Option<String>,
-}
-
 /// What the browser holds about one node of the accessibility tree.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub(crate) struct Raw {
@@ -146,11 +92,6 @@ pub(crate) struct Raw {
     pub(crate) bounds: Option<Bounds>,
     pub(crate) text: Option<TextStyle>,
     pub(crate) placeholder: Option<String>,
-}
-
-/// Words: composed Unicode, whitespace runs collapsed to one space, trimmed.
-pub(crate) fn words(text: &str) -> String {
-    text.nfc().collect::<String>().split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
 fn nonempty(text: Option<&str>) -> Option<String> {
@@ -392,7 +333,11 @@ async fn gather(page: &Page) -> Result<Vec<Raw>, ReadError> {
                             });
                             raw.text = match (geometry.size, geometry.weight, geometry.color) {
                                 (Some(size), Some(weight), Some(color)) => {
-                                    srgb(&color).map(|color| TextStyle { size, weight, color })
+                                    srgb(&color).map(|color| TextStyle {
+                                        size: Some(size),
+                                        weight: Some(weight),
+                                        color: Some(color),
+                                    })
                                 }
                                 _ => None,
                             };

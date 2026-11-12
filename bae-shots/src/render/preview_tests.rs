@@ -1,7 +1,7 @@
 use super::*;
 use crate::design;
 use crate::render::fixture;
-use crate::render::read::Role;
+use crate::shots::Role;
 
 fn repository() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap().to_path_buf()

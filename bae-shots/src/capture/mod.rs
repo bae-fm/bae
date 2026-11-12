@@ -4,6 +4,7 @@ pub(crate) mod android;
 pub(crate) mod mac;
 
 use crate::names::{Name, Platform, Prefix};
+use crate::shots::Shot;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -125,8 +126,9 @@ pub(crate) fn clear(out: &Path, selected: &[Name]) -> Result<(), CaptureError> {
 }
 
 /// Compares what a capture wrote with what it was to write, both ways: every
-/// selected shot wrote its PNG and its element list, and `out` holds no shot
-/// file of `platform` that no harness declares.
+/// selected shot wrote its PNG and its element list, which read back and agree
+/// with each other, and `out` holds no shot file of `platform` that no harness
+/// declares.
 pub(crate) fn check_complete(
     out: &Path,
     platform: Platform,
@@ -135,11 +137,24 @@ pub(crate) fn check_complete(
 ) -> Result<(), CaptureError> {
     let mut problems = Vec::new();
     for name in selected {
+        let mut written = true;
         for extension in EXTENSIONS {
             let file = name.file_name(extension);
             if !out.join(&file).is_file() {
                 problems.push(format!("missing: {file} was not written"));
+                written = false;
             }
+        }
+        if !written {
+            continue;
+        }
+        match Shot::load(out, name) {
+            Ok(shot) => problems.extend(
+                shot.problems(name)
+                    .into_iter()
+                    .map(|problem| format!("inconsistent: {name}: {problem}")),
+            ),
+            Err(e) => problems.push(format!("unreadable: {name}: {e}")),
         }
     }
     let entries =

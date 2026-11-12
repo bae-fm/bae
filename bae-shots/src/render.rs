@@ -26,7 +26,7 @@ struct BoardList<'a> {
     board: &'a str,
     size: Size,
     scale: f64,
-    elements: Vec<read::Element>,
+    elements: Vec<crate::shots::Element>,
 }
 
 /// Pixels per point the boards are drawn at.
@@ -67,7 +67,7 @@ struct Drawn {
     hash: String,
     png: Vec<u8>,
     size: Size,
-    elements: Vec<read::Element>,
+    elements: Vec<crate::shots::Element>,
 }
 
 async fn draw_with(

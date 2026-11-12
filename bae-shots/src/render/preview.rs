@@ -12,8 +12,9 @@
 use crate::design::Frame;
 use crate::names::state_id;
 use crate::render::board::{self, BoardError};
-use crate::render::read::{self, Element};
+use crate::render::read;
 use crate::render::Size;
+use crate::shots::Element;
 use chromiumoxide::cdp::browser_protocol::dom::DescribeNodeParams;
 use chromiumoxide::cdp::browser_protocol::page::{CaptureScreenshotFormat, Viewport};
 use chromiumoxide::cdp::js_protocol::runtime::EvaluateParams;

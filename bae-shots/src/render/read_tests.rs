@@ -53,12 +53,6 @@ fn chrome_roles_become_the_shots_words() {
 }
 
 #[test]
-fn words_are_composed_collapsed_and_trimmed_and_nothing_else() {
-    assert_eq!(words("  Cafe\u{301}  \n au   lait "), "Caf\u{e9} au lait");
-    assert_eq!(words("\u{201c}Set up\u{201d}\u{2026}"), "\u{201c}Set up\u{201d}\u{2026}");
-}
-
-#[test]
 fn a_controls_text_is_its_name_and_not_an_element() {
     let raw = [
         node("1", "RootWebArea", &["2"]),
@@ -211,7 +205,7 @@ async fn a_texts_box_is_its_words_not_its_container() {
     assert!(short.bounds.width < 80.0, "{:?}", short.bounds);
     assert!(short.bounds.height > 10.0 && short.bounds.height < 30.0, "{:?}", short.bounds);
     let style = short.text.as_ref().unwrap();
-    assert_eq!(style.size, 13.0);
-    assert_eq!(style.weight, 600);
-    assert_eq!(style.color.len(), 9);
+    assert_eq!(style.size, Some(13.0));
+    assert_eq!(style.weight, Some(600));
+    assert_eq!(style.color.as_ref().map(String::len), Some(9));
 }

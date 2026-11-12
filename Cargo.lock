@@ -1248,6 +1248,7 @@ dependencies = [
  "chromiumoxide",
  "clap",
  "futures",
+ "image",
  "regex",
  "serde",
  "serde_json",
