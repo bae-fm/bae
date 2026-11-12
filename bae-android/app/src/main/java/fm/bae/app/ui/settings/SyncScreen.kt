@@ -6,11 +6,11 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -290,46 +290,81 @@ internal fun SyncScreen(
             generate = { session.appHandle.generateRestoreCode().code },
         )
 
+    val locationLabel = location?.let { storageLocationLabel(it) }
+    AndroidSettingsSync(
+        line = line,
+        notices = {
+            UndoneSetupNotice(session)
+            runner.signIns.steps?.let { StorageSetupLine(it) }
+            runner.error?.let { AndroidNotice(it) }
+            locationError?.let { AndroidNotice(it) }
+        },
+        location = location,
+        restoreCode = restoreCode.state,
+        localOnly = locationRead && location == null && !setupRunning,
+        pending = pending,
+        onBack = onBack,
+        onFix = runner::runFix,
+        onShowRestoreCode = restoreCode::show,
+        onHideRestoreCode = restoreCode::hide,
+        onPrintRestoreCode = { code ->
+            locationLabel?.let { label -> printRestoreCode(context, RestoreCodePage.of(context, code, label)) }
+        },
+        onSetUp = { onPush(LibraryDestination.StorageSetup) },
+        onPendingAction = runner::run,
+    )
+    SyncDialogs(runner = runner, actions = actions)
+}
+
+/**
+ * The Sync page over what it shows: the state of sync with its fix, [notices] of setups and failed reads, then the
+ * library's [location] with its restore code, or the offer to set up storage when it is [localOnly], then what
+ * sync waits on in [pending].
+ */
+@Composable
+internal fun AndroidSettingsSync(
+    line: SyncLine,
+    notices: @Composable ColumnScope.() -> Unit,
+    location: BridgeStorageLocation?,
+    restoreCode: RestoreCodeState,
+    localOnly: Boolean,
+    pending: List<BridgePendingRecord>?,
+    onBack: () -> Unit,
+    onFix: (BridgeSyncFix) -> Unit,
+    onShowRestoreCode: () -> Unit,
+    onHideRestoreCode: () -> Unit,
+    onPrintRestoreCode: (String) -> Unit,
+    onSetUp: () -> Unit,
+    onPendingAction: (BridgePendingAction) -> Unit,
+) {
     AndroidScreen(title = stringResource(R.string.settings_sync), onBack = onBack, modifier = Modifier.fillMaxSize()) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(ThemeSpace.edge),
             verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
         ) {
-            item { SyncStatusBlock(line = line, onFix = runner::runFix) }
-            item {
-                Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
-                    UndoneSetupNotice(session)
-                    runner.signIns.steps?.let { StorageSetupLine(it) }
-                    runner.error?.let { AndroidNotice(it) }
-                    locationError?.let { AndroidNotice(it) }
+            item { SyncStatusBlock(line = line, onFix = onFix) }
+            item { Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related), content = notices) }
+            location?.let { place ->
+                item { StorageSection(place) }
+                item {
+                    RestoreCodeSectionContent(
+                        needsS3Key = place is BridgeStorageLocation.S3,
+                        state = restoreCode,
+                        onShow = onShowRestoreCode,
+                        onHide = onHideRestoreCode,
+                        onPrint = onPrintRestoreCode,
+                    )
                 }
             }
-            location?.let { place -> storageItems(place, restoreCode) }
-            if (locationRead && location == null && !setupRunning) {
-                item { LocalOnly(onSetUp = { onPush(LibraryDestination.StorageSetup) }) }
+            if (localOnly) {
+                item { LocalOnly(onSetUp = onSetUp) }
             }
             // What is waiting is a local read; nothing shows until it lands.
             pending?.takeIf { it.isNotEmpty() }?.let { records ->
-                item { PendingSection(records = records, onAction = runner::run) }
+                item { PendingSection(records = records, onAction = onPendingAction) }
             }
         }
-    }
-    SyncDialogs(runner = runner, actions = actions)
-}
-
-/** Where the library is stored, and its restore code. */
-private fun LazyListScope.storageItems(
-    place: BridgeStorageLocation,
-    restoreCode: RestoreCodeReveal,
-) {
-    item { StorageSection(place) }
-    item {
-        RestoreCodeSection(
-            reveal = restoreCode,
-            needsS3Key = place is BridgeStorageLocation.S3,
-            location = storageLocationLabel(place),
-        )
     }
 }
 
