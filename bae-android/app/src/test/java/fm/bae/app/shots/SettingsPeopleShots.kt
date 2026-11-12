@@ -52,6 +52,10 @@ class SettingsPeopleShots : BoardShot() {
     @Test
     fun androidSettingsPerson() = shot("android.settings.person") { ScreenScene { PersonPageScene(ben()) } }
 
+    /** Ben's page on an S3 library: the access key he was given, under the card. */
+    @Test
+    fun androidSettingsPersonS3() = shot("android.settings.person.s3") { ScreenScene { PersonPageScene(benOnS3()) } }
+
     /** Ben's page when he is an admin: his role with Make member. */
     @Test
     fun androidSettingsPersonAdmin() =

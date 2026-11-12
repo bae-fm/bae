@@ -127,6 +127,10 @@ internal fun ben(role: BridgeMemberRole = BridgeMemberRole.MEMBER): BridgePerson
         devices = listOf(BridgeActiveDevice(5uL, "Tablet", isSelf = false, canRemove = true)),
     )
 
+/** Ben on an S3 library, where a person is known by the access key they were given. */
+internal fun benOnS3(): BridgePerson =
+    ben().let { it.copy(membership = it.membership.copy(access = BridgeMemberAccess.S3AccessKey("AKIA4EXAMPLEBEN"))) }
+
 private fun person(
     id: String,
     name: String,
