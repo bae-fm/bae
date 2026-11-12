@@ -228,13 +228,7 @@ class OpenLibrary internal constructor(
             appHandle.subscribeQueue().let { pulled(it::next, it::cancel) },
             scope,
             onValue = { value ->
-                playback.onQueueValue(
-                    manual = value.manual,
-                    context = value.context,
-                    hasNext = value.hasNext,
-                    hasPrevious = value.hasPrevious,
-                    manualVersion = value.manualVersion,
-                )
+                playback.onQueueValue(value)
             },
             onError = { error -> subscriptionFailed("queue", error)?.let(playback.readFailures::failQueue) },
         )

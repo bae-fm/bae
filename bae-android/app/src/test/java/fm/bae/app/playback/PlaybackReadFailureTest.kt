@@ -11,6 +11,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
+import uniffi.bae_bridge.BridgeQueueSnapshot
 
 /**
  * A failed read of playback values or of the queue stands in for what they
@@ -41,7 +42,16 @@ class PlaybackReadFailureTest {
         player.readFailures.failQueue(failure)
         assertEquals(failure, player.readFailures.queue.value)
 
-        player.onQueueValue(manual = emptyList(), context = null, hasNext = false, hasPrevious = false, manualVersion = 1u)
+        player.onQueueValue(
+            BridgeQueueSnapshot(
+                manual = emptyList(),
+                context = null,
+                shuffled = false,
+                hasNext = false,
+                hasPrevious = false,
+                manualVersion = 1u,
+            ),
+        )
         assertNull(player.readFailures.queue.value)
     }
 

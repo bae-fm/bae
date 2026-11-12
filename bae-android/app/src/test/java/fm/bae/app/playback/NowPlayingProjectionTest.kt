@@ -17,6 +17,7 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeDurationClock
 import uniffi.bae_bridge.BridgeQueueEntry
+import uniffi.bae_bridge.BridgeQueueSnapshot
 import uniffi.bae_bridge.BridgeTimelinePoint
 import uniffi.bae_bridge.BridgeTrackDisplay
 
@@ -117,14 +118,32 @@ class NowPlayingProjectionTest {
     @Test
     fun positionKeepsThePlaylistAndAQueueChangeReplacesIt() {
         val player = player()
-        player.onQueueValue(manual = listOf(entry("up1")), context = null, hasNext = true, hasPrevious = false, manualVersion = 1u)
+        player.onQueueValue(
+            BridgeQueueSnapshot(
+                manual = listOf(entry("up1")),
+                context = null,
+                shuffled = false,
+                hasNext = true,
+                hasPrevious = false,
+                manualVersion = 1u,
+            ),
+        )
         player.applyPlaybackState(playingState(trackId = "cur", durationMs = 185_000uL))
         val playing = player.currentTimeline
 
         player.applyTimeline(timeline(line(trackId = "cur", positionMs = 1_000uL)))
         assertSame(playing, player.currentTimeline)
 
-        player.onQueueValue(manual = listOf(entry("up2")), context = null, hasNext = true, hasPrevious = false, manualVersion = 1u)
+        player.onQueueValue(
+            BridgeQueueSnapshot(
+                manual = listOf(entry("up2")),
+                context = null,
+                shuffled = false,
+                hasNext = true,
+                hasPrevious = false,
+                manualVersion = 1u,
+            ),
+        )
         assertNotSame(playing, player.currentTimeline)
         assertEquals(
             "up2",

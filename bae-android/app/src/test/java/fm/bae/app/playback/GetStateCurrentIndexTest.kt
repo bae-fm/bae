@@ -14,6 +14,7 @@ import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeDurationClock
 import uniffi.bae_bridge.BridgeQueueEntry
+import uniffi.bae_bridge.BridgeQueueSnapshot
 import uniffi.bae_bridge.BridgeTrackDisplay
 
 /**
@@ -89,7 +90,9 @@ class GetStateCurrentIndexTest {
         player: BaeCorePlayer,
         manual: List<BridgeQueueEntry>,
     ) {
-        player.onQueueValue(manual = manual, context = null, hasNext = true, hasPrevious = false, manualVersion = 1u)
+        player.onQueueValue(
+            BridgeQueueSnapshot(manual = manual, context = null, shuffled = false, hasNext = true, hasPrevious = false, manualVersion = 1u),
+        )
         player.applyPlaybackState(
             playingState(
                 trackId = "cur",

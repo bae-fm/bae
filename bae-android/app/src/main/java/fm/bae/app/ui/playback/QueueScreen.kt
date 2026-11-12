@@ -96,6 +96,8 @@ internal class ReorderableQueue(
     val failures: QueueFailures,
     /** The queue's last read failed, so its order is no longer known to be current; shown in its place. */
     val readFailure: DisplayError?,
+    /** Core's shuffle mode, which the context section's toggle shows. */
+    val shuffled: Boolean,
 )
 
 /** The optimistic queue order and its reorderable list state, re-seeded from core except during a drag. */
@@ -138,7 +140,7 @@ internal fun rememberReorderableQueue(
             order.apply(queue.manual, queue.context, queue.manualVersion, queue.contextVersion)
         }
     }
-    return ReorderableQueue(order, reorderState, failures, readFailure)
+    return ReorderableQueue(order, reorderState, failures, readFailure, queue.shuffled)
 }
 
 // The queue's lanes, an empty message, or the failure of its last read, below the caller's now-playing header;
@@ -212,7 +214,7 @@ private fun LazyListScope.contextLane(
             session = session,
             failures = queue.failures,
             text = stringResource(labelRes),
-            shuffled = order.context.shuffled,
+            shuffled = queue.shuffled,
         )
     }
     // The context tail is library-scaled and only partly read: the lazy list

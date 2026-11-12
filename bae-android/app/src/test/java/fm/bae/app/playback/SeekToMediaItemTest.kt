@@ -16,6 +16,7 @@ import uniffi.bae_bridge.BridgeDurationClock
 import uniffi.bae_bridge.BridgePlaybackContext
 import uniffi.bae_bridge.BridgePlaybackSourceKind
 import uniffi.bae_bridge.BridgeQueueEntry
+import uniffi.bae_bridge.BridgeQueueSnapshot
 import uniffi.bae_bridge.BridgeTrackDisplay
 
 /**
@@ -67,7 +68,6 @@ class SeekToMediaItemTest {
                 BridgePlaybackContext(
                     kind = BridgePlaybackSourceKind.RELEASE,
                     sourceTitle = null,
-                    shuffled = false,
                 ),
         )
         // The context's tracks reach the playlist through the upcoming read.
@@ -109,7 +109,16 @@ class SeekToMediaItemTest {
                 durationMs = 180_000uL,
             ),
         )
-        player.onQueueValue(manual = manual, context = context, hasNext = true, hasPrevious = false, manualVersion = 1u)
+        player.onQueueValue(
+            BridgeQueueSnapshot(
+                manual = manual,
+                context = context,
+                shuffled = false,
+                hasNext = true,
+                hasPrevious = false,
+                manualVersion = 1u,
+            ),
+        )
         shadowOf(Looper.getMainLooper()).idle()
     }
 

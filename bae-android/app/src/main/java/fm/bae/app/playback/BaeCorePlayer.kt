@@ -28,7 +28,6 @@ import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeLoadingTrack
 import uniffi.bae_bridge.BridgeNowPlayingTrack
 import uniffi.bae_bridge.BridgePlayOutcome
-import uniffi.bae_bridge.BridgePlaybackContext
 import uniffi.bae_bridge.BridgePlaybackPauseReason
 import uniffi.bae_bridge.BridgePlaybackSourceKind
 import uniffi.bae_bridge.BridgePlaybackTimeline
@@ -36,6 +35,7 @@ import uniffi.bae_bridge.BridgePlaybackValueState
 import uniffi.bae_bridge.BridgePlaybackValues
 import uniffi.bae_bridge.BridgeQueueAddition
 import uniffi.bae_bridge.BridgeQueueEntry
+import uniffi.bae_bridge.BridgeQueueSnapshot
 import uniffi.bae_bridge.BridgeRepeatMode
 import uniffi.bae_bridge.BridgeTimelinePoint
 import uniffi.bae_bridge.BridgeTrackBuffered
@@ -91,7 +91,6 @@ class BaeCorePlayer(
      *  from [upcoming]. */
     internal data class ContextLane(
         val kind: BridgePlaybackSourceKind,
-        val shuffled: Boolean,
     )
 
     internal companion object {
@@ -247,6 +246,7 @@ class BaeCorePlayer(
      *  current; it is folded in once that track is. */
     private var latestLine: BridgeTimelinePoint? = null
     private var hasNext: Boolean = false
+    private var shuffled: Boolean = false
     private var hasPrevious: Boolean = false
     private var media3RepeatMode: Int = Player.REPEAT_MODE_OFF
 
@@ -492,25 +492,20 @@ class BaeCorePlayer(
         _queueItemsAdded.tryEmit(addition.tracks.toInt())
     }
 
-    fun onQueueValue(
-        manual: List<BridgeQueueEntry>,
-        context: BridgePlaybackContext?,
-        hasNext: Boolean,
-        hasPrevious: Boolean,
-        manualVersion: ULong,
-    ) {
+    fun onQueueValue(value: BridgeQueueSnapshot) {
         readFailures.queueArrived()
-        manualEntries = manual
-        this.manualVersion = manualVersion
-        contextLane = context?.let { ContextLane(kind = it.kind, shuffled = it.shuffled) }
+        manualEntries = value.manual
+        manualVersion = value.manualVersion
+        contextLane = value.context?.let { ContextLane(kind = it.kind) }
         if (contextLane == null) {
             upcoming.close()
         } else {
             upcoming.pin(0 until PLAYLIST_CONTEXT_TRACKS)
         }
         entries = playlistEntries()
-        this.hasNext = hasNext
-        this.hasPrevious = hasPrevious
+        shuffled = value.shuffled
+        hasNext = value.hasNext
+        hasPrevious = value.hasPrevious
         publish()
     }
 
@@ -561,11 +556,11 @@ class BaeCorePlayer(
                     contextLane?.let { lane ->
                         QueueContext(
                             kind = lane.kind,
-                            shuffled = lane.shuffled,
                             upcomingTotal = upcoming.total,
                             upcoming = upcoming.entries(),
                         )
                     },
+                shuffled = shuffled,
                 manualVersion = manualVersion,
                 contextVersion = contextVersion,
             )

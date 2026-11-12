@@ -205,10 +205,6 @@ internal class ContextLaneOrder {
     val size: Int
         get() = source?.upcomingTotal ?: 0
 
-    /** Whether the context plays shuffled, which its section's toggle shows. */
-    val shuffled: Boolean
-        get() = source?.shuffled ?: false
-
     /** What the context plays from, which labels its section; null when nothing plays from a context. */
     val kind: BridgePlaybackSourceKind?
         get() = source?.kind

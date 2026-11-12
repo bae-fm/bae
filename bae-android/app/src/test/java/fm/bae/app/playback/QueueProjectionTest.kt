@@ -18,6 +18,7 @@ import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgePlaybackContext
 import uniffi.bae_bridge.BridgePlaybackSourceKind
 import uniffi.bae_bridge.BridgeQueueEntry
+import uniffi.bae_bridge.BridgeQueueSnapshot
 import uniffi.bae_bridge.BridgeTrackDisplay
 
 /**
@@ -60,11 +61,14 @@ class QueueProjectionTest {
         val player = player()
 
         player.onQueueValue(
-            manual = listOf(entry("a"), entry("b")),
-            context = null,
-            hasNext = true,
-            hasPrevious = false,
-            manualVersion = 1u,
+            BridgeQueueSnapshot(
+                manual = listOf(entry("a"), entry("b")),
+                context = null,
+                shuffled = false,
+                hasNext = true,
+                hasPrevious = false,
+                manualVersion = 1u,
+            ),
         )
 
         assertEquals(listOf(entry("a"), entry("b")), player.queue.value.manual)
@@ -77,16 +81,18 @@ class QueueProjectionTest {
         val player = player(feed)
 
         player.onQueueValue(
-            manual = listOf(entry("m")),
-            context =
-                BridgePlaybackContext(
-                    kind = BridgePlaybackSourceKind.RELEASE,
-                    sourceTitle = null,
-                    shuffled = false,
-                ),
-            hasNext = true,
-            hasPrevious = false,
-            manualVersion = 1u,
+            BridgeQueueSnapshot(
+                manual = listOf(entry("m")),
+                context =
+                    BridgePlaybackContext(
+                        kind = BridgePlaybackSourceKind.RELEASE,
+                        sourceTitle = null,
+                    ),
+                shuffled = false,
+                hasNext = true,
+                hasPrevious = false,
+                manualVersion = 1u,
+            ),
         )
 
         feed.deliver(total = 2, read = listOf(entry("c1"), entry("c2")))
@@ -97,28 +103,26 @@ class QueueProjectionTest {
         assertEquals(mapOf(0 to entry("c1"), 1 to entry("c2")), projection.context?.upcoming)
         assertEquals(2, projection.context?.upcomingTotal)
         assertEquals(BridgePlaybackSourceKind.RELEASE, projection.context?.kind)
-        assertEquals(false, projection.context?.shuffled)
+        assertEquals(false, projection.shuffled)
     }
 
     @Test
-    fun contextShuffledFlagPropagates() {
+    fun shuffleModePropagatesWithOrWithoutAContext() {
         val player = player()
 
         player.onQueueValue(
-            manual = emptyList(),
-            context =
-                BridgePlaybackContext(
-                    kind = BridgePlaybackSourceKind.RELEASE,
-                    sourceTitle = null,
-                    shuffled = true,
-                ),
-            hasNext = true,
-            hasPrevious = false,
-            manualVersion = 1u,
+            BridgeQueueSnapshot(
+                manual = emptyList(),
+                context = null,
+                shuffled = true,
+                hasNext = false,
+                hasPrevious = false,
+                manualVersion = 1u,
+            ),
         )
 
-        val context = player.queue.value.context
-        assertEquals(true, context?.shuffled)
+        assertNull(player.queue.value.context)
+        assertEquals(true, player.queue.value.shuffled)
     }
 
     @Test
@@ -126,16 +130,18 @@ class QueueProjectionTest {
         val player = player()
 
         player.onQueueValue(
-            manual = emptyList(),
-            context =
-                BridgePlaybackContext(
-                    kind = BridgePlaybackSourceKind.LIBRARY,
-                    sourceTitle = null,
-                    shuffled = false,
-                ),
-            hasNext = true,
-            hasPrevious = false,
-            manualVersion = 1u,
+            BridgeQueueSnapshot(
+                manual = emptyList(),
+                context =
+                    BridgePlaybackContext(
+                        kind = BridgePlaybackSourceKind.LIBRARY,
+                        sourceTitle = null,
+                    ),
+                shuffled = false,
+                hasNext = true,
+                hasPrevious = false,
+                manualVersion = 1u,
+            ),
         )
 
         val context = player.queue.value.context
@@ -146,24 +152,29 @@ class QueueProjectionTest {
     fun emptyUpdateClearsBothLanes() {
         val player = player()
         player.onQueueValue(
-            manual = listOf(entry("a")),
-            context =
-                BridgePlaybackContext(
-                    kind = BridgePlaybackSourceKind.RELEASE,
-                    sourceTitle = null,
-                    shuffled = false,
-                ),
-            hasNext = true,
-            hasPrevious = false,
-            manualVersion = 1u,
+            BridgeQueueSnapshot(
+                manual = listOf(entry("a")),
+                context =
+                    BridgePlaybackContext(
+                        kind = BridgePlaybackSourceKind.RELEASE,
+                        sourceTitle = null,
+                    ),
+                shuffled = false,
+                hasNext = true,
+                hasPrevious = false,
+                manualVersion = 1u,
+            ),
         )
 
         player.onQueueValue(
-            manual = emptyList(),
-            context = null,
-            hasNext = false,
-            hasPrevious = false,
-            manualVersion = 2u,
+            BridgeQueueSnapshot(
+                manual = emptyList(),
+                context = null,
+                shuffled = false,
+                hasNext = false,
+                hasPrevious = false,
+                manualVersion = 2u,
+            ),
         )
 
         assertEquals(emptyList<BridgeQueueEntry>(), player.queue.value.manual)

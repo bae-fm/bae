@@ -31,7 +31,6 @@ class QueueOrderTest {
         read: Map<Int, String> = emptyMap(),
     ) = QueueContext(
         kind = BridgePlaybackSourceKind.LIBRARY,
-        shuffled = true,
         upcomingTotal = total,
         upcoming = read.mapValues { entry(it.value) },
     )

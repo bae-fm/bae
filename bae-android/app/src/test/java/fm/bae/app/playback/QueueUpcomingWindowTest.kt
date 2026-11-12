@@ -17,6 +17,7 @@ import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeLibraryPageWindow
 import uniffi.bae_bridge.BridgePlaybackContext
 import uniffi.bae_bridge.BridgePlaybackSourceKind
+import uniffi.bae_bridge.BridgeQueueSnapshot
 
 @RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -71,10 +72,28 @@ class QueueUpcomingWindowTest {
         val feed = UpcomingFeed()
         val player = playing(feed, total = 5)
 
-        player.onQueueValue(emptyList(), null, hasNext = false, hasPrevious = false, manualVersion = 1u)
+        player.onQueueValue(
+            BridgeQueueSnapshot(
+                manual = emptyList(),
+                context = null,
+                shuffled = false,
+                hasNext = false,
+                hasPrevious = false,
+                manualVersion = 1u,
+            ),
+        )
         assertNull(player.queue.value.context)
 
-        player.onQueueValue(emptyList(), context(), hasNext = true, hasPrevious = false, manualVersion = 1u)
+        player.onQueueValue(
+            BridgeQueueSnapshot(
+                manual = emptyList(),
+                context = context(),
+                shuffled = false,
+                hasNext = true,
+                hasPrevious = false,
+                manualVersion = 1u,
+            ),
+        )
         assertEquals("a new context opens the read again", 2, feed.opened)
     }
 
@@ -114,7 +133,16 @@ class QueueUpcomingWindowTest {
                 scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
                 queueUpcomingSource = feed.source,
             )
-        player.onQueueValue(emptyList(), context(), hasNext = true, hasPrevious = false, manualVersion = 1u)
+        player.onQueueValue(
+            BridgeQueueSnapshot(
+                manual = emptyList(),
+                context = context(),
+                shuffled = false,
+                hasNext = true,
+                hasPrevious = false,
+                manualVersion = 1u,
+            ),
+        )
         feed.deliver(total = total)
         shadowOf(Looper.getMainLooper()).idle()
         return player
@@ -132,7 +160,6 @@ class QueueUpcomingWindowTest {
         BridgePlaybackContext(
             kind = BridgePlaybackSourceKind.LIBRARY,
             sourceTitle = null,
-            shuffled = false,
         )
 
     private fun window(

@@ -13,6 +13,7 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgePlaybackValueState
+import uniffi.bae_bridge.BridgeQueueSnapshot
 import uniffi.bae_bridge.BridgeTimelinePoint
 import java.time.Duration
 
@@ -197,7 +198,16 @@ class PlaybackSeekProjectionTest {
     fun nextTrackFailureDoesNotEscapeSeekHandler() {
         val (player, handle) = player()
         handle.nextTrackFailure = RuntimeException("next failed")
-        player.onQueueValue(manual = emptyList(), context = null, hasNext = true, hasPrevious = false, manualVersion = 1u)
+        player.onQueueValue(
+            BridgeQueueSnapshot(
+                manual = emptyList(),
+                context = null,
+                shuffled = false,
+                hasNext = true,
+                hasPrevious = false,
+                manualVersion = 1u,
+            ),
+        )
 
         player.seekToNext()
         shadowOf(Looper.getMainLooper()).idle()
@@ -210,7 +220,16 @@ class PlaybackSeekProjectionTest {
     fun previousTrackFailureDoesNotEscapeSeekHandler() {
         val (player, handle) = player()
         handle.previousTrackFailure = RuntimeException("previous failed")
-        player.onQueueValue(manual = emptyList(), context = null, hasNext = false, hasPrevious = true, manualVersion = 1u)
+        player.onQueueValue(
+            BridgeQueueSnapshot(
+                manual = emptyList(),
+                context = null,
+                shuffled = false,
+                hasNext = false,
+                hasPrevious = true,
+                manualVersion = 1u,
+            ),
+        )
 
         player.seekToPrevious()
         shadowOf(Looper.getMainLooper()).idle()
