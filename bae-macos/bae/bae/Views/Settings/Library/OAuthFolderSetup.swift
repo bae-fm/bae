@@ -128,7 +128,7 @@
         let provider: StorageFolderBrowser.Provider
 
         var body: some View {
-            WaitingIndicator(Text(title))
+            MacSpinner(Text(title))
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
 

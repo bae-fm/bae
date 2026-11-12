@@ -43,10 +43,10 @@ from ui_view_sources import (
 # repeated containers are intentionally absent.
 RENDER_LEAVES = (
     RenderLeaf(
-        "bae-macos/bae/bae/Views/Import/Candidates/TriageRowView.swift",
-        "TriageRowView",
+        "bae-macos/bae/bae/Views/Import/Candidates/MacImportRow.swift",
+        "MacImportRow",
         "swift",
-        r"\bstruct\s+TriageRowView\s*:\s*View\b",
+        r"\bstruct\s+MacImportRow\s*:\s*View\b",
     ),
     RenderLeaf(
         "bae-macos/bae/bae/Views/Library/Grid/MacAlbumTile.swift",

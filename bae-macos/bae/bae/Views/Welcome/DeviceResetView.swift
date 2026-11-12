@@ -140,7 +140,7 @@ struct DeviceResetView: View {
     }
 
     #Preview("Reset unfinished") {
-        WelcomeWindowChrome {
+        MacWelcomeWindow {
             DeviceResetView(
                 prompt: .unfinished,
                 error: nil,

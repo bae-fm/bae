@@ -33,7 +33,7 @@ struct MainWindowRoot: View {
                 )
             }
             else {
-                WelcomeWindowChrome(size: bootstrapWindowSize) {
+                MacWelcomeWindow(size: bootstrapWindowSize) {
                     // A stack lets loading center its spinner with Spacers.
                     VStack(spacing: 0) {
                         bootstrapContent
@@ -89,7 +89,7 @@ struct MainWindowRoot: View {
                 }
             )
         case .home:
-            MainAppView()
+            MacMainWindowContainer()
         case .resetRequired(let libraryId):
             deviceResetView(
                 prompt: .offered,

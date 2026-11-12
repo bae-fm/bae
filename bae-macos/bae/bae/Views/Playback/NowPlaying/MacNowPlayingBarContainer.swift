@@ -1,12 +1,12 @@
 import BaeKit
 import SwiftUI
 
-/// Reads the stores for `NowPlayingBar`, so the bar re-evaluates when what it
+/// Reads the stores for `MacNowPlayingBar`, so the bar re-evaluates when what it
 /// shows changes: a playback value (core sends one only when it changed), the
 /// queue's shuffle, the queue panel, or the bar's settings. Positions never
 /// re-evaluate it: it hands the seek bar the playing track's position
 /// stream, which the bar's `SeekBarNSView` reads each display frame.
-struct NowPlayingBarContainer: View {
+struct MacNowPlayingBarContainer: View {
     @Environment(Playback.self)
     var playback
     @Environment(Queue.self)
@@ -27,7 +27,7 @@ struct NowPlayingBarContainer: View {
             .map {
                 .libraryImage($0)
             }
-        NowPlayingBar(
+        MacNowPlayingBar(
             trackTitle: track?.display.title,
             secondaryLine: np.secondaryLine,
             cover: cover,
@@ -124,7 +124,7 @@ struct NowPlayingBarContainer: View {
                 )
             )
         )
-        return NowPlayingBarContainer(onDropToQueue: { _ in })
+        return MacNowPlayingBarContainer(onDropToQueue: { _ in })
             .frame(width: 1100)
             .background(Theme.background)
             .environment(Playback.stub())

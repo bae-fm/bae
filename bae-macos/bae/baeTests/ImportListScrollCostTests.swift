@@ -155,14 +155,14 @@ enum ScrollCostFixture {
         for scale: CGFloat in [1, 2] {
             await images.warm(
                 covers,
-                pointSize: TriageRowView.coverPointSize,
+                pointSize: MacImportRow.coverPointSize,
                 displayScale: scale
             )
             for cover in covers {
                 try #require(
                     images.cachedImage(
                         cover,
-                        pointSize: TriageRowView.coverPointSize,
+                        pointSize: MacImportRow.coverPointSize,
                         displayScale: scale
                     ) != nil,
                     "\(cover) is decoded before the scroll"

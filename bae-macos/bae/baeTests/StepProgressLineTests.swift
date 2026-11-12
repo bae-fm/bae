@@ -15,7 +15,7 @@ struct StepProgressLineTests {
     func runningStepKeepsItsHeight() async throws {
         let size = NSSize(width: 360, height: 120)
         try await SnapshotTestSupport.withHostedWindow(
-            StepProgressLine(
+            MacProgress(
                 steps: LatestStream.closingSteps(holding: .stoppingSync).only
             ) {
                 EmptyView()
@@ -47,7 +47,7 @@ struct StepProgressLineTests {
     func stepWithoutBar() async throws {
         let size = NSSize(width: 360, height: 120)
         try await SnapshotTestSupport.withHostedWindow(
-            StepProgressLine(
+            MacProgress(
                 steps: LatestStream.closingSteps(holding: .stoppingSync).only,
                 showsBar: false
             ) {
@@ -82,7 +82,7 @@ struct StepProgressLineTests {
     func stepRunningAtFirstLayout() async throws {
         let size = NSSize(width: 360, height: 120)
         try await SnapshotTestSupport.withHostedWindow(
-            StepProgressLine(
+            MacProgress(
                 steps: LatestStream.closingSteps(holding: .stoppingSync).only
             ) {
                 IdleMarker()
@@ -102,7 +102,7 @@ struct StepProgressLineTests {
         let size = NSSize(width: 360, height: 120)
         let steps = LatestStream<BridgeClosingStep>.written()
         try await SnapshotTestSupport.withHostedWindow(
-            StepProgressLine(steps: steps.stream.only) {
+            MacProgress(steps: steps.stream.only) {
                 IdleMarker()
             }
             .frame(width: size.width, height: size.height, alignment: .top),

@@ -8,7 +8,7 @@ enum ImportCandidateTableLayout {
     /// Every row's height, headers and rows still loading included: a row's
     /// cover and the padding around it.
     static let rowHeight =
-        TriageRowView.coverPointSize + 2 * ThemeSpace.compact
+        MacImportRow.coverPointSize + 2 * ThemeSpace.compact
     /// The gap above a folder group, drawn inside its header's row.
     static let headerGap = ThemeSpace.related
 }

@@ -304,7 +304,7 @@ enum ImportListHosting {
         uiStore: UiStore,
         imageStore: ImageStore = .stub()
     ) -> some View {
-        ImportCandidateListContent(
+        MacImportSidebarContainer(
             importStore: store,
             listSlot: slot,
             onAddFolder: {},

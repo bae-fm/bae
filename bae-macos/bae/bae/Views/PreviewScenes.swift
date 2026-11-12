@@ -17,7 +17,7 @@
             setup: LibrarySetup,
             removals: LibraryRemovals = PreviewData.welcomeRemovals()
         ) -> some View {
-            WelcomeWindowChrome {
+            MacWelcomeWindow {
                 WelcomeView(
                     onLibraryReady: { _, _ in },
                     onOpenLibrary: { _ in },
@@ -48,7 +48,7 @@
         /// The screen that offers resetting this device, in the welcome
         /// window's chrome, saying `error`.
         static func deviceReset(error: LoadError) -> some View {
-            WelcomeWindowChrome {
+            MacWelcomeWindow {
                 DeviceResetView(
                     prompt: .offered,
                     error: error,
@@ -81,7 +81,7 @@
 
         /// The full main window over a library with nothing in it — title bar,
         /// empty albums state, idle now-playing bar (desktop story 3). Same
-        /// composition as `MainAppView`'s preview, over the shared empty
+        /// composition as `MacMainWindowContainer`'s preview, over the shared empty
         /// backing (`LibraryView.previewEmptyBacking`) made with `uiStore`,
         /// whose album count lands a read later.
         static func libraryEmpty(
@@ -89,7 +89,7 @@
             backing: (library: Library, session: LibraryBrowseSession)
         ) -> some View {
             let importScene = PreviewData.importTabScene()
-            return MainAppView()
+            return MacMainWindowContainer()
                 .environment(backing.library)
                 .environment(
                     LibraryProjectionStore(library: backing.library)
@@ -196,7 +196,7 @@
                 )
             }
             let scene = collapsePendingGroup ? scene.foldingFirstGroup() : scene
-            return ImportCandidateListContent(
+            return MacImportSidebarContainer(
                 importStore: scene.store,
                 listSlot: scene.slot(uiStore: uiStore),
                 onAddFolder: {},
@@ -258,7 +258,7 @@
             let importStore = ImportStore()
             return VStack(alignment: .leading, spacing: 0) {
                 ForEach(rows, id: \.candidateKey) { row in
-                    TriageRowView(
+                    MacImportRow(
                         row: row,
                         coverContent: importStore.sidebarCover(for: row),
                         isGroupMember: false,

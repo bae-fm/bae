@@ -33,7 +33,7 @@ struct StorageReleaseCell: View {
             case .media:
                 Text(release.media.isEmpty ? "\u{2014}" : release.mediaText)
             case .storage:
-                StorageStateLabel(release: release, status: status)
+                MacStorageChip(release: release, status: status)
             case .files:
                 Text(verbatim: release.fileCount.formatted())
                     .monospacedDigit()

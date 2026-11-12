@@ -41,7 +41,7 @@ public struct RestoreCodeSection: View {
             case .closed:
                 EmptyView()
             case .loading:
-                WaitingIndicator("Making your restore code…")
+                MacSpinner("Making your restore code…")
                     .frame(maxWidth: .infinity)
             case .masked(let code):
                 codeRow(code, shown: false)

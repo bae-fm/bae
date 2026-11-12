@@ -52,7 +52,7 @@ struct ReleaseEditorView: View {
         {
             actionRow
             if let applySteps = session.applySteps {
-                StepProgressLine(steps: applySteps) { EmptyView() }
+                MacProgress(steps: applySteps) { EmptyView() }
             }
             if let shown = session.validationMessage.map({
                 DisplayError(line: $0)

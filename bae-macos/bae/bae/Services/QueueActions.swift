@@ -3,7 +3,7 @@ import Foundation
 
 /// Resolves album/track ids to flat track ids and applies a queue mutation,
 /// surfacing resolve failures through the shared error path. Shared by the
-/// queue's drops (`MainAppView`) and the album grid's bulk menu
+/// queue's drops (`MacMainWindowContainer`) and the album grid's bulk menu
 /// (`LibraryView`) so both take the same resolve-then-apply route: album ids
 /// expand to the primary release's tracks, track ids pass through, and the
 /// grid's albums go in the grid's order, which core reads.

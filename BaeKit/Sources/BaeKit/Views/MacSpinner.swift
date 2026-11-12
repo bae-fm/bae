@@ -4,7 +4,7 @@ import SwiftUI
 /// filling: the small spinner, with the words that say what is happening
 /// beside it when there are any. A wait whose length is known, or a step of
 /// a flow, draws a bar instead.
-public struct WaitingIndicator: View {
+public struct MacSpinner: View {
     private let words: Text?
 
     /// The spinner alone, where what it waits on is said elsewhere.

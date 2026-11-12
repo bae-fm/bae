@@ -1,6 +1,6 @@
 import BaeKit
 
-/// Everything `ImportSearchPane` renders from — the identify verdict and its
+/// Everything `MacFindOnline` renders from — the identify verdict and its
 /// run, the typed search, and the surrounding flags. The editable form fields
 /// (search bindings) and the actions stay separate; this is the read-only
 /// display state.

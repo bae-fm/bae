@@ -1,13 +1,9 @@
 import BaeKit
 import SwiftUI
 
-/// The queue, docked as a fixed-width sidebar between the title bar and the
-/// now-playing bar. Docked rather than floating so the window's content
-/// reflows beside it — nothing is ever occluded while it's open, which is
-/// what lets album cards and track rows be dragged into its drop sites.
-/// Toggled by the queue button or the menu; clicks elsewhere in the window
-/// keep working and keep the panel open.
-struct QueuePanel: View {
+/// Reads the stores for `MacQueuePanel`: now-playing and the lanes come off the
+/// `PlaybackStore`, and every command goes to `Queue` and `Playback`.
+struct MacQueuePanelContainer: View {
     @Environment(Playback.self)
     private var playback
     @Environment(PlaybackStore.self)
@@ -35,9 +31,16 @@ struct QueuePanel: View {
             .map {
                 .libraryImage($0)
             }
-        QueueView(
+        MacQueuePanel(
+            manual: playbackStore.manualQueue,
+            manualVersion: playbackStore.manualVersion,
+            context: playbackStore.queueContext,
+            upcoming: QueueUpcoming(store: playbackStore, queue: queue),
+            position: playbackStore.trackPosition(
+                forTrack: track?.track.trackId
+            ),
+            onShowUpcoming: { playbackStore.showUpcoming(queue: queue) },
             isActive: np.isActive,
-            nowPlayingTrackId: track?.track.trackId,
             nowPlayingTitle: track?.display.title,
             nowPlayingArtist: track?.display.artistNames,
             nowPlayingCover: cover,
@@ -78,16 +81,6 @@ struct QueuePanel: View {
             onInsertTracks: onInsertTracks,
             onSetShuffle: { queue.setShuffle($0) },
         )
-        .frame(width: 420)
-        .frame(maxHeight: .infinity)
-        // Sidebar chrome: one surface step above the content beside it, and
-        // a hairline on the docked edge.
-        .background(Theme.surface)
-        .overlay(alignment: .leading) {
-            Rectangle()
-                .fill(Theme.hairline)
-                .frame(width: 1)
-        }
     }
 }
 
@@ -104,7 +97,7 @@ struct QueuePanel: View {
     private func queuePanelPreview(
         _ fixture: QueuePreviewFixture
     ) -> some View {
-        QueuePanel(
+        MacQueuePanelContainer(
             onClose: {},
             onInsertTracks: { ids, index in
                 fixture.queue.insertInQueue(ids, UInt32(index))

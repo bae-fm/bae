@@ -86,7 +86,7 @@ struct ImportListEntryView: View {
         case .candidate(_, let row, let headerPosition):
             // Every tab's row, drawn the same: a Done row is the row it was
             // in Found, and offers the release imported from it.
-            TriageRowView(
+            MacImportRow(
                 row: row,
                 coverContent: entry.coverContent,
                 isGroupMember: headerPosition != nil,

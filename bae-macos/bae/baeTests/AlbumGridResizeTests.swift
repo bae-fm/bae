@@ -7,7 +7,7 @@ import Testing
 @testable import bae
 
 /// The grid hosted in a window beside a panel that springs in and out, as the
-/// queue does in `MainAppView`, so a width change crosses a column count.
+/// queue does in `MacMainWindowContainer`, so a width change crosses a column count.
 @MainActor
 @Suite("AlbumGridView across a column change", .serialized)
 struct AlbumGridResizeTests {
@@ -85,7 +85,7 @@ struct AlbumGridResizeTests {
                     stage.panelIn = $0
                 }
             )
-            .animation(MainAppView.queuePanelSpring, value: stage.showPanel)
+            .animation(QueuePanelMotion.spring, value: stage.showPanel)
         }
     }
 

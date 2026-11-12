@@ -81,7 +81,7 @@ struct AutomationSettingsContent: View {
                         set: { setEnabled($0) }
                     )
                 )
-                LabeledFieldRow("Port") {
+                MacFieldRow("Port") {
                     TextField("Port", text: $portText)
                         .labelsHidden()
                         .boxedTextField()

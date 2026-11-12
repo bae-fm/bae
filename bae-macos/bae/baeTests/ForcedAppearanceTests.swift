@@ -26,7 +26,7 @@ struct ForcedAppearanceTests {
         try await expectSpinnersIn(
             mode: mode,
             onSystem: system,
-            content: WaitingIndicator()
+            content: MacSpinner()
         )
     }
 
@@ -109,7 +109,7 @@ private struct SpinnerCell: NSViewRepresentable {
     func makeNSView(context _: Context) -> HostingTableCell {
         let cell = HostingTableCell()
         cell.host(
-            WaitingIndicator()
+            MacSpinner()
                 .hostedAppearance(
                     HostedAppearance(tone: .standard, accent: .standard)
                 )

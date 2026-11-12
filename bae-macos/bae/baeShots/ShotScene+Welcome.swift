@@ -74,7 +74,7 @@ extension ShotScene {
             size: WelcomeWindow.size
         ) {
             ShotStage(
-                WelcomeWindowChrome {
+                MacWelcomeWindow {
                     MacWelcomeOpening<BridgeOpenProgress>(
                         title: AppScreen.LoadingWork.findingLibraries.title,
                         leading: nil,
@@ -86,7 +86,7 @@ extension ShotScene {
         },
         ShotScene(id: "mac.welcome.opening.steps", size: WelcomeWindow.size) {
             ShotStage(
-                WelcomeWindowChrome {
+                MacWelcomeWindow {
                     MacWelcomeOpening<BridgeOpenProgress>(
                         title: AppScreen.LoadingWork.opening.title,
                         leading: nil,
@@ -108,7 +108,7 @@ extension ShotScene {
             id: "mac.welcome.opening.library-locked",
             size: WelcomeWindow.size
         ) {
-            ShotStage(WelcomeWindowChrome { KeychainLockedView(onRetry: {}) })
+            ShotStage(MacWelcomeWindow { KeychainLockedView(onRetry: {}) })
         },
         ShotScene(id: "mac.welcome.reset.offered", size: WelcomeWindow.size) {
             ShotStage(
@@ -128,7 +128,7 @@ extension ShotScene {
                 total: 10
             )
             return ShotStage(
-                WelcomeWindowChrome {
+                MacWelcomeWindow {
                     MacWelcomeOpening<BridgeOpenProgress>(
                         title: AppScreen.LoadingWork.resetting.title,
                         leading: nil,
@@ -158,7 +158,7 @@ extension ShotScene {
         ShotScene(id: "mac.welcome.reset.unfinished", size: WelcomeWindow.size)
         {
             ShotStage(
-                WelcomeWindowChrome {
+                MacWelcomeWindow {
                     DeviceResetView(
                         prompt: .unfinished,
                         error: nil,
@@ -207,7 +207,7 @@ extension ShotScene {
         },
         ShotScene(id: "mac.welcome.add-code.adding", size: WelcomeWindow.size) {
             ShotStage(
-                WelcomeWindowChrome {
+                MacWelcomeWindow {
                     CodeRunningView(
                         openSteps: nil,
                         steps:

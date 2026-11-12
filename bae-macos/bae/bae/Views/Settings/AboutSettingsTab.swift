@@ -7,7 +7,7 @@ struct AboutSettingsTab: View {
 
     var body: some View {
         VStack(spacing: ThemeSpace.related) {
-            BaeLogo(size: 96, bob: false, glow: false)
+            Logo(size: 96, bob: false, glow: false)
             if let version = Bundle.main.infoDictionary?[
                 "CFBundleShortVersionString"
             ] as? String {

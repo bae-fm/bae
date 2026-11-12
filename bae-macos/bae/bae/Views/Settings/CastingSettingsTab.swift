@@ -133,7 +133,7 @@ private struct CastReceiversSection: View {
                 CastConnectingLine(name: connectingName)
             }
             if receivers.isEmpty {
-                WaitingIndicator("Looking for receivers…")
+                MacSpinner("Looking for receivers…")
             }
             else {
                 CastReceiverRows(

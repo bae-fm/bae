@@ -7,7 +7,7 @@ import SwiftUI
 /// README's Logo section
 /// (`design/system/README.md`) is the source of every proportion and timing
 /// here; the colours are `Theme`'s `logoGlow…`, `logoPool…` and `logoWord…`.
-struct BaeLogo: View {
+struct Logo: View {
     /// The sheep's width; the word and the glow scale with it.
     let size: CGFloat
     let bob: Bool
@@ -161,7 +161,7 @@ struct BaeLogo: View {
 
 #if DEBUG
     #Preview("Logo") {
-        BaeLogo(size: 120, bob: true, glow: true)
+        Logo(size: 120, bob: true, glow: true)
             .padding(80)
             .windowBackground()
     }

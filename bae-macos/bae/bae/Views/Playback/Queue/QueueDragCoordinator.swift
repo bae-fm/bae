@@ -131,7 +131,7 @@ final class QueueDragCoordinator {
     private var shownVersion: [QueueLaneID: UInt64] = [:]
     /// How many reorders have been held, which names each commit.
     private var commits = 0
-    /// The manual lane's row count, mirrored here by `QueueView` so the context
+    /// The manual lane's row count, mirrored here by `MacQueuePanel` so the context
     /// section's gesture — which can't see the manual section's props — has it
     /// for cross-lane gap math.
     var manualGapCount = 0

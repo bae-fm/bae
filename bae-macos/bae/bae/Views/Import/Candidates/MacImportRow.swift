@@ -7,7 +7,7 @@ import SwiftUI
 /// the row it was in Found, with its release's upload while files of it wait
 /// to upload. Its height must not change on selection, which would shift
 /// every row below.
-struct TriageRowView: View {
+struct MacImportRow: View {
     /// The cover's edge in points; the sidebar preloads Pending's covers at
     /// this size, so it must match for the cached image to be used.
     static let coverPointSize = ThemeSize.rowArtwork
@@ -181,7 +181,7 @@ extension BridgeTriageRow {
 }
 
 /// The row's status line and trailing column.
-extension TriageRowView {
+extension MacImportRow {
     /// The line under the release summary: how bae broke for a row in
     /// error, or a failed import.
     var statusLine: String? {
@@ -235,7 +235,7 @@ extension TriageRowView {
             trailingIcon("clock", tint: .secondary)
                 .help(String(localized: "Waiting to be identified"))
         case .running:
-            WaitingIndicator()
+            MacSpinner()
                 .help(String(localized: "Identifying\u{2026}"))
         }
     }
@@ -269,77 +269,77 @@ extension TriageRowView {
     #Preview("Triage rows") {
         let importStore = ImportStore()
         VStack(alignment: .leading, spacing: 0) {
-            TriageRowView(
+            MacImportRow(
                 row: PreviewData.triageRowUnidentified,
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowUnidentified
                 ),
                 isGroupMember: false
             )
-            TriageRowView(
+            MacImportRow(
                 row: PreviewData.triageRowPrefilledFromTags,
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowPrefilledFromTags
                 ),
                 isGroupMember: false
             )
-            TriageRowView(
+            MacImportRow(
                 row: PreviewData.triageRowIdentifiedOnline,
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowIdentifiedOnline
                 ),
                 isGroupMember: false
             )
-            TriageRowView(
+            MacImportRow(
                 row: PreviewData.triageRowIdentifiedSeveralMatches,
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowIdentifiedSeveralMatches
                 ),
                 isGroupMember: false
             )
-            TriageRowView(
+            MacImportRow(
                 row: PreviewData.triageRowIdentified,
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowIdentified
                 ),
                 isGroupMember: false
             )
-            TriageRowView(
+            MacImportRow(
                 row: PreviewData.triageRowPickAPressing,
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowPickAPressing
                 ),
                 isGroupMember: false
             )
-            TriageRowView(
+            MacImportRow(
                 row: PreviewData.triageRowSeveralMatchesFromSignals,
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowSeveralMatchesFromSignals
                 ),
                 isGroupMember: false
             )
-            TriageRowView(
+            MacImportRow(
                 row: PreviewData.triageRowAlreadyInLibrary,
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowAlreadyInLibrary
                 ),
                 isGroupMember: false
             )
-            TriageRowView(
+            MacImportRow(
                 row: PreviewData.triageRowNoMatch,
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowNoMatch
                 ),
                 isGroupMember: false
             )
-            TriageRowView(
+            MacImportRow(
                 row: PreviewData.triageRowIdentifying,
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowIdentifying
                 ),
                 isGroupMember: false
             )
-            TriageRowView(
+            MacImportRow(
                 row: PreviewData.triageRowFailed,
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowFailed
@@ -365,7 +365,7 @@ extension TriageRowView {
         ]
         return VStack(alignment: .leading, spacing: 0) {
             ForEach(rows, id: \.candidateKey) { row in
-                TriageRowView(
+                MacImportRow(
                     row: row,
                     coverContent: importStore.sidebarCover(for: row),
                     isGroupMember: false,
@@ -406,7 +406,7 @@ extension TriageRowView {
         ]
         return VStack(alignment: .leading, spacing: 0) {
             ForEach(rows, id: \.candidateKey) { row in
-                TriageRowView(
+                MacImportRow(
                     row: row,
                     coverContent: importStore.sidebarCover(for: row),
                     isGroupMember: false

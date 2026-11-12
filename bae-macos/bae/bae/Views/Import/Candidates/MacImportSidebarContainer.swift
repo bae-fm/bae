@@ -79,11 +79,11 @@ private final class ImportCandidateRevealOperation {
     }
 }
 
-// MARK: - ImportCandidateListContent
+// MARK: - MacImportSidebarContainer
 
-/// The import sidebar: one paged list over the tab the slot is showing, with
-/// items, order and grouping decided by core.
-struct ImportCandidateListContent: View {
+/// Reads the stores for `MacImportSidebar`: one paged list over the tab the
+/// slot is showing, with items, order and grouping decided by core.
+struct MacImportSidebarContainer: View {
     /// The loaded entries and the summary the chrome around them reads.
     let importStore: ImportStore
     /// The paged list, the view it is showing and the person's place in it.
@@ -114,8 +114,6 @@ struct ImportCandidateListContent: View {
     /// The positions reveals land on, which the table scrolls to.
     @State
     private var reveals = PassthroughSubject<Int, Never>()
-    @FocusState
-    private var filterFocused: Bool
 
     private var filterTextBinding: Binding<String> {
         Binding(
@@ -152,83 +150,57 @@ struct ImportCandidateListContent: View {
     }
 
     var body: some View {
-        ImportSidebarList {
-            VStack(spacing: 0) {
-                TriageTabBar(
-                    activeTab: activeTabBinding,
-                    counts: importStore.tabCounts
+        MacImportSidebar(
+            activeTab: activeTabBinding,
+            counts: importStore.tabCounts,
+            filterText: filterTextBinding,
+            narrowed: summary.narrowedCount(under: shownNarrowing),
+            answersView: listSlot.answersView
+        ) {
+            IdentificationProgressSlot(
+                importStore: importStore,
+                onGoToUnidentified: goToFirstUnidentified,
+                onCancelAll: onCancelAllIdentification
+            )
+            ImportActivitySlot(
+                importStore: importStore,
+                onCancelAll: onCancelAllImports
+            )
+            FolderScanActivitySlot(importStore: importStore)
+            CandidateListMenu(
+                watchedFolders: importStore.watchedFolders,
+                refreshingFolders: uiStore.refreshingWatchedFolders,
+                hasGroups: summary.hasGroups,
+                sortOrder: listSlot.sortOrder,
+                pendingFilter: uiStore
+                    .importCandidatePendingFilter,
+                importStore: importStore,
+                pendingFilterApplies: uiStore
+                    .importCandidateTab == .pending,
+                actions: CandidateListMenuActions(
+                    onSetSortOrder: { order in
+                        cancelReveal()
+                        listSlot.setSortOrder(order)
+                    },
+                    onSetPendingFilter: { filter in
+                        cancelReveal()
+                        listSlot.setPendingFilter(filter)
+                    },
+                    onAddFolder: onAddFolder,
+                    onSetAllGroupsExpanded: { expanded in
+                        cancelReveal()
+                        listSlot.setAllGroupsExpanded(expanded)
+                    },
+                    onRefreshFolder: onRefreshFolder,
+                    onRemoveFolder: onRemoveFolder
                 )
-                .padding(ThemeSpace.related)
-
-                // Separates choosing the tab from filtering it.
-                Divider()
-
-                HStack(spacing: ThemeSpace.related) {
-                    ImportListFilterField(
-                        text: filterTextBinding,
-                        focused: $filterFocused,
-                        narrowed: summary.narrowedCount(
-                            under: shownNarrowing
-                        )
-                    )
-                    IdentificationProgressSlot(
-                        importStore: importStore,
-                        onGoToUnidentified: goToFirstUnidentified,
-                        onCancelAll: onCancelAllIdentification
-                    )
-                    ImportActivitySlot(
-                        importStore: importStore,
-                        onCancelAll: onCancelAllImports
-                    )
-                    FolderScanActivitySlot(importStore: importStore)
-                    CandidateListMenu(
-                        watchedFolders: importStore.watchedFolders,
-                        refreshingFolders: uiStore.refreshingWatchedFolders,
-                        hasGroups: summary.hasGroups,
-                        sortOrder: listSlot.sortOrder,
-                        pendingFilter: uiStore
-                            .importCandidatePendingFilter,
-                        importStore: importStore,
-                        pendingFilterApplies: uiStore
-                            .importCandidateTab == .pending,
-                        actions: CandidateListMenuActions(
-                            onSetSortOrder: { order in
-                                cancelReveal()
-                                listSlot.setSortOrder(order)
-                            },
-                            onSetPendingFilter: { filter in
-                                cancelReveal()
-                                listSlot.setPendingFilter(filter)
-                            },
-                            onAddFolder: onAddFolder,
-                            onSetAllGroupsExpanded: { expanded in
-                                cancelReveal()
-                                listSlot.setAllGroupsExpanded(expanded)
-                            },
-                            onRefreshFolder: onRefreshFolder,
-                            onRemoveFolder: onRemoveFolder
-                        )
-                    )
-                }
-                .padding(.horizontal, ThemeSpace.group)
-                .frame(height: ImportFilterBarLayout.rowHeight)
-                // A click anywhere on the row puts the caret in the
-                // field; the controls at the end keep their own clicks.
-                .contentShape(Rectangle())
-                .onTapGesture { filterFocused = true }
-            }
+            )
         } content: {
             ImportCandidateListSwitch(
                 listSlot: listSlot,
                 importStore: importStore,
                 table: { tabList }
             )
-            // Until the read answering the view the person asked for lands,
-            // the list holds the previous view's rows: they stay unshown and
-            // out of reach rather than standing in for this view's.
-            .opacity(listSlot.answersView ? 1 : 0)
-            .allowsHitTesting(listSlot.answersView)
-            .accessibilityHidden(!listSlot.answersView)
         }
         .background {
             ImportCoverWarmer(importStore: importStore)
@@ -272,7 +244,7 @@ struct ImportCandidateListContent: View {
 }
 
 /// The rows' actions.
-extension ImportCandidateListContent {
+extension MacImportSidebarContainer {
     private var entryActions: ImportListEntryActions {
         ImportListEntryActions(
             onSetGroupExpanded: { group, expanded in
@@ -313,7 +285,7 @@ extension ImportCandidateListContent {
     }
 }
 
-extension ImportCandidateListContent {
+extension MacImportSidebarContainer {
     /// Go to the first row still being identified.
     private func goToFirstUnidentified() {
         startReveal {
@@ -356,7 +328,7 @@ extension ImportCandidateListContent {
         let scene = PreviewData.importSmokeTestScene()
         let uiStore = UiStore()
         uiStore.setImportCandidateTab(.pending)
-        return ImportCandidateListContent(
+        return MacImportSidebarContainer(
             importStore: scene.store,
             listSlot: scene.slot(uiStore: uiStore),
             onAddFolder: {},
@@ -385,7 +357,7 @@ extension ImportCandidateListContent {
             PreviewData.importWatchedFolder.path,
             true
         )
-        return ImportCandidateListContent(
+        return MacImportSidebarContainer(
             importStore: scene.store,
             listSlot: scene.slot(uiStore: uiStore),
             onAddFolder: {},
@@ -425,7 +397,7 @@ private struct ImportCoverWarmer: View {
             .task(id: importStore.loadedCovers) {
                 await imageStore.warm(
                     Array(importStore.loadedCovers),
-                    pointSize: TriageRowView.coverPointSize,
+                    pointSize: MacImportRow.coverPointSize,
                     displayScale: displayScale
                 )
             }

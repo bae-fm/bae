@@ -134,7 +134,7 @@ struct StorageSetupRunLine: View {
         case .idle:
             EmptyView()
         case .running(let following):
-            StepProgressLine(
+            MacProgress(
                 steps: following.steps,
                 titled: { progress in
                     if let folder, case .checkingLocation = progress.step {
@@ -152,7 +152,7 @@ struct StorageSetupRunLine: View {
                 idle: { EmptyView() }
             )
         case .cancelling:
-            WaitingIndicator("Cancelling…")
+            MacSpinner("Cancelling…")
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
     }

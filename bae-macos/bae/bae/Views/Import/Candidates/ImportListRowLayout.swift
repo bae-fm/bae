@@ -16,11 +16,11 @@ struct ImportListRowLayout<Meta: View, Trailing: View>: View {
         HStack(alignment: .center, spacing: ThemeSpace.related) {
             ImageView(
                 content: coverContent,
-                pointSize: TriageRowView.coverPointSize
+                pointSize: MacImportRow.coverPointSize
             )
             .frame(
-                width: TriageRowView.coverPointSize,
-                height: TriageRowView.coverPointSize
+                width: MacImportRow.coverPointSize,
+                height: MacImportRow.coverPointSize
             )
             .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
             meta()

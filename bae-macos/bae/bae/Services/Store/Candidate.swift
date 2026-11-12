@@ -393,7 +393,7 @@ struct Candidate: Equatable, Identifiable {
     /// Construct a re-identify candidate. The release already lives in the
     /// library, so this carries only the session's own work — the result, the
     /// search state. Its run's identify state comes from the candidate-runtime
-    /// signal under the same key, which is how the existing `ImportSearchPane`
+    /// signal under the same key, which is how the existing `MacFindOnline`
     /// UI renders unchanged.
     init(
         reIdentifyKey: Data,

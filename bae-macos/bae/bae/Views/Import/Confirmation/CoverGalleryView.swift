@@ -98,7 +98,7 @@ struct CoverGalleryView: View {
                 Spacer(minLength: ThemeSpace.group)
                 // Saving can download a remote cover, or read a release's
                 // image from its storage.
-                WaitingIndicator(
+                MacSpinner(
                     Text(
                         "Saving the cover…",
                         comment:
@@ -155,7 +155,7 @@ struct CoverGalleryView: View {
                     }
                     else {
                         if remoteItems.isLoading {
-                            WaitingIndicator("Fetching covers…")
+                            MacSpinner("Fetching covers…")
                                 .frame(
                                     maxWidth: .infinity,
                                     maxHeight: .infinity
@@ -342,7 +342,7 @@ extension CoverGalleryView {
     private var remoteStatus: some View {
         switch remoteItems {
         case .loading:
-            WaitingIndicator("Fetching covers…")
+            MacSpinner("Fetching covers…")
         case .unlinked:
             VStack(alignment: .leading, spacing: ThemeSpace.related) {
                 Text("No linked release")

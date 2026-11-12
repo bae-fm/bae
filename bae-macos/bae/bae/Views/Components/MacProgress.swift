@@ -230,7 +230,7 @@ private struct StepProgressBar<Step: ProgressStep>: NSViewRepresentable {
 /// title. With no call to follow, `idle` alone. Whether a step
 /// runs is read from the call's stream as the line starts to follow it, and
 /// set as the native line tells a step starting or ending.
-struct StepProgressLine<Step: ProgressStep, Idle: View>: View {
+struct MacProgress<Step: ProgressStep, Idle: View>: View {
     let steps: LatestSource<Step>?
     let showsBar: Bool
     let titled: (Step) -> String
@@ -274,7 +274,7 @@ struct StepProgressLine<Step: ProgressStep, Idle: View>: View {
 
 #if DEBUG
     #Preview("Migrating") {
-        StepProgressLine(
+        MacProgress(
             steps:
                 LatestStream.openProgress(
                     holding: BridgeOpenProgress(
@@ -285,14 +285,14 @@ struct StepProgressLine<Step: ProgressStep, Idle: View>: View {
                 )
                 .only
         ) {
-            WaitingIndicator(Text(AppScreen.LoadingWork.opening.title))
+            MacSpinner(Text(AppScreen.LoadingWork.opening.title))
         }
         .frame(width: 320)
         .padding()
     }
 
     #Preview("Rebuilding") {
-        StepProgressLine(
+        MacProgress(
             steps:
                 LatestStream.openProgress(
                     holding: BridgeOpenProgress(
@@ -303,14 +303,14 @@ struct StepProgressLine<Step: ProgressStep, Idle: View>: View {
                 )
                 .only
         ) {
-            WaitingIndicator(Text(AppScreen.LoadingWork.opening.title))
+            MacSpinner(Text(AppScreen.LoadingWork.opening.title))
         }
         .frame(width: 320)
         .padding()
     }
 
     #Preview("Removing libraries") {
-        StepProgressLine(
+        MacProgress(
             steps:
                 LatestStream.setupLines(
                     holding: .step(
@@ -330,7 +330,7 @@ struct StepProgressLine<Step: ProgressStep, Idle: View>: View {
     }
 
     #Preview("Setting storage up") {
-        StepProgressLine(
+        MacProgress(
             steps:
                 LatestStream.setupLines(
                     holding: .storage(
@@ -350,8 +350,8 @@ struct StepProgressLine<Step: ProgressStep, Idle: View>: View {
     }
 
     #Preview("Between steps") {
-        StepProgressLine(steps: LatestStream.openProgress().only) {
-            WaitingIndicator(Text(AppScreen.LoadingWork.opening.title))
+        MacProgress(steps: LatestStream.openProgress().only) {
+            MacSpinner(Text(AppScreen.LoadingWork.opening.title))
         }
         .frame(width: 320)
         .padding()

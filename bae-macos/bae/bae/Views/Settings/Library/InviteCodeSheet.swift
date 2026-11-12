@@ -85,7 +85,7 @@ struct InviteCodeSheet: View {
                 }
             }
             else {
-                WaitingIndicator(
+                MacSpinner(
                     "Sharing the library. The code shows once this library syncs."
                 )
             }

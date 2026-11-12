@@ -66,7 +66,7 @@ struct NowPlayingStorageWaitTests {
         buffered: LatestSource<BridgeTrackBuffered>,
         storageWait: LatestSource<Bool>
     ) -> some View {
-        NowPlayingBar(
+        MacNowPlayingBar(
             trackTitle: "Track Title",
             secondaryLine: "Artist Name",
             cover: nil,

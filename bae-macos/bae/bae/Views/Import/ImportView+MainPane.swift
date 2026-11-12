@@ -5,7 +5,7 @@ import SwiftUI
 
 extension ImportView {
     var candidateList: some View {
-        ImportCandidateListContent(
+        MacImportSidebarContainer(
             importStore: importStore,
             listSlot: listSlot,
             onAddFolder: {

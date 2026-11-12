@@ -9,7 +9,9 @@ enum SearchOverlaySpace {
     static let name = "searchOverlay"
 }
 
-struct MainAppView: View {
+/// Reads the stores for `MacMainWindow` and holds what surrounds it: the
+/// overlays, the search dropdown, the file importer and the alerts.
+struct MacMainWindowContainer: View {
     @Environment(Queue.self)
     var queue
     @Environment(Library.self)
@@ -40,57 +42,41 @@ struct MainAppView: View {
     @State
     private var searchFieldFrame: CGRect?
 
-    /// How the queue panel springs in beside the active section and out
-    /// again.
-    static let queuePanelSpring = Animation.spring(duration: 0.24, bounce: 0.12)
-
     private var queueActions: QueueActions {
         QueueActions(library: library, queue: queue, uiStore: uiStore)
     }
 
     var body: some View {
         ZStack {
-            // Title bar, the active section beside the queue, now playing bar.
-            VStack(spacing: 0) {
+            MacMainWindow(showQueue: uiStore.showQueue) {
                 TitleBar(
                     searchText: $searchText,
                     onSearchFieldFrame: { searchFieldFrame = $0 }
                 )
-
-                HStack(spacing: 0) {
-                    // Only the active section is mounted: `.onHover` tracking
-                    // areas ignore opacity, so a hidden one would leak hover.
-                    Group {
-                        if uiStore.activeSection == .library {
-                            LibraryView()
-                        }
-                        else {
-                            ImportView(endEditing: endEditing)
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-
-                    // Docked so the content reflows beside it during drags.
-                    if uiStore.showQueue {
-                        QueuePanel(
-                            onClose: {
-                                uiStore.setQueuePresented(false)
-                            },
-                            onInsertTracks: { dropped, index in
-                                queueActions.insertDropped(
-                                    dropped,
-                                    at: index,
-                                    order: AlbumGridOrder(session: session)
-                                )
-                            }
-                        )
-                        .transition(.move(edge: .trailing))
-                    }
+            } content: {
+                // Only the active section is mounted: `.onHover` tracking
+                // areas ignore opacity, so a hidden one would leak hover.
+                if uiStore.activeSection == .library {
+                    LibraryView()
                 }
-                .animation(Self.queuePanelSpring, value: uiStore.showQueue)
-
-                Divider()
-                NowPlayingBarContainer(
+                else {
+                    ImportView(endEditing: endEditing)
+                }
+            } queuePanel: {
+                MacQueuePanelContainer(
+                    onClose: {
+                        uiStore.setQueuePresented(false)
+                    },
+                    onInsertTracks: { dropped, index in
+                        queueActions.insertDropped(
+                            dropped,
+                            at: index,
+                            order: AlbumGridOrder(session: session)
+                        )
+                    }
+                )
+            } nowPlayingBar: {
+                MacNowPlayingBarContainer(
                     onDropToQueue: { dropped in
                         queueActions.addDropped(
                             dropped,
@@ -265,7 +251,7 @@ struct MainAppView: View {
         let session: LibraryBrowseSession = backing.session
         let libraryProjections = LibraryProjectionStore(library: library)
         let importScene = PreviewData.importTabScene()
-        return MainAppView()
+        return MacMainWindowContainer()
             .environment(library)
             .environment(session)
             .environment(libraryProjections)

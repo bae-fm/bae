@@ -4,7 +4,7 @@ import SwiftUI
 /// Find online, in two sections with one open at a time: Automatic, the
 /// identify run and its matches, and Search, the typed-search form and its
 /// results. Collapsing Automatic does not cancel its run.
-struct ImportSearchPane: View {
+struct MacFindOnline: View {
     let state: ImportSearchState
     /// Leave the pane. `nil` for a surface that owns its own way out.
     let onBack: (() -> Void)?
@@ -43,11 +43,11 @@ struct ImportSearchPane: View {
     /// Open one section.
     let onOpenSection: (BridgeFindOnlineSection) -> Void
 
-    /// Whether Discogs is usable, which updates while the pane is open.
-    @Environment(ConfigStore.self)
-    private var configStore
-    @Environment(UiStore.self)
-    private var uiStore
+    /// Whether the Discogs bar shows above both sections: while Discogs
+    /// can't be asked, until the person puts it away for the session.
+    let showsDiscogsBar: Bool
+    /// Put the Discogs bar away for the session.
+    let onDismissDiscogsBar: () -> Void
 
     init(
         state: ImportSearchState,
@@ -67,7 +67,9 @@ struct ImportSearchPane: View {
         onKeepOwnDraft: (() -> Void)?,
         onLinkSharedAlbum: (() -> Void)?,
         openSection: BridgeFindOnlineSection,
-        onOpenSection: @escaping (BridgeFindOnlineSection) -> Void
+        onOpenSection: @escaping (BridgeFindOnlineSection) -> Void,
+        showsDiscogsBar: Bool,
+        onDismissDiscogsBar: @escaping () -> Void
     ) {
         self.state = state
         self.onBack = onBack
@@ -86,6 +88,8 @@ struct ImportSearchPane: View {
         self.onLinkSharedAlbum = onLinkSharedAlbum
         self.openSection = openSection
         self.onOpenSection = onOpenSection
+        self.showsDiscogsBar = showsDiscogsBar
+        self.onDismissDiscogsBar = onDismissDiscogsBar
     }
 
     /// Each new value gives the form's first field the keyboard.
@@ -152,13 +156,10 @@ struct ImportSearchPane: View {
     /// stays hidden for the session.
     @ViewBuilder
     private var discogsBar: some View {
-        if Self.showsDiscogsBar(
-            configStore.config,
-            dismissed: uiStore.discogsNoticeDismissed
-        ) {
+        if showsDiscogsBar {
             FindOnlineDiscogsBar(
                 onOpenSettings: onOpenSettings,
-                onDismiss: { uiStore.dismissDiscogsNotice() }
+                onDismiss: onDismissDiscogsBar
             )
             Divider()
         }
@@ -229,7 +230,7 @@ struct ImportSearchPane: View {
 #if DEBUG
     // MARK: - Previews
 
-    extension ImportSearchPane {
+    extension MacFindOnline {
         /// A pane with inert form bindings and callbacks, so a preview states
         /// only its situation.
         @MainActor
@@ -239,8 +240,9 @@ struct ImportSearchPane: View {
             searchAlbum: String = "",
             openSection: BridgeFindOnlineSection = .automatic,
             onRetryFailed: @escaping () -> Void = {},
-        ) -> ImportSearchPane {
-            ImportSearchPane(
+            showsDiscogsBar: Bool = false,
+        ) -> MacFindOnline {
+            MacFindOnline(
                 state: state,
                 onBack: {},
                 onCancelIdentification: {},
@@ -260,97 +262,99 @@ struct ImportSearchPane: View {
                 onKeepOwnDraft: {},
                 onLinkSharedAlbum: {},
                 openSection: openSection,
-                onOpenSection: { _ in }
+                onOpenSection: { _ in },
+                showsDiscogsBar: showsDiscogsBar,
+                onDismissDiscogsBar: {}
             )
         }
     }
 
     #Preview("Find online — identifying") {
-        ImportSearchPane.preview(state: PreviewData.searchStateTriangulating)
+        MacFindOnline.preview(state: PreviewData.searchStateTriangulating)
             .frame(width: 900, height: 620)
             .importPreviewEnvironment()
     }
 
     #Preview("Find online — found, cross-linked") {
-        ImportSearchPane.preview(state: PreviewData.searchStateFoundExact)
+        MacFindOnline.preview(state: PreviewData.searchStateFoundExact)
             .frame(width: 900, height: 620)
             .importPreviewEnvironment()
     }
 
     #Preview("Find online — releases the agreement left out") {
-        ImportSearchPane.preview(state: PreviewData.searchStateNarrowedOut)
+        MacFindOnline.preview(state: PreviewData.searchStateNarrowedOut)
             .frame(width: 900, height: 620)
             .importPreviewEnvironment()
     }
 
     #Preview("Find online — signals named different releases") {
-        ImportSearchPane.preview(state: PreviewData.searchStateDisagreement)
+        MacFindOnline.preview(state: PreviewData.searchStateDisagreement)
             .frame(width: 900, height: 620)
             .importPreviewEnvironment()
     }
 
     #Preview("Find online — nothing found") {
-        ImportSearchPane.preview(state: PreviewData.searchStateNotFound)
+        MacFindOnline.preview(state: PreviewData.searchStateNotFound)
             .frame(width: 900, height: 620)
             .importPreviewEnvironment()
     }
 
     #Preview("Find online — no signals") {
-        ImportSearchPane.preview(state: PreviewData.searchStateNoSignals)
+        MacFindOnline.preview(state: PreviewData.searchStateNoSignals)
             .frame(width: 900, height: 620)
             .importPreviewEnvironment()
     }
 
     #Preview("Find online — catalog numbers to activate") {
-        ImportSearchPane.preview(state: PreviewData.searchStateAwaitingCatalog)
+        MacFindOnline.preview(state: PreviewData.searchStateAwaitingCatalog)
             .frame(width: 900, height: 620)
             .importPreviewEnvironment()
     }
 
     #Preview("Find online — source failure, partial results") {
-        ImportSearchPane.preview(state: PreviewData.searchStateSourceFailure)
+        MacFindOnline.preview(state: PreviewData.searchStateSourceFailure)
             .frame(width: 900, height: 620)
             .importPreviewEnvironment()
     }
 
     #Preview("Find online — every source failed") {
-        ImportSearchPane.preview(state: PreviewData.searchStateAllSourcesFailed)
+        MacFindOnline.preview(state: PreviewData.searchStateAllSourcesFailed)
             .frame(width: 900, height: 620)
             .importPreviewEnvironment()
     }
 
     #Preview("Find online — a failure with no ledger") {
-        ImportSearchPane.preview(state: PreviewData.searchStateFailedWithoutRun)
+        MacFindOnline.preview(state: PreviewData.searchStateFailedWithoutRun)
             .frame(width: 900, height: 620)
             .importPreviewEnvironment()
     }
 
     #Preview("Find online — queued") {
-        ImportSearchPane.preview(state: PreviewData.searchStateQueued)
+        MacFindOnline.preview(state: PreviewData.searchStateQueued)
             .frame(width: 900, height: 620)
             .importPreviewEnvironment()
     }
 
     #Preview("Find online — not identified") {
-        ImportSearchPane.preview(state: PreviewData.searchStateIdle)
+        MacFindOnline.preview(state: PreviewData.searchStateIdle)
             .frame(width: 900, height: 620)
             .importPreviewEnvironment()
     }
 
     #Preview("Find online — reading a sole match it picked") {
-        ImportSearchPane.preview(state: PreviewData.searchStateReadingPick)
+        MacFindOnline.preview(state: PreviewData.searchStateReadingPick)
             .frame(width: 900, height: 620)
             .importPreviewEnvironment()
     }
 
     #Preview("Find online — a sole match that lists no tracks") {
-        ImportSearchPane.preview(state: PreviewData.searchStateSoleUnchecked)
+        MacFindOnline.preview(state: PreviewData.searchStateSoleUnchecked)
             .frame(width: 900, height: 620)
             .importPreviewEnvironment()
     }
 
     #Preview("Find online — searching") {
-        ImportSearchPane.preview(
+        MacFindOnline.preview(
             state: PreviewData.searchStateSearching,
             searchArtist: "Artist Name",
             searchAlbum: "Album Title One",
@@ -360,7 +364,7 @@ struct ImportSearchPane: View {
     }
 
     #Preview("Find online — search results") {
-        ImportSearchPane.preview(
+        MacFindOnline.preview(
             state: PreviewData.searchStateManual,
             searchArtist: "Artist Name",
             searchAlbum: "Album Title One",
@@ -370,29 +374,24 @@ struct ImportSearchPane: View {
     }
 
     #Preview("Find online — Discogs not configured") {
-        ImportSearchPane.preview(
+        MacFindOnline.preview(
             state: PreviewData.searchStateManual,
             searchArtist: "Artist Name",
             searchAlbum: "Album Title One",
-        )
-        .environment(
-            PreviewData.makeConfigStore(
-                libraryFullWidth: false,
-                discogsUsable: false
-            )
+            showsDiscogsBar: true,
         )
         .frame(width: 900, height: 620)
         .importPreviewEnvironment()
     }
 
     #Preview("Find online — a searched source dropped") {
-        ImportSearchPane.preview(state: PreviewData.searchStateSearchFailed)
+        MacFindOnline.preview(state: PreviewData.searchStateSearchFailed)
             .frame(width: 900, height: 620)
             .importPreviewEnvironment()
     }
 
     #Preview("Find online — search matched nothing") {
-        ImportSearchPane.preview(
+        MacFindOnline.preview(
             state: PreviewData.searchStateSearchEmpty,
             searchArtist: "Artist Name",
             searchAlbum: "Album Title",

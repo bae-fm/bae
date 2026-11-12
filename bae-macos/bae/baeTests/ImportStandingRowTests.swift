@@ -95,7 +95,7 @@ struct ImportStandingRowTests {
             badge: nil
         )
         return try await drawn(
-            TriageRowView(
+            MacImportRow(
                 row: row,
                 coverContent: nil,
                 isGroupMember: false
@@ -117,7 +117,7 @@ struct ImportStandingRowTests {
             badge: nil
         )
         return try await drawn(
-            TriageRowView(
+            MacImportRow(
                 row: row,
                 coverContent: nil,
                 isGroupMember: false

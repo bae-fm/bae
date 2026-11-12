@@ -22,7 +22,7 @@ struct TriageRowIdentifiedTests {
         let prefilled = try await fittingSize(
             of: PreviewData.triageRowPrefilledFromTags
         )
-        #expect(unidentified.height >= TriageRowView.coverPointSize)
+        #expect(unidentified.height >= MacImportRow.coverPointSize)
         #expect(unidentified.height == prefilled.height)
     }
 
@@ -107,7 +107,7 @@ struct TriageRowIdentifiedTests {
         _ body: (NSView) async throws -> Value
     ) async throws -> Value {
         try await SnapshotTestSupport.withHostedWindow(
-            TriageRowView(
+            MacImportRow(
                 row: row,
                 coverContent: nil,
                 isGroupMember: false

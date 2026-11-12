@@ -29,7 +29,7 @@ struct KeychainLockedView: View {
 
 #if DEBUG
     #Preview("Keychain locked") {
-        WelcomeWindowChrome {
+        MacWelcomeWindow {
             KeychainLockedView(onRetry: {})
         }
     }

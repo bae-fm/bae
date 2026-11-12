@@ -30,7 +30,7 @@ public struct ProfileCreationRows: View {
             else if let requested = store.requestedProfile,
                 case .making = requested.state
             {
-                WaitingIndicator("Making your profile…")
+                MacSpinner("Making your profile…")
                 Text("Your profile appears once this library syncs.")
                     .themeText(.detail)
                     .foregroundStyle(.secondary)

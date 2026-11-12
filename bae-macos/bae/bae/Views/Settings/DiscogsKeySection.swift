@@ -203,7 +203,7 @@ struct DiscogsSettingsContent: View {
                 )
             }
             if isValidating {
-                WaitingIndicator(
+                MacSpinner(
                     Text(
                         "Checking the key with Discogs…",
                         comment:

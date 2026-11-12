@@ -4,7 +4,7 @@ import SwiftUI
 /// The storage state chip: what core says the row's storage shows. Files on
 /// the move fill their chip as far as they have come, as does a release
 /// being made local.
-struct StorageStateLabel: View {
+struct MacStorageChip: View {
     let release: ReleaseSummary
     let status: BridgeStorageRowStatus
 
@@ -120,21 +120,21 @@ struct StorageMakingLocalChip: View {
 #if DEBUG
     #Preview("Storage states") {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
-            StorageStateLabel(
+            MacStorageChip(
                 release: PreviewData.storageRelease(
                     id: "r-local",
                     storageState: .onOneDevice
                 ),
                 status: .onOneDevice
             )
-            StorageStateLabel(
+            MacStorageChip(
                 release: PreviewData.storageRelease(
                     id: "r-cloud",
                     storageState: .inStorage(pinned: false)
                 ),
                 status: .inStorage
             )
-            StorageStateLabel(
+            MacStorageChip(
                 release: PreviewData.storageRelease(
                     id: "r-pinned",
                     storageState: .inStorage(pinned: true)
@@ -142,7 +142,7 @@ struct StorageMakingLocalChip: View {
                 status: .pinned
             )
             // A release downloading to stay on this device.
-            StorageStateLabel(
+            MacStorageChip(
                 release: PreviewData.storageRelease(
                     id: "rel-row-5",
                     storageState: .inStorage(pinned: false),
@@ -151,7 +151,7 @@ struct StorageMakingLocalChip: View {
                 status: .pinning(step: .running)
             )
             // A pin waiting its turn.
-            StorageStateLabel(
+            MacStorageChip(
                 release: PreviewData.storageRelease(
                     id: "r-queued",
                     storageState: .inStorage(pinned: false)
@@ -159,7 +159,7 @@ struct StorageMakingLocalChip: View {
                 status: .pinning(step: .queued)
             )
             // A download that failed.
-            StorageStateLabel(
+            MacStorageChip(
                 release: PreviewData.storageRelease(
                     id: "r-failed",
                     storageState: .inStorage(pinned: false)
@@ -169,7 +169,7 @@ struct StorageMakingLocalChip: View {
                 )
             )
             // A move whose original changed.
-            StorageStateLabel(
+            MacStorageChip(
                 release: PreviewData.storageRelease(
                     id: "r-move-failed",
                     storageState: .onOneDevice
@@ -177,7 +177,7 @@ struct StorageMakingLocalChip: View {
                 status: .moveFailed(fileName: "01 Opening.flac")
             )
             // A release downloading into the person's folder to be made local.
-            StorageStateLabel(
+            MacStorageChip(
                 release: PreviewData.storageRelease(
                     id: "r-detach",
                     storageState: .inStorage(pinned: false),
@@ -186,7 +186,7 @@ struct StorageMakingLocalChip: View {
                 status: .makingLocal(step: .running)
             )
             // A make-local waiting its turn.
-            StorageStateLabel(
+            MacStorageChip(
                 release: PreviewData.storageRelease(
                     id: "r-make-local-queued",
                     storageState: .inStorage(pinned: false),
@@ -195,7 +195,7 @@ struct StorageMakingLocalChip: View {
                 status: .makingLocal(step: .queued)
             )
             // A make-local that failed.
-            StorageStateLabel(
+            MacStorageChip(
                 release: PreviewData.storageRelease(
                     id: "r-make-local-failed",
                     storageState: .inStorage(pinned: false)
@@ -203,7 +203,7 @@ struct StorageMakingLocalChip: View {
                 status: .makeLocalFailed(error: "The disk is full")
             )
             // Files being sent.
-            StorageStateLabel(
+            MacStorageChip(
                 release: PreviewData.storageRelease(
                     id: PreviewData.uploadingRelease.releaseId,
                     storageState: .onOneDevice,

@@ -47,11 +47,11 @@ class UiProjectionBoundaryTests(unittest.TestCase):
             root = Path(directory)
             self.copied_inventory(root)
             relative = Path(
-                "bae-macos/bae/bae/Views/Import/Candidates/TriageRowView.swift"
+                "bae-macos/bae/bae/Views/Import/Candidates/MacImportRow.swift"
             )
             path = root / relative
             source = path.read_text()
-            insertion = "struct TriageRowView: View {"
+            insertion = "struct MacImportRow: View {"
             source = source.replace(
                 insertion,
                 f"{insertion}\n"
@@ -63,7 +63,7 @@ class UiProjectionBoundaryTests(unittest.TestCase):
             self.assertEqual(
                 BOUNDARY.check(root),
                 [
-                    f"{relative}:{injected_line}: TriageRowView reaches secondary "
+                    f"{relative}:{injected_line}: MacImportRow reaches secondary "
                     "entity projection Candidate",
                 ],
             )
@@ -73,14 +73,14 @@ class UiProjectionBoundaryTests(unittest.TestCase):
             root = Path(directory)
             self.copied_inventory(root)
             relative = Path(
-                "bae-macos/bae/bae/Views/Import/Candidates/TriageRowView.swift"
+                "bae-macos/bae/bae/Views/Import/Candidates/MacImportRow.swift"
             )
             path = root / relative
             source = path.read_text()
-            insertion = "extension TriageRowView {"
+            insertion = "extension MacImportRow {"
             source = source.replace(
                 insertion,
-                "extension\nTriageRowView {\n"
+                "extension\nMacImportRow {\n"
                 "    private var selectedDetailStore: ImportStore { fatalError() }",
                 1,
             )
@@ -91,7 +91,7 @@ class UiProjectionBoundaryTests(unittest.TestCase):
             self.assertEqual(
                 BOUNDARY.check(root),
                 [
-                    f"{relative}:{injected_line}: TriageRowView reaches entity-data owner "
+                    f"{relative}:{injected_line}: MacImportRow reaches entity-data owner "
                     "ImportStore"
                 ],
             )
@@ -147,12 +147,12 @@ struct FixturePresentationList: View {
             root = Path(directory)
             self.copied_inventory(root)
             relative = Path(
-                "bae-macos/bae/bae/Views/Import/Candidates/TriageRowView.swift"
+                "bae-macos/bae/bae/Views/Import/Candidates/MacImportRow.swift"
             )
             path = root / relative
             source = path.read_text().replace(
-                "struct TriageRowView: View {",
-                "struct TriageRowView: View {\n"
+                "struct MacImportRow: View {",
+                "struct MacImportRow: View {\n"
                 "    @State private var selectedCandidate: Candidate",
                 1,
             )
@@ -161,7 +161,7 @@ struct FixturePresentationList: View {
             self.assertEqual(
                 BOUNDARY.check(root),
                 [
-                    f"{relative}:{injected_line}: TriageRowView reaches secondary "
+                    f"{relative}:{injected_line}: MacImportRow reaches secondary "
                     "entity projection Candidate",
                 ],
             )

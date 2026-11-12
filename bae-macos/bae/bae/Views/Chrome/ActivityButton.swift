@@ -130,7 +130,7 @@ private struct ActivityGlyph: View {
     var body: some View {
         HStack(spacing: ThemeSpace.inline) {
             if moving {
-                WaitingIndicator()
+                MacSpinner()
             }
             if held {
                 Image(systemName: "pause.fill")

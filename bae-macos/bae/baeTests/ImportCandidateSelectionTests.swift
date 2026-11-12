@@ -44,7 +44,7 @@ struct ImportCandidateSelectionTests {
     func rowRendersFromSuppliedUploadPresentation() async throws {
         let size = NSSize(width: 400, height: 80)
         try await SnapshotTestSupport.withHostedWindow(
-            TriageRowView(
+            MacImportRow(
                 row: PreviewData.triageRowDoneImported,
                 coverContent: nil,
                 isGroupMember: false
@@ -78,7 +78,7 @@ struct ImportCandidateSelectionTests {
         func spinners(_ row: BridgeTriageRow) async throws -> Int {
             let size = NSSize(width: 400, height: 80)
             return try await SnapshotTestSupport.withHostedWindow(
-                TriageRowView(
+                MacImportRow(
                     row: row,
                     coverContent: nil,
                     isGroupMember: false

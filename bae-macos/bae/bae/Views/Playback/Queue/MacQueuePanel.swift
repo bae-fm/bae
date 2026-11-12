@@ -1,18 +1,63 @@
 import BaeKit
 import SwiftUI
 
-/// The queue pane: a header, the now-playing card when active, and the manual
-/// "Up next" and context lanes as `QueueSection`s sharing one drag coordinator.
-struct QueueView: View {
-    @Environment(PlaybackStore.self)
-    private var playbackStore
-    @Environment(Queue.self)
-    private var queue
+/// The context lane as the panel draws it: its length, the rows read so far,
+/// and how to read more. A value the container builds from the store, so the
+/// panel draws without one.
+struct QueueUpcoming {
+    let total: Int
+    /// `nil` for a row not yet read.
+    let itemAt: (Int) -> BridgeQueueEntry?
+    let holds: (String) -> Bool
+    let version: UInt64
+    let loadRange: @MainActor (_ offset: Int, _ limit: Int) async -> Void
+    /// Why the read failed, when it did.
+    let failure: DisplayError?
+    let onRetry: () -> Void
+}
+
+extension QueueUpcoming {
+    /// The lane as the store holds it.
+    @MainActor
+    init(store: PlaybackStore, queue: Queue) {
+        self.init(
+            total: store.upcomingTotal,
+            itemAt: { store.upcomingItem(at: $0) },
+            holds: { store.upcomingHolds(entryId: $0) },
+            version: store.contextVersion,
+            loadRange: { offset, limit in
+                await store.loadUpcomingRange(
+                    offset: offset,
+                    limit: limit,
+                    queue: queue
+                )
+            },
+            failure: store.upcomingFailure,
+            onRetry: {
+                Task { await store.retryUpcoming(queue: queue) }
+            }
+        )
+    }
+}
+
+/// The queue docked as a fixed-width sidebar: a header, the now-playing card
+/// when active, and the manual "Up next" and context lanes as `QueueSection`s
+/// sharing one drag coordinator, drawn from the values it is given.
+/// `MacQueuePanelContainer` reads the stores for it.
+struct MacQueuePanel: View {
+    /// The manual "Up next" lane, played first and always loaded in full.
+    let manual: [BridgeQueueEntry]
+    let manualVersion: UInt64
+    /// What's playing from, or `nil`; its tracks come from `upcoming`.
+    let context: QueuePlaybackContext?
+    let upcoming: QueueUpcoming
+    /// Where the playing track is; `nil` while none plays.
+    let position: LatestSource<BridgeTrackPosition>?
+    /// The context's length is read before any of its rows is shown.
+    let onShowUpcoming: () -> Void
+    var width: CGFloat = 420
 
     let isActive: Bool
-    /// The playing track, whose position the card draws; `nil` while none
-    /// plays.
-    let nowPlayingTrackId: String?
     let nowPlayingTitle: String?
     let nowPlayingArtist: String?
     let nowPlayingCover: ImageContent?
@@ -40,13 +85,8 @@ struct QueueView: View {
     @State
     private var dragCoordinator = QueueDragCoordinator()
 
-    /// The manual "Up next" lane, played first and always loaded in full.
-    private var manual: [BridgeQueueEntry] { playbackStore.manualQueue }
-    /// What's playing from, or `nil`; its tracks come from the upcoming read.
-    private var context: QueuePlaybackContext? { playbackStore.queueContext }
-
     private var isEmpty: Bool {
-        manual.isEmpty && (context == nil || playbackStore.upcomingTotal == 0)
+        manual.isEmpty && (context == nil || upcoming.total == 0)
     }
 
     var body: some View {
@@ -98,7 +138,7 @@ struct QueueView: View {
                             acceptsExternalDrops: true,
                             laneId: .manual,
                             coordinator: dragCoordinator,
-                            laneVersion: playbackStore.manualVersion,
+                            laneVersion: manualVersion,
                             onClear: onClearUpNext,
                             onSkipTo: onSkipTo,
                             onRemove: onRemove,
@@ -109,29 +149,21 @@ struct QueueView: View {
                         )
                         .zIndex(dragCoordinator.isDragSource(.manual) ? 1 : 0)
 
-                        if let context, playbackStore.upcomingTotal > 0 {
+                        if let context, upcoming.total > 0 {
                             // Partly read: `upcomingItem` returns `nil` for
                             // rows not yet read.
                             QueueSection(
                                 title: Self.contextSectionTitle(context),
                                 shuffled: context.shuffled,
-                                count: playbackStore.upcomingTotal,
-                                itemAt: { playbackStore.upcomingItem(at: $0) },
-                                holdsEntry: {
-                                    playbackStore.upcomingHolds(entryId: $0)
-                                },
-                                loadVersion: playbackStore.contextVersion,
-                                loadRange: { offset, limit in
-                                    await playbackStore.loadUpcomingRange(
-                                        offset: offset,
-                                        limit: limit,
-                                        queue: queue
-                                    )
-                                },
+                                count: upcoming.total,
+                                itemAt: upcoming.itemAt,
+                                holdsEntry: upcoming.holds,
+                                loadVersion: upcoming.version,
+                                loadRange: upcoming.loadRange,
                                 acceptsExternalDrops: false,
                                 laneId: .context,
                                 coordinator: dragCoordinator,
-                                laneVersion: playbackStore.contextVersion,
+                                laneVersion: upcoming.version,
                                 onClear: onClearPlayingFrom,
                                 onSkipTo: onSkipTo,
                                 onRemove: onRemove,
@@ -143,14 +175,11 @@ struct QueueView: View {
                             .zIndex(
                                 dragCoordinator.isDragSource(.context) ? 1 : 0
                             )
-                            if let failure = playbackStore.upcomingFailure {
-                                UpcomingFailureRow(failure: failure) {
-                                    Task {
-                                        await playbackStore.retryUpcoming(
-                                            queue: queue
-                                        )
-                                    }
-                                }
+                            if let failure = upcoming.failure {
+                                UpcomingFailureRow(
+                                    failure: failure,
+                                    onRetry: upcoming.onRetry
+                                )
                             }
                         }
                     }
@@ -163,11 +192,19 @@ struct QueueView: View {
                 }
             }
         }
-        // The context's length is read before any of its rows is shown.
         .task(id: context != nil) {
-            playbackStore.showUpcoming(queue: queue)
+            onShowUpcoming()
         }
-        // No background: QueuePanel supplies the panel material.
+        .frame(width: width)
+        .frame(maxHeight: .infinity)
+        // Sidebar chrome: one surface step above the content beside it, and
+        // a hairline on the docked edge.
+        .background(Theme.surface)
+        .overlay(alignment: .leading) {
+            Rectangle()
+                .fill(Theme.hairline)
+                .frame(width: 1)
+        }
     }
 
     /// The context section's title: "Playing from", plus the album title when
@@ -234,13 +271,9 @@ struct QueueView: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
-                ProgressStripRepresentable(
-                    position: playbackStore.trackPosition(
-                        forTrack: nowPlayingTrackId
-                    )
-                )
-                .frame(height: 10)
-                .padding(.top, ThemeSpace.compact)
+                ProgressStripRepresentable(position: position)
+                    .frame(height: 10)
+                    .padding(.top, ThemeSpace.compact)
             }
             .allowsHitTesting(false)
 
@@ -299,6 +332,8 @@ struct QueueView: View {
         var height: CGFloat = 720
         @Environment(PlaybackStore.self)
         private var store
+        @Environment(Queue.self)
+        private var queue
 
         static func fixture(
             for presentation: Presentation,
@@ -334,9 +369,17 @@ struct QueueView: View {
         }
 
         var body: some View {
-            QueueView(
+            MacQueuePanel(
+                manual: store.manualQueue,
+                manualVersion: store.manualVersion,
+                context: store.queueContext,
+                upcoming: QueueUpcoming(store: store, queue: queue),
+                position: store.trackPosition(
+                    forTrack: store.nowPlaying.track?.track.trackId
+                ),
+                onShowUpcoming: { store.showUpcoming(queue: queue) },
+                width: width,
                 isActive: store.nowPlaying.isActive,
-                nowPlayingTrackId: store.nowPlaying.track?.track.trackId,
                 nowPlayingTitle: store.nowPlaying.track?.display.title,
                 nowPlayingArtist: store.nowPlaying.track?.display.artistNames,
                 nowPlayingCover: nil,
@@ -353,8 +396,7 @@ struct QueueView: View {
                 onInsertTracks: { _, _ in },
                 onSetShuffle: { _ in }
             )
-            .frame(width: width, height: height)
-            .background(Theme.surface)
+            .frame(height: height)
         }
     }
 

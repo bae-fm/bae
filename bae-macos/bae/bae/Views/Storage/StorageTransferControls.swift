@@ -34,17 +34,16 @@ struct StorageTransferControls: View {
     {
         switch item {
         case .download(let operation, let summary?):
-            StoragePinSummary(
-                summary: summary,
-                download: StoragePinSummary.Download(
-                    releaseId: operation.releaseId,
-                    running: operation.isRunning
-                ) {
-                    run {
-                        try await downloads.cancelDownload(operation.releaseId)
-                    }
+            MacTransferSummary(
+                kind: .pin,
+                counts: summary,
+                releaseId: operation.releaseId,
+                moving: operation.isRunning
+            ) {
+                run {
+                    try await downloads.cancelDownload(operation.releaseId)
                 }
-            )
+            }
         case .download(let operation, nil):
             // A failed download: the row says why and offers its retry and
             // its cancel.
@@ -84,7 +83,12 @@ struct StorageTransferControls: View {
                 run { try await outputs.cancelOutput(operation.releaseId) }
             }
         case .upload(let releaseId, let upload):
-            StorageUploadSummary(releaseId: releaseId, upload: upload) {
+            MacTransferSummary(
+                kind: .upload,
+                counts: upload.summary,
+                releaseId: releaseId,
+                moving: upload.progress.uploading > 0
+            ) {
                 run { try await sync.cancelReleaseTransition(releaseId) }
             }
         }

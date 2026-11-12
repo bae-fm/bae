@@ -33,7 +33,7 @@ struct SyncPendingList: View {
             Section("Pending") {
                 PendingRecordsView(records: pending, perform: perform)
                 if let signInSteps {
-                    StepProgressLine(steps: signInSteps.steps) { EmptyView() }
+                    MacProgress(steps: signInSteps.steps) { EmptyView() }
                 }
             }
             .sheet(item: $sheet) { sheet in

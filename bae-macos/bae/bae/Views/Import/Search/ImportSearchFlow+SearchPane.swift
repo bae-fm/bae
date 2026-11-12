@@ -57,7 +57,60 @@ extension ImportSearchFlow {
         let importStore = services.importStore
         let state = searchPaneState(input: input, importStore: importStore)
 
-        ImportSearchPane(
+        MacFindOnlineContainer { showsDiscogsBar, onDismissDiscogsBar in
+            findOnline(
+                PaneWiring(
+                    services: services,
+                    input: input,
+                    state: state,
+                    openSettings: openSettings,
+                    onBack: onBack,
+                    onSelect: onSelect
+                ),
+                showsDiscogsBar: showsDiscogsBar,
+                onDismissDiscogsBar: onDismissDiscogsBar
+            )
+        }
+        // The pane's own view state — the form's focus, the set-aside rows —
+        // is this candidate's: another candidate's pane starts on its own.
+        .id(key)
+        // Every release the pane is offering is watched for library membership
+        // while it is open: each provider lands its own part, so the set they
+        // amount to changes as the run advances.
+        .task(id: releaseStatusKeys(state: state)) {
+            importStore.refreshLibraryStatusSubscriptions(
+                importer: services.importer,
+                key: key,
+                desired: releaseStatusKeys(state: state)
+            )
+        }
+    }
+
+    /// What the pane is built from: the candidate's input, its state, and the
+    /// surface's own ways out and of picking a pressing.
+    private struct PaneWiring {
+        let services: ImportServices
+        let input: SearchPaneInput
+        let state: ImportSearchState
+        let openSettings: () -> Void
+        let onBack: (() -> Void)?
+        let onSelect: (Pressing) -> Void
+    }
+
+    /// The pane, with what each of its controls does for this candidate.
+    @MainActor
+    private static func findOnline(
+        _ wiring: PaneWiring,
+        showsDiscogsBar: Bool,
+        onDismissDiscogsBar: @escaping () -> Void
+    ) -> MacFindOnline {
+        let (services, input, state, openSettings, onBack, onSelect) = (
+            wiring.services, wiring.input, wiring.state,
+            wiring.openSettings, wiring.onBack, wiring.onSelect
+        )
+        let key = input.key
+        let importStore = services.importStore
+        return MacFindOnline(
             state: state,
             onBack: onBack,
             onCancelIdentification: input.onCancelIdentification,
@@ -87,7 +140,11 @@ extension ImportSearchFlow {
                 toggleLookup(toggle, services: services, input: input)
             },
             onToggleCatalogAgreement: { value in
-                toggleCatalogAgreement(value, services: services, input: input)
+                toggleCatalogAgreement(
+                    value,
+                    services: services,
+                    input: input
+                )
             },
             // Re-asking what failed is asking for the run again: it reads
             // its inputs afresh, and the response cache answers the lookups
@@ -112,20 +169,9 @@ extension ImportSearchFlow {
             onLinkSharedAlbum: input.onLinkSharedAlbum,
             openSection: input.openSection,
             onOpenSection: input.onOpenSection,
+            showsDiscogsBar: showsDiscogsBar,
+            onDismissDiscogsBar: onDismissDiscogsBar
         )
-        // The pane's own view state — the form's focus, the set-aside rows —
-        // is this candidate's: another candidate's pane starts on its own.
-        .id(key)
-        // Every release the pane is offering is watched for library membership
-        // while it is open: each provider lands its own part, so the set they
-        // amount to changes as the run advances.
-        .task(id: releaseStatusKeys(state: state)) {
-            importStore.refreshLibraryStatusSubscriptions(
-                importer: services.importer,
-                key: key,
-                desired: releaseStatusKeys(state: state)
-            )
-        }
     }
 
     /// Take one identifier in or out of the run: the Disc ID, one of the

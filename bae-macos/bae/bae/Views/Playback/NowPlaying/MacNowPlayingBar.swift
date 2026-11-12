@@ -2,9 +2,9 @@ import BaeKit
 import Combine
 import SwiftUI
 
-/// The docked playback strip; `NowPlayingBarContainer` owns the state and wires
+/// The docked playback strip; `MacNowPlayingBarContainer` owns the state and wires
 /// every callback.
-struct NowPlayingBar: View {
+struct MacNowPlayingBar: View {
     let trackTitle: String?
     let secondaryLine: String?
     let cover: ImageContent?
@@ -266,7 +266,7 @@ struct NowPlayingBar: View {
 
 // MARK: - Right: queue + volume
 
-extension NowPlayingBar {
+extension MacNowPlayingBar {
     fileprivate var trailingControls: some View {
         HStack(spacing: ThemeSpace.group) {
             castControl
@@ -405,7 +405,7 @@ extension NowPlayingBar {
         private var isMuted = false
 
         var body: some View {
-            NowPlayingBar(
+            MacNowPlayingBar(
                 trackTitle: trackTitle,
                 secondaryLine: artistNames,
                 cover: nil,

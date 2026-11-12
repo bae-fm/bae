@@ -47,7 +47,7 @@ struct DoneRowTests {
         #expect(PreviewData.triageRowPrefilledFromTags.importedRelease == nil)
     }
 
-    private func row(_ row: BridgeTriageRow) -> TriageRowView {
-        TriageRowView(row: row, coverContent: nil, isGroupMember: false)
+    private func row(_ row: BridgeTriageRow) -> MacImportRow {
+        MacImportRow(row: row, coverContent: nil, isGroupMember: false)
     }
 }

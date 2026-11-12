@@ -65,6 +65,7 @@ struct QueueViewControlsTests {
         _ body: ((window: NSWindow, view: NSView)) async throws -> Void
     ) async throws {
         let store = PreviewData.queueStore(manualCount: 0, context: nil)
+        let queue = Queue.stub()
         switch nowPlaying {
         case .playing(let track):
             store.play(track: track)
@@ -76,9 +77,16 @@ struct QueueViewControlsTests {
             Issue.record("the control fixture does not use a loading state")
         }
         try await SnapshotTestSupport.withHostedWindow(
-            QueueView(
+            MacQueuePanel(
+                manual: store.manualQueue,
+                manualVersion: store.manualVersion,
+                context: store.queueContext,
+                upcoming: QueueUpcoming(store: store, queue: queue),
+                position: store.trackPosition(
+                    forTrack: store.nowPlaying.track?.track.trackId
+                ),
+                onShowUpcoming: { store.showUpcoming(queue: queue) },
                 isActive: store.nowPlaying.isActive,
-                nowPlayingTrackId: store.nowPlaying.track?.track.trackId,
                 nowPlayingTitle: store.nowPlaying.track?.display.title,
                 nowPlayingArtist: store.nowPlaying.track?.display.artistNames,
                 nowPlayingCover: nil,
@@ -95,8 +103,6 @@ struct QueueViewControlsTests {
                 onInsertTracks: { _, _ in },
                 onSetShuffle: { _ in }
             )
-            .environment(store)
-            .environment(Queue.stub())
             .environment(ImageStore.stub()),
             size: paneSize
         ) { window, host in

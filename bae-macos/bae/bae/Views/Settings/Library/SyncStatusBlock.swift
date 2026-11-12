@@ -92,7 +92,7 @@ struct SyncFixButton: View {
             }
             .onDisappear { reconnection.cancel() }
         if let steps = reconnection.steps {
-            StepProgressLine(steps: steps.steps) { EmptyView() }
+            MacProgress(steps: steps.steps) { EmptyView() }
         }
         if let error = error ?? reconnection.error {
             Notice(error: error)

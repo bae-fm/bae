@@ -14,7 +14,7 @@ final class FindOnlinePaneTests: XCTestCase {
     func testAPaneWithNothingToOfferHasNoResultsScroller() async throws {
         let size = NSSize(width: 900, height: 600)
         try await FindOnlineRendering.withHosted(
-            ImportSearchPane.preview(state: PreviewData.searchStateIdle)
+            MacFindOnline.preview(state: PreviewData.searchStateIdle)
                 .importPreviewEnvironment(),
             size: size
         ) { _, host in
@@ -99,13 +99,13 @@ final class FindOnlinePaneTests: XCTestCase {
     /// pane opens on the search.
     func testThePaneOpensOnTheSectionItWasGiven() async throws {
         let onSearch = try await textFields(
-            ImportSearchPane.preview(
+            MacFindOnline.preview(
                 state: PreviewData.searchStateIdle,
                 openSection: .search
             )
         )
         let onAutomatic = try await textFields(
-            ImportSearchPane.preview(state: PreviewData.searchStateIdle)
+            MacFindOnline.preview(state: PreviewData.searchStateIdle)
         )
 
         // Artist and Album.
@@ -113,7 +113,7 @@ final class FindOnlinePaneTests: XCTestCase {
     }
 
     /// How many AppKit text fields `pane` holds once it settles.
-    private func textFields(_ pane: ImportSearchPane) async throws -> Int {
+    private func textFields(_ pane: MacFindOnline) async throws -> Int {
         let size = NSSize(width: 900, height: 600)
         return try await FindOnlineRendering.withHosted(
             pane.importPreviewEnvironment().windowBackground(),
@@ -223,10 +223,10 @@ struct FindOnlineDiscogsBarTests {
                 discogsUsable: true
             )
             .config
-        #expect(ImportSearchPane.showsDiscogsBar(noKey, dismissed: false))
-        #expect(!ImportSearchPane.showsDiscogsBar(noKey, dismissed: true))
+        #expect(MacFindOnline.showsDiscogsBar(noKey, dismissed: false))
+        #expect(!MacFindOnline.showsDiscogsBar(noKey, dismissed: true))
         #expect(
-            !ImportSearchPane.showsDiscogsBar(key, dismissed: false),
+            !MacFindOnline.showsDiscogsBar(key, dismissed: false),
             "a library with a token never shows the bar"
         )
 
@@ -496,7 +496,7 @@ struct IdentifierBandTests {
     func landedMatchesListUnderTheBand() async throws {
         let size = NSSize(width: 900, height: 600)
         try await FindOnlineRendering.withHosted(
-            ImportSearchPane.preview(
+            MacFindOnline.preview(
                 state: PreviewData.searchStateTriangulating
             )
             .importPreviewEnvironment(),

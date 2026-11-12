@@ -168,7 +168,7 @@ struct FolderScanProgressIndicator: View {
         Button {
             detailsShown = true
         } label: {
-            WaitingIndicator()
+            MacSpinner()
                 .frame(
                     width: ImportFilterBarLayout.glyph.size,
                     height: ImportFilterBarLayout.glyph.size

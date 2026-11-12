@@ -38,7 +38,7 @@ struct QueueNowPlayingNavigationTests {
             )
         )
         try await SnapshotTestSupport.withHostedWindow(
-            QueuePanel(onClose: {}, onInsertTracks: { _, _ in })
+            MacQueuePanelContainer(onClose: {}, onInsertTracks: { _, _ in })
                 .environment(Playback.stub())
                 .environment(store)
                 .environment(Queue.stub())

@@ -124,7 +124,7 @@ struct WelcomeChooseView: View {
                 spacing: showsFirstRunActions
                     ? ThemeSpace.group : ThemeSpace.related + ThemeSpace.line
             ) {
-                BaeLogo(
+                Logo(
                     size: showsFirstRunActions ? 120 : 72,
                     bob: true,
                     glow: true
@@ -275,7 +275,7 @@ private struct UnfinishedRemovalNotice: View {
                     }
             )
             if let finishing = removals.finishing {
-                StepProgressLine(steps: finishing.steps) {
+                MacProgress(steps: finishing.steps) {
                     EmptyView()
                 }
             }
@@ -286,7 +286,7 @@ private struct UnfinishedRemovalNotice: View {
 
 #if DEBUG
     #Preview("First run") {
-        WelcomeWindowChrome {
+        MacWelcomeWindow {
             WelcomeChooseView(
                 loadError: nil,
                 canDeleteActiveLibrary: true,
@@ -304,7 +304,7 @@ private struct UnfinishedRemovalNotice: View {
     }
 
     #Preview("Libraries") {
-        WelcomeWindowChrome {
+        MacWelcomeWindow {
             WelcomeChooseView(
                 loadError: nil,
                 canDeleteActiveLibrary: true,
@@ -322,7 +322,7 @@ private struct UnfinishedRemovalNotice: View {
     }
 
     #Preview("Library failed to open") {
-        WelcomeWindowChrome {
+        MacWelcomeWindow {
             WelcomeChooseView(
                 loadError: LoadError(
                     .libraryOpen,
@@ -344,7 +344,7 @@ private struct UnfinishedRemovalNotice: View {
 
     #if BAE_DEV_RESET
         #Preview("Dev reset failed") {
-            WelcomeWindowChrome {
+            MacWelcomeWindow {
                 WelcomeChooseView(
                     loadError: LoadError(
                         .devReset,

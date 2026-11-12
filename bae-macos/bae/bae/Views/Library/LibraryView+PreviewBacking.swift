@@ -3,7 +3,7 @@
     import SwiftUI
 
     // Canned `Library` + `LibraryBrowseSession` backings for the `LibraryView`
-    // previews (and the whole-window `MainAppView` preview, which reuses
+    // previews (and the whole-window `MacMainWindowContainer` preview, which reuses
     // `previewGridBacking`). Each drives the production body through a real
     // session over a canned-page library, so previews exercise the actual
     // empty-state, grid, and composer-detail branches rather than stand-ins.

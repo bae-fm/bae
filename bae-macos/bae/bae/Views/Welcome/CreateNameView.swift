@@ -38,7 +38,7 @@ struct CreateNameView: View {
                 }
                 .frame(width: 400)
                 if let steps = form.steps {
-                    StepProgressLine(steps: steps.steps) { EmptyView() }
+                    MacProgress(steps: steps.steps) { EmptyView() }
                         .frame(maxWidth: StepProgressLayout.width)
                 }
                 if let error = form.error {

@@ -99,7 +99,7 @@ private struct MainWindowFrame: Layout {
 }
 
 /// Fixes the primary window to the setup size while bootstrap shows.
-struct WelcomeWindowChrome<Content: View>: View {
+struct MacWelcomeWindow<Content: View>: View {
     var size = WelcomeWindow.size
     @ViewBuilder
     let content: Content
@@ -134,7 +134,7 @@ struct WelcomeWindowChrome<Content: View>: View {
     }
 
     #Preview("Welcome window") {
-        WelcomeWindowChrome {
+        MacWelcomeWindow {
             ChromeSampleContent()
         }
     }

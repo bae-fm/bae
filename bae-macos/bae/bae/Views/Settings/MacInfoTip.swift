@@ -4,7 +4,7 @@ import SwiftUI
 /// An ⓘ after a row's title that opens a popover explaining the row when it
 /// is clicked, as macOS Settings does beside a setting that needs explaining.
 /// (`InfoTip` is the "?" that shows its text on hover.)
-struct InfoPopoverButton<Content: View>: View {
+struct MacInfoTip<Content: View>: View {
     let label: LocalizedStringKey
     @ViewBuilder
     let content: Content
@@ -36,7 +36,7 @@ struct InfoPopoverButton<Content: View>: View {
 /// What Search MusicBrainz's ⓘ says.
 struct MusicBrainzInfoTip: View {
     var body: some View {
-        InfoPopoverButton(label: "About MusicBrainz") {
+        MacInfoTip(label: "About MusicBrainz") {
             Text(
                 "[MusicBrainz](https://musicbrainz.org) is an open music database that anyone can add to and edit."
             )
@@ -48,7 +48,7 @@ struct MusicBrainzInfoTip: View {
 /// What Search Discogs's ⓘ says.
 struct DiscogsInfoTip: View {
     var body: some View {
-        InfoPopoverButton(label: "About Discogs") {
+        MacInfoTip(label: "About Discogs") {
             Text(
                 "[Discogs](https://www.discogs.com) is a music database with detailed release info."
             )

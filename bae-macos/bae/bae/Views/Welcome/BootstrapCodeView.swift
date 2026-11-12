@@ -76,8 +76,8 @@ struct BootstrapCodeView: View {
                     .padding(.bottom, ThemeSpace.related)
             }
             if let status = form.status {
-                StepProgressLine(steps: form.openSteps) {
-                    StepProgressLine(steps: form.steps) {
+                MacProgress(steps: form.openSteps) {
+                    MacProgress(steps: form.steps) {
                         BootstrapStatusView(status: status)
                     }
                 }
@@ -219,7 +219,7 @@ private struct AttemptDetailsSection: View {
 
 #if DEBUG
     #Preview("Restore over") {
-        WelcomeWindowChrome {
+        MacWelcomeWindow {
             BootstrapCodeView(
                 form: LibrarySetup.stub()
                     .bootstrapForm(
