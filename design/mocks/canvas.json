@@ -3722,6 +3722,38 @@
    "w": 690,
    "x": 0,
    "y": 13272
+  },
+  "android.welcome.libraries.saved-codes.dc.html": {
+   "h": 916,
+   "page": "welcome",
+   "title": "Welcome: saved restore codes",
+   "w": 412,
+   "x": 0,
+   "y": 14240
+  },
+  "android.welcome.libraries.saved-codes.delete.dc.html": {
+   "h": 916,
+   "page": "welcome",
+   "title": "Welcome: delete a saved restore code",
+   "w": 412,
+   "x": 492,
+   "y": 14240
+  },
+  "mac.welcome.libraries.saved-codes.dc.html": {
+   "h": 600,
+   "page": "welcome",
+   "title": "macOS: Welcome: saved restore codes",
+   "w": 690,
+   "x": 984,
+   "y": 14240
+  },
+  "mac.welcome.libraries.saved-codes.delete.dc.html": {
+   "h": 600,
+   "page": "welcome",
+   "title": "macOS: Welcome: delete a saved restore code",
+   "w": 690,
+   "x": 1754,
+   "y": 14240
   }
  },
  "createdOnFiles": {
@@ -5197,6 +5229,23 @@
    "w": 420,
    "x": 770,
    "y": 13272
+  },
+  "row-saved-codes": {
+   "page": "welcome",
+   "x": 0,
+   "y": 14100,
+   "text": "Saved restore codes",
+   "kind": "title1",
+   "w": 240,
+   "maxW": 3000
+  },
+  "code-saved-codes": {
+   "page": "welcome",
+   "size": 24,
+   "w": 460,
+   "x": 2524,
+   "y": 14240,
+   "text": "What the code needs for these boards:\n- Both: the restore codes saved for libraries not on this device show on Welcome under Your libraries, one row each: the library's name over its provider and account; a code bae can't read says “Restore code can’t be used” over why and the library id. Each row ends in a ⋯ / ⋮ menu with Delete…, which asks first. Today the Mac draws Restore and a red trash Delete button side by side, under “Restore from iCloud Keychain” with an info tip (KeychainRestoreSection.swift); the boards title it “Saved in iCloud Keychain” with the note under the box.\n- macOS: Restore is a button on the row. Android: tapping the row restores, as its note says. Today Android lists them on the Enter code screen (SavedCodesSection.kt, CodeScreen.kt), not on Welcome. bae change."
   }
  },
  "order": [
