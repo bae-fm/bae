@@ -6,6 +6,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -100,6 +101,23 @@ class ElementListTest : BoardShot() {
         val focus = elements.single { it.optString("label") == "Focus" }
         assertTrue(focus.getBoolean("focused"))
         assertFalse(people.has("focused"))
+    }
+
+    @Test
+    fun aLeafWithOnlyADescriptionIsAnImageUnlessClickable() {
+        compose.setContent {
+            Column(modifier = Modifier.fillMaxSize()) {
+                Box(Modifier.size(10.dp).semantics { contentDescription = "Logo" })
+                Box(Modifier.size(10.dp).clickable {}.semantics { contentDescription = "Tap" })
+            }
+        }
+        val elements =
+            ElementList
+                .of("android.test.image", compose.onRoot().fetchSemanticsNode())
+                .getJSONArray("elements")
+                .objects()
+        assertEquals("image", elements.single { it.optString("label") == "Logo" }.getString("role"))
+        assertEquals("other", elements.single { it.optString("label") == "Tap" }.getString("role"))
     }
 
     private fun JSONArray.objects(): List<JSONObject> = (0 until length()).map { getJSONObject(it) }

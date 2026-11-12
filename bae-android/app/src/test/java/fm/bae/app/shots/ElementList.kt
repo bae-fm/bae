@@ -63,7 +63,7 @@ internal object ElementList {
         val editable = config.getOrNull(SemanticsProperties.EditableText)
         val texts = config.getOrNull(SemanticsProperties.Text)
         val description = config.getOrNull(SemanticsProperties.ContentDescription)
-        val kind = kind(config, role, editable != null, texts != null)
+        val kind = kind(config, role, editable != null, texts != null, description != null && node.children.isEmpty())
         val bounds = node.boundsInRoot
         val out =
             JSONObject()
@@ -94,6 +94,7 @@ internal object ElementList {
         role: Role?,
         editable: Boolean,
         text: Boolean,
+        describedLeaf: Boolean,
     ): String =
         when {
             role == Role.Button -> {
@@ -130,6 +131,12 @@ internal object ElementList {
 
             text -> {
                 "text"
+            }
+
+            // Compose gives an Image no role: a leaf that only has a content description, no words and no
+            // click, is how a picture (a logo, a cover) reaches the tree.
+            describedLeaf && !config.contains(SemanticsActions.OnClick) -> {
+                "image"
             }
 
             else -> {
