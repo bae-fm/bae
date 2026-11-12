@@ -31,7 +31,7 @@ internal fun LazyListScope.albumTrackGroups(
         val header = group.sideHeaderText(context)
         if (header.isNotEmpty()) {
             item {
-                AndroidEyebrow(text = header, modifier = Modifier.padding(top = ThemeSpace.related))
+                AndroidEyebrow(text = header)
             }
         }
         items(group.tracks, key = { it.id }) { track ->

@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
 import fm.bae.app.R
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
@@ -40,7 +41,7 @@ internal fun AndroidQueueLabel(
         modifier = Modifier.fillMaxWidth().padding(start = ThemeSpace.edge, end = ThemeSpace.related),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        AndroidEyebrow(text = title, modifier = Modifier.weight(1f))
+        AndroidEyebrow(text = title, modifier = Modifier.weight(1f), spaceAbove = 0.dp)
         AndroidButton(
             kind = ButtonKind.TEXT,
             onClick = onClear,

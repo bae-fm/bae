@@ -202,7 +202,7 @@ internal fun AndroidActivity(
     val context = LocalContext.current
     LazyColumn(
         modifier = Modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(horizontal = ThemeSpace.edge),
+        contentPadding = PaddingValues(start = ThemeSpace.edge, end = ThemeSpace.edge, bottom = ThemeSpace.edge),
         verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
     ) {
         item {

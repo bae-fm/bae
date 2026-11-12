@@ -63,6 +63,7 @@ fun QueueScreen(
             item(key = "nowplaying") {
                 AndroidEyebrow(
                     text = stringResource(R.string.queue_section_now_playing),
+                    spaceAbove = 0.dp,
                     modifier =
                         Modifier
                             .fillMaxWidth()

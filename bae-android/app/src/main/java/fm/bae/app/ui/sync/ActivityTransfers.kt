@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyListScope
@@ -16,7 +17,6 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,7 +29,9 @@ import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.data.ActivityLine
 import fm.bae.app.releasesDoneText
+import fm.bae.app.ui.appearance.ThemeOpacity
 import fm.bae.app.ui.appearance.ThemeSpace
+import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidEyebrow
 import fm.bae.fastvalues.LatestSource
 import uniffi.bae_bridge.BridgeSyncActivity
@@ -86,14 +88,19 @@ private fun TransferLine(
     modifier: Modifier = Modifier,
     end: (@Composable () -> Unit)? = null,
 ) {
-    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
+    Column(
+        modifier = modifier.fillMaxWidth().padding(vertical = ThemeSpace.related),
+        verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
+    ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(text = title, modifier = Modifier.weight(1f))
-            count?.let { Text(text = it, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            Text(text = title, style = ThemeText.body.style, modifier = Modifier.weight(1f))
+            count?.let {
+                Text(text = it, style = ThemeText.body.style, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             end?.invoke()
         }
         ShareBar(share, description = title)
@@ -109,16 +116,16 @@ private fun PausePinning(
     paused: Boolean,
     onClick: () -> Unit,
 ) {
-    val colors = IconButtonDefaults.filledTonalIconButtonColors()
+    val tint = MaterialTheme.colorScheme.primary
     IconButton(onClick = onClick, modifier = Modifier.size(PAUSE_CONTAINER).wrapContentSize(unbounded = true)) {
         Box(
-            modifier = Modifier.size(PAUSE_CONTAINER).background(colors.containerColor, CircleShape),
+            modifier = Modifier.size(PAUSE_CONTAINER).background(tint.copy(alpha = ThemeOpacity.tint), CircleShape),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 imageVector = if (paused) Icons.Filled.PlayArrow else Icons.Filled.Pause,
                 contentDescription = stringResource(if (paused) R.string.resume else R.string.pause),
-                tint = colors.contentColor,
+                tint = tint,
                 modifier = Modifier.size(PAUSE_GLYPH),
             )
         }

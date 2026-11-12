@@ -35,6 +35,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeOpacity
@@ -215,13 +216,16 @@ internal fun NoticeFrame(
     }
 }
 
+/** A notice's glyph is 1.19 times the height of its text. */
+private val NoticeGlyphSize: Dp = (ThemeText.body.style.fontSize.value * 1.19f).dp
+
 /** Where a notice's words start, past its glyph: what a list of notices insets its dividers by. */
-internal val NoticeTextInset = ThemeIcon.medium + ThemeSpace.related
+internal val NoticeTextInset = NoticeGlyphSize + ThemeSpace.related
 
 /** The tone's glyph, always as an outline, in a [FirstLineBox], so it centres on the first line. */
 @Composable
 private fun FirstLineGlyph(tone: StatusTone) {
-    FirstLineBox { StatusGlyph(tone, outline = true) }
+    FirstLineBox { StatusGlyph(tone, size = NoticeGlyphSize, outline = true) }
 }
 
 /**

@@ -277,7 +277,12 @@ private fun FramedNotice(
                 advice?.let { Text(text = it, style = ThemeText.body.style, color = onNoticeSecondary) }
                 if (hasButtons && buttons == NoticeButtons.BELOW) {
                     // The buttons' own padding overhangs: a label starts on the words' edge.
-                    NoticeButtonRow(hasDetails, onDetails, action, Modifier.offset(x = -ThemeSpace.related))
+                    NoticeButtonRow(
+                        hasDetails,
+                        onDetails,
+                        action,
+                        Modifier.offset(x = -ThemeSpace.related).pulledUpBy(ThemeSpace.related),
+                    )
                 }
             }
             if (hasButtons && buttons == NoticeButtons.INLINE) {
@@ -286,7 +291,7 @@ private fun FramedNotice(
                     NoticeButtonRow(hasDetails, onDetails, action, Modifier.offset(x = ThemeSpace.related))
                 }
             }
-            onDismiss?.let { DismissButton(it) }
+            onDismiss?.let { DismissButton(it, quiet = look == NoticeLook.QUIET) }
         }
     }
 }
@@ -313,10 +318,23 @@ private fun NoticeButtonRow(
     }
 }
 
-/** The × at a notice's right. */
+/**
+ * The × at a notice's right, [ThemeSpace.compact] further from the words than the row's gap. A quiet
+ * notice has no fill, so it is in the secondary text colour; on a fill, in the text made see-through.
+ */
 @Composable
-private fun DismissButton(onDismiss: () -> Unit) {
-    AndroidInlineIconButton(Icons.Filled.Close, stringResource(R.string.dismiss), onDismiss, tint = onNoticeSecondary)
+private fun DismissButton(
+    onDismiss: () -> Unit,
+    quiet: Boolean,
+) {
+    Box(modifier = Modifier.padding(start = ThemeSpace.compact)) {
+        AndroidInlineIconButton(
+            Icons.Filled.Close,
+            stringResource(R.string.dismiss),
+            onDismiss,
+            tint = if (quiet) MaterialTheme.colorScheme.onSurfaceVariant else onNoticeSecondary,
+        )
+    }
 }
 
 private val ACTION_PADDING = PaddingValues(horizontal = ThemeSpace.related)
@@ -343,12 +361,12 @@ fun AndroidErrorDetails(
         modifier =
             modifier
                 .fillMaxWidth()
-                .background(BaeTheme.colors.insetPanel, RoundedCornerShape(ThemeRadius.control)),
+                .background(BaeTheme.colors.insetPanel, RoundedCornerShape(ThemeRadius.field)),
     ) {
         SelectionContainer(
             modifier =
                 Modifier.padding(
-                    start = ThemeSpace.related,
+                    start = ThemeSpace.related + ThemeSpace.line,
                     top = ThemeSpace.related,
                     bottom = ThemeSpace.related,
                     end = CAUSES_COPY_INSET,
@@ -356,16 +374,26 @@ fun AndroidErrorDetails(
         ) {
             Text(text = text, style = ThemeText.mono.style, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        IconButton(onClick = { copy(copyText) }, modifier = Modifier.align(Alignment.TopEnd)) {
+        IconButton(
+            onClick = { copy(copyText) },
+            modifier =
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = ThemeSpace.related, end = ThemeSpace.related)
+                    .size(COPY_BOX),
+        ) {
             Icon(
                 imageVector = Icons.Filled.ContentCopy,
                 contentDescription = stringResource(R.string.copy_details),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(ThemeIcon.medium),
+                modifier = Modifier.size(ThemeIcon.small),
             )
         }
     }
 }
+
+/** The copy button's touch box, which its glyph is centred in. */
+private val COPY_BOX = 40.dp
 
 /** Room at the panel's right for the copy button. */
 private val CAUSES_COPY_INSET = ThemeSpace.page + ThemeSpace.group
