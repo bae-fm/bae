@@ -12,7 +12,8 @@ struct MacMoreMenu<Items: View>: View {
             items
         } label: {
             Image(systemName: "ellipsis")
-                .themeIcon(.medium)
+                // The design draws the dots at 15, a size above the icon roles.
+                .font(.system(size: 15, weight: ThemeIcon.medium.weight))
                 .frame(
                     width: ThemeSize.hitTarget,
                     height: ThemeSize.hitTarget
