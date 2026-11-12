@@ -246,19 +246,16 @@ struct ImportReleaseHeader: View {
 
     /// Commands that replace the draft's metadata.
     private var candidateMenu: some View {
-        Menu {
-            ForEach(ImportDraftCommand.allCases) { command in
-                Button(command.title, role: .destructive) {
+        MacMenuButton(bordered: true) {
+            for command in ImportDraftCommand.allCases {
+                MacMenuItem(verbatim: command.title) {
                     confirming = command
                 }
             }
         } label: {
             Image(systemName: "ellipsis")
-                .accessibilityLabel(Text("Metadata"))
         }
-        .menuStyle(.button)
-        .buttonStyle(.bordered)
-        .menuIndicator(.hidden)
+        .accessibilityLabel(Text("Metadata"))
         .fixedSize()
     }
 }

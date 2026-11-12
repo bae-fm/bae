@@ -17,26 +17,33 @@ struct CandidateActionMenu {
 ///
 /// `menu` is asked for in this view's body, which a context menu evaluates
 /// when it opens rather than when the row it hangs off is drawn.
-struct CandidateActionMenuItems: View {
+struct CandidateActionMenuItems: MacMenuPart {
     let menu: () -> CandidateActionMenu
     let onPerform: (ImportCandidateActionOffer) -> Void
 
-    var body: some View {
+    var entries: [MacMenuEntry] {
         let menu = menu()
         let offers = menu.offers
         let groups = ImportBulkActionGroup.allCases.filter { group in
             offers.contains { group.actions.contains($0.action) }
         }
-        ForEach(groups) { group in
+        var entries: [MacMenuEntry] = []
+        for group in groups {
             if group != groups.first {
-                Divider()
+                entries.append(.divider)
             }
-            ForEach(offers.filter { group.actions.contains($0.action) }) {
-                offer in
-                Button(title(offer, in: menu)) { onPerform(offer) }
-                    .disabled(!offer.enabled)
+            for offer in offers.filter({ group.actions.contains($0.action) }) {
+                entries.append(
+                    .item(
+                        MacMenuItem(
+                            verbatim: title(offer, in: menu),
+                            disabled: !offer.enabled
+                        ) { onPerform(offer) }
+                    )
+                )
             }
         }
+        return entries
     }
 
     private func title(

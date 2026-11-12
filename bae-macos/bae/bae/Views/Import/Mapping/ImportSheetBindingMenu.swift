@@ -12,7 +12,7 @@ struct ImportSheetUnboundMenu: View {
     private var hovering = false
 
     var body: some View {
-        Menu {
+        MacMenuButton {
             if let only = references.first, references.count == 1 {
                 ImportSheetBindingItems(
                     reference: only,
@@ -20,14 +20,12 @@ struct ImportSheetUnboundMenu: View {
                 )
             }
             else {
-                ForEach(references, id: \.fileReference) { reference in
-                    Menu {
+                for reference in references {
+                    MacMenuSubmenu(verbatim: reference.fileReference) {
                         ImportSheetBindingItems(
                             reference: reference,
                             onBind: { onBind(reference, $0) }
                         )
-                    } label: {
-                        Text(verbatim: reference.fileReference)
                     }
                 }
             }
@@ -44,8 +42,6 @@ struct ImportSheetUnboundMenu: View {
                     in: RoundedRectangle(cornerRadius: ThemeRadius.control)
                 )
         }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
         .frame(minWidth: ThemeSize.hitTarget)
         .onHover { hovering = $0 }
     }
@@ -80,57 +76,45 @@ enum ImportSheetBindingChoice: Hashable {
 
 /// The items of one FILE reference's binding menu, one per
 /// `ImportSheetBindingChoice`.
-struct ImportSheetBindingItems: View {
+struct ImportSheetBindingItems: MacMenuPart {
     let reference: BridgeSheetReferenceOptions
     let onBind: (String?) -> Void
 
-    var body: some View {
-        ForEach(
-            ImportSheetBindingChoice.choices(for: reference),
-            id: \.self
-        ) { choice in
+    var entries: [MacMenuEntry] {
+        var entries: [MacMenuEntry] = []
+        for choice in ImportSheetBindingChoice.choices(for: reference) {
             switch choice {
             case .offered(let fileId, let isBound):
-                Button {
-                    onBind(fileId)
-                } label: {
-                    checkable(fileId, selected: isBound)
-                }
-            case .refused(let fileId, let reason):
-                Button {
-                } label: {
-                    Text(verbatim: "\(fileId): \(reason)")
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                }
-                .disabled(true)
-            case .describesNothing(let isBound):
-                Divider()
-                Button {
-                    onBind(nil)
-                } label: {
-                    checkable(
-                        localizedCoreString(
-                            "ui.import.sheet.describes_nothing"
-                        ),
-                        selected: isBound
+                entries.append(
+                    .item(
+                        MacMenuItem(verbatim: fileId, checked: isBound) {
+                            onBind(fileId)
+                        }
                     )
-                }
+                )
+            case .refused(let fileId, let reason):
+                entries.append(
+                    .item(
+                        MacMenuItem(
+                            verbatim: "\(fileId): \(reason)",
+                            disabled: true
+                        ) {}
+                    )
+                )
+            case .describesNothing(let isBound):
+                entries.append(.divider)
+                entries.append(
+                    .item(
+                        MacMenuItem(
+                            verbatim: localizedCoreString(
+                                "ui.import.sheet.describes_nothing"
+                            ),
+                            checked: isBound
+                        ) { onBind(nil) }
+                    )
+                )
             }
         }
-    }
-
-    @ViewBuilder
-    private func checkable(_ label: String, selected: Bool) -> some View {
-        if selected {
-            Label(label, systemImage: "checkmark")
-                .lineLimit(1)
-                .truncationMode(.middle)
-        }
-        else {
-            Text(label)
-                .lineLimit(1)
-                .truncationMode(.middle)
-        }
+        return entries
     }
 }

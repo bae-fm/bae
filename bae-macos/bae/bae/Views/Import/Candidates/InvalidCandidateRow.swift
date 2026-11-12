@@ -34,13 +34,13 @@ struct InvalidCandidateRow: View {
         }
         .contentShape(Rectangle())
         .help(invalid.reason.localizedText)
-        .contextMenu {
-            Button("Reveal in Finder") {
+        .macContextMenu {
+            MacMenuItem("Reveal in Finder") {
                 SystemActions.revealInFinder(folder: invalid.folderPath)
             }
             // An unreadable combined folder can only be separated from here.
             if invalid.separable {
-                Button("Keep as separate releases", action: onSeparate)
+                MacMenuItem("Keep as separate releases", action: onSeparate)
             }
         }
     }

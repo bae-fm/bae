@@ -42,21 +42,24 @@ struct CoverGalleryView: View {
             HStack(spacing: 0) {
                 ScrollView {
                     VStack(alignment: .leading, spacing: ThemeSpace.section) {
-                        Picker(
-                            "Source",
-                            selection: Binding(
-                                get: { browser.filter },
-                                set: { browser.setFilter($0) }
-                            )
-                        ) {
-                            ForEach(
-                                ArtworkBrowserState.Filter.allCases,
-                                id: \.self
-                            ) { filter in
-                                Text(verbatim: filter.label).tag(filter)
+                        LabeledContent("Source") {
+                            MacPopUpButton(
+                                "Source",
+                                selection: Binding(
+                                    get: { browser.filter },
+                                    set: { browser.setFilter($0) }
+                                )
+                            ) {
+                                for filter in ArtworkBrowserState.Filter
+                                    .allCases
+                                {
+                                    MacPopUpOption(
+                                        verbatim: filter.label,
+                                        value: filter
+                                    )
+                                }
                             }
                         }
-                        .pickerStyle(.menu)
                         if let cover = browser.currentCover {
                             section(
                                 "Current cover",

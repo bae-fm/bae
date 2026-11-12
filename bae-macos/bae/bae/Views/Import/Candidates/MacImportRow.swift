@@ -50,10 +50,10 @@ struct MacImportRow: View {
         rowContent
             .groupMemberRail(isGroupMember)
             .contentShape(Rectangle())
-            .contextMenu {
+            .macContextMenu {
                 if let onShowInLibrary {
-                    Button("Show in library", action: onShowInLibrary)
-                    Divider()
+                    MacMenuItem("Show in library", action: onShowInLibrary)
+                    MacMenuDivider()
                 }
                 CandidateActionMenuItems(
                     menu: menuOffers,

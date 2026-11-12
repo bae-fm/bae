@@ -124,11 +124,11 @@ struct ImportListGroupHeader: View {
         .buttonStyle(.plain)
         // Opaque, so a header floating over the rows below hides them.
         .background(Theme.surface)
-        .contextMenu {
+        .macContextMenu {
             // A header that only names a shared path component offers
             // nothing.
             if group.combinable {
-                Button("Combine as one release", action: onCombine)
+                MacMenuItem("Combine as one release", action: onCombine)
             }
         }
     }

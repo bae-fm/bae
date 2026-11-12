@@ -9,13 +9,11 @@ struct MacImportDestination: View {
     var destination: BridgeImportDestination
 
     var body: some View {
-        Picker("Import to", selection: $destination) {
-            ForEach(BridgeImportDestination.choices, id: \.self) { choice in
-                Text(choice.title).tag(choice)
+        MacPopUpButton("Import to", selection: $destination) {
+            for choice in BridgeImportDestination.choices {
+                MacPopUpOption(choice.title, value: choice)
             }
         }
-        .labelsHidden()
-        .pickerStyle(.menu)
         .fixedSize()
     }
 }
@@ -26,7 +24,7 @@ extension BridgeImportDestination {
         [.thisDevice, .cloud]
     }
 
-    fileprivate var title: LocalizedStringKey {
+    fileprivate var title: LocalizedStringResource {
         switch self {
         case .thisDevice: "This Mac"
         case .cloud: "Cloud"

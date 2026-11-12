@@ -58,14 +58,12 @@ struct ImportSheetCaptionRow: View {
                 }
             case .submenus(let references):
                 boundMenu {
-                    ForEach(references, id: \.fileReference) { reference in
-                        Menu {
+                    for reference in references {
+                        MacMenuSubmenu(verbatim: referenceTitle(reference)) {
                             ImportSheetBindingItems(
                                 reference: reference,
                                 onBind: { bind(reference, to: $0) }
                             )
-                        } label: {
-                            Text(verbatim: referenceTitle(reference))
                         }
                     }
                 }
@@ -91,11 +89,9 @@ struct ImportSheetCaptionRow: View {
 
     /// The summary as a menu for changing a bound reference's audio.
     private func boundMenu(
-        @ViewBuilder _ items: () -> some View
+        @MacMenuBuilder _ items: @escaping () -> [MacMenuEntry]
     ) -> some View {
-        Menu {
-            items()
-        } label: {
+        MacMenuButton(content: items) {
             boundText
                 .padding(.horizontal, ThemeSpace.compact)
                 .padding(.vertical, ThemeSpace.line)
@@ -104,8 +100,6 @@ struct ImportSheetCaptionRow: View {
                     in: RoundedRectangle(cornerRadius: ThemeRadius.control)
                 )
         }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
         .frame(minWidth: ThemeSize.hitTarget)
         .onHover { hoveringBound = $0 }
     }
@@ -190,29 +184,21 @@ struct ImportSheetDiscMenu: View {
     private var hovering = false
 
     var body: some View {
-        Menu {
-            ForEach(sheet.discOptions, id: \.self) { number in
-                Button {
-                    onAssign(.disc(number: number))
-                } label: {
-                    checkable(
-                        localizedCoreString(
-                            "ui.import.sheet.disc",
-                            Int(number)
-                        ),
-                        selected: sheet.assignment == .disc(number: number)
-                    )
-                }
+        MacMenuButton {
+            for number in sheet.discOptions {
+                MacMenuItem(
+                    verbatim: localizedCoreString(
+                        "ui.import.sheet.disc",
+                        Int(number)
+                    ),
+                    checked: sheet.assignment == .disc(number: number)
+                ) { onAssign(.disc(number: number)) }
             }
-            Divider()
-            Button {
-                onAssign(.ignored)
-            } label: {
-                checkable(
-                    localizedCoreString("ui.import.sheet.ignored"),
-                    selected: sheet.assignment == .ignored
-                )
-            }
+            MacMenuDivider()
+            MacMenuItem(
+                verbatim: localizedCoreString("ui.import.sheet.ignored"),
+                checked: sheet.assignment == .ignored
+            ) { onAssign(.ignored) }
         } label: {
             HStack(spacing: ThemeSpace.inline) {
                 Text(assignmentText)
@@ -228,8 +214,6 @@ struct ImportSheetDiscMenu: View {
                 in: RoundedRectangle(cornerRadius: ThemeRadius.chip)
             )
         }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
         .fixedSize()
         .onHover { hovering = $0 }
         .help(localizedCoreString("ui.import.sheet.disc_help"))
@@ -241,16 +225,6 @@ struct ImportSheetDiscMenu: View {
             localizedCoreString("ui.import.sheet.disc", Int(number))
         case .ignored:
             localizedCoreString("ui.import.sheet.ignored")
-        }
-    }
-
-    @ViewBuilder
-    private func checkable(_ label: String, selected: Bool) -> some View {
-        if selected {
-            Label(label, systemImage: "checkmark")
-        }
-        else {
-            Text(label)
         }
     }
 }

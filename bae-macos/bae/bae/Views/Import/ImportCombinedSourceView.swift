@@ -13,12 +13,14 @@ struct ImportCombinedSourceView: View {
             Label("Combined folders", systemImage: "square.stack.3d.up")
                 .themeText(.heading)
             Spacer()
-            Menu("Source folders") {
-                ForEach(parts, id: \.folderPath) { part in
-                    Button(part.name) {
+            MacMenuButton(bordered: true) {
+                for part in parts {
+                    MacMenuItem(verbatim: part.name) {
                         SystemActions.revealInFinder(folder: part.folderPath)
                     }
                 }
+            } label: {
+                Text("Source folders")
             }
             .fixedSize()
             Button("Keep as separate releases", action: onSeparate)
