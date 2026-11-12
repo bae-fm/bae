@@ -144,7 +144,7 @@ export interface AndroidButtonProps { kind?: 'filled' | 'tonal' | 'outlined' | '
 export declare function AndroidButton(props: AndroidButtonProps): React.ReactElement;
 
 /** A 48 dp glyph button: a Material Symbol by name (back, close, more, search, …). label is its accessible name. tone colours the glyph (secondary text, the accent, or the warning); box sets the touch box's side when it isn't 48. */
-export interface AndroidIconButtonProps { icon: string; label?: string; size?: number; tonal?: boolean; tone?: 'muted' | 'accent' | 'warning'; box?: 40 | 56; className?: string; /** It opens a menu: read as a menu button. */ menu?: boolean }
+export interface AndroidIconButtonProps { icon: string; label?: string; size?: number; tonal?: boolean; tone?: 'muted' | 'accent' | 'warning'; box?: 40 | 56; className?: string; /** It opens a menu: read as a menu button. */ menu?: boolean; /** Dimmed and disabled while its action can't run. */ off?: boolean }
 export declare function AndroidIconButton(props: AndroidIconButtonProps): React.ReactElement;
 
 /** An on/off switch; label is its accessible name. */
