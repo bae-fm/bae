@@ -806,9 +806,9 @@ imported, whose release is the library's. A folder read again within the same sc
 folders read as one release after each was read on its own, reads none of its
 files again. A track that can't be read at all — the file won't open, or a
 read of it fails partway, as when a network share goes away, whether the probe
-or the tag read meets it — fails the pass with the file's name and the
+or the tag read meets it, and whether the tags are read to place the track or to seed its folder's draft — fails the pass with the file's name and the
 system's error; that says nothing about the file, so the pass keeps nothing
-about it (it is not damaged audio) and the next one reads it again. Only bytes
+about it (it is not damaged audio, and its folder gets no blank draft) and the next one reads it again. Only bytes
 that read fine and are no audio bae plays make a track damaged.
 
 A rescan, such as the one every desktop launch makes of each watched folder,

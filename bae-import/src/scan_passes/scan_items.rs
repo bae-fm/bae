@@ -287,8 +287,8 @@ pub(super) async fn store_scan_items(
 /// `reads` — the pass that found the item — and the reading stored for it
 /// hold, and read where neither knows. A track whose tags do not parse states
 /// nothing, and the others seed the draft. A folder one of whose files can't
-/// be read at all keeps no reading and, when it has no draft, starts on a
-/// blank one; it is logged rather than kept out of the queue. Reading audio
+/// be read at all fails the pass that reads it, and nothing is stored for it:
+/// the next pass reads it again. Reading audio
 /// files can be slow on a network share, so each runs on a blocking thread,
 /// and its caller takes them outside the folder-state commit lock every pane
 /// control waits on. What the store holds for all of them is read once.
@@ -326,7 +326,6 @@ async fn scan_item_seeds(
             }
             ScanItemReadings::Stored(stored) => stored,
         };
-        let folder = candidate.path.display().to_string();
         let candidate = candidate.clone();
         let reads = reads.clone();
         let read = diagnostics
@@ -339,16 +338,7 @@ async fn scan_item_seeds(
                 )
             })
             .await?;
-        seeds.push(match read {
-            Ok(seed) => ScanItemSeed::Tags(Some(seed)),
-            Err(error) => {
-                tracing::warn!(
-                    "{folder} keeps no reading of its file tags, and starts on a blank draft \
-                     if it has none: a file could not be read: {error}"
-                );
-                ScanItemSeed::Tags(None)
-            }
-        });
+        seeds.push(ScanItemSeed::Tags(Some(read?)));
     }
     Ok(seeds)
 }

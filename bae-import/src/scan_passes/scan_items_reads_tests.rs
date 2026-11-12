@@ -319,14 +319,27 @@ async fn an_entry_changed_between_the_read_and_the_write_is_read_again() {
 async fn an_entry_an_earlier_write_of_its_batch_replaces_is_seeded_and_stored() {
     let test = setup_import_service().await;
     let root = test.temp.path().join("watched");
-    std::fs::create_dir_all(root.join("Album").join("CD1")).unwrap();
+    // The candidates' one bound file each, which seeding reads.
+    write_disc(&root.join("Album"), 1);
+    write_disc(&root.join("Album").join("CD1"), 1);
     let root = crate::tables::watched_path::canonical_absolute_root(&root).unwrap();
     let tables = test.tables().clone();
     tables.add_watched_import_folder(&root).await.unwrap();
     // The album read whole reads the disc's files, and the disc reads its
     // own: each write of one replaces the other.
-    let album = ScanItem::Valid(crate::tables::tests::candidate(&root, "Album"));
-    let disc = ScanItem::Valid(crate::tables::tests::candidate(&root, "Album/CD1"));
+    let on_disk = |name: &str| {
+        let mut candidate = crate::tables::tests::candidate(&root, name);
+        for file in &mut candidate.files.files {
+            let metadata = std::fs::metadata(&file.file.version.path).unwrap();
+            file.file.version.size = metadata.len();
+            file.file.version.modified_at_ns =
+                crate::folder_scanner::file_modified_at_ns(&file.file.version.path, &metadata)
+                    .unwrap();
+        }
+        ScanItem::Valid(candidate)
+    };
+    let album = on_disk("Album");
+    let disc = on_disk("Album/CD1");
     let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
     tables.save_folder_scan_item(&root, generation, &disc).await.unwrap().unwrap();
     let (scan, _events) = test.scan();
@@ -353,4 +366,62 @@ async fn an_entry_an_earlier_write_of_its_batch_replaces_is_seeded_and_stored() 
 
     assert!(stored.unwrap(), "the pass stores its batch");
     assert_eq!(tables.load_folder_scan_items(&root).await.unwrap(), vec![disc]);
+}
+
+/// Reads tags as a share that went away does: every read fails at the file
+/// itself.
+struct VanishedShareTagReader;
+
+impl crate::file_tag_reader::FileTagReader for VanishedShareTagReader {
+    fn read(
+        &self,
+        path: &Path,
+    ) -> Result<crate::file_tag_reader::FileTagRead, crate::file_tag_reader::TagReadFailure> {
+        Err(crate::file_tag_reader::TagReadFailure::Fault(format!(
+            "failed to read tags from {}: the share went away",
+            path.display()
+        )))
+    }
+}
+
+/// A folder whose tags can't be read when its draft is seeded fails, rather
+/// than being stored with a blank draft that no later pass reads again: its
+/// scan fails, and the next one seeds it.
+#[tokio::test]
+async fn a_folder_whose_tags_cannot_be_read_for_its_draft_fails_its_seed() {
+    let test = setup_import_service().await;
+    let root = test.temp.path().join("watched");
+    write_disc(&root.join("Album"), 1);
+    let root = crate::tables::watched_path::canonical_absolute_root(&root).unwrap();
+    test.tables().add_watched_import_folder(&root).await.unwrap();
+    let mut found = Vec::new();
+    crate::folder_scanner::scan_for_candidates_with_decisions(
+        root.clone(),
+        &crate::folder_scanner::StoredCandidateEdits::none(),
+        &crate::folder_scanner::FolderReleaseDecisions::default(),
+        &coven::SequentialIds::new(),
+        |item| {
+            if let crate::folder_scanner::WalkItem::Entry(FolderEntry::Release(item)) = item {
+                found.push(item);
+            }
+        },
+    )
+    .unwrap();
+    // The walk finds the release tentative, then settled.
+    let item = found.last().expect("the release was found");
+    let generation =
+        test.tables().begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
+
+    let seed = scan_item_seed(
+        test.tables(),
+        &bae_diagnostics::Diagnostics::noop(),
+        item,
+        generation,
+        Arc::new(crate::folder_scanner::FileReads::new(Arc::new(VanishedShareTagReader))),
+        &HashSet::new(),
+    )
+    .await;
+
+    let Err(error) = seed else { panic!("the unread tags fail the seed") };
+    assert!(error.to_string().contains("the share went away"), "{error}");
 }

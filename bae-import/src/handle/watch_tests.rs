@@ -127,35 +127,44 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
 
 #[tokio::test]
 async fn removing_a_root_queued_behind_a_decision_does_not_deadlock() {
-    let (parts, db, _temp) = setup_test_import().await;
+    let (parts, db, temp) = setup_test_import().await;
     let tables = crate::tables::ImportTables::new(db);
-    let root = crate::tables::watched_path::host_root("/music");
+    // A row under `Collection`, so the decision the removal races is one the
+    // list offers: the release the scan reads from a real album folder.
+    let root = temp.path().join("music");
+    let folder = root.join("Collection").join("Album");
+    std::fs::create_dir_all(&folder).unwrap();
+    std::fs::copy(
+        concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/flac/01 Test Track 1.flac"),
+        folder.join("01.flac"),
+    )
+    .unwrap();
+    let root = crate::tables::watched_path::canonical_absolute_root(&root).unwrap();
     tables.add_watched_import_folder(&root).await.unwrap();
     let handle = parts.start().await.unwrap();
-    // A row under `Collection`, so the decision the removal races is one the
-    // list offers.
-    let folder = root.join("Collection").join("Album");
-    let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
-    crate::store_scan_item(
-        &tables,
-        &bae_diagnostics::Diagnostics::noop(),
-        &root,
-        generation,
-        &crate::folder_scanner::ScanItem::Valid(crate::folder_scanner::FolderCandidate {
-            path: folder.clone(),
-            file_root: folder.clone(),
-            name: "Album".to_string(),
-            files: crate::folder_scanner::CategorizedFiles { files: Vec::new(), parts: Vec::new() },
-            watched_folder_path: root.clone(),
-            scope: crate::folder_scanner::ReleaseFileScope::Recursive,
-            file_edit_revision: 0,
-            relative_folder: crate::RelativeFolder::test("Collection/Album"),
-            grouping: None,
-        }),
+    let mut found = Vec::new();
+    crate::folder_scanner::scan_for_candidates_with_decisions(
+        root.clone(),
+        &crate::folder_scanner::StoredCandidateEdits::none(),
+        &crate::folder_scanner::FolderReleaseDecisions::default(),
+        &coven::SequentialIds::new(),
+        |item| {
+            if let crate::folder_scanner::WalkItem::Entry(
+                crate::folder_scanner::FolderEntry::Release(item),
+            ) = item
+            {
+                found.push(item);
+            }
+        },
     )
-    .await
-    .unwrap()
-    .expect("the scan generation is current");
+    .unwrap();
+    // The walk finds the release tentative, then settled.
+    let item = found.last().expect("the release was found");
+    let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
+    crate::store_scan_item(&tables, &bae_diagnostics::Diagnostics::noop(), &root, generation, item)
+        .await
+        .unwrap()
+        .expect("the scan generation is current");
     let key = FolderReleaseDecisionKey {
         watched_folder_path: root.clone(),
         relative_folder: crate::RelativeFolder::test("Collection"),
