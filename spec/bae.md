@@ -2726,7 +2726,7 @@ renames their profile in a sheet that says everyone in the library sees the name
 and keeps the name as typed when the rename fails; their role, which only an
 admin changes, and from another person's page; their listening history, *Off*,
 *Only me* or *Everyone* (§5.3), with a note, under the box on a Mac and in
-the dialog on Android: "Who sees what you play, or “Off” to keep no record.
+the dialog on Android: "Who sees what you play, or Off to keep no record.
 Applies to new plays; earlier plays keep who could see them." (Android: "A
 change applies to plays from now on; …"); and *Devices*, which opens *Your
 devices*: each of the person's devices, this one reading *This device* with no
