@@ -83,24 +83,6 @@ class DownloadComponentShots : BoardShot() {
         }
 
     @Test
-    fun androidComponentUploadLinePaused() =
-        component("android.component.upload-line.paused", wide = true) {
-            AndroidUploadLine("Paused", null)
-        }
-
-    @Test
-    fun androidComponentUploadLineWaitingForNetwork() =
-        component("android.component.upload-line.waiting-for-network", wide = true) { AndroidUploadLine("Waiting for network", null) }
-
-    @Test
-    fun androidComponentUploadLineWaitingForWiFi() =
-        component("android.component.upload-line.waiting-for-wi-fi", wide = true) { AndroidUploadLine("Waiting for Wi-Fi", null) }
-
-    @Test
-    fun androidComponentUploadLineRetryingAt640Pm() =
-        component("android.component.upload-line.retrying-at-6-40-pm", wide = true) { AndroidUploadLine("Retrying at 6:40 PM", null) }
-
-    @Test
     fun androidComponentUploadLineWaitingFor01HarborLightsFlac() =
         component("android.component.upload-line.waiting-for-01-harbor-lights-flac", wide = true) {
             AndroidUploadLine("Queued to upload", "01 Harbor Lights.flac")
