@@ -28,6 +28,11 @@ refuses three full stops in a core string or any of its translations, and
 scripts/loc-english-skeleton.py refuses them in the macOS and Android
 catalogs, source and every locale.
 
+One-line text that doesn't fit ends where it is cut with "…". A file or folder
+name is cut in the middle, so its start and its extension or date both show; a
+title, a person's name and a sentence are cut at the end, since they read from
+the start. The whole text shows where the row opens.
+
 An apostrophe is the curly "’", never the straight "'" ("the library’s
 files", "l’album"). The same two checks refuse the straight one, in a String Catalog
 key as in a value.

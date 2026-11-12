@@ -7,6 +7,7 @@ Everything here is drawn at each platform's regular size, the one the apps use b
 - Sentence case everywhere on screen: "Set up sync", "Restore code".
 - Minimal words, phrases and sentences, and only to say what the UI itself can't. A note is one sentence; most controls need none.
 - A full sentence ends in a period: "People in this library see this name." A label or fragment has none: "No shared folders yet".
+- One-line text that doesn't fit is cut with "…": a file or folder name in the middle, so its start and its end both show (`Live at the Ha…1994-03-12.flac`); a title, a name and a sentence at the end, since they read from the start ("The import could not be…"). The whole text is where the row opens.
 - Buttons are verbs: "Set up", "Cancel", "New folder…". An ellipsis on a button means it opens more before acting; on a waiting line it means work is under way: "Checking the folder…".
 - Placeholders never repeat the label and never end in an ellipsis. Example values are plain and generic: `my-bucket`, `https://s3.home.lan`.
 - A notice says what happened, what's wrong and the fix, each once: where it sits names its subject; the title is what happened in a word or two; the line is what's wrong in words any user understands, with no mechanism and no claim the code doesn't back; a button is the fix, named for what it does, never a pointer to a control elsewhere; the fix's cost is said in the confirm it opens; the technical cause is behind Details. `MacNotice`'s README walks through one.
