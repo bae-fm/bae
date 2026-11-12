@@ -222,7 +222,7 @@
 
   // A sort criterion: field menu, direction, remove (when there are several); then + to add one.
   function MacSortCriteria(props) {
-    var items = String(props.criteria || 'Date Added:down').split(',').map(function (c) { var p = c.trim().split(':'); return { field: p[0], dir: p[1] || 'up' }; });
+    var items = String(props.criteria || 'Date added:down').split(',').map(function (c) { var p = c.trim().split(':'); return { field: p[0], dir: p[1] || 'up' }; });
     var arrow = function (d) { return h('svg', { width: 11, height: 11, viewBox: '0 0 24 24', 'aria-hidden': true, fill: 'none', stroke: 'currentColor', strokeWidth: 2.4, strokeLinecap: 'round', strokeLinejoin: 'round' }, h('path', { d: d === 'down' ? 'M12 4v16M5 13l7 7 7-7' : 'M12 20V4M5 11l7-7 7 7' })); };
     return h('div', { className: 'bae-m-sortrow' },
       items.map(function (it, i) {

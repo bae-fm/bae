@@ -34,7 +34,7 @@
       props.title ? h('div', { className: 'bae-m-queue-np' },
         h(Artwork, { title: props.album || props.title, size: 56, radius: 6, shadow: 'bar' }),
         h('div', { className: 'bae-m-queue-np-text' },
-          h('div', { className: 'bae-m-queue-np-eyebrow' }, 'Now Playing'),
+          h('div', { className: 'bae-m-queue-np-eyebrow' }, 'Now playing'),
           h('div', { className: 'bae-m-np-title' }, props.title), h('div', { className: 'bae-m-np-sub' }, props.artist),
           h('div', { className: 'bae-m-queue-strip' }, h('div', { className: 'bae-m-queue-strip-bar' }, h('div', { style: { width: (Number(props.position || 0) * 100) + '%' } })), h('span', null, props.elapsed || ''))),
         h('span', { className: 'bae-m-queue-np-play' }, h(Glyph, { set: 'mac', name: props.playing ? 'pause' : 'play', size: 13 }))) : null,

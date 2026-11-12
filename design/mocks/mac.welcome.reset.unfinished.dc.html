@@ -16,7 +16,7 @@ body{margin:0;background:var(--background)}
 
 </style>
 </helmet>
-<x-import component-from-global-scope="Bae.MacWelcomeWindow" width="900" height="600"><div style="position:relative;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:32px;box-sizing:border-box;text-align:center;font:400 13px var(--font-sans)"><div style="font:700 22px var(--font-sans)">Finish resetting this device?</div><div class="bae-muted" style="max-width:400px">Resetting this device for this library did not finish.</div><div style="display:flex;gap:12px"><x-import component-from-global-scope="Bae.MacButton">Cancel</x-import><x-import component-from-global-scope="Bae.MacButton" destructive="{{yes}}">Finish Resetting</x-import></div></div></x-import>
+<x-import component-from-global-scope="Bae.MacWelcomeWindow" width="900" height="600"><div style="position:relative;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:32px;box-sizing:border-box;text-align:center;font:400 13px var(--font-sans)"><div style="font:700 22px var(--font-sans)">Finish resetting this device?</div><div class="bae-muted" style="max-width:400px">Resetting this device for this library did not finish.</div><div style="display:flex;gap:12px"><x-import component-from-global-scope="Bae.MacButton">Cancel</x-import><x-import component-from-global-scope="Bae.MacButton" destructive="{{yes}}">Finish resetting</x-import></div></div></x-import>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":900,"height":600}}'>
 class Component extends DCLogic {
