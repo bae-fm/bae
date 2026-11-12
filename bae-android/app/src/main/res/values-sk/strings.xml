@@ -467,4 +467,15 @@
     <string name="onboarding_your_name">Vaše meno</string>
     <string name="onboarding_name_placeholder">Zobrazí sa vo vašom profile, hodnoteniach a zoznamoch skladieb</string>
     <string name="members_invite_refused">Pozvanie sa nepodarilo: %1$s</string>
+
+    <plurals name="file_size_bytes">
+        <item quantity="one">%1$s B</item>
+        <item quantity="few">%1$s B</item>
+        <item quantity="many">%1$s B</item>
+        <item quantity="other">%1$s B</item>
+    </plurals>
+    <string name="file_size_kilobytes">%1$s kB</string>
+    <string name="file_size_megabytes">%1$s MB</string>
+    <string name="file_size_gigabytes">%1$s GB</string>
+    <string name="file_size_terabytes">%1$s TB</string>
 </resources>

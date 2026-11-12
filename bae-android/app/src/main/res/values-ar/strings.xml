@@ -485,4 +485,17 @@
     <string name="onboarding_your_name">اسمك</string>
     <string name="onboarding_name_placeholder">يظهر في ملفك الشخصي وتقييماتك وقوائم التشغيل</string>
     <string name="members_invite_refused">تعذّرت الدعوة: %1$s</string>
+
+    <plurals name="file_size_bytes">
+        <item quantity="zero">%1$s بايت</item>
+        <item quantity="one">%1$s بايت</item>
+        <item quantity="two">%1$s بايت</item>
+        <item quantity="few">%1$s بايت</item>
+        <item quantity="many">%1$s بايت</item>
+        <item quantity="other">%1$s بايت</item>
+    </plurals>
+    <string name="file_size_kilobytes">%1$s كيلوبايت</string>
+    <string name="file_size_megabytes">%1$s م.ب</string>
+    <string name="file_size_gigabytes">%1$s غ.ب</string>
+    <string name="file_size_terabytes">%1$s تيرابايت</string>
 </resources>

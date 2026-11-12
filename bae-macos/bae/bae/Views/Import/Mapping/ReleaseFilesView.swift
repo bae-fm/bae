@@ -53,7 +53,7 @@ struct ReleaseFilesView: View {
             else {
                 openable(
                     name: sheet.name,
-                    size: Int64(sheet.size).formatted(.byteCount(style: .file)),
+                    size: sheet.size.fileSizeText,
                     id: sheet.sheetId
                 )
             }

@@ -459,4 +459,14 @@
     <string name="onboarding_your_name">Numele tău</string>
     <string name="onboarding_name_placeholder">Apare în profilul tău, în evaluări și în liste de redare</string>
     <string name="members_invite_refused">Nu s-a putut invita: %1$s</string>
+
+    <plurals name="file_size_bytes">
+        <item quantity="one">%1$s B</item>
+        <item quantity="few">%1$s B</item>
+        <item quantity="other">%1$s B</item>
+    </plurals>
+    <string name="file_size_kilobytes">%1$s kB</string>
+    <string name="file_size_megabytes">%1$s MB</string>
+    <string name="file_size_gigabytes">%1$s GB</string>
+    <string name="file_size_terabytes">%1$s TB</string>
 </resources>

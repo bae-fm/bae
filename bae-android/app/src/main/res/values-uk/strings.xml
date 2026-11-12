@@ -469,4 +469,15 @@
     <string name="onboarding_your_name">Ваше ім’я</string>
     <string name="onboarding_name_placeholder">Показується у вашому профілі, оцінках і плейлистах</string>
     <string name="members_invite_refused">Не вдалося запросити: %1$s</string>
+
+    <plurals name="file_size_bytes">
+        <item quantity="one">%1$s Б</item>
+        <item quantity="few">%1$s Б</item>
+        <item quantity="many">%1$s Б</item>
+        <item quantity="other">%1$s Б</item>
+    </plurals>
+    <string name="file_size_kilobytes">%1$s кБ</string>
+    <string name="file_size_megabytes">%1$s МБ</string>
+    <string name="file_size_gigabytes">%1$s ГБ</string>
+    <string name="file_size_terabytes">%1$s ТБ</string>
 </resources>

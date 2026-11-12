@@ -453,4 +453,13 @@
     <string name="onboarding_your_name">Adınız</string>
     <string name="onboarding_name_placeholder">Profilinizde, puanlarınızda ve çalma listelerinizde görünür</string>
     <string name="members_invite_refused">Davet edilemedi: %1$s</string>
+
+    <plurals name="file_size_bytes">
+        <item quantity="one">%1$s bayt</item>
+        <item quantity="other">%1$s bayt</item>
+    </plurals>
+    <string name="file_size_kilobytes">%1$s kB</string>
+    <string name="file_size_megabytes">%1$s MB</string>
+    <string name="file_size_gigabytes">%1$s GB</string>
+    <string name="file_size_terabytes">%1$s TB</string>
 </resources>

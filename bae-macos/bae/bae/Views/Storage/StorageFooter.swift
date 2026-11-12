@@ -20,7 +20,7 @@ struct StorageFooter: View {
             if let totalSize {
                 Text(verbatim: FactList.glyph)
                 Text(
-                    "Total: \(ByteCountFormatter.string(fromByteCount: Int64(totalSize), countStyle: .file))"
+                    "Total: \(totalSize.fileSizeText)"
                 )
             }
             Spacer()

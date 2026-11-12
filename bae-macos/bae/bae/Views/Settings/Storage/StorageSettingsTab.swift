@@ -89,7 +89,7 @@ struct StorageSettingsForm: View {
                     }
                     Picker("Keep up to", selection: cacheLimit(storage)) {
                         ForEach(storage.cacheLimits, id: \.choice) { limit in
-                            Text(verbatim: limit.bytes.storageSizeText)
+                            Text(verbatim: limit.bytes.fileSizeText)
                                 .tag(limit.choice)
                         }
                     }
@@ -119,7 +119,7 @@ struct StorageSettingsForm: View {
                             "Delete…",
                             role: .destructive,
                             action: {
-                                onDeleteBeforeReset(beforeReset.storageSizeText)
+                                onDeleteBeforeReset(beforeReset.fileSizeText)
                             }
                         )
                     } label: {
@@ -197,7 +197,7 @@ struct StorageSettingsForm: View {
             .task {
                 _ = await StorageAlerts.confirms(
                     StorageAlerts.deleteBeforeReset(
-                        size: UInt64(960_000_000).storageSizeText
+                        size: UInt64(960_000_000).fileSizeText
                     )
                 )
             }

@@ -56,7 +56,7 @@ extension BridgeMappingTable {
 extension BridgeMappingFile {
     /// The file's size formatted for the current locale.
     var sizeText: String {
-        Int64(size).formatted(.byteCount(style: .file))
+        size.fileSizeText
     }
 }
 

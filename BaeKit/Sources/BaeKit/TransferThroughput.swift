@@ -5,14 +5,9 @@ import Foundation
 public enum TransferThroughput {
     /// The byte rate in the Core catalog's `/s` format.
     public static func text(bytesPerSecond: UInt64) -> String {
-        precondition(
-            bytesPerSecond <= UInt64(Int64.max),
-            "transfer throughput exceeds the platform byte formatter"
-        )
-        let rate = Int64(bytesPerSecond).formatted(.byteCount(style: .file))
-        return String(
+        String(
             format: localizedCoreString("core.outbox.throughput"),
-            rate
+            bytesPerSecond.fileSizeText
         )
     }
 }

@@ -1598,7 +1598,10 @@ The files the folder carries that are no track, such as a rip log, its images
 (which its gallery above the tracks also shows) or a track
 sheet that carves no tracks, are listed under the tracks beneath a ruled *Files*
 heading, one line per file: its name in monospace, its size at the right, a
-hairline between lines, a damaged file marked with why. A document opens in the
+hairline between lines, a damaged file marked with why. Every size bae shows, here
+and elsewhere, is in decimal units with at most one decimal and none when whole
+("3.9 GB", "420 MB", "1 GB"), the number and the unit in the person's language.
+A document opens in the
 viewer when clicked, over whatever else is open. A library release's editor
 (§3.8), on an imported folder's pane and in the album's *Edit Release* sheet,
 lists the release's files, images included, the same way, under its tracks, and

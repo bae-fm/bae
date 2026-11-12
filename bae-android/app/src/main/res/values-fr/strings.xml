@@ -459,4 +459,14 @@
     <string name="onboarding_your_name">Votre nom</string>
     <string name="onboarding_name_placeholder">Apparaît sur votre profil, vos notes et vos listes de lecture</string>
     <string name="members_invite_refused">Impossible d’inviter : %1$s</string>
+
+    <plurals name="file_size_bytes">
+        <item quantity="one">%1$s o</item>
+        <item quantity="many">%1$s o</item>
+        <item quantity="other">%1$s o</item>
+    </plurals>
+    <string name="file_size_kilobytes">%1$s ko</string>
+    <string name="file_size_megabytes">%1$s Mo</string>
+    <string name="file_size_gigabytes">%1$s Go</string>
+    <string name="file_size_terabytes">%1$s To</string>
 </resources>

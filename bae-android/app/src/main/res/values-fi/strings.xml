@@ -451,4 +451,13 @@
     <string name="onboarding_your_name">Nimesi</string>
     <string name="onboarding_name_placeholder">Näkyy profiilissasi, arvioinneissasi ja soittolistoissasi</string>
     <string name="members_invite_refused">Kutsu ei onnistunut: %1$s</string>
+
+    <plurals name="file_size_bytes">
+        <item quantity="one">%1$s t</item>
+        <item quantity="other">%1$s t</item>
+    </plurals>
+    <string name="file_size_kilobytes">%1$s kt</string>
+    <string name="file_size_megabytes">%1$s Mt</string>
+    <string name="file_size_gigabytes">%1$s Gt</string>
+    <string name="file_size_terabytes">%1$s Tt</string>
 </resources>

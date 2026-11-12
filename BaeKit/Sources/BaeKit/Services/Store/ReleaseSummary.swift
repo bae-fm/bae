@@ -53,7 +53,7 @@ public struct ReleaseSummary: Identifiable, Sendable {
     /// Total release size formatted for the current locale, e.g. "350 MB".
     /// bae-library emits the raw byte count; the UI formats it.
     public var totalSizeText: String {
-        totalSize.formatted(.byteCount(style: .file))
+        totalSize.fileSizeText
     }
 
     public init(from bridge: BridgeReleaseSummary) {

@@ -55,13 +55,6 @@ extension BridgeStorageKind {
     }
 }
 
-extension UInt64 {
-    /// A size as the person's locale prints it: "8.3 GB".
-    var storageSizeText: String {
-        Int64(clamping: self).formatted(.byteCount(style: .file))
-    }
-}
-
 /// How much this Mac keeps: the total, one bar split by kind, and a line for
 /// each kind with its size. Draws what it is given and reads nothing else.
 struct StorageUsageView: View {
@@ -73,7 +66,7 @@ struct StorageUsageView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
             HStack(alignment: .firstTextBaseline, spacing: ThemeSpace.inline) {
-                Text(verbatim: usage.total.storageSizeText)
+                Text(verbatim: usage.total.fileSizeText)
                     .themeText(.title)
                 Text("on this Mac")
                     .foregroundStyle(.secondary)
@@ -118,7 +111,7 @@ struct StorageUsageView: View {
                         .frame(width: 8, height: 8)
                     Text(verbatim: segment.kind.title)
                         .foregroundStyle(.secondary)
-                    Text(verbatim: segment.bytes.storageSizeText)
+                    Text(verbatim: segment.bytes.fileSizeText)
                         .monospacedDigit()
                 }
                 .themeText(.detail)

@@ -509,4 +509,14 @@
     <string name="onboarding_your_name">Your name</string>
     <string name="onboarding_name_placeholder">Appears on your profile, ratings and playlists</string>
     <string name="members_invite_refused">Couldn’t invite: %1$s</string>
+
+    <!-- A byte count: %1$s is the number, already in the locale’s digits -->
+    <plurals name="file_size_bytes">
+        <item quantity="one">%1$s byte</item>
+        <item quantity="other">%1$s bytes</item>
+    </plurals>
+    <string name="file_size_kilobytes">%1$s KB</string>
+    <string name="file_size_megabytes">%1$s MB</string>
+    <string name="file_size_gigabytes">%1$s GB</string>
+    <string name="file_size_terabytes">%1$s TB</string>
 </resources>

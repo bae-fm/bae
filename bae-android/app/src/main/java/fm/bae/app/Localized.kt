@@ -6,7 +6,6 @@ import android.icu.text.MeasureFormat
 import android.icu.text.MessageFormat
 import android.icu.util.Measure
 import android.icu.util.MeasureUnit
-import android.text.format.Formatter
 import uniffi.bae_bridge.BridgeCountLabel
 import uniffi.bae_bridge.BridgeDurationClock
 import uniffi.bae_bridge.BridgeDurationUnits
@@ -125,9 +124,6 @@ internal fun clockText(
     val time = format.formatMeasures(*parts.toTypedArray())
     return if (clock.negative) DecimalFormatSymbols.getInstance(locale).minusSignString + time else time
 }
-
-/** Format a byte count for the current locale (e.g. "35 MB" / "35 Mo"). */
-fun Context.formatFileSize(bytes: Long): String = Formatter.formatFileSize(this, bytes)
 
 fun ULong.requireDisplayableByteCount(): Long {
     require(this <= Long.MAX_VALUE.toULong()) { "byte count exceeds display range" }

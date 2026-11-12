@@ -445,4 +445,12 @@
     <string name="onboarding_your_name">あなたの名前</string>
     <string name="onboarding_name_placeholder">プロフィール、評価、プレイリストに表示されます</string>
     <string name="members_invite_refused">招待できませんでした: %1$s</string>
+
+    <plurals name="file_size_bytes">
+        <item quantity="other">%1$s byte</item>
+    </plurals>
+    <string name="file_size_kilobytes">%1$s kB</string>
+    <string name="file_size_megabytes">%1$s MB</string>
+    <string name="file_size_gigabytes">%1$s GB</string>
+    <string name="file_size_terabytes">%1$s TB</string>
 </resources>

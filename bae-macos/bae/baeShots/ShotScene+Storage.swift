@@ -40,7 +40,7 @@ extension ShotScene {
                         Color.black.opacity(0.3)
                         NSAlertShot {
                             StorageAlerts.deleteBeforeReset(
-                                size: UInt64(960_000_000).storageSizeText
+                                size: UInt64(960_000_000).fileSizeText
                             )
                         }
                     }
