@@ -28,8 +28,25 @@ pub(crate) struct Verification<'a> {
     pub(crate) out: &'a Path,
     /// The branch whose record the pairs are marked new or changed against.
     pub(crate) base: Option<&'a str>,
-    /// Whether the record is updated with what passed.
-    pub(crate) write_record: bool,
+    /// Where to write the record this run's results make (the pairs that
+    /// passed confirmed, the failing ones dropped). Never the repository's
+    /// record: only `bae-shots record` writes that.
+    pub(crate) results: Option<&'a Path>,
+    /// Which pairs' findings fail the run.
+    pub(crate) gate: Gate,
+}
+
+/// Which pairs' hard findings fail a run.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Gate {
+    /// Every pair's: the check on a pull request or main, where the boards and
+    /// apps are expected to agree.
+    EveryPair,
+    /// Only pairs new or changed against the base record: a local run, where
+    /// the other pairs' findings belong to work the branch did not touch. A
+    /// base with no record has no pair that is unchanged against it, so it
+    /// gates none.
+    NewOrChanged,
 }
 
 /// One pair that was compared.
@@ -66,13 +83,37 @@ pub(crate) struct Outcome {
     /// Declared shots the run was not given the means to take (they need a
     /// window); neither checked nor failing.
     pub(crate) not_taken: Vec<Name>,
+    pub(crate) gate: Gate,
+    /// The base was given and its record has no entries.
+    pub(crate) base_empty: bool,
 }
 
 impl Outcome {
-    /// Whether nothing fails: no finding, no shot or record entry without a
-    /// board.
+    /// Whether the pair's findings fail the run.
+    fn gated(&self, pair: &Checked) -> bool {
+        !pair.findings.is_empty()
+            && match self.gate {
+                Gate::EveryPair => true,
+                Gate::NewOrChanged => {
+                    matches!(pair.against_base, Some(Standing::New | Standing::Changed))
+                }
+            }
+    }
+
+    /// The pairs whose findings fail the run.
+    pub(crate) fn failing(&self) -> impl Iterator<Item = &Checked> {
+        self.checked.iter().filter(|c| self.gated(c))
+    }
+
+    /// The pairs with findings that are listed and do not fail the run.
+    pub(crate) fn listed(&self) -> impl Iterator<Item = &Checked> {
+        self.checked.iter().filter(|c| !c.findings.is_empty() && !self.gated(c))
+    }
+
+    /// Whether nothing fails: no gated finding, no shot or record entry
+    /// without a board.
     pub(crate) fn passed(&self) -> bool {
-        self.problems.is_empty() && self.checked.iter().all(|c| c.findings.is_empty())
+        self.problems.is_empty() && self.failing().next().is_none()
     }
 }
 
@@ -95,7 +136,7 @@ pub(crate) fn verify(job: &Verification) -> Result<Outcome, String> {
     let runtime = runtime::check(root).map_err(|e| e.to_string())?;
     design::build(root).map_err(|e| e.to_string())?;
     let record_path = root.join(record::FILE);
-    let mut record = Record::load(&record_path).map_err(|e| e.to_string())?;
+    let record = Record::load(&record_path).map_err(|e| e.to_string())?;
     let base = job.base.map(|r| Record::at(root, r)).transpose().map_err(|e| e.to_string())?;
 
     let problems = lint::problems(root, job.declared, &record);
@@ -114,8 +155,12 @@ pub(crate) fn verify(job: &Verification) -> Result<Outcome, String> {
     let shot_hashes: BTreeMap<Name, String> =
         shots.iter().map(|(n, s)| (n.clone(), s.hash.clone())).collect();
     let (confirmed, pending) = partition(&names, &board_hashes, &shot_hashes, &record);
+    // A base with no record says nothing of any pair, so no pair is marked
+    // new or changed against it.
+    let base_empty = base.as_ref().is_some_and(Record::is_empty);
     let standing = |name: &Name| {
         base.as_ref()
+            .filter(|b| !b.is_empty())
             .map(|b| b.standing(&name.to_string(), &board_hashes[name], &shot_hashes[name]))
     };
 
@@ -154,12 +199,12 @@ pub(crate) fn verify(job: &Verification) -> Result<Outcome, String> {
             against_base: standing(name),
         });
     }
-    if job.write_record {
-        let before = record.clone();
+    if let Some(results_path) = job.results {
+        let mut results = record.clone();
         for pair in &checked {
             let board = pair.name.to_string();
             if pair.findings.is_empty() {
-                record.confirm(
+                results.confirm(
                     &board,
                     Entry {
                         board: board_hashes[&pair.name].clone(),
@@ -168,12 +213,10 @@ pub(crate) fn verify(job: &Verification) -> Result<Outcome, String> {
                     },
                 );
             } else {
-                record.forget(&board);
+                results.forget(&board);
             }
         }
-        if record != before {
-            record.save(&record_path).map_err(|e| e.to_string())?;
-        }
+        results.save(results_path).map_err(|e| e.to_string())?;
     }
     let skipped = confirmed
         .into_iter()
@@ -192,6 +235,8 @@ pub(crate) fn verify(job: &Verification) -> Result<Outcome, String> {
         problems,
         lists,
         not_taken: job.not_taken.to_vec(),
+        gate: job.gate,
+        base_empty,
     })
 }
 
@@ -207,14 +252,25 @@ fn mark(standing: Option<Standing>) -> &'static str {
     }
 }
 
-/// Prints what the run found, failures first.
+/// Prints what the run found: the pairs that fail it first, then the pairs
+/// whose findings are only listed, then a summary naming both.
 pub(crate) fn print(outcome: &Outcome) {
     for problem in &outcome.problems {
         eprintln!("{}", problem.sentence);
     }
-    for pair in &outcome.checked {
-        for finding in &pair.findings {
-            eprintln!("{}{}: {}", pair.name, mark(pair.against_base), finding.sentence());
+    for (label, pairs) in [
+        ("FAIL ", outcome.failing().collect::<Vec<_>>()),
+        ("listed, does not fail the run: ", outcome.listed().collect()),
+    ] {
+        for pair in pairs {
+            for finding in &pair.findings {
+                eprintln!(
+                    "{label}{}{}: {}",
+                    pair.name,
+                    mark(pair.against_base),
+                    finding.sentence()
+                );
+            }
         }
     }
     for pair in &outcome.checked {
@@ -242,6 +298,41 @@ pub(crate) fn print(outcome: &Outcome) {
                 eprintln!("  {name}");
             }
         }
+    }
+    summarize(outcome);
+}
+
+fn names_of<'a>(pairs: impl Iterator<Item = &'a Checked>) -> String {
+    pairs.map(|c| c.name.to_string()).collect::<Vec<_>>().join(", ")
+}
+
+/// Says plainly which pairs fail the run and which have findings that are
+/// only listed.
+fn summarize(outcome: &Outcome) {
+    let failing = outcome.failing().count();
+    let listed = outcome.listed().count();
+    if failing > 0 {
+        eprintln!("bae-shots: {failing} pair(s) fail the run: {}", names_of(outcome.failing()));
+    }
+    if !outcome.problems.is_empty() {
+        eprintln!(
+            "bae-shots: {} shot or record entry(ies) with no board fail the run",
+            outcome.problems.len()
+        );
+    }
+    if listed > 0 {
+        let why = if outcome.base_empty {
+            "the base has no record, so no pair is new or changed against it"
+        } else {
+            "they are neither new nor changed against the base"
+        };
+        eprintln!(
+            "bae-shots: {listed} pair(s) have findings that are only listed ({why}): {}",
+            names_of(outcome.listed())
+        );
+    }
+    if outcome.passed() {
+        eprintln!("bae-shots: no pair fails the run");
     }
 }
 

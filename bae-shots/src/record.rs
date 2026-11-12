@@ -9,7 +9,11 @@ use std::path::{Path, PathBuf};
 
 pub(crate) const FILE: &str = "design/shots.toml";
 
-const HEADER: &str = "# Written by `bae-shots run`: the pairs of a shot and its board confirmed \
+/// The record a run's results make, written beside its shots.
+pub(crate) const RESULTS: &str = "record.toml";
+
+const HEADER: &str =
+    "# Written by `bae-shots record`: the pairs of a shot and its board confirmed \
 together, each with the hash of the board and of the shot, and the warnings it was confirmed \
 with. Do not edit by hand.\n\n";
 
@@ -106,8 +110,24 @@ impl Record {
         std::fs::write(path, self.to_text()?).map_err(|e| RecordError::Write(path.to_path_buf(), e))
     }
 
+    /// Writes the record in `results` as the repository's record at `root`:
+    /// the one place a run's results reach `design/shots.toml`.
+    pub(crate) fn promote(results: &Path, root: &Path) -> Result<(), RecordError> {
+        if !results.is_file() {
+            return Err(RecordError::Read(
+                results.to_path_buf(),
+                std::io::Error::from(std::io::ErrorKind::NotFound),
+            ));
+        }
+        Self::load(results)?.save(&root.join(FILE))
+    }
+
     pub(crate) fn get(&self, board: &str) -> Option<&Entry> {
         self.entries.get(board)
+    }
+
+    pub(crate) fn is_empty(&self) -> bool {
+        self.entries.is_empty()
     }
 
     pub(crate) fn names(&self) -> impl Iterator<Item = &String> {

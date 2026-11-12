@@ -19,6 +19,9 @@ use names::{Name, Platform, Prefix};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
+/// The branch a local run marks its pairs new or changed against.
+const LOCAL_BASE: &str = "origin/main";
+
 #[derive(Parser)]
 #[command(name = "bae-shots")]
 struct Cli {
@@ -32,7 +35,11 @@ enum Action {
     Lint,
     /// Check the canvas runtime copy against its record and the canvas's.
     Runtime,
-    /// Take the shots into shots/<platform>/.
+    /// Write the record the last `run` made (shots/record.toml) to
+    /// design/shots.toml, for whoever commits it.
+    Record,
+    /// Take the shots into shots/<platform>/ and check them. Only pairs new or
+    /// changed against origin/main's record fail the run; the rest are listed.
     Run(Selection),
     /// Check shots already taken against their boards.
     Check {
@@ -210,10 +217,11 @@ fn run(action: Action) -> Result<bool, String> {
                 declared: &declared,
                 shots_for: &|p| root.join("shots").join(p.word()),
                 out: &root.join("shots"),
-                base: None,
-                write_record: true,
+                base: Some(LOCAL_BASE),
+                results: Some(&root.join("shots").join(record::RESULTS)),
+                gate: verify::Gate::NewOrChanged,
             })?;
-            let header = header(commit(&root)?, None, &outcome);
+            let header = header(commit(&root)?, Some(LOCAL_BASE.to_string()), &outcome);
             finish(&outcome, &header, &root.join("shots/report"))
         }
         Action::Check { shots, out, base, sha } => {
@@ -233,10 +241,17 @@ fn run(action: Action) -> Result<bool, String> {
                 shots_for: &|_| shots.clone(),
                 out: &out,
                 base: base.as_deref(),
-                write_record: false,
+                results: None,
+                gate: verify::Gate::EveryPair,
             })?;
             let header = header(sha, base, &outcome);
             finish(&outcome, &header, &out)
+        }
+        Action::Record => {
+            record::Record::promote(&root.join("shots").join(record::RESULTS), &root)
+                .map_err(|e| e.to_string())?;
+            eprintln!("bae-shots: wrote {}", record::FILE);
+            Ok(true)
         }
         Action::Capture { selection, out } => {
             capture(&root, &selection, |_| out.clone())?;

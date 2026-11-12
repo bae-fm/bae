@@ -10,7 +10,7 @@ fn a_record_round_trips_through_its_text() {
     record.confirm("android.welcome.libraries", entry("b1", "s1"));
     record.confirm("mac.settings.appearance", entry("b2", "s2"));
     let text = record.to_text().unwrap();
-    assert!(text.starts_with("# Written by `bae-shots run`"));
+    assert!(text.starts_with("# Written by `bae-shots record`"));
     assert!(text.contains("[\"android.welcome.libraries\"]"));
     assert_eq!(Record::parse(&text, "x").unwrap(), record);
 }
@@ -83,4 +83,19 @@ fn the_base_branchs_record_is_read_from_git() {
     assert_eq!(Record::at(root, "main~1").unwrap(), Record::default());
     // A branch that is not there fails loudly.
     assert!(Record::at(root, "nowhere").unwrap_err().to_string().contains("no such commit"));
+}
+
+#[test]
+fn promoting_results_writes_the_repository_record_and_nothing_else_does() {
+    let root = tempfile::tempdir().unwrap();
+    std::fs::create_dir_all(root.path().join("design")).unwrap();
+    let results = root.path().join(RESULTS);
+    assert!(Record::promote(&results, root.path()).is_err());
+    assert!(!root.path().join(FILE).exists());
+    let mut record = Record::default();
+    record.confirm("mac.welcome.a", entry("b", "s"));
+    record.save(&results).unwrap();
+    assert!(!root.path().join(FILE).exists(), "saving results leaves the checkout clean");
+    Record::promote(&results, root.path()).unwrap();
+    assert_eq!(Record::load(&root.path().join(FILE)).unwrap(), record);
 }
