@@ -119,12 +119,14 @@ class SettingsPageShots : BoardShot() {
             ScreenScene { Casting(enabled = false, receivers = BridgeCastReceiverList(casting = null, found = emptyList())) }
         }
 
-    /** The Details sheet of the receiver cast to. */
+    /** The Details sheet of the receiver cast to, over the Casting page. */
     @Test
     fun androidSettingsCastingReceiverDetails() =
         shot("android.settings.casting.receiver-details") {
             val casting = checkNotNull(receivers().casting)
-            SheetScene(casting.name) { CastReceiverDetailsRows(casting) }
+            SheetScene(casting.name, behind = { Casting(enabled = true, receivers = receivers()) }) {
+                CastReceiverDetailsRows(casting)
+            }
         }
 
     /** The menu of the receiver cast to, open over the page: Details, then Disconnect. */

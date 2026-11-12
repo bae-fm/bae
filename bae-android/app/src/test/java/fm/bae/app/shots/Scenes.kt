@@ -45,16 +45,40 @@ import java.time.Instant
 // What the shots share: the surfaces a screen, a sheet and a dialog are drawn on, and the data
 // they are staged with.
 
-/** A titled sheet's body on the sheet's surface: the sheet's own window isn't drawn in a test. */
+/**
+ * A titled sheet's body on the sheet's surface: the sheet's own window isn't drawn in a test. With [behind], the sheet
+ * rises from the foot of that screen, which the scrim dims, as a bottom sheet opens over its page.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun SheetScene(
     title: String?,
+    behind: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    ShotTheme {
-        Surface(color = BottomSheetDefaults.ContainerColor) {
-            AndroidSheetBody(title, content)
+    if (behind == null) {
+        ShotTheme {
+            Surface(color = BottomSheetDefaults.ContainerColor) {
+                AndroidSheetBody(title, content)
+            }
+        }
+    } else {
+        ScreenScene {
+            Box(modifier = Modifier.fillMaxSize()) {
+                behind()
+                Box(
+                    modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.scrim.copy(alpha = SCRIM_ALPHA)),
+                    contentAlignment = Alignment.BottomCenter,
+                ) {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = BottomSheetDefaults.ExpandedShape,
+                        color = BottomSheetDefaults.ContainerColor,
+                    ) {
+                        AndroidSheetBody(title, content)
+                    }
+                }
+            }
         }
     }
 }
