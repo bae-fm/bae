@@ -46,8 +46,7 @@ impl LibraryManager {
     ) -> Result<crate::sync::restore_code::RestoreCodeShare, LibraryError> {
         let code = self.store.generate_restore_code().await?;
         let qr_text = self.store.restore_code_for_transfer().await?;
-        crate::sync::restore_code::RestoreCodeShare::new(code, qr_text)
-            .map_err(LibraryError::TransferCode)
+        Ok(crate::sync::restore_code::RestoreCodeShare::new(code, qr_text))
     }
 
     pub fn subscribe_members(

@@ -190,7 +190,7 @@ class RestoreCodeSectionTest {
         compose.setContent {
             BaeTheme {
                 AddDeviceDialogContent(
-                    share = BridgeRestoreCodeShare(code = CODE, qrText = CODE, qrCarriesS3Key = false),
+                    share = BridgeRestoreCodeShare(code = CODE, qrText = CODE),
                     added = null,
                     error = null,
                     onDismiss = {},

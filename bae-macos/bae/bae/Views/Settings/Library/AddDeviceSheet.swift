@@ -134,7 +134,6 @@ struct AddDeviceSheetContent: View {
                 BridgeRestoreCodeShare(
                     code: PreviewData.restoreCodeGrouped,
                     qrText: PreviewData.restoreCode,
-                    qrCarriesS3Key: false
                 )
             )
         )
@@ -147,7 +146,6 @@ struct AddDeviceSheetContent: View {
                 BridgeRestoreCodeShare(
                     code: PreviewData.restoreCodeGrouped,
                     qrText: "\(PreviewData.restoreCode).s3-key-preview",
-                    qrCarriesS3Key: true
                 )
             )
         )
@@ -160,7 +158,6 @@ struct AddDeviceSheetContent: View {
                 BridgeRestoreCodeShare(
                     code: PreviewData.restoreCodeGrouped,
                     qrText: PreviewData.restoreCode,
-                    qrCarriesS3Key: false
                 )
             )
         )

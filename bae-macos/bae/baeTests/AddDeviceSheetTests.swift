@@ -19,7 +19,6 @@ struct AddDeviceSheetTests {
         share: BridgeRestoreCodeShare(
             code: "PAIR-1234-5678",
             qrText: "PAIR-1234-5678",
-            qrCarriesS3Key: false
         ),
         watch: BridgeAddedDeviceWatch(
             noHandle: BridgeAddedDeviceWatch.NoHandle()

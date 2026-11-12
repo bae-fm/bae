@@ -21,17 +21,10 @@ impl BridgeS3Credentials {
 pub struct BridgeRestoreCodeShare {
     pub code: String,
     pub qr_text: String,
-    /// Whether the QR's code holds the S3 key, so the new device asks for
-    /// none.
-    pub qr_carries_s3_key: bool,
 }
 impl BridgeRestoreCodeShare {
     pub(crate) fn from_core(value: bae_library::sync::restore_code::RestoreCodeShare) -> Self {
-        Self {
-            code: value.code,
-            qr_text: value.qr_text,
-            qr_carries_s3_key: value.qr_carries_s3_key,
-        }
+        Self { code: value.code, qr_text: value.qr_text }
     }
 }
 

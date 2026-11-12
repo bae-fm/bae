@@ -39,7 +39,7 @@ class AddDeviceDialogTest {
     private class AddedDeviceHandle : FakeAppHandle() {
         val adding =
             BridgeAddDevice(
-                share = BridgeRestoreCodeShare(code = "CVR1-CODE", qrText = "CVR1-CODE", qrCarriesS3Key = false),
+                share = BridgeRestoreCodeShare(code = "CVR1-CODE", qrText = "CVR1-CODE"),
                 watch = BridgeAddedDeviceWatch(NoHandle),
             )
         var watch: BridgeAddedDeviceWatch? = null

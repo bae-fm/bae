@@ -202,7 +202,6 @@
                     BridgeRestoreCodeShare(
                         code: restoreCodeGrouped,
                         qrText: restoreCode,
-                        qrCarriesS3Key: false
                     )
                 },
                 addDevice: {
@@ -210,7 +209,6 @@
                         share: BridgeRestoreCodeShare(
                             code: restoreCodeGrouped,
                             qrText: restoreCode,
-                            qrCarriesS3Key: false
                         ),
                         watch: BridgeAddedDeviceWatch(
                             noHandle: BridgeAddedDeviceWatch.NoHandle()

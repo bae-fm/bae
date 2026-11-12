@@ -31,7 +31,6 @@ fn profiles_ratings_playlists_and_history_use_the_same_store() {
     let app = started.handle().clone();
     app.runtime.block_on(async {
         let share = app.clone().generate_restore_code().await.unwrap();
-        assert!(share.qr_carries_s3_key);
         // The QR's code holds the S3 key; the code to type holds none.
         let crate::BridgeCodeInfo::Restore { metadata: scanned } =
             crate::decode_code_info(share.qr_text).unwrap()

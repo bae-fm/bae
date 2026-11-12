@@ -11,15 +11,12 @@
 pub struct RestoreCodeShare {
     pub code: String,
     pub qr_text: String,
-    /// Whether the QR's code holds the S3 key, so scanning it asks for none.
-    pub qr_carries_s3_key: bool,
 }
 
 impl RestoreCodeShare {
     /// Show `code` to type, and `qr_text`, the code coven made for the QR.
-    pub fn new(code: String, qr_text: String) -> Result<Self, coven::CodeError> {
-        let qr_carries_s3_key = coven::decode_code_info(&qr_text)?.metadata().carries_s3_key;
-        Ok(Self { code: grouped(&code), qr_text, qr_carries_s3_key })
+    pub fn new(code: String, qr_text: String) -> Self {
+        Self { code: grouped(&code), qr_text }
     }
 }
 

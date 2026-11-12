@@ -48,7 +48,7 @@ struct RestoreCodeRevealTests {
     nonisolated private static func share(_ code: String)
         -> BridgeRestoreCodeShare
     {
-        BridgeRestoreCodeShare(code: code, qrText: code, qrCarriesS3Key: false)
+        BridgeRestoreCodeShare(code: code, qrText: code)
     }
 
     @Test("starts closed, holds the code masked once it is generated")

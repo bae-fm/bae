@@ -180,7 +180,6 @@ private fun AddDeviceDialogContentReadyPreview() {
                 BridgeRestoreCodeShare(
                     code = "CVR1-ABCDEFGHIJKLMNOPQRSTUVWXYZ234567ABCDEFGHIJKLMNOPQRSTUVWXYZ234567",
                     qrText = "CVR1-ABCDEFGHIJKLMNOPQRSTUVWXYZ234567ABCDEFGHIJKLMNOPQRSTUVWXYZ234567ABCDEFGHIJKLMNOP",
-                    qrCarriesS3Key = true,
                 ),
             added = null,
             error = null,

@@ -71,7 +71,6 @@ extension ShotScene {
                                 code:
                                     "CVR1 ABCD EFGH IJKL MNOP QRST UVWX YZ23 4567",
                                 qrText: "CVR1-ABCDEFGHIJKLMNOPQRSTUVWXYZ234567",
-                                qrCarriesS3Key: false
                             ),
                             watch: BridgeAddedDeviceWatch(
                                 noHandle: BridgeAddedDeviceWatch.NoHandle()

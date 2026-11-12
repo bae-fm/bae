@@ -148,5 +148,4 @@ private val restoreCodeShare =
     BridgeRestoreCodeShare(
         code = "CVR1 ABCD EFGH IJKL MNOP QRST UVWX YZ23 4567 ABCD EFGH IJKL MNOP QRST UVWX YZ23 4567",
         qrText = "CVR1-ABCDEFGHIJKLMNOPQRSTUVWXYZ234567ABCDEFGHIJKLMNOPQRSTUVWXYZ234567",
-        qrCarriesS3Key = false,
     )

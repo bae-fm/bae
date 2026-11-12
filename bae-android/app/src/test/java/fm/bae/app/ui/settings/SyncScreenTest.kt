@@ -214,7 +214,7 @@ class SyncScreenTest {
         )
 
     private val restoreCodeShare =
-        BridgeRestoreCodeShare(code = "CVR1 ABCD EFGH JKMN", qrText = "qr", qrCarriesS3Key = true)
+        BridgeRestoreCodeShare(code = "CVR1 ABCD EFGH JKMN", qrText = "qr")
 
     private val keyNotAccepted =
         BridgeSyncShown(
