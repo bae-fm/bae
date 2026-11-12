@@ -137,8 +137,7 @@ internal fun MiniPlayerScene(state: PlayerSceneState) {
                         onPrevious = {},
                         onPlayPause = {},
                         onNext = {},
-                        // Casting is off: the bar has no Cast control.
-                        castButton = {},
+                        castButton = { CastBarButton(casting = false, onClick = {}) },
                         onOpenQueue = {},
                         onCycleRepeat = {},
                     )

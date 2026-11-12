@@ -56,15 +56,24 @@ fun CastButton(session: OpenLibrary) {
         )
     }
 
-    BarIconButton(onClick = { pickerOpen = true }) {
+    CastBarButton(casting = castingTo != null, onClick = { pickerOpen = true })
+}
+
+/** The bar's cast glyph, in the accent while the library casts. */
+@Composable
+internal fun CastBarButton(
+    casting: Boolean,
+    onClick: () -> Unit,
+) {
+    BarIconButton(onClick = onClick) {
         Icon(
             imageVector = Icons.Filled.Cast,
             contentDescription = stringResource(R.string.cast),
             tint =
-                if (castingTo == null) {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                } else {
+                if (casting) {
                     MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
                 },
         )
     }

@@ -16,6 +16,7 @@ import fm.bae.app.ui.playback.AndroidPlayPause
 import fm.bae.app.ui.playback.AndroidQueueLabel
 import fm.bae.app.ui.playback.AndroidQueuePlaceholderRow
 import fm.bae.app.ui.playback.AndroidQueueRow
+import fm.bae.app.ui.playback.CastBarButton
 import fm.bae.app.ui.playback.ExpandedSecondaryControls
 import fm.bae.app.ui.playback.ExpandedTransportRow
 import fm.bae.app.ui.playback.ExpandedVolumeRow
@@ -156,7 +157,7 @@ internal fun Bar(staging: PlayerStaging) =
                     onPrevious = {},
                     onPlayPause = {},
                     onNext = {},
-                    castButton = {},
+                    castButton = { CastBarButton(casting = false, onClick = {}) },
                     onOpenQueue = {},
                     onCycleRepeat = {},
                 )
