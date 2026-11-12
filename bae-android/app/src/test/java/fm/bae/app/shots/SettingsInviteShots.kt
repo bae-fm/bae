@@ -1,0 +1,106 @@
+package fm.bae.app.shots
+
+import androidx.compose.runtime.Composable
+import fm.bae.app.ui.components.DialogParts
+import fm.bae.app.ui.settings.cancelInviteParts
+import fm.bae.app.ui.settings.inviteCodeParts
+import fm.bae.app.ui.settings.inviteFormParts
+import fm.bae.app.ui.settings.joinRequestParts
+import org.junit.Test
+import uniffi.bae_bridge.BridgeInvite
+import uniffi.bae_bridge.BridgeInviteProgress
+import uniffi.bae_bridge.BridgeInviteShown
+import uniffi.bae_bridge.BridgeStorageLocation
+
+/** The shots of the ready android.settings.invite.* boards: inviting a person, from the People and devices page. */
+class SettingsInviteShots : BoardShot() {
+    /** The invite form for a Dropbox library. */
+    @Test
+    fun androidSettingsInviteDropbox() = shot("android.settings.invite.dropbox") { Invite { InviteForm(sceneDropbox) } }
+
+    /** The invite form for a OneDrive library. */
+    @Test
+    fun androidSettingsInviteOnedrive() =
+        shot("android.settings.invite.onedrive") {
+            Invite { InviteForm(BridgeStorageLocation.OneDrive("drive", "folder", "name@example.com", null)) }
+        }
+
+    /** The invite form for an S3 library, which asks for the person's access key. */
+    @Test
+    fun androidSettingsInviteS3() =
+        shot("android.settings.invite.s3") {
+            Invite { InviteForm(BridgeStorageLocation.S3("my-bucket", "us-east-1", "https://s3.home.lan", null)) }
+        }
+
+    /** The invite's code, to scan or copy, while Dan hasn't asked yet. */
+    @Test
+    fun androidSettingsInviteCode() =
+        shot("android.settings.invite.code") {
+            Invite { inviteCodeParts(danInvite(waitingCode), error = null, busy = false, onCancelInvite = {}, onDismiss = {}) }
+        }
+
+    /** The invite's dialog while sync grants Dan's access and holds it. */
+    @Test
+    fun androidSettingsInviteNoCodeYet() =
+        shot("android.settings.invite.no-code-yet") {
+            Invite {
+                inviteCodeParts(danInvite(BridgeInviteShown.Granting, held = heldRejected), error = null, busy = false, onCancelInvite = {
+                }, onDismiss = {})
+            }
+        }
+
+    /** The invite's dialog while sync shares the library with Dan. */
+    @Test
+    fun androidSettingsInviteSharing() =
+        shot("android.settings.invite.sharing") {
+            Invite {
+                inviteCodeParts(
+                    danInvite(BridgeInviteShown.Granting),
+                    error = null,
+                    busy = false,
+                    onCancelInvite = {},
+                    onDismiss = {},
+                )
+            }
+        }
+
+    /** Dan's request to join, with the number to compare. */
+    @Test
+    fun androidSettingsInviteRequest() =
+        shot("android.settings.invite.request") {
+            Invite(invites = listOf(danInvite(waitingCode))) {
+                joinRequestParts(title = "Dan", confirmation = "412 778", onApprove = {}, onDecline = {})
+            }
+        }
+
+    /** Dan joining: his row on the page. */
+    @Test
+    fun androidSettingsInviteJoining() =
+        shot("android.settings.invite.joining") {
+            ScreenScene {
+                PeoplePageScene(
+                    listOf(ana(), ben()),
+                    invites = listOf(danInvite(BridgeInviteShown.Code("0000 0000", BridgeInviteProgress.Joining))),
+                )
+            }
+        }
+
+    /** The question before cancelling Dan's invite. */
+    @Test
+    fun androidSettingsInviteCancel() =
+        shot("android.settings.invite.cancel") {
+            Invite(
+                invites = listOf(danInvite(waitingCode)),
+            ) { cancelInviteParts(danInvite(waitingCode), onConfirm = {}, onDismiss = {}) }
+        }
+}
+
+@Composable
+private fun Invite(
+    invites: List<BridgeInvite> = emptyList(),
+    dialog: @Composable () -> DialogParts,
+) = InPlaceDialogScene(behind = { PeoplePageScene(listOf(ana(), ben()), invites = invites) }, dialog = dialog)
+
+@Composable
+private fun InviteForm(storage: BridgeStorageLocation) =
+    inviteFormParts(storage = storage, error = null, busy = false, onCreate = {}, onDismiss = {})

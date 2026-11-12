@@ -34,6 +34,7 @@ import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidSpinner
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ButtonTone
+import fm.bae.app.ui.components.DialogParts
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.QRCodeImage
 import fm.bae.app.ui.components.rememberCopyText
@@ -99,18 +100,29 @@ internal fun InviteShownDialog(
  * provider's console.
  */
 @Composable
-private fun CancelInviteConfirmDialog(
+internal fun CancelInviteConfirmDialog(
     invite: BridgeInvite,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
+    AndroidDialog(
+        onDismissRequest = onDismiss,
+        parts = cancelInviteParts(invite = invite, onConfirm = onConfirm, onDismiss = onDismiss),
+    )
+}
+
+@Composable
+internal fun cancelInviteParts(
+    invite: BridgeInvite,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+): DialogParts {
     val context = LocalContext.current
     val forgetLine =
         (invite.access as? BridgeMemberAccess.S3AccessKey)?.let { key ->
             context.coreString("core.access_key.forget", mapOf("key" to key.accessKeyId))
         }
-    AndroidDialog(
-        onDismissRequest = onDismiss,
+    return DialogParts(
         title = context.coreString("core.invite.cancel_confirm.title"),
         message = forgetLine,
         confirmButton = {
@@ -135,18 +147,38 @@ internal fun Context.inviteExpiry(expiresAt: Instant): String =
  * code to copy or share.
  */
 @Composable
-private fun InviteCodeDialog(
+internal fun InviteCodeDialog(
     invite: BridgeInvite,
     error: DisplayError?,
     busy: Boolean,
     onCancelInvite: () -> Unit,
     onDismiss: () -> Unit,
 ) {
+    AndroidDialog(
+        onDismissRequest = onDismiss,
+        parts =
+            inviteCodeParts(
+                invite = invite,
+                error = error,
+                busy = busy,
+                onCancelInvite = onCancelInvite,
+                onDismiss = onDismiss,
+            ),
+    )
+}
+
+@Composable
+internal fun inviteCodeParts(
+    invite: BridgeInvite,
+    error: DisplayError?,
+    busy: Boolean,
+    onCancelInvite: () -> Unit,
+    onDismiss: () -> Unit,
+): DialogParts {
     val context = LocalContext.current
     val copy = rememberCopyText()
     val title = stringResource(R.string.invite_title)
-    AndroidDialog(
-        onDismissRequest = onDismiss,
+    return DialogParts(
         title = title,
         content = {
             Column(

@@ -30,6 +30,7 @@ import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ButtonTone
+import fm.bae.app.ui.components.DialogParts
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.S3KeyFields
 import fm.bae.app.ui.rememberScreenScope
@@ -97,7 +98,7 @@ private class InviteAccessInput {
 }
 
 /** A complete invite form: with what role and access, and how long it lasts. */
-private class InviteForm(
+internal class InviteForm(
     val role: BridgeMemberRole,
     val access: BridgeInviteAccess,
     val lifetime: BridgeInviteLifetime,
@@ -142,17 +143,31 @@ private fun InviteFormFields(
 
 /** The invite's role, access and lifetime, asked for as the library's storage needs it. */
 @Composable
-private fun InviteFormDialog(
+internal fun InviteFormDialog(
     storage: BridgeStorageLocation?,
     error: DisplayError?,
     busy: Boolean,
     onCreate: (InviteForm) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val fields = remember { InviteFields() }
-    val input = remember { InviteAccessInput() }
     AndroidDialog(
         onDismissRequest = onDismiss,
+        parts =
+            inviteFormParts(storage = storage, error = error, busy = busy, onCreate = onCreate, onDismiss = onDismiss),
+    )
+}
+
+@Composable
+internal fun inviteFormParts(
+    storage: BridgeStorageLocation?,
+    error: DisplayError?,
+    busy: Boolean,
+    onCreate: (InviteForm) -> Unit,
+    onDismiss: () -> Unit,
+): DialogParts {
+    val fields = remember { InviteFields() }
+    val input = remember { InviteAccessInput() }
+    return DialogParts(
         title = stringResource(R.string.members_invite),
         content = {
             InviteFormFields(
