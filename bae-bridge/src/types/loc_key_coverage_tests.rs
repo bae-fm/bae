@@ -121,6 +121,17 @@ fn produced_keys() -> Vec<String> {
     // bridge_sheet_refused_codec_key — one key, no variants to walk.
     keys.push(bridge_sheet_refused_codec_key());
 
+    // bridge_sharing_refusal_key — every variant carries a key.
+    for refusal in [
+        BridgeSharingRefusal::InvalidAddress,
+        BridgeSharingRefusal::EmailUnverified,
+        BridgeSharingRefusal::TeamSharingOff,
+        BridgeSharingRefusal::PlanWithoutSharing,
+        BridgeSharingRefusal::TooManyMembers,
+    ] {
+        keys.push(bridge_sharing_refusal_key(refusal));
+    }
+
     // bridge_network_folder_watch_key — one key, no variants to walk.
     keys.push(bridge_network_folder_watch_key());
 
