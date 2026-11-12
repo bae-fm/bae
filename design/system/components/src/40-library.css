@@ -229,7 +229,7 @@
 .bae-m-queue-clear { font: 400 11px var(--font-sans); color: var(--accent); }
 .bae-m-queue-shuffle { width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius-control); color: var(--text-secondary); fill: currentColor; }
 .bae-m-queue-shuffle-on { color: var(--accent); background: var(--accent-tint); }
-.bae-m-queue-insert { height: 2px; margin: 0 8px; background: var(--accent); }
+.bae-m-queue-insert { position: relative; z-index: 1; flex: none; height: 2px; margin: -1px 8px; background: var(--accent); }
 .bae-m-sidepause { width: 500px; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; padding: 24px; border-radius: var(--radius-panel); background: var(--elevated); box-shadow: inset 0 0 0 1px var(--hairline), 0 10px 20px var(--shadow); font: 400 13px var(--font-sans); }
 .bae-m-sidepause-title { font: 600 15px var(--font-sans); }
 .bae-m-sidepause-count { font: 600 13px var(--font-sans); font-variant-numeric: tabular-nums; }

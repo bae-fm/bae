@@ -3834,6 +3834,14 @@
    "w": 690,
    "x": 4588,
    "y": 2376
+  },
+  "android.playback.queue.dragging.dc.html": {
+   "h": 916,
+   "page": "loading",
+   "title": "Queue: dragging a track, the rows slid apart",
+   "w": 412,
+   "x": 1968,
+   "y": 2876
   }
  },
  "createdOnFiles": {
@@ -5583,6 +5591,7 @@
   "mac.playback.casting.dc.html",
   "mac.playback.bar.nothing-played.dc.html",
   "android.playback.queue.dc.html",
+  "android.playback.queue.dragging.dc.html",
   "android.playback.full-player.dc.html",
   "android.playback.cast-picker.dc.html",
   "android.playback.bar.side-ended.dc.html",
