@@ -41,9 +41,15 @@ class NumberTextTest {
     fun aRetryTimeUsesTheLocalesClock() {
         val at = 1_700_000_000_000L // 2023-11-14 22:13:20 UTC
         val utc = TimeZone.getTimeZone("UTC")
-        assertEquals("10:13 PM", retryTimeText(at, Locale.forLanguageTag("en-US"), utc))
+        assertEquals("10:13 PM", plainSpaces(retryTimeText(at, Locale.forLanguageTag("en-US"), utc)))
         assertEquals("22:13", retryTimeText(at, Locale.forLanguageTag("fr-FR"), utc))
     }
+
+    /**
+     * A clock's space before PM is U+202F in a JDK whose locale data is CLDR 42 or newer (JDK 20 and
+     * later) and a plain space in JDK 17's; the test is of the 12-hour clock, not of that space.
+     */
+    private fun plainSpaces(text: String): String = text.replace('\u202f', ' ').replace('\u00a0', ' ')
 
     @Test
     @Config(qualifiers = "fr")
