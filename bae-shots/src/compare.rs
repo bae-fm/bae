@@ -157,6 +157,10 @@ pub(crate) struct Side<'a> {
     pub(crate) elements: &'a [Element],
     pub(crate) picture: &'a Picture,
     pub(crate) scale: f64,
+    /// Areas this side's picture draws that the other side's does not, in
+    /// the side's own frame (the board's on-screen keyboard); the picture
+    /// check leaves them out.
+    pub(crate) unshot: &'a [Bounds],
 }
 
 /// Which colour of an element differs.

@@ -277,6 +277,23 @@ pub(crate) async fn elements(page: &Page, platform: Platform) -> Result<Vec<Elem
     build(&gather(page).await?, platform)
 }
 
+/// The box of the board's on-screen keyboard (`.bae-a-keyboard`), if it draws
+/// one. The keyboard is hidden from the accessibility tree and the shots'
+/// scenes draw none, so the picture comparison leaves its area out.
+pub(crate) async fn keyboard(page: &Page) -> Result<Vec<Bounds>, ReadError> {
+    let boxes: Vec<Bounds> = page
+        .evaluate(
+            "[...document.querySelectorAll('.bae-a-keyboard')].map(e => { \
+               const r = e.getBoundingClientRect(); \
+               return {x: r.x, y: r.y, width: r.width, height: r.height}; })",
+        )
+        .await
+        .map_err(protocol)?
+        .into_value()
+        .map_err(protocol)?;
+    Ok(boxes)
+}
+
 /// The elements under the DOM node `backend`, in reading order, with boxes
 /// measured from `origin`, the node's top-left corner.
 pub(crate) async fn elements_in(

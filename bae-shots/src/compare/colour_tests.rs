@@ -92,7 +92,7 @@ fn hex_colours_round_trip_without_alpha() {
 }
 
 fn side<'a>(elements: &'a [crate::shots::Element], picture: &'a Picture) -> Side<'a> {
-    Side { elements, picture, scale: 1.0 }
+    Side { elements, picture, scale: 1.0, unshot: &[] }
 }
 
 fn labelled(words: &str, colour: Option<&str>) -> crate::shots::Element {

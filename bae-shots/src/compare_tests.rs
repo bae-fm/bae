@@ -156,8 +156,8 @@ fn an_offset_frame_is_reported_once_and_not_per_element() {
     let picture = flat(120, 200);
     let found = compare(&board, &shot);
     let warnings = warnings(
-        &Side { elements: &board, picture: &picture, scale: 1.0 },
-        &Side { elements: &shot, picture: &picture, scale: 1.0 },
+        &Side { elements: &board, picture: &picture, scale: 1.0, unshot: &[] },
+        &Side { elements: &shot, picture: &picture, scale: 1.0, unshot: &[] },
         &found.pairs,
     );
     assert_eq!(
@@ -176,8 +176,8 @@ fn an_offset_under_the_tolerance_is_not_reported() {
     let (board, shot) = ([board], [shot]);
     let found = compare(&board, &shot);
     assert!(warnings(
-        &Side { elements: &board, picture: &picture, scale: 1.0 },
-        &Side { elements: &shot, picture: &picture, scale: 1.0 },
+        &Side { elements: &board, picture: &picture, scale: 1.0, unshot: &[] },
+        &Side { elements: &shot, picture: &picture, scale: 1.0, unshot: &[] },
         &found.pairs,
     )
     .is_empty());

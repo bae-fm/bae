@@ -178,8 +178,18 @@ pub(crate) fn verify(job: &Verification) -> Result<Outcome, String> {
             Picture::decode(&picture).map_err(|e| format!("{}: {e}", picture_file.display()))?;
         let result = compare::compare(&list.elements, &shot.list.elements);
         let warnings = compare::warnings(
-            &Side { elements: &list.elements, picture: &picture, scale: list.scale },
-            &Side { elements: &shot.list.elements, picture: &shot.picture, scale: shot.list.scale },
+            &Side {
+                elements: &list.elements,
+                picture: &picture,
+                scale: list.scale,
+                unshot: &list.unshot,
+            },
+            &Side {
+                elements: &shot.list.elements,
+                picture: &shot.picture,
+                scale: shot.list.scale,
+                unshot: &shot.list.unshot,
+            },
             &result.pairs,
         );
         checked.push(Checked {

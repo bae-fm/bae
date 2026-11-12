@@ -28,6 +28,8 @@ struct BoardList<'a> {
     size: Size,
     scale: f64,
     elements: Vec<crate::shots::Element>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    unshot: Vec<crate::shots::Bounds>,
 }
 
 /// Pixels per point the boards are drawn at.
@@ -85,6 +87,7 @@ struct Drawn {
     png: Vec<u8>,
     size: Size,
     elements: Vec<crate::shots::Element>,
+    unshot: Vec<crate::shots::Bounds>,
 }
 
 async fn draw_with(
@@ -116,6 +119,7 @@ async fn draw_with(
             size: drawn.size,
             scale: BOARD_SCALE,
             elements: drawn.elements,
+            unshot: drawn.unshot,
         };
         let file = out.join(format!("{board}.json"));
         std::fs::write(&file, serde_json::to_vec_pretty(&list).map_err(|e| e.to_string())?)
@@ -137,10 +141,12 @@ async fn draw_screen(
         .await
         .map_err(|e| e.to_string())?;
     let elements = read::elements(page, platform).await.map_err(|e| e.to_string())?;
+    let unshot = read::keyboard(page).await.map_err(|e| e.to_string())?;
     Ok(Drawn {
         png: rendered.png,
         size: Size { width: f64::from(frame.w), height: f64::from(frame.h) },
         elements,
+        unshot,
     })
 }
 
@@ -163,5 +169,5 @@ async fn draw_component(
     )
     .await
     .map_err(|e| e.to_string())?;
-    Ok(Drawn { png: row.png, size: row.size, elements: row.elements })
+    Ok(Drawn { png: row.png, size: row.size, elements: row.elements, unshot: Vec::new() })
 }

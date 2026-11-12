@@ -110,6 +110,10 @@ pub(crate) struct ElementList {
     pub(crate) size: Size,
     pub(crate) scale: f64,
     pub(crate) elements: Vec<Element>,
+    /// Areas of the picture the other platform's picture has no counterpart
+    /// for: a board's on-screen keyboard. Only boards write it.
+    #[serde(default)]
+    pub(crate) unshot: Vec<Bounds>,
 }
 
 fn platform<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Platform, D::Error> {

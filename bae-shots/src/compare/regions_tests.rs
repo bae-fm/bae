@@ -21,7 +21,7 @@ fn picture(width: u32, height: u32, squares: &[(u32, u32, u32)]) -> Picture {
 }
 
 fn side<'a>(elements: &'a [Element], picture: &'a Picture, scale: f64) -> Side<'a> {
-    Side { elements, picture, scale }
+    Side { elements, picture, scale, unshot: &[] }
 }
 
 #[test]
@@ -87,4 +87,15 @@ fn the_frames_are_aligned_by_the_offset_and_pictures_by_their_scale() {
     let shot = picture(128, 128, &[(48, 48, 16)]);
     let found = regions(&side(&[], &board, 1.0), &side(&[], &shot, 2.0), (4.0, 4.0));
     assert!(found.is_empty(), "{found:?}");
+}
+
+#[test]
+fn an_area_the_board_marks_as_not_in_the_shot_is_left_out() {
+    let board = picture(64, 64, &[(20, 40, 8)]);
+    let shot = picture(64, 64, &[]);
+    let area = [Bounds { x: 0.0, y: 32.0, width: 64.0, height: 32.0 }];
+    let mut with = side(&[], &board, 1.0);
+    with.unshot = &area;
+    assert!(regions(&with, &side(&[], &shot, 1.0), (0.0, 0.0)).is_empty());
+    assert_eq!(regions(&side(&[], &board, 1.0), &side(&[], &shot, 1.0), (0.0, 0.0)).len(), 1);
 }

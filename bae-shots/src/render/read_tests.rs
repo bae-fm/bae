@@ -152,6 +152,7 @@ const BOARD: &str = r##"<x-dc><helmet><style>body{margin:0;font:13px sans-serif}
    <span>spans</span> mixed</p>
 <button disabled>Off</button>
 <button aria-haspopup="menu">Never</button>
+<div class="bae-a-keyboard" aria-hidden="true" style="position:absolute;left:0;top:400px;width:300px;height:150px">k</div>
 </x-dc>"##;
 
 async fn read_fixture() -> Vec<Element> {
@@ -171,6 +172,22 @@ fn find<'a>(elements: &'a [Element], role: Role, label: &str) -> &'a Element {
         .iter()
         .find(|e| e.role == role && e.label.as_deref() == Some(label))
         .unwrap_or_else(|| panic!("no {role:?} {label:?} in {elements:#?}"))
+}
+
+#[tokio::test]
+async fn a_boards_on_screen_keyboard_is_found_and_not_an_element() {
+    let root = fixture::tree(&[("fixture.roles", BOARD)]);
+    let found = fixture::with_browser(root.path(), async |server, chrome| {
+        let page = chrome.new_page().await.unwrap();
+        let url = server.board_url("fixture.roles");
+        render(&page, "fixture.roles", &url, Frame { w: 500, h: 600 }, 1.0).await.unwrap();
+        (keyboard(&page).await.unwrap(), elements(&page, Platform::Android).await.unwrap())
+    })
+    .await;
+    let (boxes, elements) = found;
+    assert_eq!(boxes.len(), 1);
+    assert_eq!((boxes[0].width, boxes[0].height), (300.0, 150.0));
+    assert!(!elements.iter().any(|e| e.label.as_deref() == Some("k")));
 }
 
 #[tokio::test]

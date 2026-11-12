@@ -64,6 +64,8 @@ pub(crate) fn regions(board: &Side, shot: &Side, offset: (f64, f64)) -> Vec<Regi
     let covers: Vec<Bounds> = covered(board.elements, (0.0, 0.0))
         .into_iter()
         .chain(covered(shot.elements, offset))
+        .chain(board.unshot.iter().copied())
+        .chain(shot.unshot.iter().map(|b| Bounds { x: b.x - offset.0, y: b.y - offset.1, ..*b }))
         .collect();
     let width = f64::from(board.picture.width) / board.scale;
     let height = f64::from(board.picture.height) / board.scale;
