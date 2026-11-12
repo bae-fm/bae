@@ -200,7 +200,7 @@ extension ShotScene {
             let uiStore = UiStore()
             let error = DisplayError(
                 line: "Could not read your library",
-                detail: "database is locked"
+                detail: LibraryView.unreadableDetail
             )
             let backing = LibraryView.previewUnreadableBacking(uiStore: uiStore)
             return ShotStage(
@@ -214,6 +214,7 @@ extension ShotScene {
                         uiStore: uiStore,
                         backing: backing,
                         needsAttention: false,
+                        playbackStore: boardPlayback(),
                         size: CGSize(width: 1200, height: 760)
                     )
                 )
@@ -233,7 +234,7 @@ extension ShotScene {
                 )
             )
             .problems[0]
-            let backing = LibraryView.previewGridBacking(uiStore: uiStore)
+            let backing = boardLibraryBacking(uiStore: uiStore)
             return ShotStage(
                 OverWindow.alert(
                     ErrorDetails(
@@ -245,6 +246,7 @@ extension ShotScene {
                     over: PreviewScenes.libraryWindow(
                         uiStore: uiStore,
                         backing: backing,
+                        playbackStore: boardPlayback(),
                         size: CGSize(width: 1200, height: 760)
                     )
                 )
@@ -264,13 +266,14 @@ extension ShotScene {
         let size = CGSize(width: 1_200, height: height)
         return ShotScene(id: id, size: size) {
             let uiStore = UiStore()
-            let backing = LibraryView.previewGridBacking(uiStore: uiStore)
+            let backing = boardLibraryBacking(uiStore: uiStore)
             return ShotStage(
                 OverWindow.alert(
                     alert,
                     over: PreviewScenes.libraryWindow(
                         uiStore: uiStore,
                         backing: backing,
+                        playbackStore: boardPlayback(),
                         size: size
                     )
                 )
@@ -330,10 +333,14 @@ extension ShotScene {
 }
 
 extension LibraryView {
-    /// `previewEmptyBacking` for a library whose database is locked by
-    /// another process: the album read fails in a way asking again can
-    /// get past, so the albums pane shows the notice for a list that could
-    /// not be read, with Retry.
+    /// What the library window's failure says below its line, as the board
+    /// words it.
+    nonisolated static let unreadableDetail =
+        "SqliteFailure(DatabaseCorrupt)\ndatabase disk image is malformed"
+
+    /// `previewEmptyBacking` for a library whose album read fails in a way
+    /// the board offers Retry for, so the albums pane shows the notice for a
+    /// list that could not be read.
     @MainActor
     static func previewUnreadableBacking(
         uiStore: UiStore
@@ -343,7 +350,7 @@ extension LibraryView {
                 .failing(
                     BridgeError.Diagnostic(
                         category: .databaseBusy,
-                        detail: "database is locked"
+                        detail: LibraryView.unreadableDetail
                     ),
                     answers: UnansweredCount()
                 )

@@ -11,6 +11,8 @@
             uiStore: UiStore,
             backing: (library: Library, session: LibraryBrowseSession),
             needsAttention: Bool = true,
+            playbackStore: PlaybackStore = PlaybackStore(),
+            importListSlot: ImportListSlot? = nil,
             size: CGSize = CGSize(width: 1280, height: 800)
         ) -> some View {
             let importScene = PreviewData.importTabScene()
@@ -24,7 +26,9 @@
                     \.previewPosition,
                     importScene.store.previewPosition.only
                 )
-                .environment(importScene.slot(uiStore: uiStore))
+                .environment(
+                    importListSlot ?? importScene.slot(uiStore: uiStore)
+                )
                 .environment(ImportSelection())
                 .environment(SettingsNavigation())
                 .environment(PreviewAudio.stub())
@@ -36,6 +40,7 @@
                 )
                 .environment(SubsonicStore())
                 .environment(\.libraryLoadError, nil)
+                .environment(playbackStore)
                 .albumDetailPreviewEnvironment()
                 .mainWindowPreviewEnvironment()
                 .padding(.top, 1)
