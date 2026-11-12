@@ -8,6 +8,7 @@ name: Screenshots
 on:
   push:
     branches: [main]
+  pull_request:
   workflow_dispatch:
 
 # A capture takes about half an hour, and main moves faster than that, so
@@ -16,10 +17,12 @@ on:
 # most one run waiting in a group and replaces it with each newer push, so a
 # push while a capture runs queues one capture, which takes the newest main.
 # (The capture holds a macOS runner for its whole length, so queueing at most
-# one keeps the Build workflow's macOS and iOS jobs from starving.)
+# one keeps the Build workflow's macOS and iOS jobs from starving.) A pull
+# request's run is replaced by the next push to it: only the newest commit of a
+# branch is checked.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   CARGO_TERM_COLOR: always
@@ -78,12 +81,6 @@ jobs:
     name: Check shots against boards
     needs: [macos, android]
     runs-on: macos-26
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v6
       - uses: ./.github/actions/setup-rust
@@ -100,9 +97,25 @@ jobs:
         with:
           path: ${{ runner.temp }}/chrome-for-testing
           key: chrome-for-testing-${{ hashFiles('bae-shots/src/render/chrome.rs') }}
-      # macOS has SF Pro, which the Mac boards are set in.
+      # A pull request's pairs are marked new or changed against the record on
+      # the branch it targets.
+      - name: Fetch the base branch
+        if: github.event_name == 'pull_request'
+        env:
+          BASE: ${{ github.base_ref }}
+        run: git fetch --no-tags --depth=1 origin "$BASE:refs/remotes/origin/$BASE"
+      # macOS has SF Pro, which the Mac boards are set in. A hard failure fails
+      # this job, which is the pull request's check; the step summary holds the
+      # findings.
       - name: Check
-        run: scripts/cargo.sh run -p bae-shots -- check --shots all-shots --out site --sha "${GITHUB_SHA::9}"
+        env:
+          BASE: ${{ github.base_ref }}
+        run: |
+          args=(--shots all-shots --out site --sha "${GITHUB_SHA::9}")
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+            args+=(--base "origin/$BASE")
+          fi
+          scripts/cargo.sh run -p bae-shots -- check "${args[@]}"
       # The report is the run's artifact whether or not the check passed.
       - uses: actions/upload-artifact@v4
         if: always()
@@ -110,10 +123,26 @@ jobs:
           name: shots-report
           path: site
           if-no-files-found: error
+
+  publish:
+    name: Publish report
+    # Pages shows main's report only, whether or not its check passed.
+    if: always() && github.event_name == 'push' && needs.check.result != 'skipped'
+    needs: [check]
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: shots-report
+          path: site
       - uses: actions/upload-pages-artifact@v3
-        if: always()
         with:
           path: site
       - id: deploy
-        if: always()
         uses: actions/deploy-pages@v4
