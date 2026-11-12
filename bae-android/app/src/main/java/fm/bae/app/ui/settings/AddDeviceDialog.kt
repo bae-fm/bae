@@ -38,6 +38,7 @@ import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidSpinner
 import fm.bae.app.ui.components.ButtonKind
+import fm.bae.app.ui.components.DialogParts
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.QRCodeImage
 import fm.bae.app.ui.components.rememberCopyText
@@ -127,6 +128,18 @@ internal fun AddDeviceDialogContent(
 ) {
     AndroidDialog(
         onDismissRequest = onDismiss,
+        parts = addDeviceParts(share = share, added = added, error = error, onDismiss = onDismiss),
+    )
+}
+
+@Composable
+internal fun addDeviceParts(
+    share: BridgeRestoreCodeShare?,
+    added: BridgeActiveDevice?,
+    error: DisplayError?,
+    onDismiss: () -> Unit,
+): DialogParts =
+    DialogParts(
         title = stringResource(R.string.add_device_title),
         content = {
             Column(
@@ -160,7 +173,6 @@ internal fun AddDeviceDialogContent(
             AndroidButton(kind = ButtonKind.TEXT, onClick = onDismiss) { Text(stringResource(R.string.done)) }
         },
     )
-}
 
 /**
  * The QR, whose code holds the S3 key when this device has one, then the

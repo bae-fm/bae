@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.ui.BaeTheme
@@ -32,6 +33,34 @@ import uniffi.bae_bridge.BridgeActiveDevice
 import uniffi.bae_bridge.BridgeMember
 import uniffi.bae_bridge.BridgeMemberAccess
 import uniffi.bae_bridge.BridgeMemberRole
+
+/** A person's page with its bar, titled with their [name]. */
+@Composable
+internal fun AndroidSettingsPerson(
+    member: BridgeMember,
+    selfIsAdmin: Boolean,
+    name: String,
+    callbacks: MemberCallbacks,
+    error: DisplayError?,
+    onBack: () -> Unit,
+) {
+    PeopleFrame(title = name, error = error, onBack = onBack) {
+        PersonPage(member = member, selfIsAdmin = selfIsAdmin, name = name, callbacks = callbacks)
+    }
+}
+
+/** This person's own devices with their bar. */
+@Composable
+internal fun AndroidSettingsDevices(
+    member: BridgeMember,
+    callbacks: MemberCallbacks,
+    error: DisplayError?,
+    onBack: () -> Unit,
+) {
+    PeopleFrame(title = stringResource(R.string.people_your_devices), error = error, onBack = onBack) {
+        DevicesPage(member = member, callbacks = callbacks)
+    }
+}
 
 /**
  * A person's page: their role, which an admin changes, removing them from the library, and their devices, each

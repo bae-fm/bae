@@ -1,16 +1,11 @@
 package fm.bae.app.ui.settings
 
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.DisplayError
 import fm.bae.app.ErrorDisplays
-import fm.bae.app.R
 import fm.bae.app.ui.BaeAppChrome
 import fm.bae.app.ui.PreviewData
-import fm.bae.app.ui.components.AndroidScreen
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeInviteEntry
 import uniffi.bae_bridge.BridgeMemberRole
@@ -33,7 +28,7 @@ private fun scenePeople(): List<BridgePerson> {
 }
 
 /** Nothing a scene does fails, so no failure shows. */
-private object NothingFails : ErrorDisplays {
+internal object NothingFails : ErrorDisplays {
     override fun display(reason: BridgePlaybackErrorReason): DisplayError? = null
 
     override fun display(error: BridgeException): DisplayError? = null
@@ -52,55 +47,42 @@ internal fun PeopleScene(
 ) {
     val people = scenePeople()
     val callbacks = MemberCallbacks({}, { _, _ -> }, { _, _ -> }, { _, _ -> }, {}, {})
-    AndroidScreen(
-        title =
-            when (page) {
-                PeoplePage.People -> {
-                    stringResource(R.string.members_title)
-                }
+    when (page) {
+        PeoplePage.People -> {
+            AndroidSettingsPeople(
+                you = YouActions(NothingFails, {}, {}, {}),
+                people = people,
+                selfIsAdmin = asAdmin,
+                requested = null,
+                invites = invites,
+                adminChanges = emptyList(),
+                callbacks = callbacks,
+                inviteCallbacks = InviteCallbacks({}, {}, {}),
+                error = null,
+                onOpen = {},
+                onBack = {},
+            )
+        }
 
-                PeoplePage.Devices -> {
-                    stringResource(R.string.people_your_devices)
-                }
+        is PeoplePage.Person -> {
+            val person = people.first { it.membership.id == page.memberId }
+            AndroidSettingsPerson(
+                member = person.membership,
+                selfIsAdmin = asAdmin,
+                name = "Person Name",
+                callbacks = callbacks,
+                error = null,
+                onBack = {},
+            )
+        }
 
-                is PeoplePage.Person -> {
-                    people
-                        .first { it.membership.id == page.memberId }
-                        .profile
-                        ?.name
-                        .orEmpty()
-                }
-            },
-        onBack = {},
-        modifier = Modifier.fillMaxSize(),
-    ) {
-        when (page) {
-            PeoplePage.People -> {
-                PeopleHome(
-                    you = YouActions(NothingFails, {}, {}, {}),
-                    people = people,
-                    selfIsAdmin = asAdmin,
-                    requested = null,
-                    invites = invites,
-                    adminChanges = emptyList(),
-                    callbacks = callbacks,
-                    inviteCallbacks = InviteCallbacks({}, {}, {}),
-                    onOpen = {},
-                )
-            }
-
-            is PeoplePage.Person -> {
-                PersonPage(
-                    member = people.first { it.membership.id == page.memberId }.membership,
-                    selfIsAdmin = asAdmin,
-                    name = "Person Name",
-                    callbacks = callbacks,
-                )
-            }
-
-            PeoplePage.Devices -> {
-                DevicesPage(member = people.first { it.membership.isSelf }.membership, callbacks = callbacks)
-            }
+        PeoplePage.Devices -> {
+            AndroidSettingsDevices(
+                member = people.first { it.membership.isSelf }.membership,
+                callbacks = callbacks,
+                error = null,
+                onBack = {},
+            )
         }
     }
 }

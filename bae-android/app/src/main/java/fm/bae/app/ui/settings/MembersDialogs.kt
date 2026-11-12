@@ -22,6 +22,7 @@ import fm.bae.app.ui.components.AndroidMatchCode
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ButtonTone
+import fm.bae.app.ui.components.DialogParts
 import kotlinx.coroutines.CancellationException
 import uniffi.bae_bridge.BridgeActiveDevice
 import uniffi.bae_bridge.BridgeDeviceCutOff
@@ -190,38 +191,6 @@ private suspend fun holdsStore(session: OpenLibrary): Boolean =
         false
     }
 
-/** The cut-off confirmation changed nothing: a request to the provider ran, or the removal hasn't arrived yet. */
-@Composable
-private fun CutOffRetryDialog(
-    reason: BridgeDeviceCutOff,
-    onTryAgain: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val notGone = reason == BridgeDeviceCutOff.DEVICE_NOT_GONE
-    AndroidDialog(
-        onDismissRequest = onDismiss,
-        title =
-            stringResource(
-                if (notGone) R.string.device_cut_off_not_gone_title else R.string.device_cut_off_running_title,
-            ),
-        message =
-            stringResource(
-                if (notGone) R.string.device_cut_off_not_gone_body else R.string.device_cut_off_running_body,
-            ),
-        confirmButton = {
-            AndroidButton(
-                kind = ButtonKind.TEXT,
-                onClick = onTryAgain,
-            ) { Text(stringResource(R.string.retry)) }
-        },
-        dismissButton = {
-            AndroidButton(kind = ButtonKind.TEXT, tone = ButtonTone.NEUTRAL, onClick = onDismiss) {
-                Text(stringResource(R.string.device_cut_off_not_yet))
-            }
-        },
-    )
-}
-
 /** Tell the library the person cut a removed device off at the provider. */
 private fun confirmCutOff(
     model: MembersModel,
@@ -369,6 +338,24 @@ internal fun JoinRequestDialogContent(
 ) {
     AndroidDialog(
         onDismissRequest = onClose,
+        parts =
+            joinRequestParts(
+                title = title,
+                confirmation = confirmation,
+                onApprove = onApprove,
+                onDecline = onDecline,
+            ),
+    )
+}
+
+@Composable
+internal fun joinRequestParts(
+    title: String,
+    confirmation: String,
+    onApprove: () -> Unit,
+    onDecline: () -> Unit,
+): DialogParts =
+    DialogParts(
         title = title,
         message = stringResource(R.string.join_request_match),
         content = { AndroidMatchCode(confirmation, dialog = true) },
@@ -384,4 +371,3 @@ internal fun JoinRequestDialogContent(
             }
         },
     )
-}

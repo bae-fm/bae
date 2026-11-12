@@ -18,6 +18,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import fm.bae.app.DisplayError
 import fm.bae.app.ErrorDisplays
 import fm.bae.app.R
 import fm.bae.app.ui.appearance.ThemeSpace
@@ -67,6 +68,36 @@ internal class YouActions(
     val setHistory: (BridgeHistorySharing) -> Unit,
     val createProfile: (String) -> Unit,
 )
+
+/** The first page with its bar: People and devices. */
+@Composable
+internal fun AndroidSettingsPeople(
+    you: YouActions,
+    people: List<BridgePerson>,
+    selfIsAdmin: Boolean,
+    requested: BridgeRequestedProfile?,
+    invites: List<BridgeInviteEntry>,
+    adminChanges: List<BridgeAdminChange>,
+    callbacks: MemberCallbacks,
+    inviteCallbacks: InviteCallbacks,
+    error: DisplayError?,
+    onOpen: (PeoplePage) -> Unit,
+    onBack: () -> Unit,
+) {
+    PeopleFrame(title = stringResource(R.string.members_title), error = error, onBack = onBack) {
+        PeopleHome(
+            you = you,
+            people = people,
+            selfIsAdmin = selfIsAdmin,
+            requested = requested,
+            invites = invites,
+            adminChanges = adminChanges,
+            callbacks = callbacks,
+            inviteCallbacks = inviteCallbacks,
+            onOpen = onOpen,
+        )
+    }
+}
 
 /**
  * The first page: You (name, role, listening history, devices) and People, one row for each other person, with the

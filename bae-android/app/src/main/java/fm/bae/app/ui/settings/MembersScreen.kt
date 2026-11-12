@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Icon
@@ -40,7 +39,6 @@ import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidRow
-import fm.bae.app.ui.components.AndroidScreen
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.StatusChip
@@ -264,25 +262,18 @@ fun MembersScreen(
     val goBack = { if (page == PeoplePage.People) onBack() else pageKey = PeoplePage.People.key() }
     BackHandler(enabled = page != PeoplePage.People, onBack = goBack)
 
-    AndroidScreen(title = pageTitle(page, read), onBack = goBack, modifier = Modifier.fillMaxSize()) {
-        model.error?.let { shown ->
-            AndroidNotice(
-                error = shown,
-                modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
-            )
-        }
-        PeopleContent(
-            session = session,
-            model = model,
-            dialogs = dialogs,
-            page = page,
-            onOpen = { pageKey = it.key() },
-        )
-    }
+    PeopleContent(
+        session = session,
+        model = model,
+        dialogs = dialogs,
+        page = page,
+        onOpen = { pageKey = it.key() },
+        onBack = goBack,
+    )
     MembersDialogsShown(session = session, model = model, dialogs = dialogs)
 }
 
-/** The page's body: the people read, shown or failed, and the page it names. */
+/** The page: its screen over the people read, shown or failed, and the page it names. */
 @Composable
 private fun PeopleContent(
     session: OpenLibrary,
@@ -290,12 +281,25 @@ private fun PeopleContent(
     dialogs: MembersDialogs,
     page: PeoplePage,
     onOpen: (PeoplePage) -> Unit,
+    onBack: () -> Unit,
 ) {
-    when (val read = model.people) {
+    val read = model.people
+    if (read is PeopleRead.Loaded) {
+        LoadedPeoplePage(
+            session = session,
+            model = model,
+            people = read.people,
+            callbacks = memberCallbacks(session, model, dialogs),
+            dialogs = dialogs,
+            page = page,
+            onOpen = onOpen,
+            onBack = onBack,
+        )
+        return
+    }
+    PeopleFrame(title = pageTitle(page, read), error = model.error, onBack = onBack) {
         // Who is in the library is a local read; nothing shows until it lands.
-        PeopleRead.Loading -> {}
-
-        is PeopleRead.Failed -> {
+        if (read is PeopleRead.Failed) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 AndroidNotice(
                     error = read.error,
@@ -304,79 +308,8 @@ private fun PeopleContent(
                 )
             }
         }
-
-        is PeopleRead.Loaded -> {
-            val callbacks = memberCallbacks(session, model, dialogs)
-            when (page) {
-                PeoplePage.People -> {
-                    PeopleHome(
-                        you = youActions(session),
-                        people = read.people,
-                        selfIsAdmin = model.selfIsAdmin,
-                        requested = model.requestedProfile,
-                        invites = model.inviteEntries,
-                        adminChanges = model.adminChanges,
-                        callbacks = callbacks,
-                        inviteCallbacks = inviteCallbacks(session, model, dialogs),
-                        onOpen = onOpen,
-                    )
-                }
-
-                is PeoplePage.Person -> {
-                    read.people.firstOrNull { it.membership.id == page.memberId }?.let { person ->
-                        PersonPage(
-                            member = person.membership,
-                            selfIsAdmin = model.selfIsAdmin,
-                            name = person.profile?.name ?: stringResource(R.string.members_unnamed),
-                            callbacks = callbacks,
-                        )
-                    }
-                }
-
-                PeoplePage.Devices -> {
-                    read.people.firstOrNull { it.membership.isSelf }?.let { person ->
-                        DevicesPage(member = person.membership, callbacks = callbacks)
-                    }
-                }
-            }
-        }
     }
 }
-
-@Composable
-private fun pageTitle(
-    page: PeoplePage,
-    read: PeopleRead,
-): String =
-    when (page) {
-        PeoplePage.People -> {
-            stringResource(R.string.members_title)
-        }
-
-        PeoplePage.Devices -> {
-            stringResource(R.string.people_your_devices)
-        }
-
-        is PeoplePage.Person -> {
-            (read as? PeopleRead.Loaded)
-                ?.people
-                ?.firstOrNull { it.membership.id == page.memberId }
-                ?.profile
-                ?.name ?: stringResource(R.string.members_unnamed)
-        }
-    }
-
-private fun youActions(session: OpenLibrary): YouActions =
-    YouActions(
-        errors = session.errors,
-        rename = { name -> session.appHandle.renameProfile(name) },
-        setHistory = { chosen ->
-            session.messages.perform("set history sharing to $chosen") { session.appHandle.setHistorySharing(chosen) }
-        },
-        createProfile = { name ->
-            session.messages.perform("create the person's profile") { session.appHandle.createProfile(name) }
-        },
-    )
 
 private fun memberCallbacks(
     session: OpenLibrary,
@@ -395,20 +328,6 @@ private fun memberCallbacks(
         },
     )
 }
-
-private fun inviteCallbacks(
-    session: OpenLibrary,
-    model: MembersModel,
-    dialogs: MembersDialogs,
-): InviteCallbacks =
-    InviteCallbacks(
-        onOpen = dialogs::open,
-        // Retry now reads a request that has arrived at once, instead of at the next check.
-        onRefresh = { session.messages.startRetrySync(session.appHandle::retryNow) },
-        onDismissRefused = { refused ->
-            model.perform("dismiss a refused invite") { session.appHandle.dismissRefusedInvite(refused.operation) }
-        },
-    )
 
 /** What this device's person can do to the library's members and their devices. */
 internal class MemberCallbacks(
