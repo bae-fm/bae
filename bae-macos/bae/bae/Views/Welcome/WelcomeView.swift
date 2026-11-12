@@ -114,7 +114,6 @@ struct WelcomeView: View {
                 loadError: loadError,
                 launchProblems: launchProblems,
                 canDeleteActiveLibrary: canDeleteActiveLibrary,
-                onLibraryReady: onLibraryReady,
                 onOpenLibrary: onOpenLibrary,
                 onFinishReplacement: onFinishReplacement,
                 onResetFromCloud: onResetFromCloud,

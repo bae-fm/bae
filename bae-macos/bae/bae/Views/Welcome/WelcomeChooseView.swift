@@ -12,7 +12,6 @@ struct WelcomeChooseView: View {
     /// it.
     var launchProblems = LaunchProblems.none
     let canDeleteActiveLibrary: Bool
-    let onLibraryReady: (OpenedLibrary, BridgeError?) -> Void
     let onOpenLibrary: (String) -> Void
     /// Finish the reset or restore of a library's copy on this Mac that
     /// stopped partway, with the one call that finishes it.
@@ -313,7 +312,6 @@ private struct UnfinishedRemovalNotice: View {
             WelcomeChooseView(
                 loadError: nil,
                 canDeleteActiveLibrary: true,
-                onLibraryReady: { _, _ in },
                 onOpenLibrary: { _ in },
                 onFinishReplacement: { _, _ in },
                 onResetFromCloud: { _ in },
@@ -332,7 +330,6 @@ private struct UnfinishedRemovalNotice: View {
             WelcomeChooseView(
                 loadError: nil,
                 canDeleteActiveLibrary: true,
-                onLibraryReady: { _, _ in },
                 onOpenLibrary: { _ in },
                 onFinishReplacement: { _, _ in },
                 onResetFromCloud: { _ in },
@@ -354,7 +351,6 @@ private struct UnfinishedRemovalNotice: View {
                     PreviewData.displayErrorWithDetail
                 ),
                 canDeleteActiveLibrary: true,
-                onLibraryReady: { _, _ in },
                 onOpenLibrary: { _ in },
                 onFinishReplacement: { _, _ in },
                 onResetFromCloud: { _ in },
@@ -381,7 +377,6 @@ private struct UnfinishedRemovalNotice: View {
                         )
                     ),
                     canDeleteActiveLibrary: true,
-                    onLibraryReady: { _, _ in },
                     onOpenLibrary: { _ in },
                     onFinishReplacement: { _, _ in },
                     onResetFromCloud: { _ in },
