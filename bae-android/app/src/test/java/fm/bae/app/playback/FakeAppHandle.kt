@@ -31,6 +31,7 @@ import uniffi.bae_bridge.BridgeHistorySharing
 import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeImportDestination
 import uniffi.bae_bridge.BridgeInviteAccess
+import uniffi.bae_bridge.BridgeInviteScreenHold
 import uniffi.bae_bridge.BridgeJoinRequest
 import uniffi.bae_bridge.BridgeLibraryClosing
 import uniffi.bae_bridge.BridgeLibraryRemoval
@@ -619,6 +620,8 @@ internal open class FakeAppHandle(
     override suspend fun getMembers(): BridgeMembership = unfaked("getMembers")
 
     override suspend fun invitePerson(access: BridgeInviteAccess): String = unfaked("invitePerson")
+
+    override fun holdInviteScreenSync(): BridgeInviteScreenHold = unfaked("holdInviteScreenSync")
 
     override suspend fun people(): List<BridgePerson> = unfaked("people")
 

@@ -385,6 +385,7 @@
     <string name="members_joining">正在加入</string>
     <string name="members_invite_shares_access">联网后共享访问权限</string>
     <string name="invite_granting">正在与 %1$s 共享资料库…</string>
+    <string name="members_sharing_access">正在共享访问权限</string>
     <string name="settings_profile_making">正在创建你的个人资料…</string>
     <string name="settings_profile_making_detail">此资料库同步后，你的个人资料就会出现。</string>
     <string name="settings_profile_refused">无法创建你的个人资料。%1$s</string>
@@ -454,4 +455,7 @@
     <string name="invite_s3_use_my_key">改用我的密钥</string>
     <string name="invite_s3_mine">对方将使用你的密钥。之后若要移除对方，你需要为自己生成新密钥，并在你的每台设备上输入。</string>
     <string name="invite_s3_use_their_key">改用对方自己的密钥</string>
+    <string name="invite_offline">此设备联网且 %1$s 已与 %2$s 共享资料库后，代码会显示在这里。</string>
+    <string name="invite_scan_instruction">在对方的设备上扫描或输入此代码。</string>
+    <string name="invite_cancel_message">%1$s 将无法使用此邀请。</string>
 </resources>

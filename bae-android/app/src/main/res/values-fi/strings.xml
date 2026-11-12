@@ -391,6 +391,7 @@
     <string name="members_joining">Liittyy</string>
     <string name="members_invite_shares_access">Jakaa käyttöoikeuden, kun laite on verkossa</string>
     <string name="invite_granting">Jaetaan kirjastoa osoitteelle %1$s…</string>
+    <string name="members_sharing_access">Jaetaan käyttöoikeutta</string>
     <string name="settings_profile_making">Profiiliasi luodaan…</string>
     <string name="settings_profile_making_detail">Profiilisi näkyy, kun tämä kirjasto on synkronoitu.</string>
     <string name="settings_profile_refused">Profiiliasi ei voitu luoda. %1$s</string>
@@ -461,4 +462,7 @@
     <string name="invite_s3_use_my_key">Käytä sen sijaan omaa avaintani</string>
     <string name="invite_s3_mine">He käyttävät sinun avaintasi. Jos haluat poistaa heidät myöhemmin, luot itsellesi uuden avaimen ja syötät sen jokaisella laitteellasi.</string>
     <string name="invite_s3_use_their_key">Käytä sen sijaan heidän omaa avaintaan</string>
+    <string name="invite_offline">Koodi näkyy tässä, kun tämä laite on verkossa ja %1$s on jakanut kirjaston osoitteelle %2$s.</string>
+    <string name="invite_scan_instruction">Skannaa tai syötä koodi heidän laitteellaan.</string>
+    <string name="invite_cancel_message">%1$s ei voi enää käyttää tätä kutsua.</string>
 </resources>

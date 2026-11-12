@@ -1,16 +1,16 @@
 package fm.bae.app.ui.settings
 
-import android.content.Context
-import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -27,34 +27,36 @@ import fm.bae.app.coreString
 import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.cloudProviderLabel
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.AndroidNotice
-import fm.bae.app.ui.components.AndroidSpinner
+import fm.bae.app.ui.components.AndroidScanCode
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ButtonTone
 import fm.bae.app.ui.components.DialogParts
 import fm.bae.app.ui.components.NoticeLook
-import fm.bae.app.ui.components.QRCodeImage
-import fm.bae.app.ui.components.rememberCopyText
 import fm.bae.app.ui.rememberScreenScope
+import fm.bae.app.ui.sync.ShareBar
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeInvite
 import uniffi.bae_bridge.BridgeInviteShown
 import uniffi.bae_bridge.BridgeMemberAccess
-import uniffi.bae_bridge.BridgePendingWait
+import uniffi.bae_bridge.BridgeStorageLocation
 
 private val logger = BaeLogger("bae.InviteShownDialog")
 
 /**
- * One of this device's open invites, shown again: while sync grants its
- * access, that it is doing so, and why coven holds it when it does; then the
- * QR code with Copy and Share; and Cancel invite.
+ * One of this device's open invites, shown again. While it shows, this device
+ * syncs every few seconds, so the invite's request arrives soon after it is
+ * sent. [storage] is where the library is stored, which names the provider
+ * the invite shares through.
  */
 @Composable
 internal fun InviteShownDialog(
     session: OpenLibrary,
     invite: BridgeInvite,
+    storage: BridgeStorageLocation?,
     onDismiss: () -> Unit,
 ) {
     val scope = rememberScreenScope()
@@ -62,6 +64,11 @@ internal fun InviteShownDialog(
     var busy by remember { mutableStateOf(false) }
     var confirmingCancel by remember { mutableStateOf(false) }
     val errors = session.errors
+    val line by session.syncStatusStore.line.collectAsState()
+    val offline = line.isOffline
+    // The hold ends as the dialog leaves the screen.
+    val hold = remember { session.appHandle.holdInviteScreenSync() }
+    DisposableEffect(hold) { onDispose { hold.release() } }
     if (confirmingCancel) {
         CancelInviteConfirmDialog(
             invite = invite,
@@ -83,6 +90,8 @@ internal fun InviteShownDialog(
     }
     InviteCodeDialog(
         invite = invite,
+        providerName = storage?.let { cloudProviderLabel(storageProvider(it)) }.orEmpty(),
+        offline = offline,
         error = error,
         busy = busy,
         onCancelInvite = { confirmingCancel = true },
@@ -118,9 +127,10 @@ internal fun cancelInviteParts(
         (invite.access as? BridgeMemberAccess.S3AccessKey)?.let { key ->
             context.coreString("core.access_key.forget", mapOf("key" to key.accessKeyId))
         }
+    val wontUse = stringResource(R.string.invite_cancel_message, invite.label)
     return DialogParts(
         title = context.coreString("core.invite.cancel_confirm.title"),
-        message = forgetLine,
+        message = if (forgetLine == null) wontUse else "$wontUse\n\n$forgetLine",
         confirmButton = {
             AndroidButton(kind = ButtonKind.TEXT, onClick = onConfirm) { Text(stringResource(R.string.invite_cancel)) }
         },
@@ -133,12 +143,16 @@ internal fun cancelInviteParts(
 }
 
 /**
- * The invite to give the person joining: a QR code to scan in bae, and the
- * code to copy or share.
+ * The invite's dialog: while sync shares the library with the invited address,
+ * a bar saying so, or what holds it; while this device is offline, that the
+ * code shows once it is online and the library is shared; then the code to
+ * scan or enter on their device. Cancel invite sits beside Done.
  */
 @Composable
 internal fun InviteCodeDialog(
     invite: BridgeInvite,
+    providerName: String,
+    offline: Boolean,
     error: DisplayError?,
     busy: Boolean,
     onCancelInvite: () -> Unit,
@@ -149,6 +163,8 @@ internal fun InviteCodeDialog(
         parts =
             inviteCodeParts(
                 invite = invite,
+                providerName = providerName,
+                offline = offline,
                 error = error,
                 busy = busy,
                 onCancelInvite = onCancelInvite,
@@ -160,16 +176,25 @@ internal fun InviteCodeDialog(
 @Composable
 internal fun inviteCodeParts(
     invite: BridgeInvite,
+    providerName: String,
+    offline: Boolean,
     error: DisplayError?,
     busy: Boolean,
     onCancelInvite: () -> Unit,
     onDismiss: () -> Unit,
 ): DialogParts {
     val context = LocalContext.current
-    val copy = rememberCopyText()
     val title = stringResource(R.string.invite_title)
+    // Offline with nothing held: the dialog says the code waits, in place of a bar.
+    val waitingOffline = offline && invite.shown is BridgeInviteShown.Granting && invite.held == null
     return DialogParts(
         title = title,
+        message =
+            if (waitingOffline) {
+                stringResource(R.string.invite_offline, providerName, invite.label)
+            } else {
+                null
+            },
         content = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
@@ -178,14 +203,15 @@ internal fun inviteCodeParts(
             ) {
                 when (val shown = invite.shown) {
                     is BridgeInviteShown.Granting -> {
-                        InviteGranting(invite.label, invite.held)
+                        InviteGranting(invite, offline)
                     }
 
                     is BridgeInviteShown.Code -> {
-                        InviteCode(
+                        AndroidScanCode(
+                            instruction = stringResource(R.string.invite_scan_instruction),
+                            qr = shown.code,
+                            qrDescription = title,
                             code = shown.code,
-                            title = title,
-                            onCopy = { copy(shown.code) },
                         )
                     }
                 }
@@ -214,19 +240,20 @@ internal fun inviteCodeParts(
     )
 }
 
-/** Sync hasn't granted the invite's access yet; a refused check or a failed grant says why. */
+/**
+ * Sync hasn't shared the library with the invited address yet: what holds it when something does, as a
+ * refused check or a failed grant; nothing while this device is offline, which the dialog's message says;
+ * else a bar saying it is being shared.
+ */
 @Composable
 private fun InviteGranting(
-    address: String,
-    held: BridgePendingWait?,
+    invite: BridgeInvite,
+    offline: Boolean,
 ) {
     val context = LocalContext.current
-    when (held) {
-        null -> {
-            AndroidSpinner(text = stringResource(R.string.invite_granting, address))
-        }
-
-        else -> {
+    val held = invite.held
+    when {
+        held != null -> {
             Text(
                 text = context.coreString(held.reason.key),
                 style = ThemeText.body.style,
@@ -236,37 +263,20 @@ private fun InviteGranting(
                 SelectionContainer { Text(text = detail, style = ThemeText.mono.style) }
             }
         }
-    }
-}
 
-/**
- * The code to give the person joining: a QR code for one beside the admin to
- * scan in bae, and the code to copy or share for one elsewhere.
- */
-@Composable
-private fun InviteCode(
-    code: String,
-    title: String,
-    onCopy: () -> Unit,
-) {
-    val context = LocalContext.current
-    QRCodeImage(text = code, contentDescription = title)
-    Row(horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
-        AndroidButton(kind = ButtonKind.TEXT, onClick = onCopy) { Text(stringResource(R.string.copy_code)) }
-        AndroidButton(kind = ButtonKind.TEXT, onClick = { context.shareInviteCode(code) }) {
-            Text(stringResource(R.string.invite_share))
+        offline -> {}
+
+        else -> {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
+            ) {
+                val sharing = stringResource(R.string.invite_granting, invite.label)
+                Text(text = sharing, style = ThemeText.body.style, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                ShareBar(share = null, description = sharing)
+            }
         }
     }
-}
-
-/** Hand an invite's code to the app the person picks: a message, an email. */
-private fun Context.shareInviteCode(code: String) {
-    val send =
-        Intent(Intent.ACTION_SEND).apply {
-            type = "text/plain"
-            putExtra(Intent.EXTRA_TEXT, code)
-        }
-    startActivity(Intent.createChooser(send, null).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
 }
 
 @Composable

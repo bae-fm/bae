@@ -7,8 +7,9 @@ extension ShotScene {
     /// People and devices: the first page for an admin and for a member, a
     /// person's page, this person's devices, the sheet that renames this
     /// person, the sheet that asks to approve a join request, the sheet that
-    /// adds a device, with its code and once a device has joined, and the
-    /// invite form for each storage.
+    /// adds a device, with its code and once a device has joined, the
+    /// invite form for each storage, and the invite's sheet sharing, offline
+    /// and showing its code.
     static let peopleScenes: [ShotScene] = [
         people("people-and-devices-admin", asAdmin: true, invites: [invited]),
         people(
@@ -174,6 +175,75 @@ extension ShotScene {
                     canCreate: false,
                     onCreate: {},
                     onCancel: {}
+                )
+            )
+        },
+        ShotScene(
+            id: "people-and-devices-invite-sharing",
+            size: CGSize(width: 440, height: 190)
+        ) {
+            ShotStage(
+                InviteCodeSheetContent(
+                    invite: BridgeInvite(
+                        id: "11",
+                        member: "4a1f2c3d-0000-4000-8000-000000000009",
+                        label: "dan@example.com",
+                        access: .providerAccount(email: "dan@example.com"),
+                        shown: .granting,
+                        held: nil
+                    ),
+                    providerName: "Dropbox",
+                    offline: false,
+                    error: nil,
+                    busy: false,
+                    onCancelInvite: {},
+                    onDone: {}
+                )
+            )
+        },
+        ShotScene(
+            id: "people-and-devices-invite-offline",
+            size: CGSize(width: 440, height: 190)
+        ) {
+            ShotStage(
+                InviteCodeSheetContent(
+                    invite: BridgeInvite(
+                        id: "11",
+                        member: "4a1f2c3d-0000-4000-8000-000000000009",
+                        label: "dan@example.com",
+                        access: .providerAccount(email: "dan@example.com"),
+                        shown: .granting,
+                        held: nil
+                    ),
+                    providerName: "Dropbox",
+                    offline: true,
+                    error: nil,
+                    busy: false,
+                    onCancelInvite: {},
+                    onDone: {}
+                )
+            )
+        },
+        ShotScene(
+            id: "people-and-devices-invite-code",
+            size: CGSize(width: 440, height: 400)
+        ) {
+            ShotStage(
+                InviteCodeSheetContent(
+                    invite: BridgeInvite(
+                        id: "11",
+                        member: "4a1f2c3d-0000-4000-8000-000000000009",
+                        label: "dan@example.com",
+                        access: .providerAccount(email: "dan@example.com"),
+                        shown: .code(code: "invite-code", progress: .waiting),
+                        held: nil
+                    ),
+                    providerName: "Dropbox",
+                    offline: false,
+                    error: nil,
+                    busy: false,
+                    onCancelInvite: {},
+                    onDone: {}
                 )
             )
         },

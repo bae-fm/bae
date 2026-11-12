@@ -2992,7 +2992,14 @@ online" under it, and its screen says "Sharing the library with" the address.
 The request dialog is titled "<name> wants to join". The row's refresh
 button runs Retry now for the library (§6.4), so the request shows the moment
 Dan says he has entered the code, without waiting for the next check. Opening
-the row shows the invite again, with **Cancel invite**. A row shows coven's
+the row shows the invite again. While the library is being shared with the
+address, its screen shows a bar and "Sharing the library with dan@example.com…";
+while the sync state says this device is offline, it says that the code shows
+there once this device is online and the provider has shared the library with
+the address; once the library is shared it shows the code to scan or enter on
+Dan's device, with **Copy code** and **Share**, **Cancel invite** beside
+**Done**. While the screen shows, this device syncs every 5 seconds instead of
+every 30, as Add device's sheet does. A row shows coven's
 pending record for its invite when it is a hold: a refused check, a failed
 grant, or a failure to read Dan's request. The invite's own waiting is not
 shown: the request it hasn't found yet, and a request that awaits Ana's
@@ -3015,8 +3022,9 @@ refuses an operation that is no refused invite's.
 
 On S3 the invite's screen also shows the id of the key it carries, and says to
 delete that key in the provider's console if nobody uses the invite: bae keeps
-no record of it once the invite ends. Cancelling an invite asks first, and on
-S3 the question names the key, as removing a person does.
+no record of it once the invite ends. Cancelling an invite asks first ("Cancel this invite?", "dan@example.com
+won’t be able to use this invite.", **Keep** and **Cancel invite**), and on S3
+the question also names the key, as removing a person does.
 
 **Dan's waiting.** Dan can close bae while he waits. When bae next starts, it
 opens on his waiting screen and keeps checking, with no sign-in: coven keeps

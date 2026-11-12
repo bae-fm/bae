@@ -11,6 +11,7 @@ import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeSyncCause
 import uniffi.bae_bridge.BridgeSyncShown
+import uniffi.bae_bridge.BridgeSyncStatusWord
 import uniffi.bae_bridge.BridgeSyncTone
 import java.text.DateFormat
 import java.util.Date
@@ -88,6 +89,14 @@ internal fun syncLineText(
         SyncLine.Unreadable -> context.getString(R.string.settings_sync_unreadable)
         is SyncLine.Read -> syncStatusText(context, line.shown)
     }
+
+/** Whether the sync state says this device can't reach its storage. */
+internal val SyncLine.isOffline: Boolean
+    get() =
+        when ((this as? SyncLine.Read)?.shown?.status) {
+            BridgeSyncStatusWord.OFFLINE, BridgeSyncStatusWord.OFFLINE_WITH_UNSENT_CHANGES -> true
+            else -> false
+        }
 
 /** Which provider a location is on. */
 internal fun storageProvider(location: BridgeStorageLocation): BridgeCloudProvider =

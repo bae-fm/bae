@@ -61,32 +61,21 @@ class SettingsInviteShots : BoardShot() {
     @Test
     fun androidSettingsInviteCode() =
         shot("android.settings.invite.code") {
-            Invite { inviteCodeParts(danInvite(waitingCode), error = null, busy = false, onCancelInvite = {}, onDismiss = {}) }
+            Invite { InviteDialog(danInvite(waitingCode)) }
         }
 
-    /** The invite's dialog while sync grants Dan's access and holds it. */
+    /** The invite's dialog while this device is offline, so nothing is shared with Dan yet. */
     @Test
     fun androidSettingsInviteNoCodeYet() =
         shot("android.settings.invite.no-code-yet") {
-            Invite {
-                inviteCodeParts(danInvite(BridgeInviteShown.Granting, held = heldRejected), error = null, busy = false, onCancelInvite = {
-                }, onDismiss = {})
-            }
+            Invite { InviteDialog(danInvite(BridgeInviteShown.Granting), offline = true) }
         }
 
     /** The invite's dialog while sync shares the library with Dan. */
     @Test
     fun androidSettingsInviteSharing() =
         shot("android.settings.invite.sharing") {
-            Invite {
-                inviteCodeParts(
-                    danInvite(BridgeInviteShown.Granting),
-                    error = null,
-                    busy = false,
-                    onCancelInvite = {},
-                    onDismiss = {},
-                )
-            }
+            Invite { InviteDialog(danInvite(BridgeInviteShown.Granting)) }
         }
 
     /** Dan's request to join, with the number to compare. */
@@ -131,3 +120,17 @@ private fun InviteForm(
     storage: BridgeStorageLocation,
     input: InviteAccessInput,
 ) = inviteFormParts(storage = storage, error = null, busy = false, onCreate = {}, onDismiss = {}, input = input)
+
+@Composable
+private fun InviteDialog(
+    invite: BridgeInvite,
+    offline: Boolean = false,
+) = inviteCodeParts(
+    invite = invite,
+    providerName = "Dropbox",
+    offline = offline,
+    error = null,
+    busy = false,
+    onCancelInvite = {},
+    onDismiss = {},
+)

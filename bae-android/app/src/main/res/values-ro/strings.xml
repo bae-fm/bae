@@ -399,6 +399,7 @@
     <string name="members_joining">Se alătură</string>
     <string name="members_invite_shares_access">Partajează accesul când este online</string>
     <string name="invite_granting">Se partajează biblioteca cu %1$s…</string>
+    <string name="members_sharing_access">Se partajează accesul</string>
     <string name="settings_profile_making">Se creează profilul tău…</string>
     <string name="settings_profile_making_detail">Profilul tău apare după ce această bibliotecă se sincronizează.</string>
     <string name="settings_profile_refused">Profilul tău nu a putut fi creat. %1$s</string>
@@ -470,4 +471,7 @@
     <string name="invite_s3_use_my_key">Folosește în schimb cheia mea</string>
     <string name="invite_s3_mine">Vor folosi cheia ta. Ca să-i elimini mai târziu, creezi o cheie nouă pentru tine și o introduci pe fiecare dintre dispozitivele tale.</string>
     <string name="invite_s3_use_their_key">Folosește în schimb cheia lor proprie</string>
+    <string name="invite_offline">Codul apare aici după ce acest dispozitiv este online și %1$s a partajat biblioteca cu %2$s.</string>
+    <string name="invite_scan_instruction">Scanează sau introdu codul pe dispozitivul lor.</string>
+    <string name="invite_cancel_message">%1$s nu va putea folosi această invitație.</string>
 </resources>

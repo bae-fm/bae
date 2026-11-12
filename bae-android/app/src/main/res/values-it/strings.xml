@@ -399,6 +399,7 @@
     <string name="members_joining">Si sta unendo</string>
     <string name="members_invite_shares_access">Condivide l’accesso quando è online</string>
     <string name="invite_granting">Condivisione della libreria con %1$s…</string>
+    <string name="members_sharing_access">Condivisione dell’accesso</string>
     <string name="settings_profile_making">Creazione del tuo profilo…</string>
     <string name="settings_profile_making_detail">Il tuo profilo comparirà quando questa libreria si sarà sincronizzata.</string>
     <string name="settings_profile_refused">Non è stato possibile creare il tuo profilo. %1$s</string>
@@ -470,4 +471,7 @@
     <string name="invite_s3_use_my_key">Usa invece la mia chiave</string>
     <string name="invite_s3_mine">Useranno la tua chiave. Per rimuoverli in seguito, crei una nuova chiave per te e la inserisci su ciascuno dei tuoi dispositivi.</string>
     <string name="invite_s3_use_their_key">Usa invece la loro chiave</string>
+    <string name="invite_offline">Il codice apparirà qui quando questo dispositivo sarà online e %1$s avrà condiviso la libreria con %2$s.</string>
+    <string name="invite_scan_instruction">Inquadra o inserisci il codice sul loro dispositivo.</string>
+    <string name="invite_cancel_message">%1$s non potrà usare questo invito.</string>
 </resources>

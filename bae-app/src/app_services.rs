@@ -578,6 +578,7 @@ impl AppServices {
     delegate_lib!(membership, get_members => members() -> bae_people::membership::Members);
     delegate_lib!(membership, remove_member => remove_member(member: &coven::MemberId) -> ());
     delegate_values!(subscribe_members => subscribe_members() -> bae_people::membership::Members);
+    delegate_sync!(manager, hold_invite_screen_sync => hold_invite_screen_sync() -> coven::SyncOftenGuard);
     delegate_async!(manager, add_device => add_device() -> Result<bae_library::sync::membership::AddingDevice, bae_library::LibraryError>);
     delegate_values!(subscribe_added_device => subscribe_added_device(watch: bae_library::sync::membership::AddedDeviceWatch) -> Option<bae_people::membership::ActiveDevice>);
     delegate_lib!(membership, remove_device => remove_device(device: coven::DeviceId) -> Option<coven::ProviderSignOut>);

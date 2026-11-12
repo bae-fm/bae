@@ -393,6 +393,7 @@
     <string name="members_joining">Присъединява се</string>
     <string name="members_invite_shares_access">Споделя достъп, когато е онлайн</string>
     <string name="invite_granting">Библиотеката се споделя с %1$s…</string>
+    <string name="members_sharing_access">Споделя се достъп</string>
     <string name="settings_profile_making">Профилът ви се създава…</string>
     <string name="settings_profile_making_detail">Профилът ви ще се появи, след като тази библиотека се синхронизира.</string>
     <string name="settings_profile_refused">Профилът ви не можа да бъде създаден. %1$s</string>
@@ -463,4 +464,7 @@
     <string name="invite_s3_use_my_key">Използване на моя ключ вместо това</string>
     <string name="invite_s3_mine">Ще използват вашия ключ. За да ги премахнете по-късно, създавате нов ключ за себе си и го въвеждате на всяко ваше устройство.</string>
     <string name="invite_s3_use_their_key">Използване на техен собствен ключ вместо това</string>
+    <string name="invite_offline">Кодът се показва тук, когато това устройство е онлайн и %1$s е споделил библиотеката с %2$s.</string>
+    <string name="invite_scan_instruction">Сканирайте или въведете кода на тяхното устройство.</string>
+    <string name="invite_cancel_message">%1$s няма да може да използва тази покана.</string>
 </resources>

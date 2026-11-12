@@ -393,6 +393,7 @@
     <string name="members_joining">Katılıyor</string>
     <string name="members_invite_shares_access">Çevrimiçi olunca erişimi paylaşır</string>
     <string name="invite_granting">Kitaplık %1$s ile paylaşılıyor…</string>
+    <string name="members_sharing_access">Erişim paylaşılıyor</string>
     <string name="settings_profile_making">Profiliniz oluşturuluyor…</string>
     <string name="settings_profile_making_detail">Profiliniz bu kitaplık eşitlendiğinde görünür.</string>
     <string name="settings_profile_refused">Profiliniz oluşturulamadı. %1$s</string>
@@ -463,4 +464,7 @@
     <string name="invite_s3_use_my_key">Bunun yerine anahtarımı kullan</string>
     <string name="invite_s3_mine">Anahtarınızı kullanacaklar. Onları daha sonra kaldırmak için kendiniz için yeni bir anahtar oluşturur ve her cihazınıza girersiniz.</string>
     <string name="invite_s3_use_their_key">Bunun yerine onların kendi anahtarını kullan</string>
+    <string name="invite_offline">Bu cihaz çevrimiçi olduğunda ve %1$s kitaplığı %2$s ile paylaştığında kod burada görünür.</string>
+    <string name="invite_scan_instruction">Kodu onların cihazında tarayın veya girin.</string>
+    <string name="invite_cancel_message">%1$s bu daveti kullanamayacak.</string>
 </resources>

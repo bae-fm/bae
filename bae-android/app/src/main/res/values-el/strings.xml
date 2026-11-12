@@ -391,6 +391,7 @@
     <string name="members_joining">Συμμετέχει</string>
     <string name="members_invite_shares_access">Μοιράζεται πρόσβαση όταν συνδεθεί</string>
     <string name="invite_granting">Κοινή χρήση της βιβλιοθήκης με %1$s…</string>
+    <string name="members_sharing_access">Κοινή χρήση πρόσβασης</string>
     <string name="settings_profile_making">Δημιουργείται το προφίλ σας…</string>
     <string name="settings_profile_making_detail">Το προφίλ σας θα εμφανιστεί μόλις συγχρονιστεί αυτή η βιβλιοθήκη.</string>
     <string name="settings_profile_refused">Δεν ήταν δυνατή η δημιουργία του προφίλ σας. %1$s</string>
@@ -461,4 +462,7 @@
     <string name="invite_s3_use_my_key">Χρήση του δικού μου κλειδιού</string>
     <string name="invite_s3_mine">Θα χρησιμοποιήσουν το κλειδί σας. Για να τους αφαιρέσετε αργότερα, δημιουργείτε ένα νέο κλειδί για τον εαυτό σας και το εισάγετε σε κάθε συσκευή σας.</string>
     <string name="invite_s3_use_their_key">Χρήση του δικού τους κλειδιού</string>
+    <string name="invite_offline">Ο κωδικός εμφανίζεται εδώ μόλις αυτή η συσκευή συνδεθεί στο διαδίκτυο και το %1$s μοιραστεί τη βιβλιοθήκη με %2$s.</string>
+    <string name="invite_scan_instruction">Σαρώστε ή εισαγάγετε τον κωδικό στη συσκευή τους.</string>
+    <string name="invite_cancel_message">Η πρόσκληση δεν θα μπορεί να χρησιμοποιηθεί από %1$s.</string>
 </resources>

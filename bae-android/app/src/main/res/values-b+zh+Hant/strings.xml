@@ -385,6 +385,7 @@
     <string name="members_joining">正在加入</string>
     <string name="members_invite_shares_access">連線後共享存取權限</string>
     <string name="invite_granting">正在與 %1$s 共享資料庫…</string>
+    <string name="members_sharing_access">正在共享存取權限</string>
     <string name="settings_profile_making">正在建立你的個人檔案…</string>
     <string name="settings_profile_making_detail">此資料庫同步後，你的個人檔案就會出現。</string>
     <string name="settings_profile_refused">無法建立你的個人檔案。%1$s</string>
@@ -454,4 +455,7 @@
     <string name="invite_s3_use_my_key">改用我的金鑰</string>
     <string name="invite_s3_mine">對方將使用你的金鑰。之後若要移除對方，你需要為自己產生新的金鑰，並在你的每部裝置上輸入。</string>
     <string name="invite_s3_use_their_key">改用對方自己的金鑰</string>
+    <string name="invite_offline">此裝置連線且 %1$s 已與 %2$s 共享資料庫後，代碼會顯示在這裡。</string>
+    <string name="invite_scan_instruction">在對方的裝置上掃描或輸入此代碼。</string>
+    <string name="invite_cancel_message">%1$s 將無法使用此邀請。</string>
 </resources>

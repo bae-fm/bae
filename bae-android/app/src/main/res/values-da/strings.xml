@@ -391,6 +391,7 @@
     <string name="members_joining">Tilslutter sig</string>
     <string name="members_invite_shares_access">Deler adgang, når enheden er online</string>
     <string name="invite_granting">Deler biblioteket med %1$s…</string>
+    <string name="members_sharing_access">Deler adgang</string>
     <string name="settings_profile_making">Opretter din profil…</string>
     <string name="settings_profile_making_detail">Din profil vises, når dette bibliotek er synkroniseret.</string>
     <string name="settings_profile_refused">Din profil kunne ikke oprettes. %1$s</string>
@@ -461,4 +462,7 @@
     <string name="invite_s3_use_my_key">Brug min nøgle i stedet</string>
     <string name="invite_s3_mine">De bruger din nøgle. For at fjerne dem senere opretter du en ny nøgle til dig selv og indtaster den på hver af dine enheder.</string>
     <string name="invite_s3_use_their_key">Brug deres egen nøgle i stedet</string>
+    <string name="invite_offline">Koden vises her, når denne enhed er online, og %1$s har delt biblioteket med %2$s.</string>
+    <string name="invite_scan_instruction">Scan eller indtast koden på deres enhed.</string>
+    <string name="invite_cancel_message">%1$s kan ikke bruge denne invitation.</string>
 </resources>

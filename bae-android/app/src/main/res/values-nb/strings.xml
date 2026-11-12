@@ -391,6 +391,7 @@
     <string name="members_joining">Blir med</string>
     <string name="members_invite_shares_access">Deler tilgang når enheten er på nett</string>
     <string name="invite_granting">Deler biblioteket med %1$s…</string>
+    <string name="members_sharing_access">Deler tilgang</string>
     <string name="settings_profile_making">Oppretter profilen din …</string>
     <string name="settings_profile_making_detail">Profilen din vises når dette biblioteket er synkronisert.</string>
     <string name="settings_profile_refused">Profilen din kunne ikke opprettes. %1$s</string>
@@ -461,4 +462,7 @@
     <string name="invite_s3_use_my_key">Bruk nøkkelen min i stedet</string>
     <string name="invite_s3_mine">De bruker nøkkelen din. For å fjerne dem senere lager du en ny nøkkel til deg selv og skriver den inn på hver av enhetene dine.</string>
     <string name="invite_s3_use_their_key">Bruk deres egen nøkkel i stedet</string>
+    <string name="invite_offline">Koden vises her når denne enheten er på nett og %1$s har delt biblioteket med %2$s.</string>
+    <string name="invite_scan_instruction">Skann eller skriv inn koden på enheten deres.</string>
+    <string name="invite_cancel_message">%1$s kan ikke bruke denne invitasjonen.</string>
 </resources>

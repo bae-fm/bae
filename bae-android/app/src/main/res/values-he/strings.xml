@@ -401,6 +401,7 @@
     <string name="members_joining">מצטרף</string>
     <string name="members_invite_shares_access">ישתף גישה כשיהיה מחובר</string>
     <string name="invite_granting">משתף את הספרייה עם %1$s…</string>
+    <string name="members_sharing_access">משתף גישה</string>
     <string name="settings_profile_making">הפרופיל שלך נוצר…</string>
     <string name="settings_profile_making_detail">הפרופיל שלך יופיע אחרי שהספרייה הזו תסונכרן.</string>
     <string name="settings_profile_refused">לא ניתן היה ליצור את הפרופיל שלך. %1$s</string>
@@ -472,4 +473,7 @@
     <string name="invite_s3_use_my_key">השתמש במפתח שלי במקום</string>
     <string name="invite_s3_mine">הם ישתמשו במפתח שלך. כדי להסיר אותם בהמשך, תיצור מפתח חדש לעצמך ותזין אותו בכל אחד מהמכשירים שלך.</string>
     <string name="invite_s3_use_their_key">השתמש במפתח שלהם במקום</string>
+    <string name="invite_offline">הקוד יוצג כאן ברגע שהמכשיר הזה יהיה מחובר ו-%1$s ישתף את הספרייה עם %2$s.</string>
+    <string name="invite_scan_instruction">סרוק או הזן את הקוד במכשיר שלהם.</string>
+    <string name="invite_cancel_message">ההזמנה הזו לא תהיה שמישה עבור %1$s.</string>
 </resources>

@@ -4,10 +4,9 @@ import os.log
 
 private let logger = Logger.bae("InviteCodeSheet")
 
-/// One of this device's open invites, shown again: while sync grants its
-/// access, that it is doing so, and why coven holds it when it does; then
-/// the QR code with Copy and Share; and Cancel invitation. It closes when the
-/// invite ends.
+/// One of this device's open invites, shown again. While it shows, this
+/// device syncs every few seconds, so the invite's request arrives soon after
+/// it is sent. It closes when the invite ends.
 struct InviteCodeSheet: View {
     let inviteId: String
     let onDismiss: () -> Void
@@ -16,6 +15,10 @@ struct InviteCodeSheet: View {
     private var store
     @Environment(Sync.self)
     private var sync
+    @Environment(SyncStatusStore.self)
+    private var syncStatus
+    @Environment(ConfigStore.self)
+    private var configStore
 
     @State
     private var task: Task<Void, Never>?
@@ -29,111 +32,44 @@ struct InviteCodeSheet: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text("Invite")
-                    .themeText(.heading)
-                Spacer()
-                Button("Done", action: onDismiss)
-                    .buttonStyle(.borderless)
-            }
-            .padding()
-            Divider()
+        Group {
             if let invite {
-                switch invite.shown {
-                case .granting: granting(invite)
-                case .code(let code, _): shown(invite, code: code)
-                }
+                InviteCodeSheetContent(
+                    invite: invite,
+                    providerName: configStore.storage?.displayName ?? "",
+                    offline: syncStatus.offline,
+                    error: error,
+                    busy: task != nil,
+                    onCancelInvite: { confirmingCancel = true },
+                    onDone: onDismiss
+                )
             }
         }
-        .frame(width: 440, height: 640)
         // An ended invite has nothing left to show.
         .onChange(of: invite == nil) { _, ended in
             if ended { onDismiss() }
         }
-        .confirmationDialog(
+        .task { await store.holdInviteScreenSync() }
+        .alert(
             localizedCoreString("core.invite.cancel_confirm.title"),
             isPresented: $confirmingCancel,
-            titleVisibility: .visible,
             presenting: invite
         ) { shown in
-            Button("Cancel invitation") { cancel(shown) }
+            Button("Cancel invite") { cancel(shown) }
             Button(
                 localizedCoreString("core.invite.cancel_confirm.keep"),
                 role: .cancel
             ) {}
         } message: { shown in
             if let forgetLine = shown.access.forgetLine {
-                Text(verbatim: forgetLine)
+                Text("\(shown.label) won’t be able to use this invite.")
+                    + Text(verbatim: "\n\n\(forgetLine)")
+            }
+            else {
+                Text("\(shown.label) won’t be able to use this invite.")
             }
         }
         .onDisappear { task?.cancel() }
-    }
-
-    /// Sync hasn't granted the invite's access yet: the code comes once it
-    /// has. A refused check or a failed grant says why; cancelling ends it.
-    private func granting(_ invite: BridgeInvite) -> some View {
-        VStack(spacing: ThemeSpace.edge) {
-            Spacer()
-            if let held = invite.held {
-                ErrorText(localizedCoreString(held.reason.key))
-                if let detail = held.reason.detail {
-                    Text(detail)
-                        .themeText(.mono)
-                        .foregroundStyle(.secondary)
-                        .textSelection(.enabled)
-                }
-            }
-            else {
-                MacSpinner(
-                    "Sharing the library. The code shows once this library syncs."
-                )
-            }
-            cancelControls
-            Spacer()
-        }
-        .padding()
-    }
-
-    private func shown(_ invite: BridgeInvite, code: String) -> some View {
-        VStack(spacing: ThemeSpace.edge) {
-            Spacer()
-            // The person beside the admin scans it; one elsewhere gets it
-            // copied or shared.
-            QRCode(text: code)
-            HStack(spacing: ThemeSpace.group) {
-                Button("Copy") {
-                    SystemActions.copyToPasteboard(code)
-                }
-                ShareLink(item: code)
-            }
-            if let keyLine = invite.access.keyLine,
-                let unusedLine = invite.access.unusedInviteLine
-            {
-                Text(verbatim: keyLine)
-                    .themeText(.detail)
-                    .foregroundStyle(.secondary)
-                    .textSelection(.enabled)
-                Text(verbatim: unusedLine)
-                    .themeText(.detail)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-            cancelControls
-            Spacer()
-        }
-        .padding()
-    }
-
-    @ViewBuilder
-    private var cancelControls: some View {
-        if let error {
-            Notice(error: error)
-        }
-        Button("Cancel invitation") {
-            confirmingCancel = true
-        }
-        .disabled(task != nil)
     }
 
     /// A cancelled invite leaves the list, which closes the sheet.
@@ -150,6 +86,107 @@ struct InviteCodeSheet: View {
                     "invite cancel failed: \(String(reflecting: error))"
                 )
                 self.error = DisplayError(error)
+            }
+        }
+    }
+}
+
+/// The invite's sheet: while sync shares the library with the invited address,
+/// a bar saying so, or what holds it; while this Mac is offline, that the code
+/// shows once it is online and the library is shared; then the code to scan or
+/// enter on their device. Cancel invite sits beside Done.
+struct InviteCodeSheetContent: View {
+    let invite: BridgeInvite
+    /// The name of the storage provider the library is shared through.
+    let providerName: String
+    /// Whether the sync state says this Mac can't reach its storage.
+    let offline: Bool
+    let error: DisplayError?
+    let busy: Bool
+    let onCancelInvite: () -> Void
+    let onDone: () -> Void
+
+    var body: some View {
+        MacSheet(
+            "Invite",
+            message: waitingOffline
+                ? "The code shows here once this Mac is online and \(providerName) has shared the library with \(invite.label)."
+                : nil,
+            width: 440
+        ) {
+            VStack(alignment: .leading, spacing: ThemeSpace.group) {
+                switch invite.shown {
+                case .granting: granting
+                case .code(let code, _): shown(code)
+                }
+                if let error {
+                    Notice(error: error)
+                }
+            }
+        } footer: {
+            MacSheetFooter {
+                Button("Cancel invite", action: onCancelInvite)
+                    .disabled(busy)
+                Button("Done", action: onDone)
+                    .buttonStyle(PrimaryButtonStyle())
+                    .keyboardShortcut(.defaultAction)
+            }
+        }
+    }
+
+    /// Sync hasn't shared the library with the invited address, and this Mac
+    /// can't reach its storage, which the sheet says in place of a bar.
+    private var waitingOffline: Bool {
+        guard case .granting = invite.shown else { return false }
+        return offline && invite.held == nil
+    }
+
+    /// A refused check or a failed grant says why; cancelling ends the invite.
+    @ViewBuilder
+    private var granting: some View {
+        if let held = invite.held {
+            VStack(alignment: .leading, spacing: ThemeSpace.related) {
+                ErrorText(localizedCoreString(held.reason.key))
+                if let detail = held.reason.detail {
+                    Text(detail)
+                        .themeText(.mono)
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                }
+            }
+        }
+        else if !offline {
+            VStack(alignment: .leading, spacing: ThemeSpace.related) {
+                Text("Sharing the library with \(invite.label)…")
+                    .themeText(.body)
+                    .foregroundStyle(.secondary)
+                ProgressView()
+                    .progressViewStyle(.linear)
+            }
+        }
+    }
+
+    private func shown(_ code: String) -> some View {
+        VStack(spacing: ThemeSpace.edge) {
+            // The person beside the admin scans it; one elsewhere gets it
+            // copied or shared.
+            MacScanCode(
+                instruction: "Scan or enter the code on their device.",
+                qr: code,
+                qrLabel: "Invite",
+                code: code
+            )
+            if let keyLine = invite.access.keyLine,
+                let unusedLine = invite.access.unusedInviteLine
+            {
+                Text(verbatim: keyLine)
+                    .themeText(.detail)
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+                Text(verbatim: unusedLine)
+                    .themeText(.detail)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
             }
         }
     }

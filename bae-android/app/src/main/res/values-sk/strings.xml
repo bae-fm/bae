@@ -407,6 +407,7 @@
     <string name="members_joining">Pripája sa</string>
     <string name="members_invite_shares_access">Prístup sa zdieľa, keď bude online</string>
     <string name="invite_granting">Knižnica sa zdieľa s adresou %1$s…</string>
+    <string name="members_sharing_access">Zdieľa sa prístup</string>
     <string name="settings_profile_making">Vytvára sa váš profil…</string>
     <string name="settings_profile_making_detail">Váš profil sa zobrazí, keď sa táto knižnica synchronizuje.</string>
     <string name="settings_profile_refused">Váš profil sa nepodarilo vytvoriť. %1$s</string>
@@ -479,4 +480,7 @@
     <string name="invite_s3_use_my_key">Použiť namiesto toho môj kľúč</string>
     <string name="invite_s3_mine">Budú používať váš kľúč. Ak ich chcete neskôr odstrániť, vytvoríte si nový kľúč a zadáte ho na každom svojom zariadení.</string>
     <string name="invite_s3_use_their_key">Použiť namiesto toho ich vlastný kľúč</string>
+    <string name="invite_offline">Kód sa tu zobrazí, keď bude toto zariadenie online a %1$s zdieľa knižnicu s %2$s.</string>
+    <string name="invite_scan_instruction">Naskenujte alebo zadajte kód na ich zariadení.</string>
+    <string name="invite_cancel_message">%1$s nebude môcť použiť túto pozvánku.</string>
 </resources>

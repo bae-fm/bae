@@ -16,6 +16,13 @@ public final class SyncStatusStore {
     }
     /// Whether the status couldn't be read, until a read succeeds.
     public var unreadable: Bool { readError != nil }
+    /// Whether the sync state says this device can't reach its storage.
+    public var offline: Bool {
+        switch shown?.status {
+        case .offline, .offlineWithUnsentChanges: true
+        default: false
+        }
+    }
     /// What coven is waiting on; nil until the status is first read.
     public var pending: [BridgePendingRecord]? { snapshot?.pending }
     public func apply(_ snapshot: BridgeSyncStatusSnapshot) {

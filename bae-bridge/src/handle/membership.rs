@@ -54,6 +54,19 @@ impl BridgeAddedDeviceWatch {
         Self { watch }
     }
 }
+/// This device's request to sync every 5 seconds, held while an invite's
+/// screen shows. The screen releases it as it goes.
+#[derive(uniffi::Object)]
+pub struct BridgeInviteScreenHold {
+    guard: std::sync::Mutex<Option<coven::SyncOftenGuard>>,
+}
+#[uniffi::export]
+impl BridgeInviteScreenHold {
+    /// End the request. Releasing again does nothing.
+    pub fn release(&self) {
+        self.guard.lock().unwrap_or_else(std::sync::PoisonError::into_inner).take();
+    }
+}
 /// What Add Device's sheet shows, and the watch it runs while it does.
 #[derive(Clone, uniffi::Record)]
 pub struct BridgeAddDevice {
@@ -85,6 +98,13 @@ impl AppHandle {
             self.services.subscribe_added_device(watch.watch.clone()),
             self.runtime.clone(),
         )
+    }
+    /// Asks this device to sync every 5 seconds until the returned hold is
+    /// released: an invite's screen holds it while it shows.
+    pub fn hold_invite_screen_sync(&self) -> Arc<BridgeInviteScreenHold> {
+        Arc::new(BridgeInviteScreenHold {
+            guard: std::sync::Mutex::new(Some(self.services.hold_invite_screen_sync())),
+        })
     }
     /// The admin changes this device asked for, each until the person
     /// dismisses its outcome.

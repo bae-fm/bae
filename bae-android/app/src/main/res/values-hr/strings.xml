@@ -401,6 +401,7 @@
     <string name="members_joining">Pridružuje se</string>
     <string name="members_invite_shares_access">Dijeli pristup kad bude na mreži</string>
     <string name="invite_granting">Dijeljenje fonoteke s %1$s…</string>
+    <string name="members_sharing_access">Dijeli se pristup</string>
     <string name="settings_profile_making">Izrađuje se vaš profil…</string>
     <string name="settings_profile_making_detail">Vaš profil pojavit će se kad se ova fonoteka sinkronizira.</string>
     <string name="settings_profile_refused">Vaš profil nije bilo moguće izraditi. %1$s</string>
@@ -472,4 +473,7 @@
     <string name="invite_s3_use_my_key">Koristi umjesto toga moj ključ</string>
     <string name="invite_s3_mine">Koristit će vaš ključ. Da ih kasnije uklonite, izradite novi ključ za sebe i unesete ga na svakom svom uređaju.</string>
     <string name="invite_s3_use_their_key">Koristi umjesto toga njihov vlastiti ključ</string>
+    <string name="invite_offline">Kôd će se ovdje prikazati čim ovaj uređaj bude na mreži i %1$s podijeli biblioteku s %2$s.</string>
+    <string name="invite_scan_instruction">Skenirajte ili unesite kôd na njihovu uređaju.</string>
+    <string name="invite_cancel_message">%1$s neće moći upotrijebiti ovu pozivnicu.</string>
 </resources>

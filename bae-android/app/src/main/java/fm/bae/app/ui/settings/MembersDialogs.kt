@@ -97,30 +97,7 @@ internal fun MembersDialogsShown(
     model: MembersModel,
     dialogs: MembersDialogs,
 ) {
-    if (dialogs.inviting) {
-        InviteDialog(
-            session = session,
-            storage = model.storage,
-            onCreated = { id ->
-                dialogs.inviting = false
-                dialogs.shownInvite = id
-            },
-            onDismiss = { dialogs.inviting = false },
-        )
-    }
-    model.invites.firstOrNull { it.id == dialogs.shownInvite }?.let { invite ->
-        InviteShownDialog(session = session, invite = invite, onDismiss = { dialogs.shownInvite = null })
-    }
-    model.invites
-        .firstOrNull { it.requestToDecide != null && it.id !in dialogs.closedRequests }
-        ?.let { invite ->
-            JoinRequestDialog(
-                invite = invite,
-                model = model,
-                session = session,
-                onClose = { dialogs.closedRequests = dialogs.closedRequests + invite.id },
-            )
-        }
+    InviteDialogsShown(session, model, dialogs)
     if (dialogs.addingDevice) {
         AddDeviceDialog(appHandle = session.appHandle, onDismiss = { dialogs.addingDevice = false })
     }
@@ -154,6 +131,44 @@ internal fun MembersDialogsShown(
             onDismiss = { dialogs.cutOffRetry = null },
         )
     }
+}
+
+/** The dialogs of inviting: the form, the shown invite, and its person's request. */
+@Composable
+private fun InviteDialogsShown(
+    session: OpenLibrary,
+    model: MembersModel,
+    dialogs: MembersDialogs,
+) {
+    if (dialogs.inviting) {
+        InviteDialog(
+            session = session,
+            storage = model.storage,
+            onCreated = { id ->
+                dialogs.inviting = false
+                dialogs.shownInvite = id
+            },
+            onDismiss = { dialogs.inviting = false },
+        )
+    }
+    model.invites.firstOrNull { it.id == dialogs.shownInvite }?.let { invite ->
+        InviteShownDialog(
+            session = session,
+            invite = invite,
+            storage = model.storage,
+            onDismiss = { dialogs.shownInvite = null },
+        )
+    }
+    model.invites
+        .firstOrNull { it.requestToDecide != null && it.id !in dialogs.closedRequests }
+        ?.let { invite ->
+            JoinRequestDialog(
+                invite = invite,
+                model = model,
+                session = session,
+                onClose = { dialogs.closedRequests = dialogs.closedRequests + invite.id },
+            )
+        }
 }
 
 private fun remove(

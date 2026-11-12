@@ -83,6 +83,14 @@ impl LibraryManager {
         })
     }
 
+    /// A request for this device to sync every 5 seconds instead of every 30,
+    /// held for as long as an invite's screen shows, so the screen hears of
+    /// the invite's person soon after their request is sent. Dropping the
+    /// guard ends the request.
+    pub fn hold_invite_screen_sync(&self) -> coven::SyncOftenGuard {
+        self.store.sync_often(crate::bootstrap::WAITING_SCREEN_CHECK_INTERVAL)
+    }
+
     /// The admin changes this device asked for, each until the person
     /// dismisses its outcome, live (§5.6).
     pub fn subscribe_admin_changes(

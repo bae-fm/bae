@@ -391,6 +391,7 @@
     <string name="members_joining">Csatlakozik</string>
     <string name="members_invite_shares_access">Online állapotban megosztja a hozzáférést</string>
     <string name="invite_granting">A könyvtár megosztása vele: %1$s…</string>
+    <string name="members_sharing_access">Hozzáférés megosztása</string>
     <string name="settings_profile_making">A profilod létrehozása…</string>
     <string name="settings_profile_making_detail">A profilod akkor jelenik meg, amikor ez a könyvtár szinkronizál.</string>
     <string name="settings_profile_refused">Nem sikerült létrehozni a profilodat. %1$s</string>
@@ -461,4 +462,7 @@
     <string name="invite_s3_use_my_key">Használd inkább az én kulcsomat</string>
     <string name="invite_s3_mine">A te kulcsodat fogják használni. Ha később el akarod távolítani őket, új kulcsot készítesz magadnak, és megadod minden eszközödön.</string>
     <string name="invite_s3_use_their_key">Használd inkább az ő saját kulcsukat</string>
+    <string name="invite_offline">A kód itt jelenik meg, amint ez az eszköz online lesz, és a(z) %1$s megosztotta a könyvtárat vele: %2$s.</string>
+    <string name="invite_scan_instruction">Olvasd be vagy add meg a kódot az ő eszközükön.</string>
+    <string name="invite_cancel_message">%1$s nem tudja majd használni ezt a meghívót.</string>
 </resources>

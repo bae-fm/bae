@@ -60,6 +60,9 @@ public final class MembershipStore {
             @escaping @MainActor (BridgeActiveDevice?) -> Void,
             @escaping @MainActor (any Error) -> Void
         ) -> AnyObject
+    /// Asks this device to sync every few seconds, returning what ends the
+    /// request.
+    private let holdFrequentSync: @MainActor () -> () -> Void
     private let readPeopleOperation: @Sendable () async throws -> PeopleRead
     @ObservationIgnored
     private var membersSubscription: AnyObject?
@@ -121,6 +124,10 @@ public final class MembershipStore {
                     onValue: apply,
                     onError: fail
                 )
+            },
+            holdFrequentSync: {
+                let hold = handle.holdInviteScreenSync()
+                return { hold.release() }
             }
         )
     }
@@ -134,8 +141,10 @@ public final class MembershipStore {
                 BridgeAddedDeviceWatch,
                 @escaping @MainActor (BridgeActiveDevice?) -> Void,
                 @escaping @MainActor (any Error) -> Void
-            ) -> AnyObject
+            ) -> AnyObject,
+        holdFrequentSync: @escaping @MainActor () -> () -> Void
     ) {
+        self.holdFrequentSync = holdFrequentSync
         self.subscribeMembers = subscribeMembers
         self.subscribeShown = subscribeShown
         readPeopleOperation = readPeople
@@ -169,7 +178,8 @@ public final class MembershipStore {
                 subscribeAddedDevice: { _, apply, _ in
                     apply(addedDevice)
                     return NSObject()
-                }
+                },
+                holdFrequentSync: { {} }
             )
             store.selfIsAdmin = selfIsAdmin
             store.inviteEntries =
@@ -230,6 +240,18 @@ public final class MembershipStore {
         for await _ in cancelled {}
         holding.finish()
         withExtendedLifetime(pulls) {}
+    }
+
+    /// Have this device sync every few seconds until the calling task is
+    /// cancelled: an invite's sheet runs it while it shows, so it hears of the
+    /// invite's person soon after their request is sent.
+    public func holdInviteScreenSync() async {
+        let release = holdFrequentSync()
+        defer { release() }
+        // Held until the task is cancelled, which ends the stream's wait.
+        let (cancelled, holding) = AsyncStream.makeStream(of: Never.self)
+        for await _ in cancelled {}
+        holding.finish()
     }
 
     private func readPeople() {

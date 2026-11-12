@@ -393,6 +393,7 @@
     <string name="members_joining">Treedt toe</string>
     <string name="members_invite_shares_access">Deelt toegang zodra het apparaat online is</string>
     <string name="invite_granting">Bibliotheek wordt gedeeld met %1$s…</string>
+    <string name="members_sharing_access">Toegang wordt gedeeld</string>
     <string name="settings_profile_making">Je profiel wordt gemaakt…</string>
     <string name="settings_profile_making_detail">Je profiel verschijnt zodra deze bibliotheek is gesynchroniseerd.</string>
     <string name="settings_profile_refused">Je profiel kon niet worden gemaakt. %1$s</string>
@@ -463,4 +464,7 @@
     <string name="invite_s3_use_my_key">Mijn eigen sleutel gebruiken</string>
     <string name="invite_s3_mine">Ze gebruiken jouw sleutel. Om ze later te verwijderen maak je een nieuwe sleutel voor jezelf en voer je die in op elk van je apparaten.</string>
     <string name="invite_s3_use_their_key">Hun eigen sleutel gebruiken</string>
+    <string name="invite_offline">De code verschijnt hier zodra dit apparaat online is en %1$s de bibliotheek met %2$s heeft gedeeld.</string>
+    <string name="invite_scan_instruction">Scan de code of voer hem in op hun apparaat.</string>
+    <string name="invite_cancel_message">%1$s kan deze uitnodiging niet meer gebruiken.</string>
 </resources>
