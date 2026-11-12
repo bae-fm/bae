@@ -24,21 +24,20 @@ struct CoverGalleryView: View {
 
     private var gallery: some View {
         VStack(spacing: 0) {
-            HStack(spacing: ThemeSpace.group) {
+            HStack(spacing: ThemeSpace.related) {
                 Text(initialLayout == .lightbox ? "Images" : "Change cover")
                     .themeText(.title)
                 Spacer()
                 if let onRefresh, remoteItems.canRefresh {
-                    Button(action: onRefresh) {
-                        Label("Refresh", systemImage: "arrow.clockwise")
-                    }
-                    .disabled(remoteItems.isLoading || isSaving)
+                    Button("Refresh", action: onRefresh)
+                        .disabled(remoteItems.isLoading || isSaving)
                 }
                 Button("Done", action: onDone)
                     .keyboardShortcut(.cancelAction)
                     .disabled(isSaving)
             }
-            .padding(ThemeSpace.section)
+            .padding(.vertical, ThemeSpace.group + ThemeSpace.line)
+            .padding(.horizontal, ThemeSpace.edge)
             Divider()
             HStack(spacing: 0) {
                 ScrollView {
@@ -66,11 +65,15 @@ struct CoverGalleryView: View {
                             )
                         }
                         if browser.showsRemoteSources {
-                            section(
-                                "Remote sources",
-                                icon: "globe",
-                                items: browser.remoteItems
-                            )
+                            // Unlinked, there is nothing to count or list:
+                            // the block that says so stands in the section.
+                            if remoteItems != .unlinked {
+                                section(
+                                    "Remote sources",
+                                    icon: "globe",
+                                    items: browser.remoteItems
+                                )
+                            }
                             remoteStatus
                         }
                         if browser.showsReleaseFiles {
@@ -86,7 +89,8 @@ struct CoverGalleryView: View {
                 .frame(maxWidth: .infinity)
                 Divider()
                 preview
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .frame(width: 360)
+                    .frame(maxHeight: .infinity, alignment: .top)
                     .padding(ThemeSpace.section)
                     .background(Theme.well)
             }
@@ -118,7 +122,8 @@ struct CoverGalleryView: View {
                         || isSaving
                 )
             }
-            .padding(ThemeSpace.section)
+            .padding(.vertical, ThemeSpace.edge)
+            .padding(.horizontal, ThemeSpace.section)
         }
         .background(Theme.background)
     }
@@ -250,12 +255,16 @@ extension CoverGalleryView {
         icon: String,
         items: [CoverItem]
     ) -> some View {
-        VStack(alignment: .leading, spacing: ThemeSpace.edge) {
-            HStack {
+        VStack(
+            alignment: .leading,
+            spacing: ThemeSpace.related + ThemeSpace.line
+        ) {
+            HStack(spacing: ThemeSpace.compact) {
                 Label(title, systemImage: icon)
                     .themeText(.heading)
-                Spacer()
                 Text(items.count, format: .number)
+                    .themeText(.heading)
+                    .fontWeight(.regular)
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
             }
@@ -279,15 +288,15 @@ extension CoverGalleryView {
         Button {
             browser.cursor?.select(id: item.id)
         } label: {
-            VStack(alignment: .leading, spacing: ThemeSpace.related) {
+            VStack(alignment: .leading, spacing: ThemeSpace.inline) {
                 ImageView(
                     content: item.image,
                     contentMode: .fit,
                     pointSize: 180
                 )
+                .padding(ThemeSpace.related + ThemeSpace.line)
                 .frame(height: 138)
                 .frame(maxWidth: .infinity)
-                .padding(ThemeSpace.related)
                 .background(Theme.hover)
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
                 .overlay {
@@ -298,21 +307,9 @@ extension CoverGalleryView {
                             lineWidth: 2
                         )
                 }
-                .overlay(alignment: .topTrailing) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .symbolRenderingMode(.palette)
-                        .foregroundStyle(Theme.onFill, Theme.accent)
-                        .padding(ThemeSpace.related)
-                        .opacity(
-                            item.id == .currentCover
-                                || item.selection == selectedCover ? 1 : 0
-                        )
-                }
                 Text(verbatim: item.label)
                     .themeText(.rowTitle)
-                    .lineLimit(2)
-                    .truncationMode(.middle)
-                    .frame(height: 34, alignment: .topLeading)
+                    .lineLimit(1)
                 Text(verbatim: item.sourceLabel)
                     .themeText(.detail)
                     .foregroundStyle(.secondary)
@@ -367,7 +364,7 @@ extension CoverGalleryView {
     @ViewBuilder
     private var preview: some View {
         if let cursor = browser.cursor {
-            VStack(spacing: ThemeSpace.section) {
+            VStack(spacing: ThemeSpace.compact) {
                 Button {
                     browser.layout = .lightbox
                 } label: {
@@ -376,15 +373,11 @@ extension CoverGalleryView {
                         contentMode: .fit,
                         pointSize: 800
                     )
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .clipped()
+                    .frame(width: 300, height: 300)
+                    .clipShape(
+                        RoundedRectangle(cornerRadius: ThemeRadius.artwork)
+                    )
                     .contentShape(Rectangle())
-                    .overlay(alignment: .topTrailing) {
-                        Image(systemName: "arrow.up.left.and.arrow.down.right")
-                            .padding(ThemeSpace.related)
-                            .background(.regularMaterial, in: Circle())
-                            .padding(ThemeSpace.related)
-                    }
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(Text("View in lightbox"))
@@ -402,7 +395,7 @@ extension CoverGalleryView {
                 Text(verbatim: cursor.current.sourceLabel)
                     .themeText(.detail)
                     .foregroundStyle(.secondary)
-                HStack(spacing: ThemeSpace.section) {
+                HStack(spacing: ThemeSpace.related + ThemeSpace.line) {
                     Button {
                         browser.cursor?.goToPrevious()
                     } label: {
