@@ -25,7 +25,7 @@
   function MacAlert(props) {
     return h('div', { className: 'bae-m-scrim' },
       h('div', { role: 'alertdialog', 'aria-label': props.title, className: 'bae-m-alert' },
-        h('div', { className: 'bae-m-alert-icon', 'aria-hidden': true }, h(AppIcon, { size: 52 })),
+        h('div', { className: 'bae-m-alert-icon', role: 'img', 'aria-label': 'application icon' }, h(AppIcon, { size: 52 })),
         h('div', { className: 'bae-m-alert-title' }, props.title),
         // `warning`: what the choice costs, as a quiet notice between the title and the message ("Unsent changes will be lost").
         props.warning ? h(MacNotice, { quiet: true, flush: true, tone: 'warning', title: props.warning }) : null,

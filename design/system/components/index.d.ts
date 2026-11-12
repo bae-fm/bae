@@ -205,7 +205,7 @@ export declare function AndroidDisclosure(props: { label: string; summary?: stri
 export declare function StatusGlyph(props: { tone: StatusTone; set?: 'mac'; outline?: boolean; muted?: boolean; inline?: boolean; size?: number; className?: string }): React.ReactElement | null;
 
 /** A cover or picture. Boards give each title its own stand-in colors; `missing` is a plain tile. */
-export interface ArtworkProps { title?: string; seed?: string; size?: number; radius?: number; round?: boolean; missing?: boolean; shadow?: 'tile' | 'bar'; ring?: boolean; label?: string; children?: React.ReactNode }
+export interface ArtworkProps { title?: string; seed?: string; size?: number; radius?: number; round?: boolean; missing?: boolean; shadow?: 'tile' | 'bar'; ring?: boolean; /** The picture's name, for one that is itself what a screen shows (a gallery's image). Without it the picture is decorative, as beside its title. */ label?: string; children?: React.ReactNode }
 export declare function Artwork(props: ArtworkProps): React.ReactElement;
 export interface NowPlayingProps { trackTitle?: string; trackArtist?: string; trackAlbum?: string; playing?: boolean; waiting?: boolean; position?: number; held?: number | string; elapsed?: string; duration?: string; repeat?: boolean; casting?: string }
 export interface MacMainWindowProps extends NowPlayingProps { section?: 'Library' | 'Import'; search?: string; searchFocused?: boolean; sync?: 'moving' | 'attention' | 'paused'; shuffle?: boolean; queueOpen?: boolean; width?: number; height?: number; children?: React.ReactNode }
