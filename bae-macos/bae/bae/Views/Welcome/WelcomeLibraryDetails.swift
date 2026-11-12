@@ -26,11 +26,14 @@ struct WelcomeLibraryDetails: View {
         Form {
             Section(library.name) {
                 rows
+                    .listRowBackground(Rectangle().fill(Theme.surface))
             }
         }
         .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
+        .background(Theme.surfaceElevated)
         .scrollDisabled(true)
-        .frame(width: 320)
+        .frame(width: 350)
         .task { await load() }
     }
 

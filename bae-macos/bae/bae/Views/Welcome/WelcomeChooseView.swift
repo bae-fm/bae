@@ -117,8 +117,11 @@ struct WelcomeChooseView: View {
         }
     }
 
+    /// The gap under the logo block, which the boards draw as 40pt.
+    private static let belowLogo = ThemeSpace.page + ThemeSpace.related
+
     private var content: some View {
-        VStack(spacing: ThemeSpace.page) {
+        VStack(spacing: Self.belowLogo) {
             Spacer()
             VStack(
                 spacing: showsFirstRunActions

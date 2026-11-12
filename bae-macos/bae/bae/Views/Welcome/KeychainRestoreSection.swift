@@ -116,6 +116,7 @@ private struct SavedCodeRow: View {
             VStack(alignment: .leading, spacing: ThemeSpace.inline) {
                 Text(verbatim: title)
                     .themeText(.strong)
+                    .foregroundStyle(Theme.textPrimary)
                     .lineLimit(1)
                 Text(verbatim: detail)
                     .themeText(.detail)
@@ -147,7 +148,12 @@ private struct SavedCodeRow: View {
 
     private var detail: String {
         switch entry {
-        case .readable(let saved): saved.info.location.accountLine
+        case .readable(let saved):
+            // The provider and the account side by side, as the unreadable
+            // line puts its reason and library.
+            saved.info.location.accountLabel.map {
+                "\(saved.info.location.displayName) · \($0)"
+            } ?? saved.info.location.accountLine
         case .unreadable(let libraryId, let reason):
             "\(reason.label) · \(libraryId)"
         }

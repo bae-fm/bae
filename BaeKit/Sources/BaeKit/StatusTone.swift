@@ -167,18 +167,15 @@ extension View {
         }
     }
 
-    /// Sets the content on a card: the surface, rounded, with a hairline edge;
-    /// an elevated card floats over other content with a shadow.
+    /// Sets the content on a card: the surface, rounded, with no edge, as the
+    /// design system's box is; an elevated card floats over other content with
+    /// a shadow.
     public func card(elevated: Bool = false) -> some View {
         background(
             elevated ? Theme.surfaceElevated : Theme.surface,
             in: RoundedRectangle(cornerRadius: ThemeRadius.card)
         )
         .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.card))
-        .overlay {
-            RoundedRectangle(cornerRadius: ThemeRadius.card)
-                .strokeBorder(Theme.hairline, lineWidth: 1)
-        }
         .shadow(
             color: elevated ? Theme.shadow : .clear,
             radius: ThemeSpace.group,
