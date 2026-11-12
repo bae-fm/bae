@@ -50,6 +50,8 @@
 /* Under the words, a borderless button keeps the same padding as the button beside it, and the first one pulls out by that padding so its words line up with the text above. */
 .bae-m-notice-below .bae-m-btn-borderless { padding: 0 12px; }
 .bae-m-notice-below > .bae-m-btn-borderless:first-child { margin-left: -12px; }
+/* A Mac notice's text buttons (Details) are the accent, apart from its title, as Android's text buttons already are. */
+.bae-m-notice .bae-m-btn-borderless:not(.bae-m-btn-muted) { color: var(--accent); }
 .bae-m-notice-buttons { flex: none; display: flex; align-items: center; gap: var(--space-related); margin: calc((1lh - var(--size-control)) / 2) 0; }
 .bae-m-notice-dismiss { flex: none; margin: -6px -8px -6px -8px; }
 .bae-a-notice { display: flex; flex-direction: column; gap: 2px; line-height: 20px; }

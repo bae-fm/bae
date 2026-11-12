@@ -21,7 +21,7 @@ Inside a `MacBox` a filled notice keeps to the rows' edges: it is inset by the r
 
 Its text takes the size of the screen it sits in. The glyph is 1.19 times the text, centred on the first line. In light, info, success, warning and danger fill with their own pale notice colour (`info-notice` …), with `on-notice` text. In dark, every notice has the neutral fill and the screen's text, and only the glyph carries the tone: a coloured fill over a dark screen reads grey or brown when see-through and glares when solid.
 
-Every notice's glyph is the outline form, in the tone's colour (grey in the centred layout): a filled disc is louder than the words beside it.
+Its text buttons (Details) are the accent, so they read apart from the title. Every notice's glyph is the outline form, in the tone's colour (grey in the centred layout): a filled disc is louder than the words beside it.
 
 ### Writing one
 

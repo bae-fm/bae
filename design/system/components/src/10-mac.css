@@ -23,7 +23,7 @@
 
 .bae-m-section { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; }
 .bae-m-heading + .bae-m-section, .bae-m-heading + .sc-host-x > .bae-m-section { margin-top: 4px; }
-.bae-m-section-title { margin: 0 4px; font: 600 13px var(--font-sans); color: var(--text-primary); }
+.bae-m-section-title { margin: 0 4px; font: 600 13px var(--font-sans); color: var(--text-secondary); }
 
 .bae-m-box { display: flex; flex-direction: column; background: var(--surface); border-radius: var(--radius-card); overflow: hidden; color: var(--text-primary); font: 400 13px var(--font-sans); }
 .bae-m-box-elevated { background: var(--elevated); box-shadow: 0 var(--space-compact) var(--space-group) var(--shadow); }
