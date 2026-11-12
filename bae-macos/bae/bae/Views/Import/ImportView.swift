@@ -78,7 +78,10 @@ struct ImportView: View {
             Divider()
             ZStack {
                 if let failure = listSlot.loadFailure {
-                    failedState(failure)
+                    ImportListFailedView(
+                        failure: failure,
+                        onRetry: { listSlot.startLoad() }
+                    )
                 }
                 else if importStore.watchedFolders.isEmpty {
                     ImportEmptyState()
@@ -114,18 +117,6 @@ struct ImportView: View {
                 ]
             )
         }
-    }
-
-    /// Shown when the list could not be read, instead of an empty state that
-    /// would wrongly say no folder is watched.
-    private func failedState(_ failure: DisplayError) -> some View {
-        Notice(
-            title: String(localized: "The import list could not be read"),
-            advice: nil,
-            error: failure,
-            look: .centered,
-            action: failure.retryAction { listSlot.startLoad() }
-        )
     }
 
     /// Stop watching `path`. Its candidates leave the selection in the same
