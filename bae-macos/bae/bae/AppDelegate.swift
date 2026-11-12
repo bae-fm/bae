@@ -608,15 +608,35 @@ extension AppDelegate {
 
     /// Close the library another one replaced, off the main actor: releasing
     /// its handle here would close it on the main thread. Nothing waits on it,
-    /// so a failure is logged.
+    /// so a failure is shown on the alert, naming the library.
     private func closeReplaced(_ replaced: AppService) {
         Task {
+            // The name is read first: it can't be once the library is closed.
+            let name: String
+            do {
+                name = try await replaced.libraryNameStore.current()
+            }
+            catch {
+                baeAppLogger.error(
+                    "Failed to read the name of the library another replaced: \(String(reflecting: error))"
+                )
+                name = replaced.libraryId
+            }
             do {
                 try await replaced.close(showing: nil)
             }
             catch {
                 baeAppLogger.error(
                     "Failed to close the library another replaced: \(String(reflecting: error))"
+                )
+                guard let failure = DisplayError(error) else { return }
+                uiStore.showError(
+                    DisplayError(
+                        line: localizedCoreString(
+                            "ui.load_error.shutdown.title"
+                        ),
+                        detail: "\(name)\n\(failure.detail ?? failure.line)"
+                    )
                 )
             }
         }
