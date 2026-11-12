@@ -21,6 +21,11 @@ class SettingsSyncShots : BoardShot() {
     @Test
     fun androidSettingsSyncDropbox() = shot("android.settings.sync.dropbox") { Sync(synced, folder) }
 
+    /** Sync over a Dropbox folder with the restore code shown. */
+    @Test
+    fun androidSettingsSyncCodeShown() =
+        shot("android.settings.sync.code-shown") { Sync(synced, folder, RestoreCodeState.Shown(SHOWN_RESTORE_CODE)) }
+
     /** Sync over a OneDrive folder, synced. */
     @Test
     fun androidSettingsSyncOnedrive() =
@@ -93,12 +98,13 @@ private val s3 = BridgeStorageLocation.S3("my-bucket", "us-east-1", "https://s3.
 private fun Sync(
     line: SyncLine,
     location: BridgeStorageLocation,
+    restoreCode: RestoreCodeState = RestoreCodeState.Masked(RESTORE_CODE),
 ) = ScreenScene {
     AndroidSettingsSync(
         line = line,
         notices = {},
         location = location,
-        restoreCode = RestoreCodeState.Masked(RESTORE_CODE),
+        restoreCode = restoreCode,
         localOnly = false,
         pending = emptyList(),
         recordsDropped = false,
@@ -113,3 +119,8 @@ private fun Sync(
 }
 
 private const val RESTORE_CODE = "CVR1 UJZD EGXD NCF3 2EPF 3DHO DZDO CIS2 JHTL GMXG EDN7 3U55 XTPL PFT7 V4SE H2KV"
+
+private const val SHOWN_RESTORE_CODE =
+    "CVR1 UJZD EGXD NCF3 2EPF 3DHO DZDO CIS2 JHTL GMXG EDN7 3U55 XTPL PFT7 V4SE H2KV J72C EUVW 75EF R6ED T4SY WB5W KH7D NSIP " +
+        "ZZ7F K4ZR I3R2 WYOJ FLJO OA7L QSAJ 2XUI D5ZZ ZZG6 ZDME N4KH VDGA JGXB ENYJ QWX6 HH75 66TF JGVQ 6KBN XJBT FQXK WOVO MPZO " +
+        "M7WB BR6Q MW4W XFOG O6MV N6A6 WFHY M6L3 VFZ5 ZFKK IBJ5 J6WJ IBAG I3MN B"

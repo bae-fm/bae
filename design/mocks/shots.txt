@@ -94,9 +94,8 @@ android.settings.person.admin
 android.settings.person.make-admin-done
 android.settings.person.make-admin-waiting
 android.settings.playback
-android.settings.restore-code.hidden
 android.settings.restore-code.printed
-android.settings.restore-code.shown
+android.settings.sync.code-shown
 android.settings.sync.dropbox
 android.settings.sync.onedrive
 android.settings.sync.pending
@@ -266,8 +265,6 @@ mac.settings.person.admin
 mac.settings.person.make-admin-done
 mac.settings.person.make-admin-waiting
 mac.settings.playback
-mac.settings.restore-code.hidden
-mac.settings.restore-code.shown
 mac.settings.save-as
 mac.settings.save-as.bit-depth-menu
 mac.settings.save-as.bitrate-menu
@@ -338,6 +335,7 @@ mac.settings.sync-setup.s3-step-2
 mac.settings.sync-setup.s3-step-3
 mac.settings.sync-setup.s3-step-4
 mac.settings.sync.cloud-home-unreadable
+mac.settings.sync.code-shown
 mac.settings.sync.dropbox
 mac.settings.sync.icloud
 mac.settings.sync.onedrive

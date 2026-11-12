@@ -381,20 +381,22 @@ private struct LibraryRestoreCodeSection: View {
 
     /// The Sync page over `fixture`'s library, its sync as `shown` says, with
     /// what coven waits on, a storage setup that ended undone, and a failed
-    /// read of the library's location, when given.
+    /// read of the library's location, when given, and its restore code
+    /// masked unless `restoreCode` says otherwise.
     @MainActor
     func syncSettingsPagePreview(
         _ fixture: LibrarySettingsTabPreviewFixture,
         shown: BridgeSyncShown,
         pending: [BridgePendingRecord] = [],
         undoneSetup: BridgeUndoneStorageSetup? = nil,
-        storageReadError: DisplayError? = nil
+        storageReadError: DisplayError? = nil,
+        restoreCode: RestoreCodeReveal.State = .masked(
+            code: PreviewData.restoreCodeGrouped
+        )
     ) -> some View {
         NavigationStack {
             SyncSettingsPage(
-                restoreCode: RestoreCodeReveal(
-                    previewState: .masked(code: PreviewData.restoreCodeGrouped)
-                ),
+                restoreCode: RestoreCodeReveal(previewState: restoreCode),
                 storageReadError: storageReadError,
                 onResetDevice: {},
                 onRestoreFromCode: {},

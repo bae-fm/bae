@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>macOS settings: Restore code, hidden</title>
+<title>macOS settings: Sync: restore code shown</title>
 <script src="./support.js"></script>
 <link rel="stylesheet" href="ds/bae/tokens.css">
 <link rel="stylesheet" href="ds/bae/components/bundle.css">
@@ -24,8 +24,19 @@ body{margin:0}
 .foot{font-size:11px;color:var(--text-secondary);padding:6px 4px 0}
 </style>
 </helmet>
-<x-import component-from-global-scope="Bae.MacSettingsWindow" pane="Library" title="Restore code" back="Library">
-  <dc-import name="mac.parts.restore-code" hint-size="460px,150px"></dc-import>
+<x-import component-from-global-scope="Bae.MacSettingsWindow" pane="Library" title="Sync" back="Library">
+  <dc-import name="mac.parts.sync-status" status="Synced" tone="success" cause="" fix="" last-synced="" hint-size="100%,110px"></dc-import>
+  <x-import component-from-global-scope="Bae.MacSection" title="Cloud home">
+    <x-import component-from-global-scope="Bae.MacBox">
+      <x-import component-from-global-scope="Bae.MacRow" label="Provider" value="Dropbox"></x-import>
+      <x-import component-from-global-scope="Bae.MacRow" label="Account" value="name@example.com"></x-import>
+      <x-import component-from-global-scope="Bae.MacRow" label="Folder" value="Music"></x-import>
+      <x-import component-from-global-scope="Bae.MacRow" label="">
+        <x-import component-from-global-scope="Bae.MacButton">Open in browser</x-import>
+      </x-import>
+    </x-import>
+  </x-import>
+<x-import component-from-global-scope="Bae.MacSection" title="Restore code"><dc-import name="mac.parts.restore-code" shown="true" hint-size="100%,150px"></dc-import></x-import>
 </x-import>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":690,"height":600}}'>

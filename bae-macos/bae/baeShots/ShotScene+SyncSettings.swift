@@ -6,8 +6,8 @@ import SwiftUI
 extension ShotScene {
     /// The Sync page's boards (`mac.settings.sync.*`) that show what sync
     /// waits on or why its cloud home isn't shown: the pending records as
-    /// rows, the setup that ended undone, and a cloud home that couldn't be
-    /// read.
+    /// rows, the setup that ended undone, a cloud home that couldn't be
+    /// read, and the restore code shown.
     static let syncSettingsScenes: [ShotScene] = [
         ShotScene(
             id: "mac.settings.sync.pending",
@@ -104,6 +104,20 @@ extension ShotScene {
                         line: "Couldn’t read the cloud home.",
                         detail: "database error: no such record"
                     )
+                )
+            )
+        },
+        ShotScene(
+            id: "mac.settings.sync.code-shown",
+            size: CGSize(width: 500, height: 640)
+        ) {
+            ShotStage(
+                syncSettingsPagePreview(
+                    LibrarySettingsTabPreviewFixture(
+                        storage: PreviewData.previewDropboxStorage
+                    ),
+                    shown: .previewSynced,
+                    restoreCode: .shown(code: PreviewData.restoreCodeGrouped)
                 )
             )
         },
