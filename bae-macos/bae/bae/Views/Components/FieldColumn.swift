@@ -41,13 +41,10 @@ struct MacTextField<Field: View>: View {
         GridRow(alignment: .firstTextBaseline) {
             Text(label)
                 .gridColumnAlignment(.trailing)
-            VStack(alignment: .leading, spacing: ThemeSpace.line) {
+            VStack(alignment: .leading, spacing: ThemeSpace.inline) {
                 field
                 if let note {
-                    Text(note)
-                        .themeText(.detail)
-                        .foregroundStyle(.secondary)
-                        .padding(.leading, ThemeSpace.fieldInset)
+                    FieldNote(note)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)

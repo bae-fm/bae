@@ -148,7 +148,10 @@ struct InvitePersonForm: View {
 
     var body: some View {
         MacSheet("Invite a person", width: 440) {
-            VStack(alignment: .leading, spacing: ThemeSpace.related) {
+            VStack(
+                alignment: .leading,
+                spacing: ThemeSpace.related + ThemeSpace.line
+            ) {
                 fields
                 choices
                 if let error {
@@ -205,20 +208,22 @@ struct InvitePersonForm: View {
             )
         case .s3:
             if usesOwnKey {
-                SheetMessage(
+                MacNote(
                     "They will use your key. To remove them later, you make a new key for yourself and enter it on each of your devices."
                 )
             }
             else {
-                FieldColumn {
-                    MacTextField("Access key ID") {
+                FieldBox {
+                    FieldBoxRow("Access key ID", labelWidth: labelWidth) {
                         TextField("Access key ID", text: $accessKeyId)
                             .labelsHidden()
                             .boxedTextField()
                             .focused($focused)
                     }
-                    MacTextField(
+                    FieldBoxDivider()
+                    FieldBoxRow(
                         "Secret access key",
+                        labelWidth: labelWidth,
                         note: "Their own key to the bucket, so they can join."
                     ) {
                         SecureField("Secret access key", text: $secretAccessKey)
@@ -230,23 +235,49 @@ struct InvitePersonForm: View {
         }
     }
 
+    /// The width of the labels' column: the S3 labels are the shorter.
+    private var labelWidth: CGFloat { storage == .s3 ? 120 : 150 }
+
     private var choices: some View {
-        FieldColumn {
-            MacTextField("Role") {
-                Picker("Role", selection: $role) {
-                    Text("Member").tag(BridgeMemberRole.member)
-                    Text("Admin").tag(BridgeMemberRole.admin)
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
+        let roles: [BridgeMemberRole] = [.member, .admin]
+        let lifetimes: [BridgeInviteLifetime] = [.sevenDays, .thirtyDays]
+        return FieldBox {
+            FieldBoxRow("Role", labelWidth: labelWidth) {
+                MacSegmentedControl(
+                    selectedIndex: Binding(
+                        get: { roles.firstIndex(of: role) ?? 0 },
+                        set: { role = roles[$0] }
+                    ),
+                    segments: [
+                        .init(
+                            label: String(localized: "Member"),
+                            systemImage: nil
+                        ),
+                        .init(
+                            label: String(localized: "Admin"),
+                            systemImage: nil
+                        ),
+                    ]
+                )
             }
-            MacTextField("Invite lasts") {
-                Picker("Invite lasts", selection: $lifetime) {
-                    Text("7 days").tag(BridgeInviteLifetime.sevenDays)
-                    Text("30 days").tag(BridgeInviteLifetime.thirtyDays)
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
+            FieldBoxDivider()
+            FieldBoxRow("Invite lasts", labelWidth: labelWidth) {
+                MacSegmentedControl(
+                    selectedIndex: Binding(
+                        get: { lifetimes.firstIndex(of: lifetime) ?? 0 },
+                        set: { lifetime = lifetimes[$0] }
+                    ),
+                    segments: [
+                        .init(
+                            label: String(localized: "7 days"),
+                            systemImage: nil
+                        ),
+                        .init(
+                            label: String(localized: "30 days"),
+                            systemImage: nil
+                        ),
+                    ]
+                )
             }
         }
     }
@@ -255,8 +286,8 @@ struct InvitePersonForm: View {
         _ label: LocalizedStringKey,
         why: LocalizedStringKey
     ) -> some View {
-        FieldColumn {
-            MacTextField(label, note: why) {
+        FieldBox {
+            FieldBoxRow(label, labelWidth: labelWidth, note: why) {
                 TextField(label, text: $email)
                     .labelsHidden()
                     .boxedTextField()
