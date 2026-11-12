@@ -17,11 +17,16 @@ struct MacPortField: View {
     private static let digits = 5
 
     /// Five digits wide, as the widest digits set.
-    private static let width: CGFloat = {
+    static let width: CGFloat = {
         let widest = String(repeating: "0", count: digits) as NSString
         let text = widest.size(withAttributes: [.font: ThemeText.body.nsFont])
         return ceil(text.width) + 2 * ThemeSpace.fieldInset + 4
     }()
+
+    /// What typing leaves of the text: the first five digits.
+    static func digitsOnly(_ text: String) -> String {
+        String(text.filter(\.isASCII).filter(\.isNumber).prefix(digits))
+    }
 
     var body: some View {
         CommittedTextField(
@@ -29,11 +34,7 @@ struct MacPortField: View {
             value: value,
             fillsWidth: true,
             invalid: invalid,
-            filter: {
-                String(
-                    $0.filter(\.isASCII).filter(\.isNumber).prefix(Self.digits)
-                )
-            },
+            filter: Self.digitsOnly,
             onCommit: onCommit
         )
         .frame(width: Self.width)

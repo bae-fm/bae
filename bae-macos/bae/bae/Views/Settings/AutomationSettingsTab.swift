@@ -104,7 +104,11 @@ struct AutomationSettingsContent: View {
                     TextField("Port", text: $portText)
                         .labelsHidden()
                         .boxedTextField()
-                        .frame(width: 88)
+                        .frame(width: MacPortField.width)
+                        .onChange(of: portText) { _, typed in
+                            let digits = MacPortField.digitsOnly(typed)
+                            if digits != typed { portText = digits }
+                        }
                         .onSubmit(applyPort)
                     Button("Save", action: applyPort)
                         .disabled(isWorking)
@@ -119,6 +123,7 @@ struct AutomationSettingsContent: View {
                             detail: error.detail
                         )
                     )
+                    .settingsNoticeRow()
                 }
                 switch message {
                 case .feedback(let text):
@@ -132,7 +137,7 @@ struct AutomationSettingsContent: View {
                 }
             }
             Section {
-                HStack {
+                HStack(spacing: ThemeSpace.related) {
                     Button("Copy token", action: copyToken)
                     Button("Rotate token", action: rotateToken)
                 }
@@ -140,27 +145,6 @@ struct AutomationSettingsContent: View {
             }
         }
         .formStyle(.settings)
-    }
-
-    @ViewBuilder
-    private var statusRow: some View {
-        LabeledContent("Status") {
-            HStack(spacing: ThemeSpace.related) {
-                switch status {
-                case .disabled:
-                    Text("Disabled")
-                        .foregroundStyle(.secondary)
-                case .running(let url):
-                    Text(url)
-                        .textSelection(.enabled)
-                case .error:
-                    Text("Not running")
-                        .foregroundStyle(.secondary)
-                }
-                Button("Refresh", action: refreshStatus)
-                    .disabled(isWorking)
-            }
-        }
     }
 
     private func syncFromConfig(_ mcp: BridgeMcpConfig) {
@@ -294,6 +278,30 @@ struct AutomationSettingsContent: View {
                         }
                     )
                 }
+            }
+        }
+    }
+}
+
+/// The Status row.
+extension AutomationSettingsContent {
+    @ViewBuilder
+    private var statusRow: some View {
+        LabeledContent("Status") {
+            HStack(spacing: ThemeSpace.group) {
+                switch status {
+                case .disabled:
+                    Text("Disabled")
+                        .foregroundStyle(.secondary)
+                case .running(let url):
+                    Text(url)
+                        .textSelection(.enabled)
+                case .error:
+                    Text("Not running")
+                        .foregroundStyle(.secondary)
+                }
+                Button("Refresh", action: refreshStatus)
+                    .disabled(isWorking)
             }
         }
     }
