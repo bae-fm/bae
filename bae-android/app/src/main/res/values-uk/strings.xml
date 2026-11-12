@@ -51,7 +51,7 @@
     <string name="seek_position">Позиція</string>
     <string name="now_playing_track_by_artist">Зараз відтворюється, %1$s, %2$s</string>
     <string name="queue_clear">Очистити</string>
-    <string name="queue_clear_up_next">Очистити „Далі в черзі“</string>
+    <string name="queue_clear_up_next">Очистити Далі в черзі</string>
     <string name="queue_clear_playing_from">Очистити джерело відтворення</string>
     <string name="queue_section_now_playing">Зараз відтворюється</string>
     <string name="queue_section_up_next">Далі в черзі</string>
@@ -66,7 +66,7 @@
     <string name="queue_shuffle_on">Перемішати</string>
     <string name="queue_shuffle_off">Вимкнути перемішування</string>
     <string name="search_failed">Не вдалося виконати пошук</string>
-    <string name="search_no_results">Немає результатів для «%1$s»</string>
+    <string name="search_no_results">Немає результатів</string>
     <string name="search_section_albums">Альбоми</string>
     <string name="search_section_artists">Виконавці</string>
     <string name="search_section_tracks">Треки</string>
@@ -138,12 +138,12 @@
     <string name="copy">Копіювати</string>
     <string name="hide">Сховати</string>
     <string name="settings_remove_library">Вилучити цю бібліотеку з цього пристрою</string>
-    <string name="library_remove_confirm_title">Вилучити «%1$s» з цього пристрою?</string>
+    <string name="library_remove_confirm_title">Вилучити %1$s з цього пристрою?</string>
     <string name="settings_remove_library_confirm_body">Бібліотека залишиться у хмарі та на інших ваших пристроях.</string>
     <string name="settings_remove">Видалити</string>
     <string name="onboarding_libraries_title">Ваші бібліотеки</string>
     <string name="library_unsent_changes_lost">Ненадіслані зміни буде втрачено</string>
-    <string name="library_remove_failed_title">Не вдалося вилучити «%1$s»</string>
+    <string name="library_remove_failed_title">Не вдалося вилучити %1$s</string>
     <string name="details_menu">Подробиці…</string>
     <string name="library_remove_menu">Видалити…</string>
     <string name="library_last_synced">Остання синхронізація</string>
@@ -336,7 +336,7 @@
     <string name="restore_code_partly_hidden">Код відновлення, частково приховано</string>
     <string name="restore_code_print_title">Код відновлення bae</string>
     <string name="restore_code_printed">Надруковано %1$s</string>
-    <string name="restore_code_print_keep">Якщо ви втратите всі пристрої, відкрийте bae на новому пристрої та виберіть «Сканувати код», щоб відсканувати це, або «Ввести код», щоб ввести код. Будь-хто, у кого є ця сторінка й доступ до вашої хмари, може відкрити вашу бібліотеку: зберігайте її в приватному місці.</string>
+    <string name="restore_code_print_keep">Якщо ви втратите всі пристрої, відкрийте bae на новому пристрої та виберіть Сканувати код, щоб відсканувати це, або Ввести код, щоб ввести код. Будь-хто, у кого є ця сторінка й доступ до вашої хмари, може відкрити вашу бібліотеку: зберігайте її в приватному місці.</string>
     <string name="done">Готово</string>
     <string name="members_you">Ви</string>
     <string name="members_unnamed">Ще без імені</string>
@@ -373,7 +373,7 @@
     <string name="add_device_title">Додати пристрій</string>
     <string name="add_device_added">Пристрій додано: %1$s</string>
     <string name="add_device_making_code">Створення коду для вашого нового пристрою…</string>
-    <string name="add_device_instructions">На новому пристрої виберіть «Сканувати код», щоб відсканувати це, або «Ввести код», щоб ввести:</string>
+    <string name="add_device_instructions">На новому пристрої відскануйте це або введіть код:</string>
     <string name="invite_email_dropbox">Ел. пошта Dropbox</string>
     <string name="invite_email_onedrive">Ел. пошта облікового запису Microsoft</string>
     <string name="invite_email_icloud">Ел. пошта облікового запису Apple</string>
@@ -400,7 +400,7 @@
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
     <string name="restore_code_carries_s3_key">QR-код також містить ваш ключ доступу до S3, тож пристрій, який його відсканує, не питатиме ключ.</string>
     <string name="onboarding_s3_key_scanned">Ваш ключ доступу до S3 надійшов разом із відсканованим кодом.</string>
-    <string name="voice_play_not_found">«%1$s» не знайдено у вашій фонотеці.</string>
+    <string name="voice_play_not_found">%1$s не знайдено у вашій фонотеці.</string>
     <string name="onboarding_saved_codes_title">Збережено на цьому пристрої</string>
     <string name="onboarding_saved_codes_explanation">Коди відновлення, які bae зберіг на цьому пристрої, зокрема скопійовані з пристрою, з якого ви його налаштували. Торкніться бібліотеки, щоб відновити її.</string>
     <string name="onboarding_saved_codes_failed">Не вдалося прочитати коди відновлення, збережені на цьому пристрої</string>
@@ -411,8 +411,7 @@
     <string name="onboarding_saved_code_delete">Видалити</string>
     <string name="onboarding_saved_code_delete_menu">Видалити…</string>
     <string name="onboarding_saved_code_delete_title">Видалити цей код відновлення?</string>
-    <string name="onboarding_saved_code_delete_body">Код відновлення для «%1$s» буде видалено лише з цього пристрою. Бібліотеку й усе у хмарі не буде видалено.</string>
-    <string name="onboarding_saved_code_delete_body_unusable">Код відновлення буде видалено лише з цього пристрою. Бібліотеку й усе у хмарі не буде видалено.</string>
+    <string name="onboarding_saved_code_delete_body">Код відновлення буде видалено лише з цього пристрою. Бібліотеку й усе у хмарі не буде видалено.</string>
     <string name="onboarding_saved_code_delete_failed">Не вдалося видалити код відновлення</string>
     <string name="onboarding_saved_code_removed">Цей код відновлення більше не збережено на цьому пристрої.</string>
     <string name="onboarding_saved_library">Бібліотека</string>
@@ -438,7 +437,7 @@
     <string name="device_stop_copied">Інша копія бібліотеки цього пристрою синхронізується як цей пристрій.</string>
     <string name="device_stop_member_keys_replaced">Ваші ключі замінено на іншому вашому пристрої.</string>
     <string name="admin_changes_title">Зміни з цього пристрою</string>
-    <string name="admin_change_rename">Перейменувати бібліотеку на «%1$s»</string>
+    <string name="admin_change_rename">Перейменувати бібліотеку на %1$s</string>
     <string name="admin_change_make_admin">Зробити %1$s адміністратором</string>
     <string name="admin_change_make_member">Зробити %1$s учасником</string>
     <string name="admin_change_remove">Вилучити %1$s</string>

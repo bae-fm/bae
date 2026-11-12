@@ -72,7 +72,7 @@
         <item quantity="other">Do poradia bolo pridaných %d skladieb</item>
     </plurals>
     <string name="search_failed">Vyhľadávanie zlyhalo</string>
-    <string name="search_no_results">Žiadne výsledky pre „%1$s“</string>
+    <string name="search_no_results">Žiadne výsledky</string>
     <string name="search_section_albums">Albumy</string>
     <string name="search_section_artists">Interpreti</string>
     <string name="search_section_tracks">Skladby</string>
@@ -144,12 +144,12 @@
     <string name="copy">Kopírovať</string>
     <string name="hide">Skryť</string>
     <string name="settings_remove_library">Odstrániť túto knižnicu z tohto zariadenia</string>
-    <string name="library_remove_confirm_title">Odstrániť „%1$s“ z tohto zariadenia?</string>
+    <string name="library_remove_confirm_title">Odstrániť %1$s z tohto zariadenia?</string>
     <string name="settings_remove_library_confirm_body">Knižnica zostane v cloude a na tvojich ďalších zariadeniach.</string>
     <string name="settings_remove">Odstrániť</string>
     <string name="onboarding_libraries_title">Tvoje knižnice</string>
     <string name="library_unsent_changes_lost">Neodoslané zmeny sa stratia</string>
-    <string name="library_remove_failed_title">„%1$s“ sa nepodarilo odstrániť</string>
+    <string name="library_remove_failed_title">%1$s sa nepodarilo odstrániť</string>
     <string name="details_menu">Podrobnosti…</string>
     <string name="library_remove_menu">Odstrániť…</string>
     <string name="library_last_synced">Posledná synchronizácia</string>
@@ -371,7 +371,7 @@
     <string name="add_device_title">Pridať zariadenie</string>
     <string name="add_device_added">Zariadenie pridané: %1$s</string>
     <string name="add_device_making_code">Vytvára sa kód pre vaše nové zariadenie…</string>
-    <string name="add_device_instructions">Na novom zariadení vyberte „Naskenovať kód“ na naskenovanie tohto kódu alebo „Zadať kód“ na jeho prepísanie:</string>
+    <string name="add_device_instructions">Na novom zariadení naskenujte toto alebo zadajte kód:</string>
     <string name="invite_email_dropbox">E-mail v Dropboxe</string>
     <string name="invite_email_onedrive">E-mail účtu Microsoft</string>
     <string name="invite_email_icloud">E-mail účtu Apple</string>
@@ -398,7 +398,7 @@
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
     <string name="restore_code_carries_s3_key">QR kód obsahuje aj tvoj prístupový kľúč S3, takže zariadenie, ktoré ho naskenuje, sa na kľúč nespýta.</string>
     <string name="onboarding_s3_key_scanned">Tvoj prístupový kľúč S3 prišiel spolu s naskenovaným kódom.</string>
-    <string name="voice_play_not_found">„%1$s“ sa vo vašej knižnici nenašlo.</string>
+    <string name="voice_play_not_found">%1$s sa vo vašej knižnici nenašlo.</string>
     <string name="onboarding_saved_codes_title">Uložené v tomto zariadení</string>
     <string name="onboarding_saved_codes_explanation">Kódy na obnovenie, ktoré bae uložil v tomto zariadení, vrátane tých skopírovaných zo zariadenia, z ktorého bol nastavený. Ťuknutím na knižnicu ju obnovíš.</string>
     <string name="onboarding_saved_codes_failed">Kódy na obnovenie uložené v tomto zariadení sa nepodarilo prečítať</string>
@@ -409,8 +409,7 @@
     <string name="onboarding_saved_code_delete">Odstrániť</string>
     <string name="onboarding_saved_code_delete_menu">Odstrániť…</string>
     <string name="onboarding_saved_code_delete_title">Odstrániť tento kód na obnovenie?</string>
-    <string name="onboarding_saved_code_delete_body">Týmto odstrániš kód na obnovenie knižnice „%1$s“ iba z tohto zariadenia. Knižnica ani nič v cloude sa neodstráni.</string>
-    <string name="onboarding_saved_code_delete_body_unusable">Týmto odstrániš kód na obnovenie iba z tohto zariadenia. Knižnica ani nič v cloude sa neodstráni.</string>
+    <string name="onboarding_saved_code_delete_body">Týmto odstrániš kód na obnovenie iba z tohto zariadenia. Knižnica ani nič v cloude sa neodstráni.</string>
     <string name="onboarding_saved_code_delete_failed">Kód na obnovenie sa nepodarilo odstrániť</string>
     <string name="onboarding_saved_code_removed">Tento kód na obnovenie už v tomto zariadení nie je uložený.</string>
     <string name="onboarding_saved_library">Knižnica</string>
@@ -436,7 +435,7 @@
     <string name="device_stop_copied">Iná kópia knižnice tohto zariadenia sa synchronizuje ako toto zariadenie.</string>
     <string name="device_stop_member_keys_replaced">Vaše kľúče boli nahradené na inom z vašich zariadení.</string>
     <string name="admin_changes_title">Zmeny z tohto zariadenia</string>
-    <string name="admin_change_rename">Premenovať knižnicu na „%1$s“</string>
+    <string name="admin_change_rename">Premenovať knižnicu na %1$s</string>
     <string name="admin_change_make_admin">Urobiť z používateľa %1$s správcu</string>
     <string name="admin_change_make_member">Urobiť z používateľa %1$s člena</string>
     <string name="admin_change_remove">Odstrániť %1$s</string>

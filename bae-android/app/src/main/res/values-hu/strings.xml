@@ -70,7 +70,7 @@
         <item quantity="other">%d szám hozzáadva a sorhoz</item>
     </plurals>
     <string name="search_failed">A keresés nem sikerült</string>
-    <string name="search_no_results">Nincs találat erre: „%1$s”</string>
+    <string name="search_no_results">Nincs eredmény</string>
     <string name="search_section_albums">Albumok</string>
     <string name="search_section_artists">Előadók</string>
     <string name="search_section_tracks">Számok</string>
@@ -134,12 +134,12 @@
     <string name="copy">Másolás</string>
     <string name="hide">Elrejtés</string>
     <string name="settings_remove_library">Könyvtár eltávolítása erről az eszközről</string>
-    <string name="library_remove_confirm_title">Eltávolítod a(z) „%1$s” könyvtárat erről az eszközről?</string>
+    <string name="library_remove_confirm_title">Eltávolítod a(z) %1$s könyvtárat erről az eszközről?</string>
     <string name="settings_remove_library_confirm_body">A könyvtár megmarad a felhőben és a többi eszközödön.</string>
     <string name="settings_remove">Eltávolítás</string>
     <string name="onboarding_libraries_title">A könyvtáraid</string>
     <string name="library_unsent_changes_lost">Az el nem küldött módosítások elvesznek</string>
-    <string name="library_remove_failed_title">Nem sikerült eltávolítani a(z) „%1$s” könyvtárat</string>
+    <string name="library_remove_failed_title">Nem sikerült eltávolítani a(z) %1$s könyvtárat</string>
     <string name="details_menu">Részletek…</string>
     <string name="library_remove_menu">Eltávolítás…</string>
     <string name="library_last_synced">Utolsó szinkronizálás</string>
@@ -355,7 +355,7 @@
     <string name="add_device_title">Eszköz hozzáadása</string>
     <string name="add_device_added">%1$s hozzáadva</string>
     <string name="add_device_making_code">Kód készítése az új eszközödhöz…</string>
-    <string name="add_device_instructions">Az új eszközön válaszd a „Kód beolvasása” lehetőséget ennek beolvasásához, vagy a „Kód megadása” lehetőséget a beíráshoz:</string>
+    <string name="add_device_instructions">Az új eszközön olvasd be ezt, vagy add meg a kódot:</string>
     <string name="invite_email_dropbox">Dropbox e-mail-cím</string>
     <string name="invite_email_onedrive">Microsoft-fiók e-mail-címe</string>
     <string name="invite_email_icloud">Apple-fiók e-mail-címe</string>
@@ -382,7 +382,7 @@
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
     <string name="restore_code_carries_s3_key">A QR-kód az S3-hozzáférési kulcsodat is tartalmazza, így az azt beolvasó eszköz nem kéri a kulcsot.</string>
     <string name="onboarding_s3_key_scanned">Az S3-hozzáférési kulcsod a beolvasott kóddal együtt érkezett.</string>
-    <string name="voice_play_not_found">„%1$s” nem található a könyvtáradban.</string>
+    <string name="voice_play_not_found">%1$s nem található a könyvtáradban.</string>
     <string name="onboarding_saved_codes_title">Ezen az eszközön mentve</string>
     <string name="onboarding_saved_codes_explanation">A bae által ezen az eszközön mentett visszaállítási kódok, beleértve azokat is, amelyeket arról az eszközről másolt át, amelyről beállítottad. Koppints egy könyvtárra a visszaállításához.</string>
     <string name="onboarding_saved_codes_failed">Nem sikerült beolvasni az ezen az eszközön mentett visszaállítási kódokat</string>
@@ -393,8 +393,7 @@
     <string name="onboarding_saved_code_delete">Törlés</string>
     <string name="onboarding_saved_code_delete_menu">Törlés…</string>
     <string name="onboarding_saved_code_delete_title">Törlöd ezt a visszaállítási kódot?</string>
-    <string name="onboarding_saved_code_delete_body">Ez csak erről az eszközről távolítja el a(z) „%1$s” könyvtár visszaállítási kódját. Nem törli a könyvtárat, sem a felhőben lévő tartalmat.</string>
-    <string name="onboarding_saved_code_delete_body_unusable">Ez csak erről az eszközről távolítja el a visszaállítási kódot. Nem törli a könyvtárat, sem a felhőben lévő tartalmat.</string>
+    <string name="onboarding_saved_code_delete_body">Ez csak erről az eszközről távolítja el a visszaállítási kódot. Nem törli a könyvtárat, sem a felhőben lévő tartalmat.</string>
     <string name="onboarding_saved_code_delete_failed">Nem sikerült törölni a visszaállítási kódot</string>
     <string name="onboarding_saved_code_removed">Ez a visszaállítási kód már nincs mentve ezen az eszközön.</string>
     <string name="onboarding_saved_library">Könyvtár</string>
@@ -420,7 +419,7 @@
     <string name="device_stop_copied">Az eszköz könyvtárának egy másik példánya ezként az eszközként szinkronizál.</string>
     <string name="device_stop_member_keys_replaced">A kulcsaidat lecserélték egy másik eszközödön.</string>
     <string name="admin_changes_title">Módosítások erről az eszközről</string>
-    <string name="admin_change_rename">A könyvtár átnevezése erre: „%1$s”</string>
+    <string name="admin_change_rename">A könyvtár átnevezése erre: %1$s</string>
     <string name="admin_change_make_admin">%1$s legyen adminisztrátor</string>
     <string name="admin_change_make_member">%1$s legyen tag</string>
     <string name="admin_change_remove">%1$s eltávolítása</string>

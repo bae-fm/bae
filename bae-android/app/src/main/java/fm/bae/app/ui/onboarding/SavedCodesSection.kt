@@ -71,7 +71,6 @@ internal fun SavedCodesSection(
     )
     codes.pendingDelete?.let { pending ->
         DeleteSavedCodeDialog(
-            entry = pending,
             onConfirm = { codes.delete(pending) },
             onDismiss = codes::dismissDelete,
         )
@@ -175,28 +174,26 @@ private fun SavedCodeRow(
 }
 
 /**
- * Asks before deleting [entry]'s code, saying it goes from this phone only
+ * Asks before deleting a saved code, saying it goes from this phone only
  * and that the library and its storage stay.
  */
 @Composable
 private fun DeleteSavedCodeDialog(
-    entry: SavedRestoreEntry,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AndroidDialog(onDismissRequest = onDismiss, parts = deleteSavedCodeParts(entry, onConfirm, onDismiss))
+    AndroidDialog(onDismissRequest = onDismiss, parts = deleteSavedCodeParts(onConfirm, onDismiss))
 }
 
 /** The confirmation's words and its buttons, Cancel and the destructive Delete, apart from the window they show in. */
 @Composable
 internal fun deleteSavedCodeParts(
-    entry: SavedRestoreEntry,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ): DialogParts =
     DialogParts(
         title = stringResource(R.string.onboarding_saved_code_delete_title),
-        message = deleteSavedCodeMessage(entry),
+        message = stringResource(R.string.onboarding_saved_code_delete_body),
         confirmButton = {
             AndroidButton(kind = ButtonKind.TEXT, tone = ButtonTone.DESTRUCTIVE, onClick = onConfirm) {
                 Text(stringResource(R.string.onboarding_saved_code_delete))
@@ -210,18 +207,6 @@ internal fun deleteSavedCodeParts(
             ) { Text(stringResource(R.string.cancel)) }
         },
     )
-
-@Composable
-private fun deleteSavedCodeMessage(entry: SavedRestoreEntry): String =
-    when (entry) {
-        is SavedRestoreEntry.Readable -> {
-            stringResource(R.string.onboarding_saved_code_delete_body, entry.saved.info.name)
-        }
-
-        is SavedRestoreEntry.Unreadable -> {
-            stringResource(R.string.onboarding_saved_code_delete_body_unusable)
-        }
-    }
 
 /** Why a saved code can't be used, as its row says it. */
 @StringRes
@@ -274,7 +259,7 @@ private val previewEntries =
     )
 
 /** The entries the saved-codes boards draw: a Dropbox library's code, and one saved for another library. */
-internal val sceneSavedEntries =
+private val sceneSavedEntries =
     listOf(
         SavedRestoreEntry.Readable(
             SavedRestoreCode(
@@ -334,6 +319,6 @@ private fun SavedCodesPreview() {
 @Composable
 private fun DeleteSavedCodePreview() {
     BaeTheme {
-        DeleteSavedCodeDialog(entry = previewEntries.first(), onConfirm = {}, onDismiss = {})
+        DeleteSavedCodeDialog(onConfirm = {}, onDismiss = {})
     }
 }

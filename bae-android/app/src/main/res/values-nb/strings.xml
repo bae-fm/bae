@@ -70,7 +70,7 @@
         <item quantity="other">%d spor ble lagt i køen</item>
     </plurals>
     <string name="search_failed">Søket mislyktes</string>
-    <string name="search_no_results">Ingen resultater for «%1$s»</string>
+    <string name="search_no_results">Ingen resultater</string>
     <string name="search_section_albums">Album</string>
     <string name="search_section_artists">Artister</string>
     <string name="search_section_tracks">Spor</string>
@@ -134,12 +134,12 @@
     <string name="copy">Kopier</string>
     <string name="hide">Skjul</string>
     <string name="settings_remove_library">Fjern dette biblioteket fra denne enheten</string>
-    <string name="library_remove_confirm_title">Fjerne «%1$s» fra denne enheten?</string>
+    <string name="library_remove_confirm_title">Fjerne %1$s fra denne enheten?</string>
     <string name="settings_remove_library_confirm_body">Biblioteket blir værende i skyen og på de andre enhetene dine.</string>
     <string name="settings_remove">Fjern</string>
     <string name="onboarding_libraries_title">Bibliotekene dine</string>
     <string name="library_unsent_changes_lost">Endringer som ikke er sendt, går tapt</string>
-    <string name="library_remove_failed_title">Kunne ikke fjerne «%1$s»</string>
+    <string name="library_remove_failed_title">Kunne ikke fjerne %1$s</string>
     <string name="details_menu">Detaljer…</string>
     <string name="library_remove_menu">Fjern…</string>
     <string name="library_last_synced">Sist synkronisert</string>
@@ -355,7 +355,7 @@
     <string name="add_device_title">Legg til en enhet</string>
     <string name="add_device_added">%1$s er lagt til</string>
     <string name="add_device_making_code">Lager en kode til den nye enheten din…</string>
-    <string name="add_device_instructions">Velg «Skann en kode» på den nye enheten for å skanne dette, eller «Skriv inn en kode» for å skrive inn:</string>
+    <string name="add_device_instructions">Skann dette på den nye enheten, eller skriv inn koden:</string>
     <string name="invite_email_dropbox">Dropbox-e-post</string>
     <string name="invite_email_onedrive">E-post for Microsoft-kontoen</string>
     <string name="invite_email_icloud">E-post for Apple-kontoen</string>
@@ -382,7 +382,7 @@
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
     <string name="restore_code_carries_s3_key">QR-koden inneholder også S3-tilgangsnøkkelen din, så en enhet som skanner den, spør ikke etter nøkkelen.</string>
     <string name="onboarding_s3_key_scanned">S3-tilgangsnøkkelen din fulgte med den skannede koden.</string>
-    <string name="voice_play_not_found">Fant ikke «%1$s» i biblioteket ditt.</string>
+    <string name="voice_play_not_found">Fant ikke %1$s i biblioteket ditt.</string>
     <string name="onboarding_saved_codes_title">Lagret på denne enheten</string>
     <string name="onboarding_saved_codes_explanation">Gjenopprettingskoder bae har lagret på denne enheten, også de som ble kopiert fra enheten du satte den opp fra. Trykk på et bibliotek for å gjenopprette det.</string>
     <string name="onboarding_saved_codes_failed">Kunne ikke lese gjenopprettingskodene som er lagret på denne enheten</string>
@@ -393,8 +393,7 @@
     <string name="onboarding_saved_code_delete">Slett</string>
     <string name="onboarding_saved_code_delete_menu">Slett…</string>
     <string name="onboarding_saved_code_delete_title">Slette denne gjenopprettingskoden?</string>
-    <string name="onboarding_saved_code_delete_body">Dette fjerner gjenopprettingskoden for «%1$s» bare fra denne enheten. Det sletter ikke biblioteket eller noe i skyen.</string>
-    <string name="onboarding_saved_code_delete_body_unusable">Dette fjerner gjenopprettingskoden bare fra denne enheten. Det sletter ikke biblioteket eller noe i skyen.</string>
+    <string name="onboarding_saved_code_delete_body">Dette fjerner gjenopprettingskoden bare fra denne enheten. Det sletter ikke biblioteket eller noe i skyen.</string>
     <string name="onboarding_saved_code_delete_failed">Kunne ikke slette gjenopprettingskoden</string>
     <string name="onboarding_saved_code_removed">Denne gjenopprettingskoden er ikke lenger lagret på denne enheten.</string>
     <string name="onboarding_saved_library">Bibliotek</string>
@@ -420,7 +419,7 @@
     <string name="device_stop_copied">En annen kopi av denne enhetens bibliotek synkroniserer som denne enheten.</string>
     <string name="device_stop_member_keys_replaced">Nøklene dine ble byttet ut på en annen av enhetene dine.</string>
     <string name="admin_changes_title">Endringer fra denne enheten</string>
-    <string name="admin_change_rename">Gi biblioteket navnet «%1$s»</string>
+    <string name="admin_change_rename">Gi biblioteket navnet %1$s</string>
     <string name="admin_change_make_admin">Gjør %1$s til administrator</string>
     <string name="admin_change_make_member">Gjør %1$s til medlem</string>
     <string name="admin_change_remove">Fjern %1$s</string>

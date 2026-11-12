@@ -96,8 +96,7 @@
 
     <!-- Search results -->
     <string name="search_failed">Search failed</string>
-    <!-- %1$s = the query the user typed -->
-    <string name="search_no_results">No results for “%1$s”</string>
+    <string name="search_no_results">No results</string>
     <string name="search_section_albums">Albums</string>
     <string name="search_section_artists">Artists</string>
     <string name="search_section_tracks">Tracks</string>
@@ -165,12 +164,12 @@
     <string name="copy">Copy</string>
     <string name="hide">Hide</string>
     <string name="settings_remove_library">Remove this library from this device</string>
-    <string name="library_remove_confirm_title">Remove “%1$s” from this device?</string>
+    <string name="library_remove_confirm_title">Remove %1$s from this device?</string>
     <string name="settings_remove_library_confirm_body">The library will remain in the cloud and on your other devices.</string>
     <string name="settings_remove">Remove</string>
     <string name="onboarding_libraries_title">Your libraries</string>
     <string name="library_unsent_changes_lost">Unsent changes will be lost</string>
-    <string name="library_remove_failed_title">Couldn’t remove “%1$s”</string>
+    <string name="library_remove_failed_title">Couldn’t remove %1$s</string>
     <string name="details_menu">Details…</string>
     <string name="library_remove_menu">Remove…</string>
     <string name="library_last_synced">Last synced</string>
@@ -411,8 +410,7 @@
     <!-- Shown in place of the QR code once the person's new device has joined; the argument is that device's name -->
     <string name="add_device_added">%1$s added</string>
     <string name="add_device_making_code">Making a code for your new device…</string>
-    <!-- The quoted labels are onboarding_scan_code and onboarding_enter_code, the choices on the new device's first screen -->
-    <string name="add_device_instructions">On the new device, choose “Scan code” to scan this, or “Enter code” to type:</string>
+    <string name="add_device_instructions">On the new device, scan this or type the code:</string>
     <string name="invite_email_dropbox">Dropbox email</string>
     <string name="invite_email_onedrive">Microsoft account email</string>
     <string name="invite_email_icloud">Apple Account email</string>
@@ -440,7 +438,7 @@
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
     <string name="restore_code_carries_s3_key">The QR code also carries your S3 access key, so a device that scans it won’t ask for the key.</string>
     <string name="onboarding_s3_key_scanned">Your S3 access key came with the scanned code.</string>
-    <string name="voice_play_not_found">Couldn’t find “%1$s” in your library.</string>
+    <string name="voice_play_not_found">Couldn’t find %1$s in your library.</string>
     <!-- Restore codes saved on this device, on the welcome screen -->
     <string name="onboarding_saved_codes_title">Saved on this device</string>
     <string name="onboarding_saved_codes_explanation">Restore codes bae saved on this device, including ones copied from the device you set it up from. Tap a library to restore it.</string>
@@ -452,9 +450,7 @@
     <string name="onboarding_saved_code_delete">Delete</string>
     <string name="onboarding_saved_code_delete_menu">Delete…</string>
     <string name="onboarding_saved_code_delete_title">Delete this restore code?</string>
-    <!-- %1$s = the library's name, saved with the code -->
-    <string name="onboarding_saved_code_delete_body">This removes the restore code for “%1$s” from this device only. It doesn’t delete the library, or anything in the cloud.</string>
-    <string name="onboarding_saved_code_delete_body_unusable">This removes the restore code from this device only. It doesn’t delete the library, or anything in the cloud.</string>
+    <string name="onboarding_saved_code_delete_body">This removes the restore code from this device only. It doesn’t delete the library, or anything in the cloud.</string>
     <string name="onboarding_saved_code_delete_failed">Couldn’t delete the restore code</string>
     <string name="onboarding_saved_code_removed">This restore code is no longer saved on this device.</string>
     <string name="onboarding_saved_library">Library</string>
@@ -481,7 +477,7 @@
     <string name="device_stop_copied">Another copy of this device’s library is syncing as this device.</string>
     <string name="device_stop_member_keys_replaced">Your keys were replaced on another of your devices.</string>
     <string name="admin_changes_title">Changes from this device</string>
-    <string name="admin_change_rename">Rename the library to “%1$s”</string>
+    <string name="admin_change_rename">Rename the library to %1$s</string>
     <string name="admin_change_make_admin">Make %1$s an admin</string>
     <string name="admin_change_make_member">Make %1$s a member</string>
     <string name="admin_change_remove">Remove %1$s</string>

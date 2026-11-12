@@ -51,7 +51,7 @@
     <string name="seek_position">Positie</string>
     <string name="now_playing_track_by_artist">Speelt nu: %1$s · %2$s</string>
     <string name="queue_clear">Wissen</string>
-    <string name="queue_clear_up_next">‘Volgende’ wissen</string>
+    <string name="queue_clear_up_next">Volgende wissen</string>
     <string name="queue_clear_playing_from">Afspeelbron wissen</string>
     <string name="queue_section_now_playing">Speelt nu</string>
     <string name="queue_section_up_next">Volgende</string>
@@ -66,7 +66,7 @@
     <string name="queue_shuffle_on">Shuffle</string>
     <string name="queue_shuffle_off">Shuffle uitschakelen</string>
     <string name="search_failed">Zoeken mislukt</string>
-    <string name="search_no_results">Geen resultaten: “%1$s”</string>
+    <string name="search_no_results">Geen resultaten</string>
     <string name="search_section_albums">Albums</string>
     <string name="search_section_artists">Artiesten</string>
     <string name="search_section_tracks">Nummers</string>
@@ -130,12 +130,12 @@
     <string name="copy">Kopiëren</string>
     <string name="hide">Verbergen</string>
     <string name="settings_remove_library">Verwijder deze bibliotheek van dit apparaat</string>
-    <string name="library_remove_confirm_title">‘%1$s’ van dit apparaat verwijderen?</string>
+    <string name="library_remove_confirm_title">%1$s van dit apparaat verwijderen?</string>
     <string name="settings_remove_library_confirm_body">De bibliotheek blijft in de cloud en op je andere apparaten.</string>
     <string name="settings_remove">Verwijderen</string>
     <string name="onboarding_libraries_title">Je bibliotheken</string>
     <string name="library_unsent_changes_lost">Niet-verzonden wijzigingen gaan verloren</string>
-    <string name="library_remove_failed_title">Kan ‘%1$s’ niet verwijderen</string>
+    <string name="library_remove_failed_title">Kan %1$s niet verwijderen</string>
     <string name="details_menu">Details…</string>
     <string name="library_remove_menu">Verwijderen…</string>
     <string name="library_last_synced">Laatst gesynchroniseerd</string>
@@ -357,7 +357,7 @@
     <string name="add_device_title">Een apparaat toevoegen</string>
     <string name="add_device_added">%1$s toegevoegd</string>
     <string name="add_device_making_code">Code voor je nieuwe apparaat wordt gemaakt…</string>
-    <string name="add_device_instructions">Kies op het nieuwe apparaat ‘Code scannen’ om dit te scannen, of ‘Code invoeren’ om te typen:</string>
+    <string name="add_device_instructions">Scan dit op het nieuwe apparaat, of typ de code:</string>
     <string name="invite_email_dropbox">Dropbox-e-mail</string>
     <string name="invite_email_onedrive">E-mailadres van het Microsoft-account</string>
     <string name="invite_email_icloud">E-mailadres van het Apple-account</string>
@@ -384,7 +384,7 @@
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
     <string name="restore_code_carries_s3_key">De QR-code bevat ook je S3-toegangssleutel, dus een apparaat dat hem scant, vraagt niet om de sleutel.</string>
     <string name="onboarding_s3_key_scanned">Je S3-toegangssleutel kwam mee met de gescande code.</string>
-    <string name="voice_play_not_found">‘%1$s’ is niet gevonden in je bibliotheek.</string>
+    <string name="voice_play_not_found">%1$s is niet gevonden in je bibliotheek.</string>
     <string name="onboarding_saved_codes_title">Bewaard op dit apparaat</string>
     <string name="onboarding_saved_codes_explanation">Herstelcodes die bae op dit apparaat heeft bewaard, inclusief codes die zijn gekopieerd van het apparaat waarmee je deze hebt ingesteld. Tik op een bibliotheek om die te herstellen.</string>
     <string name="onboarding_saved_codes_failed">Kan de herstelcodes op dit apparaat niet lezen</string>
@@ -395,8 +395,7 @@
     <string name="onboarding_saved_code_delete">Verwijderen</string>
     <string name="onboarding_saved_code_delete_menu">Verwijderen…</string>
     <string name="onboarding_saved_code_delete_title">Deze herstelcode verwijderen?</string>
-    <string name="onboarding_saved_code_delete_body">Hiermee verwijder je de herstelcode voor ‘%1$s’ alleen van dit apparaat. De bibliotheek en alles in de cloud blijven bestaan.</string>
-    <string name="onboarding_saved_code_delete_body_unusable">Hiermee verwijder je de herstelcode alleen van dit apparaat. De bibliotheek en alles in de cloud blijven bestaan.</string>
+    <string name="onboarding_saved_code_delete_body">Hiermee verwijder je de herstelcode alleen van dit apparaat. De bibliotheek en alles in de cloud blijven bestaan.</string>
     <string name="onboarding_saved_code_delete_failed">Kan de herstelcode niet verwijderen</string>
     <string name="onboarding_saved_code_removed">Deze herstelcode is niet meer bewaard op dit apparaat.</string>
     <string name="onboarding_saved_library">Bibliotheek</string>
@@ -422,7 +421,7 @@
     <string name="device_stop_copied">Een andere kopie van de bibliotheek van dit apparaat synchroniseert als dit apparaat.</string>
     <string name="device_stop_member_keys_replaced">Je sleutels zijn vervangen op een ander apparaat van je.</string>
     <string name="admin_changes_title">Wijzigingen vanaf dit apparaat</string>
-    <string name="admin_change_rename">Bibliotheek hernoemen naar ‘%1$s’</string>
+    <string name="admin_change_rename">Bibliotheek hernoemen naar %1$s</string>
     <string name="admin_change_make_admin">%1$s beheerder maken</string>
     <string name="admin_change_make_member">%1$s lid maken</string>
     <string name="admin_change_remove">%1$s verwijderen</string>

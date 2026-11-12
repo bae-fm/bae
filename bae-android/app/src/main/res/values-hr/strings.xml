@@ -51,7 +51,7 @@
     <string name="seek_position">Položaj</string>
     <string name="now_playing_track_by_artist">Trenutno svira, %1$s, izvođač %2$s</string>
     <string name="queue_clear">Očisti</string>
-    <string name="queue_clear_up_next">Očisti „Sljedeće na redu“</string>
+    <string name="queue_clear_up_next">Očisti Sljedeće na redu</string>
     <string name="queue_clear_playing_from">Očisti izvor reprodukcije</string>
     <string name="queue_section_now_playing">Trenutno svira</string>
     <string name="queue_section_up_next">Sljedeće na redu</string>
@@ -66,7 +66,7 @@
     <string name="queue_shuffle_on">Naizmjenično</string>
     <string name="queue_shuffle_off">Isključi naizmjenično</string>
     <string name="search_failed">Pretraživanje nije uspjelo</string>
-    <string name="search_no_results">Nema rezultata za „%1$s”</string>
+    <string name="search_no_results">Nema rezultata</string>
     <string name="search_section_albums">Albumi</string>
     <string name="search_section_artists">Izvođači</string>
     <string name="search_section_tracks">Pjesme</string>
@@ -134,12 +134,12 @@
     <string name="copy">Kopiraj</string>
     <string name="hide">Sakrij</string>
     <string name="settings_remove_library">Ukloni ovu fonoteku s ovog uređaja</string>
-    <string name="library_remove_confirm_title">Ukloniti „%1$s” s ovog uređaja?</string>
+    <string name="library_remove_confirm_title">Ukloniti %1$s s ovog uređaja?</string>
     <string name="settings_remove_library_confirm_body">Fonoteka ostaje u oblaku i na vašim drugim uređajima.</string>
     <string name="settings_remove">Ukloni</string>
     <string name="onboarding_libraries_title">Vaše fonoteke</string>
     <string name="library_unsent_changes_lost">Neposlane promjene bit će izgubljene</string>
-    <string name="library_remove_failed_title">Nije moguće ukloniti „%1$s”</string>
+    <string name="library_remove_failed_title">Nije moguće ukloniti %1$s</string>
     <string name="details_menu">Pojedinosti…</string>
     <string name="library_remove_menu">Ukloni…</string>
     <string name="library_last_synced">Zadnja sinkronizacija</string>
@@ -365,7 +365,7 @@
     <string name="add_device_title">Dodaj uređaj</string>
     <string name="add_device_added">Uređaj dodan: %1$s</string>
     <string name="add_device_making_code">Izrada koda za vaš novi uređaj…</string>
-    <string name="add_device_instructions">Na novom uređaju odaberite „Skeniraj kod” za skeniranje ili „Unesi kod” za upis:</string>
+    <string name="add_device_instructions">Na novom uređaju skenirajte ovo ili upišite kod:</string>
     <string name="invite_email_dropbox">E-pošta za Dropbox</string>
     <string name="invite_email_onedrive">E-pošta računa Microsoft</string>
     <string name="invite_email_icloud">E-pošta računa Apple</string>
@@ -392,7 +392,7 @@
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
     <string name="restore_code_carries_s3_key">QR kôd sadrži i vaš pristupni ključ za S3, pa uređaj koji ga skenira neće tražiti ključ.</string>
     <string name="onboarding_s3_key_scanned">Vaš pristupni ključ za S3 stigao je uz skenirani kôd.</string>
-    <string name="voice_play_not_found">„%1$s” nije pronađeno u vašoj fonoteci.</string>
+    <string name="voice_play_not_found">%1$s nije pronađeno u vašoj fonoteci.</string>
     <string name="onboarding_saved_codes_title">Spremljeno na ovom uređaju</string>
     <string name="onboarding_saved_codes_explanation">Kodovi za vraćanje koje je bae spremio na ovaj uređaj, uključujući one kopirane s uređaja s kojeg ste ga postavili. Dodirnite fonoteku da biste je vratili.</string>
     <string name="onboarding_saved_codes_failed">Nije moguće pročitati kodove za vraćanje spremljene na ovom uređaju</string>
@@ -403,8 +403,7 @@
     <string name="onboarding_saved_code_delete">Izbriši</string>
     <string name="onboarding_saved_code_delete_menu">Izbriši…</string>
     <string name="onboarding_saved_code_delete_title">Izbrisati ovaj kod za vraćanje?</string>
-    <string name="onboarding_saved_code_delete_body">Time se kod za vraćanje za „%1$s” uklanja samo s ovog uređaja. Ne briše se fonoteka ni išta u oblaku.</string>
-    <string name="onboarding_saved_code_delete_body_unusable">Time se kod za vraćanje uklanja samo s ovog uređaja. Ne briše se fonoteka ni išta u oblaku.</string>
+    <string name="onboarding_saved_code_delete_body">Time se kod za vraćanje uklanja samo s ovog uređaja. Ne briše se fonoteka ni išta u oblaku.</string>
     <string name="onboarding_saved_code_delete_failed">Nije moguće izbrisati kod za vraćanje</string>
     <string name="onboarding_saved_code_removed">Ovaj kod za vraćanje više nije spremljen na ovom uređaju.</string>
     <string name="onboarding_saved_library">Fonoteka</string>
@@ -430,7 +429,7 @@
     <string name="device_stop_copied">Druga kopija fonoteke ovog uređaja sinkronizira se kao ovaj uređaj.</string>
     <string name="device_stop_member_keys_replaced">Vaši su ključevi zamijenjeni na drugom vašem uređaju.</string>
     <string name="admin_changes_title">Promjene s ovog uređaja</string>
-    <string name="admin_change_rename">Preimenuj fonoteku u „%1$s”</string>
+    <string name="admin_change_rename">Preimenuj fonoteku u %1$s</string>
     <string name="admin_change_make_admin">Postavi osobu %1$s za administratora</string>
     <string name="admin_change_make_member">Postavi osobu %1$s za člana</string>
     <string name="admin_change_remove">Ukloni %1$s</string>

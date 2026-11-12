@@ -249,7 +249,7 @@ class WelcomeLibrariesTest {
         chooseFromMenu("Remove…")
 
         compose.waitUntil(HANG_GUARD_MS) { fake.calls.contains("unsent synced") }
-        compose.onNodeWithText("Remove “Home Library” from this device?").assertIsDisplayed()
+        compose.onNodeWithText("Remove Home Library from this device?").assertIsDisplayed()
         compose.onNodeWithText("Unsent changes will be lost").assertIsDisplayed()
         compose.onNodeWithText("The library will remain in the cloud and on your other devices.").assertIsDisplayed()
         assertEquals(listOf("list", "unsent synced"), fake.calls)
@@ -269,7 +269,7 @@ class WelcomeLibrariesTest {
         chooseFromMenu("Remove…")
 
         compose.waitUntil(HANG_GUARD_MS) { fake.calls.contains("unsent synced") }
-        compose.onNodeWithText("Remove “Home Library” from this device?").assertIsDisplayed()
+        compose.onNodeWithText("Remove Home Library from this device?").assertIsDisplayed()
         compose.onNodeWithText("The library will remain in the cloud and on your other devices.").assertIsDisplayed()
         compose.onNodeWithText("Unsent changes will be lost").assertDoesNotExist()
     }
@@ -305,7 +305,7 @@ class WelcomeLibrariesTest {
             }
         }
 
-        compose.onNodeWithText("Remove “Half Removed” from this device?").assertIsDisplayed()
+        compose.onNodeWithText("Remove Half Removed from this device?").assertIsDisplayed()
         compose.onNodeWithText("Unsent changes will be lost").assertDoesNotExist()
         compose
             .onNodeWithText(
@@ -338,7 +338,7 @@ class WelcomeLibrariesTest {
         compose.onNode(hasText("Remove") and hasAnyAncestor(isDialog())).performClick()
 
         compose.waitUntil(HANG_GUARD_MS) { compose.onAllNodesWithTextCount("Retry") == 1 }
-        compose.onNodeWithText("Couldn’t remove “Home Library”").assertIsDisplayed()
+        compose.onNodeWithText("Couldn’t remove Home Library").assertIsDisplayed()
         compose.onNodeWithText("Storage refused").assertIsDisplayed()
 
         fake.failure = null

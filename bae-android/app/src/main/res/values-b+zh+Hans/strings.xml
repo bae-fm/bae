@@ -51,7 +51,7 @@
     <string name="seek_position">位置</string>
     <string name="now_playing_track_by_artist">正在播放，%1$s, %2$s</string>
     <string name="queue_clear">清空</string>
-    <string name="queue_clear_up_next">清空“接下来”</string>
+    <string name="queue_clear_up_next">清空接下来</string>
     <string name="queue_clear_playing_from">清空当前播放来源</string>
     <string name="queue_section_now_playing">正在播放</string>
     <string name="queue_section_up_next">接下来</string>
@@ -66,7 +66,7 @@
     <string name="queue_shuffle_on">随机播放</string>
     <string name="queue_shuffle_off">关闭随机播放</string>
     <string name="search_failed">搜索失败</string>
-    <string name="search_no_results">没有“%1$s”的结果</string>
+    <string name="search_no_results">无结果</string>
     <string name="search_section_albums">专辑</string>
     <string name="search_section_artists">艺人</string>
     <string name="search_section_tracks">曲目</string>
@@ -126,12 +126,12 @@
     <string name="copy">复制</string>
     <string name="hide">隐藏</string>
     <string name="settings_remove_library">从此设备移除此库</string>
-    <string name="library_remove_confirm_title">从此设备移除“%1$s”？</string>
+    <string name="library_remove_confirm_title">从此设备移除%1$s？</string>
     <string name="settings_remove_library_confirm_body">库会保留在云端和你的其他设备上。</string>
     <string name="settings_remove">移除</string>
     <string name="onboarding_libraries_title">你的库</string>
     <string name="library_unsent_changes_lost">未发送的更改将会丢失</string>
-    <string name="library_remove_failed_title">无法移除“%1$s”</string>
+    <string name="library_remove_failed_title">无法移除%1$s</string>
     <string name="details_menu">详情…</string>
     <string name="library_remove_menu">移除…</string>
     <string name="library_last_synced">上次同步</string>
@@ -315,7 +315,7 @@
     <string name="restore_code_partly_hidden">恢复码（部分隐藏）</string>
     <string name="restore_code_print_title">bae 恢复码</string>
     <string name="restore_code_printed">打印日期：%1$s</string>
-    <string name="restore_code_print_keep">如果你丢失了所有设备，请在新设备上打开 bae，选择“扫描代码”来扫描此码，或选择“输入代码”来输入代码。任何拿到此页面并能访问你云端的人都可以打开你的库，请妥善保管。</string>
+    <string name="restore_code_print_keep">如果你丢失了所有设备，请在新设备上打开 bae，选择扫描代码来扫描此码，或选择输入代码来输入代码。任何拿到此页面并能访问你云端的人都可以打开你的库，请妥善保管。</string>
     <string name="done">完成</string>
     <string name="members_you">你</string>
     <string name="members_unnamed">尚无名字</string>
@@ -349,7 +349,7 @@
     <string name="add_device_title">添加设备</string>
     <string name="add_device_added">已添加%1$s</string>
     <string name="add_device_making_code">正在为你的新设备生成代码…</string>
-    <string name="add_device_instructions">在新设备上选择“扫描代码”来扫描此代码，或选择“输入代码”来输入：</string>
+    <string name="add_device_instructions">在新设备上扫描此代码，或输入下面的代码：</string>
     <string name="invite_email_dropbox">Dropbox 邮箱</string>
     <string name="invite_email_onedrive">Microsoft 账户邮箱</string>
     <string name="invite_email_icloud">Apple 账户邮箱</string>
@@ -376,7 +376,7 @@
     <string name="storage_location_bucket">%1$s：%2$s（%3$s）</string>
     <string name="restore_code_carries_s3_key">此二维码还包含你的 S3 访问密钥，扫描它的设备不会再要求输入密钥。</string>
     <string name="onboarding_s3_key_scanned">你的 S3 访问密钥已随扫描的代码一同传来。</string>
-    <string name="voice_play_not_found">在你的音乐库中找不到“%1$s”。</string>
+    <string name="voice_play_not_found">在你的音乐库中找不到%1$s。</string>
     <string name="onboarding_saved_codes_title">保存在此设备上</string>
     <string name="onboarding_saved_codes_explanation">bae 保存在此设备上的恢复码，包括从你用来设置此设备的旧设备复制过来的恢复码。轻点一个库即可恢复。</string>
     <string name="onboarding_saved_codes_failed">无法读取保存在此设备上的恢复码</string>
@@ -387,8 +387,7 @@
     <string name="onboarding_saved_code_delete">删除</string>
     <string name="onboarding_saved_code_delete_menu">删除…</string>
     <string name="onboarding_saved_code_delete_title">删除此恢复码？</string>
-    <string name="onboarding_saved_code_delete_body">这只会从此设备上移除“%1$s”的恢复码。不会删除该库，也不会删除云端中的任何内容。</string>
-    <string name="onboarding_saved_code_delete_body_unusable">这只会从此设备上移除该恢复码。不会删除该库，也不会删除云端中的任何内容。</string>
+    <string name="onboarding_saved_code_delete_body">这只会从此设备上移除该恢复码。不会删除该库，也不会删除云端中的任何内容。</string>
     <string name="onboarding_saved_code_delete_failed">无法删除恢复码</string>
     <string name="onboarding_saved_code_removed">此恢复码已不再保存在此设备上。</string>
     <string name="onboarding_saved_library">库</string>
@@ -414,7 +413,7 @@
     <string name="device_stop_copied">此设备资料库的另一个副本正以此设备的身份同步。</string>
     <string name="device_stop_member_keys_replaced">你的密钥已在你的另一台设备上被替换。</string>
     <string name="admin_changes_title">来自此设备的更改</string>
-    <string name="admin_change_rename">将资料库重命名为“%1$s”</string>
+    <string name="admin_change_rename">将资料库重命名为%1$s</string>
     <string name="admin_change_make_admin">将 %1$s 设为管理员</string>
     <string name="admin_change_make_member">将 %1$s 设为成员</string>
     <string name="admin_change_remove">移除%1$s</string>

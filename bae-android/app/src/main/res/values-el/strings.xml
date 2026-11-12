@@ -70,7 +70,7 @@
         <item quantity="other">Προστέθηκαν %d κομμάτια στην ουρά</item>
     </plurals>
     <string name="search_failed">Η αναζήτηση απέτυχε</string>
-    <string name="search_no_results">Κανένα αποτέλεσμα για «%1$s»</string>
+    <string name="search_no_results">Κανένα αποτέλεσμα</string>
     <string name="search_section_albums">Άλμπουμ</string>
     <string name="search_section_artists">Καλλιτέχνες</string>
     <string name="search_section_tracks">Κομμάτια</string>
@@ -134,12 +134,12 @@
     <string name="copy">Αντιγραφή</string>
     <string name="hide">Απόκρυψη</string>
     <string name="settings_remove_library">Αφαίρεση αυτής της βιβλιοθήκης από αυτή τη συσκευή</string>
-    <string name="library_remove_confirm_title">Αφαίρεση της βιβλιοθήκης «%1$s» από αυτή τη συσκευή;</string>
+    <string name="library_remove_confirm_title">Αφαίρεση της βιβλιοθήκης %1$s από αυτή τη συσκευή;</string>
     <string name="settings_remove_library_confirm_body">Η βιβλιοθήκη παραμένει στο cloud και στις άλλες συσκευές σας.</string>
     <string name="settings_remove">Αφαίρεση</string>
     <string name="onboarding_libraries_title">Οι βιβλιοθήκες σας</string>
     <string name="library_unsent_changes_lost">Οι αλλαγές που δεν έχουν σταλεί θα χαθούν</string>
-    <string name="library_remove_failed_title">Δεν ήταν δυνατή η αφαίρεση της βιβλιοθήκης «%1$s»</string>
+    <string name="library_remove_failed_title">Δεν ήταν δυνατή η αφαίρεση της βιβλιοθήκης %1$s</string>
     <string name="details_menu">Λεπτομέρειες…</string>
     <string name="library_remove_menu">Αφαίρεση…</string>
     <string name="library_last_synced">Τελευταίος συγχρονισμός</string>
@@ -320,7 +320,7 @@
     <string name="restore_code_partly_hidden">Κωδικός επαναφοράς, εν μέρει κρυμμένος</string>
     <string name="restore_code_print_title">Κωδικός επαναφοράς bae</string>
     <string name="restore_code_printed">Εκτυπώθηκε στις %1$s</string>
-    <string name="restore_code_print_keep">Αν χάσετε όλες τις συσκευές σας, ανοίξτε το bae σε μια νέα συσκευή και επιλέξτε «Σάρωση κωδικού» για να σαρώσετε αυτό ή «Εισαγωγή κωδικού» για να πληκτρολογήσετε τον κωδικό. Όποιος έχει αυτή τη σελίδα και πρόσβαση στο cloud σας μπορεί να ανοίξει τη βιβλιοθήκη σας: φυλάξτε τη σε ιδιωτικό μέρος.</string>
+    <string name="restore_code_print_keep">Αν χάσετε όλες τις συσκευές σας, ανοίξτε το bae σε μια νέα συσκευή και επιλέξτε Σάρωση κωδικού για να σαρώσετε αυτό ή Εισαγωγή κωδικού για να πληκτρολογήσετε τον κωδικό. Όποιος έχει αυτή τη σελίδα και πρόσβαση στο cloud σας μπορεί να ανοίξει τη βιβλιοθήκη σας: φυλάξτε τη σε ιδιωτικό μέρος.</string>
     <string name="done">Τέλος</string>
     <string name="members_you">Εσείς</string>
     <string name="members_unnamed">Χωρίς όνομα ακόμη</string>
@@ -355,7 +355,7 @@
     <string name="add_device_title">Προσθήκη συσκευής</string>
     <string name="add_device_added">Προστέθηκε η συσκευή %1$s</string>
     <string name="add_device_making_code">Δημιουργία κωδικού για τη νέα σας συσκευή…</string>
-    <string name="add_device_instructions">Στη νέα συσκευή, επιλέξτε «Σάρωση κωδικού» για να σαρώσετε αυτό ή «Εισαγωγή κωδικού» για να πληκτρολογήσετε:</string>
+    <string name="add_device_instructions">Στη νέα συσκευή, σαρώστε αυτό ή πληκτρολογήστε τον κωδικό:</string>
     <string name="invite_email_dropbox">Email Dropbox</string>
     <string name="invite_email_onedrive">Email λογαριασμού Microsoft</string>
     <string name="invite_email_icloud">Email λογαριασμού Apple</string>
@@ -382,7 +382,7 @@
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
     <string name="restore_code_carries_s3_key">Ο κωδικός QR περιέχει επίσης το κλειδί πρόσβασης S3, οπότε μια συσκευή που τον σαρώνει δεν θα ζητήσει το κλειδί.</string>
     <string name="onboarding_s3_key_scanned">Το κλειδί πρόσβασης S3 ήρθε μαζί με τον σαρωμένο κωδικό.</string>
-    <string name="voice_play_not_found">Δεν βρέθηκε το «%1$s» στη βιβλιοθήκη σας.</string>
+    <string name="voice_play_not_found">Δεν βρέθηκε το %1$s στη βιβλιοθήκη σας.</string>
     <string name="onboarding_saved_codes_title">Αποθηκευμένοι σε αυτή τη συσκευή</string>
     <string name="onboarding_saved_codes_explanation">Κωδικοί επαναφοράς που αποθήκευσε το bae σε αυτή τη συσκευή, μαζί με όσους αντιγράφηκαν από τη συσκευή από την οποία το ρυθμίσατε. Πατήστε μια βιβλιοθήκη για να την επαναφέρετε.</string>
     <string name="onboarding_saved_codes_failed">Δεν ήταν δυνατή η ανάγνωση των κωδικών επαναφοράς που είναι αποθηκευμένοι σε αυτή τη συσκευή</string>
@@ -393,8 +393,7 @@
     <string name="onboarding_saved_code_delete">Διαγραφή</string>
     <string name="onboarding_saved_code_delete_menu">Διαγραφή…</string>
     <string name="onboarding_saved_code_delete_title">Διαγραφή αυτού του κωδικού επαναφοράς;</string>
-    <string name="onboarding_saved_code_delete_body">Αυτό αφαιρεί τον κωδικό επαναφοράς για «%1$s» μόνο από αυτή τη συσκευή. Δεν διαγράφει τη βιβλιοθήκη ούτε τίποτα στο cloud.</string>
-    <string name="onboarding_saved_code_delete_body_unusable">Αυτό αφαιρεί τον κωδικό επαναφοράς μόνο από αυτή τη συσκευή. Δεν διαγράφει τη βιβλιοθήκη ούτε τίποτα στο cloud.</string>
+    <string name="onboarding_saved_code_delete_body">Αυτό αφαιρεί τον κωδικό επαναφοράς μόνο από αυτή τη συσκευή. Δεν διαγράφει τη βιβλιοθήκη ούτε τίποτα στο cloud.</string>
     <string name="onboarding_saved_code_delete_failed">Δεν ήταν δυνατή η διαγραφή του κωδικού επαναφοράς</string>
     <string name="onboarding_saved_code_removed">Αυτός ο κωδικός επαναφοράς δεν είναι πλέον αποθηκευμένος σε αυτή τη συσκευή.</string>
     <string name="onboarding_saved_library">Βιβλιοθήκη</string>
@@ -420,7 +419,7 @@
     <string name="device_stop_copied">Ένα άλλο αντίγραφο της βιβλιοθήκης αυτής της συσκευής συγχρονίζεται ως αυτή η συσκευή.</string>
     <string name="device_stop_member_keys_replaced">Τα κλειδιά σας αντικαταστάθηκαν σε άλλη συσκευή σας.</string>
     <string name="admin_changes_title">Αλλαγές από αυτή τη συσκευή</string>
-    <string name="admin_change_rename">Μετονομασία της βιβλιοθήκης σε «%1$s»</string>
+    <string name="admin_change_rename">Μετονομασία της βιβλιοθήκης σε %1$s</string>
     <string name="admin_change_make_admin">Ορισμός του/της %1$s ως διαχειριστή</string>
     <string name="admin_change_make_member">Ορισμός του/της %1$s ως μέλους</string>
     <string name="admin_change_remove">Αφαίρεση %1$s</string>

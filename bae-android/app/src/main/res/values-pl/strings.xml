@@ -51,7 +51,7 @@
     <string name="seek_position">Pozycja</string>
     <string name="now_playing_track_by_artist">Teraz odtwarzane, %1$s, %2$s</string>
     <string name="queue_clear">Wyczyść</string>
-    <string name="queue_clear_up_next">Wyczyść „Następne w kolejce”</string>
+    <string name="queue_clear_up_next">Wyczyść Następne w kolejce</string>
     <string name="queue_clear_playing_from">Wyczyść źródło odtwarzania</string>
     <string name="queue_section_now_playing">Teraz odtwarzane</string>
     <string name="queue_section_up_next">Następne w kolejce</string>
@@ -66,7 +66,7 @@
     <string name="queue_shuffle_on">Odtwarzaj losowo</string>
     <string name="queue_shuffle_off">Wyłącz odtwarzanie losowe</string>
     <string name="search_failed">Wyszukiwanie nie powiodło się</string>
-    <string name="search_no_results">Brak wyników dla „%1$s”</string>
+    <string name="search_no_results">Brak wyników</string>
     <string name="search_section_albums">Albumy</string>
     <string name="search_section_artists">Wykonawcy</string>
     <string name="search_section_tracks">Ścieżki</string>
@@ -138,12 +138,12 @@
     <string name="copy">Kopiuj</string>
     <string name="hide">Ukryj</string>
     <string name="settings_remove_library">Usuń tę bibliotekę z tego urządzenia</string>
-    <string name="library_remove_confirm_title">Usunąć „%1$s” z tego urządzenia?</string>
+    <string name="library_remove_confirm_title">Usunąć %1$s z tego urządzenia?</string>
     <string name="settings_remove_library_confirm_body">Biblioteka pozostanie w chmurze i na twoich innych urządzeniach.</string>
     <string name="settings_remove">Usuń</string>
     <string name="onboarding_libraries_title">Twoje biblioteki</string>
     <string name="library_unsent_changes_lost">Niewysłane zmiany zostaną utracone</string>
-    <string name="library_remove_failed_title">Nie udało się usunąć „%1$s”</string>
+    <string name="library_remove_failed_title">Nie udało się usunąć %1$s</string>
     <string name="details_menu">Szczegóły…</string>
     <string name="library_remove_menu">Usuń…</string>
     <string name="library_last_synced">Ostatnia synchronizacja</string>
@@ -373,7 +373,7 @@
     <string name="add_device_title">Dodaj urządzenie</string>
     <string name="add_device_added">Dodano urządzenie %1$s</string>
     <string name="add_device_making_code">Tworzenie kodu dla nowego urządzenia…</string>
-    <string name="add_device_instructions">Na nowym urządzeniu wybierz „Zeskanuj kod”, żeby to zeskanować, albo „Wpisz kod”, żeby wpisać:</string>
+    <string name="add_device_instructions">Na nowym urządzeniu zeskanuj to albo wpisz kod:</string>
     <string name="invite_email_dropbox">E-mail Dropbox</string>
     <string name="invite_email_onedrive">E-mail konta Microsoft</string>
     <string name="invite_email_icloud">E-mail konta Apple</string>
@@ -400,7 +400,7 @@
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
     <string name="restore_code_carries_s3_key">Kod QR zawiera też Twój klucz dostępu S3, więc urządzenie, które go zeskanuje, nie zapyta o klucz.</string>
     <string name="onboarding_s3_key_scanned">Twój klucz dostępu S3 przyszedł razem z zeskanowanym kodem.</string>
-    <string name="voice_play_not_found">Nie znaleziono „%1$s” w Twojej bibliotece.</string>
+    <string name="voice_play_not_found">Nie znaleziono %1$s w Twojej bibliotece.</string>
     <string name="onboarding_saved_codes_title">Zapisane na tym urządzeniu</string>
     <string name="onboarding_saved_codes_explanation">Kody przywracania zapisane przez bae na tym urządzeniu, w tym skopiowane z urządzenia, z którego go skonfigurowano. Dotknij biblioteki, aby ją przywrócić.</string>
     <string name="onboarding_saved_codes_failed">Nie udało się odczytać kodów przywracania zapisanych na tym urządzeniu</string>
@@ -411,8 +411,7 @@
     <string name="onboarding_saved_code_delete">Usuń</string>
     <string name="onboarding_saved_code_delete_menu">Usuń…</string>
     <string name="onboarding_saved_code_delete_title">Usunąć ten kod przywracania?</string>
-    <string name="onboarding_saved_code_delete_body">Spowoduje to usunięcie kodu przywracania biblioteki „%1$s” tylko z tego urządzenia. Nie usunie to biblioteki ani niczego w chmurze.</string>
-    <string name="onboarding_saved_code_delete_body_unusable">Spowoduje to usunięcie kodu przywracania tylko z tego urządzenia. Nie usunie to biblioteki ani niczego w chmurze.</string>
+    <string name="onboarding_saved_code_delete_body">Spowoduje to usunięcie kodu przywracania tylko z tego urządzenia. Nie usunie to biblioteki ani niczego w chmurze.</string>
     <string name="onboarding_saved_code_delete_failed">Nie udało się usunąć kodu przywracania</string>
     <string name="onboarding_saved_code_removed">Ten kod przywracania nie jest już zapisany na tym urządzeniu.</string>
     <string name="onboarding_saved_library">Biblioteka</string>
@@ -438,7 +437,7 @@
     <string name="device_stop_copied">Inna kopia biblioteki tego urządzenia synchronizuje się jako to urządzenie.</string>
     <string name="device_stop_member_keys_replaced">Twoje klucze zostały zastąpione na innym z Twoich urządzeń.</string>
     <string name="admin_changes_title">Zmiany z tego urządzenia</string>
-    <string name="admin_change_rename">Zmień nazwę biblioteki na „%1$s”</string>
+    <string name="admin_change_rename">Zmień nazwę biblioteki na %1$s</string>
     <string name="admin_change_make_admin">Ustaw %1$s jako administratora</string>
     <string name="admin_change_make_member">Ustaw %1$s jako członka</string>
     <string name="admin_change_remove">Usuń %1$s</string>

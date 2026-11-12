@@ -70,7 +70,7 @@
         <item quantity="other">%d spor blev føjet til køen</item>
     </plurals>
     <string name="search_failed">Søgningen mislykkedes</string>
-    <string name="search_no_results">Ingen resultater for “%1$s”</string>
+    <string name="search_no_results">Ingen resultater</string>
     <string name="search_section_albums">Album</string>
     <string name="search_section_artists">Kunstnere</string>
     <string name="search_section_tracks">Spor</string>
@@ -134,12 +134,12 @@
     <string name="copy">Kopier</string>
     <string name="hide">Skjul</string>
     <string name="settings_remove_library">Fjern dette bibliotek fra denne enhed</string>
-    <string name="library_remove_confirm_title">Vil du fjerne “%1$s” fra denne enhed?</string>
+    <string name="library_remove_confirm_title">Vil du fjerne %1$s fra denne enhed?</string>
     <string name="settings_remove_library_confirm_body">Biblioteket forbliver i skyen og på dine andre enheder.</string>
     <string name="settings_remove">Fjern</string>
     <string name="onboarding_libraries_title">Dine biblioteker</string>
     <string name="library_unsent_changes_lost">Ændringer, der ikke er sendt, går tabt</string>
-    <string name="library_remove_failed_title">“%1$s” kunne ikke fjernes</string>
+    <string name="library_remove_failed_title">%1$s kunne ikke fjernes</string>
     <string name="details_menu">Detaljer…</string>
     <string name="library_remove_menu">Fjern…</string>
     <string name="library_last_synced">Senest synkroniseret</string>
@@ -355,7 +355,7 @@
     <string name="add_device_title">Tilføj en enhed</string>
     <string name="add_device_added">%1$s er tilføjet</string>
     <string name="add_device_making_code">Laver en kode til din nye enhed…</string>
-    <string name="add_device_instructions">Vælg »Scan en kode« på den nye enhed for at scanne dette, eller »Indtast en kode« for at skrive:</string>
+    <string name="add_device_instructions">Scan dette på den nye enhed, eller skriv koden:</string>
     <string name="invite_email_dropbox">Dropbox-mail</string>
     <string name="invite_email_onedrive">Microsoft-kontoens mail</string>
     <string name="invite_email_icloud">Apple-kontoens mail</string>
@@ -382,7 +382,7 @@
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
     <string name="restore_code_carries_s3_key">QR-koden indeholder også din S3-adgangsnøgle, så en enhed, der scanner den, ikke beder om nøglen.</string>
     <string name="onboarding_s3_key_scanned">Din S3-adgangsnøgle fulgte med den scannede kode.</string>
-    <string name="voice_play_not_found">Kunne ikke finde “%1$s” i dit bibliotek.</string>
+    <string name="voice_play_not_found">Kunne ikke finde %1$s i dit bibliotek.</string>
     <string name="onboarding_saved_codes_title">Gemt på denne enhed</string>
     <string name="onboarding_saved_codes_explanation">Gendannelseskoder, som bae har gemt på denne enhed, også dem, der blev kopieret fra den enhed, du konfigurerede den fra. Tryk på et bibliotek for at gendanne det.</string>
     <string name="onboarding_saved_codes_failed">Kunne ikke læse de gendannelseskoder, der er gemt på denne enhed</string>
@@ -393,8 +393,7 @@
     <string name="onboarding_saved_code_delete">Slet</string>
     <string name="onboarding_saved_code_delete_menu">Slet…</string>
     <string name="onboarding_saved_code_delete_title">Vil du slette denne gendannelseskode?</string>
-    <string name="onboarding_saved_code_delete_body">Dette fjerner gendannelseskoden til “%1$s” kun fra denne enhed. Det sletter ikke biblioteket eller noget i skyen.</string>
-    <string name="onboarding_saved_code_delete_body_unusable">Dette fjerner gendannelseskoden kun fra denne enhed. Det sletter ikke biblioteket eller noget i skyen.</string>
+    <string name="onboarding_saved_code_delete_body">Dette fjerner gendannelseskoden kun fra denne enhed. Det sletter ikke biblioteket eller noget i skyen.</string>
     <string name="onboarding_saved_code_delete_failed">Kunne ikke slette gendannelseskoden</string>
     <string name="onboarding_saved_code_removed">Denne gendannelseskode er ikke længere gemt på denne enhed.</string>
     <string name="onboarding_saved_library">Bibliotek</string>
@@ -420,7 +419,7 @@
     <string name="device_stop_copied">En anden kopi af denne enheds bibliotek synkroniserer som denne enhed.</string>
     <string name="device_stop_member_keys_replaced">Dine nøgler blev udskiftet på en anden af dine enheder.</string>
     <string name="admin_changes_title">Ændringer fra denne enhed</string>
-    <string name="admin_change_rename">Omdøb biblioteket til “%1$s”</string>
+    <string name="admin_change_rename">Omdøb biblioteket til %1$s</string>
     <string name="admin_change_make_admin">Gør %1$s til administrator</string>
     <string name="admin_change_make_member">Gør %1$s til medlem</string>
     <string name="admin_change_remove">Fjern %1$s</string>

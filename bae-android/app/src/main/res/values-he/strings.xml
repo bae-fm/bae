@@ -51,7 +51,7 @@
     <string name="seek_position">מיקום</string>
     <string name="now_playing_track_by_artist">מתנגן כעת, %1$s מאת %2$s</string>
     <string name="queue_clear">נקה</string>
-    <string name="queue_clear_up_next">נקה את “הבא בתור”</string>
+    <string name="queue_clear_up_next">נקה את הבא בתור</string>
     <string name="queue_clear_playing_from">נקה את מקור ההשמעה</string>
     <string name="queue_section_now_playing">מתנגן כעת</string>
     <string name="queue_section_up_next">הבא בתור</string>
@@ -66,7 +66,7 @@
     <string name="queue_shuffle_on">ערבב</string>
     <string name="queue_shuffle_off">כבה ערבוב</string>
     <string name="search_failed">החיפוש נכשל</string>
-    <string name="search_no_results">אין תוצאות עבור ”%1$s“</string>
+    <string name="search_no_results">אין תוצאות</string>
     <string name="search_section_albums">אלבומים</string>
     <string name="search_section_artists">אמנים</string>
     <string name="search_section_tracks">רצועות</string>
@@ -134,12 +134,12 @@
     <string name="copy">העתקה</string>
     <string name="hide">הסתרה</string>
     <string name="settings_remove_library">הסר ספרייה זו מהמכשיר הזה</string>
-    <string name="library_remove_confirm_title">להסיר את ”%1$s“ מהמכשיר הזה?</string>
+    <string name="library_remove_confirm_title">להסיר את %1$s מהמכשיר הזה?</string>
     <string name="settings_remove_library_confirm_body">הספרייה תישאר בענן ובמכשירים האחרים שלך.</string>
     <string name="settings_remove">הסר</string>
     <string name="onboarding_libraries_title">הספריות שלך</string>
     <string name="library_unsent_changes_lost">שינויים שלא נשלחו יאבדו</string>
-    <string name="library_remove_failed_title">לא ניתן היה להסיר את ”%1$s“</string>
+    <string name="library_remove_failed_title">לא ניתן היה להסיר את %1$s</string>
     <string name="details_menu">פרטים…</string>
     <string name="library_remove_menu">הסר…</string>
     <string name="library_last_synced">סונכרן לאחרונה</string>
@@ -329,7 +329,7 @@
     <string name="restore_code_partly_hidden">קוד שחזור, מוסתר חלקית</string>
     <string name="restore_code_print_title">קוד השחזור של bae</string>
     <string name="restore_code_printed">הודפס ב-%1$s</string>
-    <string name="restore_code_print_keep">אם איבדת את כל המכשירים שלך, פתח את bae במכשיר חדש ובחר ב“סריקת קוד” כדי לסרוק את הקוד הזה, או ב“הזנת קוד” כדי להקליד אותו. כל מי שיש לו את הדף הזה וגישה לענן שלך יכול לפתוח את הספרייה שלך: שמור אותו במקום פרטי.</string>
+    <string name="restore_code_print_keep">אם איבדת את כל המכשירים שלך, פתח את bae במכשיר חדש ובחר בסריקת קוד כדי לסרוק את הקוד הזה, או בהזנת קוד כדי להקליד אותו. כל מי שיש לו את הדף הזה וגישה לענן שלך יכול לפתוח את הספרייה שלך: שמור אותו במקום פרטי.</string>
     <string name="done">סיום</string>
     <string name="members_you">את/ה</string>
     <string name="members_unnamed">עדיין ללא שם</string>
@@ -365,7 +365,7 @@
     <string name="add_device_title">הוספת מכשיר</string>
     <string name="add_device_added">המכשיר %1$s נוסף</string>
     <string name="add_device_making_code">יוצר קוד למכשיר החדש שלך…</string>
-    <string name="add_device_instructions">במכשיר החדש בחר ב“סריקת קוד” כדי לסרוק את זה, או ב“הזנת קוד” כדי להקליד:</string>
+    <string name="add_device_instructions">במכשיר החדש סרוק את זה או הקלד את הקוד:</string>
     <string name="invite_email_dropbox">אימייל ב-Dropbox</string>
     <string name="invite_email_onedrive">אימייל של חשבון Microsoft</string>
     <string name="invite_email_icloud">אימייל של חשבון Apple</string>
@@ -392,7 +392,7 @@
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
     <string name="restore_code_carries_s3_key">קוד ה-QR נושא גם את מפתח הגישה שלך ל-S3, כך שמכשיר שסורק אותו לא יבקש את המפתח.</string>
     <string name="onboarding_s3_key_scanned">מפתח הגישה שלך ל-S3 הגיע עם הקוד שנסרק.</string>
-    <string name="voice_play_not_found">לא נמצא ”%1$s” בספרייה שלך.</string>
+    <string name="voice_play_not_found">לא נמצא %1$s בספרייה שלך.</string>
     <string name="onboarding_saved_codes_title">שמורים במכשיר הזה</string>
     <string name="onboarding_saved_codes_explanation">קודי שחזור ש-bae שמר במכשיר הזה, כולל קודים שהועתקו מהמכשיר שממנו הגדרת אותו. הקש על ספרייה כדי לשחזר אותה.</string>
     <string name="onboarding_saved_codes_failed">לא ניתן היה לקרוא את קודי השחזור השמורים במכשיר הזה</string>
@@ -403,8 +403,7 @@
     <string name="onboarding_saved_code_delete">מחיקה</string>
     <string name="onboarding_saved_code_delete_menu">מחיקה…</string>
     <string name="onboarding_saved_code_delete_title">למחוק את קוד השחזור הזה?</string>
-    <string name="onboarding_saved_code_delete_body">פעולה זו מסירה את קוד השחזור של ”%1$s” מהמכשיר הזה בלבד. היא לא מוחקת את הספרייה או משהו בענן.</string>
-    <string name="onboarding_saved_code_delete_body_unusable">פעולה זו מסירה את קוד השחזור מהמכשיר הזה בלבד. היא לא מוחקת את הספרייה או משהו בענן.</string>
+    <string name="onboarding_saved_code_delete_body">פעולה זו מסירה את קוד השחזור מהמכשיר הזה בלבד. היא לא מוחקת את הספרייה או משהו בענן.</string>
     <string name="onboarding_saved_code_delete_failed">לא ניתן היה למחוק את קוד השחזור</string>
     <string name="onboarding_saved_code_removed">קוד השחזור הזה כבר לא שמור במכשיר הזה.</string>
     <string name="onboarding_saved_library">ספרייה</string>
@@ -430,7 +429,7 @@
     <string name="device_stop_copied">עותק אחר של הספרייה של המכשיר הזה מסתנכרן בתור המכשיר הזה.</string>
     <string name="device_stop_member_keys_replaced">המפתחות שלך הוחלפו במכשיר אחר שלך.</string>
     <string name="admin_changes_title">שינויים מהמכשיר הזה</string>
-    <string name="admin_change_rename">שינוי שם הספרייה ל-“%1$s”</string>
+    <string name="admin_change_rename">שינוי שם הספרייה ל-%1$s</string>
     <string name="admin_change_make_admin">להפוך את %1$s למנהל</string>
     <string name="admin_change_make_member">להפוך את %1$s לחבר</string>
     <string name="admin_change_remove">הסר %1$s</string>

@@ -51,7 +51,7 @@
     <string name="seek_position">Position</string>
     <string name="now_playing_track_by_artist">Aktuelle Wiedergabe, %1$s von %2$s</string>
     <string name="queue_clear">Leeren</string>
-    <string name="queue_clear_up_next">„Als Nächstes“ leeren</string>
+    <string name="queue_clear_up_next">Als Nächstes leeren</string>
     <string name="queue_clear_playing_from">Wiedergabequelle leeren</string>
     <string name="queue_section_now_playing">Aktuelle Wiedergabe</string>
     <string name="queue_section_up_next">Als Nächstes</string>
@@ -66,7 +66,7 @@
     <string name="queue_shuffle_on">Zufallswiedergabe</string>
     <string name="queue_shuffle_off">Zufallswiedergabe ausschalten</string>
     <string name="search_failed">Suche fehlgeschlagen</string>
-    <string name="search_no_results">Keine Ergebnisse für „%1$s“</string>
+    <string name="search_no_results">Keine Ergebnisse</string>
     <string name="search_section_albums">Alben</string>
     <string name="search_section_artists">Künstler</string>
     <string name="search_section_tracks">Tracks</string>
@@ -130,12 +130,12 @@
     <string name="copy">Kopieren</string>
     <string name="hide">Ausblenden</string>
     <string name="settings_remove_library">Diese Bibliothek von diesem Gerät entfernen</string>
-    <string name="library_remove_confirm_title">„%1$s“ von diesem Gerät entfernen?</string>
+    <string name="library_remove_confirm_title">%1$s von diesem Gerät entfernen?</string>
     <string name="settings_remove_library_confirm_body">Die Bibliothek bleibt in der Cloud und auf deinen anderen Geräten erhalten.</string>
     <string name="settings_remove">Entfernen</string>
     <string name="onboarding_libraries_title">Deine Bibliotheken</string>
     <string name="library_unsent_changes_lost">Nicht gesendete Änderungen gehen verloren</string>
-    <string name="library_remove_failed_title">„%1$s“ konnte nicht entfernt werden</string>
+    <string name="library_remove_failed_title">%1$s konnte nicht entfernt werden</string>
     <string name="details_menu">Details…</string>
     <string name="library_remove_menu">Entfernen…</string>
     <string name="library_last_synced">Zuletzt synchronisiert</string>
@@ -322,7 +322,7 @@
     <string name="restore_code_partly_hidden">Wiederherstellungscode, teilweise verborgen</string>
     <string name="restore_code_print_title">bae-Wiederherstellungscode</string>
     <string name="restore_code_printed">Gedruckt am %1$s</string>
-    <string name="restore_code_print_keep">Wenn du alle deine Geräte verlierst, öffne bae auf einem neuen Gerät und wähle „Code scannen“, um diesen Code zu scannen, oder „Code eingeben“, um ihn einzutippen. Jeder, der diese Seite und Zugriff auf deine Cloud hat, kann deine Bibliothek öffnen: Bewahre sie an einem privaten Ort auf.</string>
+    <string name="restore_code_print_keep">Wenn du alle deine Geräte verlierst, öffne bae auf einem neuen Gerät und wähle Code scannen, um diesen Code zu scannen, oder Code eingeben, um ihn einzutippen. Jeder, der diese Seite und Zugriff auf deine Cloud hat, kann deine Bibliothek öffnen: Bewahre sie an einem privaten Ort auf.</string>
     <string name="done">Fertig</string>
     <string name="members_you">Du</string>
     <string name="members_unnamed">Noch kein Name</string>
@@ -357,7 +357,7 @@
     <string name="add_device_title">Gerät hinzufügen</string>
     <string name="add_device_added">%1$s hinzugefügt</string>
     <string name="add_device_making_code">Code für dein neues Gerät wird erstellt…</string>
-    <string name="add_device_instructions">Wähle auf dem neuen Gerät „Code scannen“, um dies zu scannen, oder „Code eingeben“, um Folgendes einzutippen:</string>
+    <string name="add_device_instructions">Scanne dies auf dem neuen Gerät oder tippe den Code ein:</string>
     <string name="invite_email_dropbox">Dropbox-E-Mail</string>
     <string name="invite_email_onedrive">E-Mail des Microsoft-Kontos</string>
     <string name="invite_email_icloud">E-Mail des Apple-Kontos</string>
@@ -384,7 +384,7 @@
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
     <string name="restore_code_carries_s3_key">Der QR-Code enthält auch deinen S3-Zugriffsschlüssel, daher fragt ein Gerät, das ihn scannt, nicht nach dem Schlüssel.</string>
     <string name="onboarding_s3_key_scanned">Dein S3-Zugriffsschlüssel kam mit dem gescannten Code.</string>
-    <string name="voice_play_not_found">„%1$s“ wurde in deiner Mediathek nicht gefunden.</string>
+    <string name="voice_play_not_found">%1$s wurde in deiner Mediathek nicht gefunden.</string>
     <string name="onboarding_saved_codes_title">Auf diesem Gerät gespeichert</string>
     <string name="onboarding_saved_codes_explanation">Wiederherstellungscodes, die bae auf diesem Gerät gespeichert hat, auch solche, die von dem Gerät übertragen wurden, von dem aus du es eingerichtet hast. Tippe auf eine Bibliothek, um sie wiederherzustellen.</string>
     <string name="onboarding_saved_codes_failed">Die auf diesem Gerät gespeicherten Wiederherstellungscodes konnten nicht gelesen werden</string>
@@ -395,8 +395,7 @@
     <string name="onboarding_saved_code_delete">Löschen</string>
     <string name="onboarding_saved_code_delete_menu">Löschen…</string>
     <string name="onboarding_saved_code_delete_title">Diesen Wiederherstellungscode löschen?</string>
-    <string name="onboarding_saved_code_delete_body">Damit wird der Wiederherstellungscode für „%1$s“ nur von diesem Gerät entfernt. Die Bibliothek und alles in der Cloud bleiben erhalten.</string>
-    <string name="onboarding_saved_code_delete_body_unusable">Damit wird der Wiederherstellungscode nur von diesem Gerät entfernt. Die Bibliothek und alles in der Cloud bleiben erhalten.</string>
+    <string name="onboarding_saved_code_delete_body">Damit wird der Wiederherstellungscode nur von diesem Gerät entfernt. Die Bibliothek und alles in der Cloud bleiben erhalten.</string>
     <string name="onboarding_saved_code_delete_failed">Der Wiederherstellungscode konnte nicht gelöscht werden</string>
     <string name="onboarding_saved_code_removed">Dieser Wiederherstellungscode ist nicht mehr auf diesem Gerät gespeichert.</string>
     <string name="onboarding_saved_library">Bibliothek</string>
@@ -422,7 +421,7 @@
     <string name="device_stop_copied">Eine andere Kopie der Bibliothek dieses Geräts synchronisiert als dieses Gerät.</string>
     <string name="device_stop_member_keys_replaced">Deine Schlüssel wurden auf einem anderen deiner Geräte ersetzt.</string>
     <string name="admin_changes_title">Änderungen von diesem Gerät</string>
-    <string name="admin_change_rename">Bibliothek in „%1$s“ umbenennen</string>
+    <string name="admin_change_rename">Bibliothek in %1$s umbenennen</string>
     <string name="admin_change_make_admin">%1$s zum Admin machen</string>
     <string name="admin_change_make_member">%1$s zum Mitglied machen</string>
     <string name="admin_change_remove">%1$s entfernen</string>

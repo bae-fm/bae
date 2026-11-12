@@ -51,7 +51,7 @@
     <string name="seek_position">الموضع</string>
     <string name="now_playing_track_by_artist">قيد التشغيل الآن، %1$s لـ %2$s</string>
     <string name="queue_clear">مسح</string>
-    <string name="queue_clear_up_next">مسح «التالي»</string>
+    <string name="queue_clear_up_next">مسح التالي</string>
     <string name="queue_clear_playing_from">مسح مصدر التشغيل</string>
     <string name="queue_section_now_playing">قيد التشغيل الآن</string>
     <string name="queue_section_up_next">التالي</string>
@@ -66,7 +66,7 @@
     <string name="queue_shuffle_on">تشغيل عشوائي</string>
     <string name="queue_shuffle_off">إيقاف التشغيل العشوائي</string>
     <string name="search_failed">فشل البحث</string>
-    <string name="search_no_results">لا توجد نتائج لـ ”%1$s“</string>
+    <string name="search_no_results">لا توجد نتائج</string>
     <string name="search_section_albums">الألبومات</string>
     <string name="search_section_artists">الفنانون</string>
     <string name="search_section_tracks">المقاطع</string>
@@ -146,12 +146,12 @@
     <string name="copy">نسخ</string>
     <string name="hide">إخفاء</string>
     <string name="settings_remove_library">إزالة هذه المكتبة من هذا الجهاز</string>
-    <string name="library_remove_confirm_title">إزالة «%1$s» من هذا الجهاز؟</string>
+    <string name="library_remove_confirm_title">إزالة %1$s من هذا الجهاز؟</string>
     <string name="settings_remove_library_confirm_body">تبقى المكتبة في السحابة وعلى أجهزتك الأخرى.</string>
     <string name="settings_remove">إزالة</string>
     <string name="onboarding_libraries_title">مكتباتك</string>
     <string name="library_unsent_changes_lost">ستُفقد التغييرات غير المُرسلة</string>
-    <string name="library_remove_failed_title">تعذّرت إزالة «%1$s»</string>
+    <string name="library_remove_failed_title">تعذّرت إزالة %1$s</string>
     <string name="details_menu">التفاصيل…</string>
     <string name="library_remove_menu">إزالة…</string>
     <string name="library_last_synced">آخر مزامنة</string>
@@ -350,7 +350,7 @@
     <string name="restore_code_partly_hidden">رمز الاستعادة، مخفي جزئيًا</string>
     <string name="restore_code_print_title">رمز استعادة bae</string>
     <string name="restore_code_printed">تمت الطباعة في %1$s</string>
-    <string name="restore_code_print_keep">إذا فقدت جميع أجهزتك، فافتح bae على جهاز جديد واختر «مسح رمز» لمسح هذا الرمز، أو «إدخال رمز» لكتابته. يمكن لأي شخص يملك هذه الصفحة وصولًا إلى سحابتك أن يفتح مكتبتك، فاحتفظ بها في مكان خاص.</string>
+    <string name="restore_code_print_keep">إذا فقدت جميع أجهزتك، فافتح bae على جهاز جديد واختر مسح رمز لمسح هذا الرمز، أو إدخال رمز لكتابته. يمكن لأي شخص يملك هذه الصفحة وصولًا إلى سحابتك أن يفتح مكتبتك، فاحتفظ بها في مكان خاص.</string>
     <string name="done">تم</string>
     <string name="members_you">أنت</string>
     <string name="members_unnamed">بلا اسم بعد</string>
@@ -389,7 +389,7 @@
     <string name="add_device_title">إضافة جهاز</string>
     <string name="add_device_added">تمت إضافة %1$s</string>
     <string name="add_device_making_code">جارٍ إنشاء رمز لجهازك الجديد…</string>
-    <string name="add_device_instructions">على الجهاز الجديد، اختر «مسح رمز» لمسح هذا الرمز، أو «إدخال رمز» لكتابته:</string>
+    <string name="add_device_instructions">على الجهاز الجديد، امسح هذا الرمز ضوئيًا أو اكتب الرمز:</string>
     <string name="invite_email_dropbox">بريد Dropbox الإلكتروني</string>
     <string name="invite_email_onedrive">البريد الإلكتروني لحساب Microsoft</string>
     <string name="invite_email_icloud">البريد الإلكتروني لحساب Apple</string>
@@ -416,7 +416,7 @@
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
     <string name="restore_code_carries_s3_key">يحمل رمز QR أيضًا مفتاح الوصول إلى S3 الخاص بك، فلن يطلب الجهاز الذي يمسحه المفتاح.</string>
     <string name="onboarding_s3_key_scanned">وصل مفتاح الوصول إلى S3 الخاص بك مع الرمز الممسوح.</string>
-    <string name="voice_play_not_found">تعذّر العثور على «%1$s» في مكتبتك.</string>
+    <string name="voice_play_not_found">تعذّر العثور على %1$s في مكتبتك.</string>
     <string name="onboarding_saved_codes_title">محفوظة على هذا الجهاز</string>
     <string name="onboarding_saved_codes_explanation">رموز استرداد حفظها bae على هذا الجهاز، بما فيها رموز نُسخت من الجهاز الذي أعددته منه. انقر على مكتبة لاستعادتها.</string>
     <string name="onboarding_saved_codes_failed">تعذّرت قراءة رموز الاستعادة المحفوظة على هذا الجهاز</string>
@@ -427,8 +427,7 @@
     <string name="onboarding_saved_code_delete">حذف</string>
     <string name="onboarding_saved_code_delete_menu">حذف…</string>
     <string name="onboarding_saved_code_delete_title">حذف رمز الاستعادة هذا؟</string>
-    <string name="onboarding_saved_code_delete_body">يؤدي هذا إلى إزالة رمز الاستعادة الخاص بـ«%1$s» من هذا الجهاز فقط. لا يحذف المكتبة، ولا أي شيء في السحابة.</string>
-    <string name="onboarding_saved_code_delete_body_unusable">يؤدي هذا إلى إزالة رمز الاستعادة من هذا الجهاز فقط. لا يحذف المكتبة، ولا أي شيء في السحابة.</string>
+    <string name="onboarding_saved_code_delete_body">يؤدي هذا إلى إزالة رمز الاستعادة من هذا الجهاز فقط. لا يحذف المكتبة، ولا أي شيء في السحابة.</string>
     <string name="onboarding_saved_code_delete_failed">تعذّر حذف رمز الاستعادة</string>
     <string name="onboarding_saved_code_removed">لم يعد رمز الاستعادة هذا محفوظًا على هذا الجهاز.</string>
     <string name="onboarding_saved_library">المكتبة</string>
@@ -454,7 +453,7 @@
     <string name="device_stop_copied">نسخة أخرى من مكتبة هذا الجهاز تتزامن باسم هذا الجهاز.</string>
     <string name="device_stop_member_keys_replaced">استُبدلت مفاتيحك على جهاز آخر من أجهزتك.</string>
     <string name="admin_changes_title">التغييرات من هذا الجهاز</string>
-    <string name="admin_change_rename">إعادة تسمية المكتبة إلى “%1$s”</string>
+    <string name="admin_change_rename">إعادة تسمية المكتبة إلى %1$s</string>
     <string name="admin_change_make_admin">جعل %1$s مسؤولًا</string>
     <string name="admin_change_make_member">جعل %1$s عضوًا</string>
     <string name="admin_change_remove">إزالة %1$s</string>

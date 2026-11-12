@@ -70,7 +70,7 @@
         <item quantity="other">%d spår lades till i kön</item>
     </plurals>
     <string name="search_failed">Sökningen misslyckades</string>
-    <string name="search_no_results">Inga resultat för ”%1$s”</string>
+    <string name="search_no_results">Inga resultat</string>
     <string name="search_section_albums">Album</string>
     <string name="search_section_artists">Artister</string>
     <string name="search_section_tracks">Spår</string>
@@ -134,12 +134,12 @@
     <string name="copy">Kopiera</string>
     <string name="hide">Dölj</string>
     <string name="settings_remove_library">Ta bort det här biblioteket från den här enheten</string>
-    <string name="library_remove_confirm_title">Ta bort ”%1$s” från den här enheten?</string>
+    <string name="library_remove_confirm_title">Ta bort %1$s från den här enheten?</string>
     <string name="settings_remove_library_confirm_body">Biblioteket finns kvar i molnet och på dina andra enheter.</string>
     <string name="settings_remove">Ta bort</string>
     <string name="onboarding_libraries_title">Dina bibliotek</string>
     <string name="library_unsent_changes_lost">Ändringar som inte har skickats går förlorade</string>
-    <string name="library_remove_failed_title">Det gick inte att ta bort ”%1$s”</string>
+    <string name="library_remove_failed_title">Det gick inte att ta bort %1$s</string>
     <string name="details_menu">Detaljer…</string>
     <string name="library_remove_menu">Ta bort…</string>
     <string name="library_last_synced">Senast synkroniserad</string>
@@ -355,7 +355,7 @@
     <string name="add_device_title">Lägg till en enhet</string>
     <string name="add_device_added">%1$s har lagts till</string>
     <string name="add_device_making_code">Skapar en kod för din nya enhet…</string>
-    <string name="add_device_instructions">Välj ”Skanna en kod” på den nya enheten för att skanna det här, eller ”Ange en kod” för att skriva:</string>
+    <string name="add_device_instructions">Skanna det här på den nya enheten, eller skriv koden:</string>
     <string name="invite_email_dropbox">Dropbox-e-post</string>
     <string name="invite_email_onedrive">E-post för Microsoft-kontot</string>
     <string name="invite_email_icloud">E-post för Apple-kontot</string>
@@ -382,7 +382,7 @@
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
     <string name="restore_code_carries_s3_key">QR-koden innehåller också din S3-åtkomstnyckel, så en enhet som skannar den frågar inte efter nyckeln.</string>
     <string name="onboarding_s3_key_scanned">Din S3-åtkomstnyckel följde med den skannade koden.</string>
-    <string name="voice_play_not_found">Hittade inte ”%1$s” i ditt bibliotek.</string>
+    <string name="voice_play_not_found">Hittade inte %1$s i ditt bibliotek.</string>
     <string name="onboarding_saved_codes_title">Sparade på den här enheten</string>
     <string name="onboarding_saved_codes_explanation">Återställningskoder som bae har sparat på den här enheten, även de som kopierades från enheten du konfigurerade den från. Tryck på ett bibliotek för att återställa det.</string>
     <string name="onboarding_saved_codes_failed">Det gick inte att läsa återställningskoderna som sparats på den här enheten</string>
@@ -393,8 +393,7 @@
     <string name="onboarding_saved_code_delete">Radera</string>
     <string name="onboarding_saved_code_delete_menu">Radera…</string>
     <string name="onboarding_saved_code_delete_title">Radera den här återställningskoden?</string>
-    <string name="onboarding_saved_code_delete_body">Det här tar bara bort återställningskoden för ”%1$s” från den här enheten. Biblioteket och allt i molnet finns kvar.</string>
-    <string name="onboarding_saved_code_delete_body_unusable">Det här tar bara bort återställningskoden från den här enheten. Biblioteket och allt i molnet finns kvar.</string>
+    <string name="onboarding_saved_code_delete_body">Det här tar bara bort återställningskoden från den här enheten. Biblioteket och allt i molnet finns kvar.</string>
     <string name="onboarding_saved_code_delete_failed">Det gick inte att radera återställningskoden</string>
     <string name="onboarding_saved_code_removed">Den här återställningskoden är inte längre sparad på den här enheten.</string>
     <string name="onboarding_saved_library">Bibliotek</string>
@@ -420,7 +419,7 @@
     <string name="device_stop_copied">En annan kopia av den här enhetens bibliotek synkroniserar som den här enheten.</string>
     <string name="device_stop_member_keys_replaced">Dina nycklar byttes ut på en annan av dina enheter.</string>
     <string name="admin_changes_title">Ändringar från den här enheten</string>
-    <string name="admin_change_rename">Byt namn på biblioteket till ”%1$s”</string>
+    <string name="admin_change_rename">Byt namn på biblioteket till %1$s</string>
     <string name="admin_change_make_admin">Gör %1$s till administratör</string>
     <string name="admin_change_make_member">Gör %1$s till medlem</string>
     <string name="admin_change_remove">Ta bort %1$s</string>

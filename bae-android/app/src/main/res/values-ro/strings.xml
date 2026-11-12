@@ -71,7 +71,7 @@
         <item quantity="other">%d de piese adăugate la coadă</item>
     </plurals>
     <string name="search_failed">Căutarea a eșuat</string>
-    <string name="search_no_results">Niciun rezultat pentru „%1$s”</string>
+    <string name="search_no_results">Niciun rezultat</string>
     <string name="search_section_albums">Albume</string>
     <string name="search_section_artists">Artiști</string>
     <string name="search_section_tracks">Piese</string>
@@ -139,12 +139,12 @@
     <string name="copy">Copiază</string>
     <string name="hide">Ascunde</string>
     <string name="settings_remove_library">Elimină această bibliotecă de pe acest dispozitiv</string>
-    <string name="library_remove_confirm_title">Elimini „%1$s” de pe acest dispozitiv?</string>
+    <string name="library_remove_confirm_title">Elimini %1$s de pe acest dispozitiv?</string>
     <string name="settings_remove_library_confirm_body">Biblioteca rămâne în cloud și pe celelalte dispozitive ale tale.</string>
     <string name="settings_remove">Elimină</string>
     <string name="onboarding_libraries_title">Bibliotecile tale</string>
     <string name="library_unsent_changes_lost">Modificările netrimise se vor pierde</string>
-    <string name="library_remove_failed_title">Nu s-a putut elimina „%1$s”</string>
+    <string name="library_remove_failed_title">Nu s-a putut elimina %1$s</string>
     <string name="details_menu">Detalii…</string>
     <string name="library_remove_menu">Elimină…</string>
     <string name="library_last_synced">Ultima sincronizare</string>
@@ -363,7 +363,7 @@
     <string name="add_device_title">Adaugă un dispozitiv</string>
     <string name="add_device_added">Dispozitiv adăugat: %1$s</string>
     <string name="add_device_making_code">Se creează un cod pentru noul tău dispozitiv…</string>
-    <string name="add_device_instructions">Pe noul dispozitiv, alege „Scanează un cod” ca să scanezi asta sau „Introdu un cod” ca să tastezi:</string>
+    <string name="add_device_instructions">Pe noul dispozitiv, scanează asta sau tastează codul:</string>
     <string name="invite_email_dropbox">E-mail Dropbox</string>
     <string name="invite_email_onedrive">E-mailul contului Microsoft</string>
     <string name="invite_email_icloud">E-mailul contului Apple</string>
@@ -390,7 +390,7 @@
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
     <string name="restore_code_carries_s3_key">Codul QR conține și cheia ta de acces S3, așa că dispozitivul care îl scanează nu va cere cheia.</string>
     <string name="onboarding_s3_key_scanned">Cheia ta de acces S3 a venit odată cu codul scanat.</string>
-    <string name="voice_play_not_found">„%1$s” nu a fost găsit în biblioteca ta.</string>
+    <string name="voice_play_not_found">%1$s nu a fost găsit în biblioteca ta.</string>
     <string name="onboarding_saved_codes_title">Salvate pe acest dispozitiv</string>
     <string name="onboarding_saved_codes_explanation">Coduri de restaurare salvate de bae pe acest dispozitiv, inclusiv cele copiate de pe dispozitivul de pe care l-ai configurat. Atinge o bibliotecă pentru a o restaura.</string>
     <string name="onboarding_saved_codes_failed">Codurile de restaurare salvate pe acest dispozitiv nu au putut fi citite</string>
@@ -401,8 +401,7 @@
     <string name="onboarding_saved_code_delete">Șterge</string>
     <string name="onboarding_saved_code_delete_menu">Șterge…</string>
     <string name="onboarding_saved_code_delete_title">Ștergi acest cod de restaurare?</string>
-    <string name="onboarding_saved_code_delete_body">Astfel elimini codul de restaurare pentru „%1$s” doar de pe acest dispozitiv. Biblioteca și conținutul cloudului nu sunt șterse.</string>
-    <string name="onboarding_saved_code_delete_body_unusable">Astfel elimini codul de restaurare doar de pe acest dispozitiv. Biblioteca și conținutul cloudului nu sunt șterse.</string>
+    <string name="onboarding_saved_code_delete_body">Astfel elimini codul de restaurare doar de pe acest dispozitiv. Biblioteca și conținutul cloudului nu sunt șterse.</string>
     <string name="onboarding_saved_code_delete_failed">Codul de restaurare nu a putut fi șters</string>
     <string name="onboarding_saved_code_removed">Acest cod de restaurare nu mai este salvat pe acest dispozitiv.</string>
     <string name="onboarding_saved_library">Bibliotecă</string>
@@ -428,7 +427,7 @@
     <string name="device_stop_copied">O altă copie a bibliotecii acestui dispozitiv se sincronizează ca acest dispozitiv.</string>
     <string name="device_stop_member_keys_replaced">Cheile tale au fost înlocuite pe alt dispozitiv al tău.</string>
     <string name="admin_changes_title">Modificări de pe acest dispozitiv</string>
-    <string name="admin_change_rename">Redenumește biblioteca în „%1$s”</string>
+    <string name="admin_change_rename">Redenumește biblioteca în %1$s</string>
     <string name="admin_change_make_admin">Fă-l pe %1$s administrator</string>
     <string name="admin_change_make_member">Fă-l pe %1$s membru</string>
     <string name="admin_change_remove">Elimină %1$s</string>

@@ -51,7 +51,7 @@
     <string name="seek_position">位置</string>
     <string name="now_playing_track_by_artist">正在播放: %1$s · %2$s</string>
     <string name="queue_clear">清除</string>
-    <string name="queue_clear_up_next">清除「待播清單」</string>
+    <string name="queue_clear_up_next">清除待播清單</string>
     <string name="queue_clear_playing_from">清除目前播放來源</string>
     <string name="queue_section_now_playing">正在播放</string>
     <string name="queue_section_up_next">待播清單</string>
@@ -66,7 +66,7 @@
     <string name="queue_shuffle_on">隨機播放</string>
     <string name="queue_shuffle_off">關閉隨機播放</string>
     <string name="search_failed">搜尋失敗</string>
-    <string name="search_no_results">沒有結果: “%1$s”</string>
+    <string name="search_no_results">沒有結果</string>
     <string name="search_section_albums">專輯</string>
     <string name="search_section_artists">藝人</string>
     <string name="search_section_tracks">曲目</string>
@@ -126,12 +126,12 @@
     <string name="copy">複製</string>
     <string name="hide">隱藏</string>
     <string name="settings_remove_library">從此裝置移除此資料庫</string>
-    <string name="library_remove_confirm_title">要從此裝置移除「%1$s」嗎？</string>
+    <string name="library_remove_confirm_title">要從此裝置移除%1$s嗎？</string>
     <string name="settings_remove_library_confirm_body">資料庫會保留在雲端和你的其他裝置上。</string>
     <string name="settings_remove">移除</string>
     <string name="onboarding_libraries_title">你的資料庫</string>
     <string name="library_unsent_changes_lost">未傳送的變更將會遺失</string>
-    <string name="library_remove_failed_title">無法移除「%1$s」</string>
+    <string name="library_remove_failed_title">無法移除%1$s</string>
     <string name="details_menu">詳細資訊…</string>
     <string name="library_remove_menu">移除…</string>
     <string name="library_last_synced">上次同步</string>
@@ -315,7 +315,7 @@
     <string name="restore_code_partly_hidden">還原碼（部分隱藏）</string>
     <string name="restore_code_print_title">bae 還原碼</string>
     <string name="restore_code_printed">列印日期：%1$s</string>
-    <string name="restore_code_print_keep">如果你遺失了所有裝置，請在新裝置上打開 bae，選擇「掃描代碼」來掃描此碼，或選擇「輸入代碼」來輸入代碼。任何拿到此頁面並能存取你雲端的人都可以打開你的資料庫，請妥善保管。</string>
+    <string name="restore_code_print_keep">如果你遺失了所有裝置，請在新裝置上打開 bae，選擇掃描代碼來掃描此碼，或選擇輸入代碼來輸入代碼。任何拿到此頁面並能存取你雲端的人都可以打開你的資料庫，請妥善保管。</string>
     <string name="done">完成</string>
     <string name="members_you">你</string>
     <string name="members_unnamed">尚無名字</string>
@@ -349,7 +349,7 @@
     <string name="add_device_title">新增裝置</string>
     <string name="add_device_added">已新增%1$s</string>
     <string name="add_device_making_code">正在為你的新裝置產生代碼…</string>
-    <string name="add_device_instructions">在新裝置上選擇「掃描代碼」來掃描此代碼，或選擇「輸入代碼」來輸入：</string>
+    <string name="add_device_instructions">在新裝置上掃描此代碼，或輸入下面的代碼：</string>
     <string name="invite_email_dropbox">Dropbox 電子郵件</string>
     <string name="invite_email_onedrive">Microsoft 帳號電子郵件</string>
     <string name="invite_email_icloud">Apple 帳號電子郵件</string>
@@ -376,7 +376,7 @@
     <string name="storage_location_bucket">%1$s：%2$s（%3$s）</string>
     <string name="restore_code_carries_s3_key">此 QR 碼也包含你的 S3 存取金鑰，掃描它的裝置不會再要求輸入金鑰。</string>
     <string name="onboarding_s3_key_scanned">你的 S3 存取金鑰已隨掃描的代碼一併傳來。</string>
-    <string name="voice_play_not_found">在你的資料庫中找不到「%1$s」。</string>
+    <string name="voice_play_not_found">在你的資料庫中找不到%1$s。</string>
     <string name="onboarding_saved_codes_title">儲存在此裝置上</string>
     <string name="onboarding_saved_codes_explanation">bae 儲存在此裝置上的還原碼，包括從你用來設定此裝置的舊裝置複製過來的還原碼。點一下資料庫即可還原。</string>
     <string name="onboarding_saved_codes_failed">無法讀取儲存在此裝置上的還原碼</string>
@@ -387,8 +387,7 @@
     <string name="onboarding_saved_code_delete">刪除</string>
     <string name="onboarding_saved_code_delete_menu">刪除…</string>
     <string name="onboarding_saved_code_delete_title">要刪除這個還原碼嗎？</string>
-    <string name="onboarding_saved_code_delete_body">這只會從此裝置移除「%1$s」的還原碼。不會刪除資料庫，也不會刪除雲端中的任何內容。</string>
-    <string name="onboarding_saved_code_delete_body_unusable">這只會從此裝置移除還原碼。不會刪除資料庫，也不會刪除雲端中的任何內容。</string>
+    <string name="onboarding_saved_code_delete_body">這只會從此裝置移除還原碼。不會刪除資料庫，也不會刪除雲端中的任何內容。</string>
     <string name="onboarding_saved_code_delete_failed">無法刪除還原碼</string>
     <string name="onboarding_saved_code_removed">這個還原碼已不再儲存在此裝置上。</string>
     <string name="onboarding_saved_library">資料庫</string>
@@ -414,7 +413,7 @@
     <string name="device_stop_copied">此裝置資料庫的另一個副本正以此裝置的身分同步。</string>
     <string name="device_stop_member_keys_replaced">你的金鑰已在你的另一台裝置上被替換。</string>
     <string name="admin_changes_title">來自此裝置的變更</string>
-    <string name="admin_change_rename">將資料庫重新命名為「%1$s」</string>
+    <string name="admin_change_rename">將資料庫重新命名為%1$s</string>
     <string name="admin_change_make_admin">將 %1$s 設為管理員</string>
     <string name="admin_change_make_member">將 %1$s 設為成員</string>
     <string name="admin_change_remove">移除%1$s</string>

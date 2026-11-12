@@ -51,7 +51,7 @@
     <string name="seek_position">Konum</string>
     <string name="now_playing_track_by_artist">Çalıyor: %1$s · %2$s</string>
     <string name="queue_clear">Temizle</string>
-    <string name="queue_clear_up_next">“Sıradaki” listesini temizle</string>
+    <string name="queue_clear_up_next">Sıradaki listesini temizle</string>
     <string name="queue_clear_playing_from">Çalma kaynağını temizle</string>
     <string name="queue_section_now_playing">Çalıyor</string>
     <string name="queue_section_up_next">Sıradaki</string>
@@ -66,7 +66,7 @@
     <string name="queue_shuffle_on">Karışık çal</string>
     <string name="queue_shuffle_off">Karışık çalmayı kapat</string>
     <string name="search_failed">Arama başarısız</string>
-    <string name="search_no_results">Sonuç yok: “%1$s”</string>
+    <string name="search_no_results">Sonuç yok</string>
     <string name="search_section_albums">Albümler</string>
     <string name="search_section_artists">Sanatçılar</string>
     <string name="search_section_tracks">Parçalar</string>
@@ -130,12 +130,12 @@
     <string name="copy">Kopyala</string>
     <string name="hide">Gizle</string>
     <string name="settings_remove_library">Bu kitaplığı bu cihazdan kaldır</string>
-    <string name="library_remove_confirm_title">“%1$s” bu cihazdan kaldırılsın mı?</string>
+    <string name="library_remove_confirm_title">%1$s bu cihazdan kaldırılsın mı?</string>
     <string name="settings_remove_library_confirm_body">Kitaplık bulutta ve diğer cihazlarınızda kalır.</string>
     <string name="settings_remove">Kaldır</string>
     <string name="onboarding_libraries_title">Arşivleriniz</string>
     <string name="library_unsent_changes_lost">Gönderilmemiş değişiklikler kaybolacak</string>
-    <string name="library_remove_failed_title">“%1$s” kaldırılamadı</string>
+    <string name="library_remove_failed_title">%1$s kaldırılamadı</string>
     <string name="details_menu">Ayrıntılar…</string>
     <string name="library_remove_menu">Kaldır…</string>
     <string name="library_last_synced">Son eşitleme</string>
@@ -357,7 +357,7 @@
     <string name="add_device_title">Cihaz ekle</string>
     <string name="add_device_added">%1$s eklendi</string>
     <string name="add_device_making_code">Yeni cihazınız için kod oluşturuluyor…</string>
-    <string name="add_device_instructions">Yeni cihazda “Kod tara” seçeneğiyle bunu tarayın ya da “Kod gir” seçeneğiyle şunu yazın:</string>
+    <string name="add_device_instructions">Yeni cihazda bunu tarayın ya da kodu yazın:</string>
     <string name="invite_email_dropbox">Dropbox e-postası</string>
     <string name="invite_email_onedrive">Microsoft hesabının e-postası</string>
     <string name="invite_email_icloud">Apple hesabının e-postası</string>
@@ -384,7 +384,7 @@
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
     <string name="restore_code_carries_s3_key">QR kod S3 erişim anahtarınızı da taşır; bu yüzden onu tarayan cihaz anahtarı sormaz.</string>
     <string name="onboarding_s3_key_scanned">S3 erişim anahtarınız taranan kodla birlikte geldi.</string>
-    <string name="voice_play_not_found">Kitaplığınızda “%1$s” bulunamadı.</string>
+    <string name="voice_play_not_found">Kitaplığınızda %1$s bulunamadı.</string>
     <string name="onboarding_saved_codes_title">Bu cihazda kayıtlı</string>
     <string name="onboarding_saved_codes_explanation">bae’nin bu cihaza kaydettiği geri yükleme kodları; bu cihazı kurarken kullandığınız cihazdan kopyalananlar da dahil. Geri yüklemek için bir kitaplığa dokunun.</string>
     <string name="onboarding_saved_codes_failed">Bu cihazda kayıtlı geri yükleme kodları okunamadı</string>
@@ -395,8 +395,7 @@
     <string name="onboarding_saved_code_delete">Sil</string>
     <string name="onboarding_saved_code_delete_menu">Sil…</string>
     <string name="onboarding_saved_code_delete_title">Bu geri yükleme kodu silinsin mi?</string>
-    <string name="onboarding_saved_code_delete_body">Bu işlem “%1$s” geri yükleme kodunu yalnızca bu cihazdan kaldırır. Kitaplığı veya buluttaki hiçbir şeyi silmez.</string>
-    <string name="onboarding_saved_code_delete_body_unusable">Bu işlem geri yükleme kodunu yalnızca bu cihazdan kaldırır. Kitaplığı veya buluttaki hiçbir şeyi silmez.</string>
+    <string name="onboarding_saved_code_delete_body">Bu işlem geri yükleme kodunu yalnızca bu cihazdan kaldırır. Kitaplığı veya buluttaki hiçbir şeyi silmez.</string>
     <string name="onboarding_saved_code_delete_failed">Geri yükleme kodu silinemedi</string>
     <string name="onboarding_saved_code_removed">Bu geri yükleme kodu artık bu cihazda kayıtlı değil.</string>
     <string name="onboarding_saved_library">Kitaplık</string>
@@ -422,7 +421,7 @@
     <string name="device_stop_copied">Bu cihazın kitaplığının başka bir kopyası bu cihaz olarak eşitleniyor.</string>
     <string name="device_stop_member_keys_replaced">Anahtarlarınız başka bir cihazınızda değiştirildi.</string>
     <string name="admin_changes_title">Bu cihazdan yapılan değişiklikler</string>
-    <string name="admin_change_rename">Kitaplığın adını “%1$s” olarak değiştir</string>
+    <string name="admin_change_rename">Kitaplığın adını %1$s olarak değiştir</string>
     <string name="admin_change_make_admin">%1$s kişisini yönetici yap</string>
     <string name="admin_change_make_member">%1$s kişisini üye yap</string>
     <string name="admin_change_remove">%1$s kaldır</string>

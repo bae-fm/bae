@@ -51,7 +51,7 @@
     <string name="seek_position">Pozice</string>
     <string name="now_playing_track_by_artist">Právě hraje, %1$s od %2$s</string>
     <string name="queue_clear">Vymazat</string>
-    <string name="queue_clear_up_next">Vymazat „Další v pořadí“</string>
+    <string name="queue_clear_up_next">Vymazat Další v pořadí</string>
     <string name="queue_clear_playing_from">Vymazat zdroj přehrávání</string>
     <string name="queue_section_now_playing">Právě hraje</string>
     <string name="queue_section_up_next">Další v pořadí</string>
@@ -66,7 +66,7 @@
     <string name="queue_shuffle_on">Náhodně</string>
     <string name="queue_shuffle_off">Vypnout náhodné přehrávání</string>
     <string name="search_failed">Vyhledávání selhalo</string>
-    <string name="search_no_results">Žádné výsledky pro „%1$s“</string>
+    <string name="search_no_results">Žádné výsledky</string>
     <string name="search_section_albums">Alba</string>
     <string name="search_section_artists">Interpreti</string>
     <string name="search_section_tracks">Stopy</string>
@@ -138,12 +138,12 @@
     <string name="copy">Kopírovat</string>
     <string name="hide">Skrýt</string>
     <string name="settings_remove_library">Odebrat tuto knihovnu z tohoto zařízení</string>
-    <string name="library_remove_confirm_title">Odebrat „%1$s“ z tohoto zařízení?</string>
+    <string name="library_remove_confirm_title">Odebrat %1$s z tohoto zařízení?</string>
     <string name="settings_remove_library_confirm_body">Knihovna zůstane v cloudu a na vašich dalších zařízeních.</string>
     <string name="settings_remove">Odebrat</string>
     <string name="onboarding_libraries_title">Vaše knihovny</string>
     <string name="library_unsent_changes_lost">Neodeslané změny budou ztraceny</string>
-    <string name="library_remove_failed_title">„%1$s“ se nepodařilo odebrat</string>
+    <string name="library_remove_failed_title">%1$s se nepodařilo odebrat</string>
     <string name="details_menu">Podrobnosti…</string>
     <string name="library_remove_menu">Odebrat…</string>
     <string name="library_last_synced">Poslední synchronizace</string>
@@ -373,7 +373,7 @@
     <string name="add_device_title">Přidat zařízení</string>
     <string name="add_device_added">Zařízení přidáno: %1$s</string>
     <string name="add_device_making_code">Vytváří se kód pro vaše nové zařízení…</string>
-    <string name="add_device_instructions">Na novém zařízení zvolte „Naskenovat kód“ pro naskenování tohoto kódu nebo „Zadat kód“ pro jeho opsání:</string>
+    <string name="add_device_instructions">Na novém zařízení tento kód naskenujte, nebo ho opište:</string>
     <string name="invite_email_dropbox">E-mail v Dropboxu</string>
     <string name="invite_email_onedrive">E-mail účtu Microsoft</string>
     <string name="invite_email_icloud">E-mail účtu Apple</string>
@@ -400,7 +400,7 @@
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
     <string name="restore_code_carries_s3_key">QR kód nese i váš přístupový klíč S3, takže zařízení, které ho naskenuje, se na klíč nezeptá.</string>
     <string name="onboarding_s3_key_scanned">Váš přístupový klíč S3 přišel spolu s naskenovaným kódem.</string>
-    <string name="voice_play_not_found">„%1$s“ se ve vaší knihovně nepodařilo najít.</string>
+    <string name="voice_play_not_found">%1$s se ve vaší knihovně nepodařilo najít.</string>
     <string name="onboarding_saved_codes_title">Uloženo v tomto zařízení</string>
     <string name="onboarding_saved_codes_explanation">Kódy pro obnovení, které bae uložil v tomto zařízení, včetně těch zkopírovaných ze zařízení, ze kterého jste ho nastavili. Klepnutím na knihovnu ji obnovíte.</string>
     <string name="onboarding_saved_codes_failed">Kódy pro obnovení uložené v tomto zařízení nelze přečíst</string>
@@ -411,8 +411,7 @@
     <string name="onboarding_saved_code_delete">Smazat</string>
     <string name="onboarding_saved_code_delete_menu">Smazat…</string>
     <string name="onboarding_saved_code_delete_title">Smazat tento kód pro obnovení?</string>
-    <string name="onboarding_saved_code_delete_body">Tímto odstraníte kód pro obnovení knihovny „%1$s“ pouze z tohoto zařízení. Knihovnu ani nic v cloudu to nesmaže.</string>
-    <string name="onboarding_saved_code_delete_body_unusable">Tímto odstraníte kód pro obnovení pouze z tohoto zařízení. Knihovnu ani nic v cloudu to nesmaže.</string>
+    <string name="onboarding_saved_code_delete_body">Tímto odstraníte kód pro obnovení pouze z tohoto zařízení. Knihovnu ani nic v cloudu to nesmaže.</string>
     <string name="onboarding_saved_code_delete_failed">Kód pro obnovení nelze smazat</string>
     <string name="onboarding_saved_code_removed">Tento kód pro obnovení už v tomto zařízení uložený není.</string>
     <string name="onboarding_saved_library">Knihovna</string>
@@ -438,7 +437,7 @@
     <string name="device_stop_copied">Jiná kopie knihovny tohoto zařízení se synchronizuje jako toto zařízení.</string>
     <string name="device_stop_member_keys_replaced">Vaše klíče byly nahrazeny na jiném z vašich zařízení.</string>
     <string name="admin_changes_title">Změny z tohoto zařízení</string>
-    <string name="admin_change_rename">Přejmenovat knihovnu na „%1$s“</string>
+    <string name="admin_change_rename">Přejmenovat knihovnu na %1$s</string>
     <string name="admin_change_make_admin">Udělat z uživatele %1$s správce</string>
     <string name="admin_change_make_member">Udělat z uživatele %1$s člena</string>
     <string name="admin_change_remove">Odebrat %1$s</string>

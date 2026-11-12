@@ -51,7 +51,7 @@
     <string name="seek_position">Posição</string>
     <string name="now_playing_track_by_artist">Tocando agora, %1$s de %2$s</string>
     <string name="queue_clear">Limpar</string>
-    <string name="queue_clear_up_next">Limpar “A seguir”</string>
+    <string name="queue_clear_up_next">Limpar A seguir</string>
     <string name="queue_clear_playing_from">Limpar a fonte de reprodução</string>
     <string name="queue_section_now_playing">Tocando agora</string>
     <string name="queue_section_up_next">A seguir</string>
@@ -66,7 +66,7 @@
     <string name="queue_shuffle_on">Aleatório</string>
     <string name="queue_shuffle_off">Desativar aleatório</string>
     <string name="search_failed">Falha na busca</string>
-    <string name="search_no_results">Nenhum resultado para “%1$s”</string>
+    <string name="search_no_results">Sem resultados</string>
     <string name="search_section_albums">Álbuns</string>
     <string name="search_section_artists">Artistas</string>
     <string name="search_section_tracks">Faixas</string>
@@ -134,12 +134,12 @@
     <string name="copy">Copiar</string>
     <string name="hide">Ocultar</string>
     <string name="settings_remove_library">Remover esta biblioteca deste dispositivo</string>
-    <string name="library_remove_confirm_title">Remover “%1$s” deste dispositivo?</string>
+    <string name="library_remove_confirm_title">Remover %1$s deste dispositivo?</string>
     <string name="settings_remove_library_confirm_body">A biblioteca continua na nuvem e nos seus outros dispositivos.</string>
     <string name="settings_remove">Remover</string>
     <string name="onboarding_libraries_title">Suas bibliotecas</string>
     <string name="library_unsent_changes_lost">As alterações não enviadas serão perdidas</string>
-    <string name="library_remove_failed_title">Não foi possível remover “%1$s”</string>
+    <string name="library_remove_failed_title">Não foi possível remover %1$s</string>
     <string name="details_menu">Detalhes…</string>
     <string name="library_remove_menu">Remover…</string>
     <string name="library_last_synced">Última sincronização</string>
@@ -363,7 +363,7 @@
     <string name="add_device_title">Adicionar um dispositivo</string>
     <string name="add_device_added">Dispositivo adicionado: %1$s</string>
     <string name="add_device_making_code">Criando um código para seu novo dispositivo…</string>
-    <string name="add_device_instructions">No novo dispositivo, escolha “Ler um código” para ler isto ou “Digitar um código” para digitar:</string>
+    <string name="add_device_instructions">No novo dispositivo, leia isto ou digite o código:</string>
     <string name="invite_email_dropbox">E-mail do Dropbox</string>
     <string name="invite_email_onedrive">E-mail da conta Microsoft</string>
     <string name="invite_email_icloud">E-mail da conta Apple</string>
@@ -390,7 +390,7 @@
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
     <string name="restore_code_carries_s3_key">O código QR também leva sua chave de acesso do S3, então o dispositivo que o escanear não vai pedir a chave.</string>
     <string name="onboarding_s3_key_scanned">Sua chave de acesso do S3 veio com o código escaneado.</string>
-    <string name="voice_play_not_found">Não foi possível encontrar “%1$s” na sua biblioteca.</string>
+    <string name="voice_play_not_found">Não foi possível encontrar %1$s na sua biblioteca.</string>
     <string name="onboarding_saved_codes_title">Salvos neste dispositivo</string>
     <string name="onboarding_saved_codes_explanation">Códigos de restauração que o bae salvou neste dispositivo, incluindo os copiados do dispositivo a partir do qual você o configurou. Toque em uma biblioteca para restaurá-la.</string>
     <string name="onboarding_saved_codes_failed">Não foi possível ler os códigos de restauração salvos neste dispositivo</string>
@@ -401,8 +401,7 @@
     <string name="onboarding_saved_code_delete">Excluir</string>
     <string name="onboarding_saved_code_delete_menu">Excluir…</string>
     <string name="onboarding_saved_code_delete_title">Excluir este código de restauração?</string>
-    <string name="onboarding_saved_code_delete_body">Isto remove o código de restauração de “%1$s” somente deste dispositivo. Não exclui a biblioteca nem nada na nuvem.</string>
-    <string name="onboarding_saved_code_delete_body_unusable">Isto remove o código de restauração somente deste dispositivo. Não exclui a biblioteca nem nada na nuvem.</string>
+    <string name="onboarding_saved_code_delete_body">Isto remove o código de restauração somente deste dispositivo. Não exclui a biblioteca nem nada na nuvem.</string>
     <string name="onboarding_saved_code_delete_failed">Não foi possível excluir o código de restauração</string>
     <string name="onboarding_saved_code_removed">Este código de restauração não está mais salvo neste dispositivo.</string>
     <string name="onboarding_saved_library">Biblioteca</string>
@@ -428,7 +427,7 @@
     <string name="device_stop_copied">Outra cópia da biblioteca deste dispositivo está sincronizando como este dispositivo.</string>
     <string name="device_stop_member_keys_replaced">Suas chaves foram substituídas em outro dispositivo seu.</string>
     <string name="admin_changes_title">Alterações deste dispositivo</string>
-    <string name="admin_change_rename">Renomear a biblioteca para “%1$s”</string>
+    <string name="admin_change_rename">Renomear a biblioteca para %1$s</string>
     <string name="admin_change_make_admin">Tornar %1$s administrador</string>
     <string name="admin_change_make_member">Tornar %1$s membro</string>
     <string name="admin_change_remove">Remover %1$s</string>

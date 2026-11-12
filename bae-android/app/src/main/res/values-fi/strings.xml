@@ -70,7 +70,7 @@
         <item quantity="other">%d raitaa lisättiin jonoon</item>
     </plurals>
     <string name="search_failed">Haku epäonnistui</string>
-    <string name="search_no_results">Ei tuloksia haulle ”%1$s”</string>
+    <string name="search_no_results">Ei tuloksia</string>
     <string name="search_section_albums">Albumit</string>
     <string name="search_section_artists">Esittäjät</string>
     <string name="search_section_tracks">Raidat</string>
@@ -134,12 +134,12 @@
     <string name="copy">Kopioi</string>
     <string name="hide">Piilota</string>
     <string name="settings_remove_library">Poista tämä kirjasto tältä laitteelta</string>
-    <string name="library_remove_confirm_title">Poistetaanko ”%1$s” tältä laitteelta?</string>
+    <string name="library_remove_confirm_title">Poistetaanko %1$s tältä laitteelta?</string>
     <string name="settings_remove_library_confirm_body">Kirjasto säilyy pilvessä ja muilla laitteillasi.</string>
     <string name="settings_remove">Poista</string>
     <string name="onboarding_libraries_title">Kirjastosi</string>
     <string name="library_unsent_changes_lost">Lähettämättömät muutokset menetetään</string>
-    <string name="library_remove_failed_title">Kirjastoa ”%1$s” ei voitu poistaa</string>
+    <string name="library_remove_failed_title">Kirjastoa %1$s ei voitu poistaa</string>
     <string name="details_menu">Tiedot…</string>
     <string name="library_remove_menu">Poista…</string>
     <string name="library_last_synced">Viimeksi synkronoitu</string>
@@ -355,7 +355,7 @@
     <string name="add_device_title">Lisää laite</string>
     <string name="add_device_added">%1$s lisätty</string>
     <string name="add_device_making_code">Luodaan koodia uudelle laitteellesi…</string>
-    <string name="add_device_instructions">Valitse uudella laitteella ”Skannaa koodi” skannataksesi tämän tai ”Syötä koodi” kirjoittaaksesi:</string>
+    <string name="add_device_instructions">Skannaa tämä uudella laitteella tai kirjoita koodi:</string>
     <string name="invite_email_dropbox">Dropbox-sähköposti</string>
     <string name="invite_email_onedrive">Microsoft-tilin sähköposti</string>
     <string name="invite_email_icloud">Apple-tilin sähköposti</string>
@@ -382,7 +382,7 @@
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
     <string name="restore_code_carries_s3_key">QR-koodi sisältää myös S3-käyttöavaimesi, joten sen skannaava laite ei kysy avainta.</string>
     <string name="onboarding_s3_key_scanned">S3-käyttöavaimesi tuli skannatun koodin mukana.</string>
-    <string name="voice_play_not_found">”%1$s” ei löytynyt kirjastostasi.</string>
+    <string name="voice_play_not_found">%1$s ei löytynyt kirjastostasi.</string>
     <string name="onboarding_saved_codes_title">Tallennettu tähän laitteeseen</string>
     <string name="onboarding_saved_codes_explanation">Palautuskoodit, jotka bae on tallentanut tähän laitteeseen, mukaan lukien ne, jotka kopioitiin laitteesta, josta otit tämän käyttöön. Palauta kirjasto napauttamalla sitä.</string>
     <string name="onboarding_saved_codes_failed">Tähän laitteeseen tallennettuja palautuskoodeja ei voitu lukea</string>
@@ -393,8 +393,7 @@
     <string name="onboarding_saved_code_delete">Poista</string>
     <string name="onboarding_saved_code_delete_menu">Poista…</string>
     <string name="onboarding_saved_code_delete_title">Poistetaanko tämä palautuskoodi?</string>
-    <string name="onboarding_saved_code_delete_body">Tämä poistaa kirjaston ”%1$s” palautuskoodin vain tästä laitteesta. Kirjasto ja pilvesi sisältö säilyvät.</string>
-    <string name="onboarding_saved_code_delete_body_unusable">Tämä poistaa palautuskoodin vain tästä laitteesta. Kirjasto ja pilvesi sisältö säilyvät.</string>
+    <string name="onboarding_saved_code_delete_body">Tämä poistaa palautuskoodin vain tästä laitteesta. Kirjasto ja pilvesi sisältö säilyvät.</string>
     <string name="onboarding_saved_code_delete_failed">Palautuskoodia ei voitu poistaa</string>
     <string name="onboarding_saved_code_removed">Tätä palautuskoodia ei ole enää tallennettu tähän laitteeseen.</string>
     <string name="onboarding_saved_library">Kirjasto</string>
@@ -420,7 +419,7 @@
     <string name="device_stop_copied">Toinen kopio tämän laitteen kirjastosta synkronoi tämän laitteen nimissä.</string>
     <string name="device_stop_member_keys_replaced">Avaimesi vaihdettiin toisella laitteellasi.</string>
     <string name="admin_changes_title">Muutokset tästä laitteesta</string>
-    <string name="admin_change_rename">Nimeä kirjasto uudelleen nimellä ”%1$s”</string>
+    <string name="admin_change_rename">Nimeä kirjasto uudelleen nimellä %1$s</string>
     <string name="admin_change_make_admin">Tee käyttäjästä %1$s ylläpitäjä</string>
     <string name="admin_change_make_member">Tee käyttäjästä %1$s jäsen</string>
     <string name="admin_change_remove">Poista %1$s</string>

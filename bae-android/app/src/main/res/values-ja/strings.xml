@@ -51,8 +51,8 @@
     <string name="seek_position">再生位置</string>
     <string name="now_playing_track_by_artist">再生中、%2$s の %1$s</string>
     <string name="queue_clear">クリア</string>
-    <string name="queue_clear_up_next">「次はこちら」をクリア</string>
-    <string name="queue_clear_playing_from">「再生元」をクリア</string>
+    <string name="queue_clear_up_next">次はこちらをクリア</string>
+    <string name="queue_clear_playing_from">再生元をクリア</string>
     <string name="queue_section_now_playing">再生中</string>
     <string name="queue_section_up_next">次はこちら</string>
     <string name="queue_section_playing_from">再生元</string>
@@ -66,7 +66,7 @@
     <string name="queue_shuffle_on">シャッフル</string>
     <string name="queue_shuffle_off">シャッフルをオフにする</string>
     <string name="search_failed">検索に失敗しました</string>
-    <string name="search_no_results">「%1$s」の結果なし</string>
+    <string name="search_no_results">結果なし</string>
     <string name="search_section_albums">アルバム</string>
     <string name="search_section_artists">アーティスト</string>
     <string name="search_section_tracks">トラック</string>
@@ -126,12 +126,12 @@
     <string name="copy">コピー</string>
     <string name="hide">非表示</string>
     <string name="settings_remove_library">このライブラリをこのデバイスから削除</string>
-    <string name="library_remove_confirm_title">「%1$s」をこのデバイスから削除しますか？</string>
+    <string name="library_remove_confirm_title">%1$sをこのデバイスから削除しますか？</string>
     <string name="settings_remove_library_confirm_body">ライブラリはクラウドとほかのデバイスに残ります。</string>
     <string name="settings_remove">削除</string>
     <string name="onboarding_libraries_title">ライブラリ</string>
     <string name="library_unsent_changes_lost">未送信の変更は失われます</string>
-    <string name="library_remove_failed_title">「%1$s」を削除できませんでした</string>
+    <string name="library_remove_failed_title">%1$sを削除できませんでした</string>
     <string name="details_menu">詳細…</string>
     <string name="library_remove_menu">削除…</string>
     <string name="library_last_synced">最終同期</string>
@@ -315,7 +315,7 @@
     <string name="restore_code_partly_hidden">復元コード（一部非表示）</string>
     <string name="restore_code_print_title">bae 復元コード</string>
     <string name="restore_code_printed">プリント日: %1$s</string>
-    <string name="restore_code_print_keep">すべてのデバイスを失ったら、新しいデバイスで bae を開き、「コードをスキャン」を選んでこれをスキャンするか、「コードを入力」を選んでコードを入力してください。このページとクラウドへのアクセスがあれば誰でもライブラリを開けます。人目につかない場所に保管してください。</string>
+    <string name="restore_code_print_keep">すべてのデバイスを失ったら、新しいデバイスで bae を開き、これをスキャンするか、コードを入力してください。このページとクラウドへのアクセスがあれば誰でもライブラリを開けます。人目につかない場所に保管してください。</string>
     <string name="done">完了</string>
     <string name="members_you">あなた</string>
     <string name="members_unnamed">名前はまだありません</string>
@@ -349,7 +349,7 @@
     <string name="add_device_title">デバイスを追加</string>
     <string name="add_device_added">%1$s を追加しました</string>
     <string name="add_device_making_code">新しいデバイス用のコードを作成しています…</string>
-    <string name="add_device_instructions">新しいデバイスで「コードをスキャン」を選んでこれをスキャンするか、「コードを入力」を選んで次のコードを入力してください：</string>
+    <string name="add_device_instructions">新しいデバイスでこれをスキャンするか、次のコードを入力してください：</string>
     <string name="invite_email_dropbox">Dropboxのメールアドレス</string>
     <string name="invite_email_onedrive">Microsoftアカウントのメールアドレス</string>
     <string name="invite_email_icloud">Appleアカウントのメールアドレス</string>
@@ -376,7 +376,7 @@
     <string name="storage_location_bucket">%1$s：%2$s（%3$s）</string>
     <string name="restore_code_carries_s3_key">QR コードには S3 のアクセスキーも含まれているため、読み取ったデバイスはキーを尋ねません。</string>
     <string name="onboarding_s3_key_scanned">S3 のアクセスキーは読み取ったコードと一緒に届きました。</string>
-    <string name="voice_play_not_found">ライブラリに「%1$s」が見つかりませんでした。</string>
+    <string name="voice_play_not_found">ライブラリに%1$sが見つかりませんでした。</string>
     <string name="onboarding_saved_codes_title">このデバイスに保存済み</string>
     <string name="onboarding_saved_codes_explanation">bae がこのデバイスに保存した復元コードです。設定元のデバイスからコピーされたものも含みます。ライブラリをタップすると復元します。</string>
     <string name="onboarding_saved_codes_failed">このデバイスに保存された復元コードを読み取れませんでした</string>
@@ -387,8 +387,7 @@
     <string name="onboarding_saved_code_delete">削除</string>
     <string name="onboarding_saved_code_delete_menu">削除…</string>
     <string name="onboarding_saved_code_delete_title">この復元コードを削除しますか？</string>
-    <string name="onboarding_saved_code_delete_body">「%1$s」の復元コードをこのデバイスからのみ削除します。ライブラリやクラウド内のデータは削除されません。</string>
-    <string name="onboarding_saved_code_delete_body_unusable">復元コードをこのデバイスからのみ削除します。ライブラリやクラウド内のデータは削除されません。</string>
+    <string name="onboarding_saved_code_delete_body">復元コードをこのデバイスからのみ削除します。ライブラリやクラウド内のデータは削除されません。</string>
     <string name="onboarding_saved_code_delete_failed">復元コードを削除できませんでした</string>
     <string name="onboarding_saved_code_removed">この復元コードはこのデバイスに保存されていません。</string>
     <string name="onboarding_saved_library">ライブラリ</string>
@@ -414,7 +413,7 @@
     <string name="device_stop_copied">このデバイスのライブラリの別のコピーが、このデバイスとして同期しています。</string>
     <string name="device_stop_member_keys_replaced">あなたのキーは、あなたの別のデバイスで置き換えられました。</string>
     <string name="admin_changes_title">このデバイスからの変更</string>
-    <string name="admin_change_rename">ライブラリ名を「%1$s」に変更</string>
+    <string name="admin_change_rename">ライブラリ名を%1$sに変更</string>
     <string name="admin_change_make_admin">%1$sを管理者にする</string>
     <string name="admin_change_make_member">%1$sをメンバーにする</string>
     <string name="admin_change_remove">%1$sを削除</string>

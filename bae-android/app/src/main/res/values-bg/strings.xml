@@ -51,7 +51,7 @@
     <string name="seek_position">Позиция</string>
     <string name="now_playing_track_by_artist">Текущо възпроизвеждане, %1$s от %2$s</string>
     <string name="queue_clear">Изчистване</string>
-    <string name="queue_clear_up_next">Изчистване на „Следва“</string>
+    <string name="queue_clear_up_next">Изчистване на Следва</string>
     <string name="queue_clear_playing_from">Изчистване на източника на възпроизвеждане</string>
     <string name="queue_section_now_playing">Текущо възпроизвеждане</string>
     <string name="queue_section_up_next">Следва</string>
@@ -66,7 +66,7 @@
     <string name="queue_shuffle_on">Разбъркване</string>
     <string name="queue_shuffle_off">Изключване на разбъркването</string>
     <string name="search_failed">Търсенето не бе успешно</string>
-    <string name="search_no_results">Няма резултати за „%1$s“</string>
+    <string name="search_no_results">Няма резултати</string>
     <string name="search_section_albums">Албуми</string>
     <string name="search_section_artists">Изпълнители</string>
     <string name="search_section_tracks">Песни</string>
@@ -130,12 +130,12 @@
     <string name="copy">Копиране</string>
     <string name="hide">Скриване</string>
     <string name="settings_remove_library">Премахване на тази библиотека от това устройство</string>
-    <string name="library_remove_confirm_title">Премахване на „%1$s“ от това устройство?</string>
+    <string name="library_remove_confirm_title">Премахване на %1$s от това устройство?</string>
     <string name="settings_remove_library_confirm_body">Библиотеката остава в облака и на другите ви устройства.</string>
     <string name="settings_remove">Премахване</string>
     <string name="onboarding_libraries_title">Вашите библиотеки</string>
     <string name="library_unsent_changes_lost">Неизпратените промени ще бъдат загубени</string>
-    <string name="library_remove_failed_title">Премахването на „%1$s“ не бе успешно</string>
+    <string name="library_remove_failed_title">Премахването на %1$s не бе успешно</string>
     <string name="details_menu">Подробности…</string>
     <string name="library_remove_menu">Премахване…</string>
     <string name="library_last_synced">Последно синхронизиране</string>
@@ -357,7 +357,7 @@
     <string name="add_device_title">Добавяне на устройство</string>
     <string name="add_device_added">Добавено устройство: %1$s</string>
     <string name="add_device_making_code">Създава се код за новото ви устройство…</string>
-    <string name="add_device_instructions">На новото устройство изберете „Сканиране на код“, за да сканирате това, или „Въвеждане на код“, за да въведете:</string>
+    <string name="add_device_instructions">На новото устройство сканирайте това или въведете кода:</string>
     <string name="invite_email_dropbox">Имейл в Dropbox</string>
     <string name="invite_email_onedrive">Имейл на акаунта в Microsoft</string>
     <string name="invite_email_icloud">Имейл на акаунта в Apple</string>
@@ -384,7 +384,7 @@
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
     <string name="restore_code_carries_s3_key">QR кодът съдържа и вашия ключ за достъп до S3, така че устройството, което го сканира, няма да поиска ключа.</string>
     <string name="onboarding_s3_key_scanned">Ключът ви за достъп до S3 дойде заедно със сканирания код.</string>
-    <string name="voice_play_not_found">„%1$s“ не е намерено във вашата библиотека.</string>
+    <string name="voice_play_not_found">%1$s не е намерено във вашата библиотека.</string>
     <string name="onboarding_saved_codes_title">Запазени на това устройство</string>
     <string name="onboarding_saved_codes_explanation">Кодове за възстановяване, които bae е запазил на това устройство, включително копираните от устройството, от което сте го настроили. Докоснете библиотека, за да я възстановите.</string>
     <string name="onboarding_saved_codes_failed">Кодовете за възстановяване, запазени на това устройство, не можаха да бъдат прочетени</string>
@@ -395,8 +395,7 @@
     <string name="onboarding_saved_code_delete">Изтриване</string>
     <string name="onboarding_saved_code_delete_menu">Изтриване…</string>
     <string name="onboarding_saved_code_delete_title">Изтриване на този код за възстановяване?</string>
-    <string name="onboarding_saved_code_delete_body">Това премахва кода за възстановяване за „%1$s“ само от това устройство. Не изтрива библиотеката, нито нещо в облака.</string>
-    <string name="onboarding_saved_code_delete_body_unusable">Това премахва кода за възстановяване само от това устройство. Не изтрива библиотеката, нито нещо в облака.</string>
+    <string name="onboarding_saved_code_delete_body">Това премахва кода за възстановяване само от това устройство. Не изтрива библиотеката, нито нещо в облака.</string>
     <string name="onboarding_saved_code_delete_failed">Кодът за възстановяване не можа да бъде изтрит</string>
     <string name="onboarding_saved_code_removed">Този код за възстановяване вече не е запазен на това устройство.</string>
     <string name="onboarding_saved_library">Библиотека</string>
@@ -422,7 +421,7 @@
     <string name="device_stop_copied">Друго копие на библиотеката на това устройство се синхронизира като това устройство.</string>
     <string name="device_stop_member_keys_replaced">Ключовете ви бяха заменени на друго ваше устройство.</string>
     <string name="admin_changes_title">Промени от това устройство</string>
-    <string name="admin_change_rename">Преименуване на библиотеката на „%1$s“</string>
+    <string name="admin_change_rename">Преименуване на библиотеката на %1$s</string>
     <string name="admin_change_make_admin">Направи %1$s администратор</string>
     <string name="admin_change_make_member">Направи %1$s член</string>
     <string name="admin_change_remove">Премахване на %1$s</string>
