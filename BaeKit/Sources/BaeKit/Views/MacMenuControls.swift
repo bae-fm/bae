@@ -15,7 +15,7 @@
         }
     }
 
-    private struct MacMenuAnchorView: NSViewRepresentable {
+    struct MacMenuAnchorView: NSViewRepresentable {
         let anchor: MacMenuAnchor
 
         private final class Passive: NSView {
