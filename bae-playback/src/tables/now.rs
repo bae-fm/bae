@@ -494,6 +494,17 @@ fn now_playing_on(sql: &SqlReadContext<'_>) -> Result<Option<NowPlayingValues>, 
     }
 }
 
+/// Plant damage for a test: the table `playback_now` is gone, so the volume
+/// and mute it kept can't be read.
+#[cfg(any(test, feature = "test-utils"))]
+pub fn lose_playback_level_for_test(directory: &std::path::Path) {
+    bae_store::test_fixtures::planted_damage::plant_in_library_file(
+        directory,
+        "playback_now",
+        "DROP TABLE playback_now;",
+    );
+}
+
 #[cfg(test)]
 #[path = "now_tests.rs"]
 mod tests;

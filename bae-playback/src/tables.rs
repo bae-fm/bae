@@ -17,6 +17,8 @@ mod timeline;
 mod track_display;
 
 #[cfg(any(test, feature = "test-utils"))]
+pub use now::lose_playback_level_for_test;
+#[cfg(any(test, feature = "test-utils"))]
 pub use now::now_playing;
 pub(crate) use now::remote_receiver_from_row;
 pub use now::subscribe_now_playing;
@@ -32,6 +34,8 @@ pub use queue_reads::subscribe_queue_addition;
 #[cfg(any(test, feature = "test-utils"))]
 pub use queue_reads::{queue_addition, queue_context_version, queue_upcoming};
 pub use queue_reads::{subscribe_queue_upcoming, subscribe_queue_value, QueueUpcomingRead};
+#[cfg(any(test, feature = "test-utils"))]
+pub use resume::plant_unreadable_resume_row_for_test;
 #[cfg(any(test, feature = "test-utils"))]
 pub use resume::subscribe_playback_state;
 pub use resume::{load_playback_state, PlaybackResumeRow};

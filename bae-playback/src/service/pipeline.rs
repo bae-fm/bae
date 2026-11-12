@@ -45,6 +45,12 @@ impl PlaybackService {
         // teardown/prepare work, so the measured wait covers the whole path to
         // Playing.
         let play_started_at = std::time::Instant::now();
+        // The output opened at full volume. Nothing plays until the level the
+        // person set is known: a failed read is told, and playback stops.
+        if self.level_unread && !self.take_up_level().await {
+            self.stop().await;
+            return;
+        }
         // Ask the system first: a start it refuses loads the track paused.
         let target = self.admit(target);
         info!("Playing track: {} (start: {:?}, target: {:?})", track_id, start, target);

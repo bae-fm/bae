@@ -528,6 +528,15 @@ pub struct PlaybackService {
     /// in `handle_position_event` waits until the track has played a second
     /// past it; `None` when the row holds no position.
     persisted_position: Option<StreamPosition>,
+    /// The volume and mute `playback_now` kept could not be read, so the
+    /// output sits at the full volume it opened with rather than the level
+    /// the person set. Nothing plays until a read of the level works or the
+    /// person sets one.
+    level_unread: bool,
+    /// The resume row, or the queue it resumes over, could not be read, so
+    /// the row still holds a resume point playback never took up. Playback
+    /// leaves the row alone until it saves a track of its own.
+    resume_unread: bool,
     /// The time-to-first-audio measurement for a load headed for Playing,
     /// recorded when it gets there; `None` once recorded or for a paused load.
     first_audio_pending: Option<FirstAudioMeasurement>,

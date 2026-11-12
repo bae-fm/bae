@@ -253,11 +253,10 @@ impl PlaybackService {
     /// row resumes its track over the queue the tables hold; an absent row
     /// resumes nothing, and the library opened with the queue emptied
     /// (`settle_playback_queue`).
+    /// A row that can't be read resumes nothing, tells why, and stays as it is.
     pub(super) async fn restore_from_cache(&mut self) {
-        match crate::tables::load_playback_state(&self.store).await {
-            Ok(Some(state)) => self.restore(state).await,
-            Ok(None) => {}
-            Err(e) => warn!("couldn't load the saved playback state: {e}; resuming nothing"),
+        if let Some(state) = self.read_resume_row().await {
+            self.restore(state).await;
         }
     }
 

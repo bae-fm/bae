@@ -57,3 +57,16 @@ fn playback_state_on(sql: &SqlReadContext<'_>) -> Result<Option<PlaybackResumeRo
         )
         .optional()?)
 }
+
+/// Plant damage for a test: the resume row names an entry no queue entry id
+/// parses from, so reading it fails.
+#[cfg(any(test, feature = "test-utils"))]
+pub fn plant_unreadable_resume_row_for_test(directory: &std::path::Path) {
+    bae_store::test_fixtures::planted_damage::plant_in_library_file(
+        directory,
+        "playback_state",
+        "PRAGMA foreign_keys = OFF; \
+         INSERT OR REPLACE INTO playback_state (id, current_entry, current_track_id, position_ms) \
+         VALUES ('current', 'not an entry id', 'a-track', 1000);",
+    );
+}

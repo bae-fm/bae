@@ -4483,6 +4483,12 @@ on launch as a setting; off, the library opens with an empty queue and forgets
 what it played. Mobile apps always restore, and save as they go to the
 background.
 
+A restart that can't read the saved entry, the queue or the volume resumes
+nothing and says why as a playback error. It never makes up a volume: the
+next play reads the saved one first, and a play whose read fails again stops
+with that error instead of starting at full volume. Until playback saves a track of its own, it leaves the saved entry as it is, so the
+failed restart doesn't write over the place the person was in.
+
 ---
 
 ## 8. Servers

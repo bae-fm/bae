@@ -291,6 +291,8 @@ impl PlaybackThread {
             ),
             starvation_episode: None,
             persisted_position: None,
+            level_unread: false,
+            resume_unread: false,
             first_audio_pending: None,
             renderer: Renderer::Local,
             clock: self.clock.clone(),

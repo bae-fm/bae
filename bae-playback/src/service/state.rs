@@ -209,29 +209,51 @@ impl PlaybackService {
     /// otherwise the repeat mode and the volume, which outlive a stop.
     /// "Restore on launch" has no say: the queue is the one in use.
     pub(super) async fn restore_after_an_end(&mut self) {
-        match crate::tables::load_playback_state(&self.store).await {
-            Ok(Some(state)) => self.restore(state).await,
-            Ok(None) => {
-                self.take_up_queue_and_level(None).await;
-            }
-            Err(e) => {
-                warn!("couldn't load the saved playback state: {e}; resuming nothing");
+        match self.read_resume_row().await {
+            Some(state) => self.restore(state).await,
+            None => {
                 self.take_up_queue_and_level(None).await;
             }
         }
     }
 
-    /// Take up the queue the tables hold, playing `current`, and the volume
-    /// and mute `playback_now` kept. A failed read of the volume resumes at
-    /// full volume; whether the queue's read worked.
-    async fn take_up_queue_and_level(&mut self, current: Option<crate::QueueEntry>) -> bool {
+    /// The resume row's entry; `None` when it holds none, or when it can't be
+    /// read, which is told as a playback error and keeps playback off the row
+    /// until it saves a track of its own.
+    pub(super) async fn read_resume_row(&mut self) -> Option<PlaybackResumeRow> {
+        match crate::tables::load_playback_state(&self.store).await {
+            Ok(state) => state,
+            Err(e) => {
+                self.resume_unread = true;
+                self.report_unread("read the saved playback state", e);
+                None
+            }
+        }
+    }
+
+    /// Tell that a read playback needs couldn't be made.
+    fn report_unread(&self, reading: &str, error: bae_store::DbError) {
+        error!("couldn't {reading}: {error}");
+        self.telemetry_playback_failed(PlaybackOperation::LoadContext);
+        emit_progress(
+            &self.progress_tx,
+            PlaybackProgress::PlaybackError { reason: PlaybackError::from(error).ui_reason() },
+        );
+    }
+
+    /// Take up the volume and mute `playback_now` kept. A failed read is told
+    /// as a playback error and leaves the level unread: the output stays as it
+    /// opened, and [`Self::play_track`] reads it again before anything plays.
+    pub(super) async fn take_up_level(&mut self) -> bool {
         let (volume, is_muted) = match crate::tables::playback_level(&self.store).await {
             Ok(level) => level,
             Err(e) => {
-                warn!("couldn't read the volume to resume: {e}; resuming at full volume");
-                (crate::Volume::FULL, false)
+                self.level_unread = true;
+                self.report_unread("read the volume to resume", e);
+                return false;
             }
         };
+        self.level_unread = false;
         // The saved level is what the UI shows even when the session was muted —
         // that is the level unmuting puts back — so `VolumeChanged` carries it
         // either way, and the mute is announced on top.
@@ -240,21 +262,33 @@ impl PlaybackService {
         if is_muted {
             emit_progress(&self.progress_tx, PlaybackProgress::MuteChanged { is_muted: true });
         }
-
-        if let Err(e) = self.playback_queue.restore(current).await {
-            warn!("couldn't read the queue to resume: {e}; resuming nothing");
-            return false;
-        }
         true
+    }
+
+    /// Take up the queue the tables hold, playing `current`, and the volume
+    /// and mute `playback_now` kept; whether both reads worked. Each failed
+    /// read is told as a playback error.
+    async fn take_up_queue_and_level(&mut self, current: Option<crate::QueueEntry>) -> bool {
+        let level = self.take_up_level().await;
+        let queue = match self.playback_queue.restore(current).await {
+            Ok(()) => true,
+            Err(e) => {
+                self.report_unread("read the queue to resume", e);
+                false
+            }
+        };
+        level && queue
     }
 
     /// Resume playback from the device-local resume row over the queue the
     /// tables hold: the repeat mode, the volume `playback_now` kept, and the
     /// entry playing, loaded paused at its saved position. A deleted track
-    /// left no entry to resume. A failed read of the queue resumes nothing.
+    /// left no entry to resume. A failed read of the level or the queue
+    /// resumes nothing, tells why, and leaves the resume row as it is.
     pub(super) async fn restore(&mut self, state: PlaybackResumeRow) {
         info!("Restoring playback state: entry={:?}", state.current);
         if !self.take_up_queue_and_level(state.current).await {
+            self.resume_unread = true;
             return;
         }
 
@@ -302,6 +336,11 @@ impl PlaybackService {
         // write waits until it has played a second rather than firing at once.
         // Nothing to resume: the slot is Stopped, or the track drained naturally
         // (Completed). A Loading or playing/paused Active track writes the row.
+        // A resume point that was never taken up stays until playback saves
+        // one of its own.
+        if self.resume_unread && matches!(&self.slot, PlaybackSlot::Stopped) {
+            return;
+        }
         let nothing_to_resume = matches!(&self.slot, PlaybackSlot::Stopped)
             || matches!(
                 &self.slot,
@@ -319,6 +358,7 @@ impl PlaybackService {
             PlaybackSlot::Active(cur) => Some(cur.position),
             _ => None,
         };
+        self.resume_unread = false;
         let position_ms = self.persisted_position.map(StreamPosition::as_millis);
         if let Err(e) = self.playback_queue.save_playback_state(position_ms).await {
             warn!(
@@ -342,6 +382,8 @@ impl PlaybackService {
     /// the `set_volume` the drag ends with; lifting a mute is announced here,
     /// since the screens show it at once.
     pub(super) fn set_volume_live(&mut self, volume: crate::Volume) {
+        // A level the person sets is the level.
+        self.level_unread = false;
         let lifted_mute = self.volume.set(volume, &self.audio_output);
         self.renderer.set_remote_volume(volume);
         if lifted_mute {

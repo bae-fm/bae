@@ -223,3 +223,76 @@ async fn the_resume_point_is_saved_after_each_second_of_play() {
         ]
     );
 }
+
+const RESUME_RELEASE: &str = "0e3d7a52-6c0f-4e5b-9a8e-3d1f4b7c2a90";
+
+/// A resume whose volume can't be read resumes nothing, tells the person, and
+/// leaves the saved resume point as it was, rather than resuming at full
+/// volume or writing over the point.
+#[tokio::test]
+async fn a_failed_read_of_the_volume_fails_the_resume_and_keeps_the_resume_row() {
+    let (home, mut service, mut progress_rx) =
+        seeded_playback_service(&[(RESUME_RELEASE, &[TRACK_T])]).await;
+    fill_test_release(&mut service, RESUME_RELEASE).await;
+    service.playback_queue.save_playback_state(Some(5_000)).await.expect("the row saves");
+    let saved = crate::tables::load_playback_state(home.store())
+        .await
+        .expect("the row reads")
+        .expect("the row was saved");
+    crate::tables::lose_playback_level_for_test(home.directory());
+
+    service.restore(saved.clone()).await;
+    service.persist_playback_state().await;
+
+    assert!(matches!(service.slot, PlaybackSlot::Stopped), "nothing resumes");
+    assert!(drained_a_playback_error(&mut progress_rx), "the failure reaches the person");
+    assert_eq!(
+        crate::tables::load_playback_state(home.store()).await.expect("the row reads"),
+        Some(saved),
+        "the resume point is as it was"
+    );
+}
+
+/// With the volume unread, the output sits at the full volume it opened with,
+/// so nothing plays: a play fails with an error rather than starting loud.
+#[tokio::test]
+async fn nothing_plays_while_the_volume_is_unread() {
+    let (home, mut service, mut progress_rx) =
+        seeded_playback_service(&[(RESUME_RELEASE, &[TRACK_T])]).await;
+    fill_test_release(&mut service, RESUME_RELEASE).await;
+    let resume = crate::tables::PlaybackResumeRow { current: None, position_ms: None };
+    crate::tables::lose_playback_level_for_test(home.directory());
+    service.restore(resume).await;
+    assert!(drained_a_playback_error(&mut progress_rx));
+
+    service
+        .play_track(
+            TRACK_T,
+            TrackStart::Direct,
+            PlayTarget::Playing,
+            bae_diagnostics::TrackTransition::Manual,
+        )
+        .await;
+
+    assert!(matches!(service.slot, PlaybackSlot::Stopped), "nothing plays");
+    assert!(drained_a_playback_error(&mut progress_rx), "the failure reaches the person");
+}
+
+/// A resume row that can't be read resumes nothing, tells the person, and is
+/// not cleared by the stop that follows.
+#[tokio::test]
+async fn a_failed_read_of_the_resume_row_keeps_it() {
+    let (home, mut service, mut progress_rx) =
+        seeded_playback_service(&[(RESUME_RELEASE, &[TRACK_T])]).await;
+    crate::tables::plant_unreadable_resume_row_for_test(home.directory());
+
+    service.restore_from_cache().await;
+    service.persist_playback_state().await;
+
+    assert!(matches!(service.slot, PlaybackSlot::Stopped));
+    assert!(drained_a_playback_error(&mut progress_rx), "the failure reaches the person");
+    assert!(
+        crate::tables::load_playback_state(home.store()).await.is_err(),
+        "the row is still there, unread"
+    );
+}
