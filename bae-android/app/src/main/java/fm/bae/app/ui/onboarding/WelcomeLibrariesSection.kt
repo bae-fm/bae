@@ -98,8 +98,8 @@ internal fun WelcomeLibrariesSection(
 
 /**
  * The libraries under their heading, or why they couldn't be listed. While a
- * library is counted or removed, its row shows the step, and no row can be
- * tapped.
+ * library is counted or removed, its row shows the step, and the other rows
+ * and Add library stay buttons, dimmed and disabled.
  */
 @Composable
 internal fun WelcomeLibrariesContent(
@@ -135,7 +135,8 @@ internal fun WelcomeLibrariesContent(
                         title = stringResource(R.string.welcome_add_library),
                         action = true,
                         leadingIcon = Icons.Filled.Add,
-                        onClick = callbacks.onAdd.takeIf { running == null },
+                        enabled = running == null,
+                        onClick = callbacks.onAdd,
                     )
                 }
             }
@@ -166,8 +167,9 @@ private fun WelcomeLibraryRow(
         subtitle = problem?.text,
         tone = problem?.tone,
         // A library whose settings can't be read offers nothing to open.
+        enabled = !busy,
         onClick =
-            if (!busy && library.state !is BridgeLibraryState.Unreadable) {
+            if (library.state !is BridgeLibraryState.Unreadable) {
                 { callbacks.onOpen(library) }
             } else {
                 null
