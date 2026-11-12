@@ -3778,6 +3778,14 @@
    "w": 690,
    "x": 1540,
    "y": 25888
+  },
+  "android.settings.sync.pending.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "Sync: pending",
+   "w": 412,
+   "x": 2850,
+   "y": 25888
   }
  },
  "createdOnFiles": {
@@ -5286,7 +5294,7 @@
    "w": 460,
    "x": 2310,
    "y": 25888,
-   "text": "What the code needs for these boards:\n- Pending: one row per record, its subject over its reason, Details and the record's action at the right, in the box like every other Settings row. Today each record is its subject over a neutral notice holding the reason and the action (PendingRecordsView.swift). The status above says Waiting to sync while anything is pending.\n- Setup undone: the warning notice with Details and Dismiss heads the page, over Not synced. It is the app's UndoneSetupLine as it is.\n- Unreadable cloud home: a read of this device's own record that failed is a bug: the notice says so with Details only, and the bug is reported. The app shows the notice; no Try again."
+   "text": "What the code needs for these boards:\n- Pending: one row per record, its subject over its reason, Details and the record's action at the right, in the box like every other Settings row. Today each record is its subject over a neutral notice holding the reason and the action (PendingRecordsView.swift). The status above says Waiting to sync while anything is pending.\n- Setup undone: the warning notice with Details and Dismiss heads the page, over Not synced. It is the app's UndoneSetupLine as it is.\n- Unreadable cloud home: a read of this device's own record that failed is a bug: the notice says so with Details only, and the bug is reported. The app shows the notice; no Try again.\n- Android: the same Pending rows, the action as a text button at the right; tapping a row opens its details. bae change if SyncScreen.kt draws them otherwise."
   }
  },
  "order": [
