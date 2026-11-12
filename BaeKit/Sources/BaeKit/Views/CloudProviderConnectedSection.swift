@@ -3,7 +3,9 @@ import os.log
 
 private let logger = Logger.bae("CloudProviderConnectedSection")
 
-/// The library's storage as coven records it, one row per field.
+/// The library's storage as coven records it, one row per field. Welcome's
+/// library details show it as it is; the Sync page adds
+/// [OpenFolderInBrowserRow] after it.
 public struct CloudProviderConnectedSection: View {
     public let location: BridgeStorageLocation
 
@@ -25,7 +27,7 @@ public struct CloudProviderConnectedSection: View {
                 LabeledContent("Account", value: account)
             }
             if let folder = location.folderLabel {
-                FolderRows(folder: folder)
+                LabeledContent("Folder", value: folder.name)
             }
         case .cloudKit:
             EmptyView()
@@ -33,10 +35,14 @@ public struct CloudProviderConnectedSection: View {
     }
 }
 
-/// A Dropbox shared folder's or a OneDrive folder's name, and Open in browser,
-/// which opens the folder's page at the provider.
-private struct FolderRows: View {
-    let folder: BridgeFolderLabel
+/// Open in browser, which opens a Dropbox shared folder's or a OneDrive
+/// folder's page at the provider.
+public struct OpenFolderInBrowserRow: View {
+    public let folder: BridgeFolderLabel
+
+    public init(folder: BridgeFolderLabel) {
+        self.folder = folder
+    }
 
     @Environment(\.openURL)
     private var openURL
@@ -44,8 +50,7 @@ private struct FolderRows: View {
     @State
     private var openFailure: DisplayError?
 
-    var body: some View {
-        LabeledContent("Folder", value: folder.name)
+    public var body: some View {
         HStack {
             Spacer()
             Button("Open in browser", action: open)

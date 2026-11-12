@@ -2748,7 +2748,7 @@ code** in place of the buttons, each library opening on a tap, with a ⋮ menu h
 **Details…** for a library that opens, and **Remove…**, or **Delete…** for one
 that was never synced (§6.4). **Details…** shows, in a sheet, the library's sync
 status as this phone last knew it (as on a Mac, below), when it last synced, and
-its provider, account and folder. One that has restore codes saved on it lists
+its provider, account and folder (no *Open in browser*: the Sync page has it). One that has restore codes saved on it lists
 them below those (below). A Mac lists its libraries the same
 way under **Your libraries**: a click on one opens it, and its ⋯ button, or a
 right click, holds **Remove…**, or **Delete…** for one never synced. A
@@ -2759,7 +2759,8 @@ provider line, and nothing for one that never synced. While a removal runs, its
 row shows the step under its name with a spinner in place of the ⋯ (the ⋮ on a
 phone). **Details…** hangs a popover off the ⋯, titled with the library's name, with its sync status as
 this Mac last knew it (**Synced**, or **Unsent changes** while it holds some it
-never uploaded), when it last synced, and its provider, account and folder. A
+never uploaded), when it last synced, and its provider, account and folder, without *Open in
+browser*, which the Sync page keeps. A
 library that is open shows its live sync status; any other is read as it last
 stood, without opening it, and one that is closing once its close has ended.
 A library stops counting as open as its close begins, even while the app

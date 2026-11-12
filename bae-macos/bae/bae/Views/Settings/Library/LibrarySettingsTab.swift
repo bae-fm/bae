@@ -240,6 +240,9 @@ private struct SyncSettingsPage: View {
             if let location = configStore.storage {
                 Section("Cloud home") {
                     CloudProviderConnectedSection(location: location)
+                    if let folder = location.folderLabel {
+                        OpenFolderInBrowserRow(folder: folder)
+                    }
                 }
                 LibraryRestoreCodeSection(reveal: restoreCode)
                 SyncPendingList(

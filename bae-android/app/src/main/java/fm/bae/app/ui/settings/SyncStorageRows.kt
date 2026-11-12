@@ -29,18 +29,21 @@ private val logger = BaeLogger("bae.SyncStorageRows")
 
 /**
  * The library's storage: its provider, then for S3 the endpoint, region and bucket it names, and for Dropbox and
- * OneDrive the signed-in account and the folder coven recorded, with Open in browser, which opens the folder's page
+ * OneDrive the signed-in account and the folder coven recorded, then Open in browser, which opens the folder's page
  * at the provider. A row shows a name or isn't there.
  */
 @Composable
 internal fun StorageSection(location: BridgeStorageLocation) {
     Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
         AndroidSection(text = stringResource(R.string.sync_cloud_home))
-        AndroidCard { StorageRows(location) }
+        AndroidCard {
+            StorageRows(location)
+            storageFolder(location)?.let { OpenFolderRow(it) }
+        }
     }
 }
 
-/** The rows of [StorageSection]'s card, which the welcome's library details sheet shows too. */
+/** The rows of [StorageSection]'s card, which the welcome's library details sheet shows too, as they are. */
 @Composable
 internal fun StorageRows(location: BridgeStorageLocation) {
     AndroidRow(
@@ -56,12 +59,12 @@ internal fun StorageRows(location: BridgeStorageLocation) {
 
         is BridgeStorageLocation.Dropbox -> {
             location.accountLabel?.let { AndroidRow(title = stringResource(R.string.settings_account), subtitle = it) }
-            location.folderLabel?.let { FolderRows(it) }
+            location.folderLabel?.let { FolderRow(it) }
         }
 
         is BridgeStorageLocation.OneDrive -> {
             location.accountLabel?.let { AndroidRow(title = stringResource(R.string.settings_account), subtitle = it) }
-            location.folderLabel?.let { FolderRows(it) }
+            location.folderLabel?.let { FolderRow(it) }
         }
 
         is BridgeStorageLocation.CloudKit -> {
@@ -70,12 +73,23 @@ internal fun StorageRows(location: BridgeStorageLocation) {
     }
 }
 
-/** A Dropbox shared folder's or a OneDrive folder's name, and the row that opens its page at the provider. */
 @Composable
-private fun FolderRows(folder: BridgeFolderLabel) {
+private fun FolderRow(folder: BridgeFolderLabel) {
+    AndroidRow(title = stringResource(R.string.settings_folder), subtitle = folder.name)
+}
+
+private fun storageFolder(location: BridgeStorageLocation): BridgeFolderLabel? =
+    when (location) {
+        is BridgeStorageLocation.Dropbox -> location.folderLabel
+        is BridgeStorageLocation.OneDrive -> location.folderLabel
+        is BridgeStorageLocation.S3, is BridgeStorageLocation.CloudKit -> null
+    }
+
+/** The row that opens a Dropbox shared folder's or a OneDrive folder's page at the provider. */
+@Composable
+private fun OpenFolderRow(folder: BridgeFolderLabel) {
     val context = LocalContext.current
     var openFailure by remember { mutableStateOf<DisplayError?>(null) }
-    AndroidRow(title = stringResource(R.string.settings_folder), subtitle = folder.name)
     AndroidRow(
         title = stringResource(R.string.settings_open_in_browser),
         onClick = { openFailure = openInBrowser(context, folder.webUrl) },
