@@ -41,6 +41,14 @@ impl Shot {
         })
     }
 
+    /// Reads only the element list `name` wrote into `dir`.
+    pub(crate) fn load_list(dir: &Path, name: &Name) -> Result<ElementList, ShotError> {
+        let json = name.file_name("json");
+        let text = std::fs::read_to_string(dir.join(&json))
+            .map_err(|e| ShotError::Read(json.clone(), e))?;
+        ElementList::parse(&text).map_err(|e| ShotError::List(json, e))
+    }
+
     /// What is inconsistent in the shot named `name`: the list names another
     /// board or platform, the picture is not the list's size at its scale, an
     /// element's parent does not come before it.
@@ -148,6 +156,31 @@ pub(crate) enum Role {
     Slider,
     Progress,
     Other,
+}
+
+impl Role {
+    /// Roles whose name is their words, which the text inside them repeats.
+    pub(crate) fn is_control(self) -> bool {
+        !matches!(self, Self::Text | Self::Image | Self::Other)
+    }
+
+    /// The word a sentence uses for the role.
+    pub(crate) fn word(self) -> &'static str {
+        match self {
+            Self::Text => "text",
+            Self::Button => "button",
+            Self::Toggle => "toggle",
+            Self::Radio => "radio button",
+            Self::Field => "field",
+            Self::Popup => "pop-up",
+            Self::Tab => "tab",
+            Self::Link => "link",
+            Self::Image => "image",
+            Self::Slider => "slider",
+            Self::Progress => "progress bar",
+            Self::Other => "element",
+        }
+    }
 }
 
 /// The look of a text element's words, each part only where the platform gave

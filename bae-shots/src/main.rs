@@ -2,6 +2,7 @@
 //! boards.
 
 mod capture;
+mod compare;
 mod declared;
 mod design;
 mod lint;
@@ -120,6 +121,27 @@ fn selected(root: &Path, selection: &Selection) -> Result<Vec<Name>, String> {
     Ok(names)
 }
 
+/// Compares each shot with its board and prints what fails. True when
+/// nothing does.
+fn check(
+    names: &[Name],
+    shots_for: impl Fn(Platform) -> PathBuf,
+    boards: &Path,
+) -> Result<bool, String> {
+    let mut passed = true;
+    for name in names {
+        let shot =
+            shots::Shot::load(&shots_for(name.platform()), name).map_err(|e| e.to_string())?;
+        let board = shots::Shot::load_list(boards, name).map_err(|e| e.to_string())?;
+        let result = compare::compare(&board.elements, &shot.list.elements);
+        for finding in &result.findings {
+            eprintln!("{name}: {}", finding.sentence());
+        }
+        passed &= result.findings.is_empty();
+    }
+    Ok(passed)
+}
+
 fn run(action: Action) -> Result<bool, String> {
     let root = repository_root()?;
     match action {
@@ -134,8 +156,9 @@ fn run(action: Action) -> Result<bool, String> {
         Action::Run(selection) => {
             capture(&root, &selection, |p| root.join("shots").join(p.word()))?;
             let names = selected(&root, &selection)?;
-            render::boards(&root, &names, &root.join("shots/boards"))?;
-            Ok(true)
+            let boards = root.join("shots/boards");
+            render::boards(&root, &names, &boards)?;
+            check(&names, |p| root.join("shots").join(p.word()), &boards)
         }
         Action::Capture { selection, out } => {
             capture(&root, &selection, |_| out.clone())?;

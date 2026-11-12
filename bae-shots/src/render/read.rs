@@ -59,11 +59,6 @@ impl Role {
             role => role,
         }
     }
-
-    /// Roles whose name is their words, which the text inside them repeats.
-    fn is_control(self) -> bool {
-        !matches!(self, Self::Text | Self::Image | Self::Other)
-    }
 }
 
 /// Chrome roles that only hold other nodes and say nothing of their own.

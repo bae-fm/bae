@@ -24,6 +24,7 @@ pub(crate) struct Size {
 #[derive(serde::Serialize)]
 struct BoardList<'a> {
     board: &'a str,
+    platform: &'a str,
     size: Size,
     scale: f64,
     elements: Vec<crate::shots::Element>,
@@ -96,6 +97,7 @@ async fn draw_with(
             .map_err(|e| format!("cannot write {}: {e}", file.display()))?;
         let list = BoardList {
             board: &board,
+            platform: name.platform().file_word(),
             size: drawn.size,
             scale: BOARD_SCALE,
             elements: drawn.elements,
