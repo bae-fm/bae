@@ -62,7 +62,8 @@
     /// The folder list Dropbox and OneDrive setup share: the line over it,
     /// where the person is when folders open into others, the folders to
     /// choose from, the name field for a new one, and the folder setup found
-    /// holding other files. Its sections go in a form.
+    /// holding other files. Its sections go in a form; New folder… and Look
+    /// again are the sheet's, in its footer.
     struct FolderPicker: View {
         let browser: StorageFolderBrowser
 
@@ -131,10 +132,6 @@
                     .foregroundStyle(Theme.danger)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
-            }
-            Section {
-                Button("Look again") { browser.lookAgain() }
-                    .disabled(browser.isWorking)
             }
         }
 

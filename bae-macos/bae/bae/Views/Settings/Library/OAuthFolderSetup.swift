@@ -98,8 +98,12 @@
                 claim: { browser.place($0) },
                 folder: browser.target?.name,
                 leading: {
-                    Button("New folder…") { browser.startNaming() }
-                        .disabled(browser.isNaming || browser.isWorking)
+                    HStack(spacing: ThemeSpace.related) {
+                        Button("New folder…") { browser.startNaming() }
+                            .disabled(browser.isNaming || browser.isWorking)
+                        Button("Look again") { browser.lookAgain() }
+                            .disabled(browser.isNaming || browser.isWorking)
+                    }
                 },
                 fields: {
                     FolderPicker(browser: browser)

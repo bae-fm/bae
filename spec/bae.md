@@ -3212,8 +3212,8 @@ location whose marker is missing or names another library.
 **Dropbox and OneDrive setup.** The person signs in through the browser, then
 picks the empty folder the library lives in, in one folder picker for both
 providers: a line over the list, the folders to choose from (a chosen one is
-filled in the accent), *New folder…*, and the folder setup found holding other
-files. Only the provider's facts differ. On Dropbox the folder is a shared
+filled in the accent), *New folder…*, *Look again*, and the folder setup found
+holding other files. Only the provider's facts differ. On Dropbox the folder is a shared
 folder, so the household can be invited to it: the list is flat, and a new
 folder is made at the top of the person's Dropbox and shared. On OneDrive any
 folder will do: the list shows where the person is, each folder opens into the
@@ -3227,7 +3227,10 @@ one (coven's `OwnLocationRequired`), and that folder isn't set up until another
 is chosen. The picker moves into a folder only once its folders have loaded; a
 listing that fails leaves it where it was, with the failure (and Retry, on
 Android), and a top that fails to list shows only that. macOS and Android both
-have this picker; on Android *New folder* asks for the name in a dialog, and the
+have this picker; on the Mac *New folder…* and *Look again*, which lists the
+top again after a folder was made or shared elsewhere, sit at the left of the
+sheet's footer, and *Up* at the right of the line that shows where the person
+is. On Android *New folder* asks for the name in a dialog, and the
 chosen folder is marked by its row's background. coven holds the sign-in; bae
 never sees its tokens. bae's Dropbox app has access to the whole Dropbox, not an
 app folder: an app folder can't be shared, so a household couldn't be invited to
