@@ -41,14 +41,6 @@ impl Shot {
         })
     }
 
-    /// Reads only the element list `name` wrote into `dir`.
-    pub(crate) fn load_list(dir: &Path, name: &Name) -> Result<ElementList, ShotError> {
-        let json = name.file_name("json");
-        let text = std::fs::read_to_string(dir.join(&json))
-            .map_err(|e| ShotError::Read(json.clone(), e))?;
-        ElementList::parse(&text).map_err(|e| ShotError::List(json, e))
-    }
-
     /// What is inconsistent in the shot named `name`: the list names another
     /// board or platform, the picture is not the list's size at its scale, an
     /// element's parent does not come before it.
@@ -119,6 +111,13 @@ fn platform<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Platform, D::E
 }
 
 impl ElementList {
+    /// Reads the element list file at `path`.
+    pub(crate) fn load(path: &Path) -> Result<Self, ShotError> {
+        let text = std::fs::read_to_string(path)
+            .map_err(|e| ShotError::Read(path.display().to_string(), e))?;
+        Self::parse(&text).map_err(|e| ShotError::List(path.display().to_string(), e))
+    }
+
     pub(crate) fn parse(json: &str) -> Result<Self, serde_json::Error> {
         serde_json::from_str(json)
     }

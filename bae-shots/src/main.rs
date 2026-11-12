@@ -121,8 +121,8 @@ fn selected(root: &Path, selection: &Selection) -> Result<Vec<Name>, String> {
     Ok(names)
 }
 
-/// Compares each shot with its board and prints what fails. True when
-/// nothing does.
+/// Compares each shot with its board and prints what differs: findings fail,
+/// warnings do not. True when nothing fails.
 fn check(
     names: &[Name],
     shots_for: impl Fn(Platform) -> PathBuf,
@@ -132,12 +132,30 @@ fn check(
     for name in names {
         let shot =
             shots::Shot::load(&shots_for(name.platform()), name).map_err(|e| e.to_string())?;
-        let board = shots::Shot::load_list(boards, name).map_err(|e| e.to_string())?;
-        let result = compare::compare(&board.elements, &shot.list.elements);
+        let list = shots::ElementList::load(&boards.join(format!("{name}.json")))
+            .map_err(|e| e.to_string())?;
+        let picture_file = boards.join(format!("{name}.png"));
+        let picture = std::fs::read(&picture_file)
+            .map_err(|e| format!("cannot read {}: {e}", picture_file.display()))?;
+        let picture = shots::Picture::decode(&picture)
+            .map_err(|e| format!("{}: {e}", picture_file.display()))?;
+        let result = compare::compare(&list.elements, &shot.list.elements);
         for finding in &result.findings {
             eprintln!("{name}: {}", finding.sentence());
         }
         passed &= result.findings.is_empty();
+        let warnings = compare::warnings(
+            &compare::Side { elements: &list.elements, picture: &picture, scale: list.scale },
+            &compare::Side {
+                elements: &shot.list.elements,
+                picture: &shot.picture,
+                scale: shot.list.scale,
+            },
+            &result.pairs,
+        );
+        for warning in &warnings {
+            eprintln!("{name}: warning: {}", warning.sentence());
+        }
     }
     Ok(passed)
 }

@@ -1,6 +1,6 @@
 use super::*;
 use crate::compare::normalize::tests::element;
-use crate::shots::Role;
+use crate::shots::{Picture, Role};
 
 fn text(words: &str) -> Element {
     element(Role::Text, Some(words), None)
@@ -124,4 +124,61 @@ fn findings_come_in_reading_order() {
 fn an_element_with_no_words_is_described_as_unlabelled() {
     let toggle = element(Role::Toggle, None, None);
     assert_eq!(sentences(&[toggle], &[]), ["Shot is missing the unlabelled toggle"]);
+}
+
+fn flat(width: u32, height: u32) -> Picture {
+    Picture { width, height, pixels: [40, 40, 48, 255].repeat((width * height) as usize) }
+}
+
+#[test]
+fn an_offset_frame_is_reported_once_and_not_per_element() {
+    let board: Vec<Element> = (0..4)
+        .map(|i| {
+            let mut e = button(&format!("Button {i}"));
+            e.bounds = crate::shots::Bounds {
+                x: 10.0,
+                y: 10.0 + 40.0 * f64::from(i),
+                width: 80.0,
+                height: 30.0,
+            };
+            e
+        })
+        .collect();
+    let shot: Vec<Element> = board
+        .iter()
+        .map(|e| {
+            let mut e = e.clone();
+            e.bounds.x += 5.0;
+            e.bounds.y += 1.0;
+            e
+        })
+        .collect();
+    let picture = flat(120, 200);
+    let found = compare(&board, &shot);
+    let warnings = warnings(
+        &Side { elements: &board, picture: &picture, scale: 1.0 },
+        &Side { elements: &shot, picture: &picture, scale: 1.0 },
+        &found.pairs,
+    );
+    assert_eq!(
+        warnings.iter().map(Warning::sentence).collect::<Vec<_>>(),
+        ["The shot's frame is 5 pt right and 1 pt below of the board's"]
+    );
+}
+
+#[test]
+fn an_offset_under_the_tolerance_is_not_reported() {
+    let mut board = button("Go");
+    board.bounds = crate::shots::Bounds { x: 10.0, y: 10.0, width: 80.0, height: 30.0 };
+    let mut shot = board.clone();
+    shot.bounds.x += 2.0;
+    let picture = flat(120, 60);
+    let (board, shot) = ([board], [shot]);
+    let found = compare(&board, &shot);
+    assert!(warnings(
+        &Side { elements: &board, picture: &picture, scale: 1.0 },
+        &Side { elements: &shot, picture: &picture, scale: 1.0 },
+        &found.pairs,
+    )
+    .is_empty());
 }

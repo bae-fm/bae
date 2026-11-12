@@ -3,11 +3,24 @@
 //! another kind, or in another state.
 
 pub(crate) mod align;
+pub(crate) mod colour;
+pub(crate) mod geometry;
 pub(crate) mod normalize;
+pub(crate) mod regions;
 
-use crate::shots::Element;
+use crate::shots::{Bounds, Element, Picture};
 use align::Step;
+use colour::{hex, Rgb};
 use normalize::{entries, Entry};
+
+/// A box edge may differ by this many points before it warns.
+pub(crate) const EDGE_TOLERANCE: f64 = 2.0;
+/// A font size may differ by this many points before it warns.
+pub(crate) const FONT_SIZE_TOLERANCE: f64 = 0.5;
+/// A CIEDE2000 difference past this warns.
+pub(crate) const DELTA_E_TOLERANCE: f64 = 3.0;
+/// The side of a cell of the region grid, in points.
+pub(crate) const REGION_CELL: f64 = 16.0;
 
 /// What differs between a matched board element and shot element.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -44,6 +57,8 @@ pub(crate) enum Finding {
 /// The outcome of comparing two lists.
 #[derive(Debug)]
 pub(crate) struct Comparison {
+    /// The elements both lists hold at the same place: (board, shot).
+    pub(crate) pairs: Vec<(Entry, Entry)>,
     /// In the order the elements come in the reading order.
     pub(crate) findings: Vec<Finding>,
 }
@@ -57,6 +72,7 @@ pub(crate) fn compare(board: &[Element], shot: &[Element]) -> Comparison {
     let steps = align::align(&board_keys, &shot_keys);
 
     // Findings with their step number, which orders them.
+    let mut pairs = Vec::new();
     let mut found: Vec<(usize, Finding)> = Vec::new();
     // Leftovers: (step, gap, entry). A gap is a run of steps between matches.
     let mut missing: Vec<(usize, usize, &Entry)> = Vec::new();
@@ -66,6 +82,7 @@ pub(crate) fn compare(board: &[Element], shot: &[Element]) -> Comparison {
         match *step {
             Step::Match(b, s) => {
                 gap += 1;
+                pairs.push((board[b].clone(), shot[s].clone()));
                 for aspect in differences(&board[b], &shot[s]) {
                     found.push((
                         at,
@@ -120,7 +137,85 @@ pub(crate) fn compare(board: &[Element], shot: &[Element]) -> Comparison {
         found.push((at, Finding::Extra(entry.clone())));
     }
     found.sort_by_key(|(at, _)| *at);
-    Comparison { findings: found.into_iter().map(|(_, f)| f).collect() }
+    Comparison { pairs, findings: found.into_iter().map(|(_, f)| f).collect() }
+}
+
+/// One side of a comparison: its elements and its picture, which is `scale`
+/// pixels to the point.
+pub(crate) struct Side<'a> {
+    pub(crate) elements: &'a [Element],
+    pub(crate) picture: &'a Picture,
+    pub(crate) scale: f64,
+}
+
+/// Which colour of an element differs.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Part {
+    Background,
+    Foreground,
+    Text,
+}
+
+/// A difference that is reported and never fails the run.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) enum Warning {
+    /// The shot's frame sits this far right and down of the board's.
+    FrameOffset {
+        dx: f64,
+        dy: f64,
+    },
+    /// In the shot the element sits this far right and down of the board's.
+    Moved {
+        entry: Entry,
+        dx: f64,
+        dy: f64,
+    },
+    /// In the shot the element is this much wider and taller.
+    Resized {
+        entry: Entry,
+        dw: f64,
+        dh: f64,
+    },
+    FontSize {
+        entry: Entry,
+        board: f64,
+        shot: f64,
+    },
+    FontWeight {
+        entry: Entry,
+        board: u32,
+        shot: u32,
+    },
+    Colour {
+        entry: Entry,
+        part: Part,
+        board: Rgb,
+        shot: Rgb,
+        delta: f64,
+    },
+    /// A region of the board's frame where the pictures differ.
+    Region {
+        bounds: Bounds,
+        delta: f64,
+    },
+}
+
+/// The warnings for the matched `pairs` of two sides.
+pub(crate) fn warnings(board: &Side, shot: &Side, pairs: &[(Entry, Entry)]) -> Vec<Warning> {
+    let offset = geometry::frame_offset(board.elements, shot.elements, pairs);
+    let mut found = Vec::new();
+    if offset.0.abs() > EDGE_TOLERANCE || offset.1.abs() > EDGE_TOLERANCE {
+        found.push(Warning::FrameOffset { dx: offset.0, dy: offset.1 });
+    }
+    found.extend(geometry::boxes(board.elements, shot.elements, pairs, offset));
+    found.extend(geometry::fonts(board.elements, shot.elements, pairs));
+    found.extend(colour::pairs(board, shot, pairs));
+    found.extend(
+        regions::regions(board, shot, offset)
+            .into_iter()
+            .map(|r| Warning::Region { bounds: r.bounds, delta: r.delta }),
+    );
+    found
 }
 
 fn differences(board: &Entry, shot: &Entry) -> Vec<Aspect> {
@@ -205,6 +300,94 @@ impl Finding {
                 }
             }
         }
+    }
+}
+
+/// A length in points as a sentence writes it: `4`, `2.5`.
+fn pt(length: f64) -> String {
+    let text = format!("{:.1}", length.abs());
+    format!("{} pt", text.strip_suffix(".0").unwrap_or(&text))
+}
+
+impl Warning {
+    /// The warning as a sentence for the report.
+    pub(crate) fn sentence(&self) -> String {
+        match self {
+            Self::FrameOffset { dx, dy } => format!(
+                "The shot's frame is {} {} and {} {} of the board's",
+                pt(*dx),
+                if *dx >= 0.0 { "right" } else { "left" },
+                pt(*dy),
+                if *dy >= 0.0 { "below" } else { "above" },
+            ),
+            Self::Moved { entry, dx, dy } => {
+                let mut moves = Vec::new();
+                if *dx != 0.0 {
+                    moves.push(format!("{} {}", pt(*dx), if *dx > 0.0 { "right" } else { "left" }));
+                }
+                if *dy != 0.0 {
+                    moves.push(format!("{} {}", pt(*dy), if *dy > 0.0 { "down" } else { "up" }));
+                }
+                format!("{} moved {} in the shot", quoted_words(entry), moves.join(" and "))
+            }
+            Self::Resized { entry, dw, dh } => {
+                let mut sizes = Vec::new();
+                if *dw != 0.0 {
+                    sizes.push(format!(
+                        "{} {}",
+                        pt(*dw),
+                        if *dw > 0.0 { "wider" } else { "narrower" }
+                    ));
+                }
+                if *dh != 0.0 {
+                    sizes.push(format!(
+                        "{} {}",
+                        pt(*dh),
+                        if *dh > 0.0 { "taller" } else { "shorter" }
+                    ));
+                }
+                format!("{} is {} in the shot", quoted_words(entry), sizes.join(" and "))
+            }
+            Self::FontSize { entry, board, shot } => format!(
+                "{} is set at {} in the shot and {} on the board",
+                quoted_words(entry),
+                pt(*shot),
+                pt(*board)
+            ),
+            Self::FontWeight { entry, board, shot } => format!(
+                "{} is set at weight {shot} in the shot and {board} on the board",
+                quoted_words(entry)
+            ),
+            Self::Colour { entry, part, board, shot, .. } => {
+                let what = match part {
+                    Part::Background => "background",
+                    Part::Foreground => "foreground",
+                    Part::Text => "colour",
+                };
+                format!(
+                    "The {what} of {} is {} on the board and {} in the shot",
+                    the(entry),
+                    hex(*board),
+                    hex(*shot)
+                )
+            }
+            Self::Region { bounds, .. } => format!(
+                "The pictures differ in the area {} wide and {} high at ({}, {})",
+                pt(bounds.width),
+                pt(bounds.height),
+                bounds.x,
+                bounds.y
+            ),
+        }
+    }
+}
+
+/// "“Set up”", the words of an entry that has some.
+fn quoted_words(entry: &Entry) -> String {
+    if entry.words.is_empty() {
+        format!("The unlabelled {}", entry.kind.word())
+    } else {
+        format!("“{}”", entry.words)
     }
 }
 
