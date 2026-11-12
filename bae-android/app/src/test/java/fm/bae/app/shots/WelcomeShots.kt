@@ -325,7 +325,12 @@ private fun loadingSteps() =
     LatestStream
         .bootstrapSteps(
             BridgeBootstrapStep.Loading(
-                BridgeLoadProgress(BridgeLoadStep.READING, "core.library.load_step.reading", 2uL, 8uL),
+                BridgeLoadProgress(
+                    BridgeLoadStep.STREAMING_LIBRARY,
+                    "core.library.load_step.streaming_library",
+                    3uL,
+                    10uL,
+                ),
             ),
         ).only
 
