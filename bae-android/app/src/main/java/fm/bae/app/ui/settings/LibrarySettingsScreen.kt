@@ -8,9 +8,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -30,6 +27,7 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidCard
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidScreen
+import fm.bae.app.ui.components.RowIcon
 import fm.bae.app.ui.components.SomethingWentWrongNotice
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.library.LibraryDestination
@@ -116,12 +114,7 @@ internal fun AndroidSettingsLibrary(
                         subtitle = name,
                         onClick = if (canRename) onRename else null,
                         onClickLabel = stringResource(R.string.settings_rename_library),
-                        trailing =
-                            if (canRename) {
-                                { Icon(Icons.Filled.Edit, contentDescription = null) }
-                            } else {
-                                null
-                            },
+                        icon = if (canRename) RowIcon.EDIT else null,
                     )
                 }
                 AndroidRow(
