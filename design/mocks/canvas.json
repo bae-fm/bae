@@ -2509,7 +2509,7 @@
   "android.welcome.reset.confirm.dc.html": {
    "h": 916,
    "page": "welcome",
-   "title": "Reset this device?",
+   "title": "Reset from cloud?",
    "w": 412,
    "x": 492,
    "y": 10796
@@ -3446,7 +3446,7 @@
   "mac.welcome.reset.confirm.dc.html": {
    "h": 600,
    "page": "welcome",
-   "title": "macOS: Reset this device: confirm",
+   "title": "macOS: Reset from cloud: confirm",
    "w": 900,
    "x": 980,
    "y": 12192

@@ -3775,7 +3775,7 @@ alert (a dialog on Android) gives the warning, with *Cancel*. Leaving the
 screen without resetting, by *Cancel* on a Mac or Back on Android, returns to
 the open library, to the Mac's library list, or on a phone with no library
 open, to onboarding. A reset that fails returns to that screen saying
-"Couldn’t reset this device", with *Retry*, which resets again without the
+"Couldn’t reset from cloud", with *Retry*, which resets again without the
 warning the person already accepted.
 
 **A reset or restore that stops partway.** A reset, or a restore with the
@@ -3786,8 +3786,8 @@ library waits for it to finish
 ([coven §19.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#193-another-copy-of-the-same-device)).
 bae still lists the library, under the name the new copy loaded, with the
 call that began it, and opening it fails with that call's own line:
-"Restoring this library on this device did not finish." or "Resetting this
-device for this library did not finish." Coven keeps what finishing needs on
+"Restoring this library on this device did not finish." or "Reset from cloud
+did not finish." Coven keeps what finishing needs on
 the device: a reset's device name, and a restore's code, its S3 key inside
 the code, and its provider sign-in. So `resume_replacement` finishes either
 without the code or a sign-in, and so does running the call that began it
