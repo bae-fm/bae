@@ -56,7 +56,6 @@ abstract class BoardShot {
         require(spelled.replaceFirstChar(Char::lowercase) == test.methodName) {
             "shot '${test.methodName}' is not the camelCase of board '$board' ($spelled)"
         }
-        ComponentIds.check(board)
         val directory = System.getProperty("bae.shotsDir")
         assumeNotNull(directory)
         assumeTrue("board '$board' is not selected", isSelected(board, System.getProperty("bae.shotsSelect")))

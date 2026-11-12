@@ -8,7 +8,7 @@ use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
 
 /// The Chrome for Testing build every board hash names.
-const PINNED: &str = "157.0.8103.78";
+pub(crate) const PINNED: &str = "157.0.8103.78";
 
 /// Where fetched builds are kept: `BAE_SHOTS_CHROME_CACHE`, else the build
 /// volume, else the user's cache directory.
@@ -145,6 +145,10 @@ pub(crate) enum ChromeError {
     Checksum { expected: String, actual: String },
     #[error("cannot fetch Chrome for Testing: {0}")]
     Fetch(String),
+    #[error(
+        "Chrome reports {actual}, not the pinned {expected}; board hashes name the pinned build"
+    )]
+    Version { expected: String, actual: String },
     #[error("cannot start Chrome: {0}")]
     Launch(String),
     #[error("Chrome failed: {0}")]
@@ -158,10 +162,6 @@ pub(crate) struct Chrome {
 }
 
 impl Chrome {
-    pub(crate) fn version(&self) -> &str {
-        &self.version
-    }
-
     pub(crate) async fn new_page(&self) -> Result<Page, ChromeError> {
         self.browser.new_page("about:blank").await.map_err(|e| ChromeError::Protocol(e.to_string()))
     }
@@ -187,14 +187,21 @@ pub(crate) async fn with_chrome<T>(work: impl AsyncFnOnce(&Chrome) -> T) -> Resu
         let version =
             browser.version().await.map_err(|e| ChromeError::Protocol(e.to_string()))?.product;
         let mut chrome = Chrome { browser, version };
-        let out = work(&chrome).await;
+        let out = if chrome.version.contains(PINNED) {
+            Ok(work(&chrome).await)
+        } else {
+            Err(ChromeError::Version {
+                expected: PINNED.to_string(),
+                actual: chrome.version.clone(),
+            })
+        };
         if let Err(error) = chrome.browser.close().await {
             eprintln!("bae-shots: closing Chrome failed: {error}");
         }
         if let Err(error) = chrome.browser.wait().await {
             eprintln!("bae-shots: waiting for Chrome failed: {error}");
         }
-        Ok(out)
+        out
     };
     // The events end when the browser closes, which `running` does last; a
     // browser that dies before that fails the work's requests.

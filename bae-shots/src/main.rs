@@ -6,9 +6,12 @@ mod compare;
 mod declared;
 mod design;
 mod lint;
+mod lists;
 mod names;
+mod record;
 mod render;
 mod shots;
+mod verify;
 
 use clap::{Args, Parser, Subcommand};
 use names::{Name, Platform, Prefix};
@@ -30,6 +33,18 @@ enum Action {
     Runtime,
     /// Take the shots into shots/<platform>/.
     Run(Selection),
+    /// Check shots already taken against their boards.
+    Check {
+        /// The directory holding every platform's PNGs and element lists.
+        #[arg(long)]
+        shots: PathBuf,
+        /// The directory the rendered boards are written to.
+        #[arg(long)]
+        out: PathBuf,
+        /// A git ref whose record the pairs are marked new or changed against.
+        #[arg(long)]
+        base: Option<String>,
+    },
     /// Take the shots into a directory.
     Capture {
         #[command(flatten)]
@@ -121,62 +136,55 @@ fn selected(root: &Path, selection: &Selection) -> Result<Vec<Name>, String> {
     Ok(names)
 }
 
-/// Compares each shot with its board and prints what differs: findings fail,
-/// warnings do not. True when nothing fails.
-fn check(
-    names: &[Name],
-    shots_for: impl Fn(Platform) -> PathBuf,
-    boards: &Path,
-) -> Result<bool, String> {
-    let mut passed = true;
-    for name in names {
-        let shot =
-            shots::Shot::load(&shots_for(name.platform()), name).map_err(|e| e.to_string())?;
-        let list = shots::ElementList::load(&boards.join(format!("{name}.json")))
-            .map_err(|e| e.to_string())?;
-        let picture_file = boards.join(format!("{name}.png"));
-        let picture = std::fs::read(&picture_file)
-            .map_err(|e| format!("cannot read {}: {e}", picture_file.display()))?;
-        let picture = shots::Picture::decode(&picture)
-            .map_err(|e| format!("{}: {e}", picture_file.display()))?;
-        let result = compare::compare(&list.elements, &shot.list.elements);
-        for finding in &result.findings {
-            eprintln!("{name}: {}", finding.sentence());
-        }
-        passed &= result.findings.is_empty();
-        let warnings = compare::warnings(
-            &compare::Side { elements: &list.elements, picture: &picture, scale: list.scale },
-            &compare::Side {
-                elements: &shot.list.elements,
-                picture: &shot.picture,
-                scale: shot.list.scale,
-            },
-            &result.pairs,
-        );
-        for warning in &warnings {
-            eprintln!("{name}: warning: {}", warning.sentence());
-        }
-    }
-    Ok(passed)
-}
-
 fn run(action: Action) -> Result<bool, String> {
     let root = repository_root()?;
     match action {
         Action::Lint => {
             let declared = declared::read(&root).map_err(|e| e.to_string())?;
-            let problems = lint::problems(&root, &declared);
+            let record =
+                record::Record::load(&root.join(record::FILE)).map_err(|e| e.to_string())?;
+            let problems = lint::problems(&root, &declared, &record);
             for problem in &problems {
-                eprintln!("{problem}");
+                eprintln!("{}", problem.sentence);
             }
             Ok(problems.is_empty())
         }
         Action::Run(selection) => {
             capture(&root, &selection, |p| root.join("shots").join(p.word()))?;
             let names = selected(&root, &selection)?;
-            let boards = root.join("shots/boards");
-            render::boards(&root, &names, &boards)?;
-            check(&names, |p| root.join("shots").join(p.word()), &boards)
+            let declared = declared::read(&root).map_err(|e| e.to_string())?;
+            let outcome = verify::verify(&verify::Verification {
+                root: &root,
+                names: &names,
+                declared: &declared,
+                shots_for: &|p| root.join("shots").join(p.word()),
+                out: &root.join("shots"),
+                base: None,
+                write_record: true,
+            })?;
+            verify::print(&outcome);
+            Ok(outcome.passed())
+        }
+        Action::Check { shots, out, base } => {
+            let declared = declared::read(&root).map_err(|e| e.to_string())?;
+            let names: Vec<Name> = declared.iter().map(|d| d.name.clone()).collect();
+            for platform in [Platform::Mac, Platform::Android] {
+                let wanted: Vec<Name> =
+                    names.iter().filter(|n| n.platform() == platform).cloned().collect();
+                capture::check_complete(&shots, platform, &wanted, &names)
+                    .map_err(|e| e.to_string())?;
+            }
+            let outcome = verify::verify(&verify::Verification {
+                root: &root,
+                names: &names,
+                declared: &declared,
+                shots_for: &|_| shots.clone(),
+                out: &out,
+                base: base.as_deref(),
+                write_record: false,
+            })?;
+            verify::print(&outcome);
+            Ok(outcome.passed())
         }
         Action::Capture { selection, out } => {
             capture(&root, &selection, |_| out.clone())?;

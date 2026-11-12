@@ -33,31 +33,48 @@ struct BoardList<'a> {
 /// Pixels per point the boards are drawn at.
 const BOARD_SCALE: f64 = 1.0;
 
-/// Renders the board of each screen shot in `names` into `out` as
-/// `<name>.png`, after the design builds and the runtime checks.
+/// The hash of the board of each of `names`: everything its picture depends
+/// on, the pinned browser included. Needs the design builds and the runtime
+/// check done, and starts no browser.
+pub(crate) fn hashes(
+    root: &Path,
+    names: &[Name],
+    runtime_sha256: &str,
+) -> Result<std::collections::BTreeMap<Name, String>, String> {
+    let mut hashes = std::collections::BTreeMap::new();
+    for name in names {
+        let hash = match name {
+            Name::Screen(_) => {
+                design::board_hash(root, &name.to_string(), runtime_sha256, chrome::PINNED)
+            }
+            Name::Component(c) => design::preview_hash(root, &c.component(), chrome::PINNED),
+        }
+        .map_err(|e| format!("{name}: {e}"))?;
+        hashes.insert(name.clone(), hash);
+    }
+    Ok(hashes)
+}
+
+/// Renders the board of each of `names` into `out` as `<name>.png` and
+/// `<name>.json`. Needs the design builds and the runtime check done; starts
+/// no browser when there is nothing to render.
 pub(crate) fn boards(root: &Path, names: &[Name], out: &Path) -> Result<(), String> {
-    let runtime = runtime::check(root).map_err(|e| e.to_string())?;
-    design::build(root).map_err(|e| e.to_string())?;
+    if names.is_empty() {
+        return Ok(());
+    }
     std::fs::create_dir_all(out).map_err(|e| format!("cannot prepare {}: {e}", out.display()))?;
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
         .map_err(|e| e.to_string())?
-        .block_on(draw(root, names, out, &runtime))
+        .block_on(draw(root, names, out))
 }
 
-async fn draw(
-    root: &Path,
-    names: &[Name],
-    out: &Path,
-    runtime: &runtime::Checked,
-) -> Result<(), String> {
+async fn draw(root: &Path, names: &[Name], out: &Path) -> Result<(), String> {
     serve::with_server(root, async |server| {
-        chrome::with_chrome(async |chrome| {
-            draw_with(root, names, out, runtime, server, chrome).await
-        })
-        .await
-        .map_err(|e| e.to_string())?
+        chrome::with_chrome(async |chrome| draw_with(root, names, out, server, chrome).await)
+            .await
+            .map_err(|e| e.to_string())?
     })
     .await
     .map_err(|e| e.to_string())?
@@ -65,7 +82,6 @@ async fn draw(
 
 /// One board drawn: its picture, size and elements.
 struct Drawn {
-    hash: String,
     png: Vec<u8>,
     size: Size,
     elements: Vec<crate::shots::Element>,
@@ -75,7 +91,6 @@ async fn draw_with(
     root: &Path,
     names: &[Name],
     out: &Path,
-    runtime: &runtime::Checked,
     server: &serve::Server,
     chrome: &chrome::Chrome,
 ) -> Result<(), String> {
@@ -83,10 +98,8 @@ async fn draw_with(
         let board = name.to_string();
         let page = chrome.new_page().await.map_err(|e| e.to_string())?;
         let drawn = match name {
-            Name::Screen(_) => draw_screen(root, &board, &page, runtime, server, chrome).await,
-            Name::Component(component) => {
-                draw_component(root, component, &page, server, chrome).await
-            }
+            Name::Screen(_) => draw_screen(root, &board, &page, server).await,
+            Name::Component(component) => draw_component(root, component, &page, server).await,
         };
         if let Err(error) = page.close().await {
             eprintln!("bae-shots: closing a page failed: {error}");
@@ -105,7 +118,7 @@ async fn draw_with(
         let file = out.join(format!("{board}.json"));
         std::fs::write(&file, serde_json::to_vec_pretty(&list).map_err(|e| e.to_string())?)
             .map_err(|e| format!("cannot write {}: {e}", file.display()))?;
-        eprintln!("bae-shots: rendered {board} (board {})", drawn.hash);
+        eprintln!("bae-shots: rendered {board}");
     }
     Ok(())
 }
@@ -114,19 +127,14 @@ async fn draw_screen(
     root: &Path,
     board: &str,
     page: &chromiumoxide::Page,
-    runtime: &runtime::Checked,
     server: &serve::Server,
-    chrome: &chrome::Chrome,
 ) -> Result<Drawn, String> {
     let frame = design::frame(root, board).map_err(|e| e.to_string())?;
-    let hash = design::board_hash(root, board, &runtime.sha256, chrome.version())
-        .map_err(|e| e.to_string())?;
     let rendered = board::render(page, board, &server.board_url(board), frame, BOARD_SCALE)
         .await
         .map_err(|e| e.to_string())?;
     let elements = read::elements(page).await.map_err(|e| e.to_string())?;
     Ok(Drawn {
-        hash,
         png: rendered.png,
         size: Size { width: f64::from(frame.w), height: f64::from(frame.h) },
         elements,
@@ -138,12 +146,9 @@ async fn draw_component(
     name: &names::ComponentName,
     page: &chromiumoxide::Page,
     server: &serve::Server,
-    chrome: &chrome::Chrome,
 ) -> Result<Drawn, String> {
     let component = name.component();
     preview::check_react(root).map_err(|e| e.to_string())?;
-    let hash =
-        design::preview_hash(root, &component, chrome.version()).map_err(|e| e.to_string())?;
     let row = preview::render_row(
         page,
         &component,
@@ -153,5 +158,5 @@ async fn draw_component(
     )
     .await
     .map_err(|e| e.to_string())?;
-    Ok(Drawn { hash, png: row.png, size: row.size, elements: row.elements })
+    Ok(Drawn { png: row.png, size: row.size, elements: row.elements })
 }

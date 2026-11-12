@@ -59,6 +59,17 @@ pub(crate) fn board_file(root: &Path, name: &str) -> PathBuf {
     root.join(MOCKS).join(format!("{name}.dc.html"))
 }
 
+/// The boards the design session marks ready to be shot, one name a line.
+pub(crate) fn ready_boards(root: &Path) -> Result<Vec<String>, DesignError> {
+    let text = String::from_utf8_lossy(&read(&root.join(MOCKS).join("shots.txt"))?).into_owned();
+    Ok(text
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty() && !line.starts_with('#'))
+        .map(str::to_string)
+        .collect())
+}
+
 /// The board's frame from `canvas.json`.
 pub(crate) fn frame(root: &Path, name: &str) -> Result<Frame, DesignError> {
     let path = root.join(MOCKS).join("canvas.json");

@@ -139,6 +139,18 @@ run_check "screen pulls" \
     exit 1
 }
 
+# A shot with no board, or a record entry with no board, is refused where the
+# boards, the shots' harnesses or the record change.
+if staged_path_under "design/mocks" \
+    || staged_path_under "design/system/components" \
+    || staged_path_under "bae-android/app/src/test/java/fm/bae/app/shots" \
+    || staged_path_under "bae-macos/bae/baeShots" \
+    || staged_file_in_list "design/shots.toml"; then
+    run_check "shots without boards" scripts/cargo.sh run -q -p bae-shots -- lint || {
+        exit 1
+    }
+fi
+
 run_check "every Rust file compiled" \
     sh -c 'python3 scripts/check-rust-files-compiled.py && python3 scripts/tests/check-rust-files-compiled-test.py' || {
     exit 1

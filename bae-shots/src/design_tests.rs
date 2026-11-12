@@ -93,3 +93,10 @@ fn the_hash_changes_with_each_built_file_the_runtime_and_the_browser() {
     assert_ne!(before, board_hash(root.path(), "mac.a.b", "other", "chrome-1").unwrap());
     assert_ne!(before, board_hash(root.path(), "mac.a.b", "runtime", "chrome-2").unwrap());
 }
+
+#[test]
+fn the_ready_boards_are_the_lines_of_shots_txt() {
+    let root = tree();
+    write(root.path(), "design/mocks/shots.txt", "# ready\nmac.a.b\n\n  mac.c.d \n");
+    assert_eq!(ready_boards(root.path()).unwrap(), ["mac.a.b", "mac.c.d"]);
+}

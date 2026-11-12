@@ -177,3 +177,18 @@ fn words_are_composed_collapsed_and_trimmed_and_nothing_else() {
     assert_eq!(words("  Cafe\u{301}  \n au   lait "), "Caf\u{e9} au lait");
     assert_eq!(words("\u{201c}Set up\u{201d}\u{2026}"), "\u{201c}Set up\u{201d}\u{2026}");
 }
+
+#[test]
+fn a_shots_hash_follows_its_list_and_its_pixels() {
+    let dir = tempfile::tempdir().unwrap();
+    let name = Name::parse("mac.welcome.a").unwrap();
+    write_pair(dir.path(), &name, LIST, 800, 380);
+    let first = Shot::load(dir.path(), &name).unwrap().hash;
+    assert_eq!(Shot::load(dir.path(), &name).unwrap().hash, first);
+    write_pair(dir.path(), &name, &LIST.replace("Continue", "Go on"), 800, 380);
+    let list_changed = Shot::load(dir.path(), &name).unwrap().hash;
+    assert_ne!(list_changed, first);
+    write_pair(dir.path(), &name, LIST, 801, 380);
+    let size_changed = Shot::load(dir.path(), &name).unwrap().hash;
+    assert!(size_changed != first && size_changed != list_changed);
+}

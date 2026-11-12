@@ -5,6 +5,7 @@
 
 use crate::declared::Declared;
 use crate::names::{state_id, Name};
+use crate::record::{Record, FILE};
 use regex::Regex;
 use std::path::Path;
 
@@ -18,38 +19,57 @@ fn states(html: &str) -> Vec<String> {
     row.captures_iter(html).map(|c| state_id(&c[1].replace("\\'", "'"))).collect()
 }
 
-/// One sentence for each declared shot that has no board.
-pub(crate) fn problems(root: &Path, declared: &[Declared]) -> Vec<String> {
-    declared.iter().filter_map(|d| problem(root, d)).collect()
+/// A shot or a record entry with no board.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Problem {
+    pub(crate) name: String,
+    /// True for a shot a harness declares, false for an entry of the record.
+    pub(crate) declared: bool,
+    pub(crate) sentence: String,
 }
 
-fn problem(root: &Path, declared: &Declared) -> Option<String> {
-    let name = &declared.name;
+/// One problem for each declared shot and each entry of the record that has
+/// no board.
+pub(crate) fn problems(root: &Path, declared: &[Declared], record: &Record) -> Vec<Problem> {
+    let shots = declared.iter().filter_map(|d| {
+        no_board(root, &d.name).map(|why| Problem {
+            name: d.name.to_string(),
+            declared: true,
+            sentence: format!("shot '{}' has no board: {why}", d.name),
+        })
+    });
+    let entries = record.names().filter_map(|text| {
+        let why = match Name::parse(text) {
+            Ok(name) => no_board(root, &name)?,
+            Err(e) => e.to_string(),
+        };
+        Some(Problem {
+            name: text.clone(),
+            declared: false,
+            sentence: format!("{FILE} has an entry '{text}' with no board: {why}"),
+        })
+    });
+    shots.chain(entries).collect()
+}
+
+/// Why `name` has no board, when it has none.
+fn no_board(root: &Path, name: &Name) -> Option<String> {
     match name {
         Name::Screen(_) => {
             let board = Path::new(BOARDS).join(format!("{name}.dc.html"));
-            (!root.join(&board).is_file())
-                .then(|| format!("shot '{name}' has no board: {} is missing", board.display()))
+            (!root.join(&board).is_file()).then(|| format!("{} is missing", board.display()))
         }
         Name::Component(c) => {
             let preview = Path::new(COMPONENTS).join(c.component()).join("preview.html");
             let Ok(html) = std::fs::read_to_string(root.join(&preview)) else {
-                return Some(format!(
-                    "shot '{name}' has no board: {} is missing",
-                    preview.display()
-                ));
+                return Some(format!("{} is missing", preview.display()));
             };
             let mut states = states(&html);
             if states.is_empty() {
                 states.push("default".to_string());
             }
-            (!states.iter().any(|s| s == c.state())).then(|| {
-                format!(
-                    "shot '{name}' has no board: {} has the states {}",
-                    c.component(),
-                    states.join(", ")
-                )
-            })
+            (!states.iter().any(|s| s == c.state()))
+                .then(|| format!("{} has the states {}", c.component(), states.join(", ")))
         }
     }
 }

@@ -11,6 +11,10 @@ fn write(root: &Path, path: &str, text: &str) {
     std::fs::write(path, text).unwrap();
 }
 
+fn sentences(root: &Path, shots: &[Declared]) -> Vec<String> {
+    problems(root, shots, &Record::default()).into_iter().map(|p| p.sentence).collect()
+}
+
 #[test]
 fn preview_rows_are_read_as_state_ids() {
     let html = r#"W('Label', x), N('Nested, off', y), W('It\'s on', z), h('div')"#;
@@ -34,7 +38,7 @@ fn a_component_shot_needs_a_row_of_that_name() {
         declared("android.component.cast-row.looking"),
         declared("android.component.nothing.default"),
     ];
-    let problems = problems(root.path(), &shots);
+    let problems = sentences(root.path(), &shots);
     assert_eq!(problems.len(), 3, "{problems:?}");
     assert!(problems[0].contains("mac.component.row.missing"));
     assert!(problems[0].contains("label, nested-off"));
@@ -48,7 +52,28 @@ fn a_screen_shot_needs_its_board_file() {
     let root = tempfile::tempdir().unwrap();
     write(root.path(), "design/mocks/mac.welcome.libraries.dc.html", "<x-dc></x-dc>");
     let shots = [declared("mac.welcome.libraries"), declared("mac.welcome.create-name")];
-    let problems = problems(root.path(), &shots);
+    let problems = sentences(root.path(), &shots);
     assert_eq!(problems.len(), 1, "{problems:?}");
     assert!(problems[0].contains("design/mocks/mac.welcome.create-name.dc.html"));
+}
+
+#[test]
+fn a_record_entry_needs_its_board_too() {
+    let root = tempfile::tempdir().unwrap();
+    write(root.path(), "design/mocks/mac.welcome.libraries.dc.html", "<x-dc></x-dc>");
+    let mut record = Record::default();
+    let entry = || crate::record::Entry {
+        board: "b".to_string(),
+        shot: "s".to_string(),
+        warnings: Vec::new(),
+    };
+    record.confirm("mac.welcome.libraries", entry());
+    record.confirm("mac.welcome.gone", entry());
+    record.confirm("not a name", entry());
+    let found = problems(root.path(), &[], &record);
+    assert_eq!(found.len(), 2, "{found:?}");
+    assert!(found.iter().all(|p| !p.declared));
+    assert_eq!(found[1].name, "not a name");
+    assert!(found[0].sentence.contains("design/shots.toml has an entry 'mac.welcome.gone'"));
+    assert!(found[0].sentence.contains("mac.welcome.gone.dc.html is missing"));
 }
