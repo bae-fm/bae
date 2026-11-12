@@ -57,9 +57,9 @@ MENU_SOURCES = [
 # its own places ("System Settings", "iCloud Keychain"; Czech's "Klíčenka").
 NAMES = {
     "Account", "AirPlay", "Amaray", "Amazon", "Android", "Apple", "Backblaze",
-    "Cast", "Cloudflare", "Disc", "Discogs", "Dropbox", "Finder", "Google",
-    "Keychain", "Klíčenk", "Mac", "Microsoft", "MusicBrainz", "OneDrive",
-    "Settings", "Subsonic", "System",
+    "Cast", "Cloudflare", "Disc", "Discogs", "Dropbox", "Edison", "Edisona",
+    "Finder", "Google", "Keychain", "Klíčenk", "Mac", "Microsoft", "MusicBrainz",
+    "OneDrive", "Settings", "Subsonic", "System", "Едісона",
 }
 # These words are names only inside these phrases: alone they are ordinary
 # words.
