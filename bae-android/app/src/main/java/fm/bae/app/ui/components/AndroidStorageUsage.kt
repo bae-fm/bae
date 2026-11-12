@@ -3,6 +3,7 @@ package fm.bae.app.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -22,6 +24,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import fm.bae.app.currentLocale
 import fm.bae.app.spokenListText
@@ -136,29 +139,48 @@ internal fun AndroidStorageUsage(
     }
 }
 
-/** The bar, one rounded piece per kind in proportion to its share; a thin kind still shows. */
+/**
+ * The bar, one rounded piece per kind in proportion to its share; a thin kind still shows, at least
+ * [MIN_SEGMENT] wide, and the others give up that width in proportion.
+ */
 @Composable
 private fun UsageBar(segments: List<StorageUsageSegment>) {
     val description =
         spokenListText(segments.map { "${it.label} ${it.size}" }, LocalContext.current.currentLocale())
-    Row(
-        modifier = Modifier.fillMaxWidth().height(BAR_HEIGHT).clearAndSetSemantics { contentDescription = description },
-        horizontalArrangement = Arrangement.spacedBy(BAR_GAP),
-    ) {
-        segments.forEachIndexed { index, segment ->
-            val start = if (index == 0) END_RADIUS else INNER_RADIUS
-            val end = if (index == segments.lastIndex) END_RADIUS else INNER_RADIUS
-            Box(
-                modifier =
-                    Modifier
-                        .weight(segment.share.coerceAtLeast(MIN_SHARE))
-                        .height(BAR_HEIGHT)
-                        .background(
-                            segment.kind.color,
-                            RoundedCornerShape(topStart = start, topEnd = end, bottomEnd = end, bottomStart = start),
-                        ),
-            )
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = description }) {
+        val widths = segmentWidths(segments.map { it.share }, maxWidth - BAR_GAP * (segments.size - 1))
+        Row(modifier = Modifier.height(BAR_HEIGHT), horizontalArrangement = Arrangement.spacedBy(BAR_GAP)) {
+            segments.forEachIndexed { index, segment ->
+                val start = if (index == 0) END_RADIUS else INNER_RADIUS
+                val end = if (index == segments.lastIndex) END_RADIUS else INNER_RADIUS
+                Box(
+                    modifier =
+                        Modifier
+                            .width(widths[index])
+                            .height(BAR_HEIGHT)
+                            .background(segment.kind.color, segmentShape(start, end)),
+                )
+            }
         }
+    }
+}
+
+private fun segmentShape(
+    start: Dp,
+    end: Dp,
+) = RoundedCornerShape(topStart = start, topEnd = end, bottomEnd = end, bottomStart = start)
+
+/** Each share's width of [available], none under [MIN_SEGMENT]: the thin ones are raised to it, the rest shrink. */
+internal fun segmentWidths(
+    shares: List<Float>,
+    available: Dp,
+): List<Dp> {
+    val total = shares.sum()
+    val thin = shares.map { total <= 0f || it / total * available.value < MIN_SEGMENT.value }
+    val restShare = shares.filterIndexed { i, _ -> !thin[i] }.sum()
+    val room = (available - MIN_SEGMENT * thin.count { it }).value
+    return shares.mapIndexed { i, share ->
+        if (thin[i] || restShare <= 0f) MIN_SEGMENT else (share / restShare * room).dp
     }
 }
 
@@ -169,4 +191,4 @@ private val INNER_RADIUS = 2.dp
 private val DOT = 8.dp
 
 /** The least of the bar a kind with bytes takes, so it stays visible. */
-private const val MIN_SHARE = 0.015f
+private val MIN_SEGMENT = 4.dp
