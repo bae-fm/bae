@@ -445,7 +445,7 @@ def discovered_render_leaves(
     discovered: set[RenderLeaf] = set()
     call_pattern = re.compile(r"\b([A-Za-z_][A-Za-z0-9_]*)\s*\(")
 
-    swift_construct = re.compile(r"\b(?:ForEach|List|Table)\s*\(")
+    swift_construct = re.compile(r"\b(?:ForEach|List|Table|AccentSelectionList)\s*\(")
     for source_root in SWIFT_SOURCE_ROOTS:
         for relative in sources.files(source_root, ".swift"):
             masked = sources.masked(relative)

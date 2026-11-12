@@ -25,10 +25,9 @@ struct StorageInspectorFileRow: View {
                 .monospacedDigit()
         }
         .padding(.vertical, ThemeSpace.related)
-        // The row's own padding is its whole height: the list adds none
-        // vertically. Sideways the row puts its names on the edge the
-        // transfer rows above keep.
-        .plainListRowEdge(ThemeSpace.edge)
+        // The row's own padding is its whole height. Sideways the row puts
+        // its names on the edge the transfer rows above keep.
+        .padding(.horizontal, ThemeSpace.edge)
         .help(help)
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("file:\(row.file.id)")

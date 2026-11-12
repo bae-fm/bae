@@ -76,10 +76,13 @@ struct StorageContentsInspector: View {
                 ContentUnavailableView { Text("No files") }
             }
             else {
-                List(rows, id: \.file.id, selection: $selectedFileId) { row in
+                AccentSelectionList(
+                    rows: rows,
+                    id: \.file.id,
+                    selection: $selectedFileId
+                ) { row in
                     StorageInspectorFileRow(row: row)
                 }
-                .listStyle(.plain)
                 .accessibilityIdentifier("storage-inspector-files")
             }
         }
