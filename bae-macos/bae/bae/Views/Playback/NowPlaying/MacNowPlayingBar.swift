@@ -257,9 +257,9 @@ struct MacNowPlayingBar: View {
         case .off:
             "Repeat: off"
         case .context:
-            "Repeat: context"
+            "Repeat: all"
         case .track:
-            "Repeat: track"
+            "Repeat: one"
         }
     }
 }
