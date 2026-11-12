@@ -4,7 +4,8 @@
 # (`Type` or `Type/test`). Fails when a name ran no tests: xcodebuild passes a
 # filter that matches nothing, such as a file name.
 #
-# `--build-only` compiles the app and the test targets into the same tree and
+# `--build-only` compiles the app, the test targets and the screenshot scenes
+# (baeShots, which this script never runs) into the same tree and
 # stops, running nothing: the check after a change to a bridge shape or Swift code,
 # which `run.sh` alone misses because it never builds the test target.
 #
@@ -64,8 +65,12 @@ BUNDLE="$RESULTS/baeTests.xcresult"
 
 ./bae-macos/ensure-bridge.sh Debug
 
+# The scheme is the first argument: `bae` for the app's tests, `baeShots` for the
+# screenshot scenes.
 xcodebuild_tests() {
-    xcodebuild -project bae-macos/bae/bae.xcodeproj -scheme bae -configuration Debug \
+    local scheme="$1"
+    shift
+    xcodebuild -project bae-macos/bae/bae.xcodeproj -scheme "$scheme" -configuration Debug \
         CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
         "${XCODE_MACOS_UNSIGNED_ARGS[@]}" "${XCODE_MACOS_PACKAGES_ARGS[@]}" \
         -scmProvider system -disablePackageRepositoryCache -skipPackageUpdates \
@@ -90,11 +95,15 @@ UI_TEST_RUNNER="$XCODE_MACOS_UNSIGNED_TREE/Build/Products/Debug/baeUITests-Runne
 status=0
 if [[ "$ACTION" != test-without-building ]]; then
     rm -rf "$UI_TEST_RUNNER"
-    xcodebuild_tests build-for-testing
+    xcodebuild_tests bae build-for-testing
+    # The shot scenes (baeShots) are in no run of this script: they need an
+    # unlocked screen and bae-shots runs them. Compiling them here, into the same
+    # tree, fails a change that breaks a scene before CI's Screenshots run does.
+    xcodebuild_tests baeShots build-for-testing
     codesign --force --sign - "$UI_TEST_RUNNER"
 fi
 if [[ "$ACTION" != build-for-testing ]]; then
-    xcodebuild_tests -resultBundlePath "$BUNDLE" \
+    xcodebuild_tests bae -resultBundlePath "$BUNDLE" \
         -test-timeouts-enabled YES -default-test-execution-time-allowance 60 \
         ${ONLY_TESTING[@]+"${ONLY_TESTING[@]}"} test-without-building || status=$?
 fi
