@@ -64,8 +64,12 @@ internal fun AndroidSpinner(
         modifier = modifier.size(size).semantics { contentDescription = description },
         color = color,
         strokeWidth = 2.dp,
+        trackColor = color.copy(alpha = TRACK_ALPHA),
     )
 }
+
+/** The faint full ring behind the turning arc, as the design draws it. */
+private const val TRACK_ALPHA = 0.2f
 
 @Preview(showBackground = true)
 @Composable
