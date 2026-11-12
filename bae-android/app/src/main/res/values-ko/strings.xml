@@ -303,7 +303,7 @@
     <string name="progress_loading">불러오는 중</string>
     <string name="pending_update_no_store">이 기기에는 bae를 업데이트할 수 있는 앱 스토어가 없습니다.</string>
     <string name="restore_code_title">복원 코드</string>
-    <string name="restore_code_explanation">이 코드를 인쇄하거나 비밀번호 관리자에 저장하세요. 모든 기기를 잃어버렸을 때 라이브러리로 돌아갈 수 있습니다. 이 기기에서 설정한 휴대전화에도 저장됩니다.</string>
+    <string name="restore_code_explanation">이 코드를 인쇄하거나 비밀번호 관리자에 저장하세요. 모든 기기를 잃어버렸을 때 라이브러리로 돌아갈 수 있습니다.</string>
     <string name="restore_code_s3_key">S3 액세스 키와 비밀 키도 필요합니다.</string>
     <string name="restore_code_making">복원 코드를 만드는 중…</string>
     <string name="restore_code_show">코드 보기</string>

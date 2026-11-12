@@ -310,7 +310,7 @@
     <string name="progress_loading">Yükleniyor</string>
     <string name="pending_update_no_store">Bu cihazdaki hiçbir uygulama mağazası bae’yi güncelleyemiyor.</string>
     <string name="restore_code_title">Geri yükleme kodu</string>
-    <string name="restore_code_explanation">Bu kodu yazdırın veya bir parola yöneticisine kaydedin. Tüm cihazlarınızı kaybederseniz sizi kitaplığınıza geri getirir. Bundan kurduğunuz bir telefon da onu alır.</string>
+    <string name="restore_code_explanation">Bu kodu yazdırın veya bir parola yöneticisine kaydedin. Tüm cihazlarınızı kaybederseniz sizi kitaplığınıza geri getirir.</string>
     <string name="restore_code_s3_key">S3 erişim anahtarınıza ve gizli anahtarınıza da ihtiyacınız olacak.</string>
     <string name="restore_code_making">Geri yükleme kodunuz oluşturuluyor…</string>
     <string name="restore_code_show">Kodu göster</string>

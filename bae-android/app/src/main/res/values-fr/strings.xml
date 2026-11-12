@@ -316,7 +316,7 @@
     <string name="progress_loading">Chargement</string>
     <string name="pending_update_no_store">Aucune boutique d’applications sur cet appareil ne peut mettre à jour bae.</string>
     <string name="restore_code_title">Code de restauration</string>
-    <string name="restore_code_explanation">Imprimez ce code ou enregistrez-le dans un gestionnaire de mots de passe. Il vous rend votre bibliothèque si vous perdez tous vos appareils. Un téléphone que vous configurez depuis celui-ci l’obtient aussi.</string>
+    <string name="restore_code_explanation">Imprimez ce code ou enregistrez-le dans un gestionnaire de mots de passe. Il vous rend votre bibliothèque si vous perdez tous vos appareils.</string>
     <string name="restore_code_s3_key">Vous aurez aussi besoin de votre clé d’accès et de votre clé secrète S3.</string>
     <string name="restore_code_making">Création du code de restauration…</string>
     <string name="restore_code_show">Afficher le code</string>

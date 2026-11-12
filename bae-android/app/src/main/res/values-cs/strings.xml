@@ -324,7 +324,7 @@
     <string name="progress_loading">Načítání</string>
     <string name="pending_update_no_store">Na tomto zařízení není žádný obchod s aplikacemi, který by mohl bae aktualizovat.</string>
     <string name="restore_code_title">Kód pro obnovení</string>
-    <string name="restore_code_explanation">Vytiskněte si tento kód nebo si ho uložte do správce hesel. Vrátí vás do knihovny, když přijdete o všechna zařízení. Telefon, který z tohoto nastavíte, ho dostane také.</string>
+    <string name="restore_code_explanation">Vytiskněte si tento kód nebo si ho uložte do správce hesel. Vrátí vás do knihovny, když přijdete o všechna zařízení.</string>
     <string name="restore_code_s3_key">Budete také potřebovat přístupový klíč a tajný klíč S3.</string>
     <string name="restore_code_making">Vytváří se kód pro obnovení…</string>
     <string name="restore_code_show">Zobrazit kód</string>

@@ -69,7 +69,7 @@ class RestoreCodeSectionTest {
         compose
             .onNodeWithText(
                 "Print this code or save it in a password manager. It gets you back into your library if you lose " +
-                    "all your devices. A phone you set up from this one gets it too.",
+                    "all your devices.",
             ).assertIsDisplayed()
     }
 

@@ -308,7 +308,7 @@
     <string name="progress_loading">Φόρτωση</string>
     <string name="pending_update_no_store">Κανένα κατάστημα εφαρμογών σε αυτή τη συσκευή δεν μπορεί να ενημερώσει το bae.</string>
     <string name="restore_code_title">Κωδικός επαναφοράς</string>
-    <string name="restore_code_explanation">Εκτυπώστε αυτόν τον κωδικό ή αποθηκεύστε τον σε έναν διαχειριστή κωδικών. Σας επαναφέρει στη βιβλιοθήκη σας αν χάσετε όλες τις συσκευές σας. Ένα τηλέφωνο που ρυθμίζετε από αυτό τον παίρνει κι αυτό.</string>
+    <string name="restore_code_explanation">Εκτυπώστε αυτόν τον κωδικό ή αποθηκεύστε τον σε έναν διαχειριστή κωδικών. Σας επαναφέρει στη βιβλιοθήκη σας αν χάσετε όλες τις συσκευές σας.</string>
     <string name="restore_code_s3_key">Θα χρειαστείτε επίσης το κλειδί πρόσβασης και το μυστικό κλειδί του S3.</string>
     <string name="restore_code_making">Δημιουργία του κωδικού επαναφοράς…</string>
     <string name="restore_code_show">Εμφάνιση κωδικού</string>

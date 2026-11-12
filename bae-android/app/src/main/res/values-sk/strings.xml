@@ -322,7 +322,7 @@
     <string name="progress_loading">Načítava sa</string>
     <string name="pending_update_no_store">Žiadny obchod s aplikáciami v tomto zariadení nemôže aktualizovať bae.</string>
     <string name="restore_code_title">Kód na obnovenie</string>
-    <string name="restore_code_explanation">Vytlačte si tento kód alebo ho uložte do správcu hesiel. Vráti vás do knižnice, ak prídete o všetky zariadenia. Telefón, ktorý z tohto nastavíte, ho dostane tiež.</string>
+    <string name="restore_code_explanation">Vytlačte si tento kód alebo ho uložte do správcu hesiel. Vráti vás do knižnice, ak prídete o všetky zariadenia.</string>
     <string name="restore_code_s3_key">Budeš potrebovať aj prístupový kľúč a tajný kľúč S3.</string>
     <string name="restore_code_making">Vytvára sa kód na obnovenie…</string>
     <string name="restore_code_show">Zobraziť kód</string>

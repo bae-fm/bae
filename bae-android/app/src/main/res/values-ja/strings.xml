@@ -303,7 +303,7 @@
     <string name="progress_loading">読み込み中</string>
     <string name="pending_update_no_store">このデバイスには bae を更新できるアプリストアがありません。</string>
     <string name="restore_code_title">復元コード</string>
-    <string name="restore_code_explanation">このコードをプリントするか、パスワードマネージャに保存してください。すべてのデバイスを失ったときに、ライブラリを取り戻せます。 このデバイスから設定したスマートフォンにも保存されます。</string>
+    <string name="restore_code_explanation">このコードをプリントするか、パスワードマネージャに保存してください。すべてのデバイスを失ったときに、ライブラリを取り戻せます。</string>
     <string name="restore_code_s3_key">S3 のアクセスキーとシークレットキーも必要です。</string>
     <string name="restore_code_making">復元コードを作成しています…</string>
     <string name="restore_code_show">コードを表示</string>

@@ -303,7 +303,7 @@
     <string name="progress_loading">正在載入</string>
     <string name="pending_update_no_store">此裝置上沒有可以更新 bae 的 App 商店。</string>
     <string name="restore_code_title">還原碼</string>
-    <string name="restore_code_explanation">列印此還原碼，或將其儲存到密碼管理器。如果你遺失了所有裝置，它能讓你找回資料庫。 由此裝置設定的手機也會取得它。</string>
+    <string name="restore_code_explanation">列印此還原碼，或將其儲存到密碼管理器。如果你遺失了所有裝置，它能讓你找回資料庫。</string>
     <string name="restore_code_s3_key">你還需要 S3 存取密鑰和私密密鑰。</string>
     <string name="restore_code_making">正在產生還原碼…</string>
     <string name="restore_code_show">顯示代碼</string>

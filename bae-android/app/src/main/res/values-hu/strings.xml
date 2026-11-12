@@ -308,7 +308,7 @@
     <string name="progress_loading">Betöltés</string>
     <string name="pending_update_no_store">Ezen az eszközön nincs olyan alkalmazásbolt, amely frissíteni tudná a bae-t.</string>
     <string name="restore_code_title">Helyreállítási kód</string>
-    <string name="restore_code_explanation">Nyomtasd ki ezt a kódot, vagy mentsd jelszókezelőbe. Visszajuttat a könyvtáradhoz, ha elveszíted az összes eszközödet. Az erről beállított telefon is megkapja.</string>
+    <string name="restore_code_explanation">Nyomtasd ki ezt a kódot, vagy mentsd jelszókezelőbe. Visszajuttat a könyvtáradhoz, ha elveszíted az összes eszközödet.</string>
     <string name="restore_code_s3_key">Szükséged lesz az S3-hozzáférési kulcsodra és a titkos kulcsra is.</string>
     <string name="restore_code_making">A visszaállítási kód készítése…</string>
     <string name="restore_code_show">Kód megjelenítése</string>

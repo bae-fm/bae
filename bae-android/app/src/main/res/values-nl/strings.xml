@@ -310,7 +310,7 @@
     <string name="progress_loading">Laden</string>
     <string name="pending_update_no_store">Geen enkele appwinkel op dit apparaat kan bae bijwerken.</string>
     <string name="restore_code_title">Herstelcode</string>
-    <string name="restore_code_explanation">Print deze code of bewaar hem in een wachtwoordmanager. Hij brengt je terug in je bibliotheek als je al je apparaten kwijtraakt. Een telefoon die je vanaf deze instelt, krijgt hem ook.</string>
+    <string name="restore_code_explanation">Print deze code of bewaar hem in een wachtwoordmanager. Hij brengt je terug in je bibliotheek als je al je apparaten kwijtraakt.</string>
     <string name="restore_code_s3_key">Je hebt ook je S3-toegangssleutel en geheime sleutel nodig.</string>
     <string name="restore_code_making">Je herstelcode wordt gemaakt…</string>
     <string name="restore_code_show">Code tonen</string>

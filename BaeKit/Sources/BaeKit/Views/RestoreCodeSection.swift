@@ -104,12 +104,11 @@ public struct RestoreCodeSection: View {
 
     private var caption: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
-            (Text(
+            Text(
                 "Print this code or save it in a password manager. It gets you back into your library if you lose all your devices."
-            ) + Text(verbatim: " ")
-                + Text("It is also in your iCloud Keychain."))
-                .themeText(.detail)
-                .foregroundStyle(.secondary)
+            )
+            .themeText(.detail)
+            .foregroundStyle(.secondary)
             if needsS3Key {
                 Text("You will also need your S3 access key and secret.")
                     .themeText(.detail)

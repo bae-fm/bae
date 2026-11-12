@@ -308,7 +308,7 @@
     <string name="progress_loading">Ladataan</string>
     <string name="pending_update_no_store">Mikään tämän laitteen sovelluskauppa ei voi päivittää bae-sovellusta.</string>
     <string name="restore_code_title">Palautuskoodi</string>
-    <string name="restore_code_explanation">Tulosta tämä koodi tai tallenna se salasanahallintaan. Sillä pääset takaisin kirjastoosi, jos menetät kaikki laitteesi. Puhelin, jonka otat käyttöön tästä, saa sen myös.</string>
+    <string name="restore_code_explanation">Tulosta tämä koodi tai tallenna se salasanahallintaan. Sillä pääset takaisin kirjastoosi, jos menetät kaikki laitteesi.</string>
     <string name="restore_code_s3_key">Tarvitset myös S3-käyttöavaimesi ja salaisen avaimen.</string>
     <string name="restore_code_making">Luodaan palautuskoodia…</string>
     <string name="restore_code_show">Näytä koodi</string>

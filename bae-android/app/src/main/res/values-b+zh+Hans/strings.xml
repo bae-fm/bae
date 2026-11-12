@@ -303,7 +303,7 @@
     <string name="progress_loading">正在加载</string>
     <string name="pending_update_no_store">此设备上没有可以更新 bae 的应用商店。</string>
     <string name="restore_code_title">恢复码</string>
-    <string name="restore_code_explanation">打印此恢复码，或将其保存到密码管理器。如果你丢失了所有设备，它能让你找回你的库。 由此设备设置的手机也会获得它。</string>
+    <string name="restore_code_explanation">打印此恢复码，或将其保存到密码管理器。如果你丢失了所有设备，它能让你找回你的库。</string>
     <string name="restore_code_s3_key">你还需要 S3 访问密钥和私密密钥。</string>
     <string name="restore_code_making">正在生成恢复码…</string>
     <string name="restore_code_show">显示代码</string>

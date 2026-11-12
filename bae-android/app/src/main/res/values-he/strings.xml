@@ -317,7 +317,7 @@
     <string name="progress_loading">טוען</string>
     <string name="pending_update_no_store">אין במכשיר הזה חנות אפליקציות שיכולה לעדכן את bae.</string>
     <string name="restore_code_title">קוד שחזור</string>
-    <string name="restore_code_explanation">הדפס את הקוד הזה או שמור אותו במנהל סיסמאות. הוא מחזיר אותך לספרייה שלך אם תאבד את כל המכשירים שלך. טלפון שתגדיר מהטלפון הזה מקבל אותו גם כן.</string>
+    <string name="restore_code_explanation">הדפס את הקוד הזה או שמור אותו במנהל סיסמאות. הוא מחזיר אותך לספרייה שלך אם תאבד את כל המכשירים שלך.</string>
     <string name="restore_code_s3_key">תצטרך גם את מפתח הגישה ואת המפתח הסודי של S3.</string>
     <string name="restore_code_making">יוצר את קוד השחזור…</string>
     <string name="restore_code_show">הצגת הקוד</string>

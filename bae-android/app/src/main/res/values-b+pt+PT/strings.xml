@@ -309,7 +309,7 @@
     <string name="progress_loading">A carregar</string>
     <string name="pending_update_no_store">Nenhuma loja de aplicações neste dispositivo pode atualizar o bae.</string>
     <string name="restore_code_title">Código de restauração</string>
-    <string name="restore_code_explanation">Imprima este código ou guarde-o num gestor de palavras-passe. Devolve-lhe a sua biblioteca se perder todos os seus dispositivos. Um telemóvel que configure a partir deste também o recebe.</string>
+    <string name="restore_code_explanation">Imprima este código ou guarde-o num gestor de palavras-passe. Devolve-lhe a sua biblioteca se perder todos os seus dispositivos.</string>
     <string name="restore_code_s3_key">Também vai precisar da sua chave de acesso e da chave secreta do S3.</string>
     <string name="restore_code_making">A criar o código de restauração…</string>
     <string name="restore_code_show">Mostrar código</string>

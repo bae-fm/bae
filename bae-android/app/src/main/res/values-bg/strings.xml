@@ -310,7 +310,7 @@
     <string name="progress_loading">Зарежда се</string>
     <string name="pending_update_no_store">Няма магазин за приложения на това устройство, който да актуализира bae.</string>
     <string name="restore_code_title">Код за възстановяване</string>
-    <string name="restore_code_explanation">Отпечатайте този код или го запазете в мениджър на пароли. Той ви връща във вашата библиотека, ако загубите всичките си устройства. Телефон, който настройвате от този, също го получава.</string>
+    <string name="restore_code_explanation">Отпечатайте този код или го запазете в мениджър на пароли. Той ви връща във вашата библиотека, ако загубите всичките си устройства.</string>
     <string name="restore_code_s3_key">Ще ви трябват и ключът за достъп, и тайният ключ за S3.</string>
     <string name="restore_code_making">Създава се кодът за възстановяване…</string>
     <string name="restore_code_show">Показване на кода</string>

@@ -338,7 +338,7 @@
     <string name="progress_loading">جارٍ التحميل</string>
     <string name="pending_update_no_store">لا يوجد متجر تطبيقات على هذا الجهاز يمكنه تحديث bae.</string>
     <string name="restore_code_title">رمز الاستعادة</string>
-    <string name="restore_code_explanation">اطبع هذا الرمز أو احفظه في مدير كلمات مرور. يعيدك إلى مكتبتك إذا فقدت جميع أجهزتك. والهاتف الذي تُعدّه من هذا الهاتف يحصل عليه أيضًا.</string>
+    <string name="restore_code_explanation">اطبع هذا الرمز أو احفظه في مدير كلمات مرور. يعيدك إلى مكتبتك إذا فقدت جميع أجهزتك.</string>
     <string name="restore_code_s3_key">ستحتاج أيضًا إلى مفتاح الوصول والمفتاح السري لـ S3.</string>
     <string name="restore_code_making">جارٍ إنشاء رمز الاستعادة…</string>
     <string name="restore_code_show">عرض الرمز</string>

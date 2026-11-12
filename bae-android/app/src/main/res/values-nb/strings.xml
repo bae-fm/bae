@@ -308,7 +308,7 @@
     <string name="progress_loading">Laster</string>
     <string name="pending_update_no_store">Ingen appbutikk på denne enheten kan oppdatere bae.</string>
     <string name="restore_code_title">Gjenopprettingskode</string>
-    <string name="restore_code_explanation">Skriv ut denne koden eller lagre den i en passordbehandler. Den får deg tilbake til biblioteket ditt hvis du mister alle enhetene dine. En telefon du setter opp fra denne, får den også.</string>
+    <string name="restore_code_explanation">Skriv ut denne koden eller lagre den i en passordbehandler. Den får deg tilbake til biblioteket ditt hvis du mister alle enhetene dine.</string>
     <string name="restore_code_s3_key">Du trenger også S3-tilgangsnøkkelen og den hemmelige nøkkelen.</string>
     <string name="restore_code_making">Lager gjenopprettingskoden…</string>
     <string name="restore_code_show">Vis kode</string>

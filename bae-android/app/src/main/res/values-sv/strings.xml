@@ -308,7 +308,7 @@
     <string name="progress_loading">Läser in</string>
     <string name="pending_update_no_store">Ingen appbutik på den här enheten kan uppdatera bae.</string>
     <string name="restore_code_title">Återställningskod</string>
-    <string name="restore_code_explanation">Skriv ut koden eller spara den i en lösenordshanterare. Den tar dig tillbaka till ditt bibliotek om du förlorar alla dina enheter. En telefon du konfigurerar från den här får den också.</string>
+    <string name="restore_code_explanation">Skriv ut koden eller spara den i en lösenordshanterare. Den tar dig tillbaka till ditt bibliotek om du förlorar alla dina enheter.</string>
     <string name="restore_code_s3_key">Du behöver också din S3-åtkomstnyckel och den hemliga nyckeln.</string>
     <string name="restore_code_making">Skapar återställningskoden…</string>
     <string name="restore_code_show">Visa kod</string>

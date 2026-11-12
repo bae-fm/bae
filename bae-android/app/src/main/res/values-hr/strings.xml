@@ -317,7 +317,7 @@
     <string name="progress_loading">Učitavanje</string>
     <string name="pending_update_no_store">Nijedna trgovina aplikacija na ovom uređaju ne može ažurirati bae.</string>
     <string name="restore_code_title">Kod za vraćanje</string>
-    <string name="restore_code_explanation">Ispišite ovaj kod ili ga spremite u upravitelj lozinki. Vraća vas u vašu fonoteku ako izgubite sve svoje uređaje. Telefon koji postavite s ovog također ga dobiva.</string>
+    <string name="restore_code_explanation">Ispišite ovaj kod ili ga spremite u upravitelj lozinki. Vraća vas u vašu fonoteku ako izgubite sve svoje uređaje.</string>
     <string name="restore_code_s3_key">Trebat će vam i S3 pristupni ključ i tajni ključ.</string>
     <string name="restore_code_making">Izrada koda za vraćanje…</string>
     <string name="restore_code_show">Prikaži kod</string>

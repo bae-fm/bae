@@ -324,7 +324,7 @@
     <string name="progress_loading">Ładowanie</string>
     <string name="pending_update_no_store">Żaden sklep z aplikacjami na tym urządzeniu nie może zaktualizować bae.</string>
     <string name="restore_code_title">Kod przywracania</string>
-    <string name="restore_code_explanation">Wydrukuj ten kod lub zapisz go w menedżerze haseł. Pozwala wrócić do biblioteki, jeśli stracisz wszystkie urządzenia. Telefon skonfigurowany z tego też go dostaje.</string>
+    <string name="restore_code_explanation">Wydrukuj ten kod lub zapisz go w menedżerze haseł. Pozwala wrócić do biblioteki, jeśli stracisz wszystkie urządzenia.</string>
     <string name="restore_code_s3_key">Potrzebny będzie też klucz dostępu i klucz tajny S3.</string>
     <string name="restore_code_making">Tworzenie kodu przywracania…</string>
     <string name="restore_code_show">Pokaż kod</string>

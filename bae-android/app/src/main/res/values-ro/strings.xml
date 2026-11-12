@@ -315,7 +315,7 @@
     <string name="progress_loading">Se încarcă</string>
     <string name="pending_update_no_store">Niciun magazin de aplicații de pe acest dispozitiv nu poate actualiza bae.</string>
     <string name="restore_code_title">Cod de restaurare</string>
-    <string name="restore_code_explanation">Imprimă acest cod sau salvează-l într-un manager de parole. Te readuce în biblioteca ta dacă pierzi toate dispozitivele. Un telefon pe care îl configurezi de la acesta îl primește și el.</string>
+    <string name="restore_code_explanation">Imprimă acest cod sau salvează-l într-un manager de parole. Te readuce în biblioteca ta dacă pierzi toate dispozitivele.</string>
     <string name="restore_code_s3_key">Vei avea nevoie și de cheia de acces și de cheia secretă S3.</string>
     <string name="restore_code_making">Se creează codul de restaurare…</string>
     <string name="restore_code_show">Afișează codul</string>

@@ -324,7 +324,7 @@
     <string name="progress_loading">Завантаження</string>
     <string name="pending_update_no_store">Жодна крамниця застосунків на цьому пристрої не може оновити bae.</string>
     <string name="restore_code_title">Код відновлення</string>
-    <string name="restore_code_explanation">Роздрукуйте цей код або збережіть його в менеджері паролів. Він поверне вас до бібліотеки, якщо ви втратите всі пристрої. Телефон, який ви налаштуєте з цього, теж його отримає.</string>
+    <string name="restore_code_explanation">Роздрукуйте цей код або збережіть його в менеджері паролів. Він поверне вас до бібліотеки, якщо ви втратите всі пристрої.</string>
     <string name="restore_code_s3_key">Вам також знадобляться ключ доступу та секретний ключ S3.</string>
     <string name="restore_code_making">Створення коду відновлення…</string>
     <string name="restore_code_show">Показати код</string>

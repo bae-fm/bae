@@ -360,7 +360,7 @@
     <!-- %1$s = the time left until the next check, as minutes and seconds -->
     <string name="pending_update_no_store">No app store on this device can update bae.</string>
     <string name="restore_code_title">Restore code</string>
-    <string name="restore_code_explanation">Print this code or save it in a password manager. It gets you back into your library if you lose all your devices. A phone you set up from this one gets it too.</string>
+    <string name="restore_code_explanation">Print this code or save it in a password manager. It gets you back into your library if you lose all your devices.</string>
     <string name="restore_code_s3_key">You will also need your S3 access key and secret.</string>
     <string name="restore_code_making">Making your restore code…</string>
     <string name="restore_code_show">Show code</string>

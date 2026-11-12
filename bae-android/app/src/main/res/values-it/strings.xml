@@ -316,7 +316,7 @@
     <string name="progress_loading">Caricamento</string>
     <string name="pending_update_no_store">Nessuno store di app su questo dispositivo può aggiornare bae.</string>
     <string name="restore_code_title">Codice di ripristino</string>
-    <string name="restore_code_explanation">Stampa questo codice o salvalo in un gestore di password. Ti riporta nella tua libreria se perdi tutti i tuoi dispositivi. Anche un telefono che configuri da questo lo riceve.</string>
+    <string name="restore_code_explanation">Stampa questo codice o salvalo in un gestore di password. Ti riporta nella tua libreria se perdi tutti i tuoi dispositivi.</string>
     <string name="restore_code_s3_key">Ti serviranno anche la chiave di accesso e la chiave segreta S3.</string>
     <string name="restore_code_making">Creazione del codice di ripristino…</string>
     <string name="restore_code_show">Mostra codice</string>
