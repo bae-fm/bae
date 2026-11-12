@@ -30,10 +30,12 @@ struct SettingsPaneOrderTests {
         )
     }
 
-    /// Opening settings with no pane named lands on the library, not on
-    /// whichever pane happens to be declared first.
-    @Test("settings open on the library")
-    func settingsOpenOnTheLibrary() {
-        #expect(SettingsNavigation().selectedTab == .library)
+    /// Opening settings with no pane named lands on the first one the sidebar
+    /// lists.
+    @Test("settings open on the first pane")
+    func settingsOpenOnTheFirstPane() {
+        #expect(
+            SettingsNavigation().selectedTab == SettingsTab.allCases.first
+        )
     }
 }

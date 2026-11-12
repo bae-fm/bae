@@ -232,8 +232,22 @@ private struct SyncSettingsPage: View {
 
     @Environment(ConfigStore.self)
     private var configStore
+    @Environment(\.dismiss)
+    private var dismiss
 
     var body: some View {
+        VStack(spacing: 0) {
+            SettingsPageHeader(
+                title: String(localized: "Sync"),
+                backTitle: String(localized: "Library"),
+                onBack: { dismiss() }
+            )
+            form
+        }
+        .navigationBarBackButtonHidden(true)
+    }
+
+    private var form: some View {
         Form {
             Section {
                 UndoneSetupLine()
@@ -272,7 +286,6 @@ private struct SyncSettingsPage: View {
             }
         }
         .formStyle(.grouped)
-        .navigationTitle("Sync")
     }
 }
 

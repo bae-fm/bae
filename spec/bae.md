@@ -2080,7 +2080,7 @@ Other devices go on showing the release without playing it.
   queue so they contend for the same downloads; the pause and the limit cover
   both, and nothing else counts or names one as the other. Either
   pause lasts across restarts, and while either holds, the sidebar says Paused
-  beside Transfers with ↑ for uploads, ↓ for downloads or ⇅ for both. A paused
+  beside Transfers, in a chip, with ↑ for uploads, ↓ for downloads or ⇅ for both. A paused
   file keeps its place; changes to the library still sync. Neither limits
   speed.
 - **Transfers on Android.** Settings lists Appearance, Library, Playback,
@@ -5788,9 +5788,13 @@ Appearance's theme, tone and accent, the library's name and its sync state,
 which of pausing between sides and restoring on launch are on, how many pins
 run at once, the total this phone keeps for the library (§4.7, "3.9 GB on this
 phone", nothing until the first measurement), whether casting is on, and the
-version. The Mac's sidebar names the
+version. The Mac's Settings is one window with no title bar: its panes' names,
+as text alone, down a sidebar that holds the window's buttons at its top, and
+each pane's title in bold at the top left of the pane. It opens on Appearance,
+the first pane. The sidebar names the
 sync state beside Library only while it is amber or red, and Offline beside
-Subsonic while it is on and not running. About shows the bae
+Subsonic while it is on and not running, each as a chip tinted in its tone.
+About shows the bae
 logo, the sheep over the word, 96 points wide and still, over the version:
 Android's Version is a row on a card, the Mac's a line with Check for updates….
 

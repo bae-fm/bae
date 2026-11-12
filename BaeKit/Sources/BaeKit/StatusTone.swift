@@ -224,15 +224,25 @@ public struct StatusChip: View {
             }
             label
         }
-        .themeText(.chip)
-        .lineLimit(1)
-        .foregroundStyle(tone.color)
-        .padding(.horizontal, ThemeSpace.compact)
-        .padding(.vertical, ThemeSpace.line)
-        .background(
-            tone.fill,
-            in: RoundedRectangle(cornerRadius: ThemeRadius.chip)
-        )
+        .chipLook(tone)
+    }
+}
+
+extension View {
+    /// Draws the content as a status chip does: small bold text in the tone on
+    /// the tone's tinted fill. For a chip whose content is more than one
+    /// `Text`, which `StatusChip` takes only one of.
+    public func chipLook(_ tone: StatusTone) -> some View {
+        self
+            .themeText(.chip)
+            .lineLimit(1)
+            .foregroundStyle(tone.color)
+            .padding(.horizontal, ThemeSpace.compact)
+            .padding(.vertical, ThemeSpace.line)
+            .background(
+                tone.fill,
+                in: RoundedRectangle(cornerRadius: ThemeRadius.chip)
+            )
     }
 }
 

@@ -33,11 +33,20 @@ extension AppDelegate {
                 // Fixed at what the content asks for.
                 contentSize: nil,
                 sizing: [.minSize, .maxSize],
-                // The settings' sidebar sits in the window's toolbar.
-                bridging: .toolbars,
+                // The window has no toolbar: its panes sit in the content's
+                // own sidebar.
+                bridging: [],
                 onClose: { [weak self] in self?.settingsWindow = nil }
             )
-        controller.window?.title = String(localized: "Settings")
+        if let window = controller.window {
+            // The content reaches under the title bar, which shows only the
+            // window buttons, over the sidebar. The title is for the Window
+            // menu and VoiceOver.
+            window.styleMask.insert(.fullSizeContentView)
+            window.titlebarAppearsTransparent = true
+            window.titleVisibility = .hidden
+            window.title = String(localized: "Settings")
+        }
         settingsWindow = controller
         controller.showWindow(nil)
     }

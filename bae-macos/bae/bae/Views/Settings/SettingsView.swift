@@ -25,28 +25,12 @@ enum SettingsTab: Hashable, CaseIterable {
         case .about: "About"
         }
     }
-
-    var symbol: String {
-        switch self {
-        case .appearance: "paintpalette"
-        case .library: "books.vertical"
-        case .playback: "play.circle"
-        case .importing: "square.and.arrow.down"
-        case .formats: "square.and.arrow.up"
-        case .transfers: "arrow.up.arrow.down"
-        case .storage: "internaldrive"
-        case .casting: "hifispeaker"
-        case .subsonic: "dot.radiowaves.left.and.right"
-        case .automation: "terminal"
-        case .about: "info.circle"
-        }
-    }
 }
 
 @MainActor
 @Observable
 final class SettingsNavigation {
-    var selectedTab: SettingsTab = .library
+    var selectedTab: SettingsTab = .appearance
 
     func open(_ tab: SettingsTab, present: () -> Void) {
         selectedTab = tab
@@ -54,32 +38,29 @@ final class SettingsNavigation {
     }
 }
 
-/// The amber Paused beside Transfers in the sidebar, with the arrows for
+/// The amber Paused chip beside Transfers in the sidebar, with the arrows for
 /// which transfers are paused.
 private struct PausedBadge: View {
     let paused: PausedTransfers
 
     var body: some View {
-        HStack(spacing: 2) {
+        HStack(spacing: ThemeSpace.line) {
             Text(verbatim: paused.arrow)
             Text("Paused")
         }
-        .themeText(.detail)
-        .foregroundStyle(Theme.warning)
+        .chipLook(.warning)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(paused.accessibilityLabel)
     }
 }
 
-/// The sync state beside Library in the sidebar, in core's words and the color
-/// it gives them, shown only while the state is amber or red.
+/// The sync state beside Library in the sidebar as a chip, in core's words and
+/// the tone it gives them, shown only while the state is amber or red.
 private struct SyncBadge: View {
     let shown: BridgeSyncShown
 
     var body: some View {
-        Text(shown.statusLine)
-            .themeText(.detail)
-            .foregroundStyle(shown.statusTone.color)
+        StatusChip(verbatim: shown.statusLine, tone: shown.statusTone)
     }
 }
 
@@ -89,9 +70,7 @@ private struct SubsonicBadge: View {
     let tone: StatusTone
 
     var body: some View {
-        Text("Offline")
-            .themeText(.detail)
-            .foregroundStyle(tone.color)
+        StatusChip("Offline", tone: tone)
     }
 }
 
@@ -134,6 +113,16 @@ struct SettingsSidebar: View {
         .focusEffectDisabled()
         .onKeyPress(.upArrow) { move(by: -1) }
         .onKeyPress(.downArrow) { move(by: 1) }
+        // Room for the window's buttons, which sit in the sidebar's top.
+        .padding(.top, SettingsSidebar.buttonsRoom)
+        .frame(width: SettingsSidebar.width)
+        .background(
+            Theme.surface,
+            in: RoundedRectangle(cornerRadius: SettingsSidebar.cornerRadius)
+        )
+        .shadow(color: Theme.shadow, radius: 2, y: 1)
+        .padding(.leading, ThemeSpace.related)
+        .padding(.vertical, ThemeSpace.related)
     }
 
     private func row(_ tab: SettingsTab) -> some View {
@@ -141,25 +130,23 @@ struct SettingsSidebar: View {
         return Button {
             selection = tab
         } label: {
-            HStack {
-                Label(tab.title, systemImage: tab.symbol)
+            HStack(spacing: ThemeSpace.related) {
+                Text(tab.title)
+                Spacer(minLength: 0)
                 if tab == .transfers,
                     let paused = PausedTransfers(
                         uploads: outboxStore.uploadsPaused,
                         downloads: downloadStore.downloadsPaused
                     )
                 {
-                    Spacer()
                     PausedBadge(paused: paused)
                 }
                 if tab == .library, let shown = troubledSync {
-                    Spacer()
                     SyncBadge(shown: shown)
                 }
                 if tab == .subsonic,
                     case .notRunning(_, let tone) = subsonicStore.view.status
                 {
-                    Spacer()
                     SubsonicBadge(tone: tone.statusTone)
                 }
             }
@@ -187,6 +174,10 @@ struct SettingsSidebar: View {
         selection = tabs[target]
         return .handled
     }
+
+    private static let width: CGFloat = 190
+    private static let buttonsRoom: CGFloat = 18
+    private static let cornerRadius: CGFloat = 12
 
     /// The sync state, while it is amber or red.
     private var troubledSync: BridgeSyncShown? {
@@ -220,14 +211,17 @@ struct SettingsView: View {
     var body: some View {
         @Bindable
         var navigation = navigation
-        NavigationSplitView(columnVisibility: .constant(.all)) {
+        // No title bar and no sidebar toggle: the window's buttons sit in the
+        // sidebar's top, and each pane puts its own title at its top left.
+        HStack(spacing: 0) {
             SettingsSidebar(selection: $navigation.selectedTab)
-                .navigationSplitViewColumnWidth(190)
-        } detail: {
             pane(for: navigation.selectedTab)
+                .scrollContentBackground(.hidden)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .windowBackground()
         }
-        .toolbar(removing: .sidebarToggle)
+        .windowBackground()
+        .ignoresSafeArea(.container, edges: .top)
         // The sidebar's width plus the width every pane was drawn against.
         .frame(width: 690, height: 600)
     }
