@@ -19,7 +19,7 @@ struct ImportCandidateBulkSelectionPane: View {
         // the minimum: short content centers and tall content scrolls.
         GeometryReader { pane in
             ScrollView {
-                VStack(spacing: ThemeSpace.edge) {
+                VStack(spacing: ThemeSpace.group) {
                     ImportCandidateBulkSelectionCard(
                         selectedCount: Int(selection.summary.count),
                         offers: ImportCandidateActionOffer.selection(
@@ -30,14 +30,19 @@ struct ImportCandidateBulkSelectionPane: View {
                         importDestination: $importDestination,
                         onPerform: onPerform
                     )
-                    if let running = selection.running {
-                        SelectionActionProgressLine(
-                            action: running.action,
-                            progress: running.progress
-                        )
-                    }
                     if selection.isRunning {
-                        Button("Cancel") { selection.cancel() }
+                        HStack(alignment: .bottom, spacing: ThemeSpace.group) {
+                            if let running = selection.running {
+                                SelectionActionProgressLine(
+                                    action: running.action,
+                                    progress: running.progress
+                                )
+                            }
+                            else {
+                                Spacer(minLength: 0)
+                            }
+                            Button("Cancel") { selection.cancel() }
+                        }
                     }
                 }
                 .frame(width: ImportCandidateBulkSelectionCard.width)
@@ -66,8 +71,8 @@ struct ImportCandidateBulkSelectionCard: View {
     let onPerform: (ImportCandidateActionOffer) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: ThemeSpace.edge) {
-            VStack(alignment: .leading, spacing: ThemeSpace.related) {
+        VStack(alignment: .leading, spacing: ThemeSpace.group) {
+            VStack(alignment: .leading, spacing: ThemeSpace.group) {
                 Text("\(selectedCount) selected")
                     .themeText(.title)
                 Text("Each action applies only to eligible selected folders.")
@@ -97,7 +102,7 @@ struct ImportCandidateBulkSelectionCard: View {
                             .horizontal,
                             ImportBulkActionRowMetrics.horizontal
                         )
-                        .padding(.bottom, ThemeSpace.inline)
+                        .padding(.bottom, ThemeSpace.line)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 ForEach(rows(in: group)) { offer in
@@ -106,7 +111,10 @@ struct ImportCandidateBulkSelectionCard: View {
                         importDestination: offer.action == .import
                             && showsStorageChoices ? $importDestination : nil
                     ) { onPerform(offer) }
-                    .disabled(isRunning || !offer.enabled)
+                    // A running action leaves the rows as they are, and takes
+                    // no second one.
+                    .allowsHitTesting(!isRunning)
+                    .disabled(!offer.enabled)
                 }
             }
         }
