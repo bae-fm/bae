@@ -110,11 +110,11 @@
   }
   function AndroidCastRow(props) {
     if (props.waiting) return h('div', { className: 'bae-a-castrow' }, h(AndroidSpinner, { size: 20 }), h('span', { className: 'bae-muted', style: { fontSize: 14 } }, props.waiting));
-    // A receiver, in the picker and on the Casting page alike: under its name its kind, or Casting for the one being cast to, which ends in Disconnect. Tapping any other casts to it. No separate "Casting to" row, and no check: the row says it. `menu` (the Casting page) ends every row in ⋮ in place of Disconnect: Details… and, on the one being cast to, Disconnect.
+    // A receiver, in the picker and on the Casting page alike: under its name its kind, or Casting for the one being cast to, which ends in Disconnect. Tapping any other casts to it. No separate "Casting to" row, and no check: the row says it. `menu` (the Casting page) ends every row in ⋮ in place of Disconnect: Details… and, on the one being cast to, Disconnect; `menuOpen` draws that menu open under it.
     var icon = { cast: 'cast', airplay: 'speakerbox', upnp: 'tv' }[props.kind || 'cast'];
     return h('div', { className: 'bae-a-castrow' }, h(Glyph, { name: icon, size: 24, className: props.active ? 'bae-accent' : 'bae-muted' }),
       h('span', { className: 'bae-a-castrow-text' }, h('span', { className: 'bae-a-castrow-name' }, props.name), h('span', { className: props.active ? 'bae-a-castrow-state' : 'bae-a-castrow-kind' }, props.active ? 'Casting' : CAST_KIND[props.kind || 'cast'])),
-      props.menu ? h(AndroidIconButton, { icon: 'more', label: 'More' }) : props.active ? h(AndroidButton, { kind: 'text' }, 'Disconnect') : null);
+      props.menu ? h(AndroidMoreMenu, { open: props.menuOpen, items: props.active ? 'Details…,Disconnect' : 'Details…' }) : props.active ? h(AndroidButton, { kind: 'text' }, 'Disconnect') : null);
   }
   function AndroidCheckbox(props) {
     return h('div', { className: 'bae-a-checkrow' }, h('span', { className: cx('bae-a-checkbox', props.on && 'bae-a-checkbox-on') }, props.on ? h(Glyph, { name: 'check', size: 16 }) : null), h('span', null, props.label));

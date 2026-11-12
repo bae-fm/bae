@@ -309,7 +309,7 @@ export interface AndroidQueueRowProps { title: string; artist?: string; album?: 
 export declare function AndroidQueueRow(props: AndroidQueueRowProps): React.ReactElement;
 export interface AndroidFullPlayerProps { title: string; artist?: string; album?: string; playing?: boolean; waiting?: boolean; position?: number; held?: number | string; elapsed?: string; duration?: string; repeat?: boolean }
 export declare function AndroidFullPlayer(props: AndroidFullPlayerProps): React.ReactElement;
-export interface AndroidCastRowProps { name?: string; kind?: 'cast' | 'airplay' | 'upnp'; active?: boolean; menu?: boolean; waiting?: string }
+export interface AndroidCastRowProps { name?: string; kind?: 'cast' | 'airplay' | 'upnp'; active?: boolean; menu?: boolean; menuOpen?: boolean; waiting?: string }
 export declare function AndroidCastRow(props: AndroidCastRowProps): React.ReactElement;
 export interface AndroidCheckboxProps { label: string; on?: boolean }
 export declare function AndroidCheckbox(props: AndroidCheckboxProps): React.ReactElement;
