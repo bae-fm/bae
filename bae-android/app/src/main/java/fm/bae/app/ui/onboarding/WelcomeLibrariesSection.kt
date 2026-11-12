@@ -251,7 +251,9 @@ private fun RunningLibraryRow(
             }
         },
     ) {
-        Box(modifier = Modifier.size(SPINNER_SLOT), contentAlignment = Alignment.Center) { AndroidSpinner() }
+        Box(modifier = Modifier.size(SPINNER_SLOT), contentAlignment = Alignment.Center) {
+            AndroidSpinner(color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
 }
 

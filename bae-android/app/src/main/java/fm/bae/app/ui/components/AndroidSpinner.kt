@@ -16,7 +16,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
 import fm.bae.app.R
 import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeIcon
@@ -63,10 +62,13 @@ internal fun AndroidSpinner(
     CircularProgressIndicator(
         modifier = modifier.size(size).semantics { contentDescription = description },
         color = color,
-        strokeWidth = 2.dp,
+        strokeWidth = size * STROKE_SHARE,
         trackColor = color.copy(alpha = TRACK_ALPHA),
     )
 }
+
+/** The ring's width as a share of the spinner's size: the board draws 2.5 in 24. */
+private const val STROKE_SHARE = 2.5f / 24f
 
 /** The faint full ring behind the turning arc, as the design draws it. */
 private const val TRACK_ALPHA = 0.2f

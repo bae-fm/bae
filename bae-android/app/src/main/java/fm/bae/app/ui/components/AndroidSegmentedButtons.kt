@@ -10,8 +10,11 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
+import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewTheme
+import fm.bae.app.ui.appearance.ThemeOpacity
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 
@@ -35,12 +38,25 @@ internal fun AndroidSegmentedButtons(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+        val edge = BaeTheme.colors.hairlineStrong
+        val text = MaterialTheme.colorScheme.onSurface
+        // The chosen segment is the accent's tint beside its check; the pill is outlined in the strong hairline.
+        val colors =
+            SegmentedButtonDefaults.colors(
+                activeContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = ThemeOpacity.tint),
+                activeContentColor = text,
+                activeBorderColor = edge,
+                inactiveContainerColor = Color.Transparent,
+                inactiveContentColor = text,
+                inactiveBorderColor = edge,
+            )
         SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
             options.forEachIndexed { index, option ->
                 SegmentedButton(
                     selected = index == selected,
                     onClick = { onSelect(index) },
                     shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
+                    colors = colors,
                 ) {
                     Text(option)
                 }

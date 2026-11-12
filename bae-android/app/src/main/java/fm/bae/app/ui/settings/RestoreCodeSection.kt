@@ -2,7 +2,8 @@ package fm.bae.app.ui.settings
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -248,6 +249,7 @@ private fun Notes(needsS3Key: Boolean) {
 }
 
 /** The code, masked or shown, in its card, with Show or Hide, Copy and Print under it. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun CodeBox(
     code: String,
@@ -279,9 +281,10 @@ private fun CodeBox(
             )
         }
     }
-    Row(
+    FlowRow(
         modifier = Modifier.padding(top = ThemeSpace.group),
         horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
+        verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
     ) {
         AndroidButton(kind = ButtonKind.OUTLINED, onClick = onToggle) {
             Text(stringResource(if (shown) R.string.hide else R.string.restore_code_show))
