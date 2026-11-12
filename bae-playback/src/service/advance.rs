@@ -63,7 +63,7 @@ impl PlaybackService {
             let next = match self.playback_queue.advance_to_front().await {
                 Ok(next) => next,
                 Err(e) => {
-                    self.queue_failed("move the queue past a deleted track", &e);
+                    self.queue_failed_halting("move the queue past a deleted track", e);
                     None
                 }
             };
@@ -404,7 +404,7 @@ impl PlaybackService {
         let front = match self.playback_queue.front().await {
             Ok(front) => front,
             Err(e) => {
-                self.queue_failed("read the queue's next track", &e);
+                self.queue_failed_halting("read the queue's next track", e);
                 self.abandon_side_pause();
                 return;
             }
@@ -684,7 +684,7 @@ impl PlaybackService {
                 true
             }
             Err(e) => {
-                self.queue_failed("advance the queue to the preloaded track", &e);
+                self.queue_failed_halting("advance the queue to the preloaded track", e);
                 false
             }
         }

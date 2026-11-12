@@ -84,11 +84,7 @@ impl PlaybackService {
         match self.playback_queue.next_entry().await {
             Ok(next) => next,
             Err(e) => {
-                self.queue_failed("move the queue on", &e);
-                emit_progress(
-                    &self.progress_tx,
-                    PlaybackProgress::PlaybackError { reason: PlaybackError::from(e).ui_reason() },
-                );
+                self.queue_failed_halting("move the queue on", e);
                 NextEntry::Stop
             }
         }

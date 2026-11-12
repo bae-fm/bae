@@ -863,6 +863,17 @@ pub fn fail_queue_writes_for_test(directory: &std::path::Path) {
     );
 }
 
+/// Plant damage for a test: the table of Up Next is gone from the library
+/// stored under `directory`, so the queue can't say which track follows.
+#[cfg(any(test, feature = "test-utils"))]
+pub fn lose_up_next_for_test(directory: &std::path::Path) {
+    bae_store::test_fixtures::planted_damage::plant_in_library_file(
+        directory,
+        "playback_manual",
+        "DROP TABLE playback_manual;",
+    );
+}
+
 #[cfg(test)]
 #[path = "queue_tests.rs"]
 mod tests;

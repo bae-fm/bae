@@ -267,6 +267,17 @@ impl PlaybackService {
         self.telemetry_playback_failed(PlaybackOperation::QueueChange);
     }
 
+    /// A queue read or write failed where playback can't go on, because the
+    /// queue no longer says what plays: the person is told as a playback
+    /// error, which halts playback.
+    pub(super) fn queue_failed_halting(&self, doing: &str, error: bae_store::DbError) {
+        self.queue_failed(doing, &error);
+        emit_progress(
+            &self.progress_tx,
+            PlaybackProgress::PlaybackError { reason: PlaybackError::from(error).ui_reason() },
+        );
+    }
+
     /// A play command established a new playing context.
     pub(super) fn telemetry_playback_started(
         &self,
@@ -379,7 +390,7 @@ impl PlaybackService {
         let action = match self.playback_queue.previous_action(track_time).await {
             Ok(action) => action,
             Err(e) => {
-                self.queue_failed("step the queue back", &e);
+                self.queue_failed_halting("step the queue back", e);
                 return;
             }
         };

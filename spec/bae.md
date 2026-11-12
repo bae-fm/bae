@@ -4083,8 +4083,9 @@ whose entry is no longer in its part changes nothing and answers that it is
 done, and a failed write answers its error. So does every other queue command:
 play next, add to queue, adding a release, insert, repeat and shuffle answer
 once they are done or why they are not. The app shows a failed write's
-error. When the queue can't say what plays next, playback stops with an error
-shown. It shows nothing for a command that changed nothing because the queue
+error. When the queue can't say what plays next or can't record the move to
+it (Next, Previous, a track ending, a side's pause ending, the playing track
+deleted), playback stops with an error shown. It shows nothing for a command that changed nothing because the queue
 changed: that is rare, and the screen already shows the queue as it now is,
 so the gesture just ends.
 
