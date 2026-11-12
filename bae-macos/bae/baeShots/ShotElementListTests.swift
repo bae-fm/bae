@@ -5,7 +5,8 @@ import Testing
 @testable import bae
 
 /// The element list a shot writes, proved on two known shots: the Enter code
-/// sheet, whose words, buttons and field the boards draw, and an alert.
+/// sheet, whose words, buttons and field the boards draw, and an alert, each
+/// over the welcome window.
 @MainActor
 struct ShotElementListTests {
     private func list(_ id: String) async throws -> ShotElementList {
@@ -24,8 +25,10 @@ struct ShotElementListTests {
 
         #expect(list.board == "mac.welcome.add-code.entering", "\(json)")
         #expect(list.platform == "macos")
-        #expect(list.size.width == 400)
-        #expect(abs(list.size.height - 190) <= 1, "\(json)")
+        #expect(list.size.width == 900)
+        #expect(list.size.height == 600)
+        // The sheet hangs 36 points below the window's top, centred.
+        let left = (list.size.width - 400) / 2
         #expect(list.scale == 2)
 
         let title = try #require(
@@ -37,8 +40,8 @@ struct ShotElementListTests {
         #expect(title.text?.size == 13, "\(json)")
         #expect(title.text?.weight == 600, "\(json)")
         #expect(title.text?.color.hasPrefix("#FFFFFF") == true, "\(json)")
-        #expect(abs(title.bounds.x - 16) <= 1, "\(json)")
-        #expect(abs(title.bounds.y - 16) <= 1, "\(json)")
+        #expect(abs(title.bounds.x - (left + 16)) <= 1, "\(json)")
+        #expect(abs(title.bounds.y - (36 + 16)) <= 1, "\(json)")
 
         let message = try #require(
             list.elements.first {
@@ -56,7 +59,7 @@ struct ShotElementListTests {
         )
         #expect(field.native == "AXTextField")
         #expect(field.placeholder == "Restore code or invite", "\(json)")
-        #expect(abs(field.bounds.x - 26) <= 1, "\(json)")
+        #expect(abs(field.bounds.x - (left + 26)) <= 1, "\(json)")
         #expect(abs(field.bounds.width - 348) <= 1, "\(json)")
 
         let cancel = try #require(
@@ -80,23 +83,26 @@ struct ShotElementListTests {
         let list = try await list("mac.welcome.remove.failed")
         let json = try json(list)
 
-        let texts = list.elements.filter { $0.role == "text" }
-        #expect(
-            texts.compactMap(\.label) == [
-                "Couldn’t remove “Home music”",
-                "Couldn’t reach the cloud. Check your connection and try again.",
-            ],
-            "\(json)"
+        func element(_ role: String, _ label: String) throws
+            -> ShotElementList.Element
+        {
+            try #require(
+                list.elements.first { $0.role == role && $0.label == label },
+                "\(json)"
+            )
+        }
+        let title = try element("text", "Couldn’t remove “Home music”")
+        let message = try element(
+            "text",
+            "Couldn’t reach the cloud. Check your connection and try again."
         )
-        #expect(texts.first?.text?.weight == 700, "\(json)")
-        let buttons = list.elements.filter { $0.role == "button" }
-        #expect(buttons.compactMap(\.label) == ["Cancel", "Retry"], "\(json)")
-        try #require(buttons.count == 2, "\(json)")
+        #expect(title.text?.weight == 700, "\(json)")
+        let cancel = try element("button", "Cancel")
+        let retry = try element("button", "Retry")
         // The buttons sit side by side below the message, inside the shot.
-        #expect(buttons[0].bounds.y == buttons[1].bounds.y, "\(json)")
-        #expect(buttons[0].bounds.x < buttons[1].bounds.x, "\(json)")
-        let message = try #require(texts.last, "\(json)")
-        #expect(buttons[0].bounds.y > message.bounds.y, "\(json)")
+        #expect(cancel.bounds.y == retry.bounds.y, "\(json)")
+        #expect(cancel.bounds.x < retry.bounds.x, "\(json)")
+        #expect(cancel.bounds.y > message.bounds.y, "\(json)")
     }
 
     @Test
