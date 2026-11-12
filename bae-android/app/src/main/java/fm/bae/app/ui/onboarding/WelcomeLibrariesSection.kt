@@ -111,7 +111,12 @@ internal fun WelcomeLibrariesContent(
     running: RunningRemoval?,
     callbacks: WelcomeLibrariesCallbacks,
 ) {
-    val column = Modifier.widthIn(max = librariesWidth).fillMaxWidth().padding(bottom = ThemeSpace.section)
+    val column =
+        Modifier
+            .widthIn(max = librariesWidth)
+            .fillMaxWidth()
+            // The heading's own top padding counts on a gap above it.
+            .padding(top = ThemeSpace.related, bottom = ThemeSpace.section)
     when (list) {
         WelcomeLibrariesList.Loading -> {}
 
