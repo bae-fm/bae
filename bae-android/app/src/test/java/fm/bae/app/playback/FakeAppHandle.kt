@@ -623,7 +623,6 @@ internal open class FakeAppHandle(
 
     override suspend fun invitePerson(
         role: BridgeMemberRole,
-        name: String,
         access: BridgeInviteAccess,
         lifetime: BridgeInviteLifetime,
     ): String = unfaked("invitePerson")

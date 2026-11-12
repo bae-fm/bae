@@ -36,15 +36,14 @@ class InviteDialogTest {
 
     /** A handle whose invite is made at once, as Ben's, with the access asked for. */
     private class InvitingHandle : FakeAppHandle() {
-        val asked = mutableListOf<Pair<String, BridgeInviteAccess>>()
+        val asked = mutableListOf<BridgeInviteAccess>()
 
         override suspend fun invitePerson(
             role: BridgeMemberRole,
-            name: String,
             access: BridgeInviteAccess,
             lifetime: BridgeInviteLifetime,
         ): String {
-            asked += name to access
+            asked += access
             return "invite-1"
         }
     }
@@ -71,12 +70,11 @@ class InviteDialogTest {
                 }
             }
         }
-        compose.onNodeWithText("Name").performTextInput("Ben")
         compose.onNodeWithText("Email").performTextInput("ben@example.com")
         compose.onNodeWithText("Create invite").performClick()
         compose.waitUntil(HANG_GUARD_MS) { created.isNotEmpty() }
 
         assertEquals(listOf("invite-1"), created)
-        assertEquals(listOf("Ben" to BridgeInviteAccess.ProviderAccount("ben@example.com")), handle.asked)
+        assertEquals(listOf<BridgeInviteAccess>(BridgeInviteAccess.ProviderAccount("ben@example.com")), handle.asked)
     }
 }

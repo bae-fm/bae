@@ -73,7 +73,7 @@ internal sealed interface OnboardingStep {
     /**
      * A code the person scanned or typed for [entry]: a restore, whose form
      * waits on the person when the code was typed or lacks its S3 key, or an
-     * invite, which joins at once.
+     * invite, which asks the person's name before it joins.
      */
     sealed interface EnteredCode : Attempt
 
@@ -129,7 +129,20 @@ internal sealed interface OnboardingStep {
     }
 
     /**
-     * An invite, read or saved from a join under way: joining starts at once,
+     * An invite's code, read, whose person still has to give their name
+     * before joining: the name the join's request carries. Going back
+     * returns to the code screen.
+     */
+    data class JoinName(
+        val code: String,
+        val invite: BridgeInviteInfo,
+        override val entry: CodeEntry,
+    ) : EnteredCode,
+        OnboardingStep
+
+    /**
+     * An invite joining, from a name just given, or a join under way that
+     * continues with the name its request carries: joining starts at once,
      * with no form, from [start].
      */
     data class Invite(
@@ -162,10 +175,14 @@ internal sealed interface OnboardingStep {
  */
 internal enum class CodeSource { SCANNED, TYPED }
 
-/** Where a join starts: an invite's code, or a join this device has under way. */
+/**
+ * Where a join starts: an invite's code with the name the person gave, or a
+ * join this device has under way, which asks for no name.
+ */
 internal sealed interface JoinStart {
     data class Code(
         val code: String,
+        val name: String,
     ) : JoinStart
 
     data class Unfinished(
@@ -175,7 +192,7 @@ internal sealed interface JoinStart {
 
 /**
  * What a code read for [entry] asks of the person: the person's own restore
- * code restores; an invite joins the library it names. A restore over this
+ * code restores; an invite asks their name, then joins the library it names. A restore over this
  * device's copy takes no invite: the code goes to the restore, and core says
  * so.
  */
@@ -196,7 +213,7 @@ internal fun codeReadStep(
                 }
 
                 CodeEntry.NewDevice -> {
-                    OnboardingStep.Invite(JoinStart.Code(code), info.invite, entry)
+                    OnboardingStep.JoinName(code, info.invite, entry)
                 }
             }
         }
@@ -208,7 +225,8 @@ internal fun codeReadStep(
  * [newCancellation], which makes the stop each restore is handed,
  * [newOpenProgress], which makes the open a restore over this device's copy
  * reports its steps in, and [newSetupStatus], which makes the setup each
- * restore or join says where it stands through.
+ * restore or join says where it stands through. [joins] is what a join asks of
+ * core beside the [host].
  */
 internal class OnboardingCore(
     val host: BridgeHostInterface,
@@ -216,6 +234,16 @@ internal class OnboardingCore(
     val newCancellation: () -> BootstrapCancellation,
     val newOpenProgress: () -> LibraryOpenProgress,
     val newSetupStatus: () -> LibrarySetupStatus,
+    val joins: JoinCore = JoinCore(),
+)
+
+/**
+ * What a join asks of core beside the host: [libraryId] names the library a join under way is for, and
+ * [newControl] makes the control each join runs with.
+ */
+internal class JoinCore(
+    val libraryId: (BridgeUnfinishedJoin) -> String = { it.info().metadata.libraryId },
+    val newControl: () -> BridgeJoinControl = ::BridgeJoinControl,
 )
 
 /**
@@ -247,8 +275,15 @@ internal class OnboardingFlow(
 
     private var cancellation: (() -> Unit)? = null
 
-    /** The running join's control, for Check now; null when no join runs. */
+    /** The running join's control; null when no join runs. */
     private var joining: BridgeJoinControl? = null
+
+    /**
+     * Whether the running join's waiting screen shows. A join control made
+     * while it does starts held, and core holds the join's frequent checks
+     * for approval exactly as long as this says so.
+     */
+    private var waitingScreenShown = false
 
     init {
         when (restoreOver?.start) {
@@ -345,7 +380,13 @@ internal class OnboardingFlow(
         if (signInUnavailable(metadata.oauthAccess)) return
         error = null
         when (val read = codeReadStep(code, info, from.entry)) {
-            // An invite joins at once: it carries the person's name.
+            // An invite goes on with a join under way for its library, which
+            // asks no name (coven refuses a second, different one), or else
+            // asks the person's name.
+            is OnboardingStep.JoinName -> {
+                goOnOrAskName(read)
+            }
+
             is OnboardingStep.Invite -> {
                 join(read)
             }
@@ -354,6 +395,34 @@ internal class OnboardingFlow(
                 if (source == CodeSource.SCANNED && !read.needsS3Key) restore(read, credentials = null) else step = read
             }
         }
+    }
+
+    /** Continue the join under way for [read]'s library, or else ask the person's name. */
+    private fun goOnOrAskName(read: OnboardingStep.JoinName) {
+        scope.launch {
+            try {
+                val library = read.invite.metadata.libraryId
+                val underWay = core.host.unfinishedJoins().firstOrNull { core.joins.libraryId(it) == library }
+                if (underWay == null) {
+                    step = read
+                } else {
+                    join(OnboardingStep.Invite(JoinStart.Unfinished(underWay), read.invite, read.entry))
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: BridgeException) {
+                logger.error("listing the joins under way failed", e)
+                error = core.errorDisplay(e)
+            }
+        }
+    }
+
+    /** Join as the person who typed [name] on [from]'s step, which the join's request carries. */
+    fun join(
+        from: OnboardingStep.JoinName,
+        name: String,
+    ) {
+        join(OnboardingStep.Invite(JoinStart.Code(from.code, name.trim()), from.invite, from.entry))
     }
 
     /**
@@ -430,19 +499,30 @@ internal class OnboardingFlow(
      * screen drops the call and keeps the join, which the next launch resumes.
      */
     private fun join(from: OnboardingStep.Invite) {
-        val control = BridgeJoinControl()
+        val control = core.joins.newControl()
+        // A new control checks on coven's doubling waits until told the screen shows.
+        if (waitingScreenShown) control.setScreenShown(true)
         joining = control
         run(from, control::cancel) { setup ->
             when (val start = from.start) {
-                is JoinStart.Code -> core.host.joinWithInvite(start.code, deviceName(context), setup, control)
-                is JoinStart.Unfinished -> core.host.resumeJoin(start.join, setup, control)
+                is JoinStart.Code -> {
+                    core.host.joinWithInvite(start.code, start.name, deviceName(context), setup, control)
+                }
+
+                is JoinStart.Unfinished -> {
+                    core.host.resumeJoin(start.join, setup, control)
+                }
             }
         }
     }
 
-    /** End the running join's wait so it checks for approval now. */
-    fun checkNow() {
-        joining?.checkNow()
+    /**
+     * Whether the running join's waiting screen shows. While it does, the
+     * join checks for approval every few seconds.
+     */
+    fun setWaitingScreenShown(shown: Boolean) {
+        waitingScreenShown = shown
+        joining?.setScreenShown(shown)
     }
 
     /**
@@ -534,9 +614,32 @@ internal class OnboardingFlow(
  */
 private fun OnboardingStep.Attempt.formStep(): OnboardingStep =
     when (this) {
-        is OnboardingStep.Restore -> this
-        is OnboardingStep.RestoreSaved -> this
-        is OnboardingStep.Invite -> OnboardingStep.EnterCode(entry)
-        is OnboardingStep.FinishRestore -> OnboardingStep.EnterCode(entry)
-        is OnboardingStep.ResumeRestore -> OnboardingStep.EnterCode(entry)
+        is OnboardingStep.Restore -> {
+            this
+        }
+
+        is OnboardingStep.RestoreSaved -> {
+            this
+        }
+
+        // A join refused after the person gave their name, such as a name core
+        // refuses, returns to the name step, with its error.
+        is OnboardingStep.Invite -> {
+            when (val start = start) {
+                is JoinStart.Code -> OnboardingStep.JoinName(start.code, invite, entry)
+                is JoinStart.Unfinished -> OnboardingStep.EnterCode(entry)
+            }
+        }
+
+        is OnboardingStep.JoinName -> {
+            OnboardingStep.EnterCode(entry)
+        }
+
+        is OnboardingStep.FinishRestore -> {
+            OnboardingStep.EnterCode(entry)
+        }
+
+        is OnboardingStep.ResumeRestore -> {
+            OnboardingStep.EnterCode(entry)
+        }
     }

@@ -7,6 +7,7 @@ use coven::{CovenWrite, SqlReadContext};
 use rusqlite::{params, Row};
 
 mod admin_operations;
+pub use admin_operations::InviteError;
 mod members;
 pub(crate) use members::{member_columns, member_row, SELF_IS_ADMIN};
 

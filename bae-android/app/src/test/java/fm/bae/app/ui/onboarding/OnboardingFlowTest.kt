@@ -29,12 +29,16 @@ import uniffi.bae_bridge.BridgeCodeInfo
 import uniffi.bae_bridge.BridgeCodeMetadata
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
+import uniffi.bae_bridge.BridgeInviteInfo
+import uniffi.bae_bridge.BridgeJoinControl
 import uniffi.bae_bridge.BridgeLibrarySetup
 import uniffi.bae_bridge.BridgeReplacedBy
 import uniffi.bae_bridge.BridgeS3Credentials
 import uniffi.bae_bridge.BridgeStorageLocation
+import uniffi.bae_bridge.BridgeUnfinishedJoin
 import uniffi.bae_bridge.BridgeUnfinishedRestore
 import uniffi.bae_bridge.NoHandle
+import java.time.Instant
 
 /** A scanned code goes straight into adding this device; a typed one shows what it read first. */
 @RunWith(BaeRobolectricTestRunner::class)
@@ -55,6 +59,31 @@ class OnboardingFlowTest {
         var unfinished = emptyList<BridgeUnfinishedRestore>()
         val resumed = mutableListOf<BridgeUnfinishedRestore>()
         var restoreAnswer: BridgeBootstrapResult? = null
+        var joinsUnderWay = emptyList<BridgeUnfinishedJoin>()
+        val joined = mutableListOf<Pair<String, String>>()
+        val resumedJoins = mutableListOf<BridgeUnfinishedJoin>()
+
+        override suspend fun unfinishedJoins(): List<BridgeUnfinishedJoin> = joinsUnderWay
+
+        override suspend fun joinWithInvite(
+            code: String,
+            name: String,
+            deviceName: String,
+            setup: BridgeLibrarySetup,
+            control: BridgeJoinControl,
+        ): BridgeBootstrapResult {
+            joined += code to name
+            awaitCancellation()
+        }
+
+        override suspend fun resumeJoin(
+            join: BridgeUnfinishedJoin,
+            setup: BridgeLibrarySetup,
+            control: BridgeJoinControl,
+        ): BridgeBootstrapResult {
+            resumedJoins += join
+            awaitCancellation()
+        }
 
         override suspend fun unfinishedRestores(): List<BridgeUnfinishedRestore> = unfinished
 
@@ -130,9 +159,22 @@ class OnboardingFlowTest {
             OnboardingFlow(
                 scope,
                 RuntimeEnvironment.getApplication(),
-                OnboardingCore(host, NoErrorDisplays::display, ::FakeBootstrapCancellation, ::unfakedOpenProgress) {
-                    LibrarySetupStatus.written(FakeLibrarySetup(), SaidStates().also { said += it }, LatestStream.written(), scope)
-                },
+                OnboardingCore(
+                    host,
+                    NoErrorDisplays::display,
+                    ::FakeBootstrapCancellation,
+                    ::unfakedOpenProgress,
+                    {
+                        LibrarySetupStatus.written(
+                            FakeLibrarySetup(),
+                            SaidStates().also { said += it },
+                            LatestStream.written(),
+                            scope,
+                        )
+                    },
+                    // A join under way here is for the invite's library.
+                    JoinCore({ "library-1" }, { BridgeJoinControl(NoHandle) }),
+                ),
                 null,
                 restoreOver,
             ) {}
@@ -240,6 +282,49 @@ class OnboardingFlowTest {
         assertEquals(listOf(restore), host.resumed)
     }
 
+    /** An invite for the library [restoreCode]'s metadata names. */
+    private fun invite() =
+        BridgeInviteInfo(
+            metadata = (restoreCode(carriesS3Key = false) as BridgeCodeInfo.Restore).metadata,
+            libraryName = "Household",
+            expiresAt = Instant.parse("2026-11-03T16:15:00Z"),
+        )
+
+    /** An invite's code asks the person's name before it joins, and Join sends the trimmed name. */
+    @Test
+    fun anInvitesCodeAsksTheNameThenJoinsWithIt() {
+        val flow = newFlow()
+        val invite = invite()
+
+        flow.advance(enterCode, INVITE_CODE, BridgeCodeInfo.Invite(invite), CodeSource.SCANNED)
+        shadowOf(Looper.getMainLooper()).idle()
+
+        val asking = flow.step as OnboardingStep.JoinName
+        assertEquals(OnboardingStep.JoinName(INVITE_CODE, invite, CodeEntry.NewDevice), asking)
+        assertEquals(emptyList<Pair<String, String>>(), host.joined)
+
+        flow.join(asking, "  Dan ")
+        shadowOf(Looper.getMainLooper()).idle()
+
+        assertEquals(listOf(INVITE_CODE to "Dan"), host.joined)
+    }
+
+    /** A code whose library has a join under way here goes on with that join, which asks for no name. */
+    @Test
+    fun aJoinUnderWayForTheInvitesLibraryAsksNoName() {
+        val flow = newFlow()
+        val underWay = BridgeUnfinishedJoin(NoHandle)
+        host.joinsUnderWay = listOf(underWay)
+
+        flow.advance(enterCode, INVITE_CODE, BridgeCodeInfo.Invite(invite()), CodeSource.SCANNED)
+        shadowOf(Looper.getMainLooper()).idle()
+
+        val running = flow.step as OnboardingStep.Running
+        assertEquals(JoinStart.Unfinished(underWay), (running.from as OnboardingStep.Invite).start)
+        assertEquals(listOf(underWay), host.resumedJoins)
+        assertEquals(emptyList<Pair<String, String>>(), host.joined)
+    }
+
     /** A restore refused because another join or restore of the library is under way here goes on with that one. */
     @Test
     fun aRestoreRefusedForACallUnderWayGoesOnWithIt() {
@@ -258,5 +343,6 @@ class OnboardingFlowTest {
 
     private companion object {
         const val CODE = "CVR1-RESTORE-CODE"
+        const val INVITE_CODE = "CVI1-INVITE-CODE"
     }
 }

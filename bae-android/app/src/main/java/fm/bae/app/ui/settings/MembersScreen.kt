@@ -430,7 +430,7 @@ internal fun InviteRow(
                 horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
             ) {
                 Text(
-                    text = invite.invitee ?: stringResource(R.string.members_unnamed),
+                    text = invite.label,
                     style = ThemeText.strong.style,
                     modifier = Modifier.weight(1f, fill = false),
                 )

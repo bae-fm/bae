@@ -130,12 +130,12 @@ const RELEASE_UNPIN_FILES: &str = "SELECT f.file, coven_file_device(c.coordinate
      JOIN coven_files AS c ON c.id = f.file \
      WHERE f.release_id = ?1 ORDER BY f.id";
 
-/// Release the pins on the files of every release of `release_ids` stored in
-/// the cloud, in one write: coven moves each file from the pinned cache to
-/// the evictable cache, still readable and now droppable, and evicts each
-/// namespace down to its budget in the same write. No transition is shown on
-/// the way. A release that cannot unpin is named with why and changes
-/// nothing; the rest unpin.
+/// Unpin the files of every release of `release_ids` stored in the cloud, in
+/// one write: coven removes each file's copies from this device in that write,
+/// the pinned whole copy and any cached chunks alike, and the partial download
+/// a pin left. Nothing else is evicted, whatever room the budget has. No
+/// transition is shown on the way. A release that cannot unpin is named with
+/// why and changes nothing; the rest unpin.
 pub async fn unpin_releases(
     store: &Store,
     release_ids: Vec<String>,

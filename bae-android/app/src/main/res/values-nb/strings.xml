@@ -291,9 +291,6 @@
     <string name="loading_closing_library">Lukker biblioteket…</string>
     <string name="loading_removing_library">Fjerner biblioteket…</string>
     <string name="loading_resetting_device">Tilbakestiller denne enheten…</string>
-    <string name="onboarding_checking">Sjekker…</string>
-    <string name="onboarding_next_check">Neste sjekk om %1$s</string>
-    <string name="onboarding_check_now">Sjekk nå</string>
     <string name="pending_update_no_store">Ingen appbutikk på denne enheten kan oppdatere bae.</string>
     <string name="storage_setup_title">Sett opp synkronisering</string>
     <string name="settings_set_up_sync_explanation">Dette biblioteket ligger bare på denne enheten. Synkronisering holder det i et skyhjem, der de andre enhetene dine og husstanden din kan bruke det.</string>
@@ -443,4 +440,9 @@
     <string name="pinning_empty">Ingenting å feste</string>
     <string name="pinning_load_failed">Kunne ikke laste inn festingene dine.</string>
     <string name="pinning_load_more_failed">Kunne ikke laste inn flere festinger.</string>
+    <string name="onboarding_invited_to">Du er invitert til %1$s</string>
+    <string name="onboarding_join_library">Bli med i bibliotek</string>
+    <string name="onboarding_join">Bli med</string>
+    <string name="onboarding_your_name">Navnet ditt</string>
+    <string name="onboarding_name_placeholder">Vises på profilen, vurderingene og spillelistene dine</string>
 </resources>

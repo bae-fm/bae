@@ -156,10 +156,11 @@ internal object DenseCodes {
     // Member id, member keys' length and keys, storage length.
     private const val RESTORE_MATERIAL_BYTES = 16 + 4 + 69 + 4
 
-    // Store name ("Home library") and length, invitee ("Robin") with its tag
-    // and length, expiry, invite id, member id, invite secret, initial key
-    // id, inviting writer, read-through slot, storage length.
-    private const val INVITE_MATERIAL_BYTES = 4 + 12 + 1 + 4 + 5 + 8 + 16 + 16 + 32 + 16 + 8 + 8 + 4
+    // Store name ("Home library") and length, inviter ("Robin") and length,
+    // kind, expiry, invite id, member id, invite secret, initial key id,
+    // inviting writer, read-through slot, storage length (coven format.md,
+    // kind 11).
+    private const val INVITE_MATERIAL_BYTES = 4 + 12 + 4 + 5 + 1 + 8 + 16 + 16 + 32 + 16 + 8 + 8 + 4
 
     // The location as coven packs it (coven format.md D13): the S3 tag, bucket
     // "music-library", region "us-east-1", endpoint "http://192.168.1.20:9000/",
@@ -173,7 +174,7 @@ internal object DenseCodes {
     fun restoreCodeWithKey(random: Random): String =
         "CVR1-" + base32(random, FRAME_BYTES + RESTORE_MATERIAL_BYTES + LOCATION_BYTES + 1 + KEY_BYTES)
 
-    /** An invite carrying the invitee's S3 key. */
+    /** An invite carrying the invited person's S3 key. */
     fun inviteWithKey(random: Random): String = "CVI1-" + base32(random, FRAME_BYTES + INVITE_MATERIAL_BYTES + LOCATION_BYTES + KEY_BYTES)
 
     private fun base32(

@@ -74,6 +74,93 @@ async fn a_creator_s_kept_name_becomes_their_profile_once_storage_is_set_up() {
     library.manager().close().await.unwrap();
 }
 
+/// The code of the owner's invite `id`, once its sync has granted its access.
+async fn granted_code(owner: &coven::CovenHandle, id: coven::InviteId) -> String {
+    let mut invites = owner.subscribe(|sql| Ok::<_, coven::CovenError>(coven::Invite::list(sql)?));
+    let granted = |invite: &coven::Invite| match bae_library::people::invite_shown(invite) {
+        bae_library::people::InviteShown::Code { code, .. } if invite.id == id => Some(code),
+        bae_library::people::InviteShown::Code { .. }
+        | bae_library::people::InviteShown::Granting => None,
+    };
+    bae_library::followed::value_matching(&mut invites, |invites| {
+        invites.iter().any(|invite| granted(invite).is_some())
+    })
+    .await
+    .iter()
+    .find_map(granted)
+    .unwrap()
+}
+
+/// The inviter an invite made through `membership` names.
+async fn inviter_named(
+    owner: &coven::CovenHandle,
+    membership: &bae_people::Membership,
+) -> Result<String, bae_people::membership::InviteError> {
+    let id = membership
+        .invite_person(
+            coven::MemberRole::Member,
+            coven::InviteAccess::S3AccessKey {
+                access_key_id: "guest-key".into(),
+                secret_access_key: coven::SecretText::new("guest-secret".into()),
+            },
+            coven::InviteLifetime::Day,
+        )
+        .await?;
+    let code = granted_code(owner, id).await;
+    let Ok(coven::CodeInfo::Invite(info)) = coven::decode_code_info(&code) else {
+        panic!("an invite's code decodes as an invite's");
+    };
+    Ok(info.inviter)
+}
+
+/// An invite names its inviter by the name the person goes by: their
+/// profile's, else the name their pending profile request asked for, else the
+/// name the library kept from its creation. A person with none of the three
+/// gets an error, and coven makes no invite.
+#[test]
+fn an_invite_names_its_inviter_by_the_name_the_person_goes_by() {
+    on_app_runtime(async {
+        let clock_of = |sources: &bae_library::test_libraries::TestSources| sources.clock().clone();
+
+        // No name at all.
+        let (_dir, owner, _storage, sources) =
+            Household::owner(coven::CloudProvider::S3, None).await;
+        let store = bae_store::test_devices::store_under(owner.clone(), clock_of(&sources));
+        let membership = bae_people::Membership::new(store.clone());
+        let people = bae_people::People::new(store);
+        assert!(matches!(
+            inviter_named(&owner, &membership).await,
+            Err(bae_people::membership::InviteError::InviterUnnamed)
+        ));
+        let open = owner.read(coven::Invite::list).await.unwrap();
+        assert!(open.is_empty(), "coven was never called: {open:?}");
+
+        // Only the name the library kept from its creation.
+        people.keep_creator_name(&bae_store::EnteredName::parse("Ana").unwrap()).await.unwrap();
+        assert_eq!(inviter_named(&owner, &membership).await.unwrap(), "Ana");
+        owner.close().await.unwrap();
+
+        // Only a pending profile request.
+        let (_dir, owner, _storage, sources) =
+            Household::owner(coven::CloudProvider::S3, None).await;
+        let store = bae_store::test_devices::store_under(owner.clone(), clock_of(&sources));
+        let membership = bae_people::Membership::new(store.clone());
+        bae_people::People::new(store).create_profile("Robin").await.unwrap();
+        assert_eq!(inviter_named(&owner, &membership).await.unwrap(), "Robin");
+        owner.close().await.unwrap();
+
+        // A profile.
+        let household = Household::new().await;
+        let store = bae_store::test_devices::store_under(
+            household.owner.clone(),
+            clock_of(&household.sources),
+        );
+        let membership = bae_people::Membership::new(store);
+        assert_eq!(inviter_named(&household.owner, &membership).await.unwrap(), "Robin");
+        household.owner.close().await.unwrap();
+    });
+}
+
 /// Run a test body on the worker stack the app gives native invite and
 /// bootstrap futures.
 pub(super) fn on_app_runtime(body: impl std::future::Future<Output = ()> + Send + 'static) {
@@ -189,10 +276,14 @@ impl Household {
             },
             _ => coven::InviteAccess::ProviderAccount { email: GUEST_ACCOUNT.into() },
         };
-        let (id, member, _operation) =
-            Box::pin(self.owner.create_invite(target, access, coven::InviteLifetime::Day))
-                .await
-                .unwrap();
+        let (id, member, _operation) = Box::pin(self.owner.create_invite(
+            target,
+            access,
+            coven::InviteLifetime::Day,
+            "Ana".into(),
+        ))
+        .await
+        .unwrap();
         let mut invites =
             self.owner.subscribe(|sql| Ok::<_, coven::CovenError>(coven::Invite::list(sql)?));
         let granted = |invite: &coven::Invite| match bae_library::people::invite_shown(invite) {
@@ -256,6 +347,7 @@ impl Household {
         bae_library::join_with_invite(
             self.device(installation),
             code,
+            bae_store::EnteredName::parse("Rowan").unwrap(),
             "Guest Device",
             self.sources.clock().clone(),
             |_| {},
@@ -308,8 +400,8 @@ pub(super) struct Invited {
     pub(super) member: coven::MemberId,
 }
 
-pub(super) fn new_member(name: &str) -> coven::InviteTarget {
-    coven::InviteTarget::NewMember { role: coven::MemberRole::Member, name: name.into() }
+pub(super) fn new_member() -> coven::InviteTarget {
+    coven::InviteTarget::NewMember { role: coven::MemberRole::Member }
 }
 
 /// Make a circle named `name` on `owner`, syncing until its entry lands.
@@ -373,7 +465,7 @@ async fn a_profile_takes_the_private_circle_already_made_for_it() {
 fn joining_writes_the_invites_name_and_cannot_edit_another_person() {
     on_app_runtime(async {
         let household = Household::new().await;
-        let invite = household.invite(new_member("Rowan"), "guest-key").await;
+        let invite = household.invite(new_member(), "guest-key").await;
         let guest_dir = tempfile::tempdir().unwrap();
         let guest = installation_in(&guest_dir);
         let control = bae_library::JoinControl::new();
@@ -410,139 +502,6 @@ fn joining_writes_the_invites_name_and_cannot_edit_another_person() {
     });
 }
 
-/// Rowan loses every device and is invited again under the same member id.
-/// The invite names nobody, so coven keeps no name for the library's open to
-/// ask for a profile under: Rowan keeps the row they had (§5.4).
-#[test]
-fn a_replacement_invite_writes_no_profile() {
-    on_app_runtime(async {
-        let household = Household::new().await;
-        let invite = household.invite(new_member("Rowan"), "guest-key").await;
-        let first_dir = tempfile::tempdir().unwrap();
-        let first = installation_in(&first_dir);
-        let control = bae_library::JoinControl::new();
-        let joining = household.join(&invite.code, &first, &control);
-        let (joined, ()) = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
-            tokio::join!(joining, household.approve())
-        })
-        .await
-        .unwrap();
-        let lost = loaded(joined.unwrap().unwrap());
-        let lost_dir = tempfile::tempdir().unwrap();
-        let (lost_library, rowan) = joined_profile(lost.clone(), &household, lost_dir.path()).await;
-        // Rowan's profile reaches storage before the device is lost.
-        assert!(matches!(
-            lost.retry_now().await.unwrap().await,
-            coven::RetryOutcome::Synced { .. }
-        ));
-        lost_library.manager().close().await.unwrap();
-        let again = household
-            .invite(
-                coven::InviteTarget::ReplaceMemberKeys { member: invite.member },
-                "replacement-key",
-            )
-            .await;
-        let second_dir = tempfile::tempdir().unwrap();
-        let second = installation_in(&second_dir);
-        let joining = bae_library::join_with_invite(
-            household.device(&second),
-            &again.code,
-            "Replacement Device",
-            household.sources.clock().clone(),
-            |_| {},
-            &control,
-            &NO_DIAGNOSTICS,
-        );
-        let (joined, ()) = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
-            tokio::join!(joining, household.approve())
-        })
-        .await
-        .unwrap();
-        let replacement = loaded(joined.unwrap().unwrap());
-        assert_eq!(replacement.joined_invitee().await.unwrap(), None);
-        let people = bae_people::People::new(bae_store::test_devices::store_under(
-            replacement.clone(),
-            household.sources.clock().clone(),
-        ));
-        assert_eq!(people.profile(rowan.id).await.unwrap(), Some(rowan.clone()));
-        // The owner's membership lists each member's devices that can sync
-        // apart from those that lost access, as coven's own member list has
-        // them.
-        let owner_store = bae_store::test_devices::store_under(
-            household.owner.clone(),
-            household.sources.clock().clone(),
-        );
-        let owner = bae_people::Membership::new(owner_store.clone());
-        let owner_people = bae_people::People::new(owner_store);
-        let membership = owner.members().await.unwrap();
-        assert!(membership.self_is_admin);
-        let listed: Vec<_> = household
-            .owner
-            .members()
-            .await
-            .unwrap()
-            .into_iter()
-            .map(|member| {
-                let (active, former): (Vec<_>, Vec<_>) = member
-                    .devices
-                    .into_iter()
-                    .partition(|device| device.state == coven::DeviceState::Active);
-                (
-                    member.id,
-                    member.keys,
-                    member.role,
-                    member.access,
-                    member.is_self,
-                    active.into_iter().map(|device| (device.id, device.name)).collect::<Vec<_>>(),
-                    former.into_iter().map(|device| (device.id, device.name)).collect::<Vec<_>>(),
-                )
-            })
-            .collect();
-        let read: Vec<_> = membership
-            .members
-            .iter()
-            .map(|member| {
-                (
-                    member.id,
-                    member.keys,
-                    member.role,
-                    member.access.clone(),
-                    member.is_self,
-                    member
-                        .active_devices
-                        .iter()
-                        .map(|device| (device.id, device.name.clone()))
-                        .collect::<Vec<_>>(),
-                    member
-                        .former_devices
-                        .iter()
-                        .map(|device| (device.id, device.name.clone()))
-                        .collect::<Vec<_>>(),
-                )
-            })
-            .collect();
-        assert_eq!(read, listed);
-        // Everyone in the library, as the membership lists them, each with
-        // their profile; and the person using this device among them.
-        let people = owner_people.people().await.unwrap();
-        assert_eq!(
-            people.iter().map(|person| person.membership.clone()).collect::<Vec<_>>(),
-            membership.members
-        );
-        for person in &people {
-            assert_eq!(person.profile, owner_people.profile(person.membership.id).await.unwrap());
-        }
-        assert!(people
-            .iter()
-            .any(|person| person.membership.id == rowan.id && person.profile.is_some()));
-        let own = owner_people.own_person().await.unwrap().expect("the owner is in");
-        assert!(own.membership.is_self);
-        assert_eq!(own.profile.as_ref(), Some(&household.robin));
-        replacement.close().await.unwrap();
-        household.owner.close().await.unwrap();
-    });
-}
-
 /// Rowan closes bae while waiting. The next start lists the join with the
 /// invite's names, resumes it without the code, and writes Rowan's profile
 /// (§5.6).
@@ -550,7 +509,7 @@ fn a_replacement_invite_writes_no_profile() {
 fn a_stopped_join_resumes_and_writes_the_profile() {
     on_app_runtime(async {
         let household = Household::new().await;
-        let invite = household.invite(new_member("Rowan"), "guest-key").await;
+        let invite = household.invite(new_member(), "guest-key").await;
         let guest_dir = tempfile::tempdir().unwrap();
         let guest = installation_in(&guest_dir);
         let control = bae_library::JoinControl::new();
@@ -558,6 +517,7 @@ fn a_stopped_join_resumes_and_writes_the_profile() {
         let joining = bae_library::join_with_invite(
             household.device(&guest),
             &invite.code,
+            bae_store::EnteredName::parse("Rowan").unwrap(),
             "Guest Device",
             household.sources.clock().clone(),
             |status| {
@@ -582,8 +542,8 @@ fn a_stopped_join_resumes_and_writes_the_profile() {
             panic!("one join under way");
         };
         assert_eq!(
-            (join.store_name.as_str(), join.invitee.as_deref()),
-            ("Household", Some("Rowan"))
+            (join.store_name.as_str(), join.inviter.as_str(), join.kind),
+            ("Household", "Ana", coven::InviteKind::NewPerson)
         );
         let resuming = bae_library::resume_join(
             || household.device(&guest),
@@ -614,7 +574,7 @@ fn a_stopped_join_resumes_and_writes_the_profile() {
 fn a_restore_onto_a_device_whose_join_waits_leaves_the_join() {
     on_app_runtime(async {
         let household = Household::new().await;
-        let invite = household.invite(new_member("Rowan"), "guest-key").await;
+        let invite = household.invite(new_member(), "guest-key").await;
         let guest_dir = tempfile::tempdir().unwrap();
         let guest = installation_in(&guest_dir);
         let control = bae_library::JoinControl::new();
@@ -622,6 +582,7 @@ fn a_restore_onto_a_device_whose_join_waits_leaves_the_join() {
         let joining = bae_library::join_with_invite(
             household.device(&guest),
             &invite.code,
+            bae_store::EnteredName::parse("Rowan").unwrap(),
             "Guest Device",
             household.sources.clock().clone(),
             |status| {
@@ -694,11 +655,12 @@ async fn stopped_dropbox_join(
     guest: &coven::Coven,
     control: &bae_library::JoinControl,
 ) -> (String, coven::InviteInfo) {
-    let invite = household.invite(new_member("Rowan"), "").await;
+    let invite = household.invite(new_member(), "").await;
     let (waiting, mut waits) = tokio::sync::watch::channel(false);
     let joining = bae_library::join_with_invite(
         sign_in.configure(household.device(guest)),
         &invite.code,
+        bae_store::EnteredName::parse("Rowan").unwrap(),
         "Guest Device",
         household.sources.clock().clone(),
         |status| {
@@ -836,7 +798,7 @@ fn an_ended_dropbox_invite_ends_before_any_sign_in() {
     on_app_runtime(async {
         let sign_in = DropboxSignIn::start().await;
         let household = Household::on_dropbox(&sign_in).await;
-        let invite = household.invite(new_member("Rowan"), "").await;
+        let invite = household.invite(new_member(), "").await;
         let ended = ended_clock(&invite.code);
         let guest_dir = tempfile::tempdir().unwrap();
         let guest = installation_in(&guest_dir);
@@ -844,6 +806,7 @@ fn an_ended_dropbox_invite_ends_before_any_sign_in() {
         let joined = bae_library::join_with_invite(
             sign_in.configure(household.device(&guest)).clock(ended.clone()),
             &invite.code,
+            bae_store::EnteredName::parse("Rowan").unwrap(),
             "Guest Device",
             ended,
             |_| {},
@@ -877,6 +840,7 @@ fn a_join_whose_request_was_sent_goes_on_after_its_invite_ends() {
         let joining = bae_library::join_with_invite(
             sign_in.configure(household.device(&guest)).clock(ended.clone()),
             &code,
+            bae_store::EnteredName::parse("Rowan").unwrap(),
             "Guest Device",
             ended,
             |_| {},

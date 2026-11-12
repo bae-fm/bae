@@ -2200,6 +2200,10 @@ pushes the covers out:
 | Artist images | 256 MiB |
 | Avatars | 64 MiB |
 
+Pinned files don't count toward a budget: a device that pins 20 GiB of audio
+still caches the next album it plays from the cloud, up to the budget, and no
+pinned file goes.
+
 A file downloads when it is first read: a cover when it is first shown, a
 track as it plays. Over budget, the least recently used go first. Covers are
 never pinned; an evicted one is fetched again the next time it is shown.
@@ -2243,8 +2247,7 @@ lands; a share counts against the file's own size, since the watch's bytes are
 the encrypted object's. A file counts its share until the watch says how its
 download ended, and its whole size after only if the download finished, so the
 bytes never go back as a file lands; a download that failed, was held or was
-dropped counts none of its file. Its rate is what it has moved since it began over the time since. Unpinning moves the files into the
-cache, still readable, now evictable, and ends any request coven still holds to
+dropped counts none of its file. Its rate is what it has moved since it began over the time since. Unpinning removes the release's files from this device in the same write, with room in the cache or not: the pinned whole copy, any cached chunks and the partial download a pin left go once the write has committed, nothing else is evicted, and playing the release again reads from storage. It also ends any request coven still holds to
 keep them here ([coven §17.8](https://github.com/bae-fm/coven/blob/main/spec/coven.md#178-cache-and-pinning)); unpinning a selection is one write for
 all its releases, and one that can't unpin is named while the rest unpin.
 
@@ -2555,10 +2558,10 @@ history setting.
   ([coven §13.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#133-losing-everything)).
 - **Ratings, history and playlists point at the person**, not the member.
 - **The joining person's own device asks for their `people` row** with the
-  name the admin typed in the invite, so every member has a profile once
-  their circle is made (below). They can rename themselves later. Only the
-  invite holds that name on the joining device, and coven keeps it with the
-  library the join publishes, on that device only, until bae acknowledges it
+  name they typed when they joined, which their join request carried, so
+  every member has a profile once their circle is made (below). They can
+  rename themselves later. Coven keeps that name with the library the join
+  publishes, on that device only, until bae acknowledges it
   ([coven §13.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#132-adding-a-person-invites)).
   Every open of the library reads it: once the library knows the person, at
   once or when sync has loaded that far, one write asks for the profile and
@@ -2815,8 +2818,8 @@ recorded itself there, is refused before anything changes ([coven
 and the code screen goes on with the call under way instead, a join first, as
 at launch.
 
-Dan joins. In People, Ana taps **Invite** and enters "Dan", his Dropbox email
-and a role, then picks how long the invite lasts: an hour, a day or a week.
+Dan joins. In People, Ana taps **Invite** and enters his Dropbox email and a
+role (no name: Dan types his own when he joins), then picks how long the invite lasts: an hour, a day or a week.
 Her laptop records the
 invite in one write, offline too, and shows it at once, marked as sharing
 access: sync then checks it again and shares the store's folder with his
@@ -2824,24 +2827,38 @@ account, and the invite's code shows once it has. On S3, Ana makes an access
 key for Dan instead of sharing with an account. When sync can't share it, or
 the library refuses the invite (Ana is no longer an admin, say), the invite
 says why in its row and where its code would be, and **Cancel invite** ends
-it. Either way the invite carries the
-library's current name and Dan's, and Dan's phone starts joining as soon as it
-reads the code, with no form to fill in
+it. A grant the provider refuses for good, for a reason only a person can
+fix (Dropbox has no account for the address, the inviter's email is
+unverified, their team doesn't share outside the team, their plan has no
+sharing, or the folder holds as many people as the plan allows), ends the
+invite at once instead of being retried. Either way the invite carries the
+library's current name and Ana's, the name she goes by (her profile's, else the
+name her pending profile request asked for, else the one her library kept from
+its creation (§5.4)); a person with none of the three can't be an inviter, which
+is a bug of bae's, not a state to show
 ([coven §13.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#132-adding-a-person-invites)):
 
 Dan taps **Scan code** and scans Ana's screen, or Ana sends him the code and
-he taps **Enter code** and pastes it. His waiting screen shows until when it
-waits, which is when the invite expires, his confirmation number, a countdown
-to the next check in whole seconds, rounded up so it never reads 0 before the
-check, and **Check now**. When his request arrives, Ana's laptop shows a dialog
-with Dan's name, asks her to make sure this code is showing, and shows
+he taps **Enter code** and pastes it. After the code reads, his phone asks his
+name on a step of its own, "You’re invited to Household", with **Your name**
+empty (its placeholder says it appears on his profile, ratings and playlists),
+and **Join**, off while the field is blank; **Cancel** (a Mac) or Back (Android)
+returns to the first screen. A code whose library already has a join under way
+on his phone goes on with that join instead, with no name step, since coven
+refuses a second, different name. He then joins under that name, which coven
+refuses only by its rule for names, and the step says so. His waiting screen
+shows until when it waits, which is when the invite expires, and his
+confirmation number. It has no countdown and no **Check now**: while it shows,
+the join checks every 5 seconds from the end of its last check, and when it
+doesn't, on coven's doubling waits (a provider's cooldown holds either). When
+his request arrives, Ana's laptop shows a dialog with the name Dan typed, asks her to make sure this code is showing, and shows
 the same number under it, with **Approve** and **Decline**. Ana compares it with
 Dan's screen, or asks him for his number, and approves if it matches. Every
 invite waits for her approval: someone who saw the code could use it before Dan,
 and only the number shows whose request it is.
 
 Once his phone has opened the library and loaded his admission, it asks
-for his `people` row with that name (§5.4). Everyone's devices show Dan by
+for his `people` row with the name he typed (§5.4). Everyone's devices show Dan by
 name.
 
 **Once Ana approves.** As soon as Dan's phone finds her approval, the library
@@ -2850,7 +2867,7 @@ library, then loads it, and a cancel changes nothing from then on
 ([coven §13.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#132-adding-a-person-invites)).
 When the load fails, because his phone lost its access to the storage first
 (Ana removed him, or the provider took the share back), the library opens all
-the same, under the name the invite carried, and the app says what failed.
+the same, under the name he typed, and the app says what failed.
 It is no failed join, and the first screen lists no join under way for it: it
 is a library that can't reach its storage, which its sync state shows, which
 sync retries, and which Dan removes as he removes any library. A load that
@@ -2860,7 +2877,8 @@ library asks for his profile under it once sync has loaded that far, at
 that open or a later one (§5.4).
 
 **Open invites.** Until it ends, each invite Ana's laptop made is a row in
-People: the person's name, marked invited. The rows follow coven's list of this
+People: the address it shares with (the key's id on S3), marked invited. An
+invite's own screen is titled **Invite**. The rows follow coven's list of this
 device's open invites
 ([coven §13.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#132-adding-a-person-invites)),
 which coven ends when the invite is approved, declined, cancelled or expires, so
@@ -4398,7 +4416,7 @@ library is registered there by id.
 | `forget_saved_restore_code` | deletes a saved restore code, readable or not, and the S3 key beside it from iCloud Keychain on all the person's Apple devices, or from this device's Block Store; no library, storage or device's copy changes, and an absent code succeeds (§5.6) |
 | `restore_replacing_device` | after another of the person's devices replaced their keys, checks the code restores this library, then restores it under a new device id beside this device's copy, keeping this device's settings, which a restore failing before its record leaves as it was; called again, finishes a restore that stopped after its record (§6.4) |
 | `resume_replacement` | finishes this device's reset or restore of a library that stopped after its record, from what coven kept: no code, and no sign-in unless the provider refuses the kept one; told which call the listing names, so a restore's finishing can be cancelled and a reset's can't (§6.4) |
-| `join_with_invite` | joins a library from an invite, whose name for the person coven keeps with the library for its open to ask for their profile under (§5.4); once approved, returns the library open even when its first load failed, with that failure (§5.6) |
+| `join_with_invite` | joins a library from an invite as the person named in the call, whose name the request carries; coven keeps it with the library for its open to ask for their profile under (§5.4); once approved, returns the library open even when its first load failed, with that failure (§5.6) |
 | `unfinished_joins`, `resume_join` | list the joins this device has under way, and continue one after bae restarts, without the code, signing in only when coven has no sign-in it can use (§5.6) |
 | `unfinished_restores`, `resume_restore` | list the restores onto this device that stopped after they recorded themselves, and finish one after bae restarts, without the code, signing in only when coven has no sign-in it can use; a cancel before the device registered takes the restore back (§5.6) |
 | `reset_device` | loads a library again under a fresh device id, after the warning; called again, finishes a reset that stopped after its record (§6.4) |

@@ -291,9 +291,6 @@
     <string name="loading_closing_library">Lukker biblioteket…</string>
     <string name="loading_removing_library">Fjerner biblioteket…</string>
     <string name="loading_resetting_device">Nulstiller denne enhed…</string>
-    <string name="onboarding_checking">Kontrollerer…</string>
-    <string name="onboarding_next_check">Næste kontrol om %1$s</string>
-    <string name="onboarding_check_now">Kontrollér nu</string>
     <string name="pending_update_no_store">Ingen appbutik på denne enhed kan opdatere bae.</string>
     <string name="storage_setup_title">Konfigurer synkronisering</string>
     <string name="settings_set_up_sync_explanation">Dette bibliotek ligger kun på denne enhed. Synkronisering holder det i et skyhjem, hvor dine andre enheder og din husstand kan bruge det.</string>
@@ -443,4 +440,9 @@
     <string name="pinning_empty">Intet at fastgøre</string>
     <string name="pinning_load_failed">Kunne ikke indlæse dine fastgørelser.</string>
     <string name="pinning_load_more_failed">Kunne ikke indlæse flere fastgørelser.</string>
+    <string name="onboarding_invited_to">Du er inviteret til %1$s</string>
+    <string name="onboarding_join_library">Deltag i bibliotek</string>
+    <string name="onboarding_join">Deltag</string>
+    <string name="onboarding_your_name">Dit navn</string>
+    <string name="onboarding_name_placeholder">Vises på din profil, dine vurderinger og afspilningslister</string>
 </resources>

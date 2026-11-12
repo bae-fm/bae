@@ -4,8 +4,9 @@ import os.log
 
 private let logger = Logger.bae("InvitePersonSheet")
 
-/// An admin invites a person: their name, role and how they reach storage,
-/// and how long the invite lasts.
+/// An admin invites a person: their role and how they reach storage, and how
+/// long the invite lasts. The invited person types their own name when they
+/// join.
 /// `onCreated` receives the new invite's id, for People to show its code.
 struct InvitePersonSheet: View {
     let onCreated: (String) -> Void
@@ -16,8 +17,6 @@ struct InvitePersonSheet: View {
     @Environment(ConfigStore.self)
     private var configStore
 
-    @State
-    private var name = ""
     @State
     private var role: BridgeMemberRole = .member
     @State
@@ -40,12 +39,8 @@ struct InvitePersonSheet: View {
         return false
     }
 
-    private var trimmedName: String {
-        name.trimmingCharacters(in: .whitespaces)
-    }
-
     private var ready: Bool {
-        guard task == nil, !trimmedName.isEmpty else { return false }
+        guard task == nil else { return false }
         if usesAccessKey {
             return !accessKeyId.isEmpty && !secretAccessKey.isEmpty
         }
@@ -73,7 +68,6 @@ struct InvitePersonSheet: View {
         VStack(spacing: 0) {
             Form {
                 Section {
-                    TextField("Name", text: $name)
                     Picker("Role", selection: $role) {
                         Text("Member").tag(BridgeMemberRole.member)
                         Text("Admin").tag(BridgeMemberRole.admin)
@@ -127,14 +121,12 @@ struct InvitePersonSheet: View {
             )
         let lifetime = lifetime
         let role = role
-        let name = trimmedName
         error = nil
         task = Task {
             defer { task = nil }
             do {
                 let inviteId = try await sync.invitePerson(
                     role,
-                    name,
                     access,
                     lifetime
                 )

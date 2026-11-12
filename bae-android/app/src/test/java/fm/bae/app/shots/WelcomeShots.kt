@@ -15,6 +15,7 @@ import fm.bae.app.ui.ResetOfferedScreen
 import fm.bae.app.ui.components.RemovalLoss
 import fm.bae.app.ui.components.RemoveLibraryText
 import fm.bae.app.ui.onboarding.CodeEntry
+import fm.bae.app.ui.onboarding.JoinNameStep
 import fm.bae.app.ui.onboarding.JoinStart
 import fm.bae.app.ui.onboarding.LibraryDetailsRows
 import fm.bae.app.ui.onboarding.OnboardingProgress
@@ -34,7 +35,6 @@ import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeCodeMetadata
 import uniffi.bae_bridge.BridgeInviteInfo
 import uniffi.bae_bridge.BridgeLibraryStanding
-import uniffi.bae_bridge.BridgeNextCheck
 import uniffi.bae_bridge.BridgeStandingState
 import uniffi.bae_bridge.BridgeSyncStatusWord
 import uniffi.bae_bridge.BridgeSyncTone
@@ -129,7 +129,39 @@ class WelcomeShots : BoardShot() {
             }
         }
 
-    /** A join waiting for approval: its confirmation number, until when it waits, when it checks next. */
+    /** The step after an invite's code reads: the joining person's name, empty, above the keyboard's place. */
+    @Test
+    fun androidWelcomeJoinName() =
+        shot("android.welcome.join.name") {
+            ScreenScene {
+                JoinNameStep(
+                    step =
+                        OnboardingStep.JoinName(
+                            code = "invite-code",
+                            invite =
+                                BridgeInviteInfo(
+                                    metadata =
+                                        BridgeCodeMetadata(
+                                            libraryId = "home",
+                                            memberId = "ana",
+                                            provider = BridgeCloudProvider.DROPBOX,
+                                            location = sceneDropbox,
+                                            oauthAccess = null,
+                                            carriesS3Key = false,
+                                        ),
+                                    libraryName = "Home music",
+                                    expiresAt = Instant.ofEpochSecond(JOIN_NOW_SECONDS + ONE_DAY_SECONDS),
+                                ),
+                            entry = CodeEntry.NewDevice,
+                        ),
+                    error = null,
+                    onJoin = {},
+                    onBack = {},
+                )
+            }
+        }
+
+    /** A join waiting for approval: its confirmation number and until when it waits. */
     @Test
     fun androidWelcomeJoinWaiting() =
         shot("android.welcome.join.waiting") {
@@ -139,7 +171,7 @@ class WelcomeShots : BoardShot() {
                         OnboardingStep.Running(
                             from =
                                 OnboardingStep.Invite(
-                                    start = JoinStart.Code("invite-code"),
+                                    start = JoinStart.Code("invite-code", "Dan"),
                                     invite =
                                         BridgeInviteInfo(
                                             metadata =
@@ -152,7 +184,6 @@ class WelcomeShots : BoardShot() {
                                                     carriesS3Key = false,
                                                 ),
                                             libraryName = "Home music",
-                                            invitee = "Ana",
                                             expiresAt = Instant.ofEpochSecond(JOIN_NOW_SECONDS + ONE_DAY_SECONDS),
                                         ),
                                     entry = CodeEntry.NewDevice,
@@ -162,27 +193,19 @@ class WelcomeShots : BoardShot() {
                                     status =
                                         BridgeBootstrapStatus.WaitingForApproval(
                                             confirmation = "412 778",
-                                            nextCheck =
-                                                BridgeNextCheck.At(
-                                                    Instant.ofEpochSecond(JOIN_NOW_SECONDS + JOIN_NEXT_CHECK_SECONDS),
-                                                ),
                                         ),
                                     cancellable = false,
                                 ),
                             steps = LatestStream.bootstrapSteps().only,
                         ),
                     onCancel = null,
-                    onCheckNow = {},
-                    nowMs = { JOIN_NOW_SECONDS * MILLIS_PER_SECOND },
                 )
             }
         }
 }
 
 private const val JOIN_NOW_SECONDS = 1_800_000_000L
-private const val JOIN_NEXT_CHECK_SECONDS = 42L
 private const val ONE_DAY_SECONDS = 86_400L
-private const val MILLIS_PER_SECOND = 1_000L
 
 @Composable
 private fun LibraryDetailsScene(state: BridgeStandingState) {

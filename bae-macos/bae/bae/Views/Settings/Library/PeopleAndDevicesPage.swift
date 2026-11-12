@@ -173,7 +173,7 @@ struct PeopleAndDevicesPage: View {
                 let request = invite.requestToDecide
             {
                 JoinRequestSheet(
-                    title: invite.invitee ?? "",
+                    title: request.info().name,
                     confirmation: request.info().confirmation,
                     busy: task != nil,
                     error: actionError,
@@ -815,7 +815,8 @@ private struct FormerDevicesDisclosure: View {
     }
 }
 
-/// One of this device's open invites: the person's name, marked sharing
+/// One of this device's open invites: the address it shares with (the key's
+/// id on S3), marked sharing
 /// access until sync has granted it, then invited, or joining once approval
 /// has begun; why coven holds its work, when it does; and a refresh that checks for its request now.
 private struct InviteRow: View {
@@ -828,7 +829,7 @@ private struct InviteRow: View {
             HStack(spacing: ThemeSpace.related) {
                 Button(action: onOpen) {
                     HStack(spacing: ThemeSpace.related) {
-                        Text(verbatim: invite.invitee ?? "")
+                        Text(verbatim: invite.label)
                             .themeText(.rowTitle)
                         switch invite.shown {
                         case .granting:

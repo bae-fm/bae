@@ -73,6 +73,7 @@ internal open class NoJoinsHost : EditionFakeBridgeHost() {
 
     override suspend fun joinWithInvite(
         code: String,
+        name: String,
         deviceName: String,
         setup: BridgeLibrarySetup,
         control: BridgeJoinControl,

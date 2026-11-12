@@ -49,7 +49,6 @@ pub enum BridgeBootstrapStatus {
     /// before approving, as coven writes it (`041 778`).
     WaitingForApproval {
         confirmation: String,
-        next_check: BridgeNextCheck,
     },
     /// Loading the library from storage. A join reports it for the check
     /// that finds its approval, then, after `Committing`, for loading the
@@ -76,25 +75,6 @@ pub struct BridgeBootstrapState {
     pub cancellable: bool,
 }
 
-/// When a waiting join checks for approval next.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeNextCheck {
-    /// A check is running now.
-    Checking,
-    /// On the join's backoff; checking now ends the wait.
-    At { time: std::time::SystemTime },
-    /// The provider asked to slow down until then; checking now waits too.
-    CoolingDown { until: std::time::SystemTime },
-}
-impl BridgeNextCheck {
-    fn from_core(value: coven::NextCheck) -> Self {
-        match value {
-            coven::NextCheck::Checking => Self::Checking,
-            coven::NextCheck::At(time) => Self::At { time },
-            coven::NextCheck::CoolingDown(until) => Self::CoolingDown { until },
-        }
-    }
-}
 /// The counted step a restore, a join or a device reset runs while it opens
 /// the new installation's database or loads the library: its setup's
 /// stream's one key, `""`, holds it while the step runs.
@@ -117,11 +97,8 @@ impl BridgeBootstrapStatus {
                 return (Self::Opening, Some(BridgeBootstrapStep::Opening { progress }));
             }
             coven::BootstrapStatus::Connecting => Self::Connecting,
-            coven::BootstrapStatus::WaitingForApproval { confirmation, next_check } => {
-                Self::WaitingForApproval {
-                    confirmation: confirmation.to_string(),
-                    next_check: BridgeNextCheck::from_core(next_check),
-                }
+            coven::BootstrapStatus::WaitingForApproval { confirmation } => {
+                Self::WaitingForApproval { confirmation: confirmation.to_string() }
             }
             coven::BootstrapStatus::Registering => Self::Registering,
             coven::BootstrapStatus::Committing => Self::Committing,

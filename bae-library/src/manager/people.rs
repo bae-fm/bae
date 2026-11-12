@@ -2,11 +2,6 @@
 
 use super::*;
 
-/// How often this device syncs while Add Device's sheet watches for the new
-/// device. A quiet pass is two requests: about 24 a minute, only while the
-/// sheet is open.
-const ADD_DEVICE_SYNC_INTERVAL: std::time::Duration = std::time::Duration::from_secs(5);
-
 impl LibraryManager {
     /// Set this person's avatar to the image in `bytes`, downscaled to the
     /// JPEG bae stores for covers and artist pictures, or clear it with `None`.
@@ -80,7 +75,7 @@ impl LibraryManager {
         &self,
         watch: crate::sync::membership::AddedDeviceWatch,
     ) -> coven::LiveQuery<Option<bae_people::membership::ActiveDevice>, bae_store::DbError> {
-        let sync_often = self.store.sync_often(ADD_DEVICE_SYNC_INTERVAL);
+        let sync_often = self.store.sync_often(crate::bootstrap::WAITING_SCREEN_CHECK_INTERVAL);
         self.subscribe_members().process(move |membership| {
             // The subscription owns the request; dropping it ends the request.
             let _sync_often = &sync_often;

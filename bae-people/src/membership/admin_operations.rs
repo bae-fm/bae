@@ -14,7 +14,8 @@ pub(super) enum AdminTarget {
     Role(coven::MemberId, coven::MemberRole),
     Person(coven::MemberId),
     Device(coven::DeviceId),
-    /// The member a request joins as, and the name its invite gave them.
+    /// The member a request joins as, and the name their request carried;
+    /// none for a recovery, whose profile already has one.
     Approval(coven::MemberId, Option<String>),
 }
 
@@ -100,9 +101,12 @@ fn admin_changes_on(sql: &impl coven::SqlRead) -> rusqlite::Result<Vec<AdminChan
             }
             Some(coven::OperationOutcome::Rejected(reason)) => AdminChangeState::Refused(reason),
             Some(coven::OperationOutcome::Stopped(stop)) => AdminChangeState::Stopped(stop),
-            // Only storage setup is cancelled or undone, never an admin change.
+            // Only storage setup is cancelled or undone, and only an invite's
+            // grant is refused sharing, never an admin change.
             Some(
-                outcome @ (coven::OperationOutcome::Cancelled | coven::OperationOutcome::Undone(_)),
+                outcome @ (coven::OperationOutcome::Cancelled
+                | coven::OperationOutcome::Undone(_)
+                | coven::OperationOutcome::SharingRefused { .. }),
             ) => {
                 return Err(bae_store::read::column_conversion_error(
                     row,
@@ -198,6 +202,40 @@ impl Membership {
     }
 }
 
+/// Why an invite couldn't be made.
+#[derive(Debug, thiserror::Error)]
+pub enum InviteError {
+    /// This device's person has no name: no profile, no request for one and
+    /// no name kept from creating the library. No path makes such a person,
+    /// so this is a bug of bae's.
+    #[error("the inviting person has no name")]
+    InviterUnnamed,
+    #[error(transparent)]
+    Database(#[from] bae_store::DbError),
+    #[error(transparent)]
+    Sync(#[from] coven::SyncError),
+}
+
+impl Membership {
+    /// Invite a new person with the role and access chosen. The invite names
+    /// its inviter by the name this person goes by, which the joining
+    /// person's screens show; it carries no name for the invited person, who
+    /// types theirs (§5.4, §5.6).
+    pub async fn invite_person(
+        &self,
+        role: coven::MemberRole,
+        access: coven::InviteAccess,
+        lifetime: coven::InviteLifetime,
+    ) -> Result<coven::InviteId, InviteError> {
+        let inviter = self
+            .store
+            .read(|sql| Ok(crate::people::name_this_person_goes_by(&sql)?))
+            .await?
+            .ok_or(InviteError::InviterUnnamed)?;
+        Ok(self.store.invite_person(role, access, lifetime, inviter).await?)
+    }
+}
+
 impl Membership {
     /// Rename the store as an admin: the write journals the rename, which
     /// a pass claims, and records it to show (§5.6).
@@ -243,22 +281,19 @@ impl Membership {
     }
 
     /// Approve an invite's request: the write journals the approval,
-    /// which a pass binds, and records it to show by the name the invite
-    /// gave its person (§5.6).
+    /// which a pass binds, and records it to show by the name the person
+    /// typed, which their request carries; a recovery's request carries
+    /// none, and the row reads their profile (§5.6).
     pub async fn approve_join_request(
         &self,
         request: &coven::JoinRequest,
     ) -> Result<(), coven::SyncError> {
-        let invite = request.invite;
-        let invitee = self
-            .store
-            .read_coven(coven::Invite::list)
-            .await?
-            .into_iter()
-            .find(|open| open.id == invite)
-            .and_then(|open| open.invitee);
+        let name = match &request.joiner {
+            coven::Joiner::NewPerson { name } => Some(name.clone()),
+            coven::Joiner::Recovery => None,
+        };
         let request = request.clone();
-        self.admin_change(AdminTarget::Approval(request.member, invitee), move |sql| {
+        self.admin_change(AdminTarget::Approval(request.member, name), move |sql| {
             Ok((Some(sql.approve_join_request(&request)?), ()))
         })
         .await

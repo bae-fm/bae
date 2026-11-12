@@ -299,9 +299,6 @@
     <string name="loading_closing_library">Chiusura della libreria…</string>
     <string name="loading_removing_library">Rimozione della libreria…</string>
     <string name="loading_resetting_device">Ripristino di questo dispositivo…</string>
-    <string name="onboarding_checking">Controllo in corso…</string>
-    <string name="onboarding_next_check">Prossimo controllo tra %1$s</string>
-    <string name="onboarding_check_now">Controlla ora</string>
     <string name="pending_update_no_store">Nessuno store di app su questo dispositivo può aggiornare bae.</string>
     <string name="storage_setup_title">Configura sincronizzazione</string>
     <string name="settings_set_up_sync_explanation">Questa libreria è archiviata solo su questo dispositivo. La sincronizzazione la tiene in una casa nel cloud, dove i tuoi altri dispositivi e la tua famiglia possono usarla.</string>
@@ -451,4 +448,9 @@
     <string name="pinning_empty">Niente da fissare</string>
     <string name="pinning_load_failed">Impossibile caricare i fissaggi.</string>
     <string name="pinning_load_more_failed">Impossibile caricare altri fissaggi.</string>
+    <string name="onboarding_invited_to">Sei invitato a %1$s</string>
+    <string name="onboarding_join_library">Unisciti a una libreria</string>
+    <string name="onboarding_join">Unisciti</string>
+    <string name="onboarding_your_name">Il tuo nome</string>
+    <string name="onboarding_name_placeholder">Compare nel tuo profilo, nelle valutazioni e nelle playlist</string>
 </resources>

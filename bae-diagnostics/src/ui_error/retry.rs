@@ -141,6 +141,7 @@ fn storage_retry_can_help(failure: coven::StorageFailure) -> bool {
         | F::SingleRequestTooLarge { .. }
         | F::CopyTooLarge { .. }
         | F::Encoding
+        | F::SharingRefused(_)
         // A bug in coven's storage work, which the same call meets again.
         | F::Bug => false,
     }

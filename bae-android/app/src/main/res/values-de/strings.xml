@@ -293,9 +293,6 @@
     <string name="loading_closing_library">Bibliothek wird geschlossen…</string>
     <string name="loading_removing_library">Bibliothek wird entfernt…</string>
     <string name="loading_resetting_device">Dieses Gerät wird zurückgesetzt…</string>
-    <string name="onboarding_checking">Wird geprüft…</string>
-    <string name="onboarding_next_check">Nächste Prüfung in %1$s</string>
-    <string name="onboarding_check_now">Jetzt prüfen</string>
     <string name="pending_update_no_store">Kein App-Store auf diesem Gerät kann bae aktualisieren.</string>
     <string name="storage_setup_title">Sync einrichten</string>
     <string name="settings_set_up_sync_explanation">Diese Bibliothek liegt nur auf diesem Gerät. Sync hält sie in einem Cloud-Zuhause, wo deine anderen Geräte und dein Haushalt sie nutzen können.</string>
@@ -445,4 +442,9 @@
     <string name="pinning_empty">Nichts zum Anheften</string>
     <string name="pinning_load_failed">Deine Anheftungen konnten nicht geladen werden.</string>
     <string name="pinning_load_more_failed">Weitere Anheftungen konnten nicht geladen werden.</string>
+    <string name="onboarding_invited_to">Du wurdest zu %1$s eingeladen</string>
+    <string name="onboarding_join_library">Mediathek beitreten</string>
+    <string name="onboarding_join">Beitreten</string>
+    <string name="onboarding_your_name">Dein Name</string>
+    <string name="onboarding_name_placeholder">Erscheint in deinem Profil, deinen Bewertungen und Wiedergabelisten</string>
 </resources>

@@ -305,9 +305,6 @@
     <string name="loading_closing_library">Zatvára sa knižnica…</string>
     <string name="loading_removing_library">Odstraňuje sa knižnica…</string>
     <string name="loading_resetting_device">Resetuje sa toto zariadenie…</string>
-    <string name="onboarding_checking">Prebieha kontrola…</string>
-    <string name="onboarding_next_check">Ďalšia kontrola o %1$s</string>
-    <string name="onboarding_check_now">Skontrolovať teraz</string>
     <string name="pending_update_no_store">Žiadny obchod s aplikáciami v tomto zariadení nemôže aktualizovať bae.</string>
     <string name="storage_setup_title">Nastaviť synchronizáciu</string>
     <string name="settings_set_up_sync_explanation">Táto knižnica je uložená len v tomto zariadení. Synchronizácia ju udržiava v cloudovom domove, kde ju môžu používať aj tvoje ďalšie zariadenia a domácnosť.</string>
@@ -459,4 +456,9 @@
     <string name="pinning_empty">Nič na pripnutie</string>
     <string name="pinning_load_failed">Pripnutia sa nepodarilo načítať.</string>
     <string name="pinning_load_more_failed">Ďalšie pripnutia sa nepodarilo načítať.</string>
+    <string name="onboarding_invited_to">Boli ste pozvaní do %1$s</string>
+    <string name="onboarding_join_library">Pripojiť sa ku knižnici</string>
+    <string name="onboarding_join">Pripojiť sa</string>
+    <string name="onboarding_your_name">Vaše meno</string>
+    <string name="onboarding_name_placeholder">Zobrazí sa vo vašom profile, hodnoteniach a zoznamoch skladieb</string>
 </resources>

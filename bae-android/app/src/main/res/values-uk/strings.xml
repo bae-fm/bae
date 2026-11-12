@@ -307,9 +307,6 @@
     <string name="loading_closing_library">Закриття бібліотеки…</string>
     <string name="loading_removing_library">Вилучення бібліотеки…</string>
     <string name="loading_resetting_device">Скидання цього пристрою…</string>
-    <string name="onboarding_checking">Перевірка…</string>
-    <string name="onboarding_next_check">Наступна перевірка через %1$s</string>
-    <string name="onboarding_check_now">Перевірити зараз</string>
     <string name="pending_update_no_store">Жодна крамниця застосунків на цьому пристрої не може оновити bae.</string>
     <string name="storage_setup_title">Налаштувати синхронізацію</string>
     <string name="settings_set_up_sync_explanation">Ця бібліотека зберігається лише на цьому пристрої. Синхронізація тримає її у хмарному домі, де нею можуть користуватися інші ваші пристрої та домівка.</string>
@@ -461,4 +458,9 @@
     <string name="pinning_empty">Нічого закріплювати</string>
     <string name="pinning_load_failed">Не вдалося завантажити закріплення.</string>
     <string name="pinning_load_more_failed">Не вдалося завантажити більше закріплень.</string>
+    <string name="onboarding_invited_to">Вас запрошено до %1$s</string>
+    <string name="onboarding_join_library">Приєднатися до бібліотеки</string>
+    <string name="onboarding_join">Приєднатися</string>
+    <string name="onboarding_your_name">Ваше ім’я</string>
+    <string name="onboarding_name_placeholder">Показується у вашому профілі, оцінках і плейлистах</string>
 </resources>

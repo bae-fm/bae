@@ -12,6 +12,11 @@ use super::*;
 pub struct OpenInvite {
     pub invite: coven::Invite,
     pub held: Option<bae_sync_status::PendingWait>,
+    /// The name a request awaiting the admin's decision shows: the one the
+    /// person typed when they joined, which their request carries, or, for a
+    /// member getting access again (a recovery), the name of their profile.
+    /// None while no request has arrived.
+    pub requester: Option<String>,
 }
 
 impl OpenInvite {
@@ -29,9 +34,35 @@ impl OpenInvite {
                     })
                     .filter(|record| !waits_for_its_person(&invite, record))
                     .map(|record| bae_sync_status::PendingWait::of(record, None));
-                Self { invite, held }
+                Self { invite, held, requester: None }
             })
             .collect()
+    }
+}
+
+/// The name the request of `invite`, if one has arrived, shows. A recovery's
+/// request carries none: the member already has a profile, whose name stands.
+/// A member with no profile is a row no writer here makes.
+fn requester_name(
+    invite: &coven::Invite,
+    profiles: &std::collections::HashMap<coven::MemberId, String>,
+) -> Result<Option<String>, bae_store::DbError> {
+    let request = match &invite.stage {
+        coven::InviteStage::Waiting { request: Some(request), .. }
+        | coven::InviteStage::Approving { request, .. } => request,
+        coven::InviteStage::Waiting { request: None, .. } | coven::InviteStage::Granting => {
+            return Ok(None)
+        }
+    };
+    match &request.joiner {
+        coven::Joiner::NewPerson { name } => Ok(Some(name.clone())),
+        coven::Joiner::Recovery => match profiles.get(&request.member) {
+            Some(name) => Ok(Some(name.clone())),
+            None => Err(bae_store::DbError::unreadable(
+                "people.name of a recovering member",
+                request.member,
+            )),
+        },
     }
 }
 
@@ -57,7 +88,17 @@ impl LibraryViews {
                 record.cause = row.get(1)?;
                 Ok(record)
             })?;
-            Ok(OpenInvite::held_by(coven::Invite::list(sql)?, &records))
+            let profiles: std::collections::HashMap<coven::MemberId, String> = sql
+                .query("SELECT id, name FROM people", [], |row| {
+                    Ok((row.get::<_, coven::MemberId>(0)?, row.get::<_, String>(1)?))
+                })?
+                .into_iter()
+                .collect();
+            let mut open = OpenInvite::held_by(coven::Invite::list(sql)?, &records);
+            for invite in &mut open {
+                invite.requester = requester_name(&invite.invite, &profiles)?;
+            }
+            Ok(open)
         })
     }
 }

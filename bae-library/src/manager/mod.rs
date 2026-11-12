@@ -287,6 +287,18 @@ impl From<bae_records::TrackAudioError> for LibraryError {
     }
 }
 
+impl From<bae_people::membership::InviteError> for LibraryError {
+    fn from(error: bae_people::membership::InviteError) -> Self {
+        use bae_people::membership::InviteError as E;
+        match error {
+            // A bug of bae's: no path makes a person with no name.
+            E::InviterUnnamed => Self::Internal(error.to_string()),
+            E::Database(error) => Self::Database(error),
+            E::Sync(error) => Self::Sync(error),
+        }
+    }
+}
+
 impl From<coven::DbError> for LibraryError {
     fn from(error: coven::DbError) -> Self {
         Self::Database(error.into())

@@ -14,7 +14,7 @@ fn undone() -> SetupRow {
 #[test]
 fn a_setup_with_no_outcome_runs_and_names_where_setup_stands() {
     use coven::OperationId as Id;
-    assert_eq!(SetupRow::of(None), SetupRow::Running);
+    assert_eq!(SetupRow::of(None).unwrap(), SetupRow::Running);
     let rows = vec![(Id(1), undone()), (Id(2), SetupRow::Running), (Id(3), undone())];
     assert_eq!(standing(rows), Some(StorageSetupState::Running));
 }
@@ -31,12 +31,18 @@ fn the_newest_undone_setup_shows_and_settled_ones_show_nothing() {
 #[test]
 fn how_a_setup_ended_reads_as_settled_or_undone() {
     use coven::OperationOutcome as O;
-    let category = |outcome| match SetupRow::of(Some(outcome)) {
+    let category = |outcome| match SetupRow::of(Some(outcome)).unwrap() {
         SetupRow::Undone(UiError::Diagnostic { category, .. }) => Some(category),
         SetupRow::Running | SetupRow::Settled => None,
     };
-    assert_eq!(SetupRow::of(Some(O::Satisfied)), SetupRow::Settled);
-    assert_eq!(SetupRow::of(Some(O::Cancelled)), SetupRow::Settled);
+    assert_eq!(SetupRow::of(Some(O::Satisfied)).unwrap(), SetupRow::Settled);
+    assert_eq!(SetupRow::of(Some(O::Cancelled)).unwrap(), SetupRow::Settled);
+    // A refused sharing is no way for a storage setup to end.
+    let refused = O::SharingRefused {
+        account: "ana@example.com".into(),
+        refusal: coven::SharingRefusal::InvalidAddress,
+    };
+    assert!(SetupRow::of(Some(refused)).is_err());
     assert_eq!(
         category(O::Undone(coven::UndoCause::Interrupted)),
         Some(UiErrorCategory::StorageSetupUndone)

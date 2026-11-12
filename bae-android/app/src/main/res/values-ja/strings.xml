@@ -286,9 +286,6 @@
     <string name="loading_closing_library">ライブラリを閉じています…</string>
     <string name="loading_removing_library">ライブラリを削除しています…</string>
     <string name="loading_resetting_device">このデバイスをリセットしています…</string>
-    <string name="onboarding_checking">確認中…</string>
-    <string name="onboarding_next_check">次の確認まで %1$s</string>
-    <string name="onboarding_check_now">今すぐ確認</string>
     <string name="pending_update_no_store">このデバイスには bae を更新できるアプリストアがありません。</string>
     <string name="storage_setup_title">同期を設定</string>
     <string name="settings_set_up_sync_explanation">このライブラリはこのデバイスにのみ保存されています。同期するとライブラリがクラウドホームに保管され、ほかのデバイスや家族も使えるようになります。</string>
@@ -437,4 +434,9 @@
     <string name="pinning_empty">ピン留めするものはありません</string>
     <string name="pinning_load_failed">ピン留めを読み込めませんでした。</string>
     <string name="pinning_load_more_failed">これ以上ピン留めを読み込めませんでした。</string>
+    <string name="onboarding_invited_to">%1$s に招待されています</string>
+    <string name="onboarding_join_library">ライブラリに参加</string>
+    <string name="onboarding_join">参加</string>
+    <string name="onboarding_your_name">あなたの名前</string>
+    <string name="onboarding_name_placeholder">プロフィール、評価、プレイリストに表示されます</string>
 </resources>

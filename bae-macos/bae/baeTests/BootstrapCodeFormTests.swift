@@ -16,8 +16,10 @@ private final class RestoreRecordingHost: BridgeHost, @unchecked Sendable {
 
     let restoredCodes: AsyncStream<String>
     private let record: AsyncStream<String>.Continuation
-    let joinedCodes: AsyncStream<String>
-    private let recordJoin: AsyncStream<String>.Continuation
+    let joinedCodes: AsyncStream<JoinCall>
+    private let recordJoin: AsyncStream<JoinCall>.Continuation
+    let resumedJoins: AsyncStream<ObjectIdentifier>
+    private let recordResumedJoin: AsyncStream<ObjectIdentifier>.Continuation
     let finished: AsyncStream<FinishedReplacement>
     private let recordFinish: AsyncStream<FinishedReplacement>.Continuation
     let resumedRestores: AsyncStream<ObjectIdentifier>
@@ -27,7 +29,10 @@ private final class RestoreRecordingHost: BridgeHost, @unchecked Sendable {
 
     init() {
         (restoredCodes, record) = AsyncStream.makeStream(of: String.self)
-        (joinedCodes, recordJoin) = AsyncStream.makeStream(of: String.self)
+        (joinedCodes, recordJoin) = AsyncStream.makeStream(of: JoinCall.self)
+        (resumedJoins, recordResumedJoin) = AsyncStream.makeStream(
+            of: ObjectIdentifier.self
+        )
         (finished, recordFinish) = AsyncStream.makeStream(
             of: FinishedReplacement.self
         )
@@ -55,11 +60,21 @@ private final class RestoreRecordingHost: BridgeHost, @unchecked Sendable {
 
     override func joinWithInvite(
         code: String,
+        name: String,
         deviceName _: String,
         setup _: BridgeLibrarySetup,
         control _: BridgeJoinControl
     ) async throws -> BridgeBootstrapResult {
-        recordJoin.yield(code)
+        recordJoin.yield(JoinCall(code: code, name: name))
+        throw CancellationError()
+    }
+
+    override func resumeJoin(
+        join: BridgeUnfinishedJoin,
+        setup _: BridgeLibrarySetup,
+        control _: BridgeJoinControl
+    ) async throws -> BridgeBootstrapResult {
+        recordResumedJoin.yield(ObjectIdentifier(join))
         throw CancellationError()
     }
 
@@ -81,6 +96,12 @@ private final class RestoreRecordingHost: BridgeHost, @unchecked Sendable {
         recordResume.yield(ObjectIdentifier(restore))
         throw CancellationError()
     }
+}
+
+/// The code and name a join was given.
+private struct JoinCall: Equatable, Sendable {
+    let code: String
+    let name: String
 }
 
 /// The library and call a finishing of a replacement was given.
@@ -123,7 +144,6 @@ struct BootstrapCodeFormTests {
         invite: BridgeInviteInfo(
             metadata: metadata(carriesS3Key: false),
             libraryName: "Low Tide Hours",
-            invitee: "Odile Fen",
             expiresAt: Date(timeIntervalSince1970: 4_000_000_000)
         )
     )
@@ -131,6 +151,7 @@ struct BootstrapCodeFormTests {
     private func form(
         reading info: BridgeCodeInfo,
         entry: BootstrapCodeForm.Entry = .code,
+        unfinishedJoins: [BridgeUnfinishedJoin] = [],
         unfinishedRestores: [BridgeUnfinishedRestore] = []
     ) -> BootstrapCodeForm {
         let host = host
@@ -140,8 +161,10 @@ struct BootstrapCodeFormTests {
             makeBootstrap: {
                 LibraryBootstrap(host: host, deviceName: "Test Mac")
             },
-            unfinishedJoins: { [] },
+            unfinishedJoins: { unfinishedJoins },
             unfinishedRestores: { unfinishedRestores },
+            // A join under way here is for the invite's library.
+            joinLibrary: { _ in "library-1" },
             onLibraryReady: { _, _ in
                 Issue.record("the recording host opens no library")
             }
@@ -181,12 +204,21 @@ struct BootstrapCodeFormTests {
         #expect(form.codeInput == codeInGroups(text: Self.code))
     }
 
-    @Test("the code entry joins an invite")
-    func codeEntryJoinsAnInvite() async {
+    /// Let the form's look for a join under way for the invite's library
+    /// finish.
+    private func routed(_ form: BootstrapCodeForm) async {
+        for _ in 0..<1000 where form.asksName == nil && !form.isRunning {
+            await Task.yield()
+        }
+    }
+
+    @Test("an invite's code goes to the name step and starts nothing")
+    func anInvitesCodeAsksTheName() async {
         let form = form(reading: Self.invite)
 
         form.edit(code: Self.code)
         form.decodeCode()
+        await routed(form)
 
         guard case .join(let code, let invite) = form.attempt else {
             Issue.record("an invite decodes to a join")
@@ -194,8 +226,48 @@ struct BootstrapCodeFormTests {
         }
         #expect(code == Self.code)
         #expect(invite.libraryName == "Low Tide Hours")
+        #expect(form.asksName?.libraryName == "Low Tide Hours")
+        #expect(!form.isRunning)
+        #expect(!form.canJoin)
+    }
+
+    @Test("Join is off while the name is blank, and sends the trimmed name")
+    func joinSendsTheTrimmedName() async {
+        let form = form(reading: Self.invite)
+        form.edit(code: Self.code)
+        form.decodeCode()
+        await routed(form)
+
+        form.joinName = "   "
+        #expect(!form.canJoin)
+        form.join()
+        #expect(!form.isRunning)
+
+        form.joinName = "  Odile Fen \n"
+        #expect(form.canJoin)
+        form.join()
+
         var joined = host.joinedCodes.makeAsyncIterator()
-        #expect(await joined.next() == Self.code)
+        #expect(
+            await joined.next() == JoinCall(code: Self.code, name: "Odile Fen")
+        )
+    }
+
+    @Test("a join under way for the invite's library goes on without a name")
+    func aJoinUnderWayAsksNoName() async {
+        let underWay = BridgeUnfinishedJoin(
+            noHandle: BridgeUnfinishedJoin.NoHandle()
+        )
+        let form = form(reading: Self.invite, unfinishedJoins: [underWay])
+
+        form.edit(code: Self.code)
+        form.decodeCode()
+        await routed(form)
+
+        #expect(form.asksName == nil)
+        #expect(form.isRunning)
+        var resumed = host.resumedJoins.makeAsyncIterator()
+        #expect(await resumed.next() == ObjectIdentifier(underWay))
     }
 
     @Test("a code typed in groups is passed on without the spaces")

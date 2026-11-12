@@ -15,6 +15,11 @@ fn only_a_busy_database_is_worth_retrying() {
 fn a_storage_failure_is_worth_retrying_as_coven_retries_it() {
     assert!(UiErrorCategory::Storage(coven::StorageFailure::Network).retry_can_help());
     assert!(!UiErrorCategory::Storage(coven::StorageFailure::Authentication).retry_can_help());
+    // A refused sharing waits on the person who fixes their account.
+    assert!(!UiErrorCategory::Storage(coven::StorageFailure::SharingRefused(
+        coven::SharingRefusal::EmailUnverified
+    ))
+    .retry_can_help());
     assert!(!UiErrorCategory::StorageCheck {
         check: coven::StorageCheck::Create,
         failure: coven::StorageFailure::PermissionDenied,

@@ -299,9 +299,6 @@
     <string name="loading_closing_library">Cerrando la biblioteca…</string>
     <string name="loading_removing_library">Eliminando la biblioteca…</string>
     <string name="loading_resetting_device">Restableciendo este dispositivo…</string>
-    <string name="onboarding_checking">Comprobando…</string>
-    <string name="onboarding_next_check">Próxima comprobación en %1$s</string>
-    <string name="onboarding_check_now">Comprobar ahora</string>
     <string name="pending_update_no_store">Ninguna tienda de apps de este dispositivo puede actualizar bae.</string>
     <string name="storage_setup_title">Configurar sincronización</string>
     <string name="settings_set_up_sync_explanation">Esta biblioteca solo está en este dispositivo. La sincronización la guarda en un hogar en la nube, donde tus otros dispositivos y tu hogar pueden usarla.</string>
@@ -451,4 +448,9 @@
     <string name="pinning_empty">Nada que fijar</string>
     <string name="pinning_load_failed">No se pudieron cargar tus fijaciones.</string>
     <string name="pinning_load_more_failed">No se pudieron cargar más fijaciones.</string>
+    <string name="onboarding_invited_to">Te han invitado a %1$s</string>
+    <string name="onboarding_join_library">Unirse a una biblioteca</string>
+    <string name="onboarding_join">Unirse</string>
+    <string name="onboarding_your_name">Tu nombre</string>
+    <string name="onboarding_name_placeholder">Aparece en tu perfil, tus valoraciones y tus listas de reproducción</string>
 </resources>

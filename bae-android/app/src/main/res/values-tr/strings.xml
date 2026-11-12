@@ -293,9 +293,6 @@
     <string name="loading_closing_library">Kitaplık kapatılıyor…</string>
     <string name="loading_removing_library">Kitaplık kaldırılıyor…</string>
     <string name="loading_resetting_device">Bu cihaz sıfırlanıyor…</string>
-    <string name="onboarding_checking">Denetleniyor…</string>
-    <string name="onboarding_next_check">Sonraki denetim %1$s sonra</string>
-    <string name="onboarding_check_now">Şimdi denetle</string>
     <string name="pending_update_no_store">Bu cihazdaki hiçbir uygulama mağazası bae’yi güncelleyemiyor.</string>
     <string name="storage_setup_title">Eşitlemeyi kur</string>
     <string name="settings_set_up_sync_explanation">Bu kitaplık yalnızca bu cihazda depolanıyor. Eşitleme onu bir bulut evinde tutar; diğer cihazlarınız ve hane halkınız onu oradan kullanabilir.</string>
@@ -445,4 +442,9 @@
     <string name="pinning_empty">Sabitlenecek bir şey yok</string>
     <string name="pinning_load_failed">Sabitlemeler yüklenemedi.</string>
     <string name="pinning_load_more_failed">Daha fazla sabitleme yüklenemedi.</string>
+    <string name="onboarding_invited_to">%1$s kitaplığına davet edildiniz</string>
+    <string name="onboarding_join_library">Kitaplığa katıl</string>
+    <string name="onboarding_join">Katıl</string>
+    <string name="onboarding_your_name">Adınız</string>
+    <string name="onboarding_name_placeholder">Profilinizde, puanlarınızda ve çalma listelerinizde görünür</string>
 </resources>

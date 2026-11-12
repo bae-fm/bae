@@ -167,7 +167,9 @@ impl FailureColumns {
             F::MemberKeysMissing => "member_keys_missing",
             // `storage_category` classes coven's storage bug `internal`, and
             // the row keeps it as that class: never as a storage reason.
-            F::Bug => {
+            // Only an invite's grant to the provider meets a refused
+            // sharing, and it ends that invite, not sync's start (§5.6).
+            F::Bug | F::SharingRefused(_) => {
                 return Err(StartFailureRecordError::NotAStartFailure(UiErrorCategory::Storage(
                     failure,
                 )))

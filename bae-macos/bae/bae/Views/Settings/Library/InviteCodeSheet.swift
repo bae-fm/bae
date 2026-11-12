@@ -31,7 +31,7 @@ struct InviteCodeSheet: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text(verbatim: invite?.invitee ?? "")
+                Text("Invite")
                     .themeText(.heading)
                 Spacer()
                 Button("Done", action: onDismiss)

@@ -46,15 +46,14 @@ class OnboardingCodeRoutingTest {
         BridgeInviteInfo(
             metadata = metadata,
             libraryName = "Household",
-            invitee = "Dan",
             expiresAt = Instant.parse("2026-11-01T17:00:00Z"),
         )
 
     @Test
-    fun anInviteJoinsTheLibraryItNamesFromItsCode() {
+    fun anInvitesCodeGoesToTheNameStep() {
         val step = codeReadStep("invite-code", BridgeCodeInfo.Invite(invite), CodeEntry.NewDevice)
 
-        assertEquals(OnboardingStep.Invite(JoinStart.Code("invite-code"), invite, CodeEntry.NewDevice), step)
+        assertEquals(OnboardingStep.JoinName("invite-code", invite, CodeEntry.NewDevice), step)
     }
 
     @Test

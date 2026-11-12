@@ -300,9 +300,6 @@
     <string name="loading_closing_library">Zatvaranje fonoteke…</string>
     <string name="loading_removing_library">Uklanjanje fonoteke…</string>
     <string name="loading_resetting_device">Ponovno postavljanje ovog uređaja…</string>
-    <string name="onboarding_checking">Provjera…</string>
-    <string name="onboarding_next_check">Sljedeća provjera za %1$s</string>
-    <string name="onboarding_check_now">Provjeri sada</string>
     <string name="pending_update_no_store">Nijedna trgovina aplikacija na ovom uređaju ne može ažurirati bae.</string>
     <string name="storage_setup_title">Postavi sinkronizaciju</string>
     <string name="settings_set_up_sync_explanation">Ova je fonoteka pohranjena samo na ovom uređaju. Sinkronizacija je drži u domu u oblaku, gdje je mogu koristiti vaši drugi uređaji i kućanstvo.</string>
@@ -453,4 +450,9 @@
     <string name="pinning_empty">Ništa za prikvačivanje</string>
     <string name="pinning_load_failed">Prikvačivanja nije moguće učitati.</string>
     <string name="pinning_load_more_failed">Nije moguće učitati još prikvačivanja.</string>
+    <string name="onboarding_invited_to">Pozvani ste u %1$s</string>
+    <string name="onboarding_join_library">Pridruži se fonoteci</string>
+    <string name="onboarding_join">Pridruži se</string>
+    <string name="onboarding_your_name">Vaše ime</string>
+    <string name="onboarding_name_placeholder">Prikazuje se na vašem profilu, ocjenama i popisima za reprodukciju</string>
 </resources>

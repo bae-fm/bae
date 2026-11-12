@@ -299,9 +299,6 @@
     <string name="loading_closing_library">Fermeture de la bibliothèque…</string>
     <string name="loading_removing_library">Suppression de la bibliothèque…</string>
     <string name="loading_resetting_device">Réinitialisation de cet appareil…</string>
-    <string name="onboarding_checking">Vérification…</string>
-    <string name="onboarding_next_check">Prochaine vérification dans %1$s</string>
-    <string name="onboarding_check_now">Vérifier maintenant</string>
     <string name="pending_update_no_store">Aucune boutique d’applications sur cet appareil ne peut mettre à jour bae.</string>
     <string name="storage_setup_title">Configurer la synchronisation</string>
     <string name="settings_set_up_sync_explanation">Cette bibliothèque n’est stockée que sur cet appareil. La synchronisation la conserve dans un espace cloud, où vos autres appareils et votre foyer peuvent l’utiliser.</string>
@@ -451,4 +448,9 @@
     <string name="pinning_empty">Rien à épingler</string>
     <string name="pinning_load_failed">Impossible de charger vos épinglages.</string>
     <string name="pinning_load_more_failed">Impossible de charger plus d’épinglages.</string>
+    <string name="onboarding_invited_to">Vous avez été invité à rejoindre %1$s</string>
+    <string name="onboarding_join_library">Rejoindre une bibliothèque</string>
+    <string name="onboarding_join">Rejoindre</string>
+    <string name="onboarding_your_name">Votre nom</string>
+    <string name="onboarding_name_placeholder">Apparaît sur votre profil, vos notes et vos listes de lecture</string>
 </resources>

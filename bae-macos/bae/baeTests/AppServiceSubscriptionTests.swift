@@ -236,7 +236,7 @@ struct InvitesSubscriptionTests {
         BridgeInvite(
             id: id,
             member: "member-1",
-            invitee: "Dan",
+            label: "dan@example.com",
             access: .providerAccount(email: "dan@example.com"),
             shown: .code(code: "invite-code", progress: .waiting),
             held: nil

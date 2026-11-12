@@ -286,9 +286,6 @@
     <string name="loading_closing_library">正在關閉資料庫…</string>
     <string name="loading_removing_library">正在移除資料庫…</string>
     <string name="loading_resetting_device">正在重設此裝置…</string>
-    <string name="onboarding_checking">正在檢查…</string>
-    <string name="onboarding_next_check">%1$s 後再次檢查</string>
-    <string name="onboarding_check_now">立即檢查</string>
     <string name="pending_update_no_store">此裝置上沒有可以更新 bae 的 App 商店。</string>
     <string name="storage_setup_title">設定同步</string>
     <string name="settings_set_up_sync_explanation">此資料庫只儲存在這台裝置上。同步會將它保存在雲端家園中，你的其他裝置和家人都能在那裡使用它。</string>
@@ -437,4 +434,9 @@
     <string name="pinning_empty">沒有要釘選的內容</string>
     <string name="pinning_load_failed">無法載入釘選項目。</string>
     <string name="pinning_load_more_failed">無法載入更多釘選項目。</string>
+    <string name="onboarding_invited_to">你已受邀加入 %1$s</string>
+    <string name="onboarding_join_library">加入資料庫</string>
+    <string name="onboarding_join">加入</string>
+    <string name="onboarding_your_name">你的名字</string>
+    <string name="onboarding_name_placeholder">顯示在你的個人檔案、評分和播放列表中</string>
 </resources>

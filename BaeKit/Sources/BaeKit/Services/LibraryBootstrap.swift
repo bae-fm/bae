@@ -2,7 +2,8 @@ import Foundation
 import Observation
 
 /// One restore or join attempt, with its cancel: a restore's cancellation
-/// token, or a join's control, which can also check for approval now.
+/// token, or a join's control, which can also ask for frequent checks for
+/// approval while the waiting screen shows.
 @MainActor
 @Observable
 public final class LibraryBootstrap {
@@ -27,6 +28,9 @@ public final class LibraryBootstrap {
     private let deviceName: String
     private var cancelAttempt: (() -> Void)?
     private var joinControl: BridgeJoinControl?
+    /// Whether the join's waiting screen shows. A join control made while it
+    /// does starts held.
+    private var waitingScreenShown = false
     private var running = false
 
     public init(host: BridgeHost, deviceName: String) {
@@ -123,13 +127,17 @@ public final class LibraryBootstrap {
         }
     }
 
-    /// Join from an invite's code. Cancelling the task drops the call and
-    /// keeps the join, which `resume` continues; only `cancel()` cancels it,
-    /// and only before its request may have been sent.
-    public func join(code: String) async throws -> BridgeBootstrapResult {
+    /// Join from an invite's code as the person named `name`, which the
+    /// join's request carries. Cancelling the task drops the call and keeps
+    /// the join, which `resume` continues; only `cancel()` cancels it, and
+    /// only before its request may have been sent.
+    public func join(code: String, name: String) async throws
+        -> BridgeBootstrapResult
+    {
         try await runJoin { setup, control in
             try await self.host.joinWithInvite(
                 code: code,
+                name: name,
                 deviceName: self.deviceName,
                 setup: setup,
                 control: control
@@ -152,8 +160,13 @@ public final class LibraryBootstrap {
 
     public func cancel() { cancelAttempt?() }
 
-    /// End the running join's wait so it checks for approval now.
-    public func checkNow() { joinControl?.checkNow() }
+    /// Whether the join's waiting screen shows. While it does, the join
+    /// checks for approval every few seconds; core holds that exactly as
+    /// long as this says so.
+    public func setWaitingScreenShown(_ shown: Bool) {
+        waitingScreenShown = shown
+        joinControl?.setScreenShown(shown: shown)
+    }
 
     private func runRestore(
         _ work: (BridgeLibrarySetup, BootstrapCancellation) async throws ->
@@ -177,6 +190,7 @@ public final class LibraryBootstrap {
             BridgeBootstrapResult
     ) async throws -> BridgeBootstrapResult {
         let control = BridgeJoinControl()
+        control.setScreenShown(shown: waitingScreenShown)
         joinControl = control
         defer { joinControl = nil }
         return try await run(cancel: control.cancel) { setup in

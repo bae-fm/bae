@@ -17,7 +17,7 @@ public struct BootstrapStatusView: View {
             MacSpinner()
         case .connecting:
             progress("Connecting…")
-        case .waitingForApproval(let confirmation, let nextCheck):
+        case .waitingForApproval(let confirmation):
             VStack(spacing: ThemeSpace.related) {
                 Text("Confirmation number")
                     .themeText(.detail)
@@ -25,7 +25,6 @@ public struct BootstrapStatusView: View {
                 Text(verbatim: confirmation)
                     .themeText(.title)
                     .textSelection(.enabled)
-                NextCheckLine(nextCheck: nextCheck)
             }
         case .registering:
             progress("Registering this device…")
@@ -41,44 +40,5 @@ public struct BootstrapStatusView: View {
 
     private func progress(_ title: LocalizedStringKey) -> some View {
         MacSpinner(title)
-    }
-}
-
-/// When a waiting join checks for approval next, counting down each second.
-struct NextCheckLine: View {
-    let nextCheck: BridgeNextCheck
-
-    var body: some View {
-        switch nextCheck {
-        case .checking:
-            line(Text("Checking…"))
-        case .at(let time):
-            countdown(to: time)
-        case .coolingDown(let until):
-            countdown(to: until)
-        }
-    }
-
-    private func countdown(to due: Date) -> some View {
-        TimelineView(.periodic(from: .now, by: 1)) { context in
-            let left = Self.secondsLeft(until: due, at: context.date)
-            line(
-                Text(
-                    "Next check in \(Duration.seconds(left).formatted(.time(pattern: .minuteSecond)))"
-                )
-            )
-        }
-    }
-
-    /// Whole seconds from `now` until `due`, rounded up so the line never reads
-    /// 0 before the check, and never below 0.
-    nonisolated static func secondsLeft(until due: Date, at now: Date) -> Int {
-        max(0, Int(due.timeIntervalSince(now).rounded(.up)))
-    }
-
-    private func line(_ text: Text) -> some View {
-        text
-            .themeText(.body)
-            .foregroundStyle(.secondary)
     }
 }

@@ -202,6 +202,7 @@ impl FailedDatabaseCall for coven::CovenError {
             | E::Migration(_)
             | E::CovenMigration(_)
             | E::Settings(_)
+            | E::File(_)
             | E::MissingConfiguration { .. }
             | E::DeviceKeyMissing { .. }
             | E::MemberKeysMissing { .. }

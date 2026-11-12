@@ -18,7 +18,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
@@ -43,9 +42,10 @@ import uniffi.bae_bridge.BridgeStorageLocation
 private val logger = BaeLogger("bae.InviteDialog")
 
 /**
- * Invite a person: their name, role and the access they reach the storage
- * with — an S3 access key, or the provider account they sign in with — and
- * how long the invite lasts. [onCreated] receives the new
+ * Invite a person: their role and the access they reach the storage with —
+ * an S3 access key, or the provider account they sign in with — and how long
+ * the invite lasts. The person types their own name when they join.
+ * [onCreated] receives the new
  * invite's id, for the people screen to show it.
  */
 @Composable
@@ -68,7 +68,7 @@ internal fun InviteDialog(
             error = null
             scope.launch {
                 performBridgeAction(logger, "invite a person", errors, { error = it }) {
-                    onCreated(session.appHandle.invitePerson(form.role, form.name, form.access, form.lifetime))
+                    onCreated(session.appHandle.invitePerson(form.role, form.access, form.lifetime))
                 }
                 busy = false
             }
@@ -96,22 +96,20 @@ private class InviteAccessInput {
         }
 }
 
-/** A complete invite form: who, with what role and access, and how long it lasts. */
+/** A complete invite form: with what role and access, and how long it lasts. */
 private class InviteForm(
-    val name: String,
     val role: BridgeMemberRole,
     val access: BridgeInviteAccess,
     val lifetime: BridgeInviteLifetime,
 )
 
-/** The person, role and lifetime the form asks for. */
+/** The role and lifetime the form asks for. */
 private class InviteFields {
-    var name by mutableStateOf("")
     var role by mutableStateOf(BridgeMemberRole.MEMBER)
     var lifetime by mutableStateOf(BridgeInviteLifetime.DAY)
 }
 
-/** The form's fields: name, role, the storage's access, and how long the invite lasts. */
+/** The form's fields: role, the storage's access, and how long the invite lasts. */
 @Composable
 private fun InviteFormFields(
     storage: BridgeStorageLocation?,
@@ -123,14 +121,6 @@ private fun InviteFormFields(
         modifier = Modifier.verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
     ) {
-        OutlinedTextField(
-            value = fields.name,
-            onValueChange = { fields.name = it },
-            label = { Text(stringResource(R.string.invite_name)) },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
-        )
         RoleChoice(fields.role) { fields.role = it }
         // Where the library is stored is a local read; its fields show once it lands.
         storage?.let { InviteAccessFields(it, input) }
@@ -150,7 +140,7 @@ private fun InviteFormFields(
     }
 }
 
-/** The invite's person, role, access and lifetime, asked for as the library's storage needs it. */
+/** The invite's role, access and lifetime, asked for as the library's storage needs it. */
 @Composable
 private fun InviteFormDialog(
     storage: BridgeStorageLocation?,
@@ -174,11 +164,10 @@ private fun InviteFormDialog(
         },
         confirmButton = {
             val access = storage?.let(input::access)
-            val name = fields.name.trim()
             AndroidButton(
                 kind = ButtonKind.TEXT,
-                enabled = access != null && name.isNotEmpty() && !busy,
-                onClick = { access?.let { onCreate(InviteForm(name, fields.role, it, fields.lifetime)) } },
+                enabled = access != null && !busy,
+                onClick = { access?.let { onCreate(InviteForm(fields.role, it, fields.lifetime)) } },
             ) {
                 Text(stringResource(R.string.invite_create))
             }

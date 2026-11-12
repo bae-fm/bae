@@ -12,6 +12,7 @@ mod collections;
 mod history;
 mod profile_request;
 mod profiles;
+pub(crate) use profiles::name_this_person_goes_by;
 
 /// People's part of the schema: `people.sql`.
 pub const SCHEMA: bae_store::SchemaPart = bae_store::SchemaPart::new(&[include_str!("people.sql")])

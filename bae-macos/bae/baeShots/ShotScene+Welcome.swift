@@ -176,6 +176,20 @@ extension ShotScene {
                 )
             )
         },
+        ShotScene(id: "mac.welcome.join-name", size: WelcomeWindow.size) {
+            ShotStage(
+                WelcomeWindowChrome {
+                    JoinNameView(
+                        libraryName: "Home music",
+                        name: .constant(""),
+                        error: nil,
+                        canJoin: false,
+                        onJoin: {},
+                        onCancel: {}
+                    )
+                }
+            )
+        },
         ShotScene(
             id: "mac.welcome.add-code.entering",
             size: CGSize(width: 400, height: 190)

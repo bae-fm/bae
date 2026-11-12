@@ -343,10 +343,7 @@
     <string name="loading_closing_library">Closing the library…</string>
     <string name="loading_removing_library">Removing the library…</string>
     <string name="loading_resetting_device">Resetting this device…</string>
-    <string name="onboarding_checking">Checking…</string>
     <!-- %1$s = the time left until the next check, as minutes and seconds -->
-    <string name="onboarding_next_check">Next check in %1$s</string>
-    <string name="onboarding_check_now">Check now</string>
     <string name="pending_update_no_store">No app store on this device can update bae.</string>
     <string name="storage_setup_title">Set up sync</string>
     <string name="settings_set_up_sync_explanation">This library is stored on this device only. Sync keeps it in a cloud home, where your other devices and your household can use it.</string>
@@ -503,4 +500,9 @@
     <string name="pinning_empty">Nothing to pin</string>
     <string name="pinning_load_failed">Couldn\'t load your pins.</string>
     <string name="pinning_load_more_failed">Couldn\'t load more pins.</string>
+    <string name="onboarding_invited_to">You’re invited to %1$s</string>
+    <string name="onboarding_join_library">Join library</string>
+    <string name="onboarding_join">Join</string>
+    <string name="onboarding_your_name">Your name</string>
+    <string name="onboarding_name_placeholder">Appears on your profile, ratings and playlists</string>
 </resources>

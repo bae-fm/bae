@@ -2,9 +2,9 @@ import BaeKit
 import SwiftUI
 
 /// A join running: the library's name, what it waits on, and, while it waits
-/// for approval, until when it waits and its confirmation number
-/// with when it checks next and Check now. Cancel shows only until the
-/// request may have been sent.
+/// for approval, until when it waits and its confirmation number. While it
+/// shows, the join checks for approval every few seconds. Cancel shows only
+/// until the request may have been sent.
 struct JoinWaitingView: View {
     let form: BootstrapCodeForm
     let invite: BridgeInviteInfo
@@ -34,23 +34,11 @@ struct JoinWaitingView: View {
                     Button("Cancel") { form.cancel() }
                         .buttonStyle(.bordered)
                 }
-                if case .waitingForApproval(_, let nextCheck) = form.status {
-                    Button("Check now") { form.checkNow() }
-                        .buttonStyle(PrimaryButtonStyle())
-                        .disabled(!nextCheck.endsOnCheckNow)
-                }
             }
             Spacer()
         }
         .padding(.horizontal)
-    }
-}
-
-extension BridgeNextCheck {
-    /// Whether Check now ends this wait: the join's own backoff, but neither a
-    /// check already running nor a provider's cooldown.
-    fileprivate var endsOnCheckNow: Bool {
-        if case .at = self { return true }
-        return false
+        .onAppear { form.setWaitingScreenShown(true) }
+        .onDisappear { form.setWaitingScreenShown(false) }
     }
 }

@@ -285,9 +285,26 @@ fn a_release_on_a_removed_device_names_it_as_removed() {
     });
 }
 
-/// Audio stays pinned while the cover remains in its separate evictable cache.
+/// The bytes coven keeps for one namespace.
+async fn namespace_bytes(
+    manager: &crate::LibraryManager,
+    namespace: &str,
+) -> coven::NamespaceBytes {
+    manager
+        .store
+        .local_bytes()
+        .await
+        .unwrap()
+        .namespaces
+        .into_iter()
+        .find(|bytes| bytes.namespace == namespace)
+        .unwrap_or_else(|| panic!("{namespace} is declared"))
+}
+
+/// Unpinning removes the release's audio from this device with budget room to
+/// spare, and leaves its cover in the covers cache.
 #[tokio::test]
-async fn unpin_release_releases_audio_and_keeps_cover_evictable() {
+async fn unpinning_a_release_removes_its_audio_from_this_device_and_leaves_its_cover_cached() {
     let (test, temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     connect_test_cloud(&test).await;
@@ -310,10 +327,11 @@ async fn unpin_release_releases_audio_and_keeps_cover_evictable() {
         file_pinned(manager, bae_records::synced::RELEASE_FILES_NAMESPACE, &file_id).await,
         "pinning the release pins its file"
     );
-    assert!(
-        !file_pinned(manager, bae_records::synced::COVERS_NAMESPACE, &release.id).await,
-        "covers remain evictable when audio is pinned"
-    );
+    let audio = namespace_bytes(manager, bae_records::synced::RELEASE_FILES_NAMESPACE).await;
+    assert!(audio.pinned > 0, "the pinned audio is measured as pinned: {audio:?}");
+    assert!(audio.budget > audio.pinned, "the budget has room to spare");
+    let covers_before = namespace_bytes(manager, bae_records::synced::COVERS_NAMESPACE).await;
+    assert_eq!(covers_before.pinned, 0, "a cover is never pinned");
 
     manager.unpin_releases(std::slice::from_ref(&release.id)).await.unwrap();
 
@@ -321,10 +339,60 @@ async fn unpin_release_releases_audio_and_keeps_cover_evictable() {
         !file_pinned(manager, bae_records::synced::RELEASE_FILES_NAMESPACE, &file_id).await,
         "the release file unpinned"
     );
-    assert!(
-        !file_pinned(manager, bae_records::synced::COVERS_NAMESPACE, &release.id).await,
-        "the cover remains evictable"
-    );
+    let audio = namespace_bytes(manager, bae_records::synced::RELEASE_FILES_NAMESPACE).await;
+    assert_eq!((audio.pinned, audio.cached), (0, 0), "the audio left this device: {audio:?}");
+    let covers = namespace_bytes(manager, bae_records::synced::COVERS_NAMESPACE).await;
+    assert_eq!(covers.cached, covers_before.cached, "the cover stays cached");
+}
+
+/// Pinned copies don't count toward the namespace's budget: a pinned release
+/// larger than the budget leaves room to cache a track played from the cloud.
+#[tokio::test]
+async fn a_pinned_release_over_the_budget_leaves_room_to_cache_a_played_track() {
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    connect_test_cloud(&test).await;
+    let pinned_bytes = vec![7_u8; 4096];
+    let played_bytes = vec![9_u8; 512];
+    let big = insert_local_release_with_files(
+        manager,
+        &temp_dir.path().join("big"),
+        "Big",
+        &[("big.flac", pinned_bytes.as_slice())],
+    )
+    .await;
+    let played = insert_local_release_with_files(
+        manager,
+        &temp_dir.path().join("played"),
+        "Played",
+        &[("played.flac", played_bytes.as_slice())],
+    )
+    .await;
+    for release in [&big, &played] {
+        manager.upload_release(&release.id).await.unwrap();
+    }
+    manager.drain_uploads_expecting_work().await.unwrap();
+    let played_file = release_files(manager, &played.id).await.remove(0);
+    manager.evict_file_for_test(played_file.file).await.unwrap();
+
+    manager
+        .store
+        .write(|sql| {
+            sql.set_cache_budget(bae_records::synced::RELEASE_FILES_NAMESPACE, 1024)
+                .map_err(bae_store::DbError::from)
+        })
+        .await
+        .unwrap();
+    pin_directly(manager, &big.id).await;
+    let before = namespace_bytes(manager, bae_records::synced::RELEASE_FILES_NAMESPACE).await;
+    assert!(before.pinned > before.budget, "the pinned release is over the budget: {before:?}");
+
+    let played_ref = manager.release_file_ref(&played_file.id).await.unwrap();
+    assert_eq!(manager.store.read_file(&played_ref).await.unwrap(), played_bytes);
+
+    let after = namespace_bytes(manager, bae_records::synced::RELEASE_FILES_NAMESPACE).await;
+    assert_eq!(after.pinned, before.pinned, "the pinned copy stays: {after:?}");
+    assert!(after.cached > 0, "the played track is cached: {after:?}");
 }
 
 /// Unpinning a selection releases every pin in one write: no release shows an

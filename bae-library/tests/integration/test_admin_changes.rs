@@ -5,18 +5,20 @@ use super::test_people::{installation_in, new_member, on_app_runtime, Household}
 use bae_people::admin_change::{AdminChange, AdminChangeKind, AdminChangeState};
 
 /// Robin approves Rowan's request on her laptop. The approval is listed as
-/// letting Rowan in, by the name her invite gave him, and is done once her
+/// letting Rowan in, by the name he typed when he joined, and is done once her
 /// sync has bound his keys; dismissing it ends it.
 #[test]
-fn an_approval_is_listed_by_the_invites_name_until_dismissed() {
+fn an_approval_is_listed_by_the_joiners_name_until_dismissed() {
     on_app_runtime(async {
         let household = Household::new().await;
         let dir = tempfile::tempdir().unwrap();
         let library = household.owners_library(dir.path()).await;
-        let invite = household.invite(new_member("Rowan"), "guest-key").await;
+        let invite = household.invite(new_member(), "guest-key").await;
         let guest_dir = tempfile::tempdir().unwrap();
         let guest = installation_in(&guest_dir);
         let control = bae_library::JoinControl::new();
+        // The waiting screen shows: the join checks every few seconds.
+        control.set_screen_shown(true);
         let joining = household.join(&invite.code, &guest, &control);
         let approving = async {
             let mut invites =
@@ -27,7 +29,7 @@ fn an_approval_is_listed_by_the_invites_name_until_dismissed() {
                 bae_library::people::InviteShown::Code {
                     progress: bae_library::people::InviteProgress::Deciding(request),
                     ..
-                } => Some(request),
+                } => Some((request, open.requester.clone())),
                 bae_library::people::InviteShown::Code { .. }
                 | bae_library::people::InviteShown::Granting => None,
             };
@@ -38,7 +40,9 @@ fn an_approval_is_listed_by_the_invites_name_until_dismissed() {
             .iter()
             .find_map(deciding)
             .unwrap();
-            library.membership().approve_join_request(&request).await.unwrap();
+            // The request shows the name Rowan typed.
+            assert_eq!(request.1.as_deref(), Some("Rowan"));
+            library.membership().approve_join_request(&request.0).await.unwrap();
         };
         let (joined, ()) = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
             tokio::join!(joining, approving)

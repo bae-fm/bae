@@ -300,9 +300,6 @@
     <string name="loading_closing_library">סוגר את הספרייה…</string>
     <string name="loading_removing_library">מסיר את הספרייה…</string>
     <string name="loading_resetting_device">מאפס את המכשיר הזה…</string>
-    <string name="onboarding_checking">בודק…</string>
-    <string name="onboarding_next_check">הבדיקה הבאה בעוד %1$s</string>
-    <string name="onboarding_check_now">בדיקה עכשיו</string>
     <string name="pending_update_no_store">אין במכשיר הזה חנות אפליקציות שיכולה לעדכן את bae.</string>
     <string name="storage_setup_title">הגדר סנכרון</string>
     <string name="settings_set_up_sync_explanation">הספרייה הזו מאוחסנת רק במכשיר הזה. הסנכרון שומר אותה בבית בענן, שם המכשירים האחרים שלך ובני הבית יכולים להשתמש בה.</string>
@@ -453,4 +450,9 @@
     <string name="pinning_empty">אין מה להצמיד</string>
     <string name="pinning_load_failed">לא ניתן לטעון את ההצמדות.</string>
     <string name="pinning_load_more_failed">לא ניתן לטעון הצמדות נוספות.</string>
+    <string name="onboarding_invited_to">הוזמנת אל %1$s</string>
+    <string name="onboarding_join_library">הצטרפות לספרייה</string>
+    <string name="onboarding_join">הצטרפות</string>
+    <string name="onboarding_your_name">השם שלך</string>
+    <string name="onboarding_name_placeholder">מופיע בפרופיל, בדירוגים וברשימות ההשמעה שלך</string>
 </resources>

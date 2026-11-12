@@ -291,9 +291,6 @@
     <string name="loading_closing_library">Κλείσιμο της βιβλιοθήκης…</string>
     <string name="loading_removing_library">Αφαίρεση της βιβλιοθήκης…</string>
     <string name="loading_resetting_device">Επαναφορά αυτής της συσκευής…</string>
-    <string name="onboarding_checking">Γίνεται έλεγχος…</string>
-    <string name="onboarding_next_check">Επόμενος έλεγχος σε %1$s</string>
-    <string name="onboarding_check_now">Έλεγχος τώρα</string>
     <string name="pending_update_no_store">Κανένα κατάστημα εφαρμογών σε αυτή τη συσκευή δεν μπορεί να ενημερώσει το bae.</string>
     <string name="storage_setup_title">Ρύθμιση συγχρονισμού</string>
     <string name="settings_set_up_sync_explanation">Αυτή η βιβλιοθήκη είναι αποθηκευμένη μόνο σε αυτή τη συσκευή. Ο συγχρονισμός την κρατά σε ένα σπίτι στο cloud, όπου μπορούν να τη χρησιμοποιούν οι άλλες συσκευές σας και το νοικοκυριό σας.</string>
@@ -443,4 +440,9 @@
     <string name="pinning_empty">Τίποτα για καρφίτσωμα</string>
     <string name="pinning_load_failed">Δεν ήταν δυνατή η φόρτωση των καρφιτσωμάτων.</string>
     <string name="pinning_load_more_failed">Δεν ήταν δυνατή η φόρτωση περισσότερων καρφιτσωμάτων.</string>
+    <string name="onboarding_invited_to">Σας προσκάλεσαν στο %1$s</string>
+    <string name="onboarding_join_library">Συμμετοχή σε βιβλιοθήκη</string>
+    <string name="onboarding_join">Συμμετοχή</string>
+    <string name="onboarding_your_name">Το όνομά σας</string>
+    <string name="onboarding_name_placeholder">Εμφανίζεται στο προφίλ, τις βαθμολογίες και τις λίστες αναπαραγωγής σας</string>
 </resources>

@@ -286,9 +286,6 @@
     <string name="loading_closing_library">正在关闭资料库…</string>
     <string name="loading_removing_library">正在移除资料库…</string>
     <string name="loading_resetting_device">正在重置此设备…</string>
-    <string name="onboarding_checking">正在检查…</string>
-    <string name="onboarding_next_check">%1$s 后再次检查</string>
-    <string name="onboarding_check_now">立即检查</string>
     <string name="pending_update_no_store">此设备上没有可以更新 bae 的应用商店。</string>
     <string name="storage_setup_title">设置同步</string>
     <string name="settings_set_up_sync_explanation">此库只存储在这台设备上。同步会将它保存在云端家园中，你的其他设备和家人都能在那里使用它。</string>
@@ -437,4 +434,9 @@
     <string name="pinning_empty">没有要固定的内容</string>
     <string name="pinning_load_failed">无法载入固定项。</string>
     <string name="pinning_load_more_failed">无法载入更多固定项。</string>
+    <string name="onboarding_invited_to">你已受邀加入 %1$s</string>
+    <string name="onboarding_join_library">加入库</string>
+    <string name="onboarding_join">加入</string>
+    <string name="onboarding_your_name">你的名字</string>
+    <string name="onboarding_name_placeholder">显示在你的个人资料、评分和播放列表中</string>
 </resources>

@@ -57,6 +57,7 @@ pub fn storage_category(failure: coven::StorageFailure) -> C {
         | F::CopyTooLarge { .. }
         | F::Encoding
         | F::File
+        | F::SharingRefused(_)
         | F::MemberKeysMissing) => C::Storage(failure),
     }
 }
@@ -397,6 +398,7 @@ fn write_category(error: &coven::CovenError) -> C {
         | E::Migration(_)
         | E::CovenMigration(_)
         | E::Settings(_)
+        | E::File(_)
         | E::Lock(_)
         | E::MissingConfiguration { .. }
         | E::DeviceKeyMissing { .. }

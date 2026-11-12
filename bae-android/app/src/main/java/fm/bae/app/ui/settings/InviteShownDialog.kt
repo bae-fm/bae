@@ -144,7 +144,7 @@ private fun InviteCodeDialog(
 ) {
     val context = LocalContext.current
     val copy = rememberCopyText()
-    val title = invite.invitee ?: stringResource(R.string.invite_title)
+    val title = stringResource(R.string.invite_title)
     AndroidDialog(
         onDismissRequest = onDismiss,
         title = title,

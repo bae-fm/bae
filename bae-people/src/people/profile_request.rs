@@ -46,7 +46,8 @@ impl ProfileRequest {
             Some(
                 outcome @ (coven::OperationOutcome::Satisfied
                 | coven::OperationOutcome::Cancelled
-                | coven::OperationOutcome::Undone(_)),
+                | coven::OperationOutcome::Undone(_)
+                | coven::OperationOutcome::SharingRefused { .. }),
             ) => Err(DbError::unreadable(
                 "coven_operations.outcome of the profile request's circle",
                 (self.operation, outcome),

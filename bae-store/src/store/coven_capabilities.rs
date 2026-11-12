@@ -369,6 +369,13 @@ impl Store {
         self.reported(self.inner.handle.unpin(files).await).map_err(DbError::from)
     }
 
+    /// What this device keeps for the store, in bytes: each namespace's cache
+    /// and pinned copies, partial downloads, the store's own files and the
+    /// archives resets kept.
+    pub async fn local_bytes(&self) -> Result<coven::LocalBytes, DbError> {
+        self.reported(self.inner.handle.local_bytes().await).map_err(DbError::from)
+    }
+
     pub async fn files_pinned(
         &self,
         files: &[coven::FileId],
@@ -435,19 +442,20 @@ impl Store {
     /// Invite a new person: the write journals the invite, offline too,
     /// and a pass grants its access and fixes its code (§5.6). Re-inviting
     /// creates a fresh identity; the removed person's rows retain their
-    /// owner. `name` is the profile name the person's device writes when it
-    /// joins (§5.4).
+    /// owner. The invite carries no name for the person: they type theirs
+    /// when they join (§5.4). `inviter` is the inviting admin's name, which
+    /// the joining person's screens show.
     pub async fn invite_person(
         &self,
         role: coven::MemberRole,
-        name: String,
         access: coven::InviteAccess,
         lifetime: coven::InviteLifetime,
+        inviter: String,
     ) -> Result<coven::InviteId, coven::SyncError> {
         let (invite, _member, _operation) = self.reported(
             self.inner
                 .handle
-                .create_invite(coven::InviteTarget::NewMember { role, name }, access, lifetime)
+                .create_invite(coven::InviteTarget::NewMember { role }, access, lifetime, inviter)
                 .await,
         )?;
         Ok(invite)

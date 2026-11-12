@@ -438,6 +438,30 @@ fn ask_for_profile(
     Ok(ProfileWrite::Written)
 }
 
+/// The name this device's person goes by: their profile's, or else the one
+/// their pending profile request asked for, or else the one the library
+/// keeps from its creation (§5.4). None means a person with no name at all,
+/// which no path here makes: a bug of bae's, for the caller to report. The
+/// one place that decides it, so an invite names its inviter as the person
+/// is named everywhere else.
+pub(crate) fn name_this_person_goes_by(
+    sql: &impl coven::SqlRead,
+) -> rusqlite::Result<Option<String>> {
+    let profile = sql.query(
+        "SELECT p.name FROM coven_members AS m JOIN people AS p ON p.id = m.member \
+         WHERE m.is_self AND NOT m.removed",
+        [],
+        |row| row.get::<_, String>(0),
+    )?;
+    if let Some(name) = profile.into_iter().next() {
+        return Ok(Some(name));
+    }
+    if let Some(request) = profile_request_on(sql)? {
+        return Ok(Some(request.name));
+    }
+    creator_name_on(sql)
+}
+
 /// The name the library's creator typed, while it waits for their profile.
 pub(super) fn creator_name_on(sql: &impl coven::SqlRead) -> rusqlite::Result<Option<String>> {
     sql.query("SELECT name FROM creator_name", [], |row| row.get(0)).map(|mut found| found.pop())

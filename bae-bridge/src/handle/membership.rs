@@ -6,10 +6,13 @@ use std::sync::Arc;
 #[derive(uniffi::Object)]
 pub struct BridgeJoinRequest {
     request: coven::JoinRequest,
+    /// The name the approval shows: the one the person typed when they
+    /// joined, or, for a member getting access again, their profile's.
+    name: String,
 }
 impl BridgeJoinRequest {
-    pub(crate) fn new(request: coven::JoinRequest) -> Self {
-        Self { request }
+    pub(crate) fn new(request: coven::JoinRequest, name: String) -> Self {
+        Self { request, name }
     }
 }
 #[derive(Debug, Clone, uniffi::Record)]
@@ -18,6 +21,9 @@ pub struct BridgeJoinRequestInfo {
     pub member: String,
     pub keys: BridgeMemberPublicKeys,
     pub device_name: String,
+    /// The name the person typed when they joined, which the request
+    /// carries; the approval's title.
+    pub name: String,
     pub provider_account_email: Option<String>,
     /// The six digits the requester's device shows, as coven writes them
     /// (`041 778`).
@@ -31,6 +37,7 @@ impl BridgeJoinRequest {
             member: self.request.member.0.to_string(),
             keys: BridgeMemberPublicKeys::from_core(self.request.keys),
             device_name: self.request.device_name.clone(),
+            name: self.name.clone(),
             provider_account_email: self.request.provider_account_email.clone(),
             confirmation: self.request.confirmation.to_string(),
         }
@@ -101,7 +108,7 @@ forward! {async this => {
     fn confirm_device_cut_off(device:u64)->BridgeDeviceCutOff {Ok(BridgeDeviceCutOff::from_core(this.services.confirm_device_cut_off(coven::DeviceId(device)).await?))}
     fn acknowledge_admin_change(operation:i64)->() {Ok(this.services.acknowledge_admin_change(coven::OperationId(operation)).await?)}
     fn set_member_role(member:String,role:BridgeMemberRole)->() {Ok(this.services.set_member_role(&crate::from_app::member(&member)?,role.into_core()).await?)}
-    fn invite_person(role:BridgeMemberRole,name:String,access:BridgeInviteAccess,lifetime:BridgeInviteLifetime)->String {Ok(this.services.invite_person(role.into_core(),name,access.into_core(),lifetime.into_core()).await?.0.to_string())}
+    fn invite_person(role:BridgeMemberRole,access:BridgeInviteAccess,lifetime:BridgeInviteLifetime)->String {Ok(this.services.invite_person(role.into_core(),access.into_core(),lifetime.into_core()).await?.0.to_string())}
     fn approve_join_request(request:Arc<BridgeJoinRequest>)->() {Ok(this.services.approve_join_request(&request.request).await?)}
     fn decline_join_request(request:Arc<BridgeJoinRequest>)->() {Ok(this.services.decline_join_request(&request.request).await?)}
     fn cancel_invite(invite:String)->() {Ok(this.services.cancel_invite(&coven::InviteId(invite.parse().map_err(BridgeError::config)?)).await?)}

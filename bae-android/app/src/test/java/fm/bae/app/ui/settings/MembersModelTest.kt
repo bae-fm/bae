@@ -101,7 +101,7 @@ class MembersModelTest {
             BridgeInvite(
                 id = "11",
                 member = "member-1",
-                invitee = "Dan",
+                label = "dan@example.com",
                 access = BridgeMemberAccess.ProviderAccount("dan@example.com"),
                 shown = BridgeInviteShown.Code(code = "invite-code", progress = BridgeInviteProgress.Waiting),
                 held = null,

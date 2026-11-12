@@ -307,9 +307,6 @@
     <string name="loading_closing_library">Zamykanie biblioteki…</string>
     <string name="loading_removing_library">Usuwanie biblioteki…</string>
     <string name="loading_resetting_device">Resetowanie tego urządzenia…</string>
-    <string name="onboarding_checking">Sprawdzanie…</string>
-    <string name="onboarding_next_check">Następne sprawdzenie za %1$s</string>
-    <string name="onboarding_check_now">Sprawdź teraz</string>
     <string name="pending_update_no_store">Żaden sklep z aplikacjami na tym urządzeniu nie może zaktualizować bae.</string>
     <string name="storage_setup_title">Skonfiguruj synchronizację</string>
     <string name="settings_set_up_sync_explanation">Ta biblioteka jest przechowywana tylko na tym urządzeniu. Synchronizacja trzyma ją w domu w chmurze, gdzie mogą z niej korzystać twoje inne urządzenia i domownicy.</string>
@@ -461,4 +458,9 @@
     <string name="pinning_empty">Nic do przypięcia</string>
     <string name="pinning_load_failed">Nie udało się wczytać przypięć.</string>
     <string name="pinning_load_more_failed">Nie udało się wczytać kolejnych przypięć.</string>
+    <string name="onboarding_invited_to">Zaproszono Cię do %1$s</string>
+    <string name="onboarding_join_library">Dołącz do biblioteki</string>
+    <string name="onboarding_join">Dołącz</string>
+    <string name="onboarding_your_name">Twoje imię</string>
+    <string name="onboarding_name_placeholder">Widoczne w Twoim profilu, ocenach i playlistach</string>
 </resources>

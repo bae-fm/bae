@@ -60,12 +60,14 @@ enum SetupRow {
 }
 
 impl SetupRow {
-    fn of(outcome: Option<coven::OperationOutcome>) -> Self {
+    /// How `outcome` reads; an outcome no storage setup ends with, a refused
+    /// sharing, is an unreadable row.
+    fn of(outcome: Option<coven::OperationOutcome>) -> Result<Self, DbError> {
         use coven::OperationOutcome as O;
         let undone = |detail: String| {
             Self::Undone(UiError::diagnostic(UiErrorCategory::StorageSetupUndone, detail))
         };
-        match outcome {
+        Ok(match outcome {
             None => Self::Running,
             Some(O::Landed(_) | O::Satisfied | O::Stopped(_) | O::Cancelled) => Self::Settled,
             Some(O::Undone(coven::UndoCause::Interrupted)) => {
@@ -83,7 +85,13 @@ impl SetupRow {
             Some(O::Rejected(rejection)) => {
                 undone(format!("the library refused the setup: {rejection:?}"))
             }
-        }
+            Some(outcome @ O::SharingRefused { .. }) => {
+                return Err(DbError::unreadable(
+                    "coven_operations.outcome of a storage setup",
+                    outcome,
+                ))
+            }
+        })
     }
 }
 
@@ -100,9 +108,11 @@ pub(super) fn storage_setup_on(
             Ok((coven::OperationId(row.get(0)?), row.get::<_, Option<coven::OperationOutcome>>(1)?))
         },
     )?;
-    Ok(standing(
-        rows.into_iter().map(|(operation, outcome)| (operation, SetupRow::of(outcome))).collect(),
-    ))
+    let rows = rows
+        .into_iter()
+        .map(|(operation, outcome)| Ok((operation, SetupRow::of(outcome)?)))
+        .collect::<Result<Vec<_>, DbError>>()?;
+    Ok(standing(rows))
 }
 
 /// Where setup stands from its rows, oldest first: running while any
@@ -170,7 +180,7 @@ impl SyncStatus {
                         |row| row.get::<_, Option<coven::OperationOutcome>>(0),
                     )
                     .optional()?;
-                match outcome.map(SetupRow::of) {
+                match outcome.map(SetupRow::of).transpose()? {
                     Some(SetupRow::Undone(_)) => {
                         sql.acknowledge_operation(operation)?;
                         Ok(true)
@@ -200,7 +210,7 @@ impl SyncStatus {
                     },
                 )?;
                 for (operation, outcome) in ended {
-                    let acknowledged = match (which, SetupRow::of(outcome)) {
+                    let acknowledged = match (which, SetupRow::of(outcome)?) {
                         (_, SetupRow::Running) => false,
                         (Ended::All, _) | (Ended::Settled, SetupRow::Settled) => true,
                         (Ended::Settled, SetupRow::Undone(_)) => false,

@@ -293,9 +293,6 @@
     <string name="loading_closing_library">Bibliotheek wordt gesloten…</string>
     <string name="loading_removing_library">Bibliotheek wordt verwijderd…</string>
     <string name="loading_resetting_device">Dit apparaat wordt opnieuw ingesteld…</string>
-    <string name="onboarding_checking">Bezig met controleren…</string>
-    <string name="onboarding_next_check">Volgende controle over %1$s</string>
-    <string name="onboarding_check_now">Nu controleren</string>
     <string name="pending_update_no_store">Geen enkele appwinkel op dit apparaat kan bae bijwerken.</string>
     <string name="storage_setup_title">Synchronisatie instellen</string>
     <string name="settings_set_up_sync_explanation">Deze bibliotheek staat alleen op dit apparaat. Synchronisatie houdt hem in een cloudthuis, waar je andere apparaten en je huishouden hem kunnen gebruiken.</string>
@@ -445,4 +442,9 @@
     <string name="pinning_empty">Niets om vast te zetten</string>
     <string name="pinning_load_failed">Kon je vastgezette items niet laden.</string>
     <string name="pinning_load_more_failed">Kon niet meer vastgezette items laden.</string>
+    <string name="onboarding_invited_to">Je bent uitgenodigd voor %1$s</string>
+    <string name="onboarding_join_library">Word lid van een bibliotheek</string>
+    <string name="onboarding_join">Deelnemen</string>
+    <string name="onboarding_your_name">Je naam</string>
+    <string name="onboarding_name_placeholder">Verschijnt op je profiel, bij je beoordelingen en in je afspeellijsten</string>
 </resources>

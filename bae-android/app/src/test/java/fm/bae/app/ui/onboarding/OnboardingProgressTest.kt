@@ -1,7 +1,6 @@
 package fm.bae.app.ui.onboarding
 
 import android.app.Application
-import android.text.format.DateUtils
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
@@ -26,7 +25,6 @@ import uniffi.bae_bridge.BridgeCodeMetadata
 import uniffi.bae_bridge.BridgeInviteInfo
 import uniffi.bae_bridge.BridgeLoadProgress
 import uniffi.bae_bridge.BridgeLoadStep
-import uniffi.bae_bridge.BridgeNextCheck
 import uniffi.bae_bridge.BridgeStorageLocation
 import java.time.Instant
 
@@ -38,7 +36,7 @@ class OnboardingProgressTest {
 
     private val invite =
         OnboardingStep.Invite(
-            start = JoinStart.Code("invite-code"),
+            start = JoinStart.Code("invite-code", "Dan"),
             invite =
                 BridgeInviteInfo(
                     metadata =
@@ -57,7 +55,6 @@ class OnboardingProgressTest {
                             carriesS3Key = false,
                         ),
                     libraryName = "Household",
-                    invitee = "Dan",
                     expiresAt = Instant.parse("2026-11-03T16:15:00Z"),
                 ),
             entry = CodeEntry.NewDevice,
@@ -65,61 +62,28 @@ class OnboardingProgressTest {
 
     /** A join, waiting, shows until when it waits: the invite's expiry. */
     @Test
-    fun aWaitingJoinShowsTheLibraryUntilWhenItWaitsItsNumberAndCheckNowButNoCancel() {
+    fun aWaitingJoinShowsTheLibraryUntilWhenItWaitsAndItsNumberButNoCountdownCheckNowOrCancel() {
         val waiting =
             OnboardingStep.Running(
                 invite,
                 BridgeBootstrapState(
-                    BridgeBootstrapStatus.WaitingForApproval(
-                        confirmation = "041 778",
-                        nextCheck = BridgeNextCheck.At(Instant.now().plusSeconds(300)),
-                    ),
+                    BridgeBootstrapStatus.WaitingForApproval(confirmation = "041 778"),
                     cancellable = false,
                 ),
                 LatestStream.bootstrapSteps().only,
             )
         compose.mainClock.autoAdvance = false
         compose.setContent {
-            OnboardingProgress(waiting, onCancel = null, onCheckNow = {})
+            OnboardingProgress(waiting, onCancel = null)
         }
 
         compose.onNodeWithText("Household", substring = true).assertIsDisplayed()
         compose.onNodeWithText("Waiting for approval until", substring = true).assertIsDisplayed()
         compose.onNodeWithText("2026", substring = true).assertIsDisplayed()
         compose.onNodeWithText("041 778").assertIsDisplayed()
-        compose.onNodeWithText("Check now").assertIsDisplayed()
+        compose.onNodeWithText("Next check", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("Check now").assertDoesNotExist()
         compose.onNodeWithText("Cancel").assertDoesNotExist()
-    }
-
-    /** The countdown to the next check reads whole seconds, rounded up, and moves each second. */
-    @Test
-    fun theNextCheckCountsDownEachSecond() {
-        var clockMs = 1_000_000L
-        val waiting =
-            OnboardingStep.Running(
-                invite,
-                BridgeBootstrapState(
-                    BridgeBootstrapStatus.WaitingForApproval(
-                        confirmation = "041 778",
-                        nextCheck = BridgeNextCheck.At(Instant.ofEpochMilli(clockMs + 300_000L)),
-                    ),
-                    cancellable = false,
-                ),
-                LatestStream.bootstrapSteps().only,
-            )
-        compose.mainClock.autoAdvance = false
-        compose.setContent {
-            OnboardingProgress(waiting, onCancel = null, onCheckNow = {}, nowMs = { clockMs })
-        }
-
-        // The first frame starts the countdown's wait.
-        compose.mainClock.advanceTimeByFrame()
-        compose.onNodeWithText(DateUtils.formatElapsedTime(300L), substring = true).assertIsDisplayed()
-
-        clockMs += 1_000L
-        compose.mainClock.advanceTimeBy(1_000L)
-
-        compose.onNodeWithText(DateUtils.formatElapsedTime(299L), substring = true).assertIsDisplayed()
     }
 
     /** Registering this device after loading names the step, uncounted. */

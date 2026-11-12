@@ -350,7 +350,7 @@ private fun JoinRequestDialog(
     val request = invite.requestToDecide ?: return
     val info = remember(request) { request.info() }
     JoinRequestDialogContent(
-        title = invite.invitee ?: info.deviceName,
+        title = info.name,
         confirmation = info.confirmation,
         onApprove = { model.perform("approve a join request") { session.appHandle.approveJoinRequest(request) } },
         onDecline = { model.perform("decline a join request") { session.appHandle.declineJoinRequest(request) } },

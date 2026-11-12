@@ -204,8 +204,9 @@ mirror_enum! { BridgeInviteLifetime = coven::InviteLifetime,
 pub struct BridgeInvite {
     pub id: String,
     pub member: String,
-    /// The person's name; `None` for a replacement.
-    pub invitee: Option<String>,
+    /// What names the invite: the address it shares with, or on S3 the id of
+    /// the key it carries.
+    pub label: String,
     /// The access the invite grants; on S3 the id of the key it carries.
     pub access: BridgeMemberAccess,
     pub shown: BridgeInviteShown,
@@ -235,15 +236,28 @@ pub enum BridgeInviteProgress {
 impl BridgeInvite {
     pub(crate) fn from_core(value: bae_views::OpenInvite) -> Self {
         use bae_library::people::{InviteProgress, InviteShown};
-        let bae_views::OpenInvite { invite, held } = value;
+        let bae_views::OpenInvite { invite, held, requester } = value;
         let shown = match bae_library::people::invite_shown(&invite) {
             InviteShown::Granting => BridgeInviteShown::Granting,
             InviteShown::Code { code, progress } => BridgeInviteShown::Code {
                 code,
                 progress: match progress {
                     InviteProgress::Waiting => BridgeInviteProgress::Waiting,
-                    InviteProgress::Deciding(request) => BridgeInviteProgress::Deciding {
-                        request: Arc::new(crate::BridgeJoinRequest::new(request)),
+                    InviteProgress::Deciding(request) => match requester {
+                        Some(name) => BridgeInviteProgress::Deciding {
+                            request: Arc::new(crate::BridgeJoinRequest::new(request, name)),
+                        },
+                        // The read that lists the invite names every request
+                        // it lists (or fails): a request with no name is a bug
+                        // of bae's, reported here without ending the app. The
+                        // invite shows as waiting, with no name made up.
+                        None => {
+                            tracing::error!(
+                                invite = %invite.id.0,
+                                "bug: a request awaiting a decision has no name"
+                            );
+                            BridgeInviteProgress::Waiting
+                        }
                     },
                     InviteProgress::Joining => BridgeInviteProgress::Joining,
                 },
@@ -252,7 +266,10 @@ impl BridgeInvite {
         Self {
             id: invite.id.0.to_string(),
             member: invite.member.0.to_string(),
-            invitee: invite.invitee,
+            label: match &invite.access {
+                coven::MemberAccess::ProviderAccount(address) => address.clone(),
+                coven::MemberAccess::S3AccessKey { access_key_id } => access_key_id.clone(),
+            },
             access: BridgeMemberAccess::from_core(invite.access),
             shown,
             held: held.map(crate::BridgePendingWait::from_core),

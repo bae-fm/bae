@@ -307,9 +307,6 @@
     <string name="loading_closing_library">Zavírá se knihovna…</string>
     <string name="loading_removing_library">Odebírá se knihovna…</string>
     <string name="loading_resetting_device">Resetuje se toto zařízení…</string>
-    <string name="onboarding_checking">Probíhá kontrola…</string>
-    <string name="onboarding_next_check">Další kontrola za %1$s</string>
-    <string name="onboarding_check_now">Zkontrolovat nyní</string>
     <string name="pending_update_no_store">Na tomto zařízení není žádný obchod s aplikacemi, který by mohl bae aktualizovat.</string>
     <string name="storage_setup_title">Nastavit synchronizaci</string>
     <string name="settings_set_up_sync_explanation">Tato knihovna je uložena jen v tomto zařízení. Synchronizace ji udržuje v cloudovém domově, kde ji mohou používat i vaše další zařízení a domácnost.</string>
@@ -461,4 +458,9 @@
     <string name="pinning_empty">Nic k připnutí</string>
     <string name="pinning_load_failed">Připnutí se nepodařilo načíst.</string>
     <string name="pinning_load_more_failed">Další připnutí se nepodařilo načíst.</string>
+    <string name="onboarding_invited_to">Jste pozváni do %1$s</string>
+    <string name="onboarding_join_library">Připojit se ke knihovně</string>
+    <string name="onboarding_join">Připojit se</string>
+    <string name="onboarding_your_name">Vaše jméno</string>
+    <string name="onboarding_name_placeholder">Zobrazí se ve vašem profilu, hodnoceních a seznamech skladeb</string>
 </resources>

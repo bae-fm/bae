@@ -17,7 +17,7 @@ impl BootstrapCancellation {
     }
 }
 /// The app's hold on a running join: cancel it before its request is sent,
-/// or check for approval now.
+/// or ask it to check for approval often while its waiting screen shows.
 #[derive(uniffi::Object)]
 pub struct BridgeJoinControl {
     control: bae_library::JoinControl,
@@ -31,10 +31,12 @@ impl BridgeJoinControl {
     pub fn cancel(&self) {
         self.control.cancel();
     }
-    /// End the join's wait so it checks for approval now; a provider's
-    /// cooldown still holds.
-    pub fn check_now(&self) {
-        self.control.check_now();
+    /// Whether the join's waiting screen shows. While it does, the join
+    /// checks for approval every 5 seconds from the end of its last check;
+    /// otherwise it checks on coven's doubling waits. A provider's cooldown
+    /// holds either way.
+    pub fn set_screen_shown(&self, shown: bool) {
+        self.control.set_screen_shown(shown);
     }
 }
 impl BridgeHost {
@@ -256,8 +258,10 @@ impl BridgeHost {
             })
             .await
     }
-    /// Join a library from an invite; the library's open asks for the
-    /// person's profile under the invite's name.
+    /// Join a library from an invite as the person named `name`, which the
+    /// join's request carries; the library's open asks for the person's
+    /// profile under it. A blank `name` fails the call before anything is
+    /// made.
     /// Dropping the call, as leaving the screen does, keeps the join for
     /// `resume_join` until it finds its approval; only `control.cancel()`
     /// cancels, and only before the request may have been sent. Once
@@ -266,10 +270,12 @@ impl BridgeHost {
     pub async fn join_with_invite(
         self: Arc<Self>,
         code: String,
+        name: String,
         device_name: String,
         setup: Arc<crate::BridgeLibrarySetup>,
         control: Arc<BridgeJoinControl>,
     ) -> Result<BridgeBootstrapResult, BridgeError> {
+        let joiner = crate::from_app::name(&name)?;
         let steps = crate::screens::SetupFeed::new(Some(setup.clone())).steps();
         self.operations
             .clone()
@@ -277,6 +283,7 @@ impl BridgeHost {
                 let joined = bae_library::join_with_invite(
                     self.library_builder(),
                     &code,
+                    joiner,
                     &device_name,
                     self.clock.clone(),
                     |status| {

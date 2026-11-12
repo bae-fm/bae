@@ -35,6 +35,22 @@ async fn creating_a_library_establishes_its_identity_without_marking_it_active()
     reopened.close().await.unwrap();
 }
 
+/// The waiting screen holds the join's checks exactly while it shows: a
+/// repeated show or hide changes nothing, and showing again holds anew.
+#[test]
+fn the_waiting_screen_holds_the_checks_while_it_shows() {
+    let control = JoinControl::new();
+    assert!(!control.holds_checks_often());
+    control.set_screen_shown(true);
+    control.set_screen_shown(true);
+    assert!(control.holds_checks_often());
+    control.set_screen_shown(false);
+    control.set_screen_shown(false);
+    assert!(!control.holds_checks_often());
+    control.set_screen_shown(true);
+    assert!(control.holds_checks_often());
+}
+
 /// A join's cancel takes the join back only until its request may have been
 /// sent: while it opens its database and while it connects and sends.
 #[test]
@@ -46,7 +62,6 @@ fn a_join_can_be_cancelled_until_its_request_may_have_been_sent() {
     for status in [
         coven::BootstrapStatus::WaitingForApproval {
             confirmation: coven::ConfirmationNumber(41_778),
-            next_check: coven::NextCheck::Checking,
         },
         coven::BootstrapStatus::Loading(load),
         coven::BootstrapStatus::Committing,

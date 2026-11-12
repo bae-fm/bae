@@ -186,17 +186,30 @@ pub enum JoinedLibrary {
     Published { handle: coven::CovenHandle, failure: Box<coven::BootstrapError> },
 }
 
+/// How often this device checks while a screen waits on another device: a
+/// join's waiting screen for its approval, and Add Device's sheet for the new
+/// device. A quiet check is two requests: about 24 a minute, only while the
+/// screen shows.
+pub(crate) const WAITING_SCREEN_CHECK_INTERVAL: std::time::Duration =
+    std::time::Duration::from_secs(5);
+
 /// The app's hold on a running join: cancel it before its request is sent, or
-/// check for approval at once. One control covers coven's join and any
-/// provider sign-in bae runs for it.
+/// check for approval often while the waiting screen shows. One control
+/// covers coven's join and any provider sign-in bae runs for it.
 pub struct JoinControl {
     sign_in: watch::Sender<bool>,
     join: coven::JoinControl,
+    /// The hold on coven's checks while the waiting screen shows.
+    often: std::sync::Mutex<Option<coven::SyncOftenGuard>>,
 }
 
 impl JoinControl {
     pub fn new() -> Self {
-        Self { sign_in: watch::channel(false).0, join: coven::JoinControl::new() }
+        Self {
+            sign_in: watch::channel(false).0,
+            join: coven::JoinControl::new(),
+            often: std::sync::Mutex::new(None),
+        }
     }
 
     /// Cancel the join. Once its request may have been sent, coven keeps the
@@ -208,9 +221,24 @@ impl JoinControl {
         self.join.cancel();
     }
 
-    /// End the join's wait so the next check for approval runs now.
-    pub fn check_now(&self) {
-        self.join.check_now();
+    /// Whether the join's waiting screen shows. While it does, the join
+    /// checks for approval every [`WAITING_SCREEN_CHECK_INTERVAL`] from the
+    /// end of its last check, and otherwise on coven's doubling waits.
+    pub fn set_screen_shown(&self, shown: bool) {
+        let mut often = self.often.lock().expect("the check hold's lock is never poisoned");
+        match (shown, often.is_some()) {
+            (true, false) => *often = Some(self.join.check_often(WAITING_SCREEN_CHECK_INTERVAL)),
+            (false, true) => *often = None,
+            (true, true) | (false, false) => {}
+        }
+    }
+}
+
+#[cfg(test)]
+impl JoinControl {
+    /// Whether the control holds coven's checks often now.
+    fn holds_checks_often(&self) -> bool {
+        self.often.lock().unwrap().is_some()
     }
 }
 
@@ -223,9 +251,10 @@ pub fn join_cancellable(status: &coven::BootstrapStatus) -> bool {
     matches!(status, coven::BootstrapStatus::Opening(_) | coven::BootstrapStatus::Connecting)
 }
 
-/// Join a library from an invite. Coven keeps the name the admin typed in
-/// the invite with the library, which the library's open asks for the
-/// person's profile under (§5.4). Dropping the call before the join finds
+/// Join a library from an invite as the person named `joiner`, the name they
+/// typed, which the join's request carries and coven keeps with the library,
+/// which the library's open asks for the person's profile under (§5.4).
+/// Dropping the call before the join finds
 /// its approval keeps the join for `resume_join`; once it has, coven
 /// publishes the library, which then loads, and the call returns it open
 /// even when its load failed. An invite that has ended by `clock`, with no
@@ -236,6 +265,7 @@ pub fn join_cancellable(status: &coven::BootstrapStatus) -> bool {
 pub async fn join_with_invite(
     mut builder: coven::CovenBuilder,
     code: &str,
+    joiner: bae_store::EnteredName,
     device_name: &str,
     clock: coven::ClockRef,
     on_status: impl Fn(coven::BootstrapStatus),
@@ -262,6 +292,7 @@ pub async fn join_with_invite(
     let joined = Box::pin(coven::join_with_invite(
         loading_builder(builder),
         code,
+        coven::Joiner::NewPerson { name: joiner.into_string() },
         device_name,
         on_status,
         &control.join,

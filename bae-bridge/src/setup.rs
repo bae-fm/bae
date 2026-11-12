@@ -87,13 +87,11 @@ pub enum BridgeCodeInfo {
     Invite { invite: BridgeInviteInfo },
 }
 /// What an invite tells before connecting: the library's name as the invite
-/// carried it, the person's name, and when it expires.
+/// carried it, and when it expires.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeInviteInfo {
     pub metadata: BridgeCodeMetadata,
     pub library_name: String,
-    /// `None` for a replacement: the person already has a profile.
-    pub invitee: Option<String>,
     /// When the invite ends, by the inviting device's clock: a join waits
     /// for approval until then.
     pub expires_at: std::time::SystemTime,
@@ -103,7 +101,6 @@ impl BridgeInviteInfo {
         Self {
             metadata: BridgeCodeMetadata::from_core(value.metadata),
             library_name: value.store_name,
-            invitee: value.invitee,
             expires_at: value.expires_at,
         }
     }

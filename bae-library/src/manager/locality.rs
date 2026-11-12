@@ -197,11 +197,11 @@ impl LibraryManager {
         Ok(files.iter().map(|file| file.file_size).sum())
     }
 
-    /// Unpin the releases of a selection, every one in one write: coven moves
-    /// their files out of the pinned cache and into the evictable cache, so
-    /// they stay readable but become droppable. No release shows a transition
-    /// on the way. A release that cannot unpin changes nothing and the rest
-    /// unpin; the first such release is then the error returned.
+    /// Unpin the releases of a selection, every one in one write: their files
+    /// leave this device in that write, and play from the cloud again. No
+    /// release shows a transition on the way. A release that cannot unpin
+    /// changes nothing and the rest unpin; the first such release is then the
+    /// error returned.
     pub async fn unpin_releases(&self, release_ids: &[String]) -> Result<(), LibraryError> {
         let store = self.store.clone();
         let selection = release_ids.to_vec();

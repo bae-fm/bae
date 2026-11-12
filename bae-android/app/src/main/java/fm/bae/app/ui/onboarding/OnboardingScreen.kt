@@ -1,6 +1,5 @@
 package fm.bae.app.ui.onboarding
 
-import android.text.format.DateUtils
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -27,6 +26,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.LifecycleStartEffect
 import fm.bae.app.BaeApp
 import fm.bae.app.DisplayError
 import fm.bae.app.R
@@ -43,8 +43,6 @@ import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.Logo
 import fm.bae.app.ui.components.OpenProgressLine
 import fm.bae.app.ui.components.QRScannerScreen
-import fm.bae.app.ui.countdownSecondsLeft
-import fm.bae.app.ui.rememberCountdownNow
 import fm.bae.app.ui.rememberScreenScope
 import fm.bae.app.ui.settings.inviteExpiry
 import fm.bae.fastvalues.LatestStream
@@ -57,13 +55,11 @@ import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeCodeMetadata
 import uniffi.bae_bridge.BridgeDropboxLocation
 import uniffi.bae_bridge.BridgeInviteInfo
-import uniffi.bae_bridge.BridgeNextCheck
 import uniffi.bae_bridge.BridgeStorageLocation
 import java.time.Instant
 
 internal val actionWidth = 220.dp
 
-private const val PREVIEW_WAIT_SECONDS = 42L
 private const val PREVIEW_INVITE_SECONDS = 86_400L
 
 /**
@@ -232,6 +228,16 @@ internal fun OnboardingSteps(
             RestoreStep(flow, step, requestScan, libraries)
         }
 
+        is OnboardingStep.JoinName -> {
+            BackHandler { flow.back(step) }
+            JoinNameStep(
+                step = step,
+                error = flow.error,
+                onJoin = { flow.join(step, it) },
+                onBack = { flow.back(step) },
+            )
+        }
+
         is OnboardingStep.RestoreSaved -> {
             BackHandler { flow.back(step) }
             SavedRestoreForm(
@@ -247,10 +253,15 @@ internal fun OnboardingSteps(
             // Back leaves the screen, and the join goes on at the next launch.
             val cancellable = step.state?.cancellable == true
             BackHandler(enabled = cancellable) { flow.cancel() }
+            // The join checks for approval every few seconds while this screen
+            // is started (core holds that exactly as long as it says so).
+            LifecycleStartEffect(flow) {
+                flow.setWaitingScreenShown(true)
+                onStopOrDispose { flow.setWaitingScreenShown(false) }
+            }
             OnboardingProgress(
                 step = step,
                 onCancel = flow::cancel.takeIf { cancellable },
-                onCheckNow = flow::checkNow,
             )
         }
     }
@@ -298,6 +309,7 @@ internal fun OnboardingStartColumn(
 private fun runningTitle(from: OnboardingStep.Attempt): String? =
     when (from) {
         is OnboardingStep.Invite -> stringResource(R.string.onboarding_joining_library, from.invite.libraryName)
+        is OnboardingStep.JoinName -> null
         is OnboardingStep.Restore -> RestoreText.of(from.entry).running?.let { stringResource(it) }
         is OnboardingStep.RestoreSaved -> RestoreText.RESTORE.running?.let { stringResource(it) }
         is OnboardingStep.FinishRestore -> RestoreText.RESTORE.running?.let { stringResource(it) }
@@ -306,15 +318,12 @@ private fun runningTitle(from: OnboardingStep.Attempt): String? =
 
 /**
  * A restore or join running: what it waits on now, and Cancel while it can
- * be. A join waiting for approval shows its confirmation number,
- * when it checks next, and Check now.
+ * be. A join waiting for approval shows its confirmation number.
  */
 @Composable
 internal fun OnboardingProgress(
     step: OnboardingStep.Running,
     onCancel: (() -> Unit)?,
-    onCheckNow: () -> Unit,
-    nowMs: () -> Long = System::currentTimeMillis,
 ) {
     val title = runningTitle(step.from)
     OnboardingContainer {
@@ -344,8 +353,6 @@ internal fun OnboardingProgress(
                 WaitingForApproval(
                     status = status,
                     expiresAt = (step.from as OnboardingStep.Invite).invite.expiresAt,
-                    onCheckNow = onCheckNow,
-                    nowMs = nowMs,
                 )
             }
 
@@ -371,15 +378,12 @@ internal fun OnboardingProgress(
 
 /**
  * A join waiting for approval: until when it waits, which is when its invite
- * expires, its confirmation number, a countdown to the next
- * check, and Check now, which a provider's cooldown holds.
+ * expires, and its confirmation number.
  */
 @Composable
 private fun WaitingForApproval(
     status: BridgeBootstrapStatus.WaitingForApproval,
     expiresAt: Instant,
-    onCheckNow: () -> Unit,
-    nowMs: () -> Long,
 ) {
     val context = LocalContext.current
     val until = remember(expiresAt) { context.inviteExpiry(expiresAt) }
@@ -389,26 +393,6 @@ private fun WaitingForApproval(
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
     AndroidMatchCode(status.confirmation, waiting = stringResource(R.string.onboarding_waiting_until, until))
-    Spacer(modifier = Modifier.height(ThemeSpace.related))
-    val due =
-        when (val next = status.nextCheck) {
-            BridgeNextCheck.Checking -> null
-            is BridgeNextCheck.At -> next.time
-            is BridgeNextCheck.CoolingDown -> next.until
-        }
-    val countdown =
-        if (due == null) {
-            stringResource(R.string.onboarding_checking)
-        } else {
-            val dueMs = due.toEpochMilli()
-            val remaining = countdownSecondsLeft(dueMs, rememberCountdownNow(dueMs, nowMs))
-            stringResource(R.string.onboarding_next_check, DateUtils.formatElapsedTime(remaining))
-        }
-    Text(text = countdown, style = ThemeText.body.style, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    Spacer(modifier = Modifier.height(ThemeSpace.section))
-    AndroidButton(kind = ButtonKind.TONAL, onClick = onCheckNow, enabled = status.nextCheck is BridgeNextCheck.At) {
-        Text(stringResource(R.string.onboarding_check_now))
-    }
 }
 
 @Composable
@@ -430,7 +414,7 @@ private fun OnboardingProgressWaitingPreview() {
                 OnboardingStep.Running(
                     from =
                         OnboardingStep.Invite(
-                            start = JoinStart.Code("invite-code"),
+                            start = JoinStart.Code("invite-code", "Dan"),
                             invite =
                                 BridgeInviteInfo(
                                     metadata =
@@ -449,7 +433,6 @@ private fun OnboardingProgressWaitingPreview() {
                                             carriesS3Key = false,
                                         ),
                                     libraryName = "Household",
-                                    invitee = "Dan",
                                     expiresAt = Instant.now().plusSeconds(PREVIEW_INVITE_SECONDS),
                                 ),
                             entry = CodeEntry.NewDevice,
@@ -459,14 +442,12 @@ private fun OnboardingProgressWaitingPreview() {
                             status =
                                 BridgeBootstrapStatus.WaitingForApproval(
                                     confirmation = "041 778",
-                                    nextCheck = BridgeNextCheck.At(Instant.now().plusSeconds(PREVIEW_WAIT_SECONDS)),
                                 ),
                             cancellable = false,
                         ),
                     steps = LatestStream.bootstrapSteps().only,
                 ),
             onCancel = null,
-            onCheckNow = {},
         )
     }
 }

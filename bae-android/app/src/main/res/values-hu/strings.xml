@@ -291,9 +291,6 @@
     <string name="loading_closing_library">A könyvtár bezárása…</string>
     <string name="loading_removing_library">A könyvtár eltávolítása…</string>
     <string name="loading_resetting_device">Az eszköz visszaállítása…</string>
-    <string name="onboarding_checking">Ellenőrzés…</string>
-    <string name="onboarding_next_check">Következő ellenőrzés: %1$s múlva</string>
-    <string name="onboarding_check_now">Ellenőrzés most</string>
     <string name="pending_update_no_store">Ezen az eszközön nincs olyan alkalmazásbolt, amely frissíteni tudná a bae-t.</string>
     <string name="storage_setup_title">Szinkronizálás beállítása</string>
     <string name="settings_set_up_sync_explanation">Ez a könyvtár csak ezen az eszközön van. A szinkronizálás egy felhőotthonban tartja, ahol a többi eszközöd és a háztartásod is használhatja.</string>
@@ -443,4 +440,9 @@
     <string name="pinning_empty">Nincs mit rögzíteni</string>
     <string name="pinning_load_failed">Nem sikerült betölteni a rögzítéseket.</string>
     <string name="pinning_load_more_failed">Nem sikerült további rögzítéseket betölteni.</string>
+    <string name="onboarding_invited_to">Meghívást kaptál ide: %1$s</string>
+    <string name="onboarding_join_library">Csatlakozás könyvtárhoz</string>
+    <string name="onboarding_join">Csatlakozás</string>
+    <string name="onboarding_your_name">A neved</string>
+    <string name="onboarding_name_placeholder">Megjelenik a profilodon, az értékeléseiden és a lejátszási listáidon</string>
 </resources>

@@ -11,8 +11,8 @@ public enum BootstrapAttempt {
     /// A restore from a typed or scanned code. A code the person's own
     /// device showed holds their S3 key, as `metadata` says.
     case restore(code: String, metadata: BridgeCodeMetadata)
-    /// A join from an invite's code, which starts as soon as the code reads:
-    /// the invite carries the person's name.
+    /// A join from an invite's code. It starts once the person has typed
+    /// their name, which the join's request carries.
     case join(code: String, invite: BridgeInviteInfo)
     /// A join this device has under way, continued after bae restarted.
     case resume(BridgeUnfinishedJoin, invite: BridgeInviteInfo)
@@ -42,11 +42,26 @@ public enum BootstrapAttempt {
     }
 }
 
+/// Where an invite's code goes once it reads.
+enum InviteRouting {
+    /// No invite code has read.
+    case unread
+    /// Looking for a join this device has under way for its library.
+    case checking
+    /// This device has a join under way for the invite's library: it
+    /// goes on with that join, which asks no name (coven refuses a
+    /// second, different one).
+    case resumes(BridgeUnfinishedJoin)
+    /// No join is under way: the person gives their name first.
+    case asksName
+}
+
 /// One restore or join screen's state: the code typed, pasted or scanned (or
 /// the saved one it opened with), what that code decodes to, the S3 key a
-/// restore needs, and the running attempt. An invite joins as soon as its code
-/// reads, and a scanned code starts as soon as it holds all it needs; a typed
-/// restore code waits for the primary action. The apps' code screens render it
+/// restore needs, and the running attempt. An invite asks the person's name
+/// before it joins, unless a join for its library is under way here; a scanned
+/// restore code starts as soon as it holds all it needs, and a typed one waits
+/// for the primary action. The apps' code screens render it
 /// and call its actions.
 @MainActor
 @Observable
@@ -84,6 +99,14 @@ public final class BootstrapCodeForm {
     private var decoded: Result<BridgeCodeInfo, Error>?
     public var accessKey = ""
     public var secretKey = ""
+    /// The name the person types for a join, on the step that follows an
+    /// invite's code.
+    public var joinName = ""
+    /// What reading an invite's code led to, which only a join needs.
+    private var inviteRouting = InviteRouting.unread
+    /// Whether the join's waiting screen shows, which each join's control is
+    /// told as it starts and whenever this changes.
+    public private(set) var waitingScreenShown = false
     /// The running attempt, which reports its progress.
     private var bootstrap: LibraryBootstrap?
     public private(set) var isRunning = false
@@ -92,12 +115,17 @@ public final class BootstrapCodeForm {
     @ObservationIgnored
     private var task: Task<Void, Never>?
     @ObservationIgnored
+    private var routing: Task<Void, Never>?
+    @ObservationIgnored
     private let decoder: (String) throws -> BridgeCodeInfo
     @ObservationIgnored
     private let makeBootstrap: @MainActor () -> LibraryBootstrap
     @ObservationIgnored
     private let unfinishedJoins:
         @Sendable () async throws -> [BridgeUnfinishedJoin]
+    /// The id of the library a join under way is for.
+    @ObservationIgnored
+    private let joinLibrary: (BridgeUnfinishedJoin) -> String
     @ObservationIgnored
     private let unfinishedRestores:
         @Sendable () async throws -> [BridgeUnfinishedRestore]
@@ -115,9 +143,14 @@ public final class BootstrapCodeForm {
             @escaping @Sendable () async throws -> [BridgeUnfinishedJoin],
         unfinishedRestores:
             @escaping @Sendable () async throws -> [BridgeUnfinishedRestore],
+        joinLibrary:
+            @escaping (BridgeUnfinishedJoin) -> String = {
+                $0.info().metadata.libraryId
+            },
         onLibraryReady:
             @escaping @MainActor (OpenedLibrary, BridgeError?) -> Void
     ) {
+        self.joinLibrary = joinLibrary
         self.entry = entry
         decoder = decodeCode
         self.makeBootstrap = makeBootstrap
@@ -160,7 +193,12 @@ public final class BootstrapCodeForm {
             (.invite(let invite), .finishRestore):
             .restore(code: code, metadata: invite.metadata)
         case (.invite(let invite), _):
-            .join(code: code, invite: invite)
+            if case .resumes(let join) = inviteRouting {
+                .resume(join, invite: invite)
+            }
+            else {
+                .join(code: code, invite: invite)
+            }
         }
     }
 
@@ -179,6 +217,7 @@ public final class BootstrapCodeForm {
 
     public var ready: Bool {
         guard let attempt, !isRunning else { return false }
+        if case .join = attempt { return canJoin }
         if attempt.needsS3Key && (accessKey.isEmpty || secretKey.isEmpty) {
             return false
         }
@@ -228,6 +267,8 @@ public final class BootstrapCodeForm {
     public func clearReading() {
         decoded = nil
         error = nil
+        routing?.cancel()
+        inviteRouting = .unread
     }
 
     /// Read what the entered code is. Called whenever the code changes.
@@ -239,8 +280,12 @@ public final class BootstrapCodeForm {
             return
         }
         decoded = Result { try decoder(code) }
-        // An invite carries everything joining needs, so it joins at once.
-        if attempt?.invite != nil, !isRunning { start() }
+        // An invite goes on with a join under way for its library, else
+        // asks the person's name.
+        inviteRouting = .unread
+        if case .join(_, let invite) = attempt, !isRunning {
+            routeInvite(invite)
+        }
     }
 
     /// Start what this screen opened to do at once: a join this device has
@@ -287,6 +332,7 @@ public final class BootstrapCodeForm {
             BridgeBootstrapResult
     ) {
         let bootstrap = makeBootstrap()
+        bootstrap.setWaitingScreenShown(waitingScreenShown)
         self.bootstrap = bootstrap
         error = nil
         isRunning = true
@@ -334,7 +380,7 @@ public final class BootstrapCodeForm {
         case (.restore(let code, _), _):
             try await bootstrap.restore(code: code, credentials: credentials)
         case (.join(let code, _), _):
-            try await bootstrap.join(code: code)
+            try await bootstrap.join(code: code, name: trimmedJoinName)
         case (.resume(let join, _), _):
             try await bootstrap.resume(join)
         }
@@ -356,10 +402,74 @@ public final class BootstrapCodeForm {
     public func leave() {
         task?.cancel()
     }
+}
 
-    /// End the running join's wait so it checks for approval now.
-    public func checkNow() {
-        bootstrap?.checkNow()
+// MARK: - Joining
+
+extension BootstrapCodeForm {
+    /// The invite whose code read, when its person still has to give their
+    /// name before joining: no join for its library is under way here.
+    public var asksName: BridgeInviteInfo? {
+        guard !isRunning, case .asksName = inviteRouting,
+            case .join(_, let invite) = attempt
+        else { return nil }
+        return invite
+    }
+
+    /// The name as it is sent: without the spaces around it.
+    private var trimmedJoinName: String {
+        joinName.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// Whether Join can run: a name is typed.
+    public var canJoin: Bool {
+        asksName != nil && !trimmedJoinName.isEmpty
+    }
+
+    /// Join as the person who typed `joinName`.
+    public func join() {
+        guard canJoin else { return }
+        start()
+    }
+
+    /// Find where an invite whose code read goes: a join this device has
+    /// under way for its library, which goes on at once, or else the name
+    /// step.
+    private func routeInvite(_ invite: BridgeInviteInfo) {
+        inviteRouting = .checking
+        routing?.cancel()
+        let library = invite.metadata.libraryId
+        let underWay = unfinishedJoins
+        let libraryOf = joinLibrary
+        routing = Task {
+            do {
+                let joins = try await underWay()
+                guard !Task.isCancelled else { return }
+                if let join = joins.first(where: { libraryOf($0) == library }) {
+                    inviteRouting = .resumes(join)
+                    if !isRunning { start() }
+                }
+                else {
+                    inviteRouting = .asksName
+                }
+            }
+            catch is CancellationError {}
+            catch {
+                logger.error(
+                    "listing the joins under way failed: \(String(reflecting: error))"
+                )
+                inviteRouting = .unread
+                self.error = DisplayError(error)
+            }
+        }
+    }
+
+    /// Whether the join's waiting screen shows: while it does, the join
+    /// checks for approval every few seconds. Applied to the running join's
+    /// control and to each one made after.
+    public func setWaitingScreenShown(_ shown: Bool) {
+        waitingScreenShown = shown
+        bootstrap?.setWaitingScreenShown(shown)
     }
 }
 
@@ -380,6 +490,7 @@ extension BootstrapCodeForm {
             }
             do {
                 let bootstrap = makeBootstrap()
+                bootstrap.setWaitingScreenShown(waitingScreenShown)
                 if let join = try await joins().first {
                     self.bootstrap = bootstrap
                     deliver(try await bootstrap.resume(join))

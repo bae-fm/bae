@@ -1,8 +1,12 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeStorageFailure {
     ProviderUnavailable,
-    AccessNotRegistered { required: crate::BridgeOAuthAccess },
-    AccessNotGranted { required: crate::BridgeOAuthAccess },
+    AccessNotRegistered {
+        required: crate::BridgeOAuthAccess,
+    },
+    AccessNotGranted {
+        required: crate::BridgeOAuthAccess,
+    },
     DropboxAppFolderNotShareable,
     Network,
     Corrupted,
@@ -31,13 +35,66 @@ pub enum BridgeStorageFailure {
     SessionIdentityUnknown,
     SessionExpired,
     InvalidPart,
-    SingleRequestTooLarge { size: u64, limit: u64 },
-    CopyTooLarge { size: u64, limit: u64 },
+    SingleRequestTooLarge {
+        size: u64,
+        limit: u64,
+    },
+    CopyTooLarge {
+        size: u64,
+        limit: u64,
+    },
     Encoding,
     File,
     MemberKeysMissing,
     CatchUpRequired,
+    /// The provider refused to share the library's folder for good, for a
+    /// reason only a person can fix; it ends the invite whose grant met it.
+    SharingRefused {
+        refusal: BridgeSharingRefusal,
+    },
     Bug,
+}
+
+/// Why sharing the library's folder was refused for good (§5.6).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeSharingRefusal {
+    /// The provider has no account for the invited address.
+    InvalidAddress,
+    /// The inviting account's email is unverified.
+    EmailUnverified,
+    /// The inviting account's team doesn't share outside the team.
+    TeamSharingOff,
+    /// The inviting account's plan has no sharing.
+    PlanWithoutSharing,
+    /// The folder holds as many members or invitations as the inviting
+    /// account's plan allows.
+    TooManyMembers,
+}
+
+mirror_enum! {
+ BridgeSharingRefusal = coven::SharingRefusal,
+ from_core: pub(crate) fn,
+ into_core: pub(crate) fn,
+ variants: {
+InvalidAddress,
+EmailUnverified,
+TeamSharingOff,
+PlanWithoutSharing,
+TooManyMembers,
+ },
+}
+
+impl BridgeSharingRefusal {
+    /// The core string that says what went wrong and what to fix.
+    pub(crate) fn loc_key(self) -> &'static str {
+        match self {
+            Self::InvalidAddress => "core.invite.refused.invalid_address",
+            Self::EmailUnverified => "core.invite.refused.email_unverified",
+            Self::TeamSharingOff => "core.invite.refused.team_sharing_off",
+            Self::PlanWithoutSharing => "core.invite.refused.plan_without_sharing",
+            Self::TooManyMembers => "core.invite.refused.too_many_members",
+        }
+    }
 }
 
 mirror_enum! {
@@ -88,6 +145,7 @@ Encoding,
 File,
 MemberKeysMissing,
 CatchUpRequired,
+SharingRefused(refusal: (crate::BridgeSharingRefusal)),
 Bug,
  },
 }
@@ -141,6 +199,7 @@ pub(crate) fn storage_failure_key(failure: BridgeStorageFailure) -> &'static str
         BridgeStorageFailure::File => "core.error.storage.file",
         BridgeStorageFailure::MemberKeysMissing => "core.error.storage.member_keys_missing",
         BridgeStorageFailure::CatchUpRequired => "core.pending.reason.waits",
+        BridgeStorageFailure::SharingRefused { refusal } => refusal.loc_key(),
         // A bug in coven's storage work, which the person can only report.
         BridgeStorageFailure::Bug => "core.error.category.internal",
     }

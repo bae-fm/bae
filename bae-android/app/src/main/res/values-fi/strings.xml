@@ -291,9 +291,6 @@
     <string name="loading_closing_library">Suljetaan kirjastoa…</string>
     <string name="loading_removing_library">Poistetaan kirjastoa…</string>
     <string name="loading_resetting_device">Nollataan tätä laitetta…</string>
-    <string name="onboarding_checking">Tarkistetaan…</string>
-    <string name="onboarding_next_check">Seuraava tarkistus %1$s kuluttua</string>
-    <string name="onboarding_check_now">Tarkista nyt</string>
     <string name="pending_update_no_store">Mikään tämän laitteen sovelluskauppa ei voi päivittää bae-sovellusta.</string>
     <string name="storage_setup_title">Ota synkronointi käyttöön</string>
     <string name="settings_set_up_sync_explanation">Tämä kirjasto on vain tässä laitteessa. Synkronointi pitää sen pilvikodissa, jossa muut laitteesi ja kotitaloutesi voivat käyttää sitä.</string>
@@ -443,4 +440,9 @@
     <string name="pinning_empty">Ei kiinnitettävää</string>
     <string name="pinning_load_failed">Kiinnityksiä ei voitu ladata.</string>
     <string name="pinning_load_more_failed">Lisää kiinnityksiä ei voitu ladata.</string>
+    <string name="onboarding_invited_to">Sinut on kutsuttu kirjastoon %1$s</string>
+    <string name="onboarding_join_library">Liity kirjastoon</string>
+    <string name="onboarding_join">Liity</string>
+    <string name="onboarding_your_name">Nimesi</string>
+    <string name="onboarding_name_placeholder">Näkyy profiilissasi, arvioinneissasi ja soittolistoissasi</string>
 </resources>

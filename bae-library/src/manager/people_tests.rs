@@ -295,23 +295,20 @@ fn an_invite_is_listed_until_it_is_cancelled() {
             .store
             .invite_person(
                 coven::MemberRole::Member,
-                "Dan".into(),
                 coven::InviteAccess::S3AccessKey {
                     access_key_id: "dan-key".into(),
                     secret_access_key: coven::SecretText::new("dan-secret".into()),
                 },
                 coven::InviteLifetime::Day,
+                "Ana".into(),
             )
             .await
             .unwrap();
         let listed =
             crate::followed::value_matching(&mut invites, |invites| !invites.is_empty()).await;
         assert_eq!(
-            listed
-                .iter()
-                .map(|listed| (listed.invite.id, listed.invite.invitee.clone()))
-                .collect::<Vec<_>>(),
-            vec![(invite, Some("Dan".to_string()))]
+            listed.iter().map(|listed| (listed.invite.id, listed.invite.kind)).collect::<Vec<_>>(),
+            vec![(invite, coven::InviteKind::NewPerson)]
         );
         let granted = crate::followed::value_matching(&mut invites, |invites| {
             invites.iter().any(|listed| {
