@@ -29,6 +29,7 @@ struct JoinNameView: View {
                             )
                         )
                         .labelsHidden()
+                        .accessibilityLabel(Text("Your name"))
                         .focused($focused)
                         .onSubmit { if canJoin { onJoin() } }
                     }
@@ -41,6 +42,7 @@ struct JoinNameView: View {
                 MacStepActions {
                     Button("Cancel", action: onCancel)
                         .buttonStyle(.borderless)
+                        .foregroundStyle(Theme.textPrimary)
                         .keyboardShortcut(.cancelAction)
                     Button("Join", action: onJoin)
                         .buttonStyle(PrimaryButtonStyle())

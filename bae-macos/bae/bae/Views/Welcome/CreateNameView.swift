@@ -31,6 +31,7 @@ struct CreateNameView: View {
                             )
                         )
                         .labelsHidden()
+                        .accessibilityLabel(Text("Your name"))
                         .focused($focused)
                         .disabled(form.isRunning)
                         .onSubmit { form.create() }
@@ -51,6 +52,7 @@ struct CreateNameView: View {
                         onCancel()
                     }
                     .buttonStyle(.borderless)
+                    .foregroundStyle(Theme.textPrimary)
                     .keyboardShortcut(.cancelAction)
                     Button("Create") { form.create() }
                         .buttonStyle(PrimaryButtonStyle())

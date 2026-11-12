@@ -53,7 +53,7 @@ struct QRScannerView: View {
             .foregroundStyle(.secondary)
             .multilineTextAlignment(.center)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color.secondary.opacity(ThemeOpacity.tint))
+            .background(Theme.well)
     }
 
     private func start() async {
@@ -177,6 +177,7 @@ struct CodeScannerSheet: View {
                 Spacer()
                 Button("Cancel") { onDismiss() }
                     .buttonStyle(.borderless)
+                    .foregroundStyle(Theme.textPrimary)
             }
             .padding()
 
