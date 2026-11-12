@@ -468,7 +468,7 @@ extension PeopleAndDevicesPage {
             ForEach(member.activeDevices, id: \.id) { device in
                 LabeledContent {
                     if device.canRemove {
-                        MoreMenu {
+                        MacMoreMenu {
                             Button("Remove…") {
                                 removal = .device(device, own: member.isSelf)
                             }

@@ -22,7 +22,7 @@ struct JoinWaitingView: View {
                 .foregroundStyle(.secondary)
             }
             if let status = form.status {
-                MacProgress(steps: form.steps) {
+                MacProgressContainer(steps: form.steps) {
                     BootstrapStatusView(status: status)
                 }
             }

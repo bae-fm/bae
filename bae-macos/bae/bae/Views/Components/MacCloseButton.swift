@@ -2,7 +2,7 @@ import BaeKit
 import SwiftUI
 
 /// The close control shared by docked panes and expanded detail cards.
-struct PanelCloseButton: View {
+struct MacCloseButton: View {
     let onClose: () -> Void
 
     var body: some View {

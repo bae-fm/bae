@@ -114,7 +114,7 @@ struct AlbumExpansionContent: View {
         )
         .shadow(color: Theme.shadow, radius: 28, y: 18)
         .overlay(alignment: .topTrailing) {
-            PanelCloseButton(onClose: onClose)
+            MacCloseButton(onClose: onClose)
                 .padding(ThemeSpace.edge)
         }
     }

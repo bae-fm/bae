@@ -76,8 +76,8 @@ struct BootstrapCodeView: View {
                     .padding(.bottom, ThemeSpace.related)
             }
             if let status = form.status {
-                MacProgress(steps: form.openSteps) {
-                    MacProgress(steps: form.steps) {
+                MacProgressContainer(steps: form.openSteps) {
+                    MacProgressContainer(steps: form.steps) {
                         BootstrapStatusView(status: status)
                     }
                 }

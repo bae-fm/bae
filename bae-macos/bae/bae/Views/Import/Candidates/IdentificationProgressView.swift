@@ -21,7 +21,7 @@ struct IdentificationProgressView: View {
             Button {
                 onGoToUnidentified()
             } label: {
-                ProgressLine(
+                MacProgressLine(
                     String(localized: "Identifying"),
                     progress: fraction,
                     detail: "\(identified.formatted()) / \(total.formatted())"

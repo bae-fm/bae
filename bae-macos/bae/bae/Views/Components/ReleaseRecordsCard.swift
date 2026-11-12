@@ -9,7 +9,7 @@ struct ReleaseRecordsCard: View {
     let records: [BridgeReleaseRecord]
 
     var body: some View {
-        ReleaseRecordsRow(records: records, scale: .card)
+        MacRecordLinks(records: records)
             .padding(ThemeSpace.group)
             .frame(width: Self.width, alignment: .leading)
     }

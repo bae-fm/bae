@@ -4,7 +4,7 @@ import SwiftUI
 /// A line of progress: the phase, a bar filling the rest of the line, and an
 /// optional count ("112 / 130"), in the surrounding font. The bar is a fill
 /// the line is given, or one set straight from a fast stream.
-struct ProgressLine<Label: View, Bar: View>: View {
+struct MacProgressLine<Label: View, Bar: View>: View {
     let bar: Bar
     /// The count after the bar. Nil when the line has only a phase to name.
     let detail: String?
@@ -45,7 +45,7 @@ struct ProgressLine<Label: View, Bar: View>: View {
     }
 }
 
-extension ProgressLine where Bar == ProgressTrackBar {
+extension MacProgressLine where Bar == ProgressTrackBar {
     /// A line whose bar fills to `progress`: 0...1 for a determinate fill,
     /// nil for the indeterminate marching pill.
     init(
@@ -61,13 +61,13 @@ extension ProgressLine where Bar == ProgressTrackBar {
     }
 }
 
-extension ProgressLine where Label == Text, Bar == ProgressTrackBar {
+extension MacProgressLine where Label == Text, Bar == ProgressTrackBar {
     init(_ label: String, progress: Double?, detail: String? = nil) {
         self.init(progress: progress, detail: detail) { Text(label) }
     }
 }
 
-extension ProgressLine where Label == Text {
+extension MacProgressLine where Label == Text {
     init(_ label: String, bar: Bar) {
         self.init(bar: bar) { Text(label) }
     }
@@ -76,19 +76,19 @@ extension ProgressLine where Label == Text {
 #if DEBUG
     #Preview("Progress Line") {
         VStack(alignment: .leading, spacing: ThemeSpace.group) {
-            ProgressLine("Reading files", progress: 0.42, detail: "42%")
-            ProgressLine("Importing…", progress: nil)
-            ProgressLine(
+            MacProgressLine("Reading files", progress: 0.42, detail: "42%")
+            MacProgressLine("Importing…", progress: nil)
+            MacProgressLine(
                 "Identifying",
                 progress: 112 / 130,
                 detail: "112 / 130"
             )
-            ProgressLine(
+            MacProgressLine(
                 "Uploading 3 files",
                 progress: 0.15,
                 detail: "Uploading 3 MB of 221.2 MB"
             )
-            ProgressLine(
+            MacProgressLine(
                 "A phase named at such length that it has to yield to the bar",
                 progress: 0.6
             )

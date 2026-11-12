@@ -4,4 +4,4 @@ A line of progress, in the surrounding font: the phase, a bar filling the rest o
 
 A running import's step in its row, a row's upload, and the identify popover's "Identifying [bar] 112 / 130". For a step's name over a wider bar, on its own in a pane or sheet, use `MacProgress`.
 
-**In the code:** macOS: `ProgressLine` (`Views/Components/ProgressLine.swift`), in `ImportProgressLine` (`TriageRowView`, `ImportedReleasePane`), `TriageRowView`'s upload line and `IdentificationProgressView`.
+**In the code:** macOS: `MacProgressLine` (`Views/Components/MacProgressLine.swift`), in `ImportProgressLineContainer` and `DoneRowUploadLineContainer` (`MacImportRow`) and `IdentificationProgressView`.

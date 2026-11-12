@@ -4,4 +4,4 @@ Every catalog that describes a release, as a wrapped row of links to each catalo
 
 Drawn in the import draft's records line (with Unlink at its end), in a search result's card, and in the open album panel's records popover.
 
-**In the code:** macOS: `ReleaseRecordsRow` (`Views/Components/ReleaseRecordsRow.swift`), in `ImportReleaseHeader` (the import draft) and `ReleaseRecordsCard` (the album panel's popover); `ReleaseFactsScale` gives it two spacings, which become this one.
+**In the code:** macOS: `MacRecordLinks` (`Views/Components/MacRecordLinks.swift`), in `ImportReleaseHeader` (the import draft) and `ReleaseRecordsCard` (the album panel's popover).

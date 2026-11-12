@@ -3,15 +3,11 @@ import SwiftUI
 
 /// Every catalog that describes a release, as a wrapped row of links to each
 /// catalog's page, in the order core lists them.
-struct ReleaseRecordsRow: View {
+struct MacRecordLinks: View {
     let records: [BridgeReleaseRecord]
-    var scale: ReleaseFactsScale = .pane
 
     var body: some View {
-        FlowLayout(
-            spacing: scale.recordSpacing,
-            rowSpacing: scale.recordRowSpacing
-        ) {
+        FlowLayout(spacing: 12, rowSpacing: 4) {
             ForEach(records, id: \.catalog) { record in
                 ReleaseRecordLink(record: record)
             }
@@ -28,13 +24,12 @@ private struct ReleaseRecordLink: View {
         if let url = URL(string: record.url) {
             Link(destination: url) {
                 name
-                    .foregroundStyle(Theme.accent)
             }
             .buttonStyle(.plain)
         }
         else {
             // An address that won't parse still names the catalog.
-            name.foregroundStyle(.secondary)
+            name
         }
     }
 
@@ -45,6 +40,7 @@ private struct ReleaseRecordLink: View {
                 .imageScale(.small)
         }
         .themeText(.chip)
+        .foregroundStyle(.secondary)
         .fixedSize()
     }
 }
@@ -56,14 +52,14 @@ private struct ReleaseRecordLink: View {
     private let previewWidth: CGFloat = 420
 
     #Preview("Two catalogs") {
-        ReleaseRecordsRow(records: PreviewData.releaseRecordsPair)
+        MacRecordLinks(records: PreviewData.releaseRecordsPair)
             .padding()
             .frame(width: previewWidth)
             .background(Theme.surfaceElevated)
     }
 
     #Preview("Every catalog") {
-        ReleaseRecordsRow(records: PreviewData.releaseRecordsEveryCatalog)
+        MacRecordLinks(records: PreviewData.releaseRecordsEveryCatalog)
             .padding()
             .frame(width: previewWidth)
             .background(Theme.surfaceElevated)

@@ -203,7 +203,7 @@ private struct PresetRow: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            MoreMenu {
+            MacMoreMenu {
                 Button("Edit…", action: edit)
                 Button("Delete…") {
                     confirmingDelete = true

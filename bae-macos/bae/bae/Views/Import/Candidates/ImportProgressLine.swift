@@ -10,15 +10,32 @@ import SwiftUI
 /// writes each one; the bar is set straight from the import percents' stream
 /// once per display frame, so a percent tick redraws the bar and runs no
 /// SwiftUI update.
-struct ImportProgressLine: View {
+struct ImportProgressLineContainer: View {
     let key: Data
     let step: BridgeImportStep
     @Environment(\.importPercents)
     private var percents
 
     var body: some View {
-        ProgressLine(
+        MacProgressLine(
             step.localizedText,
+            bar: ImportPercentBar(percent: percents?.source(for: key))
+        )
+    }
+}
+
+/// A running import's step over a wider bar, on its own in the importing
+/// pane: reads the import's percent stream by its key and draws `MacProgress`
+/// with a bar that follows it.
+struct ImportProgressContainer: View {
+    let key: Data
+    let step: BridgeImportStep
+    @Environment(\.importPercents)
+    private var percents
+
+    var body: some View {
+        MacProgress(
+            title: step.localizedText,
             bar: ImportPercentBar(percent: percents?.source(for: key))
         )
     }

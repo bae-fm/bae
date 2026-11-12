@@ -12,8 +12,8 @@ struct CodeRunningView: View {
     var body: some View {
         VStack(spacing: ThemeSpace.section) {
             if let status {
-                MacProgress(steps: openSteps) {
-                    MacProgress(steps: steps) {
+                MacProgressContainer(steps: openSteps) {
+                    MacProgressContainer(steps: steps) {
                         BootstrapStatusView(status: status)
                     }
                 }

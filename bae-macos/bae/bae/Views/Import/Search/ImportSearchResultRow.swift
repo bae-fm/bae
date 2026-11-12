@@ -36,7 +36,7 @@ struct ImportSearchResultRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             resultButton
-            MacProgress(steps: followedSteps) { EmptyView() }
+            MacProgressContainer(steps: followedSteps) { EmptyView() }
                 .padding(.horizontal, Self.horizontalPadding)
             unattendedLine
             failureLine

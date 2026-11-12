@@ -142,7 +142,7 @@ struct ImportingCandidatePane: View {
                 case .preparing, .running:
                     // Reads the percent itself, so a percent tick redraws
                     // the line and not the pane.
-                    ImportProgressLine(key: candidate.key, step: step)
+                    ImportProgressContainer(key: candidate.key, step: step)
                 }
                 HStack(alignment: .top, spacing: ThemeSpace.section) {
                     ImageView(content: coverContent, pointSize: Self.coverSize)

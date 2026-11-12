@@ -51,7 +51,7 @@ struct StorageStatusBand: View {
     private var pill: some View {
         if let upload = release.summary.upload {
             if upload.progress.activity == .uploading {
-                StorageUploadingChip(releaseId: release.summary.id)
+                StorageUploadingChipContainer(releaseId: release.summary.id)
             }
             else {
                 QueuedUploadChip()
@@ -62,7 +62,7 @@ struct StorageStatusBand: View {
             case .queued:
                 StatusChip("Queued to pin", tone: .activity)
             case .downloading:
-                StoragePinningChip(releaseId: release.summary.id)
+                StoragePinningChipContainer(releaseId: release.summary.id)
             case .downloaded, .available, .failed:
                 makeLocalPill
             }
@@ -78,7 +78,7 @@ struct StorageStatusBand: View {
         case .queued:
             StatusChip("Queued to make local", tone: .activity)
         case .making:
-            StorageMakingLocalChip(releaseId: release.summary.id)
+            StorageMakingLocalChipContainer(releaseId: release.summary.id)
         case .failed, nil:
             EmptyView()
         }

@@ -233,7 +233,7 @@ struct MacQueuePanel: View {
             Text("Queue")
                 .themeText(.title)
             Spacer(minLength: 0)
-            PanelCloseButton(onClose: onClose)
+            MacCloseButton(onClose: onClose)
         }
         .padding(.horizontal, ThemeSpace.edge)
         .padding(.top, ThemeSpace.edge)

@@ -223,14 +223,50 @@ private struct StepProgressBar<Step: ProgressStep>: NSViewRepresentable {
     }
 }
 
-/// What shows while a library opens or a setup call runs: `idle` until the
+/// A step's name over a bar, in the pane or sheet it runs in: the name in
+/// secondary text, the bar 4pt high under it. Drawn from the values it is
+/// given; a container reads the stream that moves the bar.
+struct MacProgress<Bar: View>: View {
+    let title: String
+    let bar: Bar
+
+    init(title: String, bar: Bar) {
+        self.title = title
+        self.bar = bar
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: ThemeSpace.inline) {
+            Text(title)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .foregroundStyle(.secondary)
+            bar
+                .frame(height: ProgressTrackNSView.trackHeight)
+        }
+    }
+}
+
+extension MacProgress where Bar == ProgressTrackBar {
+    /// A step whose bar fills to `fraction`: 0...1 for a determinate fill,
+    /// nil for the marching pill.
+    init(title: String, fraction: Double?) {
+        self.init(title: title, bar: ProgressTrackBar(progress: fraction))
+    }
+}
+
+/// Follows the step streams of a library's open and of setup calls, and draws
+/// the step as `MacProgress` does, but natively: the step's name and its bar
+/// are set straight from the stream once per display frame, so a moving
+/// fraction runs no SwiftUI update. What shows while a library opens or a
+/// setup call runs: `idle` until the
 /// call runs a step, then the step's name over a bar of how much of it is
 /// done, in its place; with `showsBar` off, the name alone, for a line whose
 /// row shows a spinner already. `titled` words each step; by default its own
 /// title. With no call to follow, `idle` alone. Whether a step
 /// runs is read from the call's stream as the line starts to follow it, and
 /// set as the native line tells a step starting or ending.
-struct MacProgress<Step: ProgressStep, Idle: View>: View {
+struct MacProgressContainer<Step: ProgressStep, Idle: View>: View {
     let steps: LatestSource<Step>?
     let showsBar: Bool
     let titled: (Step) -> String
@@ -274,7 +310,7 @@ struct MacProgress<Step: ProgressStep, Idle: View>: View {
 
 #if DEBUG
     #Preview("Migrating") {
-        MacProgress(
+        MacProgressContainer(
             steps:
                 LatestStream.openProgress(
                     holding: BridgeOpenProgress(
@@ -292,7 +328,7 @@ struct MacProgress<Step: ProgressStep, Idle: View>: View {
     }
 
     #Preview("Rebuilding") {
-        MacProgress(
+        MacProgressContainer(
             steps:
                 LatestStream.openProgress(
                     holding: BridgeOpenProgress(
@@ -310,7 +346,7 @@ struct MacProgress<Step: ProgressStep, Idle: View>: View {
     }
 
     #Preview("Removing libraries") {
-        MacProgress(
+        MacProgressContainer(
             steps:
                 LatestStream.setupLines(
                     holding: .step(
@@ -330,7 +366,7 @@ struct MacProgress<Step: ProgressStep, Idle: View>: View {
     }
 
     #Preview("Setting storage up") {
-        MacProgress(
+        MacProgressContainer(
             steps:
                 LatestStream.setupLines(
                     holding: .storage(
@@ -350,7 +386,7 @@ struct MacProgress<Step: ProgressStep, Idle: View>: View {
     }
 
     #Preview("Between steps") {
-        MacProgress(steps: LatestStream.openProgress().only) {
+        MacProgressContainer(steps: LatestStream.openProgress().only) {
             MacSpinner(Text(AppScreen.LoadingWork.opening.title))
         }
         .frame(width: 320)

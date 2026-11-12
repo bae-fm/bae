@@ -112,13 +112,13 @@ struct MacImportRow: View {
         case let step?:
             // A running import's bar moves by the second, so only this leaf
             // reads its percent.
-            ImportProgressLine(key: row.candidateKey, step: step)
+            ImportProgressLineContainer(key: row.candidateKey, step: step)
                 .themeText(.detail)
         case nil:
             if let release = row.importedRelease, let upload = row.upload {
                 // The bar moves each display frame, so only this leaf reads
                 // the release's upload stream.
-                DoneRowUploadLine(
+                DoneRowUploadLineContainer(
                     releaseId: release.releaseId,
                     progress: upload
                 )
@@ -142,7 +142,7 @@ struct MacImportRow: View {
 /// reads from the release's upload stream each display frame. Files only
 /// waiting draw no bar: nothing is moving them, and with no storage
 /// connected nothing will until one is.
-private struct DoneRowUploadLine: View {
+private struct DoneRowUploadLineContainer: View {
     let releaseId: String
     let progress: BridgeUploadProgress
     @Environment(OutboxStore.self)
@@ -151,12 +151,13 @@ private struct DoneRowUploadLine: View {
     var body: some View {
         let phase = progress.activity.phaseText
         if progress.activity == .uploading {
-            ProgressLine(
+            MacProgressLine(
                 phase,
                 bar: StreamBar(
                     stream: .upload(
                         outboxStore.uploadProgress(forRelease: releaseId)
-                    )
+                    ),
+                    tint: StorageTransferKind.upload.color
                 )
             )
         }

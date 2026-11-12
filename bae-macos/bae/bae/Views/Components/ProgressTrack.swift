@@ -168,7 +168,7 @@ class ProgressTrackNSView: NSView {
     }
 }
 
-/// SwiftUI wrapper for a bar on its own; `ProgressLine` draws one with text.
+/// SwiftUI wrapper for a bar on its own; `MacProgressLine` draws one with text.
 struct ProgressTrackBar: NSViewRepresentable {
     @Environment(\.accentChoice)
     private var accent

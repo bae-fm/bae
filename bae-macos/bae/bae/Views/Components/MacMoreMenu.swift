@@ -3,7 +3,7 @@ import SwiftUI
 
 /// The ⋯ button of a row, with the row's actions in its menu: a row offers
 /// its actions here, not as a button of each.
-struct MoreMenu<Items: View>: View {
+struct MacMoreMenu<Items: View>: View {
     @ViewBuilder
     let items: Items
 

@@ -23,7 +23,7 @@ struct MacStorageChip: View {
                 StatusChip("Waiting for \(missing)", tone: .warning)
             }
             else if release.upload?.progress.activity == .uploading {
-                StorageUploadingChip(releaseId: release.id)
+                StorageUploadingChipContainer(releaseId: release.id)
             }
             else {
                 QueuedUploadChip()
@@ -31,14 +31,14 @@ struct MacStorageChip: View {
         case .pinning(.queued):
             StatusChip("Queued to pin", tone: .activity)
         case .pinning(.running):
-            StoragePinningChip(releaseId: release.id)
+            StoragePinningChipContainer(releaseId: release.id)
         case .makeLocalFailed(let error):
             StatusChip("Couldn't make local", tone: .danger)
                 .help(error)
         case .makingLocal(.queued):
             StatusChip("Queued to make local", tone: .activity)
         case .makingLocal(.running):
-            StorageMakingLocalChip(releaseId: release.id)
+            StorageMakingLocalChipContainer(releaseId: release.id)
         case .onOneDevice:
             StatusChip("Local", symbol: "folder")
         case .pinned:
@@ -69,7 +69,7 @@ struct QueuedUploadChip: View {
 
 /// An uploading release's chip, filled each frame from the release's latest
 /// upload progress while any file is being sent.
-struct StorageUploadingChip: View {
+struct StorageUploadingChipContainer: View {
     let releaseId: String
     @Environment(OutboxStore.self)
     private var outboxStore
@@ -85,7 +85,7 @@ struct StorageUploadingChip: View {
 
 /// A pinning release's chip, filled each frame from the release's latest
 /// download progress; a release still waiting its turn has moved nothing.
-struct StoragePinningChip: View {
+struct StoragePinningChipContainer: View {
     let releaseId: String
     @Environment(DownloadStore.self)
     private var downloadStore
@@ -101,7 +101,7 @@ struct StoragePinningChip: View {
 
 /// A release being made local's chip, filled each frame from how far its
 /// files have downloaded into the person's folder.
-struct StorageMakingLocalChip: View {
+struct StorageMakingLocalChipContainer: View {
     let releaseId: String
     @Environment(DownloadStore.self)
     private var downloadStore

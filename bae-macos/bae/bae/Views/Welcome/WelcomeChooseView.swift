@@ -275,7 +275,7 @@ private struct UnfinishedRemovalNotice: View {
                     }
             )
             if let finishing = removals.finishing {
-                MacProgress(steps: finishing.steps) {
+                MacProgressContainer(steps: finishing.steps) {
                     EmptyView()
                 }
             }

@@ -151,7 +151,7 @@ struct ImportReleaseHeader: View {
                         .fill(Theme.hairline)
                         .frame(height: 1)
                     HStack(alignment: .firstTextBaseline) {
-                        ReleaseRecordsRow(records: records, scale: .pane)
+                        MacRecordLinks(records: records)
                         if case .album = releaseLink {
                             Text("Pressing unknown")
                                 .themeText(.detail)

@@ -135,8 +135,8 @@ private struct LibraryRow: View {
             VStack(alignment: .leading, spacing: ThemeSpace.inline) {
                 Text(library.name)
                     .themeText(.strong)
-                MacProgress(steps: removalSteps, showsBar: false) {
-                    MacProgress(steps: openSteps, showsBar: false) {
+                MacProgressContainer(steps: removalSteps, showsBar: false) {
+                    MacProgressContainer(steps: openSteps, showsBar: false) {
                         if let line = library.stateLine {
                             Text(line)
                                 .themeText(.detail)
@@ -169,7 +169,7 @@ private struct LibraryRow: View {
     }
 
     private var moreMenu: some View {
-        MoreMenu { menuItems }
+        MacMoreMenu { menuItems }
             .popover(isPresented: $showsDetails, arrowEdge: .bottom) {
                 WelcomeLibraryDetails(
                     library: library,

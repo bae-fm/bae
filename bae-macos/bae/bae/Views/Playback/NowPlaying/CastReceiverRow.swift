@@ -115,7 +115,7 @@ struct CastReceiverRow: View {
                         .controlSize(.small)
                 }
             case .page:
-                MoreMenu {
+                MacMoreMenu {
                     Button("Details…") { showsDetails = true }
                     if case .casting(let onDisconnect) = role {
                         Button("Disconnect", action: onDisconnect)
