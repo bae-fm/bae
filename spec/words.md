@@ -28,9 +28,17 @@ refuses three full stops in a core string or any of its translations, and
 scripts/loc-english-skeleton.py refuses them in the macOS and Android
 catalogs, source and every locale.
 
-An apostrophe is the curly "’", never the straight "'" ("Couldn’t pin",
-"l’album"). The same two checks refuse the straight one, in a String Catalog
+An apostrophe is the curly "’", never the straight "'" ("the library’s
+files", "l’album"). The same two checks refuse the straight one, in a String Catalog
 key as in a value.
+
+## Contractions
+
+English text writes the words out: "Could not pin", "cannot", "is not",
+"it is", "you will". A possessive ("the library’s files") is not a
+contraction. Other languages follow their own register and do not copy
+English contractions. scripts/loc-words.py refuses an English contraction in
+the macOS, Android and core catalogs.
 
 ## The library and where it lives
 

@@ -51,6 +51,18 @@ class EnglishTest(unittest.TestCase):
         self.assertEqual(capitals("Formats appear in Save As… on tracks."), ["Save", "As"])
 
 
+class ContractionTest(unittest.TestCase):
+    def test_contractions_are_refused(self):
+        self.assertEqual(check.contractions("Couldn’t pin"), ["Couldn’t"])
+        self.assertEqual(check.contractions("It’s there; you’ll see"), ["It’s", "you’ll"])
+        self.assertEqual(check.contractions("bae can't read it"), ["can't"])
+        self.assertEqual(check.contractions("They’re here and I’m not"), ["They’re", "I’m"])
+
+    def test_written_out_words_and_possessives_pass(self):
+        self.assertEqual(check.contractions("Could not pin the library’s files"), [])
+        self.assertEqual(check.contractions("This Mac’s copy; bae’s folder; Ana’s code"), [])
+
+
 class LocaleTest(unittest.TestCase):
     def test_copied_title_case_is_refused(self):
         self.assertTrue(check.title_case_copy("Albümü Sil…"))

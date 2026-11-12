@@ -25,6 +25,9 @@ catalog (bae-bridge/loc/catalog.toml):
     and abbreviations ("No."), is title case copied from English. German is
     left to its own grammar.
 
+Contractions: English text writes the words out ("could not", "cannot",
+"it is"), in all three catalogs. A possessive ("the library’s") is not one.
+
 Exits non-zero on any hit, printing each.
 """
 import json
@@ -95,6 +98,19 @@ PLACEHOLDER_RE = re.compile(r"%\d+\$(?:lld|[a-zA-Z@])|%lld|%@|%[sd]|\{[\w]+\}")
 URL_RE = re.compile(r"\(?https?://\S+")
 # What may come right before a capitalized word that starts something.
 OPENERS = re.compile(r"(^|[.?!:]\s+|[“\"«»„‘(\[{›‹\n]\s*|\\n\s*)$")
+
+
+# n't, 'll, 're, 've, 'd, 'm, and 's after a word that is never a possessor.
+CONTRACTION_RE = re.compile(
+    r"\b\w+n['’]t\b|\b\w+['’](?:ll|re|ve|d|m)\b"
+    r"|\b(?:it|that|there|here|what|who|how|where|let)['’]s\b",
+    re.I,
+)
+
+
+def contractions(text):
+    """The contractions in `text`."""
+    return [m.group(0) for m in CONTRACTION_RE.finditer(text)]
 
 
 def acronym_or_camel(word):
@@ -272,6 +288,11 @@ def main():
         if words:
             hits.append(f"{where}: {key!r} is {value!r}: {', '.join(words)}")
 
+    for where, key, value in english:
+        found = contractions(value)
+        if found:
+            hits.append(f"{where}: {key!r} is {value!r}: {', '.join(found)}")
+
     for locale, values in sorted(translated.items()):
         if locale in UNCASED or locale in ("en", "de"):
             continue
@@ -285,8 +306,9 @@ def main():
         print(hit)
     if hits:
         print(
-            f"\n{len(hits)} strings break spec/words.md \"Capitalization\": "
-            "sentence case everywhere but the macOS menu bar, title case there.",
+            f"\n{len(hits)} strings break spec/words.md \"Capitalization\" or \"Contractions\": "
+            "sentence case everywhere but the macOS menu bar, title case there, "
+            "and no contractions.",
             file=sys.stderr,
         )
     return 1 if hits else 0
