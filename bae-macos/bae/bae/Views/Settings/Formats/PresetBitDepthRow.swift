@@ -27,7 +27,6 @@ struct PresetBitDepthRow: View {
             }
             .labelsHidden()
         }
-        .presetEditorRowInsets()
     }
 }
 
@@ -40,7 +39,7 @@ struct PresetBitDepthRow: View {
                 update: { _ in },
             )
         }
-        .formStyle(.grouped)
+        .formStyle(.settings)
         .frame(width: 460)
     }
 #endif

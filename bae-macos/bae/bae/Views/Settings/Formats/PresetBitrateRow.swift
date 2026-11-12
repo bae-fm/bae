@@ -28,7 +28,6 @@ struct PresetBitrateRow: View {
             }
             .labelsHidden()
         }
-        .presetEditorRowInsets()
     }
 }
 
@@ -42,7 +41,7 @@ struct PresetBitrateRow: View {
                 update: { _ in },
             )
         }
-        .formStyle(.grouped)
+        .formStyle(.settings)
         .frame(width: 460)
     }
 #endif

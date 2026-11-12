@@ -18,6 +18,11 @@ extension ContainerValues {
     /// belongs to the switch above it: set with `joiningRowAbove()`.
     @Entry
     fileprivate var joinsRowAbove = false
+
+    /// The space over and under a row's content; a row holding a field is
+    /// as tall as its field, so it takes less than a row of text.
+    @Entry
+    fileprivate var rowVerticalInset: CGFloat = RowMetrics.padding
 }
 
 extension View {
@@ -26,6 +31,14 @@ extension View {
     /// the two read as one setting with a second line.
     func joiningRowAbove() -> some View {
         containerValue(\.joinsRowAbove, true)
+    }
+}
+
+extension View {
+    /// Sets the space over and under this row's content, for a row that holds
+    /// a field.
+    func settingsRowInset(_ inset: CGFloat) -> some View {
+        containerValue(\.rowVerticalInset, inset)
     }
 }
 
@@ -137,8 +150,11 @@ private struct SettingsFormBox: View {
                 row
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, RowMetrics.inset)
-                    .padding(.top, joins ? 0 : RowMetrics.padding)
-                    .padding(.bottom, RowMetrics.padding)
+                    .padding(
+                        .top,
+                        joins ? 0 : row.containerValues.rowVerticalInset
+                    )
+                    .padding(.bottom, row.containerValues.rowVerticalInset)
                     .frame(
                         minHeight: joins ? 0 : RowMetrics.height
                     )

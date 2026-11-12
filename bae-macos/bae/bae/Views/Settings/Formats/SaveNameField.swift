@@ -78,7 +78,7 @@ struct SaveNameField<Piece: SaveNamePiece>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
             Text(title)
-                .themeText(.rowTitle)
+                .themeText(.body)
             SaveNameTokenField(
                 pieces: pieces,
                 handle: handle,
@@ -104,7 +104,6 @@ struct SaveNameField<Piece: SaveNamePiece>: View {
                 Text(error.message)
                     .themeText(.detail)
                     .foregroundStyle(Theme.danger)
-                    .padding(.leading, ThemeSpace.fieldInset)
             }
             else {
                 Text(
@@ -129,14 +128,13 @@ struct SaveNameField<Piece: SaveNamePiece>: View {
                     handle.append(value)
                 }
                 .buttonStyle(.plain)
-                .themeText(.chip)
-                .foregroundStyle(StatusTone.neutral.color)
+                .themeText(.detail)
                 .padding(.horizontal, ThemeSpace.compact)
-                .padding(.vertical, ThemeSpace.line)
+                .padding(.vertical, ThemeSpace.hairline)
                 .overlay(
                     RoundedRectangle(cornerRadius: ThemeRadius.chip)
                         .stroke(
-                            .tertiary,
+                            Theme.hairlineStrong,
                             style: StrokeStyle(lineWidth: 1, dash: [3, 2])
                         )
                 )
@@ -302,7 +300,7 @@ extension BridgeSaveFolderValue: SaveNameValue {
                 fail: { _ in }
             )
         }
-        .formStyle(.grouped)
+        .formStyle(.settings)
         .frame(width: 500, height: 420)
     }
 #endif

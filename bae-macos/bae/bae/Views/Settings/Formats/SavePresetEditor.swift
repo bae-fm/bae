@@ -20,24 +20,23 @@ struct SavePresetEditor: View {
     private var nameFocused: Bool
 
     var body: some View {
-        VStack(spacing: 0) {
-            Form {
-                Section {
-                    nameRow
-                    formatRow
-                    qualityRow
-                }
+        VStack(alignment: .leading, spacing: ThemeSpace.related) {
+            SettingsBox {
+                nameRow
+                formatRow
+                qualityRow
             }
-            .formStyle(.grouped)
             MacSheetFooter {
                 Button("Done") { dismiss() }
                     .buttonStyle(PrimaryButtonStyle())
                     .keyboardShortcut(.defaultAction)
                     .disabled(!nameValid)
             }
-            .padding([.horizontal, .bottom], ThemeSpace.edge)
         }
-        .frame(width: 480, height: 540)
+        .padding(.horizontal, ThemeSpace.edge)
+        .padding(.top, ThemeSpace.group)
+        .padding(.bottom, ThemeSpace.edge)
+        .frame(width: 480)
         .task(id: preset.name) {
             nameDraft = preset.name
         }
@@ -86,8 +85,15 @@ struct SavePresetEditor: View {
         }
     }
 
+    /// How wide the label column of a row holding a field is.
+    private static let labelWidth: CGFloat = 90
+
     private var nameRow: some View {
-        LabeledContent("Name") {
+        HStack(alignment: .top, spacing: ThemeSpace.group) {
+            Text("Name")
+                .frame(width: Self.labelWidth, alignment: .leading)
+                // On the field's own line of text.
+                .padding(.top, ThemeSpace.related)
             VStack(alignment: .leading, spacing: ThemeSpace.line) {
                 TextField("Name", text: $nameDraft)
                     .labelsHidden()
@@ -101,7 +107,6 @@ struct SavePresetEditor: View {
                             invalid: nameTaken
                         )
                     )
-                    .frame(width: 200)
                     .onSubmit(commitName)
                     .onChange(of: nameFocused) { _, focused in
                         if !focused {
@@ -116,7 +121,7 @@ struct SavePresetEditor: View {
                 }
             }
         }
-        .presetEditorRowInsets()
+        .settingsRowInset(ThemeSpace.compact)
     }
 
     /// The formats the picker offers, in core's order and groups.
@@ -126,7 +131,6 @@ struct SavePresetEditor: View {
         LabeledContent("Format") {
             formatPicker
         }
-        .presetEditorRowInsets()
     }
 
     private var formatPicker: some View {

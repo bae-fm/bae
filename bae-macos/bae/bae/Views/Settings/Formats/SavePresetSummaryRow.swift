@@ -8,7 +8,7 @@ struct SavePresetSummaryRow: View {
     var body: some View {
         HStack(alignment: .center) {
             Text(preset.name)
-                .themeText(.rowTitle)
+                .themeText(.body)
             Spacer()
         }
     }
@@ -23,7 +23,7 @@ struct SavePresetSummaryRow: View {
                 }
             }
         }
-        .formStyle(.grouped)
+        .formStyle(.settings)
         .frame(width: 460)
     }
 #endif

@@ -58,24 +58,21 @@ struct FormatsSettingsTab: View {
 
     private var namesSection: some View {
         Section {
-            VStack(alignment: .leading, spacing: ThemeSpace.section) {
-                SaveNameField(
-                    title: "File name",
-                    pieces: configStore.config.filenamePieces,
-                    error: configStore.config.filenamePatternError,
-                    previewSuffix: nextFileExtension,
-                    setPieces: outputs.setFilenamePieces,
-                    fail: { uiStore.showError($0) }
-                )
-                SaveNameField(
-                    title: "Folder name",
-                    pieces: configStore.config.folderPieces,
-                    error: configStore.config.folderPatternError,
-                    setPieces: outputs.setFolderPieces,
-                    fail: { uiStore.showError($0) }
-                )
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            SaveNameField(
+                title: "File name",
+                pieces: configStore.config.filenamePieces,
+                error: configStore.config.filenamePatternError,
+                previewSuffix: nextFileExtension,
+                setPieces: outputs.setFilenamePieces,
+                fail: { uiStore.showError($0) }
+            )
+            SaveNameField(
+                title: "Folder name",
+                pieces: configStore.config.folderPieces,
+                error: configStore.config.folderPatternError,
+                setPieces: outputs.setFolderPieces,
+                fail: { uiStore.showError($0) }
+            )
         } header: {
             Text("Names")
         }
@@ -114,19 +111,14 @@ struct FormatsSettingsTab: View {
         isOn: Bool,
         set write: @escaping @Sendable (Bool) async throws -> Void
     ) -> some View {
-        VStack(alignment: .leading, spacing: ThemeSpace.line) {
-            Toggle(
-                title,
-                isOn: Binding(
-                    get: { isOn },
-                    set: { on in set { try await write(on) } }
-                )
+        SettingToggleRow(
+            title: title,
+            note: note,
+            isOn: Binding(
+                get: { isOn },
+                set: { on in set { try await write(on) } }
             )
-            if let note {
-                Text(note)
-                    .fieldNote()
-            }
-        }
+        )
     }
 
     private var formatsSection: some View {
