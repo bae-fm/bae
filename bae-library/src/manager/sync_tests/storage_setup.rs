@@ -16,10 +16,11 @@ fn memory_s3_config(manager: &TestManager) -> crate::sync::S3ConfigData {
     }
 }
 
-/// A setup call that fails says why itself, so the setup it undid leaves
-/// nothing for the sync status to show.
+/// A setup call that fails returns why itself, and the setup it undid
+/// stays listed for the status, which repeats that error until the person
+/// dismisses it or a later setup call begins and supersedes it.
 #[tokio::test]
-async fn a_failed_setup_call_leaves_nothing_for_the_status() {
+async fn a_failed_setup_call_leaves_its_undone_row_until_the_next_call() {
     let (test, _temp) = setup_test_manager().await;
     let manager = test.library.manager();
     test.storage.set_online(false);
@@ -28,20 +29,38 @@ async fn a_failed_setup_call_leaves_nothing_for_the_status() {
         .save_s3_config(memory_s3_config(&test), "Test Device", &|_| ())
         .await
         .expect_err("offline storage cannot be set up");
+    assert!(matches!(
+        manager.sync_status().await.unwrap().storage_setup,
+        Some(bae_sync_status::StorageSetupState::Undone { .. })
+    ));
 
+    test.storage.set_online(true);
+    manager
+        .save_s3_config(memory_s3_config(&test), "Test Device", &|_| ())
+        .await
+        .expect("online storage sets up");
     assert_eq!(manager.sync_status().await.unwrap().storage_setup, None);
-    let listed = manager
-        .store
-        .read(|sql| {
-            Ok(sql.query_row(
-                "SELECT count(*) FROM coven_operations WHERE kind = 'StorageSetup'",
-                [],
-                |row| row.get::<_, i64>(0),
-            )?)
+}
+
+/// A setup call acknowledges the setups that ended before it first. When
+/// that fails the setup is refused before it starts: nothing is set up, and
+/// no step is reported.
+#[tokio::test]
+async fn a_failed_acknowledgement_refuses_the_setup_before_it_runs() {
+    let (test, temp) = setup_test_manager().await;
+    let manager = test.library.manager();
+    bae_sync_status::test_fixtures::lose_operations_view_for_test(temp.path());
+    let steps = std::sync::Mutex::new(0usize);
+
+    manager
+        .save_s3_config(memory_s3_config(&test), "Test Device", &|_| {
+            *steps.lock().unwrap() += 1;
         })
         .await
-        .unwrap();
-    assert_eq!(listed, 0);
+        .expect_err("a setup whose earlier setups cannot be acknowledged is refused");
+
+    assert_eq!(*steps.lock().unwrap(), 0, "the setup reported no step, so it never ran");
+    assert!(!manager.is_sync_configured().await.unwrap());
 }
 
 /// Setting S3 up as the library's storage tells the caller the steps coven

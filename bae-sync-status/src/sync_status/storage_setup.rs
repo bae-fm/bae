@@ -1,9 +1,11 @@
 //! This device's storage setups as coven's `coven_operations` lists them
-//! (coven §11.6): one running, and one that ended undone with no call there
-//! to hear it, which the sync status shows until the person dismisses it. A
-//! setup's own call hears how it ended, so the call's end acknowledges every
-//! ended setup. One that finished, or that the person cancelled, with nobody
-//! to hear it says nothing the sync state doesn't, and opening the library
+//! (coven §11.6): one running, and one that ended undone, which the sync
+//! status shows until the person dismisses it. A setup's own call also hears
+//! how it ended, so an undone setup it returned an error for shows the same
+//! error; a call that begins acknowledges every
+//! setup that ended before it, since the new attempt supersedes what they
+//! said. One that finished, or that the person cancelled, with nobody to
+//! hear it says nothing the sync state doesn't, and opening the library
 //! acknowledges it.
 //!
 //! The list shows whether a setup runs, not whether it passed its point of
@@ -21,8 +23,7 @@ pub enum StorageSetupState {
     /// its point of no return, which sync's connection finishes with the
     /// credentials the setup kept.
     Running,
-    /// It ended undone, `why`, and nothing has told the person yet:
-    /// acknowledging `operation` dismisses it.
+    /// It ended undone, `why`: acknowledging `operation` dismisses it.
     Undone { operation: coven::OperationId, why: UiError },
 }
 
@@ -130,7 +131,7 @@ fn standing(rows: Vec<(coven::OperationId, SetupRow)>) -> Option<StorageSetupSta
 /// Which ended setups a write acknowledges.
 #[derive(Debug, Clone, Copy)]
 enum Ended {
-    /// Every one: a setup call returned, with how it ended in hand.
+    /// Every one: a setup call begins, and what they said is superseded.
     All,
     /// Those whose end tells the person nothing.
     Settled,
@@ -148,9 +149,9 @@ impl SyncStatus {
             .is_some_and(|state| state == StorageSetupState::Running))
     }
 
-    /// A storage setup call returned, with how it ended: every ended setup
-    /// leaves `coven_operations`, an undone one the person was shown before
-    /// among them, since the call's own end is the newest word on setup.
+    /// A storage setup call begins: every ended setup leaves
+    /// `coven_operations`, an undone one the person was shown among them,
+    /// since the new attempt is the newest word on setup.
     pub async fn acknowledge_storage_setups(&self) -> Result<(), DbError> {
         self.acknowledge_ended(Ended::All).await
     }

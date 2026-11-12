@@ -152,10 +152,14 @@ impl LibraryManager {
         Ok(setup)
     }
 
-    /// Run a storage setup call, then acknowledge every ended setup: the
-    /// call returns how it ended, so the sync status needn't say it again.
-    /// A failed acknowledgement leaves the rows, which repeat what the call
-    /// said, and is logged.
+    /// Run a storage setup call. Every setup that ended before it is
+    /// acknowledged first, since the new attempt supersedes what they said:
+    /// when that fails, the setup is refused before it starts, with nothing
+    /// done and no restore code to hide, and a retry is safe. The call
+    /// acknowledges nothing after it: one that returned `Ok` left a settled
+    /// row, which says nothing and goes when the library opens; one that
+    /// failed left its undone row, which repeats the error the call returned
+    /// and stays until the person dismisses it or a later setup is begun.
     ///
     /// Dropping the call, as leaving a setup's screen does, cancels the
     /// setup: coven runs a dropped setup to its end, with nobody waiting
@@ -164,12 +168,10 @@ impl LibraryManager {
         &self,
         setup: impl std::future::Future<Output = Result<T, coven::StorageSetupError>>,
     ) -> Result<T, LibraryError> {
+        self.sync_status.acknowledge_storage_setups().await?;
         let mut dropped = CancelSetupOnDrop { store: &self.store, returned: false };
         let result = setup.await;
         dropped.returned = true;
-        if let Err(error) = self.sync_status.acknowledge_storage_setups().await {
-            warn!("acknowledging the storage setups a call ended failed: {error}");
-        }
         Ok(result?)
     }
 
