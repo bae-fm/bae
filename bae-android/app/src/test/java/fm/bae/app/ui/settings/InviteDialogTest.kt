@@ -70,7 +70,7 @@ class InviteDialogTest {
                 }
             }
         }
-        compose.onNodeWithText("Email").performTextInput("ben@example.com")
+        compose.onNodeWithText("Dropbox email").performTextInput("ben@example.com")
         compose.onNodeWithText("Create invite").performClick()
         compose.waitUntil(HANG_GUARD_MS) { created.isNotEmpty() }
 

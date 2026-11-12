@@ -40,7 +40,7 @@ class SetupStepScreenTest {
     fun aCallThatWroteNoStepNamesItsWork() {
         show()
 
-        compose.onNodeWithText("Removing the library", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("Leaving the library", substring = true).assertIsDisplayed()
     }
 
     @Test
@@ -65,7 +65,7 @@ class SetupStepScreenTest {
         compose.waitForIdle()
 
         assertTrue(stepping.toString(), stepping.any { it.contains("Finishing earlier removals") })
-        compose.onNodeWithText("Removing the library", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("Leaving the library", substring = true).assertIsDisplayed()
         val shown = root.shownTexts()
         assertTrue(shown.toString(), shown.none { it.contains("Finishing") })
     }
