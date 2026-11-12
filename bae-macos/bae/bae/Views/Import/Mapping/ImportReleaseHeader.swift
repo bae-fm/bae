@@ -120,6 +120,15 @@ struct ImportReleaseHeader: View {
         {
             actionRow
                 .disabled(!actionable)
+            // What stops the import, in a notice under the row that offers it.
+            if let folderCheck = commit?.folderCheck?.localizedText {
+                Notice(
+                    title: folderCheck,
+                    advice: nil,
+                    error: nil,
+                    tone: .warning
+                )
+            }
             if let editValues {
                 ReleaseMetadataHeader(
                     values: editValues,
@@ -194,7 +203,7 @@ struct ImportReleaseHeader: View {
     /// The identify entries and metadata menu, then the commit controls once
     /// there is something to commit; only Automatic starts a run.
     private var actionRow: some View {
-        HStack(alignment: .center, spacing: ThemeSpace.edge) {
+        HStack(alignment: .center, spacing: ThemeSpace.related) {
             HStack(spacing: ThemeSpace.related) {
                 Text("Identify")
                     .themeText(.strong)
@@ -212,14 +221,6 @@ struct ImportReleaseHeader: View {
             .disabled(isReading)
             Spacer(minLength: ThemeSpace.group)
             if let commit {
-                if let folderCheck = commit.folderCheck?.localizedText {
-                    Text(folderCheck)
-                        .themeText(.detail)
-                        .foregroundStyle(Theme.warning)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                        .help(folderCheck)
-                }
                 if commit.untitledTrackCount > 0 {
                     Text(
                         localizedCoreString(
