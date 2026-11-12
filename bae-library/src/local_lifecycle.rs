@@ -26,6 +26,17 @@ pub enum LibraryRemovalError {
     /// coven didn't delete the store; bae's files for it are untouched.
     #[error(transparent)]
     Store(coven::StoreDeletionError),
+    /// coven didn't delete the store because files in its directory are open,
+    /// which Windows refuses to move; bae's files for it are untouched.
+    #[error(
+        "coven couldn't delete the store because these files are open: {}: {source}",
+        display_paths(held)
+    )]
+    StoreFilesHeld {
+        #[source]
+        source: coven::StoreDeletionError,
+        held: Vec<std::path::PathBuf>,
+    },
     /// This device left the library, but closing its store failed and
     /// discarding the closed store then failed too: the library's files are
     /// still on this device.
@@ -47,9 +58,9 @@ pub enum LibraryRemovalError {
 impl LibraryRemovalError {
     pub fn category(&self) -> bae_diagnostics::UiErrorCategory {
         match self {
-            Self::Store(error) | Self::Closing { discard: error, .. } => {
-                bae_diagnostics::deletion_category(error)
-            }
+            Self::Store(error)
+            | Self::StoreFilesHeld { source: error, .. }
+            | Self::Closing { discard: error, .. } => bae_diagnostics::deletion_category(error),
             Self::Stop(source) | Self::Record(source) | Self::Unfinished(source) => {
                 source.category()
             }
@@ -261,7 +272,21 @@ pub(crate) async fn remove_recorded(
                 }
             })
         }
-        deleted => deleted.map_err(LibraryRemovalError::Store),
+        Err(error) => {
+            // The path of a failed move or removal is the store's directory.
+            let held = match &error {
+                coven::StoreDeletionError::File(coven::FileError::Io { path, .. }) => {
+                    files_held_open(diagnostics, path.clone()).await
+                }
+                _ => Vec::new(),
+            };
+            if held.is_empty() {
+                Err(LibraryRemovalError::Store(error))
+            } else {
+                Err(LibraryRemovalError::StoreFilesHeld { source: error, held })
+            }
+        }
+        Ok(()) => Ok(()),
     };
     if let Err(error) = deleted {
         if let Err(record) = delete_record(app_dir, diagnostics, store_id).await {
@@ -274,6 +299,45 @@ pub(crate) async fn remove_recorded(
         .await
         .map_err(LibraryRemovalError::Unfinished)?;
     delete_record(app_dir, diagnostics, store_id).await.map_err(LibraryRemovalError::Unfinished)
+}
+
+fn display_paths(paths: &[std::path::PathBuf]) -> String {
+    paths.iter().map(|path| path.display().to_string()).collect::<Vec<_>>().join(", ")
+}
+
+/// The files under `directory` that refuse an exclusive open, which are the
+/// ones Windows keeps a directory from moving for. Empty on other platforms,
+/// where an open file does not stop a rename, and when the walk itself fails.
+#[cfg(windows)]
+async fn files_held_open(
+    diagnostics: &Diagnostics,
+    directory: std::path::PathBuf,
+) -> Vec<std::path::PathBuf> {
+    use std::os::windows::fs::OpenOptionsExt;
+    fn walk(directory: &std::path::Path, held: &mut Vec<std::path::PathBuf>) {
+        let Ok(entries) = std::fs::read_dir(directory) else { return };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                walk(&path, held);
+            } else if std::fs::OpenOptions::new().read(true).share_mode(0).open(&path).is_err() {
+                held.push(path);
+            }
+        }
+    }
+    diagnostics
+        .blocking("list the store's open files", move || {
+            let mut held = Vec::new();
+            walk(&directory, &mut held);
+            held
+        })
+        .await
+        .unwrap_or_default()
+}
+
+#[cfg(not(windows))]
+async fn files_held_open(_: &Diagnostics, _: std::path::PathBuf) -> Vec<std::path::PathBuf> {
+    Vec::new()
 }
 
 /// The removal lock: an exclusive OS lock on one file in the app directory,
