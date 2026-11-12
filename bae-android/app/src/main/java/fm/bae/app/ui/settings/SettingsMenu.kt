@@ -1,5 +1,6 @@
 package fm.bae.app.ui.settings
 
+import android.content.Context
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
@@ -13,12 +14,16 @@ import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import fm.bae.app.R
 import fm.bae.app.RestorePlaybackPref
+import fm.bae.app.data.LiveValue
+import fm.bae.app.formatFileSize
+import fm.bae.app.requireDisplayableByteCount
 import fm.bae.app.ui.appearance.LocalAppearanceStore
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidCard
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.library.LibraryDestination
 import uniffi.bae_bridge.BridgeConfig
+import uniffi.bae_bridge.BridgeDeviceStorage
 
 /** The sections Settings opens as a page of its own. */
 internal enum class SettingsPage {
@@ -34,13 +39,15 @@ internal data class SettingsSummaries(
     val library: String?,
     val playback: String,
     val transfers: String,
+    /** The total this phone keeps for the library; none before core has measured it. */
+    val storage: String?,
     val casting: String,
     val about: String,
 )
 
 /**
  * Settings as rows on a card, in the order of the Mac's sidebar, each opening a
- * page: those of [SettingsPage] through [onOpen], Library, Transfers and
+ * page: those of [SettingsPage] through [onOpen], Library, Transfers, Storage and
  * Casting, which are screens of their own, through [onPush].
  */
 @Composable
@@ -72,6 +79,11 @@ internal fun SettingsMenu(
                 onClick = { onPush(LibraryDestination.Transfers) },
             )
             AndroidRow(
+                title = stringResource(R.string.settings_storage),
+                subtitle = summaries.storage,
+                onClick = { onPush(LibraryDestination.Storage) },
+            )
+            AndroidRow(
                 title = stringResource(R.string.settings_casting),
                 subtitle = summaries.casting,
                 onClick = { onPush(LibraryDestination.Casting) },
@@ -94,6 +106,7 @@ internal fun rememberSettingsSummaries(
     config: BridgeConfig,
     libraryName: LibraryNameRead,
     sync: SyncRowSummary,
+    deviceStorage: LiveValue<BridgeDeviceStorage>?,
 ): SettingsSummaries {
     val context = LocalContext.current
     val resources = LocalResources.current
@@ -119,10 +132,24 @@ internal fun rememberSettingsSummaries(
                 playbackWords.joinToString(SUMMARY_SEPARATOR) { resources.getString(it) }
             },
         transfers = resources.getQuantityString(R.plurals.transfers_pins_summary, pins, pins),
+        storage = storageSummary(deviceStorage, context),
         casting = resources.getString(onOff(config.castEnabled)),
         about = resources.getString(R.string.settings_about_summary, installedVersion()),
     )
 }
+
+/**
+ * The Storage row's line: the total this phone keeps, "3.9 GB on this phone". None before core has measured it, and
+ * none while its last read failed: no total is known then.
+ */
+internal fun storageSummary(
+    deviceStorage: LiveValue<BridgeDeviceStorage>?,
+    context: Context,
+): String? =
+    (deviceStorage as? LiveValue.Current)?.let { current ->
+        val total = context.formatFileSize(current.value.total.requireDisplayableByteCount())
+        context.getString(R.string.settings_storage_summary, total)
+    }
 
 @StringRes
 private fun onOff(on: Boolean): Int = if (on) R.string.settings_summary_on else R.string.settings_summary_off

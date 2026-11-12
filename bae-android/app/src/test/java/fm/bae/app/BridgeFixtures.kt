@@ -4,11 +4,14 @@ import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeAlbumSearchResult
 import uniffi.bae_bridge.BridgeArtistSummary
+import uniffi.bae_bridge.BridgeCacheLimit
+import uniffi.bae_bridge.BridgeCacheLimitChoice
 import uniffi.bae_bridge.BridgeCastReceiver
 import uniffi.bae_bridge.BridgeCastTranscodeFormat
 import uniffi.bae_bridge.BridgeComposerSummary
 import uniffi.bae_bridge.BridgeConfig
 import uniffi.bae_bridge.BridgeCountLabel
+import uniffi.bae_bridge.BridgeDeviceStorage
 import uniffi.bae_bridge.BridgeDiscogsTokenStatus
 import uniffi.bae_bridge.BridgeDownloadCounts
 import uniffi.bae_bridge.BridgeDownloadKind
@@ -43,6 +46,8 @@ import uniffi.bae_bridge.BridgeSearchResults
 import uniffi.bae_bridge.BridgeSidePauseCountdown
 import uniffi.bae_bridge.BridgeSourceAudioSummary
 import uniffi.bae_bridge.BridgeSourceAvailability
+import uniffi.bae_bridge.BridgeStorageKind
+import uniffi.bae_bridge.BridgeStoragePart
 import uniffi.bae_bridge.BridgeSubsonicConfig
 import uniffi.bae_bridge.BridgeSubsonicNetwork
 import uniffi.bae_bridge.BridgeTrackGroup
@@ -328,4 +333,42 @@ object BridgeFixtures {
                     network = BridgeSubsonicNetwork.ThisMachine,
                 ),
         )
+
+    /**
+     * What a phone keeps: 2.4 GB pinned, 1.2 GB cached, 260 MB of library, and, when [beforeReset] is given, that
+     * many bytes a reset kept. The cache keeps up to 20 GB, and the cache can be cleared while it holds bytes.
+     */
+    fun deviceStorage(beforeReset: ULong? = null): BridgeDeviceStorage {
+        val pinned = 2_400_000_000uL
+        val cache = 1_200_000_000uL
+        val library = 260_000_000uL
+        val total = pinned + cache + library + (beforeReset ?: 0uL)
+        return BridgeDeviceStorage(
+            total = total,
+            parts =
+                listOfNotNull(
+                    BridgeStoragePart(BridgeStorageKind.PINNED, pinned),
+                    BridgeStoragePart(BridgeStorageKind.CACHE, cache),
+                    BridgeStoragePart(BridgeStorageKind.LIBRARY, library),
+                    beforeReset?.let { BridgeStoragePart(BridgeStorageKind.BEFORE_RESET, it) },
+                ),
+            cache = cache,
+            canClearCache = cache > 0uL,
+            cacheLimit = cacheLimit(BridgeCacheLimitChoice.GB20, 20),
+            cacheLimits =
+                listOf(
+                    cacheLimit(BridgeCacheLimitChoice.GB1, 1),
+                    cacheLimit(BridgeCacheLimitChoice.GB5, 5),
+                    cacheLimit(BridgeCacheLimitChoice.GB10, 10),
+                    cacheLimit(BridgeCacheLimitChoice.GB20, 20),
+                    cacheLimit(BridgeCacheLimitChoice.GB50, 50),
+                ),
+            beforeReset = beforeReset,
+        )
+    }
+
+    private fun cacheLimit(
+        choice: BridgeCacheLimitChoice,
+        gigabytes: Int,
+    ) = BridgeCacheLimit(choice, gigabytes.toULong() * 1_000_000_000uL)
 }

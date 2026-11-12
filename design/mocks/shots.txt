@@ -95,6 +95,9 @@ android.settings.person.make-admin-done
 android.settings.person.make-admin-waiting
 android.settings.playback
 android.settings.restore-code.printed
+android.settings.storage
+android.settings.storage.delete-from-before-reset
+android.settings.storage.from-before-reset
 android.settings.sync.code-shown
 android.settings.sync.dropbox
 android.settings.sync.onedrive

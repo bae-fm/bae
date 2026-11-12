@@ -6,6 +6,7 @@ import uniffi.bae_bridge.AdminChangesSubscription
 import uniffi.bae_bridge.BridgeAdminChange
 import uniffi.bae_bridge.BridgeCastReceiverList
 import uniffi.bae_bridge.BridgeConfig
+import uniffi.bae_bridge.BridgeDeviceStorage
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeFastValue
 import uniffi.bae_bridge.BridgeInvite
@@ -18,6 +19,7 @@ import uniffi.bae_bridge.BridgeSyncActivity
 import uniffi.bae_bridge.BridgeSyncStatusSnapshot
 import uniffi.bae_bridge.CastReceiversSubscription
 import uniffi.bae_bridge.ConfigSubscription
+import uniffi.bae_bridge.DeviceStorageSubscription
 import uniffi.bae_bridge.InvitesSubscription
 import uniffi.bae_bridge.KeyedValueStream
 import uniffi.bae_bridge.NoHandle
@@ -202,6 +204,30 @@ internal class FakePlaybackTimelineSubscription : PlaybackTimelineSubscription(N
     }
 
     override suspend fun next(): BridgePlaybackTimeline = pulls.receive().getOrThrow()
+
+    override suspend fun cancel() {
+        pulls.close(BridgeException.Cancelled())
+    }
+
+    override fun close() {
+        pulls.close(BridgeException.Cancelled())
+    }
+}
+
+/** What the phone keeps, a value or a failed read at a time a test hands the app: each pull waits for the next. */
+internal class FakeDeviceStorageSubscription : DeviceStorageSubscription(NoHandle) {
+    private val pulls = Channel<Result<BridgeDeviceStorage>>(Channel.UNLIMITED)
+
+    fun deliver(storage: BridgeDeviceStorage) {
+        pulls.trySend(Result.success(storage))
+    }
+
+    /** The next pull fails with [error]; the pull after it waits again. */
+    fun fail(error: BridgeException) {
+        pulls.trySend(Result.failure(error))
+    }
+
+    override suspend fun next(): BridgeDeviceStorage = pulls.receive().getOrThrow()
 
     override suspend fun cancel() {
         pulls.close(BridgeException.Cancelled())

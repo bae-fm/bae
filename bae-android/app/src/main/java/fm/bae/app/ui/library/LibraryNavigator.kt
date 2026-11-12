@@ -11,6 +11,7 @@ import fm.bae.app.ui.settings.CastingSettingsScreen
 import fm.bae.app.ui.settings.LibrarySettingsScreen
 import fm.bae.app.ui.settings.MembersScreen
 import fm.bae.app.ui.settings.SettingsScreen
+import fm.bae.app.ui.settings.StorageScreen
 import fm.bae.app.ui.settings.StorageSetupScreen
 import fm.bae.app.ui.settings.SyncScreen
 import fm.bae.app.ui.settings.TransfersScreen
@@ -55,6 +56,9 @@ internal sealed interface LibraryDestination {
 
     /** How this phone moves files: Wi-Fi only, and how many download at once. */
     data object Transfers : Setting
+
+    /** What this phone keeps for the library: its cache, its pins, and what a reset left. */
+    data object Storage : Setting
 
     /** Choosing and setting up storage for a library without one. */
     data object StorageSetup : Setting
@@ -199,6 +203,10 @@ private fun SettingsDestinationScreen(
 
         LibraryDestination.Transfers -> {
             TransfersScreen(session = session, onBack = onBack)
+        }
+
+        LibraryDestination.Storage -> {
+            StorageScreen(session = session, onBack = onBack)
         }
 
         LibraryDestination.StorageSetup -> {

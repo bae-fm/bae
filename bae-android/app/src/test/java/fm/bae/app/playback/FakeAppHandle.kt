@@ -313,7 +313,7 @@ internal open class FakeAppHandle(
         unfaked("cancelSidePauseCountdown")
     }
 
-    override suspend fun clearCache() = unfaked("clearCache")
+    override suspend fun clearCache(): Unit = unfaked("clearCache")
 
     override suspend fun clearPlayingFrom() {
         unfaked("clearPlayingFrom")
@@ -323,7 +323,7 @@ internal open class FakeAppHandle(
         unfaked("clearUpNext")
     }
 
-    override suspend fun deleteDataFromBeforeReset() = unfaked("deleteDataFromBeforeReset")
+    override suspend fun deleteDataFromBeforeReset(): Unit = unfaked("deleteDataFromBeforeReset")
 
     override suspend fun deleteRelease(releaseId: String) {
         unfaked("deleteRelease")
@@ -523,7 +523,7 @@ internal open class FakeAppHandle(
         unfaked("setLibraryFullWidth")
     }
 
-    override suspend fun setCacheLimit(choice: BridgeCacheLimitChoice) = unfaked("setCacheLimit")
+    override suspend fun setCacheLimit(choice: BridgeCacheLimitChoice): Unit = unfaked("setCacheLimit")
 
     override suspend fun setAskBeforeUnpinning(enabled: Boolean) {
         unfaked("setAskBeforeUnpinning")

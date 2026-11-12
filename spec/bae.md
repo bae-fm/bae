@@ -2066,7 +2066,7 @@ Other devices go on showing the release without playing it.
   file keeps its place; changes to the library still sync. Neither limits
   speed.
 - **Transfers on Android.** Settings lists Appearance, Library, Playback,
-  Transfers, Casting and About as rows on one card, each opening a page, in the
+  Transfers, Storage (§4.7), Casting and About as rows on one card, each opening a page, in the
   order of the Mac's sidebar. Transfers opens a page with Pin over
   Wi-Fi only, the setting above, and Pins at once, how many files are pinned at a time. A phone
   never uploads release files, so Android has no pause.
@@ -2468,7 +2468,11 @@ On a Mac the Storage pane, after Transfers in Settings, is a box with the total
 and the bar over the parts' legend, then Cache (with Clear cache and Keep up
 to), Pinned (with Ask before unpinning, Appendix C) and, while one is here, From
 before the reset (its Delete asks first). Android's Storage page, after
-Transfers in Settings, holds the same in a card and sections.
+Transfers in Settings, holds the same in a card and sections: Clear cache and
+Keep up to (a dialog of radio rows) under Cache, the switch under Pinned, and a
+Delete data from before the reset row under From before the reset while one is
+here. Its rows follow the measurement as it changes, and a failed measurement
+shows its error in place of the page.
 
 **Edge cases.**
 
@@ -5722,7 +5726,9 @@ Android the Appearance page has no heading over its card, the top bar names it.
 Android's Settings rows each say where that setting stands under their title:
 Appearance's theme, tone and accent, the library's name and its sync state,
 which of pausing between sides and restoring on launch are on, how many pins
-run at once, whether casting is on, and the version. The Mac's sidebar names the
+run at once, the total this phone keeps for the library (§4.7, "3.9 GB on this
+phone", nothing until the first measurement), whether casting is on, and the
+version. The Mac's sidebar names the
 sync state beside Library only while it is amber or red, and Offline beside
 Subsonic while it is on and not running. About shows the bae
 logo, the sheep over the word, 96 points wide and still, over the version:

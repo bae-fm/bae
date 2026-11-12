@@ -81,8 +81,9 @@ internal fun SettingsScreen(
             val line by session.syncStatusStore.line.collectAsState()
             val setupRunning by session.syncStatusStore.setupRunning.collectAsState()
             val sync = syncRowSummary(libraryModel.storage, line, setupRunning)
+            val deviceStorage = rememberDeviceStorageModel(session)
             AndroidSettingsList(
-                summaries = rememberSettingsSummaries(config, libraryModel.name, sync),
+                summaries = rememberSettingsSummaries(config, libraryModel.name, sync, deviceStorage.read),
                 onBack = onBack,
                 onOpen = { page = it },
                 onPush = onPush,

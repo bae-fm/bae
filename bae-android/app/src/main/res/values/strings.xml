@@ -191,6 +191,24 @@
     <string name="transfers_wifi_only">Pin over Wi-Fi only</string>
     <string name="transfers_wifi_only_footer">Pinned releases wait for Wi-Fi. Playing a track that isn’t pinned still uses mobile data.</string>
     <string name="transfers_concurrency_footer">How many files are pinned at once.</string>
+    <string name="settings_storage">Storage</string>
+    <string name="settings_storage_summary">%1$s on this phone</string>
+    <string name="storage_on_this_phone">on this phone</string>
+    <string name="storage_kind_pinned">Pinned</string>
+    <string name="storage_kind_cache">Cache</string>
+    <string name="storage_kind_library">Library</string>
+    <string name="storage_kind_before_reset">From before the reset</string>
+    <string name="storage_clear_cache">Clear cache</string>
+    <string name="storage_keep_up_to">Keep up to</string>
+    <string name="storage_cache_note">Tracks you played from the cloud, and covers and pictures. They download again when needed.</string>
+    <string name="storage_ask_before_unpinning">Ask before unpinning</string>
+    <string name="storage_ask_before_unpinning_note">Unpinning removes a release’s files from this phone at once</string>
+    <string name="storage_pinned_note">Pinned releases stay whole on this phone to play offline, and don’t count toward the cache.</string>
+    <string name="storage_delete_before_reset">Delete data from before the reset</string>
+    <string name="storage_before_reset_nothing_uses">%1$s · nothing uses it</string>
+    <string name="storage_delete_before_reset_title">Delete data from before the reset?</string>
+    <string name="storage_delete_before_reset_body">%1$s will be removed from this phone. It can’t be recovered. Your library isn’t affected.</string>
+    <string name="storage_delete">Delete</string>
 
     <!-- People and devices (membership) -->
     <string name="members_title">People and devices</string>

@@ -159,6 +159,7 @@ private fun summaries(library: String) =
         library = library,
         playback = "Pauses between sides · Restores on launch",
         transfers = "3 pins at once",
+        storage = "3.9 GB on this phone",
         casting = "Off",
         about = "Version 0.0-dev",
     )
