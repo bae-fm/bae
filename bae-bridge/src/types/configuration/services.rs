@@ -56,8 +56,8 @@ pub struct BridgeConfig {
     /// The one file name pattern every save names its files by, whatever the
     /// format, as typed.
     pub filename_pieces: Vec<BridgeSaveFilenamePiece>,
-    /// Why the file name pattern can't make a name, when it can't; saves name
-    /// by the default pattern until it is fixed.
+    /// Why the file name pattern can't make a name, when it can't; saves are
+    /// refused until it is fixed.
     pub filename_pattern_error: Option<BridgeNamePatternError>,
     /// The folder name pattern a release save names its folder by, as typed.
     pub folder_pieces: Vec<BridgeSaveFolderPiece>,

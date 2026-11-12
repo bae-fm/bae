@@ -82,8 +82,8 @@ CREATE TABLE IF NOT EXISTS save_preset (
 
 -- The file name pattern every save names its files by, whatever the format:
 -- its pieces in order, each a value or text typed as it is. No rows is a
--- pattern of no pieces, which can't make a name; a save then names by the
--- default pattern.
+-- pattern of no pieces, which can't make a name; a save is then
+-- refused.
 CREATE TABLE IF NOT EXISTS save_filename_token (
     position INTEGER PRIMARY KEY CHECK (position >= 0),
     value    TEXT CHECK (value IN (

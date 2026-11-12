@@ -15,11 +15,12 @@ use tracing::{debug, warn};
 /// pattern and the track's tag data: each value filled in, the pattern's text
 /// as typed (see [`rendered_name`]). If that leaves nothing, fall back to the
 /// sanitized title, then to "track". The stem is text: a file takes it through
-/// `save_file_name`.
+/// `save_file_name`. A pattern that can't make a name is refused with its
+/// error.
 pub fn render_save_filename(
     pattern: &bae_preferences::SaveFilenamePattern,
     resolved: &crate::manager::ResolvedSaveTags,
-) -> String {
+) -> Result<String, bae_preferences::NamePatternError> {
     use bae_preferences::SaveFilenameValue;
 
     let tags = &resolved.tags;
@@ -35,9 +36,9 @@ pub fn render_save_filename(
         SaveFilenameValue::TrackNumber => format!("{:02}", resolved.track_number),
         SaveFilenameValue::DiscNumber => tags.disc.map(|d| d.to_string()).unwrap_or_default(),
         SaveFilenameValue::TrackTotal => resolved.total_tracks.to_string(),
-    });
+    })?;
     if !stem.is_empty() {
-        return stem;
+        return Ok(stem);
     }
     // The pattern rendered nothing usable (every value it referenced was
     // empty). Log rather than silently invent a name, then fall back to the
@@ -48,13 +49,13 @@ pub fn render_save_filename(
             track_title = %tags.title,
             "export filename pattern rendered empty; using track title"
         );
-        return title_stem;
+        return Ok(title_stem);
     }
     debug!(
         track_title = %tags.title,
         "export filename pattern and track title both empty; using \"track\""
     );
-    "track".to_string()
+    Ok("track".to_string())
 }
 
 /// A release's data a folder name pattern draws on, from the database alone.
@@ -76,11 +77,12 @@ pub struct SaveFolderTags {
 /// from the folder name pattern and the release's data, as a file's is
 /// ([`rendered_name`]). A pattern that renders nothing usable falls back to the
 /// album, then to "release". The name is text: the folder takes it through
-/// `coven`'s rule for a stored name.
+/// `coven`'s rule for a stored name. A pattern that can't make a name is
+/// refused with its error.
 pub fn render_save_folder_name(
     pattern: &bae_preferences::SaveFolderPattern,
     tags: &SaveFolderTags,
-) -> String {
+) -> Result<String, bae_preferences::NamePatternError> {
     use bae_preferences::SaveFolderValue;
 
     let name = rendered_name(pattern, |value| match value {
@@ -94,36 +96,30 @@ pub fn render_save_folder_name(
         }
         SaveFolderValue::Label => tags.label.clone().unwrap_or_default(),
         SaveFolderValue::CatalogNumber => tags.catalog_number.clone().unwrap_or_default(),
-    });
+    })?;
     if !name.is_empty() {
-        return name;
+        return Ok(name);
     }
     let album = sanitize_filename_stem(&tags.album);
     if !album.is_empty() {
         debug!(album = %tags.album, "folder name pattern rendered empty; using the album");
-        return album;
+        return Ok(album);
     }
     debug!("folder name pattern and album both empty; using \"release\"");
-    "release".to_string()
+    Ok("release".to_string())
 }
 
 /// What `pattern` makes of the values `value_of` fills in: its text as typed,
 /// spaces and all, nothing added between pieces, then [`sanitize_filename_stem`].
 /// A pattern that can't make a name ([`bae_preferences::NamePattern::validate`])
-/// is not used: the default pattern makes the name. Empty when nothing usable
-/// is left.
+/// is refused with its error, never replaced by another. Empty when nothing
+/// usable is left.
 fn rendered_name<Value>(
     pattern: &bae_preferences::NamePattern<Value>,
     value_of: impl Fn(&Value) -> String,
-) -> String
-where
-    bae_preferences::NamePattern<Value>: Default,
-{
-    if pattern.validate().is_err() {
-        debug!("a name pattern can't make a name; naming by the default pattern");
-        return sanitize_filename_stem(&bae_preferences::NamePattern::default().fill(value_of));
-    }
-    sanitize_filename_stem(&pattern.fill(value_of))
+) -> Result<String, bae_preferences::NamePatternError> {
+    pattern.validate()?;
+    Ok(sanitize_filename_stem(&pattern.fill(value_of)))
 }
 
 /// Make a rendered name safe to write: a leading '.' is stripped so the file

@@ -2416,7 +2416,7 @@ Two ways put a release back on disk, from desktop:
   does not state comes out empty and the text around it stays. Typed text
   that can't make a name turns the field red with why: text that starts the
   name with `.`, one of `\ : ? * " < > | /`, or no pattern at all. Until it
-  is fixed, saves name by the default pattern. A file's name is its pattern's
+  is fixed, a save is refused, saying why. A file's name is its pattern's
   text as typed, spaces and all, with each value filled in and no leading
   `.`, written as a copy-out writes a name (§4.4), so a title
   `Some/Weird:Title` saves as `Some／Weird：Title.flac`; a single track's Save
@@ -5945,6 +5945,7 @@ A `BridgeError` is `Cancelled` (show nothing), `NotFound` (a library), or
 | `Import`, `ImportData` | reads the detail: an import couldn't finish, because a catalog or a source couldn't answer or be read, or its candidate or the library's artists changed before its write, and importing again works on what now stands |
 | `ChangedMeanwhile` | asks again, on what now stands: what a change acted on changed before it was written, and nothing was written (a release, album or file deleted before a change of it, an album or release a deletion was planned against, a release whose tracks came or went under an edit, a cover or artist image replaced again, a release picked as its album's primary that moved to another album, an artist given a printed name that was deleted or merged, an artist a credit picked that left the library, a candidate or the watched folders that changed under a change to them, a cancel that came after the import began writing) |
 | `InvalidEdit` | fixes what they typed, as the line says: an album title, an artist, an artist's name, a year |
+| `FilenamePatternInvalid`, `FolderPatternInvalid` | fixes the file or folder name pattern in Settings: a save named by a pattern that can't make a name wrote nothing, and the detail says why |
 | `WatchedFolderOverlap` | watches another folder: the one they asked for holds, or lies in, a watched folder, and the detail names both |
 | `CandidateImportInProgress`, `CandidateBeingIdentified` | waits |
 | `FilesAlreadyImported` | finds the release this device already imported from these files; they aren't imported again |

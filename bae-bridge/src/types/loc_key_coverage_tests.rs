@@ -292,6 +292,8 @@ fn produced_keys() -> Vec<String> {
         BridgeErrorCategory::ChangedMeanwhile,
         BridgeErrorCategory::InvalidEdit { reason: BridgeValidationReason::EmptyArtistName },
         BridgeErrorCategory::WatchedFolderOverlap,
+        BridgeErrorCategory::FilenamePatternInvalid,
+        BridgeErrorCategory::FolderPatternInvalid,
         BridgeErrorCategory::CandidateImportInProgress,
         BridgeErrorCategory::CandidateBeingIdentified,
         BridgeErrorCategory::FilesAlreadyImported,

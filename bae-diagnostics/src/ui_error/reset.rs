@@ -48,6 +48,8 @@ impl UiErrorCategory {
             | Self::ReleaseChangedSinceOpened
             | Self::InvalidEdit(..)
             | Self::WatchedFolderOverlap
+            | Self::FilenamePatternInvalid
+            | Self::FolderPatternInvalid
             | Self::Export
             | Self::Save
             | Self::Renderer

@@ -278,7 +278,7 @@ pub struct Preferences {
     pub save_presets: Vec<SavePreset>,
     /// The one file name pattern every save names its files by, whatever the
     /// format, stored as typed: one that can't make a name is kept, and saves
-    /// name by the default pattern until it is fixed.
+    /// are refused until it is fixed.
     pub save_filename_pattern: SaveFilenamePattern,
     /// The folder name pattern a release save names its folder by, stored as
     /// typed like the file name pattern.

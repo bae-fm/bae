@@ -313,7 +313,7 @@ impl LibraryManager {
 
     /// Set the one file name pattern every save names its files by, whatever
     /// the format. A pattern that can't make a name is stored as typed (a save
-    /// names by the default pattern until it is fixed); a piece of typed text
+    /// is refused until it is fixed); a piece of typed text
     /// with nothing in it is refused.
     pub async fn set_save_filename_pattern(
         &self,

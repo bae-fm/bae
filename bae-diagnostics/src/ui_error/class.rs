@@ -26,6 +26,8 @@ pub enum UiErrorClass {
     ChangedMeanwhile,
     InvalidEdit,
     WatchedFolderOverlap,
+    FilenamePatternInvalid,
+    FolderPatternInvalid,
     GroupingBlocked,
     Export,
     Save,
@@ -58,7 +60,7 @@ pub enum UiErrorClass {
 
 impl UiErrorClass {
     /// Every class, each once.
-    const ALL: [Self; 47] = [
+    const ALL: [Self; 49] = [
         Self::Database,
         Self::DatabaseBusy,
         Self::DatabaseDamaged,
@@ -78,6 +80,8 @@ impl UiErrorClass {
         Self::ChangedMeanwhile,
         Self::InvalidEdit,
         Self::WatchedFolderOverlap,
+        Self::FilenamePatternInvalid,
+        Self::FolderPatternInvalid,
         Self::GroupingBlocked,
         Self::Export,
         Self::Save,
@@ -130,6 +134,8 @@ impl UiErrorClass {
             Self::ChangedMeanwhile => "changed_meanwhile",
             Self::InvalidEdit => "invalid_edit",
             Self::WatchedFolderOverlap => "watched_folder_overlap",
+            Self::FilenamePatternInvalid => "filename_pattern_invalid",
+            Self::FolderPatternInvalid => "folder_pattern_invalid",
             Self::GroupingBlocked => "grouping_blocked",
             Self::Export => "export",
             Self::Save => "save",
@@ -213,6 +219,8 @@ impl UiErrorClass {
             // folders that overlap.
             | Self::GroupingBlocked
             | Self::WatchedFolderOverlap
+            | Self::FilenamePatternInvalid
+            | Self::FolderPatternInvalid
             | Self::S3VersioningUnsupported
             // Why a storage setup was undone: bae stopping, or the failure
             // or refusal that ended it.
@@ -269,6 +277,8 @@ impl UiErrorCategory {
             Self::ChangedMeanwhile => K::ChangedMeanwhile,
             Self::InvalidEdit(_) => K::InvalidEdit,
             Self::WatchedFolderOverlap => K::WatchedFolderOverlap,
+            Self::FilenamePatternInvalid => K::FilenamePatternInvalid,
+            Self::FolderPatternInvalid => K::FolderPatternInvalid,
             Self::GroupingBlocked(_) => K::GroupingBlocked,
             Self::Export => K::Export,
             Self::Save => K::Save,
@@ -321,6 +331,8 @@ impl UiErrorCategory {
             K::ReleaseChangedSinceOpened => Self::ReleaseChangedSinceOpened,
             K::ChangedMeanwhile => Self::ChangedMeanwhile,
             K::WatchedFolderOverlap => Self::WatchedFolderOverlap,
+            K::FilenamePatternInvalid => Self::FilenamePatternInvalid,
+            K::FolderPatternInvalid => Self::FolderPatternInvalid,
             K::Export => Self::Export,
             K::Save => Self::Save,
             K::StorageLocationChangeUnsupported => Self::StorageLocationChangeUnsupported,

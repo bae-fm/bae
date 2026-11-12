@@ -202,6 +202,12 @@ pub enum BridgeErrorCategory {
     /// A folder to watch holds, or lies in, a watched folder; the detail
     /// names both.
     WatchedFolderOverlap,
+    /// A save names its files by a file name pattern that can't make a name;
+    /// nothing was written.
+    FilenamePatternInvalid,
+    /// A release save names its folder by a folder name pattern that can't
+    /// make a name; nothing was written.
+    FolderPatternInvalid,
     Export,
     Save,
     /// Storage failed — in setup, in sync, reading a file — with coven's
@@ -416,6 +422,8 @@ pub fn bridge_error_category_key(category: BridgeErrorCategory) -> String {
         BridgeErrorCategory::ChangedMeanwhile => "core.error.changed_meanwhile",
         BridgeErrorCategory::InvalidEdit { reason } => reason.loc_key(),
         BridgeErrorCategory::WatchedFolderOverlap => "core.error.watched_folder_overlap",
+        BridgeErrorCategory::FilenamePatternInvalid => "core.error.filename_pattern_invalid",
+        BridgeErrorCategory::FolderPatternInvalid => "core.error.folder_pattern_invalid",
         BridgeErrorCategory::Export => "core.error.category.export",
         BridgeErrorCategory::Save => "core.error.category.save",
         BridgeErrorCategory::Storage { failure } => {
@@ -669,6 +677,8 @@ mirror_enum! {
         ChangedMeanwhile,
         InvalidEdit(reason: (BridgeValidationReason)),
         WatchedFolderOverlap,
+        FilenamePatternInvalid,
+        FolderPatternInvalid,
         GroupingBlocked(reason: (BridgeGroupingBlock)),
         Export,
         Save,

@@ -128,7 +128,8 @@ impl LibraryManager {
         let pattern = self.preferences().await?.save_filename_pattern;
         let meta = TrackAudioMeta::resolve(&self.records, track_id).await?;
         let resolved = self.resolve_save_tags(&meta.release, &meta.track).await?;
-        let stem = crate::save::render_save_filename(&pattern, &resolved);
+        let stem = crate::save::render_save_filename(&pattern, &resolved)
+            .map_err(LibraryError::FilenamePattern)?;
         // coven's name for a file depends on its extension only when a name
         // is cut to fit; `flac` and `aiff` are the longest, so the stem fits
         // under every format's extension.
@@ -219,7 +220,8 @@ impl LibraryManager {
                     extras.loudness_tags,
                 )
                 .await?;
-            let stem = crate::save::render_save_filename(filename_pattern, &plan.resolved);
+            let stem = crate::save::render_save_filename(filename_pattern, &plan.resolved)
+                .map_err(LibraryError::FilenamePattern)?;
             let output_path =
                 unique_output_path(staging_dir, &stem, preset.codec.extension(), &mut used_paths);
             saves.push((plan, output_path));

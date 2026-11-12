@@ -1,6 +1,6 @@
 //! What names a save's files and folder: the file and folder name patterns,
-//! typed text and values in them, and the default pattern a save uses while
-//! one can't make a name.
+//! typed text and values in them, and the refusal of a save while one can't
+//! make a name.
 
 use super::test_export::{import_unknown_local, ExportFixture};
 use bae_preferences::{
@@ -51,9 +51,6 @@ async fn a_release_save_names_its_folder_by_the_folder_pattern() {
         }
     };
 
-    let artist = bae_records::credits::library_line(
-        &f.library.records().get_artists_for_album(&album.id).await.unwrap(),
-    );
     let album_only = NamePattern::new(vec![NamePiece::Value(SaveFolderValue::Album)]);
     assert_eq!(saved_folder(album_only, "by-album").await, album.title);
     assert_ne!(album.title, "source folder", "the name is not the import's folder");
@@ -63,20 +60,33 @@ async fn a_release_save_names_its_folder_by_the_folder_pattern() {
         album.title,
         "a pattern that renders nothing names the folder by the album"
     );
-    assert_eq!(
-        saved_folder(NamePattern::new(Vec::new()), "by-nothing").await,
-        format!("{artist} - {}", album.title),
-        "a pattern that can't make a name names the folder by the default pattern"
-    );
+    // A pattern that can't make a name refuses the save and writes nothing.
     let slash = NamePattern::new(vec![
         NamePiece::Value(SaveFolderValue::Album),
         NamePiece::Text(" / ".to_string()),
     ]);
-    assert_eq!(
-        saved_folder(slash, "by-slash").await,
-        format!("{artist} - {}", album.title),
-        "typed text a name can't hold is the same"
-    );
+    for (invalid, directory) in [(NamePattern::new(Vec::new()), "by-nothing"), (slash, "by-slash")]
+    {
+        let target = f.temp_path().join(directory);
+        fs::create_dir_all(&target).unwrap();
+        let refused = manager
+            .export_release(
+                &release_id,
+                &target,
+                OutputKind::Save {
+                    preset: flac.clone(),
+                    filename_pattern: SaveFilenamePattern::default(),
+                    folder_pattern: invalid,
+                    extras: SaveExtras::default(),
+                },
+            )
+            .await;
+        assert!(
+            matches!(refused, Err(bae_library::LibraryError::FolderPattern(_))),
+            "the save is refused for its folder pattern: {refused:?}"
+        );
+        assert_eq!(fs::read_dir(&target).unwrap().count(), 0, "nothing was written");
+    }
 }
 
 /// The one filename pattern names every file a save writes, whatever the
@@ -162,18 +172,35 @@ async fn one_filename_pattern_names_every_format() {
         vec!["01 -  Track One.mp3", "01 -  Track Two.mp3"]
     );
 
-    // A pattern that can't make a name is kept as typed, and saves name by the
-    // default pattern until it is fixed.
+    // A pattern that can't make a name is kept as typed, and saves are refused
+    // until it is fixed.
     let invalid = NamePattern::new(vec![
         NamePiece::Value(SaveFilenameValue::Title),
         NamePiece::Text("/".to_string()),
     ]);
     manager.set_save_filename_pattern(invalid.clone()).await.unwrap();
     assert_eq!(manager.preferences().await.unwrap().save_filename_pattern, invalid);
-    assert_eq!(manager.save_track_suggested_name(&tracks[0].id).await.unwrap(), "01 Track One");
-    assert_eq!(
-        saved_names(flac, invalid.clone()).await,
-        vec!["01 Track One.flac", "01 Track Two.flac"]
+    assert!(matches!(
+        manager.save_track_suggested_name(&tracks[0].id).await,
+        Err(bae_library::LibraryError::FilenamePattern(_))
+    ));
+    let target = f.temp_path().join("out-refused");
+    fs::create_dir_all(&target).unwrap();
+    let refused = manager
+        .export_release(
+            &release_id,
+            &target,
+            OutputKind::Save {
+                preset: flac,
+                filename_pattern: invalid.clone(),
+                folder_pattern: SaveFolderPattern::default(),
+                extras: SaveExtras::default(),
+            },
+        )
+        .await;
+    assert!(
+        matches!(refused, Err(bae_library::LibraryError::FilenamePattern(_))),
+        "the save is refused for its file name pattern: {refused:?}"
     );
     manager
         .set_save_filename_pattern(NamePattern::new(vec![NamePiece::Text(String::new())]))

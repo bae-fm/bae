@@ -114,6 +114,9 @@ impl From<LibraryError> for AutomationError {
             error @ LibraryError::InviteJoining(_) => Self::Unavailable(error.to_string()),
             LibraryError::RetryBlockedOperation(e) => Self::Unavailable(e.to_string()),
             LibraryError::Validation(e) => Self::Validation(e),
+            error @ (LibraryError::FilenamePattern(_) | LibraryError::FolderPattern(_)) => {
+                Self::Validation(error.to_string())
+            }
         }
     }
 }
@@ -138,7 +141,9 @@ impl From<bae_diagnostics::UiError> for AutomationError {
             | UiErrorCategory::GroupingBlocked(_) => Self::Import(detail),
             UiErrorCategory::Config
             | UiErrorCategory::InvalidEdit(_)
-            | UiErrorCategory::WatchedFolderOverlap => Self::Validation(detail),
+            | UiErrorCategory::WatchedFolderOverlap
+            | UiErrorCategory::FilenamePatternInvalid
+            | UiErrorCategory::FolderPatternInvalid => Self::Validation(detail),
             UiErrorCategory::Internal => Self::Internal(detail),
             UiErrorCategory::DeviceResetRequired
             | UiErrorCategory::DeviceRemoved

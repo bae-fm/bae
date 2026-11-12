@@ -69,6 +69,13 @@ pub enum UiErrorCategory {
     /// A folder to watch holds, or lies in, a watched folder; the detail
     /// names both.
     WatchedFolderOverlap,
+    /// A save or export names its files by a file name pattern that can't make
+    /// a name; nothing was written. The detail says why; Settings holds the
+    /// pattern to fix.
+    FilenamePatternInvalid,
+    /// A release save names its folder by a folder name pattern that can't
+    /// make a name; nothing was written.
+    FolderPatternInvalid,
     /// A release read from several folders cannot be worked on as it stands,
     /// or cannot be made, for a reason the person can act on.
     GroupingBlocked(GroupingBlockReason),

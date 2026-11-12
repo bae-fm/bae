@@ -156,6 +156,14 @@ pub enum LibraryError {
     /// says what it acted on changed meanwhile.
     #[error("release {release_id} is not in the library")]
     ReleaseMissing { release_id: String, work: ReleaseWork },
+    /// The file name pattern a save names its files by can't make a name;
+    /// nothing was written.
+    #[error("the file name pattern can't make a name: {0}")]
+    FilenamePattern(bae_preferences::NamePatternError),
+    /// The folder name pattern a release save names its folder by can't make
+    /// a name; nothing was written.
+    #[error("the folder name pattern can't make a name: {0}")]
+    FolderPattern(bae_preferences::NamePatternError),
     /// A verbatim release export (reproducing the imported file set) failed.
     #[error("Export error: {0}")]
     Export(String),
@@ -435,6 +443,8 @@ impl LibraryError {
                 ReleaseWork::Transfer => C::Internal,
             },
             LibraryError::ReleaseEditStale { .. } => C::ReleaseChangedSinceOpened,
+            LibraryError::FilenamePattern(_) => C::FilenamePatternInvalid,
+            LibraryError::FolderPattern(_) => C::FolderPatternInvalid,
             LibraryError::Export(_) => C::Export,
             LibraryError::Save(_) => C::Save,
             LibraryError::FileRead { error, .. } => file_read_category(error),

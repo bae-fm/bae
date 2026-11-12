@@ -75,6 +75,8 @@ impl UiErrorCategory {
             | Self::ReleaseChangedSinceOpened
             | Self::InvalidEdit(_)
             | Self::WatchedFolderOverlap
+            | Self::FilenamePatternInvalid
+            | Self::FolderPatternInvalid
             // An export or a save whose cause bae doesn't know, a device or
             // receiver that refused or can't be driven.
             | Self::Export

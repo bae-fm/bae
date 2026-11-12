@@ -13,14 +13,17 @@ pub enum NamePiece<Value> {
 const FORBIDDEN: [char; 9] = ['\\', ':', '?', '*', '"', '<', '>', '|', '/'];
 
 /// Why a pattern can't make a name.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 pub enum NamePatternError {
     /// The pattern has no pieces.
+    #[error("the pattern is empty")]
     Empty,
     /// The first piece is typed text starting with `.`, which would hide the
     /// file.
+    #[error("the pattern starts with a dot")]
     StartsWithDot,
     /// Typed text holds this character.
+    #[error("the pattern holds {0:?}, which a name can't have")]
     ForbiddenCharacter(char),
 }
 
