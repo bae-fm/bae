@@ -169,12 +169,11 @@ struct AlbumExpansionContent: View {
     }
 
     private var releasePicker: some View {
-        NativeSegmentedControl(
+        MacSegmentedControl(
             selectedIndex: Binding(
                 get: { releaseCursor.index },
                 set: { newIndex in
-                    // AppKit's segmented control can report an index out of
-                    // range.
+                    // Releases can change while a click is on its way.
                     guard releaseCursor.items.indices.contains(newIndex) else {
                         return
                     }
@@ -182,7 +181,7 @@ struct AlbumExpansionContent: View {
                 },
             ),
             segments: pickerReleases.map { release in
-                NativeSegmentedControl.Segment(
+                MacSegmentedControl.Segment(
                     label: release.displayName,
                     systemImage: release.tracks.contains {
                         $0.id == currentTrackId

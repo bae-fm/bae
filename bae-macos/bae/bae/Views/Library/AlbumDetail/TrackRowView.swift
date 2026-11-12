@@ -29,7 +29,7 @@ struct MacTrackRow: View {
         HStack(spacing: ThemeSpace.group) {
             // Every leading-slot state stays in the layout, opacity-toggled,
             // so the row's size never changes.
-            ZStack {
+            ZStack(alignment: .trailing) {
                 TrackPositionLabel(text: track.positionText)
                     .foregroundStyle(.tertiary)
                     .opacity(!isCurrent && !hover ? 1 : 0)
