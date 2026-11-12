@@ -352,6 +352,13 @@ ios = "caption"
 android = 12
 android_line = 16
 
+# A Mac alert's message: regular 11, a half point under `detail`, as the
+# design's alert sets it.
+[text.alertMessage]
+weight = "regular"
+macos = 11
+ios = "caption"
+
 [text.fine]
 weight = "regular"
 macos = 10

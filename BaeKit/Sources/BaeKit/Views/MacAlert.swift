@@ -117,7 +117,8 @@
                 }
                 if let message = words.message {
                     message
-                        .themeText(.detail)
+                        .themeText(.alertMessage)
+                        .lineSpacing(ThemeSpace.line / 2)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
