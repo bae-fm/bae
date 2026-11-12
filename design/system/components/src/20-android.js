@@ -73,7 +73,7 @@
 
   // `tonal` is the small disc on the accent tint; `tone` colours the glyph (muted: secondary text, accent, warning); `box` is the touch box's side in px when it isn't Material's 48. `className` is only for the caller's layout.
   function AndroidIconButton(props) {
-    return h('button', { type: 'button', className: cx('bae-a-iconbtn', props.tonal && 'bae-a-iconbtn-tonal', props.tone && 'bae-a-iconbtn-' + props.tone, props.box && 'bae-a-iconbtn-box-' + props.box, props.className), 'aria-label': props.label || props.icon },
+    return h('button', { type: 'button', className: cx('bae-a-iconbtn', props.tonal && 'bae-a-iconbtn-tonal', props.tone && 'bae-a-iconbtn-' + props.tone, props.box && 'bae-a-iconbtn-box-' + props.box, props.className), 'aria-label': props.label || props.icon, 'aria-haspopup': props.menu ? 'menu' : null },
       h(Glyph, { name: props.icon || 'more', size: props.size || 24 }));
   }
 

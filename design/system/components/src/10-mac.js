@@ -177,7 +177,7 @@
   }
 
   function MacPopUpButton(props) {
-    return h('button', { type: 'button', className: 'bae-m-popupbutton', disabled: !!props.off, style: props.width ? { width: Number(props.width) } : null },
+    return h('button', { type: 'button', className: 'bae-m-popupbutton', 'aria-haspopup': 'menu', disabled: !!props.off, style: props.width ? { width: Number(props.width) } : null },
       h('span', null, props.children != null ? props.children : props.value),
       h('svg', { className: 'bae-m-popupbutton-mark', width: 8, height: 12, viewBox: '0 0 8 12', 'aria-hidden': true, fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round', strokeLinejoin: 'round' }, h('path', { d: 'M1.5 4.5 4 2l2.5 2.5M1.5 7.5 4 10l2.5-2.5' })));
   }

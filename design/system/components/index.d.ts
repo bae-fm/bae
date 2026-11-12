@@ -144,7 +144,7 @@ export interface AndroidButtonProps { kind?: 'filled' | 'tonal' | 'outlined' | '
 export declare function AndroidButton(props: AndroidButtonProps): React.ReactElement;
 
 /** A 48 dp glyph button: a Material Symbol by name (back, close, more, search, …). label is its accessible name. tone colours the glyph (secondary text, the accent, or the warning); box sets the touch box's side when it isn't 48. */
-export interface AndroidIconButtonProps { icon: string; label?: string; size?: number; tonal?: boolean; tone?: 'muted' | 'accent' | 'warning'; box?: 40 | 56; className?: string }
+export interface AndroidIconButtonProps { icon: string; label?: string; size?: number; tonal?: boolean; tone?: 'muted' | 'accent' | 'warning'; box?: 40 | 56; className?: string; /** It opens a menu: read as a menu button. */ menu?: boolean }
 export declare function AndroidIconButton(props: AndroidIconButtonProps): React.ReactElement;
 
 /** An on/off switch; label is its accessible name. */
@@ -217,7 +217,7 @@ export declare function MacSeekBar(props: SeekBarProps): React.ReactElement;
 export declare function AndroidSeekBar(props: SeekBarProps): React.ReactElement;
 export interface MacPlayPauseProps { playing?: boolean; waiting?: boolean }
 export declare function MacPlayPause(props: MacPlayPauseProps): React.ReactElement;
-export interface MacIconButtonProps { icon: string; label?: string; active?: boolean; faint?: boolean; small?: boolean; boxed?: boolean; size?: number }
+export interface MacIconButtonProps { icon: string; label?: string; active?: boolean; faint?: boolean; small?: boolean; boxed?: boolean; size?: number; /** It opens a menu: read as a menu button, `active` while the menu is open. */ menu?: boolean }
 export declare function MacIconButton(props: MacIconButtonProps): React.ReactElement;
 export interface MacLibraryHeadingProps { view?: 'Albums' | 'Artists' | 'Composers'; collapsed?: boolean; children?: React.ReactNode }
 export declare function MacLibraryHeading(props: MacLibraryHeadingProps): React.ReactElement;
