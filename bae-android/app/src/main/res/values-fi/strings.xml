@@ -108,7 +108,6 @@
         <item quantity="other">%1$d laitetta</item>
     </plurals>
     <string name="settings_sync">Synkronointi</string>
-    <string name="settings_local_only">Vain paikallisesti</string>
     <string name="settings_sync_unreadable">Synkronoinnin tilaa ei voitu lukea</string>
     <string name="settings_pause_between_sides">Tauko puolten ja levyjen välissä</string>
     <string name="settings_resume_automatically">Jatka automaattisesti</string>
@@ -141,7 +140,6 @@
     <string name="library_remove_failed_title">Kirjastoa ”%1$s” ei voitu poistaa</string>
     <string name="library_delete_confirm_body">Tätä kirjastoa ei ole synkronoitu, joten se poistetaan pysyvästi. Äänitiedostosi pysyvät kansioissaan.</string>
     <string name="library_delete">Poista</string>
-    <string name="library_not_synced">Ei synkronoitu</string>
     <string name="details_menu">Tiedot…</string>
     <string name="library_remove_menu">Poista…</string>
     <string name="library_delete_menu">Poista…</string>
@@ -203,7 +201,6 @@
     <string name="onboarding_tagline">Musiikkisi kaikkialla</string>
     <string name="onboarding_camera_permission_required">QR-koodien skannaaminen edellyttää kameran käyttöoikeutta</string>
     <string name="oauth_unconfigured">Kirjautumista tämän kirjaston pilvikotiin ei ole määritetty tässä versiossa.</string>
-    <string name="signing_in">Kirjaudutaan sisään…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-yhteensopiva</string>
@@ -312,27 +309,6 @@
     <string name="loading_removing_library">Poistetaan kirjastoa…</string>
     <string name="loading_resetting_device">Nollataan tätä laitetta…</string>
     <string name="pending_update_no_store">Mikään tämän laitteen sovelluskauppa ei voi päivittää bae-sovellusta.</string>
-    <string name="storage_setup_title">Ota synkronointi käyttöön</string>
-    <string name="settings_set_up_sync_explanation">Tämä kirjasto on vain tässä laitteessa. Synkronointi pitää sen pilvikodissa, jossa muut laitteesi ja kotitaloutesi voivat käyttää sitä.</string>
-    <string name="storage_setup_choose">Mihin tämä kirjasto tallennetaan?</string>
-    <string name="storage_s3_endpoint_hint">Jätä tyhjäksi, jos käytät Amazon S3:a.</string>
-    <string name="storage_set_up">Määritä</string>
-    <string name="storage_dropbox_reading">Luetaan jaettuja Dropbox-kansioitasi…</string>
-    <string name="storage_onedrive_reading">Luetaan OneDrivesi kansioita…</string>
-    <string name="storage_creating_folder">Luodaan kansiota…</string>
-    <string name="storage_dropbox_name_taken">Dropboxissasi on jo kansio nimeltä “%1$s”. Valitse toinen nimi.</string>
-    <string name="storage_dropbox_heading">Valitse tälle kirjastolle tyhjä jaettu kansio.</string>
-    <string name="storage_onedrive_heading">Valitse tälle kirjastolle tyhjä kansio.</string>
-    <string name="storage_dropbox_empty">Ei vielä jaettuja kansioita</string>
-    <string name="storage_onedrive_empty">Täällä ei ole vielä kansioita</string>
-    <string name="storage_onedrive_name_taken">Täällä on jo kansio nimeltä “%1$s”. Valitse toinen nimi.</string>
-    <string name="storage_folder_not_empty">“%1$s” ei ole tyhjä. Valitse tyhjä kansio tai luo uusi.</string>
-    <string name="storage_refresh">Päivitä</string>
-    <string name="storage_new_folder">Uusi kansio</string>
-    <string name="storage_folder_name">Kansion nimi</string>
-    <string name="storage_create_folder">Luo</string>
-    <string name="storage_setup_cancelling">Peruutetaan…</string>
-    <string name="storage_setup_done">Synkronointi on otettu käyttöön. Säilytä palautuskoodisi yksityisessä paikassa: jos menetät kaikki laitteesi, saat sillä kirjastosi takaisin.</string>
     <string name="restore_code_title">Palautuskoodi</string>
     <string name="restore_code_explanation">Tulosta tämä koodi tai tallenna se salasanahallintaan. Sillä pääset takaisin kirjastoosi, jos menetät kaikki laitteesi. Puhelin, jonka otat käyttöön tästä, saa sen myös.</string>
     <string name="restore_code_s3_key">Tarvitset myös S3-käyttöavaimesi ja salaisen avaimen.</string>

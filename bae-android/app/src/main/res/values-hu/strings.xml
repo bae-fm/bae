@@ -108,7 +108,6 @@
         <item quantity="other">%1$d eszköz</item>
     </plurals>
     <string name="settings_sync">Szinkronizálás</string>
-    <string name="settings_local_only">Csak helyi</string>
     <string name="settings_sync_unreadable">A szinkronizálás állapota nem olvasható</string>
     <string name="settings_pause_between_sides">Szünet a lemezoldalak és lemezek között</string>
     <string name="settings_resume_automatically">Automatikus folytatás</string>
@@ -141,7 +140,6 @@
     <string name="library_remove_failed_title">Nem sikerült eltávolítani a(z) „%1$s” könyvtárat</string>
     <string name="library_delete_confirm_body">Ez a könyvtár nincs szinkronizálva, ezért véglegesen törlődik. A hangfájljaid a mappáikban maradnak.</string>
     <string name="library_delete">Törlés</string>
-    <string name="library_not_synced">Nincs szinkronizálva</string>
     <string name="details_menu">Részletek…</string>
     <string name="library_remove_menu">Eltávolítás…</string>
     <string name="library_delete_menu">Törlés…</string>
@@ -203,7 +201,6 @@
     <string name="onboarding_tagline">A zenéd mindenhol</string>
     <string name="onboarding_camera_permission_required">A QR-kódok beolvasásához kameraengedély szükséges</string>
     <string name="oauth_unconfigured">A könyvtár felhőotthonába való bejelentkezés ebben a buildben nincs beállítva.</string>
-    <string name="signing_in">Bejelentkezés…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-kompatibilis</string>
@@ -312,27 +309,6 @@
     <string name="loading_removing_library">A könyvtár eltávolítása…</string>
     <string name="loading_resetting_device">Az eszköz visszaállítása…</string>
     <string name="pending_update_no_store">Ezen az eszközön nincs olyan alkalmazásbolt, amely frissíteni tudná a bae-t.</string>
-    <string name="storage_setup_title">Szinkronizálás beállítása</string>
-    <string name="settings_set_up_sync_explanation">Ez a könyvtár csak ezen az eszközön van. A szinkronizálás egy felhőotthonban tartja, ahol a többi eszközöd és a háztartásod is használhatja.</string>
-    <string name="storage_setup_choose">Hol tárolódjon ez a könyvtár?</string>
-    <string name="storage_s3_endpoint_hint">Amazon S3 esetén hagyd üresen.</string>
-    <string name="storage_set_up">Beállítás</string>
-    <string name="storage_dropbox_reading">A megosztott Dropbox-mappák beolvasása…</string>
-    <string name="storage_onedrive_reading">A OneDrive-mappák beolvasása…</string>
-    <string name="storage_creating_folder">A mappa létrehozása…</string>
-    <string name="storage_dropbox_name_taken">A Dropboxodban már van „%1$s” nevű mappa. Válassz másik nevet.</string>
-    <string name="storage_dropbox_heading">Válassz egy üres megosztott mappát ehhez a könyvtárhoz.</string>
-    <string name="storage_onedrive_heading">Válassz egy üres mappát ehhez a könyvtárhoz.</string>
-    <string name="storage_dropbox_empty">Még nincsenek megosztott mappák</string>
-    <string name="storage_onedrive_empty">Itt még nincsenek mappák</string>
-    <string name="storage_onedrive_name_taken">Itt már van „%1$s” nevű mappa. Válassz másik nevet.</string>
-    <string name="storage_folder_not_empty">A(z) „%1$s” nem üres. Válassz egy üres mappát, vagy hozz létre újat.</string>
-    <string name="storage_refresh">Frissítés</string>
-    <string name="storage_new_folder">Új mappa</string>
-    <string name="storage_folder_name">Mappa neve</string>
-    <string name="storage_create_folder">Létrehozás</string>
-    <string name="storage_setup_cancelling">Megszakítás…</string>
-    <string name="storage_setup_done">A szinkronizálás be van állítva. Őrizd a visszaállítási kódodat privát helyen: ha az összes eszközödet elveszíted, ezzel kapod vissza a könyvtáradat.</string>
     <string name="restore_code_title">Helyreállítási kód</string>
     <string name="restore_code_explanation">Nyomtasd ki ezt a kódot, vagy mentsd jelszókezelőbe. Visszajuttat a könyvtáradhoz, ha elveszíted az összes eszközödet. Az erről beállított telefon is megkapja.</string>
     <string name="restore_code_s3_key">Szükséged lesz az S3-hozzáférési kulcsodra és a titkos kulcsra is.</string>

@@ -107,7 +107,6 @@
         <item quantity="other">%1$d dispositivos</item>
     </plurals>
     <string name="settings_sync">Sincronização</string>
-    <string name="settings_local_only">Somente local</string>
     <string name="settings_sync_unreadable">Não foi possível ler o status da sincronização</string>
     <string name="settings_pause_between_sides">Pausa entre lados e discos</string>
     <string name="settings_resume_automatically">Retomar automaticamente</string>
@@ -141,7 +140,6 @@
     <string name="library_remove_failed_title">Não foi possível remover “%1$s”</string>
     <string name="library_delete_confirm_body">Esta biblioteca não está sincronizada, então será excluída para sempre. Seus arquivos de áudio continuam nas pastas deles.</string>
     <string name="library_delete">Excluir</string>
-    <string name="library_not_synced">Não sincronizada</string>
     <string name="details_menu">Detalhes…</string>
     <string name="library_remove_menu">Remover…</string>
     <string name="library_delete_menu">Excluir…</string>
@@ -204,7 +202,6 @@
     <string name="onboarding_tagline">Sua música, em qualquer lugar</string>
     <string name="onboarding_camera_permission_required">É necessária permissão de câmera para escanear QR codes</string>
     <string name="oauth_unconfigured">O login na casa na nuvem desta biblioteca não está configurado nesta versão.</string>
-    <string name="signing_in">Iniciando sessão…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-compatible</string>
@@ -320,27 +317,6 @@
     <string name="loading_removing_library">Removendo a biblioteca…</string>
     <string name="loading_resetting_device">Redefinindo este dispositivo…</string>
     <string name="pending_update_no_store">Nenhuma loja de apps neste dispositivo pode atualizar o bae.</string>
-    <string name="storage_setup_title">Configurar sincronização</string>
-    <string name="settings_set_up_sync_explanation">Esta biblioteca está só neste dispositivo. A sincronização a mantém numa casa na nuvem, onde seus outros dispositivos e sua casa podem usá-la.</string>
-    <string name="storage_setup_choose">Onde esta biblioteca deve ficar?</string>
-    <string name="storage_s3_endpoint_hint">Deixe vazio para o Amazon S3.</string>
-    <string name="storage_set_up">Configurar</string>
-    <string name="storage_dropbox_reading">Lendo suas pastas compartilhadas do Dropbox…</string>
-    <string name="storage_onedrive_reading">Lendo as pastas do seu OneDrive…</string>
-    <string name="storage_creating_folder">Criando a pasta…</string>
-    <string name="storage_dropbox_name_taken">Já existe uma pasta chamada “%1$s” no seu Dropbox. Escolha outro nome.</string>
-    <string name="storage_dropbox_heading">Escolha uma pasta compartilhada vazia para esta biblioteca.</string>
-    <string name="storage_onedrive_heading">Escolha uma pasta vazia para esta biblioteca.</string>
-    <string name="storage_dropbox_empty">Ainda não há pastas compartilhadas</string>
-    <string name="storage_onedrive_empty">Ainda não há pastas aqui</string>
-    <string name="storage_onedrive_name_taken">Já existe uma pasta chamada “%1$s” aqui. Escolha outro nome.</string>
-    <string name="storage_folder_not_empty">“%1$s” não está vazia. Escolha uma pasta vazia ou crie uma nova.</string>
-    <string name="storage_refresh">Atualizar</string>
-    <string name="storage_new_folder">Nova pasta</string>
-    <string name="storage_folder_name">Nome da pasta</string>
-    <string name="storage_create_folder">Criar</string>
-    <string name="storage_setup_cancelling">Cancelando…</string>
-    <string name="storage_setup_done">A sincronização está configurada. Guarde seu código de restauração em um lugar privado: se você perder todos os seus dispositivos, é com ele que recupera sua biblioteca.</string>
     <string name="restore_code_title">Código de restauração</string>
     <string name="restore_code_explanation">Imprima este código ou salve-o em um gerenciador de senhas. Ele leva você de volta à sua biblioteca se você perder todos os seus dispositivos. Um celular que você configurar a partir deste também o recebe.</string>
     <string name="restore_code_s3_key">Você também vai precisar da sua chave de acesso e da chave secreta do S3.</string>

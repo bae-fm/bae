@@ -107,7 +107,6 @@
         <item quantity="other">%1$d uređaja</item>
     </plurals>
     <string name="settings_sync">Sinkronizacija</string>
-    <string name="settings_local_only">Samo lokalno</string>
     <string name="settings_sync_unreadable">Nije moguće pročitati stanje sinkronizacije</string>
     <string name="settings_pause_between_sides">Pauza između strana i diskova</string>
     <string name="settings_resume_automatically">Automatski nastavi</string>
@@ -141,7 +140,6 @@
     <string name="library_remove_failed_title">Nije moguće ukloniti „%1$s”</string>
     <string name="library_delete_confirm_body">Ova fonoteka nije sinkronizirana, pa će se trajno izbrisati. Vaše audiodatoteke ostaju u svojim mapama.</string>
     <string name="library_delete">Izbriši</string>
-    <string name="library_not_synced">Nije sinkronizirana</string>
     <string name="details_menu">Pojedinosti…</string>
     <string name="library_remove_menu">Ukloni…</string>
     <string name="library_delete_menu">Izbriši…</string>
@@ -204,7 +202,6 @@
     <string name="onboarding_tagline">Vaša glazba, posvuda</string>
     <string name="onboarding_camera_permission_required">Za skeniranje QR kodova potrebna je dozvola za kameru</string>
     <string name="oauth_unconfigured">Prijava u dom u oblaku ove fonoteke nije konfigurirana u ovoj verziji.</string>
-    <string name="signing_in">Prijava…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-compatible</string>
@@ -321,27 +318,6 @@
     <string name="loading_removing_library">Uklanjanje fonoteke…</string>
     <string name="loading_resetting_device">Ponovno postavljanje ovog uređaja…</string>
     <string name="pending_update_no_store">Nijedna trgovina aplikacija na ovom uređaju ne može ažurirati bae.</string>
-    <string name="storage_setup_title">Postavi sinkronizaciju</string>
-    <string name="settings_set_up_sync_explanation">Ova je fonoteka pohranjena samo na ovom uređaju. Sinkronizacija je drži u domu u oblaku, gdje je mogu koristiti vaši drugi uređaji i kućanstvo.</string>
-    <string name="storage_setup_choose">Gdje pohraniti ovu fonoteku?</string>
-    <string name="storage_s3_endpoint_hint">Ostavite prazno za Amazon S3.</string>
-    <string name="storage_set_up">Postavi</string>
-    <string name="storage_dropbox_reading">Čitanje vaših dijeljenih mapa na Dropboxu…</string>
-    <string name="storage_onedrive_reading">Čitanje mapa na vašem OneDriveu…</string>
-    <string name="storage_creating_folder">Izrada mape…</string>
-    <string name="storage_dropbox_name_taken">Mapa naziva „%1$s“ već postoji u vašem Dropboxu. Odaberite drugi naziv.</string>
-    <string name="storage_dropbox_heading">Odaberite praznu zajedničku mapu za ovu biblioteku.</string>
-    <string name="storage_onedrive_heading">Odaberite praznu mapu za ovu biblioteku.</string>
-    <string name="storage_dropbox_empty">Još nema zajedničkih mapa</string>
-    <string name="storage_onedrive_empty">Ovdje još nema mapa</string>
-    <string name="storage_onedrive_name_taken">Ovdje već postoji mapa naziva „%1$s“. Odaberite drugi naziv.</string>
-    <string name="storage_folder_not_empty">Mapa „%1$s“ nije prazna. Odaberite praznu mapu ili napravite novu.</string>
-    <string name="storage_refresh">Osvježi</string>
-    <string name="storage_new_folder">Nova mapa</string>
-    <string name="storage_folder_name">Naziv mape</string>
-    <string name="storage_create_folder">Stvori</string>
-    <string name="storage_setup_cancelling">Otkazivanje…</string>
-    <string name="storage_setup_done">Sinkronizacija je postavljena. Čuvajte svoj kod za vraćanje na privatnom mjestu: ako izgubite sve svoje uređaje, njime vraćate svoju fonoteku.</string>
     <string name="restore_code_title">Kod za vraćanje</string>
     <string name="restore_code_explanation">Ispišite ovaj kod ili ga spremite u upravitelj lozinki. Vraća vas u vašu fonoteku ako izgubite sve svoje uređaje. Telefon koji postavite s ovog također ga dobiva.</string>
     <string name="restore_code_s3_key">Trebat će vam i S3 pristupni ključ i tajni ključ.</string>

@@ -116,7 +116,6 @@
         <item quantity="other">%1$d zariadení</item>
     </plurals>
     <string name="settings_sync">Synchronizácia</string>
-    <string name="settings_local_only">Len lokálne</string>
     <string name="settings_sync_unreadable">Stav synchronizácie sa nepodarilo načítať</string>
     <string name="settings_pause_between_sides">Pauza medzi stranami a diskami</string>
     <string name="settings_resume_automatically">Automaticky pokračovať</string>
@@ -151,7 +150,6 @@
     <string name="library_remove_failed_title">„%1$s“ sa nepodarilo odstrániť</string>
     <string name="library_delete_confirm_body">Táto knižnica nie je synchronizovaná, preto sa natrvalo odstráni. Tvoje zvukové súbory zostanú vo svojich priečinkoch.</string>
     <string name="library_delete">Odstrániť</string>
-    <string name="library_not_synced">Nesynchronizovaná</string>
     <string name="details_menu">Podrobnosti…</string>
     <string name="library_remove_menu">Odstrániť…</string>
     <string name="library_delete_menu">Odstrániť…</string>
@@ -215,7 +213,6 @@
     <string name="onboarding_tagline">Tvoja hudba, všade</string>
     <string name="onboarding_camera_permission_required">Na skenovanie QR kódov je potrebné povolenie kamery</string>
     <string name="oauth_unconfigured">Prihlásenie do cloudového domova tejto knižnice nie je v tomto zostavení nastavené.</string>
-    <string name="signing_in">Prihlasuje sa…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">Kompatibilné s S3</string>
@@ -326,27 +323,6 @@
     <string name="loading_removing_library">Odstraňuje sa knižnica…</string>
     <string name="loading_resetting_device">Resetuje sa toto zariadenie…</string>
     <string name="pending_update_no_store">Žiadny obchod s aplikáciami v tomto zariadení nemôže aktualizovať bae.</string>
-    <string name="storage_setup_title">Nastaviť synchronizáciu</string>
-    <string name="settings_set_up_sync_explanation">Táto knižnica je uložená len v tomto zariadení. Synchronizácia ju udržiava v cloudovom domove, kde ju môžu používať aj tvoje ďalšie zariadenia a domácnosť.</string>
-    <string name="storage_setup_choose">Kde má byť táto knižnica uložená?</string>
-    <string name="storage_s3_endpoint_hint">Pre Amazon S3 nechaj prázdne.</string>
-    <string name="storage_set_up">Nastaviť</string>
-    <string name="storage_dropbox_reading">Načítavajú sa vaše zdieľané priečinky Dropboxu…</string>
-    <string name="storage_onedrive_reading">Načítavajú sa priečinky na vašom OneDrive…</string>
-    <string name="storage_creating_folder">Vytvára sa priečinok…</string>
-    <string name="storage_dropbox_name_taken">Priečinok s názvom „%1$s“ už vo vašom Dropboxe existuje. Zvoľte iný názov.</string>
-    <string name="storage_dropbox_heading">Vyberte pre túto knižnicu prázdny zdieľaný priečinok.</string>
-    <string name="storage_onedrive_heading">Vyberte pre túto knižnicu prázdny priečinok.</string>
-    <string name="storage_dropbox_empty">Zatiaľ žiadne zdieľané priečinky</string>
-    <string name="storage_onedrive_empty">Zatiaľ tu nie sú žiadne priečinky</string>
-    <string name="storage_onedrive_name_taken">Priečinok s názvom „%1$s“ tu už existuje. Zvoľte iný názov.</string>
-    <string name="storage_folder_not_empty">Priečinok „%1$s“ nie je prázdny. Vyberte prázdny priečinok alebo vytvorte nový.</string>
-    <string name="storage_refresh">Obnoviť</string>
-    <string name="storage_new_folder">Nový priečinok</string>
-    <string name="storage_folder_name">Názov priečinka</string>
-    <string name="storage_create_folder">Vytvoriť</string>
-    <string name="storage_setup_cancelling">Ruší sa…</string>
-    <string name="storage_setup_done">Synchronizácia je nastavená. Uchovávaj kód na obnovenie na súkromnom mieste: ak prídeš o všetky svoje zariadenia, získaš s ním knižnicu späť.</string>
     <string name="restore_code_title">Kód na obnovenie</string>
     <string name="restore_code_explanation">Vytlačte si tento kód alebo ho uložte do správcu hesiel. Vráti vás do knižnice, ak prídete o všetky zariadenia. Telefón, ktorý z tohto nastavíte, ho dostane tiež.</string>
     <string name="restore_code_s3_key">Budeš potrebovať aj prístupový kľúč a tajný kľúč S3.</string>

@@ -101,7 +101,6 @@
         <item quantity="other">%1$d 台设备</item>
     </plurals>
     <string name="settings_sync">同步</string>
-    <string name="settings_local_only">仅本地</string>
     <string name="settings_sync_unreadable">无法读取同步状态</string>
     <string name="settings_pause_between_sides">面或碟片之间暂停</string>
     <string name="settings_resume_automatically">自动继续</string>
@@ -133,7 +132,6 @@
     <string name="library_remove_failed_title">无法移除“%1$s”</string>
     <string name="library_delete_confirm_body">该库未同步，因此将被永久删除。你的音频文件会保留在原文件夹中。</string>
     <string name="library_delete">删除</string>
-    <string name="library_not_synced">未同步</string>
     <string name="details_menu">详情…</string>
     <string name="library_remove_menu">移除…</string>
     <string name="library_delete_menu">删除…</string>
@@ -194,7 +192,6 @@
     <string name="onboarding_tagline">你的音乐，随处可听</string>
     <string name="onboarding_camera_permission_required">扫描二维码需要相机权限</string>
     <string name="oauth_unconfigured">此版本未配置登录此库的云端家园。</string>
-    <string name="signing_in">正在登录…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-compatible</string>
@@ -307,27 +304,6 @@
     <string name="loading_removing_library">正在移除资料库…</string>
     <string name="loading_resetting_device">正在重置此设备…</string>
     <string name="pending_update_no_store">此设备上没有可以更新 bae 的应用商店。</string>
-    <string name="storage_setup_title">设置同步</string>
-    <string name="settings_set_up_sync_explanation">此库只存储在这台设备上。同步会将它保存在云端家园中，你的其他设备和家人都能在那里使用它。</string>
-    <string name="storage_setup_choose">此库应存储在哪里？</string>
-    <string name="storage_s3_endpoint_hint">使用 Amazon S3 时请留空。</string>
-    <string name="storage_set_up">设置</string>
-    <string name="storage_dropbox_reading">正在读取你共享的 Dropbox 文件夹…</string>
-    <string name="storage_onedrive_reading">正在读取你的 OneDrive 上的文件夹…</string>
-    <string name="storage_creating_folder">正在创建文件夹…</string>
-    <string name="storage_dropbox_name_taken">你的 Dropbox 中已有名为“%1$s”的文件夹。请换一个名称。</string>
-    <string name="storage_dropbox_heading">请为此资料库选择一个空的共享文件夹。</string>
-    <string name="storage_onedrive_heading">请为此资料库选择一个空文件夹。</string>
-    <string name="storage_dropbox_empty">还没有共享文件夹</string>
-    <string name="storage_onedrive_empty">这里还没有文件夹</string>
-    <string name="storage_onedrive_name_taken">此处已有名为“%1$s”的文件夹。请换一个名称。</string>
-    <string name="storage_folder_not_empty">“%1$s”不是空的。请选择一个空文件夹，或新建一个。</string>
-    <string name="storage_refresh">刷新</string>
-    <string name="storage_new_folder">新建文件夹</string>
-    <string name="storage_folder_name">文件夹名称</string>
-    <string name="storage_create_folder">创建</string>
-    <string name="storage_setup_cancelling">正在取消…</string>
-    <string name="storage_setup_done">同步已设置。请将你的恢复码保存在私密的地方：如果你丢失了所有设备，可以用它找回你的库。</string>
     <string name="restore_code_title">恢复码</string>
     <string name="restore_code_explanation">打印此恢复码，或将其保存到密码管理器。如果你丢失了所有设备，它能让你找回你的库。 由此设备设置的手机也会获得它。</string>
     <string name="restore_code_s3_key">你还需要 S3 访问密钥和私密密钥。</string>

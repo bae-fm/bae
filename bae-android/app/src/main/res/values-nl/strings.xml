@@ -104,7 +104,6 @@
         <item quantity="other">%1$d apparaten</item>
     </plurals>
     <string name="settings_sync">Synchronisatie</string>
-    <string name="settings_local_only">Alleen lokaal</string>
     <string name="settings_sync_unreadable">Synchronisatiestatus kan niet worden gelezen</string>
     <string name="settings_pause_between_sides">Pauze tussen kanten en schijven</string>
     <string name="settings_resume_automatically">Automatisch hervatten</string>
@@ -137,7 +136,6 @@
     <string name="library_remove_failed_title">Kan ‘%1$s’ niet verwijderen</string>
     <string name="library_delete_confirm_body">Deze bibliotheek is niet gesynchroniseerd en wordt daarom definitief verwijderd. Je audiobestanden blijven in hun mappen.</string>
     <string name="library_delete">Verwijderen</string>
-    <string name="library_not_synced">Niet gesynchroniseerd</string>
     <string name="details_menu">Details…</string>
     <string name="library_remove_menu">Verwijderen…</string>
     <string name="library_delete_menu">Verwijderen…</string>
@@ -199,7 +197,6 @@
     <string name="onboarding_tagline">Je muziek, overal</string>
     <string name="onboarding_camera_permission_required">Cameratoestemming is vereist om QR-codes te scannen</string>
     <string name="oauth_unconfigured">Aanmelden bij het cloudthuis van deze bibliotheek is niet geconfigureerd in deze build.</string>
-    <string name="signing_in">Aanmelden…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-compatible</string>
@@ -314,27 +311,6 @@
     <string name="loading_removing_library">Bibliotheek wordt verwijderd…</string>
     <string name="loading_resetting_device">Dit apparaat wordt opnieuw ingesteld…</string>
     <string name="pending_update_no_store">Geen enkele appwinkel op dit apparaat kan bae bijwerken.</string>
-    <string name="storage_setup_title">Synchronisatie instellen</string>
-    <string name="settings_set_up_sync_explanation">Deze bibliotheek staat alleen op dit apparaat. Synchronisatie houdt hem in een cloudthuis, waar je andere apparaten en je huishouden hem kunnen gebruiken.</string>
-    <string name="storage_setup_choose">Waar moet deze bibliotheek worden opgeslagen?</string>
-    <string name="storage_s3_endpoint_hint">Laat leeg voor Amazon S3.</string>
-    <string name="storage_set_up">Instellen</string>
-    <string name="storage_dropbox_reading">Je gedeelde Dropbox-mappen worden gelezen…</string>
-    <string name="storage_onedrive_reading">Mappen op je OneDrive worden gelezen…</string>
-    <string name="storage_creating_folder">Map wordt gemaakt…</string>
-    <string name="storage_dropbox_name_taken">Er staat al een map met de naam “%1$s” in je Dropbox. Kies een andere naam.</string>
-    <string name="storage_dropbox_heading">Kies een lege gedeelde map voor deze bibliotheek.</string>
-    <string name="storage_onedrive_heading">Kies een lege map voor deze bibliotheek.</string>
-    <string name="storage_dropbox_empty">Nog geen gedeelde mappen</string>
-    <string name="storage_onedrive_empty">Hier staan nog geen mappen</string>
-    <string name="storage_onedrive_name_taken">Er staat hier al een map met de naam “%1$s”. Kies een andere naam.</string>
-    <string name="storage_folder_not_empty">“%1$s” is niet leeg. Kies een lege map of maak een nieuwe.</string>
-    <string name="storage_refresh">Vernieuwen</string>
-    <string name="storage_new_folder">Nieuwe map</string>
-    <string name="storage_folder_name">Mapnaam</string>
-    <string name="storage_create_folder">Maken</string>
-    <string name="storage_setup_cancelling">Wordt geannuleerd…</string>
-    <string name="storage_setup_done">Synchronisatie is ingesteld. Bewaar je herstelcode op een privéplek: als je al je apparaten kwijtraakt, krijg je er je bibliotheek mee terug.</string>
     <string name="restore_code_title">Herstelcode</string>
     <string name="restore_code_explanation">Print deze code of bewaar hem in een wachtwoordmanager. Hij brengt je terug in je bibliotheek als je al je apparaten kwijtraakt. Een telefoon die je vanaf deze instelt, krijgt hem ook.</string>
     <string name="restore_code_s3_key">Je hebt ook je S3-toegangssleutel en geheime sleutel nodig.</string>

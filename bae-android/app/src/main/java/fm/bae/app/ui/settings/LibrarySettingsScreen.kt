@@ -39,8 +39,7 @@ import uniffi.bae_bridge.BridgeMemberRole
 
 /**
  * The open library: its name, with Rename for an admin, and rows that show where its sync and its people and devices
- * stand and open their pages. A library with no storage has the name and a Sync row that offers
- * setting sync up; people live in the library's store, which only storage has.
+ * stand and open their pages.
  */
 @Composable
 internal fun LibrarySettingsScreen(
@@ -54,14 +53,13 @@ internal fun LibrarySettingsScreen(
     LaunchedEffect(model) { model.load() }
     DisposableEffect(members) { onDispose(members.subscribe()) }
     val line by session.syncStatusStore.line.collectAsState()
-    val setupRunning by session.syncStatusStore.setupRunning.collectAsState()
     val storage = model.storage
     var renaming by remember { mutableStateOf(false) }
     val name = (model.name as? LibraryNameRead.Named)?.name
     AndroidSettingsLibrary(
         name = name,
         canRename = (model.self as? SelfRead.Loaded)?.person?.membership?.role == BridgeMemberRole.ADMIN,
-        sync = syncRowSummary(storage = storage, line = line, setupRunning = setupRunning),
+        sync = syncRowSummary(line),
         peopleAndDevices = if (storage is Storage.At) peopleAndDevices(members.people) else null,
         hasStorage = storage is Storage.At,
         adminChanges = members.adminChanges.at(AdminChangePlace.Library),
@@ -159,20 +157,10 @@ internal data class SyncRowSummary(
     val tone: StatusTone?,
 )
 
-/**
- * The Sync row's state: "Not synced" for a library with no storage, otherwise the state's words in the color core
- * gives it.
- */
+/** The Sync row's state: the state's words in the color core gives it. */
 @Composable
-internal fun syncRowSummary(
-    storage: Storage,
-    line: SyncLine,
-    setupRunning: Boolean,
-): SyncRowSummary {
+internal fun syncRowSummary(line: SyncLine): SyncRowSummary {
     val context = LocalContext.current
-    if (storage is Storage.None && !setupRunning) {
-        return SyncRowSummary(stringResource(R.string.library_not_synced), tone = null)
-    }
     return SyncRowSummary(syncLineText(context, line), (line as? SyncLine.Read)?.shown?.tone?.statusTone())
 }
 

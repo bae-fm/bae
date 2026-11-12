@@ -110,7 +110,6 @@
         <item quantity="other">%1$d пристрою</item>
     </plurals>
     <string name="settings_sync">Синхронізація</string>
-    <string name="settings_local_only">Лише локально</string>
     <string name="settings_sync_unreadable">Не вдалося прочитати стан синхронізації</string>
     <string name="settings_pause_between_sides">Пауза між сторонами та дисками</string>
     <string name="settings_resume_automatically">Відновлювати автоматично</string>
@@ -145,7 +144,6 @@
     <string name="library_remove_failed_title">Не вдалося вилучити «%1$s»</string>
     <string name="library_delete_confirm_body">Цю бібліотеку не синхронізовано, тому її буде видалено назавжди. Ваші аудіофайли залишаться у своїх теках.</string>
     <string name="library_delete">Видалити</string>
-    <string name="library_not_synced">Не синхронізовано</string>
     <string name="details_menu">Подробиці…</string>
     <string name="library_remove_menu">Видалити…</string>
     <string name="library_delete_menu">Видалити…</string>
@@ -209,7 +207,6 @@
     <string name="onboarding_tagline">Ваша музика, будь-де</string>
     <string name="onboarding_camera_permission_required">Для сканування QR-кодів потрібен дозвіл на доступ до камери</string>
     <string name="oauth_unconfigured">Вхід до хмарного дому цієї бібліотеки не налаштовано в цій збірці.</string>
-    <string name="signing_in">Вхід…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-compatible</string>
@@ -328,27 +325,6 @@
     <string name="loading_removing_library">Вилучення бібліотеки…</string>
     <string name="loading_resetting_device">Скидання цього пристрою…</string>
     <string name="pending_update_no_store">Жодна крамниця застосунків на цьому пристрої не може оновити bae.</string>
-    <string name="storage_setup_title">Налаштувати синхронізацію</string>
-    <string name="settings_set_up_sync_explanation">Ця бібліотека зберігається лише на цьому пристрої. Синхронізація тримає її у хмарному домі, де нею можуть користуватися інші ваші пристрої та домівка.</string>
-    <string name="storage_setup_choose">Де зберігати цю бібліотеку?</string>
-    <string name="storage_s3_endpoint_hint">Залиште порожнім для Amazon S3.</string>
-    <string name="storage_set_up">Налаштувати</string>
-    <string name="storage_dropbox_reading">Читання ваших спільних папок Dropbox…</string>
-    <string name="storage_onedrive_reading">Читання папок у вашому OneDrive…</string>
-    <string name="storage_creating_folder">Створення папки…</string>
-    <string name="storage_dropbox_name_taken">У вашому Dropbox уже є папка «%1$s». Виберіть іншу назву.</string>
-    <string name="storage_dropbox_heading">Виберіть порожню спільну папку для цієї бібліотеки.</string>
-    <string name="storage_onedrive_heading">Виберіть порожню папку для цієї бібліотеки.</string>
-    <string name="storage_dropbox_empty">Спільних папок поки немає</string>
-    <string name="storage_onedrive_empty">Тут ще немає папок</string>
-    <string name="storage_onedrive_name_taken">Тут уже є папка «%1$s». Виберіть іншу назву.</string>
-    <string name="storage_folder_not_empty">Папка «%1$s» не порожня. Виберіть порожню папку або створіть нову.</string>
-    <string name="storage_refresh">Оновити</string>
-    <string name="storage_new_folder">Нова папка</string>
-    <string name="storage_folder_name">Назва папки</string>
-    <string name="storage_create_folder">Створити</string>
-    <string name="storage_setup_cancelling">Скасування…</string>
-    <string name="storage_setup_done">Синхронізацію налаштовано. Зберігайте свій код відновлення в приватному місці: якщо ви втратите всі свої пристрої, з ним ви повернете свою бібліотеку.</string>
     <string name="restore_code_title">Код відновлення</string>
     <string name="restore_code_explanation">Роздрукуйте цей код або збережіть його в менеджері паролів. Він поверне вас до бібліотеки, якщо ви втратите всі пристрої. Телефон, який ви налаштуєте з цього, теж його отримає.</string>
     <string name="restore_code_s3_key">Вам також знадобляться ключ доступу та секретний ключ S3.</string>

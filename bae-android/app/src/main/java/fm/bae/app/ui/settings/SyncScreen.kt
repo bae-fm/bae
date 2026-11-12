@@ -46,7 +46,6 @@ import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidScreen
 import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.StatusTone
-import fm.bae.app.ui.library.LibraryDestination
 import fm.bae.app.ui.rememberScreenScope
 import fm.bae.app.ui.storageLocationLabel
 import kotlinx.coroutines.CoroutineScope
@@ -86,7 +85,7 @@ private class PendingActionRunner(
     var error by mutableStateOf<DisplayError?>(null)
 
     /** Runs the reconnect a sign-in asks for, with its steps while it runs. */
-    val signIns = StorageSetupRunner(context, session, scope, onError = { error = it }, onSetUp = {})
+    val signIns = StorageSetupRunner(context, session, scope, onError = { error = it })
 
     /** The S3 location a new access key is being asked for; null while none is. */
     var askingForKey by mutableStateOf<BridgeStorageLocation.S3?>(null)
@@ -262,7 +261,6 @@ internal fun SyncScreen(
     session: OpenLibrary,
     actions: SessionActions,
     onBack: () -> Unit,
-    onPush: (LibraryDestination) -> Unit,
 ) {
     val pending by session.syncStatusStore.pending.collectAsState()
     val recordsDropped by session.syncStatusStore.recordsDropped.collectAsState()
@@ -272,14 +270,12 @@ internal fun SyncScreen(
     val scope = rememberScreenScope()
     val runner = remember(session) { PendingActionRunner(session, actions, context, scope) }
     var location by remember(session) { mutableStateOf<BridgeStorageLocation?>(null) }
-    var locationRead by remember(session) { mutableStateOf(false) }
     var locationError by remember(session) { mutableStateOf<DisplayError?>(null) }
     // The location is recorded as a setup ends, so it is read again when one stops running.
     LaunchedEffect(session, setupRunning) {
         if (setupRunning) return@LaunchedEffect
         performBridgeAction(logger, "read the library's storage", session.errors, { locationError = it }) {
             location = session.appHandle.storageLocation()
-            locationRead = true
             locationError = null
         }
     }
@@ -302,7 +298,6 @@ internal fun SyncScreen(
         },
         location = location,
         restoreCode = restoreCode.state,
-        localOnly = locationRead && location == null && !setupRunning,
         pending = pending,
         recordsDropped = recordsDropped,
         onBack = onBack,
@@ -312,7 +307,6 @@ internal fun SyncScreen(
         onPrintRestoreCode = { code ->
             locationLabel?.let { label -> printRestoreCode(context, RestoreCodePage.of(context, code, label)) }
         },
-        onSetUp = { onPush(LibraryDestination.StorageSetup) },
         onPendingAction = runner::run,
     )
     SyncDialogs(runner = runner, actions = actions)
@@ -320,8 +314,8 @@ internal fun SyncScreen(
 
 /**
  * The Sync page over what it shows: the state of sync with its fix, [notices] of setups and failed reads, then the
- * library's [location] with its restore code, or the offer to set up storage when it is [localOnly], then what
- * sync waits on in [pending]; [recordsDropped] says a record a phone can't have was left out of it and reported.
+ * library's [location] with its restore code, then what sync waits on in [pending]; [recordsDropped] says a
+ * record a phone can't have was left out of it and reported.
  */
 @Composable
 internal fun AndroidSettingsSync(
@@ -329,7 +323,6 @@ internal fun AndroidSettingsSync(
     notices: @Composable ColumnScope.() -> Unit,
     location: BridgeStorageLocation?,
     restoreCode: RestoreCodeState,
-    localOnly: Boolean,
     pending: List<BridgePendingRecord>?,
     recordsDropped: Boolean,
     onBack: () -> Unit,
@@ -337,7 +330,6 @@ internal fun AndroidSettingsSync(
     onShowRestoreCode: () -> Unit,
     onHideRestoreCode: () -> Unit,
     onPrintRestoreCode: (String) -> Unit,
-    onSetUp: () -> Unit,
     onPendingAction: (BridgePendingAction) -> Unit,
 ) {
     AndroidScreen(title = stringResource(R.string.settings_sync), onBack = onBack, modifier = Modifier.fillMaxSize()) {
@@ -360,28 +352,11 @@ internal fun AndroidSettingsSync(
                     )
                 }
             }
-            if (localOnly) {
-                item { LocalOnly(onSetUp = onSetUp) }
-            }
             // What is waiting is a local read; nothing shows until it lands.
             pending?.takeIf { it.isNotEmpty() || recordsDropped }?.let { records ->
                 item { PendingSection(records = records, onAction = onPendingAction, recordsDropped = recordsDropped) }
             }
         }
-    }
-}
-
-/** A library with no storage lives on this device only; storage is set up from here. */
-@Composable
-private fun LocalOnly(onSetUp: () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
-        Text(stringResource(R.string.settings_local_only))
-        Text(
-            text = stringResource(R.string.settings_set_up_sync_explanation),
-            style = ThemeText.detail.style,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        AndroidButton(onClick = onSetUp) { Text(stringResource(R.string.storage_setup_title)) }
     }
 }
 

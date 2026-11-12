@@ -12,7 +12,6 @@ import fm.bae.app.ui.settings.LibrarySettingsScreen
 import fm.bae.app.ui.settings.MembersScreen
 import fm.bae.app.ui.settings.SettingsScreen
 import fm.bae.app.ui.settings.StorageScreen
-import fm.bae.app.ui.settings.StorageSetupScreen
 import fm.bae.app.ui.settings.SyncScreen
 import fm.bae.app.ui.settings.TransfersScreen
 import kotlinx.coroutines.flow.StateFlow
@@ -59,9 +58,6 @@ internal sealed interface LibraryDestination {
 
     /** What this phone keeps for the library: its cache, its pins, and what a reset left. */
     data object Storage : Setting
-
-    /** Choosing and setting up storage for a library without one. */
-    data object StorageSetup : Setting
 
     data object Downloads : LibraryDestination
 }
@@ -198,7 +194,7 @@ private fun SettingsDestinationScreen(
         }
 
         LibraryDestination.Sync -> {
-            SyncScreen(session = session, actions = actions, onBack = onBack, onPush = onPush)
+            SyncScreen(session = session, actions = actions, onBack = onBack)
         }
 
         LibraryDestination.Transfers -> {
@@ -207,18 +203,6 @@ private fun SettingsDestinationScreen(
 
         LibraryDestination.Storage -> {
             StorageScreen(session = session, onBack = onBack)
-        }
-
-        LibraryDestination.StorageSetup -> {
-            StorageSetupScreen(
-                session = session,
-                oauthProviders = actions.oauthProviders,
-                onBack = onBack,
-                onDone = {
-                    onBack()
-                    onPush(LibraryDestination.Sync)
-                },
-            )
         }
     }
 }

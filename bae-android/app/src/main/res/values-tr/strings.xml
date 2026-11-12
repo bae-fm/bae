@@ -104,7 +104,6 @@
         <item quantity="other">%1$d cihaz</item>
     </plurals>
     <string name="settings_sync">Eşitleme</string>
-    <string name="settings_local_only">Yalnızca yerel</string>
     <string name="settings_sync_unreadable">Eşitleme durumu okunamadı</string>
     <string name="settings_pause_between_sides">Yüzler ve diskler arasında duraklat</string>
     <string name="settings_resume_automatically">Otomatik olarak sürdür</string>
@@ -137,7 +136,6 @@
     <string name="library_remove_failed_title">“%1$s” kaldırılamadı</string>
     <string name="library_delete_confirm_body">Bu kitaplık eşitlenmediği için kalıcı olarak silinecek. Ses dosyalarınız klasörlerinde kalır.</string>
     <string name="library_delete">Sil</string>
-    <string name="library_not_synced">Eşitlenmedi</string>
     <string name="details_menu">Ayrıntılar…</string>
     <string name="library_remove_menu">Kaldır…</string>
     <string name="library_delete_menu">Sil…</string>
@@ -199,7 +197,6 @@
     <string name="onboarding_tagline">Müziğiniz, her yerde</string>
     <string name="onboarding_camera_permission_required">QR kodlarını taramak için kamera izni gerekli</string>
     <string name="oauth_unconfigured">Bu kitaplığın bulut evinde oturum açma bu derlemede yapılandırılmamış.</string>
-    <string name="signing_in">Oturum açılıyor…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-compatible</string>
@@ -314,27 +311,6 @@
     <string name="loading_removing_library">Kitaplık kaldırılıyor…</string>
     <string name="loading_resetting_device">Bu cihaz sıfırlanıyor…</string>
     <string name="pending_update_no_store">Bu cihazdaki hiçbir uygulama mağazası bae’yi güncelleyemiyor.</string>
-    <string name="storage_setup_title">Eşitlemeyi kur</string>
-    <string name="settings_set_up_sync_explanation">Bu kitaplık yalnızca bu cihazda depolanıyor. Eşitleme onu bir bulut evinde tutar; diğer cihazlarınız ve hane halkınız onu oradan kullanabilir.</string>
-    <string name="storage_setup_choose">Bu kitaplık nerede depolansın?</string>
-    <string name="storage_s3_endpoint_hint">Amazon S3 için boş bırakın.</string>
-    <string name="storage_set_up">Ayarla</string>
-    <string name="storage_dropbox_reading">Paylaşılan Dropbox klasörleriniz okunuyor…</string>
-    <string name="storage_onedrive_reading">OneDrive’ınızdaki klasörler okunuyor…</string>
-    <string name="storage_creating_folder">Klasör oluşturuluyor…</string>
-    <string name="storage_dropbox_name_taken">Dropbox’ınızda “%1$s” adlı bir klasör zaten var. Başka bir ad seçin.</string>
-    <string name="storage_dropbox_heading">Bu kitaplık için boş bir paylaşılan klasör seçin.</string>
-    <string name="storage_onedrive_heading">Bu kitaplık için boş bir klasör seçin.</string>
-    <string name="storage_dropbox_empty">Henüz paylaşılan klasör yok</string>
-    <string name="storage_onedrive_empty">Burada henüz klasör yok</string>
-    <string name="storage_onedrive_name_taken">Burada “%1$s” adlı bir klasör zaten var. Başka bir ad seçin.</string>
-    <string name="storage_folder_not_empty">“%1$s” boş değil. Boş bir klasör seçin veya yeni bir klasör oluşturun.</string>
-    <string name="storage_refresh">Yenile</string>
-    <string name="storage_new_folder">Yeni klasör</string>
-    <string name="storage_folder_name">Klasör adı</string>
-    <string name="storage_create_folder">Oluştur</string>
-    <string name="storage_setup_cancelling">İptal ediliyor…</string>
-    <string name="storage_setup_done">Eşitleme kuruldu. Geri yükleme kodunuzu gizli bir yerde saklayın: tüm cihazlarınızı kaybederseniz kitaplığınızı onunla geri alırsınız.</string>
     <string name="restore_code_title">Geri yükleme kodu</string>
     <string name="restore_code_explanation">Bu kodu yazdırın veya bir parola yöneticisine kaydedin. Tüm cihazlarınızı kaybederseniz sizi kitaplığınıza geri getirir. Bundan kurduğunuz bir telefon da onu alır.</string>
     <string name="restore_code_s3_key">S3 erişim anahtarınıza ve gizli anahtarınıza da ihtiyacınız olacak.</string>

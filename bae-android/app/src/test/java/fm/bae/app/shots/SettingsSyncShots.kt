@@ -105,7 +105,6 @@ private fun Sync(
         notices = {},
         location = location,
         restoreCode = restoreCode,
-        localOnly = false,
         pending = emptyList(),
         recordsDropped = false,
         onBack = {},
@@ -113,7 +112,6 @@ private fun Sync(
         onShowRestoreCode = {},
         onHideRestoreCode = {},
         onPrintRestoreCode = {},
-        onSetUp = {},
         onPendingAction = {},
     )
 }

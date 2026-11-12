@@ -177,7 +177,6 @@ class WelcomeLibrariesTest {
         compose.onNodeWithText("Home Library").assertIsDisplayed()
         compose.onNodeWithText("Local Library").assertIsDisplayed()
         compose.onNodeWithText("Dropbox: ana@example.com").assertDoesNotExist()
-        compose.onNodeWithText("Not synced").assertDoesNotExist()
         compose.onAllNodesWithContentDescription("More").assertCountEquals(2)
     }
 

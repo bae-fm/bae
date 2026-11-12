@@ -107,7 +107,6 @@
         <item quantity="other">%1$d appareils</item>
     </plurals>
     <string name="settings_sync">Synchronisation</string>
-    <string name="settings_local_only">Local uniquement</string>
     <string name="settings_sync_unreadable">Impossible de lire l’état de la synchronisation</string>
     <string name="settings_pause_between_sides">Pause entre les faces et les disques</string>
     <string name="settings_resume_automatically">Reprendre automatiquement</string>
@@ -141,7 +140,6 @@
     <string name="library_remove_failed_title">Impossible de supprimer « %1$s »</string>
     <string name="library_delete_confirm_body">Cette bibliothèque n’est pas synchronisée, elle sera donc supprimée définitivement. Vos fichiers audio restent dans leurs dossiers.</string>
     <string name="library_delete">Supprimer</string>
-    <string name="library_not_synced">Non synchronisée</string>
     <string name="details_menu">Détails…</string>
     <string name="library_remove_menu">Supprimer…</string>
     <string name="library_delete_menu">Supprimer…</string>
@@ -204,7 +202,6 @@
     <string name="onboarding_tagline">Votre musique, partout</string>
     <string name="onboarding_camera_permission_required">L’autorisation de la caméra est requise pour scanner des codes QR</string>
     <string name="oauth_unconfigured">La connexion à l’espace cloud de cette bibliothèque n’est pas configurée sur cette version.</string>
-    <string name="signing_in">Connexion…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-compatible</string>
@@ -320,27 +317,6 @@
     <string name="loading_removing_library">Suppression de la bibliothèque…</string>
     <string name="loading_resetting_device">Réinitialisation de cet appareil…</string>
     <string name="pending_update_no_store">Aucune boutique d’applications sur cet appareil ne peut mettre à jour bae.</string>
-    <string name="storage_setup_title">Configurer la synchronisation</string>
-    <string name="settings_set_up_sync_explanation">Cette bibliothèque n’est stockée que sur cet appareil. La synchronisation la conserve dans un espace cloud, où vos autres appareils et votre foyer peuvent l’utiliser.</string>
-    <string name="storage_setup_choose">Où stocker cette bibliothèque ?</string>
-    <string name="storage_s3_endpoint_hint">Laissez vide pour Amazon S3.</string>
-    <string name="storage_set_up">Configurer</string>
-    <string name="storage_dropbox_reading">Lecture de vos dossiers Dropbox partagés…</string>
-    <string name="storage_onedrive_reading">Lecture des dossiers de votre OneDrive…</string>
-    <string name="storage_creating_folder">Création du dossier…</string>
-    <string name="storage_dropbox_name_taken">Un dossier nommé « %1$s » existe déjà dans votre Dropbox. Choisissez un autre nom.</string>
-    <string name="storage_dropbox_heading">Choisissez un dossier partagé vide pour cette bibliothèque.</string>
-    <string name="storage_onedrive_heading">Choisissez un dossier vide pour cette bibliothèque.</string>
-    <string name="storage_dropbox_empty">Aucun dossier partagé pour l’instant</string>
-    <string name="storage_onedrive_empty">Aucun dossier ici pour l’instant</string>
-    <string name="storage_onedrive_name_taken">Un dossier nommé « %1$s » existe déjà ici. Choisissez un autre nom.</string>
-    <string name="storage_folder_not_empty">« %1$s » n’est pas vide. Choisissez un dossier vide ou créez-en un nouveau.</string>
-    <string name="storage_refresh">Actualiser</string>
-    <string name="storage_new_folder">Nouveau dossier</string>
-    <string name="storage_folder_name">Nom du dossier</string>
-    <string name="storage_create_folder">Créer</string>
-    <string name="storage_setup_cancelling">Annulation…</string>
-    <string name="storage_setup_done">La synchronisation est configurée. Conservez votre code de restauration dans un endroit privé : si vous perdez tous vos appareils, il vous permet de récupérer votre bibliothèque.</string>
     <string name="restore_code_title">Code de restauration</string>
     <string name="restore_code_explanation">Imprimez ce code ou enregistrez-le dans un gestionnaire de mots de passe. Il vous rend votre bibliothèque si vous perdez tous vos appareils. Un téléphone que vous configurez depuis celui-ci l’obtient aussi.</string>
     <string name="restore_code_s3_key">Vous aurez aussi besoin de votre clé d’accès et de votre clé secrète S3.</string>

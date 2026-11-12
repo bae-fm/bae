@@ -35,21 +35,17 @@ internal fun LibraryDetailsSheet(
 }
 
 /**
- * The details' rows. A library with no [storage] never synced and has nothing
- * more to show. Otherwise its Status and when it last synced come from
- * [standing], as sync's state is worded on the Sync page or as unsent changes,
- * with the storage's rows after them. A failed read shows its error in place of
- * those two rows.
+ * The details' rows. A library whose [storage] isn't known has none to show.
+ * Otherwise its Status and when it last synced come from [standing], as sync's
+ * state is worded on the Sync page or as unsent changes, with the storage's
+ * rows after them. A failed read shows its error in place of those two rows.
  */
 @Composable
 internal fun LibraryDetailsRows(
     storage: BridgeStorageLocation?,
     standing: StandingRead?,
 ) {
-    if (storage == null) {
-        AndroidRow(title = stringResource(R.string.sync_status), subtitle = stringResource(R.string.library_not_synced))
-        return
-    }
+    if (storage == null) return
     val context = LocalContext.current
     val read = checkNotNull(standing) { "a library with storage has its standing read" }
     when (read) {

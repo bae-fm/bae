@@ -108,7 +108,6 @@
         <item quantity="other">%1$d enheter</item>
     </plurals>
     <string name="settings_sync">Synkronisering</string>
-    <string name="settings_local_only">Endast lokalt</string>
     <string name="settings_sync_unreadable">Det gick inte att läsa synkroniseringsstatus</string>
     <string name="settings_pause_between_sides">Paus mellan sidor och skivor</string>
     <string name="settings_resume_automatically">Återuppta automatiskt</string>
@@ -141,7 +140,6 @@
     <string name="library_remove_failed_title">Det gick inte att ta bort ”%1$s”</string>
     <string name="library_delete_confirm_body">Det här biblioteket är inte synkroniserat, så det raderas för alltid. Dina ljudfiler ligger kvar i sina mappar.</string>
     <string name="library_delete">Radera</string>
-    <string name="library_not_synced">Inte synkroniserat</string>
     <string name="details_menu">Detaljer…</string>
     <string name="library_remove_menu">Ta bort…</string>
     <string name="library_delete_menu">Radera…</string>
@@ -203,7 +201,6 @@
     <string name="onboarding_tagline">Din musik, överallt</string>
     <string name="onboarding_camera_permission_required">Kamerabehörighet krävs för att skanna QR-koder</string>
     <string name="oauth_unconfigured">Inloggning till bibliotekets molnhem är inte konfigurerad i den här versionen.</string>
-    <string name="signing_in">Loggar in…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-kompatibel</string>
@@ -312,27 +309,6 @@
     <string name="loading_removing_library">Tar bort biblioteket…</string>
     <string name="loading_resetting_device">Återställer den här enheten…</string>
     <string name="pending_update_no_store">Ingen appbutik på den här enheten kan uppdatera bae.</string>
-    <string name="storage_setup_title">Ställ in synkronisering</string>
-    <string name="settings_set_up_sync_explanation">Det här biblioteket finns bara på den här enheten. Synkronisering håller det i ett molnhem, där dina andra enheter och ditt hushåll kan använda det.</string>
-    <string name="storage_setup_choose">Var ska det här biblioteket lagras?</string>
-    <string name="storage_s3_endpoint_hint">Lämna tomt för Amazon S3.</string>
-    <string name="storage_set_up">Konfigurera</string>
-    <string name="storage_dropbox_reading">Läser dina delade Dropbox-mappar…</string>
-    <string name="storage_onedrive_reading">Läser mapparna på din OneDrive…</string>
-    <string name="storage_creating_folder">Skapar mappen…</string>
-    <string name="storage_dropbox_name_taken">Det finns redan en mapp som heter ”%1$s” i din Dropbox. Välj ett annat namn.</string>
-    <string name="storage_dropbox_heading">Välj en tom delad mapp för det här biblioteket.</string>
-    <string name="storage_onedrive_heading">Välj en tom mapp för det här biblioteket.</string>
-    <string name="storage_dropbox_empty">Inga delade mappar än</string>
-    <string name="storage_onedrive_empty">Inga mappar här än</string>
-    <string name="storage_onedrive_name_taken">Det finns redan en mapp som heter ”%1$s” här. Välj ett annat namn.</string>
-    <string name="storage_folder_not_empty">”%1$s” är inte tom. Välj en tom mapp eller skapa en ny.</string>
-    <string name="storage_refresh">Uppdatera</string>
-    <string name="storage_new_folder">Ny mapp</string>
-    <string name="storage_folder_name">Mappnamn</string>
-    <string name="storage_create_folder">Skapa</string>
-    <string name="storage_setup_cancelling">Avbryter…</string>
-    <string name="storage_setup_done">Synkroniseringen är konfigurerad. Förvara din återställningskod på ett privat ställe: om du förlorar alla dina enheter får du tillbaka biblioteket med den.</string>
     <string name="restore_code_title">Återställningskod</string>
     <string name="restore_code_explanation">Skriv ut koden eller spara den i en lösenordshanterare. Den tar dig tillbaka till ditt bibliotek om du förlorar alla dina enheter. En telefon du konfigurerar från den här får den också.</string>
     <string name="restore_code_s3_key">Du behöver också din S3-åtkomstnyckel och den hemliga nyckeln.</string>

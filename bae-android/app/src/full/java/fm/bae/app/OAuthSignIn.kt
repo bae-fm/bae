@@ -10,14 +10,11 @@ import kotlinx.coroutines.withContext
 import org.json.JSONException
 import org.json.JSONObject
 import uniffi.bae_bridge.AppHandleInterface
-import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeHost
 import uniffi.bae_bridge.BridgeLibrarySetup
 import uniffi.bae_bridge.BridgeOAuthClients
 import uniffi.bae_bridge.BridgeOAuthPresentationException
 import uniffi.bae_bridge.BridgeOAuthRedirects
-import uniffi.bae_bridge.BridgeStorageFolder
-import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeStorageSetup
 import uniffi.bae_bridge.OAuthPresenterCallback
 import java.io.FileNotFoundException
@@ -81,45 +78,11 @@ class OAuthSignIn private constructor(
             }
         }
 
-    override suspend fun signIn(
-        handle: AppHandleInterface,
-        provider: BridgeCloudProvider,
-    ) {
-        handle.signIn(provider)
-    }
-
     override suspend fun signInAgain(
         handle: AppHandleInterface,
         deviceName: String,
         setup: BridgeLibrarySetup,
     ): BridgeStorageSetup = handle.signInAgain(deviceName, setup)
-
-    override suspend fun dropboxSharedFolders(handle: AppHandleInterface): List<BridgeStorageFolder> = handle.dropboxSharedFolders()
-
-    override suspend fun createDropboxSharedFolder(
-        handle: AppHandleInterface,
-        name: String,
-    ): BridgeStorageFolder = handle.createDropboxSharedFolder(name)
-
-    override suspend fun oneDriveRoot(handle: AppHandleInterface): BridgeStorageFolder = handle.onedriveRoot()
-
-    override suspend fun oneDriveFolders(
-        handle: AppHandleInterface,
-        parent: BridgeStorageLocation,
-    ): List<BridgeStorageFolder> = handle.onedriveFolders(parent)
-
-    override suspend fun createOneDriveFolder(
-        handle: AppHandleInterface,
-        parent: BridgeStorageLocation,
-        name: String,
-    ): BridgeStorageFolder = handle.createOnedriveFolder(parent, name)
-
-    override suspend fun setUpStorage(
-        handle: AppHandleInterface,
-        location: BridgeStorageLocation,
-        deviceName: String,
-        setup: BridgeLibrarySetup,
-    ): BridgeStorageSetup = handle.setupOauthStorage(location, deviceName, setup)
 
     companion object {
         /**

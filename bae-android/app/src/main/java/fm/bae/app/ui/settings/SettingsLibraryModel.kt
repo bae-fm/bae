@@ -83,10 +83,10 @@ internal class SettingsLibraryModel(
         loadSelf()
     }
 
-    /** Read the storage: as Settings opens, and again once a storage setup stops running, which records it. */
+    /** Read the storage as Settings opens. A phone's library always has a cloud home; one without is a bug. */
     suspend fun loadStorage() {
         try {
-            storage = appHandle.storageLocation()?.let(Storage::At) ?: Storage.None
+            storage = Storage.At(checkNotNull(appHandle.storageLocation()) { "a phone's library has no cloud home" })
         } catch (e: CancellationException) {
             throw e
         } catch (e: BridgeException) {

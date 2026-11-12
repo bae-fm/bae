@@ -112,7 +112,6 @@
         <item quantity="other">%1$d de dispozitive</item>
     </plurals>
     <string name="settings_sync">Sincronizare</string>
-    <string name="settings_local_only">Doar local</string>
     <string name="settings_sync_unreadable">Starea sincronizării nu a putut fi citită</string>
     <string name="settings_pause_between_sides">Pauză între fețe și discuri</string>
     <string name="settings_resume_automatically">Reia automat</string>
@@ -146,7 +145,6 @@
     <string name="library_remove_failed_title">Nu s-a putut elimina „%1$s”</string>
     <string name="library_delete_confirm_body">Această bibliotecă nu este sincronizată, așa că va fi ștearsă definitiv. Fișierele tale audio rămân în dosarele lor.</string>
     <string name="library_delete">Șterge</string>
-    <string name="library_not_synced">Nesincronizată</string>
     <string name="details_menu">Detalii…</string>
     <string name="library_remove_menu">Elimină…</string>
     <string name="library_delete_menu">Șterge…</string>
@@ -209,7 +207,6 @@
     <string name="onboarding_tagline">Muzica ta, oriunde</string>
     <string name="onboarding_camera_permission_required">Este necesară permisiunea camerei pentru a scana coduri QR</string>
     <string name="oauth_unconfigured">Conectarea la casa din cloud a acestei biblioteci nu este configurată în această versiune.</string>
-    <string name="signing_in">Se conectează…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">Compatibil cu S3</string>
@@ -319,27 +316,6 @@
     <string name="loading_removing_library">Se elimină biblioteca…</string>
     <string name="loading_resetting_device">Se resetează acest dispozitiv…</string>
     <string name="pending_update_no_store">Niciun magazin de aplicații de pe acest dispozitiv nu poate actualiza bae.</string>
-    <string name="storage_setup_title">Configurează sincronizarea</string>
-    <string name="settings_set_up_sync_explanation">Această bibliotecă este stocată doar pe acest dispozitiv. Sincronizarea o păstrează într-o casă din cloud, unde celelalte dispozitive ale tale și gospodăria o pot folosi.</string>
-    <string name="storage_setup_choose">Unde să fie stocată această bibliotecă?</string>
-    <string name="storage_s3_endpoint_hint">Lasă gol pentru Amazon S3.</string>
-    <string name="storage_set_up">Configurează</string>
-    <string name="storage_dropbox_reading">Se citesc dosarele tale Dropbox partajate…</string>
-    <string name="storage_onedrive_reading">Se citesc dosarele din OneDrive…</string>
-    <string name="storage_creating_folder">Se creează dosarul…</string>
-    <string name="storage_dropbox_name_taken">Există deja un dosar numit „%1$s” în Dropbox-ul tău. Alege alt nume.</string>
-    <string name="storage_dropbox_heading">Alege un dosar partajat gol pentru această bibliotecă.</string>
-    <string name="storage_onedrive_heading">Alege un dosar gol pentru această bibliotecă.</string>
-    <string name="storage_dropbox_empty">Încă nu există dosare partajate</string>
-    <string name="storage_onedrive_empty">Încă nu există dosare aici</string>
-    <string name="storage_onedrive_name_taken">Există deja aici un dosar numit „%1$s”. Alege alt nume.</string>
-    <string name="storage_folder_not_empty">„%1$s” nu este gol. Alege un dosar gol sau creează unul nou.</string>
-    <string name="storage_refresh">Reîmprospătează</string>
-    <string name="storage_new_folder">Dosar nou</string>
-    <string name="storage_folder_name">Numele dosarului</string>
-    <string name="storage_create_folder">Creează</string>
-    <string name="storage_setup_cancelling">Se anulează…</string>
-    <string name="storage_setup_done">Sincronizarea este configurată. Păstrează codul de restaurare într-un loc privat: dacă pierzi toate dispozitivele, cu el îți recuperezi biblioteca.</string>
     <string name="restore_code_title">Cod de restaurare</string>
     <string name="restore_code_explanation">Imprimă acest cod sau salvează-l într-un manager de parole. Te readuce în biblioteca ta dacă pierzi toate dispozitivele. Un telefon pe care îl configurezi de la acesta îl primește și el.</string>
     <string name="restore_code_s3_key">Vei avea nevoie și de cheia de acces și de cheia secretă S3.</string>

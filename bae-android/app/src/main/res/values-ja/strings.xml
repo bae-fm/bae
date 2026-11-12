@@ -101,7 +101,6 @@
         <item quantity="other">%1$d台のデバイス</item>
     </plurals>
     <string name="settings_sync">同期</string>
-    <string name="settings_local_only">ローカルのみ</string>
     <string name="settings_sync_unreadable">同期の状態を読み取れませんでした</string>
     <string name="settings_pause_between_sides">面やディスクの間で一時停止</string>
     <string name="settings_resume_automatically">自動で再開</string>
@@ -133,7 +132,6 @@
     <string name="library_remove_failed_title">「%1$s」を削除できませんでした</string>
     <string name="library_delete_confirm_body">このライブラリは同期されていないため、完全に削除されます。オーディオファイルはそれぞれのフォルダに残ります。</string>
     <string name="library_delete">削除</string>
-    <string name="library_not_synced">未同期</string>
     <string name="details_menu">詳細…</string>
     <string name="library_remove_menu">削除…</string>
     <string name="library_delete_menu">削除…</string>
@@ -194,7 +192,6 @@
     <string name="onboarding_tagline">あなたの音楽を、どこでも</string>
     <string name="onboarding_camera_permission_required">QRコードをスキャンするにはカメラの許可が必要です</string>
     <string name="oauth_unconfigured">このライブラリのクラウドホームへのサインインは、このビルドでは設定されていません。</string>
-    <string name="signing_in">サインイン中…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-compatible</string>
@@ -307,27 +304,6 @@
     <string name="loading_removing_library">ライブラリを削除しています…</string>
     <string name="loading_resetting_device">このデバイスをリセットしています…</string>
     <string name="pending_update_no_store">このデバイスには bae を更新できるアプリストアがありません。</string>
-    <string name="storage_setup_title">同期を設定</string>
-    <string name="settings_set_up_sync_explanation">このライブラリはこのデバイスにのみ保存されています。同期するとライブラリがクラウドホームに保管され、ほかのデバイスや家族も使えるようになります。</string>
-    <string name="storage_setup_choose">このライブラリをどこに保存しますか？</string>
-    <string name="storage_s3_endpoint_hint">Amazon S3 の場合は空欄のままにします。</string>
-    <string name="storage_set_up">設定</string>
-    <string name="storage_dropbox_reading">共有の Dropbox フォルダを読み込んでいます…</string>
-    <string name="storage_onedrive_reading">OneDrive のフォルダを読み込んでいます…</string>
-    <string name="storage_creating_folder">フォルダを作成しています…</string>
-    <string name="storage_dropbox_name_taken">「%1$s」という名前のフォルダはすでに Dropbox にあります。別の名前を選んでください。</string>
-    <string name="storage_dropbox_heading">このライブラリ用の空の共有フォルダを選んでください。</string>
-    <string name="storage_onedrive_heading">このライブラリ用の空のフォルダを選んでください。</string>
-    <string name="storage_dropbox_empty">共有フォルダはまだありません</string>
-    <string name="storage_onedrive_empty">ここにはまだフォルダがありません</string>
-    <string name="storage_onedrive_name_taken">「%1$s」という名前のフォルダはすでにここにあります。別の名前を選んでください。</string>
-    <string name="storage_folder_not_empty">「%1$s」は空ではありません。空のフォルダを選ぶか、新しく作成してください。</string>
-    <string name="storage_refresh">更新</string>
-    <string name="storage_new_folder">新規フォルダ</string>
-    <string name="storage_folder_name">フォルダ名</string>
-    <string name="storage_create_folder">作成</string>
-    <string name="storage_setup_cancelling">キャンセルしています…</string>
-    <string name="storage_setup_done">同期を設定しました。復元コードは他人に見られない場所に保管してください。すべてのデバイスをなくしても、このコードでライブラリを取り戻せます。</string>
     <string name="restore_code_title">復元コード</string>
     <string name="restore_code_explanation">このコードをプリントするか、パスワードマネージャに保存してください。すべてのデバイスを失ったときに、ライブラリを取り戻せます。 このデバイスから設定したスマートフォンにも保存されます。</string>
     <string name="restore_code_s3_key">S3 のアクセスキーとシークレットキーも必要です。</string>

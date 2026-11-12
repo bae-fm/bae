@@ -108,7 +108,6 @@
         <item quantity="other">%1$d enheder</item>
     </plurals>
     <string name="settings_sync">Synkronisering</string>
-    <string name="settings_local_only">Kun lokalt</string>
     <string name="settings_sync_unreadable">Synkroniseringsstatus kunne ikke læses</string>
     <string name="settings_pause_between_sides">Pause mellem sider og diske</string>
     <string name="settings_resume_automatically">Genoptag automatisk</string>
@@ -141,7 +140,6 @@
     <string name="library_remove_failed_title">“%1$s” kunne ikke fjernes</string>
     <string name="library_delete_confirm_body">Dette bibliotek er ikke synkroniseret, så det slettes for altid. Dine lydfiler bliver liggende i deres mapper.</string>
     <string name="library_delete">Slet</string>
-    <string name="library_not_synced">Ikke synkroniseret</string>
     <string name="details_menu">Detaljer…</string>
     <string name="library_remove_menu">Fjern…</string>
     <string name="library_delete_menu">Slet…</string>
@@ -203,7 +201,6 @@
     <string name="onboarding_tagline">Din musik, overalt</string>
     <string name="onboarding_camera_permission_required">Der kræves kameratilladelse for at scanne QR-koder</string>
     <string name="oauth_unconfigured">Login til bibliotekets skyhjem er ikke konfigureret i denne version.</string>
-    <string name="signing_in">Logger ind…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-kompatibel</string>
@@ -312,27 +309,6 @@
     <string name="loading_removing_library">Fjerner biblioteket…</string>
     <string name="loading_resetting_device">Nulstiller denne enhed…</string>
     <string name="pending_update_no_store">Ingen appbutik på denne enhed kan opdatere bae.</string>
-    <string name="storage_setup_title">Konfigurer synkronisering</string>
-    <string name="settings_set_up_sync_explanation">Dette bibliotek ligger kun på denne enhed. Synkronisering holder det i et skyhjem, hvor dine andre enheder og din husstand kan bruge det.</string>
-    <string name="storage_setup_choose">Hvor skal dette bibliotek gemmes?</string>
-    <string name="storage_s3_endpoint_hint">Lad stå tomt for Amazon S3.</string>
-    <string name="storage_set_up">Opsæt</string>
-    <string name="storage_dropbox_reading">Læser dine delte Dropbox-mapper…</string>
-    <string name="storage_onedrive_reading">Læser mapperne på dit OneDrive…</string>
-    <string name="storage_creating_folder">Opretter mappen…</string>
-    <string name="storage_dropbox_name_taken">Der er allerede en mappe med navnet “%1$s” i din Dropbox. Vælg et andet navn.</string>
-    <string name="storage_dropbox_heading">Vælg en tom delt mappe til dette bibliotek.</string>
-    <string name="storage_onedrive_heading">Vælg en tom mappe til dette bibliotek.</string>
-    <string name="storage_dropbox_empty">Ingen delte mapper endnu</string>
-    <string name="storage_onedrive_empty">Ingen mapper her endnu</string>
-    <string name="storage_onedrive_name_taken">Der er allerede en mappe med navnet “%1$s” her. Vælg et andet navn.</string>
-    <string name="storage_folder_not_empty">“%1$s” er ikke tom. Vælg en tom mappe, eller opret en ny.</string>
-    <string name="storage_refresh">Opdater</string>
-    <string name="storage_new_folder">Ny mappe</string>
-    <string name="storage_folder_name">Mappenavn</string>
-    <string name="storage_create_folder">Opret</string>
-    <string name="storage_setup_cancelling">Annullerer…</string>
-    <string name="storage_setup_done">Synkronisering er sat op. Opbevar din gendannelseskode et privat sted: hvis du mister alle dine enheder, får du dit bibliotek tilbage med den.</string>
     <string name="restore_code_title">Gendannelseskode</string>
     <string name="restore_code_explanation">Udskriv denne kode, eller gem den i en adgangskodeadministrator. Den får dig tilbage til dit bibliotek, hvis du mister alle dine enheder. En telefon, du konfigurerer fra denne, får den også.</string>
     <string name="restore_code_s3_key">Du skal også bruge din S3-adgangsnøgle og den hemmelige nøgle.</string>

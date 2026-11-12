@@ -267,21 +267,16 @@ private fun LibrarySwitcherPreview() {
 }
 
 /**
- * The line under a library's name: its provider and account when it has a
- * storage, "Not synced" when it doesn't, or why it doesn't open: its settings
- * can't be read, a reset or restore of this device's copy stopped partway, or
- * removing it from this device stopped partway.
+ * The line under a library's name: its provider and account, or why it doesn't
+ * open: its settings can't be read, a reset or restore of this device's copy
+ * stopped partway, or removing it from this device stopped partway.
  */
 @Composable
 internal fun libraryDetail(state: BridgeLibraryState): LibraryDetail {
     val context = LocalContext.current
     return when (state) {
         is BridgeLibraryState.Openable -> {
-            val storage = state.storage
-            LibraryDetail(
-                if (storage == null) stringResource(R.string.library_not_synced) else storageLocationLabel(storage),
-                tone = null,
-            )
+            LibraryDetail(state.storage?.let { storageLocationLabel(it) }, tone = null)
         }
 
         is BridgeLibraryState.Unreadable -> {
@@ -310,6 +305,6 @@ internal fun libraryDetail(state: BridgeLibraryState): LibraryDetail {
 
 /** The line a library row shows under its name, and the tone it is in. */
 internal data class LibraryDetail(
-    val text: String,
+    val text: String?,
     val tone: StatusTone?,
 )

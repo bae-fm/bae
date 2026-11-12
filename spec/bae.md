@@ -3177,7 +3177,10 @@ storage (§4.2).
 
 A library's *storage* is where coven stores it: an S3-compatible bucket,
 Dropbox, OneDrive, or iCloud on Apple devices. A library can
-also have none and stay on one device. The baeium edition offers S3 only.
+also have none and stay on one device, on a Mac. A phone joins a library and
+never makes one, so a phone's library always has a cloud home: a phone never
+shows a library as Not synced and never offers to set sync up. The baeium
+edition offers S3 only.
 
 Every kind of storage holds the same thing: encrypted objects under random names
 (§4.5). coven's
@@ -3193,8 +3196,8 @@ in how to talk to it
 When coven refuses a setup, bae says why in plain words, and the form stays as
 typed. A region or endpoint that doesn't match the bucket shows its reason under
 Region; a bucket that isn't there, or that holds other files, under Bucket;
-any other reason at the top of the form, above the fields on macOS. The reason
-sits in its field's own row on macOS, and under the field on Android. On macOS a
+any other reason at the top of the form, above the fields. The reason
+sits in its field's own row. A
 refused key reads "This key wasn’t accepted. Check the access key ID and secret
 access key.", and a key the bucket doesn't allow reads "This key can’t use the
 bucket. Give it read and write access, or use another key."
@@ -3221,8 +3224,7 @@ can't tell whether the Mac's keychain carries the code anywhere else, and
 losing the Mac could otherwise lose the library. Once the storage is connected
 the sheet shows the code masked, as Settings does, with Show, Copy and Print…
 and *Done*, which lands on the Sync page, whose Restore code section holds the
-same code, which Settings keeps there alone. On Android, setup
-is a screen, and *Done* leaves it for the Sync page too.
+same code, which Settings keeps there alone.
 
 **What setup shows while it runs.** Setting storage up, or reconnecting
 it after signing in again or with a new S3 key, waits on the provider, at
@@ -3252,10 +3254,8 @@ core tells the sheet, beside the setup's steps, whether the setup is past it,
 and from then the sheet hides Cancel and stays to show the setup finishing.
 Cancel asks core to cancel the setup. coven undoes it between setup's steps,
 not in the middle of a request, so the sheet says "Cancelling…" in place of
-the step until the call ends as cancelled, which shows nothing; then the macOS
-sheet shows the provider's screen again as it was entered, and Android goes
-back to choosing a provider. On Android, Back
-while a setup runs is its Cancel, and does nothing once Cancel isn't offered.
+the step until the call ends as cancelled, which shows nothing; then the
+sheet shows the provider's screen again as it was entered.
 A setup call that is dropped, as closing its screen drops it, cancels its
 setup the same way: coven would otherwise run it to its end with nobody
 waiting. A setup bae was stopped partway through is undone as the
@@ -3302,13 +3302,11 @@ needs a chosen folder, and checks it first: a folder holding anything returns to
 the list, saying the folder isn't empty and to choose an empty one or make a new
 one (coven's `OwnLocationRequired`), and that folder isn't set up until another
 is chosen. The picker moves into a folder only once its folders have loaded; a
-listing that fails leaves it where it was, with the failure (and Retry, on
-Android), and a top that fails to list shows only that. macOS and Android both
-have this picker; on the Mac *New folder…* and *Look again*, which lists the
+listing that fails leaves it where it was, with the failure, and a top that
+fails to list shows only that. On the Mac *New folder…* and *Look again*, which lists the
 top again after a folder was made or shared elsewhere, sit at the left of the
 sheet's footer, and *Up* at the right of the line that shows where the person
-is. On Android *New folder* asks for the name in a dialog, and the
-chosen folder is marked by its row's background. coven holds the sign-in; bae
+is. coven holds the sign-in; bae
 never sees its tokens. bae's Dropbox app has access to the whole Dropbox, not an
 app folder: an app folder can't be shared, so a household couldn't be invited to
 it.
@@ -3579,7 +3577,7 @@ coven then reports the state Signed out, with no cause
 and the Sync page shows it as it shows any sign-out: the recorded storage's
 rows and the fix that connects that location again, never other storage: a
 new access key for its S3 bucket, the provider's sign-in for Dropbox and
-OneDrive, iCloud's own setup for iCloud. A library with no recorded location
+OneDrive, iCloud's own setup for iCloud. On a Mac, a library with no recorded location
 is Not synced, and offers setting up sync instead.
 
 Each record names what it is about in plain words. A file is named by the row
@@ -4838,9 +4836,8 @@ first screen's list (§6.4).
 
 On Android, Settings has one **Library** row that opens the Library page. Its
 card holds **Name**, with an edit mark and *Rename* for an admin, **Sync**
-with the same state, and for a library with storage **People and devices**; a
-library with no storage shows "Not synced" on the Sync row, which opens the
-page that sets sync up. Each row opens its page. Settings keeps the switch to
+with the same state, and **People and devices**: a phone's library always has
+storage. Each row opens its page. Settings keeps the switch to
 another library on this device under the Library row.
 
 ### 9.7 Errors

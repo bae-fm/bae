@@ -33,6 +33,7 @@ import uniffi.bae_bridge.BridgePendingRecord
 import uniffi.bae_bridge.BridgeRestoreCodeShare
 import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeSyncCause
+import uniffi.bae_bridge.BridgeSyncFix
 import uniffi.bae_bridge.BridgeSyncShown
 import uniffi.bae_bridge.BridgeSyncStatusSnapshot
 import uniffi.bae_bridge.BridgeSyncStatusWord
@@ -69,7 +70,7 @@ class SyncScreenTest {
         val session = openTestLibrary(handle, status)
         status.apply(
             BridgeSyncStatusSnapshot(
-                shown = notSynced,
+                shown = keyNotAccepted,
                 pending = listOf(s3SignIn()),
                 setupRunning = false,
                 undoneSetup = null,
@@ -80,7 +81,7 @@ class SyncScreenTest {
         compose.setContent {
             BaeTheme {
                 CompositionLocalProvider(LocalBugReports provides session.bugs) {
-                    SyncScreen(session = session, actions = actions(), onBack = {}, onPush = {})
+                    SyncScreen(session = session, actions = actions(), onBack = {})
                 }
             }
         }
@@ -157,7 +158,7 @@ class SyncScreenTest {
         compose.setContent {
             BaeTheme {
                 CompositionLocalProvider(LocalBugReports provides session.bugs) {
-                    SyncScreen(session = session, actions = actions(), onBack = {}, onPush = {})
+                    SyncScreen(session = session, actions = actions(), onBack = {})
                 }
             }
         }
@@ -189,7 +190,7 @@ class SyncScreenTest {
         compose.setContent {
             BaeTheme {
                 CompositionLocalProvider(LocalBugReports provides session.bugs) {
-                    SyncScreen(session = session, actions = actions(), onBack = {}, onPush = {})
+                    SyncScreen(session = session, actions = actions(), onBack = {})
                 }
             }
         }
@@ -215,13 +216,13 @@ class SyncScreenTest {
     private val restoreCodeShare =
         BridgeRestoreCodeShare(code = "CVR1 ABCD EFGH JKMN", qrText = "qr", qrCarriesS3Key = true)
 
-    private val notSynced =
+    private val keyNotAccepted =
         BridgeSyncShown(
-            status = BridgeSyncStatusWord.NOT_SYNCED,
-            statusKey = "core.sync.status.not_synced",
-            tone = BridgeSyncTone.NEUTRAL,
+            status = BridgeSyncStatusWord.ACCESS_KEY_NOT_ACCEPTED,
+            statusKey = "core.sync.status.access_key_not_accepted",
+            tone = BridgeSyncTone.WARNING,
             cause = null,
-            fix = null,
+            fix = BridgeSyncFix.EnterAccessKey,
             lastSynced = null,
         )
 

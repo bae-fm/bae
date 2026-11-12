@@ -2,18 +2,15 @@ package fm.bae.app
 
 import android.content.Context
 import uniffi.bae_bridge.AppHandleInterface
-import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeHost
 import uniffi.bae_bridge.BridgeLibrarySetup
-import uniffi.bae_bridge.BridgeStorageFolder
-import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeStorageSetup
 
 /**
- * Sign-in to the account providers (Dropbox, OneDrive) and the storage setup
- * that needs it, named without referencing the OAuth bridge bindings. Those
- * bindings exist only in the `full` edition; its implementation `OAuthSignIn`
- * in `src/full` is the one thing that imports them. The `baeium` (S3-only)
+ * Sign-in to the account providers (Dropbox, OneDrive), named without
+ * referencing the OAuth bridge bindings. Those bindings exist only in the
+ * `full` edition; its implementation `OAuthSignIn` in `src/full` is the one
+ * thing that imports them. The `baeium` (S3-only)
  * edition compiles against bindings without them, so it has no implementation
  * and [load] returns null: shared code holds an `OAuthProviders?`, and in
  * baeium no account provider is offered or can be asked for.
@@ -25,12 +22,6 @@ interface OAuthProviders {
      */
     fun register(host: BridgeHost)
 
-    /** Sign the open library's device in to [provider] before choosing a folder on it. */
-    suspend fun signIn(
-        handle: AppHandleInterface,
-        provider: BridgeCloudProvider,
-    )
-
     /**
      * Sign in again to the open library's provider when its sync asks, with the
      * access its location needs, and reconnect that location under [deviceName],
@@ -38,42 +29,6 @@ interface OAuthProviders {
      */
     suspend fun signInAgain(
         handle: AppHandleInterface,
-        deviceName: String,
-        setup: BridgeLibrarySetup,
-    ): BridgeStorageSetup
-
-    /** The Dropbox folders shared with the signed-in account, each a place a library can live. */
-    suspend fun dropboxSharedFolders(handle: AppHandleInterface): List<BridgeStorageFolder>
-
-    /**
-     * A new folder named [name] at the top of the signed-in Dropbox, shared. A name already taken
-     * fails with the storage failure `AlreadyExists`, and nothing is made.
-     */
-    suspend fun createDropboxSharedFolder(
-        handle: AppHandleInterface,
-        name: String,
-    ): BridgeStorageFolder
-
-    /** The top of the signed-in OneDrive. */
-    suspend fun oneDriveRoot(handle: AppHandleInterface): BridgeStorageFolder
-
-    /** The folders inside [parent] on the signed-in OneDrive. */
-    suspend fun oneDriveFolders(
-        handle: AppHandleInterface,
-        parent: BridgeStorageLocation,
-    ): List<BridgeStorageFolder>
-
-    /** A new folder named [name] inside [parent] on the signed-in OneDrive. */
-    suspend fun createOneDriveFolder(
-        handle: AppHandleInterface,
-        parent: BridgeStorageLocation,
-        name: String,
-    ): BridgeStorageFolder
-
-    /** Make [location] the open library's storage, each step written into [setup]'s stream. */
-    suspend fun setUpStorage(
-        handle: AppHandleInterface,
-        location: BridgeStorageLocation,
         deviceName: String,
         setup: BridgeLibrarySetup,
     ): BridgeStorageSetup

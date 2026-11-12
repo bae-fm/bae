@@ -116,7 +116,6 @@
         <item quantity="other">%1$d جهاز</item>
     </plurals>
     <string name="settings_sync">المزامنة</string>
-    <string name="settings_local_only">محلي فقط</string>
     <string name="settings_sync_unreadable">تعذّرت قراءة حالة المزامنة</string>
     <string name="settings_pause_between_sides">إيقاف مؤقت بين الجوانب والأقراص</string>
     <string name="settings_resume_automatically">الاستئناف تلقائيًا</string>
@@ -153,7 +152,6 @@
     <string name="library_remove_failed_title">تعذّرت إزالة «%1$s»</string>
     <string name="library_delete_confirm_body">هذه المكتبة غير متزامنة، لذا ستُحذف نهائيًا. تبقى ملفاتك الصوتية في مجلداتها.</string>
     <string name="library_delete">حذف</string>
-    <string name="library_not_synced">غير متزامنة</string>
     <string name="details_menu">التفاصيل…</string>
     <string name="library_remove_menu">إزالة…</string>
     <string name="library_delete_menu">حذف…</string>
@@ -219,7 +217,6 @@
     <string name="onboarding_tagline">موسيقاك في كل مكان</string>
     <string name="onboarding_camera_permission_required">إذن الكاميرا مطلوب لمسح رموز QR</string>
     <string name="oauth_unconfigured">تسجيل الدخول إلى المنزل السحابي لهذه المكتبة غير مُعدّ في هذه النسخة.</string>
-    <string name="signing_in">جارٍ تسجيل الدخول…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-compatible</string>
@@ -342,27 +339,6 @@
     <string name="loading_removing_library">جارٍ إزالة المكتبة…</string>
     <string name="loading_resetting_device">جارٍ إعادة تعيين هذا الجهاز…</string>
     <string name="pending_update_no_store">لا يوجد متجر تطبيقات على هذا الجهاز يمكنه تحديث bae.</string>
-    <string name="storage_setup_title">إعداد المزامنة</string>
-    <string name="settings_set_up_sync_explanation">هذه المكتبة مخزّنة على هذا الجهاز فقط. تحفظها المزامنة في منزل سحابي، حيث يمكن لأجهزتك الأخرى ولأهل بيتك استخدامها.</string>
-    <string name="storage_setup_choose">أين تريد تخزين هذه المكتبة؟</string>
-    <string name="storage_s3_endpoint_hint">اتركه فارغًا لـ Amazon S3.</string>
-    <string name="storage_set_up">إعداد</string>
-    <string name="storage_dropbox_reading">جارٍ قراءة مجلدات Dropbox المشتركة…</string>
-    <string name="storage_onedrive_reading">جارٍ قراءة المجلدات على OneDrive…</string>
-    <string name="storage_creating_folder">جارٍ إنشاء المجلد…</string>
-    <string name="storage_dropbox_name_taken">يوجد مجلد باسم «%1$s» في Dropbox بالفعل. اختر اسمًا آخر.</string>
-    <string name="storage_dropbox_heading">اختر مجلدًا مشتركًا فارغًا لهذه المكتبة.</string>
-    <string name="storage_onedrive_heading">اختر مجلدًا فارغًا لهذه المكتبة.</string>
-    <string name="storage_dropbox_empty">لا توجد مجلدات مشتركة بعد</string>
-    <string name="storage_onedrive_empty">لا توجد مجلدات هنا بعد</string>
-    <string name="storage_onedrive_name_taken">يوجد هنا مجلد باسم «%1$s» بالفعل. اختر اسمًا آخر.</string>
-    <string name="storage_folder_not_empty">«%1$s» ليس فارغًا. اختر مجلدًا فارغًا أو أنشئ مجلدًا جديدًا.</string>
-    <string name="storage_refresh">تحديث</string>
-    <string name="storage_new_folder">مجلد جديد</string>
-    <string name="storage_folder_name">اسم المجلد</string>
-    <string name="storage_create_folder">إنشاء</string>
-    <string name="storage_setup_cancelling">جارٍ الإلغاء…</string>
-    <string name="storage_setup_done">تم إعداد المزامنة. احتفظ برمز الاستعادة في مكان خاص: إذا فقدت جميع أجهزتك، فهو يعيد إليك مكتبتك.</string>
     <string name="restore_code_title">رمز الاستعادة</string>
     <string name="restore_code_explanation">اطبع هذا الرمز أو احفظه في مدير كلمات مرور. يعيدك إلى مكتبتك إذا فقدت جميع أجهزتك. والهاتف الذي تُعدّه من هذا الهاتف يحصل عليه أيضًا.</string>
     <string name="restore_code_s3_key">ستحتاج أيضًا إلى مفتاح الوصول والمفتاح السري لـ S3.</string>

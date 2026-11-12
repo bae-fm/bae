@@ -104,7 +104,6 @@
         <item quantity="other">%1$d устройства</item>
     </plurals>
     <string name="settings_sync">Синхронизиране</string>
-    <string name="settings_local_only">Само локално</string>
     <string name="settings_sync_unreadable">Състоянието на синхронизирането не можа да бъде прочетено</string>
     <string name="settings_pause_between_sides">Пауза между страните и дисковете</string>
     <string name="settings_resume_automatically">Автоматично продължаване</string>
@@ -137,7 +136,6 @@
     <string name="library_remove_failed_title">Премахването на „%1$s“ не бе успешно</string>
     <string name="library_delete_confirm_body">Тази библиотека не е синхронизирана, затова ще бъде изтрита завинаги. Аудиофайловете ви остават в папките си.</string>
     <string name="library_delete">Изтриване</string>
-    <string name="library_not_synced">Не е синхронизирана</string>
     <string name="details_menu">Подробности…</string>
     <string name="library_remove_menu">Премахване…</string>
     <string name="library_delete_menu">Изтриване…</string>
@@ -199,7 +197,6 @@
     <string name="onboarding_tagline">Вашата музика, навсякъде</string>
     <string name="onboarding_camera_permission_required">Необходимо е разрешение за камерата, за да сканирате QR кодове</string>
     <string name="oauth_unconfigured">Влизането в облачния дом на тази библиотека не е конфигурирано в тази версия.</string>
-    <string name="signing_in">Влизане…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-compatible</string>
@@ -314,27 +311,6 @@
     <string name="loading_removing_library">Библиотеката се премахва…</string>
     <string name="loading_resetting_device">Това устройство се нулира…</string>
     <string name="pending_update_no_store">Няма магазин за приложения на това устройство, който да актуализира bae.</string>
-    <string name="storage_setup_title">Настройка на синхронизирането</string>
-    <string name="settings_set_up_sync_explanation">Тази библиотека се съхранява само на това устройство. Синхронизирането я пази в облачен дом, където другите ви устройства и домакинството ви могат да я използват.</string>
-    <string name="storage_setup_choose">Къде да се съхранява тази библиотека?</string>
-    <string name="storage_s3_endpoint_hint">Оставете празно за Amazon S3.</string>
-    <string name="storage_set_up">Настройване</string>
-    <string name="storage_dropbox_reading">Четене на споделените ви папки в Dropbox…</string>
-    <string name="storage_onedrive_reading">Четене на папките във вашия OneDrive…</string>
-    <string name="storage_creating_folder">Папката се създава…</string>
-    <string name="storage_dropbox_name_taken">Папка с име „%1$s“ вече има във вашия Dropbox. Изберете друго име.</string>
-    <string name="storage_dropbox_heading">Изберете празна споделена папка за тази библиотека.</string>
-    <string name="storage_onedrive_heading">Изберете празна папка за тази библиотека.</string>
-    <string name="storage_dropbox_empty">Все още няма споделени папки</string>
-    <string name="storage_onedrive_empty">Тук още няма папки</string>
-    <string name="storage_onedrive_name_taken">Папка с име „%1$s“ вече има тук. Изберете друго име.</string>
-    <string name="storage_folder_not_empty">„%1$s“ не е празна. Изберете празна папка или създайте нова.</string>
-    <string name="storage_refresh">Опресняване</string>
-    <string name="storage_new_folder">Нова папка</string>
-    <string name="storage_folder_name">Име на папката</string>
-    <string name="storage_create_folder">Създаване</string>
-    <string name="storage_setup_cancelling">Отменя се…</string>
-    <string name="storage_setup_done">Синхронизирането е настроено. Пазете кода си за възстановяване на поверително място: ако загубите всичките си устройства, с него си връщате библиотеката.</string>
     <string name="restore_code_title">Код за възстановяване</string>
     <string name="restore_code_explanation">Отпечатайте този код или го запазете в мениджър на пароли. Той ви връща във вашата библиотека, ако загубите всичките си устройства. Телефон, който настройвате от този, също го получава.</string>
     <string name="restore_code_s3_key">Ще ви трябват и ключът за достъп, и тайният ключ за S3.</string>

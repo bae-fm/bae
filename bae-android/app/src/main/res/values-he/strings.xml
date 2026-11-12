@@ -107,7 +107,6 @@
         <item quantity="other">%1$d מכשירים</item>
     </plurals>
     <string name="settings_sync">סנכרון</string>
-    <string name="settings_local_only">מקומי בלבד</string>
     <string name="settings_sync_unreadable">לא ניתן לקרוא את מצב הסנכרון</string>
     <string name="settings_pause_between_sides">השהיה בין צדדים ודיסקים</string>
     <string name="settings_resume_automatically">המשך אוטומטית</string>
@@ -141,7 +140,6 @@
     <string name="library_remove_failed_title">לא ניתן היה להסיר את ”%1$s“</string>
     <string name="library_delete_confirm_body">הספרייה הזו אינה מסונכרנת, ולכן היא תימחק לצמיתות. קובצי האודיו שלך יישארו בתיקיות שלהם.</string>
     <string name="library_delete">מחיקה</string>
-    <string name="library_not_synced">לא מסונכרנת</string>
     <string name="details_menu">פרטים…</string>
     <string name="library_remove_menu">הסר…</string>
     <string name="library_delete_menu">מחיקה…</string>
@@ -204,7 +202,6 @@
     <string name="onboarding_tagline">המוזיקה שלך, בכל מקום</string>
     <string name="onboarding_camera_permission_required">נדרשת הרשאת מצלמה כדי לסרוק קודי QR</string>
     <string name="oauth_unconfigured">הכניסה לבית בענן של ספרייה זו אינה מוגדרת בגרסה זו.</string>
-    <string name="signing_in">מתחבר…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-compatible</string>
@@ -321,27 +318,6 @@
     <string name="loading_removing_library">מסיר את הספרייה…</string>
     <string name="loading_resetting_device">מאפס את המכשיר הזה…</string>
     <string name="pending_update_no_store">אין במכשיר הזה חנות אפליקציות שיכולה לעדכן את bae.</string>
-    <string name="storage_setup_title">הגדר סנכרון</string>
-    <string name="settings_set_up_sync_explanation">הספרייה הזו מאוחסנת רק במכשיר הזה. הסנכרון שומר אותה בבית בענן, שם המכשירים האחרים שלך ובני הבית יכולים להשתמש בה.</string>
-    <string name="storage_setup_choose">היכן לאחסן את הספרייה הזו?</string>
-    <string name="storage_s3_endpoint_hint">השאר ריק עבור Amazon S3.</string>
-    <string name="storage_set_up">הגדרה</string>
-    <string name="storage_dropbox_reading">קורא את תיקיות ה-Dropbox המשותפות שלך…</string>
-    <string name="storage_onedrive_reading">קורא את התיקיות ב-OneDrive שלך…</string>
-    <string name="storage_creating_folder">יוצר את התיקייה…</string>
-    <string name="storage_dropbox_name_taken">כבר יש תיקייה בשם ״%1$s״ ב‑Dropbox שלך. בחר שם אחר.</string>
-    <string name="storage_dropbox_heading">בחר תיקייה משותפת ריקה לספרייה זו.</string>
-    <string name="storage_onedrive_heading">בחר תיקייה ריקה לספרייה זו.</string>
-    <string name="storage_dropbox_empty">עדיין אין תיקיות משותפות</string>
-    <string name="storage_onedrive_empty">עדיין אין כאן תיקיות</string>
-    <string name="storage_onedrive_name_taken">כבר יש כאן תיקייה בשם ״%1$s״. בחר שם אחר.</string>
-    <string name="storage_folder_not_empty">״%1$s״ אינה ריקה. בחר תיקייה ריקה או צור חדשה.</string>
-    <string name="storage_refresh">רענון</string>
-    <string name="storage_new_folder">תיקייה חדשה</string>
-    <string name="storage_folder_name">שם התיקייה</string>
-    <string name="storage_create_folder">יצירה</string>
-    <string name="storage_setup_cancelling">מבטל…</string>
-    <string name="storage_setup_done">הסנכרון הוגדר. שמור את קוד השחזור שלך במקום פרטי: אם תאבד את כל המכשירים שלך, הוא מחזיר לך את הספרייה.</string>
     <string name="restore_code_title">קוד שחזור</string>
     <string name="restore_code_explanation">הדפס את הקוד הזה או שמור אותו במנהל סיסמאות. הוא מחזיר אותך לספרייה שלך אם תאבד את כל המכשירים שלך. טלפון שתגדיר מהטלפון הזה מקבל אותו גם כן.</string>
     <string name="restore_code_s3_key">תצטרך גם את מפתח הגישה ואת המפתח הסודי של S3.</string>

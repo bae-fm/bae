@@ -42,9 +42,6 @@ import uniffi.bae_bridge.BridgeTelemetryEvent
 internal sealed interface Storage {
     data object Loading : Storage
 
-    /** The library has no storage and lives on this device only. */
-    data object None : Storage
-
     data class At(
         val location: BridgeStorageLocation,
     ) : Storage
@@ -79,8 +76,7 @@ internal fun SettingsScreen(
             val libraryModel = rememberSettingsLibraryModel(session)
             LaunchedEffect(libraryModel) { libraryModel.loadStorage() }
             val line by session.syncStatusStore.line.collectAsState()
-            val setupRunning by session.syncStatusStore.setupRunning.collectAsState()
-            val sync = syncRowSummary(libraryModel.storage, line, setupRunning)
+            val sync = syncRowSummary(line)
             val deviceStorage = rememberDeviceStorageModel(session)
             AndroidSettingsList(
                 summaries = rememberSettingsSummaries(config, libraryModel.name, sync, deviceStorage.read),
