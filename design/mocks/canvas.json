@@ -262,7 +262,7 @@
    "h": 600,
    "page": "welcome",
    "title": "macOS: Enter code",
-   "w": 900,
+   "w": 690,
    "x": 0,
    "y": 9716
   },
@@ -270,32 +270,32 @@
    "h": 600,
    "page": "welcome",
    "title": "macOS: adding, downloading the library",
-   "w": 900,
-   "x": 4760,
+   "w": 690,
+   "x": 3920,
    "y": 9716
   },
   "mac.welcome.add-code.s3-key-needed.dc.html": {
    "h": 600,
    "page": "welcome",
    "title": "macOS: the code read, S3 key needed",
-   "w": 900,
-   "x": 2380,
+   "w": 690,
+   "x": 1960,
    "y": 9716
   },
   "mac.welcome.add-code.scanning.dc.html": {
    "h": 600,
    "page": "welcome",
    "title": "macOS: scanning a code",
-   "w": 900,
-   "x": 3570,
+   "w": 690,
+   "x": 2940,
    "y": 9716
   },
   "mac.welcome.add-code.half-typed.dc.html": {
    "h": 600,
    "page": "welcome",
    "title": "macOS: Enter code, half typed",
-   "w": 900,
-   "x": 1190,
+   "w": 690,
+   "x": 980,
    "y": 9716
   },
   "android.settings.devices.dc.html": {
@@ -1262,15 +1262,15 @@
    "h": 600,
    "page": "welcome",
    "title": "macOS: Add this device: code ended",
-   "w": 900,
-   "x": 2124,
+   "w": 690,
+   "x": 1914,
    "y": 4448
   },
   "mac.welcome.add-this-device.waiting.dc.html": {
    "h": 600,
    "page": "welcome",
    "title": "macOS: Add this device: waiting",
-   "w": 900,
+   "w": 690,
    "x": 1144,
    "y": 4448
   },
@@ -1438,15 +1438,15 @@
    "h": 600,
    "page": "welcome",
    "title": "macOS: Join: invite ended",
-   "w": 900,
-   "x": 3596,
+   "w": 690,
+   "x": 3176,
    "y": 3052
   },
   "mac.welcome.join.name.dc.html": {
    "h": 600,
    "page": "welcome",
    "title": "macOS: Join: your name",
-   "w": 900,
+   "w": 690,
    "x": 1636,
    "y": 3052
   },
@@ -1454,8 +1454,8 @@
    "h": 600,
    "page": "welcome",
    "title": "macOS: Join: waiting",
-   "w": 900,
-   "x": 2616,
+   "w": 690,
+   "x": 2406,
    "y": 3052
   },
   "mac.settings.library.dc.html": {
@@ -2134,7 +2134,7 @@
    "h": 600,
    "page": "welcome",
    "title": "macOS: Welcome: your libraries",
-   "w": 900,
+   "w": 690,
    "x": 4588,
    "y": 1656
   },
@@ -2142,40 +2142,40 @@
    "h": 600,
    "page": "welcome",
    "title": "macOS: Delete: never synced",
-   "w": 900,
-   "x": 10468,
+   "w": 690,
+   "x": 9208,
    "y": 1656
   },
   "mac.welcome.remove.dc.html": {
    "h": 600,
    "page": "welcome",
    "title": "macOS: Remove: confirm",
-   "w": 900,
-   "x": 8508,
+   "w": 690,
+   "x": 7668,
    "y": 1656
   },
   "mac.welcome.remove.failed.dc.html": {
    "h": 600,
    "page": "welcome",
    "title": "macOS: Remove: failed",
-   "w": 900,
-   "x": 12428,
+   "w": 690,
+   "x": 10748,
    "y": 1656
   },
   "mac.welcome.remove.unsent-changes.dc.html": {
    "h": 600,
    "page": "welcome",
    "title": "macOS: Remove: confirm, unsent changes",
-   "w": 900,
-   "x": 9488,
+   "w": 690,
+   "x": 8438,
    "y": 1656
   },
   "mac.welcome.remove.removing.dc.html": {
    "h": 600,
    "page": "welcome",
    "title": "macOS: Remove: removing",
-   "w": 900,
-   "x": 11448,
+   "w": 690,
+   "x": 9978,
    "y": 1656
   },
   "android.settings.list.dc.html": {
@@ -3088,7 +3088,7 @@
    "title": "macOS: Welcome: a new Mac",
    "x": 492,
    "y": 260,
-   "w": 900,
+   "w": 690,
    "h": 600
   },
   "mac.storage.window.every-row-state.dc.html": {
@@ -3383,32 +3383,32 @@
    "h": 600,
    "page": "welcome",
    "title": "macOS: Welcome: a library’s menu",
-   "w": 900,
-   "x": 5568,
+   "w": 690,
+   "x": 5358,
    "y": 1656
   },
   "mac.welcome.library-details.dc.html": {
    "h": 680,
    "page": "welcome",
    "title": "macOS: Welcome: a library’s details",
-   "w": 900,
-   "x": 6548,
+   "w": 690,
+   "x": 6128,
    "y": 1656
   },
   "mac.welcome.library-details.unsent-changes.dc.html": {
    "h": 680,
    "page": "welcome",
    "title": "macOS: Welcome: a library’s details, unsent changes",
-   "w": 900,
-   "x": 7528,
+   "w": 690,
+   "x": 6898,
    "y": 1656
   },
   "mac.welcome.add-library.dc.html": {
    "h": 600,
    "page": "welcome",
    "title": "macOS: Welcome: add library",
-   "w": 900,
-   "x": 13408,
+   "w": 690,
+   "x": 11518,
    "y": 1656
   },
   "mac.activity.panel.problem-open.dc.html": {
@@ -3703,7 +3703,7 @@
    "h": 600,
    "page": "welcome",
    "title": "macOS: Create: your name",
-   "w": 900,
+   "w": 690,
    "x": 0,
    "y": 13272
   },
@@ -3727,7 +3727,7 @@
    "h": 600,
    "page": "welcome",
    "title": "macOS: Welcome: saved restore codes",
-   "w": 900,
+   "w": 690,
    "x": 984,
    "y": 14240
   },
@@ -3735,8 +3735,8 @@
    "h": 600,
    "page": "welcome",
    "title": "macOS: Welcome: delete a saved restore code",
-   "w": 900,
-   "x": 1964,
+   "w": 690,
+   "x": 1754,
    "y": 14240
   },
   "mac.settings.sync.pending.dc.html": {
@@ -3831,7 +3831,7 @@
    "h": 600,
    "page": "welcome",
    "title": "macOS: Welcome: a library failed to open",
-   "w": 900,
+   "w": 690,
    "x": 4588,
    "y": 2376
   }
@@ -4165,7 +4165,7 @@
    "size": 24,
    "text": "What the code needs for these boards:\n- Both: the welcome's buttons are Scan code and Enter code, and the code says what it is for (spec/bae.md §5.6 “A new phone's first screen”). macOS keeps Create new library beside them. Android has them today as Scan a code and Enter a code (strings.xml onboarding_scan_code, onboarding_enter_code), which drop the “a”, as the spec writes them; macOS shows Join library and Add device, which open the same scan-or-type screen (WelcomeChooseView.swift). bae change, the spec's macOS sentence in the same commit.\n- Android: the welcome screen has no library list (ui/onboarding). With libraries on the device, it gets one: each library’s name, which opens it, and a ⋮ menu with Details… (a sheet with its last known sync status, colored as in Settings: Synced, or “Unsent changes” when this device holds some; when it last synced; and its provider, account and folder) and Remove…, whose confirm is “Remove “<name>” from this device?”. Its Remove is in the accent, not red: the library stays in the cloud and on the person's other devices, so nothing is lost (red is kept for Delete and Reset this device). With unsent changes the confirm leads with an amber card, a warning sign and “Unsent changes will be lost”, then “The library will remain in the cloud and on your other devices.” It shows no counts: the catalog’s counted sentences (core.library.removal.unsent_writes and unsent_files) give way to the one line, and the spec’s “the confirmation counts it” changes with it. The list ends in an Add library row that opens a sheet with Scan code and Enter code, in place of the buttons on the screen. While a removal runs, the row shows its step with a spinner in place of the ⋮. One that fails shows an alert, “Couldn’t remove “<name>””, with the error’s line and Cancel and Retry, and the row goes back to its name; the spec’s “A removal that fails says why on the row, with Retry in place of Remove” changes with it. bae change.\n- macOS: the list shows each library’s name, which opens it on a click, and a ⋯ button with Details… (a popover off the ⋯ with its last known sync status, when it last synced, its provider, account and folder; it closes on a click outside) and Remove…; right-clicking a row shows the same two. An Add library… button under the list opens a menu of Create new library…, Scan code… and Enter code…. While a removal runs, the row shows its step with a spinner in place of the ⋯; one that fails shows an alert, “Couldn’t remove “<name>””, with the error’s line and Retry and Cancel. With unsent changes the confirm shows the amber “Unsent changes will be lost” card. Remove is the default button, in the accent, not red, since nothing leaves the cloud. Today the rows have Open and Remove buttons and a second line (LocalLibrariesSection.swift), and a failed removal shows a callout above the list (RemovalErrorCallout, WelcomeChooseView.swift). bae change.\n- macOS: “Remove “<name>” from this Mac?” / “The library will remain in the cloud and on your other devices.” Today “Remove this library from this Mac?” (LibrarySettingsTab.swift:133) and “This Mac leaves the library, then its copy is deleted. Removing needs a connection to your storage. …” (LibraryRemovalConfirmation.swift:22). bae change.\n- Joining from an invite: after the code reads, the person types their name (empty field, placeholder “Appears on your profile, ratings and playlists”), then waits on the code: “Tell <inviter> this code”, the code, and a spinner with “Waiting for <inviter> to let you in…”. No expiry, no countdown, no Check now: it checks every 5 seconds on its own while the screen is open, and on the doubling waits when it isn't. Today the name comes from the invite and the person types none, and the waiting screen shows the number, until when it waits, the next check and Check now (OnboardingScreen.kt:321, BootstrapCodeView.swift). The inviter's name needs the invite to carry it (#572). coven change, then bae (the People note).\n- Invite ended: one screen, “This invite has ended. Ask <inviter> for a new one.”, for a decline, a cancel, an expiry, or the inviting device gone. It shows when the waiting device finds the ended marker where its request was, or loses access to the storage: the decline takes the sharing back in the same pass, so access can go before the marker is read. Today a permission error reaches the app as it is (coven spec §13.2: “Provider permission errors reach the app, even when they come from access being taken back”), and the ended text lists every cause (strings.xml onboarding_invite_ended). coven change (a join whose storage access is gone ends as an ended invite does), then bae.\n- Queued: plans/invites.md; coven in todo.md §2 #214 (the name in the request), #572 (the inviter's name in the invite) and #177 (a join whose access was revoked ends, the same as a marker), bae in #215.\n- Adding this device (a pairing code, scanned or typed on the welcome): “Check that your other device shows this code” with “Then add this device there.” under it, the code, a spinner and “Waiting for your other device…”, no Check now: it checks every 5 seconds while open. Declined, closed on the other device or lost access: “This code has ended. Open Add device on your other device for a new one.” Today Welcome's Add device takes a restore code. coven #227, bae #228.\n- Android’s new device: the sheep and “bae” centered in the space above the buttons, with “Your music, everywhere” under them, as on the Mac.\n- Both: the sheep and the word bob separately on Welcome, with the glow behind the sheep, as the design system’s Logo section says, and stops with reduced motion.\n- Both: “Your music, everywhere” under the logo, in place of “Get started with your music library.”\n- macOS: one layout for the buttons, with or without libraries: Create new library on top as the default button, then Scan code and Enter code side by side under it, the three 240 wide. On a new Mac the logo and the buttons sit centered in the window. Today a new Mac stacks the three, each 240 wide (firstRunActions, WelcomeChooseView.swift:220), and with libraries they're a row of small buttons (populatedActions, :240).",
    "w": 420,
-   "x": 14848,
+   "x": 12748,
    "y": 1656
   },
   "composers-today": {
@@ -4264,7 +4264,7 @@
    "size": 24,
    "text": "What looks unintended:\n- A half-typed code shows “Something went wrong with your settings.” while you type.\n- After a menu-opened Join or Restore, Back and a failed open land on that screen with the failure hidden.",
    "w": 460,
-   "x": 6930,
+   "x": 5880,
    "y": 9716
   },
   "row-composers-android": {
@@ -5107,7 +5107,7 @@
    "size": 24,
    "text": "Removing and deleting:\nneither asks for device authentication. A library that was never synced offers Delete instead of Remove, on Android and macOS.",
    "w": 380,
-   "x": 14388,
+   "x": 12288,
    "y": 1656
   },
   "work-folder-name": {
@@ -5307,7 +5307,7 @@
    "size": 24,
    "text": "What the code needs for this board:\n- Create new library… (the first-run button and the Add library menu, both with the ellipsis now) opens this step before anything is created: “Start a new library”, Your name (placeholder “Appears on your profile, ratings and playlists”), Cancel and Create, as joining asks (MacJoinName). Today Create starts at once with nothing asked (WelcomeChooseView.swift:274-296). bae change.\n- Create makes the library and the creator's profile with that name in one go: create_library takes the name (bae-bridge/src/host.rs:557 takes only the library's name, generated when none). Every member then has a name, so an invite reads the profile's name with no case for a missing one. bae change.\n- Create stays dimmed while the name is blank. Then the creating steps, as today.\n- Android has no Create, and gets none: a phone can't import music, so it joins a library a Mac made (decisions.md, 2026-11-11).\nEvery locale.",
    "w": 420,
-   "x": 980,
+   "x": 770,
    "y": 13272
   },
   "row-saved-codes": {
@@ -5323,7 +5323,7 @@
    "page": "welcome",
    "size": 24,
    "w": 460,
-   "x": 2944,
+   "x": 2524,
    "y": 14240,
    "text": "These boards (built in 17b9b0a3b):\n- Both: the restore codes saved for libraries not on this device show on Welcome under Your libraries, one row each: the library's name over its provider and account; a code bae can't read says “Restore code can’t be used” over why and the library id. Each row ends in a ⋯ / ⋮ menu with Delete…, which asks first. The Mac's section is “Saved in iCloud Keychain”, with its line under the box.\n- macOS: Restore is a button on the row. Android: tapping the row restores, as its note says."
   },
