@@ -365,10 +365,8 @@ ios = "caption2"
 android = 11
 
 [text.eyebrow]
-weight = "bold"
-tracking = 1
-uppercase = true
-macos = 10
+weight = "semibold"
+macos = 11
 ios = "caption2"
 
 # A card's section heading on Android (Material's list section header), in the
