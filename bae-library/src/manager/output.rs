@@ -255,13 +255,23 @@ impl LibraryManager {
 
         let staging_path = staging.path().to_path_buf();
         let marker_release_id = release_id.to_string();
-        self.diagnostics
-            .blocking("move an output into place", move || -> Result<(), LibraryError> {
+        let prior_backup = self
+            .diagnostics
+            .blocking("move an output into place", move || -> Result<_, LibraryError> {
                 write_output_marker(&staging_path, &marker_release_id)?;
                 replace_output_dir(&staging_path, &final_dir, &folder, &marker_release_id)
             })
             .await??;
+        // The staging folder is the export now: the guard must not delete it
+        // whatever becomes of the earlier export's backup.
         staging.disarm();
+        if let Some(backup) = prior_backup {
+            self.diagnostics
+                .blocking("delete the earlier export's backup", move || {
+                    remove_prior_export_backup(&backup)
+                })
+                .await??;
+        }
         Ok(())
     }
 
@@ -311,7 +321,7 @@ impl LibraryManager {
                 .find_map(|label| label.catalog_number())
                 .map(str::to_string),
         };
-        Ok(crate::save::render_save_folder_name(pattern, &tags))
+        crate::save::render_save_folder_name(pattern, &tags).map_err(LibraryError::FolderPattern)
     }
 
     /// Write a release's output to `target_dir`, bypassing the output queue.
@@ -363,12 +373,17 @@ fn write_output_marker(staging_dir: &std::path::Path, release_id: &str) -> std::
         .write_all(release_id.as_bytes())
 }
 
+/// Move the staged export to `final_dir`, setting any earlier export aside as
+/// a backup beside it. Returns the backup's path when there was an earlier
+/// export: once this returns, the new export is in place and the export has
+/// succeeded, and the backup is only what nothing refers to any more
+/// ([`remove_prior_export_backup`]).
 fn replace_output_dir(
     staging_dir: &std::path::Path,
     final_dir: &std::path::Path,
     folder: &str,
     release_id: &str,
-) -> Result<(), LibraryError> {
+) -> Result<Option<std::path::PathBuf>, LibraryError> {
     let had_existing = final_dir.exists();
     if had_existing && !final_dir.join(OUTPUT_MARKER_FILE).exists() {
         return Err(LibraryError::Export(format!(
@@ -390,29 +405,7 @@ fn replace_output_dir(
     }
 
     match std::fs::rename(staging_dir, final_dir) {
-        Ok(()) => {
-            if had_existing {
-                if let Err(cleanup_error) = std::fs::remove_dir_all(&backup_dir) {
-                    if let Err(move_new_error) = std::fs::rename(final_dir, staging_dir) {
-                        return Err(LibraryError::Export(format!(
-                            "failed to remove prior export backup {} ({cleanup_error}); also failed to move new export back to staging ({move_new_error})",
-                            backup_dir.display()
-                        )));
-                    }
-                    if let Err(restore_error) = std::fs::rename(&backup_dir, final_dir) {
-                        return Err(LibraryError::Export(format!(
-                            "failed to remove prior export backup {} ({cleanup_error}); moved new export back to staging but failed to restore prior export ({restore_error})",
-                            backup_dir.display()
-                        )));
-                    }
-                    return Err(LibraryError::Export(format!(
-                        "failed to remove prior export backup {}: {cleanup_error}",
-                        backup_dir.display()
-                    )));
-                }
-            }
-            Ok(())
-        }
+        Ok(()) => Ok(had_existing.then_some(backup_dir)),
         Err(rename_error) => {
             if had_existing {
                 if let Err(restore_error) = std::fs::rename(&backup_dir, final_dir) {
@@ -425,6 +418,18 @@ fn replace_output_dir(
             Err(rename_error.into())
         }
     }
+}
+
+/// Delete the earlier export `replace_output_dir` set aside. The new export is
+/// already in place and stays there: a failure names the backup left behind,
+/// and nothing is moved back.
+fn remove_prior_export_backup(backup_dir: &std::path::Path) -> Result<(), LibraryError> {
+    std::fs::remove_dir_all(backup_dir).map_err(|error| {
+        LibraryError::Export(format!(
+            "the export was written, but the earlier export's backup could not be deleted and was left at {}: {error}",
+            backup_dir.display()
+        ))
+    })
 }
 
 /// A staging directory for one in-flight release export, removed on drop unless

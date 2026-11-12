@@ -60,12 +60,50 @@ fn replace_output_dir_replaces_marked_directory() {
     std::fs::write(staging_dir.join(OUTPUT_MARKER_FILE), b"release-1").expect("write marker");
     std::fs::write(staging_dir.join("export.txt"), b"export").expect("write export");
 
-    replace_output_dir(&staging_dir, &final_dir, "album", "release-1")
-        .expect("marked prior export can be replaced");
+    let backup = replace_output_dir(&staging_dir, &final_dir, "album", "release-1")
+        .expect("marked prior export can be replaced")
+        .expect("the earlier export is set aside as a backup");
+    remove_prior_export_backup(&backup).expect("the backup is deleted");
 
     assert_eq!(std::fs::read(final_dir.join("export.txt")).expect("read export"), b"export",);
     assert!(!final_dir.join("prior.txt").exists());
     assert!(!temp.path().join(".album.replace-release-1").exists());
+}
+
+/// A backup that cannot be fully deleted is reported with its path, and the
+/// new export stays in place: nothing is moved back.
+#[cfg(unix)]
+#[test]
+fn an_undeletable_prior_backup_is_reported_and_the_new_export_stays() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let temp = tempfile::tempdir().expect("create temp dir");
+    let final_dir = temp.path().join("album");
+    let locked = final_dir.join("locked");
+    std::fs::create_dir_all(&locked).expect("create prior export dir");
+    std::fs::write(final_dir.join(OUTPUT_MARKER_FILE), b"release-1").expect("write prior marker");
+    std::fs::write(final_dir.join("a.txt"), b"prior").expect("write prior file");
+    std::fs::write(locked.join("b.txt"), b"prior").expect("write locked file");
+    std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o500))
+        .expect("lock the subfolder");
+
+    let staging_dir = temp.path().join("staging");
+    std::fs::create_dir(&staging_dir).expect("create staging dir");
+    std::fs::write(staging_dir.join(OUTPUT_MARKER_FILE), b"release-1").expect("write marker");
+    std::fs::write(staging_dir.join("export.txt"), b"export").expect("write export");
+
+    let backup = replace_output_dir(&staging_dir, &final_dir, "album", "release-1")
+        .expect("the new export is put in place")
+        .expect("the earlier export is set aside");
+    let error = remove_prior_export_backup(&backup).expect_err("the backup cannot be deleted");
+
+    let backup_locked = backup.join("locked");
+    std::fs::set_permissions(&backup_locked, std::fs::Permissions::from_mode(0o700))
+        .expect("unlock the subfolder");
+    assert!(error.to_string().contains(&backup.display().to_string()), "{error}");
+    assert_eq!(std::fs::read(final_dir.join("export.txt")).expect("read export"), b"export");
+    assert!(!final_dir.join("a.txt").exists(), "the earlier export is not moved back");
+    assert!(backup.exists());
 }
 
 /// Create a Remote, pinned, exportable release: a Local release with
