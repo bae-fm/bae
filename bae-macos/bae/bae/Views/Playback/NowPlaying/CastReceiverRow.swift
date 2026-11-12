@@ -81,9 +81,10 @@ struct CastReceiverRow: View {
     private var row: some View {
         RowItem {
             Image(systemName: icon)
+                .font(.system(size: 15))
                 .foregroundStyle(casting ? Theme.accent : .secondary)
         } content: {
-            VStack(alignment: .leading, spacing: ThemeSpace.hairline) {
+            VStack(alignment: .leading, spacing: 0) {
                 Text(verbatim: receiver.name)
                     .themeText(.rowTitle)
                     .lineLimit(2)
@@ -113,6 +114,8 @@ struct CastReceiverRow: View {
                     Button("Disconnect", action: onDisconnect)
                         .buttonStyle(.borderless)
                         .controlSize(.small)
+                        .foregroundStyle(.primary)
+                        .tint(.primary)
                 }
             case .page:
                 MacMoreMenu {
@@ -127,6 +130,16 @@ struct CastReceiverRow: View {
             }
         }
         .padding(.vertical, rowPadding)
+        .padding(.horizontal, rowInset)
+    }
+
+    /// The room beside a row's glyph and Disconnect: the picker's rows sit in
+    /// from the popover's padding; a settings box insets its own.
+    private var rowInset: CGFloat {
+        switch place {
+        case .picker: ThemeSpace.group
+        case .page: 0
+        }
     }
 
     /// The space over and under a row's two lines: the picker's list gives
