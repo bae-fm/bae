@@ -7,14 +7,17 @@ extension ShotScene {
     /// The Sync page's boards (`mac.settings.sync.*`) that show what sync
     /// waits on or why its cloud home isn't shown: the pending records as
     /// rows, the setup that ended undone, a cloud home that couldn't be
-    /// read, and the restore code shown.
+    /// read, and the restore code shown. Each shows the whole Settings
+    /// window, as the boards draw it: the sidebar with Library chosen, and
+    /// the page over the Library pane.
     static let syncSettingsScenes: [ShotScene] = [
         ShotScene(
             id: "mac.settings.sync.pending",
-            size: CGSize(width: 500, height: 640)
+            size: CGSize(width: 690, height: 600),
+            frame: .window(title: "Settings")
         ) {
             ShotStage(
-                syncSettingsPagePreview(
+                syncSettingsWindow(
                     LibrarySettingsTabPreviewFixture(
                         storage: PreviewData.previewDropboxStorage
                     ),
@@ -76,10 +79,11 @@ extension ShotScene {
         },
         ShotScene(
             id: "mac.settings.sync.setup-undone",
-            size: CGSize(width: 500, height: 640)
+            size: CGSize(width: 690, height: 600),
+            frame: .window(title: "Settings")
         ) {
             ShotStage(
-                syncSettingsPagePreview(
+                syncSettingsWindow(
                     LibrarySettingsTabPreviewFixture(storage: nil),
                     shown: .previewNotSynced,
                     undoneSetup: BridgeUndoneStorageSetup(
@@ -94,10 +98,11 @@ extension ShotScene {
         },
         ShotScene(
             id: "mac.settings.sync.cloud-home-unreadable",
-            size: CGSize(width: 500, height: 640)
+            size: CGSize(width: 690, height: 600),
+            frame: .window(title: "Settings")
         ) {
             ShotStage(
-                syncSettingsPagePreview(
+                syncSettingsWindow(
                     LibrarySettingsTabPreviewFixture(storage: nil),
                     shown: .previewSynced,
                     storageReadError: DisplayError(
@@ -109,10 +114,11 @@ extension ShotScene {
         },
         ShotScene(
             id: "mac.settings.sync.code-shown",
-            size: CGSize(width: 500, height: 640)
+            size: CGSize(width: 690, height: 600),
+            frame: .window(title: "Settings")
         ) {
             ShotStage(
-                syncSettingsPagePreview(
+                syncSettingsWindow(
                     LibrarySettingsTabPreviewFixture(
                         storage: PreviewData.previewDropboxStorage
                     ),
@@ -122,4 +128,69 @@ extension ShotScene {
             )
         },
     ]
+}
+
+/// The Settings window around the Sync page of `fixture`'s library: the
+/// sidebar as `SettingsView` lists it, and the page `syncSettingsPagePreview`
+/// builds beside it.
+@MainActor
+private func syncSettingsWindow(
+    _ fixture: LibrarySettingsTabPreviewFixture,
+    shown: BridgeSyncShown,
+    pending: [BridgePendingRecord] = [],
+    undoneSetup: BridgeUndoneStorageSetup? = nil,
+    storageReadError: DisplayError? = nil,
+    restoreCode: RestoreCodeReveal.State = .masked(
+        code: PreviewData.restoreCodeGrouped
+    )
+) -> some View {
+    SyncSettingsWindow(
+        shown: shown,
+        pending: pending,
+        undoneSetup: undoneSetup,
+        page: syncSettingsPagePreview(
+            fixture,
+            shown: shown,
+            pending: pending,
+            undoneSetup: undoneSetup,
+            storageReadError: storageReadError,
+            restoreCode: restoreCode
+        )
+    )
+}
+
+private struct SyncSettingsWindow<Page: View>: View {
+    let shown: BridgeSyncShown
+    let pending: [BridgePendingRecord]
+    let undoneSetup: BridgeUndoneStorageSetup?
+    let page: Page
+
+    /// The pane the window is on, as the person left it.
+    @State
+    private var selection = SettingsTab.library
+
+    var body: some View {
+        NavigationSplitView(columnVisibility: .constant(.all)) {
+            SettingsSidebar(selection: $selection)
+                .navigationSplitViewColumnWidth(190)
+        } detail: {
+            page.frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .toolbar(removing: .sidebarToggle)
+        // The size SettingsView gives its window.
+        .frame(width: 690, height: 600)
+        .environment(DownloadStore())
+        .environment(OutboxStore(uploadsPaused: false))
+        .environment(SubsonicStore())
+        .environment(
+            SyncStatusStore(
+                snapshot: BridgeSyncStatusSnapshot(
+                    shown: shown,
+                    pending: pending,
+                    setupRunning: false,
+                    undoneSetup: undoneSetup
+                )
+            )
+        )
+    }
 }

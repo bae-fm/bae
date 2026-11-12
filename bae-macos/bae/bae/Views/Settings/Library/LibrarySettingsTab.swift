@@ -378,35 +378,45 @@ private struct LibraryRestoreCodeSection: View {
             code: PreviewData.restoreCodeGrouped
         )
     ) -> some View {
-        NavigationStack {
-            SyncSettingsPage(
-                restoreCode: RestoreCodeReveal(previewState: restoreCode),
-                storageReadError: storageReadError,
-                onResetDevice: {},
-                onRestoreFromCode: {},
-                onCheckForUpdates: {},
-                onRemoveLibrary: {}
+        let sync = PreviewData.previewSync(
+            storage: fixture.configStore.storage
+        )
+        let status = SyncStatusStore(
+            snapshot: BridgeSyncStatusSnapshot(
+                shown: shown,
+                pending: pending,
+                setupRunning: false,
+                undoneSetup: undoneSetup
             )
+        )
+        let uiStore = UiStore()
+        // The page as the Library pane opens it: pushed over the pane, with
+        // the pane's name on its back button. The page takes the stores
+        // itself: those set outside a pushed page didn't reach it.
+        return NavigationStack(path: .constant([0])) {
+            Form {}
+                .formStyle(.grouped)
+                .navigationTitle("Library")
+                .navigationDestination(for: Int.self) { _ in
+                    SyncSettingsPage(
+                        restoreCode: RestoreCodeReveal(
+                            previewState: restoreCode
+                        ),
+                        storageReadError: storageReadError,
+                        onResetDevice: {},
+                        onRestoreFromCode: {},
+                        onCheckForUpdates: {},
+                        onRemoveLibrary: {}
+                    )
+                    .environment(sync)
+                    #if BAE_OAUTH_PROVIDERS
+                        .environment(CloudSyncSetup())
+                    #endif
+                    .environment(fixture.configStore)
+                    .environment(status)
+                    .environment(uiStore)
+                }
         }
-        .frame(width: 500, height: 640)
-        .environment(
-            PreviewData.previewSync(storage: fixture.configStore.storage)
-        )
-        #if BAE_OAUTH_PROVIDERS
-            .environment(CloudSyncSetup())
-        #endif
-        .environment(fixture.configStore)
-        .environment(
-            SyncStatusStore(
-                snapshot: BridgeSyncStatusSnapshot(
-                    shown: shown,
-                    pending: pending,
-                    setupRunning: false,
-                    undoneSetup: undoneSetup
-                )
-            )
-        )
-        .environment(UiStore())
     }
 
     #Preview("No storage") {
@@ -456,6 +466,7 @@ private struct LibraryRestoreCodeSection: View {
             ),
             shown: .previewSynced
         )
+        .frame(width: 500, height: 640)
     }
 
     /// The restore code section with its reveal at `state`, in an S3 library.
