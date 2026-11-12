@@ -28,6 +28,7 @@ import fm.bae.app.ui.components.AndroidRadio
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidSection
 import fm.bae.app.ui.components.AndroidSpinner
+import fm.bae.app.ui.components.ButtonAlign
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ButtonTone
 import fm.bae.app.ui.components.DialogHead
@@ -59,8 +60,12 @@ class BasicComponentShots : BoardShot() {
     fun androidComponentButtonUnderText() =
         component("android.component.button.under-text", wide = true) {
             Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
-                Text("They’ll use your key.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                AndroidButton(onClick = {}, kind = ButtonKind.TEXT) { Text("Use their own key instead") }
+                Text(
+                    "They’ll use your key.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                AndroidButton(onClick = {}, kind = ButtonKind.TEXT, alignTo = ButtonAlign.TEXT) { Text("Use their own key instead") }
             }
         }
 
@@ -69,7 +74,7 @@ class BasicComponentShots : BoardShot() {
         component("android.component.button.under-a-field", wide = true) {
             Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
                 OutlinedTextField(value = "AKIAEXAMPLEKEY", onValueChange = {}, label = { Text("Access key ID") })
-                AndroidButton(onClick = {}, kind = ButtonKind.TEXT) { Text("Use my key instead") }
+                AndroidButton(onClick = {}, kind = ButtonKind.TEXT, alignTo = ButtonAlign.FIELD) { Text("Use my key instead") }
             }
         }
 
