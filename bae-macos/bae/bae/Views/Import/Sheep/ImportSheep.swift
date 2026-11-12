@@ -46,11 +46,3 @@ struct ImportSheep: View {
         .accessibilityHidden(true)
     }
 }
-
-#if DEBUG
-    #Preview("Import sheep") {
-        ImportSheep(size: 140)
-            .padding(ThemeSpace.page)
-            .windowBackground()
-    }
-#endif

@@ -60,14 +60,3 @@ struct EnterCodeSheet: View {
         }
     }
 }
-
-#if DEBUG
-    #Preview("Enter code") {
-        EnterCodeSheet(
-            form: LibrarySetup.stub()
-                .bootstrapForm(entry: .code, onLibraryReady: { _, _ in }),
-            onCancel: {}
-        )
-        .windowBackground()
-    }
-#endif

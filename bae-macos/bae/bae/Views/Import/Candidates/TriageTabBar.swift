@@ -72,13 +72,4 @@ extension BridgeTriageTab {
 #if DEBUG
     // MARK: - Previews
 
-    #Preview("Tab bar") {
-        TriageTabBar(
-            activeTab: .constant(.pending),
-            counts: PreviewData.tabCounts(pending: 112, done: 3, skipped: 41)
-        )
-        .padding()
-        .frame(width: 320)
-        .windowBackground()
-    }
 #endif

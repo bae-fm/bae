@@ -142,7 +142,6 @@ extension ImportView {
             },
         )
         .animation(nil, value: importSelection.summary.single)
-
     }
 
     private func commitActions(for candidate: Candidate) -> ImportCommitActions

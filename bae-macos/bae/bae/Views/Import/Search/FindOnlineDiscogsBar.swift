@@ -32,9 +32,4 @@ struct FindOnlineDiscogsBar: View {
 #if DEBUG
     // MARK: - Previews
 
-    #Preview("Discogs not configured") {
-        FindOnlineDiscogsBar(onOpenSettings: {}, onDismiss: {})
-            .frame(width: 660)
-            .windowBackground()
-    }
 #endif

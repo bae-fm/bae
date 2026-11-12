@@ -272,7 +272,6 @@ struct ImportCandidateTablePlaceTests {
                 == .keepPlace
         )
     }
-
 }
 
 extension ImportCandidateTablePlaceTests {

@@ -42,13 +42,3 @@ struct RestoreS3KeySheet: View {
         }
     }
 }
-
-#if DEBUG
-    #Preview("S3 key") {
-        RestoreS3KeySheet(
-            form: LibrarySetup.stub()
-                .bootstrapForm(entry: .code, onLibraryReady: { _, _ in })
-        )
-        .windowBackground()
-    }
-#endif

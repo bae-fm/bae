@@ -55,27 +55,3 @@ struct MacSheet<Content: View, Footer: View>: View {
         .frame(width: width, alignment: .leading)
     }
 }
-
-#if DEBUG
-    // Sample copy goes through String values so the string extractor skips it.
-    #Preview("Sheet") {
-        let sampleTitle = "Sheet title"
-        let sampleMessage = "The line under the title."
-        MacSheet(
-            LocalizedStringKey(sampleTitle),
-            message: LocalizedStringKey(sampleMessage),
-            width: 400
-        ) {
-            TextField(text: .constant(""), prompt: Text(verbatim: "Field")) {
-                EmptyView()
-            }
-            .boxedTextField()
-        } footer: {
-            MacSheetFooter {
-                Button("Cancel") {}
-                Button("Continue") {}
-                    .buttonStyle(PrimaryButtonStyle())
-            }
-        }
-    }
-#endif

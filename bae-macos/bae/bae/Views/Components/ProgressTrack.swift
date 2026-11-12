@@ -225,20 +225,3 @@ struct ProgressTrackBar: NSViewRepresentable {
         )
     }
 }
-
-#if DEBUG
-    #Preview("Progress Track") {
-        VStack(alignment: .leading, spacing: ThemeSpace.group) {
-            ProgressTrackBar(progress: 0)
-            ProgressTrackBar(progress: 0.01)
-            ProgressTrackBar(progress: 0.4)
-            ProgressTrackBar(progress: 1)
-            ProgressTrackBar(progress: nil)
-            ProgressTrackBar(progress: 0.4)
-                .frame(width: 140)
-        }
-        .padding()
-        .frame(width: 360)
-        .windowBackground()
-    }
-#endif

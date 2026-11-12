@@ -446,7 +446,7 @@ where Row.ID: Sendable {
     // MARK: - Test/Preview support
 
     #if DEBUG
-        /// Seed segments synchronously for SwiftUI previews and tests.
+        /// Seed segments synchronously for shots and tests.
         public func preloadForPreview(rows: [Row]) {
             segments = LoadedSegments(rows)
             totalCount = rows.count

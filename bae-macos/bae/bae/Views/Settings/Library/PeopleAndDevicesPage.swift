@@ -954,27 +954,3 @@ struct JoinRequestSheet: View {
         }
     }
 }
-
-#if DEBUG
-    #Preview("People and devices") {
-        PeopleAndDevicesPage(onBack: {})
-            .frame(width: 500, height: 480)
-            .environment(
-                PreviewData.previewSync(storage: PreviewData.previewStorage)
-            )
-            .environment(
-                PreviewData.connectedConfigStore(
-                    storage: PreviewData.previewStorage
-                )
-            )
-            .environment(
-                MembershipStore.stub(
-                    people: PreviewData.members(
-                        reaching: PreviewData.previewStorage
-                    ),
-                    selfIsAdmin: true
-                )
-            )
-            .environment(SyncStatusStore())
-    }
-#endif

@@ -32,18 +32,3 @@ struct PresetBitrateRow: View {
         }
     }
 }
-
-#if DEBUG
-    #Preview("Bitrate") {
-        Form {
-            PresetBitrateRow(
-                preset: PreviewData.savePresets[1],
-                bitrate: 320,
-                accepted: [96, 128, 160, 192, 256, 320],
-                update: { _ in },
-            )
-        }
-        .formStyle(.settings)
-        .frame(width: 460)
-    }
-#endif

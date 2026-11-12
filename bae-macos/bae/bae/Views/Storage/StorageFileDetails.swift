@@ -84,47 +84,7 @@ struct StorageFileDetails: View {
 }
 
 #if DEBUG
-    #Preview("Audio file") {
-        StorageFileDetails(
-            file: BridgeFile(
-                id: "file-1",
-                originalFilename: "Disc 1/07 Track Title.flac",
-                name: "07 Track Title.flac",
-                folder: "Disc 1",
-                kind: .audio(format: "FLAC"),
-                fileSize: 32_900_000,
-                contentType: "audio/flac",
-                isImage: false,
-                audioFormat: BridgeAudioFormat(
-                    codec: "FLAC",
-                    sampleRateHz: 44_100,
-                    bitsPerSample: 16,
-                    bitrateKbps: nil,
-                    channels: 2
-                )
-            ),
-            onClose: {}
-        )
-        .frame(width: 440)
-    }
-
-    #Preview("Rip log") {
-        StorageFileDetails(file: .previewRipLog, onClose: {})
-            .frame(width: 440)
-    }
 
     extension BridgeFile {
-        /// A release's rip log, as a file's details show it.
-        static let previewRipLog = BridgeFile(
-            id: "file-2",
-            originalFilename: "Album Title.log",
-            name: "Album Title.log",
-            folder: nil,
-            kind: .ripLog,
-            fileSize: 20_000,
-            contentType: "text/plain",
-            isImage: false,
-            audioFormat: nil
-        )
     }
 #endif

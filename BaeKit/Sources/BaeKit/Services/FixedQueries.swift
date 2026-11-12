@@ -1,12 +1,12 @@
 #if DEBUG
     import Foundation
 
-    // Reads over fixed rows, for previews and tests: each answers every
+    // Reads over fixed rows, for shots and tests: each answers every
     // request with its slice of rows given already in order, which only core
     // orders and windows in a running app. Debug builds only.
 
     extension KeyedDetailQuery {
-        /// A read over fixed details, for previews and tests: every id is
+        /// A read over fixed details, for shots and tests: every id is
         /// answered with what `lookup` finds for it.
         public static func fixed(
             answers: UnansweredCount,
@@ -27,7 +27,7 @@
     }
 
     extension LibraryBrowseQuery {
-        /// A query over a fixed, already-sorted list, for previews and tests:
+        /// A query over a fixed, already-sorted list, for shots and tests:
         /// every window request is answered with its slice.
         public static func fixed(
             _ rows: [Row],
@@ -63,7 +63,7 @@
     }
 
     extension LibraryBrowseQuery {
-        /// A query whose every read fails with `error`, for previews and
+        /// A query whose every read fails with `error`, for shots and
         /// tests of the screen that shows a list that could not be read.
         public static func failing(
             _ error: any Error & Sendable,
@@ -164,7 +164,7 @@
     }
 
     extension StorageBrowseQuery {
-        /// A query over a fixed, already-sorted list, for previews and tests:
+        /// A query over a fixed, already-sorted list, for shots and tests:
         /// every view is answered with its windows' slices of `rows`, whatever
         /// the sort, filter and search, beside `queues`.
         public static func fixed(
@@ -229,7 +229,7 @@
     }
 
     extension ArtistSearchQuery {
-        /// A search over a fixed, already-ordered list, for previews and tests:
+        /// A search over a fixed, already-ordered list, for shots and tests:
         /// every view is answered with its windows' slices of `results`, whatever
         /// the text.
         public static func fixed(
@@ -301,7 +301,7 @@
         }
     }
 
-    /// In-memory page source for album previews and tests. Expects rows to
+    /// In-memory page source for album shots and tests. Expects rows to
     /// arrive pre-sorted; serves contiguous slices.
     public struct AlbumPreviewPageSource: PageSource {
         public let albums: [BridgeAlbum]
@@ -329,12 +329,12 @@
     }
 
     extension AlbumList {
-        /// A pre-populated list for SwiftUI previews and tests, seeded with
-        /// `albums` so the preview renders without waiting for an async
+        /// A pre-populated list for shots and tests, seeded with
+        /// `albums` so the view renders without waiting for an async
         /// round-trip.
         ///
         /// Rows render in the order given. The live grid is ordered by the database,
-        /// through the `ORDER BY` its page query builds; a preview holds a hand-written
+        /// through the `ORDER BY` its page query builds; a shot holds a hand-written
         /// list with no database, so it presents the order its author wrote.
         public static func preview(albums: [BridgeAlbum]) -> AlbumList {
             let list = AlbumList(
@@ -347,7 +347,7 @@
     }
 
     extension ReleaseFilesQuery {
-        /// A read over fixed files, for previews and tests: every request is
+        /// A read over fixed files, for shots and tests: every request is
         /// answered with `files` as given, whatever order it asks for.
         public static func fixed(
             _ files: [BridgeFile],

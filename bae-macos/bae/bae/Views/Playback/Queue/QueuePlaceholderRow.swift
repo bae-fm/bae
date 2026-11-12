@@ -31,12 +31,3 @@ struct QueuePlaceholderRow: View {
         .padding(.vertical, QueueItemRow.verticalInset)
     }
 }
-
-#if DEBUG
-    #Preview("Loading row") {
-        QueuePlaceholderRow()
-            .frame(width: 380)
-            .padding()
-            .background(Theme.surface)
-    }
-#endif

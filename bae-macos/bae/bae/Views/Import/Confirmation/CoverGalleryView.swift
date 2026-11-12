@@ -218,7 +218,6 @@ struct CoverGalleryView: View {
                 if browser.cursor == nil { Rectangle().fill(Theme.background) }
             }
         }
-
     }
 
     private var gridPreviewShown: Bool {
@@ -257,7 +256,6 @@ struct CoverGalleryView: View {
         .themeText(.body)
         .padding(ThemeSpace.group)
     }
-
 }
 
 extension CoverGalleryView {
@@ -342,7 +340,6 @@ extension CoverGalleryView {
                 }
         )
     }
-
 }
 
 extension CoverGalleryView {

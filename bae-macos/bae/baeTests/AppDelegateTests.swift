@@ -13,7 +13,6 @@ import Testing
 @MainActor
 @Suite("AppDelegate")
 struct AppDelegateTests {
-
     @Test("already regular application keeps its activation policy")
     func alreadyRegularApplicationKeepsPolicy() {
         let application = FakeActivationPolicyApplication(

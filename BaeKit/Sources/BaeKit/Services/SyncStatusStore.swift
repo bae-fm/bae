@@ -56,16 +56,6 @@ public final class SyncStatusStore {
             lastSynced: nil
         )
 
-        /// A library whose sync holds back without a problem.
-        public static let previewWaiting = BridgeSyncShown(
-            status: .waitingToSync,
-            statusKey: "core.sync.status.waiting_to_sync",
-            tone: .neutral,
-            cause: nil,
-            fix: nil,
-            lastSynced: nil
-        )
-
         /// A library whose storage this device can't reach.
         public static let previewOffline = BridgeSyncShown(
             status: .offline,
@@ -74,33 +64,6 @@ public final class SyncStatusStore {
             cause: nil,
             fix: nil,
             lastSynced: Date(timeIntervalSinceNow: -2 * 3_600)
-        )
-
-        /// A library whose last pass failed because a file it uploads is
-        /// gone.
-        public static let previewFailed = BridgeSyncShown(
-            status: .syncFailed,
-            statusKey: "core.sync.failed",
-            tone: .danger,
-            cause: .message(
-                message: BridgeMessage(
-                    key: "core.sync.cause.file_changed",
-                    args: [BridgeMessageArg(name: "file", value: "Cover.jpg")]
-                ),
-                resumesAt: nil
-            ),
-            fix: .retryNow,
-            lastSynced: Date(timeIntervalSinceNow: -2 * 3_600)
-        )
-
-        /// A Dropbox library this device is signed out of.
-        public static let previewSignedOut = BridgeSyncShown(
-            status: .signedOutOfDropbox,
-            statusKey: "core.sync.status.signed_out_dropbox",
-            tone: .warning,
-            cause: nil,
-            fix: .signIn(provider: .dropbox),
-            lastSynced: Date(timeIntervalSinceNow: -3 * 24 * 3_600)
         )
     }
 #endif

@@ -210,35 +210,3 @@ extension ImageView {
         )
     }
 }
-
-#if DEBUG
-    #Preview("Image View") {
-        // The stub store resolves no bytes, so every slot shows a placeholder.
-        let coverSide: CGFloat = 120
-        HStack(alignment: .top, spacing: ThemeSpace.group) {
-            ImageView(imageRef: nil, pointSize: coverSide)
-                .frame(width: coverSide, height: coverSide)
-                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.cover))
-            ImageView(
-                imageRef: BridgeImageRef(
-                    id: "preview-cover",
-                    version: "1",
-                    imageType: .cover
-                ),
-                pointSize: coverSide
-            )
-            .frame(width: coverSide, height: coverSide)
-            .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.cover))
-            ImageView(content: nil, pointSize: ThemeSize.rowArtwork)
-                .frame(
-                    width: ThemeSize.rowArtwork,
-                    height: ThemeSize.rowArtwork
-                )
-                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
-        }
-        .padding(ThemeSpace.section)
-        .background(Theme.background)
-        .environment(ImageStore.stub())
-        .preferredColorScheme(.dark)
-    }
-#endif

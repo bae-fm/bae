@@ -122,20 +122,6 @@
             bridge: searchGroupExactBridge
         )
 
-        /// The exact album when its MusicBrainz page could not be read.
-        static let searchGroupLinksUnread: ReleaseGroup = {
-            var group = searchGroupExactBridge
-            group.sources = [
-                BridgeReleaseGroupSource(
-                    source: .musicBrainz,
-                    groupUrl:
-                        "https://musicbrainz.org/release-group/group-preview",
-                    albumLinksUnread: true
-                )
-            ]
-            return ReleaseGroup(bridge: group)
-        }()
-
         /// What the folder's text agrees with about each exact-album pressing.
         static let searchAgreementsExact: [String: BridgeAgreements] = [
             "rel-123": BridgeAgreements(
@@ -322,9 +308,6 @@
                 ]
             ),
         ]
-
-        static let searchGroupsManual: [ReleaseGroup] =
-            searchGroupsManualBridge.map(ReleaseGroup.init(bridge:))
 
         /// One card per album when the Disc ID and the barcode share none.
         static let discidOnlyGroup = BridgeReleaseGroup(
@@ -561,26 +544,10 @@
             status: .noMatches
         )
 
-        /// A shop's price-sticker number asked for as a barcode: neither
-        /// provider knows it.
-        static let searchRunStoreInternalBarcode = BridgeCandidateSearch(
-            query: .barcode(barcode: "2100000123457"),
-            unusableBarcode: .storeInternal,
-            sources: searchSources(
-                musicbrainz: .done(count: 0),
-                discogs: .done(count: 0)
-            ),
-            groups: [],
-            status: .noMatches
-        )
-
         // MARK: - Pane states
 
         /// Find online before an automatic run starts.
         static let searchStateIdle = searchState(identifyState: .idle)
-
-        /// Find online while the candidate waits on the identification queue.
-        static let searchStateQueued = searchState(identifyState: .queued)
 
         static let searchStateTriangulating = searchState(
             identifyState: .triangulating(
@@ -827,70 +794,6 @@
                 unattendedPick: nil,
                 offersSharedAlbum: false
             ),
-            signals: settledSignals
-        )
-
-        /// A typed search still running over the Found verdict.
-        static let searchStateSearching = searchState(
-            identifyState: .found(
-                run: identifyRunFound,
-                groups: [searchGroupExact],
-                trackCount: 11,
-                agreements: searchAgreementsExact,
-                narrowedOutCount: 0,
-                folderCheck: nil,
-                unattendedPick: nil,
-                offersSharedAlbum: false
-            ),
-            search: searchRunInFlight,
-            signals: settledSignals
-        )
-
-        /// A settled typed search over the Found verdict.
-        static let searchStateManual = searchState(
-            identifyState: .found(
-                run: identifyRunFound,
-                groups: [searchGroupExact],
-                trackCount: 11,
-                agreements: searchAgreementsExact,
-                narrowedOutCount: 0,
-                folderCheck: nil,
-                unattendedPick: nil,
-                offersSharedAlbum: false
-            ),
-            search: manualSearchRun,
-            signals: settledSignals
-        )
-
-        /// A typed search one source dropped, over the Found verdict.
-        static let searchStateSearchFailed = searchState(
-            identifyState: .found(
-                run: identifyRunFound,
-                groups: [searchGroupExact],
-                trackCount: 11,
-                agreements: searchAgreementsExact,
-                narrowedOutCount: 0,
-                folderCheck: nil,
-                unattendedPick: nil,
-                offersSharedAlbum: false
-            ),
-            search: searchRunSourceFailed,
-            signals: settledSignals
-        )
-
-        /// A typed search both sources answered with nothing.
-        static let searchStateSearchEmpty = searchState(
-            identifyState: .found(
-                run: identifyRunFound,
-                groups: [searchGroupExact],
-                trackCount: 11,
-                agreements: searchAgreementsExact,
-                narrowedOutCount: 0,
-                folderCheck: nil,
-                unattendedPick: nil,
-                offersSharedAlbum: false
-            ),
-            search: searchRunEmpty,
             signals: settledSignals
         )
 

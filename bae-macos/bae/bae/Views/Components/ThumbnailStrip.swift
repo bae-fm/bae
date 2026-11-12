@@ -78,38 +78,3 @@ struct ThumbnailStrip<Item: Identifiable & Equatable, Content: View>: View {
         .buttonStyle(.accentPlain)
     }
 }
-
-#if DEBUG
-    /// A flat-color item for the preview.
-    private struct ThumbnailStripPreviewItem: Identifiable, Equatable {
-        let id: String
-        let color: Color
-    }
-
-    #Preview("Thumbnail Strip") {
-        if let cursor = Cursor(
-            items: [
-                ThumbnailStripPreviewItem(id: "1", color: .blue),
-                ThumbnailStripPreviewItem(id: "2", color: .purple),
-                ThumbnailStripPreviewItem(id: "3", color: .teal),
-                ThumbnailStripPreviewItem(id: "4", color: .orange),
-                ThumbnailStripPreviewItem(id: "5", color: .pink),
-            ],
-            preferring: "2"
-        ) {
-            ThumbnailStrip(
-                cursor: cursor,
-                centered: true,
-                onSelect: { _ in },
-                stroke: { _, isCurrent in
-                    isCurrent ? (Theme.accent, 2) : (Theme.hairline, 1)
-                },
-                content: { item in item.color }
-            )
-            .padding(ThemeSpace.section)
-            .frame(width: 400)
-            .background(Theme.background)
-            .preferredColorScheme(.dark)
-        }
-    }
-#endif

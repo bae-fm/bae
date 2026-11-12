@@ -188,7 +188,6 @@ struct LightboxView<Item: LightboxImage>: View {
             .padding(.bottom, ThemeSpace.edge)
             .shadow(color: Theme.shadow, radius: 20)
     }
-
 }
 
 // MARK: - Overlay chrome
@@ -293,7 +292,6 @@ extension LightboxView {
         }
         .buttonStyle(.accentPlain)
     }
-
 }
 
 extension LightboxView {
@@ -335,32 +333,6 @@ private struct LiveTextOverlay: NSViewRepresentable {
 }
 
 #if DEBUG
-    #Preview {
-        if let cursor = Cursor(items: [
-            LightboxItem(
-                id: "Front.jpg",
-                label: "Front.jpg",
-                image: .localFile(PreviewData.previewArtFile("Front"))
-            ),
-            LightboxItem(
-                id: "Back.jpg",
-                label: "Back.jpg",
-                image: .localFile(PreviewData.previewArtFile("Back"))
-            ),
-        ]) {
-            LightboxView(
-                cursor: cursor,
-                load: LightboxImageLoad(),
-                onUpdate: { _ in },
-                onDismiss: {}
-            )
-            .environment(ImageStore.stub())
-        }
-    }
-
-    #Preview("Loading") {
-        LightboxView<LightboxItem>.loadingPreview()
-    }
 
     extension LightboxView where Item == LightboxItem {
         /// A remote image whose bytes never arrive, which keeps the lightbox

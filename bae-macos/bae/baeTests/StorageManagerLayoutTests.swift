@@ -287,7 +287,6 @@ final class StorageManagerLayoutTests: XCTestCase {
             .compactMap { $0 as? NSScrollView }
             .first { $0.documentView is NSTableView }
     }
-
 }
 
 extension StorageManagerLayoutTests {

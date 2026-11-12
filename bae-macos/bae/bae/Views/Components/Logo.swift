@@ -166,11 +166,3 @@ struct Logo: View {
         }
     }
 }
-
-#if DEBUG
-    #Preview("Logo") {
-        Logo(size: 120, bob: true, glow: true)
-            .padding(80)
-            .windowBackground()
-    }
-#endif

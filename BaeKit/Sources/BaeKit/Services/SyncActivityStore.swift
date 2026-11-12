@@ -45,7 +45,7 @@ public final class SyncActivityStore {
 
 #if DEBUG
     extension SyncActivityStore {
-        /// A library mid-sync for previews: releases uploading and pinning,
+        /// A library mid-sync for shots: releases uploading and pinning,
         /// and a record that needs signing in again.
         public static func preview(
             needsAttention: Bool = true

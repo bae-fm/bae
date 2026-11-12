@@ -24,7 +24,7 @@ private let logger = Logger.bae("LatestValues")
 extension KeyedValueStream: PulledSubscription {}
 
 /// The latest value of each key of one fast stream, for the native views
-/// that draw a key. Until it is fed it holds nothing, and a preview's holds
+/// that draw a key. Until it is fed it holds nothing, and a shot's holds
 /// fixed values that nothing feeds.
 public final class LatestStream<Value: Sendable & Equatable>: Sendable {
     private enum Backing {
@@ -266,7 +266,7 @@ private func reportStreamBug(_ error: any Error, stream: String) {
 private let onlyKey = Data()
 
 extension LatestStream where Value == BridgeReleaseUploadTransfer {
-    /// Each release's upload transfer, by release id; a preview's holds
+    /// Each release's upload transfer, by release id; a shot's holds
     /// `values` and nothing feeds it.
     public static func releaseUploads(holding values: [String: Value] = [:])
         -> LatestStream
@@ -300,7 +300,7 @@ extension OutboxStore {
 }
 
 extension LatestStream where Value == BridgeUploadTransfer {
-    /// The files being sent together, while any is; a preview's holds
+    /// The files being sent together, while any is; a shot's holds
     /// `value` and nothing feeds it.
     public static func uploadTotal(holding value: Value? = nil) -> LatestStream
     {
@@ -332,7 +332,7 @@ extension LatestStream where Value == Double {
     }
 
     /// The share of each Activity line's batch bytes done, by the line's key
-    /// (`ActivityLine`), while the line's batch holds a release; a preview's
+    /// (`ActivityLine`), while the line's batch holds a release; a shot's
     /// holds `values` and nothing feeds it.
     public static func activityBars(holding values: [String: Value] = [:])
         -> LatestStream
@@ -399,7 +399,7 @@ extension LatestStream where Value == BridgeDownloadTransferProgress {
 
 extension LatestStream where Value == BridgeMakeLocalProgress {
     /// How far each release being made local has downloaded, by release id;
-    /// a preview's holds `values` and nothing feeds it.
+    /// a shot's holds `values` and nothing feeds it.
     public static func makeLocals(holding values: [String: Value] = [:])
         -> LatestStream
     {
@@ -420,7 +420,7 @@ extension LatestStream where Value == BridgeMakeLocalProgress {
 }
 
 extension LatestStream where Value == UInt8 {
-    /// Each exporting release's percent, by release id; a preview's holds
+    /// Each exporting release's percent, by release id; a shot's holds
     /// `values` and nothing feeds it.
     public static func exportPercents(holding values: [String: Value] = [:])
         -> LatestStream
@@ -445,7 +445,7 @@ extension LatestStream where Value == UInt8 {
 
 extension LatestStream where Value == UInt32 {
     /// How far through its step each running import is, by candidate key;
-    /// a preview's holds `values` and nothing feeds it.
+    /// a shot's holds `values` and nothing feeds it.
     public static func importPercents(holding values: [Data: Value] = [:])
         -> LatestStream
     {
@@ -467,7 +467,7 @@ extension LatestStream where Value == UInt32 {
     #endif
 
     /// How many entries each tab of the import list holds, by the tab's
-    /// name; a preview's holds `values` and nothing feeds it.
+    /// name; a shot's holds `values` and nothing feeds it.
     public static func tabCounts(holding values: [Data: Value] = [:])
         -> LatestStream
     {
@@ -494,7 +494,7 @@ extension LatestStream where Value == UInt32 {
 
 extension LatestStream where Value == UInt64 {
     /// How many folders each scan under way has stored, by the watched
-    /// folder's path; a preview's holds `values` and nothing feeds it.
+    /// folder's path; a shot's holds `values` and nothing feeds it.
     public static func scanFoundCounts(holding values: [Data: Value] = [:])
         -> LatestStream
     {
@@ -522,7 +522,7 @@ extension LatestStream where Value == UInt64 {
 #if os(macOS)
     extension LatestStream where Value == BridgeSelectionActionProgress {
         /// How far a bulk action over an import list's selection has got,
-        /// while it runs; a preview's holds `value` and nothing feeds it.
+        /// while it runs; a shot's holds `value` and nothing feeds it.
         public static func bulkActionProgress(holding value: Value? = nil)
             -> LatestStream
         {
@@ -569,7 +569,7 @@ extension LatestStream where Value == BridgeOpenProgress {
 
 extension LatestStream where Value == SetupLine {
     /// How far a setup call has come, while it runs a step of its own or one
-    /// coven runs setting storage up; a preview's holds `value` and nothing
+    /// coven runs setting storage up; a shot's holds `value` and nothing
     /// feeds it.
     public static func setupLines(holding value: Value? = nil)
         -> LatestStream
@@ -616,7 +616,7 @@ extension LatestStream where Value == BridgeBootstrapStep {
 }
 
 extension LatestStream where Value == BridgeStorageSetupProgress {
-    /// How far a storage setup has come, while it runs a step; a preview's
+    /// How far a storage setup has come, while it runs a step; a shot's
     /// holds `value` and nothing feeds it.
     public static func storageSetupProgress(holding value: Value? = nil)
         -> LatestStream
@@ -638,7 +638,7 @@ extension LatestStream where Value == BridgeStorageSetupProgress {
 }
 
 extension LatestStream where Value == BridgeClosingProgress {
-    /// The step a library's close runs, while it runs one; a preview's holds
+    /// The step a library's close runs, while it runs one; a shot's holds
     /// `value` and nothing feeds it.
     public static func closingSteps(holding value: Value? = nil)
         -> LatestStream
@@ -662,7 +662,7 @@ extension LatestStream where Value == BridgeClosingProgress {
 #if os(macOS)
     extension LatestStream where Value == BridgeCatalogApplyStep {
         /// The network read an apply of a catalog release waits on, while it
-        /// waits on one; a preview's holds `value` and nothing feeds it.
+        /// waits on one; a shot's holds `value` and nothing feeds it.
         public static func catalogApplySteps(holding value: Value? = nil)
             -> LatestStream
         {
@@ -690,7 +690,7 @@ extension LatestStream {
 }
 
 extension LatestStream where Value == BridgeTrackPosition {
-    /// Where the playing track is, under its track id; a preview's holds
+    /// Where the playing track is, under its track id; a shot's holds
     /// `values` and nothing feeds it.
     public static func trackPositions(holding values: [String: Value] = [:])
         -> LatestStream
@@ -744,7 +744,7 @@ extension LatestSource where Value == BridgeTrackPosition {
 
 extension LatestStream where Value == BridgeTrackBuffered {
     /// The parts of the playing track whose bytes this device holds, under
-    /// its track id; a preview's holds `values` and nothing feeds it.
+    /// its track id; a shot's holds `values` and nothing feeds it.
     public static func trackBuffered(holding values: [String: Value] = [:])
         -> LatestStream
     {
@@ -766,7 +766,7 @@ extension LatestStream where Value == BridgeTrackBuffered {
 
 extension LatestStream where Value == Bool {
     /// True under the playing track's id while its load waits on storage;
-    /// a preview's holds true under each of `waiting` and nothing feeds it.
+    /// a shot's holds true under each of `waiting` and nothing feeds it.
     public static func trackStorageWaits(waiting: Set<String> = [])
         -> LatestStream
     {

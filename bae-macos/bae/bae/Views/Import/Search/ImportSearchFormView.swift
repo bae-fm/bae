@@ -226,41 +226,4 @@ struct ImportSearchFormView: View {
 #if DEBUG
     // MARK: - Previews
 
-    /// The form commits to the candidate; a preview holds the stored form.
-    private struct ImportSearchFormPreview: View {
-        @State
-        var form: CandidateSearchState
-
-        var body: some View {
-            ImportSearchFormView(
-                form: form,
-                onCommit: { form = $0 },
-                signals: PreviewData.settledSignals,
-                focusRequest: 0,
-                onSearch: { _ in },
-            )
-        }
-    }
-
-    #Preview("General search") {
-        ImportSearchFormPreview(
-            form: CandidateSearchState(
-                searchArtist: "Artist Name",
-                searchAlbum: "Album Title"
-            )
-        )
-        .frame(width: 660)
-        .windowBackground()
-    }
-
-    #Preview("Catalog search") {
-        ImportSearchFormPreview(
-            form: CandidateSearchState(
-                searchCatalog: "WPCR-80001",
-                activeTab: .catalogNumber
-            )
-        )
-        .frame(width: 660)
-        .windowBackground()
-    }
 #endif

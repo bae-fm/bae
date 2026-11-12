@@ -251,37 +251,6 @@
             LibraryBrowseSession(library: .stub(), uiStore: uiStore)
         }
 
-        /// A started `LibraryBrowseSession` whose album list's query counts
-        /// `albumCount` albums, for the surfaces that read the library's
-        /// album total.
-        @MainActor
-        static func countedBrowseSession(
-            albumCount: Int,
-            uiStore: UiStore
-        ) -> LibraryBrowseSession {
-            let albums = (0..<albumCount)
-                .map { index in
-                    BridgeAlbum(
-                        id: "counted-\(index)",
-                        title: "Album Title \(index + 1)",
-                        year: nil,
-                        isCompilation: false,
-                        artistNames: "Artist Name",
-                        releaseIds: ["rel-counted-\(index)"],
-                        primaryReleaseId: "rel-counted-\(index)",
-                        cover: nil,
-                    )
-                }
-            let session = LibraryBrowseSession(
-                library: Library(albumBrowse: { _, _ in
-                    .fixed(albums, answers: UnansweredCount())
-                }),
-                uiStore: uiStore
-            )
-            session.start()
-            return session
-        }
-
         /// The composer-list slot backing for `BrowseList`, seeded so its rows
         /// render without an async page fetch (a page whose positions are
         /// seeded is never asked for).

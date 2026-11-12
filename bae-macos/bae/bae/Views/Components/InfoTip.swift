@@ -27,30 +27,3 @@ struct InfoTip: View {
             }
     }
 }
-
-#if DEBUG
-    // Sample copy goes through String values so the string extractor skips it.
-    #Preview("Info Tip") {
-        let encryptionTip =
-            "Your library is encrypted with a key only this device holds."
-        let watchedFolderTip =
-            "New rips dropped here are picked up automatically."
-        VStack(alignment: .leading, spacing: ThemeSpace.group) {
-            HStack(spacing: ThemeSpace.related) {
-                Text(verbatim: "Encryption key")
-                InfoTip(text: LocalizedStringKey(encryptionTip))
-            }
-            HStack(spacing: ThemeSpace.related) {
-                Text(verbatim: "Watched folder")
-                InfoTip(
-                    text: LocalizedStringKey(watchedFolderTip),
-                    learnMoreURL: URL(string: "https://example.com/docs"),
-                    arrowEdge: .trailing
-                )
-            }
-        }
-        .padding(ThemeSpace.section)
-        .background(Theme.background)
-        .preferredColorScheme(.dark)
-    }
-#endif

@@ -256,9 +256,3 @@ private struct LibraryRow: View {
         }
     }
 }
-
-#if DEBUG
-    #Preview {
-        PreviewScenes.welcomeLibraries()
-    }
-#endif

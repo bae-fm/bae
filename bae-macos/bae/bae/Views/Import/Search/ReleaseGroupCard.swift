@@ -99,14 +99,4 @@ struct AlbumSourceLink: View {
 #if DEBUG
     // MARK: - Previews
 
-    #Preview("Release group card") {
-        VStack(alignment: .leading, spacing: ThemeSpace.edge) {
-            ReleaseGroupCard(group: PreviewData.searchGroupExact)
-            ReleaseGroupCard(group: PreviewData.searchGroupsManual[1])
-            ReleaseGroupCard(group: PreviewData.searchGroupLinksUnread)
-        }
-        .padding()
-        .frame(width: 560)
-        .importPreviewEnvironment()
-    }
 #endif

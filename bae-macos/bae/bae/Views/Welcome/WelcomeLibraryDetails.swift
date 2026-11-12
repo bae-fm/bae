@@ -98,19 +98,3 @@ extension BridgeLibraryStanding {
         }
     }
 }
-
-#if DEBUG
-    #Preview("Synced") {
-        PreviewScenes.welcomeLibraryDetails(
-            PreviewData.homeMusic,
-            readStanding: { _ in PreviewData.standingSynced }
-        )
-    }
-
-    #Preview("Unsent changes") {
-        PreviewScenes.welcomeLibraryDetails(
-            PreviewData.homeMusic,
-            readStanding: { _ in PreviewData.standingUnsent }
-        )
-    }
-#endif

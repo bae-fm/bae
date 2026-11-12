@@ -370,25 +370,3 @@ extension EditingField {
         return window?.firstResponder === editor
     }
 }
-
-#if DEBUG
-    #Preview("Committed text field") {
-        @Previewable
-        @State
-        var stored = "Album Title"
-        VStack(alignment: .leading, spacing: ThemeSpace.group) {
-            CommittedTextField(
-                placeholder: "Album title",
-                value: stored,
-                onCommit: { stored = $0 },
-            )
-            Text(verbatim: "Stored: \(stored)")
-                .themeText(.detail)
-                .foregroundStyle(.secondary)
-        }
-        .padding(ThemeSpace.section)
-        .frame(width: 320)
-        .background(Theme.background)
-        .preferredColorScheme(.dark)
-    }
-#endif

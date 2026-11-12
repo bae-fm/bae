@@ -52,28 +52,3 @@ struct StorageReleaseCell: View {
         .padding(.horizontal, ThemeSpace.inline)
     }
 }
-
-#if DEBUG
-    #Preview("Release across columns") {
-        HStack(spacing: 0) {
-            ForEach(StorageTableColumn.allCases, id: \.self) { column in
-                StorageReleaseCell(
-                    release: PreviewData.storageRelease(
-                        albumId: PreviewData.storageAlbum.id,
-                        storageState: .inStorage(pinned: true)
-                    ),
-                    album: PreviewData.storageAlbum,
-                    status: .pinned,
-                    dateAdded: Date(timeIntervalSince1970: 1_700_000_000),
-                    column: column
-                )
-                .frame(width: 110)
-            }
-        }
-        .frame(width: 810)
-        .padding(.vertical)
-        .environment(PreviewData.downloadStore())
-        .environment(PreviewData.outboxStore())
-        .environment(ImageStore.stub())
-    }
-#endif

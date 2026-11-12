@@ -24,5 +24,4 @@ public class ConfigStore {
     public func applyConfigSnapshot(_ config: BridgeConfig) {
         self.config = Config(bridge: config)
     }
-
 }

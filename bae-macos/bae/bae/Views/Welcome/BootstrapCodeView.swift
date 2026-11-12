@@ -216,18 +216,3 @@ private struct AttemptDetailsSection: View {
         }
     }
 }
-
-#if DEBUG
-    #Preview("Restore over") {
-        MacWelcomeWindow {
-            BootstrapCodeView(
-                form: LibrarySetup.stub()
-                    .bootstrapForm(
-                        entry: .restoreOver(libraryId: "library-preview"),
-                        onLibraryReady: { _, _ in }
-                    ),
-                onBack: {}
-            )
-        }
-    }
-#endif

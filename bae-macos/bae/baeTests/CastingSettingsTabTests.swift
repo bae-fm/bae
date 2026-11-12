@@ -10,7 +10,6 @@ import os
 @MainActor
 @Suite("Casting settings")
 struct CastingSettingsTabTests {
-
     @Test("turning casting on never asks")
     func enablingAppliesDirectly() {
         #expect(

@@ -13,17 +13,3 @@ struct SavePresetSummaryRow: View {
         }
     }
 }
-
-#if DEBUG
-    #Preview("Preset rows") {
-        Form {
-            Section {
-                ForEach(PreviewData.savePresets, id: \.id) { preset in
-                    SavePresetSummaryRow(preset: preset)
-                }
-            }
-        }
-        .formStyle(.settings)
-        .frame(width: 460)
-    }
-#endif

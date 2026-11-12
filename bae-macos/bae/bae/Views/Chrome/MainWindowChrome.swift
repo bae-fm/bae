@@ -117,25 +117,4 @@ struct MacWelcomeWindow<Content: View>: View {
 #if DEBUG
     // MARK: - Previews
 
-    /// Stand-in shell content for the chrome to frame.
-    private struct ChromeSampleContent: View {
-        var body: some View {
-            Text(verbatim: "Shell content")
-                .themeText(.title)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-    }
-
-    #Preview("Main window") {
-        MainWindowChrome {
-            ChromeSampleContent()
-        }
-    }
-
-    #Preview("Welcome window") {
-        MacWelcomeWindow {
-            ChromeSampleContent()
-        }
-    }
 #endif

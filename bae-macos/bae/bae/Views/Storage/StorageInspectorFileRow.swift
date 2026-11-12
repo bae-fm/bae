@@ -163,36 +163,3 @@ struct StorageFileMark: View {
         }
     }
 }
-
-#if DEBUG
-    #Preview("File marks") {
-        let shares = LatestStream.fileShares(
-            holding: ["sending": 0.38, "pinning": 0.64]
-        )
-        return HStack(spacing: ThemeSpace.group) {
-            StorageFileMark(state: .stored)
-            StorageFileMark(state: .queued(.upload))
-            StorageFileMark(state: .queued(.pin))
-            StorageFileMark(
-                state: .moving(
-                    .upload,
-                    shares.source(for: "sending")
-                )
-            )
-            StorageFileMark(
-                state: .moving(
-                    .pin,
-                    shares.source(for: "pinning")
-                )
-            )
-            StorageFileMark(
-                state: .moving(
-                    .upload,
-                    shares.source(for: "unheard")
-                )
-            )
-        }
-        .frame(height: 16)
-        .padding()
-    }
-#endif

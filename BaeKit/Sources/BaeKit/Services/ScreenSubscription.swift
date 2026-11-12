@@ -137,7 +137,7 @@ public struct PulledValues<Value: Sendable>: PulledSubscription {
     }
 
     #if DEBUG
-        /// Values `read` answers with, for previews and tests; `cancel` is
+        /// Values `read` answers with, for shots and tests; `cancel` is
         /// what ending them does.
         public init(
             read: @escaping @Sendable () async throws -> Value,

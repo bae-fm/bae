@@ -24,10 +24,3 @@ struct MoveToCloudConfirmSheet: View {
         .background(Theme.surfaceElevated)
     }
 }
-
-#if DEBUG
-    #Preview("Move to cloud") {
-        MoveToCloudConfirmSheet(onConfirm: {}, onCancel: {})
-            .frame(width: 420)
-    }
-#endif

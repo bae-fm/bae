@@ -65,19 +65,3 @@ struct WorkDetailView: View {
         release.metadataText
     }
 }
-
-#if DEBUG
-    #Preview("Work Detail") {
-        ScrollView {
-            WorkDetailView(
-                detail: PreviewData.workDetail,
-                openWork: { _ in },
-                openAlbum: { _, _ in }
-            )
-            .padding(ThemeSpace.section)
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .frame(width: 560, height: 640)
-        .environment(ImageStore.stub())
-    }
-#endif

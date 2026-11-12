@@ -237,7 +237,6 @@ struct LibraryArtworkBrowserTests {
             try await Wait.until { await reads.versions == ["v1", "v2"] }
         }
     }
-
 }
 
 extension LibraryArtworkBrowserTests {

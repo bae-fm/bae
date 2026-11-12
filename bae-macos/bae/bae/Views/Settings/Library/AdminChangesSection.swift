@@ -163,37 +163,3 @@ private struct AdminChangeRow: View {
         person ?? String(localized: "This person")
     }
 }
-
-#if DEBUG
-    #Preview("Changes") {
-        Form {
-            AdminChangesSection(place: .library)
-            AdminChangesSection(place: .people)
-        }
-        .formStyle(.grouped)
-        .frame(width: 500, height: 300)
-        .environment(
-            PreviewData.previewSync(storage: PreviewData.previewStorage)
-        )
-        .environment(
-            MembershipStore.stub(
-                people: PreviewData.members(
-                    reaching: PreviewData.previewStorage
-                ),
-                selfIsAdmin: true,
-                adminChanges: [
-                    BridgeAdminChange(
-                        operation: 1,
-                        change: .renameLibrary(name: "Home"),
-                        state: .waiting
-                    ),
-                    BridgeAdminChange(
-                        operation: 2,
-                        change: .removePerson(member: "member", person: "Ben"),
-                        state: .refused(reason: .noAdminLeft)
-                    ),
-                ]
-            )
-        )
-    }
-#endif

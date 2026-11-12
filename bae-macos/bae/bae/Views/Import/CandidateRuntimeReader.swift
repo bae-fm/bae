@@ -4,7 +4,7 @@ import SwiftUI
 // MARK: - Environment key
 
 extension EnvironmentValues {
-    /// What each candidate has in flight, by key, for a preview or a test
+    /// What each candidate has in flight, by key, for a shot or a test
     /// with no bridge behind it: a reader under it draws its key's entry and
     /// subscribes to nothing. `nil` in the app.
     @Entry

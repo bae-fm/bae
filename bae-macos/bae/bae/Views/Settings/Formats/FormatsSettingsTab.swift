@@ -233,14 +233,3 @@ enum DeleteFormatConfirmation {
         )
     }
 }
-
-#if DEBUG
-    #Preview("Formats settings") {
-        FormatsSettingsTab()
-            .environment(PreviewData.configStore())
-            .environment(Outputs.stub())
-            .environment(UiStore())
-            .frame(width: 500, height: 600)
-            .windowBackground()
-    }
-#endif

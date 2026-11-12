@@ -31,15 +31,3 @@ extension BridgeImportDestination {
         }
     }
 }
-
-#if DEBUG
-    #Preview("Import destination") {
-        VStack(alignment: .leading, spacing: ThemeSpace.related) {
-            ForEach(BridgeImportDestination.choices, id: \.self) { choice in
-                MacImportDestination(destination: .constant(choice))
-            }
-        }
-        .padding()
-        .windowBackground()
-    }
-#endif

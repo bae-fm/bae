@@ -74,7 +74,6 @@ struct ImportReleaseSummary {
     private static func factsLine(_ facts: [String?]) -> String {
         FactList.joined(facts)
     }
-
 }
 
 /// An import release summary, scaled for the sidebar or the card, with the
@@ -133,7 +132,6 @@ struct ImportReleaseSummaryView<TitleAccessory: View>: View {
                 .truncationMode(.middle)
         }
     }
-
 }
 
 extension ImportReleaseSummaryView where TitleAccessory == EmptyView {

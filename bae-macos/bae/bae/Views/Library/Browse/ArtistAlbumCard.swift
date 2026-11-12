@@ -30,12 +30,3 @@ struct ArtistAlbumCard: View {
         .buttonStyle(.accentPlain)
     }
 }
-
-#if DEBUG
-    #Preview("Artist Album Card") {
-        ArtistAlbumCard(album: PreviewData.albums[0], onTap: {})
-            .frame(width: 160)
-            .padding()
-            .environment(ImageStore.stub())
-    }
-#endif

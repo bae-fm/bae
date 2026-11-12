@@ -47,11 +47,3 @@ struct ImportActivityIndicator: View {
         }
     }
 }
-
-#if DEBUG
-    #Preview("Import activity") {
-        ImportActivityIndicator(count: 3, onCancelAll: {})
-            .padding()
-            .windowBackground()
-    }
-#endif

@@ -260,28 +260,6 @@
             discOptions: [1, 2]
         )
 
-        /// One CUE+FLAC container the sheet carves nine entries out of, with
-        /// the folder's images and a collapsed logs directory alongside it.
-        static let sheetMappingTable = BridgeMappingTable(
-            images: mappingImages,
-            trackSides: [
-                BridgeMappingTrackSide(
-                    side: .flat,
-                    headerKey: nil,
-                    runs: [
-                        .sheet(
-                            sheet: previewSheetGroup,
-                            entries: (0..<9).map(sheetEntryMapping)
-                        )
-                    ]
-                )
-            ],
-            files: previewLogDocuments.map {
-                carriedRow($0, role: .document)
-            },
-            untitledTrackCount: 0
-        )
-
         /// Every row kind the table draws, with the folder's gallery beside it:
         /// the sheet heading the nine entries it carves, the two documents
         /// carried with the release, the diagnostic logs collapsed to the one
@@ -317,17 +295,6 @@
             untitledTrackCount: 0
         )
 
-        /// A release's files that are no track: a rip log, a track sheet that
-        /// carves none, a notes file, a damaged image and a video.
-        static let releaseFilesRows: [BridgeMappingFileRow] = [
-            carriedRow(infoLog, role: .document),
-            .sheet(sheet: previewSheetGroup),
-            carriedRow(notesDocument, role: .document),
-            carriedRow(coverImage, role: .image),
-            carriedRow(damagedFrontImage, role: .damagedImage),
-            carriedRow(supplementalVideo, role: .other),
-        ]
-
         /// A library release's files that no track plays from, as its editor
         /// lists them: its rip log, its track sheet, a cover image and a scan
         /// the import found damaged, in the release's file order.
@@ -353,44 +320,6 @@
                 role: role
             )
         }
-
-        /// What the folder's own tags say it is: nine tracks, and no release to
-        /// tally them against.
-        static let fileMetadataMappingTable = BridgeMappingTable(
-            images: [],
-            trackSides: [
-                BridgeMappingTrackSide(
-                    side: .flat,
-                    headerKey: nil,
-                    runs: [
-                        .tracks(
-                            mappings: (1...9)
-                                .map { index in
-                                    BridgeTrackMapping(
-                                        source: .file(
-                                            file: mappingAudio(index)
-                                        ),
-                                        track: BridgeRawTrackEdit(
-                                            id: "file-tags-track-\(index - 1)",
-                                            title: "Track Title \(index)",
-                                            artistAssignments: .albumArtists,
-                                            file: .standalone(
-                                                fileId: "Track \(index).flac"
-                                            )
-                                        ),
-                                        position: "\(index)",
-                                        durationMs: mappingAudio(index)
-                                            .durationMs,
-                                        lengthsDisagree: false
-                                    )
-                                }
-                        )
-                    ]
-                )
-            ],
-            files: [],
-            untitledTrackCount: 0
-        )
 
         // MARK: - Mapping pane candidates
 
@@ -516,146 +445,6 @@
             cover: releaseDetailBridge.defaultCover,
         )
 
-        private static let discogsReleaseDetail: PreviewPickedRelease = {
-            var release = releaseDetailBridge
-            release.source = .discogs
-            release.releaseId = "preview-discogs-release"
-            return release
-        }()
-
-        /// The same applied card with Discogs provenance, so both online
-        /// sources keep their controls and disclosure in the same geometry.
-        @MainActor
-        static let discogsMappingCandidate: Candidate = paneCandidate(
-            folder: mappingFolder(
-                name: "Album Title One",
-                files: candidateFilesTracks
-            ),
-            metadataProvenance: .externalRelease(
-                record: BridgeLookupRef(
-                    catalog: discogsReleaseDetail.source,
-                    key: discogsReleaseDetail.releaseId
-                )
-            ),
-            releaseLink: .pressing(
-                link: BridgePressingLink(
-                    record: BridgeLookupRef(
-                        catalog: discogsReleaseDetail.source,
-                        key: discogsReleaseDetail.releaseId
-                    ),
-                    partners: []
-                )
-            ),
-            edit: confirmEditValues,
-            mapping: mappingTable,
-            cover: discogsReleaseDetail.defaultCover,
-        )
-
-        /// A pick that paired both sources into one pressing: the card names
-        /// each, the one the draft was read from first.
-        @MainActor
-        static let pairedMappingCandidate: Candidate = paneCandidate(
-            folder: mappingFolder(
-                name: "Album Title One",
-                files: candidateFilesTracks
-            ),
-            metadataProvenance: .externalRelease(
-                record: BridgeLookupRef(
-                    catalog: releaseDetailBridge.source,
-                    key: releaseDetailBridge.releaseId
-                )
-            ),
-            releaseLink: .pressing(
-                link: BridgePressingLink(
-                    record: BridgeLookupRef(
-                        catalog: releaseDetailBridge.source,
-                        key: releaseDetailBridge.releaseId
-                    ),
-                    partners: [
-                        BridgeLookupRef(
-                            catalog: discogsReleaseDetail.source,
-                            key: discogsReleaseDetail.releaseId
-                        )
-                    ]
-                )
-            ),
-            edit: confirmEditValues,
-            mapping: mappingTable,
-            cover: releaseDetailBridge.defaultCover,
-        )
-
-        /// Nothing selected yet: the metadata card offers to find the release,
-        /// the table says what each file is with its BECOMES half open, and
-        /// there is nothing to commit.
-        @MainActor
-        static let unidentifiedMappingCandidate: Candidate = paneCandidate(
-            folder: mappingFolder(
-                name: "Album Title One",
-                files: bridgeCandidateFiles
-            ),
-            mapping: blankDraftMappingTable,
-        )
-
-        @MainActor
-        static let blankDraftMappingCandidate = unidentifiedMappingCandidate
-
-        @MainActor
-        static let directEntryMappingCandidate: Candidate = paneCandidate(
-            folder: mappingFolder(
-                name: "Album Title One",
-                files: candidateFilesTracks
-            ),
-            edit: confirmEditValues,
-            mapping: mappingTable
-        )
-
-        /// The same unresolved folder with identification settled on several
-        /// pressings — the metadata section offers them inline.
-        @MainActor
-        static let severalMatchesMappingCandidate: Candidate = {
-            var candidate = unidentifiedMappingCandidate
-            candidate.session.presentation = .findOnline
-            candidate.resumedIdentifyState = .found(
-                run: identifyRunFound,
-                groups: [searchGroupExact],
-                trackCount: 12,
-                agreements: searchAgreementsExact,
-                narrowedOutCount: 0,
-                folderCheck: nil,
-                unattendedPick: nil,
-                offersSharedAlbum: false
-            )
-            return candidate
-        }()
-
-        /// The CUE+FLAC shape of the same release: one group row over the
-        /// entries its sheet carves.
-        @MainActor
-        static let sheetMappingCandidate: Candidate = paneCandidate(
-            folder: mappingFolder(
-                name: "Album Title One",
-                files: candidateFilesTracks
-            ),
-            metadataProvenance: .externalRelease(
-                record: BridgeLookupRef(
-                    catalog: releaseDetailBridge.source,
-                    key: releaseDetailBridge.releaseId
-                )
-            ),
-            releaseLink: .pressing(
-                link: BridgePressingLink(
-                    record: BridgeLookupRef(
-                        catalog: releaseDetailBridge.source,
-                        key: releaseDetailBridge.releaseId
-                    ),
-                    partners: []
-                )
-            ),
-            edit: confirmEditValues,
-            mapping: sheetMappingTable,
-            cover: releaseDetailBridge.defaultCover,
-        )
-
         /// The applied release remains recorded after its CUE is ignored;
         /// the track list contains the whole file with its own metadata.
         @MainActor
@@ -721,19 +510,6 @@
             cover: releaseDetailBridge.defaultCover,
         )
 
-        /// The folder read as its own file tags: no release, and a table with
-        /// no tally to state.
-        @MainActor
-        static let fileMetadataMappingCandidate: Candidate = paneCandidate(
-            folder: mappingFolder(
-                name: "Album Title One",
-                files: candidateFilesTracks
-            ),
-            metadataProvenance: .fileMetadata,
-            edit: confirmEditValues,
-            mapping: fileMetadataMappingTable,
-        )
-
         /// Direct entry starts with blank editable metadata while retaining the
         /// candidate's physical audio-to-track mapping.
         private static let blankDraftValues = BridgeRawReleaseEdit(
@@ -756,44 +532,5 @@
                     )
                 }
         )
-
-        /// Nine audio files with nothing said about them yet, the folder's
-        /// images, and the documents and logs carried alongside — a blank
-        /// draft still has a whole folder under it.
-        private static let blankDraftMappingTable = BridgeMappingTable(
-            images: mappingImages,
-            trackSides: [
-                BridgeMappingTrackSide(
-                    side: .flat,
-                    headerKey: nil,
-                    runs: [
-                        .tracks(
-                            mappings: blankDraftValues.tracks.enumerated()
-                                .map { index, track in
-                                    BridgeTrackMapping(
-                                        source: .file(
-                                            file: mappingAudio(index + 1)
-                                        ),
-                                        track: track,
-                                        position: "\(index + 1)",
-                                        durationMs: mappingAudio(index + 1)
-                                            .durationMs,
-                                        lengthsDisagree: false
-                                    )
-                                }
-                        )
-                    ]
-                )
-            ],
-            files: [
-                carriedRow(infoLog, role: .document),
-                carriedRow(notesDocument, role: .document),
-            ]
-                + previewLogDocuments.map {
-                    carriedRow($0, role: .document)
-                },
-            untitledTrackCount: 9
-        )
-
     }
 #endif

@@ -41,18 +41,3 @@ struct MacPortField: View {
         .accessibilityLabel(Text("Port"))
     }
 }
-
-#if DEBUG
-    #Preview("Port field") {
-        Form {
-            LabeledContent("Port") {
-                MacPortField(value: "4533", onCommit: { _ in })
-            }
-            LabeledContent("Port") {
-                MacPortField(value: "4533", invalid: true, onCommit: { _ in })
-            }
-        }
-        .formStyle(.grouped)
-        .frame(width: 400, height: 160)
-    }
-#endif

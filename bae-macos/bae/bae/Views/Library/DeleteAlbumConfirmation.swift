@@ -74,24 +74,3 @@ extension View {
         modifier(DeleteAlbumConfirmation(albumId: albumId, onDelete: onDelete))
     }
 }
-
-#if DEBUG
-    private struct DeleteAlbumConfirmationPreview: View {
-        @State
-        private var albumId: String? = "album-id"
-
-        var body: some View {
-            Button {
-                albumId = "album-id"
-            } label: {
-                Text(verbatim: "Ask Again")
-            }
-            .frame(width: 480, height: 320)
-            .deleteAlbumConfirmation(albumId: $albumId) { _ in }
-        }
-    }
-
-    #Preview("Delete Album Confirmation") {
-        DeleteAlbumConfirmationPreview()
-    }
-#endif

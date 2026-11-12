@@ -37,12 +37,4 @@ extension BridgeTriageReading {
 
     // MARK: - Previews
 
-    #Preview("Read from a record, and not") {
-        VStack(alignment: .leading, spacing: ThemeSpace.related) {
-            RecordArrow(readFromRecord: true)
-            RecordArrow(readFromRecord: false)
-        }
-        .padding()
-        .windowBackground()
-    }
 #endif

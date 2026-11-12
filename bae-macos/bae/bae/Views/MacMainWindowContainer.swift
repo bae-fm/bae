@@ -244,25 +244,3 @@ struct MacMainWindowContainer: View {
         ImportFolderEntry(importer: importer, uiStore: uiStore)
     }
 }
-
-#if DEBUG
-    /// The main window against stub services. The point of top padding keeps
-    /// `ignoresSafeArea` from sliding the bar under the canvas's fake chrome.
-    #Preview("Main app") {
-        let uiStore = UiStore()
-        PreviewScenes.libraryWindow(
-            uiStore: uiStore,
-            backing: LibraryView.previewGridBacking(uiStore: uiStore)
-        )
-    }
-
-    /// The empty library's whole window (desktop story 3) — the same
-    /// composition the shot harness renders.
-    #Preview("Main app \u{2014} Empty") {
-        let uiStore = UiStore()
-        PreviewScenes.libraryEmpty(
-            uiStore: uiStore,
-            backing: LibraryView.previewEmptyBacking(uiStore: uiStore)
-        )
-    }
-#endif

@@ -176,7 +176,6 @@ struct ImportSearchFlowMetadataApplicationTests {
             writes.paneMoves(forKey: MappingFixtures.candidateKey).isEmpty
         )
     }
-
 }
 
 extension ImportSearchFlowMetadataApplicationTests {
@@ -333,7 +332,6 @@ extension ImportSearchFlowMetadataApplicationTests {
         )
         return store
     }
-
 }
 
 @MainActor
@@ -431,7 +429,6 @@ final class MetadataApplicationEditingTests: XCTestCase {
             )
         }
     }
-
 }
 
 @MainActor
@@ -668,7 +665,6 @@ struct ImportSearchFlowLibraryStatusTests {
             )
         )
     }
-
 }
 
 /// A library-status read the test drives: it records every check request,

@@ -91,24 +91,3 @@ struct DownloadRow: View {
         }
     }
 }
-
-#if DEBUG
-    #Preview("Download states") {
-        VStack(spacing: 0) {
-            ForEach(PreviewData.downloadOps, id: \.releaseId) { op in
-                DownloadRow(
-                    op: op,
-                    transfer: .pin(
-                        PreviewData.downloadStore()
-                            .downloadProgress(forRelease: op.releaseId)
-                    ),
-                    onRetry: {},
-                    onCancel: {}
-                )
-                Divider()
-            }
-        }
-        .frame(width: 640)
-        .padding(.vertical)
-    }
-#endif

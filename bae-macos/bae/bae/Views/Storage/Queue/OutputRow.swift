@@ -100,21 +100,3 @@ struct OutputRow: View {
         }
     }
 }
-
-#if DEBUG
-    #Preview("Output states") {
-        VStack(spacing: 0) {
-            ForEach(PreviewData.outputOps, id: \.releaseId) { op in
-                OutputRow(
-                    op: op,
-                    percent: PreviewData.outputStore()
-                        .exportProgress(forRelease: op.releaseId),
-                    onCancel: {}
-                )
-                Divider()
-            }
-        }
-        .frame(width: 700)
-        .padding(.vertical)
-    }
-#endif

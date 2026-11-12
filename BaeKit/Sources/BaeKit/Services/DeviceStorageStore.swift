@@ -115,7 +115,7 @@ public final class DeviceStorageStore {
 
     #if DEBUG
         /// A store whose value is `storage` once a screen follows it, for
-        /// previews and shots; its commands do nothing.
+        /// shots; its commands do nothing.
         public static func staging(_ storage: BridgeDeviceStorage)
             -> DeviceStorageStore
         {

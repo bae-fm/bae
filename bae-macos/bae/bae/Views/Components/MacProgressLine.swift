@@ -72,31 +72,3 @@ extension MacProgressLine where Label == Text {
         self.init(bar: bar) { Text(label) }
     }
 }
-
-#if DEBUG
-    #Preview("Progress Line") {
-        VStack(alignment: .leading, spacing: ThemeSpace.group) {
-            MacProgressLine("Reading files", progress: 0.42, detail: "42%")
-            MacProgressLine("Importing…", progress: nil)
-            MacProgressLine(
-                "Identifying",
-                progress: 112 / 130,
-                detail: "112 / 130"
-            )
-            MacProgressLine(
-                "Uploading 3 files",
-                progress: 0.15,
-                detail: "Uploading 3 MB of 221.2 MB"
-            )
-            MacProgressLine(
-                "A phase named at such length that it has to yield to the bar",
-                progress: 0.6
-            )
-            .frame(width: 200)
-        }
-        .themeText(.body)
-        .padding()
-        .frame(width: 360)
-        .windowBackground()
-    }
-#endif

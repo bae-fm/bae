@@ -56,7 +56,7 @@ struct ImportSelectionOperations: Sendable {
         )
     }
 
-    /// Operations that change nothing, for previews and tests that never act
+    /// Operations that change nothing, for shots and tests that never act
     /// on the selection.
     static let inert = ImportSelectionOperations(
         change: { _ in 0 },

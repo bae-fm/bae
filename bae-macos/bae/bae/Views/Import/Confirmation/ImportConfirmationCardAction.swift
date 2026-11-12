@@ -25,14 +25,3 @@ struct ImportConfirmationCardAction: View {
         return String(localized: "Import")
     }
 }
-
-#if DEBUG
-    #Preview("Card action — ready") {
-        ImportConfirmationCardAction(
-            importStatus: nil,
-            onConfirmImport: {}
-        )
-        .padding()
-        .windowBackground()
-    }
-#endif

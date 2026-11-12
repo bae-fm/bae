@@ -7,7 +7,6 @@ import Testing
 @MainActor
 @Suite("LibraryRemovalConfirmation.message")
 struct LibrarySettingsTabForgetMessageTests {
-
     @Test("synced and never-synced messages are distinct and non-empty")
     func variantsDiffer() {
         let synced = LibraryRemovalConfirmation.message(syncs: true)
@@ -23,7 +22,6 @@ struct LibrarySettingsTabForgetMessageTests {
 @MainActor
 @Suite("The Library tab's location")
 struct LibrarySettingsTabStorageReadTests {
-
     @Test("opening the tab reads the location coven recorded since")
     func openingTheTabReadsTheLocation() async throws {
         let renamed = PreviewData.previewDropboxStorage

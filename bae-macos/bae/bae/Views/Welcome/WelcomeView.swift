@@ -173,27 +173,4 @@ struct WelcomeView: View {
 #if DEBUG
     // MARK: - Previews
 
-    /// The flows the switcher lands on, each in the welcome window's chrome
-    /// with the populated `LibrarySetup` and `LibraryRemovals` so no flow
-    /// touches the real library directory or keychain.
-    #Preview("Choose") {
-        PreviewScenes.welcome(
-            initialMode: .choose,
-            setup: PreviewData.welcomeSetup()
-        )
-    }
-
-    #Preview("Create: your name") {
-        PreviewScenes.welcome(
-            initialMode: .create,
-            setup: PreviewData.welcomeSetup()
-        )
-    }
-
-    #Preview("Enter code") {
-        PreviewScenes.welcome(
-            initialMode: .code(scanning: false),
-            setup: PreviewData.welcomeSetup()
-        )
-    }
 #endif

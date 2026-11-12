@@ -12,7 +12,6 @@ import XCTest
 
 @Suite("PaginatedList")
 struct PaginatedListTests {
-
     @MainActor
     @Test("loadInitial delivers the first live page and total count")
     func loadInitialAllocates() async {
@@ -439,7 +438,6 @@ struct PaginatedListSegmentTests {
         // that asked would be a fresh page per row instead.
         #expect(source.subscribedOffsets == [0, 50, 100, 150])
     }
-
 }
 
 // MARK: - Page holds

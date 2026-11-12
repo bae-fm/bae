@@ -66,27 +66,3 @@ func queuedRelativeLabel(_ epochMs: Int64) -> String {
     formatter.unitsStyle = .abbreviated
     return formatter.localizedString(for: date, relativeTo: Date())
 }
-
-#if DEBUG
-    #Preview("Queue row") {
-        // Routed through a String so the extractor never takes preview-only
-        // copy into the catalog.
-        let sampleHelp = "Cancel this item"
-        QueueRow(
-            icon: "arrow.down.circle",
-            createdAt: Int64(Date().timeIntervalSince1970 * 1000) - 120_000,
-            cancel: .init(
-                help: LocalizedStringKey(sampleHelp),
-                action: {}
-            )
-        ) {
-            Text(verbatim: "Album Title")
-                .lineLimit(1)
-            StatusChip("Queued to pin", symbol: "clock")
-        } below: {
-            EmptyView()
-        }
-        .frame(width: 640)
-        .padding(.vertical)
-    }
-#endif

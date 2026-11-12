@@ -149,38 +149,4 @@ struct SearchView: View {
 #if DEBUG
     // MARK: - Previews
 
-    #Preview("With results") {
-        SearchView(
-            results: PreviewData.searchResults,
-            onSelectAlbum: { _ in },
-            onSelectTrack: { _ in },
-            onSelectArtist: { _ in },
-            onSelectComposer: { _ in },
-            onSelectWork: { _ in },
-        )
-        .frame(width: 700, height: 600)
-        .environment(ImageStore.stub())
-    }
-
-    #Preview("No results") {
-        SearchView(
-            results: SearchResults(
-                bridge: BridgeSearchResults(
-                    albums: [],
-                    artists: [],
-                    tracks: [],
-                    composers: [],
-                    works: []
-                ),
-                query: "placeholder"
-            ),
-            onSelectAlbum: { _ in },
-            onSelectTrack: { _ in },
-            onSelectArtist: { _ in },
-            onSelectComposer: { _ in },
-            onSelectWork: { _ in },
-        )
-        .frame(width: 700, height: 550)
-        .environment(ImageStore.stub())
-    }
 #endif

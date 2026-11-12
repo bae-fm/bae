@@ -89,7 +89,7 @@ extension View {
         modifier(AppAppearance())
     }
 
-    /// An explicit appearance for previews and captures, without preference writes.
+    /// An explicit appearance for shots, without preference writes.
     public func appearance(
         mode: AppearanceMode,
         accent: AccentChoice,

@@ -32,17 +32,3 @@ struct PresetBitDepthRow: View {
         }
     }
 }
-
-#if DEBUG
-    #Preview("Bit depth") {
-        Form {
-            PresetBitDepthRow(
-                preset: PreviewData.savePresets[0],
-                bitDepth: .sameAsSource,
-                update: { _ in },
-            )
-        }
-        .formStyle(.settings)
-        .frame(width: 460)
-    }
-#endif

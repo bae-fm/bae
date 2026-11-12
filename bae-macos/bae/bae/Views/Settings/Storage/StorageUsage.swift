@@ -171,13 +171,4 @@ struct StorageUsageView: View {
         }
     }
 
-    #Preview("Storage Usage") {
-        VStack(alignment: .leading, spacing: 24) {
-            StorageUsageView(usage: StorageUsage(.previewUsual))
-            StorageUsageView(usage: StorageUsage(.previewBeforeReset))
-            StorageUsageView(usage: StorageUsage(.previewNothingPinned))
-        }
-        .padding()
-        .frame(width: 480)
-    }
 #endif

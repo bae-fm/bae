@@ -274,33 +274,3 @@ extension BridgeSaveFolderValue: SaveNameValue {
         }
     }
 }
-
-#if DEBUG
-    #Preview("Save name fields") {
-        @Previewable
-        @State
-        var filePieces = PreviewData.exportFilenamePieces
-        @Previewable
-        @State
-        var folderPieces = PreviewData.exportFolderPieces
-        Form {
-            SaveNameField(
-                title: "File name",
-                pieces: filePieces,
-                error: nil,
-                previewSuffix: ".flac",
-                setPieces: { filePieces = $0 },
-                fail: { _ in }
-            )
-            SaveNameField(
-                title: "Folder name",
-                pieces: folderPieces,
-                error: nil,
-                setPieces: { folderPieces = $0 },
-                fail: { _ in }
-            )
-        }
-        .formStyle(.settings)
-        .frame(width: 500, height: 420)
-    }
-#endif

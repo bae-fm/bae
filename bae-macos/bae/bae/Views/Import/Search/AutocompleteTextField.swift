@@ -210,17 +210,6 @@ private struct InlineCompletionTextFieldNS: NSViewRepresentable {
 #if DEBUG
     // MARK: - Previews
 
-    #Preview("Suggestions") {
-        AutocompleteTextField(
-            text: .constant(""),
-            placeholder: "Artist",
-            suggestions: ["Artist Name", "Album Title", "Label Name"],
-            onSubmit: {},
-        )
-        .frame(width: 260)
-        .padding()
-        .windowBackground()
-    }
 #endif
 
 extension String {

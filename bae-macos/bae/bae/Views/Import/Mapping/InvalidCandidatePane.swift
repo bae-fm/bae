@@ -104,29 +104,3 @@ struct InvalidCandidatePane: View {
         }
     }
 }
-
-#if DEBUG
-    #Preview("Skipped folder pane") {
-        InvalidCandidatePane(
-            detail: PreviewData.invalidCandidateDetail,
-            previewingTarget: nil,
-            mappingActions: inertMappingActions(),
-            onNavigateToPlacement: {}
-        )
-        .frame(width: 900, height: 700)
-        .importPreviewEnvironment()
-        .environment(PreviewData.artImageStore())
-    }
-
-    #Preview("Skipped folder pane — no tags, no images") {
-        InvalidCandidatePane(
-            detail: PreviewData.untaggedInvalidCandidateDetail,
-            previewingTarget: nil,
-            mappingActions: inertMappingActions(),
-            onNavigateToPlacement: {}
-        )
-        .frame(width: 900, height: 500)
-        .importPreviewEnvironment()
-        .environment(PreviewData.artImageStore())
-    }
-#endif

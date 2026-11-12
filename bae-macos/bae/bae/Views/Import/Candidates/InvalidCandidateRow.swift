@@ -49,19 +49,4 @@ struct InvalidCandidateRow: View {
 #if DEBUG
     // MARK: - Previews
 
-    #Preview("Skipped rows") {
-        VStack(alignment: .leading, spacing: 0) {
-            ForEach(PreviewData.invalidCandidates, id: \.candidateKey) {
-                invalid in
-                InvalidCandidateRow(
-                    invalid: invalid,
-                    onSeparate: {}
-                )
-            }
-        }
-        .padding()
-        .frame(width: 340)
-        .environment(PreviewData.artImageStore())
-        .windowBackground()
-    }
 #endif

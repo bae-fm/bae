@@ -119,5 +119,4 @@ struct ImportStorePickTests {
     ) -> BridgeImportCandidateDetail {
         MappingFixtures.detail(mapping: nil, audioIdentity: audio)
     }
-
 }

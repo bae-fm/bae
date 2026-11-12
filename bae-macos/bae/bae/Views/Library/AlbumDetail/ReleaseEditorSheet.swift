@@ -95,27 +95,3 @@ struct ReleaseEditorSheet: View {
         .padding(.horizontal, ThemeSpace.edge)
     }
 }
-
-#if DEBUG
-    #Preview("Edit release") {
-        let library = PreviewReleaseLibrary(
-            draft: PreviewData.releaseEditDraft(trackCount: 6)
-        )
-        ReleaseEditorSheet(
-            releaseId: "release-preview",
-            displayName: "Album Title \u{00B7} 2019 \u{00B7} CD",
-            opened: library.opened(),
-            commands: library.commands(),
-            onSaved: { _ in },
-            onViewAlbum: { _ in },
-            onClose: {}
-        )
-        .frame(width: 1_280, height: 900)
-        .environment(PreviewData.artistAssignmentsLibrary())
-        .environment(SettingsNavigation())
-        .albumDetailPreviewEnvironment()
-        .candidateReaderPreviewEnvironment()
-        .mainWindowPreviewEnvironment()
-        .preferredColorScheme(.dark)
-    }
-#endif

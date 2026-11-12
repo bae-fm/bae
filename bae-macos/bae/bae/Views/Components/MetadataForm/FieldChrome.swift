@@ -140,23 +140,3 @@ struct FieldChrome: ViewModifier {
         }
     }
 }
-
-#if DEBUG
-    #Preview("Field Chrome") {
-        VStack(alignment: .leading, spacing: ThemeSpace.group) {
-            Text(verbatim: "Boxed · resting")
-                .modifier(FieldChrome(focused: false, style: .boxed))
-            Text(verbatim: "Boxed · focused")
-                .modifier(FieldChrome(focused: true, style: .boxed))
-            Text(verbatim: "Inline · resting")
-                .modifier(FieldChrome(focused: false, style: .inline))
-            Text(verbatim: "Inline · focused")
-                .modifier(FieldChrome(focused: true, style: .inline))
-        }
-        .themeText(.body)
-        .padding(ThemeSpace.section)
-        .frame(width: 300, alignment: .leading)
-        .background(Theme.background)
-        .preferredColorScheme(.dark)
-    }
-#endif

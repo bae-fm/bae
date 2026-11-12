@@ -45,31 +45,4 @@ struct LibrarySearchField: View {
 #if DEBUG
     // MARK: - Previews
 
-    /// Owns the text and focus state the title bar normally provides.
-    private struct LibrarySearchFieldPreview: View {
-        @State
-        var text: String
-        @FocusState
-        private var focused: Bool
-
-        var body: some View {
-            LibrarySearchField(
-                text: $text,
-                prompt: "Search",
-                focused: $focused,
-                onEscape: {},
-            )
-            .frame(width: 300)
-            .padding()
-            .background(Theme.surface)
-        }
-    }
-
-    #Preview("Empty") {
-        LibrarySearchFieldPreview(text: "")
-    }
-
-    #Preview("With query") {
-        LibrarySearchFieldPreview(text: "Artist Name")
-    }
 #endif

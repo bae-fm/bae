@@ -58,17 +58,4 @@ struct PreviewOverlay: View {
 #if DEBUG
     // MARK: - Previews
 
-    #Preview("Preview overlay") {
-        PreviewOverlay(
-            name: "01 Track Title.flac",
-            isPlaying: true,
-        )
-        .frame(width: 600, height: 400)
-        .environment(PreviewAudio.stub())
-        .environment(
-            \.previewPosition,
-            PreviewData.previewPosition(positionMs: 52_500, durationMs: 210_000)
-        )
-        .windowBackground()
-    }
 #endif

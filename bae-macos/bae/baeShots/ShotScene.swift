@@ -6,8 +6,7 @@ import SwiftUI
 /// One screen of the app to shoot: the name of the design board it is
 /// compared with (`mac.<area>.<screen>[.<state>]`), the point size to render
 /// at, and a builder for the composed production view and what it waits for. The
-/// builder returns the same `PreviewScenes` composition its `#Preview`
-/// renders — capture and preview share one path.
+/// builder returns the `PreviewScenes` composition for the screen.
 @MainActor
 struct ShotScene {
     let id: String

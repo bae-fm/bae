@@ -148,28 +148,3 @@ enum DeviceResetConfirmation {
         )
     }
 }
-
-#if DEBUG
-    #Preview("Reset required") {
-        PreviewScenes.deviceReset(
-            error: LoadError(.resetOffered, PreviewData.resetRequiredError)
-        )
-    }
-
-    #Preview("Reset failed") {
-        PreviewScenes.deviceReset(
-            error: LoadError(.deviceReset, PreviewData.displayErrorRetryable)
-        )
-    }
-
-    #Preview("Reset unfinished") {
-        MacWelcomeWindow {
-            DeviceResetView(
-                prompt: .unfinished,
-                error: nil,
-                onReset: {},
-                onCancel: {}
-            )
-        }
-    }
-#endif

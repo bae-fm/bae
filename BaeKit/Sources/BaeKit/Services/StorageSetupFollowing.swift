@@ -59,7 +59,7 @@ public final class StorageSetupFollowing {
     }
 
     #if DEBUG
-        /// A setup a preview or a shot stages in place of core: it runs
+        /// A setup a shot stages in place of core: it runs
         /// `progress`, past its point of no return when `finishing`, and
         /// nothing reads it.
         public init(

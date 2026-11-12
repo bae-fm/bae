@@ -53,19 +53,3 @@ struct CandidateFolderLine: View {
         }
     }
 }
-
-#if DEBUG
-    #Preview("Candidate folder line") {
-        CandidateFolderLine(
-            tab: .pending,
-            folderName:
-                "2010 \u{2013} Blue Sky Boys 1939\u{2013}1940 (256 kbps)",
-            folderPaths: [Data("/Music/Blue Sky Boys".utf8)],
-            onNavigateToPlacement: {}
-        )
-        .padding()
-        .frame(width: 520)
-        .windowBackground()
-    }
-
-#endif

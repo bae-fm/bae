@@ -638,6 +638,5 @@
         static let albumDetails: [String: BridgeAlbumDetail] = Dictionary(
             uniqueKeysWithValues: albumDetailList.map { ($0.album.id, $0) }
         )
-
     }
 #endif

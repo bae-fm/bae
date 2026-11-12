@@ -509,7 +509,6 @@ struct IdentifierBandTests {
             )
         }
     }
-
 }
 
 /// A pick being read is not yet a pick. Its row says so — no second click to

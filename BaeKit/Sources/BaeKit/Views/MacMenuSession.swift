@@ -279,7 +279,6 @@
             }
             return elements
         }
-
     }
 
     extension MacMenuSession {

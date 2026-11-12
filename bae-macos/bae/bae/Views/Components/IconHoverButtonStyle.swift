@@ -38,31 +38,3 @@ struct IconHoverButtonStyle: ButtonStyle {
         }
     }
 }
-
-#if DEBUG
-    #Preview("Icon Hover Button Style") {
-        HStack(spacing: ThemeSpace.group) {
-            Button {
-            } label: {
-                Image(systemName: "backward.fill")
-            }
-            Button {
-            } label: {
-                Image(systemName: "play.fill")
-            }
-            Button {
-            } label: {
-                Image(systemName: "forward.fill")
-            }
-            Button {
-            } label: {
-                Image(systemName: "gearshape")
-            }
-        }
-        .buttonStyle(IconHoverButtonStyle().accentFocus())
-        .themeIcon(.large)
-        .padding(ThemeSpace.section)
-        .background(Theme.background)
-        .preferredColorScheme(.dark)
-    }
-#endif

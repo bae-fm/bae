@@ -71,12 +71,6 @@
             .only
         }
 
-        /// A failure the UI worded itself, with no detail to disclose.
-        static let displayErrorSimple = DisplayError(
-            line:
-                "Couldn't reach the sync service. Check your connection and try again."
-        )
-
         /// A core diagnostic: a generic line and a copyable detail.
         static let displayErrorWithDetail: DisplayError = {
             guard
@@ -151,22 +145,4 @@
         }
     }
 
-    #Preview("Error Notice") {
-        VStack(alignment: .leading, spacing: ThemeSpace.section) {
-            Notice(error: PreviewData.displayErrorSimple)
-            Notice(error: PreviewData.displayErrorWithDetail)
-            Notice(
-                error: PreviewData.displayErrorWithDetail,
-                action: ErrorAction {}
-            )
-            Notice(
-                title: "Couldn't open the library",
-                advice: "Check that its folder is still there, then try again.",
-                error: PreviewData.displayErrorWithDetail
-            )
-        }
-        .padding(ThemeSpace.section)
-        .frame(width: 440)
-        .background(Theme.background)
-    }
 #endif

@@ -70,10 +70,10 @@ struct SyncSetupWizard: View {
     @State
     private var run: StorageSetupRun
     #if DEBUG
-        /// The S3 form's fields, when a preview or a shot stages them.
+        /// The S3 form's fields, when a shot stages them.
         private var stagedS3: S3SetupFields?
         #if BAE_OAUTH_PROVIDERS
-            /// The folder picker, when a preview or a shot stages it.
+            /// The folder picker, when a shot stages it.
             private var stagedBrowser: StorageFolderBrowser?
         #endif
         /// The failure the S3 form shows at its top, when a shot stages one.
@@ -304,7 +304,7 @@ private struct RestoreCodeStep: View {
             .padding(.horizontal)
             .padding(.bottom, ThemeSpace.section)
         }
-        // The code is made as this screen opens, unless a preview or a shot
+        // The code is made as this screen opens, unless a shot
         // already holds one.
         .onAppear {
             if reveal.state == .closed {
@@ -397,7 +397,7 @@ struct SetupStep<Fields: View, Leading: View>: View {
     @State
     private var error: DisplayError?
     #if DEBUG
-        /// A failure a preview or a shot shows at the top in place of a run's.
+        /// A failure a shot shows at the top in place of a run's.
         private var stagedError: DisplayError?
 
         func staging(error: DisplayError?) -> Self {
@@ -484,7 +484,7 @@ struct SetupStep<Fields: View, Leading: View>: View {
     // MARK: - Previews
 
     extension SyncSetupWizard {
-        /// Where a preview or a shot stages the wizard's S3 setup.
+        /// Where a shot stages the wizard's S3 setup.
         enum SetupStaging {
             /// Running `step`, before its point of no return.
             case running(BridgeStorageSetupStep)
@@ -569,23 +569,6 @@ struct SetupStep<Fields: View, Leading: View>: View {
         }
 
         #if BAE_OAUTH_PROVIDERS
-            /// The wizard on `browser`'s folder picker, as it stands.
-            static func stagedPicker(_ browser: StorageFolderBrowser)
-                -> some View
-            {
-                let sync = Sync(cancelStorageSetup: { .undoing })
-                var wizard = SyncSetupWizard(
-                    provider: browser.provider.cloudProvider,
-                    run: StorageSetupRun(onCancelled: {}),
-                    onDone: {}
-                )
-                wizard.stagedBrowser = browser
-                return
-                    wizard
-                    .environment(PreviewData.configStore())
-                    .environment(sync)
-                    .environment(CloudSyncSetup())
-            }
         #endif
 
         private init(
@@ -612,28 +595,12 @@ struct SetupStep<Fields: View, Leading: View>: View {
 
     extension SyncSetupWizard {
         #if BAE_OAUTH_PROVIDERS
-            /// The wizard on Dropbox's screen while the person signs in in
-            /// their browser, which never answers.
-            static func signingInToDropbox() -> some View {
-                SyncSetupWizard(
-                    provider: .dropbox,
-                    run: StorageSetupRun(onCancelled: {}),
-                    onDone: {}
-                )
-                .environment(PreviewData.configStore())
-                .environment(PreviewData.previewSync(storage: nil))
-                .environment(
-                    CloudSyncSetup(signIn: { _ in
-                        try await Task.neverAnswers()
-                    })
-                )
-            }
         #endif
     }
 
     extension SyncSetupWizard {
         /// Setup's last screen for `provider`, in `state`: a fixture code in
-        /// a preview or a shot, never a real one.
+        /// a shot, never a real one.
         static func finished(
             on provider: BridgeCloudProvider,
             holding state: RestoreCodeReveal.State
@@ -679,72 +646,7 @@ struct SetupStep<Fields: View, Leading: View>: View {
         }
     }
 
-    #Preview("Restore code") {
-        SyncSetupWizard.finished(
-            on: .s3,
-            holding: .shown(code: PreviewData.restoreCodeGrouped)
-        )
-    }
-
-    #Preview("Provider Selection") {
-        SyncSetupWizard.choosing()
-    }
-
-    #Preview("iCloud") {
-        SyncSetupWizard.iCloud()
-    }
-
-    #Preview("Connecting") {
-        SyncSetupWizard.staged(.running(.connecting))
-    }
-
-    #Preview("Creating the library") {
-        SyncSetupWizard.staged(.finishing(.creatingStore))
-    }
-
-    #Preview("Cancelling") {
-        SyncSetupWizard.staged(.cancelling)
-    }
-
     #if BAE_OAUTH_PROVIDERS
-        #Preview("Signing in to Dropbox") {
-            SyncSetupWizard.signingInToDropbox()
-        }
 
-        #Preview("Folder picker") {
-            SyncSetupWizard.stagedPicker(
-                PreviewData.folderBrowser(.dropbox, .list)
-            )
-        }
-
-        #Preview("Folder picker — naming a folder") {
-            SyncSetupWizard.stagedPicker(
-                PreviewData.folderBrowser(.dropbox, .naming)
-            )
-        }
-
-        #Preview("Folder picker — folder made") {
-            SyncSetupWizard.stagedPicker(
-                PreviewData.folderBrowser(.dropbox, .made)
-            )
-        }
-
-        #Preview("Folder picker — folder not empty") {
-            SyncSetupWizard.stagedPicker(
-                PreviewData.folderBrowser(.dropbox, .notEmpty)
-            )
-        }
-
-        #Preview("Folder picker — no folders") {
-            SyncSetupWizard.stagedPicker(
-                PreviewData.folderBrowser(.dropbox, .none)
-            )
-        }
-
-        #Preview("Folder picker — OneDrive") {
-            SyncSetupWizard.stagedPicker(
-                PreviewData.folderBrowser(.oneDrive, .list)
-            )
-        }
     #endif
 #endif

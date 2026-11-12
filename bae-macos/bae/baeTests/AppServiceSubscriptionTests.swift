@@ -680,5 +680,4 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
     func deliverTimeline(_ timeline: BridgePlaybackTimeline) {
         self.timeline.deliver(timeline)
     }
-
 }

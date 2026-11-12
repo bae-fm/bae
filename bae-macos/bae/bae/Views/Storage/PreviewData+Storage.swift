@@ -75,33 +75,6 @@
             ),
         ]
 
-        /// The storage rows' release pinning (`rel-row-5`), downloading.
-        static var pinningDownloads: [BridgeDownloadOp] {
-            [
-                BridgeDownloadOp(
-                    releaseId: "rel-row-5",
-                    kind: .pin,
-                    release: nil,
-                    createdAt: queuedAt(minutesAgo: 1),
-                    state: .active
-                )
-            ]
-        }
-
-        /// The storage rows' release pinning (`rel-row-5`), waiting its
-        /// turn in the download queue.
-        static var queuedPinDownloads: [BridgeDownloadOp] {
-            [
-                BridgeDownloadOp(
-                    releaseId: "rel-row-5",
-                    kind: .pin,
-                    release: nil,
-                    createdAt: queuedAt(minutesAgo: 1),
-                    state: .queued
-                )
-            ]
-        }
-
         /// How far the previews' files being downloaded to be kept have
         /// got: the pinning release's audio, as its inspector shows it.
         static let pinFileTransfers: [String: Double] = [
@@ -200,17 +173,6 @@
 
         // MARK: - Cloud outbox
 
-        /// A file coven can't upload until its source is back where it was.
-        static let unavailableFilePending = BridgePendingWait(
-            reason: BridgePendingReason(
-                key: "core.pending.reason.file_unavailable",
-                detail:
-                    "file 0b6f2c9e-5a1d-4c7e-9f3a-2d8e6b1c4a70 is missing at /Volumes/Music/Album Title/05 Track Title.flac",
-                causes: []
-            ),
-            action: .restoreFile
-        )
-
         /// A release with files in the previews' upload queue: what its row
         /// reads of its upload, and each of its files' uploads by file id.
         struct PreviewReleaseUpload {
@@ -281,29 +243,6 @@
                     fileId: "upload-rel-row-2-audio",
                     state: .waiting,
                     pending: nil
-                )
-            ]
-        )
-
-        /// A release whose only file waits on its missing source.
-        static let pendingRelease = PreviewReleaseUpload(
-            releaseId: "rel-row-3",
-            upload: BridgeReleaseUpload(
-                progress: BridgeUploadProgress(
-                    queued: 1,
-                    uploading: 0,
-                    activity: .queued
-                ),
-                summary: [
-                    transferCount("core.queue.queued_to_upload", 1, .waiting)
-                ],
-                missing: nil
-            ),
-            files: [
-                "rel-row-3-audio": BridgeFileUpload(
-                    fileId: "upload-rel-row-3-audio",
-                    state: .waiting,
-                    pending: unavailableFilePending
                 )
             ]
         )
@@ -399,17 +338,6 @@
                 )
             )
         }
-
-        static let storageAlbum = BridgeAlbum(
-            id: "album-store-1",
-            title: "Album Title",
-            year: 2021,
-            isCompilation: false,
-            artistNames: "Artist Name",
-            releaseIds: ["rel-store-1"],
-            primaryReleaseId: "rel-store-1",
-            cover: nil
-        )
 
         // MARK: - Whole-screen: seeded list + Library
 
@@ -520,27 +448,6 @@
                         * 86_400
                 )
             )
-        }
-
-        /// A pre-populated `StorageList` for the footer and whole-screen
-        /// previews — seeded with the rows so the table paints without an
-        /// async round-trip.
-        @MainActor
-        static func storageList(
-            rows: [BridgeStorageRow] = storageRows
-        ) -> StorageList {
-            let list = StorageList(
-                pageSource: storageLibrary(
-                    answers: UnansweredCount(),
-                    rows: rows
-                )
-                .storagePageSource,
-                onError: { _ in }
-            )
-            list.preloadForPreview(
-                rows: storageRows(rows, uploading: defaultUploads)
-            )
-            return list
         }
 
         /// A `Library` whose storage reads serve the fixture rows and nothing
@@ -794,20 +701,5 @@
     }
 
     extension Library {
-        /// The storage page source over this library — the seam
-        /// `StorageManagerView` builds internally, exposed for the preview list.
-        fileprivate var storagePageSource: StorageBrowsePageSource {
-            StorageBrowsePageSource(
-                library: self,
-                sort: BridgeStorageSort(
-                    field: .albumTitle,
-                    direction: .ascending
-                ),
-                filter: .all,
-                search: "",
-                selected: [],
-                onListValue: { _ in }
-            )
-        }
     }
 #endif

@@ -47,19 +47,3 @@ struct SettingToggleRow<Help: View>: View {
         }
     }
 }
-
-#if DEBUG
-    #Preview("Setting Toggle Row") {
-        Form {
-            Section {
-                SettingToggleRow(
-                    title: "Identify automatically",
-                    note: "Looks up each new album as soon as it is added.",
-                    isOn: .constant(true)
-                )
-            }
-        }
-        .formStyle(.settings)
-        .frame(width: 500, height: 120)
-    }
-#endif

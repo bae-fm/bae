@@ -55,22 +55,3 @@ struct ImportListFilterField: View {
         }
     }
 }
-
-#if DEBUG
-    #Preview("Filter field, narrowed") {
-        @Previewable
-        @State
-        var text = "album"
-        @Previewable
-        @FocusState
-        var focused: Bool
-        ImportListFilterField(
-            text: $text,
-            focused: $focused,
-            narrowed: BridgeNarrowedCount(shown: 12, total: 105)
-        )
-        .padding()
-        .frame(width: 420)
-        .windowBackground()
-    }
-#endif

@@ -1,5 +1,5 @@
 #if DEBUG
-    /// A saved restore code made from a fixture, for previews and tests: it
+    /// A saved restore code made from a fixture, for shots and tests: it
     /// answers `info()` itself instead of asking core. It has no core object
     /// behind it, so passing it to a bridge call crashes.
     public final class PreviewSavedRestoreCode: BridgeSavedRestoreCode,

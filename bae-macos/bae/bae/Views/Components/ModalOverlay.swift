@@ -27,29 +27,3 @@ struct ModalOverlay<Content: View>: View {
         }
     }
 }
-
-#if DEBUG
-    #Preview("Modal Overlay") {
-        ModalOverlay(onDismiss: {}) {
-            VStack(spacing: ThemeSpace.group) {
-                Text(verbatim: "Sample Modal")
-                    .themeText(.heading)
-                Text(
-                    verbatim:
-                        "Any content hosts inside the dimmed, dismissible overlay."
-                )
-                .themeText(.body)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                Button("Done") {}
-                    .buttonStyle(PrimaryButtonStyle())
-            }
-            .padding(ThemeSpace.section)
-            .frame(width: 320)
-            .background(Theme.surface)
-        }
-        .frame(width: 620, height: 420)
-        .background(Theme.background)
-        .preferredColorScheme(.dark)
-    }
-#endif

@@ -77,7 +77,7 @@ struct CrashReportingConfig {
 /// guarantee: each one a non-fatal Sentry event carrying the operation and the
 /// error's full text. Core reports its own, and the app a bridge object that
 /// answered what it never answers; whichever reports it has already logged
-/// it. Without Sentry started (the baeium edition, a preview, a test) the
+/// it. Without Sentry started (the baeium edition, a shot, a test) the
 /// event goes nowhere. It is called from whatever thread found the bug;
 /// Sentry's capture is thread-safe.
 public final class CoreBugReporter: BridgeBugReporter, Sendable {

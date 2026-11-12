@@ -385,34 +385,3 @@ private struct DangerNote: View {
             .foregroundStyle(Theme.danger)
     }
 }
-
-#if DEBUG
-    #Preview("Subsonic") {
-        SubsonicSettingsContent(
-            subsonic: SubsonicServer(
-                setEnabled: { _ in },
-                setPort: { _ in },
-                setUsername: { _ in },
-                setNetwork: { _ in },
-                setPassword: { _ in }
-            ),
-            view: BridgeSubsonicView(
-                status: .running(
-                    addresses: [
-                        BridgeServedAddress(
-                            url: "http://localhost:4533",
-                            interface: nil
-                        )
-                    ]
-                ),
-                networks: [],
-                passwordSaved: true
-            ),
-            config: PreviewData.configStore().config.subsonic,
-            names: NetworkNames(),
-            copy: { _ in },
-            showError: { _ in }
-        )
-        .frame(width: 500, height: 400)
-    }
-#endif

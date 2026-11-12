@@ -118,7 +118,6 @@ extension ImportMetadataSourceTests {
         )
         #expect(recorder.fileTagApplications.isEmpty)
     }
-
 }
 
 extension ImportMetadataSourceTests {
@@ -313,7 +312,6 @@ extension ImportMetadataSourceTests {
         #expect(recorder.clearedKeys == [MappingFixtures.candidateKey])
         #expect(recorder.errors.isEmpty)
     }
-
 }
 
 @MainActor
@@ -355,7 +353,6 @@ final class ImportFileTagsRepeatabilityTests: XCTestCase {
             .fileMetadata
         )
     }
-
 }
 
 @MainActor
@@ -449,7 +446,6 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
                 XCTAssertTrue(text.contains(label.name))
                 XCTAssertTrue(text.contains(label.catalogNumber))
             }
-
         }
     }
 
@@ -489,7 +485,6 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
             try HostedInput.click(at: search.center, in: host)
             XCTAssertEqual(recorder.identifyCount, 1)
             XCTAssertEqual(recorder.searchCount, 1)
-
         }
     }
 
@@ -650,7 +645,6 @@ extension ImportMetadataCardLayoutTests {
             try await SnapshotTestSupport.settle(host)
 
             XCTAssertTrue(focusFrames(in: host).isEmpty)
-
         }
     }
 
@@ -683,7 +677,6 @@ extension ImportMetadataCardLayoutTests {
                 try XCTUnwrap(title.font).pointSize,
                 try XCTUnwrap(year.font).pointSize
             )
-
         }
     }
 

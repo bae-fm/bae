@@ -26,11 +26,3 @@ struct KeychainLockedView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
-
-#if DEBUG
-    #Preview("Keychain locked") {
-        MacWelcomeWindow {
-            KeychainLockedView(onRetry: {})
-        }
-    }
-#endif

@@ -175,25 +175,3 @@ private struct ChipFillView: NSViewRepresentable {
         view.stopFollowing()
     }
 }
-
-#if DEBUG
-    #Preview("Progress chips") {
-        let outbox = PreviewData.outboxStore()
-        let downloads = PreviewData.downloadStore()
-        return VStack(alignment: .leading, spacing: ThemeSpace.related) {
-            StorageProgressChip(
-                label: "Uploading",
-                kind: .upload,
-                fill: .upload(outbox.uploadProgress(forRelease: "rel-row-1"))
-            )
-            StorageProgressChip(label: "Uploading", kind: .upload, fill: nil)
-            StorageProgressChip(
-                label: "Pinning",
-                kind: .pin,
-                fill: .pin(downloads.downloadProgress(forRelease: "rel-row-5"))
-            )
-            StorageProgressChip(label: "Pinning", kind: .pin, fill: nil)
-        }
-        .padding()
-    }
-#endif

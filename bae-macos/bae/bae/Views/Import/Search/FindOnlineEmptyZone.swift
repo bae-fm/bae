@@ -21,21 +21,4 @@ struct FindOnlineEmptyZone<Content: View>: View {
 #if DEBUG
     // MARK: - Previews
 
-    #Preview("Nothing found") {
-        FindOnlineEmptyZone {
-            Text("No results")
-                .foregroundStyle(.secondary)
-            SearchManuallyButton(action: {})
-        }
-        .frame(width: 620)
-        .windowBackground()
-    }
-
-    #Preview("Not looked up") {
-        FindOnlineEmptyZone {
-            SearchManuallyButton(action: {})
-        }
-        .frame(width: 620)
-        .windowBackground()
-    }
 #endif

@@ -40,7 +40,7 @@ public final class RestoreCodeReveal {
     }
 
     #if DEBUG
-        /// Starts in `state`, for previews that show a reveal already under
+        /// Starts in `state`, for shots that show a reveal already under
         /// way.
         public init(previewState: State) {
             state = previewState

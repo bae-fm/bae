@@ -57,15 +57,3 @@ struct LibraryModeHeading: View {
         return full + (collapsed - full) * collapseProgress
     }
 }
-
-#if DEBUG
-    #Preview {
-        VStack(alignment: .leading, spacing: ThemeSpace.section) {
-            LibraryModeHeading(collapseProgress: 0)
-            LibraryModeHeading(collapseProgress: 0.5)
-            LibraryModeHeading(collapseProgress: 1)
-        }
-        .padding()
-        .environment(UiStore())
-    }
-#endif

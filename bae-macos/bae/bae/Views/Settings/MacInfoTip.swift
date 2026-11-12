@@ -61,13 +61,3 @@ struct DiscogsInfoTip: View {
         }
     }
 }
-
-#if DEBUG
-    #Preview("Info popovers") {
-        HStack {
-            MusicBrainzInfoTip()
-            DiscogsInfoTip()
-        }
-        .padding()
-    }
-#endif

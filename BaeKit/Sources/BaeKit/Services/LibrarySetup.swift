@@ -2,7 +2,7 @@ import Foundation
 
 /// Operations that run before a library is open: listing this device's
 /// libraries and the restore codes coven saved in iCloud Keychain, deleting
-/// a saved code, creating a library, and starting a restore or join. One injectable seam, so previews
+/// a saved code, creating a library, and starting a restore or join. One injectable seam, so shots
 /// never read or write real application data.
 public final class LibrarySetup: Sendable, Observable {
     public let listLibraries: @Sendable () async throws -> [BridgeLibrary]
@@ -135,7 +135,7 @@ public final class LibrarySetup: Sendable, Observable {
     }
 
     #if DEBUG && os(macOS)
-        /// Serves `libraries` and `savedCodes`; every other operation throws. A restore, join or delete started from a preview fails at
+        /// Serves `libraries` and `savedCodes`; every other operation throws. A restore, join or delete started from a shot fails at
         /// once.
         public static func stub(
             libraries: [BridgeLibrary] = [],

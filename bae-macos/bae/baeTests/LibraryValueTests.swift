@@ -214,7 +214,6 @@ final class ThrowingAlbumPageSource: PageSource, @unchecked Sendable {
 
 @Suite("SearchResults")
 struct SearchResultsTests {
-
     @Test("work results carry linked release count")
     func workResultsCarryLinkedReleaseCount() {
         let results = SearchResults(

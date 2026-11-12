@@ -113,7 +113,6 @@ struct AlbumGridCellsTests {
         )
         #expect(other.count == 3)
     }
-
 }
 
 extension AlbumGridCellsTests {

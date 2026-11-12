@@ -12,15 +12,3 @@ struct SectionHeader: View {
             .padding(.top, ThemeSpace.inline)
     }
 }
-
-#if DEBUG
-    #Preview("Section Header") {
-        VStack(alignment: .leading, spacing: ThemeSpace.group) {
-            SectionHeader(title: "Works")
-            SectionHeader(title: "Releases")
-            SectionHeader(title: "Recordings")
-        }
-        .padding()
-        .frame(width: 320, alignment: .leading)
-    }
-#endif

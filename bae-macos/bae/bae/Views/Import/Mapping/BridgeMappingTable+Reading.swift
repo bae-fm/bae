@@ -22,7 +22,6 @@ extension BridgeMappingSource {
         case .sheetEntry(let entry): entry.previewTarget
         }
     }
-
 }
 
 extension BridgeMappingTrackRun {

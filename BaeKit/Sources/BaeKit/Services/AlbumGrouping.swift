@@ -12,5 +12,4 @@ public final class AlbumGrouping {
     public func setByArtist(_ enabled: Bool) {
         byArtist = enabled
     }
-
 }

@@ -32,29 +32,3 @@ struct CastReceiverDetails: View {
         .frame(width: 320)
     }
 }
-
-#if DEBUG
-    #Preview("Model stated") {
-        CastReceiverDetails(
-            receiver: BridgeCastReceiver(
-                id: "cast-living-room",
-                name: "Living Room",
-                kind: .cast,
-                model: "Google Nest Audio",
-                address: "192.168.1.42"
-            )
-        )
-    }
-
-    #Preview("No model") {
-        CastReceiverDetails(
-            receiver: BridgeCastReceiver(
-                id: "cast-den",
-                name: "Den receiver",
-                kind: .dlna,
-                model: nil,
-                address: "192.168.1.57"
-            )
-        )
-    }
-#endif

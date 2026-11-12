@@ -89,20 +89,4 @@ struct SlimSlider: View {
 #if DEBUG
     // MARK: - Previews
 
-    /// Holds the value the way the now-playing bar does.
-    private struct SlimSliderPreview: View {
-        @State
-        var value: Float
-
-        var body: some View {
-            SlimSlider(value: value, onDrag: { _ in }, onChange: { value = $0 })
-                .frame(width: 120)
-                .padding()
-                .background(Theme.surface)
-        }
-    }
-
-    #Preview("Volume") {
-        SlimSliderPreview(value: 0.6)
-    }
 #endif

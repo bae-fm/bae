@@ -19,8 +19,4 @@ struct ReleaseRecordsCard: View {
 
     // MARK: - Previews
 
-    #Preview("The catalogs that describe the release") {
-        ReleaseRecordsCard(records: PreviewData.releaseRecordsPair)
-            .importPreviewEnvironment()
-    }
 #endif

@@ -249,109 +249,6 @@
             ),
         ]
 
-        /// One of a skipped folder's files, as its pane lists it.
-        private static func skippedFile(
-            folder: Data,
-            name: String,
-            size: UInt64,
-            role: BridgeMappingRole
-        ) -> BridgeMappingFile {
-            let path = URL(filePathBytes: folder, isDirectory: true)
-                .appending(path: name).pathBytes
-            return BridgeMappingFile(
-                fileId: name,
-                name: name,
-                size: size,
-                previewTarget: role == .audio
-                    ? BridgePreviewTarget(
-                        path: path,
-                        name: name,
-                        startSample: 0,
-                        endSample: nil
-                    ) : nil,
-                durationMs: nil,
-                audioFormat: nil,
-                role: role
-            )
-        }
-
-        /// The tagged skipped folder looked into: its cover among its images,
-        /// two playable tracks, a zero-filled one and an empty one, its rip
-        /// log, and a damaged back image.
-        static let invalidCandidateDetail: BridgeInvalidCandidateDetail = {
-            let folder = invalidCandidates[0].folderPath
-            return BridgeInvalidCandidateDetail(
-                candidate: invalidCandidates[0],
-                images: [
-                    BridgeMappingImage(
-                        fileId: "Front.png",
-                        name: "Front.png",
-                        file: previewArtFile("Front.png")
-                    )
-                ],
-                files: [
-                    skippedFile(
-                        folder: folder,
-                        name: "01 Track Title.flac",
-                        size: 31_400_000,
-                        role: .audio
-                    ),
-                    skippedFile(
-                        folder: folder,
-                        name: "02 Track Title.flac",
-                        size: 28_900_000,
-                        role: .audio
-                    ),
-                    skippedFile(
-                        folder: folder,
-                        name: "03 Track Title.flac",
-                        size: 33_100_000,
-                        role: .damagedAudio(damage: .unreadable)
-                    ),
-                    skippedFile(
-                        folder: folder,
-                        name: "04 Track Title.flac",
-                        size: 0,
-                        role: .damagedAudio(damage: .empty)
-                    ),
-                    skippedFile(
-                        folder: folder,
-                        name: "Back.png",
-                        size: 512,
-                        role: .damagedImage
-                    ),
-                    skippedFile(
-                        folder: folder,
-                        name: "rip.log",
-                        size: 6_000,
-                        role: .document
-                    ),
-                ]
-            )
-        }()
-
-        /// The skipped folder with only its name to go by: no tags, no image
-        /// that decodes, one empty track.
-        static let untaggedInvalidCandidateDetail =
-            BridgeInvalidCandidateDetail(
-                candidate: invalidCandidates[1],
-                images: [],
-                files: [
-                    skippedFile(
-                        folder: invalidCandidates[1].folderPath,
-                        name: "01.flac",
-                        size: 0,
-                        role: .damagedAudio(damage: .empty)
-                    ),
-                    skippedFile(
-                        folder: invalidCandidates[1].folderPath,
-                        name: "02.flac",
-                        size: 30_200_000,
-                        role: .audio
-                    ),
-                ]
-            )
-
         private static let releaseQueueRoot = "/Music/Incoming"
 
         static let releaseQueueWatchedFolder = BridgeWatchedFolder(
@@ -451,12 +348,6 @@
             hasGroups: true
         )
 
-        private static let releaseQueueResolvedRow = releaseQueueRow(
-            name: "Release 01",
-            displayPath: "Collection/Release 01",
-            separable: true
-        )
-
         @MainActor
         private static func releaseQueueScene(
             items: [BridgeImportListItem],
@@ -481,72 +372,6 @@
                 items: releaseQueueItems,
                 summary: releaseQueueSummary,
                 pending: 3
-            )
-        }
-
-        /// The queue with its second release selected.
-        @MainActor
-        static func releaseQueueSelectedScene() -> ImportPreviewFixture {
-            var selected = releaseQueueRows[1]
-            selected.selected = true
-            return releaseQueueScene(
-                items: [
-                    releaseQueueGroupHeader,
-                    candidateItem(releaseQueueRows[0]),
-                    candidateItem(selected),
-                    candidateItem(releaseQueueRows[2]),
-                ],
-                summary: releaseQueueSummary,
-                pending: 3
-            )
-        }
-
-        @MainActor
-        static func releaseQueueScanningScene() -> ImportPreviewFixture {
-            let scene = releaseQueueScene(
-                items: releaseQueueItems,
-                summary: importQueueSummary(
-                    watchedFolders: [releaseQueueWatchedFolder],
-                    hasGroups: true
-                ),
-                pending: 3
-            )
-            scene.store.applyFolderScans(
-                BridgeFolderScans(
-                    statuses: [
-                        BridgeWatchedFolderScanStatus(
-                            watchedFolderPath: Data(releaseQueueRoot.utf8),
-                            watchedFolderName: releaseQueueWatchedFolder.name,
-                            status: .scanning,
-                            onNetworkVolume: false
-                        )
-                    ],
-                    activity: BridgeFolderScanActivity(
-                        folders: [
-                            BridgeActiveFolderScan(
-                                watchedFolderPath: Data(releaseQueueRoot.utf8),
-                                watchedFolderName: releaseQueueWatchedFolder
-                                    .name
-                            )
-                        ]
-                    )
-                )
-            )
-            scene.store.scanFoundCounts = .scanFoundCounts(holding: [
-                Data(releaseQueueRoot.utf8): 27
-            ])
-            scene.store.identificationProgress = (identified: 27, total: 40)
-            return scene
-        }
-
-        @MainActor
-        static func releaseQueueResolvedScene() -> ImportPreviewFixture {
-            releaseQueueScene(
-                items: [candidateItem(releaseQueueResolvedRow)],
-                summary: importQueueSummary(
-                    watchedFolders: [releaseQueueWatchedFolder]
-                ),
-                pending: 1
             )
         }
 
@@ -576,6 +401,5 @@
                 itemsByTab: scene.itemsByTab
             )
         }
-
     }
 #endif

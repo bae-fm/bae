@@ -43,20 +43,3 @@ struct PlaybackSettingsTab: View {
         }
     }
 }
-
-#if DEBUG
-    #Preview("Playback Settings") {
-        let uiStore = UiStore()
-        PlaybackSettingsTab()
-            .environment(Playback.stub())
-            .environment(
-                PreviewData.makeConfigStore(
-                    libraryFullWidth: false,
-                    pauseBetweenSides: true
-                )
-            )
-            .environment(uiStore)
-            .frame(width: 500, height: 300)
-            .windowBackground()
-    }
-#endif

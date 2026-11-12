@@ -22,28 +22,4 @@ struct ImportSidebarList<Header: View, Content: View>: View {
 #if DEBUG
     // MARK: - Previews
 
-    #Preview("Sidebar list") {
-        ImportSidebarList {
-            HStack {
-                Text(verbatim: "Header")
-                    .themeText(.heading)
-                Spacer()
-                Image(systemName: "plus")
-            }
-            .padding(.horizontal, ThemeSpace.group)
-            .padding(.vertical, ThemeSpace.related)
-        } content: {
-            VStack(alignment: .leading, spacing: ThemeSpace.compact) {
-                ForEach(0..<5) { index in
-                    Text(verbatim: "Row \(index + 1)")
-                        .padding(.horizontal, ThemeSpace.group)
-                        .padding(.vertical, ThemeSpace.inline)
-                }
-                Spacer()
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .frame(width: 280, height: 360)
-        .windowBackground()
-    }
 #endif

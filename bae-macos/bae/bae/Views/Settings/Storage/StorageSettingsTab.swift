@@ -194,31 +194,4 @@ struct StorageSettingsForm: View {
             .environment(UiStore())
     }
 
-    #Preview("Storage Settings") {
-        storageSettingsPreview(.staging(.previewUsual))
-            .frame(width: 500, height: 700)
-    }
-
-    #Preview("Storage Settings, Data From Before A Reset") {
-        storageSettingsPreview(.staging(.previewBeforeReset))
-            .frame(width: 500, height: 820)
-    }
-
-    #Preview("Storage Settings, Nothing Pinned") {
-        storageSettingsPreview(.staging(.previewNothingPinned))
-            .frame(width: 500, height: 700)
-    }
-
-    #Preview("Storage Settings, Deleting Data From Before A Reset") {
-        storageSettingsPreview(.staging(.previewBeforeReset))
-            .frame(width: 500, height: 820)
-            .overlay(alignment: .top) {
-                let alert = StorageAlerts.deleteBeforeReset(
-                    size: UInt64(960_000_000).fileSizeText
-                )
-                MacAlertView(alert.0, buttons: alert.1)
-                    .elevatedFace()
-                    .padding(.top, ThemeSpace.page)
-            }
-    }
 #endif

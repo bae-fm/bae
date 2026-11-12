@@ -67,19 +67,3 @@ struct CoverPickerView: View {
         .onDisappear { state.cancel() }
     }
 }
-
-#if DEBUG
-    #Preview("Cover picker") {
-        CoverPickerView(
-            remoteCoverArts: PreviewData.remoteCovers,
-            localArtwork: PreviewData.bridgeCandidateFiles.coverFiles,
-            selectedCover: PreviewData.remoteCovers.first?.coverChoice,
-            fetchRemoteCovers: { .linked(covers: PreviewData.remoteCovers) },
-            onFindRelease: {},
-            onSelect: { _ in },
-            onDone: {}
-        )
-        .frame(width: 1_000, height: 740)
-        .importPreviewEnvironment()
-    }
-#endif

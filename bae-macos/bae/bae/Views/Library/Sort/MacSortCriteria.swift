@@ -95,26 +95,3 @@ extension Array where Element: SortCriterionRepresentable {
         )
     }
 }
-
-#if DEBUG
-    #Preview("Sort Criteria Row") {
-        @Previewable
-        @State
-        var criteria: [BridgeSortCriterion] = [
-            BridgeSortCriterion(field: .dateAdded, direction: .descending),
-            BridgeSortCriterion(field: .title, direction: .ascending),
-        ]
-        MacSortCriteria(criteria: $criteria)
-            .padding()
-    }
-
-    #Preview("Sort Criteria Row \u{2014} Single") {
-        @Previewable
-        @State
-        var criteria: [BridgeSortCriterion] = [
-            BridgeSortCriterion(field: .artist, direction: .ascending)
-        ]
-        MacSortCriteria(criteria: $criteria)
-            .padding()
-    }
-#endif

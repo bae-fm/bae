@@ -11,7 +11,6 @@ import Testing
 @MainActor
 @Suite("The metadata source switches")
 struct FindOnlineSourceSwitchTests {
-
     /// The settings tab's checkboxes write through an Importer call that
     /// passes the source and the value it is being set to straight through.
     /// Absolute, not a flip, so two windows disagreeing cannot leave the

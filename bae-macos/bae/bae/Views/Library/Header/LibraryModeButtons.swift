@@ -18,15 +18,3 @@ struct LibraryModeButtons: MacMenuPart {
         }
     }
 }
-
-#if DEBUG
-    #Preview("Library Mode Buttons") {
-        MacMenuButton(bordered: true) {
-            LibraryModeButtons(selected: .composers, select: { _ in })
-        } label: {
-            Text(verbatim: "Browse Mode")
-        }
-        .padding()
-        .frame(width: 220)
-    }
-#endif

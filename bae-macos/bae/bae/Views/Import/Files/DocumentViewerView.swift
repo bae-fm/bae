@@ -32,14 +32,3 @@ struct DocumentViewerView: View {
         .background(Theme.surface)
     }
 }
-
-#if DEBUG
-    #Preview("Document Viewer") {
-        DocumentViewerView(
-            name: "info.txt",
-            text:
-                "This is sample document content.\nLine 2 of the document.\nLine 3 with more text.",
-            onClose: {},
-        )
-    }
-#endif

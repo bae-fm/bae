@@ -8,7 +8,6 @@ import Testing
 @MainActor
 @Suite("CancellableTaskSlot")
 struct CancellableTaskSlotTests {
-
     @Test("a second run cancels the first, whose callbacks never fire")
     func replaceSupersedesInFlight() async {
         let slot = CancellableTaskSlot()

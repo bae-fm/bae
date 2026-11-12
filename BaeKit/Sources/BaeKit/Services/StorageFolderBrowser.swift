@@ -115,7 +115,7 @@ public final class StorageFolderBrowser {
     }
 
     #if DEBUG
-        /// A browser already signed in and showing `listing`, for a preview or
+        /// A browser already signed in and showing `listing`, for a shot or
         /// a shot; its calls all fail.
         public init(
             staged provider: Provider,

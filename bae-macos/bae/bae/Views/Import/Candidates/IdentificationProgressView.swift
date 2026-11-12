@@ -208,49 +208,4 @@ struct FolderScanProgressIndicator: View {
 #if DEBUG
     // MARK: - Previews
 
-    #Preview("Identification progress indicator") {
-        IdentificationProgressIndicator(
-            identified: 112,
-            total: 130,
-            onGoToUnidentified: {},
-            onCancelAll: {}
-        )
-        .padding()
-        .windowBackground()
-    }
-
-    #Preview("Identification progress") {
-        IdentificationProgressView(
-            identified: 112,
-            total: 130,
-            onGoToUnidentified: {},
-            onCancelAll: {}
-        )
-        .padding()
-        .frame(width: 280)
-        .windowBackground()
-    }
-
-    #Preview("Folder scan progress") {
-        FolderScanProgressIndicator(
-            activity: BridgeFolderScanActivity(
-                folders: [
-                    BridgeActiveFolderScan(
-                        watchedFolderPath: Data("/imports/one".utf8),
-                        watchedFolderName: "Incoming"
-                    ),
-                    BridgeActiveFolderScan(
-                        watchedFolderPath: Data("/imports/two".utf8),
-                        watchedFolderName: "Archive"
-                    ),
-                ]
-            ),
-            foundCounts: .scanFoundCounts(holding: [
-                Data("/imports/one".utf8): 124,
-                Data("/imports/two".utf8): 55,
-            ])
-        )
-        .padding()
-        .windowBackground()
-    }
 #endif

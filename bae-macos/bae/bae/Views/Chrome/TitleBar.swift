@@ -187,32 +187,4 @@ private struct SectionSegmentedControl: View {
 #if DEBUG
     // MARK: - Previews
 
-    /// Owns the search text the title bar binds to.
-    private struct TitleBarPreview: View {
-        @State
-        private var searchText = ""
-
-        var body: some View {
-            TitleBar(searchText: $searchText, onSearchFieldFrame: { _ in })
-                .frame(width: 1100)
-        }
-    }
-
-    // The environment sits on the #Preview root because the missing-environment
-    // audit reads only the preview closure's modifier chain.
-    #Preview("Title bar") {
-        let library = Library.stub()
-        TitleBarPreview()
-            .environment(library)
-            .environment(LibraryProjectionStore(library: library))
-            .environment(UiStore())
-            .environment(SyncActivityStore.preview())
-            .environment(SubsonicStore())
-            .environment(\.libraryLoadError, nil)
-            .environment(Sync.stub())
-            .environment(Downloads.stub())
-            .environment(Outputs.stub())
-            .environment(SettingsNavigation())
-            .mainWindowPreviewEnvironment()
-    }
 #endif

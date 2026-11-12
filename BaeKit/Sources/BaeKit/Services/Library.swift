@@ -473,7 +473,7 @@ public struct LibrarySearch: Sendable {
 }
 
 /// Error raised by stub closures whose return type can't be defaulted
-/// to a trivial value (e.g. compound bridge records). Previews don't
+/// to a trivial value (e.g. compound bridge records). Shots don't
 /// reach this in practice — the view tree just renders the placeholder
 /// branch when the call throws.
 public enum StubError: Error {

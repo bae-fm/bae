@@ -58,38 +58,3 @@ struct RenameLibrarySheet: View {
         }
     }
 }
-
-#if DEBUG
-    #Preview("Rename library") {
-        @Previewable
-        @State
-        var state = RenameLibrarySheetState(
-            id: "lib-preview",
-            newName: "Album Library",
-            error: nil
-        )
-        RenameLibrarySheet(
-            state: $state,
-            onCancel: {},
-            onCommit: { _ in }
-        )
-    }
-
-    #Preview("Rename Library \u{2014} Error") {
-        @Previewable
-        @State
-        var state = RenameLibrarySheetState(
-            id: "lib-preview",
-            newName: "Album Library",
-            error: DisplayError(
-                line: "A library with that name already exists",
-                detail: "config error: a library named Album Library exists"
-            )
-        )
-        RenameLibrarySheet(
-            state: $state,
-            onCancel: {},
-            onCommit: { _ in }
-        )
-    }
-#endif

@@ -373,15 +373,6 @@ struct LookupReleaseLine: View {
 #if DEBUG
     // MARK: - Previews
 
-    #Preview("Lookup releases — one album") {
-        LookupReleasesPopover(groups: [PreviewData.searchGroupExact])
-            .importPreviewEnvironment()
-    }
-
-    #Preview("Lookup releases — several albums") {
-        LookupReleasesPopover(groups: PreviewData.searchGroupsManual)
-            .importPreviewEnvironment()
-    }
 #endif
 
 /// The caption naming the value after it.

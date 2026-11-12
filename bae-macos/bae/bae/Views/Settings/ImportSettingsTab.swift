@@ -243,28 +243,4 @@ enum TurnOffDiscogsConfirmation {
         static let height: CGFloat = 500
     }
 
-    #Preview("Import Settings") {
-        ImportSettingsTab()
-            .environment(PreviewData.configStore())
-            .environment(Discogs.stub())
-            .environment(Importer.stub())
-            .environment(UiStore())
-            .frame(width: PreviewWindow.width, height: PreviewWindow.height)
-            .windowBackground()
-    }
-
-    #Preview("Import Settings, no Discogs key") {
-        ImportSettingsTab()
-            .environment(
-                PreviewData.makeConfigStore(
-                    libraryFullWidth: false,
-                    discogsUsable: false
-                )
-            )
-            .environment(Discogs.stub())
-            .environment(Importer.stub())
-            .environment(UiStore())
-            .frame(width: PreviewWindow.width, height: PreviewWindow.height)
-            .windowBackground()
-    }
 #endif

@@ -26,7 +26,7 @@ enum SearchTab: Hashable {
 /// One candidate's live read of library membership for the releases its pane
 /// offers: the subscription, pulled through `ScreenSubscription`, and the
 /// revision of the newest checks, so a value answering checks since replaced
-/// is not shown. With no subscription, a preview's or a test's, it reads
+/// is not shown. With no subscription, a shot's or a test's, it reads
 /// nothing.
 @MainActor
 final class LibraryStatusObservation: Equatable {
@@ -527,7 +527,6 @@ struct Candidate: Equatable, Identifiable {
     var settledSignals: Signals? {
         detail?.signals.map(Signals.init(bridge:))
     }
-
 }
 
 extension BridgeReleaseLink {

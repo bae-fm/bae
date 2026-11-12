@@ -33,22 +33,3 @@ where Row.ID: Sendable {
         .background(Theme.background)
     }
 }
-
-#if DEBUG
-    #Preview("Browse List") {
-        let list = PreviewData.composerList()
-        return BrowseList(list: list) { index in
-            let summary = list.row(at: index)
-            return MacLibraryRowButton(
-                picture: summary?.image,
-                title: summary?.name,
-                subtitle: summary?.countText,
-                selected: index == 0,
-                loading: summary == nil,
-                action: {}
-            )
-        }
-        .frame(width: 340, height: 600)
-        .environment(ImageStore.stub())
-    }
-#endif

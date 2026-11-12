@@ -17,45 +17,6 @@
                 items: itemsByTab[uiStore.importCandidateTab] ?? []
             )
         }
-
-        /// This fixture with Found's first group folded shut, as core
-        /// delivers a folded group: its header closed and its members gone.
-        func foldingFirstGroup() -> ImportPreviewFixture {
-            var pending: [BridgeImportListItem] = []
-            var folding = false
-            var folded = false
-            for item in itemsByTab[.pending] ?? [] {
-                switch item {
-                case .groupHeader(
-                    let stableKey,
-                    let group,
-                    let watchedFolderPath,
-                    _,
-                    let entryCount
-                ) where !folded:
-                    folded = true
-                    folding = true
-                    pending.append(
-                        .groupHeader(
-                            stableKey: stableKey,
-                            group: group,
-                            watchedFolderPath: watchedFolderPath,
-                            expanded: false,
-                            entryCount: entryCount
-                        )
-                    )
-                    continue
-                case .candidate(_, _, .some) where folding:
-                    continue
-                default:
-                    folding = false
-                    pending.append(item)
-                }
-            }
-            var itemsByTab = self.itemsByTab
-            itemsByTab[.pending] = pending
-            return ImportPreviewFixture(store: store, itemsByTab: itemsByTab)
-        }
     }
 
     /// The list items and summaries the import previews are built from. Core
@@ -132,7 +93,7 @@
             }
         }
 
-        /// The tab counts a preview's tab bar reads, as the stream core feeds
+        /// The tab counts a shot's tab bar reads, as the stream core feeds
         /// holds them.
         static func tabCounts(
             pending: UInt32,

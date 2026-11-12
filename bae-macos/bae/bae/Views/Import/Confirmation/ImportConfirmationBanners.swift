@@ -143,7 +143,4 @@ struct ImportConfirmationBanners: View {
         }
     }
 
-    #Preview("Confirmation banners") {
-        ImportConfirmationBanners.preview
-    }
 #endif

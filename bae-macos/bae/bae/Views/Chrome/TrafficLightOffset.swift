@@ -100,14 +100,4 @@ private struct TrafficLightPositioner: NSViewRepresentable {
 #if DEBUG
     // MARK: - Previews
 
-    /// The modifier repositions the real window's traffic-light buttons via
-    /// AppKit; the preview canvas has no `NSWindow`, so the positioner never
-    /// joins one here and this hosts a sample surface only to confirm the
-    /// modifier composes and leaves its content unchanged.
-    #Preview("Hosted") {
-        Rectangle()
-            .fill(Theme.surface)
-            .frame(width: 400, height: 120)
-            .modifier(TrafficLightOffset(xOffset: 12, yOffset: 8))
-    }
 #endif

@@ -320,61 +320,6 @@ extension MacImportSidebarContainer {
 
     // MARK: - Previews
 
-    #Preview("Candidate List — Smoke Test") {
-        let scene = PreviewData.importSmokeTestScene()
-        let uiStore = UiStore()
-        uiStore.setImportCandidateTab(.pending)
-        return MacImportSidebarContainer(
-            importStore: scene.store,
-            listSlot: scene.slot(uiStore: uiStore),
-            onAddFolder: {},
-            onRemoveFolder: { _ in },
-            onRefreshFolder: { _ in },
-            onCombineFolder: { _ in },
-            onSeparate: { _ in },
-            onShowInLibrary: { _ in },
-            onPerform: { _ in },
-            onCancelAllIdentification: {},
-            onCancelAllImports: {}
-        )
-        .environment(OutboxStore(uploadsPaused: false))
-        .environment(ImportSelection())
-        .environment(uiStore)
-        .environment(PreviewData.artImageStore())
-        .mainWindowPreviewEnvironment()
-        .frame(width: 500, height: 900)
-        .windowBackground()
-    }
-
-    #Preview("Candidate List Narrow") {
-        let scene = PreviewData.importTabScene()
-        let uiStore = UiStore()
-        uiStore.setWatchedFolderRefreshing(
-            PreviewData.importWatchedFolder.path,
-            true
-        )
-        return MacImportSidebarContainer(
-            importStore: scene.store,
-            listSlot: scene.slot(uiStore: uiStore),
-            onAddFolder: {},
-            onRemoveFolder: { _ in },
-            onRefreshFolder: { _ in },
-            onCombineFolder: { _ in },
-            onSeparate: { _ in },
-            onShowInLibrary: { _ in },
-            onPerform: { _ in },
-            onCancelAllIdentification: {},
-            onCancelAllImports: {}
-        )
-        .environment(OutboxStore(uploadsPaused: false))
-        .environment(ImportSelection())
-        .environment(uiStore)
-        .environment(PreviewData.artImageStore())
-        .mainWindowPreviewEnvironment()
-        .frame(width: 280, height: 560)
-        .windowBackground()
-    }
-
 #endif
 
 /// Decodes the covers of the rows the list has loaded as they land, so a page

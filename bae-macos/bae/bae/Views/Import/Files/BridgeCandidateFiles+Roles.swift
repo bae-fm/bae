@@ -26,7 +26,6 @@ extension BridgeCandidateFile {
         default: return nil
         }
     }
-
 }
 
 extension BridgeCandidateFiles {

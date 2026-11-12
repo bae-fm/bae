@@ -134,17 +134,3 @@ struct TransfersSettingsTab: View {
         )
     }
 }
-
-#if DEBUG
-    #Preview("Transfers Settings") {
-        TransfersSettingsTab()
-            .environment(PreviewData.configStore())
-            .environment(Downloads.stub())
-            .environment(DownloadStore())
-            .environment(OutboxStore(uploadsPaused: false))
-            .environment(Sync.stub())
-            .environment(UiStore())
-            .frame(width: 500, height: 420)
-            .windowBackground()
-    }
-#endif

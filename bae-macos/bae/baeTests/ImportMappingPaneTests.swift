@@ -308,7 +308,6 @@ struct ImportMappingPaneTests {
 }
 
 extension ImportMappingPaneTests {
-
     // Both standalone files and whole containers provide importable audio.
     @MainActor
     @Test("nothing disables the commit")

@@ -49,6 +49,18 @@ RENDER_LEAVES = (
         r"\bstruct\s+MacImportRow\s*:\s*View\b",
     ),
     RenderLeaf(
+        "bae-macos/bae/bae/Views/Import/Candidates/InvalidCandidateRow.swift",
+        "InvalidCandidateRow",
+        "swift",
+        r"\bstruct\s+InvalidCandidateRow\s*:\s*View\b",
+    ),
+    RenderLeaf(
+        "bae-macos/bae/bae/Views/Storage/Table/StorageReleaseCell.swift",
+        "StorageReleaseCell",
+        "swift",
+        r"\bstruct\s+StorageReleaseCell\s*:\s*View\b",
+    ),
+    RenderLeaf(
         "bae-macos/bae/bae/Views/Library/Grid/MacAlbumTile.swift",
         "MacAlbumTile",
         "swift",

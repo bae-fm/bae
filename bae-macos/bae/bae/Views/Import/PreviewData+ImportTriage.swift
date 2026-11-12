@@ -468,30 +468,6 @@
             live: triageLive([.revealFolder])
         )
 
-        /// The catalog-read Done row while one of its release's three files
-        /// is being sent.
-        static let triageRowDoneUploading = {
-            var row = triageRowDoneImported
-            row.upload = BridgeUploadProgress(
-                queued: 2,
-                uploading: 1,
-                activity: .uploading
-            )
-            return row
-        }()
-
-        /// The tag-read Done row while its release's files only wait to
-        /// upload.
-        static let triageRowDoneUploadQueued = {
-            var row = triageRowDoneFromTags
-            row.upload = BridgeUploadProgress(
-                queued: 3,
-                uploading: 0,
-                activity: .queued
-            )
-            return row
-        }()
-
         /// The upload stream the uploading Done row reads: of its release's
         /// 36.4 MB, 12.4 MB stored or sent.
         @MainActor
@@ -726,11 +702,5 @@
                 ]
             )
         }
-
-        /// How far the preview's running import has got.
-        static func importTabPercents() -> LatestStream<UInt32> {
-            .importPercents(holding: [importTabImportingCandidate.key: 45])
-        }
-
     }
 #endif

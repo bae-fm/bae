@@ -137,21 +137,3 @@ private struct CastReceiversSection: View {
         }
     }
 }
-
-#if DEBUG
-    #Preview("Casting Settings") {
-        CastingSettingsTab()
-            .environment(Cast.stub())
-            .environment(CastStart.stub())
-            .environment(PreviewData.castStore())
-            .environment(
-                PreviewData.makeConfigStore(
-                    libraryFullWidth: false,
-                    castEnabled: true
-                )
-            )
-            .environment(UiStore())
-            .frame(width: 500, height: 300)
-            .windowBackground()
-    }
-#endif

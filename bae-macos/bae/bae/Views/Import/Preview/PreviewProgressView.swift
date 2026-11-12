@@ -22,18 +22,3 @@ struct PreviewProgressView: View {
         )
     }
 }
-
-#if DEBUG
-    #Preview("Preview progress bar") {
-        PreviewProgressView(onSeek: { _ in })
-            .environment(
-                \.previewPosition,
-                PreviewData.previewPosition(
-                    positionMs: 78_000,
-                    durationMs: 195_000
-                )
-            )
-            .frame(width: 320, height: 40)
-            .padding()
-    }
-#endif

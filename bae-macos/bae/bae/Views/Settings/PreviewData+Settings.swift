@@ -59,18 +59,6 @@
             )
         )
 
-        /// A OneDrive folder, with the account and the folder's label coven
-        /// read at the latest connection.
-        static let previewOneDriveStorage = BridgeStorageLocation.oneDrive(
-            driveId: "drive-1",
-            folderId: "folder-1",
-            accountLabel: "name@example.com",
-            folderLabel: BridgeFolderLabel(
-                name: "Music Library",
-                webUrl: "https://onedrive.live.com/?id=folder-1"
-            )
-        )
-
         /// This device's person, an admin, whose earlier registration of this
         /// device was replaced, and one other member with a removable device
         /// and two removed ones, each reaching `storage` as its members do:

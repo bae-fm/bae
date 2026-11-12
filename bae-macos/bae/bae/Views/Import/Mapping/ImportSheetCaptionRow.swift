@@ -136,7 +136,6 @@ struct ImportSheetCaptionRow: View {
         .layoutPriority(1)
         .onHover { hoveringName = $0 }
     }
-
 }
 
 /// Where a sheet caption offers its FILE references' audio: a reference

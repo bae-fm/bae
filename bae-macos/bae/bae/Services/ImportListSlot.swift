@@ -276,7 +276,7 @@ final class ImportListSlot {
     }
 
     #if DEBUG
-        /// A slot over a fixed set of items, for previews and tests. The list
+        /// A slot over a fixed set of items, for shots and tests. The list
         /// is seeded synchronously so a canvas draws without a live query.
         static func preview(
             importStore: ImportStore,

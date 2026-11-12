@@ -104,12 +104,6 @@
             lastSynced: Date(timeIntervalSinceNow: -2 * 3_600)
         )
 
-        /// Restore codes saved for libraries not on this Mac, one of them
-        /// unreadable, as the keychain section lists them.
-        static var welcomeSavedCodes: [SavedRestoreEntry] {
-            PreviewSavedRestoreCode.entries.map(SavedRestoreEntry.init)
-        }
-
         /// A `LibrarySetup` whose reads serve the fixtures above — the
         /// populated welcome previews inject it, so no preview ever touches
         /// the real library directory or keychain.

@@ -602,24 +602,6 @@ extension AlbumDetailView {
     }
 }
 
-#if DEBUG
-    #Preview("Album Detail — Single Disc") {
-        AlbumDetailView(albumId: "a-01")
-            .frame(width: 1100, height: 780)
-            .background(Theme.background)
-            .albumDetailPreviewEnvironment()
-            .preferredColorScheme(.dark)
-    }
-
-    #Preview("Album Detail — Multiple Releases") {
-        AlbumDetailView(albumId: "a-04")
-            .frame(width: 1100, height: 780)
-            .background(Theme.background)
-            .albumDetailPreviewEnvironment()
-            .preferredColorScheme(.dark)
-    }
-#endif
-
 /// Identifiable wrapper around a release id, for use with `Cursor`. The id
 /// is the only field — `String` itself isn't `Identifiable` in stdlib and
 /// retroactive conformance is fragile.

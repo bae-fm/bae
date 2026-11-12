@@ -36,14 +36,3 @@ struct AboutSettingsTab: View {
         .frame(maxWidth: .infinity, alignment: .top)
     }
 }
-
-#if DEBUG
-    #Preview("About") {
-        AboutSettingsTab(
-            canCheckForUpdates: true,
-            onCheckForUpdates: {},
-        )
-        .frame(width: 500, height: 300)
-        .windowBackground()
-    }
-#endif

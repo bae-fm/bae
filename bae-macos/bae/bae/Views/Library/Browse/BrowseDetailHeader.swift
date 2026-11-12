@@ -23,15 +23,3 @@ struct BrowseDetailHeader<Summary: BrowseSummaryDisplay>: View {
         }
     }
 }
-
-#if DEBUG
-    #Preview("Browse Detail Header") {
-        VStack(alignment: .leading, spacing: ThemeSpace.section) {
-            BrowseDetailHeader(summary: PreviewData.composerSummary)
-            BrowseDetailHeader(summary: PreviewData.artistSummary)
-        }
-        .padding()
-        .frame(width: 420, alignment: .leading)
-        .environment(ImageStore.stub())
-    }
-#endif

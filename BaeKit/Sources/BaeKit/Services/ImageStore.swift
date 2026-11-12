@@ -229,7 +229,7 @@ public final class ImageStore: Sendable, Observable {
 
     #if DEBUG
         // periphery:ignore
-        /// All-no-op instance for SwiftUI previews. Resolves no bytes; previews
+        /// All-no-op instance for shots. Resolves no bytes; shots
         /// don't have a live library to read from.
         public static func stub() -> ImageStore { ImageStore() }
     #endif
@@ -411,7 +411,6 @@ public final class ImageStore: Sendable, Observable {
             )
         }
     }
-
 }
 
 extension ImageStore {
@@ -476,7 +475,7 @@ extension ImageStore {
     }
 }
 
-/// A capability this `ImageStore` isn't wired for — the preview stub. Throwing
+/// A capability this `ImageStore` isn't wired for — the stub. Throwing
 /// surfaces the misuse instead of masking it with empty bytes.
 public struct ImageStoreUnavailable: Error {
     public init() {}

@@ -25,30 +25,3 @@ struct ImportEmptyState: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
-
-#if DEBUG
-    #Preview("Import empty state \u{2014} no Discogs key") {
-        ImportEmptyState()
-            .environment(UiStore())
-            .environment(
-                PreviewData.makeConfigStore(
-                    libraryFullWidth: false,
-                    discogsUsable: false
-                )
-            )
-            .environment(SettingsNavigation())
-            .mainWindowPreviewEnvironment()
-            .frame(width: 600, height: 400)
-            .windowBackground()
-    }
-
-    #Preview("Import empty state \u{2014} Discogs key saved") {
-        ImportEmptyState()
-            .environment(UiStore())
-            .environment(PreviewData.configStore())
-            .environment(SettingsNavigation())
-            .mainWindowPreviewEnvironment()
-            .frame(width: 600, height: 400)
-            .windowBackground()
-    }
-#endif

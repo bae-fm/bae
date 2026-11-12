@@ -281,7 +281,7 @@
         }
     }
 
-    /// Shared sample data for SwiftUI #Preview blocks.
+    /// Shared sample data for the screenshot scenes and the tests.
     /// Album/artist/track names match bae-mocks/fixtures/data.json.
     enum PreviewData {
         // MARK: - Albums

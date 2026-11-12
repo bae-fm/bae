@@ -114,35 +114,4 @@ struct QueueItemRow: View {
 #if DEBUG
     // MARK: - Previews
 
-    /// Holds the hover the section normally owns.
-    private struct QueueItemRowPreview: View {
-        let item: BridgeQueueEntry
-        @State
-        var isHovered: Bool
-
-        var body: some View {
-            QueueItemRow(
-                item: item,
-                isHovered: isHovered,
-                onHoverChanged: { isHovered = $0 },
-                onSkipTo: { _ in },
-                onRemove: { _ in },
-            )
-            .frame(width: 380)
-            .padding()
-            .background(Theme.surface)
-        }
-    }
-
-    // The environment sits on the #Preview root because the missing-environment
-    // audit reads only the preview closure.
-    #Preview("Resting") {
-        QueueItemRowPreview(item: PreviewData.queueEntries[0], isHovered: false)
-            .environment(ImageStore.stub())
-    }
-
-    #Preview("Hovered") {
-        QueueItemRowPreview(item: PreviewData.queueEntries[1], isHovered: true)
-            .environment(ImageStore.stub())
-    }
 #endif

@@ -29,13 +29,4 @@ struct FindOnlineHeader: View {
 #if DEBUG
     // MARK: - Previews
 
-    #Preview("Header") {
-        VStack(spacing: 0) {
-            FindOnlineHeader(onBack: {})
-            Divider()
-            FindOnlineHeader(onBack: nil)
-        }
-        .frame(width: 660)
-        .windowBackground()
-    }
 #endif

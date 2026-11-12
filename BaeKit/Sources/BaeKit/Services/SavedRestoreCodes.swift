@@ -23,7 +23,7 @@ public final class SavedRestoreCodes {
     public init() {}
 
     #if DEBUG
-        /// Codes already read, for previews, with the delete confirmation
+        /// Codes already read, for shots, with the delete confirmation
         /// open for `confirming`.
         public init(
             previewing entries: [SavedRestoreEntry],

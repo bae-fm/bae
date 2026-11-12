@@ -344,5 +344,4 @@ extension ImportSearchFlow {
             needsYou: candidate.live?.standing?.needsYou,
         )
     }
-
 }

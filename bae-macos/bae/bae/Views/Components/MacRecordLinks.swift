@@ -49,19 +49,4 @@ private struct ReleaseRecordLink: View {
 
     // MARK: - Previews
 
-    private let previewWidth: CGFloat = 420
-
-    #Preview("Two catalogs") {
-        MacRecordLinks(records: PreviewData.releaseRecordsPair)
-            .padding()
-            .frame(width: previewWidth)
-            .background(Theme.surfaceElevated)
-    }
-
-    #Preview("Every catalog") {
-        MacRecordLinks(records: PreviewData.releaseRecordsEveryCatalog)
-            .padding()
-            .frame(width: previewWidth)
-            .background(Theme.surfaceElevated)
-    }
 #endif

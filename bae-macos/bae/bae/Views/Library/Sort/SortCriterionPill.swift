@@ -81,38 +81,3 @@ struct SortCriterionPill<Criterion: SortCriterionRepresentable>: View {
             : String(localized: "Sort ascending")
     }
 }
-
-#if DEBUG
-    #Preview("Sort Criterion Pill") {
-        @Previewable
-        @State
-        var ascending = BridgeSortCriterion(
-            field: .title,
-            direction: .ascending
-        )
-        @Previewable
-        @State
-        var descending = BridgeSortCriterion(
-            field: .dateAdded,
-            direction: .descending
-        )
-        HStack(spacing: ThemeSpace.related) {
-            SortCriterionPill(
-                criterion: $ascending,
-                takenFields: [.dateAdded],
-                canRemove: true,
-                onSetField: { _ in },
-                onRemove: {}
-            )
-            // Only criterion left: not removable.
-            SortCriterionPill(
-                criterion: $descending,
-                takenFields: [],
-                canRemove: false,
-                onSetField: { _ in },
-                onRemove: {}
-            )
-        }
-        .padding()
-    }
-#endif

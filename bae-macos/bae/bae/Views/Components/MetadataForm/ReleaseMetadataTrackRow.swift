@@ -164,30 +164,3 @@ func releaseDurationText(_ milliseconds: Int64?) -> String {
     let label = DurationClock.text(milliseconds)
     return label.isEmpty ? "\u{2014}" : label
 }
-
-#if DEBUG
-    #Preview("Release metadata track row") {
-        @Previewable
-        @State
-        var track =
-            PreviewData.editMetadataDraft(
-                trackCount: 1
-            )
-            .tracks[0]
-        let columns = ReleaseMetadataTrackColumns.resolved(tableWidth: 900)
-        ReleaseMetadataTrackRow(
-            track: track,
-            duration: "3:42",
-            durationDiverges: false,
-            columns: columns,
-            editingCommands: EditingCommitCommands(),
-            position: "1",
-            artistSearch: { PreviewData.artistSearch() },
-            onChange: { track = $0 }
-        )
-        .padding(ThemeSpace.section)
-        .frame(width: 960)
-        .background(Theme.background)
-        .environment(UiStore())
-    }
-#endif

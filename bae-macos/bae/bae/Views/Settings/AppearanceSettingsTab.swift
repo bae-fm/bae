@@ -13,12 +13,3 @@ struct AppearanceSettingsTab: View {
         }
     }
 }
-
-#if DEBUG
-    #Preview("Appearance") {
-        AppearanceSettingsTab()
-            .frame(width: 500, height: 300)
-            .windowBackground()
-            .appAppearance()
-    }
-#endif

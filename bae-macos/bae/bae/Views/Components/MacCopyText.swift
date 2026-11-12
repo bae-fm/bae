@@ -57,17 +57,3 @@ struct HoverCopyText: View {
             .onHover { hovering = $0 }
     }
 }
-
-#if DEBUG
-    #Preview("Copy text") {
-        VStack(alignment: .leading, spacing: ThemeSpace.group) {
-            MacCopyText(text: "http://192.168.1.20:4533", copy: { _ in })
-            MacCopyText(
-                text: "http://100.64.0.3:4533",
-                after: "(Tailscale)",
-                copy: { _ in }
-            )
-        }
-        .padding(ThemeSpace.section)
-    }
-#endif

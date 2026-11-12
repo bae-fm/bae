@@ -180,18 +180,3 @@ struct SavePresetEditor: View {
         update(changed)
     }
 }
-
-#if DEBUG
-    #Preview("Export preset editor") {
-        @Previewable
-        @State
-        var preset = PreviewData.savePresets[0]
-
-        SavePresetEditor(
-            preset: preset,
-            presets: PreviewData.savePresets,
-            update: { preset = $0 }
-        )
-        .environment(UiStore())
-    }
-#endif

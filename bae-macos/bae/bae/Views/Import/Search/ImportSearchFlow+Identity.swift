@@ -164,5 +164,4 @@ extension ImportSearchFlow {
         case .error, nil: return false
         }
     }
-
 }

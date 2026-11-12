@@ -28,7 +28,7 @@ struct S3SetupForm: View {
     }
 
     #if DEBUG
-        /// A form whose fields are staged, for a preview or a shot.
+        /// A form whose fields are staged, for a shot.
         init(
             staged fields: S3SetupFields,
             failure: DisplayError?,
