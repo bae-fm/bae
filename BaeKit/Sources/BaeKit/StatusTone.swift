@@ -220,7 +220,7 @@ public struct StatusChip: View {
         HStack(spacing: ThemeSpace.inline) {
             if let symbol {
                 Image(systemName: symbol)
-                    .themeIcon(.badge)
+                    .themeIcon(.chip)
             }
             label
         }

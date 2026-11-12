@@ -42,7 +42,7 @@ struct MacStorageChip: View {
         case .onOneDevice:
             StatusChip("Local", symbol: "folder")
         case .pinned:
-            StatusChip("Pinned", symbol: "pin.fill")
+            StatusChip("Pinned", symbol: "pin")
         case .inStorage:
             StatusChip("In cloud", symbol: "cloud")
         }

@@ -80,7 +80,7 @@ private struct StorageQueueControl<Progress: View>: View {
         HStack(spacing: ThemeSpace.compact) {
             HStack(spacing: ThemeSpace.inline) {
                 glyph
-                    .themeIcon(.badge)
+                    .themeIcon(.small)
                 if let hold {
                     Text(hold)
                 }

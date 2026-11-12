@@ -27,7 +27,7 @@ struct QueuePauseButton: View {
     var body: some View {
         Button(action: setPaused) {
             Image(systemName: paused ? "play.fill" : "pause.fill")
-                .themeIcon(.badge)
+                .themeIcon(.chip)
         }
         .accessibilityLabel(pauseLabel)
         .help(pauseLabel)

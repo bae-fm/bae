@@ -456,6 +456,14 @@ macos = 8.5
 ios = 9
 android = 12
 
+# A status chip's glyph, and the pause or play mark in the Storage Manager's
+# footer.
+[icon.chip]
+weight = "bold"
+macos = 10
+ios = 10
+android = 12
+
 [icon.small]
 weight = "semibold"
 macos = 11
