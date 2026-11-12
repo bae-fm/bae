@@ -28,6 +28,7 @@ import fm.bae.app.data.LocalImageStore
 import fm.bae.app.displayError
 import fm.bae.app.durationClockLabel
 import fm.bae.app.factsLine
+import fm.bae.app.namesLine
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeSpace
@@ -188,7 +189,7 @@ private fun LazyListScope.trackResults(
     items(tracks, key = { "track:${it.id}" }) { track ->
         AndroidLibraryRow(
             title = track.title,
-            subtitle = LocalContext.current.factsLine(listOf(track.artistName, track.albumTitle)),
+            subtitle = LocalContext.current.namesLine(listOf(track.artistName, track.albumTitle)),
             trailing = LocalContext.current.durationClockLabel(track.durationClock),
             noArt = true,
             onClick = { onSelectAlbum(track.albumId) },

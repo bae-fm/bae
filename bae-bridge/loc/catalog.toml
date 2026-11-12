@@ -2413,7 +2413,7 @@ da = " · "
 nb = " · "
 fi = " · "
 [messages."core.label.list_separator"]
-comment = "Separator between label names that share catalog numbers, and between those numbers, in a release's labels line."
+comment = "Separator between the items of a list of names on one line: label names that share catalog numbers, and between those numbers, in a release's labels line; a track's artist and album in a search result."
 value = ", "
 
 [messages."core.label.list_separator".translations]
