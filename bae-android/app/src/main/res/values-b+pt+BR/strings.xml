@@ -66,7 +66,7 @@
     <string name="queue_shuffle_on">Aleatório</string>
     <string name="queue_shuffle_off">Desativar aleatório</string>
     <string name="search_failed">Falha na busca</string>
-    <string name="search_no_results">Sem resultados</string>
+    <string name="search_no_results">Sem resultados para %1$s</string>
     <string name="search_section_albums">Álbuns</string>
     <string name="search_section_artists">Artistas</string>
     <string name="search_section_tracks">Faixas</string>

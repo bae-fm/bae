@@ -70,7 +70,7 @@
         <item quantity="other">Προστέθηκαν %d κομμάτια στην ουρά</item>
     </plurals>
     <string name="search_failed">Η αναζήτηση απέτυχε</string>
-    <string name="search_no_results">Κανένα αποτέλεσμα</string>
+    <string name="search_no_results">Κανένα αποτέλεσμα για %1$s</string>
     <string name="search_section_albums">Άλμπουμ</string>
     <string name="search_section_artists">Καλλιτέχνες</string>
     <string name="search_section_tracks">Κομμάτια</string>

@@ -71,7 +71,7 @@
         <item quantity="other">%d de piese adăugate la coadă</item>
     </plurals>
     <string name="search_failed">Căutarea a eșuat</string>
-    <string name="search_no_results">Niciun rezultat</string>
+    <string name="search_no_results">Niciun rezultat pentru %1$s</string>
     <string name="search_section_albums">Albume</string>
     <string name="search_section_artists">Artiști</string>
     <string name="search_section_tracks">Piese</string>

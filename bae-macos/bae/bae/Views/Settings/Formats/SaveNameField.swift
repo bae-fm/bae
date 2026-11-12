@@ -50,7 +50,7 @@ extension BridgeNamePatternError {
         case .startsWithDot:
             String(localized: "A name cannot start with a dot.")
         case .forbiddenCharacter(let character):
-            String(localized: "A name cannot have \(character) in it.")
+            String(localized: "A name cannot contain “\(character)”.")
         }
     }
 }

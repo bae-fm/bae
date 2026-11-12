@@ -82,8 +82,8 @@ public final class StorageFolderBrowser {
         case signingIn
         /// The provider lists the folders to choose from.
         case listing
-        /// The provider makes the folder the person named.
-        case makingFolder
+        /// The provider makes the folder the person named, shown by its name.
+        case makingFolder(String)
     }
 
     public let provider: Provider
@@ -248,7 +248,7 @@ public final class StorageFolderBrowser {
         let name = newFolderName.trimmingCharacters(in: .whitespaces)
         let operations = operations
         takenName = nil
-        run(.makingFolder) {
+        run(.makingFolder(name)) {
             do {
                 let created = try await operations.make(listing.path.last, name)
                 self.isNaming = false

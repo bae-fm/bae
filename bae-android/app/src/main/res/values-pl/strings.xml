@@ -66,7 +66,7 @@
     <string name="queue_shuffle_on">Odtwarzaj losowo</string>
     <string name="queue_shuffle_off">Wyłącz odtwarzanie losowe</string>
     <string name="search_failed">Wyszukiwanie nie powiodło się</string>
-    <string name="search_no_results">Brak wyników</string>
+    <string name="search_no_results">Brak wyników dla %1$s</string>
     <string name="search_section_albums">Albumy</string>
     <string name="search_section_artists">Wykonawcy</string>
     <string name="search_section_tracks">Ścieżki</string>

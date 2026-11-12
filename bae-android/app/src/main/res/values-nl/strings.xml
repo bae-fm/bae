@@ -66,7 +66,7 @@
     <string name="queue_shuffle_on">Shuffle</string>
     <string name="queue_shuffle_off">Shuffle uitschakelen</string>
     <string name="search_failed">Zoeken mislukt</string>
-    <string name="search_no_results">Geen resultaten</string>
+    <string name="search_no_results">Geen resultaten voor %1$s</string>
     <string name="search_section_albums">Albums</string>
     <string name="search_section_artists">Artiesten</string>
     <string name="search_section_tracks">Nummers</string>

@@ -70,7 +70,7 @@
         <item quantity="other">%d spor blev føjet til køen</item>
     </plurals>
     <string name="search_failed">Søgningen mislykkedes</string>
-    <string name="search_no_results">Ingen resultater</string>
+    <string name="search_no_results">Ingen resultater for %1$s</string>
     <string name="search_section_albums">Album</string>
     <string name="search_section_artists">Kunstnere</string>
     <string name="search_section_tracks">Spor</string>

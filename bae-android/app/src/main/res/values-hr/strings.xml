@@ -66,7 +66,7 @@
     <string name="queue_shuffle_on">Naizmjenično</string>
     <string name="queue_shuffle_off">Isključi naizmjenično</string>
     <string name="search_failed">Pretraživanje nije uspjelo</string>
-    <string name="search_no_results">Nema rezultata</string>
+    <string name="search_no_results">Nema rezultata za %1$s</string>
     <string name="search_section_albums">Albumi</string>
     <string name="search_section_artists">Izvođači</string>
     <string name="search_section_tracks">Pjesme</string>

@@ -66,7 +66,7 @@
     <string name="queue_shuffle_on">隨機播放</string>
     <string name="queue_shuffle_off">關閉隨機播放</string>
     <string name="search_failed">搜尋失敗</string>
-    <string name="search_no_results">沒有結果</string>
+    <string name="search_no_results">沒有 %1$s 的結果</string>
     <string name="search_section_albums">專輯</string>
     <string name="search_section_artists">藝人</string>
     <string name="search_section_tracks">曲目</string>

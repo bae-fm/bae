@@ -1,176 +1,176 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "Checking the folder…" : {
-      "comment" : "Dropbox or OneDrive setup, while bae checks the folder the person chose holds nothing else.",
+    "Checking the folder %@…" : {
+      "comment" : "Dropbox or OneDrive setup, while bae checks the folder the person chose holds nothing else; the argument is the name of that folder.",
       "extractionState" : "manual",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "جارٍ التحقق من المجلد…"
+            "value" : "جارٍ التحقق من المجلد %@…"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Папката се проверява…"
+            "value" : "Папката %@ се проверява…"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kontroluje se složka…"
+            "value" : "Kontroluje se složka %@…"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tjekker mappen…"
+            "value" : "Tjekker mappen %@…"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ordner wird geprüft …"
+            "value" : "Ordner %@ wird geprüft …"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Έλεγχος του φακέλου…"
+            "value" : "Έλεγχος του φακέλου %@…"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Checking the folder…"
+            "value" : "Checking the folder %@…"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Comprobando la carpeta…"
+            "value" : "Comprobando la carpeta %@…"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tarkistetaan kansiota…"
+            "value" : "Tarkistetaan kansiota %@…"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vérification du dossier…"
+            "value" : "Vérification du dossier %@…"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "בודק את התיקייה…"
+            "value" : "בודק את התיקייה %@…"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Provjera mape…"
+            "value" : "Provjera mape %@…"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A mappa ellenőrzése…"
+            "value" : "A(z) %@ mappa ellenőrzése…"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Controllo della cartella…"
+            "value" : "Controllo della cartella %@…"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "フォルダを確認しています…"
+            "value" : "フォルダ%@を確認しています…"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "폴더를 확인하는 중…"
+            "value" : "%@ 폴더를 확인하는 중…"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sjekker mappen…"
+            "value" : "Sjekker mappen %@…"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Map wordt gecontroleerd…"
+            "value" : "Map %@ wordt gecontroleerd…"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sprawdzanie folderu…"
+            "value" : "Sprawdzanie folderu %@…"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Verificando a pasta…"
+            "value" : "Verificando a pasta %@…"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A verificar a pasta…"
+            "value" : "A verificar a pasta %@…"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Se verifică dosarul…"
+            "value" : "Se verifică dosarul %@…"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kontroluje sa priečinok…"
+            "value" : "Kontroluje sa priečinok %@…"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kontrollerar mappen…"
+            "value" : "Kontrollerar mappen %@…"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Klasör denetleniyor…"
+            "value" : "%@ klasörü denetleniyor…"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Перевірка папки…"
+            "value" : "Перевірка папки %@…"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "正在检查文件夹…"
+            "value" : "正在检查文件夹%@…"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "正在檢查資料夾…"
+            "value" : "正在檢查資料夾%@…"
           }
         }
       }
@@ -28296,175 +28296,175 @@
         }
       }
     },
-    "A name cannot have %@ in it." : {
+    "A name cannot contain “%@”." : {
       "comment" : "Save as settings: shown in place of the preview when typed text in a file or folder name pattern holds a character a name can't have; %@ is that character",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "لا يمكن أن يحتوي الاسم على %@."
+            "value" : "لا يمكن أن يحتوي الاسم على «%@»."
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Името не може да съдържа %@."
+            "value" : "Името не може да съдържа „%@“."
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Název nemůže obsahovat %@."
+            "value" : "Název nemůže obsahovat „%@“."
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Et navn må ikke indeholde %@."
+            "value" : "Et navn må ikke indeholde »%@«."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A name cannot have %@ in it."
+            "value" : "A name cannot contain “%@”."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ein Name darf %@ nicht enthalten."
+            "value" : "Ein Name darf „%@“ nicht enthalten."
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Το όνομα δεν μπορεί να περιέχει %@."
+            "value" : "Το όνομα δεν μπορεί να περιέχει «%@»."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Un nombre no puede contener %@."
+            "value" : "Un nombre no puede contener “%@”."
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nimi ei voi sisältää merkkiä %@."
+            "value" : "Nimi ei voi sisältää merkkiä ”%@”."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Un nom ne peut pas contenir %@."
+            "value" : "Un nom ne peut pas contenir « %@ »."
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "שם לא יכול להכיל %@."
+            "value" : "שם לא יכול להכיל “%@”."
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Naziv ne može sadržavati %@."
+            "value" : "Naziv ne može sadržavati „%@”."
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A név nem tartalmazhatja a(z) %@ karaktert."
+            "value" : "A név nem tartalmazhatja a(z) „%@” karaktert."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Un nome non può contenere %@."
+            "value" : "Un nome non può contenere “%@”."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "名前に%@を含めることはできません。"
+            "value" : "名前に「%@」を含めることはできません。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "이름에 %@을(를) 포함할 수 없습니다."
+            "value" : "이름에 ‘%@’을(를) 포함할 수 없습니다."
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Et navn kan ikke inneholde %@."
+            "value" : "Et navn kan ikke inneholde «%@»."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Een naam mag geen %@ bevatten."
+            "value" : "Een naam mag geen ‘%@’ bevatten."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nazwa nie może zawierać %@."
+            "value" : "Nazwa nie może zawierać „%@”."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "O nome não pode conter %@."
+            "value" : "O nome não pode conter “%@”."
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "O nome não pode conter %@."
+            "value" : "O nome não pode conter «%@»."
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Numele nu poate conține %@."
+            "value" : "Numele nu poate conține „%@”."
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Názov nemôže obsahovať %@."
+            "value" : "Názov nemôže obsahovať „%@“."
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ett namn får inte innehålla %@."
+            "value" : "Ett namn får inte innehålla ”%@”."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ad %@ içeremez."
+            "value" : "Ad “%@” içeremez."
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Назва не може містити %@."
+            "value" : "Назва не може містити «%@»."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "名称不能包含%@。"
+            "value" : "名称不能包含“%@”。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "名稱不能包含%@。"
+            "value" : "名稱不能包含「%@」。"
           }
         }
       }
@@ -42824,175 +42824,175 @@
         }
       }
     },
-    "Delete this format?" : {
+    "Delete the %@ format?" : {
       "comment" : "Format delete confirmation title; %@ is the format name",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "هل تريد حذف هذه الصيغة؟"
+            "value" : "هل تريد حذف الصيغة %@؟"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Да се изтрие ли този формат?"
+            "value" : "Да се изтрие ли форматът %@?"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Smazat tento formát?"
+            "value" : "Smazat formát %@?"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vil du slette dette format?"
+            "value" : "Vil du slette formatet %@?"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Delete this format?"
+            "value" : "Delete the %@ format?"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dieses Format löschen?"
+            "value" : "Format %@ löschen?"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Διαγραφή αυτής της μορφής;"
+            "value" : "Διαγραφή της μορφής %@;"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "¿Eliminar este formato?"
+            "value" : "¿Eliminar el formato %@?"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Poistetaanko tämä muoto?"
+            "value" : "Poistetaanko muoto %@?"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Supprimer ce format ?"
+            "value" : "Supprimer le format %@ ?"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "למחוק את הפורמט הזה?"
+            "value" : "למחוק את הפורמט %@?"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Izbrisati ovaj format?"
+            "value" : "Izbrisati format %@?"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Törlöd ezt a formátumot?"
+            "value" : "Törlöd a(z) %@ formátumot?"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Eliminare questo formato?"
+            "value" : "Eliminare il formato %@?"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "このフォーマットを削除しますか？"
+            "value" : "フォーマット%@を削除しますか？"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "이 형식을 삭제하겠습니까?"
+            "value" : "%@ 형식을 삭제하겠습니까?"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Slette dette formatet?"
+            "value" : "Slette formatet %@?"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dit formaat verwijderen?"
+            "value" : "Het formaat %@ verwijderen?"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Usunąć ten format?"
+            "value" : "Usunąć format %@?"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Excluir este formato?"
+            "value" : "Excluir o formato %@?"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Eliminar este formato?"
+            "value" : "Eliminar o formato %@?"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ștergi acest format?"
+            "value" : "Ștergi formatul %@?"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Odstrániť tento formát?"
+            "value" : "Odstrániť formát %@?"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Radera det här formatet?"
+            "value" : "Radera formatet %@?"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bu biçim silinsin mi?"
+            "value" : "%@ biçimi silinsin mi?"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Видалити цей формат?"
+            "value" : "Видалити формат %@?"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "删除此格式？"
+            "value" : "删除格式%@？"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "刪除此格式？"
+            "value" : "刪除格式%@？"
           }
         }
       }
@@ -131972,348 +131972,348 @@
         }
       }
     },
-    "Making and sharing the folder…" : {
+    "Making and sharing the %@ folder…" : {
       "comment" : "Dropbox setup, while bae makes the new shared folder the person named.",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "جارٍ إنشاء المجلد ومشاركته…"
+            "value" : "جارٍ إنشاء المجلد %@ ومشاركته…"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Папката се създава и споделя…"
+            "value" : "Папката %@ се създава и споделя…"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vytváří se a sdílí složka…"
+            "value" : "Vytváří se a sdílí složka %@…"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Opretter og deler mappen…"
+            "value" : "Opretter og deler mappen %@…"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ordner wird erstellt und geteilt …"
+            "value" : "Ordner %@ wird erstellt und geteilt …"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Δημιουργία και κοινοποίηση του φακέλου…"
+            "value" : "Δημιουργία και κοινοποίηση του φακέλου %@…"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Making and sharing the folder…"
+            "value" : "Making and sharing the %@ folder…"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Creando y compartiendo la carpeta…"
+            "value" : "Creando y compartiendo la carpeta %@…"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Luodaan ja jaetaan kansio…"
+            "value" : "Luodaan ja jaetaan kansio %@…"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Création et partage du dossier…"
+            "value" : "Création et partage du dossier %@…"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "יוצר ומשתף את התיקייה…"
+            "value" : "יוצר ומשתף את התיקייה %@…"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Izrada i dijeljenje mape…"
+            "value" : "Izrada i dijeljenje mape %@…"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A mappa létrehozása és megosztása…"
+            "value" : "A(z) %@ mappa létrehozása és megosztása…"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Creazione e condivisione della cartella…"
+            "value" : "Creazione e condivisione della cartella %@…"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "フォルダを作成して共有しています…"
+            "value" : "フォルダ%@を作成して共有しています…"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "폴더를 만들고 공유하는 중…"
+            "value" : "%@ 폴더를 만들고 공유하는 중…"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Oppretter og deler mappen…"
+            "value" : "Oppretter og deler mappen %@…"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Map wordt gemaakt en gedeeld…"
+            "value" : "Map %@ wordt gemaakt en gedeeld…"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tworzenie i udostępnianie folderu…"
+            "value" : "Tworzenie i udostępnianie folderu %@…"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Criando e compartilhando a pasta…"
+            "value" : "Criando e compartilhando a pasta %@…"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A criar e a partilhar a pasta…"
+            "value" : "A criar e a partilhar a pasta %@…"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Se creează și se partajează dosarul…"
+            "value" : "Se creează și se partajează dosarul %@…"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vytvára a zdieľa sa priečinok…"
+            "value" : "Vytvára a zdieľa sa priečinok %@…"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Skapar och delar mappen…"
+            "value" : "Skapar och delar mappen %@…"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Klasör oluşturuluyor ve paylaşılıyor…"
+            "value" : "%@ klasörü oluşturuluyor ve paylaşılıyor…"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Створення та надання доступу до папки…"
+            "value" : "Створення та надання доступу до папки %@…"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "正在创建并共享文件夹…"
+            "value" : "正在创建并共享文件夹%@…"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "正在建立並分享資料夾…"
+            "value" : "正在建立並分享資料夾%@…"
           }
         }
       }
     },
-    "Making the folder…" : {
+    "Making the %@ folder…" : {
       "comment" : "OneDrive setup, while bae makes the new folder the person named.",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "جارٍ إنشاء المجلد…"
+            "value" : "جارٍ إنشاء المجلد %@…"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Папката се създава…"
+            "value" : "Папката %@ се създава…"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vytváří se složka…"
+            "value" : "Vytváří se složka %@…"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Opretter mappen…"
+            "value" : "Opretter mappen %@…"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ordner wird erstellt …"
+            "value" : "Ordner %@ wird erstellt …"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Δημιουργία του φακέλου…"
+            "value" : "Δημιουργία του φακέλου %@…"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Making the folder…"
+            "value" : "Making the %@ folder…"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Creando la carpeta…"
+            "value" : "Creando la carpeta %@…"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Luodaan kansio…"
+            "value" : "Luodaan kansio %@…"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Création du dossier…"
+            "value" : "Création du dossier %@…"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "יוצר את התיקייה…"
+            "value" : "יוצר את התיקייה %@…"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Izrada mape…"
+            "value" : "Izrada mape %@…"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A mappa létrehozása…"
+            "value" : "A(z) %@ mappa létrehozása…"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Creazione della cartella…"
+            "value" : "Creazione della cartella %@…"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "フォルダを作成しています…"
+            "value" : "フォルダ%@を作成しています…"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "폴더를 만드는 중…"
+            "value" : "%@ 폴더를 만드는 중…"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Oppretter mappen…"
+            "value" : "Oppretter mappen %@…"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Map wordt gemaakt…"
+            "value" : "Map %@ wordt gemaakt…"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tworzenie folderu…"
+            "value" : "Tworzenie folderu %@…"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Criando a pasta…"
+            "value" : "Criando a pasta %@…"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A criar a pasta…"
+            "value" : "A criar a pasta %@…"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Se creează dosarul…"
+            "value" : "Se creează dosarul %@…"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vytvára sa priečinok…"
+            "value" : "Vytvára sa priečinok %@…"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Skapar mappen…"
+            "value" : "Skapar mappen %@…"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Klasör oluşturuluyor…"
+            "value" : "%@ klasörü oluşturuluyor…"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Створення папки…"
+            "value" : "Створення папки %@…"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "正在创建文件夹…"
+            "value" : "正在创建文件夹%@…"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "正在建立資料夾…"
+            "value" : "正在建立資料夾%@…"
           }
         }
       }
@@ -149407,7 +149407,7 @@
         }
       }
     },
-    "Another format already has this name." : {
+    "Another format has this name." : {
       "comment" : "Format editor: shown under the Name field when another format has that name; %@ is the name",
       "localizations" : {
         "ar" : {
@@ -149437,7 +149437,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Another format already has this name."
+            "value" : "Another format has this name."
           }
         },
         "de" : {

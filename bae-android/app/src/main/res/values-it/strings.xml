@@ -66,7 +66,7 @@
     <string name="queue_shuffle_on">Casuale</string>
     <string name="queue_shuffle_off">Disattiva riproduzione casuale</string>
     <string name="search_failed">Ricerca non riuscita</string>
-    <string name="search_no_results">Nessun risultato</string>
+    <string name="search_no_results">Nessun risultato per %1$s</string>
     <string name="search_section_albums">Album</string>
     <string name="search_section_artists">Artisti</string>
     <string name="search_section_tracks">Brani</string>

@@ -70,7 +70,7 @@
         <item quantity="other">%d spår lades till i kön</item>
     </plurals>
     <string name="search_failed">Sökningen misslyckades</string>
-    <string name="search_no_results">Inga resultat</string>
+    <string name="search_no_results">Inga resultat för %1$s</string>
     <string name="search_section_albums">Album</string>
     <string name="search_section_artists">Artister</string>
     <string name="search_section_tracks">Spår</string>

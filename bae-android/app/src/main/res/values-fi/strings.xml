@@ -70,7 +70,7 @@
         <item quantity="other">%d raitaa lisättiin jonoon</item>
     </plurals>
     <string name="search_failed">Haku epäonnistui</string>
-    <string name="search_no_results">Ei tuloksia</string>
+    <string name="search_no_results">Ei tuloksia haulle %1$s</string>
     <string name="search_section_albums">Albumit</string>
     <string name="search_section_artists">Esittäjät</string>
     <string name="search_section_tracks">Raidat</string>

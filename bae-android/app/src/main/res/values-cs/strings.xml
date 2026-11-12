@@ -66,7 +66,7 @@
     <string name="queue_shuffle_on">Náhodně</string>
     <string name="queue_shuffle_off">Vypnout náhodné přehrávání</string>
     <string name="search_failed">Vyhledávání selhalo</string>
-    <string name="search_no_results">Žádné výsledky</string>
+    <string name="search_no_results">Žádné výsledky pro %1$s</string>
     <string name="search_section_albums">Alba</string>
     <string name="search_section_artists">Interpreti</string>
     <string name="search_section_tracks">Stopy</string>

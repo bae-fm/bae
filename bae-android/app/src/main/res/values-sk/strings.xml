@@ -72,7 +72,7 @@
         <item quantity="other">Do poradia bolo pridaných %d skladieb</item>
     </plurals>
     <string name="search_failed">Vyhľadávanie zlyhalo</string>
-    <string name="search_no_results">Žiadne výsledky</string>
+    <string name="search_no_results">Žiadne výsledky pre %1$s</string>
     <string name="search_section_albums">Albumy</string>
     <string name="search_section_artists">Interpreti</string>
     <string name="search_section_tracks">Skladby</string>

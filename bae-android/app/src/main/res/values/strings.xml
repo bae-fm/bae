@@ -96,7 +96,7 @@
 
     <!-- Search results -->
     <string name="search_failed">Search failed</string>
-    <string name="search_no_results">No results</string>
+    <string name="search_no_results">No results for %1$s</string>
     <string name="search_section_albums">Albums</string>
     <string name="search_section_artists">Artists</string>
     <string name="search_section_tracks">Tracks</string>

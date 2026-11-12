@@ -95,7 +95,7 @@ fun SearchResultsScreen(
             current != null &&
                 current.hasNoResults() -> {
                 Text(
-                    text = stringResource(R.string.search_no_results),
+                    text = stringResource(R.string.search_no_results, query),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.align(Alignment.Center).padding(ThemeSpace.page),
                 )

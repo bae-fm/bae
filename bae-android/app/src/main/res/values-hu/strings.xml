@@ -70,7 +70,7 @@
         <item quantity="other">%d szám hozzáadva a sorhoz</item>
     </plurals>
     <string name="search_failed">A keresés nem sikerült</string>
-    <string name="search_no_results">Nincs eredmény</string>
+    <string name="search_no_results">Nincs találat erre: %1$s</string>
     <string name="search_section_albums">Albumok</string>
     <string name="search_section_artists">Előadók</string>
     <string name="search_section_tracks">Számok</string>

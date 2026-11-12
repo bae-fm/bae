@@ -66,7 +66,7 @@
     <string name="queue_shuffle_on">Разбъркване</string>
     <string name="queue_shuffle_off">Изключване на разбъркването</string>
     <string name="search_failed">Търсенето не бе успешно</string>
-    <string name="search_no_results">Няма резултати</string>
+    <string name="search_no_results">Няма резултати за %1$s</string>
     <string name="search_section_albums">Албуми</string>
     <string name="search_section_artists">Изпълнители</string>
     <string name="search_section_tracks">Песни</string>

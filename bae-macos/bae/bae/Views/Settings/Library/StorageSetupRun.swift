@@ -127,7 +127,7 @@ final class StorageSetupRun {
 /// folder the person chose, the check says so.
 struct StorageSetupRunLine: View {
     let run: StorageSetupRun
-    var checksFolder = false
+    var checkedFolder: String?
 
     var body: some View {
         switch run.state {
@@ -137,12 +137,13 @@ struct StorageSetupRunLine: View {
             MacProgressContainer(
                 steps: following.steps,
                 titled: { progress in
-                    if checksFolder, case .checkingLocation = progress.step {
+                    if let checkedFolder, case .checkingLocation = progress.step
+                    {
                         String(
                             localized:
-                                "Checking the folder…",
+                                "Checking the folder \(checkedFolder)…",
                             comment:
-                                "Dropbox or OneDrive setup, while bae checks the folder the person chose holds nothing else."
+                                "Dropbox or OneDrive setup, while bae checks the folder the person chose holds nothing else; the argument is the name of that folder."
                         )
                     }
                     else {

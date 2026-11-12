@@ -70,7 +70,7 @@
         <item quantity="other">%d faixas adicionadas à fila</item>
     </plurals>
     <string name="search_failed">Não foi possível pesquisar</string>
-    <string name="search_no_results">Sem resultados</string>
+    <string name="search_no_results">Sem resultados para %1$s</string>
     <string name="search_section_albums">Álbuns</string>
     <string name="search_section_artists">Artistas</string>
     <string name="search_section_tracks">Faixas</string>
