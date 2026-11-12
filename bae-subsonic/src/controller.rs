@@ -97,6 +97,15 @@ impl SubsonicServerController {
         self.follow(&inputs).await;
     }
 
+    /// The person's settings couldn't be read, so what to serve is unknown:
+    /// the server stops, and Settings says why instead of showing it off.
+    pub async fn settings_unreadable(&self, detail: String) {
+        let _inputs = self.inputs.lock().await;
+        self.server.shutdown().await;
+        self.plan
+            .send_modify(|plan| plan.stage = Stage::Blocked(vec![NotRunning::Failed { detail }]));
+    }
+
     /// The password in the keyring changed: read it again. A running server
     /// checks the next sign-in against it; one that lacked it starts.
     pub async fn password_changed(&self) {

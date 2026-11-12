@@ -114,6 +114,20 @@ async fn a_server_switched_off_is_off() {
 }
 
 #[tokio::test]
+async fn settings_that_cant_be_read_stop_the_server_and_say_why() {
+    let (services, _temp) = test_manager().await;
+    let controller = controller(&services, Some("s3cret"));
+    let port = free_port();
+    controller.apply_config(enabled_config(port, "listener")).await;
+    controller.settings_unreadable("the database is locked".to_string()).await;
+    assert_eq!(
+        status(&controller).await,
+        not_running(&[NotRunning::Failed { detail: "the database is locked".to_string() }])
+    );
+    assert!(port_is_free(port));
+}
+
+#[tokio::test]
 async fn a_server_with_a_username_and_password_runs_on_this_machine() {
     let (services, _temp) = test_manager().await;
     let controller = controller(&services, Some("s3cret"));

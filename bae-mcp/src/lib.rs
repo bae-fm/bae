@@ -67,6 +67,12 @@ impl McpServerController {
         self.server.apply(config.port, |port| self.start(port)).await
     }
 
+    /// The person's settings couldn't be read, so whether to serve is unknown:
+    /// the server stops, and Settings shows why.
+    pub async fn settings_unreadable(&self, detail: String) -> ServerStatus {
+        self.server.record_error(ServerError::InvalidConfig { detail }).await
+    }
+
     pub async fn status(&self) -> ServerStatus {
         self.server.status().await
     }

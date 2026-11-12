@@ -5787,7 +5787,8 @@ formats of one name, a format its codec can't write, a name pattern piece
 that is not exactly one of a value and typed text, or is typed text of
 nothing. A Subsonic server turned on with no username or password, or at a port
 outside 1 to 65535 (kept as typed), is kept on and doesn't run until nothing
-stands in its way.
+stands in its way. When the row can't be read, both servers stop and Settings
+shows why, instead of showing them off.
 Replay gain has no control in the apps.
 
 | Setting | Default | What it decides |

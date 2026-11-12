@@ -72,7 +72,9 @@ impl DesktopServices {
                 subsonic_controller.apply_config(subsonic).await;
             }
             Err(error) => {
-                tracing::warn!("the servers start off: their settings couldn't be read: {error}")
+                tracing::warn!("the servers' settings couldn't be read: {error}");
+                controller.settings_unreadable(error.to_string()).await;
+                subsonic_controller.settings_unreadable(error.to_string()).await;
             }
         }
 
@@ -101,6 +103,8 @@ impl DesktopServices {
                         }
                         Err(bae_store::live_query::LiveQueryError::Query(error)) => {
                             tracing::warn!("the servers' settings couldn't be read: {error}");
+                            config_controller.settings_unreadable(error.to_string()).await;
+                            config_subsonic_controller.settings_unreadable(error.to_string()).await;
                         }
                         Err(bae_store::live_query::LiveQueryError::Cancelled) => {
                             tracing::debug!(
