@@ -155,7 +155,7 @@ struct ActivityProblemsTests {
     private var libraryLoad: AppProblem {
         AppProblem(
             id: .libraryLoad,
-            title: "Library failed to open",
+            title: "Could not open",
             advice: nil,
             error: unread
         )

@@ -364,7 +364,11 @@ extension AppDelegate {
                 loadError = LoadError(.resetOffered, error)
             case .home:
                 screen = next
-                loadError = LoadError(.libraryOpen, error)
+                loadError = LoadError(
+                    .libraryOpen,
+                    error,
+                    libraryId: libraryId
+                )
             case .resetUnfinished(let unfinished):
                 // Finishing needs nothing from the person, and only it opens
                 // the library.

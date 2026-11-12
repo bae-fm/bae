@@ -17,6 +17,7 @@ struct WelcomeView: View {
     /// Finish the reset or restore of a library's copy on this Mac that
     /// stopped partway, with the one call that finishes it.
     let onFinishReplacement: (String, BridgeReplacedBy) -> Void
+    let onResetFromCloud: (String) -> Void
     /// A failed library open or dev reset, shown as the chooser's inline
     /// callout, shown again when Back returns to the chooser from a flow a
     /// menu item opened directly.
@@ -63,6 +64,7 @@ struct WelcomeView: View {
             @escaping @MainActor (OpenedLibrary, BridgeError?) -> Void,
         onOpenLibrary: @escaping (String) -> Void,
         onFinishReplacement: @escaping (String, BridgeReplacedBy) -> Void,
+        onResetFromCloud: @escaping (String) -> Void,
         loadError: LoadError? = nil,
         launchProblems: LaunchProblems = .none,
         initialMode: Mode = .choose,
@@ -71,6 +73,7 @@ struct WelcomeView: View {
         self.onLibraryReady = onLibraryReady
         self.onOpenLibrary = onOpenLibrary
         self.onFinishReplacement = onFinishReplacement
+        self.onResetFromCloud = onResetFromCloud
         self.loadError = loadError
         self.launchProblems = launchProblems
         self.canDeleteActiveLibrary = canDeleteActiveLibrary
@@ -114,6 +117,7 @@ struct WelcomeView: View {
                 onLibraryReady: onLibraryReady,
                 onOpenLibrary: onOpenLibrary,
                 onFinishReplacement: onFinishReplacement,
+                onResetFromCloud: onResetFromCloud,
                 onCreate: { mode = .create },
                 onRestoreSaved: { mode = .restoreSaved($0) },
                 onScanCode: { mode = .code(scanning: true) },

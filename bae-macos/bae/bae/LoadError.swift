@@ -30,7 +30,7 @@ struct LoadError: Equatable {
         var title: String {
             switch self {
             case .libraryOpen:
-                String(localized: "Library failed to open")
+                String(localized: "Could not open")
             case .resetOffered:
                 localizedCoreString("ui.load_error.reset_offered.title")
             case .libraryList:
@@ -52,12 +52,7 @@ struct LoadError: Equatable {
         /// its own: the reset screen it lands on is the way out.
         var advice: String? {
             switch self {
-            case .libraryOpen:
-                String(
-                    localized:
-                        "Choose another library, or restore it with “Enter code”."
-                )
-            case .resetOffered:
+            case .libraryOpen, .resetOffered:
                 nil
             case .libraryList:
                 localizedCoreString("ui.load_error.library_list.advice")
@@ -80,10 +75,13 @@ struct LoadError: Equatable {
 
     let step: Step
     let error: DisplayError
+    /// The library the step ran for, where it ran for one.
+    let libraryId: String?
 
-    init(_ step: Step, _ error: DisplayError) {
+    init(_ step: Step, _ error: DisplayError, libraryId: String? = nil) {
         self.step = step
         self.error = error
+        self.libraryId = libraryId
     }
 
     /// The failure as the Activity panel lists it.
@@ -97,9 +95,9 @@ struct LoadError: Equatable {
     }
 
     /// Fails when core says the error has nothing to show: a cancellation.
-    init?(_ step: Step, _ error: any Error) {
+    init?(_ step: Step, _ error: any Error, libraryId: String? = nil) {
         guard let error = DisplayError(error) else { return nil }
-        self.init(step, error)
+        self.init(step, error, libraryId: libraryId)
     }
 }
 

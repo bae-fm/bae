@@ -18,6 +18,15 @@ extension ShotScene {
         ),
         welcomeWindow("mac.welcome.libraries.none", libraries: []),
         welcomeWindow(
+            "mac.welcome.open-failed",
+            libraries: PreviewData.boardLibraries,
+            loadError: LoadError(
+                .libraryOpen,
+                PreviewData.displayErrorWithDetail,
+                libraryId: PreviewData.homeMusic.id
+            )
+        ),
+        welcomeWindow(
             "mac.welcome.libraries.saved-codes",
             libraries: PreviewData.boardLibraries,
             savedCodes: savedCodes
@@ -264,7 +273,8 @@ extension ShotScene {
     private static func welcomeWindow(
         _ id: String,
         libraries: [BridgeLibrary],
-        savedCodes: [BridgeSavedRestoreEntry] = []
+        savedCodes: [BridgeSavedRestoreEntry] = [],
+        loadError: LoadError? = nil
     ) -> ShotScene {
         ShotScene(id: id, size: WelcomeWindow.size) {
             let reads = CountedReads(
@@ -274,7 +284,8 @@ extension ShotScene {
             return ShotStage(
                 PreviewScenes.welcome(
                     initialMode: .choose,
-                    setup: reads.setup
+                    setup: reads.setup,
+                    loadError: loadError
                 )
             ) { reads.answered == 2 }
         }
@@ -303,6 +314,7 @@ extension ShotScene {
                     onLibraryReady: { _, _ in },
                     onOpenLibrary: { _ in },
                     onFinishReplacement: { _, _ in },
+                    onResetFromCloud: { _ in },
                     initialMode: .choose,
                     canDeleteActiveLibrary: true
                 )

@@ -15,13 +15,16 @@
         static func welcome(
             initialMode: WelcomeView.Mode,
             setup: LibrarySetup,
-            removals: LibraryRemovals = PreviewData.welcomeRemovals()
+            removals: LibraryRemovals = PreviewData.welcomeRemovals(),
+            loadError: LoadError? = nil
         ) -> some View {
             MacWelcomeWindow {
                 WelcomeView(
                     onLibraryReady: { _, _ in },
                     onOpenLibrary: { _ in },
                     onFinishReplacement: { _, _ in },
+                    onResetFromCloud: { _ in },
+                    loadError: loadError,
                     initialMode: initialMode,
                     canDeleteActiveLibrary: true
                 )

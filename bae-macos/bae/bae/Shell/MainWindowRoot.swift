@@ -64,6 +64,7 @@ struct MainWindowRoot: View {
             onLibraryReady: appDelegate.openOpenedLibrary,
             onOpenLibrary: appDelegate.openLocalLibrary(id:),
             onFinishReplacement: appDelegate.presentFinishing,
+            onResetFromCloud: appDelegate.presentDeviceReset,
             loadError: loadError,
             launchProblems: launchProblems,
             initialMode: appDelegate.welcomeInitialMode ?? .choose,

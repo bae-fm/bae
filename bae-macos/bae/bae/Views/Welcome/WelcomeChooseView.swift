@@ -17,6 +17,9 @@ struct WelcomeChooseView: View {
     /// Finish the reset or restore of a library's copy on this Mac that
     /// stopped partway, with the one call that finishes it.
     let onFinishReplacement: (String, BridgeReplacedBy) -> Void
+    /// Replace this Mac's copy of a library from the cloud: opens the reset
+    /// for that library.
+    let onResetFromCloud: (String) -> Void
     /// Go to the step that asks the creator's name and creates a library.
     let onCreate: () -> Void
     let onRestoreSaved: (BridgeSavedRestoreCode) -> Void
@@ -117,6 +120,18 @@ struct WelcomeChooseView: View {
         }
     }
 
+    /// The failed open that shows under its library's row, once the list holds
+    /// that library; any other failure shows under the tagline.
+    private var openFailureInList: LoadError? {
+        guard
+            let loadError,
+            loadError.step == .libraryOpen,
+            let libraryId = loadError.libraryId,
+            discoveredLibraries.contains(where: { $0.id == libraryId })
+        else { return nil }
+        return loadError
+    }
+
     /// The gap under the logo block, which the boards draw as 40pt.
     private static let belowLogo = ThemeSpace.page + ThemeSpace.related
 
@@ -139,7 +154,7 @@ struct WelcomeChooseView: View {
             }
             LaunchProblemNotices(launchProblems)
                 .frame(maxWidth: WelcomeLayout.columnWidth)
-            if let loadError {
+            if let loadError, openFailureInList == nil {
                 Notice(
                     title: loadError.step.title,
                     advice: loadError.step.advice,
@@ -170,6 +185,8 @@ struct WelcomeChooseView: View {
                     canDeleteActiveLibrary: canDeleteActiveLibrary,
                     removing: removals.removing,
                     opening: removals.opening,
+                    openFailure: openFailureInList,
+                    onResetFromCloud: { onResetFromCloud($0.id) },
                     onOpen: { onOpenLibrary($0.id) },
                     onFinish: { onFinishReplacement($0.id, $1) },
                     onFinishRemoving: { library in
@@ -296,6 +313,7 @@ private struct UnfinishedRemovalNotice: View {
                 onLibraryReady: { _, _ in },
                 onOpenLibrary: { _ in },
                 onFinishReplacement: { _, _ in },
+                onResetFromCloud: { _ in },
                 onCreate: {},
                 onRestoreSaved: { _ in },
                 onScanCode: {},
@@ -314,6 +332,7 @@ private struct UnfinishedRemovalNotice: View {
                 onLibraryReady: { _, _ in },
                 onOpenLibrary: { _ in },
                 onFinishReplacement: { _, _ in },
+                onResetFromCloud: { _ in },
                 onCreate: {},
                 onRestoreSaved: { _ in },
                 onScanCode: {},
@@ -335,6 +354,7 @@ private struct UnfinishedRemovalNotice: View {
                 onLibraryReady: { _, _ in },
                 onOpenLibrary: { _ in },
                 onFinishReplacement: { _, _ in },
+                onResetFromCloud: { _ in },
                 onCreate: {},
                 onRestoreSaved: { _ in },
                 onScanCode: {},
@@ -361,6 +381,7 @@ private struct UnfinishedRemovalNotice: View {
                     onLibraryReady: { _, _ in },
                     onOpenLibrary: { _ in },
                     onFinishReplacement: { _, _ in },
+                    onResetFromCloud: { _ in },
                     onCreate: {},
                     onRestoreSaved: { _ in },
                     onScanCode: {},

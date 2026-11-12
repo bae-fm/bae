@@ -15,6 +15,9 @@ struct LocalLibrariesSection: View {
     /// The library that isn't open which counting or removing it is
     /// opening now.
     let opening: ClosedLibraryOpening?
+    /// A failed open of one of `libraries`, shown joined under its row.
+    var openFailure: LoadError?
+    let onResetFromCloud: (BridgeLibrary) -> Void
     let onOpen: (BridgeLibrary) -> Void
     let onFinish: (BridgeLibrary, BridgeReplacedBy) -> Void
     let onFinishRemoving: (BridgeLibrary) -> Void
@@ -57,6 +60,12 @@ struct LocalLibrariesSection: View {
                         onRemove: onRemove,
                         readStanding: readStanding,
                     )
+                    if let openFailure, openFailure.libraryId == library.id {
+                        OpenFailureNotice(
+                            failure: openFailure,
+                            onResetFromCloud: { onResetFromCloud(library) }
+                        )
+                    }
                 }
             }
             .card()
@@ -75,6 +84,32 @@ struct LocalLibrariesSection: View {
             }
         }
         .frame(maxWidth: WelcomeLayout.columnWidth)
+    }
+}
+
+/// Why a library failed to open, joined to its row with no line between
+/// them (the row names the library): the title and Details, and for a failure
+/// in this Mac's data for it (core says a reset from the cloud replaces what
+/// failed), what is wrong and Reset from cloud….
+private struct OpenFailureNotice: View {
+    let failure: LoadError
+    let onResetFromCloud: () -> Void
+
+    var body: some View {
+        Notice(
+            title: failure.step.title,
+            advice: failure.error.resetFromCloudReplaces
+                ? String(
+                    localized: "Something is wrong with this library’s data."
+                ) : nil,
+            error: failure.error,
+            action: failure.error.resetFromCloudReplaces
+                ? ErrorAction("Reset from cloud…", perform: onResetFromCloud)
+                : nil,
+            buttons: .below
+        )
+        .padding(.horizontal, ThemeSpace.group)
+        .padding(.bottom, ThemeSpace.group)
     }
 }
 

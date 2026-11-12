@@ -191,6 +191,7 @@
                     )
                 },
                 opening: nil,
+                onResetFromCloud: { _ in },
                 onOpen: { _ in },
                 onFinish: { _, _ in },
                 onFinishRemoving: { _ in },

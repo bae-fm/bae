@@ -348,6 +348,352 @@
         }
       }
     },
+    "Could not open" : {
+      "comment" : "Title of the notice under a library's row on the welcome screen when it failed to open; the row names the library",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تعذّر الفتح"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не може да се отвори"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nepodařilo se otevřít"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kunne ikke åbnes"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Konnte nicht geöffnet werden"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Δεν ήταν δυνατό το άνοιγμα"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Could not open"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo abrir"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avaaminen ei onnistunut"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible d’ouvrir"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לא ניתן היה לפתוח"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nije moguće otvoriti"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nem sikerült megnyitni"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossibile aprire"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "開けませんでした"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "열 수 없습니다"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kunne ikke åpnes"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kan niet openen"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nie udało się otworzyć"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não foi possível abrir"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não foi possível abrir"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nu s-a putut deschide"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nepodarilo sa otvoriť"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Det gick inte att öppna"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Açılamadı"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не вдалося відкрити"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法打开"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無法開啟"
+          }
+        }
+      }
+    },
+    "Something is wrong with this library’s data." : {
+      "comment" : "Advice under that title when this Mac's data for the library is wrong",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "هناك مشكلة في بيانات هذه المكتبة."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нещо не е наред с данните на тази библиотека."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "S daty této knihovny není něco v pořádku."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der er noget galt med dette biblioteks data."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mit den Daten dieser Mediathek stimmt etwas nicht."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Κάτι δεν πάει καλά με τα δεδομένα αυτής της βιβλιοθήκης."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Something is wrong with this library’s data."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Algo falla en los datos de esta biblioteca."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tämän kirjaston tiedoissa on jotain vialla."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les données de cette bibliothèque présentent un problème."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "יש בעיה בנתוני הספרייה הזו."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nešto nije u redu s podacima ove biblioteke."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Valami nincs rendben a könyvtár adataival."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "C’è un problema con i dati di questa libreria."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このライブラリのデータに問題があります。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 보관함의 데이터에 문제가 있습니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noe er galt med dataene i dette biblioteket."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Er is iets mis met de gegevens van deze bibliotheek."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coś jest nie tak z danymi tej biblioteki."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Há algo errado com os dados desta biblioteca."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Há algo errado com os dados desta biblioteca."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ceva nu este în regulă cu datele acestei biblioteci."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "S údajmi tejto knižnice nie je niečo v poriadku."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Något är fel med det här bibliotekets data."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bu kitaplığın verilerinde bir sorun var."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Із даними цієї бібліотеки щось негаразд."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此资料库的数据有问题。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此資料庫的資料有問題。"
+          }
+        }
+      }
+    },
     "Make sure this code is showing:" : {
       "comment" : "Join request sheet: asks the admin to check the requester's screen shows the same code.",
       "localizations" : {
@@ -53719,179 +54065,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "失敗步驟之後的操作都沒有執行。請修正錯誤中指出的問題，然後再次執行 scripts/reset-bae.py。"
-          }
-        }
-      }
-    },
-    "Library failed to open" : {
-      "comment" : "Welcome screen callout title when a library fails to open",
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "تعذّر فتح المكتبة"
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Библиотеката не можа да се отвори"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Knihovnu se nepodařilo otevřít"
-          }
-        },
-        "da" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Biblioteket kunne ikke åbnes"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Library failed to open"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bibliothek konnte nicht geöffnet werden"
-          }
-        },
-        "el" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Δεν ήταν δυνατό το άνοιγμα της βιβλιοθήκης"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No se pudo abrir la biblioteca"
-          }
-        },
-        "fi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kirjastoa ei voitu avata"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Échec de l’ouverture de la bibliothèque"
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "פתיחת הספרייה נכשלה"
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fonoteku nije moguće otvoriti"
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "A könyvtárat nem sikerült megnyitni"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Impossibile aprire la libreria"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ライブラリを開けませんでした"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "라이브러리를 열지 못했습니다"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Biblioteket kunne ikke åpnes"
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bibliotheek kon niet worden geopend"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nie udało się otworzyć biblioteki"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Não foi possível abrir a biblioteca"
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Não foi possível abrir a biblioteca"
-          }
-        },
-        "ro" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Biblioteca nu a putut fi deschisă"
-          }
-        },
-        "sk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Knižnicu sa nepodarilo otvoriť"
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Biblioteket kunde inte öppnas"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kitaplık açılamadı"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Не вдалося відкрити бібліотеку"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "无法打开库"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "無法開啟資料庫"
           }
         }
       }
@@ -144730,180 +144903,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "還原碼或邀請"
-          }
-        }
-      }
-    },
-    "Choose another library, or restore it with “Enter code”." : {
-      "comment" : "Welcome screen callout guidance after a library fails to open. The quoted label is the Enter code button on the same screen.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "اختر مكتبة أخرى، أو استعدها باستخدام «إدخال رمز»."
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Изберете друга библиотека или я възстановете чрез „Въвеждане на код“."
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vyberte jinou knihovnu, nebo ji obnovte pomocí „Zadat kód“."
-          }
-        },
-        "da" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vælg et andet bibliotek, eller gendan det med »Indtast en kode«."
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wähle eine andere Bibliothek oder stelle sie mit „Code eingeben“ wieder her."
-          }
-        },
-        "el" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Επιλέξτε άλλη βιβλιοθήκη ή επαναφέρετέ τη με το «Εισαγωγή κωδικού»."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Choose another library, or restore it with “Enter code”."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Elige otra biblioteca o restáurala con “Introducir un código”."
-          }
-        },
-        "fi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Valitse toinen kirjasto tai palauta se valitsemalla ”Syötä koodi”."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Choisissez une autre bibliothèque ou restaurez-la avec « Saisir un code »."
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "בחר ספרייה אחרת או שחזר אותה באמצעות “הזנת קוד”."
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Odaberite drugu fonoteku ili je vratite pomoću „Unesi kod”."
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Válassz másik könyvtárat, vagy állítsd vissza az „Kód megadása” lehetőséggel."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Scegli un’altra libreria o ripristinala con “Inserisci un codice”."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "別のライブラリを選択するか、「コードを入力」で復元してください。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "다른 라이브러리를 선택하거나 ‘코드 입력’로 복원하세요."
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Velg et annet bibliotek, eller gjenopprett det med «Skriv inn en kode»."
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kies een andere bibliotheek of herstel deze met ‘Code invoeren’."
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wybierz inną bibliotekę lub przywróć ją za pomocą „Wpisz kod”."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Escolha outra biblioteca ou restaure-a com “Digitar um código”."
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Escolha outra biblioteca ou restaure-a com «Introduzir um código»."
-          }
-        },
-        "ro" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Alege altă bibliotecă sau restaureaz-o cu „Introdu un cod”."
-          }
-        },
-        "sk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vyber inú knižnicu alebo ju obnov pomocou „Zadať kód“."
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Välj ett annat bibliotek eller återställ det med ”Ange en kod”."
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Başka bir kitaplık seçin veya “Kod gir” ile geri yükleyin."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Виберіть іншу бібліотеку або відновіть її через «Ввести код»."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "请选择另一个库，或通过“输入代码”恢复它。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "請選擇另一個資料庫，或透過「輸入代碼」還原它。"
           }
         }
       }
