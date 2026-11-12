@@ -4405,6 +4405,8 @@ watcher that applies the setting as it changes. bae waits at most
 ten seconds on an AirPlay receiver's control connection — to connect, send a
 request, or hear back — so a receiver that stops answering without closing it
 can't hold up ending the session.
+A receiver that refuses a pause or a resume ends the session the same way,
+rather than the app showing Paused while it plays on, or Playing in silence.
 
 **This device.** On every platform, playback and a preview follow a change of
 the default output device: they move to the new one at the same position. On

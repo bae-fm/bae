@@ -622,11 +622,11 @@ impl PlaybackService {
         // this time feeding the AirPlay sink.
         self.teardown_local_playback();
 
-        let control = Arc::new(crate::airplay_output::AirPlayControl::new());
         let command_tx = self.command_tx.clone();
         let failed = crate::airplay_output::AirPlayFailed::new(move || {
             dispatch_command(&command_tx, PlaybackCommand::AirPlayStreamFailed)
         });
+        let control = Arc::new(crate::airplay_output::AirPlayControl::new(failed.clone()));
         let airplay_output = crate::audio_output::PlayerOutput::new(
             Box::new(crate::airplay_output::AirPlayOutput::new(sink, control.clone(), failed)),
             crate::audio_output::AudioOutputControls::new(volume),

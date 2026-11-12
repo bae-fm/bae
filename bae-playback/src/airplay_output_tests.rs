@@ -25,6 +25,8 @@ struct FakeState {
     reanchored: AtomicBool,
     torn_down: AtomicBool,
     failed: Mutex<Option<AirPlayFailed>>,
+    /// Set: the receiver doesn't take a flush, for this reason.
+    refuses: Mutex<Option<String>>,
 }
 
 struct FakeSession(Arc<FakeState>);
@@ -35,11 +37,16 @@ impl Drop for FakeSession {
 }
 
 impl AirPlayStreamControl for FakeSession {
-    fn flush(&self) {
+    fn flush(&self) -> Result<(), AirPlayControlError> {
         self.0.flushed.store(true, Ordering::Release);
+        match self.0.refuses.lock().unwrap().as_ref() {
+            Some(why) => Err(AirPlayControlError::new(why)),
+            None => Ok(()),
+        }
     }
-    fn reanchor(&self) {
+    fn reanchor(&self) -> Result<(), AirPlayControlError> {
         self.0.reanchored.store(true, Ordering::Release);
+        Ok(())
     }
     fn failure(&self) -> Option<String> {
         None
@@ -74,12 +81,12 @@ fn create_stream_drives_the_sink_and_publishes_control() {
 
     let sink = FakeSink::default();
     let state = sink.state.clone();
-    let control = Arc::new(AirPlayControl::new());
     let reports = Arc::new(AtomicU64::new(0));
     let reported = reports.clone();
     let failed = AirPlayFailed::new(move || {
         reported.fetch_add(1, Ordering::Relaxed);
     });
+    let control = Arc::new(AirPlayControl::new(failed.clone()));
     let mut output = AirPlayOutput::new(Box::new(sink), control.clone(), failed);
     let controls = AudioOutputControls::new(crate::Volume::FULL);
     controls.set_state(AudioState::Playing);
@@ -99,6 +106,14 @@ fn create_stream_drives_the_sink_and_publishes_control() {
     assert!(state.flushed.load(Ordering::Acquire));
     assert!(state.reanchored.load(Ordering::Acquire));
     assert_eq!(control.latency(), Some(Duration::from_millis(250)));
+
+    // A flush the receiver refuses fails the control for good: the failure is
+    // kept and playback is told, once more than the session's own report.
+    *state.refuses.lock().unwrap() = Some("no answer".to_string());
+    assert_eq!(control.failure(), None);
+    control.flush();
+    assert!(control.failure().is_some_and(|why| why.contains("no answer")));
+    assert_eq!(reports.load(Ordering::Relaxed), 2);
 
     // Dropping the stream tears the session down; no audio is in flight.
     drop(stream);

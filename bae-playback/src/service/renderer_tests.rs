@@ -871,3 +871,37 @@ async fn a_mute_made_on_airplay_holds_after_airplay_ends() {
     service.set_muted(false);
     assert_eq!(service.audio_output.get_volume(), 0.4, "unmute puts back the level set");
 }
+
+/// A receiver that doesn't take a pause (or a resume) is told to the person as a
+/// lost speaker, rather than the app showing Paused while it plays on. The
+/// control's failure goes through the commands the service sends itself.
+/// Sabotage: drop the failed control's result, and AirPlay stays up.
+#[tokio::test]
+async fn a_receiver_that_refuses_a_pause_ends_airplay() {
+    let home = seeded_store(&[("af63ef4c-8602-4cd5-82c0-3d334b916305", &[TRACK_T])]).await;
+    let (mut service, mut commands, mut progress_rx) =
+        playback_service_and_commands_over(home.store(), bae_diagnostics::Diagnostics::noop());
+    service.slot =
+        active_slot(test_prepared_track(TRACK_T, create_sparse_buffer(1_024)), TrackPhase::Playing);
+    let airplay = install_airplay(&mut service, std::time::Duration::from_secs(2));
+    airplay.state.refuses_controls.set("the receiver went quiet".to_string()).unwrap();
+    while progress_rx.try_recv().is_ok() {}
+
+    service.pause();
+    while let Ok(message) = commands.try_recv() {
+        let (PlaybackMessage::Asked(command) | PlaybackMessage::Own { command, .. }) = message;
+        let _served = service.handle_command(command).await;
+    }
+
+    assert!(!service.renderer.is_airplay(), "the refused pause ends AirPlay");
+    let mut announced = None;
+    while let Ok(progress) = progress_rx.try_recv() {
+        if let PlaybackProgress::RemoteStatusChanged { remote } = progress {
+            announced = Some(remote);
+        }
+    }
+    assert!(
+        matches!(&announced, Some(RemotePlayback::Ended { detail, .. }) if detail.contains("the receiver went quiet")),
+        "{announced:?}"
+    );
+}

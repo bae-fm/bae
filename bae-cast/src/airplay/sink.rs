@@ -11,10 +11,9 @@ use std::time::Duration;
 
 use bae_diagnostics::Diagnostics;
 use bae_playback::airplay_output::{
-    AirPlayFailed, AirPlaySink, AirPlayStreamControl, PcmSource, PcmWake,
+    AirPlayControlError, AirPlayFailed, AirPlaySink, AirPlayStreamControl, PcmSource, PcmWake,
 };
 use bae_playback::AudioError;
-use tracing::warn;
 
 use super::airplay2::TimingProtocol;
 use super::ap2_session::Ap2Session;
@@ -77,14 +76,13 @@ impl AirPlaySink for RaopSink {
 }
 
 impl AirPlayStreamControl for RaopSession {
-    fn flush(&self) {
-        if let Err(e) = self.flush() {
-            warn!("airplay FLUSH failed: {e}");
-        }
+    fn flush(&self) -> Result<(), AirPlayControlError> {
+        self.flush().map_err(|e| AirPlayControlError::new(format!("FLUSH failed: {e}")))
     }
 
-    fn reanchor(&self) {
+    fn reanchor(&self) -> Result<(), AirPlayControlError> {
         self.reanchor();
+        Ok(())
     }
 
     fn failure(&self) -> Option<String> {
@@ -147,16 +145,13 @@ impl AirPlaySink for Ap2Sink {
 }
 
 impl AirPlayStreamControl for Ap2Session {
-    fn flush(&self) {
-        if let Err(e) = self.flush() {
-            warn!("airplay 2 pause (rate 0) failed: {e}");
-        }
+    fn flush(&self) -> Result<(), AirPlayControlError> {
+        self.flush().map_err(|e| AirPlayControlError::new(format!("pause (rate 0) failed: {e}")))
     }
 
-    fn reanchor(&self) {
-        if let Err(e) = self.reanchor() {
-            warn!("airplay 2 resume (rate 1) failed: {e}");
-        }
+    fn reanchor(&self) -> Result<(), AirPlayControlError> {
+        self.reanchor()
+            .map_err(|e| AirPlayControlError::new(format!("resume (rate 1) failed: {e}")))
     }
 
     fn failure(&self) -> Option<String> {

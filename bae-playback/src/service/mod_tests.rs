@@ -751,6 +751,8 @@ pub(super) struct FakeAirPlayControlState {
     pub(super) flushed: std::sync::atomic::AtomicU64,
     pub(super) reanchored: std::sync::atomic::AtomicU64,
     pub(super) failure: std::sync::OnceLock<String>,
+    /// Set: the receiver doesn't take a flush or a re-anchor, for this reason.
+    pub(super) refuses_controls: std::sync::OnceLock<String>,
 }
 
 pub(super) struct FakeAirPlayControl {
@@ -759,17 +761,28 @@ pub(super) struct FakeAirPlayControl {
 }
 
 impl crate::airplay_output::AirPlayStreamControl for FakeAirPlayControl {
-    fn flush(&self) {
+    fn flush(&self) -> Result<(), crate::airplay_output::AirPlayControlError> {
         self.state.flushed.fetch_add(1, std::sync::atomic::Ordering::Release);
+        self.refusal()
     }
-    fn reanchor(&self) {
+    fn reanchor(&self) -> Result<(), crate::airplay_output::AirPlayControlError> {
         self.state.reanchored.fetch_add(1, std::sync::atomic::Ordering::Release);
+        self.refusal()
     }
     fn failure(&self) -> Option<String> {
         self.state.failure.get().cloned()
     }
     fn latency(&self) -> std::time::Duration {
         self.latency
+    }
+}
+
+impl FakeAirPlayControl {
+    fn refusal(&self) -> Result<(), crate::airplay_output::AirPlayControlError> {
+        match self.state.refuses_controls.get() {
+            Some(why) => Err(crate::airplay_output::AirPlayControlError::new(why)),
+            None => Ok(()),
+        }
     }
 }
 
@@ -799,7 +812,11 @@ pub(super) fn install_airplay(
     let state = Arc::new(FakeAirPlayControlState::default());
     let session: Arc<dyn crate::airplay_output::AirPlayStreamControl> =
         Arc::new(FakeAirPlayControl { state: state.clone(), latency });
-    let control = Arc::new(crate::airplay_output::AirPlayControl::new());
+    let command_tx = service.command_tx.clone();
+    let failed = crate::airplay_output::AirPlayFailed::new(move || {
+        dispatch_command(&command_tx, PlaybackCommand::AirPlayStreamFailed)
+    });
+    let control = Arc::new(crate::airplay_output::AirPlayControl::new(failed));
     control.bind(&session);
     let saved_output = AudioOutputControls::new(crate::Volume::FULL);
     saved_output.set_state(AudioState::Playing);
