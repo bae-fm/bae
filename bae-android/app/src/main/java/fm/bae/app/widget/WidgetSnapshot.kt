@@ -11,6 +11,9 @@ import org.json.JSONObject
 import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeLibraryImageType
 import java.io.File
+import java.io.IOException
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 
 private const val TAG = "bae.WidgetSnapshot"
 private val logger = BaeLogger(TAG)
@@ -181,14 +184,23 @@ class WidgetSnapshotStore(
     constructor(context: Context) : this(File(context.filesDir, SNAPSHOT_FILE_NAME))
 
     /** Write [snapshot] atomically (temp file then rename within the same dir)
-     *  so a concurrent render never reads a half-written file. */
+     *  so a concurrent render never reads a half-written file. A file that can't
+     *  be replaced throws, for the session's bug handler to report, rather than
+     *  leaving the widget on the previous track. */
     suspend fun write(snapshot: WidgetSnapshot) {
         withContext(Dispatchers.IO) {
             val tmp = File(file.parentFile, "$SNAPSHOT_FILE_NAME.tmp")
             tmp.writeText(snapshot.toJson())
-            if (!tmp.renameTo(file)) {
+            try {
+                Files.move(
+                    tmp.toPath(),
+                    file.toPath(),
+                    StandardCopyOption.ATOMIC_MOVE,
+                    StandardCopyOption.REPLACE_EXISTING,
+                )
+            } catch (e: IOException) {
                 tmp.delete()
-                logger.error("could not replace widget snapshot at ${file.path}")
+                throw e
             }
         }
     }

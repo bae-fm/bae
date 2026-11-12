@@ -18,6 +18,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -25,6 +26,7 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgePlaybackValueState
 import java.io.File
+import java.io.IOException
 
 /**
  * The widget renders the last track from a file-backed snapshot and its play
@@ -137,6 +139,21 @@ class WidgetSnapshotTest {
             store.write(WidgetSnapshot.EMPTY)
             assertEquals(saved(WidgetSnapshot.EMPTY), store.read())
         }
+
+    @Test
+    fun aSnapshotThatCantReplaceTheFileThrowsAndLeavesNoTempFile() {
+        val dir =
+            java.nio.file.Files
+                .createTempDirectory("widget-unreplaceable")
+                .toFile()
+        val file = File(dir, "now_playing_widget.json")
+        // A directory with something in it can't be replaced by a file.
+        File(file, "occupied").mkdirs()
+        val store = WidgetSnapshotStore(file)
+        assertThrows(IOException::class.java) { runBlocking { store.write(WidgetSnapshot.EMPTY) } }
+        assertFalse("the temp file is removed", File(dir, "now_playing_widget.json.tmp").exists())
+        dir.deleteRecursively()
+    }
 
     @Test
     fun readsNothingSavedWhenNoFileWritten() =
