@@ -123,7 +123,7 @@ private struct MediumCountRow: View {
     var body: some View {
         HStack(spacing: ThemeSpace.inline) {
             Text(name)
-            Text("\u{00D7}\(counted.count.formatted())")
+            Text(verbatim: "\u{00D7}\(counted.count.formatted())")
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
             Stepper(
