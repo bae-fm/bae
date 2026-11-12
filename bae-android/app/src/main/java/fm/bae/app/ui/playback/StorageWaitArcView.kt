@@ -34,7 +34,7 @@ internal class StorageWaitArcView(
                 TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, ARC_STROKE_DP, resources.displayMetrics)
         }
     private val turning =
-        ObjectAnimator.ofFloat(this, ROTATION, 0f, 360f).apply {
+        ObjectAnimator.ofFloat(this, ROTATION, 0f, -360f).apply {
             duration = TURN_MS
             repeatCount = ValueAnimator.INFINITE
             interpolator = LinearInterpolator()
