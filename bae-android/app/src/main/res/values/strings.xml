@@ -518,10 +518,10 @@
     <string name="add_device_instructions">Scan or enter the code on the new device.</string>
     <string name="invite_s3_theirs_note">Their own key to the bucket, so they can join.</string>
     <string name="invite_s3_use_my_key">Use my key instead</string>
-    <string name="invite_s3_mine">They’ll use your key. To remove them later, you make a new key for yourself and enter it on each of your devices.</string>
+    <string name="invite_s3_mine">They will use your key. To remove them later, you make a new key for yourself and enter it on each of your devices.</string>
     <string name="invite_s3_use_their_key">Use their own key instead</string>
     <string name="invite_offline">The code shows here once this device is online and %1$s has shared the library with %2$s.</string>
     <string name="invite_scan_instruction">Scan or enter the code on their device.</string>
-    <string name="invite_cancel_message">%1$s won’t be able to use this invite.</string>
+    <string name="invite_cancel_message">%1$s will not be able to use this invite.</string>
     <string name="qr_code">QR code</string>
 </resources>

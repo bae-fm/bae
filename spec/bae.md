@@ -3021,7 +3021,7 @@ refuses an operation that is no refused invite's.
 On S3 the invite's screen also shows the id of the key it carries, and says to
 delete that key in the provider's console if nobody uses the invite: bae keeps
 no record of it once the invite ends. Cancelling an invite asks first ("Cancel this invite?", "dan@example.com
-won’t be able to use this invite.", **Keep** and **Cancel invite**), and on S3
+will not be able to use this invite.", **Keep** and **Cancel invite**), and on S3
 the question also names the key, as removing a person does.
 
 **Dan's waiting.** Dan can close bae while he waits. When bae next starts, it

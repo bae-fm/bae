@@ -194,7 +194,7 @@ struct InvitePersonForm: View {
         case .s3:
             if usesOwnKey {
                 SheetMessage(
-                    "They’ll use your key. To remove them later, you make a new key for yourself and enter it on each of your devices."
+                    "They will use your key. To remove them later, you make a new key for yourself and enter it on each of your devices."
                 )
             }
             else {

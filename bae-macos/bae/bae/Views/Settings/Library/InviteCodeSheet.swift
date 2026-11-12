@@ -62,11 +62,11 @@ struct InviteCodeSheet: View {
             ) {}
         } message: { shown in
             if let forgetLine = shown.access.forgetLine {
-                Text("\(shown.label) won’t be able to use this invite.")
+                Text("\(shown.label) will not be able to use this invite.")
                     + Text(verbatim: "\n\n\(forgetLine)")
             }
             else {
-                Text("\(shown.label) won’t be able to use this invite.")
+                Text("\(shown.label) will not be able to use this invite.")
             }
         }
         .onDisappear { task?.cancel() }
