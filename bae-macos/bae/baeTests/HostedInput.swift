@@ -149,19 +149,6 @@ enum HostedInput {
         autoreleasepool { window.makeFirstResponder(responder) }
     }
 
-    /// The context menu `view` offers for a right click at `point` in its
-    /// window's coordinates.
-    static func contextMenu(at point: NSPoint, in view: NSView) throws
-        -> NSMenu?
-    {
-        let window = try #require(view.window)
-        return try autoreleasepool {
-            view.menu(
-                for: try mouseEvent(.rightMouseDown, at: point, in: window)
-            )
-        }
-    }
-
     /// A press of `control` at `point` in its window's coordinates, with
     /// `modifiers` held, that runs the control's own mouse-tracking loop to
     /// its release, as a person's press of a slider or a table's row does.

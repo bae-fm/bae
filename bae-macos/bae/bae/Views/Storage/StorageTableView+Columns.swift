@@ -1,4 +1,5 @@
 import AppKit
+import BaeKit
 import OSLog
 import SwiftUI
 
@@ -157,43 +158,40 @@ extension StorageTableView.Coordinator {
 
     // MARK: Header menu
 
-    func makeColumnsMenu() -> NSMenu {
-        let menu = NSMenu()
-        menu.autoenablesItems = false
-        menu.delegate = self
-        return menu
+    /// Opens bae's columns menu at the pointer.
+    func showColumnsMenu(in header: NSTableHeaderView) {
+        guard let window = header.window else { return }
+        MacMenus.present(
+            columnEntries(),
+            over: window,
+            at: .atPointer,
+            appearance: appearance
+        )
     }
 
-    /// One item per column, checked while it shows. The release column's
-    /// item stays checked and can't be chosen: it always shows.
-    func addColumnItems(to menu: NSMenu) {
+    /// One line per column, checked while it shows. The release column's
+    /// line stays checked and can't be chosen: it always shows.
+    func columnEntries() -> [MacMenuEntry] {
         let layout = layout.wrappedValue
-        for column in StorageTableColumn.allCases {
-            let item = NSMenuItem(
-                title: column.title,
-                action: #selector(setColumnShown(_:)),
-                keyEquivalent: ""
+        return StorageTableColumn.allCases.map { column in
+            let shown = !layout.isHidden(column)
+            return .item(
+                MacMenuItem(
+                    verbatim: column.title,
+                    checked: shown,
+                    disabled: !column.hideable
+                ) { [self] in
+                    setColumn(column, hidden: shown)
+                }
             )
-            item.target = self
-            item.representedObject = column.rawValue
-            item.state = layout.isHidden(column) ? .off : .on
-            item.isEnabled = column.hideable
-            menu.addItem(item)
         }
     }
 
-    /// Show the item's column if it is hidden, hide it if it shows.
-    @objc
-    private func setColumnShown(_ sender: NSMenuItem) {
-        guard let raw = sender.representedObject as? String,
-            let column = StorageTableColumn(rawValue: raw)
-        else {
-            logger.error("Column menu item carried no storage column")
-            return
-        }
+    /// Hide `column` if it shows, show it if it is hidden.
+    private func setColumn(_ column: StorageTableColumn, hidden: Bool) {
         layout.wrappedValue = layout.wrappedValue.setting(
             column,
-            hidden: sender.state == .on
+            hidden: hidden
         )
     }
 }

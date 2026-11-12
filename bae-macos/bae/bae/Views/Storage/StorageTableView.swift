@@ -64,10 +64,10 @@ struct StorageTableView: NSViewRepresentable {
 
     func makeNSView(context: Context) -> NSScrollView {
         let coordinator = context.coordinator
-        let tableView = NSTableView()
+        let tableView = StorageTable()
+        tableView.menus = coordinator
         tableView.dataSource = coordinator
         tableView.delegate = coordinator
-        tableView.menu = coordinator.makeContextMenu()
         tableView.target = coordinator
         tableView.doubleAction = #selector(
             Coordinator.handleInspectorDoubleClick(_:)
@@ -94,7 +94,9 @@ struct StorageTableView: NSViewRepresentable {
             )
             tableView.addTableColumn(tableColumn)
         }
-        tableView.headerView?.menu = coordinator.makeColumnsMenu()
+        let header = StorageTableHeader()
+        header.menus = coordinator
+        tableView.headerView = header
         coordinator.tableView = tableView
         coordinator.applyLayout(layout)
         coordinator.applySortIndicator(to: tableView, sort: sort)
@@ -192,7 +194,7 @@ extension StorageTableView {
         private var outboxStore: OutboxStore
         /// The tone and accent of the window the table is in, which its
         /// hosted cells draw in.
-        private var appearance: HostedAppearance
+        private(set) var appearance: HostedAppearance
         weak var tableView: NSTableView?
 
         private var rootEpoch: LoadEpoch?
@@ -517,34 +519,37 @@ extension StorageTableView.Coordinator {
 
     // MARK: Context menu
 
-    func makeContextMenu() -> NSMenu {
-        let menu = NSMenu()
-        menu.delegate = self
-        return menu
+    /// Opens bae's menu for a right click on `row` of `tableView`, at the
+    /// pointer. A click below the rows opens none.
+    func showContextMenu(forRow row: Int, in tableView: NSTableView) {
+        guard let window = tableView.window else { return }
+        MacMenus.present(
+            contextEntries(forRow: row),
+            over: window,
+            at: .atPointer,
+            appearance: appearance
+        )
     }
-}
 
-// MARK: - Context menu population
-
-extension StorageTableView.Coordinator: NSMenuDelegate {
-    func menuNeedsUpdate(_ menu: NSMenu) {
-        menu.removeAllItems()
-        guard let tableView else { return }
-        if menu === tableView.headerView?.menu {
-            addColumnItems(to: menu)
-            return
-        }
-        let clickedRow = tableView.clickedRow
+    /// The lines of the menu for a right click on `row`.
+    func contextEntries(forRow clickedRow: Int) -> [MacMenuEntry] {
         guard clickedRow >= 0, let clickedId = list.idAt(clickedRow) else {
-            return
+            return []
         }
-
-        addInspectMenuItem(to: menu, releaseId: clickedId)
+        var entries: [MacMenuEntry] = [
+            .item(
+                MacMenuItem("Inspect") { [self] in
+                    setInspectorPresented(true, releaseId: clickedId)
+                }
+            ),
+            .divider,
+        ]
 
         // Right-click acts on the selection when the clicked row is part of it,
         // otherwise on just that row (and selects it).
         let (targets, actions) = menuTargets(forClickedRelease: clickedId)
-        guard !targets.isEmpty else { return }
+        guard !targets.isEmpty else { return entries }
+        let releaseIds = targets.map(\.id)
 
         // A release mid-transition (uploading, pinning, or becoming local) can't
         // start another storage action (those race the transition), so the only
@@ -554,64 +559,44 @@ extension StorageTableView.Coordinator: NSMenuDelegate {
             $0.release.transitioning || $0.status.isMoveFailed
         }
         if !transitioning.isEmpty {
-            addMenuItem(
-                to: menu,
-                title: String(localized: "Cancel"),
-                action: #selector(cancelTransitionsAction(_:)),
-                representedObject: transitioning.map(\.id)
+            entries.append(
+                .item(
+                    MacMenuItem("Cancel") { [runner] in
+                        runner.cancelTransitions(
+                            releaseIds: transitioning.map(\.id)
+                        )
+                    }
+                )
             )
-            return
+            return entries
         }
         for action in actions {
-            addMenuItem(
-                to: menu,
-                title: action.label,
-                action: #selector(runStorageAction(_:)),
-                representedObject: StorageActionInvocation(
-                    action: action,
-                    releaseIds: targets.map(\.id)
+            entries.append(
+                .item(
+                    MacMenuItem(verbatim: action.label) { [runner] in
+                        runner.run(action, releaseIds: releaseIds)
+                    }
                 )
             )
         }
         // Export (verbatim) and Save As (preset workup) are pure outputs that
         // change no state, so both are offered for every release regardless of
         // locality — not among the core-computed `storageActions`.
-        addMenuItem(
-            to: menu,
-            title: String(localized: "Export…"),
-            action: #selector(runExportAction(_:)),
-            representedObject: targets.map(\.id)
+        entries.append(
+            .item(
+                MacMenuItem("Export…") { [runner] in
+                    runner.export(releaseIds: releaseIds)
+                }
+            )
         )
-        addMenuItem(
-            to: menu,
-            title: String(localized: "Save as…"),
-            action: #selector(runSaveAsAction(_:)),
-            representedObject: targets.map(\.id)
+        entries.append(
+            .item(
+                MacMenuItem("Save as…") { [runner] in
+                    runner.saveAs(releaseIds: releaseIds)
+                }
+            )
         )
-    }
-
-    private func addInspectMenuItem(to menu: NSMenu, releaseId: String) {
-        addMenuItem(
-            to: menu,
-            title: String(localized: "Inspect"),
-            action: #selector(inspectReleaseAction(_:)),
-            representedObject: releaseId
-        )
-        menu.addItem(.separator())
-    }
-
-    /// Build a context-menu item targeting this coordinator and add it to the
-    /// menu. Shared by the cancel-upload and storage-action branches.
-    private func addMenuItem(
-        to menu: NSMenu,
-        title: String,
-        action: Selector,
-        representedObject: Any
-    ) {
-        let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
-        item.target = self
-        item.representedObject = representedObject
-        menu.addItem(item)
+        return entries
     }
 
     /// If the clicked release is already selected, act on the selected
@@ -646,15 +631,6 @@ extension StorageTableView.Coordinator: NSMenuDelegate {
         return row
     }
 
-    @objc
-    private func inspectReleaseAction(_ sender: NSMenuItem) {
-        guard let releaseId = sender.representedObject as? String else {
-            logger.error("Inspect menu item carried no release id")
-            return
-        }
-        setInspectorPresented(true, releaseId: releaseId)
-    }
-
     private func setInspectorPresented(
         _ presented: Bool,
         releaseId: String
@@ -663,56 +639,27 @@ extension StorageTableView.Coordinator: NSMenuDelegate {
         applySelection([releaseId], to: tableView)
         inspectorPresented.wrappedValue = presented
     }
-
-    @objc
-    private func runStorageAction(_ sender: NSMenuItem) {
-        guard
-            let invocation = sender.representedObject
-                as? StorageActionInvocation
-        else {
-            logger.error("Storage action menu item carried no invocation")
-            return
-        }
-        runner.run(invocation.action, releaseIds: invocation.releaseIds)
-    }
-
-    @objc
-    private func cancelTransitionsAction(_ sender: NSMenuItem) {
-        guard let releaseIds = sender.representedObject as? [String] else {
-            logger.error("Cancel menu item carried no release ids")
-            return
-        }
-        runner.cancelTransitions(releaseIds: releaseIds)
-    }
-
-    @objc
-    private func runExportAction(_ sender: NSMenuItem) {
-        guard let releaseIds = sender.representedObject as? [String] else {
-            logger.error("Export menu item carried no release ids")
-            return
-        }
-        runner.export(releaseIds: releaseIds)
-    }
-
-    @objc
-    private func runSaveAsAction(_ sender: NSMenuItem) {
-        guard let releaseIds = sender.representedObject as? [String] else {
-            logger.error("Save As menu item carried no release ids")
-            return
-        }
-        runner.saveAs(releaseIds: releaseIds)
-    }
-
 }
 
-/// A pending menu action: which storage transition to run against which
-/// releases. Boxed as a menu item's `representedObject`.
-private final class StorageActionInvocation {
-    let action: BridgeReleaseStorageAction
-    let releaseIds: [String]
-    init(action: BridgeReleaseStorageAction, releaseIds: [String]) {
-        self.action = action
-        self.releaseIds = releaseIds
+/// The storage table, whose right click opens bae's menu in place of
+/// AppKit's.
+final class StorageTable: NSTableView {
+    weak var menus: StorageTableView.Coordinator?
+
+    override func menu(for event: NSEvent) -> NSMenu? {
+        let row = row(at: convert(event.locationInWindow, from: nil))
+        menus?.showContextMenu(forRow: row, in: self)
+        return nil
+    }
+}
+
+/// The storage table's header, whose right click opens bae's columns menu.
+final class StorageTableHeader: NSTableHeaderView {
+    weak var menus: StorageTableView.Coordinator?
+
+    override func menu(for event: NSEvent) -> NSMenu? {
+        menus?.showColumnsMenu(in: self)
+        return nil
     }
 }
 

@@ -142,7 +142,7 @@ final class StorageManagerLayoutTests: XCTestCase {
                 tableScrollView.documentView as? NSTableView
             )
 
-            XCTAssert(type(of: tableView) == NSTableView.self)
+            XCTAssertFalse(tableView is NSOutlineView)
         }
     }
 
@@ -394,19 +394,17 @@ extension StorageManagerLayoutTests {
             let tableView = try XCTUnwrap(
                 tableScrollView.documentView as? NSTableView
             )
-            let rowFrame = tableView.rect(ofRow: 0)
-            let pointInWindow = tableView.convert(
-                NSPoint(x: rowFrame.midX, y: rowFrame.midY),
-                to: nil
+            let coordinator = try XCTUnwrap(
+                tableView.delegate as? StorageTableView.Coordinator
             )
-            let menu = try XCTUnwrap(
-                HostedInput.contextMenu(at: pointInWindow, in: tableView)
-            )
-            menu.delegate?.menuNeedsUpdate?(menu)
 
-            XCTAssertTrue(
-                menu.items.contains { $0.title == String(localized: "Inspect") }
-            )
+            let titles = coordinator.contextEntries(forRow: 0)
+                .compactMap {
+                    entry -> String? in
+                    if case .item(let item) = entry { return item.title }
+                    return nil
+                }
+            XCTAssertTrue(titles.contains(String(localized: "Inspect")))
         }
     }
 }
