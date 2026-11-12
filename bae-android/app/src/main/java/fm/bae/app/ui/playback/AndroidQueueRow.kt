@@ -50,7 +50,12 @@ internal fun AndroidQueueRow(
             Modifier
                 .fillMaxWidth()
                 .then(if (current) Modifier else Modifier.clickable(onClick = onClick))
-                .padding(horizontal = ThemeSpace.group, vertical = ThemeSpace.related),
+                .padding(
+                    start = ThemeSpace.group,
+                    top = ThemeSpace.related,
+                    end = ThemeSpace.inline,
+                    bottom = ThemeSpace.related,
+                ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         CoverImage(

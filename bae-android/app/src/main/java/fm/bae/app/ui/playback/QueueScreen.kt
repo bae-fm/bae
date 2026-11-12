@@ -66,7 +66,12 @@ fun QueueScreen(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.inline),
+                            .padding(
+                                start = ThemeSpace.edge,
+                                top = ThemeSpace.related,
+                                end = ThemeSpace.edge,
+                                bottom = ThemeSpace.inline,
+                            ),
                 )
                 AndroidQueueRow(title = np.title, artist = np.artist, cover = np.coverImage, current = true)
             }
