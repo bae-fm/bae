@@ -47,7 +47,7 @@ struct ImportMappingPane: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: ThemeSpace.section) {
+            VStack(alignment: .leading, spacing: ThemeSpace.group) {
                 CandidateFolderLine(
                     tab: candidate.tab,
                     folderName: candidate.displayName,
@@ -88,8 +88,7 @@ struct ImportMappingPane: View {
         )
     }
 
-    /// The folder's images under their own ruled heading, level with the
-    /// Tracks heading the table draws beneath them.
+    /// The folder's images under their own ruled heading.
     private var imagesSection: some View {
         MacImportImages(
             images: mapping.images,

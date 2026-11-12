@@ -48,8 +48,43 @@ struct ReleaseEditorView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: ReleaseMetadataLayout.blockSpacing)
-        {
+        Group {
+            if let searchSection {
+                VStack(
+                    alignment: .leading,
+                    spacing: ThemeSpace.group
+                ) {
+                    lead
+                        .padding(.vertical, ThemeSpace.edge)
+                        .padding(.horizontal, ThemeSpace.section)
+                        .card()
+                    search(searchSection)
+                }
+            }
+            else {
+                ReleaseMetadataEditorContent(
+                    session: session,
+                    lead: { lead },
+                    onEditCover: { showingCoverPicker = true },
+                    onViewAlbum: onViewAlbum,
+                    onPlayTrack: onPlayTrack,
+                    images: images,
+                    onOpenImages: onOpenImages,
+                    onOpenDocument: openDocument
+                )
+            }
+        }
+        .sheet(isPresented: $showingCoverPicker) { coverPicker }
+        .onDisappear { endSearch() }
+    }
+
+    /// What heads the draft card: the action row, the progress of applying
+    /// a pressing, and the failure of the last save or check.
+    private var lead: some View {
+        VStack(
+            alignment: .leading,
+            spacing: ReleaseMetadataLayout.blockSpacing
+        ) {
             actionRow
             if let applySteps = session.applySteps {
                 MacProgressContainer(steps: applySteps) { EmptyView() }
@@ -62,23 +97,7 @@ struct ReleaseEditorView: View {
                 Notice(error: shown)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
-            if let searchSection {
-                search(searchSection)
-            }
-            else {
-                ReleaseMetadataEditorContent(
-                    session: session,
-                    onEditCover: { showingCoverPicker = true },
-                    onViewAlbum: onViewAlbum,
-                    onPlayTrack: onPlayTrack,
-                    images: images,
-                    onOpenImages: onOpenImages,
-                    onOpenDocument: openDocument
-                )
-            }
         }
-        .sheet(isPresented: $showingCoverPicker) { coverPicker }
-        .onDisappear { endSearch() }
     }
 
     /// The identify entries the import pane offers, then the session's own

@@ -1,11 +1,15 @@
 import BaeKit
 import SwiftUI
 
-/// The release editor's draft: its fields, album row, the folder's images
-/// where it has them, the track table, and the files the release carries
-/// that no track plays from.
-struct ReleaseMetadataEditorContent: View {
+/// The release editor's draft: the draft card holding `lead` over the
+/// release's fields, then the album row, the folder's images where it has
+/// them, the track table, and the files the release carries that no track
+/// plays from.
+struct ReleaseMetadataEditorContent<Lead: View>: View {
     let session: ReleaseMetadataEditSession
+    /// What heads the draft card: the action row and the notices about it.
+    @ViewBuilder
+    var lead: () -> Lead
     var onEditCover: (() -> Void)?
     /// Show a library album the album row names.
     let onViewAlbum: (String) -> Void
@@ -32,8 +36,12 @@ struct ReleaseMetadataEditorContent: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: ThemeSpace.section) {
-            VStack(alignment: .leading, spacing: ThemeSpace.section) {
+        VStack(alignment: .leading, spacing: ThemeSpace.group) {
+            VStack(
+                alignment: .leading,
+                spacing: ReleaseMetadataLayout.blockSpacing
+            ) {
+                lead()
                 ReleaseMetadataHeader(
                     values: session.draft.edit,
                     writer: session.fieldWriter,

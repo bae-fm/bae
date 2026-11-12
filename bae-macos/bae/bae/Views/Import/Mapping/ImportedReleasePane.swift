@@ -28,7 +28,7 @@ struct ImportedReleasePane: View {
     private var loadError: DisplayError?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: ThemeSpace.section) {
+        VStack(alignment: .leading, spacing: ThemeSpace.group) {
             CandidateFolderLine(
                 tab: candidate.tab,
                 folderName: candidate.displayName,
@@ -80,12 +80,15 @@ struct ImportedReleasePane: View {
     }
 
     private var importedLine: some View {
-        HStack(spacing: ThemeSpace.related) {
-            Label("Imported", systemImage: "checkmark.circle.fill")
-                .foregroundStyle(Theme.success)
-            Button("View in library") { onViewInLibrary(albumId) }
-                .buttonStyle(.borderless)
-        }
+        Notice(
+            title: String(localized: "Imported"),
+            advice: nil,
+            error: nil,
+            tone: .success,
+            action: ErrorAction("View in library") {
+                onViewInLibrary(albumId)
+            }
+        )
     }
 }
 
@@ -125,7 +128,7 @@ struct ImportingCandidatePane: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: ThemeSpace.section) {
+            VStack(alignment: .leading, spacing: ThemeSpace.group) {
                 CandidateFolderLine(
                     tab: candidate.tab,
                     folderName: candidate.displayName,
@@ -144,7 +147,7 @@ struct ImportingCandidatePane: View {
                     // the line and not the pane.
                     ImportProgressContainer(key: candidate.key, step: step)
                 }
-                HStack(alignment: .top, spacing: ThemeSpace.section) {
+                HStack(alignment: .top, spacing: ThemeSpace.edge) {
                     ImageView(content: coverContent, pointSize: Self.coverSize)
                         .frame(width: Self.coverSize, height: Self.coverSize)
                         .clipShape(

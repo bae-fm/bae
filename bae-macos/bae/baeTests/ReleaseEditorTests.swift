@@ -186,6 +186,7 @@ struct ReleaseEditorTests {
             ScrollView {
                 ReleaseMetadataEditorContent(
                     session: session,
+                    lead: { EmptyView() },
                     onViewAlbum: { _ in },
                     onPlayTrack: { _ in },
                     onOpenDocument: { _, _ in }
