@@ -2,7 +2,7 @@
 //! the identification queue.
 
 use super::*;
-use bae_import::extraction::{ArtworkAnalysis, ArtworkAnalyzer};
+use bae_import::extraction::{ArtworkAnalysis, ArtworkAnalyzer, ArtworkUnreadable};
 use bae_import::identification::MAX_IN_FLIGHT;
 use bae_import::{CandidateKey, ImportServiceHandle};
 use bae_util::test_channels::HANG_GUARD;
@@ -16,7 +16,7 @@ use tempfile::TempDir;
 struct PerFolderBarcodeAnalyzer;
 
 impl ArtworkAnalyzer for PerFolderBarcodeAnalyzer {
-    fn analyze(&self, path: &Path) -> ArtworkAnalysis {
+    fn analyze(&self, path: &Path) -> Result<ArtworkAnalysis, ArtworkUnreadable> {
         let folder = path
             .parent()
             .and_then(|dir| dir.file_name())
@@ -24,10 +24,10 @@ impl ArtworkAnalyzer for PerFolderBarcodeAnalyzer {
             .expect("a candidate image sits in a named folder");
         let digits: String = folder.chars().filter(|c| c.is_ascii_digit()).collect();
         let ordinal: u32 = digits.parse().expect("a numbered candidate folder");
-        ArtworkAnalysis {
+        Ok(ArtworkAnalysis {
             barcodes: vec![bae_types::barcode::with_check_digit(&format!("01234567{ordinal:04}"))],
             text_lines: Vec::new(),
-        }
+        })
     }
 }
 

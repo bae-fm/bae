@@ -10,7 +10,7 @@
 )]
 
 use super::*;
-use crate::extraction::{ArtworkAnalysis, ArtworkAnalyzer};
+use crate::extraction::{ArtworkAnalysis, ArtworkAnalyzer, ArtworkUnreadable};
 use crate::tables::{DbCandidateIdentifyResult, DbImportCandidateState};
 use bae_catalogs::search::MetadataResult;
 use bae_catalogs::test_releases::mb_release_json;
@@ -73,8 +73,8 @@ pub(crate) struct BarcodeAnalyzer {
 }
 
 impl ArtworkAnalyzer for BarcodeAnalyzer {
-    fn analyze(&self, _path: &Path) -> ArtworkAnalysis {
-        ArtworkAnalysis { barcodes: vec![self.barcode.clone()], text_lines: Vec::new() }
+    fn analyze(&self, _path: &Path) -> Result<ArtworkAnalysis, ArtworkUnreadable> {
+        Ok(ArtworkAnalysis { barcodes: vec![self.barcode.clone()], text_lines: Vec::new() })
     }
 }
 
@@ -83,7 +83,7 @@ impl ArtworkAnalyzer for BarcodeAnalyzer {
 pub(crate) struct PerFolderBarcodeAnalyzer;
 
 impl ArtworkAnalyzer for PerFolderBarcodeAnalyzer {
-    fn analyze(&self, path: &Path) -> ArtworkAnalysis {
+    fn analyze(&self, path: &Path) -> Result<ArtworkAnalysis, ArtworkUnreadable> {
         let folder = path
             .parent()
             .and_then(|dir| dir.file_name())
@@ -91,10 +91,10 @@ impl ArtworkAnalyzer for PerFolderBarcodeAnalyzer {
             .expect("a candidate image sits in a named folder");
         let digits: String = folder.chars().filter(|c| c.is_ascii_digit()).collect();
         let ordinal: u32 = digits.parse().expect("a numbered candidate folder");
-        ArtworkAnalysis {
+        Ok(ArtworkAnalysis {
             barcodes: vec![bae_types::barcode::with_check_digit(&format!("01234567{ordinal:04}"))],
             text_lines: Vec::new(),
-        }
+        })
     }
 }
 

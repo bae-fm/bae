@@ -6,7 +6,7 @@
 use super::*;
 use crate::extraction::service::tests::*;
 use crate::extraction::service::*;
-use crate::extraction::{ArtworkAnalysis, ArtworkAnalyzer};
+use crate::extraction::{ArtworkAnalysis, ArtworkAnalyzer, ArtworkUnreadable};
 use bae_identify::signals::{ArtworkScan, TextOrigin};
 use bae_util::test_channels::HANG_GUARD;
 use std::fs;
@@ -133,11 +133,11 @@ FILE \"audio.flac\" WAVE\n  \
 async fn the_bars_and_their_printed_digits_are_one_sighting() {
     struct BarsAndDigits;
     impl ArtworkAnalyzer for BarsAndDigits {
-        fn analyze(&self, _path: &Path) -> ArtworkAnalysis {
-            ArtworkAnalysis {
+        fn analyze(&self, _path: &Path) -> Result<ArtworkAnalysis, ArtworkUnreadable> {
+            Ok(ArtworkAnalysis {
                 barcodes: vec!["5012345678900".to_string()],
                 text_lines: vec!["5 012345 678900".to_string()],
-            }
+            })
         }
     }
 
@@ -257,6 +257,41 @@ async fn an_image_read_that_panics_fails_the_text_and_barcode_signals() {
     }
 }
 
+/// An image the platform can't read is not an image with nothing on it: the
+/// scan fails with the reason, and the reading is not kept as settled for the
+/// next run to reuse.
+#[tokio::test(flavor = "multi_thread")]
+async fn an_unreadable_image_fails_the_scan_and_is_not_kept_as_settled() {
+    struct Unreadable;
+    impl ArtworkAnalyzer for Unreadable {
+        fn analyze(&self, _path: &Path) -> Result<ArtworkAnalysis, ArtworkUnreadable> {
+            Err(ArtworkUnreadable { detail: "truncated JPEG".to_string() })
+        }
+    }
+
+    let tmp = TempDir::new().unwrap();
+    let folder = build_release(&tmp, "Some Folder", &["cover.jpg"], &[]);
+    let (handle, _tx, mut rx, _lib_tmp) = make_service().await;
+    handle.register_analyzer(Arc::new(Unreadable));
+    let source = folder_source(folder);
+    let ExtractionSource::Candidate { candidate } = &source else {
+        unreachable!("a folder source is a candidate");
+    };
+    let key = candidate.files.content_hash();
+    let mut run =
+        handle.start(IdentifyRunId::for_test(1), crate::CandidateKey::test("cand-1"), source);
+
+    let snapshots = collect_snapshots(&mut rx, 2).await;
+    run_ended(&mut run).await;
+    match &snapshots[1].1 {
+        ArtworkScan::Failed { failure, read: 0, total: 1 } => {
+            assert!(failure.detail.contains("truncated JPEG"), "got {failure:?}");
+        }
+        other => panic!("an unreadable image fails the artwork scan, got {other:?}"),
+    }
+    assert!(handle.inner.settled.get_cloned(&key).is_none(), "the failed reading was kept");
+}
+
 /// A run cancelled mid-OCR never reaches its `Settled` snapshot.
 #[tokio::test(flavor = "multi_thread")]
 async fn cancelled_ocr_run_does_not_settle() {
@@ -351,7 +386,7 @@ impl OrderedAnalyzer {
 }
 
 impl ArtworkAnalyzer for OrderedAnalyzer {
-    fn analyze(&self, path: &Path) -> ArtworkAnalysis {
+    fn analyze(&self, path: &Path) -> Result<ArtworkAnalysis, ArtworkUnreadable> {
         let name = path.file_name().unwrap().to_str().unwrap().to_string();
         let turn = self
             .finish_order
@@ -372,7 +407,7 @@ impl ArtworkAnalyzer for OrderedAnalyzer {
         if self.panics_on.as_deref() == Some(name.as_str()) {
             panic!("OCR analyzer panicked on {name}");
         }
-        image_analysis(&name)
+        Ok(image_analysis(&name))
     }
 }
 
@@ -467,13 +502,13 @@ struct ConcurrencyAnalyzer {
 }
 
 impl ArtworkAnalyzer for ConcurrencyAnalyzer {
-    fn analyze(&self, _path: &Path) -> ArtworkAnalysis {
+    fn analyze(&self, _path: &Path) -> Result<ArtworkAnalysis, ArtworkUnreadable> {
         self.calls.fetch_add(1, Ordering::SeqCst);
         let reading = self.reading.fetch_add(1, Ordering::SeqCst) + 1;
         self.most_at_once.fetch_max(reading, Ordering::SeqCst);
         self.gate.pass();
         self.reading.fetch_sub(1, Ordering::SeqCst);
-        ArtworkAnalysis::empty()
+        Ok(ArtworkAnalysis::empty())
     }
 }
 

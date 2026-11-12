@@ -1137,6 +1137,10 @@ Tag text declared UTF-8 or UTF-16 is taken as it is.
 Reading the artwork means reading text off images. On macOS this uses the
 system's Vision framework. bae reads no artwork on other platforms, though
 Windows has a text reader of its own (`Windows.Media.Ocr`).
+An image the system can't decode or read is not an image with nothing printed
+on it: the candidate's artwork scan fails with the image's path and the reason,
+its barcode and text signals show that failure, and the reading is not kept for
+the next run to reuse.
 
 Ana's folder yields a Disc ID from her CUE sheet, the barcode from her scan of
 the case, LBL-1001 from the folder's text, and eleven ISRCs. The fast clues

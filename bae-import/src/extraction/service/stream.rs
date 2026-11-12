@@ -7,14 +7,13 @@ use super::{
     emit_signals, Artwork, ArtworkPass, ExtractionInputs, ExtractionServiceInner, Gathered,
     RunningExtraction, SignalsSnapshot,
 };
-use crate::extraction::analyzer::{ArtworkAnalysis, ArtworkAnalyzer};
+use crate::extraction::analyzer::{ArtworkAnalysis, ArtworkAnalyzer, ArtworkUnreadable};
 use crate::extraction::candidate_text::{Source, SourcedLine};
 use crate::extraction::fast_pass::ArtworkImage;
 use bae_catalogs::InternalFailure;
 use bae_identify::signals::{ArtworkScan, BarcodeSignal, Signals, SourcedValue, TextSignal};
 use coven::task::{BugSinkRef, CompletingTask};
 use std::collections::VecDeque;
-use std::convert::Infallible;
 use std::sync::Arc;
 use tokio::sync::{OwnedSemaphorePermit, TryAcquireError};
 use tokio_util::sync::CancellationToken;
@@ -27,7 +26,7 @@ const READ_IMAGE: &str = "read an image's text";
 /// waiting for runs to its end, and its panic goes to the crash reporter.
 struct ImageRead<'a> {
     image: &'a ArtworkImage,
-    task: CompletingTask<Result<ArtworkAnalysis, Infallible>>,
+    task: CompletingTask<Result<ArtworkAnalysis, ArtworkUnreadable>>,
 }
 
 impl<'a> ImageRead<'a> {
@@ -44,20 +43,22 @@ impl<'a> ImageRead<'a> {
             task: coven::task::blocking_completing(READ_IMAGE, bugs, move || {
                 let analysis = analyzer.analyze(&path);
                 drop(permit);
-                Ok(analysis)
+                analysis
             }),
         }
     }
 
-    /// What the analyzer read off the image, or why it panicked, reported
-    /// to `diagnostics`.
+    /// What the analyzer read off the image, why it could not read it, or why
+    /// it panicked, reported to `diagnostics`.
     async fn finish(
         self,
         diagnostics: &bae_diagnostics::Diagnostics,
     ) -> Result<ArtworkAnalysis, InternalFailure> {
         match self.task.await {
             Ok(Ok(analysis)) => Ok(analysis),
-            Ok(Err(never)) => match never {},
+            Ok(Err(unreadable)) => Err(InternalFailure {
+                detail: format!("{:?}: {}", self.image.path, unreadable.detail),
+            }),
             Err(failed) => Err(InternalFailure {
                 detail: format!("{:?}: {}", self.image.path, diagnostics.bug(failed)),
             }),

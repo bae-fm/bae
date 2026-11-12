@@ -30,10 +30,28 @@ impl ArtworkAnalysis {
     }
 }
 
+/// An image the platform could not read at all, as opposed to one it read and
+/// found nothing printed on. The pass over the candidate's artwork stops at
+/// it and says so.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ArtworkUnreadable {
+    /// Why the image could not be read.
+    pub detail: String,
+}
+
+impl coven::task::CarriesBug for ArtworkUnreadable {
+    /// An unreadable image is the image's fault, not a bug.
+    fn bug(&self) -> Option<&coven::task::Bug> {
+        None
+    }
+}
+
 /// Called on blocking threads, several images at once.
 pub trait ArtworkAnalyzer: Send + Sync {
-    /// Read the image at `path`; empty on failure.
-    fn analyze(&self, path: &Path) -> ArtworkAnalysis;
+    /// Read the image at `path`. An image with nothing on it reads as
+    /// [`ArtworkAnalysis::empty`]; one that can't be decoded or prepared is
+    /// [`ArtworkUnreadable`].
+    fn analyze(&self, path: &Path) -> Result<ArtworkAnalysis, ArtworkUnreadable>;
 }
 
 #[cfg(test)]

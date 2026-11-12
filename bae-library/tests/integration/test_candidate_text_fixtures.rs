@@ -5,7 +5,7 @@
 
 use bae_identify::signals::TextSignal;
 use bae_import::extraction::service::{ExtractionService, ExtractionSource};
-use bae_import::extraction::{ArtworkAnalysis, ArtworkAnalyzer};
+use bae_import::extraction::{ArtworkAnalysis, ArtworkAnalyzer, ArtworkUnreadable};
 use bae_import::ImportEventBus;
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -85,9 +85,9 @@ impl FixtureAnalyzer {
 }
 
 impl ArtworkAnalyzer for FixtureAnalyzer {
-    fn analyze(&self, path: &Path) -> ArtworkAnalysis {
+    fn analyze(&self, path: &Path) -> Result<ArtworkAnalysis, ArtworkUnreadable> {
         let text_lines = self.responses.lock().unwrap().get(path).cloned().unwrap_or_default();
-        ArtworkAnalysis { barcodes: Vec::new(), text_lines }
+        Ok(ArtworkAnalysis { barcodes: Vec::new(), text_lines })
     }
 }
 

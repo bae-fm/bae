@@ -8,7 +8,9 @@ use std::path::Path;
 
 #[tokio::test(flavor = "multi_thread")]
 async fn removing_a_watched_folder_cancels_in_flight_extraction() {
-    use crate::extraction::{ArtworkAnalysis, ArtworkAnalyzer, ExtractionSource};
+    use crate::extraction::{
+        ArtworkAnalysis, ArtworkAnalyzer, ArtworkUnreadable, ExtractionSource,
+    };
     use bae_identify::signals::TextSignal;
     use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -19,10 +21,10 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
         held: crate::tests::gate::Held,
     }
     impl ArtworkAnalyzer for HeldAnalyzer {
-        fn analyze(&self, _path: &Path) -> ArtworkAnalysis {
+        fn analyze(&self, _path: &Path) -> Result<ArtworkAnalysis, ArtworkUnreadable> {
             self.calls.fetch_add(1, Ordering::SeqCst);
             self.held.pass();
-            ArtworkAnalysis { barcodes: Vec::new(), text_lines: vec!["Line".to_string()] }
+            Ok(ArtworkAnalysis { barcodes: Vec::new(), text_lines: vec!["Line".to_string()] })
         }
     }
 

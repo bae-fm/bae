@@ -14,9 +14,17 @@ pub struct BridgeArtworkAnalysis {
 /// barcodes and text. Core calls it on blocking tasks, several images at once.
 #[uniffi::export(callback_interface)]
 pub trait ArtworkAnalyzerCallback: Send + Sync {
-    /// Empty on failure, as when there is nothing to read. `path` is the
-    /// image's path as coven's bytes (`coven::path_bytes`).
-    fn analyze(&self, path: Vec<u8>) -> BridgeArtworkAnalysis;
+    /// An image with nothing printed on it reads as empty; one that can't be
+    /// decoded or prepared throws. `path` is the image's path as coven's
+    /// bytes (`coven::path_bytes`).
+    fn analyze(&self, path: Vec<u8>) -> Result<BridgeArtworkAnalysis, BridgeArtworkUnreadable>;
+}
+
+/// An image the platform could not read at all.
+#[derive(Debug, thiserror::Error, uniffi::Error)]
+pub enum BridgeArtworkUnreadable {
+    #[error("{detail}")]
+    Unreadable { detail: String },
 }
 
 /// The activity exposed by coven's committed upload queue.

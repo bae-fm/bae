@@ -4,7 +4,7 @@
 //! release goes on it.
 
 use super::*;
-use crate::extraction::{ArtworkAnalysis, ArtworkAnalyzer};
+use crate::extraction::{ArtworkAnalysis, ArtworkAnalyzer, ArtworkUnreadable};
 use crate::identification::tests::*;
 use bae_catalogs::test_releases::{mb_release_json, mb_search_json};
 use bae_util::test_channels::HANG_GUARD;
@@ -15,9 +15,9 @@ use std::sync::Arc;
 struct GatedAnalyzer(crate::tests::gate::Held);
 
 impl ArtworkAnalyzer for GatedAnalyzer {
-    fn analyze(&self, _path: &Path) -> ArtworkAnalysis {
+    fn analyze(&self, _path: &Path) -> Result<ArtworkAnalysis, ArtworkUnreadable> {
         self.0.pass();
-        ArtworkAnalysis::empty()
+        Ok(ArtworkAnalysis::empty())
     }
 }
 

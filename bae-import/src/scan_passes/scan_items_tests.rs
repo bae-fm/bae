@@ -8,6 +8,7 @@
 use super::*;
 use crate::extraction::ArtworkAnalysis;
 use crate::extraction::ArtworkAnalyzer;
+use crate::extraction::ArtworkUnreadable;
 use crate::identification::tests::*;
 use crate::scan_passes::tests::*;
 use crate::service::tests::*;
@@ -981,8 +982,8 @@ struct CountingAnalyzer {
 }
 
 impl ArtworkAnalyzer for CountingAnalyzer {
-    fn analyze(&self, _path: &Path) -> ArtworkAnalysis {
+    fn analyze(&self, _path: &Path) -> Result<ArtworkAnalysis, ArtworkUnreadable> {
         self.calls.fetch_add(1, Ordering::Relaxed);
-        ArtworkAnalysis::empty()
+        Ok(ArtworkAnalysis::empty())
     }
 }

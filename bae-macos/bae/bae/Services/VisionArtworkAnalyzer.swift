@@ -32,14 +32,21 @@ final class VisionArtworkAnalyzer: ArtworkAnalyzerCallback {
     /// RGBA — as it did in the sweep.
     private let ciContext = CIContext()
 
-    func analyze(path: Data) -> BridgeArtworkAnalysis {
+    /// An image nothing is printed on reads as empty; one that can't be
+    /// decoded, prepared or read throws, so core says the image went unread.
+    func analyze(path: Data) throws -> BridgeArtworkAnalysis {
         let url = URL(filePathBytes: path, isDirectory: false)
         guard let decoded = decode(url: url) else {
-            return BridgeArtworkAnalysis(barcodes: [], textLines: [])
+            logger.error("analyze could not decode \(url.path)")
+            throw BridgeArtworkUnreadable.Unreadable(
+                detail: "the image couldn't be decoded"
+            )
         }
         guard let cgImage = prepared(decoded.image) else {
             logger.error("analyze could not prepare \(url.path) for reading")
-            return BridgeArtworkAnalysis(barcodes: [], textLines: [])
+            throw BridgeArtworkUnreadable.Unreadable(
+                detail: "the image couldn't be prepared for reading"
+            )
         }
 
         var barcodes: [String] = []
@@ -88,9 +95,12 @@ final class VisionArtworkAnalyzer: ArtworkAnalyzerCallback {
         }
         catch {
             logger.error(
-                "analyze perform failed for \(path): \(String(reflecting: error))"
+                "analyze perform failed for \(url.path): \(String(reflecting: error))"
             )
-            return BridgeArtworkAnalysis(barcodes: [], textLines: [])
+            throw BridgeArtworkUnreadable.Unreadable(
+                detail:
+                    "Vision couldn't read the image: \(error.localizedDescription)"
+            )
         }
 
         return BridgeArtworkAnalysis(barcodes: barcodes, textLines: textLines)

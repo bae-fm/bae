@@ -10,5 +10,5 @@ mod pool;
 pub mod release;
 pub mod service;
 
-pub use analyzer::{ArtworkAnalysis, ArtworkAnalyzer};
+pub use analyzer::{ArtworkAnalysis, ArtworkAnalyzer, ArtworkUnreadable};
 pub use service::{ExtractionService, ExtractionSource, ExtractionWatch, SignalsSnapshot};

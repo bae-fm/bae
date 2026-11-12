@@ -3,7 +3,7 @@
 //! finish, and one ended from outside. Fixtures the pass's own tests share.
 
 use super::*;
-use crate::extraction::{ArtworkAnalysis, ArtworkAnalyzer};
+use crate::extraction::{ArtworkAnalysis, ArtworkAnalyzer, ArtworkUnreadable};
 use crate::ScanEvent;
 use bae_identify::signals::ArtworkScan;
 use bae_util::test_channels::HANG_GUARD;
@@ -49,21 +49,21 @@ impl StubAnalyzer {
 }
 
 impl ArtworkAnalyzer for StubAnalyzer {
-    fn analyze(&self, path: &Path) -> ArtworkAnalysis {
+    fn analyze(&self, path: &Path) -> Result<ArtworkAnalysis, ArtworkUnreadable> {
         self.calls.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         if let Some(gate) = &self.gate {
             gate.pass();
         }
         let filename = path.file_name().and_then(|n| n.to_str()).unwrap_or_default().to_string();
         let text_lines = self.responses.lock().unwrap().get(&filename).cloned().unwrap_or_default();
-        ArtworkAnalysis { barcodes: Vec::new(), text_lines }
+        Ok(ArtworkAnalysis { barcodes: Vec::new(), text_lines })
     }
 }
 
 pub(super) struct PanicAnalyzer;
 
 impl ArtworkAnalyzer for PanicAnalyzer {
-    fn analyze(&self, _path: &Path) -> ArtworkAnalysis {
+    fn analyze(&self, _path: &Path) -> Result<ArtworkAnalysis, ArtworkUnreadable> {
         panic!("OCR analyzer panicked");
     }
 }
