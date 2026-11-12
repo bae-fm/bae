@@ -169,7 +169,8 @@ impl ImportServiceHandle {
 
 /// Land one source's answer on `candidate_key`'s search run `run`. The
 /// search was started by a person who is not waiting on this answer, so a
-/// landing that cannot be written is reported as a bug.
+/// landing that cannot be written is reported as a bug and stored as the
+/// source's failure.
 async fn land_source_search(
     tables: &crate::tables::ImportTables,
     diagnostics: &bae_diagnostics::Diagnostics,
@@ -185,9 +186,23 @@ async fn land_source_search(
             candidate_key,
             source.as_str()
         ),
-        Err(error) => diagnostics.report_failure(
-            &format!("land {}'s {} search", candidate_key, source.as_str()),
-            &error,
-        ),
+        // The answer could not be saved, so the source would read as
+        // searching for good. It is stored as failed with the error, which
+        // Retry asks again.
+        Err(error) => {
+            let what = format!("land {}'s {} search", candidate_key, source.as_str());
+            diagnostics.report_failure(&what, &error);
+            let failed = Err(bae_catalogs::Failure::Internal(bae_catalogs::InternalFailure {
+                detail: format!("{what}: {error}"),
+            }));
+            match tables.land_candidate_search(run, source, failed).await {
+                Ok(_) => {}
+                Err(error) => diagnostics.report_failure(&format!("{what} as failed"), &error),
+            }
+        }
     }
 }
+
+#[cfg(test)]
+#[path = "search_tests.rs"]
+mod tests;

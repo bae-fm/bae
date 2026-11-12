@@ -538,5 +538,24 @@ impl ImportTables {
 }
 
 #[cfg(test)]
+impl ImportTables {
+    /// Plant damage for a test: every release a search returns, in the
+    /// library under `directory`, fails to be stored, as a full disk fails
+    /// it.
+    pub(crate) async fn fail_search_match_writes_for_test(directory: &std::path::Path) {
+        let directory = directory.to_path_buf();
+        bae_util::test_blocking::on_blocking_pool(move || {
+            bae_store::test_fixtures::planted_damage::plant_in_library_file(
+                &directory,
+                "import_candidate_match",
+                "CREATE TRIGGER fail_search_match_write BEFORE INSERT ON import_candidate_match \
+                 BEGIN SELECT RAISE(ABORT, 'the disk is full'); END;",
+            )
+        })
+        .await;
+    }
+}
+
+#[cfg(test)]
 #[path = "search_rows_tests.rs"]
 mod tests;
