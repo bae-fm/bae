@@ -36,6 +36,10 @@ import fm.bae.app.ui.components.AndroidSpinner
 import fm.bae.app.ui.components.OpenProgressLine
 import fm.bae.app.ui.components.RemoveLibraryDialog
 import fm.bae.app.ui.settings.libraryDetail
+import fm.bae.fastvalues.LatestStream
+import fm.bae.fastvalues.only
+import uniffi.bae_bridge.BridgeClosingProgress
+import uniffi.bae_bridge.BridgeClosingStep
 import uniffi.bae_bridge.BridgeDropboxLocation
 import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeLibraryState
@@ -219,8 +223,6 @@ private fun RunningLibraryRow(
     running: RunningRemoval,
 ) {
     val context = LocalContext.current
-    val waiting =
-        if (running.removing) R.string.loading_removing_library else R.string.loading_opening_library
     AndroidRow(
         title = library.name,
         subtitleContent = {
@@ -232,12 +234,14 @@ private fun RunningLibraryRow(
                 bar = false,
             ) {
                 OpenProgressLine(steps = running.opening, modifier = Modifier.fillMaxWidth(), bar = false) {
-                    Text(
-                        text = stringResource(waiting),
-                        style = ThemeText.body.style,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                    if (!running.removing) {
+                        Text(
+                            text = stringResource(R.string.loading_opening_library),
+                            style = ThemeText.body.style,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
                 }
             }
         },
@@ -259,8 +263,8 @@ internal fun WelcomeLibrariesScene() {
 }
 
 /**
- * The same welcome while the synced library is being removed and has not yet
- * reported a step, for the `welcome-removing` screenshot scene.
+ * The same welcome while the synced library is being removed and is at its
+ * leaving step, for the `welcome-removing` screenshot scene.
  */
 @Composable
 internal fun WelcomeRemovingScene() {
@@ -269,7 +273,14 @@ internal fun WelcomeRemovingScene() {
             libraryId = "lib-1",
             removing = true,
             opening = null,
-            closing = null,
+            closing =
+                LatestStream
+                    .closingSteps(
+                        BridgeClosingProgress(
+                            BridgeClosingStep.LEAVING_LIBRARY,
+                            "core.library.closing_step.leaving_library",
+                        ),
+                    ).only,
         )
     WelcomeScene(
         libraries = WelcomeLibrariesView(listed = true) { onAdd -> WelcomeLibrariesPreviewContent(onAdd, running) },
