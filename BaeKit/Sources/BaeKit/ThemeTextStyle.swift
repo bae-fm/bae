@@ -1,11 +1,10 @@
 import SwiftUI
 
 extension View {
-    /// Sets text in a theme text role: its font, letter spacing and case.
+    /// Sets text in a theme text role: its font and letter spacing.
     public func themeText(_ text: ThemeText) -> some View {
         font(text.font)
             .tracking(text.tracking)
-            .textCase(text.uppercase ? .uppercase : nil)
     }
 }
 

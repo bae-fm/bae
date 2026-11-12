@@ -93,9 +93,9 @@ fn write_swift(out: &mut String, theme: &Theme) -> std::fmt::Result {
     out.push_str("}\n");
 
     out.push_str(
-        "\n/// A text style: its font, letter spacing and case, and the size, style,\n\
+        "\n/// A text style: its font, letter spacing and the size, style,\n\
          /// weight and design AppKit and UIKit text draw it with.\npublic struct ThemeText: Sendable {\n    \
-         public let font: Font\n    public let tracking: CGFloat\n    public let uppercase: Bool\n    \
+         public let font: Font\n    public let tracking: CGFloat\n    \
          public let macOSSize: CGFloat\n    public let iOSStyle: Font.TextStyle\n    public let weight: Font.Weight\n    \
          public let monospaced: Bool\n}\n\n\
          extension ThemeText {\n",
@@ -107,13 +107,12 @@ fn write_swift(out: &mut String, theme: &Theme) -> std::fmt::Result {
             out,
             "    public static let {role} = ThemeText(\n        font: .theme(\n            macOS: {},\n            \
              iOS: .{},\n            weight: {},\n            design: {design}\n        ),\n        \
-             tracking: {},\n        uppercase: {},\n        macOSSize: {},\n        iOSStyle: .{},\n        weight: {},\n        \
+             tracking: {},\n        macOSSize: {},\n        iOSStyle: .{},\n        weight: {},\n        \
              monospaced: {}\n    )",
             apple.macos,
             apple.ios,
             text.weight.swift(),
             text.tracking,
-            text.uppercase,
             apple.macos,
             apple.ios,
             text.weight.swift(),

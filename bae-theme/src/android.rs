@@ -113,8 +113,8 @@ fn write_kotlin(out: &mut String, theme: &Theme) -> std::fmt::Result {
     out.push_str("}\n");
 
     out.push_str(
-        "\n/** A text style, and whether it is set in capitals. */\n\
-         class ThemeText(\n    val style: TextStyle,\n    val uppercase: Boolean,\n) {\n    companion object {\n",
+        "\n/** A text style. */\n\
+         class ThemeText(\n    val style: TextStyle,\n) {\n    companion object {\n",
     );
     for (role, text) in &theme.text {
         let Some(android) = text.android else { continue };
@@ -127,12 +127,10 @@ fn write_kotlin(out: &mut String, theme: &Theme) -> std::fmt::Result {
             out,
             "        val {role} =\n            ThemeText(\n                TextStyle(\n                    \
              fontSize = {}.sp,\n{line}                    fontWeight = {},\n                    \
-             letterSpacing = ({}).sp,\n                    fontFamily = {family},\n                ),\n                \
-             uppercase = {},\n            )",
+             letterSpacing = ({}).sp,\n                    fontFamily = {family},\n                ),\n            )",
             android,
             text.weight.kotlin(),
-            text.tracking,
-            text.uppercase
+            text.tracking
         )?;
     }
     out.push_str("    }\n}\n");

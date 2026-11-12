@@ -125,7 +125,7 @@ pub struct IconRole {
     pub sizes: PlatformLengths,
 }
 
-/// A text role: weight, tracking, case and monospacing shared by every
+/// A text role: weight, tracking and monospacing shared by every
 /// platform, and a size for each platform that uses it. Apple's code takes
 /// macOS and iOS together; a platform whose code reads a role it lacks fails
 /// to compile.
@@ -134,7 +134,6 @@ pub struct TextRole {
     pub weight: Weight,
     /// Letter spacing, in points and sp.
     pub tracking: f64,
-    pub uppercase: bool,
     pub monospaced: bool,
     pub apple: Option<AppleSize>,
     /// sp.
@@ -272,7 +271,6 @@ impl RawPlatformLengths {
 struct RawTextRole {
     weight: Weight,
     tracking: Option<f64>,
-    uppercase: Option<bool>,
     monospaced: Option<bool>,
     macos: Option<f64>,
     ios: Option<String>,
@@ -525,7 +523,6 @@ impl Theme {
                     TextRole {
                         weight: role.weight,
                         tracking: role.tracking.unwrap_or(0.0),
-                        uppercase: role.uppercase.unwrap_or(false),
                         monospaced: role.monospaced.unwrap_or(false),
                         apple,
                         android: role.android,

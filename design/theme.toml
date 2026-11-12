@@ -300,7 +300,7 @@ panel = 20
 artwork = 6
 cover = 10
 
-# Text styles. Weight, tracking (letter spacing), case and monospacing are the
+# Text styles. Weight, tracking (letter spacing) and monospacing are the
 # same on every platform; the size is points on macOS, a Dynamic Type style on
 # iOS so text follows the person's text size, and sp on Android.
 [text.hero]
