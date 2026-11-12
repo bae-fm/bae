@@ -72,6 +72,13 @@ extension BridgeError {
     public var retryRuledOut: Bool {
         !bridgeErrorRetryCanHelp(error: self)
     }
+
+    /// Whether core says resetting the library from the cloud replaces what
+    /// failed: the failure is in this device's copy of the library's data.
+    /// Core's answer, not this app's.
+    public var resetFromCloudReplaces: Bool {
+        bridgeErrorResetFromCloudReplaces(error: self)
+    }
 }
 
 /// A bridge error's `localizedDescription` is core's keyed line in the current
@@ -121,6 +128,17 @@ extension BridgePlaybackErrorReason {
         switch self {
         case .diagnostic(let error):
             return error.retryRuledOut
+        case .syncDisconnected, .onOtherDevice, .originalMissing,
+            .audioOutput:
+            return false
+        }
+    }
+
+    /// Only the diagnostic arm carries core's answer, its error's.
+    public var resetFromCloudReplaces: Bool {
+        switch self {
+        case .diagnostic(let error):
+            return error.resetFromCloudReplaces
         case .syncDisconnected, .onOtherDevice, .originalMissing,
             .audioOutput:
             return false

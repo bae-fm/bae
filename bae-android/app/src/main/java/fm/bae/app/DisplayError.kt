@@ -17,6 +17,11 @@ data class DisplayError(
      * saying, have nothing ruling a retry out.
      */
     val offersRetry: Boolean,
+    /**
+     * Whether core says resetting the library from the cloud replaces what
+     * failed: the failure is in this device's copy of the library's data.
+     */
+    val resetFromCloudReplaces: Boolean = false,
 ) {
     /** An error this app words itself: prose with no diagnostic behind it. */
     constructor(line: String) : this(line, null, true)

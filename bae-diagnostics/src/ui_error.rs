@@ -2,6 +2,7 @@
 //! localized line for, and the untranslated detail behind it.
 
 mod class;
+mod reset;
 mod retry;
 pub use class::UiErrorClass;
 

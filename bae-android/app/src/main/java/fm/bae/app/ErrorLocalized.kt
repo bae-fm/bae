@@ -10,6 +10,7 @@ import uniffi.bae_bridge.BridgePlayOutcome
 import uniffi.bae_bridge.BridgePlaybackErrorReason
 import uniffi.bae_bridge.BridgeSyncRetryOutcome
 import uniffi.bae_bridge.bridgeErrorLineKey
+import uniffi.bae_bridge.bridgeErrorResetFromCloudReplaces
 import uniffi.bae_bridge.bridgeErrorRetryCanHelp
 import uniffi.bae_bridge.bridgeErrorShownDetail
 import uniffi.bae_bridge.bridgePlayOutcomeKey
@@ -106,6 +107,13 @@ val BridgeException.shownDetail: String?
 val BridgeException.retryRuledOut: Boolean
     get() = !bridgeErrorRetryCanHelp(this)
 
+/**
+ * Whether core says resetting the library from the cloud replaces what failed: the failure is in this
+ * device's copy of the library's data. Core's answer, not this app's.
+ */
+val BridgeException.resetFromCloudReplaces: Boolean
+    get() = bridgeErrorResetFromCloudReplaces(this)
+
 /** Only a diagnostic playback failure carries core's answer, its error's; core keys the others without saying. */
 val BridgePlaybackErrorReason.retryRuledOut: Boolean
     get() = (this as? BridgePlaybackErrorReason.Diagnostic)?.error?.retryRuledOut ?: false
@@ -116,11 +124,20 @@ val BridgePlaybackErrorReason.shownDetail: String?
 
 /** A [BridgeException] ready to show, or null when core says it has nothing to show — a cancellation. */
 fun Context.displayError(error: BridgeException): DisplayError? =
-    localizedLine(error)?.let { line -> DisplayError(line, error.shownDetail, !error.retryRuledOut) }
+    localizedLine(error)?.let { line ->
+        DisplayError(line, error.shownDetail, !error.retryRuledOut, error.resetFromCloudReplaces)
+    }
 
 /** A [BridgePlaybackErrorReason] ready to show, or null when core says it has nothing to show. */
 fun Context.displayError(reason: BridgePlaybackErrorReason): DisplayError? =
-    localizedLine(reason)?.let { line -> DisplayError(line, reason.shownDetail, !reason.retryRuledOut) }
+    localizedLine(reason)?.let { line ->
+        DisplayError(
+            line,
+            reason.shownDetail,
+            !reason.retryRuledOut,
+            (reason as? BridgePlaybackErrorReason.Diagnostic)?.error?.resetFromCloudReplaces ?: false,
+        )
+    }
 
 /**
  * What a retry that didn't sync shows, or null when it synced. A failed pass

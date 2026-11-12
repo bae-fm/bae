@@ -12,6 +12,7 @@ public protocol LocalizedFailure {
     var localizedLine: String? { get }
     var shownDetail: String? { get }
     var retryRuledOut: Bool { get }
+    var resetFromCloudReplaces: Bool { get }
 }
 
 extension BridgeError: LocalizedFailure {}
@@ -33,6 +34,9 @@ public struct DisplayError: Equatable, Sendable {
     /// database, a bug, an edit to fix. Prose the UI wrote, and a failure
     /// core keys without saying, have nothing ruling a retry out.
     public let offersRetry: Bool
+    /// Whether core says resetting the library from the cloud replaces what
+    /// failed: the failure is in this device's copy of the library's data.
+    public let resetFromCloudReplaces: Bool
 
     /// The opening portion the Details alert shows. Copy continues to use
     /// `detail`, which retains the complete diagnostic.
@@ -70,6 +74,7 @@ public struct DisplayError: Equatable, Sendable {
         self.line = line
         self.detail = nil
         self.offersRetry = true
+        self.resetFromCloudReplaces = false
     }
 
     /// A failure the UI writes the headline for but core wrote the fault text
@@ -81,12 +86,19 @@ public struct DisplayError: Equatable, Sendable {
         self.line = line
         self.detail = detail
         self.offersRetry = true
+        self.resetFromCloudReplaces = false
     }
 
-    private init(line: String, detail: String?, offersRetry: Bool) {
+    private init(
+        line: String,
+        detail: String?,
+        offersRetry: Bool,
+        resetFromCloudReplaces: Bool
+    ) {
         self.line = line
         self.detail = detail
         self.offersRetry = offersRetry
+        self.resetFromCloudReplaces = resetFromCloudReplaces
     }
 
     /// Put the operation or object that failed before the existing localized
@@ -95,7 +107,8 @@ public struct DisplayError: Equatable, Sendable {
         DisplayError(
             line: String(localized: "\(context): \(line)"),
             detail: detail,
-            offersRetry: offersRetry
+            offersRetry: offersRetry,
+            resetFromCloudReplaces: resetFromCloudReplaces
         )
     }
 
@@ -105,7 +118,8 @@ public struct DisplayError: Equatable, Sendable {
         DisplayError(
             line: reword(line),
             detail: detail,
-            offersRetry: offersRetry
+            offersRetry: offersRetry,
+            resetFromCloudReplaces: resetFromCloudReplaces
         )
     }
 
@@ -122,6 +136,7 @@ public struct DisplayError: Equatable, Sendable {
         self.line = line
         self.detail = failure.shownDetail
         self.offersRetry = !failure.retryRuledOut
+        self.resetFromCloudReplaces = failure.resetFromCloudReplaces
     }
 
     /// Any error on its way to a human.
@@ -143,11 +158,13 @@ public struct DisplayError: Equatable, Sendable {
             self.line = error.localizedDescription
             self.detail = nil
             self.offersRetry = true
+            self.resetFromCloudReplaces = false
             return
         }
         guard let line = failure.localizedLine else { return nil }
         self.line = line
         self.detail = failure.shownDetail
         self.offersRetry = !failure.retryRuledOut
+        self.resetFromCloudReplaces = failure.resetFromCloudReplaces
     }
 }

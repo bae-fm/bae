@@ -223,3 +223,19 @@ fn retry_helps_only_where_core_says_it_can() {
         id: "a library".into()
     }));
 }
+
+/// A reset from the cloud is offered for a failure in this device's copy of
+/// the data, and never for a cancellation, a missing library or the network.
+#[test]
+fn a_reset_from_cloud_replaces_only_a_failure_in_the_devices_data() {
+    let diagnostic =
+        |category| BridgeError::Diagnostic { category, detail: "the database's fault".into() };
+    assert!(bridge_error_reset_from_cloud_replaces(&diagnostic(BridgeErrorCategory::Database)));
+    assert!(bridge_error_reset_from_cloud_replaces(&diagnostic(
+        BridgeErrorCategory::DatabaseDamaged
+    )));
+    assert!(!bridge_error_reset_from_cloud_replaces(&diagnostic(
+        BridgeErrorCategory::DatabaseBusy
+    )));
+    assert!(!bridge_error_reset_from_cloud_replaces(&BridgeError::Cancelled));
+}

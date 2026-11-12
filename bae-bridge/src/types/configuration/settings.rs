@@ -564,6 +564,21 @@ pub fn bridge_error_retry_can_help(error: &BridgeError) -> bool {
     }
 }
 
+/// Whether resetting the library from the cloud replaces what `error` met:
+/// core's answer for its category
+/// ([`bae_diagnostics::UiErrorCategory::reset_from_cloud_replaces`]), set where
+/// the failure is in this device's copy of the library's data. An app offers
+/// *Reset from cloud…* beside a failed open only then.
+#[uniffi::export]
+pub fn bridge_error_reset_from_cloud_replaces(error: &BridgeError) -> bool {
+    match error {
+        BridgeError::Cancelled | BridgeError::NotFound { .. } => false,
+        BridgeError::Diagnostic { category, .. } => {
+            category.clone().into_core().reset_from_cloud_replaces()
+        }
+    }
+}
+
 impl BridgeErrorCategory {
     /// Whether this category's detail says something its line doesn't: core's
     /// answer for the category's class.
