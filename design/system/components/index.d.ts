@@ -217,7 +217,7 @@ export declare function MacSeekBar(props: SeekBarProps): React.ReactElement;
 export declare function AndroidSeekBar(props: SeekBarProps): React.ReactElement;
 export interface MacPlayPauseProps { playing?: boolean; waiting?: boolean }
 export declare function MacPlayPause(props: MacPlayPauseProps): React.ReactElement;
-export interface MacIconButtonProps { icon: string; label?: string; active?: boolean; faint?: boolean; small?: boolean; boxed?: boolean; size?: number; /** It opens a menu: read as a menu button, `active` while the menu is open. */ menu?: boolean }
+export interface MacIconButtonProps { icon: string; label?: string; active?: boolean; faint?: boolean; small?: boolean; boxed?: boolean; size?: number; /** It opens a menu: read as a menu button, `active` while the menu is open. */ menu?: boolean; /** Dimmed and disabled while it can't be used. */ off?: boolean }
 export declare function MacIconButton(props: MacIconButtonProps): React.ReactElement;
 export interface MacLibraryHeadingProps { view?: 'Albums' | 'Artists' | 'Composers'; collapsed?: boolean; children?: React.ReactNode }
 export declare function MacLibraryHeading(props: MacLibraryHeadingProps): React.ReactElement;

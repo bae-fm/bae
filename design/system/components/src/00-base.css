@@ -5,6 +5,8 @@
 
 .bae-divider { height: 1px; flex: none; background: var(--hairline); }
 .bae-off { opacity: var(--opacity-off); }
+/* Inside something already dimmed, a dimmed part isn't dimmed twice. */
+.bae-off .bae-off { opacity: 1; }
 .bae-dot { width: 8px; height: 8px; border-radius: 4px; flex: none; background: currentColor; }
 /* The track is a hairline's tint, as macOS draws its bar's empty part, not a dark well. Android draws its own (below). */
 .bae-progress-track { position: relative; height: 6px; border-radius: var(--radius-bar); background: var(--hairline); overflow: hidden; }
