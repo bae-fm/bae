@@ -10,11 +10,13 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.LocalPrimaryFill
 
@@ -55,6 +57,7 @@ fun AndroidButton(
             ButtonAlign.FIELD -> modifier.offset(x = FIELD_TEXT_INSET - TEXT_BUTTON_PADDING)
         }
     val sized = if (large) aligned.height(LARGE_HEIGHT) else aligned
+    val labelled = labelled(large, content)
     val toneColor = tone.color()
     when (kind) {
         ButtonKind.FILLED -> {
@@ -64,17 +67,17 @@ fun AndroidButton(
                 enabled = enabled,
                 colors = filledColors(tone),
                 elevation = null,
-                content = content,
+                content = labelled,
             )
         }
 
         ButtonKind.TONAL -> {
-            FilledTonalButton(onClick = onClick, modifier = sized, enabled = enabled, content = content)
+            FilledTonalButton(onClick = onClick, modifier = sized, enabled = enabled, content = labelled)
         }
 
         ButtonKind.OUTLINED -> {
             if (toneColor == null) {
-                OutlinedButton(onClick = onClick, modifier = sized, enabled = enabled, content = content)
+                PlainOutlinedButton(onClick, sized, enabled, labelled)
             } else {
                 OutlinedButton(
                     onClick = onClick,
@@ -82,7 +85,7 @@ fun AndroidButton(
                     enabled = enabled,
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = toneColor),
                     border = BorderStroke(1.dp, toneColor),
-                    content = content,
+                    content = labelled,
                 )
             }
         }
@@ -98,7 +101,7 @@ fun AndroidButton(
                     } else {
                         ButtonDefaults.textButtonColors(contentColor = toneColor)
                     },
-                content = content,
+                content = labelled,
             )
         }
     }
@@ -124,7 +127,50 @@ private fun ButtonTone.color(): Color? =
         ButtonTone.NEUTRAL -> MaterialTheme.colorScheme.onSurface
     }
 
+/** The button's label [content], in the large button's 15sp where it is [large] (the others' are 14). */
+private fun labelled(
+    large: Boolean,
+    content: @Composable RowScope.() -> Unit,
+): @Composable RowScope.() -> Unit =
+    if (large) {
+        {
+            ProvideTextStyle(MaterialTheme.typography.labelLarge.copy(fontSize = LARGE_LABEL_SIZE)) { content() }
+        }
+    } else {
+        content
+    }
+
+/** An outlined button in no tone: its words in the text colour, inside a 1dp edge in the secondary one. */
+@Composable
+private fun PlainOutlinedButton(
+    onClick: () -> Unit,
+    modifier: Modifier,
+    enabled: Boolean,
+    content: @Composable RowScope.() -> Unit,
+) {
+    OutlinedButton(
+        onClick = onClick,
+        modifier = modifier,
+        enabled = enabled,
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
+        border = BorderStroke(1.dp, outlineColor(enabled)),
+        content = content,
+    )
+}
+
+/** The outline of a plain outlined button: the secondary text colour, and Material's 12% of the text's when off. */
+@Composable
+private fun outlineColor(enabled: Boolean): Color =
+    if (enabled) {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    } else {
+        MaterialTheme.colorScheme.onSurface.copy(alpha = DISABLED_OUTLINE_ALPHA)
+    }
+
+private const val DISABLED_OUTLINE_ALPHA = 0.12f
+
 private val LARGE_HEIGHT = 48.dp
+private val LARGE_LABEL_SIZE = 15.sp
 
 /** Material's text button pads its words 12dp from each side. */
 private val TEXT_BUTTON_PADDING = 12.dp
