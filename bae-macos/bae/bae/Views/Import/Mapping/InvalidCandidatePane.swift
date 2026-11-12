@@ -17,7 +17,7 @@ struct InvalidCandidatePane: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: ThemeSpace.section) {
+            VStack(alignment: .leading, spacing: ThemeSpace.group) {
                 CandidateFolderLine(
                     tab: .skipped,
                     folderName: invalid.sourceFolderName,
@@ -46,18 +46,12 @@ struct InvalidCandidatePane: View {
     private var card: some View {
         VStack(alignment: .leading, spacing: ReleaseMetadataLayout.blockSpacing)
         {
-            HStack(alignment: .center, spacing: ThemeSpace.edge) {
-                Spacer(minLength: ThemeSpace.group)
-                Label {
-                    Text(invalid.reason.localizedText)
-                        .themeText(.strong)
-                } icon: {
-                    Image(systemName: "exclamationmark.circle.fill")
-                        .themeIcon(.small)
-                }
-                .foregroundStyle(Theme.warning)
-                .help(invalid.reason.localizedText)
-            }
+            Notice(
+                title: invalid.reason.localizedText,
+                advice: nil,
+                error: nil,
+                tone: .warning
+            )
             HStack(alignment: .top, spacing: ThemeSpace.group) {
                 ImportCoverWell(
                     coverContent: invalid.cover.map(ImageContent.init(bridge:)),
@@ -73,7 +67,9 @@ struct InvalidCandidatePane: View {
                     )
                 }
                 else {
-                    ImportFolderNameLine(folderName: invalid.sourceFolderName)
+                    Text(invalid.sourceFolderName)
+                        .themeText(.mono)
+                        .textSelection(.enabled)
                 }
             }
         }
