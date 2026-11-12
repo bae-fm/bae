@@ -3826,6 +3826,14 @@
    "w": 690,
    "x": 4938,
    "y": 1556
+  },
+  "mac.welcome.open-failed.dc.html": {
+   "h": 600,
+   "page": "welcome",
+   "title": "macOS: Welcome: a library failed to open",
+   "w": 690,
+   "x": 4588,
+   "y": 2376
   }
  },
  "createdOnFiles": {
@@ -5740,6 +5748,7 @@
   "android.welcome.remove.failed.dc.html",
   "android.welcome.add-library.dc.html",
   "mac.welcome.libraries.dc.html",
+  "mac.welcome.open-failed.dc.html",
   "mac.welcome.library-menu.dc.html",
   "mac.welcome.library-details.dc.html",
   "mac.welcome.library-details.unsent-changes.dc.html",

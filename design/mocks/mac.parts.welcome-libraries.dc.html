@@ -18,17 +18,18 @@ body{margin:0;background:var(--background)}
 <div class="bae-mac" style="font-family: var(--font-sans)"><x-import component-from-global-scope="Bae.MacSection" title="Your libraries">
   <x-import component-from-global-scope="Bae.MacBox">
     <sc-if value="{{resting}}" hint-placeholder-val="{{ true }}"><x-import component-from-global-scope="Bae.MacRow" label="Home music" strong="{{yes}}" button="{{yes}}"><x-import component-from-global-scope="Bae.MacMoreMenu"></x-import></x-import></sc-if>
+    <sc-if value="{{openFailed}}" hint-placeholder-val="{{ false }}"><x-import component-from-global-scope="Bae.MacNested"><x-import component-from-global-scope="Bae.MacNotice" tone="danger" title="Couldn’t open" subtitle="Something is wrong with this library’s data." secondary="Details" action="Reset from cloud…" buttons="below"></x-import></x-import></sc-if>
     <sc-if value="{{removing}}" hint-placeholder-val="{{ false }}"><x-import component-from-global-scope="Bae.MacRow" label="Home music" strong="{{yes}}" note="Leaving the library…"><div style="width: 28px; height: 28px; display: flex; align-items: center; justify-content: center"><x-import component-from-global-scope="Bae.MacSpinner"></x-import></div></x-import></sc-if>
     <x-import component-from-global-scope="Bae.MacRow" label="Odile’s records" strong="{{yes}}" button="{{yes}}" off="{{removing}}"><x-import component-from-global-scope="Bae.MacMoreMenu" off="{{removing}}"></x-import></x-import>
   </x-import>
   <x-import component-from-global-scope="Bae.MacSheetFooter"><x-import component-from-global-scope="Bae.MacButton" off="{{removing}}" menu="{{yes}}">Add library…</x-import></x-import>
 </x-import></div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"state":{"editor":"enum","options":["","removing"],"default":""},"$preview":{"width":420,"height":170}}'>
+<script type="text/x-dc" data-dc-script data-props='{"state":{"editor":"enum","options":["","removing","open-failed"],"default":""},"$preview":{"width":420,"height":170}}'>
 class Component extends DCLogic {
   renderVals() {
     const s = (this.props || {}).state || '';
-    return { yes: true, resting: s === '', removing: s === 'removing' };
+    return { yes: true, resting: s === '' || s === 'open-failed', removing: s === 'removing', openFailed: s === 'open-failed' };
   }
 }
 </script>

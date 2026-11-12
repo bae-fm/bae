@@ -2818,6 +2818,11 @@ way under **Your libraries**: a click on one opens it, and its ⋯ button, or a
 right click, holds **Remove…**, or **Delete…** for one never synced. A
 library that can't be read, or whose reset, restore or removal stopped
 partway, says so under its name, and its menu offers to finish it first. A
+library that fails to open on a Mac shows the failure joined to its row, under
+its name: **Couldn’t open**, with **Details**; when what failed is the
+library's data on this Mac, such as tables that don't match the app's, it
+says "Something is wrong with this library’s data." and offers **Reset from
+cloud…**, the reset below. A
 library row shows its name alone otherwise, on a phone and on a Mac: no
 provider line, and nothing for one that never synced. While a removal runs, its
 row shows the step under its name with a spinner in place of the ⋯ (the ⋮ on a
@@ -3760,7 +3765,7 @@ offers to reset the device: load the library from storage again under a fresh
 device id. Before it does, a warning says that edits on this device
 that haven't synced will be discarded. The person was told before choosing, so
 nothing is shown after; bae doesn't present coven's reset notice. The screen
-says why in the middle of the window and offers *Reset this device…*, whose
+says why in the middle of the window and offers *Reset from cloud…*, whose
 alert (a dialog on Android) gives the warning, with *Cancel*. Leaving the
 screen without resetting, by *Cancel* on a Mac or Back on Android, returns to
 the open library, to the Mac's library list, or on a phone with no library
