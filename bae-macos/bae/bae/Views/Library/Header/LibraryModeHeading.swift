@@ -7,9 +7,11 @@ struct LibraryModeHeading: View {
     /// 0 at full size, 1 collapsed into the strip, as the content scrolls.
     let collapseProgress: Double
 
-    /// The chevron's size, its lift towards the cap height, and the descender
-    /// space trimmed under the heading, each a fraction of the heading's size.
-    private static let chevronScale: CGFloat = 1 / 3
+    /// The chevron's size at full size and collapsed; its lift towards the cap
+    /// height and the descender space trimmed under the heading are each a
+    /// fraction of the heading's size.
+    private static let chevronFull: CGFloat = 15
+    private static let chevronCollapsed: CGFloat = 8
     private static let chevronLift: CGFloat = 0.23
     private static let descenderTrim: CGFloat = 0.22
 
@@ -30,7 +32,7 @@ struct LibraryModeHeading: View {
                 .tracking(between(\.tracking))
                 + Text(verbatim: " ")
                 + Text(Image(systemName: "chevron.down"))
-                .font(.system(size: size * Self.chevronScale, weight: .bold))
+                .font(.system(size: chevronSize, weight: .bold))
                 // Centered on the heading's cap height.
                 .baselineOffset(size * Self.chevronLift)
                 .foregroundColor(.secondary))
@@ -43,6 +45,11 @@ struct LibraryModeHeading: View {
         .buttonStyle(StaticLabelButtonStyle())
         .menuIndicator(.hidden)
         .fixedSize()
+    }
+
+    private var chevronSize: CGFloat {
+        Self.chevronFull
+            + (Self.chevronCollapsed - Self.chevronFull) * collapseProgress
     }
 
     /// A measure of the heading's text, from the display role at full size to

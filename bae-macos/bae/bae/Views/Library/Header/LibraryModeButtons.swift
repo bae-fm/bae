@@ -1,24 +1,24 @@
 import SwiftUI
 
-/// One menu button per browser mode, the selected one checkmarked, for the
-/// header heading's dropdown.
+/// One menu item per browser mode, for the header heading's dropdown. An
+/// inline picker, so the menu draws its own checkmark column for the selected
+/// mode.
 struct LibraryModeButtons: View {
     let selected: LibraryBrowserMode
     let select: (LibraryBrowserMode) -> Void
 
     var body: some View {
-        ForEach(LibraryBrowserMode.allCases, id: \.self) { mode in
-            Button {
-                select(mode)
-            } label: {
-                if selected == mode {
-                    Label(mode.displayName, systemImage: "checkmark")
-                }
-                else {
-                    Text(mode.displayName)
-                }
+        Picker(
+            selection: Binding(get: { selected }, set: select)
+        ) {
+            ForEach(LibraryBrowserMode.allCases, id: \.self) { mode in
+                Text(mode.displayName).tag(mode)
             }
+        } label: {
+            EmptyView()
         }
+        .pickerStyle(.inline)
+        .labelsHidden()
     }
 }
 
