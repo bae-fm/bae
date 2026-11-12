@@ -220,19 +220,11 @@ struct MacNowPlayingBar: View {
     }
 
     private var playPauseButton: some View {
-        PlayPauseControl(
+        MacPlayPause(
             isPlaying: isPlaying,
-            glyphFont: ThemeIcon.large.font,
-            targetSize: 48,
-            onToggle: onPlayPause,
+            storageWait: storageWait,
+            onToggle: onPlayPause
         )
-        .foregroundStyle(.primary)
-        .background(Circle().fill(Theme.tile))
-        .overlay {
-            if let storageWait {
-                StorageWaitArc(source: storageWait)
-            }
-        }
     }
 
     /// The seek bar, which draws the parts of the track whose bytes are here
@@ -522,3 +514,28 @@ extension MacNowPlayingBar {
         .environment(Queue.stub())
     }
 #endif
+
+/// The 48pt circle on the tile colour that plays and pauses; while the track
+/// arrives from storage an accent arc turns round it.
+struct MacPlayPause: View {
+    let isPlaying: Bool
+    /// Whether the loading track waits on storage; `nil` while no track loads.
+    let storageWait: LatestSource<Bool>?
+    let onToggle: () -> Void
+
+    var body: some View {
+        PlayPauseControl(
+            isPlaying: isPlaying,
+            glyphFont: ThemeIcon.large.font,
+            targetSize: 48,
+            onToggle: onToggle
+        )
+        .foregroundStyle(.primary)
+        .background(Circle().fill(Theme.tile))
+        .overlay {
+            if let storageWait {
+                StorageWaitArc(source: storageWait)
+            }
+        }
+    }
+}

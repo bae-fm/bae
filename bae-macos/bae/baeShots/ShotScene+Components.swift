@@ -9,6 +9,7 @@ extension ShotScene {
     /// row of the component's `preview.html`, drawn at the preview's width.
     static let componentScenes: [ShotScene] =
         libraryRowScenes + settingsComponentScenes + partsComponentScenes
+        + playbackComponentScenes
 
     /// `MacLibraryRow`'s states.
     private static let libraryRowScenes: [ShotScene] = [

@@ -325,41 +325,15 @@ extension QueueSection {
         }
     }
 
-    @ViewBuilder
     private var sectionHeader: some View {
-        if title != nil || onSetShuffle != nil || count > 0 {
-            HStack(spacing: ThemeSpace.compact) {
-                if let title {
-                    Eyebrow(verbatim: title)
-                        .lineLimit(1)
-                }
-                Spacer()
-                if count > 0 {
-                    clearButton
-                }
-                if let onSetShuffle {
-                    shuffleToggle(onSetShuffle)
-                }
-            }
-            // In line with the rows' content, so Clear and shuffle sit over the
-            // remove buttons.
-            .padding(
-                .horizontal,
-                Self.rowInset + QueueItemRow.horizontalInset
-            )
-            .padding(.top, ThemeSpace.group)
-            .padding(.bottom, ThemeSpace.inline)
-        }
-    }
-
-    /// This lane's Clear; the tooltip and accessibility label name the lane.
-    private var clearButton: some View {
-        Button(action: onClear) {
-            Eyebrow("Clear")
-        }
-        .buttonStyle(.plain)
-        .help(clearLaneLabel)
-        .accessibilityLabel(clearLaneLabel)
+        MacQueueSection(
+            title: title,
+            shuffled: shuffled,
+            count: count,
+            clearLabel: clearLaneLabel,
+            onClear: onClear,
+            onSetShuffle: onSetShuffle
+        )
     }
 
     /// What this lane's Clear empties, named for the tooltip and VoiceOver.
@@ -370,29 +344,6 @@ extension QueueSection {
         case .context:
             return String(localized: "Clear playing from")
         }
-    }
-
-    /// The context's shuffle toggle; the current track keeps playing.
-    private func shuffleToggle(_ onSetShuffle: @escaping (Bool) -> Void)
-        -> some View
-    {
-        Button {
-            onSetShuffle(!shuffled)
-        } label: {
-            Image(systemName: "shuffle")
-                .themeIcon(.small)
-                .foregroundStyle(shuffled ? Theme.accent : .secondary)
-                // The same slot as the rows' remove button, so they line up.
-                .frame(width: ThemeSize.hitTarget, height: ThemeSize.hitTarget)
-                .background(
-                    RoundedRectangle(cornerRadius: ThemeRadius.control)
-                        .fill(shuffled ? Theme.accentSoft : .clear)
-                )
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(PressableIconButtonStyle())
-        .help(shuffled ? "Turn off shuffle" : "Shuffle")
-        .accessibilityLabel(shuffled ? "Turn off shuffle" : "Shuffle")
     }
 
     private var insertionLine: some View {

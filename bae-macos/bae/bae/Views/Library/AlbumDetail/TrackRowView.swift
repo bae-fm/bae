@@ -1,10 +1,10 @@
 import BaeKit
 import SwiftUI
 
-/// One row in an album's track list.
-struct TrackRowView: View {
-    @Environment(UiStore.self)
-    private var uiStore
+/// One row in an album's track list, as drawn: the position, the title and
+/// artist, the duration, the hover fill and the flash that marks the track a
+/// jump arrived at. `TrackRowView` owns what moves them.
+struct MacTrackRow: View {
     let track: Track
     /// The artist to show, or `nil` for none — core's decision.
     let artist: String?
@@ -13,22 +13,16 @@ struct TrackRowView: View {
     let positionWidth: CGFloat
     let isCurrent: Bool
     let isPlaying: Bool
+    /// Whether the pointer is over the row.
+    var hover = false
+    /// How much of the accent the jump's flash fills the row with.
+    var highlight: Double = 0
     let onPlay: () -> Void
     let onTogglePlayPause: () -> Void
-    let onAddNext: (String) -> Void
-    let onAddToQueue: (String) -> Void
-    let onExportTrack: (String) -> Void
-
-    @State
-    private var isHovered = false
-    @State
-    private var hoverWorkItem: DispatchWorkItem?
-    @State
-    private var highlightOpacity: Double = 0
 
     /// The leading slot's least width: the play button and the playing
     /// glyph that take the number's place.
-    fileprivate static let leadingSlotMinWidth: CGFloat = 22
+    static let leadingSlotMinWidth: CGFloat = 22
 
     var body: some View {
         let isCurrentPlaying = isCurrent && isPlaying
@@ -38,7 +32,7 @@ struct TrackRowView: View {
             ZStack {
                 TrackPositionLabel(text: track.positionText)
                     .foregroundStyle(.tertiary)
-                    .opacity(!isCurrent && !isHovered ? 1 : 0)
+                    .opacity(!isCurrent && !hover ? 1 : 0)
 
                 Button(action: isCurrent ? onTogglePlayPause : onPlay) {
                     Image(
@@ -48,13 +42,13 @@ struct TrackRowView: View {
                     .themeIcon(.medium)
                 }
                 .buttonStyle(.plain)
-                .opacity(isHovered ? 1 : 0)
-                .allowsHitTesting(isHovered)
+                .opacity(hover ? 1 : 0)
+                .allowsHitTesting(hover)
 
                 Image(systemName: "speaker.wave.2.fill")
                     .themeIcon(.small)
                     .foregroundStyle(Theme.accent)
-                    .opacity(isCurrent && !isHovered ? 1 : 0)
+                    .opacity(isCurrent && !hover ? 1 : 0)
             }
             .frame(width: max(positionWidth, Self.leadingSlotMinWidth))
             VStack(alignment: .leading, spacing: ThemeSpace.line) {
@@ -80,14 +74,53 @@ struct TrackRowView: View {
         .background(
             ZStack {
                 RoundedRectangle(cornerRadius: ThemeRadius.control)
-                    .fill(isHovered ? Theme.hover : Color.clear)
+                    .fill(hover ? Theme.hover : Color.clear)
                 RoundedRectangle(cornerRadius: ThemeRadius.control)
-                    .fill(Theme.accent.opacity(highlightOpacity))
+                    .fill(Theme.accent.opacity(highlight))
             }
         )
         // The hover fill bleeds past the text column so the text stays aligned
         // with the header above the list.
         .padding(.horizontal, -ThemeSpace.related)
+    }
+}
+
+/// One row in an album's track list: a `MacTrackRow` that follows the
+/// pointer, flashes when a jump arrives at its track, plays on a double click
+/// and offers its context menu.
+struct TrackRowView: View {
+    @Environment(UiStore.self)
+    private var uiStore
+    let track: Track
+    let artist: String?
+    let positionWidth: CGFloat
+    let isCurrent: Bool
+    let isPlaying: Bool
+    let onPlay: () -> Void
+    let onTogglePlayPause: () -> Void
+    let onAddNext: (String) -> Void
+    let onAddToQueue: (String) -> Void
+    let onExportTrack: (String) -> Void
+
+    @State
+    private var isHovered = false
+    @State
+    private var hoverWorkItem: DispatchWorkItem?
+    @State
+    private var highlightOpacity: Double = 0
+
+    var body: some View {
+        MacTrackRow(
+            track: track,
+            artist: artist,
+            positionWidth: positionWidth,
+            isCurrent: isCurrent,
+            isPlaying: isPlaying,
+            hover: isHovered,
+            highlight: highlightOpacity,
+            onPlay: onPlay,
+            onTogglePlayPause: onTogglePlayPause
+        )
         .revealsAsTrackRow(track.id)
         // Keyed on the flash's `seq` so a remounted row still sees the flash
         // and a repeat navigation fires it again.
@@ -160,7 +193,7 @@ struct TrackPositionLabel: View {
             artist: artist,
             // A single-digit position measures under the slot's least width,
             // which the list's rows then take.
-            positionWidth: TrackRowView.leadingSlotMinWidth,
+            positionWidth: MacTrackRow.leadingSlotMinWidth,
             isCurrent: isCurrent,
             isPlaying: isPlaying,
             onPlay: {},
