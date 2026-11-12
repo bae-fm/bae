@@ -12,6 +12,7 @@ step android android-tests ./bae-android/test-unit.sh
 step mac mac-shots scripts/cargo.sh run -p bae-shots -- run --platform mac
 step mac mac-welcome-shots scripts/cargo.sh run -p bae-shots -- run --platform mac --select mac.welcome.
 step mac mac-component-shots scripts/cargo.sh run -p bae-shots -- run --platform mac --select mac.component.
+step mac mac-window-shots scripts/cargo.sh run -p bae-shots -- run --platform mac --windows --select mac.welcome. --select mac.settings.
 step android android-shots scripts/cargo.sh run -p bae-shots -- run --platform android
 step android android-welcome-shots scripts/cargo.sh run -p bae-shots -- run --platform android --select android.welcome.
 step android android-component-shots scripts/cargo.sh run -p bae-shots -- run --platform android --select android.component.
@@ -21,6 +22,7 @@ limit android-tests 10m
 limit mac-shots 20m
 limit mac-welcome-shots 20m
 limit mac-component-shots 20m
+limit mac-window-shots 20m
 limit android-shots 20m
 limit android-welcome-shots 20m
 limit android-component-shots 20m
