@@ -138,12 +138,21 @@ enum ShotRenderer {
         _ windowID: CGWindowID,
         sceneId: String
     ) async throws -> Data {
-        let content = try await SCShareableContent.currentProcess
-        guard
-            let shared = content.windows.first(where: {
-                $0.windowID == windowID
-            })
-        else { throw ShotError.windowNotShared(sceneId) }
+        // The window server lists a window a moment after it is ordered in,
+        // with an empty frame until it is drawn; a capture sized from that
+        // frame is refused as an invalid parameter. Ask again until the
+        // window has a frame.
+        var shared: SCWindow?
+        for _ in 0..<50 {
+            let content = try await SCShareableContent.currentProcess
+            shared = content.windows.first { $0.windowID == windowID }
+            if let shared, !shared.frame.isEmpty, shared.isOnScreen { break }
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        guard let shared else { throw ShotError.windowNotShared(sceneId) }
+        guard !shared.frame.isEmpty, shared.isOnScreen else {
+            throw ShotError.windowNotDrawn(sceneId, shared.frame)
+        }
         let filter = SCContentFilter(desktopIndependentWindow: shared)
         let configuration = SCStreamConfiguration()
         configuration.width = Int(filter.contentRect.width) * scale
@@ -296,6 +305,7 @@ enum ShotError: Error, CustomStringConvertible {
     case bitmapAllocationFailed(String)
     case pngEncodingFailed(String)
     case windowNotShared(String)
+    case windowNotDrawn(String, CGRect)
     case windowNotKey(String)
     case noScreen(String)
     case accessibilityUnavailable(String, Int32)
@@ -314,6 +324,9 @@ enum ShotError: Error, CustomStringConvertible {
             "failed to PNG-encode scene \(id)"
         case .windowNotShared(let id):
             "the window server shares no window for scene \(id)"
+        case .windowNotDrawn(let id, let frame):
+            "the window server shows scene \(id)'s window with frame "
+                + "\(frame), off the screen or empty"
         case .windowNotKey(let id):
             "another app kept the focus, so scene \(id) would draw inactive"
         case .noScreen(let id):
