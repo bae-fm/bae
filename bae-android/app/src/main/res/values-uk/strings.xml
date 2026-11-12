@@ -337,7 +337,6 @@
     <string name="members_you">Ви</string>
     <string name="members_unnamed">Ще без імені</string>
     <string name="members_invited">Запрошено</string>
-    <string name="members_check_invites">Перевірити запити</string>
     <string name="members_role_admin">Адміністратор</string>
     <string name="members_make_admin">Зробити адміністратором</string>
     <string name="members_make_member">Зробити учасником</string>
@@ -409,7 +408,6 @@
     <string name="members_joining">Приєднується</string>
     <string name="members_invite_shares_access">Надасть доступ, коли з’явиться в мережі</string>
     <string name="invite_granting">Бібліотекою діляться з %1$s…</string>
-    <string name="members_sharing_access">Надається доступ</string>
     <string name="settings_profile_making">Створюється ваш профіль…</string>
     <string name="settings_profile_making_detail">Ваш профіль з’явиться, щойно ця бібліотека синхронізується.</string>
     <string name="settings_profile_refused">Не вдалося створити ваш профіль. %1$s</string>
@@ -485,4 +483,5 @@
     <string name="invite_offline">Код з’явиться тут, коли цей пристрій буде онлайн, а %1$s надасть доступ до бібліотеки для %2$s.</string>
     <string name="invite_scan_instruction">Скануйте або введіть код на їхньому пристрої.</string>
     <string name="invite_cancel_message">%1$s не зможе скористатися цим запрошенням.</string>
+    <string name="qr_code">QR-код</string>
 </resources>

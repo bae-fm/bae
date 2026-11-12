@@ -329,7 +329,6 @@
     <string name="members_you">Vous</string>
     <string name="members_unnamed">Pas encore de nom</string>
     <string name="members_invited">Invité</string>
-    <string name="members_check_invites">Rechercher les demandes</string>
     <string name="members_role_admin">Administrateur</string>
     <string name="members_make_admin">Nommer administrateur</string>
     <string name="members_make_member">Nommer membre</string>
@@ -399,7 +398,6 @@
     <string name="members_joining">Adhésion en cours</string>
     <string name="members_invite_shares_access">Partage l’accès une fois en ligne</string>
     <string name="invite_granting">Partage de la bibliothèque avec %1$s…</string>
-    <string name="members_sharing_access">Partage de l’accès</string>
     <string name="settings_profile_making">Création de votre profil…</string>
     <string name="settings_profile_making_detail">Votre profil apparaîtra une fois cette bibliothèque synchronisée.</string>
     <string name="settings_profile_refused">Votre profil n’a pas pu être créé. %1$s</string>
@@ -474,4 +472,5 @@
     <string name="invite_offline">Le code s’affichera ici dès que cet appareil sera en ligne et que %1$s aura partagé la bibliothèque avec %2$s.</string>
     <string name="invite_scan_instruction">Scannez ou saisissez le code sur leur appareil.</string>
     <string name="invite_cancel_message">%1$s ne pourra pas utiliser cette invitation.</string>
+    <string name="qr_code">Code QR</string>
 </resources>

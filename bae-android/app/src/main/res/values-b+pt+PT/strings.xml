@@ -322,7 +322,6 @@
     <string name="members_you">Você</string>
     <string name="members_unnamed">Ainda sem nome</string>
     <string name="members_invited">Convidado</string>
-    <string name="members_check_invites">Verificar pedidos</string>
     <string name="members_role_admin">Administrador</string>
     <string name="members_make_admin">Tornar administrador</string>
     <string name="members_make_member">Tornar membro</string>
@@ -392,7 +391,6 @@
     <string name="members_joining">A juntar-se</string>
     <string name="members_invite_shares_access">Partilha o acesso quando estiver online</string>
     <string name="invite_granting">A partilhar a biblioteca com %1$s…</string>
-    <string name="members_sharing_access">A partilhar acesso</string>
     <string name="settings_profile_making">A criar o seu perfil…</string>
     <string name="settings_profile_making_detail">O seu perfil aparecerá quando esta biblioteca sincronizar.</string>
     <string name="settings_profile_refused">Não foi possível criar o seu perfil. %1$s</string>
@@ -467,4 +465,5 @@
     <string name="invite_offline">O código aparece aqui quando este dispositivo estiver online e o %1$s tiver partilhado a biblioteca com %2$s.</string>
     <string name="invite_scan_instruction">Leia ou introduza o código no dispositivo deles.</string>
     <string name="invite_cancel_message">%1$s não poderá usar este convite.</string>
+    <string name="qr_code">Código QR</string>
 </resources>

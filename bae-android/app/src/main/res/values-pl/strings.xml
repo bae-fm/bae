@@ -337,7 +337,6 @@
     <string name="members_you">Ty</string>
     <string name="members_unnamed">Jeszcze bez nazwy</string>
     <string name="members_invited">Zaproszono</string>
-    <string name="members_check_invites">Sprawdź prośby</string>
     <string name="members_role_admin">Administrator</string>
     <string name="members_make_admin">Ustaw jako administratora</string>
     <string name="members_make_member">Ustaw jako członka</string>
@@ -409,7 +408,6 @@
     <string name="members_joining">Dołącza</string>
     <string name="members_invite_shares_access">Udostępni dostęp, gdy będzie online</string>
     <string name="invite_granting">Udostępnianie biblioteki: %1$s…</string>
-    <string name="members_sharing_access">Udostępnianie dostępu</string>
     <string name="settings_profile_making">Tworzenie Twojego profilu…</string>
     <string name="settings_profile_making_detail">Twój profil pojawi się po zsynchronizowaniu tej biblioteki.</string>
     <string name="settings_profile_refused">Nie udało się utworzyć Twojego profilu. %1$s</string>
@@ -485,4 +483,5 @@
     <string name="invite_offline">Kod pojawi się tutaj, gdy to urządzenie będzie online, a %1$s udostępni bibliotekę dla %2$s.</string>
     <string name="invite_scan_instruction">Zeskanuj lub wpisz kod na ich urządzeniu.</string>
     <string name="invite_cancel_message">To zaproszenie nie będzie działać dla: %1$s.</string>
+    <string name="qr_code">Kod QR</string>
 </resources>

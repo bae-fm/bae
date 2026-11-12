@@ -323,7 +323,6 @@
     <string name="members_you">Jij</string>
     <string name="members_unnamed">Nog geen naam</string>
     <string name="members_invited">Uitgenodigd</string>
-    <string name="members_check_invites">Op verzoeken controleren</string>
     <string name="members_role_admin">Beheerder</string>
     <string name="members_make_admin">Beheerder maken</string>
     <string name="members_make_member">Lid maken</string>
@@ -393,7 +392,6 @@
     <string name="members_joining">Treedt toe</string>
     <string name="members_invite_shares_access">Deelt toegang zodra het apparaat online is</string>
     <string name="invite_granting">Bibliotheek wordt gedeeld met %1$s…</string>
-    <string name="members_sharing_access">Toegang wordt gedeeld</string>
     <string name="settings_profile_making">Je profiel wordt gemaakt…</string>
     <string name="settings_profile_making_detail">Je profiel verschijnt zodra deze bibliotheek is gesynchroniseerd.</string>
     <string name="settings_profile_refused">Je profiel kon niet worden gemaakt. %1$s</string>
@@ -467,4 +465,5 @@
     <string name="invite_offline">De code verschijnt hier zodra dit apparaat online is en %1$s de bibliotheek met %2$s heeft gedeeld.</string>
     <string name="invite_scan_instruction">Scan de code of voer hem in op hun apparaat.</string>
     <string name="invite_cancel_message">%1$s kan deze uitnodiging niet meer gebruiken.</string>
+    <string name="qr_code">QR-code</string>
 </resources>

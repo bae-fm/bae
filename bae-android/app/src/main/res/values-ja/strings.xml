@@ -316,7 +316,6 @@
     <string name="members_you">あなた</string>
     <string name="members_unnamed">名前はまだありません</string>
     <string name="members_invited">招待済み</string>
-    <string name="members_check_invites">リクエストを確認</string>
     <string name="members_role_admin">管理者</string>
     <string name="members_make_admin">管理者にする</string>
     <string name="members_make_member">メンバーにする</string>
@@ -385,7 +384,6 @@
     <string name="members_joining">参加中</string>
     <string name="members_invite_shares_access">オンラインになるとアクセスを共有します</string>
     <string name="invite_granting">ライブラリを%1$sと共有しています…</string>
-    <string name="members_sharing_access">アクセスを共有中</string>
     <string name="settings_profile_making">プロフィールを作成しています…</string>
     <string name="settings_profile_making_detail">このライブラリが同期されると、プロフィールが表示されます。</string>
     <string name="settings_profile_refused">プロフィールを作成できませんでした。%1$s</string>
@@ -458,4 +456,5 @@
     <string name="invite_offline">このデバイスがオンラインになり、%1$sが%2$sとライブラリを共有すると、ここにコードが表示されます。</string>
     <string name="invite_scan_instruction">相手のデバイスでコードをスキャンするか入力してください。</string>
     <string name="invite_cancel_message">%1$sはこの招待を使えなくなります。</string>
+    <string name="qr_code">QRコード</string>
 </resources>

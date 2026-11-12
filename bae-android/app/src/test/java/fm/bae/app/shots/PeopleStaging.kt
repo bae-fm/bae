@@ -23,10 +23,8 @@ import uniffi.bae_bridge.BridgeInviteShown
 import uniffi.bae_bridge.BridgeMember
 import uniffi.bae_bridge.BridgeMemberAccess
 import uniffi.bae_bridge.BridgeMemberRole
-import uniffi.bae_bridge.BridgePendingAction
-import uniffi.bae_bridge.BridgePendingReason
-import uniffi.bae_bridge.BridgePendingWait
 import uniffi.bae_bridge.BridgePerson
+import uniffi.bae_bridge.BridgeRefusedInvite
 
 // The people the People and devices boards show: Ana reads the page, Ben is the other person, Dan is invited.
 
@@ -40,15 +38,18 @@ internal fun PeoplePageScene(
     people: List<BridgePerson>,
     selfIsAdmin: Boolean = true,
     invites: List<BridgeInvite> = emptyList(),
+    refused: List<BridgeRefusedInvite> = emptyList(),
+    offline: Boolean = false,
 ) = AndroidSettingsPeople(
     you = YouActions(NothingFails, {}, {}, {}),
     people = people,
     selfIsAdmin = selfIsAdmin,
     requested = null,
-    invites = invites.map { BridgeInviteEntry.Open(it) },
+    invites = invites.map { BridgeInviteEntry.Open(it) } + refused.map { BridgeInviteEntry.Refused(it) },
     adminChanges = emptyList(),
     callbacks = memberCallbacks(),
-    inviteCallbacks = InviteCallbacks({}, {}, {}),
+    inviteCallbacks = InviteCallbacks({}, {}),
+    offline = offline,
     error = null,
     onOpen = {},
     onBack = {},
@@ -77,16 +78,12 @@ internal fun DevicesPageScene(person: BridgePerson) =
 internal fun memberCallbacks() = MemberCallbacks({}, { _, _ -> }, { _, _ -> }, { _, _ -> }, {}, {})
 
 /** Dan's open invite. */
-internal fun danInvite(
-    shown: BridgeInviteShown,
-    held: BridgePendingWait? = null,
-) = invitation("dan@example.com", shown, held, DAN_ID)
+internal fun danInvite(shown: BridgeInviteShown) = invitation("dan@example.com", shown, DAN_ID)
 
 /** An open invite to [address]. */
 internal fun invitation(
     address: String,
     shown: BridgeInviteShown,
-    held: BridgePendingWait? = null,
     member: String = "00000000-0000-4000-8000-000000000004",
 ) = BridgeInvite(
     id = "invite-$address",
@@ -94,7 +91,7 @@ internal fun invitation(
     label = address,
     access = BridgeMemberAccess.ProviderAccount(address),
     shown = shown,
-    held = held,
+    held = null,
 )
 
 /** Ana, who reads the page: this phone and a laptop, and two removed devices. */
@@ -149,13 +146,6 @@ private fun person(
     val shown = PreviewData.person(member)
     return shown.copy(profile = shown.profile?.copy(name = name, historySharing = history))
 }
-
-/** Why coven holds Dan's invite. */
-internal val heldRejected =
-    BridgePendingWait(
-        reason = BridgePendingReason(key = "core.pending_reason.rejected", detail = null, causes = emptyList()),
-        action = BridgePendingAction.Wait,
-    )
 
 /** Dan's code, for which his request hasn't arrived. */
 internal val waitingCode = BridgeInviteShown.Code("0000 0000", BridgeInviteProgress.Waiting)

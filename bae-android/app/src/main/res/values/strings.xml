@@ -373,7 +373,6 @@
     <string name="members_you">You</string>
     <string name="members_unnamed">No name yet</string>
     <string name="members_invited">Invited</string>
-    <string name="members_check_invites">Check for requests</string>
     <string name="members_role_admin">Admin</string>
     <string name="members_make_admin">Make admin</string>
     <string name="members_make_member">Make member</string>
@@ -450,7 +449,6 @@
     <string name="members_invite_shares_access">Shares access once online</string>
     <!-- %1$s = the address the invite shares with -->
     <string name="invite_granting">Sharing the library with %1$s…</string>
-    <string name="members_sharing_access">Sharing access</string>
     <string name="settings_profile_making">Making your profile…</string>
     <string name="settings_profile_making_detail">Your profile appears once this library syncs.</string>
     <string name="settings_profile_refused">Your profile could not be made. %1$s</string>
@@ -525,4 +523,5 @@
     <string name="invite_offline">The code shows here once this device is online and %1$s has shared the library with %2$s.</string>
     <string name="invite_scan_instruction">Scan or enter the code on their device.</string>
     <string name="invite_cancel_message">%1$s won’t be able to use this invite.</string>
+    <string name="qr_code">QR code</string>
 </resources>

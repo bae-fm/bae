@@ -223,11 +223,15 @@ pub struct BridgeRefusedInvite {
     /// The address the invite was to share with.
     pub address: String,
     pub refusal: BridgeSharingRefusal,
+    /// The core string that says what the refusal went wrong on and what to
+    /// fix; it follows "Couldn’t invite: " on the notice.
+    pub reason_key: String,
 }
 impl BridgeRefusedInvite {
     pub(crate) fn from_core(value: bae_views::RefusedInvite) -> Self {
         let bae_views::RefusedInvite { operation, address, refusal } = value;
-        Self { operation: operation.0, address, refusal: BridgeSharingRefusal::from_core(refusal) }
+        let refusal = BridgeSharingRefusal::from_core(refusal);
+        Self { operation: operation.0, address, reason_key: refusal.loc_key().to_string(), refusal }
     }
 }
 /// A row of People's invites: an open invite, or one a sharing refusal ended.
@@ -248,12 +252,6 @@ impl BridgeInviteEntry {
         }
     }
 }
-/// The core string that says what a sharing refusal went wrong on and what to
-/// fix; it follows "Could not invite: " on the notice.
-#[uniffi::export]
-pub fn bridge_sharing_refusal_key(refusal: BridgeSharingRefusal) -> String {
-    refusal.loc_key().to_string()
-}
 /// Where an open invite stands.
 #[derive(Clone, uniffi::Enum)]
 pub enum BridgeInviteShown {
@@ -270,13 +268,18 @@ pub enum BridgeInviteProgress {
     /// Its person's checked request, waiting for the admin to approve or
     /// decline after comparing the confirmation number.
     Deciding { request: Arc<crate::BridgeJoinRequest> },
-    /// Its person is being let in; it can no longer be cancelled.
-    Joining,
+    /// Its person is being let in; it can no longer be cancelled. `name` is
+    /// the name their request carried.
+    Joining { name: String },
 }
 impl BridgeInvite {
     pub(crate) fn from_core(value: bae_views::OpenInvite) -> Self {
         use bae_library::people::{InviteProgress, InviteShown};
         let bae_views::OpenInvite { invite, held, requester } = value;
+        let label = match &invite.access {
+            coven::MemberAccess::ProviderAccount(address) => address.clone(),
+            coven::MemberAccess::S3AccessKey { access_key_id } => access_key_id.clone(),
+        };
         let shown = match bae_library::people::invite_shown(&invite) {
             InviteShown::Granting => BridgeInviteShown::Granting,
             InviteShown::Code { code, progress } => BridgeInviteShown::Code {
@@ -299,17 +302,27 @@ impl BridgeInvite {
                             BridgeInviteProgress::Waiting
                         }
                     },
-                    InviteProgress::Joining => BridgeInviteProgress::Joining,
+                    InviteProgress::Joining => BridgeInviteProgress::Joining {
+                        // The read that lists the invite names every request
+                        // it lists (or fails): an approval whose request has
+                        // no name is a bug of bae's, reported here without
+                        // ending the app. The row then names the person by
+                        // their address, never by a made-up name.
+                        name: requester.unwrap_or_else(|| {
+                            tracing::error!(
+                                invite = %invite.id.0,
+                                "bug: an approved request has no name"
+                            );
+                            label.clone()
+                        }),
+                    },
                 },
             },
         };
         Self {
             id: invite.id.0.to_string(),
             member: invite.member.0.to_string(),
-            label: match &invite.access {
-                coven::MemberAccess::ProviderAccount(address) => address.clone(),
-                coven::MemberAccess::S3AccessKey { access_key_id } => access_key_id.clone(),
-            },
+            label,
             access: BridgeMemberAccess::from_core(invite.access),
             shown,
             held: held.map(crate::BridgePendingWait::from_core),

@@ -41,6 +41,8 @@ struct PeopleAndDevicesPage: View {
     private var store
     @Environment(Sync.self)
     private var sync
+    @Environment(SyncStatusStore.self)
+    private var syncStatus
 
     enum Subpage: Equatable {
         case people
@@ -386,13 +388,8 @@ extension PeopleAndDevicesPage {
                 case .open(let invite):
                     InviteRow(
                         invite: invite,
-                        onOpen: { open(invite) },
-                        onRefresh: {
-                            run {
-                                actionError = try await sync.nudges.retryNow()
-                                    .failure
-                            }
-                        }
+                        offline: syncStatus.offline,
+                        onOpen: { open(invite) }
                     )
                 case .refused(let refused):
                     RefusedInviteRow(
@@ -849,7 +846,7 @@ private struct RefusedInviteRow: View {
                 ErrorText(
                     String(
                         localized:
-                            "Could not invite: \(localizedCoreString(bridgeSharingRefusalKey(refusal: refused.refusal)))"
+                            "Could not invite: \(localizedCoreString(refused.reasonKey))"
                     )
                 )
             }
@@ -862,46 +859,49 @@ private struct RefusedInviteRow: View {
 }
 
 /// One of this device's open invites: the address it shares with (the key's
-/// id on S3), marked sharing
-/// access until sync has granted it, then invited, or joining once approval
-/// has begun; why coven holds its work, when it does; and a refresh that checks for its request now.
+/// id on S3), marked invited, which a tap opens; "Shares access once online"
+/// while sync can't grant it because this Mac is offline; and why coven holds
+/// its work, when it does. Once approval has begun the row is the person's
+/// name, marked joining, with the address beside it, and opens nothing:
+/// nothing is left to decide or cancel.
 private struct InviteRow: View {
     let invite: BridgeInvite
+    let offline: Bool
     let onOpen: () -> Void
-    let onRefresh: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.line) {
-            HStack(spacing: ThemeSpace.related) {
-                Button(action: onOpen) {
-                    HStack(spacing: ThemeSpace.related) {
-                        Text(verbatim: invite.label)
-                            .themeText(.rowTitle)
-                        switch invite.shown {
-                        case .granting:
-                            StatusChip("Sharing access", tone: .activity)
-                        case .code(_, .waiting), .code(_, .deciding):
-                            StatusChip("Invited")
-                        case .code(_, .joining):
-                            StatusChip("Joining", tone: .activity)
-                        }
-                        Spacer()
-                    }
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                Button(action: onRefresh) {
-                    Image(systemName: "arrow.clockwise")
-                        .themeIcon(.small)
-                }
-                .buttonStyle(.borderless)
-                .help("Check for requests")
+            if case .code(_, .joining(let name)) = invite.shown {
+                PageLinkRow(
+                    title: name,
+                    tag: String(localized: "Joining"),
+                    value: invite.label,
+                    opens: false,
+                    action: {}
+                )
             }
-            if let held = invite.held {
-                ErrorText(localizedCoreString(held.reason.key))
+            else {
+                PageLinkRow(
+                    title: invite.label,
+                    tag: String(localized: "Invited"),
+                    value: waitsForSharing
+                        ? String(localized: "Shares access once online") : "",
+                    opens: true,
+                    action: onOpen
+                )
+                if let held = invite.held {
+                    ErrorText(localizedCoreString(held.reason.key))
+                }
             }
         }
         .padding(.vertical, ThemeSpace.line)
+    }
+
+    /// Sync can't share the library with the address while this Mac is
+    /// offline, and nothing else holds it.
+    private var waitsForSharing: Bool {
+        guard case .granting = invite.shown else { return false }
+        return offline && invite.held == nil
     }
 }
 
@@ -967,5 +967,6 @@ struct JoinRequestSheet: View {
                     selfIsAdmin: true
                 )
             )
+            .environment(SyncStatusStore())
     }
 #endif

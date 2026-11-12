@@ -330,7 +330,6 @@
     <string name="members_you">Vi</string>
     <string name="members_unnamed">Još bez imena</string>
     <string name="members_invited">Pozvan</string>
-    <string name="members_check_invites">Provjeri zahtjeve</string>
     <string name="members_role_admin">Administrator</string>
     <string name="members_make_admin">Postavi za administratora</string>
     <string name="members_make_member">Postavi za člana</string>
@@ -401,7 +400,6 @@
     <string name="members_joining">Pridružuje se</string>
     <string name="members_invite_shares_access">Dijeli pristup kad bude na mreži</string>
     <string name="invite_granting">Dijeljenje fonoteke s %1$s…</string>
-    <string name="members_sharing_access">Dijeli se pristup</string>
     <string name="settings_profile_making">Izrađuje se vaš profil…</string>
     <string name="settings_profile_making_detail">Vaš profil pojavit će se kad se ova fonoteka sinkronizira.</string>
     <string name="settings_profile_refused">Vaš profil nije bilo moguće izraditi. %1$s</string>
@@ -476,4 +474,5 @@
     <string name="invite_offline">Kôd će se ovdje prikazati čim ovaj uređaj bude na mreži i %1$s podijeli biblioteku s %2$s.</string>
     <string name="invite_scan_instruction">Skenirajte ili unesite kôd na njihovu uređaju.</string>
     <string name="invite_cancel_message">%1$s neće moći upotrijebiti ovu pozivnicu.</string>
+    <string name="qr_code">QR kôd</string>
 </resources>

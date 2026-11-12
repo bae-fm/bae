@@ -316,7 +316,6 @@
     <string name="members_you">나</string>
     <string name="members_unnamed">아직 이름 없음</string>
     <string name="members_invited">초대됨</string>
-    <string name="members_check_invites">요청 확인</string>
     <string name="members_role_admin">관리자</string>
     <string name="members_make_admin">관리자로 지정</string>
     <string name="members_make_member">멤버로 지정</string>
@@ -385,7 +384,6 @@
     <string name="members_joining">참여 중</string>
     <string name="members_invite_shares_access">온라인이 되면 접근 권한을 공유합니다</string>
     <string name="invite_granting">%1$s님과 라이브러리를 공유하는 중…</string>
-    <string name="members_sharing_access">접근 권한 공유 중</string>
     <string name="settings_profile_making">프로필을 만드는 중…</string>
     <string name="settings_profile_making_detail">이 라이브러리가 동기화되면 프로필이 표시됩니다.</string>
     <string name="settings_profile_refused">프로필을 만들 수 없습니다. %1$s</string>
@@ -458,4 +456,5 @@
     <string name="invite_offline">이 기기가 온라인 상태가 되고 %1$s에서 라이브러리를 %2$s에 공유하면 여기에 코드가 표시됩니다.</string>
     <string name="invite_scan_instruction">상대방의 기기에서 코드를 스캔하거나 입력하세요.</string>
     <string name="invite_cancel_message">이 초대는 %1$s에서 사용할 수 없게 됩니다.</string>
+    <string name="qr_code">QR 코드</string>
 </resources>

@@ -2750,8 +2750,8 @@ device with a ⋯ menu (⋮ on Android) holding *Remove…*. On a Mac, *Add devi
 is a plain button under the box, on the right; on Android *Add…* is the last
 row. *People* has one row for each other person, with their role and how many
 devices they have, and the open invites below them; on a Mac an admin's
-*Invite…* is a plain button under the box, on the right, and on Android *Invite
-a person* is the last row. An admin's row opens that person's
+*Invite…* is a plain button under the box, on the right, and on Android *Invite*,
+with a +, is the last row of the People card, after the invites. An admin's row opens that person's
 page: their role, with *Make admin* or *Make member*, *Remove from library…* in
 red, and their devices, each with a ⋯ menu (⋮ on Android) holding *Remove…*. A
 member's person rows open nothing: a member has nothing to do there. On Android
@@ -2980,18 +2980,16 @@ library asks for his profile under it once sync has loaded that far, at
 that open or a later one (§5.4).
 
 **Open invites.** Until it ends, each invite Ana's laptop made is a row in
-People: the address it shares with (the key's id on S3), marked invited. An
-invite's own screen is titled **Invite**. The rows follow coven's list of this
+People: the address it shares with (the key's id on S3), marked invited, with a
+chevron that opens the invite's own screen, titled **Invite**. While this device
+is offline and sync has not yet shared the library with the address, the row
+says "Shares access once online". Once Dan's request is approved, his row is
+his name marked joining, with the address under it, and opens nothing. The rows follow coven's list of this
 device's open invites
 ([coven §13.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#132-adding-a-person-invites)),
 which coven ends when the invite is approved, declined, cancelled or expires, so
 an expired invite leaves People when its lifetime ends. Only the device that
-made it shows the row, since only that device can act on it. Until sync has
-shared the invite's access, the row reads "Invited" with "Shares access once
-online" under it, and its screen says "Sharing the library with" the address.
-The request dialog is titled "<name> wants to join". The row's refresh
-button runs Retry now for the library (§6.4), so the request shows the moment
-Dan says he has entered the code, without waiting for the next check. Opening
+made it shows the row, since only that device can act on it. Opening
 the row shows the invite again. While the library is being shared with the
 address, its screen shows a bar and "Sharing the library with dan@example.com…";
 while the sync state says this device is offline, it says that the code shows
@@ -3788,8 +3786,8 @@ its control says so in core's words for that transfer.
   request to wait, with the date and time it ends, after which sync goes on by
   itself; or that sync isn't running. A pass held by such a wait, or by a
   failure only the person can clear, answers at once. The Sync
-  page's *Retry now* and People's refresh wait for the same answer and show a
-  retry that didn't sync where they are on macOS, as a snackbar on Android.
+  page's *Retry now* waits for the same answer and shows a retry that didn't
+  sync where it is on macOS, as a snackbar on Android.
 - **A newer schema.** Data written by a newer app needs an update;
   reconnecting can't fix it.
 - **Pausing** stops uploads of release files and keeps their place, across

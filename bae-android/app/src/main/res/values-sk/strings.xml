@@ -335,7 +335,6 @@
     <string name="members_you">Ty</string>
     <string name="members_unnamed">Zatiaľ bez mena</string>
     <string name="members_invited">Pozvaný</string>
-    <string name="members_check_invites">Skontrolovať žiadosti</string>
     <string name="members_role_admin">Správca</string>
     <string name="members_make_admin">Nastaviť ako správcu</string>
     <string name="members_make_member">Nastaviť ako člena</string>
@@ -407,7 +406,6 @@
     <string name="members_joining">Pripája sa</string>
     <string name="members_invite_shares_access">Prístup sa zdieľa, keď bude online</string>
     <string name="invite_granting">Knižnica sa zdieľa s adresou %1$s…</string>
-    <string name="members_sharing_access">Zdieľa sa prístup</string>
     <string name="settings_profile_making">Vytvára sa váš profil…</string>
     <string name="settings_profile_making_detail">Váš profil sa zobrazí, keď sa táto knižnica synchronizuje.</string>
     <string name="settings_profile_refused">Váš profil sa nepodarilo vytvoriť. %1$s</string>
@@ -483,4 +481,5 @@
     <string name="invite_offline">Kód sa tu zobrazí, keď bude toto zariadenie online a %1$s zdieľa knižnicu s %2$s.</string>
     <string name="invite_scan_instruction">Naskenujte alebo zadajte kód na ich zariadení.</string>
     <string name="invite_cancel_message">%1$s nebude môcť použiť túto pozvánku.</string>
+    <string name="qr_code">QR kód</string>
 </resources>

@@ -9,7 +9,9 @@ import uniffi.bae_bridge.BridgeAdminChangeState
 import uniffi.bae_bridge.BridgeDeviceCutOff
 import uniffi.bae_bridge.BridgeInviteShown
 import uniffi.bae_bridge.BridgeMemberRole
+import uniffi.bae_bridge.BridgeRefusedInvite
 import uniffi.bae_bridge.BridgeRestoreCodeShare
+import uniffi.bae_bridge.BridgeSharingRefusal
 
 /** The shots of the ready android.settings.people*, person*, devices* and add-device* boards: the pages of People and devices. */
 class SettingsPeopleShots : BoardShot() {
@@ -34,18 +36,33 @@ class SettingsPeopleShots : BoardShot() {
             ScreenScene { PeoplePageScene(listOf(ana(), ben()), invites = listOf(danInvite(waitingCode))) }
         }
 
-    /** Dan's invite while sync is still granting his access. */
+    /** Dan's invite while this phone is offline, so sync can't grant his access yet. */
     @Test
     fun androidSettingsPeopleInviteWaiting() =
         shot("android.settings.people.invite-waiting") {
-            ScreenScene { PeoplePageScene(listOf(ana(), ben()), invites = listOf(danInvite(BridgeInviteShown.Granting))) }
+            ScreenScene {
+                PeoplePageScene(listOf(ana(), ben()), invites = listOf(danInvite(BridgeInviteShown.Granting)), offline = true)
+            }
         }
 
-    /** Dan's invite with the reason coven holds it. */
+    /** Dan's invite, which Dropbox refused to share for good: a notice in its row's place. */
     @Test
     fun androidSettingsPeopleInviteFailed() =
         shot("android.settings.people.invite-failed") {
-            ScreenScene { PeoplePageScene(listOf(ana(), ben()), invites = listOf(danInvite(waitingCode, held = heldRejected))) }
+            ScreenScene {
+                PeoplePageScene(
+                    listOf(ana(), ben()),
+                    refused =
+                        listOf(
+                            BridgeRefusedInvite(
+                                11L,
+                                "dan@example.com",
+                                BridgeSharingRefusal.INVALID_ADDRESS,
+                                "core.invite.refused.invalid_address",
+                            ),
+                        ),
+                )
+            }
         }
 
     /** Ben's page as an admin sees it: his role with Make admin, Remove from library, his device. */

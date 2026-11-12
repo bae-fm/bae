@@ -328,7 +328,6 @@
     <string name="members_you">Tu</string>
     <string name="members_unnamed">Încă fără nume</string>
     <string name="members_invited">Invitat</string>
-    <string name="members_check_invites">Verifică cererile</string>
     <string name="members_role_admin">Administrator</string>
     <string name="members_make_admin">Fă administrator</string>
     <string name="members_make_member">Fă membru</string>
@@ -399,7 +398,6 @@
     <string name="members_joining">Se alătură</string>
     <string name="members_invite_shares_access">Partajează accesul când este online</string>
     <string name="invite_granting">Se partajează biblioteca cu %1$s…</string>
-    <string name="members_sharing_access">Se partajează accesul</string>
     <string name="settings_profile_making">Se creează profilul tău…</string>
     <string name="settings_profile_making_detail">Profilul tău apare după ce această bibliotecă se sincronizează.</string>
     <string name="settings_profile_refused">Profilul tău nu a putut fi creat. %1$s</string>
@@ -474,4 +472,5 @@
     <string name="invite_offline">Codul apare aici după ce acest dispozitiv este online și %1$s a partajat biblioteca cu %2$s.</string>
     <string name="invite_scan_instruction">Scanează sau introdu codul pe dispozitivul lor.</string>
     <string name="invite_cancel_message">%1$s nu va putea folosi această invitație.</string>
+    <string name="qr_code">Cod QR</string>
 </resources>

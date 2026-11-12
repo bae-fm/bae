@@ -126,7 +126,13 @@ class MembersModelTest {
         val model =
             MembersModel(handle, TestErrorDisplays, CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
         val stop = model.subscribe()
-        val refused = BridgeRefusedInvite(operation = 7L, address = "dan@example.com", refusal = BridgeSharingRefusal.INVALID_ADDRESS)
+        val refused =
+            BridgeRefusedInvite(
+                operation = 7L,
+                address = "dan@example.com",
+                refusal = BridgeSharingRefusal.INVALID_ADDRESS,
+                reasonKey = "core.invite.refused.invalid_address",
+            )
 
         handle.invites.deliver(emptyList(), refused = listOf(refused))
         shadowOf(Looper.getMainLooper()).idle()

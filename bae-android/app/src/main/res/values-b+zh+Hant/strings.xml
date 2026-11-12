@@ -316,7 +316,6 @@
     <string name="members_you">你</string>
     <string name="members_unnamed">尚無名字</string>
     <string name="members_invited">已邀請</string>
-    <string name="members_check_invites">檢查請求</string>
     <string name="members_role_admin">管理員</string>
     <string name="members_make_admin">設為管理員</string>
     <string name="members_make_member">設為成員</string>
@@ -385,7 +384,6 @@
     <string name="members_joining">正在加入</string>
     <string name="members_invite_shares_access">連線後共享存取權限</string>
     <string name="invite_granting">正在與 %1$s 共享資料庫…</string>
-    <string name="members_sharing_access">正在共享存取權限</string>
     <string name="settings_profile_making">正在建立你的個人檔案…</string>
     <string name="settings_profile_making_detail">此資料庫同步後，你的個人檔案就會出現。</string>
     <string name="settings_profile_refused">無法建立你的個人檔案。%1$s</string>
@@ -458,4 +456,5 @@
     <string name="invite_offline">此裝置連線且 %1$s 已與 %2$s 共享資料庫後，代碼會顯示在這裡。</string>
     <string name="invite_scan_instruction">在對方的裝置上掃描或輸入此代碼。</string>
     <string name="invite_cancel_message">%1$s 將無法使用此邀請。</string>
+    <string name="qr_code">QR 碼</string>
 </resources>

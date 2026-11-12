@@ -13,13 +13,25 @@ extension ShotScene {
     static let peopleScenes: [ShotScene] = [
         people("people-and-devices-admin", asAdmin: true, invites: [invited]),
         people(
+            "people-and-devices-invite-offline",
+            asAdmin: true,
+            invites: [granting],
+            offline: true
+        ),
+        people(
+            "people-and-devices-invite-joining",
+            asAdmin: true,
+            invites: [joining]
+        ),
+        people(
             "people-and-devices-invite-failed",
             asAdmin: true,
             refusedInvites: [
                 BridgeRefusedInvite(
                     operation: 7,
                     address: "dan@example.com",
-                    refusal: .invalidAddress
+                    refusal: .invalidAddress,
+                    reasonKey: "core.invite.refused.invalid_address"
                 )
             ]
         ),
@@ -326,6 +338,7 @@ extension ShotScene {
                     )
                 )
                 .environment(membership)
+                .environment(SyncStatusStore())
             ) {
                 membership.members != nil
             }
@@ -342,6 +355,26 @@ extension ShotScene {
         held: nil
     )
 
+    /// An invite sent to dan@example.com whose access sync has not granted.
+    private static let granting = BridgeInvite(
+        id: "12",
+        member: "4a1f2c3d-0000-4000-8000-000000000009",
+        label: "dan@example.com",
+        access: .providerAccount(email: "dan@example.com"),
+        shown: .granting,
+        held: nil
+    )
+
+    /// An invite whose person Dan is being let in.
+    private static let joining = BridgeInvite(
+        id: "13",
+        member: "4a1f2c3d-0000-4000-8000-000000000009",
+        label: "dan@example.com",
+        access: .providerAccount(email: "dan@example.com"),
+        shown: .code(code: "invite-code", progress: .joining(name: "Dan")),
+        held: nil
+    )
+
     /// The preview people's other person.
     private static let otherMemberId = "4a1f2c3d-0000-4000-8000-000000000002"
 
@@ -351,7 +384,8 @@ extension ShotScene {
         subpage: PeopleAndDevicesPage.Subpage = .people,
         renaming: Bool = false,
         invites: [BridgeInvite] = [],
-        refusedInvites: [BridgeRefusedInvite] = []
+        refusedInvites: [BridgeRefusedInvite] = [],
+        offline: Bool = false
     ) -> ShotScene {
         ShotScene(id: id, size: CGSize(width: 500, height: 480)) {
             let membership = MembershipStore.stub(
@@ -378,9 +412,23 @@ extension ShotScene {
                     )
                 )
                 .environment(membership)
+                .environment(syncStatus(offline: offline))
             ) {
                 membership.members != nil
             }
         }
+    }
+
+    /// The sync state the page reads: offline, or not read at all.
+    private static func syncStatus(offline: Bool) -> SyncStatusStore {
+        guard offline else { return SyncStatusStore() }
+        return SyncStatusStore(
+            snapshot: BridgeSyncStatusSnapshot(
+                shown: .previewOffline,
+                pending: [],
+                setupRunning: false,
+                undoneSetup: nil
+            )
+        )
     }
 }

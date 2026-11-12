@@ -4,8 +4,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -18,7 +18,6 @@ import fm.bae.app.DisplayError
 import fm.bae.app.ErrorDisplays
 import fm.bae.app.R
 import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidCard
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidSection
@@ -76,6 +75,7 @@ internal fun AndroidSettingsPeople(
     adminChanges: List<BridgeAdminChange>,
     callbacks: MemberCallbacks,
     inviteCallbacks: InviteCallbacks,
+    offline: Boolean,
     error: DisplayError?,
     onOpen: (PeoplePage) -> Unit,
     onBack: () -> Unit,
@@ -90,6 +90,7 @@ internal fun AndroidSettingsPeople(
             adminChanges = adminChanges,
             callbacks = callbacks,
             inviteCallbacks = inviteCallbacks,
+            offline = offline,
             onOpen = onOpen,
         )
     }
@@ -109,6 +110,7 @@ internal fun PeopleHome(
     adminChanges: List<BridgeAdminChange>,
     callbacks: MemberCallbacks,
     inviteCallbacks: InviteCallbacks,
+    offline: Boolean,
     onOpen: (PeoplePage) -> Unit,
 ) {
     val me = people.firstOrNull { it.membership.isSelf }
@@ -132,39 +134,67 @@ internal fun PeopleHome(
         item { YouCard(you = you, me = me, requested = requested, onOpenDevices = { onOpen(PeoplePage.Devices) }) }
         item { AndroidSection(text = stringResource(R.string.people_people)) }
         item {
-            AndroidCard {
-                people.filterNot { it.membership.isSelf }.forEach { person ->
-                    val member = person.membership
-                    AndroidRow(
-                        title = person.profile?.name ?: stringResource(R.string.members_unnamed),
-                        subtitle =
-                            stringResource(
-                                R.string.people_role_and_devices,
-                                stringResource(member.role.labelRes()),
-                                pluralStringResource(
-                                    R.plurals.people_device_count,
-                                    member.activeDevices.size,
-                                    member.activeDevices.size,
-                                ),
-                            ),
-                        onClick = if (selfIsAdmin) ({ onOpen(PeoplePage.Person(member.id)) }) else null,
-                        icon = if (selfIsAdmin) RowIcon.CHEVRON else null,
-                    )
-                }
-            }
+            PeopleCard(
+                people = people,
+                selfIsAdmin = selfIsAdmin,
+                invites = invites,
+                callbacks = callbacks,
+                inviteCallbacks = inviteCallbacks,
+                offline = offline,
+                onOpen = onOpen,
+            )
         }
-        items(invites, key = { entry -> entry.rowId() }) { entry ->
+    }
+}
+
+/** The other people, one row each, then the invites this device has open and, for an admin, the Invite row. */
+@Composable
+private fun PeopleCard(
+    people: List<BridgePerson>,
+    selfIsAdmin: Boolean,
+    invites: List<BridgeInviteEntry>,
+    callbacks: MemberCallbacks,
+    inviteCallbacks: InviteCallbacks,
+    offline: Boolean,
+    onOpen: (PeoplePage) -> Unit,
+) {
+    AndroidCard {
+        people.filterNot { it.membership.isSelf }.forEach { person ->
+            val member = person.membership
+            AndroidRow(
+                title = person.profile?.name ?: stringResource(R.string.members_unnamed),
+                subtitle =
+                    stringResource(
+                        R.string.people_role_and_devices,
+                        stringResource(member.role.labelRes()),
+                        pluralStringResource(
+                            R.plurals.people_device_count,
+                            member.activeDevices.size,
+                            member.activeDevices.size,
+                        ),
+                    ),
+                onClick = if (selfIsAdmin) ({ onOpen(PeoplePage.Person(member.id)) }) else null,
+                icon = if (selfIsAdmin) RowIcon.CHEVRON else null,
+            )
+        }
+        invites.forEach { entry ->
             when (entry) {
-                is BridgeInviteEntry.Open -> InviteRow(invite = entry.invite, callbacks = inviteCallbacks)
-                is BridgeInviteEntry.Refused -> RefusedInviteRow(refused = entry.refused, callbacks = inviteCallbacks)
+                is BridgeInviteEntry.Open -> {
+                    InviteRow(invite = entry.invite, offline = offline, callbacks = inviteCallbacks)
+                }
+
+                is BridgeInviteEntry.Refused -> {
+                    RefusedInviteRow(refused = entry.refused, callbacks = inviteCallbacks)
+                }
             }
         }
         if (selfIsAdmin) {
-            item {
-                AndroidButton(onClick = callbacks.onInvite) {
-                    Text(stringResource(R.string.members_invite))
-                }
-            }
+            AndroidRow(
+                title = stringResource(R.string.members_invite),
+                action = true,
+                leadingIcon = Icons.Filled.Add,
+                onClick = callbacks.onInvite,
+            )
         }
     }
 }
@@ -269,11 +299,4 @@ internal fun BridgeHistorySharing.labelRes(): Int =
         BridgeHistorySharing.OFF -> R.string.settings_history_off
         BridgeHistorySharing.PRIVATE -> R.string.settings_history_private
         BridgeHistorySharing.HOUSEHOLD -> R.string.settings_history_household
-    }
-
-/** What identifies the row among People's invites. */
-private fun BridgeInviteEntry.rowId(): String =
-    when (this) {
-        is BridgeInviteEntry.Open -> invite.id
-        is BridgeInviteEntry.Refused -> "refused-${refused.operation}"
     }

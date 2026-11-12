@@ -1,18 +1,8 @@
 package fm.bae.app.ui.settings
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -26,7 +16,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.ErrorDisplays
@@ -34,14 +23,12 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.performBridgeAction
-import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.NoticeLook
-import fm.bae.app.ui.components.StatusChip
+import fm.bae.app.ui.components.RowIcon
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.components.retryAction
 import fm.bae.app.ui.rememberScreenScope
@@ -65,7 +52,6 @@ import uniffi.bae_bridge.BridgePerson
 import uniffi.bae_bridge.BridgeRefusedInvite
 import uniffi.bae_bridge.BridgeRequestedProfile
 import uniffi.bae_bridge.BridgeStorageLocation
-import uniffi.bae_bridge.bridgeSharingRefusalKey
 
 private const val TAG = "bae.MembersScreen"
 private val logger = BaeLogger(TAG)
@@ -343,55 +329,46 @@ internal class MemberCallbacks(
 /** What this device's person can do with an invite it has open. */
 internal class InviteCallbacks(
     val onOpen: (BridgeInvite) -> Unit,
-    val onRefresh: () -> Unit,
     val onDismissRefused: (BridgeRefusedInvite) -> Unit,
 )
 
 /**
- * One of this device's open invites: the person's name, marked sharing access until sync has granted it, then invited,
- * or joining once approval has begun; and why coven holds its work, when it does.
+ * One of this device's open invites: the address it shares with (the key's id on S3), marked invited, which a tap
+ * opens; "Shares access once online" while sync can't grant it because this device is [offline]; and why coven holds
+ * its work, when it does. Once approval has begun the row is the person's name, marked joining, with the address under
+ * it, and opens nothing: nothing is left to decide or cancel.
  */
 @Composable
 internal fun InviteRow(
     invite: BridgeInvite,
+    offline: Boolean,
     callbacks: InviteCallbacks,
 ) {
     val context = LocalContext.current
-    Row(
-        modifier = Modifier.fillMaxWidth().clickable(role = Role.Button) { callbacks.onOpen(invite) },
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(ThemeSpace.inline)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
-            ) {
-                Text(
-                    text = invite.label,
-                    style = ThemeText.strong.style,
-                    modifier = Modifier.weight(1f, fill = false),
-                )
-                InviteChip(invite.shown)
-            }
-            if (invite.shown is BridgeInviteShown.Granting) {
-                Text(
-                    text = stringResource(R.string.members_invite_shares_access),
-                    style = ThemeText.detail.style,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            invite.held?.let { held ->
-                Text(
-                    text = context.coreString(held.reason.key),
-                    style = ThemeText.detail.style,
-                    color = MaterialTheme.colorScheme.error,
-                )
-            }
-        }
-        IconButton(onClick = callbacks.onRefresh) {
-            Icon(Icons.Filled.Refresh, contentDescription = stringResource(R.string.members_check_invites))
-        }
+    val shown = invite.shown
+    val joining = (shown as? BridgeInviteShown.Code)?.progress as? BridgeInviteProgress.Joining
+    if (joining != null) {
+        AndroidRow(
+            title = joining.name,
+            subtitle = invite.label,
+            tag = stringResource(R.string.members_joining),
+        )
+        return
     }
+    val held = invite.held
+    AndroidRow(
+        title = invite.label,
+        tag = stringResource(R.string.members_invited),
+        subtitle =
+            when {
+                held != null -> context.coreString(held.reason.key)
+                offline && shown is BridgeInviteShown.Granting -> stringResource(R.string.members_invite_shares_access)
+                else -> null
+            },
+        tone = if (held != null) StatusTone.DANGER else null,
+        icon = RowIcon.CHEVRON,
+        onClick = { callbacks.onOpen(invite) },
+    )
 }
 
 /**
@@ -409,7 +386,7 @@ internal fun RefusedInviteRow(
         subtitle =
             stringResource(
                 R.string.members_invite_refused,
-                context.coreString(bridgeSharingRefusalKey(refused.refusal)),
+                context.coreString(refused.reasonKey),
             ),
         tone = StatusTone.DANGER,
         trailing = {
@@ -418,27 +395,6 @@ internal fun RefusedInviteRow(
             }
         },
     )
-}
-
-@Composable
-private fun InviteChip(shown: BridgeInviteShown) {
-    when (shown) {
-        is BridgeInviteShown.Granting -> {
-            StatusChip(stringResource(R.string.members_invited))
-        }
-
-        is BridgeInviteShown.Code -> {
-            when (shown.progress) {
-                is BridgeInviteProgress.Joining -> {
-                    StatusChip(stringResource(R.string.members_joining), tone = StatusTone.ACTIVITY)
-                }
-
-                is BridgeInviteProgress.Waiting, is BridgeInviteProgress.Deciding -> {
-                    StatusChip(stringResource(R.string.members_invited))
-                }
-            }
-        }
-    }
 }
 
 internal fun BridgeMemberRole.labelRes(): Int =

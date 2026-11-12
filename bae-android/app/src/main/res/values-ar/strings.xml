@@ -351,7 +351,6 @@
     <string name="members_you">أنت</string>
     <string name="members_unnamed">بلا اسم بعد</string>
     <string name="members_invited">مدعو</string>
-    <string name="members_check_invites">التحقق من الطلبات</string>
     <string name="members_role_admin">مسؤول</string>
     <string name="members_make_admin">جعله مسؤولًا</string>
     <string name="members_make_member">جعله عضوًا</string>
@@ -425,7 +424,6 @@
     <string name="members_joining">ينضم</string>
     <string name="members_invite_shares_access">تتم مشاركة الوصول عند الاتصال بالإنترنت</string>
     <string name="invite_granting">جارٍ مشاركة المكتبة مع %1$s…</string>
-    <string name="members_sharing_access">جارٍ مشاركة الوصول</string>
     <string name="settings_profile_making">جارٍ إنشاء ملف تعريفك…</string>
     <string name="settings_profile_making_detail">يظهر ملف تعريفك بعد مزامنة هذه المكتبة.</string>
     <string name="settings_profile_refused">تعذّر إنشاء ملف تعريفك. %1$s</string>
@@ -503,4 +501,5 @@
     <string name="invite_offline">سيظهر الرمز هنا بمجرد اتصال هذا الجهاز بالإنترنت ومشاركة %1$s المكتبة مع %2$s.</string>
     <string name="invite_scan_instruction">امسح الرمز أو أدخله على جهازهم.</string>
     <string name="invite_cancel_message">لن يتمكن %1$s من استخدام هذه الدعوة.</string>
+    <string name="qr_code">رمز QR</string>
 </resources>

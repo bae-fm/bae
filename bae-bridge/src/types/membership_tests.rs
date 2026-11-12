@@ -45,6 +45,7 @@ fn a_refused_invite_crosses_with_its_address_and_a_string_for_its_refusal() {
             operation: 7,
             address: "dan@example.com".into(),
             refusal: BridgeSharingRefusal::EmailUnverified,
+            reason_key: BridgeSharingRefusal::EmailUnverified.loc_key().to_string(),
         }
     );
     let keys: std::collections::BTreeSet<_> = [
@@ -54,7 +55,7 @@ fn a_refused_invite_crosses_with_its_address_and_a_string_for_its_refusal() {
         BridgeSharingRefusal::PlanWithoutSharing,
         BridgeSharingRefusal::TooManyMembers,
     ]
-    .map(bridge_sharing_refusal_key)
+    .map(|refusal| refusal.loc_key())
     .into();
     assert_eq!(keys.len(), 5);
 }

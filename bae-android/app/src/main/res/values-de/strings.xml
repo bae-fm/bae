@@ -323,7 +323,6 @@
     <string name="members_you">Du</string>
     <string name="members_unnamed">Noch kein Name</string>
     <string name="members_invited">Eingeladen</string>
-    <string name="members_check_invites">Nach Anfragen suchen</string>
     <string name="members_role_admin">Admin</string>
     <string name="members_make_admin">Zum Admin machen</string>
     <string name="members_make_member">Zum Mitglied machen</string>
@@ -393,7 +392,6 @@
     <string name="members_joining">Tritt bei</string>
     <string name="members_invite_shares_access">Teilt den Zugriff, sobald das Gerät online ist</string>
     <string name="invite_granting">Bibliothek wird mit %1$s geteilt…</string>
-    <string name="members_sharing_access">Zugriff wird geteilt</string>
     <string name="settings_profile_making">Dein Profil wird erstellt …</string>
     <string name="settings_profile_making_detail">Dein Profil erscheint, sobald diese Bibliothek synchronisiert ist.</string>
     <string name="settings_profile_refused">Dein Profil konnte nicht erstellt werden. %1$s</string>
@@ -467,4 +465,5 @@
     <string name="invite_offline">Der Code erscheint hier, sobald dieses Gerät online ist und %1$s die Mediathek mit %2$s geteilt hat.</string>
     <string name="invite_scan_instruction">Scanne den Code oder gib ihn auf dem Gerät der Person ein.</string>
     <string name="invite_cancel_message">%1$s kann diese Einladung dann nicht mehr verwenden.</string>
+    <string name="qr_code">QR-Code</string>
 </resources>

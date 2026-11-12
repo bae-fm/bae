@@ -321,7 +321,6 @@
     <string name="members_you">Dig</string>
     <string name="members_unnamed">Intet navn endnu</string>
     <string name="members_invited">Inviteret</string>
-    <string name="members_check_invites">Søg efter anmodninger</string>
     <string name="members_role_admin">Administrator</string>
     <string name="members_make_admin">Gør til administrator</string>
     <string name="members_make_member">Gør til medlem</string>
@@ -391,7 +390,6 @@
     <string name="members_joining">Tilslutter sig</string>
     <string name="members_invite_shares_access">Deler adgang, når enheden er online</string>
     <string name="invite_granting">Deler biblioteket med %1$s…</string>
-    <string name="members_sharing_access">Deler adgang</string>
     <string name="settings_profile_making">Opretter din profil…</string>
     <string name="settings_profile_making_detail">Din profil vises, når dette bibliotek er synkroniseret.</string>
     <string name="settings_profile_refused">Din profil kunne ikke oprettes. %1$s</string>
@@ -465,4 +463,5 @@
     <string name="invite_offline">Koden vises her, når denne enhed er online, og %1$s har delt biblioteket med %2$s.</string>
     <string name="invite_scan_instruction">Scan eller indtast koden på deres enhed.</string>
     <string name="invite_cancel_message">%1$s kan ikke bruge denne invitation.</string>
+    <string name="qr_code">QR-kode</string>
 </resources>

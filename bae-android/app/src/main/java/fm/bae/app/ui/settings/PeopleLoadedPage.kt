@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import fm.bae.app.DisplayError
@@ -28,6 +30,8 @@ internal fun LoadedPeoplePage(
     onOpen: (PeoplePage) -> Unit,
     onBack: () -> Unit,
 ) {
+    val line by session.syncStatusStore.line.collectAsState()
+    val offline = line.isOffline
     when (page) {
         PeoplePage.People -> {
             AndroidSettingsPeople(
@@ -39,6 +43,7 @@ internal fun LoadedPeoplePage(
                 adminChanges = model.adminChanges,
                 callbacks = callbacks,
                 inviteCallbacks = inviteCallbacks(session, model, dialogs),
+                offline = offline,
                 error = model.error,
                 onOpen = onOpen,
                 onBack = onBack,
@@ -143,8 +148,6 @@ internal fun inviteCallbacks(
 ): InviteCallbacks =
     InviteCallbacks(
         onOpen = dialogs::open,
-        // Retry now reads a request that has arrived at once, instead of at the next check.
-        onRefresh = { session.messages.startRetrySync(session.appHandle::retryNow) },
         onDismissRefused = { refused ->
             model.perform("dismiss a refused invite") { session.appHandle.dismissRefusedInvite(refused.operation) }
         },

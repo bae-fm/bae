@@ -217,7 +217,8 @@ struct InvitesSubscriptionTests {
         let refused = BridgeRefusedInvite(
             operation: 7,
             address: "dan@example.com",
-            refusal: .invalidAddress
+            refusal: .invalidAddress,
+            reasonKey: "core.invite.refused.invalid_address"
         )
         handle.deliverInvites([invite(id: "11")], refused: [refused])
         try await Wait.until { store.inviteEntries.count == 2 }
