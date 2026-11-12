@@ -8,4 +8,4 @@ A question goes in the field's helper line, not a sentence above it.
 
 The headline wraps balanced, so it never leaves one word alone on its last line, in any language (the code should set Compose's `LineBreak.Heading` on the headline and `LineBreak.Paragraph` on the line under it).
 
-**In the code:** Android: `AndroidStep` (`ui/components/AndroidStep.kt`), in its `top` form only; the centred form comes with the join's waiting step.
+**In the code:** Android: `AndroidStep` (`ui/components/AndroidStep.kt`), centred by default, and `top` for a step to read or fill in.

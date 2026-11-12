@@ -4,4 +4,4 @@ The six digits two devices both show while one lets the other in: adding a devic
 
 The same part draws the code on both sides of the match, so the two screens can't drift apart.
 
-**In the code:** macOS: `MacMatchCode` (`Views/Components/MacMatchCode.swift`), the digits only.
+**In the code:** macOS: `MacMatchCode` (`Views/Components/MacMatchCode.swift`), the digits, a sheet's size with `dialog`, and `waiting` for the line under them.
