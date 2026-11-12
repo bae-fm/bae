@@ -69,7 +69,6 @@ struct AddDeviceSheetContent: View {
                 MacScanCode(
                     instruction: "Scan or enter the code on the new device.",
                     qr: adding.share.qrText,
-                    qrLabel: "Your restore code",
                     code: adding.share.code
                 )
             case .failure(let error):

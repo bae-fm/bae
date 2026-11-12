@@ -22,16 +22,15 @@ import fm.bae.app.ui.appearance.ThemeText
 private val QR_SIDE = 240.dp
 
 /**
- * A code another device scans, one thing at a time: what to do, in [instruction]; the QR code of
- * [qr]; then Copy code and Share, which hand out [code] as text and nothing else. The code's text
- * is never shown beside the QR code. [code] is not always what the QR code holds: a QR code can
- * carry what a person typing the text does not need to.
+ * A code another device scans, one thing at a time: what to do, in [instruction]; the QR code of [qr];
+ * then Copy code and Share, which hand out [code] as text and nothing else. The code's text is never
+ * shown beside the QR code. [code] is not always what the QR code holds: a QR code can carry what a
+ * person typing the text does not need to.
  */
 @Composable
 fun AndroidScanCode(
     instruction: String,
     qr: String,
-    qrDescription: String?,
     code: String,
     modifier: Modifier = Modifier,
 ) {
@@ -48,7 +47,7 @@ fun AndroidScanCode(
             color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center,
         )
-        QRCodeImage(text = qr, contentDescription = qrDescription, modifier = Modifier.size(QR_SIDE))
+        QRCodeImage(text = qr, contentDescription = stringResource(R.string.qr_code), modifier = Modifier.size(QR_SIDE))
         Row(horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
             AndroidButton(kind = ButtonKind.OUTLINED, onClick = { copy(code) }) {
                 Text(stringResource(R.string.copy_code))

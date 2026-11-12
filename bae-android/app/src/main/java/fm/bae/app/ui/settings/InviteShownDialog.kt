@@ -210,7 +210,6 @@ internal fun inviteCodeParts(
                         AndroidScanCode(
                             instruction = stringResource(R.string.invite_scan_instruction),
                             qr = shown.code,
-                            qrDescription = title,
                             code = shown.code,
                         )
                     }

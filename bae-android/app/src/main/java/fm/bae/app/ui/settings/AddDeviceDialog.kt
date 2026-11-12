@@ -152,7 +152,6 @@ internal fun addDeviceParts(
                         AndroidScanCode(
                             instruction = stringResource(R.string.add_device_instructions),
                             qr = share.qrText,
-                            qrDescription = stringResource(R.string.restore_code_title),
                             code = share.code,
                         )
                     }

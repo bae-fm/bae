@@ -237,3 +237,11 @@ ro	PDF document
 # "privégeschiedenis" is the Dutch compound privé + geschiedenis; its "-s" is
 # the noun's own ending, not an English plural glued on.
 nl	They lose access to the library. Their private history and private playlists are deleted; what they shared stays.
+
+# "QR code" is the same term in these locales, only hyphenated or reordered.
+de	QR code
+fr	QR code
+nl	QR code
+de	qr_code
+fr	qr_code
+nl	qr_code

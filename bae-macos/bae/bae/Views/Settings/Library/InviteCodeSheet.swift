@@ -173,7 +173,6 @@ struct InviteCodeSheetContent: View {
             MacScanCode(
                 instruction: "Scan or enter the code on their device.",
                 qr: code,
-                qrLabel: "Invite",
                 code: code
             )
             if let keyLine = invite.access.keyLine,

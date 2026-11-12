@@ -9,7 +9,6 @@ import SwiftUI
 struct MacScanCode: View {
     let instruction: LocalizedStringKey
     let qr: String
-    let qrLabel: LocalizedStringKey
     let code: String
 
     /// How wide the QR code is drawn, in points.
@@ -21,7 +20,7 @@ struct MacScanCode: View {
                 .themeText(.body)
                 .multilineTextAlignment(.center)
             QRCode(text: qr, side: Self.side)
-                .accessibilityLabel(qrLabel)
+                .accessibilityLabel("QR code")
             HStack(spacing: ThemeSpace.related) {
                 Button("Copy code") {
                     SystemActions.copyToPasteboard(code)
