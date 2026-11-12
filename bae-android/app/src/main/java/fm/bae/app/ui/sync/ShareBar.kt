@@ -1,5 +1,6 @@
 package fm.bae.app.ui.sync
 
+import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
@@ -7,6 +8,7 @@ import android.graphics.RectF
 import android.util.TypedValue
 import android.view.View
 import android.view.accessibility.AccessibilityNodeInfo
+import android.view.animation.LinearInterpolator
 import android.widget.ProgressBar
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.LinearProgressIndicator
@@ -17,6 +19,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.graphics.withClip
 import fm.bae.app.ui.appearance.ThemeOpacity
 import fm.bae.fastvalues.FrameFollowing
 import fm.bae.fastvalues.LatestSource
@@ -64,9 +67,17 @@ internal fun ShareBar(
     }
 }
 
+/** How long the moving bar's piece takes to cross the track. */
+private const val MOVING_MILLIS = 1500L
+
+/** The moving bar's piece, as a share of the track's width. */
+private const val MOVING_SHARE = 0.4f
+
 /**
  * Material 3's linear progress bar drawn from a fraction the View reads itself: four tall, rounded,
  * the filled part, a gap, the rest of the track and a dot at its end that marks where the bar stops.
+ * [showMoving] swaps the fraction for a piece that crosses the track again and again, for a step that
+ * counts nothing.
  */
 internal class ShareBarView(
     context: Context,
@@ -76,6 +87,17 @@ internal class ShareBarView(
     private val following = FrameFollowing<Double>(this, ::show)
     private var fraction = 0f
     private val bounds = RectF()
+    private var phase = 0f
+    private val crossing =
+        ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = MOVING_MILLIS
+            repeatCount = ValueAnimator.INFINITE
+            interpolator = LinearInterpolator()
+            addUpdateListener {
+                phase = it.animatedValue as Float
+                invalidate()
+            }
+        }
 
     init {
         importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_YES
@@ -108,6 +130,23 @@ internal class ShareBarView(
 
     fun stopFollowing() = following.stop()
 
+    /** Shows [share] of the track filled, without following a stream. */
+    fun showFraction(share: Float) {
+        crossing.cancel()
+        fraction = share.coerceIn(0f, 1f)
+        invalidate()
+    }
+
+    /** Shows a piece crossing the track, while a step counts nothing. */
+    fun showMoving() {
+        if (!crossing.isStarted) crossing.start()
+    }
+
+    override fun onDetachedFromWindow() {
+        crossing.cancel()
+        super.onDetachedFromWindow()
+    }
+
     private fun show(share: Double?) {
         fraction = (share ?: 0.0).coerceIn(0.0, 1.0).toFloat()
         invalidate()
@@ -122,6 +161,15 @@ internal class ShareBarView(
         val height = dp(BAR_HEIGHT_DP)
         val gap = dp(GAP_DP)
         val radius = height / 2f
+        if (crossing.isStarted) {
+            canvas.drawRoundRect(bounds.apply { set(0f, 0f, width.toFloat(), height) }, radius, radius, track)
+            val piece = width * MOVING_SHARE
+            val start = -piece + (width + piece) * phase
+            canvas.withClip(0f, 0f, width.toFloat(), height) {
+                drawRoundRect(bounds.apply { set(start, 0f, start + piece, height) }, radius, radius, fill)
+            }
+            return
+        }
         val filledEnd = width * fraction
         if (fraction > 0f) {
             canvas.drawRoundRect(bounds.apply { set(0f, 0f, filledEnd, height) }, radius, radius, fill)

@@ -148,4 +148,4 @@ internal fun ResettingScreen(
 }
 
 /** How wide a restore's, join's or reset's step line is. */
-internal val STEP_LINE_MAX_WIDTH = 360.dp
+internal val STEP_LINE_MAX_WIDTH = 340.dp

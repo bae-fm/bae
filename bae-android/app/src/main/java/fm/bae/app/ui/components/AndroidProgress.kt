@@ -1,12 +1,10 @@
 package fm.bae.app.ui.components
 
 import android.content.Context
-import android.content.res.ColorStateList
 import android.util.TypedValue
 import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
-import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -20,12 +18,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.viewinterop.AndroidView
-import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.appearance.ThemeOpacity
+import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.sync.ShareBarView
 import fm.bae.fastvalues.FrameFollowing
 import fm.bae.fastvalues.LatestSource
-
-private const val BAR_MAX = 10_000
 
 /**
  * What shows while a long call runs: [idle] until the call runs a step, then
@@ -51,8 +49,11 @@ internal fun <Step : Any> AndroidProgress(
         if (!stepping || steps == null) idle()
         if (steps != null) {
             val accent = MaterialTheme.colorScheme.primary.toArgb()
-            val track = BaeTheme.colors.hairline.toArgb()
-            val text = MaterialTheme.colorScheme.onSurfaceVariant.toArgb()
+            val track =
+                MaterialTheme.colorScheme.primary
+                    .copy(alpha = ThemeOpacity.tintStrong)
+                    .toArgb()
+            val text = MaterialTheme.colorScheme.onSurface.toArgb()
             val size = ThemeText.body.style.fontSize.value
             AndroidView(
                 modifier = Modifier.fillMaxWidth(),
@@ -78,11 +79,7 @@ internal class StepProgressView<Step : Any>(
     context: Context,
 ) : LinearLayout(context) {
     private val label = TextView(context)
-    private val bar =
-        ProgressBar(context, null, android.R.attr.progressBarStyleHorizontal).apply {
-            max = BAR_MAX
-            isIndeterminate = false
-        }
+    private val bar = ShareBarView(context)
     private val following = FrameFollowing<Step>(this, ::show)
     private lateinit var title: (Step) -> String
     private lateinit var fraction: (Step) -> Double?
@@ -102,7 +99,18 @@ internal class StepProgressView<Step : Any>(
         orientation = VERTICAL
         layoutParams = LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         addView(label)
-        addView(bar, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        val gap =
+            TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP,
+                ThemeSpace.related.value,
+                resources.displayMetrics,
+            )
+        addView(
+            bar,
+            LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                topMargin = gap.toInt()
+            },
+        )
         visibility = View.GONE
     }
 
@@ -112,8 +120,7 @@ internal class StepProgressView<Step : Any>(
         text: Int,
         textSizeSp: Float,
     ) {
-        bar.progressTintList = ColorStateList.valueOf(accent)
-        bar.progressBackgroundTintList = ColorStateList.valueOf(track)
+        bar.applyColors(accent = accent, track = track)
         label.setTextColor(text)
         label.setTextSize(TypedValue.COMPLEX_UNIT_SP, textSizeSp)
     }
@@ -143,9 +150,7 @@ internal class StepProgressView<Step : Any>(
                 bar.contentDescription = shown
             }
             val done = fraction(step)
-            val counted = done != null
-            if (bar.isIndeterminate == counted) bar.isIndeterminate = !counted
-            if (done != null) bar.progress = (done * BAR_MAX).toInt()
+            if (done != null) bar.showFraction(done.toFloat()) else bar.showMoving()
         }
         val started = step != null
         visibility = if (started) View.VISIBLE else View.GONE
