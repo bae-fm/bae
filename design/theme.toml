@@ -412,7 +412,6 @@ tracking = 1
 uppercase = true
 macos = 10
 ios = "caption2"
-android = 11
 
 # A card's section heading on Android (Material's list section header), in the
 # accent colour and sentence case. A role names only the platforms that use it:
@@ -429,6 +428,13 @@ android_line = 20
 weight = "regular"
 android = 16
 android_line = 24
+
+# Android's eyebrow, the label that names a side or disc above its tracks:
+# medium 14 over a 20 line in sentence case, with no letter spacing.
+[text.androidEyebrow]
+weight = "medium"
+android = 14
+android_line = 20
 
 [text.mono]
 weight = "regular"

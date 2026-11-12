@@ -4,20 +4,17 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalConfiguration
 import fm.bae.app.ui.appearance.ThemeText
 
-/** The small capitalised label that names a section, a group or a column. */
+/** The small label in the secondary colour that names a side, a disc, a group or a column, in sentence case. */
 @Composable
 fun AndroidEyebrow(
     text: String,
     modifier: Modifier = Modifier,
 ) {
-    val role = ThemeText.eyebrow
-    val locale = LocalConfiguration.current.locales[0]
     Text(
-        text = if (role.uppercase) text.uppercase(locale) else text,
-        style = role.style,
+        text = text,
+        style = ThemeText.androidEyebrow.style,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = modifier,
     )
