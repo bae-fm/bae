@@ -294,13 +294,13 @@
   // One entry of the Pinning screen: the release's name with Cancel (×) on its line, its files and size, then its state: Queued to pin, a bar with bytes, or Couldn't pin with Details and Retry. A release since removed from the library is named in secondary text, so it doesn't read as a title.
   function AndroidDownloadRow(props) {
     var s = props.state || 'queued';
-    var state = s === 'queued' ? h('div', { className: 'bae-a-browse-count' }, 'Queued to pin')
+    var state = s === 'queued' ? h('div', { className: 'bae-a-librow-sub' }, 'Queued to pin')
       : s === 'active' ? h('div', null, h('div', { className: 'bae-a-dlbar-track' }, h('div', { style: { width: (Number(props.progress || 0.4) * 100) + '%' } })), h('div', { className: 'bae-a-fine bae-muted' }, props.bytes || '120 MB of 300 MB'))
       : h(AndroidNotice, { quiet: true, tone: 'danger', title: 'Couldn’t pin', secondary: 'Details', action: 'Retry' });
     return h('div', { className: 'bae-a-dlrow2' },
       h('div', { className: 'bae-a-dlrow2-head' },
-        h('div', { className: cx('bae-a-browse-name', !props.title && 'bae-a-dlrow2-gone') }, props.title || 'Release no longer in library'),
+        h('div', { className: cx('bae-a-librow-title', !props.title && 'bae-a-dlrow2-gone') }, props.title || 'Release no longer in library'),
         h(AndroidIconButton, { icon: 'close', label: 'Cancel', tone: 'muted', className: 'bae-a-dlrow2-cancel' })),
-      h('div', { className: 'bae-a-browse-count' }, props.detail),
+      h('div', { className: 'bae-a-librow-sub' }, props.detail),
       state);
   }

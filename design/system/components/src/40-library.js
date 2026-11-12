@@ -321,11 +321,6 @@
 
   function AndroidEyebrow(props) { return h('div', { className: 'bae-a-eyebrow' }, props.children); }
 
-  function AndroidBrowseRow(props) {
-    return h('div', { className: 'bae-a-browse' }, h(Artwork, { title: props.name, size: 48, radius: 6, missing: props.noImage }),
-      h('div', { className: 'bae-a-browse-text' }, h('div', { className: 'bae-a-browse-name' }, props.name), h('div', { className: 'bae-a-browse-count' }, props.count)));
-  }
-
   function AndroidAlbumHeader(props) {
     return h('div', { className: 'bae-a-albumhead' }, h(Artwork, { title: props.title, size: 140, radius: 10, missing: props.noCover }),
       h('div', { className: 'bae-a-albumhead-text' }, h('div', { className: 'bae-a-albumhead-title' }, props.title), h('div', { className: 'bae-a-albumhead-artist' }, props.artist), h('div', { className: 'bae-a-albumhead-fact' }, props.year),

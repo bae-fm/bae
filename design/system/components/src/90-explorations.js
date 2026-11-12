@@ -27,7 +27,7 @@
   function AndroidListRow(props) {
     return h('div', { className: cx('bae-a-lrow', props.selected && 'bae-a-lrow-selected') },
       h(Artwork, { title: props.album || props.title, size: 48, radius: 6 }),
-      h('div', { style: { flex: 1, minWidth: 0 } }, h('div', { className: 'bae-a-browse-name' }, props.title), h('div', { className: 'bae-a-browse-count' }, props.sub)),
+      h('div', { style: { flex: 1, minWidth: 0 } }, h('div', { className: 'bae-a-librow-title' }, props.title), h('div', { className: 'bae-a-librow-sub' }, props.sub)),
       props.who ? h(Avatar, { name: props.who, size: 24 }) : null,
       props.trailing ? h('span', { className: 'bae-a-fine bae-muted' }, props.trailing) : null);
   }

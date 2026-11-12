@@ -11,11 +11,12 @@
       props.trailing ? h('span', { className: 'bae-m-searchrow-trail' }, props.trailing) : null);
   }
   function AndroidSearchSection(props) { return h('div', { className: 'bae-a-searchsection' }, props.title); }
-  function AndroidSearchRow(props) {
-    return h('div', { className: cx('bae-a-searchrow', props.part && 'bae-a-searchrow-part', props.inset && 'bae-a-searchrow-inset') },
-      props.noArt ? null : h(Artwork, { title: props.art || props.title, size: 48, radius: 6 }),
-      h('div', { className: 'bae-a-searchrow-text' }, h('div', { className: 'bae-a-searchrow-title' }, props.title), props.subtitle ? h('div', { className: 'bae-a-searchrow-sub' }, props.subtitle) : null),
-      props.trailing ? h('span', { className: 'bae-a-searchrow-trail' }, props.trailing) : null);
+  // One row of a library list: Search's results, the artist and composer lists, the composer and work pages' rows.
+  function AndroidLibraryRow(props) {
+    return h('div', { className: cx('bae-a-librow', props.part && 'bae-a-librow-part', props.inset && 'bae-a-librow-inset') },
+      props.noArt ? null : h(Artwork, { title: props.art || props.title, size: 48, radius: 6, missing: props.missing }),
+      h('div', { className: 'bae-a-librow-text' }, h('div', { className: 'bae-a-librow-title' }, props.title), props.subtitle ? h('div', { className: 'bae-a-librow-sub' }, props.subtitle) : null),
+      props.trailing ? h('span', { className: 'bae-a-librow-trail' }, props.trailing) : null);
   }
 
   // ---- Queue and playback (macOS) ----

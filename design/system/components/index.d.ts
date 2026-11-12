@@ -248,8 +248,6 @@ export declare function AndroidArtistHeading(props: AndroidArtistHeadingProps): 
 export interface AndroidTrackRowProps { position?: string; title: string; artist?: string; duration?: string; current?: boolean; playing?: boolean }
 export declare function AndroidTrackRow(props: AndroidTrackRowProps): React.ReactElement;
 export declare function AndroidEyebrow(props: { children?: React.ReactNode }): React.ReactElement;
-export interface AndroidBrowseRowProps { name: string; count?: string; noImage?: boolean }
-export declare function AndroidBrowseRow(props: AndroidBrowseRowProps): React.ReactElement;
 export interface AndroidAlbumHeaderProps { title: string; artist?: string; year?: string; pressing?: string; labels?: string; noCover?: boolean }
 export declare function AndroidAlbumHeader(props: AndroidAlbumHeaderProps): React.ReactElement;
 export interface AndroidDownloadControlProps { state?: 'available' | 'queued' | 'downloading' | 'failed' | 'downloaded' | 'elsewhere'; progress?: number; bytes?: string; where?: string }
@@ -277,7 +275,9 @@ export declare function MacSearchSection(props: { title: string }): React.ReactE
 export interface SearchRowProps { title: string; subtitle?: string; trailing?: string; art?: string; noArt?: boolean; hover?: boolean; part?: boolean; inset?: boolean }
 export declare function MacSearchRow(props: SearchRowProps): React.ReactElement;
 export declare function AndroidSearchSection(props: { title: string }): React.ReactElement;
-export declare function AndroidSearchRow(props: SearchRowProps): React.ReactElement;
+/** One row of a library list: Search's results, the artist and composer lists, the composer and work pages' rows. */
+export interface AndroidLibraryRowProps { title: string; subtitle?: string; trailing?: string; art?: string; noArt?: boolean; missing?: boolean; part?: boolean; inset?: boolean }
+export declare function AndroidLibraryRow(props: AndroidLibraryRowProps): React.ReactElement;
 export interface MacQueuePanelProps { title?: string; artist?: string; album?: string; playing?: boolean; position?: number; elapsed?: string; empty?: boolean; children?: React.ReactNode }
 export declare function MacQueuePanel(props: MacQueuePanelProps): React.ReactElement;
 export interface MacQueueSectionProps { title: string; clear?: boolean; shuffle?: boolean }
