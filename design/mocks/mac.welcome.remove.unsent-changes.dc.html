@@ -26,7 +26,7 @@ body{margin:0}
 </helmet>
 <x-import component-from-global-scope="Bae.MacWelcomeWindow">
   <div style="position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 28px 0 48px"><x-import component-from-global-scope="Bae.Logo" size="72" bob="{{yes}}" glow="{{yes}}"></x-import><div style="margin-top: 10px; font-size: 15px; color: var(--text-secondary)">Your music, everywhere</div><div style="width: 420px; margin-top: 28px; display: flex; flex-direction: column; gap: 8px"><dc-import name="mac.parts.welcome-libraries" hint-size="100%,170px"></dc-import></div></div>
-  <x-import component-from-global-scope="Bae.MacAlert" title="Remove “Home music” from this Mac?" warning="Unsent changes will be lost" message="The library will remain in the cloud and on your other devices."><x-import component-from-global-scope="Bae.MacButton" kind="primary" size="alert">Remove</x-import><x-import component-from-global-scope="Bae.MacButton" size="alert">Cancel</x-import></x-import>
+  <x-import component-from-global-scope="Bae.MacAlert" title="Remove Home music from this Mac?" warning="Unsent changes will be lost" message="The library will remain in the cloud and on your other devices."><x-import component-from-global-scope="Bae.MacButton" kind="primary" size="alert">Remove</x-import><x-import component-from-global-scope="Bae.MacButton" size="alert">Cancel</x-import></x-import>
 </x-import>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":690,"height":600}}'>
