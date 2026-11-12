@@ -92,16 +92,6 @@ internal fun SystemLook(content: @Composable () -> Unit) {
     BaeTheme(appearance, content)
 }
 
-/** A dialog's words on the dialog's own surface: the dialog opens a window a test doesn't draw. */
-@Composable
-internal fun DialogScene(content: @Composable () -> Unit) {
-    ShotTheme {
-        Box(modifier = Modifier.fillMaxSize().padding(ThemeSpace.page), contentAlignment = Alignment.Center) {
-            DialogSurface(content)
-        }
-    }
-}
-
 /**
  * A dialog's [parts] drawn in place, as its window would show them: over [behind], dimmed by the scrim, centred on
  * the phone, with title, message, content and buttons on the dialog's surface, 340 dp wide as the boards draw it.

@@ -14,20 +14,20 @@ import fm.bae.app.ui.InProgressScreen
 import fm.bae.app.ui.ResetOfferedScreen
 import fm.bae.app.ui.ResetUnfinishedScreen
 import fm.bae.app.ui.components.RemovalLoss
-import fm.bae.app.ui.components.RemoveLibraryText
+import fm.bae.app.ui.components.removeLibraryParts
 import fm.bae.app.ui.onboarding.CodeEntry
 import fm.bae.app.ui.onboarding.JoinNameStep
 import fm.bae.app.ui.onboarding.JoinStart
 import fm.bae.app.ui.onboarding.LibraryDetailsRows
 import fm.bae.app.ui.onboarding.OnboardingProgress
 import fm.bae.app.ui.onboarding.OnboardingStep
-import fm.bae.app.ui.onboarding.RemovalFailedText
 import fm.bae.app.ui.onboarding.StandingRead
 import fm.bae.app.ui.onboarding.WelcomeActions
 import fm.bae.app.ui.onboarding.WelcomeLibrariesScene
 import fm.bae.app.ui.onboarding.WelcomeRemovingScene
 import fm.bae.app.ui.onboarding.WelcomeSavedCodesScene
 import fm.bae.app.ui.onboarding.WelcomeScene
+import fm.bae.app.ui.onboarding.removalFailedParts
 import fm.bae.app.ui.testRecoveryLines
 import fm.bae.fastvalues.LatestStream
 import fm.bae.fastvalues.only
@@ -88,14 +88,18 @@ class WelcomeShots : BoardShot() {
     @Test
     fun androidWelcomeRemove() =
         shot("android.welcome.remove") {
-            DialogScene { RemoveLibraryText(sceneLibrary, RemovalLoss.Counted(holdsUnsent = false)) }
+            InPlaceDialogScene(behind = { WelcomeLibrariesScene() }) {
+                removeLibraryParts(sceneLibrary, RemovalLoss.Counted(holdsUnsent = false), {}, {})
+            }
         }
 
     /** The confirmation to remove a library that holds changes it hasn't sent. */
     @Test
     fun androidWelcomeRemoveUnsentChanges() =
         shot("android.welcome.remove.unsent-changes") {
-            DialogScene { RemoveLibraryText(sceneLibrary, RemovalLoss.Counted(holdsUnsent = true)) }
+            InPlaceDialogScene(behind = { WelcomeLibrariesScene() }) {
+                removeLibraryParts(sceneLibrary, RemovalLoss.Counted(holdsUnsent = true), {}, {})
+            }
         }
 
     /** The welcome while a library is being removed: its row shows the step, with a spinner where the ⋮ was. */
@@ -106,10 +110,12 @@ class WelcomeShots : BoardShot() {
     @Test
     fun androidWelcomeRemoveFailed() =
         shot("android.welcome.remove.failed") {
-            DialogScene {
-                RemovalFailedText(
+            InPlaceDialogScene(behind = { WelcomeLibrariesScene() }) {
+                removalFailedParts(
                     sceneLibrary,
                     DisplayError("Couldn’t reach the cloud. Check your connection and try again."),
+                    onRetry = {},
+                    onCancel = {},
                 )
             }
         }

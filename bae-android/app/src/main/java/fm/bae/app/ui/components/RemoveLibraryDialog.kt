@@ -59,9 +59,22 @@ internal fun RemoveLibraryDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
+    AndroidDialog(onDismissRequest = onDismiss, parts = removeLibraryParts(library, loss, onConfirm, onDismiss))
+}
+
+/**
+ * What the confirmation for ending [library] says and offers: the title naming it, then the warning when
+ * its [loss] is unsent changes, then what ending it does, with Cancel and the ending's button.
+ */
+@Composable
+internal fun removeLibraryParts(
+    library: BridgeLibrary,
+    loss: RemovalLoss,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+): DialogParts {
     val words = removalWords(library, loss)
-    AndroidDialog(
-        onDismissRequest = onDismiss,
+    return DialogParts(
         title = words.title,
         message = words.lead,
         content = words.rest,
@@ -94,21 +107,12 @@ internal fun RemoveLibraryDialog(
     )
 }
 
-/**
- * The confirmation's words: the title naming [library], then the warning when
- * its [loss] is unsent changes, then what ending it does. It is separate from
- * the dialog so a screenshot can draw it: an [AlertDialog] opens a window the
- * screenshot tests don't render.
- */
+/** The words of [parts] as the previews draw them: an [AlertDialog] opens a window a preview doesn't render. */
 @Composable
-internal fun RemoveLibraryText(
-    library: BridgeLibrary,
-    loss: RemovalLoss,
-) {
-    val words = removalWords(library, loss)
+private fun RemovalWordsPreview(parts: DialogParts) {
     Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.edge)) {
-        DialogHead(words.title, words.lead)
-        words.rest?.invoke()
+        DialogHead(parts.title, parts.message)
+        parts.content?.invoke()
     }
 }
 
@@ -202,23 +206,23 @@ private val someUnsent = RemovalLoss.Counted(holdsUnsent = true)
 @Preview(showBackground = true)
 @Composable
 private fun RemoveLibraryUnsentPreview() {
-    BaeTheme { RemoveLibraryText(previewHome, someUnsent) }
+    BaeTheme { RemovalWordsPreview(removeLibraryParts(previewHome, someUnsent, {}, {})) }
 }
 
 @Preview(showBackground = true)
 @Composable
 private fun RemoveLibraryPreview() {
-    BaeTheme { RemoveLibraryText(previewHome, nothingUnsent) }
+    BaeTheme { RemovalWordsPreview(removeLibraryParts(previewHome, nothingUnsent, {}, {})) }
 }
 
 @Preview(showBackground = true)
 @Composable
 private fun DeleteLibraryPreview() {
-    BaeTheme { RemoveLibraryText(previewLocal, nothingUnsent) }
+    BaeTheme { RemovalWordsPreview(removeLibraryParts(previewLocal, nothingUnsent, {}, {})) }
 }
 
 @Preview(showBackground = true)
 @Composable
 private fun RemoveUnreadableLibraryPreview() {
-    BaeTheme { RemoveLibraryText(previewUnreadable, RemovalLoss.Uncounted) }
+    BaeTheme { RemovalWordsPreview(removeLibraryParts(previewUnreadable, RemovalLoss.Uncounted, {}, {})) }
 }
