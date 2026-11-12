@@ -4110,7 +4110,10 @@ short silence.
 
 There is an optional pause between sides or discs. Ben plays his 2×LP rip.
 When side A ends, playback pauses and shows "Side A ended"; he presses Play,
-or Next, to start side B. A CD box set pauses between discs the same way.
+or Next, to start side B. A CD box set pauses between discs the same way. On
+the Mac the prompt is a card hanging from the top of the window with nothing
+dimmed, and the now-playing bar keeps the artist under the title while it is
+open; once it is closed, the bar's second line says "Side A ended".
 
 - **When it pauses.** Only between two tracks of one release, on different
   sides, while playing that release in order. Up next entries and a shuffled

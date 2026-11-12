@@ -12,7 +12,7 @@ public struct SidePausePromptAlert: ViewModifier {
     public func body(content: Content) -> some View {
         content
             .disabled(playbackStore.presentedSidePausePrompt != nil)
-            .overlay {
+            .overlay(alignment: .top) {
                 if let prompt = playbackStore.presentedSidePausePrompt {
                     SidePausePromptCard(
                         prompt: prompt,
@@ -44,9 +44,11 @@ private struct SidePausePromptCard: View {
     private var focused: Bool
 
     var body: some View {
-        ZStack {
-            Theme.scrim
-                .ignoresSafeArea()
+        // The card hangs from the top of the window with nothing dimmed; the
+        // clear layer behind it takes the tap that closes it.
+        ZStack(alignment: .top) {
+            Color.clear
+                .contentShape(Rectangle())
                 .onTapGesture { answer(play: false) }
 
             card
@@ -66,21 +68,19 @@ private struct SidePausePromptCard: View {
                 SidePauseCountdownLine(prompt: prompt, countdown: countdown)
             }
 
-            VStack(alignment: .leading, spacing: ThemeSpace.inline) {
-                Toggle(isOn: $keepPausing) {
-                    Text(verbatim: prompt.keepPausingLabel())
-                }
-                #if os(macOS)
-                    .toggleStyle(.checkbox)
-                #endif
-                // Unchecking turns the setting off, which also ends these
-                // prompts, so the card says where to turn it back on.
-                if !keepPausing {
-                    Text("You can turn this back on in Settings › Playback.")
-                        .themeText(.body)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
+            Toggle(isOn: $keepPausing) {
+                Text(verbatim: prompt.keepPausingLabel())
+            }
+            #if os(macOS)
+                .toggleStyle(.checkbox)
+            #endif
+            // Unchecking turns the setting off, which also ends these
+            // prompts, so the card says where to turn it back on.
+            if !keepPausing {
+                Text("You can turn this back on in Settings › Playback.")
+                    .themeText(.body)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             HStack(spacing: ThemeSpace.related) {
@@ -103,7 +103,7 @@ private struct SidePausePromptCard: View {
             RoundedRectangle(cornerRadius: ThemeRadius.panel)
                 .stroke(Theme.hairline, lineWidth: 1)
         }
-        .shadow(radius: 20)
+        .shadow(color: Theme.shadow, radius: 20, y: 10)
         .focusable()
         .focusEffectDisabled()
         .focused($focused)

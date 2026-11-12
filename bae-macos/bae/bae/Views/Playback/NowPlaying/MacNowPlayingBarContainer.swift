@@ -29,7 +29,10 @@ struct MacNowPlayingBarContainer: View {
             }
         MacNowPlayingBar(
             trackTitle: track?.display.title,
-            secondaryLine: np.secondaryLine,
+            // The artist while the side-end card is open, which says the side
+            // ended; after it closes, the line says why playback is paused.
+            secondaryLine: playbackStore.presentedSidePausePrompt == nil
+                ? np.secondaryLine : track?.display.artistNames,
             cover: cover,
             isPlaying: np.isPlaying,
             position: playbackStore.trackPosition(
