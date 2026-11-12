@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -29,6 +28,7 @@ import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidCard
 import fm.bae.app.ui.components.AndroidDialog
+import fm.bae.app.ui.components.AndroidMenu
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidScreen
 import fm.bae.app.ui.components.AndroidSection
@@ -205,7 +205,7 @@ private fun CastTranscodeFormatPicker(
             subtitle = castTranscodeFormatLabel(selected),
             onClick = { expanded = true },
         )
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        AndroidMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             BridgeCastTranscodeFormat.entries.forEach { choice ->
                 DropdownMenuItem(
                     text = { Text(castTranscodeFormatLabel(choice)) },

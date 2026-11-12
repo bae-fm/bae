@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -21,9 +20,11 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
+import androidx.compose.ui.unit.dp
 import fm.bae.app.R
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.AndroidMenu
 import uniffi.bae_bridge.BridgeArtistSortCriterion
 import uniffi.bae_bridge.BridgeArtistSortField
 import uniffi.bae_bridge.BridgeComposerSortCriterion
@@ -98,7 +99,7 @@ internal fun LibraryMoreMenu(
         IconButton(onClick = { state.openMenu = LibraryHeaderMenu.MORE }) {
             Icon(imageVector = Icons.Filled.MoreVert, contentDescription = stringResource(R.string.more))
         }
-        DropdownMenu(expanded = state.openMenu == LibraryHeaderMenu.MORE, onDismissRequest = close) {
+        AndroidMenu(expanded = state.openMenu == LibraryHeaderMenu.MORE, onDismissRequest = close, minWidth = 220.dp) {
             LibraryMoreMenuItems(state = state, onShuffleLibrary = onShuffleLibrary, onSettings = onSettings)
         }
     }

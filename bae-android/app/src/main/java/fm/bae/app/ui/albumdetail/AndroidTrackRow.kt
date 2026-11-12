@@ -11,7 +11,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -34,6 +33,7 @@ import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.AndroidMenu
 
 /** The position column's least width, which the now-playing icon in the
  *  number's place also fits. */
@@ -167,7 +167,7 @@ private fun TrackRowMenu(
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        DropdownMenu(expanded = menuExpanded, onDismissRequest = onDismiss) {
+        AndroidMenu(expanded = menuExpanded, onDismissRequest = onDismiss) {
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.play_next)) },
                 onClick = {

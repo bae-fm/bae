@@ -18,7 +18,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -49,6 +48,7 @@ import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.AndroidMenu
 import kotlin.math.roundToInt
 
 /** The header's menus; one is open at a time. */
@@ -177,9 +177,10 @@ private fun LibraryViewHeading(
                 modifier = Modifier.size(lerp(ThemeIcon.medium, ThemeIcon.small, progress)),
             )
         }
-        DropdownMenu(
+        AndroidMenu(
             expanded = state.openMenu == LibraryHeaderMenu.VIEWS,
             onDismissRequest = { state.openMenu = null },
+            minWidth = 180.dp,
         ) {
             LibraryViewMenuItems(state)
         }

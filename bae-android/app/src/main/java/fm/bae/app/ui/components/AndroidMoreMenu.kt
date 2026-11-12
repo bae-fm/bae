@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
@@ -29,7 +28,7 @@ fun AndroidMoreMenu(
         IconButton(onClick = { expanded = true }, enabled = enabled) {
             Icon(imageVector = Icons.Filled.MoreVert, contentDescription = stringResource(R.string.more))
         }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        AndroidMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             items { expanded = false }
         }
     }

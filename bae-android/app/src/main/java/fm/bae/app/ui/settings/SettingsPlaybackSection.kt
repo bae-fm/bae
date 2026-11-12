@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -27,6 +26,7 @@ import fm.bae.app.RestorePlaybackPref
 import fm.bae.app.currentLocale
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidCard
+import fm.bae.app.ui.components.AndroidMenu
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidScreen
 import fm.bae.app.ui.components.RowSwitch
@@ -128,7 +128,7 @@ internal fun SidePauseCountdownPicker(
             enabled = pauseBetweenSides,
             onClick = { expanded = true },
         )
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        AndroidMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             BridgeSidePauseCountdown.entries.forEach { choice ->
                 DropdownMenuItem(
                     text = { Text(context.sidePauseCountdownLabel(choice)) },
