@@ -20,7 +20,10 @@ struct ReleaseMetadataTrackRow: View {
             Text(verbatim: position)
                 .themeText(.body)
                 .monospacedDigit()
-                .frame(width: ReleaseMetadataTrackColumns.track)
+                .frame(
+                    width: ReleaseMetadataTrackColumns.track,
+                    alignment: .leading
+                )
             CommittedTextField(
                 placeholder: localizedCoreString("ui.import.slots.untitled"),
                 value: track.title,
@@ -51,7 +54,7 @@ struct ReleaseMetadataTrackRow: View {
                 )
                 .frame(
                     width: ReleaseMetadataTrackColumns.length,
-                    alignment: .trailing
+                    alignment: .leading
                 )
         }
     }

@@ -36,8 +36,7 @@ struct ImportMappingGallery: View {
     }
 }
 
-/// The folder's images under their own ruled heading, level with the Tracks
-/// heading the table draws beneath them.
+/// The folder's images under their own ruled heading.
 struct MacImportImages: View {
     let images: [BridgeMappingImage]
     let onOpen: ([BridgeMappingImage], String) -> Void
@@ -50,7 +49,7 @@ struct MacImportImages: View {
     }
 }
 
-/// One gallery image over its filename, outlined on hover; dragging it onto
+/// One gallery image, named on hover, outlined on hover; dragging it onto
 /// the cover well makes it the cover.
 struct ImportMappingGalleryTile: View {
     let image: BridgeMappingImage
@@ -67,30 +66,25 @@ struct ImportMappingGalleryTile: View {
         Button {
             onOpen(images, image.fileId)
         } label: {
-            VStack(alignment: .leading, spacing: ThemeSpace.compact) {
-                ImageView(
-                    content: .localFile(image.file),
-                    pointSize: tileSize
-                )
-                .frame(width: tileSize, height: tileSize)
-                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
-                .overlay {
-                    RoundedRectangle(cornerRadius: ThemeRadius.artwork)
-                        .strokeBorder(
-                            Theme.accent,
-                            lineWidth: hovering ? 2 : 0
-                        )
-                }
-                Text(image.name)
-                    .themeText(.mono)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
+            ImageView(
+                content: .localFile(image.file),
+                pointSize: tileSize
+            )
+            .frame(width: tileSize, height: tileSize)
+            .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
+            .overlay {
+                RoundedRectangle(cornerRadius: ThemeRadius.artwork)
+                    .strokeBorder(
+                        Theme.accent,
+                        lineWidth: hovering ? 2 : 0
+                    )
             }
             .frame(width: tileSize, alignment: .topLeading)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .help(image.name)
+        .accessibilityLabel(Text(verbatim: image.name))
         .onHover { hovering = $0 }
         .draggable(image.fileId)
     }

@@ -309,13 +309,13 @@ extension ImportCandidateTablePlaceTests {
         scrollView.reflectScrolledClipView(scrollView.contentView)
     }
 
-    /// The row under the table's top edge: every row is one height.
+    /// The row under the table's top edge.
     @MainActor
     private static func topRow(of table: NSTableView) -> Int? {
         guard let clipView = table.enclosingScrollView?.contentView else {
             return nil
         }
-        return Int(clipView.bounds.minY / ImportCandidateTableLayout.rowHeight)
+        return table.row(at: NSPoint(x: 0, y: clipView.bounds.minY))
     }
 
     private static func folderPath(_ index: Int) -> String {

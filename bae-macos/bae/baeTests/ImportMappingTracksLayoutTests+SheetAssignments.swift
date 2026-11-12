@@ -39,8 +39,9 @@ extension ImportMappingTracksLayoutTests {
     }
 
     /// The one reference with nothing bound is the one thing left to do, so
-    /// it is the one row: the bound reference is not listed, and its choices
-    /// sit directly in the summary's menu since it is the only bound one.
+    /// it is the caption's second menu: the bound reference is not listed, and
+    /// its choices sit directly in the summary's menu since it is the only
+    /// bound one.
     @MainActor
     @Test("a partial CUE lists only its missing reference")
     func partialCueAssignments() async throws {
@@ -50,7 +51,7 @@ extension ImportMappingTracksLayoutTests {
             try await SnapshotTestSupport.settle(host)
             let menus = SnapshotTestSupport.descendants(of: host)
                 .compactMap { $0 as? NSPopUpButton }
-            #expect(menus.count == 2, "the summary, then the missing row")
+            #expect(menus.count == 2, "the summary, then the missing reference")
         }
         let references = sheet.referenceOptions
         let layout = ImportSheetBindingLayout(sheet: sheet)

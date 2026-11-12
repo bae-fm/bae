@@ -186,7 +186,7 @@ struct ReleasePressingFieldsGrid: View {
     static let labelGap = ThemeSpace.group
     /// Between one row's text and the next, counting the fields' own inline
     /// padding.
-    static let rowSpacing = ThemeSpace.related
+    static let rowSpacing = ThemeSpace.compact
     /// An empty field's width, so there is something to click into.
     static let emptyValueWidth: CGFloat = 96
 
@@ -547,7 +547,7 @@ struct ArtistSearchResultLabel: View {
 
 struct ArtistAssignmentsField: View {
     /// How wide the closed field draws: its value's width on a header line, the
-    /// full column in a table so the chevrons line up.
+    /// full column in a table.
     enum Width {
         case value
         case column
@@ -578,9 +578,6 @@ struct ArtistAssignmentsField: View {
                 if width == .column {
                     Spacer(minLength: 0)
                 }
-                Image(systemName: "chevron.down")
-                    .themeIcon(.badge)
-                    .foregroundStyle(.tertiary)
             }
             .contentShape(Rectangle())
         }
