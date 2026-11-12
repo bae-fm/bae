@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -29,7 +30,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -64,6 +64,7 @@ import uniffi.bae_bridge.bridgeNextRepeatMode
 private val logger = BaeLogger("bae.AndroidFullPlayerContainer")
 
 private val skipGlyphSize = 36.dp
+private val skipBoxSize = 56.dp
 
 /**
  * Full-screen player in a [ModalBottomSheet] opened from [AndroidNowPlayingBarContainer], with
@@ -95,7 +96,14 @@ fun AndroidFullPlayerContainer(
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(bottom = bottomInset + ThemeSpace.edge),
+            // The sheet's own inset, as a sheet body gives it, so the player and the queue rows under
+            // it start where the design draws them.
+            contentPadding =
+                PaddingValues(
+                    start = ThemeSpace.related,
+                    end = ThemeSpace.related,
+                    bottom = bottomInset + ThemeSpace.edge,
+                ),
         ) {
             item(key = "player") {
                 ExpandedPlayer(
@@ -185,7 +193,8 @@ internal fun AndroidFullPlayer(
     volumeRow: @Composable () -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = ThemeSpace.section, vertical = ThemeSpace.related)) {
-        IconButton(onClick = onCollapse) {
+        // Pulled left so the glyph, not the button, sits at the cover's edge.
+        IconButton(onClick = onCollapse, modifier = Modifier.offset(x = -ThemeSpace.group)) {
             Icon(Icons.Filled.ExpandMore, contentDescription = stringResource(R.string.collapse))
         }
 
@@ -258,6 +267,7 @@ private fun ExpandedSeekSection(
         session = session,
         player = player,
         modifier = Modifier.fillMaxWidth(),
+        look = SeekLineLook.LARGE,
         perform = { operation, action ->
             failure = null
             scope.launch {
@@ -281,7 +291,7 @@ internal fun ExpandedTransportRow(
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        IconButton(onClick = onPrevious) {
+        IconButton(onClick = onPrevious, modifier = Modifier.size(skipBoxSize)) {
             Icon(
                 Icons.Filled.SkipPrevious,
                 contentDescription = stringResource(R.string.player_previous),
@@ -296,7 +306,7 @@ internal fun ExpandedTransportRow(
             onToggle = onPlayPause,
         )
         Spacer(modifier = Modifier.width(ThemeSpace.section))
-        IconButton(onClick = onNext) {
+        IconButton(onClick = onNext, modifier = Modifier.size(skipBoxSize)) {
             Icon(
                 Icons.Filled.SkipNext,
                 contentDescription = stringResource(R.string.player_next),
@@ -352,14 +362,13 @@ internal fun ExpandedVolumeRow(
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        Slider(
+        AndroidVolumeSlider(
             value = dragVolume ?: volume,
             onValueChange = {
                 dragVolume = it
                 onDragVolume(it)
             },
             onValueChangeFinished = { dragVolume?.let(onSetVolume) },
-            valueRange = 0f..1f,
             modifier = Modifier.weight(1f).padding(horizontal = ThemeSpace.related),
         )
     }

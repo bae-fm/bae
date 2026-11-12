@@ -4230,7 +4230,8 @@ first sound; a track whose bytes are all held fills from its start to its
 end. What the buffer drops behind the playhead leaves the fill too, under
 the played part, so after a seek back past it the dropped stretch shows as a
 gap until the fill fetches it again. A track a receiver plays (§7.7),
-or one whose length is unknown, has no fill.
+or one whose length is unknown, has no fill. Android's full player draws a taller
+line with an upright thumb and no fill at all.
 
 While the person waits on a track to start, or on a seek to land, and one
 of the playing track's reads fetches from storage (coven tells a read that

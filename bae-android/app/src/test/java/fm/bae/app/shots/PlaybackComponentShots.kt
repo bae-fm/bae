@@ -20,6 +20,7 @@ import fm.bae.app.ui.playback.ExpandedSecondaryControls
 import fm.bae.app.ui.playback.ExpandedTransportRow
 import fm.bae.app.ui.playback.ExpandedVolumeRow
 import fm.bae.app.ui.playback.NowPlayingTransport
+import fm.bae.app.ui.playback.SeekLineLook
 import org.junit.Test
 import uniffi.bae_bridge.BridgeRepeatMode
 import uniffi.bae_bridge.BridgeTrackSpan
@@ -70,7 +71,7 @@ class PlaybackComponentShots : BoardShot() {
                             track = playing.track,
                             failure = null,
                             onCollapse = {},
-                            seek = { playing.SeekRow() },
+                            seek = { playing.SeekRow(SeekLineLook.LARGE) },
                             transport = {
                                 ExpandedTransportRow(true, playing.storageWait, onPrevious = {}, onPlayPause = {}, onNext = {})
                             },

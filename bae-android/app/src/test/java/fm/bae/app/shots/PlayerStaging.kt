@@ -8,6 +8,7 @@ import fm.bae.app.playback.NowPlaying
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.playback.AndroidSeekBar
 import fm.bae.app.ui.playback.SeekBarState
+import fm.bae.app.ui.playback.SeekLineLook
 import fm.bae.fastvalues.LatestStream
 import uniffi.bae_bridge.BridgeDurationClock
 import uniffi.bae_bridge.BridgeTrackBuffered
@@ -48,7 +49,7 @@ internal class PlayerStaging(
 
     /** The seek row, with its clocks as the bar's words give them. */
     @Composable
-    fun SeekRow() {
+    fun SeekRow(look: SeekLineLook = SeekLineLook.BAR) {
         val locale = LocalContext.current.currentLocale()
         AndroidSeekBar(
             position = positions,
@@ -63,6 +64,7 @@ internal class PlayerStaging(
             },
             onSeekRatio = {},
             onToggleRemaining = {},
+            look = look,
         )
     }
 

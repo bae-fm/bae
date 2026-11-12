@@ -1,11 +1,7 @@
 package fm.bae.app.ui.playback
 
 import android.content.Context
-import android.content.res.ColorStateList
 import android.graphics.Typeface
-import android.graphics.drawable.ClipDrawable
-import android.graphics.drawable.GradientDrawable
-import android.graphics.drawable.LayerDrawable
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.ViewGroup
@@ -19,7 +15,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.ViewCompat
 import androidx.media3.common.C
@@ -41,7 +39,9 @@ private const val TIME_LABEL_TEXT_SIZE_SP = 11f
 
 /** The space between a time label and the bar. */
 private const val TIME_LABEL_GAP_DP = 8
-private const val TRACK_HEIGHT_DP = 4
+
+/** The space above the row, which both looks keep, in dp. */
+private const val ROW_TOP_DP = 4
 
 /** What the seek bar draws: the [0,1] slider fraction and the two time labels core
  *  picks, and whether it takes a seek — not while the track's length is unknown,
@@ -79,6 +79,7 @@ fun AndroidSeekBarContainer(
      * snackbar by default, or inline where a sheet would cover one.
      */
     perform: (operation: String, action: suspend () -> Unit) -> Unit = session.messages::perform,
+    look: SeekLineLook = SeekLineLook.BAR,
 ) {
     val context = LocalContext.current
     val config by session.configStore.config.collectAsState()
@@ -86,7 +87,8 @@ fun AndroidSeekBarContainer(
     val nowPlaying by player.nowPlaying.collectAsState()
     AndroidSeekBar(
         position = nowPlaying?.let { player.trackPositions.source(it.trackId) },
-        buffered = nowPlaying?.let { player.trackBuffered.source(it.trackId) },
+        // The large line shows no held parts, so it follows none.
+        buffered = if (look == SeekLineLook.BAR) nowPlaying?.let { player.trackBuffered.source(it.trackId) } else null,
         state = { context.seekBarState(it, showRemaining) },
         onSeekRatio = { ratio ->
             val duration = player.duration
@@ -101,13 +103,14 @@ fun AndroidSeekBarContainer(
             }
         },
         modifier = modifier,
+        look = look,
     )
 }
 
 /**
  * The seek row: the time labels [state] words, and the bar, which draws
- * [position] over the parts of its track [buffered] holds. The View reads
- * both streams each display frame.
+ * [position] over the parts of its track [buffered] holds, in the [look]
+ * given. The View reads both streams each display frame.
  */
 @Composable
 internal fun AndroidSeekBar(
@@ -117,17 +120,19 @@ internal fun AndroidSeekBar(
     onSeekRatio: (Double) -> Unit,
     onToggleRemaining: () -> Unit,
     modifier: Modifier = Modifier,
+    look: SeekLineLook = SeekLineLook.BAR,
 ) {
     val colors = MaterialTheme.colorScheme
     val hairline = BaeTheme.colors.hairline
+    val tintStrong = colors.primary.copy(alpha = ThemeOpacity.tintStrong)
     AndroidView(
-        modifier = modifier.fillMaxWidth(),
-        factory = { viewContext -> PlaybackProgressView(viewContext) },
+        modifier = modifier.fillMaxWidth().seekRowLayout(look),
+        factory = { viewContext -> PlaybackProgressView(viewContext, look) },
         update = { view ->
             view.applyColors(
                 accent = colors.primary.toArgb(),
-                held = colors.primary.copy(alpha = ThemeOpacity.tintStrong).toArgb(),
-                track = hairline.toArgb(),
+                held = tintStrong.toArgb(),
+                track = (if (look == SeekLineLook.LARGE) tintStrong else hairline).toArgb(),
                 text = colors.onSurfaceVariant.toArgb(),
             )
             view.bind(
@@ -141,6 +146,21 @@ internal fun AndroidSeekBar(
     )
 }
 
+/**
+ * The row takes the space the design draws, [ROW_TOP_DP] above a line [SeekLineLook.rowHeightDp]
+ * tall, while its view is [SeekLineLook.touchHeightDp] tall and centred on the line, so a touch
+ * a little off the line still lands on the bar.
+ */
+private fun Modifier.seekRowLayout(look: SeekLineLook): Modifier =
+    layout { measurable, constraints ->
+        val viewHeight = look.touchHeightDp.dp.roundToPx()
+        val placeable = measurable.measure(constraints.copy(minHeight = viewHeight, maxHeight = viewHeight))
+        val rowHeight = (ROW_TOP_DP + look.rowHeightDp).dp.roundToPx()
+        layout(placeable.width, rowHeight) {
+            placeable.place(0, ROW_TOP_DP.dp.roundToPx() + (look.rowHeightDp.dp.roundToPx() - viewHeight) / 2)
+        }
+    }
+
 private fun TextView.showText(text: String) {
     if (this.text.toString() != text) {
         this.text = text
@@ -149,18 +169,21 @@ private fun TextView.showText(text: String) {
 
 internal class PlaybackProgressView(
     context: Context,
+    look: SeekLineLook = SeekLineLook.BAR,
 ) : LinearLayout(context) {
     internal val leadingTextView: TextView = timeLabel()
 
+    private val line = SeekLineDrawable(resources.displayMetrics.density, look)
+
     /** The parts of the track whose bytes are here, drawn under the played part. */
-    internal val heldRanges = HeldRangesDrawable()
-    private val trackLine = GradientDrawable()
-    private val playedLine = GradientDrawable()
+    internal val heldRanges: HeldRangesDrawable = line.heldRanges
     internal val seekBar: SeekBar =
         SeekBar(context).apply {
             max = SEEK_BAR_MAX
             contentDescription = context.getString(R.string.seek_position)
-            progressDrawable = trackLayers()
+            // The line draws its own thumb; the bar draws only the line.
+            thumb = null
+            progressDrawable = line
             setOnSeekBarChangeListener(
                 object : SeekBar.OnSeekBarChangeListener {
                     override fun onProgressChanged(
@@ -208,34 +231,18 @@ internal class PlaybackProgressView(
         // Tapping the leading label switches it between elapsed and remaining.
         leadingTextView.setOnClickListener { onToggleRemaining() }
         addView(leadingTextView)
+        // The line runs to the labels, a gap from them: only the thumb's half, which it draws
+        // past either end of the line, pads the bar, and the gap is what that leaves.
+        val thumbHalf = Math.ceil((look.thumbHalfWidthDp * resources.displayMetrics.density).toDouble()).toInt()
+        seekBar.setPaddingRelative(thumbHalf, 0, thumbHalf, 0)
         addView(
             seekBar,
-            LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply {
-                marginStart = dp(TIME_LABEL_GAP_DP)
-                marginEnd = dp(TIME_LABEL_GAP_DP)
+            LayoutParams(0, dp(look.touchHeightDp.toInt()), 1f).apply {
+                marginStart = dp(TIME_LABEL_GAP_DP) - thumbHalf
+                marginEnd = dp(TIME_LABEL_GAP_DP) - thumbHalf
             },
         )
         addView(trailingTextView)
-        // The bar runs to the labels: only the thumb's half, which it draws
-        // past either end of the line, pads it.
-        val thumbHalf = seekBar.thumb.intrinsicWidth / 2
-        seekBar.setPaddingRelative(thumbHalf, seekBar.paddingTop, thumbHalf, seekBar.paddingBottom)
-    }
-
-    /** The bar's line: the track, the parts held here over it, and the played part over those. */
-    private fun trackLayers(): LayerDrawable {
-        val corner = dp(TRACK_HEIGHT_DP) / 2f
-        trackLine.cornerRadius = corner
-        playedLine.cornerRadius = corner
-        val played = ClipDrawable(playedLine, Gravity.START, ClipDrawable.HORIZONTAL)
-        return LayerDrawable(arrayOf(trackLine, heldRanges, played)).apply {
-            setId(0, android.R.id.background)
-            setId(2, android.R.id.progress)
-            for (layer in 0 until numberOfLayers) {
-                setLayerGravity(layer, Gravity.CENTER_VERTICAL or Gravity.FILL_HORIZONTAL)
-                setLayerHeight(layer, dp(TRACK_HEIGHT_DP))
-            }
-        }
     }
 
     fun applyColors(
@@ -244,10 +251,9 @@ internal class PlaybackProgressView(
         track: Int,
         text: Int,
     ) {
-        playedLine.setColor(accent)
+        line.accent = accent
         heldRanges.color = held
-        trackLine.setColor(track)
-        seekBar.thumbTintList = ColorStateList.valueOf(accent)
+        line.track = track
         leadingTextView.setTextColor(text)
         trailingTextView.setTextColor(text)
     }

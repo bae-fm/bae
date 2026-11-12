@@ -160,7 +160,7 @@ internal fun FullPlayerScene(state: PlayerSceneState) {
                 track = sceneTrack,
                 failure = null,
                 onCollapse = {},
-                seek = { SceneSeekRow(streams) },
+                seek = { SceneSeekRow(streams, SeekLineLook.LARGE) },
                 transport = {
                     ExpandedTransportRow(
                         isPlaying = true,
@@ -188,7 +188,10 @@ internal fun FullPlayerScene(state: PlayerSceneState) {
 }
 
 @Composable
-private fun SceneSeekRow(streams: PlayerSceneStreams) {
+private fun SceneSeekRow(
+    streams: PlayerSceneStreams,
+    look: SeekLineLook = SeekLineLook.BAR,
+) {
     val locale = LocalContext.current.currentLocale()
     AndroidSeekBar(
         position = streams.positions,
@@ -196,6 +199,7 @@ private fun SceneSeekRow(streams: PlayerSceneStreams) {
         state = { streams.seekBarState(it, locale) },
         onSeekRatio = {},
         onToggleRemaining = {},
+        look = look,
     )
 }
 
