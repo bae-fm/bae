@@ -4,6 +4,12 @@ use std::path::Path;
 use thiserror::Error;
 use tracing::warn;
 
+/// The most CUE frames a time may spell: the most whose sample position, at
+/// the highest sample rate a probe reports (a `u32`), still fits an `i64`, the
+/// range the scan stores positions in. A longer time is refused when the sheet
+/// is read, so converting any parsed time to samples cannot overflow.
+const MAX_CUE_FRAMES: u64 = (i64::MAX as u128 * 75 / u32::MAX as u128) as u64;
+
 /// Convert a CUE position from 1/75-second frames to source samples without an
 /// overflowing intermediate multiplication.
 pub fn cue_frames_to_samples(frames: u64, sample_rate: u64) -> u64 {
@@ -536,7 +542,18 @@ fn parse_time(input: &str) -> Result<u64, CueSheetError> {
     let frames = frames_and_rest[..frame_end].parse::<u64>().map_err(|error| {
         CueSheetError::CueParsing(format!("invalid CUE time {input:?}: {error}"))
     })?;
-    Ok((minutes * 60 + seconds) * 75 + frames)
+    let too_long =
+        || CueSheetError::CueParsing(format!("CUE time {input:?} is longer than any audio file"));
+    let total = minutes
+        .checked_mul(60)
+        .and_then(|minutes| minutes.checked_add(seconds))
+        .and_then(|seconds| seconds.checked_mul(75))
+        .and_then(|frames_of_seconds| frames_of_seconds.checked_add(frames))
+        .ok_or_else(too_long)?;
+    if total > MAX_CUE_FRAMES {
+        return Err(too_long());
+    }
+    Ok(total)
 }
 
 fn parse_u64_time_field(input: &str, token: Option<&str>) -> Result<u64, CueSheetError> {

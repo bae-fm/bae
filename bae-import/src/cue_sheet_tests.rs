@@ -10,6 +10,24 @@ fn test_parse_time() {
         assert_eq!(cue_frames, expected, "input: {input}");
     }
 }
+/// A time whose frames overflow, or whose samples could not fit a position,
+/// is refused as a parse failure instead of panicking or wrapping.
+#[test]
+fn parse_time_refuses_a_time_no_audio_file_could_reach() {
+    for input in [
+        "18446744073709551615:00:00",
+        "5000000000000000:00:00",
+        "99999999999:00:00",
+        "00:00:99999999999999999999",
+    ] {
+        assert!(matches!(parse_time(input), Err(CueSheetError::CueParsing(_))), "input: {input}");
+    }
+    let longest = MAX_CUE_FRAMES / 75 / 60;
+    let frames = parse_time(&format!("{longest}:00:00")).unwrap();
+    let samples = cue_frames_to_samples(frames, u64::from(u32::MAX));
+    assert!(i64::try_from(samples).is_ok());
+}
+
 #[test]
 fn parse_multi_file_cue_stamps_per_track_file_reference() {
     // One FILE per TRACK, the spec shape used by lossy-format rips
