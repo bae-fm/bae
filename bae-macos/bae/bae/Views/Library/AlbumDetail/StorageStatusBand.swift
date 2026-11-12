@@ -110,12 +110,15 @@ struct StorageStatusBand: View {
             switch release.summary.storageState {
             case .onOneDevice:
                 Image(systemName: "folder").themeIcon(.medium)
+                    .accessibilityHidden(true)
                 Text("Local")
             case .inStorage(pinned: true):
                 Image(systemName: "pin").themeIcon(.medium)
+                    .accessibilityHidden(true)
                 Text("Pinned")
             case .inStorage(pinned: false):
                 Image(systemName: "cloud").themeIcon(.medium)
+                    .accessibilityHidden(true)
                 Text("In cloud")
             }
         }

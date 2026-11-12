@@ -219,8 +219,10 @@ public struct StatusChip: View {
     public var body: some View {
         HStack(spacing: ThemeSpace.inline) {
             if let symbol {
+                // The label says what the symbol does.
                 Image(systemName: symbol)
                     .themeIcon(.chip)
+                    .accessibilityHidden(true)
             }
             label
         }

@@ -348,6 +348,7 @@ extension ShotScene {
         component("mac.component.item.icon-text-trailing", height: 60) {
             RowItem {
                 StatusGlyph(.danger, outline: true).themeIcon(.medium)
+                    .accessibilityHidden(true)
             } content: {
                 Text("Download failed")
             } trail: {
@@ -359,6 +360,7 @@ extension ShotScene {
             VStack(alignment: .leading, spacing: ThemeSpace.group) {
                 RowItem {
                     StatusGlyph(.warning, outline: true).themeIcon(.medium)
+                        .accessibilityHidden(true)
                 } content: {
                     Text("Dropbox signed this device out.")
                 }
@@ -374,6 +376,7 @@ extension ShotScene {
         component("mac.component.item.two-lines", height: 70) {
             RowItem {
                 StatusGlyph(.info, outline: true).themeIcon(.medium)
+                    .accessibilityHidden(true)
             } content: {
                 VStack(alignment: .leading, spacing: ThemeSpace.line) {
                     Text("3 uploading")

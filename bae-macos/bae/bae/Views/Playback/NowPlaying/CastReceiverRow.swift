@@ -83,6 +83,7 @@ struct CastReceiverRow: View {
             Image(systemName: icon)
                 .font(.system(size: 15))
                 .foregroundStyle(casting ? Theme.accent : .secondary)
+                .accessibilityHidden(true)
         } content: {
             VStack(alignment: .leading, spacing: 0) {
                 Text(verbatim: receiver.name)

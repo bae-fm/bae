@@ -29,6 +29,7 @@ struct QueueRow<Content: View, Below: View>: View {
                 Image(systemName: icon)
                     .font(.system(size: ThemeSize.lead))
                     .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
             } content: {
                 VStack(alignment: .leading, spacing: ThemeSpace.line) {
                     content()
