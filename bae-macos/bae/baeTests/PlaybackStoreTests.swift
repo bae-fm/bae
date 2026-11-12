@@ -134,9 +134,9 @@ private func contextSnapshot(
         manual: manual.map(queueEntry),
         context: BridgePlaybackContext(
             kind: .library,
-            sourceTitle: nil,
-            shuffled: false
+            sourceTitle: nil
         ),
+        shuffled: false,
         hasNext: true,
         hasPrevious: false,
         manualVersion: manualVersion
@@ -238,6 +238,7 @@ struct PlaybackStoreUpcomingWindowTests {
             BridgeQueueSnapshot(
                 manual: [],
                 context: nil,
+                shuffled: false,
                 hasNext: false,
                 hasPrevious: false,
                 manualVersion: 2
@@ -249,6 +250,24 @@ struct PlaybackStoreUpcomingWindowTests {
         store.applyQueueSnapshot(contextSnapshot())
         store.showUpcoming(queue: queue)
         #expect(feed.openedCount == 2, "a new context opens the read again")
+    }
+
+    @MainActor
+    @Test("shuffle is core's mode, shown with no context too")
+    func shuffleIsCoresMode() {
+        let store = PlaybackStore()
+        store.applyQueueSnapshot(
+            BridgeQueueSnapshot(
+                manual: [],
+                context: nil,
+                shuffled: true,
+                hasNext: false,
+                hasPrevious: false,
+                manualVersion: 1
+            )
+        )
+        #expect(store.queueContext == nil)
+        #expect(store.shuffled)
     }
 
     @MainActor

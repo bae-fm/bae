@@ -38,7 +38,7 @@ extension ShotScene {
                     held: load.held,
                     waitsOnStorage: load.waiting,
                     repeatMode: .off,
-                    shuffled: title == nil ? nil : false,
+                    shuffled: false,
                     hasPosition: load.hasPosition,
                     progress: load.progress
                 )

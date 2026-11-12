@@ -22,9 +22,8 @@ struct MacNowPlayingBar: View {
     /// The volume, mute and repeat mode; `nil` until core says them, when
     /// their controls keep their place and show nothing.
     let settings: PlaybackSettings?
-    /// The playing context's shuffle state; `nil` with no context, which
-    /// disables the shuffle button.
-    let shuffled: Bool?
+    /// Whether shuffle is on, with or without a playing context.
+    let shuffled: Bool
     let showQueue: Bool
     let onPlayPause: () -> Void
     let onNext: () -> Void
@@ -149,18 +148,14 @@ struct MacNowPlayingBar: View {
     }
 
     private var shuffleButton: some View {
-        let enabled = shuffled != nil
-        let active = shuffled == true
-        return Button {
-            onSetShuffle(!(shuffled ?? false))
+        Button {
+            onSetShuffle(!shuffled)
         } label: {
             toggleLabel("shuffle")
         }
-        .buttonStyle(IconHoverButtonStyle(isOn: active).accentFocus())
-        .disabled(!enabled)
-        .opacity(enabled ? 1 : 0.4)
-        .help(active ? "Turn off shuffle" : "Shuffle")
-        .accessibilityLabel(active ? "Turn off shuffle" : "Shuffle")
+        .buttonStyle(IconHoverButtonStyle(isOn: shuffled).accentFocus())
+        .help(shuffled ? "Turn off shuffle" : "Shuffle")
+        .accessibilityLabel(shuffled ? "Turn off shuffle" : "Shuffle")
     }
 
     private func repeatButton(_ repeatMode: BridgeRepeatMode) -> some View {
@@ -380,7 +375,7 @@ extension MacNowPlayingBar {
         /// Whether the track's load waits on storage.
         var waitsOnStorage = false
         let repeatMode: BridgeRepeatMode
-        let shuffled: Bool?
+        let shuffled: Bool
         /// The seek bar's position: how far through a track, or none.
         var hasPosition = true
         var progress = 0.25

@@ -81,6 +81,7 @@ struct QueueViewControlsTests {
                 manual: store.manualQueue,
                 manualVersion: store.manualVersion,
                 context: store.queueContext,
+                shuffled: store.shuffled,
                 upcoming: QueueUpcoming(store: store, queue: queue),
                 position: store.trackPosition(
                     forTrack: store.nowPlaying.track?.track.trackId

@@ -30,6 +30,9 @@ public class PlaybackStore {
     /// What's playing from, or `nil`. Its tracks are read through the upcoming
     /// read: `upcomingTotal` and `upcomingItem(at:)`.
     public var queueContext: QueuePlaybackContext?
+    /// Whether shuffle is on, which holds with nothing playing: the next play
+    /// starts shuffled.
+    public private(set) var shuffled = false
     /// The length of the context's not-yet-played tail, from the upcoming
     /// read; 0 until the read answers.
     public private(set) var upcomingTotal = 0
@@ -199,6 +202,7 @@ extension PlaybackStore {
         manualQueue = snapshot.manual
         manualVersion = snapshot.manualVersion
         queueContext = snapshot.context.map(QueuePlaybackContext.init(bridge:))
+        shuffled = snapshot.shuffled
         if queueContext == nil {
             closeUpcomingQuery()
             upcomingTotal = 0

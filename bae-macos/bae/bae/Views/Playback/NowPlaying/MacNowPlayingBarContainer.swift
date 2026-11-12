@@ -46,8 +46,7 @@ struct MacNowPlayingBarContainer: View {
             ),
             showRemainingTime: configStore.config.showRemainingTime,
             settings: playbackStore.settings,
-            // nil while no playing context — the bar disables shuffle then.
-            shuffled: playbackStore.queueContext?.shuffled,
+            shuffled: playbackStore.shuffled,
             showQueue: uiStore.showQueue,
             onPlayPause: { playback.playPause(for: playbackStore.nowPlaying) },
             onNext: { playback.nextTrack() },

@@ -50,6 +50,8 @@ struct MacQueuePanel: View {
     let manualVersion: UInt64
     /// What's playing from, or `nil`; its tracks come from `upcoming`.
     let context: QueuePlaybackContext?
+    /// Whether shuffle is on, which the context section's toggle shows.
+    let shuffled: Bool
     let upcoming: QueueUpcoming
     /// Where the playing track is; `nil` while none plays.
     let position: LatestSource<BridgeTrackPosition>?
@@ -154,7 +156,7 @@ struct MacQueuePanel: View {
                             // rows not yet read.
                             QueueSection(
                                 title: Self.contextSectionTitle(context),
-                                shuffled: context.shuffled,
+                                shuffled: shuffled,
                                 count: upcoming.total,
                                 itemAt: upcoming.itemAt,
                                 holdsEntry: upcoming.holds,

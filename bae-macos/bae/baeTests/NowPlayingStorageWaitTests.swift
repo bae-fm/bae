@@ -91,7 +91,7 @@ struct NowPlayingStorageWaitTests {
                 isMuted: false,
                 repeatMode: .off
             ),
-            shuffled: nil,
+            shuffled: false,
             showQueue: false,
             onPlayPause: {},
             onNext: {},

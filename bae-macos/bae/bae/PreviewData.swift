@@ -134,9 +134,9 @@
                     context: hasContext
                         ? BridgePlaybackContext(
                             kind: .release,
-                            sourceTitle: "Neon Frequencies",
-                            shuffled: shuffled
+                            sourceTitle: "Neon Frequencies"
                         ) : nil,
+                    shuffled: shuffled,
                     hasNext: !manual.isEmpty || !upcoming.isEmpty,
                     hasPrevious: false,
                     manualVersion: manualVersion
@@ -383,10 +383,10 @@
                         BridgePlaybackContext(
                             kind: kind,
                             sourceTitle: kind == .release
-                                ? "Neon Frequencies" : nil,
-                            shuffled: shuffled
+                                ? "Neon Frequencies" : nil
                         )
                     },
+                    shuffled: shuffled,
                     hasNext: !upcoming.isEmpty,
                     hasPrevious: false,
                     manualVersion: 1

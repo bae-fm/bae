@@ -13,9 +13,8 @@ extension BridgeQueueEntry: Identifiable {
 }
 
 /// The context lane (what the queue is playing from): its kind (a release, a
-/// list of tracks or the whole library, which the section header labels) and
-/// whether it was ordered by shuffle (rendered as a shuffle indicator). Shown
-/// as its own section, distinct from the manual "Up next" lane. Its tracks are
+/// list of tracks or the whole library, which the section header labels).
+/// Shown as its own section, distinct from the manual "Up next" lane. Its tracks are
 /// read through `PlaybackStore`'s upcoming read, not carried here.
 public struct QueuePlaybackContext: Equatable, Sendable {
     public let kind: BridgePlaybackSourceKind
@@ -23,11 +22,8 @@ public struct QueuePlaybackContext: Equatable, Sendable {
     /// the source is a single release, `nil` for a multi-release source or the
     /// whole library. The UI appends it to the localized section label.
     public let sourceTitle: String?
-    public let shuffled: Bool
-
     public init(bridge: BridgePlaybackContext) {
         kind = bridge.kind
         sourceTitle = bridge.sourceTitle
-        shuffled = bridge.shuffled
     }
 }

@@ -35,6 +35,7 @@ struct MacQueuePanelContainer: View {
             manual: playbackStore.manualQueue,
             manualVersion: playbackStore.manualVersion,
             context: playbackStore.queueContext,
+            shuffled: playbackStore.shuffled,
             upcoming: QueueUpcoming(store: playbackStore, queue: queue),
             position: playbackStore.trackPosition(
                 forTrack: track?.track.trackId
