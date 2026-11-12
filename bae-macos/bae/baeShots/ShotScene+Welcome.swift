@@ -188,7 +188,7 @@ extension ShotScene {
         },
         ShotScene(id: "mac.welcome.join.name", size: WelcomeWindow.size) {
             ShotStage(
-                WelcomeWindowChrome {
+                MacWelcomeWindow {
                     JoinNameView(
                         libraryName: "Home music",
                         name: .constant(""),
