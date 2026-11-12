@@ -1,5 +1,8 @@
 package fm.bae.app.shots
 
+import android.widget.LinearLayout
+import android.widget.SeekBar
+import android.widget.TextView
 import androidx.activity.ComponentActivity
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -28,6 +31,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import com.github.takahirom.roborazzi.captureRoboImage
 import org.json.JSONArray
 import org.json.JSONObject
@@ -118,6 +122,44 @@ class ElementListTest : BoardShot() {
                 .objects()
         assertEquals("image", elements.single { it.optString("label") == "Logo" }.getString("role"))
         assertEquals("other", elements.single { it.optString("label") == "Tap" }.getString("role"))
+    }
+
+    @Test
+    fun anEmbeddedViewsElementsComeWhereTheReadingOrderReachesThem() {
+        compose.setContent {
+            Column(modifier = Modifier.fillMaxSize()) {
+                Text("Above")
+                AndroidView(
+                    factory = { context ->
+                        LinearLayout(context).apply {
+                            addView(TextView(context).apply { text = "1:42" })
+                            addView(
+                                SeekBar(context).apply {
+                                    contentDescription = "Position"
+                                    max = 100
+                                    progress = 35
+                                },
+                            )
+                        }
+                    },
+                )
+                Text("Below")
+            }
+        }
+        val embedded =
+            EmbeddedViews.of(compose.activity.window.decorView, compose.activity.resources.displayMetrics.density)
+        val elements =
+            ElementList
+                .of("android.test.embedded", compose.onRoot().fetchSemanticsNode(), embedded)
+                .getJSONArray("elements")
+                .objects()
+
+        val named = elements.filterNot { it.isNull("label") }
+        assertEquals(listOf("Above", "1:42", "Position", "Below"), named.map { it.getString("label") })
+        assertEquals(listOf("text", "text", "slider", "text"), named.map { it.getString("role") })
+        val slider = named.single { it.getString("label") == "Position" }
+        assertTrue(slider.isNull("parent"))
+        assertEquals("35", slider.getString("value"))
     }
 
     private fun JSONArray.objects(): List<JSONObject> = (0 until length()).map { getJSONObject(it) }

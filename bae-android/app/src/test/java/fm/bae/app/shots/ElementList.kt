@@ -24,23 +24,37 @@ internal object ElementList {
     private const val HEX_RADIX = 16
     private const val RGB_DIGITS = 8
 
-    /** The list for the tree under [root] (the root has no semantics of its own and is not listed). */
+    /**
+     * The list for the tree under [root] (the root has no semantics of its own and is not listed), with the
+     * [embedded] views' elements, which the tree does not hold, each placed where the reading order reaches
+     * its box: before the first element that starts lower, or in its row, further right.
+     */
     fun of(
         board: String,
         root: SemanticsNode,
+        embedded: List<JSONObject> = emptyList(),
     ): JSONObject {
         val density = root.layoutInfo.density.density
-        val elements = org.json.JSONArray()
+        val listed = mutableListOf<Listed>()
 
         fun visit(
             node: SemanticsNode,
-            parent: Int?,
+            parent: Listed?,
         ) {
-            val index = elements.length()
-            elements.put(element(node, parent, density))
-            node.children.forEach { visit(it, index) }
+            val here = Listed(element(node, density), parent)
+            listed.add(here)
+            node.children.forEach { visit(it, here) }
         }
         root.children.forEach { visit(it, null) }
+        var from = 0
+        for (view in embedded) {
+            val at = (from until listed.size).firstOrNull { startsAfter(listed[it].json, view) } ?: listed.size
+            listed.add(at, Listed(view, null))
+            from = at + 1
+        }
+        val elements = org.json.JSONArray()
+        listed.forEach { it.json.put("parent", it.parent?.let(listed::indexOf) ?: JSONObject.NULL) }
+        listed.forEach { elements.put(it.json) }
         return JSONObject()
             .put("board", board)
             .put("platform", PLATFORM)
@@ -53,9 +67,26 @@ internal object ElementList {
             .put("elements", elements)
     }
 
+    /** An element of the tree and the one that holds it. */
+    private class Listed(
+        val json: JSONObject,
+        val parent: Listed?,
+    )
+
+    /** Whether [element] starts lower than [view]'s box, or in its row and further right. */
+    private fun startsAfter(
+        element: JSONObject,
+        view: JSONObject,
+    ): Boolean {
+        val box = element.getJSONObject("bounds")
+        val mine = view.getJSONObject("bounds")
+        val lower = box.getDouble("y") - mine.getDouble("y")
+        return lower > mine.getDouble("height") / 2 ||
+            (Math.abs(lower) <= mine.getDouble("height") / 2 && box.getDouble("x") > mine.getDouble("x"))
+    }
+
     private fun element(
         node: SemanticsNode,
-        parent: Int?,
         density: Float,
     ): JSONObject {
         val config = node.config
@@ -80,7 +111,6 @@ internal object ElementList {
                         .put("height", dp(bounds.height, density)),
                 ).put("enabled", !config.contains(SemanticsProperties.Disabled))
                 .put("selected", orNull(config.getOrNull(SemanticsProperties.Selected)))
-                .put("parent", orNull(parent))
         config.getOrNull(SemanticsProperties.Focused)?.let { out.put("focused", it) }
         if (kind == "text") textStyle(config)?.let { out.put("text", it) }
         return out
