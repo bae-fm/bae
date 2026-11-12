@@ -429,6 +429,7 @@
     <string name="sync_status">Κατάσταση</string>
     <string name="sync_last_synced">Τελευταίος συγχρονισμός: %1$s</string>
     <string name="sync_pending">Σε εκκρεμότητα</string>
+    <string name="sync_pending_tap">Πατήστε μια γραμμή για να δείτε τι συνέβη.</string>
     <string name="sync_cloud_home">Σπίτι στο cloud</string>
     <string name="sync_fix_update">Ενημέρωση</string>
     <string name="sync_fix_sign_in">Σύνδεση στο %1$s</string>

@@ -439,6 +439,7 @@
     <string name="sync_status">סטטוס</string>
     <string name="sync_last_synced">סונכרן לאחרונה: %1$s</string>
     <string name="sync_pending">ממתין</string>
+    <string name="sync_pending_tap">הקש על שורה כדי לראות מה קרה.</string>
     <string name="sync_cloud_home">הבית בענן</string>
     <string name="sync_fix_update">עדכן</string>
     <string name="sync_fix_sign_in">היכנס ל-%1$s</string>

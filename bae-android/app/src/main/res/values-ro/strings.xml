@@ -437,6 +437,7 @@
     <string name="sync_status">Stare</string>
     <string name="sync_last_synced">Ultima sincronizare: %1$s</string>
     <string name="sync_pending">În așteptare</string>
+    <string name="sync_pending_tap">Atinge un rând pentru a vedea ce s-a întâmplat.</string>
     <string name="sync_cloud_home">Casa din cloud</string>
     <string name="sync_fix_update">Actualizează</string>
     <string name="sync_fix_sign_in">Conectează-te la %1$s</string>

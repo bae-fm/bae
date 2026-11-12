@@ -431,6 +431,7 @@
     <string name="sync_status">Status</string>
     <string name="sync_last_synced">Laatst gesynchroniseerd: %1$s</string>
     <string name="sync_pending">In afwachting</string>
+    <string name="sync_pending_tap">Tik op een rij om te zien wat er is gebeurd.</string>
     <string name="sync_cloud_home">Cloudthuis</string>
     <string name="sync_fix_update">Bijwerken</string>
     <string name="sync_fix_sign_in">Aanmelden bij %1$s</string>

@@ -431,6 +431,7 @@
     <string name="sync_status">Durum</string>
     <string name="sync_last_synced">Son eşitleme: %1$s</string>
     <string name="sync_pending">Bekleyen</string>
+    <string name="sync_pending_tap">Ne olduğunu görmek için bir satıra dokunun.</string>
     <string name="sync_cloud_home">Bulut evi</string>
     <string name="sync_fix_update">Güncelle</string>
     <string name="sync_fix_sign_in">%1$s hesabında oturum aç</string>

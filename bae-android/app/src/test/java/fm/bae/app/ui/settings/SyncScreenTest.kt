@@ -93,6 +93,31 @@ class SyncScreenTest {
         compose.onNodeWithText("This library needs cloud sign-in, which isn't configured on this build.").assertDoesNotExist()
     }
 
+    /** A tap on a pending row opens what is behind its reason; the row's action is its own button. */
+    @Test
+    fun aTapOnAPendingRowOpensItsDetails() {
+        var ran: BridgePendingAction? = null
+        val record =
+            BridgePendingRecord(
+                subject = BridgeMessage(key = "core.pending.subject.connection", args = emptyList()),
+                reason =
+                    BridgePendingReason(
+                        key = "core.pending.reason.storage",
+                        detail = "request failed: connection refused",
+                        causes = emptyList(),
+                    ),
+                action = BridgePendingAction.Reconnect,
+                actionKey = "core.pending.action.reconnect",
+            )
+        compose.setContent { BaeTheme { PendingSection(records = listOf(record), onAction = { ran = it }) } }
+
+        compose.onNodeWithText("Tap a row to see what happened.").assertExists()
+        compose.onNodeWithText("Cloud request failed").performClick()
+        compose.onNodeWithText("request failed: connection refused").assertExists()
+
+        assertEquals(null, ran)
+    }
+
     /** A full disk is worded for a phone: "This device", not "this Mac". */
     @Test
     fun aFullDiskIsWordedForThePhone() {

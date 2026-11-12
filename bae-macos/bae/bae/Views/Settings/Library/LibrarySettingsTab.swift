@@ -199,10 +199,18 @@ struct LibrarySettingsTab: View {
             configStore.applyStorage(try await sync.storageLocation())
         }
         catch {
-            logger.error(
-                "Couldn't read the library's location: \(String(reflecting: error))"
-            )
-            storageReadError = DisplayError(error)
+            // The location is this device's own record, so a read that fails
+            // is a bug, not a condition the person can fix. A cancellation as
+            // the pane closes has no line to show and is not one.
+            guard let display = DisplayError(error) else { return }
+            let detail = String(reflecting: error)
+            logger.error("Couldn't read the library's location: \(detail)")
+            CoreBugReporter()
+                .report(
+                    operation: "read the library's cloud home",
+                    detail: detail
+                )
+            storageReadError = display
         }
     }
 }
@@ -226,7 +234,14 @@ private struct SyncSettingsPage: View {
             Section {
                 UndoneSetupLine()
                 if let storageReadError {
-                    Notice(error: storageReadError)
+                    Notice(
+                        title: String(
+                            localized:
+                                "Couldn’t read this library’s cloud home."
+                        ),
+                        advice: nil,
+                        error: storageReadError
+                    )
                 }
                 SyncStatusBlock(
                     location: configStore.storage,
@@ -364,18 +379,23 @@ private struct LibraryRestoreCodeSection: View {
         .environment(fixture.libraryName)
     }
 
-    /// The Sync page over `fixture`'s library, its sync as `shown` says.
+    /// The Sync page over `fixture`'s library, its sync as `shown` says, with
+    /// what coven waits on, a storage setup that ended undone, and a failed
+    /// read of the library's location, when given.
     @MainActor
     func syncSettingsPagePreview(
         _ fixture: LibrarySettingsTabPreviewFixture,
-        shown: BridgeSyncShown
+        shown: BridgeSyncShown,
+        pending: [BridgePendingRecord] = [],
+        undoneSetup: BridgeUndoneStorageSetup? = nil,
+        storageReadError: DisplayError? = nil
     ) -> some View {
         NavigationStack {
             SyncSettingsPage(
                 restoreCode: RestoreCodeReveal(
                     previewState: .masked(code: PreviewData.restoreCodeGrouped)
                 ),
-                storageReadError: nil,
+                storageReadError: storageReadError,
                 onResetDevice: {},
                 onRestoreFromCode: {},
                 onCheckForUpdates: {},
@@ -394,9 +414,9 @@ private struct LibraryRestoreCodeSection: View {
             SyncStatusStore(
                 snapshot: BridgeSyncStatusSnapshot(
                     shown: shown,
-                    pending: [],
+                    pending: pending,
                     setupRunning: false,
-                    undoneSetup: nil
+                    undoneSetup: undoneSetup
                 )
             )
         )

@@ -423,6 +423,7 @@
     <string name="sync_status">状态</string>
     <string name="sync_last_synced">上次同步：%1$s</string>
     <string name="sync_pending">待处理</string>
+    <string name="sync_pending_tap">点按某一行即可查看发生了什么。</string>
     <string name="sync_cloud_home">云端家园</string>
     <string name="sync_fix_update">更新</string>
     <string name="sync_fix_sign_in">登录 %1$s</string>

@@ -7,13 +7,10 @@ import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,7 +20,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -49,8 +45,6 @@ import fm.bae.app.ui.components.AndroidCard
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidScreen
-import fm.bae.app.ui.components.AndroidSection
-import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.library.LibraryDestination
@@ -318,11 +312,7 @@ internal fun SyncScreen(
             }
             // What is waiting is a local read; nothing shows until it lands.
             pending?.takeIf { it.isNotEmpty() }?.let { records ->
-                item { AndroidSection(text = stringResource(R.string.sync_pending)) }
-                itemsIndexed(records) { index, record ->
-                    if (index > 0) HorizontalDivider()
-                    PendingRow(record = record, onAction = runner::run)
-                }
+                item { PendingSection(records = records, onAction = runner::run) }
             }
         }
     }
@@ -516,58 +506,6 @@ private fun openStoreListing(context: Context): DisplayError? =
         DisplayError(context.getString(R.string.pending_update_no_store))
     }
 
-/** One record: what it is about, why it waits with the error behind it, what its causes were, and its action. */
-@Composable
-private fun PendingRow(
-    record: BridgePendingRecord,
-    onAction: (BridgePendingAction) -> Unit,
-) {
-    val context = LocalContext.current
-    Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.inline)) {
-        Text(text = context.coreString(record.subject), style = ThemeText.strong.style)
-        AndroidNotice(
-            error =
-                DisplayError(
-                    context.coreString(record.reason.key),
-                    record.reason.detail,
-                ),
-        )
-        record.reason.causes.forEach { cause ->
-            Text(
-                text = context.coreString(cause.key),
-                style = ThemeText.detail.style,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            val actionKey = record.actionKey
-            when (record.action) {
-                // The reason's details show what a review is of.
-                BridgePendingAction.Wait, BridgePendingAction.Review -> {
-                    Unit
-                }
-
-                // The file goes back where it was, on the device that imported it; there is nothing to tap here.
-                BridgePendingAction.RestoreFile -> {
-                    Text(
-                        text = context.coreString(checkNotNull(actionKey) { "restoring a file has a label" }),
-                        style = ThemeText.detail.style,
-                    )
-                }
-
-                else -> {
-                    AndroidButton(kind = ButtonKind.TONAL, onClick = { onAction(record.action) }) {
-                        Text(context.coreString(checkNotNull(actionKey) { "${record.action} has a label" }))
-                    }
-                }
-            }
-        }
-    }
-}
-
 /** The top of the Sync page in the state `shown` says, in the app chrome. */
 @Composable
 internal fun SyncStatusScene(shown: BridgeSyncShown) {
@@ -629,7 +567,7 @@ private fun SyncScreenPreview() {
                     action = BridgePendingAction.RetryOperation(id = 7L),
                     actionKey = "core.pending.action.retry",
                 ),
-            ).forEach { PendingRow(record = it, onAction = {}) }
+            ).let { PendingSection(records = it, onAction = {}) }
         }
     }
 }

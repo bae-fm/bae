@@ -99,6 +99,7 @@ android.settings.restore-code.printed
 android.settings.restore-code.shown
 android.settings.sync.dropbox
 android.settings.sync.onedrive
+android.settings.sync.pending
 android.settings.sync.s3
 android.settings.sync.signed-out-dropbox
 android.settings.sync.signed-out-s3
@@ -335,10 +336,13 @@ mac.settings.sync-setup.s3-step-1
 mac.settings.sync-setup.s3-step-2
 mac.settings.sync-setup.s3-step-3
 mac.settings.sync-setup.s3-step-4
+mac.settings.sync.cloud-home-unreadable
 mac.settings.sync.dropbox
 mac.settings.sync.icloud
 mac.settings.sync.onedrive
+mac.settings.sync.pending
 mac.settings.sync.s3
+mac.settings.sync.setup-undone
 mac.settings.sync.signed-out-dropbox
 mac.settings.sync.signed-out-icloud
 mac.settings.sync.signed-out-s3

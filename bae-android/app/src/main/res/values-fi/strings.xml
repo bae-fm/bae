@@ -429,6 +429,7 @@
     <string name="sync_status">Tila</string>
     <string name="sync_last_synced">Viimeksi synkronoitu: %1$s</string>
     <string name="sync_pending">Odottaa</string>
+    <string name="sync_pending_tap">Napauta riviä nähdäksesi, mitä tapahtui.</string>
     <string name="sync_cloud_home">Pilvikoti</string>
     <string name="sync_fix_update">Päivitä</string>
     <string name="sync_fix_sign_in">Kirjaudu palveluun %1$s</string>

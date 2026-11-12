@@ -3446,6 +3446,17 @@ only the status it read. The Library page's Sync row shows the state only,
 and the Library row in Android's settings and the Library item in the Mac's
 settings sidebar show it only while it is amber or red.
 
+Under the storage rows and the restore code, a *Pending* section lists each
+pending record (§6.4) as a row of the page's list: what it is about, with the
+reason under it in plain words. On the Mac *Details* (§9.7), when coven kept an
+error behind the record, and the record's action sit at the right of the row;
+the failure of an action shows under its row. On Android the action is a text
+button at the right, a tap on the row opens its details in a dialog, and a note
+under the list says so. On the Mac, a read of this device's own record of the
+cloud home that fails is a bug: the page says *Couldn’t read this library’s
+cloud home.* with *Details* only, and the bug is reported to the crash reporter
+without crashing.
+
 The state is made from two sources, each followed as it changes: coven's sync
 state, which coven computes and follows itself (it changes as a file starts or
 ends a transfer, which no table the library reads shows), and one read of the

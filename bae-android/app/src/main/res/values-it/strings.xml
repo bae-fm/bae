@@ -437,6 +437,7 @@
     <string name="sync_status">Stato</string>
     <string name="sync_last_synced">Ultima sincronizzazione: %1$s</string>
     <string name="sync_pending">In sospeso</string>
+    <string name="sync_pending_tap">Tocca una riga per vedere cosa è successo.</string>
     <string name="sync_cloud_home">Casa nel cloud</string>
     <string name="sync_fix_update">Aggiorna</string>
     <string name="sync_fix_sign_in">Accedi a %1$s</string>

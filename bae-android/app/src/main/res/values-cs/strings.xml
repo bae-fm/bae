@@ -447,6 +447,7 @@
     <string name="sync_status">Stav</string>
     <string name="sync_last_synced">Poslední synchronizace: %1$s</string>
     <string name="sync_pending">Čekající</string>
+    <string name="sync_pending_tap">Klepnutím na řádek zobrazíte, co se stalo.</string>
     <string name="sync_cloud_home">Cloudový domov</string>
     <string name="sync_fix_update">Aktualizovat</string>
     <string name="sync_fix_sign_in">Přihlásit se k %1$s</string>

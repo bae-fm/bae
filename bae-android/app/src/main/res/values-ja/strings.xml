@@ -423,6 +423,7 @@
     <string name="sync_status">状態</string>
     <string name="sync_last_synced">最終同期: %1$s</string>
     <string name="sync_pending">保留中</string>
+    <string name="sync_pending_tap">行をタップすると、何があったかを確認できます。</string>
     <string name="sync_cloud_home">クラウドホーム</string>
     <string name="sync_fix_update">アップデート</string>
     <string name="sync_fix_sign_in">%1$s にサインイン</string>

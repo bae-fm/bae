@@ -431,6 +431,7 @@
     <string name="sync_status">Status</string>
     <string name="sync_last_synced">Zuletzt synchronisiert: %1$s</string>
     <string name="sync_pending">Ausstehend</string>
+    <string name="sync_pending_tap">Tippe auf eine Zeile, um zu sehen, was passiert ist.</string>
     <string name="sync_cloud_home">Cloud-Zuhause</string>
     <string name="sync_fix_update">Aktualisieren</string>
     <string name="sync_fix_sign_in">Bei %1$s anmelden</string>

@@ -463,6 +463,7 @@
     <string name="sync_status">الحالة</string>
     <string name="sync_last_synced">آخر مزامنة: %1$s</string>
     <string name="sync_pending">قيد الانتظار</string>
+    <string name="sync_pending_tap">اضغط على صف لمعرفة ما حدث.</string>
     <string name="sync_cloud_home">المنزل السحابي</string>
     <string name="sync_fix_update">تحديث</string>
     <string name="sync_fix_sign_in">تسجيل الدخول إلى %1$s</string>

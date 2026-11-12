@@ -447,6 +447,7 @@
     <string name="sync_status">Stan</string>
     <string name="sync_last_synced">Ostatnia synchronizacja: %1$s</string>
     <string name="sync_pending">Oczekujące</string>
+    <string name="sync_pending_tap">Dotknij wiersza, aby zobaczyć, co się stało.</string>
     <string name="sync_cloud_home">Dom w chmurze</string>
     <string name="sync_fix_update">Zaktualizuj</string>
     <string name="sync_fix_sign_in">Zaloguj się do %1$s</string>
