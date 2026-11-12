@@ -7,7 +7,7 @@
     MacSheetFooter: MacSheetFooter, MacProgress: MacProgress, MacSpinner: MacSpinner, MacNote: MacNote,
     MacSwitch: MacSwitch, MacFileNameField: MacFileNameField, MacAccentPicker: MacAccentPicker, MacMenu: MacMenu, MacMenuItem: MacMenuItem, AndroidAccentPicker: AndroidAccentPicker,
     AndroidScreen: AndroidScreen, AndroidKeyboard: AndroidKeyboard, AndroidSection: AndroidSection, AndroidCard: AndroidCard, AndroidStep: AndroidStep, AndroidMatchCode: AndroidMatchCode, MacMatchCode: MacMatchCode,
-    AndroidRow: AndroidRow, AndroidButton: AndroidButton, AndroidIconButton: AndroidIconButton, AndroidSwitch: AndroidSwitch,
+    AndroidRow: AndroidRow, AndroidButton: AndroidButton, AndroidIconButton: AndroidIconButton, AndroidInlineIconButton: AndroidInlineIconButton, AndroidSwitch: AndroidSwitch,
     AndroidTextField: AndroidTextField, AndroidRadio: AndroidRadio, AndroidDialog: AndroidDialog,
     AndroidDialogActions: AndroidDialogActions, AndroidNote: AndroidNote, AndroidProgress: AndroidProgress, AndroidSpinner: AndroidSpinner,
     StatusChip: StatusChip, AndroidDisclosure: AndroidDisclosure, StatusGlyph: StatusGlyph, MacScanCode: MacScanCode, AndroidScanCode: AndroidScanCode,

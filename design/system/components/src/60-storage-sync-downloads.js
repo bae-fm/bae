@@ -222,7 +222,7 @@
     var centered = props.layout === 'centered';
     var primary = props.action ? h(AndroidButton, { key: 'p', kind: centered ? 'tonal' : 'text' }, props.action) : null;
     var secondary = props.secondary ? h(AndroidButton, { key: 's', kind: 'text' }, props.secondary) : null;
-    var dismiss = props.dismiss ? h('span', { key: 'x', className: 'bae-a-notice-dismiss' }, h(AndroidIconButton, { icon: 'close', size: 20, label: 'Dismiss', tone: 'muted' })) : null;
+    var dismiss = props.dismiss ? h('span', { key: 'x', className: 'bae-a-notice-dismiss' }, h(AndroidInlineIconButton, { icon: 'close', label: 'Dismiss' })) : null;
     if (centered) {
       // The glyph sits beside the title only; a subtitle is its own smaller, grey line under them, so the two lines read as a heading and what to do.
       var title = h(React.Fragment, null,
@@ -300,7 +300,7 @@
     return h('div', { className: 'bae-a-dlrow2' },
       h('div', { className: 'bae-a-dlrow2-head' },
         h('div', { className: cx('bae-a-librow-title', !props.title && 'bae-a-dlrow2-gone') }, props.title || 'Release no longer in library'),
-        h(AndroidIconButton, { icon: 'close', label: 'Cancel', tone: 'muted', className: 'bae-a-dlrow2-cancel' })),
+        h(AndroidInlineIconButton, { icon: 'close', label: 'Cancel' })),
       h('div', { className: 'bae-a-librow-sub' }, props.detail),
       state);
   }

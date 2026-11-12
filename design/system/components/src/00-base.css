@@ -52,6 +52,6 @@
 .bae-a-notice-words { flex: 1; min-width: 0; }
 .bae-a-notice-below { align-self: flex-start; display: flex; align-items: center; margin: 0 0 -8px -12px; }
 .bae-a-notice-buttons { flex: none; display: flex; align-items: center; margin: -10px -12px -10px 0; }
-.bae-a-notice-dismiss { flex: none; margin: -14px -14px -14px -8px; }
+.bae-a-notice-dismiss { flex: none; margin-left: 6px; }
 /* A toned notice has its own fill (in dark, the neutral one); its text and accent are on-notice and notice-accent, and its glyph keeps its tone. */
 .bae-notice.bae-tone-info:not(.bae-notice-quiet), .bae-notice.bae-tone-success:not(.bae-notice-quiet), .bae-notice.bae-tone-warning:not(.bae-notice-quiet), .bae-notice.bae-tone-danger:not(.bae-notice-quiet) { color: var(--on-notice); --text-primary: var(--on-notice); --accent: var(--notice-accent); }

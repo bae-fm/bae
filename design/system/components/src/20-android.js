@@ -77,6 +77,11 @@
       h(Glyph, { name: props.icon || 'more', size: props.size || 24 }));
   }
 
+  // An icon level with a line of text: it takes the line's room (20dp), and its 48dp touch area overhangs the row's padding. A notice's ×, a download's Cancel.
+  function AndroidInlineIconButton(props) {
+    return h('span', { className: 'bae-a-inlineicon' }, h(AndroidIconButton, { icon: props.icon || 'close', size: 20, label: props.label, tone: props.tone || 'muted' }));
+  }
+
   function AndroidSwitch(props) {
     var s = React.useState(!!props.on);
     var on = s[0];

@@ -148,6 +148,8 @@ export interface AndroidIconButtonProps { icon: string; label?: string; size?: n
 export declare function AndroidIconButton(props: AndroidIconButtonProps): React.ReactElement;
 
 /** An on/off switch; label is its accessible name. */
+/** An icon level with a line of text, its touch area overhanging the row's padding: a notice's ×, a download's Cancel. */
+export declare function AndroidInlineIconButton(props: { icon?: string; label: string; tone?: 'muted' | 'accent' }): React.ReactElement;
 export interface AndroidSwitchProps { on?: boolean; label: string }
 export declare function AndroidSwitch(props: AndroidSwitchProps): React.ReactElement;
 
