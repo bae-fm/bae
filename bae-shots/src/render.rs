@@ -98,8 +98,10 @@ async fn draw_with(
         let board = name.to_string();
         let page = chrome.new_page().await.map_err(|e| e.to_string())?;
         let drawn = match name {
-            Name::Screen(_) => draw_screen(root, &board, &page, server).await,
-            Name::Component(component) => draw_component(root, component, &page, server).await,
+            Name::Screen(_) => draw_screen(root, &board, &page, server, name.platform()).await,
+            Name::Component(component) => {
+                draw_component(root, component, &page, server, name.platform()).await
+            }
         };
         if let Err(error) = page.close().await {
             eprintln!("bae-shots: closing a page failed: {error}");
@@ -128,12 +130,13 @@ async fn draw_screen(
     board: &str,
     page: &chromiumoxide::Page,
     server: &serve::Server,
+    platform: names::Platform,
 ) -> Result<Drawn, String> {
     let frame = design::frame(root, board).map_err(|e| e.to_string())?;
     let rendered = board::render(page, board, &server.board_url(board), frame, BOARD_SCALE)
         .await
         .map_err(|e| e.to_string())?;
-    let elements = read::elements(page).await.map_err(|e| e.to_string())?;
+    let elements = read::elements(page, platform).await.map_err(|e| e.to_string())?;
     Ok(Drawn {
         png: rendered.png,
         size: Size { width: f64::from(frame.w), height: f64::from(frame.h) },
@@ -146,6 +149,7 @@ async fn draw_component(
     name: &names::ComponentName,
     page: &chromiumoxide::Page,
     server: &serve::Server,
+    platform: names::Platform,
 ) -> Result<Drawn, String> {
     let component = name.component();
     preview::check_react(root).map_err(|e| e.to_string())?;
@@ -155,6 +159,7 @@ async fn draw_component(
         name.state(),
         &server.preview_url(&component),
         BOARD_SCALE,
+        platform,
     )
     .await
     .map_err(|e| e.to_string())?;

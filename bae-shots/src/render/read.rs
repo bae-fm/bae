@@ -10,6 +10,7 @@
 //! node's box is the range of its words, not its parent's), and for text its
 //! computed font.
 
+use crate::names::Platform;
 use crate::shots::{words, Bounds, Element, Role, TextStyle};
 use chromiumoxide::cdp::browser_protocol::accessibility::{
     AxNode, AxNodeId, AxPropertyName, EnableParams, GetFullAxTreeParams,
@@ -51,11 +52,13 @@ impl Role {
         }
     }
 
-    /// The role of a node: its Chrome role, except that a button that opens a
-    /// menu or list is a pop-up.
-    fn for_node(node: &Raw) -> Self {
+    /// The role of a node: its Chrome role, except that on a Mac board a
+    /// button that opens a menu or list is a pop-up (SwiftUI's `Menu` is an
+    /// `AXPopUpButton`). Compose cannot say "opens a menu" of a button, so an
+    /// Android board's stays a button.
+    fn for_node(node: &Raw, platform: Platform) -> Self {
         match Self::of(&node.chrome_role) {
-            Self::Button if node.has_popup => Self::Popup,
+            Self::Button if node.has_popup && platform == Platform::Mac => Self::Popup,
             role => role,
         }
     }
@@ -97,14 +100,14 @@ fn nonempty(text: Option<&str>) -> Option<String> {
 /// node). Ignored nodes (hidden, `aria-hidden`, presentational) are left out,
 /// their visible children kept; a text inside a named control is the
 /// control's name, not an element of its own.
-pub(crate) fn build(raw: &[Raw]) -> Result<Vec<Element>, ReadError> {
+pub(crate) fn build(raw: &[Raw], platform: Platform) -> Result<Vec<Element>, ReadError> {
     let by_id: HashMap<&str, &Raw> = raw.iter().map(|n| (n.id.as_str(), n)).collect();
     let Some(first) = raw.first() else { return Ok(Vec::new()) };
     let mut elements = Vec::new();
     // (node, index of the nearest kept ancestor, a named control above it)
     let mut pending = vec![(first, None, false)];
     while let Some((node, parent, folded)) = pending.pop() {
-        let role = Role::for_node(node);
+        let role = Role::for_node(node, platform);
         let label = nonempty(node.name.as_deref()).filter(|_| role != Role::Other);
         let kept = !node.ignored && !STRUCTURE.contains(&node.chrome_role.as_str());
         let inside_control = folded;
@@ -257,8 +260,8 @@ fn raw(node: &AxNode) -> Raw {
 }
 
 /// The page's elements in reading order.
-pub(crate) async fn elements(page: &Page) -> Result<Vec<Element>, ReadError> {
-    build(&gather(page).await?)
+pub(crate) async fn elements(page: &Page, platform: Platform) -> Result<Vec<Element>, ReadError> {
+    build(&gather(page).await?, platform)
 }
 
 /// The elements under the DOM node `backend`, in reading order, with boxes
@@ -267,6 +270,7 @@ pub(crate) async fn elements_in(
     page: &Page,
     backend: i64,
     origin: (f64, f64),
+    platform: Platform,
 ) -> Result<Vec<Element>, ReadError> {
     let raw = gather(page).await?;
     let mut inside = subtree(&raw, backend)?;
@@ -276,7 +280,7 @@ pub(crate) async fn elements_in(
             bounds.y -= origin.1;
         }
     }
-    build(&inside)
+    build(&inside, platform)
 }
 
 /// The node describing DOM node `backend` and everything under it, the node

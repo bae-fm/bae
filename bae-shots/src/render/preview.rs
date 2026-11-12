@@ -10,7 +10,7 @@
 //! state, `default`, drawn by the whole page.
 
 use crate::design::Frame;
-use crate::names::state_id;
+use crate::names::{state_id, Platform};
 use crate::render::board::{self, BoardError};
 use crate::render::read;
 use crate::render::Size;
@@ -107,13 +107,14 @@ pub(crate) struct Row {
 
 /// Loads the preview at `url` and draws the row of `state`, at `scale` pixels
 /// per point: the picture of its cell and the elements inside it, measured
-/// from the cell's top-left.
+/// from the cell's top-left, read as `platform`'s boards are.
 pub(crate) async fn render_row(
     page: &Page,
     component: &str,
     state: &str,
     url: &str,
     scale: f64,
+    platform: Platform,
 ) -> Result<Row, PreviewError> {
     board::load(page, component, url, PREVIEW_FRAME, scale, PREVIEW_READY).await?;
     let names: Vec<String> = page
@@ -173,9 +174,13 @@ pub(crate) async fn render_row(
         )
         .await
         .map_err(board::protocol)?;
-    let elements =
-        read::elements_in(page, *described.result.node.backend_node_id.inner(), (rect.x, rect.y))
-            .await?;
+    let elements = read::elements_in(
+        page,
+        *described.result.node.backend_node_id.inner(),
+        (rect.x, rect.y),
+        platform,
+    )
+    .await?;
     Ok(Row { png, size: Size { width: rect.width, height: rect.height }, elements })
 }
 

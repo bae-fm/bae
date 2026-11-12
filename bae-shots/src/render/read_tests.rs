@@ -59,7 +59,7 @@ fn a_controls_text_is_its_name_and_not_an_element() {
         named(node("2", "button", &["3"]), "Add library\u{2026}"),
         named(node("3", "StaticText", &[]), "Add library\u{2026}"),
     ];
-    let elements = build(&raw).unwrap();
+    let elements = build(&raw, Platform::Mac).unwrap();
     assert_eq!(elements.len(), 1);
     assert_eq!(elements[0].role, Role::Button);
     assert_eq!(elements[0].label.as_deref(), Some("Add library\u{2026}"));
@@ -77,7 +77,7 @@ fn ignored_nodes_are_left_out_and_their_children_attach_to_the_next_kept_ancesto
         hidden,
         named(node("4", "StaticText", &[]), "Visible"),
     ];
-    let elements = build(&raw).unwrap();
+    let elements = build(&raw, Platform::Mac).unwrap();
     assert_eq!(elements.len(), 2);
     assert_eq!(elements[0].native, "list");
     assert_eq!(elements[1].label.as_deref(), Some("Visible"));
@@ -89,9 +89,21 @@ fn a_button_that_opens_a_menu_is_a_popup() {
     let mut menu = named(node("2", "button", &[]), "Never");
     menu.has_popup = true;
     let raw = [node("1", "list", &["2", "3"]), menu, named(node("3", "button", &[]), "Set up")];
-    let elements = build(&raw).unwrap();
+    let elements = build(&raw, Platform::Mac).unwrap();
     assert_eq!(elements[1].role, Role::Popup);
     assert_eq!(elements[2].role, Role::Button);
+}
+
+#[test]
+fn an_android_board_keeps_a_button_that_opens_a_menu_a_button() {
+    let mut menu = named(node("2", "button", &[]), "More");
+    menu.has_popup = true;
+    let mut combo = named(node("3", "combobox", &[]), "Sort");
+    combo.has_popup = true;
+    let raw = [node("1", "list", &["2", "3"]), menu, combo];
+    let elements = build(&raw, Platform::Android).unwrap();
+    assert_eq!(elements[1].role, Role::Button);
+    assert_eq!(elements[2].role, Role::Popup);
 }
 
 #[test]
@@ -100,7 +112,7 @@ fn an_unnamed_container_is_structure_without_a_label() {
         named(node("1", "group", &["2"]), "ignored name"),
         named(node("2", "StaticText", &[]), "Words"),
     ];
-    let elements = build(&raw).unwrap();
+    let elements = build(&raw, Platform::Mac).unwrap();
     assert_eq!(elements[0].role, Role::Other);
     assert_eq!(elements[0].label, None);
     assert_eq!(elements[1].parent, Some(0));
@@ -109,7 +121,7 @@ fn an_unnamed_container_is_structure_without_a_label() {
 #[test]
 fn a_child_the_tree_does_not_hold_is_an_error() {
     let raw = [node("1", "list", &["2"])];
-    assert!(matches!(build(&raw), Err(ReadError::NoNode(id)) if id == "2"));
+    assert!(matches!(build(&raw, Platform::Mac), Err(ReadError::NoNode(id)) if id == "2"));
 }
 
 #[test]
@@ -145,7 +157,7 @@ async fn read_fixture() -> Vec<Element> {
         let page = chrome.new_page().await.unwrap();
         let url = server.board_url("fixture.roles");
         render(&page, "fixture.roles", &url, Frame { w: 500, h: 600 }, 1.0).await.unwrap();
-        elements(&page).await
+        elements(&page, Platform::Mac).await
     })
     .await;
     elements.unwrap()

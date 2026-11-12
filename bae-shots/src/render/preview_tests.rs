@@ -49,9 +49,9 @@ async fn a_row_reads_as_the_state_it_names() {
     let (row, missing) = fixture::with_browser(&root, async |server, chrome| {
         let page = chrome.new_page().await.unwrap();
         let url = server.preview_url("MacRow");
-        let row = render_row(&page, "MacRow", "nested-off", &url, 2.0).await;
+        let row = render_row(&page, "MacRow", "nested-off", &url, 2.0, Platform::Mac).await;
         let page = chrome.new_page().await.unwrap();
-        let missing = render_row(&page, "MacRow", "missing", &url, 1.0).await;
+        let missing = render_row(&page, "MacRow", "missing", &url, 1.0, Platform::Mac).await;
         (row, missing)
     })
     .await;
