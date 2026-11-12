@@ -2214,9 +2214,11 @@ The download queue holds pins and make-locals (§4.4) and downloads one release
 at a time. Pins download from a queue that can be paused,
 cancelled and retried. Pausing stops the download that is running at once
 rather than after its file, and its release stays queued in its place; resuming
-starts it again from the beginning, since a stopped download does not yet
-continue from the bytes it fetched, and nothing of it was pinned, as with a
-cancel. The queue takes no entry while the device has no
+continues from the bytes the stopped download kept, which coven holds apart
+from the cache, and nothing of it was pinned until every file is whole.
+Cancelling a pin removes what it downloaded, in the write that takes its entry
+out of the queue: the release's files leave this device, partial downloads
+included. The queue takes no entry while the device has no
 usable network, as coven's network watch says, and goes on when it returns; a
 platform that cannot tell holds nothing back. What holds the queue back,
 Paused or Waiting for network, shows once where the queue shows: in place of
@@ -2227,7 +2229,7 @@ same way, reported as one, and the queue goes on to the next. The queue's
 Retry queues every failed pin again, each in its place; a release's own Retry
 queues only that release's failed pin. While a release's pin waits, its
 storage band offers Cancel pinning in Pin's place, which takes the entry out of
-the queue. coven's record of the failed
+the queue and removes what it downloaded. coven's record of the failed
 download is listed among the pending records (§6.4), whose *Retry* queues the
 release's pin again; nothing retries it on its own. A read that fails, as a
 track plays, leaves no record: its failure goes to whatever read it. A release

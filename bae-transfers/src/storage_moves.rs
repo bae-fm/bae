@@ -3,6 +3,7 @@
 
 use bae_store::Store;
 use bae_store::WriteError;
+use coven::CovenWrite;
 
 /// Why a write that moves a selection's files was refused. Nothing of it
 /// landed.
@@ -129,6 +130,25 @@ const RELEASE_UNPIN_FILES: &str = "SELECT f.file, coven_file_device(c.coordinate
      FROM release_files AS f \
      JOIN coven_files AS c ON c.id = f.file \
      WHERE f.release_id = ?1 ORDER BY f.id";
+
+/// Unpin `release_id`'s files that are stored in the cloud, as
+/// [`unpin_releases`] does for a release.
+pub(crate) fn unpin_stored_files_on(
+    sql: &CovenWrite<'_>,
+    release_id: &str,
+) -> Result<(), bae_store::DbError> {
+    let files: Vec<coven::FileId> = sql
+        .query(RELEASE_UNPIN_FILES, [release_id], |row| {
+            Ok((row.get::<_, coven::FileId>(0)?, row.get::<_, bool>(1)?))
+        })?
+        .into_iter()
+        .filter_map(|(file, in_storage)| in_storage.then_some(file))
+        .collect();
+    if !files.is_empty() {
+        sql.unpin(&files)?;
+    }
+    Ok(())
+}
 
 /// Unpin the files of every release of `release_ids` stored in the cloud, in
 /// one write: coven removes each file's copies from this device in that write,

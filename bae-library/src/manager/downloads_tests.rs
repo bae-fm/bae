@@ -825,3 +825,131 @@ async fn a_pin_and_its_entry_end_in_one_write() {
     assert_eq!(manager.store.files_pinned(&[file.file]).await.unwrap(), vec![Some(true)]);
     assert!(download_queue_now(manager).await.rows.is_empty());
 }
+
+/// A file big enough for a pin to download in several requests.
+fn large_track() -> Vec<u8> {
+    (0..3 * 1024 * 1024u32).map(|index| (index.wrapping_mul(2_654_435_761) >> 24) as u8).collect()
+}
+
+/// The path the last upload created for a stored file.
+fn last_stored_path(home: &coven::MemoryStorage, manager: &LibraryManager) -> coven::ObjectPath {
+    let files_prefix = coven::ObjectPrefix::files(manager.store.store_id_for_test());
+    home.request_trace()
+        .into_iter()
+        .rev()
+        .find_map(|request| match request {
+            coven::MemoryRequest::Create(path) if files_prefix.contains(&path) => Some(path),
+            _ => None,
+        })
+        .expect("the upload created the stored file")
+}
+
+/// Wait until a pin has left a partial download on this device.
+async fn wait_for_partial_download(manager: &LibraryManager) {
+    tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
+        while manager.store.local_bytes().await.unwrap().pinning == 0 {
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .expect("the pin left a partial download");
+}
+
+/// Cancelling a pin partway removes what it downloaded: no partial download
+/// stays on this device, and none of the release's files has a cache entry.
+#[tokio::test]
+async fn cancelling_a_pin_removes_what_it_downloaded() {
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    let home = connect_test_cloud(&test).await;
+    let track = large_track();
+    let release_id = uploaded_release_with_files(
+        manager,
+        &temp_dir.path().join("cancelled-pin"),
+        "Cancelled Pin",
+        &[("track.flac", &track)],
+        false,
+    )
+    .await;
+    let file = release_files(manager, &release_id).await.remove(0);
+    manager.evict_file_for_test(file.file).await.unwrap();
+
+    let (observed, stalled) = tokio::sync::oneshot::channel();
+    let (_resume, resumed) = tokio::sync::oneshot::channel::<()>();
+    home.hold_body_at(last_stored_path(&home, manager), 2 * 1024 * 1024, observed, resumed).await;
+    let pin = tokio::spawn({
+        let manager = manager.clone();
+        let release_id = release_id.clone();
+        async move {
+            let entry = started_pin_entry(&manager, &release_id).await;
+            manager.pin_release_files_with_progress(&release_id, entry, |_| {}).await
+        }
+    });
+    stalled.await.unwrap();
+    wait_for_partial_download(manager).await;
+
+    manager.cancel_download(&release_id).await.unwrap();
+    let after_cancel = manager.store.local_bytes().await.unwrap();
+    assert_eq!(after_cancel.pinning, 0, "the cancel removed the partial download");
+
+    pin.await.unwrap().expect_err("the cancel ended the download the pin waited on");
+    let local = manager.store.local_bytes().await.unwrap();
+    let audio = local
+        .namespaces
+        .iter()
+        .find(|bytes| bytes.namespace == bae_records::synced::RELEASE_FILES_NAMESPACE)
+        .expect("the audio namespace is declared");
+    assert_eq!((audio.pinned, audio.cached), (0, 0), "the release's files have no cache entry");
+    assert_eq!(local.pinning, 0);
+    assert_eq!(manager.store.files_pinned(&[file.file]).await.unwrap(), vec![Some(false)]);
+}
+
+/// Pausing keeps what a pin downloaded, and resuming fetches only the rest.
+#[tokio::test]
+async fn resuming_a_paused_pin_fetches_only_the_rest() {
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    let home = connect_test_cloud(&test).await;
+    let track = large_track();
+    let release_id = uploaded_release_with_files(
+        manager,
+        &temp_dir.path().join("paused-pin"),
+        "Paused Pin",
+        &[("track.flac", &track)],
+        false,
+    )
+    .await;
+    let file = release_files(manager, &release_id).await.remove(0);
+    manager.evict_file_for_test(file.file).await.unwrap();
+    let stored = last_stored_path(&home, manager);
+
+    let (observed, stalled) = tokio::sync::oneshot::channel();
+    let (_resume, resumed) = tokio::sync::oneshot::channel();
+    home.hold_body_at(stored.clone(), 2 * 1024 * 1024, observed, resumed).await;
+    manager.start().unwrap();
+    manager.enqueue_pins(vec![release_id.clone()]).await.unwrap();
+    stalled.await.unwrap();
+    wait_for_partial_download(manager).await;
+
+    manager.set_downloads_paused(true).await.unwrap();
+    let kept = manager.store.local_bytes().await.unwrap().pinning;
+    assert!(kept > 0, "pausing keeps the partial download");
+
+    let before = home.request_trace().len();
+    manager.set_downloads_paused(false).await.unwrap();
+    wait_for_kept_release(manager, &release_id).await;
+    download_queue_until(manager, |queue| queue.rows.is_empty()).await;
+    let fetched_from: Vec<u64> = home.request_trace()[before..]
+        .iter()
+        .filter_map(|request| match request {
+            coven::MemoryRequest::Read(path, Some(range)) if *path == stored => Some(range.start()),
+            _ => None,
+        })
+        .collect();
+    assert!(!fetched_from.is_empty(), "the resumed pin read the rest from storage");
+    assert!(
+        fetched_from.iter().all(|start| *start > 0),
+        "the resumed pin read from the start of the file again: {fetched_from:?}"
+    );
+    assert_eq!(manager.store.local_bytes().await.unwrap().pinning, 0);
+}

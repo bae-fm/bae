@@ -44,6 +44,11 @@ pub trait QueuedPayload: Clone + PartialEq + Send + Sync + 'static {
     fn values(&self) -> Result<Vec<Value>, DbError>;
     /// The payload from a row read with [`Self::COLUMNS`] from column `at`.
     fn from_row(row: &Row<'_>, at: usize) -> rusqlite::Result<Self>;
+    /// What cancelling `release_id`'s entry does in the write that takes it
+    /// out of the queue, before it goes.
+    fn cancelling_in(_sql: &CovenWrite<'_>, _release_id: &str) -> Result<(), DbError> {
+        Ok(())
+    }
 }
 
 /// A download carries what it does: a pin nothing more, a make-local its
@@ -77,6 +82,24 @@ impl QueuedPayload for DownloadRequest {
                 format!("download kind {kind:?} with folder {target_dir:?}"),
             )),
         }
+    }
+
+    /// Cancelling a pin removes what it downloaded: the release's files
+    /// leave this device in the write that takes the entry out, the partial
+    /// download a stopped pin keeps among them. A make-local's cancel leaves
+    /// the files as they are.
+    fn cancelling_in(sql: &CovenWrite<'_>, release_id: &str) -> Result<(), DbError> {
+        let kind: Option<String> = sql
+            .query_row(
+                "SELECT kind FROM download_queue WHERE release_id = ?",
+                [release_id],
+                |row| row.get(0),
+            )
+            .optional()?;
+        if kind.as_deref() == Some("pin") {
+            crate::storage_moves::unpin_stored_files_on(sql, release_id)?;
+        }
+        Ok(())
     }
 }
 
@@ -560,12 +583,14 @@ pub(crate) fn set_release_queue_paused_on<P: QueuedPayload>(
     Ok(was)
 }
 
-/// Take `release_id`'s entry out, in any phase; `false` when the queue
-/// does not hold it.
+/// Take `release_id`'s entry out, in any phase, doing what cancelling
+/// that kind of entry does in the same write; `false` when the queue does not
+/// hold it.
 pub(crate) fn cancel_queued_release_on<P: QueuedPayload>(
     sql: &CovenWrite<'_>,
     release_id: &str,
 ) -> Result<bool, DbError> {
+    P::cancelling_in(sql, release_id)?;
     Ok(sql.execute(&format!("DELETE FROM {} WHERE release_id = ?", P::TABLE), [release_id])? > 0)
 }
 
