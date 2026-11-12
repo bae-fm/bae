@@ -278,12 +278,12 @@
     <string name="appearance_sand">Nisip</string>
     <string name="details">Detalii</string>
     <string name="copy_details">Copiază detaliile</string>
-    <string name="reset_device">Resetează acest dispozitiv…</string>
-    <string name="reset_device_confirm_title">Resetezi acest dispozitiv?</string>
+    <string name="reset_device">Resetează din cloud…</string>
+    <string name="reset_device_confirm_title">Resetezi din cloud?</string>
     <string name="reset_device_confirm">Resetează</string>
     <string name="restore_device_title">Restaurează această bibliotecă</string>
     <string name="finish_restore_title">Finalizează restaurarea acestei biblioteci</string>
-    <string name="finish_reset">Finalizează resetarea</string>
+    <string name="finish_reset">Finalizează resetarea din cloud</string>
     <string name="finish_removal">Finalizează eliminarea acestei biblioteci</string>
     <string name="save">Salvează</string>
     <string name="onboarding_scan_code">Scanează un cod</string>
@@ -314,7 +314,7 @@
     <string name="loading_opening_library">Se deschide biblioteca…</string>
     <string name="loading_closing_library">Se închide biblioteca…</string>
     <string name="loading_removing_library">Se părăsește biblioteca…</string>
-    <string name="loading_resetting_device">Se resetează acest dispozitiv…</string>
+    <string name="loading_resetting_device">Se resetează din cloud…</string>
     <string name="progress_loading">Se încarcă</string>
     <string name="pending_update_no_store">Niciun magazin de aplicații de pe acest dispozitiv nu poate actualiza bae.</string>
     <string name="restore_code_title">Cod de restaurare</string>

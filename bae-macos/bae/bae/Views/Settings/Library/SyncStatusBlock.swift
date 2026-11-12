@@ -114,7 +114,7 @@ struct SyncFixButton: View {
         case .openSystemSettings:
             String(localized: "Open System Settings…")
         case .resetDevice:
-            localizedCoreString("core.sync.reset_device.confirm")
+            localizedCoreString("core.sync.reset_from_cloud")
         case .removeFromThisDevice:
             String(localized: "Remove from this Mac…")
         case .openInBrowser:

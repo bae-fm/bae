@@ -495,7 +495,7 @@ private fun syncFixLabel(fix: BridgeSyncFix): String? {
 
         BridgeSyncFix.EnterAccessKey -> stringResource(R.string.sync_fix_enter_key)
 
-        BridgeSyncFix.ResetDevice -> context.coreString("core.sync.reset_device.confirm")
+        BridgeSyncFix.ResetDevice -> context.coreString("core.sync.reset_from_cloud")
 
         BridgeSyncFix.RemoveFromThisDevice -> stringResource(R.string.sync_fix_remove)
 

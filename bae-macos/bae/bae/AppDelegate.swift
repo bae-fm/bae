@@ -434,7 +434,7 @@ extension AppDelegate {
         screen = .home
     }
 
-    /// Reset this device for a library: close it if it is open, then load it
+    /// Reset from cloud for a library: close it if it is open, then load it
     /// from storage again under a fresh device id. The person saw the warning
     /// before choosing, so nothing is shown after. A failed reset returns to
     /// the screen it was started from, with why.

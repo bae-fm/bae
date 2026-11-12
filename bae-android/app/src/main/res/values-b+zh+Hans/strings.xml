@@ -266,12 +266,12 @@
     <string name="appearance_sand">沙色</string>
     <string name="details">详情</string>
     <string name="copy_details">复制详情</string>
-    <string name="reset_device">重置此设备…</string>
-    <string name="reset_device_confirm_title">要重置此设备吗？</string>
+    <string name="reset_device">从云端重置…</string>
+    <string name="reset_device_confirm_title">要从云端重置吗？</string>
     <string name="reset_device_confirm">重置</string>
     <string name="restore_device_title">恢复此库</string>
     <string name="finish_restore_title">完成恢复此库</string>
-    <string name="finish_reset">完成重置</string>
+    <string name="finish_reset">完成从云端重置</string>
     <string name="finish_removal">完成移除此音乐库</string>
     <string name="save">保存</string>
     <string name="onboarding_scan_code">扫描代码</string>
@@ -302,7 +302,7 @@
     <string name="loading_opening_library">正在打开资料库…</string>
     <string name="loading_closing_library">正在关闭资料库…</string>
     <string name="loading_removing_library">正在退出资料库…</string>
-    <string name="loading_resetting_device">正在重置此设备…</string>
+    <string name="loading_resetting_device">正在从云端重置…</string>
     <string name="progress_loading">正在加载</string>
     <string name="pending_update_no_store">此设备上没有可以更新 bae 的应用商店。</string>
     <string name="restore_code_title">恢复码</string>

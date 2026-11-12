@@ -93,7 +93,7 @@ public final class DeviceStorageStore {
         await run("set the cache limit") { [limit] in try await limit(choice) }
     }
 
-    /// Remove what Reset Device left on this device.
+    /// Remove what Reset from cloud left on this device.
     public func deleteDataFromBeforeReset() async {
         await run("delete the data from before the reset", deleteBeforeReset)
     }

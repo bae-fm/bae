@@ -94,7 +94,7 @@ enum AppScreen {
                 )
             case .resetting:
                 LocalizedStringResource(
-                    "Resetting this device…",
+                    "Resetting from cloud…",
                     comment:
                         "Loading screen while this Mac's copy of a library is reset, before the reset reports where it stands."
                 )

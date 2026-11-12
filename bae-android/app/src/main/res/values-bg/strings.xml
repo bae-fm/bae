@@ -273,12 +273,12 @@
     <string name="appearance_sand">Пясъчен</string>
     <string name="details">Подробности</string>
     <string name="copy_details">Копиране на подробностите</string>
-    <string name="reset_device">Нулиране на това устройство…</string>
-    <string name="reset_device_confirm_title">Нулиране на това устройство?</string>
+    <string name="reset_device">Нулиране от облака…</string>
+    <string name="reset_device_confirm_title">Нулиране от облака?</string>
     <string name="reset_device_confirm">Нулиране</string>
     <string name="restore_device_title">Възстановяване на тази библиотека</string>
     <string name="finish_restore_title">Завършване на възстановяването на тази библиотека</string>
-    <string name="finish_reset">Завършване на нулирането</string>
+    <string name="finish_reset">Завършване на нулирането от облака</string>
     <string name="finish_removal">Завършване на премахването на тази библиотека</string>
     <string name="save">Запазване</string>
     <string name="onboarding_scan_code">Сканиране на код</string>
@@ -309,7 +309,7 @@
     <string name="loading_opening_library">Библиотеката се отваря…</string>
     <string name="loading_closing_library">Библиотеката се затваря…</string>
     <string name="loading_removing_library">Напускане на библиотеката…</string>
-    <string name="loading_resetting_device">Това устройство се нулира…</string>
+    <string name="loading_resetting_device">Нулиране от облака…</string>
     <string name="progress_loading">Зарежда се</string>
     <string name="pending_update_no_store">Няма магазин за приложения на това устройство, който да актуализира bae.</string>
     <string name="restore_code_title">Код за възстановяване</string>

@@ -280,12 +280,12 @@
     <string name="appearance_sand">חול</string>
     <string name="details">פרטים</string>
     <string name="copy_details">העתקת הפרטים</string>
-    <string name="reset_device">איפוס המכשיר הזה…</string>
-    <string name="reset_device_confirm_title">לאפס את המכשיר הזה?</string>
+    <string name="reset_device">איפוס מהענן…</string>
+    <string name="reset_device_confirm_title">לאפס מהענן?</string>
     <string name="reset_device_confirm">איפוס</string>
     <string name="restore_device_title">שחזור הספרייה הזו</string>
     <string name="finish_restore_title">סיום שחזור הספרייה הזו</string>
-    <string name="finish_reset">סיום האיפוס</string>
+    <string name="finish_reset">סיום האיפוס מהענן</string>
     <string name="finish_removal">סיום הסרת הספרייה הזו</string>
     <string name="save">שמירה</string>
     <string name="onboarding_scan_code">סריקת קוד</string>
@@ -316,7 +316,7 @@
     <string name="loading_opening_library">פותח את הספרייה…</string>
     <string name="loading_closing_library">סוגר את הספרייה…</string>
     <string name="loading_removing_library">עוזב את הספרייה…</string>
-    <string name="loading_resetting_device">מאפס את המכשיר הזה…</string>
+    <string name="loading_resetting_device">מאפס מהענן…</string>
     <string name="progress_loading">טוען</string>
     <string name="pending_update_no_store">אין במכשיר הזה חנות אפליקציות שיכולה לעדכן את bae.</string>
     <string name="restore_code_title">קוד שחזור</string>

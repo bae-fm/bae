@@ -38,12 +38,8 @@ struct DeviceResetView: View {
         offeredNotice
             .padding()
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .alert("Reset this device?", isPresented: $confirming) {
-                Button(
-                    localizedCoreString("core.sync.reset_device.confirm"),
-                    role: .destructive,
-                    action: onReset
-                )
+            .alert("Reset from cloud?", isPresented: $confirming) {
+                Button("Reset", role: .destructive, action: onReset)
                 Button("Cancel", role: .cancel) {}
             } message: {
                 Text(localizedCoreString(bridgeRecoveryLines().resetWarning))
@@ -60,7 +56,7 @@ struct DeviceResetView: View {
             shortcut: .cancelAction,
             perform: onCancel
         )
-        let offer = ErrorAction("Reset this device…") { confirming = true }
+        let offer = ErrorAction("Reset from cloud…") { confirming = true }
         if let error, error.step == .deviceReset {
             Notice(
                 title: error.step.title,
@@ -94,7 +90,7 @@ struct DeviceResetView: View {
     private var unfinished: some View {
         VStack(spacing: ThemeSpace.edge) {
             Spacer()
-            Text("Finish resetting this device?")
+            Text("Finish reset from cloud?")
                 .themeText(.title)
             Text(
                 BridgeErrorCategory.replacementUnfinished(by: .reset)
@@ -116,7 +112,7 @@ struct DeviceResetView: View {
                 Button("Cancel", action: onCancel)
                     .buttonStyle(.bordered)
                     .keyboardShortcut(.cancelAction)
-                Button("Finish resetting", role: .destructive, action: onReset)
+                Button("Finish reset from cloud", role: .destructive, action: onReset)
                     .buttonStyle(.bordered)
             }
             Spacer()

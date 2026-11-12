@@ -287,12 +287,12 @@
     <string name="appearance_sand">Pískový</string>
     <string name="details">Podrobnosti</string>
     <string name="copy_details">Kopírovat podrobnosti</string>
-    <string name="reset_device">Resetovat toto zařízení…</string>
-    <string name="reset_device_confirm_title">Resetovat toto zařízení?</string>
+    <string name="reset_device">Resetovat z cloudu…</string>
+    <string name="reset_device_confirm_title">Resetovat z cloudu?</string>
     <string name="reset_device_confirm">Resetovat</string>
     <string name="restore_device_title">Obnovit tuto knihovnu</string>
     <string name="finish_restore_title">Dokončit obnovení této knihovny</string>
-    <string name="finish_reset">Dokončit resetování</string>
+    <string name="finish_reset">Dokončit reset z cloudu</string>
     <string name="finish_removal">Dokončit odebrání této knihovny</string>
     <string name="save">Uložit</string>
     <string name="onboarding_scan_code">Naskenovat kód</string>
@@ -323,7 +323,7 @@
     <string name="loading_opening_library">Otevírá se knihovna…</string>
     <string name="loading_closing_library">Zavírá se knihovna…</string>
     <string name="loading_removing_library">Opouští se knihovna…</string>
-    <string name="loading_resetting_device">Resetuje se toto zařízení…</string>
+    <string name="loading_resetting_device">Probíhá reset z cloudu…</string>
     <string name="progress_loading">Načítání</string>
     <string name="pending_update_no_store">Na tomto zařízení není žádný obchod s aplikacemi, který by mohl bae aktualizovat.</string>
     <string name="restore_code_title">Kód pro obnovení</string>

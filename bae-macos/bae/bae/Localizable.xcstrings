@@ -5669,170 +5669,170 @@
         }
       }
     },
-    "Resetting this device…" : {
+    "Resetting from cloud…" : {
       "comment" : "Loading screen while this Mac's copy of a library is reset, before the reset reports where it stands.",
       "extractionState" : "manual",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "جارٍ إعادة تعيين هذا الجهاز…"
+            "value" : "جارٍ إعادة التعيين من السحابة…"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Това устройство се нулира…"
+            "value" : "Нулиране от облака…"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Resetuje se toto zařízení…"
+            "value" : "Probíhá reset z cloudu…"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nulstiller denne enhed…"
+            "value" : "Nulstiller fra skyen…"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dieses Gerät wird zurückgesetzt…"
+            "value" : "Wird aus der Cloud zurückgesetzt…"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Επαναφορά αυτής της συσκευής…"
+            "value" : "Γίνεται επαναφορά από το cloud…"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Restableciendo este dispositivo…"
+            "value" : "Restableciendo desde la nube…"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nollataan tätä laitetta…"
+            "value" : "Nollataan pilvestä…"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Réinitialisation de cet appareil…"
+            "value" : "Réinitialisation depuis le cloud…"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "מאפס את המכשיר הזה…"
+            "value" : "מאפס מהענן…"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ponovno postavljanje ovog uređaja…"
+            "value" : "Ponovno postavljanje iz oblaka…"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Az eszköz visszaállítása…"
+            "value" : "Alaphelyzetbe állítás a felhőből…"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ripristino di questo dispositivo…"
+            "value" : "Reimpostazione dal cloud…"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "このデバイスをリセットしています…"
+            "value" : "クラウドからリセットしています…"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "이 기기를 재설정하는 중…"
+            "value" : "클라우드에서 초기화하는 중…"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tilbakestiller denne enheten…"
+            "value" : "Tilbakestiller fra skyen…"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dit apparaat wordt opnieuw ingesteld…"
+            "value" : "Bezig met herstellen vanuit de cloud…"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Resetowanie tego urządzenia…"
+            "value" : "Resetowanie z chmury…"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Redefinindo este dispositivo…"
+            "value" : "Redefinindo da nuvem…"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A repor este dispositivo…"
+            "value" : "A repor a partir da nuvem…"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Se resetează acest dispozitiv…"
+            "value" : "Se resetează din cloud…"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Resetuje sa toto zariadenie…"
+            "value" : "Obnovuje sa z cloudu…"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Återställer den här enheten…"
+            "value" : "Återställer från molnet…"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bu cihaz sıfırlanıyor…"
+            "value" : "Buluttan sıfırlanıyor…"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Скидання цього пристрою…"
+            "value" : "Скидання з хмари…"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "正在重置此设备…"
+            "value" : "正在从云端重置…"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "正在重設此裝置…"
+            "value" : "正在從雲端重設…"
           }
         }
       }
@@ -96289,335 +96289,502 @@
         }
       }
     },
-    "Reset this device…" : {
-      "comment" : "Button: opens the alert that confirms resetting this device for a library.",
+    "Reset from cloud…" : {
+      "comment" : "Button: opens the alert that confirms Reset from cloud for a library.",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "إعادة تعيين هذا الجهاز…"
+            "value" : "إعادة التعيين من السحابة…"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Нулиране на това устройство…"
+            "value" : "Нулиране от облака…"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Resetovat toto zařízení…"
+            "value" : "Resetovat z cloudu…"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nulstil denne enhed…"
+            "value" : "Nulstil fra skyen…"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dieses Gerät zurücksetzen…"
+            "value" : "Aus der Cloud zurücksetzen…"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Επαναφορά αυτής της συσκευής…"
+            "value" : "Επαναφορά από το cloud…"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Restablecer este dispositivo…"
+            "value" : "Restablecer desde la nube…"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nollaa tämä laite…"
+            "value" : "Nollaa pilvestä…"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Réinitialiser cet appareil…"
+            "value" : "Réinitialiser depuis le cloud…"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "איפוס המכשיר הזה…"
+            "value" : "איפוס מהענן…"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ponovno postavi ovaj uređaj…"
+            "value" : "Ponovno postavi iz oblaka…"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Az eszköz alaphelyzetbe állítása…"
+            "value" : "Alaphelyzetbe állítás a felhőből…"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Reimposta questo dispositivo…"
+            "value" : "Reimposta dal cloud…"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "このデバイスをリセット…"
+            "value" : "クラウドからリセット…"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "이 기기 초기화…"
+            "value" : "클라우드에서 초기화…"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tilbakestill denne enheten…"
+            "value" : "Tilbakestill fra skyen…"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dit apparaat herstellen…"
+            "value" : "Herstellen vanuit de cloud…"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zresetuj to urządzenie…"
+            "value" : "Zresetuj z chmury…"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Redefinir este dispositivo…"
+            "value" : "Redefinir da nuvem…"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Repor este dispositivo…"
+            "value" : "Repor a partir da nuvem…"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Resetează acest dispozitiv…"
+            "value" : "Resetează din cloud…"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Obnoviť toto zariadenie…"
+            "value" : "Obnoviť z cloudu…"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Återställ den här enheten…"
+            "value" : "Återställ från molnet…"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bu cihazı sıfırla…"
+            "value" : "Buluttan sıfırla…"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Скинути цей пристрій…"
+            "value" : "Скинути з хмари…"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "重置此设备…"
+            "value" : "从云端重置…"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "重設此裝置…"
+            "value" : "從雲端重設…"
           }
         }
       }
     },
-    "Reset this device?" : {
+    "Reset from cloud?" : {
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "هل تريد إعادة تعيين هذا الجهاز؟"
+            "value" : "هل تريد إعادة التعيين من السحابة؟"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Нулиране на това устройство?"
+            "value" : "Нулиране от облака?"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Resetovat toto zařízení?"
+            "value" : "Resetovat z cloudu?"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nulstil denne enhed?"
+            "value" : "Nulstil fra skyen?"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dieses Gerät zurücksetzen?"
+            "value" : "Aus der Cloud zurücksetzen?"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Επαναφορά αυτής της συσκευής;"
+            "value" : "Επαναφορά από το cloud;"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "¿Restablecer este dispositivo?"
+            "value" : "¿Restablecer desde la nube?"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nollataanko tämä laite?"
+            "value" : "Nollataanko pilvestä?"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Réinitialiser cet appareil ?"
+            "value" : "Réinitialiser depuis le cloud ?"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "לאפס את המכשיר הזה?"
+            "value" : "לאפס מהענן?"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ponovno postaviti ovaj uređaj?"
+            "value" : "Ponovno postaviti iz oblaka?"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Visszaállítod ezt az eszközt?"
+            "value" : "Alaphelyzetbe állítod a felhőből?"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Reimpostare questo dispositivo?"
+            "value" : "Reimpostare dal cloud?"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "このデバイスをリセットしますか？"
+            "value" : "クラウドからリセットしますか？"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "이 기기를 초기화할까요?"
+            "value" : "클라우드에서 초기화할까요?"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tilbakestille denne enheten?"
+            "value" : "Tilbakestille fra skyen?"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dit apparaat herstellen?"
+            "value" : "Herstellen vanuit de cloud?"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zresetować to urządzenie?"
+            "value" : "Zresetować z chmury?"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Redefinir este dispositivo?"
+            "value" : "Redefinir da nuvem?"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Repor este dispositivo?"
+            "value" : "Repor a partir da nuvem?"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Resetezi acest dispozitiv?"
+            "value" : "Resetezi din cloud?"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Obnoviť toto zariadenie?"
+            "value" : "Obnoviť z cloudu?"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Återställa den här enheten?"
+            "value" : "Återställa från molnet?"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bu cihaz sıfırlansın mı?"
+            "value" : "Buluttan sıfırlansın mı?"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Скинути цей пристрій?"
+            "value" : "Скинути з хмари?"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "重置此设备？"
+            "value" : "从云端重置？"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "重設此裝置？"
+            "value" : "從雲端重設？"
+          }
+        }
+      }
+    },
+    "Reset" : {
+      "comment" : "Destructive button in the alert that confirms Reset from cloud.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "إعادة تعيين"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нулиране"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resetovat"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nulstil"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zurücksetzen"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Επαναφορά"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restablecer"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nollaa"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réinitialiser"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "איפוס"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ponovno postavi"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alaphelyzetbe állítás"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reimposta"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "リセット"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "초기화"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tilbakestill"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Herstellen"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zresetuj"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Redefinir"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Repor"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resetează"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Obnoviť"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Återställ"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sıfırla"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скинути"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重置"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重設"
           }
         }
       }
@@ -101159,170 +101326,170 @@
         }
       }
     },
-    "Finish resetting" : {
+    "Finish reset from cloud" : {
       "comment" : "Button: finishes resetting this device for a library, after a reset stopped partway.",
       "extractionState" : "manual",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "إنهاء إعادة التعيين"
+            "value" : "إنهاء إعادة التعيين من السحابة"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Завършване на нулирането"
+            "value" : "Завършване на нулирането от облака"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dokončit resetování"
+            "value" : "Dokončit reset z cloudu"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fuldfør nulstilling"
+            "value" : "Fuldfør nulstilling fra skyen"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zurücksetzen abschließen"
+            "value" : "Zurücksetzen aus der Cloud abschließen"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ολοκλήρωση επαναφοράς συσκευής"
+            "value" : "Ολοκλήρωση επαναφοράς από το cloud"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Terminar restablecimiento"
+            "value" : "Terminar de restablecer desde la nube"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Viimeistele nollaus"
+            "value" : "Viimeistele nollaus pilvestä"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Terminer la réinitialisation"
+            "value" : "Terminer la réinitialisation depuis le cloud"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "סיום האיפוס"
+            "value" : "סיום האיפוס מהענן"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dovrši ponovno postavljanje"
+            "value" : "Dovrši ponovno postavljanje iz oblaka"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Alaphelyzetbe állítás befejezése"
+            "value" : "Alaphelyzetbe állítás befejezése a felhőből"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Completa reimpostazione"
+            "value" : "Completa la reimpostazione dal cloud"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "リセットを完了"
+            "value" : "クラウドからのリセットを完了"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "초기화 완료하기"
+            "value" : "클라우드에서 초기화 완료하기"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fullfør tilbakestillingen"
+            "value" : "Fullfør tilbakestillingen fra skyen"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Apparaatherstel voltooien"
+            "value" : "Herstellen vanuit de cloud voltooien"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dokończ resetowanie"
+            "value" : "Dokończ resetowanie z chmury"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Concluir redefinição"
+            "value" : "Concluir a redefinição da nuvem"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Concluir reposição"
+            "value" : "Concluir a reposição a partir da nuvem"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Finalizează resetarea"
+            "value" : "Finalizează resetarea din cloud"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dokončiť obnovenie zariadenia"
+            "value" : "Dokončiť obnovenie z cloudu"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Slutför återställningen av enheten"
+            "value" : "Slutför återställningen från molnet"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sıfırlamayı tamamla"
+            "value" : "Buluttan sıfırlamayı tamamla"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Завершити скидання"
+            "value" : "Завершити скидання з хмари"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "完成重置"
+            "value" : "完成从云端重置"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "完成重設"
+            "value" : "完成從雲端重設"
           }
         }
       }
@@ -101495,170 +101662,170 @@
         }
       }
     },
-    "Finish resetting this device?" : {
-      "comment" : "Title of the screen that finishes resetting this device for a library, after a reset stopped partway.",
+    "Finish reset from cloud?" : {
+      "comment" : "Title of the screen that finishes Reset from cloud for a library, after a reset stopped partway.",
       "extractionState" : "manual",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "هل تريد إنهاء إعادة تعيين هذا الجهاز؟"
+            "value" : "هل تريد إنهاء إعادة التعيين من السحابة؟"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Да се завърши ли нулирането на това устройство?"
+            "value" : "Да се завърши ли нулирането от облака?"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dokončit resetování tohoto zařízení?"
+            "value" : "Dokončit reset z cloudu?"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fuldfør nulstillingen af denne enhed?"
+            "value" : "Fuldfør nulstilling fra skyen?"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zurücksetzen dieses Geräts abschließen?"
+            "value" : "Zurücksetzen aus der Cloud abschließen?"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ολοκλήρωση επαναφοράς αυτής της συσκευής;"
+            "value" : "Ολοκλήρωση επαναφοράς από το cloud;"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "¿Terminar de restablecer este dispositivo?"
+            "value" : "¿Terminar de restablecer desde la nube?"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Viimeistelläänkö tämän laitteen nollaus?"
+            "value" : "Viimeistelläänkö nollaus pilvestä?"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Terminer la réinitialisation de cet appareil ?"
+            "value" : "Terminer la réinitialisation depuis le cloud ?"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "לסיים את איפוס המכשיר הזה?"
+            "value" : "לסיים את האיפוס מהענן?"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dovršiti ponovno postavljanje ovog uređaja?"
+            "value" : "Dovršiti ponovno postavljanje iz oblaka?"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Befejezed az eszköz alaphelyzetbe állítását?"
+            "value" : "Befejezed az alaphelyzetbe állítást a felhőből?"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Completare la reimpostazione di questo dispositivo?"
+            "value" : "Completare la reimpostazione dal cloud?"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "このデバイスのリセットを完了しますか？"
+            "value" : "クラウドからのリセットを完了しますか？"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "이 기기 초기화를 완료할까요?"
+            "value" : "클라우드에서 초기화를 완료할까요?"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fullføre tilbakestillingen av denne enheten?"
+            "value" : "Fullføre tilbakestillingen fra skyen?"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Herstellen van dit apparaat voltooien?"
+            "value" : "Herstellen vanuit de cloud voltooien?"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dokończyć resetowanie tego urządzenia?"
+            "value" : "Dokończyć resetowanie z chmury?"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Concluir a redefinição deste dispositivo?"
+            "value" : "Concluir a redefinição da nuvem?"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Concluir a reposição deste dispositivo?"
+            "value" : "Concluir a reposição a partir da nuvem?"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Finalizezi resetarea acestui dispozitiv?"
+            "value" : "Finalizezi resetarea din cloud?"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dokončiť obnovenie tohto zariadenia?"
+            "value" : "Dokončiť obnovenie z cloudu?"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Slutföra återställningen av den här enheten?"
+            "value" : "Slutföra återställningen från molnet?"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bu cihazın sıfırlanması tamamlansın mı?"
+            "value" : "Buluttan sıfırlama tamamlansın mı?"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Завершити скидання цього пристрою?"
+            "value" : "Завершити скидання з хмари?"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "要完成重置此设备吗？"
+            "value" : "要完成从云端重置吗？"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "要完成重設此裝置嗎？"
+            "value" : "要完成從雲端重設嗎？"
           }
         }
       }
@@ -157565,175 +157732,175 @@
         }
       }
     },
-    "The library as it was on this Mac before you reset this device. Nothing uses it." : {
+    "The library as it was on this Mac before you reset from cloud. Nothing uses it." : {
       "comment" : "Note under the data-from-before-the-reset row.",
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The library as it was on this Mac before you reset this device. Nothing uses it."
-          }
-        },
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "المكتبة كما كانت على هذا الـ Mac قبل أن تعيد تعيين هذا الجهاز. لا شيء يستخدمها."
+            "value" : "المكتبة كما كانت على هذا الـ Mac قبل أن تعيد التعيين من السحابة. لا شيء يستخدمها."
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Библиотеката такава, каквато беше на този Mac, преди да нулирате това устройство. Нищо не я използва."
+            "value" : "Библиотеката такава, каквато беше на този Mac, преди да нулирате от облака. Нищо не я използва."
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Knihovna tak, jak byla na tomto Macu předtím, než jste toto zařízení resetovali. Nic ji nepoužívá."
+            "value" : "Knihovna tak, jak byla na tomto Macu předtím, než jste provedli reset z cloudu. Nic ji nepoužívá."
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Biblioteket, som det var på denne Mac, før du nulstillede denne enhed. Intet bruger det."
+            "value" : "Biblioteket, som det var på denne Mac, før du nulstillede fra skyen. Intet bruger det."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Die Bibliothek, wie sie auf diesem Mac war, bevor du dieses Gerät zurückgesetzt hast. Nichts verwendet sie."
+            "value" : "Die Bibliothek, wie sie auf diesem Mac war, bevor du aus der Cloud zurückgesetzt hast. Nichts verwendet sie."
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Η βιβλιοθήκη όπως ήταν σε αυτό το Mac πριν επαναφέρετε αυτή τη συσκευή. Τίποτα δεν τη χρησιμοποιεί."
+            "value" : "Η βιβλιοθήκη όπως ήταν σε αυτό το Mac πριν κάνετε επαναφορά από το cloud. Τίποτα δεν τη χρησιμοποιεί."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The library as it was on this Mac before you reset from cloud. Nothing uses it."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La biblioteca tal como estaba en este Mac antes de que restablecieras este dispositivo. Nada la usa."
+            "value" : "La biblioteca tal como estaba en este Mac antes de que restablecieras desde la nube. Nada la usa."
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kirjasto sellaisena kuin se oli tällä Macilla ennen kuin nollasit tämän laitteen. Mikään ei käytä sitä."
+            "value" : "Kirjasto sellaisena kuin se oli tällä Macilla ennen kuin nollasit pilvestä. Mikään ei käytä sitä."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La bibliothèque telle qu’elle était sur ce Mac avant que vous ne réinitialisiez cet appareil. Rien ne l’utilise."
+            "value" : "La bibliothèque telle qu’elle était sur ce Mac avant que vous ne réinitialisiez depuis le cloud. Rien ne l’utilise."
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "הספרייה כפי שהייתה ב‑Mac הזה לפני שאיפסת את המכשיר הזה. שום דבר לא משתמש בה."
+            "value" : "הספרייה כפי שהייתה ב‑Mac הזה לפני שאיפסת מהענן. שום דבר לא משתמש בה."
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fonoteka kakva je bila na ovom Macu prije nego što ste ponovno postavili ovaj uređaj. Ništa je ne koristi."
+            "value" : "Fonoteka kakva je bila na ovom Macu prije nego što ste ponovno postavili iz oblaka. Ništa je ne koristi."
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A könyvtár olyan, amilyen ezen a Macen volt, mielőtt alaphelyzetbe állítottad ezt az eszközt. Semmi nem használja."
+            "value" : "A könyvtár olyan, amilyen ezen a Macen volt, mielőtt alaphelyzetbe állítottad a felhőből. Semmi nem használja."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La libreria com’era su questo Mac prima che reimpostassi questo dispositivo. Nulla la usa."
+            "value" : "La libreria com’era su questo Mac prima che reimpostassi dal cloud. Nulla la usa."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "このデバイスをリセットする前にこの Mac にあったライブラリです。どこからも使われていません。"
+            "value" : "クラウドからリセットする前にこの Mac にあったライブラリです。どこからも使われていません。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "이 기기를 초기화하기 전에 이 Mac에 있던 라이브러리입니다. 아무것도 사용하지 않습니다."
+            "value" : "클라우드에서 초기화하기 전에 이 Mac에 있던 라이브러리입니다. 아무것도 사용하지 않습니다."
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Biblioteket slik det var på denne Macen før du tilbakestilte denne enheten. Ingenting bruker det."
+            "value" : "Biblioteket slik det var på denne Macen før du tilbakestilte fra skyen. Ingenting bruker det."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "De bibliotheek zoals die op deze Mac was voordat je dit apparaat herstelde. Niets gebruikt deze."
+            "value" : "De bibliotheek zoals die op deze Mac was voordat je vanuit de cloud herstelde. Niets gebruikt deze."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Biblioteka taka, jaka była na tym Macu, zanim zresetowano to urządzenie. Nic z niej nie korzysta."
+            "value" : "Biblioteka taka, jaka była na tym Macu, zanim zresetowano z chmury. Nic z niej nie korzysta."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A biblioteca como estava neste Mac antes de você redefinir este dispositivo. Nada a usa."
+            "value" : "A biblioteca como estava neste Mac antes de você redefinir da nuvem. Nada a usa."
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A biblioteca como estava neste Mac antes de repor este dispositivo. Nada a utiliza."
+            "value" : "A biblioteca como estava neste Mac antes de repor a partir da nuvem. Nada a utiliza."
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Biblioteca așa cum era pe acest Mac înainte să resetezi acest dispozitiv. Nimic nu o folosește."
+            "value" : "Biblioteca așa cum era pe acest Mac înainte să resetezi din cloud. Nimic nu o folosește."
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Knižnica tak, ako bola na tomto Macu predtým, než ste toto zariadenie obnovili. Nič ju nepoužíva."
+            "value" : "Knižnica tak, ako bola na tomto Macu predtým, než ste obnovili z cloudu. Nič ju nepoužíva."
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Biblioteket som det var på den här Macen innan du återställde den här enheten. Ingenting använder det."
+            "value" : "Biblioteket som det var på den här Macen innan du återställde från molnet. Ingenting använder det."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bu cihazı sıfırlamadan önce bu Mac’te bulunan kitaplık. Hiçbir şey onu kullanmıyor."
+            "value" : "Buluttan sıfırlamadan önce bu Mac’te bulunan kitaplık. Hiçbir şey onu kullanmıyor."
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Бібліотека такою, якою вона була на цьому Mac, поки ви не скинули цей пристрій. Ніщо її не використовує."
+            "value" : "Бібліотека такою, якою вона була на цьому Mac, поки ви не скинули з хмари. Ніщо її не використовує."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "重置此设备之前这台 Mac 上的库。没有任何内容在使用它。"
+            "value" : "从云端重置之前这台 Mac 上的库。没有任何内容在使用它。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "重設此裝置之前這部 Mac 上的資料庫。沒有任何東西在使用它。"
+            "value" : "從雲端重設之前這部 Mac 上的資料庫。沒有任何東西在使用它。"
           }
         }
       }

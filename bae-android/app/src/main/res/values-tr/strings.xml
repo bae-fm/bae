@@ -273,12 +273,12 @@
     <string name="appearance_sand">Kum</string>
     <string name="details">Ayrıntılar</string>
     <string name="copy_details">Ayrıntıları kopyala</string>
-    <string name="reset_device">Bu cihazı sıfırla…</string>
-    <string name="reset_device_confirm_title">Bu cihaz sıfırlansın mı?</string>
+    <string name="reset_device">Buluttan sıfırla…</string>
+    <string name="reset_device_confirm_title">Buluttan sıfırlansın mı?</string>
     <string name="reset_device_confirm">Sıfırla</string>
     <string name="restore_device_title">Bu kitaplığı geri yükle</string>
     <string name="finish_restore_title">Bu kitaplığın geri yüklenmesini tamamla</string>
-    <string name="finish_reset">Sıfırlamayı tamamla</string>
+    <string name="finish_reset">Buluttan sıfırlamayı tamamla</string>
     <string name="finish_removal">Bu kitaplığın kaldırılmasını tamamla</string>
     <string name="save">Kaydet</string>
     <string name="onboarding_scan_code">Kod tara</string>
@@ -309,7 +309,7 @@
     <string name="loading_opening_library">Kitaplık açılıyor…</string>
     <string name="loading_closing_library">Kitaplık kapatılıyor…</string>
     <string name="loading_removing_library">Kitaplıktan ayrılınıyor…</string>
-    <string name="loading_resetting_device">Bu cihaz sıfırlanıyor…</string>
+    <string name="loading_resetting_device">Buluttan sıfırlanıyor…</string>
     <string name="progress_loading">Yükleniyor</string>
     <string name="pending_update_no_store">Bu cihazdaki hiçbir uygulama mağazası bae’yi güncelleyemiyor.</string>
     <string name="restore_code_title">Geri yükleme kodu</string>

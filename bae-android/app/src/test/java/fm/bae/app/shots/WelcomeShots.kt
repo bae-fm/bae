@@ -140,7 +140,7 @@ class WelcomeShots : BoardShot() {
             ScreenScene { InProgressScreen(AppScreen.Loading(AppScreen.LoadingWork.FINDING_LIBRARIES)) }
         }
 
-    /** Opening found this device's copy unusable: why, centred, with Reset this device…. */
+    /** Opening found this device's copy unusable: why, centred, with Reset from cloud…. */
     @Test
     fun androidWelcomeResetOffered() =
         shot("android.welcome.reset.offered") {
@@ -208,7 +208,7 @@ class WelcomeShots : BoardShot() {
             ScreenScene { InProgressScreen(AppScreen.Resetting(BridgeBootstrapStatus.Loading, loadingSteps())) }
         }
 
-    /** A reset that stopped partway: the reset's line, centred, with Finish resetting. */
+    /** A reset that stopped partway: the reset's line, centred, with Finish reset from cloud. */
     @Test
     fun androidWelcomeResetUnfinished() =
         shot("android.welcome.reset.unfinished") {

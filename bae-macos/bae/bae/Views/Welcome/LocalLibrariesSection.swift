@@ -198,7 +198,7 @@ private struct LibraryRow: View {
     private func finishTitle(_ by: BridgeReplacedBy) -> LocalizedStringKey {
         switch by {
         case .restore: "Finish restoring"
-        case .reset: "Finish resetting"
+        case .reset: "Finish reset from cloud"
         }
     }
 }

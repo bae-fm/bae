@@ -279,12 +279,12 @@
     <string name="appearance_sand">Arena</string>
     <string name="details">Detalles</string>
     <string name="copy_details">Copiar detalles</string>
-    <string name="reset_device">Restablecer este dispositivo…</string>
-    <string name="reset_device_confirm_title">¿Restablecer este dispositivo?</string>
+    <string name="reset_device">Restablecer desde la nube…</string>
+    <string name="reset_device_confirm_title">¿Restablecer desde la nube?</string>
     <string name="reset_device_confirm">Restablecer</string>
     <string name="restore_device_title">Restaurar esta biblioteca</string>
     <string name="finish_restore_title">Terminar de restaurar esta biblioteca</string>
-    <string name="finish_reset">Terminar de restablecer</string>
+    <string name="finish_reset">Terminar de restablecer desde la nube</string>
     <string name="finish_removal">Terminar de quitar esta biblioteca</string>
     <string name="save">Guardar</string>
     <string name="onboarding_scan_code">Escanear un código</string>
@@ -315,7 +315,7 @@
     <string name="loading_opening_library">Abriendo la biblioteca…</string>
     <string name="loading_closing_library">Cerrando la biblioteca…</string>
     <string name="loading_removing_library">Saliendo de la biblioteca…</string>
-    <string name="loading_resetting_device">Restableciendo este dispositivo…</string>
+    <string name="loading_resetting_device">Restableciendo desde la nube…</string>
     <string name="progress_loading">Cargando</string>
     <string name="pending_update_no_store">Ninguna tienda de apps de este dispositivo puede actualizar bae.</string>
     <string name="restore_code_title">Código de restauración</string>

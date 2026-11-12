@@ -3507,7 +3507,7 @@ words of a button, which are each platform's.
   signs in from System Settings; an S3 library has no sign-in, so it reads
   *Access key not accepted* and asks for a new key for the same bucket. A
   sign-in that expired reads the same as none saved.
-- **Red.** Device needs reset, with the reset. No access to the cloud, Cloud
+- **Red.** Device needs reset, with *Reset from cloud…*. No access to the cloud, Cloud
   folder missing and Clock is wrong, each with its cause. Removed from the
   library, with *An admin removed this device. What's here is an old copy.*
   and the list of libraries on this device, where it is removed. Cloud full, with *Free up space in the
@@ -3774,12 +3774,13 @@ sync can find that this installation is another copy of the device, such as
 Carol's phone restored from a backup
 ([coven §19.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#193-another-copy-of-the-same-device)),
 which coven reports as the last pass's failure. There, and only there, bae
-offers to reset the device: load the library from storage again under a fresh
+offers Reset from cloud: load the library from storage again under a fresh
 device id. Before it does, a warning says that edits on this device
 that haven't synced will be discarded. The person was told before choosing, so
 nothing is shown after; bae doesn't present coven's reset notice. The screen
 says why in the middle of the window and offers *Reset from cloud…*, whose
-alert (a dialog on Android) gives the warning, with *Cancel*. Leaving the
+alert (a dialog on Android), titled "Reset from cloud?", gives the warning,
+with *Reset* and *Cancel*. Leaving the
 screen without resetting, by *Cancel* on a Mac or Back on Android, returns to
 the open library, to the Mac's library list, or on a phone with no library
 open, to onboarding. A reset that fails returns to that screen saying
@@ -3795,7 +3796,7 @@ library waits for it to finish
 bae still lists the library, under the name the new copy loaded, with the
 call that began it, and opening it fails with that call's own line:
 "Restoring this library on this device did not finish." or "Reset from cloud
-did not finish." Coven keeps what finishing needs on
+didn’t finish." Coven keeps what finishing needs on
 the device: a reset's device name, and a restore's code, its S3 key inside
 the code, and its provider sign-in. So `resume_replacement` finishes either
 without the code or a sign-in, and so does running the call that began it
@@ -3805,12 +3806,12 @@ delete the copy a reset keeps.
 
 The apps show such a library with that line, in red, where they list
 libraries that can't open: the Mac's library list, and the library switcher
-on phones. Its row offers *Finish restoring* or *Finish resetting*, and that,
+on phones. Its row offers *Finish restoring* or *Finish reset from cloud*, and that,
 or opening the library, such as at launch, finishes it at once: finishing
 needs nothing from the person, and the library can't open until it is done,
 as a join under way goes on at launch (§5.6). A reset finishes on the screen
 a reset shows, with no warning, which the person accepted when it began; if
-it fails, the screen says why and *Finish resetting* tries again. A restore
+it fails, the screen says why and *Finish reset from cloud* tries again. A restore
 finishes on the screen that asks for the person's current restore code,
 which shows how far it has come and offers *Cancel*. If it fails, the screen
 says why and the code finishes it too, signing in to the provider again, as a
@@ -4566,9 +4567,9 @@ row of a library that isn't open while removing it counts what it would
 lose. Between steps, and through an open that runs none, the screen names
 what it waits on in the app's own words under its spinner, never a bare
 spinner: finding this device's libraries at launch, opening the library, and
-on the Mac setting one up, closing it, removing it, or resetting this device;
-a reset before it first reports where it stands says it is resetting this
-device.
+on the Mac setting one up, closing it, removing it, or resetting from cloud;
+a reset before it first reports where it stands says "Resetting from
+cloud…".
 
 **How far a setup call has come.** Each call that sets a library up before
 one is open reports through a stream of its own, of the same kind as an

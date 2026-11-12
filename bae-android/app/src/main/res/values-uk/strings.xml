@@ -287,12 +287,12 @@
     <string name="appearance_sand">Пісочний</string>
     <string name="details">Подробиці</string>
     <string name="copy_details">Копіювати подробиці</string>
-    <string name="reset_device">Скинути цей пристрій…</string>
-    <string name="reset_device_confirm_title">Скинути цей пристрій?</string>
+    <string name="reset_device">Скинути з хмари…</string>
+    <string name="reset_device_confirm_title">Скинути з хмари?</string>
     <string name="reset_device_confirm">Скинути</string>
     <string name="restore_device_title">Відновити цю бібліотеку</string>
     <string name="finish_restore_title">Завершити відновлення цієї бібліотеки</string>
-    <string name="finish_reset">Завершити скидання</string>
+    <string name="finish_reset">Завершити скидання з хмари</string>
     <string name="finish_removal">Завершити вилучення цієї бібліотеки</string>
     <string name="save">Зберегти</string>
     <string name="onboarding_scan_code">Сканувати код</string>
@@ -323,7 +323,7 @@
     <string name="loading_opening_library">Відкриття бібліотеки…</string>
     <string name="loading_closing_library">Закриття бібліотеки…</string>
     <string name="loading_removing_library">Вихід із бібліотеки…</string>
-    <string name="loading_resetting_device">Скидання цього пристрою…</string>
+    <string name="loading_resetting_device">Скидання з хмари…</string>
     <string name="progress_loading">Завантаження</string>
     <string name="pending_update_no_store">Жодна крамниця застосунків на цьому пристрої не може оновити bae.</string>
     <string name="restore_code_title">Код відновлення</string>

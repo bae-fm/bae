@@ -271,12 +271,12 @@
     <string name="appearance_sand">Sand</string>
     <string name="details">Detaljer</string>
     <string name="copy_details">Kopiera detaljer</string>
-    <string name="reset_device">Återställ den här enheten…</string>
-    <string name="reset_device_confirm_title">Återställa den här enheten?</string>
+    <string name="reset_device">Återställ från molnet…</string>
+    <string name="reset_device_confirm_title">Återställa från molnet?</string>
     <string name="reset_device_confirm">Återställ</string>
     <string name="restore_device_title">Återställ det här biblioteket</string>
     <string name="finish_restore_title">Slutför återställningen av det här biblioteket</string>
-    <string name="finish_reset">Slutför återställningen</string>
+    <string name="finish_reset">Slutför återställningen från molnet</string>
     <string name="finish_removal">Slutför borttagningen av biblioteket</string>
     <string name="save">Spara</string>
     <string name="onboarding_scan_code">Skanna en kod</string>
@@ -307,7 +307,7 @@
     <string name="loading_opening_library">Öppnar biblioteket…</string>
     <string name="loading_closing_library">Stänger biblioteket…</string>
     <string name="loading_removing_library">Lämnar biblioteket…</string>
-    <string name="loading_resetting_device">Återställer den här enheten…</string>
+    <string name="loading_resetting_device">Återställer från molnet…</string>
     <string name="progress_loading">Läser in</string>
     <string name="pending_update_no_store">Ingen appbutik på den här enheten kan uppdatera bae.</string>
     <string name="restore_code_title">Återställningskod</string>

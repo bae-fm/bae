@@ -272,12 +272,12 @@
     <string name="appearance_sand">Areia</string>
     <string name="details">Detalhes</string>
     <string name="copy_details">Copiar detalhes</string>
-    <string name="reset_device">Repor este dispositivo…</string>
-    <string name="reset_device_confirm_title">Repor este dispositivo?</string>
+    <string name="reset_device">Repor a partir da nuvem…</string>
+    <string name="reset_device_confirm_title">Repor a partir da nuvem?</string>
     <string name="reset_device_confirm">Repor</string>
     <string name="restore_device_title">Restaurar esta biblioteca</string>
     <string name="finish_restore_title">Concluir o restauro desta biblioteca</string>
-    <string name="finish_reset">Concluir a reposição</string>
+    <string name="finish_reset">Concluir a reposição a partir da nuvem</string>
     <string name="finish_removal">Concluir a remoção desta biblioteca</string>
     <string name="save">Guardar</string>
     <string name="onboarding_scan_code">Ler um código</string>
@@ -308,7 +308,7 @@
     <string name="loading_opening_library">A abrir a biblioteca…</string>
     <string name="loading_closing_library">A fechar a biblioteca…</string>
     <string name="loading_removing_library">A sair da biblioteca…</string>
-    <string name="loading_resetting_device">A repor este dispositivo…</string>
+    <string name="loading_resetting_device">A repor a partir da nuvem…</string>
     <string name="progress_loading">A carregar</string>
     <string name="pending_update_no_store">Nenhuma loja de aplicações neste dispositivo pode atualizar o bae.</string>
     <string name="restore_code_title">Código de restauração</string>

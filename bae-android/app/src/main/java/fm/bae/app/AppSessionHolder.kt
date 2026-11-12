@@ -570,7 +570,7 @@ object AppSessionHolder {
     ) = resetDevice(context, libraryId, reset, onScreen) { AppScreen.ResetOffered(libraryId, it) }
 
     /**
-     * Reset this device after the person accepted [reset]'s warning: the
+     * Reset from cloud after the person accepted [reset]'s warning: the
      * open session of that library closes first, then coven loads the
      * library from storage again under a new device id. A failed reset shows
      * [failed] with why, the screen it was started from; a cancelled one

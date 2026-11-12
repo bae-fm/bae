@@ -271,12 +271,12 @@
     <string name="appearance_sand">Sand</string>
     <string name="details">Detaljer</string>
     <string name="copy_details">Kopier detaljer</string>
-    <string name="reset_device">Tilbakestill denne enheten…</string>
-    <string name="reset_device_confirm_title">Vil du tilbakestille denne enheten?</string>
+    <string name="reset_device">Tilbakestill fra skyen…</string>
+    <string name="reset_device_confirm_title">Vil du tilbakestille fra skyen?</string>
     <string name="reset_device_confirm">Tilbakestill</string>
     <string name="restore_device_title">Gjenopprett dette biblioteket</string>
     <string name="finish_restore_title">Fullfør gjenopprettingen av dette biblioteket</string>
-    <string name="finish_reset">Fullfør tilbakestillingen</string>
+    <string name="finish_reset">Fullfør tilbakestillingen fra skyen</string>
     <string name="finish_removal">Fullfør fjerningen av dette biblioteket</string>
     <string name="save">Lagre</string>
     <string name="onboarding_scan_code">Skann en kode</string>
@@ -307,7 +307,7 @@
     <string name="loading_opening_library">Åpner biblioteket…</string>
     <string name="loading_closing_library">Lukker biblioteket…</string>
     <string name="loading_removing_library">Forlater biblioteket…</string>
-    <string name="loading_resetting_device">Tilbakestiller denne enheten…</string>
+    <string name="loading_resetting_device">Tilbakestiller fra skyen…</string>
     <string name="progress_loading">Laster</string>
     <string name="pending_update_no_store">Ingen appbutikk på denne enheten kan oppdatere bae.</string>
     <string name="restore_code_title">Gjenopprettingskode</string>

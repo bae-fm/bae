@@ -266,12 +266,12 @@
     <string name="appearance_sand">サンド</string>
     <string name="details">詳細</string>
     <string name="copy_details">詳細をコピー</string>
-    <string name="reset_device">このデバイスをリセット…</string>
-    <string name="reset_device_confirm_title">このデバイスをリセットしますか？</string>
+    <string name="reset_device">クラウドからリセット…</string>
+    <string name="reset_device_confirm_title">クラウドからリセットしますか？</string>
     <string name="reset_device_confirm">リセット</string>
     <string name="restore_device_title">このライブラリを復元</string>
     <string name="finish_restore_title">このライブラリの復元を完了</string>
-    <string name="finish_reset">リセットを完了</string>
+    <string name="finish_reset">クラウドからのリセットを完了</string>
     <string name="finish_removal">このライブラリの削除を完了</string>
     <string name="save">保存</string>
     <string name="onboarding_scan_code">コードをスキャン</string>
@@ -302,7 +302,7 @@
     <string name="loading_opening_library">ライブラリを開いています…</string>
     <string name="loading_closing_library">ライブラリを閉じています…</string>
     <string name="loading_removing_library">ライブラリから退出しています…</string>
-    <string name="loading_resetting_device">このデバイスをリセットしています…</string>
+    <string name="loading_resetting_device">クラウドからリセットしています…</string>
     <string name="progress_loading">読み込み中</string>
     <string name="pending_update_no_store">このデバイスには bae を更新できるアプリストアがありません。</string>
     <string name="restore_code_title">復元コード</string>

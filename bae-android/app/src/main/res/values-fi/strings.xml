@@ -271,12 +271,12 @@
     <string name="appearance_sand">Hiekka</string>
     <string name="details">Tiedot</string>
     <string name="copy_details">Kopioi tiedot</string>
-    <string name="reset_device">Nollaa tämä laite…</string>
-    <string name="reset_device_confirm_title">Nollataanko tämä laite?</string>
+    <string name="reset_device">Nollaa pilvestä…</string>
+    <string name="reset_device_confirm_title">Nollataanko pilvestä?</string>
     <string name="reset_device_confirm">Nollaa</string>
     <string name="restore_device_title">Palauta tämä kirjasto</string>
     <string name="finish_restore_title">Viimeistele tämän kirjaston palautus</string>
-    <string name="finish_reset">Viimeistele nollaus</string>
+    <string name="finish_reset">Viimeistele nollaus pilvestä</string>
     <string name="finish_removal">Viimeistele tämän kirjaston poisto</string>
     <string name="save">Tallenna</string>
     <string name="onboarding_scan_code">Skannaa koodi</string>
@@ -307,7 +307,7 @@
     <string name="loading_opening_library">Avataan kirjastoa…</string>
     <string name="loading_closing_library">Suljetaan kirjastoa…</string>
     <string name="loading_removing_library">Poistutaan kirjastosta…</string>
-    <string name="loading_resetting_device">Nollataan tätä laitetta…</string>
+    <string name="loading_resetting_device">Nollataan pilvestä…</string>
     <string name="progress_loading">Ladataan</string>
     <string name="pending_update_no_store">Mikään tämän laitteen sovelluskauppa ei voi päivittää bae-sovellusta.</string>
     <string name="restore_code_title">Palautuskoodi</string>

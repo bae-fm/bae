@@ -55,8 +55,8 @@ const DIRECT_KEYS: &[&str] = &[
     "core.cast.ended",
     // The recovery screens' reset warning (`bridge_recovery_lines`).
     "core.sync.reset_device.warning",
-    // The device-reset screens' confirm button.
-    "core.sync.reset_device.confirm",
+    // The Settings fix that offers Reset from cloud.
+    "core.sync.reset_from_cloud",
     // The warning before restoring over this device's copy with a code.
     "core.sync.restore_device.warning",
     // Album total playing time: the UI switches on `BridgeDurationUnits` and

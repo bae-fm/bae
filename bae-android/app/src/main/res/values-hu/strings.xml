@@ -271,12 +271,12 @@
     <string name="appearance_sand">Homok</string>
     <string name="details">Részletek</string>
     <string name="copy_details">Részletek másolása</string>
-    <string name="reset_device">Az eszköz alaphelyzetbe állítása…</string>
-    <string name="reset_device_confirm_title">Alaphelyzetbe állítod az eszközt?</string>
+    <string name="reset_device">Alaphelyzetbe állítás a felhőből…</string>
+    <string name="reset_device_confirm_title">Alaphelyzetbe állítod a felhőből?</string>
     <string name="reset_device_confirm">Alaphelyzetbe állítás</string>
     <string name="restore_device_title">Ennek a könyvtárnak a visszaállítása</string>
     <string name="finish_restore_title">A könyvtár visszaállításának befejezése</string>
-    <string name="finish_reset">Alaphelyzetbe állítás befejezése</string>
+    <string name="finish_reset">Alaphelyzetbe állítás befejezése a felhőből</string>
     <string name="finish_removal">A könyvtár eltávolításának befejezése</string>
     <string name="save">Mentés</string>
     <string name="onboarding_scan_code">Kód beolvasása</string>
@@ -307,7 +307,7 @@
     <string name="loading_opening_library">A könyvtár megnyitása…</string>
     <string name="loading_closing_library">A könyvtár bezárása…</string>
     <string name="loading_removing_library">Kilépés a könyvtárból…</string>
-    <string name="loading_resetting_device">Az eszköz visszaállítása…</string>
+    <string name="loading_resetting_device">Alaphelyzetbe állítás a felhőből…</string>
     <string name="progress_loading">Betöltés</string>
     <string name="pending_update_no_store">Ezen az eszközön nincs olyan alkalmazásbolt, amely frissíteni tudná a bae-t.</string>
     <string name="restore_code_title">Helyreállítási kód</string>

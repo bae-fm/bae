@@ -126,7 +126,7 @@ struct StorageSettingsForm: View {
                         row(
                             "Data from before you reset this Mac",
                             note:
-                                "The library as it was on this Mac before you reset this device. Nothing uses it."
+                                "The library as it was on this Mac before you reset from cloud. Nothing uses it."
                         )
                     }
                 } header: {

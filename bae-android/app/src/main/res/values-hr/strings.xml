@@ -280,12 +280,12 @@
     <string name="appearance_sand">Pijesak</string>
     <string name="details">Pojedinosti</string>
     <string name="copy_details">Kopiraj pojedinosti</string>
-    <string name="reset_device">Ponovno postavi ovaj uređaj…</string>
-    <string name="reset_device_confirm_title">Ponovno postaviti ovaj uređaj?</string>
+    <string name="reset_device">Ponovno postavi iz oblaka…</string>
+    <string name="reset_device_confirm_title">Ponovno postaviti iz oblaka?</string>
     <string name="reset_device_confirm">Ponovno postavi</string>
     <string name="restore_device_title">Vraćanje ove fonoteke</string>
     <string name="finish_restore_title">Dovrši vraćanje ove fonoteke</string>
-    <string name="finish_reset">Dovrši ponovno postavljanje</string>
+    <string name="finish_reset">Dovrši ponovno postavljanje iz oblaka</string>
     <string name="finish_removal">Dovrši uklanjanje ove fonoteke</string>
     <string name="save">Spremi</string>
     <string name="onboarding_scan_code">Skeniraj kod</string>
@@ -316,7 +316,7 @@
     <string name="loading_opening_library">Otvaranje fonoteke…</string>
     <string name="loading_closing_library">Zatvaranje fonoteke…</string>
     <string name="loading_removing_library">Napuštanje fonoteke…</string>
-    <string name="loading_resetting_device">Ponovno postavljanje ovog uređaja…</string>
+    <string name="loading_resetting_device">Ponovno postavljanje iz oblaka…</string>
     <string name="progress_loading">Učitavanje</string>
     <string name="pending_update_no_store">Nijedna trgovina aplikacija na ovom uređaju ne može ažurirati bae.</string>
     <string name="restore_code_title">Kod za vraćanje</string>

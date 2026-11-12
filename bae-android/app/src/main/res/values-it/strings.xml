@@ -279,12 +279,12 @@
     <string name="appearance_sand">Sabbia</string>
     <string name="details">Dettagli</string>
     <string name="copy_details">Copia dettagli</string>
-    <string name="reset_device">Reimposta questo dispositivo…</string>
-    <string name="reset_device_confirm_title">Reimpostare questo dispositivo?</string>
+    <string name="reset_device">Reimposta dal cloud…</string>
+    <string name="reset_device_confirm_title">Reimpostare dal cloud?</string>
     <string name="reset_device_confirm">Reimposta</string>
     <string name="restore_device_title">Ripristina questa libreria</string>
     <string name="finish_restore_title">Completa il ripristino di questa libreria</string>
-    <string name="finish_reset">Completa la reimpostazione</string>
+    <string name="finish_reset">Completa la reimpostazione dal cloud</string>
     <string name="finish_removal">Completa la rimozione di questa libreria</string>
     <string name="save">Salva</string>
     <string name="onboarding_scan_code">Scansiona un codice</string>
@@ -315,7 +315,7 @@
     <string name="loading_opening_library">Apertura della libreria…</string>
     <string name="loading_closing_library">Chiusura della libreria…</string>
     <string name="loading_removing_library">Uscita dalla libreria…</string>
-    <string name="loading_resetting_device">Ripristino di questo dispositivo…</string>
+    <string name="loading_resetting_device">Reimpostazione dal cloud…</string>
     <string name="progress_loading">Caricamento</string>
     <string name="pending_update_no_store">Nessuno store di app su questo dispositivo può aggiornare bae.</string>
     <string name="restore_code_title">Codice di ripristino</string>

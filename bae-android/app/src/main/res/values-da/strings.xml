@@ -271,12 +271,12 @@
     <string name="appearance_sand">Sand</string>
     <string name="details">Detaljer</string>
     <string name="copy_details">Kopier detaljer</string>
-    <string name="reset_device">Nulstil denne enhed…</string>
-    <string name="reset_device_confirm_title">Nulstil denne enhed?</string>
+    <string name="reset_device">Nulstil fra skyen…</string>
+    <string name="reset_device_confirm_title">Nulstil fra skyen?</string>
     <string name="reset_device_confirm">Nulstil</string>
     <string name="restore_device_title">Gendan dette bibliotek</string>
     <string name="finish_restore_title">Fuldfør gendannelsen af dette bibliotek</string>
-    <string name="finish_reset">Fuldfør nulstillingen</string>
+    <string name="finish_reset">Fuldfør nulstilling fra skyen</string>
     <string name="finish_removal">Fuldfør fjernelsen af dette bibliotek</string>
     <string name="save">Gem</string>
     <string name="onboarding_scan_code">Scan en kode</string>
@@ -307,7 +307,7 @@
     <string name="loading_opening_library">Åbner biblioteket…</string>
     <string name="loading_closing_library">Lukker biblioteket…</string>
     <string name="loading_removing_library">Forlader biblioteket…</string>
-    <string name="loading_resetting_device">Nulstiller denne enhed…</string>
+    <string name="loading_resetting_device">Nulstiller fra skyen…</string>
     <string name="progress_loading">Indlæser</string>
     <string name="pending_update_no_store">Ingen appbutik på denne enhed kan opdatere bae.</string>
     <string name="restore_code_title">Gendannelseskode</string>
