@@ -46,6 +46,7 @@ import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidScreen
 import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.StatusTone
+import fm.bae.app.ui.components.joinsTileAbove
 import fm.bae.app.ui.rememberScreenScope
 import fm.bae.app.ui.storageLocationLabel
 import kotlinx.coroutines.CoroutineScope
@@ -453,14 +454,14 @@ internal fun SyncStatusBlock(
                     Text(
                         text = syncCauseText(context, cause),
                         style = ThemeText.body.style,
-                        modifier = Modifier.padding(BLOCK_PADDING),
+                        modifier = Modifier.joinsTileAbove().padding(BLOCK_PADDING),
                     )
                 }
                 shown.fix?.let { fix ->
                     syncFixLabel(fix)?.let { label ->
                         AndroidButton(
                             onClick = { onFix(fix) },
-                            modifier = Modifier.padding(BLOCK_PADDING),
+                            modifier = Modifier.joinsTileAbove().padding(BLOCK_PADDING),
                         ) {
                             Text(label)
                         }
@@ -471,7 +472,7 @@ internal fun SyncStatusBlock(
                         text = stringResource(R.string.sync_last_synced, syncLastSyncedText(moment)),
                         style = ThemeText.body.style,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(BLOCK_PADDING),
+                        modifier = Modifier.joinsTileAbove().padding(BLOCK_PADDING),
                     )
                 }
             }
