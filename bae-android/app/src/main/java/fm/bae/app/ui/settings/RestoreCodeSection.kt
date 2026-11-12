@@ -20,12 +20,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.displayError
-import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
@@ -327,63 +325,4 @@ internal fun RestoreCodeScene(shown: Boolean) {
         onHide = {},
         onPrint = {},
     )
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun RestoreCodeSectionMaskedPreview() {
-    PreviewTheme {
-        RestoreCodeSectionContent(
-            needsS3Key = true,
-            state = RestoreCodeState.Masked(PREVIEW_CODE),
-            onShow = {},
-            onHide = {},
-            onPrint = {},
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun RestoreCodeSectionLoadingPreview() {
-    PreviewTheme {
-        RestoreCodeSectionContent(
-            needsS3Key = false,
-            state = RestoreCodeState.Loading,
-            onShow = {},
-            onHide = {},
-            onPrint = {},
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun RestoreCodeSectionShownPreview() {
-    PreviewTheme {
-        RestoreCodeSectionContent(
-            needsS3Key = true,
-            state = RestoreCodeState.Shown(PREVIEW_CODE),
-            onShow = {},
-            onHide = {},
-            onPrint = {},
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun RestoreCodeSectionFailedPreview() {
-    PreviewTheme {
-        RestoreCodeSectionContent(
-            needsS3Key = false,
-            state =
-                RestoreCodeState.Failed(
-                    DisplayError("Could not reach the cloud.", "S3: Network: dispatch failure"),
-                ),
-            onShow = {},
-            onHide = {},
-            onPrint = {},
-        )
-    }
 }

@@ -13,15 +13,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.R
-import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidSpinner
 import fm.bae.app.ui.components.PersonNameField
-import uniffi.bae_bridge.BridgeOperationRejection
 import uniffi.bae_bridge.BridgeRequestedProfile
 import uniffi.bae_bridge.BridgeRequestedProfileState
 
@@ -75,29 +72,3 @@ private fun BridgeRequestedProfileState.unmadeRes(): Int? =
         is BridgeRequestedProfileState.Refused -> reason.labelRes()
         is BridgeRequestedProfileState.Stopped -> stop.labelRes()
     }
-
-@Preview(showBackground = true)
-@Composable
-private fun ProfileSetupRefusedPreview() {
-    PreviewTheme {
-        ProfileSetup(
-            requested =
-                BridgeRequestedProfile(
-                    name = "Robin",
-                    state = BridgeRequestedProfileState.Refused(BridgeOperationRejection.NOT_ALLOWED),
-                ),
-            onCreate = {},
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun ProfileSetupMakingPreview() {
-    PreviewTheme {
-        ProfileSetup(
-            requested = BridgeRequestedProfile(name = "Robin", state = BridgeRequestedProfileState.Making),
-            onCreate = {},
-        )
-    }
-}

@@ -27,13 +27,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.times
 import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
-import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.SemanticColors
 import kotlin.math.PI
 import kotlin.math.cos
@@ -215,15 +213,5 @@ private fun DrawScope.drawGlow(colors: SemanticColors) {
             radius = poolWidth / 2,
             center = Offset.Zero,
         )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun LogoPreview() {
-    PreviewTheme {
-        Box(modifier = Modifier.size(300.dp), contentAlignment = Alignment.Center) {
-            Logo(size = 120.dp, bob = true, glow = true)
-        }
     }
 }

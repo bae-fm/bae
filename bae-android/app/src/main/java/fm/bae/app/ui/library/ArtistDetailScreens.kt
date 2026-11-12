@@ -8,21 +8,15 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
-import fm.bae.app.data.ImageStore
-import fm.bae.app.data.LocalImageStore
-import fm.bae.app.ui.PreviewData
-import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidEyebrow
@@ -131,19 +125,6 @@ private fun ArtistDetailContent(
                     onClick = { onSelectAlbum(album.id) },
                 )
             }
-        }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun ArtistDetailContentPreview() {
-    PreviewTheme {
-        CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
-            ArtistDetailContent(
-                detail = PreviewData.artistDetail(),
-                onSelectAlbum = {},
-            )
         }
     }
 }

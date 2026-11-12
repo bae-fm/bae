@@ -108,7 +108,7 @@ fun ActivityAppearance() {
     }
 }
 
-/** A preview's theme: the default appearance, nothing read from the person's files. */
+/** A shot's theme: the default appearance, nothing read from the person's files. */
 @Composable
 fun PreviewTheme(content: @Composable () -> Unit) {
     val appearance = remember { AppearanceStore(AppearancePreferences()) {} }

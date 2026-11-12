@@ -17,12 +17,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.displayError
-import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
@@ -170,59 +168,3 @@ internal fun addDeviceParts(
             AndroidButton(kind = ButtonKind.TEXT, onClick = onDismiss) { Text(stringResource(R.string.done)) }
         },
     )
-
-@Preview(showBackground = true)
-@Composable
-private fun AddDeviceDialogContentReadyPreview() {
-    PreviewTheme {
-        AddDeviceDialogContent(
-            share =
-                BridgeRestoreCodeShare(
-                    code = "CVR1-ABCDEFGHIJKLMNOPQRSTUVWXYZ234567ABCDEFGHIJKLMNOPQRSTUVWXYZ234567",
-                    qrText = "CVR1-ABCDEFGHIJKLMNOPQRSTUVWXYZ234567ABCDEFGHIJKLMNOPQRSTUVWXYZ234567ABCDEFGHIJKLMNOP",
-                ),
-            added = null,
-            error = null,
-            onDismiss = {},
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun AddDeviceDialogContentAddedPreview() {
-    PreviewTheme {
-        AddDeviceDialogContent(
-            share = null,
-            added = BridgeActiveDevice(id = 7u, name = "New Phone", isSelf = false, canRemove = true),
-            error = null,
-            onDismiss = {},
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun AddDeviceDialogContentLoadingPreview() {
-    PreviewTheme {
-        AddDeviceDialogContent(share = null, added = null, error = null, onDismiss = {})
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun AddDeviceDialogContentFailedPreview() {
-    PreviewTheme {
-        AddDeviceDialogContent(
-            share = null,
-            added = null,
-            error =
-                DisplayError(
-                    "Could not reach the cloud.",
-                    "S3: Network: dispatch failure: io error: connection refused",
-                ),
-            onDismiss = {
-            },
-        )
-    }
-}

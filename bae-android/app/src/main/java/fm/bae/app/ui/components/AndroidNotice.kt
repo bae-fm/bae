@@ -35,12 +35,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
-import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSpace
@@ -397,30 +395,3 @@ private val COPY_BOX = 40.dp
 
 /** Room at the panel's right for the copy button. */
 private val CAUSES_COPY_INSET = ThemeSpace.page + ThemeSpace.group
-
-@Preview(showBackground = true)
-@Composable
-private fun AndroidNoticePreview() {
-    PreviewTheme {
-        AndroidNotice(
-            DisplayError(
-                "Couldn't reach the network.",
-                "MusicBrainz network error: error sending request for url (https://musicbrainz.org/…): " +
-                    "client error (Connect): dns error: failed to lookup address information",
-            ),
-            action = ErrorAction("Retry") {},
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun TitledAndroidNoticePreview() {
-    PreviewTheme {
-        AndroidNotice(
-            title = "Couldn't read the sign-in settings",
-            advice = "Dropbox and OneDrive sign-in are unavailable until this build is reinstalled.",
-            error = DisplayError("OAuthConfig: missing client id"),
-        )
-    }
-}

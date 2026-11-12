@@ -38,7 +38,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 /**
  * The latest value of each key of one fast stream, for the Views that draw a
- * key. Until it is fed it holds nothing, and a preview's holds fixed values
+ * key. Until it is fed it holds nothing, and a shot's holds fixed values
  * that nothing feeds.
  */
 class LatestStream<V : Any> private constructor(
@@ -113,31 +113,31 @@ class LatestStream<V : Any> private constructor(
         @VisibleForTesting
         fun <V : Any> written(): LatestStream<V> = LatestStream(emptyMap()) { null }
 
-        /** Each downloading release's bytes and rate, by release id; a preview's holds [values], fed by nothing. */
+        /** Each downloading release's bytes and rate, by release id; a shot's holds [values], fed by nothing. */
         fun downloads(values: Map<String, BridgeDownloadTransferProgress>? = null) =
             LatestStream(values) { (it as? BridgeFastValue.Download)?.progress }
 
-        /** Where the playing track is, by track id; a preview's holds [values] and nothing feeds it. */
+        /** Where the playing track is, by track id; a shot's holds [values] and nothing feeds it. */
         fun trackPositions(values: Map<String, BridgeTrackPosition>? = null) =
             LatestStream(values) { (it as? BridgeFastValue.TrackPosition)?.position }
 
         /**
          * The share of each Activity transfer line's batch bytes done, from 0 to 1, by line
-         * (`uploads` or `pins`) while its batch holds a release; a preview's holds [values] and
+         * (`uploads` or `pins`) while its batch holds a release; a shot's holds [values] and
          * nothing feeds it.
          */
         fun activityBars(values: Map<String, Double>? = null): LatestStream<Double> =
             LatestStream(values) { (it as? BridgeFastValue.BatchShare)?.fraction }
 
         /**
-         * The parts of the playing track whose bytes this device holds, by track id; a preview's
+         * The parts of the playing track whose bytes this device holds, by track id; a shot's
          * holds [values] and nothing feeds it.
          */
         fun trackBuffered(values: Map<String, BridgeTrackBuffered>? = null) =
             LatestStream(values) { (it as? BridgeFastValue.TrackBuffered)?.buffered }
 
         /**
-         * True under the playing track's id while its load waits on storage; a preview's holds
+         * True under the playing track's id while its load waits on storage; a shot's holds
          * true under each of [waiting] and nothing feeds it.
          */
         fun trackStorageWaits(waiting: Set<String>? = null): LatestStream<Boolean> =
@@ -146,7 +146,7 @@ class LatestStream<V : Any> private constructor(
             }
 
         /**
-         * The counted step a restore, join or reset runs, opening or loading, while it runs one; a preview's holds
+         * The counted step a restore, join or reset runs, opening or loading, while it runs one; a shot's holds
          * [value], fed by nothing.
          */
         fun bootstrapSteps(value: BridgeBootstrapStep? = null): LatestStream<BridgeBootstrapStep> =
@@ -154,25 +154,25 @@ class LatestStream<V : Any> private constructor(
                 (it as? BridgeFastValue.BootstrapStep)?.step
             }
 
-        /** How far a library's open has come, while it runs a step; a preview's holds [value], fed by nothing. */
+        /** How far a library's open has come, while it runs a step; a shot's holds [value], fed by nothing. */
         fun openProgress(value: BridgeOpenProgress? = null): LatestStream<BridgeOpenProgress> =
             LatestStream(value?.let { mapOf(ONLY_KEY to it) }) {
                 (it as? BridgeFastValue.OpenProgress)?.progress
             }
 
-        /** How far a setup call has come, while it runs a step; a preview's holds [value], fed by nothing. */
+        /** How far a setup call has come, while it runs a step; a shot's holds [value], fed by nothing. */
         fun setupProgress(value: BridgeSetupProgress? = null): LatestStream<BridgeSetupProgress> =
             LatestStream(value?.let { mapOf(ONLY_KEY to it) }) {
                 (it as? BridgeFastValue.SetupProgress)?.progress
             }
 
-        /** How far a storage setup has come, while it runs a step; a preview's holds [value], fed by nothing. */
+        /** How far a storage setup has come, while it runs a step; a shot's holds [value], fed by nothing. */
         fun storageSetupProgress(value: BridgeStorageSetupProgress? = null): LatestStream<BridgeStorageSetupProgress> =
             LatestStream(value?.let { mapOf(ONLY_KEY to it) }) {
                 (it as? BridgeFastValue.StorageSetupProgress)?.progress
             }
 
-        /** The step a library's close runs, while it runs one; a preview's holds [value], fed by nothing. */
+        /** The step a library's close runs, while it runs one; a shot's holds [value], fed by nothing. */
         fun closingSteps(value: BridgeClosingProgress? = null): LatestStream<BridgeClosingProgress> =
             LatestStream(value?.let { mapOf(ONLY_KEY to it) }) {
                 (it as? BridgeFastValue.ClosingStep)?.progress

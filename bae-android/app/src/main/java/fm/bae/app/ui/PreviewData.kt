@@ -70,13 +70,13 @@ import uniffi.bae_bridge.BridgeWorkSummary
 private const val PUBLIC_KEY_BYTES = 32
 
 /**
- * `Bridge*` fixtures for `@Preview`s, in the main source set so previews need no
- * native library or `AppHandle`. Names are generic placeholders, never real
+ * `Bridge*` fixtures for the screenshot scenes and the tests, in the main source
+ * set so they need no native library or `AppHandle`. Names are generic placeholders, never real
  * artists, albums or tracks.
  */
 object PreviewData {
-    // Preview track length (3:34) and the same value as a clock, built here
-    // rather than through `bridgeClock` because the preview renderer cannot
+    // Sample track length (3:34) and the same value as a clock, built here
+    // rather than through `bridgeClock` because a shot cannot
     // call the native bridge.
     private const val TRACK_DURATION_MS = 214_000uL
     private val trackDurationClock =
@@ -153,7 +153,7 @@ object PreviewData {
                     discogsDetails = emptyList(),
                 ),
             // What core words from the facts above, written out because a
-            // preview cannot call the bridge.
+            // shot cannot call the bridge.
             pressingSummary =
                 listOf(
                     BridgeFactTerm.Country("US"),

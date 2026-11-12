@@ -2,19 +2,13 @@ package fm.bae.app.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.R
-import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeSpace
-import uniffi.bae_bridge.BridgeDropboxLocation
 import uniffi.bae_bridge.BridgeLibrary
-import uniffi.bae_bridge.BridgeLibraryState
-import uniffi.bae_bridge.BridgeStorageLocation
 
 /** What ending a library loses, for the person to confirm. */
 internal sealed interface RemovalLoss {
@@ -74,15 +68,6 @@ internal fun removeLibraryParts(
     )
 }
 
-/** The words of [parts] as the previews draw them: an [AlertDialog] opens a window a preview doesn't render. */
-@Composable
-private fun RemovalWordsPreview(parts: DialogParts) {
-    Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.edge)) {
-        DialogHead(parts.title, parts.message)
-        parts.content?.invoke()
-    }
-}
-
 /** The confirmation's title, the sentence set under it, and whatever follows. */
 private class RemovalWords(
     val title: String,
@@ -124,49 +109,4 @@ private fun removalWords(
             }
         }
     }
-}
-
-private val previewHome =
-    BridgeLibrary(
-        id = "home",
-        name = "Home music",
-        path = "/libraries/home",
-        state =
-            BridgeLibraryState.Openable(
-                BridgeStorageLocation.Dropbox(
-                    BridgeDropboxLocation.AppFolder,
-                    accountLabel = "name@example.com",
-                    folderLabel = null,
-                ),
-            ),
-        isActive = false,
-    )
-
-private val previewUnreadable =
-    previewHome.copy(
-        id = "stopped",
-        name = "Half removed",
-        state = BridgeLibraryState.DeletionUnfinished("core.error.deletion_unfinished"),
-    )
-
-private val nothingUnsent = RemovalLoss.Counted(holdsUnsent = false)
-
-private val someUnsent = RemovalLoss.Counted(holdsUnsent = true)
-
-@Preview(showBackground = true)
-@Composable
-private fun RemoveLibraryUnsentPreview() {
-    PreviewTheme { RemovalWordsPreview(removeLibraryParts(previewHome, someUnsent, {}, {})) }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun RemoveLibraryPreview() {
-    PreviewTheme { RemovalWordsPreview(removeLibraryParts(previewHome, nothingUnsent, {}, {})) }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun RemoveUnreadableLibraryPreview() {
-    PreviewTheme { RemovalWordsPreview(removeLibraryParts(previewUnreadable, RemovalLoss.Uncounted, {}, {})) }
 }

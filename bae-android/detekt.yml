@@ -32,7 +32,7 @@ complexity:
     # accumulates one per state variant by design, so don't count them toward a
     # file's function total.
     ignoreAnnotatedFunctions: ["Preview"]
-    # PreviewData is the cohesive fixture object every preview draws on — one
+    # PreviewData is the cohesive fixture object every shot draws on — one
     # small builder per Bridge record, growing with the bridge surface, not a
     # god-object. It already carries one builder per record type, so it gets a
     # cap above the class facade's.

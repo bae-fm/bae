@@ -16,7 +16,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.LibraryListing
@@ -27,8 +26,6 @@ import fm.bae.app.coreString
 import fm.bae.app.data.LibraryWithoutStorage
 import fm.bae.app.localizedLine
 import fm.bae.app.performBridgeAction
-import fm.bae.app.ui.PreviewData
-import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
@@ -236,39 +233,6 @@ internal fun renameLibraryParts(
             ) { Text(stringResource(R.string.cancel)) }
         },
     )
-
-@Preview
-@Composable
-private fun RenameLibraryDialogContentPreview() {
-    PreviewTheme {
-        RenameLibraryDialogContent(
-            draft = "Household",
-            error = null,
-            saving = false,
-            onDraftChange = {},
-            onSave = {},
-            onDismiss = {},
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun LibrarySwitcherPreview() {
-    PreviewTheme {
-        Column {
-            LibrarySwitcher(
-                libraries =
-                    listOf(
-                        PreviewData.library(),
-                        PreviewData.library(id = "lib-2", name = "Other Library", isActive = false),
-                    ),
-                activeLibraryId = "lib-1",
-                onSwitchLibrary = {},
-            )
-        }
-    }
-}
 
 /**
  * The line under a library's name: its provider and account, or why it doesn't

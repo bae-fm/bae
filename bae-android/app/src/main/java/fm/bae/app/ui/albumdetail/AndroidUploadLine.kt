@@ -7,11 +7,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
-import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidNotice
@@ -70,16 +68,4 @@ internal fun AndroidUploadLine(
             )
         }
     }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun UploadLineQueuedPreview() {
-    PreviewTheme { AndroidUploadLine(LocalContext.current.coreString("core.outbox.phase.queued"), null) }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun UploadLineMissingPreview() {
-    PreviewTheme { AndroidUploadLine(LocalContext.current.coreString("core.outbox.phase.queued"), "01 Track.flac") }
 }

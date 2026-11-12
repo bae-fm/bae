@@ -19,15 +19,12 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.data.castEndedFailure
 import fm.bae.app.playback.NowPlaying
-import fm.bae.app.ui.PreviewData
-import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
@@ -256,26 +253,6 @@ private fun NowPlayingTransportButtons(
         // The new mode arrives through the playback subscription; a failure shows as a message.
         onCycleRepeat = { cycleRepeatMode(session, repeatMode) },
     )
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun SidePauseAlertPreview() {
-    PreviewTheme {
-        SidePauseAlert(
-            track =
-                NowPlaying(
-                    trackId = "trk-1",
-                    title = "Track Title",
-                    artist = "Artist Name",
-                    coverImage = PreviewData.imageRef("rel-1"),
-                    sidePausePrompt = PreviewData.sidePausePrompt(),
-                ),
-            onTurnOffPauseBetweenSides = {},
-            onPlay = {},
-            onClose = {},
-        )
-    }
 }
 
 /** Set the repeat mode that follows [repeatMode]; a failure shows as a session message. */

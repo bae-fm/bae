@@ -11,7 +11,6 @@ import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.google.zxing.BarcodeFormat
@@ -20,7 +19,6 @@ import com.google.zxing.common.BitMatrix
 import com.google.zxing.qrcode.QRCodeWriter
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import fm.bae.app.BaeLogger
-import fm.bae.app.ui.PreviewTheme
 
 private const val TAG = "bae.QRCode"
 private val logger = BaeLogger(TAG)
@@ -110,16 +108,5 @@ private fun BitMatrix.toBitmap(): Bitmap {
     }
     return Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888).apply {
         setPixels(pixels, 0, width, 0, 0, width, height)
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun QRCodeImagePreview() {
-    PreviewTheme {
-        QRCodeImage(
-            text = "CVR1-ABCDEFGHIJKLMNOPQRSTUVWXYZ234567ABCDEFGHIJKLMNOPQRSTUVWXYZ234567",
-            contentDescription = null,
-        )
     }
 }

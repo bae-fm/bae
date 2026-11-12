@@ -21,22 +21,16 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.DisplayError
 import fm.bae.app.R
-import fm.bae.app.data.ImageStore
-import fm.bae.app.data.LocalImageStore
 import fm.bae.app.playback.NowPlaying
 import fm.bae.app.ui.BaeTheme
-import fm.bae.app.ui.PreviewData
-import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSize
@@ -175,27 +169,5 @@ internal fun NowPlayingTransport(
                     MaterialTheme.colorScheme.primary
                 },
         )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun NowPlayingTrackInfoPreview() {
-    PreviewTheme {
-        CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
-            Row {
-                NowPlayingTrackInfo(
-                    track =
-                        NowPlaying(
-                            trackId = "trk-1",
-                            title = "Track Title",
-                            artist = "Artist Name",
-                            coverImage = PreviewData.imageRef("rel-1"),
-                            sidePausePrompt = null,
-                        ),
-                    onExpand = {},
-                )
-            }
-        }
     }
 }

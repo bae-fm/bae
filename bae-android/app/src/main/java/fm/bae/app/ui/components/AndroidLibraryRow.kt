@@ -14,17 +14,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import fm.bae.app.data.ImageStore
-import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.BaeTheme
-import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSize
 import fm.bae.app.ui.appearance.ThemeSpace
@@ -121,24 +116,5 @@ private fun RowArt(
             modifier = tile,
             contentDescription = description,
         )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun AndroidLibraryRowPreview() {
-    PreviewTheme {
-        CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
-            Column {
-                AndroidLibraryRow(title = "Mara Quill", subtitle = "12 albums")
-                AndroidLibraryRow(title = "Odile Fen", subtitle = "3 albums", missing = true)
-                AndroidLibraryRow(
-                    title = "Harbor Lights",
-                    subtitle = "Mara Quill, Low Tide Hours",
-                    trailing = "4:32",
-                    noArt = true,
-                )
-            }
-        }
     }
 }

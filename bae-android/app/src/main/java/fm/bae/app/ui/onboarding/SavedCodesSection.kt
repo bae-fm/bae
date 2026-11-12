@@ -13,12 +13,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.factSeparator
-import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
@@ -233,47 +231,6 @@ private fun BridgeUnreadableSavedCode.labelRes(): Int =
         BridgeUnreadableSavedCode.AMBIGUOUS -> R.string.onboarding_saved_code_reason_ambiguous
     }
 
-/** Two libraries that share a name in different storage, then an entry bae can't read. */
-private val previewEntries =
-    listOf(
-        SavedRestoreEntry.Readable(
-            SavedRestoreCode(
-                BridgeSavedRestoreCode(NoHandle),
-                BridgeSavedRestoreCodeInfo(
-                    name = "Home Library",
-                    libraryId = "saved-01",
-                    location =
-                        BridgeStorageLocation.S3(
-                            bucket = "music-library",
-                            region = "us-east-1",
-                            endpoint = "storage.example.com",
-                            profile = null,
-                        ),
-                    oauthAccess = null,
-                    hasS3Credentials = true,
-                ),
-            ),
-        ),
-        SavedRestoreEntry.Readable(
-            SavedRestoreCode(
-                BridgeSavedRestoreCode(NoHandle),
-                BridgeSavedRestoreCodeInfo(
-                    name = "Home Library",
-                    libraryId = "saved-02",
-                    location =
-                        BridgeStorageLocation.Dropbox(
-                            location = BridgeDropboxLocation.AppFolder,
-                            accountLabel = "ana@example.com",
-                            folderLabel = null,
-                        ),
-                    oauthAccess = BridgeOAuthAccess.Dropbox(BridgeDropboxAccess.APP_FOLDER),
-                    hasS3Credentials = false,
-                ),
-            ),
-        ),
-        SavedRestoreEntry.Unreadable("6f1c2a9e-4b7d-4e2a-9c3f-2d8e5b1a7c40", BridgeUnreadableSavedCode.FORMAT),
-    )
-
 /** The entries the saved-codes boards draw: a Dropbox library's code, and one saved for another library. */
 internal val sceneSavedEntries =
     listOf(
@@ -314,27 +271,4 @@ internal fun WelcomeSavedCodesScene() {
             )
         },
     )
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun SavedCodesPreview() {
-    PreviewTheme {
-        Column(modifier = Modifier.padding(ThemeSpace.page)) {
-            SavedCodesContent(
-                list = SavedCodesList.Loaded(previewEntries),
-                deletingLibraryId = null,
-                deleteError = null,
-                callbacks = SavedCodesCallbacks(onOpen = {}, onDelete = {}),
-            )
-        }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun DeleteSavedCodePreview() {
-    PreviewTheme {
-        DeleteSavedCodeDialog(entry = previewEntries.first(), onConfirm = {}, onDismiss = {})
-    }
 }

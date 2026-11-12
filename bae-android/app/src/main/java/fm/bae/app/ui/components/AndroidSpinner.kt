@@ -14,10 +14,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import fm.bae.app.R
-import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
@@ -72,11 +70,3 @@ private const val STROKE_SHARE = 2.5f / 24f
 
 /** The faint full ring behind the turning arc, as the design draws it. */
 private const val TRACK_ALPHA = 0.2f
-
-@Preview(showBackground = true)
-@Composable
-private fun AndroidSpinnerPreview() {
-    PreviewTheme {
-        AndroidSpinner(text = "Making your restore code…")
-    }
-}

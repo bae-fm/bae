@@ -18,14 +18,12 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.data.ComposerDetailRowsPageStore
 import fm.bae.app.displayError
 import fm.bae.app.metadataText
-import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidLibraryRow
@@ -339,12 +337,4 @@ internal fun AndroidSearchSection(title: String) {
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.fillMaxWidth().padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
     )
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun LibrarySectionHeaderPreview() {
-    PreviewTheme {
-        AndroidSearchSection(title = "Works")
-    }
 }

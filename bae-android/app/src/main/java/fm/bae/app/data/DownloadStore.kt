@@ -21,7 +21,7 @@ import uniffi.bae_bridge.BridgeDownloadTransferProgress
 class DownloadStore(
     initialCounts: BridgeDownloadCounts,
     initialUnmeteredOnly: Boolean,
-    /** Each downloading release's latest progress: the session's to feed, or a preview's fixed values. */
+    /** Each downloading release's latest progress: the session's to feed, or a shot's fixed values. */
     val releaseProgress: LatestStream<BridgeDownloadTransferProgress> = LatestStream.downloads(),
 ) {
     private val _state = MutableStateFlow<LiveValue<BridgeDownloadCounts>>(LiveValue.Current(initialCounts))

@@ -14,7 +14,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -27,10 +26,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
 import fm.bae.app.R
 import fm.bae.app.data.DecodeSize
@@ -38,9 +35,6 @@ import fm.bae.app.data.ImageContent
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.BaeTheme
-import fm.bae.app.ui.PreviewTheme
-import fm.bae.app.ui.appearance.ThemeRadius
-import fm.bae.app.ui.appearance.ThemeSpace
 import kotlinx.coroutines.CancellationException
 import uniffi.bae_bridge.BridgeImageRef
 
@@ -206,19 +200,4 @@ private fun CoverTile(
         modifier = modifier.fillMaxSize(),
         content = content,
     )
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun CoverImagePreview() {
-    PreviewTheme {
-        CompositionLocalProvider(LocalImageStore provides ImageStore()) {
-            CoverImage(
-                cover = null,
-                cornerRadius = ThemeRadius.cover,
-                iconPadding = ThemeSpace.section,
-                modifier = Modifier.size(120.dp),
-            )
-        }
-    }
 }

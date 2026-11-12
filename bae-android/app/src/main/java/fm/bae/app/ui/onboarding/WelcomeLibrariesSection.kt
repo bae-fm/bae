@@ -18,12 +18,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.ui.PreviewData
-import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidCard
@@ -325,14 +323,4 @@ internal fun WelcomeLibrariesPreviewContent(
                 onAdd = onAdd,
             ),
     )
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun WelcomeLibrariesPreview() {
-    PreviewTheme {
-        Column(modifier = Modifier.padding(ThemeSpace.page)) {
-            WelcomeLibrariesPreviewContent(onAdd = {})
-        }
-    }
 }

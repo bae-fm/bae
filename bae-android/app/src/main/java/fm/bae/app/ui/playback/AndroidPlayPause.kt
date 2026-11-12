@@ -13,12 +13,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import fm.bae.app.R
-import fm.bae.app.ui.PreviewTheme
 import fm.bae.fastvalues.LatestSource
 
 /** How far the arc sits outside the glyph, on each side. */
@@ -60,21 +58,5 @@ fun AndroidPlayPause(
                 modifier = Modifier.size(iconSize),
             )
         }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun PlayPauseControlPlayingPreview() {
-    PreviewTheme {
-        AndroidPlayPause(isPlaying = true, iconSize = 48.dp, storageWait = null, onToggle = {})
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun PlayPauseControlPausedPreview() {
-    PreviewTheme {
-        AndroidPlayPause(isPlaying = false, iconSize = 48.dp, storageWait = null, onToggle = {})
     }
 }

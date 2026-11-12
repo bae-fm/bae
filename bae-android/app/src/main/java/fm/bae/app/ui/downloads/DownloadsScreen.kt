@@ -22,7 +22,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.countLabelsText
@@ -31,8 +30,6 @@ import fm.bae.app.data.DownloadStore
 import fm.bae.app.data.LiveValue
 import fm.bae.app.factSeparator
 import fm.bae.app.queueWaitText
-import fm.bae.app.ui.PreviewData
-import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
@@ -44,7 +41,6 @@ import fm.bae.app.ui.components.retryAction
 import kotlinx.coroutines.flow.distinctUntilChanged
 import uniffi.bae_bridge.BridgeDownloadCounts
 import uniffi.bae_bridge.BridgeDownloadOp
-import uniffi.bae_bridge.BridgeDownloadState
 import uniffi.bae_bridge.BridgeQueueWait
 import uniffi.bae_bridge.bridgePinSummaryParts
 
@@ -239,30 +235,5 @@ internal fun DownloadsList(
             )
             HorizontalDivider()
         }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun DownloadsListPreview() {
-    PreviewTheme {
-        val rows =
-            listOf(
-                PreviewData.downloadOp(releaseId = "rel-1", state = BridgeDownloadState.Active),
-                PreviewData.downloadOp(releaseId = "rel-2", state = BridgeDownloadState.Queued),
-                PreviewData.downloadOp(
-                    releaseId = "rel-3",
-                    state = BridgeDownloadState.Failed("Network unreachable"),
-                ),
-            )
-        DownloadsList(
-            summary = "",
-            count = rows.size,
-            row = rows::getOrNull,
-            downloads = PreviewData.downloadStore(downloadingReleaseId = "rel-1"),
-            listState = rememberLazyListState(),
-            onCancel = {},
-            onRetry = {},
-        )
     }
 }

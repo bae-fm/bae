@@ -5,11 +5,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.countText
-import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidSegmentedButtons
 import kotlinx.coroutines.Dispatchers
@@ -56,12 +54,4 @@ private fun DownloadConcurrencySelector(
         modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
         label = stringResource(R.string.pins_at_once),
     )
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun DownloadConcurrencySelectorPreview() {
-    PreviewTheme {
-        DownloadConcurrencySelector(value = 3u, limit = 8u, onSelect = {})
-    }
 }

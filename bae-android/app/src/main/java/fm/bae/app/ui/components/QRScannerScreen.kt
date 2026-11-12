@@ -37,7 +37,6 @@ import fm.bae.app.BaeLogger
 import fm.bae.app.LocalBugReports
 import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
-import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
@@ -247,18 +246,5 @@ private fun QRScannerOverlay(
         AndroidButton(onClick = onDismiss, modifier = Modifier.padding(top = ThemeSpace.edge)) {
             Text(stringResource(R.string.cancel))
         }
-    }
-}
-
-// Previews the overlay only; the camera surface needs a live camera.
-@androidx.compose.ui.tooling.preview.Preview(showBackground = true)
-@Composable
-private fun QRScannerOverlayPreview() {
-    PreviewTheme {
-        QRScannerOverlay(
-            modifier = Modifier,
-            instructions = "Point the camera at the code",
-            onDismiss = {},
-        )
     }
 }

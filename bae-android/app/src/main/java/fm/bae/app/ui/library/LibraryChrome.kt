@@ -27,12 +27,10 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.R
 import fm.bae.app.data.AlbumPageStore
 import fm.bae.app.ui.BaeTheme
-import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidInlineIconButton
@@ -112,13 +110,5 @@ internal fun LibrarySearchBar(
                 },
             )
         }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun LibrarySearchBarPreview() {
-    PreviewTheme {
-        LibrarySearchBar(query = "search text", onQueryChange = {}, onClose = {})
     }
 }

@@ -20,7 +20,6 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -34,7 +33,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.DisplayError
 import fm.bae.app.LocalBugReports
@@ -42,16 +40,12 @@ import fm.bae.app.MissingMainRelease
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
-import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LiveQueryState
-import fm.bae.app.data.LocalImageStore
 import fm.bae.app.displayError
 import fm.bae.app.labelsLineText
 import fm.bae.app.mainRelease
 import fm.bae.app.pressingLineText
 import fm.bae.app.text
-import fm.bae.app.ui.PreviewData
-import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
@@ -451,41 +445,3 @@ private fun AlbumActionButtons(callbacks: AlbumDetailCallbacks) {
 private fun LazyListScope.block(content: @Composable () -> Unit) {
     item { Box(modifier = Modifier.padding(bottom = ThemeSpace.related)) { content() } }
 }
-
-@Preview(showBackground = true)
-@Composable
-private fun AlbumDetailHeaderPreview() {
-    PreviewTheme {
-        CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
-            AndroidAlbumHeader(
-                detail = PreviewData.albumDetail(),
-                selectedRelease = PreviewData.release(),
-                cover = PreviewData.imageRef(),
-                galleryItems = emptyList(),
-                onShowGallery = {},
-            )
-        }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun AlbumActionButtonsPreview() {
-    PreviewTheme {
-        AlbumActionButtons(callbacks = inertAlbumDetailCallbacks())
-    }
-}
-
-/** Inert callbacks for rendering the album detail body without a live session. */
-internal fun inertAlbumDetailCallbacks(): AlbumDetailCallbacks =
-    AlbumDetailCallbacks(
-        onSelectRelease = {},
-        onTogglePlayPause = {},
-        onPlayTrack = {},
-        onPlayRelease = {},
-        onShuffleRelease = {},
-        onPlayReleaseNext = {},
-        onAddReleaseToQueue = {},
-        onPlayTrackNext = {},
-        onAddTrackToQueue = {},
-    )

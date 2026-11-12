@@ -18,12 +18,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.countText
 import fm.bae.app.data.LiveValue
-import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidCard
@@ -149,21 +147,6 @@ private fun ConcurrencyRow(
                     onClick = { open = false },
                 ) { Text(stringResource(R.string.cancel)) }
             },
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun AndroidSettingsTransfersPreview() {
-    PreviewTheme {
-        AndroidSettingsTransfers(
-            unmeteredOnly = LiveValue.Current(false),
-            concurrency = 3u,
-            limit = 8u,
-            onBack = {},
-            onSetUnmeteredOnly = {},
-            onSelectConcurrency = {},
         )
     }
 }

@@ -28,8 +28,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.tooling.preview.Preview
-import fm.bae.app.BugReports
 import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.coreString
@@ -37,8 +35,6 @@ import fm.bae.app.data.ActivityLine
 import fm.bae.app.data.SyncActivityStore
 import fm.bae.app.ui.ActivityProblemId
 import fm.bae.app.ui.AppProblem
-import fm.bae.app.ui.PreviewData
-import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
@@ -346,45 +342,4 @@ private fun PendingRecords(
 @Composable
 private fun SecondaryLine(text: String) {
     Text(text = text, style = ThemeText.detail.style, color = MaterialTheme.colorScheme.onSurfaceVariant)
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun ActivityListPreview() {
-    PreviewTheme {
-        val activity = PreviewData.syncActivity(needsAttention = true)
-        AndroidActivity(
-            problems = activityProblems(emptyList(), activity, null, emptySet()),
-            app = emptyList(),
-            activity = activity,
-            words = ActivityWords(failure = null, uploadsWait = null, pinsWait = null),
-            error = null,
-            bar = SyncActivityStore()::bar,
-            onDismissProblem = {},
-            onOpenDetails = {},
-            onOpenSettings = {},
-            onOpenDownloads = {},
-            onSetDownloadsPaused = {},
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun ActivityButtonPreview() {
-    val store =
-        remember {
-            SyncActivityStore().apply { apply(PreviewData.syncActivity(needsAttention = true), BugReports()) }
-        }
-    PreviewTheme {
-        ActivityButton(
-            store = store,
-            app = emptyList(),
-            dismissed = emptySet(),
-            onDismissProblem = {},
-            onOpenSettings = {},
-            onOpenDownloads = {},
-            onSetDownloadsPaused = {},
-        )
-    }
 }

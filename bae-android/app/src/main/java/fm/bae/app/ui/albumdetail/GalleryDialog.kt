@@ -33,7 +33,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
@@ -52,7 +51,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -64,11 +62,8 @@ import fm.bae.app.coreString
 import fm.bae.app.countText
 import fm.bae.app.data.DecodeSize
 import fm.bae.app.data.ImageContent
-import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.BaeTheme
-import fm.bae.app.ui.PreviewData
-import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidSpinner
@@ -411,18 +406,4 @@ private fun ZoomableGalleryImage(
                     transformOrigin = origin
                 },
     )
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun GalleryDialogPreview() {
-    PreviewTheme {
-        CompositionLocalProvider(LocalImageStore provides ImageStore()) {
-            GalleryDialog(
-                releaseId = "rel-1",
-                items = listOf(PreviewData.galleryItem()),
-                onDismiss = {},
-            )
-        }
-    }
 }

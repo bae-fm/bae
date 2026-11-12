@@ -9,10 +9,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.R
-import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidDialog
@@ -73,24 +71,4 @@ fun PasteCodeDialog(
             ) { Text(stringResource(R.string.cancel)) }
         },
     )
-}
-
-@Preview
-@Composable
-private fun PasteCodeDialogPreview() {
-    PreviewTheme {
-        PasteCodeDialog(
-            text =
-                PasteDialogText(
-                    title = "Paste code",
-                    instructions = "Paste the code from your other device.",
-                    label = "Code",
-                    confirmLabel = "Connect",
-                ),
-            pasteInput = "placeholder-code",
-            onInputChange = {},
-            onConfirm = {},
-            onDismiss = {},
-        )
-    }
 }

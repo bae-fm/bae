@@ -270,9 +270,8 @@ class ImageStore(
         }
 
     companion object {
-        /** A store that resolves nothing — for @Preview composables and the
-         *  screenshot scenes, which have no open library to read from. Every slot
-         *  settles on its placeholder. */
+        /** A store that resolves nothing — for the screenshot scenes, which have no
+         *  open library to read from. Every slot settles on its placeholder. */
         fun unresolved(): ImageStore = ImageStore()
     }
 }

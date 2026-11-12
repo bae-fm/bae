@@ -10,7 +10,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -19,18 +18,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
-import fm.bae.app.data.ImageStore
-import fm.bae.app.data.LocalImageStore
 import fm.bae.app.displayError
 import fm.bae.app.durationClockLabel
 import fm.bae.app.factsLine
 import fm.bae.app.namesLine
-import fm.bae.app.ui.PreviewData
-import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidLibraryRow
 import fm.bae.app.ui.components.AndroidNotice
@@ -194,21 +188,5 @@ private fun LazyListScope.trackResults(
             noArt = true,
             onClick = { onSelectAlbum(track.albumId) },
         )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun SearchResultsListPreview() {
-    PreviewTheme {
-        CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
-            SearchResultsList(
-                results = PreviewData.searchResults(),
-                onSelectAlbum = {},
-                onSelectArtist = {},
-                onSelectComposer = {},
-                onSelectWork = {},
-            )
-        }
     }
 }

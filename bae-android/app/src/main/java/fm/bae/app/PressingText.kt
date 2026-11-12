@@ -11,7 +11,7 @@ import java.util.Locale
 // a line has and in what order, and the record carries them as terms; this
 // words each part and joins them, so every catalog's row reads the same shape:
 // "Japan · 2×CD" over "Promo · Reissue". Nothing here calls into the bridge,
-// so the preview renderer draws it too.
+// so a shot draws it too.
 
 /** The parts, worded and joined with the catalog's list separator. */
 fun factLine(

@@ -17,14 +17,12 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.ErrorDisplays
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.performBridgeAction
-import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidDialog
@@ -151,12 +149,4 @@ internal fun DeleteAlbumDialog(
             ) { Text(stringResource(R.string.cancel)) }
         },
     )
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun DeleteAlbumDialogPreview() {
-    PreviewTheme {
-        DeleteAlbumDialog(onConfirm = {}, onDismiss = {})
-    }
 }

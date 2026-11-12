@@ -18,7 +18,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.AppScreen
 import fm.bae.app.AppSessionHolder
 import fm.bae.app.BaeLogger
@@ -265,16 +264,5 @@ private fun LifecycleMessage(
             textAlign = TextAlign.Center,
         )
         content()
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun RemovalIncompleteScreenPreview() {
-    PreviewTheme {
-        RemovalIncompleteScreen(
-            error = DisplayError("Couldn't delete this library's settings.", "permission denied"),
-            onRetry = {},
-        )
     }
 }

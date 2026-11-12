@@ -23,7 +23,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.AppSessionHolder
 import fm.bae.app.BaeLogger
@@ -35,7 +34,6 @@ import fm.bae.app.coreString
 import fm.bae.app.data.SyncLine
 import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.DeviceResetDialog
-import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.SessionActions
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
@@ -54,17 +52,13 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeLibrarySetup
-import uniffi.bae_bridge.BridgeMessage
 import uniffi.bae_bridge.BridgePendingAction
-import uniffi.bae_bridge.BridgePendingReason
 import uniffi.bae_bridge.BridgePendingRecord
 import uniffi.bae_bridge.BridgeSaveSyncConfig
 import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeStorageSetup
 import uniffi.bae_bridge.BridgeSyncFix
 import uniffi.bae_bridge.BridgeSyncShown
-import uniffi.bae_bridge.BridgeSyncStatusWord
-import uniffi.bae_bridge.BridgeSyncTone
 
 private val logger = BaeLogger("bae.SyncScreen")
 
@@ -78,9 +72,6 @@ private val FIX_PADDING =
 
 /** The padding of the time of the last sync, the card's last line. */
 private val LAST_SYNCED_PADDING = PaddingValues(start = ThemeSpace.edge, end = ThemeSpace.edge, bottom = 14.dp)
-
-/** How long ago the preview's last sync was. */
-private const val PREVIEW_LAST_SYNCED_SECONDS = 259_200L
 
 /**
  * Runs the action a pending record offers. Restoring with the person's code
@@ -538,60 +529,5 @@ internal fun SyncStatusScene(shown: BridgeSyncShown) {
         verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
     ) {
         SyncStatusBlock(line = SyncLine.Read(shown), onFix = {})
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun SyncScreenPreview() {
-    PreviewTheme {
-        Column(
-            modifier = Modifier.padding(ThemeSpace.edge),
-            verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
-        ) {
-            SyncStatusBlock(
-                line =
-                    SyncLine.Read(
-                        BridgeSyncShown(
-                            status = BridgeSyncStatusWord.SIGNED_OUT_OF_DROPBOX,
-                            statusKey = "core.sync.status.signed_out_dropbox",
-                            tone = BridgeSyncTone.WARNING,
-                            cause = null,
-                            fix = BridgeSyncFix.SignIn(BridgeCloudProvider.DROPBOX),
-                            lastSynced =
-                                java.time.Instant
-                                    .now()
-                                    .minusSeconds(PREVIEW_LAST_SYNCED_SECONDS),
-                        ),
-                    ),
-                onFix = {},
-            )
-            listOf(
-                BridgePendingRecord(
-                    subject = BridgeMessage(key = "core.pending.subject.connection", args = emptyList()),
-                    reason =
-                        BridgePendingReason(
-                            key = "core.pending.reason.provider_pending",
-                            detail = null,
-                            causes = emptyList(),
-                        ),
-                    action = BridgePendingAction.SignIn(BridgeCloudProvider.DROPBOX),
-                    actionKey = "core.pending.action.sign_in",
-                    sendsFiles = false,
-                ),
-                BridgePendingRecord(
-                    subject = BridgeMessage(key = "core.pending.operation.invite", args = emptyList()),
-                    reason =
-                        BridgePendingReason(
-                            "core.pending.reason.failed",
-                            "S3: Network: S3 request failed: dispatch failure: io error: connection refused",
-                            emptyList(),
-                        ),
-                    action = BridgePendingAction.RetryOperation(id = 7L),
-                    actionKey = "core.pending.action.retry",
-                    sendsFiles = false,
-                ),
-            ).let { PendingSection(records = it, onAction = {}) }
-        }
     }
 }

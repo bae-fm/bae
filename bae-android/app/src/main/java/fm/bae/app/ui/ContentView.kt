@@ -22,12 +22,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.AppScreen
 import fm.bae.app.AppSessionHolder
 import fm.bae.app.BugReports
-import fm.bae.app.DisplayError
-import fm.bae.app.FailedStep
 import fm.bae.app.LibraryListing
 import fm.bae.app.LocalBugReports
 import fm.bae.app.OAuthProviders
@@ -416,19 +413,5 @@ private fun FailedScreen(failure: ScreenFailure) {
         contentAlignment = Alignment.Center,
     ) {
         ScreenFailureNotice(failure)
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun FailedScreenPreview() {
-    PreviewTheme {
-        FailedScreen(
-            failure =
-                ScreenFailure(
-                    FailedStep.LIBRARY_OPEN,
-                    DisplayError("Couldn't open the library.", "database error: disk I/O error"),
-                ),
-        )
     }
 }

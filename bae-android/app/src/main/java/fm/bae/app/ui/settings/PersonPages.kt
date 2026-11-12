@@ -2,7 +2,6 @@ package fm.bae.app.ui.settings
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -15,12 +14,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.coreString
-import fm.bae.app.ui.PreviewData
-import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidCard
@@ -198,19 +194,5 @@ private fun RemoveDeviceButton(
                 callbacks.onRemoveDevice(device)
             },
         )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun DevicesPagePreview() {
-    PreviewTheme {
-        Column(modifier = Modifier.padding(ThemeSpace.edge)) {
-            DevicesCard(
-                member = PreviewData.member(),
-                callbacks = MemberCallbacks({}, { _, _ -> }, { _, _ -> }, { _ -> }, {}, {}),
-                addLast = true,
-            )
-        }
     }
 }

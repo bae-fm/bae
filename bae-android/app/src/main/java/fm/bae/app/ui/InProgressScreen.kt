@@ -10,7 +10,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.AppScreen
 import fm.bae.app.R
@@ -22,14 +21,9 @@ import fm.bae.app.ui.components.OpenProgressLine
 import fm.bae.app.ui.components.stepFraction
 import fm.bae.app.ui.onboarding.ResettingScreen
 import fm.bae.fastvalues.LatestSource
-import fm.bae.fastvalues.LatestStream
-import fm.bae.fastvalues.only
 import uniffi.bae_bridge.BridgeClosingProgress
-import uniffi.bae_bridge.BridgeClosingStep
 import uniffi.bae_bridge.BridgeOpenProgress
-import uniffi.bae_bridge.BridgeOpenStep
 import uniffi.bae_bridge.BridgeSetupProgress
-import uniffi.bae_bridge.BridgeSetupStep
 
 /** The screen of a call in flight, showing how far it has come. */
 @Composable
@@ -130,66 +124,5 @@ internal fun SetupStepScreen(
         ) {
             AndroidSpinner(text = stringResource(title))
         }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun LoadingScreenPreview() {
-    PreviewTheme {
-        LoadingScreen(steps = null, title = R.string.loading_finding_libraries)
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun OpeningScreenPreview() {
-    PreviewTheme {
-        LoadingScreen(
-            steps =
-                LatestStream
-                    .openProgress(
-                        BridgeOpenProgress(BridgeOpenStep.MIGRATING, "core.library.open_step.migrating", 2uL, 5uL),
-                    ).only,
-            title = R.string.loading_opening_library,
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun FinishingRemovalsPreview() {
-    PreviewTheme {
-        SetupStepScreen(
-            steps =
-                LatestStream
-                    .setupProgress(
-                        BridgeSetupProgress(
-                            BridgeSetupStep.FINISHING_REMOVALS,
-                            "core.library.setup_step.finishing_removals",
-                            1uL,
-                            2uL,
-                        ),
-                    ).only,
-            title = R.string.loading_removing_library,
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun ClosingScreenPreview() {
-    PreviewTheme {
-        ClosingScreen(
-            steps =
-                LatestStream
-                    .closingSteps(
-                        BridgeClosingProgress(
-                            BridgeClosingStep.STOPPING_SYNC,
-                            "core.library.closing_step.stopping_sync",
-                        ),
-                    ).only,
-            title = R.string.loading_closing_library,
-        )
     }
 }

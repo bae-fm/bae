@@ -3,16 +3,12 @@ package fm.bae.app.ui.onboarding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.DisplayError
 import fm.bae.app.R
-import fm.bae.app.ui.PreviewData
-import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ButtonTone
-import fm.bae.app.ui.components.DialogHead
 import fm.bae.app.ui.components.DialogParts
 import uniffi.bae_bridge.BridgeLibrary
 
@@ -72,20 +68,5 @@ internal fun removalFailedParts(
                 ) { Text(stringResource(android.R.string.ok)) }
             },
         )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun RemovalFailedPreview() {
-    PreviewTheme {
-        val parts =
-            removalFailedParts(
-                library = PreviewData.library(id = "lib-1", name = "Home music", isActive = false),
-                error = DisplayError("Could not reach the cloud."),
-                onRetry = {},
-                onCancel = {},
-            )
-        DialogHead(parts.title, parts.message)
     }
 }

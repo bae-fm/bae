@@ -25,7 +25,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleStartEffect
 import fm.bae.app.BaeApp
@@ -34,7 +33,6 @@ import fm.bae.app.R
 import fm.bae.app.data.LibraryOpenProgress
 import fm.bae.app.data.LibrarySetupStatus
 import fm.bae.app.displayError
-import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
@@ -44,17 +42,8 @@ import fm.bae.app.ui.components.Logo
 import fm.bae.app.ui.components.OpenProgressLine
 import fm.bae.app.ui.components.QRScannerScreen
 import fm.bae.app.ui.rememberScreenScope
-import fm.bae.fastvalues.LatestStream
-import fm.bae.fastvalues.only
 import uniffi.bae_bridge.BootstrapCancellation
 import uniffi.bae_bridge.BridgeBootstrapResult
-import uniffi.bae_bridge.BridgeBootstrapState
-import uniffi.bae_bridge.BridgeBootstrapStatus
-import uniffi.bae_bridge.BridgeCloudProvider
-import uniffi.bae_bridge.BridgeCodeMetadata
-import uniffi.bae_bridge.BridgeDropboxLocation
-import uniffi.bae_bridge.BridgeInviteInfo
-import uniffi.bae_bridge.BridgeStorageLocation
 
 internal val actionWidth = 220.dp
 
@@ -409,52 +398,4 @@ private fun OnboardingContainer(content: @Composable ColumnScope.() -> Unit) {
         verticalArrangement = Arrangement.Center,
         content = content,
     )
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun OnboardingProgressWaitingPreview() {
-    PreviewTheme {
-        OnboardingProgress(
-            step =
-                OnboardingStep.Running(
-                    from =
-                        OnboardingStep.Invite(
-                            start = JoinStart.Code("invite-code", "Dan"),
-                            invite =
-                                BridgeInviteInfo(
-                                    metadata =
-                                        BridgeCodeMetadata(
-                                            libraryId = "library-1",
-                                            memberId = "member-1",
-                                            provider = BridgeCloudProvider.DROPBOX,
-                                            location =
-                                                BridgeStorageLocation.Dropbox(
-                                                    location =
-                                                        BridgeDropboxLocation.SharedFolder(namespaceId = "namespace-1"),
-                                                    accountLabel = "person@example.com",
-                                                    folderLabel = null,
-                                                ),
-                                            oauthAccess = null,
-                                            carriesS3Key = false,
-                                        ),
-                                    libraryName = "Household",
-                                    inviter = "Ana",
-                                ),
-                            entry = CodeEntry.NewDevice,
-                        ),
-                    state =
-                        BridgeBootstrapState(
-                            status =
-                                BridgeBootstrapStatus.WaitingForApproval(
-                                    confirmation = "041 778",
-                                ),
-                            cancellable = false,
-                        ),
-                    steps = LatestStream.bootstrapSteps().only,
-                ),
-            onCancel = null,
-            onBack = {},
-        )
-    }
 }

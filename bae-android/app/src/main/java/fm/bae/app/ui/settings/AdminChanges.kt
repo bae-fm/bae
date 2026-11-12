@@ -7,9 +7,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.R
-import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidCard
@@ -21,9 +19,7 @@ import fm.bae.app.ui.components.StatusTone
 import uniffi.bae_bridge.BridgeAdminChange
 import uniffi.bae_bridge.BridgeAdminChangeKind
 import uniffi.bae_bridge.BridgeAdminChangeState
-import uniffi.bae_bridge.BridgeDeviceStop
 import uniffi.bae_bridge.BridgeMemberRole
-import uniffi.bae_bridge.BridgeOperationRejection
 
 /** Where an admin change shows: next to what it changes. */
 internal sealed interface AdminChangePlace {
@@ -146,33 +142,5 @@ private fun BridgeAdminChangeKind.description(): String {
         is BridgeAdminChangeKind.Approve -> {
             stringResource(R.string.admin_change_approve, person ?: unnamed)
         }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun AdminChangesListPreview() {
-    PreviewTheme {
-        AdminChangesList(
-            changes =
-                listOf(
-                    BridgeAdminChange(
-                        operation = 1,
-                        change = BridgeAdminChangeKind.RenameLibrary(name = "Home"),
-                        state = BridgeAdminChangeState.Waiting,
-                    ),
-                    BridgeAdminChange(
-                        operation = 2,
-                        change = BridgeAdminChangeKind.RemovePerson(member = "member", person = "Ben"),
-                        state = BridgeAdminChangeState.Refused(BridgeOperationRejection.NO_ADMIN_LEFT),
-                    ),
-                    BridgeAdminChange(
-                        operation = 3,
-                        change = BridgeAdminChangeKind.RemoveDevice(device = 7uL, name = "Tablet"),
-                        state = BridgeAdminChangeState.Stopped(BridgeDeviceStop.REMOVED),
-                    ),
-                ),
-            onDismiss = {},
-        )
     }
 }
