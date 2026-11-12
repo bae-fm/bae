@@ -21,7 +21,10 @@ struct DownloadRow: View {
             cancel: .init(help: "Cancel", action: onCancel)
         ) {
             VStack(alignment: .leading, spacing: ThemeSpace.line) {
-                HStack(spacing: ThemeSpace.related) {
+                HStack(
+                    alignment: .firstTextBaseline,
+                    spacing: ThemeSpace.related
+                ) {
                     Text(op.titleText)
                         .lineLimit(1)
 

@@ -21,7 +21,7 @@ struct StorageFileDetails: View {
                     .truncationMode(.middle)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Button(action: onClose) {
-                    Image(systemName: "xmark.circle.fill")
+                    Image(systemName: "xmark.circle")
                         .themeIcon(.medium)
                         .foregroundStyle(.secondary)
                 }

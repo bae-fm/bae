@@ -27,7 +27,7 @@ struct QueueRow<Content: View, Below: View>: View {
         VStack(alignment: .leading, spacing: ThemeSpace.compact) {
             RowItem {
                 Image(systemName: icon)
-                    .themeIcon(.medium)
+                    .font(.system(size: ThemeSize.lead))
                     .foregroundStyle(.secondary)
             } content: {
                 VStack(alignment: .leading, spacing: ThemeSpace.line) {
