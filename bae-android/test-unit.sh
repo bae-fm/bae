@@ -9,7 +9,4 @@
 # tests run after that module's task fails.
 set -euo pipefail
 
-cd "$(dirname "$0")"
-# shellcheck source=toolchain.sh
-source toolchain.sh
-./gradlew --continue testFullDebugUnitTest "$@"
+exec "$(dirname "$0")/gradle.sh" --continue testFullDebugUnitTest "$@"

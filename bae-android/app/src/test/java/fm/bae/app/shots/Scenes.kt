@@ -14,7 +14,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidSheetBody
 import uniffi.bae_bridge.BridgeDropboxLocation
@@ -39,7 +38,7 @@ internal fun SheetScene(
     title: String?,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    BaeTheme {
+    ShotTheme {
         Surface(color = BottomSheetDefaults.ContainerColor) {
             AndroidSheetBody(title, content)
         }
@@ -52,7 +51,7 @@ internal fun ComponentScene(
     wide: Boolean,
     content: @Composable () -> Unit,
 ) {
-    BaeTheme {
+    ShotTheme {
         Surface(color = MaterialTheme.colorScheme.background) {
             Box(modifier = (if (wide) Modifier.width(PHONE_WIDTH) else Modifier).padding(ThemeSpace.edge)) { content() }
         }
@@ -64,7 +63,7 @@ private val PHONE_WIDTH = 411.dp
 /** A screen of its own, on the screen's background. */
 @Composable
 internal fun ScreenScene(content: @Composable () -> Unit) {
-    BaeTheme {
+    ShotTheme {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { content() }
     }
 }
@@ -72,7 +71,7 @@ internal fun ScreenScene(content: @Composable () -> Unit) {
 /** A dialog's words on the dialog's own surface: the dialog opens a window a test doesn't draw. */
 @Composable
 internal fun DialogScene(content: @Composable () -> Unit) {
-    BaeTheme {
+    ShotTheme {
         Box(modifier = Modifier.fillMaxSize().padding(ThemeSpace.page), contentAlignment = Alignment.Center) {
             DialogSurface(content)
         }

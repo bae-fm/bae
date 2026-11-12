@@ -15,8 +15,7 @@ temporary one. This check refuses each of those names in test code:
   or a `test-*` feature (`test-utils`, `test-keyring`); and every module file
   such code declares, as `rust_modules` reaches them from Cargo's targets.
 - Swift: the sources of each XcodeGen project's test bundles.
-- Kotlin: Gradle's test source sets (`src/test*`, `src/androidTest*`,
-  `src/screenshotTest*`).
+- Kotlin: Gradle's test source sets (`src/test*`, `src/androidTest*`).
 - C#: the projects that reference `Microsoft.NET.Test.Sdk`.
 
 The apps call `BridgeHost::new` through their generated bindings as the
@@ -52,7 +51,7 @@ RUST_ALLOWED = {"bae-library/examples/restore_code.rs"}
 # What a fake host is made from in each app's bindings: no keychain behind it.
 SWIFT_HANDLE_LABELS = {"unsafeFromHandle", "noHandle"}
 KOTLIN_HANDLE_ARGUMENTS = {"NoHandle"}
-KOTLIN_TEST_SOURCE_SETS = ("test", "androidTest", "screenshotTest")
+KOTLIN_TEST_SOURCE_SETS = ("test", "androidTest")
 XCODEGEN_TEST_TYPES = {"bundle.unit-test", "bundle.ui-testing"}
 
 

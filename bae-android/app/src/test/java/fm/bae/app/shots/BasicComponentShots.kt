@@ -15,7 +15,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidCard
@@ -204,7 +203,7 @@ class BasicComponentShots : BoardShot() {
     @Test
     fun androidComponentDialogDefault() =
         shot("android.component.dialog.default") {
-            BaeTheme {
+            ShotTheme {
                 DialogSurface {
                     Column(modifier = Modifier.width(DIALOG_WIDTH), verticalArrangement = Arrangement.spacedBy(ThemeSpace.section)) {
                         DialogHead(

@@ -12,7 +12,8 @@ usage() {
     echo "  Builds bae-bridge for Android. Debug by default."
     echo "  Without --abi, builds every ABI in bae.abis (bae-android/gradle.properties),"
     echo "  as CI does. Local scripts pass one: run.sh the connected device's, the"
-    echo "  others this machine's emulator's (android_host_abi in toolchain.sh)."
+    echo "  others this machine's emulator's: --abi host names it (android_host_abi in"
+    echo "  toolchain.sh)."
     echo ""
     echo "  BAE_BRIDGE_FEATURES selects the cargo feature set (default:"
     echo "  'oauth-providers,cast'), which picks the Gradle edition the bindings"
@@ -41,6 +42,11 @@ STRIP="$ANDROID_NDK_TOOLCHAIN/bin/llvm-strip"
 if [[ ${#ABIS[@]} -eq 0 ]]; then
     IFS=, read -ra ABIS <<<"$ANDROID_ABIS"
 fi
+for i in "${!ABIS[@]}"; do
+    if [[ "${ABIS[$i]}" == host ]]; then
+        ABIS[i]=$(android_host_abi)
+    fi
+done
 for ABI in "${ABIS[@]}"; do
     if [[ ",$ANDROID_ABIS," != *",$ABI,"* ]]; then
         echo "build-android.sh: $ABI is not in bae.abis ($ANDROID_ABIS)" >&2

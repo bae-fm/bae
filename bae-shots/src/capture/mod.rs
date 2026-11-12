@@ -1,5 +1,6 @@
 //! Running a platform's harness and collecting the shots it writes.
 
+pub(crate) mod android;
 pub(crate) mod mac;
 
 use crate::names::{Name, Platform, Prefix};
@@ -20,8 +21,6 @@ pub(crate) enum CaptureError {
     UnknownPrefix(String),
     #[error("no declared {0:?} shot is selected")]
     NothingSelected(Platform),
-    #[error("{0:?} has no capture")]
-    NoCapture(Platform),
     #[error("the capture is incomplete:\n{}", .0.join("\n"))]
     Incomplete(Vec<String>),
 }

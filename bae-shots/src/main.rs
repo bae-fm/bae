@@ -98,7 +98,7 @@ fn capture(
             Platform::Mac => {
                 capture::mac::capture(root, &names, &selection.prefixes, selection.windows, &out)
             }
-            Platform::Android => Err(capture::CaptureError::NoCapture(platform)),
+            Platform::Android => capture::android::capture(root, &names, &selection.prefixes, &out),
         }
         .map_err(|e| e.to_string())?;
     }

@@ -16,7 +16,6 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
-    id("com.android.compose.screenshot")
 }
 
 // CI injects these for release builds; local builds get dev markers.
@@ -42,9 +41,6 @@ android {
     compileSdk = toolchain("compileSdk").toInt()
     buildToolsVersion = toolchain("buildToolsVersion")
     ndkVersion = toolchain("ndkVersion")
-
-    // The screenshotTest source set, which scripts/shots/android.sh renders.
-    experimentalProperties["android.experimental.enableScreenshotTest"] = true
 
     defaultConfig {
         applicationId = "fm.bae.app"
@@ -218,13 +214,15 @@ extensions.configure<ApplicationAndroidComponentsExtension> {
     }
 }
 
-// scripts/shots/android.sh passes -Pbae.shotsDir=<dir>: the shot tests then write
+// bae-shots passes -Pbae.shotsDir=<dir>: the shot tests then write
 // <board>@android.png there; without it they skip, so the ordinary unit test run
-// draws nothing.
+// draws nothing. -Pbae.shotsSelect=<prefixes> (comma-separated board names' starts)
+// limits the boards drawn.
 tasks.withType<Test>().configureEach {
     providers.gradleProperty("bae.shotsDir").orNull?.let { dir ->
         systemProperty("bae.shotsDir", dir)
         systemProperty("roborazzi.test.record", "true")
+        providers.gradleProperty("bae.shotsSelect").orNull?.let { systemProperty("bae.shotsSelect", it) }
         outputs.upToDateWhen { false }
     }
 }
@@ -289,7 +287,4 @@ dependencies {
     // (src/test/.../shots) read nothing from the plugin, only call captureRoboImage.
     testImplementation("io.github.takahirom.roborazzi:roborazzi:1.32.0")
     testImplementation("io.github.takahirom.roborazzi:roborazzi-compose:1.32.0")
-    // The screenshotTest source set renders previews with the tooling.
-    screenshotTestImplementation(composeBom)
-    screenshotTestImplementation("androidx.compose.ui:ui-tooling")
 }

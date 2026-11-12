@@ -1,6 +1,6 @@
 name: Screenshots
 
-# Captures the shared UI scenes on macOS (bae-shots) and Android (scripts/shots/*)
+# Captures the shared UI scenes on macOS and Android (bae-shots)
 # and publishes the scene x platform gallery to GitHub Pages. Setup steps mirror
 # each platform's build workflow (ci.yml / android-build.yml) — the
 # scripts do the building; the jobs provision toolchains.
@@ -65,11 +65,13 @@ jobs:
         if: steps.ffmpeg-cache.outputs.cache-hit != 'true'
         run: ./scripts/build-ffmpeg-android.sh
       - name: Capture
-        run: ./scripts/shots/android.sh shots-out
+        run: scripts/cargo.sh run -p bae-shots -- capture --platform android --out shots-out
       - uses: actions/upload-artifact@v4
         with:
           name: shots-android
-          path: shots-out/*.png
+          path: |
+            shots-out/*.png
+            shots-out/*.json
           if-no-files-found: error
 
   gallery:

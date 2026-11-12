@@ -11,6 +11,7 @@ import androidx.compose.ui.test.onRoot
 import com.github.takahirom.roborazzi.captureRoboImage
 import fm.bae.app.BaeRobolectricTestRunner
 import org.junit.Assume.assumeNotNull
+import org.junit.Assume.assumeTrue
 import org.junit.Rule
 import org.junit.rules.TestName
 import org.robolectric.annotation.Config
@@ -18,9 +19,10 @@ import org.robolectric.annotation.GraphicsMode
 import java.io.File
 
 /**
- * A board's shot: the real composable drawn at a current phone size in the dark look, to
- * `<board>@android.png` and its element list `<board>@android.json` in the directory
- * `-Pbae.shotsDir` names (scripts/shots/android.sh passes it). Without it the shot is skipped.
+ * A board's shot: the real composable drawn at a current phone size in the boards' look (dark, Midnight,
+ * Pink), to `<board>@android.png` and its element list `<board>@android.json` in the directory
+ * `-Pbae.shotsDir` names (bae-shots passes it). Without it the shot is skipped, and so is a board no
+ * prefix of `-Pbae.shotsSelect` (comma-separated board-name prefixes) starts, when that is given.
  *
  * A shot is a test function named by its board in PascalCase (`AndroidWelcomeLibraries` is
  * `android.welcome.libraries`), written as camelCase; [shot] refuses a board its function doesn't spell.
@@ -57,6 +59,7 @@ abstract class BoardShot {
         ComponentIds.check(board)
         val directory = System.getProperty("bae.shotsDir")
         assumeNotNull(directory)
+        assumeTrue("board '$board' is not selected", isSelected(board, System.getProperty("bae.shotsSelect")))
         compose.settle(content)
         val root = compose.onRoot()
         root.captureRoboImage(File(directory, "$board@android.png").path)
@@ -64,6 +67,12 @@ abstract class BoardShot {
             .writeText(ElementList.of(board, root.fetchSemanticsNode()).toString(JSON_INDENT) + "\n")
     }
 }
+
+/** Whether [board] is in the run: every board when [select] is absent, else those a listed prefix starts. */
+internal fun isSelected(
+    board: String,
+    select: String?,
+): Boolean = select.isNullOrEmpty() || select.split(',').any { board.startsWith(it) }
 
 /**
  * Draws [content] and stops at the same frame every run: the clock advances only by [SETTLE_MILLIS],
