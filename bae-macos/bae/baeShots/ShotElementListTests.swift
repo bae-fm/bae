@@ -25,7 +25,7 @@ struct ShotElementListTests {
 
         #expect(list.board == "mac.welcome.add-code.entering", "\(json)")
         #expect(list.platform == "macos")
-        #expect(list.size.width == 900)
+        #expect(list.size.width == 690)
         #expect(list.size.height == 600)
         // The sheet hangs 36 points below the window's top, centred.
         let left = (list.size.width - 400) / 2
