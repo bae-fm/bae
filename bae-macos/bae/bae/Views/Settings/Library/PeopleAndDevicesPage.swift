@@ -124,7 +124,7 @@ struct PeopleAndDevicesPage: View {
                 }
                 switch shown {
                 case .people:
-                    AdminChangesSection()
+                    AdminChangesSection(place: .people)
                     youSection
                     peopleSection
                 case .person(let memberId):
@@ -436,6 +436,7 @@ extension PeopleAndDevicesPage {
     @ViewBuilder
     private func personSections(_ person: BridgePerson) -> some View {
         let member = person.membership
+        AdminChangesSection(place: .person(member: String(member.id)))
         Section {
             LabeledContent("Role") {
                 HStack(spacing: ThemeSpace.related) {

@@ -2756,9 +2756,11 @@ The same write records what the change changes in the device-local
 the app's writes started (`coven_operations`): the new name, the person and
 the role, the person, the device, or for an approval the person it lets in
 and the name the invite gave them. Coven's list says what kind of change it
-is and how it ended, so the row holds neither. Each change shows, under
-**Changes from this Mac** under People and devices in Library settings on a Mac and **Changes from this
-device** in People and devices on Android, as what it asks ("Remove Ben",
+is and how it ended, so the row holds neither. Each change shows, in a box titled
+**Changes from this Mac** on a Mac and **Changes from this device** on Android,
+where the change is: a rename under the library's name on the Library page, a
+role change on that person's page above their role, and removing a person or a
+device and approving a request on People and devices. Each shows as what it asks ("Remove Ben",
 "Rename the library to “Home”", "Let Dan in"), named from the person's profile or the
 device's name as they stand ("Remove a device" for one this device hasn't
 read yet): waiting to sync, then done, refused or

@@ -46,6 +46,89 @@ extension ShotScene {
         },
     ]
 
+    /// A person's page while the change that makes them an admin waits for
+    /// sync, and once it is done: the change's box above their role, which
+    /// reads Member until the library has the change.
+    static let adminChangeScenes: [ShotScene] = [
+        makeAdmin(
+            "mac.settings.person.make-admin-waiting",
+            role: .member,
+            state: .waiting
+        ),
+        makeAdmin(
+            "mac.settings.person.make-admin-done",
+            role: .admin,
+            state: .done
+        ),
+    ]
+
+    /// The preview people with the other person named Ben, who has a tablet.
+    private static func peopleWithBen(role: BridgeMemberRole) -> [BridgePerson]
+    {
+        PreviewData.members(reaching: PreviewData.previewStorage)
+            .map {
+                person in
+                guard person.membership.id == otherMemberId else {
+                    return person
+                }
+                var ben = person
+                ben.profile?.name = "Ben"
+                ben.membership.role = role
+                ben.membership.activeDevices = [
+                    BridgeActiveDevice(
+                        id: 5,
+                        name: "Tablet",
+                        isSelf: false,
+                        canRemove: true
+                    )
+                ]
+                ben.membership.formerDevices = []
+                return ben
+            }
+    }
+
+    private static func makeAdmin(
+        _ id: String,
+        role: BridgeMemberRole,
+        state: BridgeAdminChangeState
+    ) -> ShotScene {
+        ShotScene(id: id, size: CGSize(width: 500, height: 480)) {
+            let membership = MembershipStore.stub(
+                people: peopleWithBen(role: role),
+                selfIsAdmin: true,
+                adminChanges: [
+                    BridgeAdminChange(
+                        operation: 1,
+                        change: .setRole(
+                            member: otherMemberId,
+                            person: "Ben",
+                            role: .admin
+                        ),
+                        state: state
+                    )
+                ]
+            )
+            return ShotStage(
+                PeopleAndDevicesPage(
+                    onBack: {},
+                    subpage: .person(memberId: otherMemberId)
+                )
+                .frame(width: 500, height: 480)
+                .environment(
+                    PreviewData.previewSync(storage: PreviewData.previewStorage)
+                )
+                .environment(
+                    PreviewData.connectedConfigStore(
+                        storage: PreviewData.previewStorage
+                    )
+                )
+                .environment(membership)
+            ) {
+                membership.members != nil
+            }
+        }
+    }
+
     /// An invite sent to another@example.com, which hasn't been answered.
     private static let invited = BridgeInvite(
         id: "11",

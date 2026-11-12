@@ -69,6 +69,8 @@ struct LibrarySettingsTab: View {
                     }
                 }
 
+                AdminChangesSection(place: .library)
+
                 Section {
                     syncRow
                     if configStore.syncs {
