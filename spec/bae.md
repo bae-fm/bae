@@ -1103,7 +1103,10 @@ of:
 
 A file that can't be read at all, such as a rip log, a text file or an audio
 file's tags on a drive that fails, is not a file that states nothing: the
-run fails with the read's error, and identifying again reads it anew.
+run fails with the read's error, and identifying again reads it anew. A rip
+log whose table of contents has a row that doesn't read, or whose track
+numbers don't run 1, 2, 3 in order, fails to read as a log, since the Disc ID
+of a table with a row missing would look as valid as the real one.
 
 Identification reads the audio's tags from the files on every run, so the
 scan's stored reading keeps none of the ISRCs, labels, copyright lines or

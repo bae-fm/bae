@@ -343,7 +343,10 @@ fn test_cue_duration_discid_empty_tracks_is_error() {
 #[test]
 fn parse_log_toc_row_accepts_valid_and_rejects_malformed() {
     // A well-formed EAC/XLD TOC row: track | start | length | start | end.
-    assert_eq!(parse_log_toc_row("   1 | 0:00.00 | 1:00.00 |      0 |  188814"), Some((0, 188814)));
+    assert_eq!(
+        parse_log_toc_row("   1 | 0:00.00 | 1:00.00 |      0 |  188814"),
+        Some((1, 0, 188814))
+    );
     // Fewer than five pipe-separated columns.
     assert_eq!(parse_log_toc_row("1 | 0:00.00 | 1:00.00 | 0"), None);
     // Track number outside 1..=99.
@@ -373,17 +376,40 @@ fn extract_log_toc_sectors_parses_headerless_table() {
     assert_eq!(rows, vec![(0, 100), (100, 200)]);
 }
 
+/// A row that does not read, or a gap in the track numbers, fails the log: a
+/// skipped row hashes a disc one track short, to a DiscID that looks valid.
 #[test]
-fn extract_log_toc_sectors_skips_unparseable_rows() {
-    // A header, a malformed row (track 0), then a valid row: the bad row is
-    // dropped rather than aborting the parse.
-    let log = "TOC of the extracted CD\n\
-               Track | Start | Length | Start sector | End sector\n\
-               ---------------------------------------------------\n\
-               0 | 0:00.00 | 1:00.00 | 0 | 100\n\
-               1 | 0:00.00 | 1:00.00 | 10 | 200\n\
-               \n\
-               Range status and errors\n";
-    let rows = extract_log_toc_sectors(log).expect("the valid row should parse");
-    assert_eq!(rows, vec![(10, 200)], "the invalid track-0 row is dropped");
+fn extract_log_toc_sectors_fails_on_a_damaged_row_or_a_gap_in_track_numbers() {
+    let toc = |rows: &str| {
+        format!(
+            "TOC of the extracted CD\n\
+             Track | Start | Length | Start sector | End sector\n\
+             ---------------------------------------------------\n\
+             {rows}\n\
+             \n\
+             Range status and errors\n"
+        )
+    };
+    let whole = toc("1 | 0:00.00 | 1:00.00 | 0 | 99\n2 | 1:00.00 | 1:00.00 | 100 | 199");
+    assert_eq!(extract_log_toc_sectors(&whole).unwrap(), vec![(0, 99), (100, 199)]);
+
+    // A middle row with an unreadable sector, a last row with an unreadable
+    // sector, and a first row with an unreadable track number.
+    for damaged in [
+        "1 | 0:00.00 | 1:00.00 | 0 | 99\n2 | 1:00.00 | 1:00.00 | 1O0 | 199\n3 | 2:00.00 | 1:00.00 | 200 | 299",
+        "1 | 0:00.00 | 1:00.00 | 0 | 99\n2 | 1:00.00 | 1:00.00 | 100 | 1x9",
+        "x | 0:00.00 | 1:00.00 | 0 | 99\n2 | 1:00.00 | 1:00.00 | 100 | 199",
+    ] {
+        let error = extract_log_toc_sectors(&toc(damaged)).expect_err(damaged);
+        assert_eq!(error.kind(), std::io::ErrorKind::InvalidData, "{damaged}");
+    }
+    // Track numbers that skip, repeat or start late.
+    for numbered in [
+        "1 | 0:00.00 | 1:00.00 | 0 | 99\n3 | 1:00.00 | 1:00.00 | 100 | 199",
+        "1 | 0:00.00 | 1:00.00 | 0 | 99\n1 | 1:00.00 | 1:00.00 | 100 | 199",
+        "2 | 0:00.00 | 1:00.00 | 0 | 99",
+    ] {
+        let error = extract_log_toc_sectors(&toc(numbered)).expect_err(numbered);
+        assert_eq!(error.kind(), std::io::ErrorKind::InvalidData, "{numbered}");
+    }
 }

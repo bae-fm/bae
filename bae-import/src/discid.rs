@@ -14,7 +14,15 @@ fn invalid_discid_data(message: impl Into<String>) -> std::io::Error {
     std::io::Error::new(std::io::ErrorKind::InvalidData, message.into())
 }
 
-fn parse_log_toc_row(line: &str) -> Option<(i32, i32)> {
+/// Whether a line has the columns of a TOC table row: track, start, length,
+/// start sector and end sector.
+fn has_toc_row_columns(line: &str) -> bool {
+    line.split('|').count() >= 5
+}
+
+/// A TOC table row's `(track number, start sector, end sector)`; `None` for
+/// a line whose cells do not read as one.
+fn parse_log_toc_row(line: &str) -> Option<(u32, i32, i32)> {
     let parts: Vec<&str> = line.split('|').collect();
     if parts.len() < 5 {
         return None;
@@ -31,10 +39,13 @@ fn parse_log_toc_row(line: &str) -> Option<(i32, i32)> {
         return None;
     }
 
-    Some((start_sector, end_sector))
+    Some((track_num, start_sector, end_sector))
 }
 
 /// Extract raw `(start_sector, end_sector)` pairs from an EAC/XLD LOG TOC table.
+/// Every row of the table must read and the track numbers must run 1, 2, 3 in
+/// order: a row skipped would hash a disc one track short, a wrong DiscID that
+/// looks as valid as the right one.
 /// Format: "       10  | 37:42.72 |  4:14.43 |    169722    |   188814"
 fn extract_log_toc_sectors(log_content: &str) -> Result<Vec<(i32, i32)>, std::io::Error> {
     trace!("Parsing LOG file TOC");
@@ -74,15 +85,20 @@ fn extract_log_toc_sectors(log_content: &str) -> Result<Vec<(i32, i32)>, std::io
         {
             continue;
         }
-        if let Some((start_sector, end_sector)) = toc_row {
-            track_sectors.push((start_sector, end_sector));
-            trace!(
-                "  Track {} sectors: start={}, end={}",
-                track_sectors.len(),
-                start_sector,
-                end_sector
-            );
+        if !has_toc_row_columns(line) {
+            continue;
         }
+        let Some((track_number, start_sector, end_sector)) = toc_row else {
+            return Err(invalid_discid_data(format!("LOG TOC row does not read: {line}")));
+        };
+        let expected = track_sectors.len() + 1;
+        if usize::try_from(track_number) != Ok(expected) {
+            return Err(invalid_discid_data(format!(
+                "LOG TOC lists track {track_number} where track {expected} belongs"
+            )));
+        }
+        track_sectors.push((start_sector, end_sector));
+        trace!("  Track {} sectors: start={}, end={}", track_number, start_sector, end_sector);
     }
     if track_sectors.is_empty() {
         warn!("Could not find any TOC rows in LOG file");
