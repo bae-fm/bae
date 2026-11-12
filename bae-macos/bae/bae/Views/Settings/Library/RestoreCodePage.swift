@@ -27,7 +27,7 @@ struct RestoreCodePage: View {
                 )
             }
             .foregroundStyle(Color(white: 0.27))
-            QRCode(text: Self.scannedText(code), side: 200)
+            QRCode(text: Self.scannedText(code))
                 .frame(maxWidth: .infinity)
             Text(verbatim: code)
                 .font(.system(size: 12, design: .monospaced))

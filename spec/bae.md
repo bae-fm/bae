@@ -3151,7 +3151,12 @@ shown only for a library with storage. Its sheet tells her to scan or enter the
 code on the new device, over the QR code, with **Copy code** and **Share**
 (**Share…** on a Mac), which hand out the code to type; the code's text is not
 shown beside the QR code. On S3 the QR code carries her key and the code to
-type does not, so the new device asks for the key only when she types the code. While it shows the code it watches
+type does not, so the new device asks for the key only when she types the code.
+Every QR code bae shows (this one, an invite's, the printed restore code) is
+drawn at the size its module count needs at the measured minimum module size
+(3.43 points on a Mac, the same number in dp on Android), so a phone camera can
+read it: a code that carries a key is larger than a short pairing code, and no
+screen picks a size of its own. While it shows the code it watches
 her devices, as People's list of them does: once a device of hers joins that
 wasn't among them when the sheet made the code, the sheet says that device's
 name was added in place of the code, and **Done** closes it. Her devices are

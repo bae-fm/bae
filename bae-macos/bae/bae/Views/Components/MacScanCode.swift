@@ -11,15 +11,12 @@ struct MacScanCode: View {
     let qr: String
     let code: String
 
-    /// How wide the QR code is drawn, in points.
-    private static var side: CGFloat { 160 }
-
     var body: some View {
         VStack(spacing: ThemeSpace.edge) {
             Text(instruction)
                 .themeText(.body)
                 .multilineTextAlignment(.center)
-            QRCode(text: qr, side: Self.side)
+            QRCode(text: qr)
                 .accessibilityLabel("QR code")
             HStack(spacing: ThemeSpace.related) {
                 Button("Copy code") {

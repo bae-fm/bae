@@ -3,8 +3,7 @@ package fm.bae.app.ui.components
 import android.graphics.Bitmap
 import android.graphics.Color
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -13,6 +12,8 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.common.BitMatrix
@@ -28,14 +29,27 @@ private val logger = BaeLogger(TAG)
 private const val QUIET_ZONE_MODULES = 4
 
 /**
- * [text] as a QR code as wide as the space it is given, or nothing when ZXing
- * rejects the payload; callers always show the copyable text alongside.
+ * The smallest a module is drawn: the 360 points a version 20 code (105
+ * modules with its quiet zone) was measured to need for a phone camera to
+ * resolve it from 25 to 30 cm on the Mac, per module. Nothing in the repo
+ * measured a phone screen read by another phone's camera, so a dp takes the
+ * Mac point's number; a dp is physically smaller than a Mac point, and this
+ * minimum is the one to revisit if a phone-to-phone scan fails.
+ */
+internal val MINIMUM_MODULE_SIDE: Dp = (360f / 105f).dp
+
+/**
+ * [text] as a QR code, or nothing when ZXing rejects the payload; callers
+ * always show the copyable text alongside.
  *
- * A join or invite code carrying an S3 location and key reaches QR version
- * 20, so the code takes the full width at the low error-correction level,
- * whose fewer, larger modules a Mac's camera resolves from farther away. The
- * code's base32 part is encoded as alphanumeric rather than bytes, which keeps
- * a restore code beside its S3 key up to three versions smaller.
+ * The code is drawn as wide as its modules need, every module
+ * [MINIMUM_MODULE_SIDE], at the low error-correction level, whose fewer,
+ * larger modules a camera resolves from farther away: a join or invite code
+ * carrying an S3 location and key reaches QR version 20 and is drawn 360 dp
+ * wide, and a short pairing code stays small. It keeps that width even where
+ * the space it is given is narrower, so it overflows rather than shrinks.
+ * The code's base32 part is encoded as alphanumeric rather than bytes, which
+ * keeps a restore code beside its S3 key up to three versions smaller.
  */
 @Composable
 fun QRCodeImage(
@@ -53,9 +67,12 @@ fun QRCodeImage(
         painter = BitmapPainter(bitmap.asImageBitmap(), filterQuality = FilterQuality.None),
         contentDescription = contentDescription,
         contentScale = ContentScale.Fit,
-        modifier = modifier.fillMaxWidth().aspectRatio(1f),
+        modifier = modifier.requiredSize(qrSide(bitmap)),
     )
 }
+
+/** How wide [bitmap], a code with its quiet zone at one pixel per module, is drawn. */
+internal fun qrSide(bitmap: Bitmap): Dp = MINIMUM_MODULE_SIDE * bitmap.width
 
 /** [text] as a QR code bitmap at one pixel per module, or null when ZXing rejects it. */
 internal fun encodeQRCode(text: String): Bitmap? =

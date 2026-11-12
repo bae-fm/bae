@@ -6,17 +6,22 @@ import os.log
 private let logger = Logger.bae("QRCode")
 
 /// A string drawn as a QR code for another device's camera to read: the
-/// device-join and invite codes. A code carrying an S3 location with
-/// detected settings and a key reaches QR version 20, so it is drawn 360 points
-/// wide at the low error-correction level, whose fewer, larger modules a phone
-/// camera resolves from 25 to 30 cm, inside the four-module quiet zone the QR
-/// standard requires.
+/// device-join and invite codes. It is drawn at the low error-correction
+/// level, whose fewer, larger modules a phone camera resolves from 25 to 30 cm,
+/// inside the four-module quiet zone the QR standard requires, and as wide as
+/// its modules need: every module is `minimumModuleSide` points, so the side
+/// follows what the code holds. A code carrying an S3 location with detected
+/// settings and a key reaches QR version 20, 97 modules and the quiet zone's 8,
+/// and is drawn 360 points wide; a short pairing code stays small. A caller
+/// never gives a side, because a side chosen for one payload is too small for
+/// a larger one.
 struct QRCode: View {
     let text: String
-    /// How wide it is drawn, in points.
-    var side: CGFloat = QRCode.defaultSide
 
-    static let defaultSide: CGFloat = 360
+    /// The smallest a module is drawn, in points: the 360 points a version 20
+    /// code (105 modules with its quiet zone) was measured to need for a phone
+    /// camera to resolve it from 25 to 30 cm.
+    static let minimumModuleSide: CGFloat = 360 / 105
 
     var body: some View {
         if let image = Self.image(for: text) {
@@ -25,8 +30,17 @@ struct QRCode: View {
             Image(nsImage: image)
                 .interpolation(.none)
                 .resizable()
-                .frame(width: side, height: side)
+                .frame(
+                    width: image.size.width * Self.minimumModuleSide,
+                    height: image.size.height * Self.minimumModuleSide
+                )
         }
+    }
+
+    /// How wide `text` is drawn, in points, or nil when no code can be made
+    /// for it.
+    static func side(for text: String) -> CGFloat? {
+        image(for: text).map { $0.size.width * minimumModuleSide }
     }
 
     private static let context = CIContext()
