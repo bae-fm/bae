@@ -10,7 +10,7 @@ protocol ProgressStep: Sendable, Equatable {
 }
 
 extension BridgeOpenProgress: ProgressStep {
-    var title: String { localizedCoreString(bridgeOpenStepKey(step: step)) }
+    var title: String { localizedCoreString(key) }
     var fraction: Double? {
         total > 0 ? Double(done) / Double(total) : 0
     }
@@ -22,7 +22,7 @@ extension BridgeBootstrapStep: ProgressStep {
         case .opening(let progress):
             progress.title
         case .loading(let progress):
-            localizedCoreString(bridgeLoadStepKey(step: progress.step))
+            localizedCoreString(progress.key)
         }
     }
     var fraction: Double? {
@@ -36,8 +36,8 @@ extension BridgeBootstrapStep: ProgressStep {
     }
 }
 
-extension BridgeClosingStep: ProgressStep {
-    var title: String { localizedCoreString(bridgeClosingStepKey(step: self)) }
+extension BridgeClosingProgress: ProgressStep {
+    var title: String { localizedCoreString(key) }
     /// A close's steps count nothing.
     var fraction: Double? { nil }
 }
@@ -50,7 +50,7 @@ extension BridgeCatalogApplyStep: ProgressStep {
 
 extension BridgeStorageSetupProgress: ProgressStep {
     var title: String {
-        localizedCoreString(bridgeStorageSetupStepKey(step: step))
+        localizedCoreString(key)
     }
     /// A step of one unit moves without a count; loading's steps count.
     var fraction: Double? {
@@ -59,7 +59,7 @@ extension BridgeStorageSetupProgress: ProgressStep {
 }
 
 extension BridgeSetupProgress: ProgressStep {
-    var title: String { localizedCoreString(bridgeSetupStepKey(step: step)) }
+    var title: String { localizedCoreString(key) }
     var fraction: Double? {
         total > 0 ? Double(done) / Double(total) : nil
     }
@@ -315,6 +315,7 @@ struct MacProgressContainer<Step: ProgressStep, Idle: View>: View {
                 LatestStream.openProgress(
                     holding: BridgeOpenProgress(
                         step: .migrating,
+                        key: "core.library.open_step.migrating",
                         done: 1,
                         total: 3
                     )
@@ -333,6 +334,7 @@ struct MacProgressContainer<Step: ProgressStep, Idle: View>: View {
                 LatestStream.openProgress(
                     holding: BridgeOpenProgress(
                         step: .rebuilding,
+                        key: "core.library.open_step.rebuilding",
                         done: 4,
                         total: 9
                     )
@@ -352,6 +354,7 @@ struct MacProgressContainer<Step: ProgressStep, Idle: View>: View {
                     holding: .step(
                         BridgeSetupProgress(
                             step: .removingLibraries,
+                            key: "core.library.setup_step.removing_libraries",
                             done: 1,
                             total: 3
                         )
@@ -372,6 +375,7 @@ struct MacProgressContainer<Step: ProgressStep, Idle: View>: View {
                     holding: .storage(
                         BridgeStorageSetupProgress(
                             step: .connecting,
+                            key: "core.library.storage_setup_step.connecting",
                             done: 1,
                             total: 3
                         )

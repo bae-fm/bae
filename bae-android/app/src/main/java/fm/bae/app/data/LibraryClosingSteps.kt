@@ -6,7 +6,7 @@ import fm.bae.fastvalues.LatestStream
 import fm.bae.fastvalues.feed
 import fm.bae.fastvalues.only
 import kotlinx.coroutines.CoroutineScope
-import uniffi.bae_bridge.BridgeClosingStep
+import uniffi.bae_bridge.BridgeClosingProgress
 import uniffi.bae_bridge.BridgeHost
 import uniffi.bae_bridge.BridgeLibraryClosing
 
@@ -25,7 +25,7 @@ internal class LibraryClosingSteps(
     val closing = BridgeLibraryClosing(host)
     private val stream = LatestStream.closingSteps()
     private val feed = stream.feed(closing, scope) { bugs.report("read a library close's steps", it) }
-    val steps: LatestSource<BridgeClosingStep> = stream.only
+    val steps: LatestSource<BridgeClosingProgress> = stream.only
 
     override fun close() {
         feed.cancel()

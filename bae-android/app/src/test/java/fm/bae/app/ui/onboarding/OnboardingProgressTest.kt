@@ -104,18 +104,18 @@ class OnboardingProgressTest {
 
     /**
      * Loading the library shows its step's line, drawn by a View from the call's steps, in place of the status lines. The
-     * step's catalog key comes from the bridge, which a unit test can't load, so the test names it.
+     * step's catalog key comes in the progress the bridge hands the screen.
      */
     @Test
     fun loadingTheLibraryNamesItsStep() {
-        val loading = BridgeBootstrapStep.Loading(BridgeLoadProgress(BridgeLoadStep.READING, done = 2uL, total = 8uL))
+        val loading =
+            BridgeBootstrapStep.Loading(
+                BridgeLoadProgress(BridgeLoadStep.READING, "core.library.load_step.reading", done = 2uL, total = 8uL),
+            )
         val steps = LatestStream.written<BridgeBootstrapStep>()
         compose.setContent {
             BaeTheme {
-                BootstrapStepLine(
-                    steps = steps.source(STEP_KEY),
-                    loadStepKey = { "core.library.load_step.reading" },
-                ) { StatusLines(BridgeBootstrapStatus.Loading) }
+                BootstrapStepLine(steps = steps.source(STEP_KEY)) { StatusLines(BridgeBootstrapStatus.Loading) }
             }
         }
         // The rule hands out its activity only after running the main looper until idle, which never comes while a

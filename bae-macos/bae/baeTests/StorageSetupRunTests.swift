@@ -44,6 +44,7 @@ struct StorageSetupRunTests {
             StorageSetupFollowing(
                 staging: BridgeStorageSetupProgress(
                     step: .connecting,
+                    key: "core.library.storage_setup_step.connecting",
                     done: 0,
                     total: 1
                 ),
@@ -81,6 +82,7 @@ struct StorageSetupRunTests {
             StorageSetupFollowing(
                 staging: BridgeStorageSetupProgress(
                     step: .creatingStore,
+                    key: "core.library.storage_setup_step.creating_store",
                     done: 0,
                     total: 1
                 ),

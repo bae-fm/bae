@@ -11,12 +11,17 @@ import Testing
 @MainActor
 @Suite("Step progress line")
 struct StepProgressLineTests {
+    static let stoppingSync = BridgeClosingProgress(
+        step: .stoppingSync,
+        key: "core.library.closing_step.stopping_sync"
+    )
+
     @Test("a running step keeps its line's height")
     func runningStepKeepsItsHeight() async throws {
         let size = NSSize(width: 360, height: 120)
         try await SnapshotTestSupport.withHostedWindow(
             MacProgressContainer(
-                steps: LatestStream.closingSteps(holding: .stoppingSync).only
+                steps: LatestStream.closingSteps(holding: Self.stoppingSync).only
             ) {
                 EmptyView()
             }
@@ -26,7 +31,9 @@ struct StepProgressLineTests {
             try await SnapshotTestSupport.settle(host)
             let line = try #require(
                 SnapshotTestSupport.descendants(of: host)
-                    .compactMap { $0 as? StepProgressNSView<BridgeClosingStep> }
+                    .compactMap {
+                        $0 as? StepProgressNSView<BridgeClosingProgress>
+                    }
                     .first
             )
             #expect(line.steppingHeight > 0)
@@ -48,7 +55,7 @@ struct StepProgressLineTests {
         let size = NSSize(width: 360, height: 120)
         try await SnapshotTestSupport.withHostedWindow(
             MacProgressContainer(
-                steps: LatestStream.closingSteps(holding: .stoppingSync).only,
+                steps: LatestStream.closingSteps(holding: Self.stoppingSync).only,
                 showsBar: false
             ) {
                 EmptyView()
@@ -59,7 +66,9 @@ struct StepProgressLineTests {
             try await SnapshotTestSupport.settle(host)
             let line = try #require(
                 SnapshotTestSupport.descendants(of: host)
-                    .compactMap { $0 as? StepProgressNSView<BridgeClosingStep> }
+                    .compactMap {
+                        $0 as? StepProgressNSView<BridgeClosingProgress>
+                    }
                     .first
             )
             let bar = try #require(
@@ -83,7 +92,7 @@ struct StepProgressLineTests {
         let size = NSSize(width: 360, height: 120)
         try await SnapshotTestSupport.withHostedWindow(
             MacProgressContainer(
-                steps: LatestStream.closingSteps(holding: .stoppingSync).only
+                steps: LatestStream.closingSteps(holding: Self.stoppingSync).only
             ) {
                 IdleMarker()
             }
@@ -100,7 +109,7 @@ struct StepProgressLineTests {
     @Test("a step starting or ending in the stream swaps the idle content")
     func stepStartingAndEnding() async throws {
         let size = NSSize(width: 360, height: 120)
-        let steps = LatestStream<BridgeClosingStep>.written()
+        let steps = LatestStream<BridgeClosingProgress>.written()
         try await SnapshotTestSupport.withHostedWindow(
             MacProgressContainer(steps: steps.stream.only) {
                 IdleMarker()
@@ -111,7 +120,7 @@ struct StepProgressLineTests {
             try await SnapshotTestSupport.settle(host)
             #expect(Self.showsIdle(host))
 
-            steps.set(.stoppingSync)
+            steps.set(Self.stoppingSync)
             try await Wait.untilLaidOut(host) { !Self.showsIdle(host) }
 
             steps.remove()

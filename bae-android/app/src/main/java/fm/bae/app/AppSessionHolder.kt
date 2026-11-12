@@ -37,7 +37,7 @@ import uniffi.bae_bridge.BootstrapCancellation
 import uniffi.bae_bridge.BridgeBootstrapResult
 import uniffi.bae_bridge.BridgeBootstrapStatus
 import uniffi.bae_bridge.BridgeBootstrapStep
-import uniffi.bae_bridge.BridgeClosingStep
+import uniffi.bae_bridge.BridgeClosingProgress
 import uniffi.bae_bridge.BridgeConfig
 import uniffi.bae_bridge.BridgeDeviceReset
 import uniffi.bae_bridge.BridgeDiagnostics
@@ -56,6 +56,7 @@ import uniffi.bae_bridge.BridgeSetupProgress
 import uniffi.bae_bridge.BridgeStoreKeyState
 import uniffi.bae_bridge.BridgeTelemetryEvent
 import uniffi.bae_bridge.OpenedLibrary
+import uniffi.bae_bridge.bridgeRecoveryLines
 import uniffi.bae_bridge.initApp
 
 private const val TAG = "bae.AppSessionHolder"
@@ -142,7 +143,7 @@ sealed interface AppScreen {
      * [steps] the screen shows as they run.
      */
     data class Closing(
-        val steps: LatestSource<BridgeClosingStep>,
+        val steps: LatestSource<BridgeClosingProgress>,
         val work: LoadingWork,
     ) : InProgress
 
@@ -264,6 +265,12 @@ sealed interface AppScreen {
             }
     }
 }
+
+/** A device reset ready to confirm, and the `Core` table key of the warning the person accepts first. */
+data class PreparedReset(
+    val reset: BridgeDeviceReset,
+    val warningKey: String,
+)
 
 /**
  * Opens libraries and produces the lifecycle [AppScreen]. Bridge calls run off
@@ -546,9 +553,12 @@ object AppSessionHolder {
     fun prepareDeviceReset(
         context: Context,
         libraryId: String,
-    ): BridgeDeviceReset {
+    ): PreparedReset {
         val host = (context.applicationContext as BaeApp).host
-        return host.prepareDeviceReset(libraryId, deviceName(context))
+        return PreparedReset(
+            host.prepareDeviceReset(libraryId, deviceName(context)),
+            bridgeRecoveryLines().resetWarning,
+        )
     }
 
     /** [resetDevice] from the screen that offered it: a failed reset shows that screen again with why. */

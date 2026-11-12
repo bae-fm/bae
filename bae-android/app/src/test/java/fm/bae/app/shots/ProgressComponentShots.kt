@@ -25,7 +25,13 @@ class ProgressComponentShots : BoardShot() {
 
 @Composable
 private fun Progress(fraction: Double?) {
-    val steps = remember { LatestStream.openProgress(BridgeOpenProgress(BridgeOpenStep.MIGRATING, 1uL, 3uL)).only }
+    val steps =
+        remember {
+            LatestStream
+                .openProgress(
+                    BridgeOpenProgress(BridgeOpenStep.MIGRATING, "core.library.open_step.migrating", 1uL, 3uL),
+                ).only
+        }
     AndroidProgress(
         steps = steps,
         title = { "Uploading…" },

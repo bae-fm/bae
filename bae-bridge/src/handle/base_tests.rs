@@ -141,11 +141,11 @@ fn setting_up_s3_storage_writes_its_steps() {
     assert_eq!(
         written.iter().rev().nth(1),
         Some(&Some(crate::types::BridgeFastValue::StorageSetupProgress {
-            progress: crate::types::BridgeStorageSetupProgress {
-                step: crate::types::BridgeStorageSetupStep::CreatingStore,
-                done: 1,
-                total: 1,
-            },
+            progress: crate::types::BridgeStorageSetupProgress::new(
+                crate::types::BridgeStorageSetupStep::CreatingStore,
+                1,
+                1
+            ),
         })),
         "{written:?}"
     );

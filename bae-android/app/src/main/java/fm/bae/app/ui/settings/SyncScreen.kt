@@ -32,6 +32,7 @@ import fm.bae.app.AppSessionHolder
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.OpenLibrary
+import fm.bae.app.PreparedReset
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.data.SyncLine
@@ -58,7 +59,6 @@ import fm.bae.app.ui.storageLocationLabel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeCloudProvider
-import uniffi.bae_bridge.BridgeDeviceReset
 import uniffi.bae_bridge.BridgeLibrarySetup
 import uniffi.bae_bridge.BridgeMessage
 import uniffi.bae_bridge.BridgePendingAction
@@ -99,7 +99,7 @@ private class PendingActionRunner(
     var askingForKey by mutableStateOf<BridgeStorageLocation.S3?>(null)
 
     /** The reset the person is shown the warning of; null while none is. */
-    var resetting by mutableStateOf<BridgeDeviceReset?>(null)
+    var resetting by mutableStateOf<PreparedReset?>(null)
 
     fun perform(
         operation: String,
@@ -404,10 +404,10 @@ private fun SyncDialogs(
     }
     runner.resetting?.let { prepared ->
         DeviceResetDialog(
-            reset = prepared,
+            prepared = prepared,
             onConfirm = {
                 runner.resetting = null
-                actions.resetDevice(prepared)
+                actions.resetDevice(prepared.reset)
             },
             onDismiss = { runner.resetting = null },
         )

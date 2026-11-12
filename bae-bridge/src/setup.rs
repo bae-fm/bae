@@ -44,12 +44,20 @@ impl BridgeLibrary {
                     }
                 }
                 bae_app_dir::LibraryState::ReplacementUnfinished(by) => {
+                    let by = crate::types::BridgeReplacedBy::from_core(by);
                     crate::types::BridgeLibraryState::ReplacementUnfinished {
-                        by: crate::types::BridgeReplacedBy::from_core(by),
+                        line_key: crate::types::bridge_error_category_key(
+                            crate::types::BridgeErrorCategory::ReplacementUnfinished { by },
+                        ),
+                        by,
                     }
                 }
                 bae_app_dir::LibraryState::DeletionUnfinished => {
-                    crate::types::BridgeLibraryState::DeletionUnfinished
+                    crate::types::BridgeLibraryState::DeletionUnfinished {
+                        line_key: crate::types::bridge_error_category_key(
+                            crate::types::BridgeErrorCategory::DeletionUnfinished,
+                        ),
+                    }
                 }
             },
         })

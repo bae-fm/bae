@@ -168,7 +168,7 @@ pub enum BridgeFastValue {
     StorageSetupProgress { progress: super::BridgeStorageSetupProgress },
     /// The step a library's close or removal runs; a stream's one key, `""`,
     /// while it runs one.
-    ClosingStep { step: super::BridgeClosingStep },
+    ClosingStep { progress: super::BridgeClosingProgress },
     /// How far a bulk action over an import list's selection has got; a
     /// stream's one key, `""`, while the action runs.
     #[cfg(desktop)]

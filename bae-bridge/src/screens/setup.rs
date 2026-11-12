@@ -270,7 +270,7 @@ impl SetupSteps {
     /// nothing to count.
     pub(crate) fn step(&self, step: BridgeSetupStep, done: u64, total: u64) {
         self.set(BridgeFastValue::SetupProgress {
-            progress: BridgeSetupProgress { step, done, total },
+            progress: BridgeSetupProgress::new(step, done, total),
         });
     }
 

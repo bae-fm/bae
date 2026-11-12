@@ -87,7 +87,9 @@ fn a_dev_reset_reports_each_step_until_one_fails() {
     assert!(!matches!(error, BridgeError::Cancelled), "{error:?}");
 
     let step = |step, done, total| {
-        Some(BridgeFastValue::SetupProgress { progress: BridgeSetupProgress { step, done, total } })
+        Some(BridgeFastValue::SetupProgress {
+            progress: BridgeSetupProgress::new(step, done, total),
+        })
     };
     assert_eq!(
         setup.written(),
@@ -101,11 +103,11 @@ fn a_dev_reset_reports_each_step_until_one_fails() {
             step(Step::ConnectingStorage, 0, 0),
             // Coven's own steps follow, on the same stream, until it fails.
             Some(BridgeFastValue::StorageSetupProgress {
-                progress: crate::types::BridgeStorageSetupProgress {
-                    step: crate::types::BridgeStorageSetupStep::CheckingLocation,
-                    done: 0,
-                    total: 1,
-                }
+                progress: crate::types::BridgeStorageSetupProgress::new(
+                    crate::types::BridgeStorageSetupStep::CheckingLocation,
+                    0,
+                    1
+                )
             }),
             None,
         ]

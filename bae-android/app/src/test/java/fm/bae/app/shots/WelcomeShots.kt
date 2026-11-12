@@ -12,6 +12,8 @@ import fm.bae.app.R
 import fm.bae.app.ScreenFailure
 import fm.bae.app.ui.InProgressScreen
 import fm.bae.app.ui.ResetOfferedScreen
+import fm.bae.app.ui.ResetUnfinishedScreen
+import fm.bae.app.ui.testRecoveryLines
 import fm.bae.app.ui.components.RemovalLoss
 import fm.bae.app.ui.components.RemoveLibraryText
 import fm.bae.app.ui.onboarding.CodeEntry
@@ -31,10 +33,15 @@ import fm.bae.fastvalues.only
 import org.junit.Test
 import uniffi.bae_bridge.BridgeBootstrapState
 import uniffi.bae_bridge.BridgeBootstrapStatus
+import uniffi.bae_bridge.BridgeBootstrapStep
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeCodeMetadata
 import uniffi.bae_bridge.BridgeInviteInfo
 import uniffi.bae_bridge.BridgeLibraryStanding
+import uniffi.bae_bridge.BridgeLoadProgress
+import uniffi.bae_bridge.BridgeLoadStep
+import uniffi.bae_bridge.BridgeOpenProgress
+import uniffi.bae_bridge.BridgeOpenStep
 import uniffi.bae_bridge.BridgeStandingState
 import uniffi.bae_bridge.BridgeSyncStatusWord
 import uniffi.bae_bridge.BridgeSyncTone
@@ -121,6 +128,7 @@ class WelcomeShots : BoardShot() {
                             FailedStep.LIBRARY_OPEN,
                             DisplayError("This device must be reset before it can sync."),
                         ),
+                    lines = testRecoveryLines,
                     prepare = { error("a shot was tapped") },
                     errors = LocaleErrorDisplays(LocalContext.current),
                     onReset = {},
@@ -157,6 +165,60 @@ class WelcomeShots : BoardShot() {
                     error = null,
                     onJoin = {},
                     onBack = {},
+                )
+            }
+        }
+
+    /** Opening a library that rebuilds its indexes: the step over its bar. */
+    @Test
+    fun androidWelcomeOpeningSteps() =
+        shot("android.welcome.opening.steps") {
+            val progress = BridgeOpenProgress(BridgeOpenStep.REBUILDING, "core.library.open_step.rebuilding", 4uL, 9uL)
+            ScreenScene { InProgressScreen(AppScreen.Opening(LatestStream.openProgress(progress).only)) }
+        }
+
+    /** A device reset loading the library from storage again: the step it runs over its bar. */
+    @Test
+    fun androidWelcomeOpeningResetting() =
+        shot("android.welcome.opening.resetting") {
+            ScreenScene { InProgressScreen(AppScreen.Resetting(BridgeBootstrapStatus.Loading, loadingSteps())) }
+        }
+
+    /** A reset that stopped partway: the reset's line, centred, with Finish resetting. */
+    @Test
+    fun androidWelcomeResetUnfinished() =
+        shot("android.welcome.reset.unfinished") {
+            ScreenScene {
+                ResetUnfinishedScreen(error = null, lines = testRecoveryLines, onFinish = {}, onLeave = {})
+            }
+        }
+
+    /** A pairing code scanned or typed on the welcome, adding this device: the step it runs, and Cancel. */
+    @Test
+    fun androidWelcomeAddCodeAdding() =
+        shot("android.welcome.add-code.adding") {
+            ScreenScene {
+                OnboardingProgress(
+                    step =
+                        OnboardingStep.Running(
+                            from =
+                                OnboardingStep.Restore(
+                                    code = "restore-code",
+                                    metadata =
+                                        BridgeCodeMetadata(
+                                            libraryId = "home",
+                                            memberId = "ana",
+                                            provider = BridgeCloudProvider.DROPBOX,
+                                            location = sceneDropbox,
+                                            oauthAccess = null,
+                                            carriesS3Key = false,
+                                        ),
+                                    entry = CodeEntry.NewDevice,
+                                ),
+                            state = BridgeBootstrapState(BridgeBootstrapStatus.Loading, cancellable = true),
+                            steps = loadingSteps(),
+                        ),
+                    onCancel = {},
                 )
             }
         }
@@ -203,6 +265,14 @@ class WelcomeShots : BoardShot() {
             }
         }
 }
+
+private fun loadingSteps() =
+    LatestStream
+        .bootstrapSteps(
+            BridgeBootstrapStep.Loading(
+                BridgeLoadProgress(BridgeLoadStep.READING, "core.library.load_step.reading", 2uL, 8uL),
+            ),
+        ).only
 
 private const val JOIN_NOW_SECONDS = 1_800_000_000L
 private const val ONE_DAY_SECONDS = 86_400L

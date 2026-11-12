@@ -44,6 +44,7 @@ class ResetOfferedScreenTest {
                 ResetOfferedScreen(
                     libraryId = "home",
                     error = why,
+                    lines = testRecoveryLines,
                     prepare = { error("not tapped") },
                     errors = TestErrorDisplays,
                     onReset = { calls += "reset" },
@@ -77,6 +78,7 @@ class ResetOfferedScreenTest {
                 ResetOfferedScreen(
                     libraryId = "home",
                     error = why,
+                    lines = testRecoveryLines,
                     prepare = { throw BridgeException.Diagnostic(BridgeErrorCategory.Internal, "device name unreadable") },
                     errors = TestErrorDisplays,
                     onReset = { calls += "reset" },

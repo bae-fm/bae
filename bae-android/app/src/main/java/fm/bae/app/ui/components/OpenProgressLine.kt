@@ -14,7 +14,6 @@ import fm.bae.fastvalues.LatestStream
 import fm.bae.fastvalues.only
 import uniffi.bae_bridge.BridgeOpenProgress
 import uniffi.bae_bridge.BridgeOpenStep
-import uniffi.bae_bridge.bridgeOpenStepKey
 
 /**
  * What shows while a library opens: [idle] until the open runs a step, then
@@ -32,7 +31,7 @@ internal fun OpenProgressLine(
     val context = LocalContext.current
     AndroidProgress(
         steps = steps,
-        title = { context.coreString(bridgeOpenStepKey(it.step)) },
+        title = { context.coreString(it.key) },
         fraction = { if (it.total > 0uL) it.done.toDouble() / it.total.toDouble() else 0.0 },
         modifier = modifier,
         bar = bar,
@@ -46,7 +45,11 @@ internal fun OpenProgressLine(
 private fun OpenProgressLineMigratingPreview() {
     BaeTheme {
         OpenProgressLine(
-            steps = LatestStream.openProgress(BridgeOpenProgress(BridgeOpenStep.MIGRATING, 1uL, 3uL)).only,
+            steps =
+                LatestStream
+                    .openProgress(
+                        BridgeOpenProgress(BridgeOpenStep.MIGRATING, "core.library.open_step.migrating", 1uL, 3uL),
+                    ).only,
             modifier = Modifier.widthIn(max = 360.dp).padding(16.dp),
         ) { AndroidSpinner() }
     }
@@ -57,7 +60,11 @@ private fun OpenProgressLineMigratingPreview() {
 private fun OpenProgressLineRebuildingPreview() {
     BaeTheme {
         OpenProgressLine(
-            steps = LatestStream.openProgress(BridgeOpenProgress(BridgeOpenStep.REBUILDING, 4uL, 9uL)).only,
+            steps =
+                LatestStream
+                    .openProgress(
+                        BridgeOpenProgress(BridgeOpenStep.REBUILDING, "core.library.open_step.rebuilding", 4uL, 9uL),
+                    ).only,
             modifier = Modifier.widthIn(max = 360.dp).padding(16.dp),
         ) { AndroidSpinner() }
     }

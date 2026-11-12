@@ -56,7 +56,7 @@ private val synced =
         ),
     )
 private val neverSynced = library("local", "Local Library", BridgeLibraryState.Openable(storage = null))
-private val removalStopped = library("stopped", "Half Removed", BridgeLibraryState.DeletionUnfinished)
+private val removalStopped = library("stopped", "Half Removed", BridgeLibraryState.DeletionUnfinished("core.error.deletion_unfinished"))
 
 /** What the welcome's library core was asked, in order, and what it answers. */
 private class FakeLibraries(

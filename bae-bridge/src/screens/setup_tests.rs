@@ -23,11 +23,7 @@ fn the_stream_holds_the_running_step_until_the_call_ends() {
     assert_eq!(
         stream.latest(Vec::new()),
         Some(BridgeFastValue::SetupProgress {
-            progress: BridgeSetupProgress {
-                step: BridgeSetupStep::RemovingLibraries,
-                done: 1,
-                total: 3,
-            },
+            progress: BridgeSetupProgress::new(BridgeSetupStep::RemovingLibraries, 1, 3),
         })
     );
     assert_eq!(runtime.block_on(stream.clone().next()), Ok(vec![Vec::new()]), "the key started");
@@ -51,11 +47,7 @@ fn creating_a_library_reports_its_step() {
         setup.written(),
         vec![
             Some(BridgeFastValue::SetupProgress {
-                progress: BridgeSetupProgress {
-                    step: BridgeSetupStep::CreatingLibrary,
-                    done: 0,
-                    total: 0,
-                },
+                progress: BridgeSetupProgress::new(BridgeSetupStep::CreatingLibrary, 0, 0),
             }),
             None,
         ]
@@ -120,7 +112,7 @@ fn a_restore_s_states_are_pulled_and_its_counts_are_streamed() {
         stream.latest(Vec::new()),
         Some(BridgeFastValue::BootstrapStep {
             step: BridgeBootstrapStep::Loading {
-                progress: BridgeLoadProgress { step: BridgeLoadStep::Reading, done: 3, total: 8 },
+                progress: BridgeLoadProgress::new(BridgeLoadStep::Reading, 3, 8),
             },
         })
     );

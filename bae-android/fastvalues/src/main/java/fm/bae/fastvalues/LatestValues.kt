@@ -8,7 +8,7 @@ import fm.bae.screensubscription.pulled
 import kotlinx.coroutines.CoroutineScope
 import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeBootstrapStep
-import uniffi.bae_bridge.BridgeClosingStep
+import uniffi.bae_bridge.BridgeClosingProgress
 import uniffi.bae_bridge.BridgeDownloadTransferProgress
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeFastValue
@@ -173,9 +173,9 @@ class LatestStream<V : Any> private constructor(
             }
 
         /** The step a library's close runs, while it runs one; a preview's holds [value], fed by nothing. */
-        fun closingSteps(value: BridgeClosingStep? = null): LatestStream<BridgeClosingStep> =
+        fun closingSteps(value: BridgeClosingProgress? = null): LatestStream<BridgeClosingProgress> =
             LatestStream(value?.let { mapOf(ONLY_KEY to it) }) {
-                (it as? BridgeFastValue.ClosingStep)?.step
+                (it as? BridgeFastValue.ClosingStep)?.progress
             }
     }
 }
@@ -207,7 +207,7 @@ fun LatestStream<BridgeOpenProgress>.feed(
 
 /** Fill with the steps of the close [closing] is handed to. */
 @JvmName("feedClosingSteps")
-fun LatestStream<BridgeClosingStep>.feed(
+fun LatestStream<BridgeClosingProgress>.feed(
     closing: BridgeLibraryClosing,
     scope: CoroutineScope,
     reportBug: (BridgeException) -> Unit,

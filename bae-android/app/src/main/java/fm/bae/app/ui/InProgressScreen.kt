@@ -24,13 +24,12 @@ import fm.bae.app.ui.onboarding.ResettingScreen
 import fm.bae.fastvalues.LatestSource
 import fm.bae.fastvalues.LatestStream
 import fm.bae.fastvalues.only
+import uniffi.bae_bridge.BridgeClosingProgress
 import uniffi.bae_bridge.BridgeClosingStep
 import uniffi.bae_bridge.BridgeOpenProgress
 import uniffi.bae_bridge.BridgeOpenStep
 import uniffi.bae_bridge.BridgeSetupProgress
 import uniffi.bae_bridge.BridgeSetupStep
-import uniffi.bae_bridge.bridgeClosingStepKey
-import uniffi.bae_bridge.bridgeSetupStepKey
 
 /** The screen of a call in flight, showing how far it has come. */
 @Composable
@@ -90,20 +89,18 @@ private val OPEN_PROGRESS_MAX_WIDTH = 360.dp
 /**
  * The open library closing or being removed: the step it runs over a bar
  * without a count, drawn from [steps] each display frame, and, while it runs
- * no step, [title], what the screen waits on, under a spinner. [stepKey]
- * gives a step's catalog key.
+ * no step, [title], what the screen waits on, under a spinner.
  */
 @Composable
 internal fun ClosingScreen(
-    steps: LatestSource<BridgeClosingStep>,
+    steps: LatestSource<BridgeClosingProgress>,
     @StringRes title: Int,
-    stepKey: (BridgeClosingStep) -> String = ::bridgeClosingStepKey,
 ) {
     val context = LocalContext.current
     Box(modifier = Modifier.fillMaxSize().padding(ThemeSpace.page), contentAlignment = Alignment.Center) {
         AndroidProgress(
             steps = steps,
-            title = { context.coreString(stepKey(it)) },
+            title = { context.coreString(it.key) },
             fraction = { null },
             modifier = Modifier.widthIn(max = OPEN_PROGRESS_MAX_WIDTH),
         ) {
@@ -116,19 +113,18 @@ internal fun ClosingScreen(
  * A setup call running: the step it runs over a bar of how much of it is
  * done, counted where the step counts, drawn from [steps] each display frame,
  * and, while the call runs no step, [title], what the screen waits on, under
- * a spinner. [stepKey] gives a step's catalog key.
+ * a spinner.
  */
 @Composable
 internal fun SetupStepScreen(
     steps: LatestSource<BridgeSetupProgress>,
     @StringRes title: Int,
-    stepKey: (BridgeSetupStep) -> String = ::bridgeSetupStepKey,
 ) {
     val context = LocalContext.current
     Box(modifier = Modifier.fillMaxSize().padding(ThemeSpace.page), contentAlignment = Alignment.Center) {
         AndroidProgress(
             steps = steps,
-            title = { context.coreString(stepKey(it.step)) },
+            title = { context.coreString(it.key) },
             fraction = { stepFraction(it.done, it.total)?.toDouble() },
             modifier = Modifier.widthIn(max = OPEN_PROGRESS_MAX_WIDTH),
         ) {
@@ -150,7 +146,11 @@ private fun LoadingScreenPreview() {
 private fun OpeningScreenPreview() {
     BaeTheme {
         LoadingScreen(
-            steps = LatestStream.openProgress(BridgeOpenProgress(BridgeOpenStep.MIGRATING, 2uL, 5uL)).only,
+            steps =
+                LatestStream
+                    .openProgress(
+                        BridgeOpenProgress(BridgeOpenStep.MIGRATING, "core.library.open_step.migrating", 2uL, 5uL),
+                    ).only,
             title = R.string.loading_opening_library,
         )
     }
@@ -163,8 +163,14 @@ private fun FinishingRemovalsPreview() {
         SetupStepScreen(
             steps =
                 LatestStream
-                    .setupProgress(BridgeSetupProgress(BridgeSetupStep.FINISHING_REMOVALS, 1uL, 2uL))
-                    .only,
+                    .setupProgress(
+                        BridgeSetupProgress(
+                            BridgeSetupStep.FINISHING_REMOVALS,
+                            "core.library.setup_step.finishing_removals",
+                            1uL,
+                            2uL,
+                        ),
+                    ).only,
             title = R.string.loading_removing_library,
         )
     }
@@ -175,7 +181,14 @@ private fun FinishingRemovalsPreview() {
 private fun ClosingScreenPreview() {
     BaeTheme {
         ClosingScreen(
-            steps = LatestStream.closingSteps(BridgeClosingStep.STOPPING_SYNC).only,
+            steps =
+                LatestStream
+                    .closingSteps(
+                        BridgeClosingProgress(
+                            BridgeClosingStep.STOPPING_SYNC,
+                            "core.library.closing_step.stopping_sync",
+                        ),
+                    ).only,
             title = R.string.loading_closing_library,
         )
     }

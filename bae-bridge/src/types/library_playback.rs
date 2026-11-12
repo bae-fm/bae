@@ -175,10 +175,17 @@ pub enum BridgeLibraryState {
     Unreadable { error: super::BridgeError },
     /// A reset or a restore of this device's copy stopped partway; it opens
     /// once the call `by` names runs again and finishes it.
-    ReplacementUnfinished { by: BridgeReplacedBy },
+    ReplacementUnfinished {
+        by: BridgeReplacedBy,
+        /// The `Core` table key of the line that says so.
+        line_key: String,
+    },
     /// This device is removing it, and the removal stopped partway; it never
     /// opens again, and finishing the removal ends it.
-    DeletionUnfinished,
+    DeletionUnfinished {
+        /// The `Core` table key of the line that says so.
+        line_key: String,
+    },
 }
 
 /// The call that began replacing this device's copy of a library, and the

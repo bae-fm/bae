@@ -50,11 +50,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeLibraryState
-import uniffi.bae_bridge.BridgeReplacedBy
-import uniffi.bae_bridge.bridgeErrorCategoryKey
+import uniffi.bae_bridge.bridgeRecoveryLines
 
 /** App root: opens an existing library or onboards, then shows the library once open. */
 @Composable
@@ -218,9 +216,10 @@ private fun RecoveryScreen(
     val context = LocalContext.current
     val scope = rememberScreenScope()
     val libraryId = screen.libraryId
+    val lines = remember { bridgeRecoveryLines() }
     when (val current = screen) {
         is AppScreen.ResetOffered -> {
-            ResetOfferedRecovery(current, onScreen)
+            ResetOfferedRecovery(current, lines, onScreen)
         }
 
         is AppScreen.RestoreOffered -> {
@@ -241,6 +240,7 @@ private fun RecoveryScreen(
         is AppScreen.ResetUnfinished -> {
             ResetUnfinishedScreen(
                 error = current.error,
+                lines = lines,
                 onFinish = { scope.launch { AppSessionHolder.finishReset(context, libraryId, onScreen) } },
                 onLeave = { AppSessionHolder.leaveRecovery(onScreen) },
             )
@@ -251,10 +251,7 @@ private fun RecoveryScreen(
                 RestoreOver(
                     libraryId = libraryId,
                     title = stringResource(R.string.finish_restore_title),
-                    message =
-                        context.coreString(
-                            bridgeErrorCategoryKey(BridgeErrorCategory.ReplacementUnfinished(BridgeReplacedBy.RESTORE)),
-                        ),
+                    message = context.coreString(lines.restoreUnfinished),
                     // The library opens only once the restore finishes, so
                     // going back leaves it waiting.
                     onBack = { AppSessionHolder.leaveRecovery(onScreen) },
@@ -268,6 +265,7 @@ private fun RecoveryScreen(
         is AppScreen.DeletionUnfinished -> {
             DeletionUnfinishedScreen(
                 error = current.error,
+                lines = lines,
                 onFinish = { scope.launch { AppSessionHolder.finishDeletion(context, libraryId, onScreen) } },
                 onLeave = { AppSessionHolder.leaveRecovery(onScreen) },
             )

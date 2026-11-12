@@ -637,15 +637,15 @@ extension LatestStream where Value == BridgeStorageSetupProgress {
     }
 }
 
-extension LatestStream where Value == BridgeClosingStep {
+extension LatestStream where Value == BridgeClosingProgress {
     /// The step a library's close runs, while it runs one; a preview's holds
     /// `value` and nothing feeds it.
     public static func closingSteps(holding value: Value? = nil)
         -> LatestStream
     {
         LatestStream(holding: value.map { [onlyKey: $0] } ?? [:]) {
-            if case .closingStep(let step) = $0 {
-                step
+            if case .closingStep(let progress) = $0 {
+                progress
             }
             else {
                 nil

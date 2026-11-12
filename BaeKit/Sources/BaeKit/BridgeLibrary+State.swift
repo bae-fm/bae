@@ -20,11 +20,9 @@ extension BridgeLibrary {
                 )
             }
             return line
-        case .replacementUnfinished(let by):
-            return BridgeErrorCategory.replacementUnfinished(by: by)
-                .localizedLine
-        case .deletionUnfinished:
-            return BridgeErrorCategory.deletionUnfinished.localizedLine
+        case .replacementUnfinished(_, let lineKey),
+            .deletionUnfinished(let lineKey):
+            return localizedCoreString(lineKey)
         }
     }
 }

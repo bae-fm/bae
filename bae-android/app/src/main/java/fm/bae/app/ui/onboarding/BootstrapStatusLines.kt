@@ -30,24 +30,17 @@ import fm.bae.app.ui.components.stepFraction
 import fm.bae.fastvalues.LatestSource
 import uniffi.bae_bridge.BridgeBootstrapStatus
 import uniffi.bae_bridge.BridgeBootstrapStep
-import uniffi.bae_bridge.BridgeLoadStep
-import uniffi.bae_bridge.BridgeOpenStep
-import uniffi.bae_bridge.bridgeLoadStepKey
-import uniffi.bae_bridge.bridgeOpenStepKey
 
 /**
  * The counted step a restore, join or reset runs, opening or loading, over a
  * bar of how much of it is done, drawn from [steps] each display frame; [idle]
  * while it runs none. A step starting or ending tells [onStepping].
- * [loadStepKey] and [openStepKey] give a step's catalog key.
  */
 @Composable
 internal fun BootstrapStepLine(
     steps: LatestSource<BridgeBootstrapStep>?,
     modifier: Modifier = Modifier,
     onStepping: (Boolean) -> Unit = {},
-    loadStepKey: (BridgeLoadStep) -> String = ::bridgeLoadStepKey,
-    openStepKey: (BridgeOpenStep) -> String = ::bridgeOpenStepKey,
     idle: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
@@ -55,8 +48,8 @@ internal fun BootstrapStepLine(
         steps = steps,
         title = { step ->
             when (step) {
-                is BridgeBootstrapStep.Opening -> context.coreString(openStepKey(step.progress.step))
-                is BridgeBootstrapStep.Loading -> context.coreString(loadStepKey(step.progress.step))
+                is BridgeBootstrapStep.Opening -> context.coreString(step.progress.key)
+                is BridgeBootstrapStep.Loading -> context.coreString(step.progress.key)
             }
         },
         fraction = { step ->

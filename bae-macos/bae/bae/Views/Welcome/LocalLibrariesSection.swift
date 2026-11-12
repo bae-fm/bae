@@ -93,7 +93,7 @@ private struct LibraryRow: View {
     let disabled: Bool
     let deleteDisabled: Bool
     let openSteps: LatestSource<BridgeOpenProgress>?
-    let removalSteps: LatestSource<BridgeClosingStep>?
+    let removalSteps: LatestSource<BridgeClosingProgress>?
     let onOpen: (BridgeLibrary) -> Void
     let onFinish: (BridgeLibrary, BridgeReplacedBy) -> Void
     let onFinishRemoving: (BridgeLibrary) -> Void
@@ -181,7 +181,7 @@ private struct LibraryRow: View {
     @ViewBuilder
     private var menuItems: some View {
         switch library.state {
-        case .replacementUnfinished(let by):
+        case .replacementUnfinished(let by, _):
             Button(finishTitle(by)) { onFinish(library, by) }
         case .deletionUnfinished:
             Button("Finish removing") { onFinishRemoving(library) }

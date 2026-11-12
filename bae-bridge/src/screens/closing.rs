@@ -9,7 +9,7 @@ use std::sync::Mutex;
 
 use crate::keyed_values::{KeyedValueStream, ProgressStream, ProgressWriter};
 use crate::operation_runtime::OperationRuntime;
-use crate::types::{BridgeClosingStep, BridgeFastValue};
+use crate::types::{BridgeClosingProgress, BridgeClosingStep, BridgeFastValue};
 
 /// The app makes one for each close or removal it shows, starts reading its
 /// steps with [`Self::feed_closing_steps`], then hands it to the call.
@@ -139,7 +139,7 @@ impl ClosingSteps {
             written.lock().unwrap().push(Some(step));
         }
         if let Some(writer) = &self.writer {
-            writer.set(BridgeFastValue::ClosingStep { step });
+            writer.set(BridgeFastValue::ClosingStep { progress: BridgeClosingProgress::new(step) });
         }
         #[cfg(test)]
         if let Some(held) = &self.held {

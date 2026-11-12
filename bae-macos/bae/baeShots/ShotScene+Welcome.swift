@@ -35,7 +35,10 @@ extension ShotScene {
         ShotScene(id: "mac.welcome.remove.removing", size: WelcomeWindow.size) {
             let reads = CountedReads(libraries: PreviewData.boardLibraries)
             let removals = PreviewData.welcomeRemovals(
-                stoppedAt: .leavingLibrary
+                stoppedAt: BridgeClosingProgress(
+                    step: .leavingLibrary,
+                    key: "core.library.closing_step.leaving_library"
+                )
             )
             removals.remove(
                 closedLibrary: PreviewData.homeMusic,
@@ -94,6 +97,7 @@ extension ShotScene {
                             LatestStream.openProgress(
                                 holding: BridgeOpenProgress(
                                     step: .rebuilding,
+                                    key: "core.library.open_step.rebuilding",
                                     done: 45,
                                     total: 100
                                 )
@@ -124,6 +128,7 @@ extension ShotScene {
         {
             let progress = BridgeLoadProgress(
                 step: .streamingLibrary,
+                key: "core.library.load_step.streaming_library",
                 done: 5,
                 total: 10
             )
@@ -229,6 +234,8 @@ extension ShotScene {
                                 holding: .loading(
                                     progress: BridgeLoadProgress(
                                         step: .streamingLibrary,
+                                        key:
+                                            "core.library.load_step.streaming_library",
                                         done: 3,
                                         total: 10
                                     )

@@ -189,7 +189,11 @@ private val previewLocal =
     previewHome.copy(id = "local", name = "Local music", state = BridgeLibraryState.Openable(storage = null))
 
 private val previewUnreadable =
-    previewHome.copy(id = "stopped", name = "Half removed", state = BridgeLibraryState.DeletionUnfinished)
+    previewHome.copy(
+        id = "stopped",
+        name = "Half removed",
+        state = BridgeLibraryState.DeletionUnfinished("core.error.deletion_unfinished"),
+    )
 
 private val nothingUnsent = RemovalLoss.Counted(holdsUnsent = false)
 

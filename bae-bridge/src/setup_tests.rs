@@ -19,7 +19,7 @@ fn a_library_waiting_on_a_replacement_crosses_with_the_call_that_finishes_it() {
         assert!(
             matches!(
                 library.state,
-                crate::BridgeLibraryState::ReplacementUnfinished { by } if by == bridge
+                crate::BridgeLibraryState::ReplacementUnfinished { by, .. } if by == bridge
             ),
             "{:?}",
             library.state

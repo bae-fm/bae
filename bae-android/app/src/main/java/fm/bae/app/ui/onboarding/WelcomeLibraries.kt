@@ -15,7 +15,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import uniffi.bae_bridge.BridgeClosingStep
+import uniffi.bae_bridge.BridgeClosingProgress
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeHost
 import uniffi.bae_bridge.BridgeLibrary
@@ -76,7 +76,7 @@ internal data class RunningRemoval(
     val libraryId: String,
     val removing: Boolean,
     val opening: LatestSource<BridgeOpenProgress>?,
-    val closing: LatestSource<BridgeClosingStep>?,
+    val closing: LatestSource<BridgeClosingProgress>?,
 )
 
 /**
@@ -104,7 +104,7 @@ internal class WelcomeLibraryActions(
 internal fun interface RemovalSteps {
     fun show(
         opening: LatestSource<BridgeOpenProgress>?,
-        closing: LatestSource<BridgeClosingStep>,
+        closing: LatestSource<BridgeClosingProgress>,
     )
 }
 

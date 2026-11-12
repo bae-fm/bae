@@ -130,35 +130,53 @@ pub enum BridgeOpenStep {
 /// How far an open has come: its step, and how many of the step's units are
 /// done out of its total. Its stream's one key, `""`, holds it while a step
 /// runs.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeOpenProgress {
     pub step: BridgeOpenStep,
+    /// The `Core` table key of the step's line, over the progress bar.
+    pub key: String,
     pub done: u64,
     pub total: u64,
 }
 
-impl BridgeOpenProgress {
-    pub(crate) fn from_core(value: coven::Progress<coven::OpenStep>) -> Self {
-        Self {
-            step: match value.step {
-                coven::OpenStep::Rebuilding => BridgeOpenStep::Rebuilding,
-                coven::OpenStep::Migrating => BridgeOpenStep::Migrating,
-            },
-            done: value.done,
-            total: value.total,
+impl BridgeOpenStep {
+    fn key(self) -> &'static str {
+        match self {
+            Self::Rebuilding => "core.library.open_step.rebuilding",
+            Self::Migrating => "core.library.open_step.migrating",
         }
     }
 }
 
-/// Localization key for an open's step, the line over its progress bar. The
-/// UI resolves it against the `Core` table.
-#[uniffi::export]
-pub fn bridge_open_step_key(step: BridgeOpenStep) -> String {
-    match step {
-        BridgeOpenStep::Rebuilding => "core.library.open_step.rebuilding",
-        BridgeOpenStep::Migrating => "core.library.open_step.migrating",
+impl BridgeOpenProgress {
+    pub(crate) fn new(step: BridgeOpenStep, done: u64, total: u64) -> Self {
+        Self { step, key: step.key().to_string(), done, total }
     }
-    .to_string()
+
+    pub(crate) fn from_core(value: coven::Progress<coven::OpenStep>) -> Self {
+        Self::new(
+            match value.step {
+                coven::OpenStep::Rebuilding => BridgeOpenStep::Rebuilding,
+                coven::OpenStep::Migrating => BridgeOpenStep::Migrating,
+            },
+            value.done,
+            value.total,
+        )
+    }
+}
+
+impl BridgeSetupStep {
+    fn key(self) -> &'static str {
+        match self {
+            Self::FinishingRemovals => "core.library.setup_step.finishing_removals",
+            Self::RemovingLibraries => "core.library.setup_step.removing_libraries",
+            Self::ForgettingRestoreCodes => "core.library.setup_step.forgetting_restore_codes",
+            Self::ClearingAppData => "core.library.setup_step.clearing_app_data",
+            Self::CreatingLibrary => "core.library.setup_step.creating_library",
+            Self::SettingUpLibrary => "core.library.setup_step.setting_up_library",
+            Self::ConnectingStorage => "core.library.setup_step.connecting_storage",
+        }
+    }
 }
 
 /// A step a setup call runs before a library is open, or while one is first
@@ -184,11 +202,19 @@ pub enum BridgeSetupStep {
 /// How far a setup step has come: the step, and how many of its units are
 /// done out of its total; a total of 0 is a step with nothing to count. Its
 /// stream's one key, `""`, holds it while the step runs.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeSetupProgress {
     pub step: BridgeSetupStep,
+    /// The `Core` table key of the step's line, over the progress bar.
+    pub key: String,
     pub done: u64,
     pub total: u64,
+}
+
+impl BridgeSetupProgress {
+    pub(crate) fn new(step: BridgeSetupStep, done: u64, total: u64) -> Self {
+        Self { step, key: step.key().to_string(), done, total }
+    }
 }
 
 /// A step of loading a library from storage onto this device, in the order
@@ -216,6 +242,8 @@ pub enum BridgeLoadStep {
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeLoadProgress {
     pub step: BridgeLoadStep,
+    /// The `Core` table key of the step's line, over the progress bar.
+    pub key: String,
     pub done: u64,
     pub total: u64,
 }
@@ -243,7 +271,34 @@ pub enum BridgeClosingStep {
     DeletingFiles,
 }
 
+/// The step a close or a removal runs: what it is, and the `Core` table key
+/// of the line the app shows while it runs.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeClosingProgress {
+    pub step: BridgeClosingStep,
+    pub key: String,
+}
+
+impl BridgeClosingProgress {
+    pub(crate) fn new(step: BridgeClosingStep) -> Self {
+        Self { step, key: step.key().to_string() }
+    }
+}
+
 impl BridgeClosingStep {
+    pub(crate) fn key(self) -> &'static str {
+        match self {
+            Self::StoppingServers => "core.library.closing_step.stopping_servers",
+            Self::StoppingPlayback => "core.library.closing_step.stopping_playback",
+            Self::StoppingImports => "core.library.closing_step.stopping_imports",
+            Self::StoppingSync => "core.library.closing_step.stopping_sync",
+            Self::FinishingWork => "core.library.closing_step.finishing_work",
+            Self::ClosingStore => "core.library.closing_step.closing_store",
+            Self::LeavingLibrary => "core.library.closing_step.leaving_library",
+            Self::DeletingFiles => "core.library.closing_step.deleting_files",
+        }
+    }
+
     pub(crate) fn from_core(step: bae_library::ClosingStep) -> Self {
         match step {
             bae_library::ClosingStep::StoppingPlayback => Self::StoppingPlayback,
@@ -256,41 +311,6 @@ impl BridgeClosingStep {
             bae_library::ClosingStep::DeletingFiles => Self::DeletingFiles,
         }
     }
-}
-
-/// Localization key for a step of a close or a removal, the line the app
-/// shows while it runs. The UI resolves it against the `Core` table.
-#[uniffi::export]
-pub fn bridge_closing_step_key(step: BridgeClosingStep) -> String {
-    match step {
-        BridgeClosingStep::StoppingServers => "core.library.closing_step.stopping_servers",
-        BridgeClosingStep::StoppingPlayback => "core.library.closing_step.stopping_playback",
-        BridgeClosingStep::StoppingImports => "core.library.closing_step.stopping_imports",
-        BridgeClosingStep::StoppingSync => "core.library.closing_step.stopping_sync",
-        BridgeClosingStep::FinishingWork => "core.library.closing_step.finishing_work",
-        BridgeClosingStep::ClosingStore => "core.library.closing_step.closing_store",
-        BridgeClosingStep::LeavingLibrary => "core.library.closing_step.leaving_library",
-        BridgeClosingStep::DeletingFiles => "core.library.closing_step.deleting_files",
-    }
-    .to_string()
-}
-
-/// Localization key for a setup step, the line over its progress bar. The
-/// UI resolves it against the `Core` table.
-#[uniffi::export]
-pub fn bridge_setup_step_key(step: BridgeSetupStep) -> String {
-    match step {
-        BridgeSetupStep::FinishingRemovals => "core.library.setup_step.finishing_removals",
-        BridgeSetupStep::RemovingLibraries => "core.library.setup_step.removing_libraries",
-        BridgeSetupStep::ForgettingRestoreCodes => {
-            "core.library.setup_step.forgetting_restore_codes"
-        }
-        BridgeSetupStep::ClearingAppData => "core.library.setup_step.clearing_app_data",
-        BridgeSetupStep::CreatingLibrary => "core.library.setup_step.creating_library",
-        BridgeSetupStep::SettingUpLibrary => "core.library.setup_step.setting_up_library",
-        BridgeSetupStep::ConnectingStorage => "core.library.setup_step.connecting_storage",
-    }
-    .to_string()
 }
 
 impl BridgeLoadStep {
@@ -307,26 +327,28 @@ impl BridgeLoadStep {
     }
 }
 
-impl BridgeLoadProgress {
-    pub(crate) fn from_core(value: coven::Progress<coven::LoadStep>) -> Self {
-        Self { step: BridgeLoadStep::from_core(value.step), done: value.done, total: value.total }
+impl BridgeLoadStep {
+    pub(crate) fn key(&self) -> &'static str {
+        match self {
+            Self::FindingKeys => "core.library.load_step.finding_keys",
+            Self::StreamingLibrary => "core.library.load_step.streaming_library",
+            Self::StreamingCircle => "core.library.load_step.streaming_circle",
+            Self::Installing => "core.library.load_step.installing",
+            Self::InstallingSlots => "core.library.load_step.installing_slots",
+            Self::Reading => "core.library.load_step.reading",
+            Self::Applying => "core.library.load_step.applying",
+        }
     }
 }
 
-/// Localization key for a load's step, the line over its progress bar. The
-/// UI resolves it against the `Core` table.
-#[uniffi::export]
-pub fn bridge_load_step_key(step: BridgeLoadStep) -> String {
-    match step {
-        BridgeLoadStep::FindingKeys => "core.library.load_step.finding_keys",
-        BridgeLoadStep::StreamingLibrary => "core.library.load_step.streaming_library",
-        BridgeLoadStep::StreamingCircle => "core.library.load_step.streaming_circle",
-        BridgeLoadStep::Installing => "core.library.load_step.installing",
-        BridgeLoadStep::InstallingSlots => "core.library.load_step.installing_slots",
-        BridgeLoadStep::Reading => "core.library.load_step.reading",
-        BridgeLoadStep::Applying => "core.library.load_step.applying",
+impl BridgeLoadProgress {
+    pub(crate) fn new(step: BridgeLoadStep, done: u64, total: u64) -> Self {
+        Self { key: step.key().to_string(), step, done, total }
     }
-    .to_string()
+
+    pub(crate) fn from_core(value: coven::Progress<coven::LoadStep>) -> Self {
+        Self::new(BridgeLoadStep::from_core(value.step), value.done, value.total)
+    }
 }
 
 #[derive(Clone, uniffi::Enum)]
@@ -510,5 +532,35 @@ pub struct BridgeUnfinishedRestore {
 impl BridgeUnfinishedRestore {
     pub fn info(&self) -> crate::BridgeCodeMetadata {
         crate::BridgeCodeMetadata::from_core(self.restore.clone())
+    }
+}
+
+/// The `Core` table keys of the words the recovery screens show, which no
+/// value those screens hold carries: a failed open's offer to reset the
+/// device, a reset or restore that stopped partway, a removal that did, and
+/// the warning before a reset.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeRecoveryLines {
+    pub device_reset_required: String,
+    pub reset_unfinished: String,
+    pub restore_unfinished: String,
+    pub deletion_unfinished: String,
+    pub reset_warning: String,
+}
+
+/// The words of the recovery screens, as `Core` table keys.
+#[uniffi::export]
+pub fn bridge_recovery_lines() -> BridgeRecoveryLines {
+    use super::{bridge_error_category_key as key, BridgeErrorCategory};
+    BridgeRecoveryLines {
+        device_reset_required: key(BridgeErrorCategory::DeviceResetRequired),
+        reset_unfinished: key(BridgeErrorCategory::ReplacementUnfinished {
+            by: BridgeReplacedBy::Reset,
+        }),
+        restore_unfinished: key(BridgeErrorCategory::ReplacementUnfinished {
+            by: BridgeReplacedBy::Restore,
+        }),
+        deletion_unfinished: key(BridgeErrorCategory::DeletionUnfinished),
+        reset_warning: "core.sync.reset_device.warning".to_string(),
     }
 }

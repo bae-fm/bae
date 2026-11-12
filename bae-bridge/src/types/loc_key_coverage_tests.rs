@@ -53,7 +53,7 @@ const DIRECT_KEYS: &[&str] = &[
     "core.activity.retry_now",
     // The cast picker words a lost device's end with its name.
     "core.cast.ended",
-    // Returned by the device-reset confirmation object.
+    // The recovery screens' reset warning (`bridge_recovery_lines`).
     "core.sync.reset_device.warning",
     // The device-reset screens' confirm button.
     "core.sync.reset_device.confirm",
@@ -434,11 +434,11 @@ fn produced_keys() -> Vec<String> {
     for activity in [BridgeUploadActivity::Uploading, BridgeUploadActivity::Queued] {
         keys.push(bridge_upload_activity_key(activity));
     }
-    // bridge_open_step_key — each step carries a key.
+    // BridgeOpenProgress — each step carries a key.
     for step in [BridgeOpenStep::Rebuilding, BridgeOpenStep::Migrating] {
-        keys.push(bridge_open_step_key(step));
+        keys.push(BridgeOpenProgress::new(step, 0, 0).key);
     }
-    // bridge_load_step_key — each step carries a key.
+    // BridgeLoadProgress — each step carries a key.
     for step in [
         BridgeLoadStep::FindingKeys,
         BridgeLoadStep::StreamingLibrary,
@@ -448,9 +448,9 @@ fn produced_keys() -> Vec<String> {
         BridgeLoadStep::Reading,
         BridgeLoadStep::Applying,
     ] {
-        keys.push(bridge_load_step_key(step));
+        keys.push(BridgeLoadProgress::new(step, 0, 0).key);
     }
-    // bridge_setup_step_key — each step carries a key.
+    // BridgeSetupProgress — each step carries a key.
     for step in [
         BridgeSetupStep::FinishingRemovals,
         BridgeSetupStep::RemovingLibraries,
@@ -460,9 +460,9 @@ fn produced_keys() -> Vec<String> {
         BridgeSetupStep::SettingUpLibrary,
         BridgeSetupStep::ConnectingStorage,
     ] {
-        keys.push(bridge_setup_step_key(step));
+        keys.push(BridgeSetupProgress::new(step, 0, 0).key);
     }
-    // bridge_storage_setup_step_key — each step carries a key; a loading
+    // BridgeStorageSetupProgress — each step carries a key; a loading
     // step's is the load step's, covered above.
     for step in [
         BridgeStorageSetupStep::CheckingLocation,
@@ -473,9 +473,9 @@ fn produced_keys() -> Vec<String> {
         BridgeStorageSetupStep::CreatingStore,
         BridgeStorageSetupStep::RecordingAccess,
     ] {
-        keys.push(bridge_storage_setup_step_key(step));
+        keys.push(BridgeStorageSetupProgress::new(step, 0, 0).key);
     }
-    // bridge_closing_step_key — each step carries a key.
+    // BridgeClosingProgress — each step carries a key.
     for step in [
         BridgeClosingStep::StoppingServers,
         BridgeClosingStep::StoppingPlayback,
@@ -486,8 +486,16 @@ fn produced_keys() -> Vec<String> {
         BridgeClosingStep::LeavingLibrary,
         BridgeClosingStep::DeletingFiles,
     ] {
-        keys.push(bridge_closing_step_key(step));
+        keys.push(BridgeClosingProgress::new(step).key);
     }
+    // bridge_recovery_lines — the recovery screens' words.
+    let lines = bridge_recovery_lines();
+    keys.extend([
+        lines.device_reset_required,
+        lines.reset_unfinished,
+        lines.restore_unfinished,
+        lines.deletion_unfinished,
+    ]);
     // bridge_entity_not_found_key — every variant carries a key.
     keys.push(bridge_entity_not_found_key(BridgeEntityKind::Library));
 

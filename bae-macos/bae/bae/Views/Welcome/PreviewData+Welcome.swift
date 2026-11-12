@@ -47,14 +47,19 @@
                 id: "lib-04",
                 name: "Restored Library",
                 path: "/Users/preview/Music/bae/Restored Library",
-                state: .replacementUnfinished(by: .restore),
+                state: .replacementUnfinished(
+                    by: .restore,
+                    lineKey: "core.error.replacement_unfinished.restore"
+                ),
                 isActive: false
             ),
             BridgeLibrary(
                 id: "lib-05",
                 name: "Old Laptop Library",
                 path: "/Users/preview/Music/bae/Old Laptop Library",
-                state: .deletionUnfinished,
+                state: .deletionUnfinished(
+                    lineKey: "core.error.deletion_unfinished"
+                ),
                 isActive: false
             ),
         ]
@@ -134,7 +139,7 @@
         /// ends.
         @MainActor
         static func welcomeRemovals(
-            stoppedAt step: BridgeClosingStep? = nil
+            stoppedAt step: BridgeClosingProgress? = nil
         ) -> LibraryRemovals {
             LibraryRemovals(
                 makeOpenProgress: {
@@ -170,7 +175,7 @@
         /// `removing`, the first of `libraries` is being removed, at that step.
         static func welcomeLibraries(
             _ libraries: [BridgeLibrary] = PreviewData.welcomeLibraries,
-            removing step: BridgeClosingStep? = nil
+            removing step: BridgeClosingProgress? = nil
         ) -> some View {
             LocalLibrariesSection(
                 libraries: libraries,

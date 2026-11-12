@@ -49,11 +49,11 @@ fn an_unfinished_removal_is_reported_and_finished_by_the_host() {
         host.clone().finish_removals(setup.clone()).await.unwrap();
         let finishing = |done, total| {
             Some(crate::types::BridgeFastValue::SetupProgress {
-                progress: crate::types::BridgeSetupProgress {
-                    step: crate::types::BridgeSetupStep::FinishingRemovals,
+                progress: crate::types::BridgeSetupProgress::new(
+                    crate::types::BridgeSetupStep::FinishingRemovals,
                     done,
                     total,
-                },
+                ),
             })
         };
         assert_eq!(

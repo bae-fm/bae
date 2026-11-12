@@ -46,6 +46,9 @@ private func library(_ state: BridgeLibraryState) -> BridgeLibrary {
     )
 }
 
+private let deletionStopped = BridgeLibraryState.deletionUnfinished(
+    lineKey: "core.error.deletion_unfinished"
+)
 private let openable = library(.openable(storage: nil))
 private let unopenable: [BridgeLibrary] = [
     library(
@@ -53,8 +56,13 @@ private let unopenable: [BridgeLibrary] = [
             error: .Diagnostic(category: .config, detail: "settings")
         )
     ),
-    library(.replacementUnfinished(by: .restore)),
-    library(.deletionUnfinished),
+    library(
+        .replacementUnfinished(
+            by: .restore,
+            lineKey: "core.error.replacement_unfinished.restore"
+        )
+    ),
+    library(deletionStopped),
 ]
 
 @MainActor
@@ -143,7 +151,7 @@ struct LibraryRemovalsClosedLibraryTests {
     func finishingRemovesWithoutOpening() async {
         let removals = removals
         await withCheckedContinuation { finished in
-            removals.finishRemoving(library: library(.deletionUnfinished)) {
+            removals.finishRemoving(library: library(deletionStopped)) {
                 finished.resume()
             }
         }
@@ -192,7 +200,7 @@ struct LibraryRemovalsClosedLibraryTests {
 
         await withCheckedContinuation { finished in
             removals.remove(
-                closedLibrary: library(.deletionUnfinished),
+                closedLibrary: library(deletionStopped),
                 losing: .uncounted
             ) { finished.resume() }
         }

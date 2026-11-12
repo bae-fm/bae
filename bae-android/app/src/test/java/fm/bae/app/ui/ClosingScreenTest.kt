@@ -14,6 +14,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
+import uniffi.bae_bridge.BridgeClosingProgress
 import uniffi.bae_bridge.BridgeClosingStep
 
 /**
@@ -27,7 +28,7 @@ class ClosingScreenTest {
     @get:Rule
     val compose = createAndroidComposeRule<ComponentActivity>()
 
-    private val steps = LatestStream.written<BridgeClosingStep>()
+    private val steps = LatestStream.written<BridgeClosingProgress>()
 
     /**
      * The window's root View, taken once the screen shows: the rule hands out its activity only after running the main
@@ -46,7 +47,7 @@ class ClosingScreenTest {
     fun aStepTheCloseWroteIsNamed() {
         show()
 
-        steps.tellStep(KEY, BridgeClosingStep.STOPPING_SYNC)
+        steps.tellStep(KEY, STOPPING_SYNC)
 
         val shown = shownTexts()
         steps.tellStep(KEY, null)
@@ -57,7 +58,7 @@ class ClosingScreenTest {
     @Test
     fun theWorkIsNamedOnceTheCloseStreamEmpties() {
         show()
-        steps.tellStep(KEY, BridgeClosingStep.STOPPING_SYNC)
+        steps.tellStep(KEY, STOPPING_SYNC)
         val stepping = shownTexts()
 
         steps.tellStep(KEY, null)
@@ -75,7 +76,6 @@ class ClosingScreenTest {
                 ClosingScreen(
                     steps = steps.source(KEY),
                     title = R.string.loading_closing_library,
-                    stepKey = { step -> "core.library.closing_step.${step.name.lowercase()}" },
                 )
             }
         }
@@ -86,5 +86,7 @@ class ClosingScreenTest {
 
     private companion object {
         const val KEY = "close"
+        val STOPPING_SYNC =
+            BridgeClosingProgress(BridgeClosingStep.STOPPING_SYNC, "core.library.closing_step.stopping_sync")
     }
 }

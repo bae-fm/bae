@@ -425,9 +425,6 @@ pub struct BridgeDeviceReset {
 }
 #[uniffi::export(async_runtime = "tokio", cancellable)]
 impl BridgeDeviceReset {
-    pub fn warning_key(&self) -> String {
-        "core.sync.reset_device.warning".into()
-    }
     /// Reset the device after the person accepted the warning: coven loads
     /// the library from storage again, telling `callback` how far it has
     /// come.

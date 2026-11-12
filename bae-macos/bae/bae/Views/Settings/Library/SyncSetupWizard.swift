@@ -544,6 +544,7 @@ struct SetupStep<Fields: View, Leading: View>: View {
                     StorageSetupFollowing(
                         staging: BridgeStorageSetupProgress(
                             step: step,
+                            key: "core.library.storage_setup_step.connecting",
                             done: 0,
                             total: 1
                         ),

@@ -76,7 +76,6 @@ class SetupStepScreenTest {
                 SetupStepScreen(
                     steps = steps.source(KEY),
                     title = R.string.loading_removing_library,
-                    stepKey = { step -> "core.library.setup_step.${step.name.lowercase()}" },
                 )
             }
         }
@@ -85,6 +84,12 @@ class SetupStepScreenTest {
 
     private companion object {
         const val KEY = "setup"
-        val FINISHING = BridgeSetupProgress(BridgeSetupStep.FINISHING_REMOVALS, done = 1uL, total = 2uL)
+        val FINISHING =
+            BridgeSetupProgress(
+                BridgeSetupStep.FINISHING_REMOVALS,
+                key = "core.library.setup_step.finishing_removals",
+                done = 1uL,
+                total = 2uL,
+            )
     }
 }

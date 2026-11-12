@@ -26,6 +26,7 @@ import fm.bae.app.DisplayError
 import fm.bae.app.ErrorDisplays
 import fm.bae.app.FailedStep
 import fm.bae.app.LocaleErrorDisplays
+import fm.bae.app.PreparedReset
 import fm.bae.app.R
 import fm.bae.app.ScreenFailure
 import fm.bae.app.coreString
@@ -43,10 +44,8 @@ import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.components.retryAction
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeDeviceReset
-import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
-import uniffi.bae_bridge.BridgeReplacedBy
-import uniffi.bae_bridge.bridgeErrorCategoryKey
+import uniffi.bae_bridge.BridgeRecoveryLines
 
 private val logger = BaeLogger("bae.LibraryLifecycleScreens")
 
@@ -56,14 +55,14 @@ private val logger = BaeLogger("bae.LibraryLifecycleScreens")
  */
 @Composable
 internal fun DeviceResetDialog(
-    reset: BridgeDeviceReset,
+    prepared: PreparedReset,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     AndroidDialog(
         onDismissRequest = onDismiss,
         title = stringResource(R.string.reset_device_confirm_title),
-        message = LocalContext.current.coreString(reset.warningKey()),
+        message = LocalContext.current.coreString(prepared.warningKey),
         confirmButton = {
             AndroidButton(kind = ButtonKind.TEXT, tone = ButtonTone.DESTRUCTIVE, onClick = onConfirm) {
                 Text(stringResource(R.string.reset_device_confirm))
@@ -92,18 +91,19 @@ internal fun DeviceResetDialog(
 internal fun ResetOfferedScreen(
     libraryId: String,
     error: ScreenFailure?,
-    prepare: () -> BridgeDeviceReset,
+    lines: BridgeRecoveryLines,
+    prepare: () -> PreparedReset,
     errors: ErrorDisplays,
     onReset: (BridgeDeviceReset) -> Unit,
     onLeave: () -> Unit,
 ) {
     val context = LocalContext.current
-    var reset by remember(libraryId) { mutableStateOf<BridgeDeviceReset?>(null) }
+    var offered by remember(libraryId) { mutableStateOf<PreparedReset?>(null) }
     var prepareFailure by remember(libraryId, error) { mutableStateOf<ScreenFailure?>(null) }
     BackHandler(onBack = onLeave)
 
     // Runs [then] on the prepared reset; a failed preparation replaces the screen's failure.
-    fun prepared(then: (BridgeDeviceReset) -> Unit) {
+    fun prepared(then: (PreparedReset) -> Unit) {
         try {
             prepareFailure = null
             then(prepare())
@@ -112,7 +112,7 @@ internal fun ResetOfferedScreen(
             prepareFailure = errors.display(e)?.let { ScreenFailure(FailedStep.DEVICE_RESET, it) }
         }
     }
-    val offer = ErrorAction(stringResource(R.string.reset_device)) { prepared { reset = it } }
+    val offer = ErrorAction(stringResource(R.string.reset_device)) { prepared { offered = it } }
     val shown = prepareFailure ?: error
     val reason = shown?.error
     when {
@@ -122,7 +122,7 @@ internal fun ResetOfferedScreen(
                 advice = null,
                 error = reason,
                 look = NoticeLook.CENTERED,
-                action = shown.error.retryAction { prepared(onReset) },
+                action = shown.error.retryAction { prepared { onReset(it.reset) } },
             )
         }
 
@@ -132,7 +132,7 @@ internal fun ResetOfferedScreen(
 
         else -> {
             AndroidNotice(
-                title = context.coreString(bridgeErrorCategoryKey(BridgeErrorCategory.DeviceResetRequired)),
+                title = context.coreString(lines.deviceResetRequired),
                 advice = null,
                 error = null,
                 look = NoticeLook.CENTERED,
@@ -140,14 +140,14 @@ internal fun ResetOfferedScreen(
             )
         }
     }
-    reset?.let { prepared ->
+    offered?.let { prepared ->
         DeviceResetDialog(
-            reset = prepared,
+            prepared = prepared,
             onConfirm = {
-                reset = null
-                onReset(prepared)
+                offered = null
+                onReset(prepared.reset)
             },
-            onDismiss = { reset = null },
+            onDismiss = { offered = null },
         )
     }
 }
@@ -156,6 +156,7 @@ internal fun ResetOfferedScreen(
 @Composable
 internal fun ResetOfferedRecovery(
     screen: AppScreen.ResetOffered,
+    lines: BridgeRecoveryLines,
     onScreen: (AppScreen) -> Unit,
 ) {
     val context = LocalContext.current
@@ -164,6 +165,7 @@ internal fun ResetOfferedRecovery(
     ResetOfferedScreen(
         libraryId = libraryId,
         error = screen.error,
+        lines = lines,
         prepare = { AppSessionHolder.prepareDeviceReset(context, libraryId) },
         errors = remember(context) { LocaleErrorDisplays(context) },
         onReset = { scope.launch { AppSessionHolder.resetOffered(context, libraryId, it, onScreen) } },
@@ -180,6 +182,7 @@ internal fun ResetOfferedRecovery(
 @Composable
 internal fun ResetUnfinishedScreen(
     error: ScreenFailure?,
+    lines: BridgeRecoveryLines,
     onFinish: () -> Unit,
     onLeave: () -> Unit,
 ) {
@@ -188,10 +191,7 @@ internal fun ResetUnfinishedScreen(
     val finish = ErrorAction(stringResource(R.string.finish_reset), onClick = onFinish)
     if (error == null) {
         AndroidNotice(
-            title =
-                context.coreString(
-                    bridgeErrorCategoryKey(BridgeErrorCategory.ReplacementUnfinished(BridgeReplacedBy.RESET)),
-                ),
+            title = context.coreString(lines.resetUnfinished),
             advice = null,
             error = null,
             tone = StatusTone.WARNING,
@@ -217,12 +217,13 @@ internal fun ResetUnfinishedScreen(
 @Composable
 internal fun DeletionUnfinishedScreen(
     error: ScreenFailure?,
+    lines: BridgeRecoveryLines,
     onFinish: () -> Unit,
     onLeave: () -> Unit,
 ) {
     val context = LocalContext.current
     BackHandler(onBack = onLeave)
-    LifecycleMessage(context.coreString(bridgeErrorCategoryKey(BridgeErrorCategory.DeletionUnfinished))) {
+    LifecycleMessage(context.coreString(lines.deletionUnfinished)) {
         error?.let { ScreenFailureNotice(it) }
         AndroidButton(onClick = onFinish) { Text(stringResource(R.string.finish_removal)) }
         AndroidButton(kind = ButtonKind.TEXT, onClick = onLeave) { Text(stringResource(R.string.cancel)) }

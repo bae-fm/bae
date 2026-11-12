@@ -41,10 +41,8 @@ import fm.bae.app.ui.components.retryAction
 import fm.bae.app.ui.rememberScreenScope
 import fm.bae.app.ui.storageLocationLabel
 import kotlinx.coroutines.launch
-import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeLibraryState
-import uniffi.bae_bridge.bridgeErrorCategoryKey
 
 private val logger = BaeLogger("bae.SettingsLibrarySection")
 
@@ -274,14 +272,14 @@ internal fun libraryDetail(state: BridgeLibraryState): LibraryDetail {
 
         is BridgeLibraryState.ReplacementUnfinished -> {
             LibraryDetail(
-                context.coreString(bridgeErrorCategoryKey(BridgeErrorCategory.ReplacementUnfinished(state.by))),
+                context.coreString(state.lineKey),
                 StatusTone.DANGER,
             )
         }
 
         is BridgeLibraryState.DeletionUnfinished -> {
             LibraryDetail(
-                context.coreString(bridgeErrorCategoryKey(BridgeErrorCategory.DeletionUnfinished)),
+                context.coreString(state.lineKey),
                 StatusTone.DANGER,
             )
         }

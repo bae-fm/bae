@@ -41,7 +41,6 @@ import uniffi.bae_bridge.BridgeDropboxLocation
 import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeLibraryState
 import uniffi.bae_bridge.BridgeStorageLocation
-import uniffi.bae_bridge.bridgeClosingStepKey
 
 /** The widest the library list grows, on a tablet or a phone held sideways. */
 private val librariesWidth = 400.dp
@@ -233,7 +232,7 @@ private fun RunningLibraryRow(
         subtitleContent = {
             AndroidProgress(
                 steps = running.closing,
-                title = { context.coreString(bridgeClosingStepKey(it)) },
+                title = { context.coreString(it.key) },
                 fraction = { null },
                 modifier = Modifier.fillMaxWidth(),
                 bar = false,
