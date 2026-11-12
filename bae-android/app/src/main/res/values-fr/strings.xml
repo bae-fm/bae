@@ -47,6 +47,7 @@
     <string name="collapse">Réduire</string>
     <string name="mute">Couper le son</string>
     <string name="unmute">Rétablir le son</string>
+    <string name="seek_position">Position</string>
     <string name="now_playing_track_by_artist">Lecture en cours, %1$s par %2$s</string>
     <string name="queue_clear">Vider</string>
     <string name="queue_clear_up_next">Vider « À suivre »</string>
@@ -312,6 +313,7 @@
     <string name="loading_closing_library">Fermeture de la bibliothèque…</string>
     <string name="loading_removing_library">Suppression de la bibliothèque…</string>
     <string name="loading_resetting_device">Réinitialisation de cet appareil…</string>
+    <string name="progress_loading">Chargement</string>
     <string name="pending_update_no_store">Aucune boutique d’applications sur cet appareil ne peut mettre à jour bae.</string>
     <string name="restore_code_title">Code de restauration</string>
     <string name="restore_code_explanation">Imprimez ce code ou enregistrez-le dans un gestionnaire de mots de passe. Il vous rend votre bibliothèque si vous perdez tous vos appareils. Un téléphone que vous configurez depuis celui-ci l’obtient aussi.</string>

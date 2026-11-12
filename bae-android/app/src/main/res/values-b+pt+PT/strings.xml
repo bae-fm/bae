@@ -47,6 +47,7 @@
     <string name="collapse">Reduzir</string>
     <string name="mute">Silenciar</string>
     <string name="unmute">Repor som</string>
+    <string name="seek_position">Posição</string>
     <string name="now_playing_track_by_artist">A reproduzir, %1$s de %2$s</string>
     <string name="queue_clear">Limpar</string>
     <string name="queue_clear_up_next">Limpar A seguir</string>
@@ -305,6 +306,7 @@
     <string name="loading_closing_library">A fechar a biblioteca…</string>
     <string name="loading_removing_library">A remover a biblioteca…</string>
     <string name="loading_resetting_device">A repor este dispositivo…</string>
+    <string name="progress_loading">A carregar</string>
     <string name="pending_update_no_store">Nenhuma loja de aplicações neste dispositivo pode atualizar o bae.</string>
     <string name="restore_code_title">Código de restauração</string>
     <string name="restore_code_explanation">Imprima este código ou guarde-o num gestor de palavras-passe. Devolve-lhe a sua biblioteca se perder todos os seus dispositivos. Um telemóvel que configure a partir deste também o recebe.</string>

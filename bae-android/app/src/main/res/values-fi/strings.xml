@@ -47,6 +47,7 @@
     <string name="collapse">Tiivistä</string>
     <string name="mute">Mykistä</string>
     <string name="unmute">Poista mykistys</string>
+    <string name="seek_position">Kohta</string>
     <string name="now_playing_track_by_artist">Nyt toistetaan, %1$s – %2$s</string>
     <string name="queue_clear">Tyhjennä</string>
     <string name="queue_clear_up_next">Tyhjennä Seuraavaksi</string>
@@ -304,6 +305,7 @@
     <string name="loading_closing_library">Suljetaan kirjastoa…</string>
     <string name="loading_removing_library">Poistetaan kirjastoa…</string>
     <string name="loading_resetting_device">Nollataan tätä laitetta…</string>
+    <string name="progress_loading">Ladataan</string>
     <string name="pending_update_no_store">Mikään tämän laitteen sovelluskauppa ei voi päivittää bae-sovellusta.</string>
     <string name="restore_code_title">Palautuskoodi</string>
     <string name="restore_code_explanation">Tulosta tämä koodi tai tallenna se salasanahallintaan. Sillä pääset takaisin kirjastoosi, jos menetät kaikki laitteesi. Puhelin, jonka otat käyttöön tästä, saa sen myös.</string>

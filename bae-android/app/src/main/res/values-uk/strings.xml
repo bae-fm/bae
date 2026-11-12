@@ -47,6 +47,7 @@
     <string name="collapse">Згорнути</string>
     <string name="mute">Вимкнути звук</string>
     <string name="unmute">Увімкнути звук</string>
+    <string name="seek_position">Позиція</string>
     <string name="now_playing_track_by_artist">Зараз відтворюється, %1$s, %2$s</string>
     <string name="queue_clear">Очистити</string>
     <string name="queue_clear_up_next">Очистити „Далі в черзі“</string>
@@ -320,6 +321,7 @@
     <string name="loading_closing_library">Закриття бібліотеки…</string>
     <string name="loading_removing_library">Вилучення бібліотеки…</string>
     <string name="loading_resetting_device">Скидання цього пристрою…</string>
+    <string name="progress_loading">Завантаження</string>
     <string name="pending_update_no_store">Жодна крамниця застосунків на цьому пристрої не може оновити bae.</string>
     <string name="restore_code_title">Код відновлення</string>
     <string name="restore_code_explanation">Роздрукуйте цей код або збережіть його в менеджері паролів. Він поверне вас до бібліотеки, якщо ви втратите всі пристрої. Телефон, який ви налаштуєте з цього, теж його отримає.</string>

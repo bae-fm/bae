@@ -23,6 +23,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.C
 import fm.bae.app.OpenLibrary
+import fm.bae.app.R
 import fm.bae.app.clockText
 import fm.bae.app.currentLocale
 import fm.bae.app.playback.BaeCorePlayer
@@ -157,6 +158,7 @@ internal class PlaybackProgressView(
     internal val seekBar: SeekBar =
         SeekBar(context).apply {
             max = SEEK_BAR_MAX
+            contentDescription = context.getString(R.string.seek_position)
             progressDrawable = trackLayers()
             setOnSeekBarChangeListener(
                 object : SeekBar.OnSeekBarChangeListener {

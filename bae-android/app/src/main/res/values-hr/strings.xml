@@ -47,6 +47,7 @@
     <string name="collapse">Sažmi</string>
     <string name="mute">Utišaj</string>
     <string name="unmute">Uključi zvuk</string>
+    <string name="seek_position">Položaj</string>
     <string name="now_playing_track_by_artist">Trenutno svira, %1$s, izvođač %2$s</string>
     <string name="queue_clear">Očisti</string>
     <string name="queue_clear_up_next">Očisti „Sljedeće na redu“</string>
@@ -313,6 +314,7 @@
     <string name="loading_closing_library">Zatvaranje fonoteke…</string>
     <string name="loading_removing_library">Uklanjanje fonoteke…</string>
     <string name="loading_resetting_device">Ponovno postavljanje ovog uređaja…</string>
+    <string name="progress_loading">Učitavanje</string>
     <string name="pending_update_no_store">Nijedna trgovina aplikacija na ovom uređaju ne može ažurirati bae.</string>
     <string name="restore_code_title">Kod za vraćanje</string>
     <string name="restore_code_explanation">Ispišite ovaj kod ili ga spremite u upravitelj lozinki. Vraća vas u vašu fonoteku ako izgubite sve svoje uređaje. Telefon koji postavite s ovog također ga dobiva.</string>

@@ -47,6 +47,7 @@
     <string name="collapse">Recolher</string>
     <string name="mute">Silenciar</string>
     <string name="unmute">Reativar som</string>
+    <string name="seek_position">Posição</string>
     <string name="now_playing_track_by_artist">Tocando agora, %1$s de %2$s</string>
     <string name="queue_clear">Limpar</string>
     <string name="queue_clear_up_next">Limpar “A seguir”</string>
@@ -312,6 +313,7 @@
     <string name="loading_closing_library">Fechando a biblioteca…</string>
     <string name="loading_removing_library">Removendo a biblioteca…</string>
     <string name="loading_resetting_device">Redefinindo este dispositivo…</string>
+    <string name="progress_loading">Carregando</string>
     <string name="pending_update_no_store">Nenhuma loja de apps neste dispositivo pode atualizar o bae.</string>
     <string name="restore_code_title">Código de restauração</string>
     <string name="restore_code_explanation">Imprima este código ou salve-o em um gerenciador de senhas. Ele leva você de volta à sua biblioteca se você perder todos os seus dispositivos. Um celular que você configurar a partir deste também o recebe.</string>

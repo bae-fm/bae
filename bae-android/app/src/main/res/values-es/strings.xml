@@ -47,6 +47,7 @@
     <string name="collapse">Contraer</string>
     <string name="mute">Silenciar</string>
     <string name="unmute">Quitar silencio</string>
+    <string name="seek_position">Posición</string>
     <string name="now_playing_track_by_artist">En reproducción, %1$s de %2$s</string>
     <string name="queue_clear">Vaciar</string>
     <string name="queue_clear_up_next">Vaciar «A continuación»</string>
@@ -312,6 +313,7 @@
     <string name="loading_closing_library">Cerrando la biblioteca…</string>
     <string name="loading_removing_library">Eliminando la biblioteca…</string>
     <string name="loading_resetting_device">Restableciendo este dispositivo…</string>
+    <string name="progress_loading">Cargando</string>
     <string name="pending_update_no_store">Ninguna tienda de apps de este dispositivo puede actualizar bae.</string>
     <string name="restore_code_title">Código de restauración</string>
     <string name="restore_code_explanation">Imprime este código o guárdalo en un gestor de contraseñas. Te devuelve a tu biblioteca si pierdes todos tus dispositivos. Un teléfono que configures desde este también lo recibe.</string>

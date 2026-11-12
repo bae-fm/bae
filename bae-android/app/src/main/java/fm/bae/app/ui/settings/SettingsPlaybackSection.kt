@@ -12,7 +12,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -30,6 +29,7 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidCard
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidScreen
+import fm.bae.app.ui.components.RowSwitch
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.BridgeConfig
@@ -90,7 +90,7 @@ internal fun AndroidSettingsPlayback(
             AndroidCard {
                 AndroidRow(
                     title = stringResource(R.string.settings_pause_between_sides),
-                    trailing = { Switch(checked = pauseBetweenSides, onCheckedChange = onPauseBetweenSides) },
+                    switch = RowSwitch(pauseBetweenSides, onPauseBetweenSides),
                 )
                 SidePauseCountdownPicker(
                     pauseBetweenSides = pauseBetweenSides,
@@ -100,7 +100,7 @@ internal fun AndroidSettingsPlayback(
                 AndroidRow(
                     title = stringResource(R.string.settings_restore_on_launch),
                     subtitle = stringResource(R.string.settings_restore_on_launch_help),
-                    trailing = { Switch(checked = restoreOnLaunch, onCheckedChange = onRestoreOnLaunch) },
+                    switch = RowSwitch(restoreOnLaunch, onRestoreOnLaunch),
                 )
             }
         }

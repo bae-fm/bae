@@ -47,6 +47,7 @@
     <string name="collapse">折叠</string>
     <string name="mute">静音</string>
     <string name="unmute">取消静音</string>
+    <string name="seek_position">位置</string>
     <string name="now_playing_track_by_artist">正在播放，%1$s, %2$s</string>
     <string name="queue_clear">清空</string>
     <string name="queue_clear_up_next">清空“接下来”</string>
@@ -299,6 +300,7 @@
     <string name="loading_closing_library">正在关闭资料库…</string>
     <string name="loading_removing_library">正在移除资料库…</string>
     <string name="loading_resetting_device">正在重置此设备…</string>
+    <string name="progress_loading">正在加载</string>
     <string name="pending_update_no_store">此设备上没有可以更新 bae 的应用商店。</string>
     <string name="restore_code_title">恢复码</string>
     <string name="restore_code_explanation">打印此恢复码，或将其保存到密码管理器。如果你丢失了所有设备，它能让你找回你的库。 由此设备设置的手机也会获得它。</string>

@@ -47,6 +47,7 @@
     <string name="collapse">כווץ</string>
     <string name="mute">השתק</string>
     <string name="unmute">בטל השתקה</string>
+    <string name="seek_position">מיקום</string>
     <string name="now_playing_track_by_artist">מתנגן כעת, %1$s מאת %2$s</string>
     <string name="queue_clear">נקה</string>
     <string name="queue_clear_up_next">נקה את “הבא בתור”</string>
@@ -313,6 +314,7 @@
     <string name="loading_closing_library">סוגר את הספרייה…</string>
     <string name="loading_removing_library">מסיר את הספרייה…</string>
     <string name="loading_resetting_device">מאפס את המכשיר הזה…</string>
+    <string name="progress_loading">טוען</string>
     <string name="pending_update_no_store">אין במכשיר הזה חנות אפליקציות שיכולה לעדכן את bae.</string>
     <string name="restore_code_title">קוד שחזור</string>
     <string name="restore_code_explanation">הדפס את הקוד הזה או שמור אותו במנהל סיסמאות. הוא מחזיר אותך לספרייה שלך אם תאבד את כל המכשירים שלך. טלפון שתגדיר מהטלפון הזה מקבל אותו גם כן.</string>

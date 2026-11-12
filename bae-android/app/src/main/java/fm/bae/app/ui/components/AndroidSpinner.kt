@@ -11,9 +11,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
@@ -35,7 +39,7 @@ internal fun AndroidSpinner(
         horizontalArrangement = Arrangement.spacedBy(ThemeSpace.group),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        AndroidSpinner(size = size)
+        AndroidSpinner(size = size, description = text)
         Text(
             text = text,
             style = ThemeText.body.style,
@@ -47,15 +51,20 @@ internal fun AndroidSpinner(
 /**
  * The spinner alone, where what it waits on is said elsewhere: [size] is the
  * glyph size of the control it sits in, and [color] is set over an image or a
- * fill, where the default does not read.
+ * fill, where the default does not read. Screen readers name it [description].
  */
 @Composable
 internal fun AndroidSpinner(
     modifier: Modifier = Modifier,
     size: Dp = ThemeIcon.large,
     color: Color = ProgressIndicatorDefaults.circularColor,
+    description: String = stringResource(R.string.progress_loading),
 ) {
-    CircularProgressIndicator(modifier = modifier.size(size), color = color, strokeWidth = 2.dp)
+    CircularProgressIndicator(
+        modifier = modifier.size(size).semantics { contentDescription = description },
+        color = color,
+        strokeWidth = 2.dp,
+    )
 }
 
 @Preview(showBackground = true)

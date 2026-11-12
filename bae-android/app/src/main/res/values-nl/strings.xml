@@ -47,6 +47,7 @@
     <string name="collapse">Inklappen</string>
     <string name="mute">Dempen</string>
     <string name="unmute">Dempen uit</string>
+    <string name="seek_position">Positie</string>
     <string name="now_playing_track_by_artist">Speelt nu: %1$s · %2$s</string>
     <string name="queue_clear">Wissen</string>
     <string name="queue_clear_up_next">‘Volgende’ wissen</string>
@@ -306,6 +307,7 @@
     <string name="loading_closing_library">Bibliotheek wordt gesloten…</string>
     <string name="loading_removing_library">Bibliotheek wordt verwijderd…</string>
     <string name="loading_resetting_device">Dit apparaat wordt opnieuw ingesteld…</string>
+    <string name="progress_loading">Laden</string>
     <string name="pending_update_no_store">Geen enkele appwinkel op dit apparaat kan bae bijwerken.</string>
     <string name="restore_code_title">Herstelcode</string>
     <string name="restore_code_explanation">Print deze code of bewaar hem in een wachtwoordmanager. Hij brengt je terug in je bibliotheek als je al je apparaten kwijtraakt. Een telefoon die je vanaf deze instelt, krijgt hem ook.</string>

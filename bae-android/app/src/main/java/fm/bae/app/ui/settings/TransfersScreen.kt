@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -33,6 +32,7 @@ import fm.bae.app.ui.components.AndroidRadio
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidScreen
 import fm.bae.app.ui.components.ButtonKind
+import fm.bae.app.ui.components.RowSwitch
 import fm.bae.app.ui.downloads.setDownloadConcurrency
 
 /**
@@ -99,7 +99,7 @@ private fun WifiOnlyRows(
             AndroidCard {
                 AndroidRow(
                     title = stringResource(R.string.transfers_wifi_only),
-                    trailing = { Switch(checked = unmeteredOnly.value, onCheckedChange = onSet) },
+                    switch = RowSwitch(unmeteredOnly.value, onSet),
                 )
             }
         }

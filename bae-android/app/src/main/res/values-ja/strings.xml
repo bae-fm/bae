@@ -47,6 +47,7 @@
     <string name="collapse">折りたたむ</string>
     <string name="mute">ミュート</string>
     <string name="unmute">ミュート解除</string>
+    <string name="seek_position">再生位置</string>
     <string name="now_playing_track_by_artist">再生中、%2$s の %1$s</string>
     <string name="queue_clear">クリア</string>
     <string name="queue_clear_up_next">「次はこちら」をクリア</string>
@@ -299,6 +300,7 @@
     <string name="loading_closing_library">ライブラリを閉じています…</string>
     <string name="loading_removing_library">ライブラリを削除しています…</string>
     <string name="loading_resetting_device">このデバイスをリセットしています…</string>
+    <string name="progress_loading">読み込み中</string>
     <string name="pending_update_no_store">このデバイスには bae を更新できるアプリストアがありません。</string>
     <string name="restore_code_title">復元コード</string>
     <string name="restore_code_explanation">このコードをプリントするか、パスワードマネージャに保存してください。すべてのデバイスを失ったときに、ライブラリを取り戻せます。 このデバイスから設定したスマートフォンにも保存されます。</string>

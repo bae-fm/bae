@@ -47,6 +47,7 @@
     <string name="collapse">Sbalit</string>
     <string name="mute">Ztlumit</string>
     <string name="unmute">Zrušit ztlumení</string>
+    <string name="seek_position">Pozice</string>
     <string name="now_playing_track_by_artist">Právě hraje, %1$s od %2$s</string>
     <string name="queue_clear">Vymazat</string>
     <string name="queue_clear_up_next">Vymazat „Další v pořadí“</string>
@@ -320,6 +321,7 @@
     <string name="loading_closing_library">Zavírá se knihovna…</string>
     <string name="loading_removing_library">Odebírá se knihovna…</string>
     <string name="loading_resetting_device">Resetuje se toto zařízení…</string>
+    <string name="progress_loading">Načítání</string>
     <string name="pending_update_no_store">Na tomto zařízení není žádný obchod s aplikacemi, který by mohl bae aktualizovat.</string>
     <string name="restore_code_title">Kód pro obnovení</string>
     <string name="restore_code_explanation">Vytiskněte si tento kód nebo si ho uložte do správce hesel. Vrátí vás do knihovny, když přijdete o všechna zařízení. Telefon, který z tohoto nastavíte, ho dostane také.</string>

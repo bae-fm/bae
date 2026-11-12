@@ -11,12 +11,14 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -41,6 +43,12 @@ internal enum class RowIcon(
     EDIT(Icons.Filled.Edit, EDIT_SIZE),
 }
 
+/** A row's switch: whether it is [checked], and what a tap anywhere on the row does, [onChange]. */
+internal class RowSwitch(
+    val checked: Boolean,
+    val onChange: (Boolean) -> Unit,
+)
+
 /**
  * One row of a list, in a [AndroidCard] or a sheet: the [title] with an optional [subtitle] under it,
  * whose [tone] colours it and puts a dot before it, and [trailing] content at the far end. [action]
@@ -51,7 +59,8 @@ internal enum class RowIcon(
  * [subtitleContent] draws the line itself where its words change as the row runs. A [nested] row is a
  * setting that belongs to the switch row above it: joined to it in one tile and set in. A row that
  * is not [enabled] shows dimmed and does nothing. A row with an [onClick] opens or changes something,
- * which [onClickLabel] names for screen readers.
+ * which [onClickLabel] names for screen readers. A row with a [switch] is a setting turned on or off:
+ * the whole row toggles, its title names the switch, and the switch is drawn at the far end.
  */
 @Composable
 internal fun AndroidRow(
@@ -71,6 +80,7 @@ internal fun AndroidRow(
     enabled: Boolean = true,
     onClick: (() -> Unit)? = null,
     onClickLabel: String? = null,
+    switch: RowSwitch? = null,
     trailing: (@Composable RowScope.() -> Unit)? = null,
 ) {
     val accent = MaterialTheme.colorScheme.primary
@@ -83,6 +93,7 @@ internal fun AndroidRow(
                 enabled = enabled,
                 onClick = onClick,
                 onClickLabel = onClickLabel,
+                switch = switch,
             ),
         horizontalArrangement = Arrangement.spacedBy(ThemeSpace.edge),
         verticalAlignment = Alignment.CenterVertically,
@@ -103,6 +114,7 @@ internal fun AndroidRow(
         value?.let {
             Text(text = it, style = ThemeText.body.style, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+        switch?.let { Switch(checked = it.checked, onCheckedChange = null, enabled = enabled) }
         trailing?.invoke(this)
         icon?.let {
             Icon(
@@ -150,6 +162,7 @@ private fun Modifier.cardRowSurface(
     enabled: Boolean,
     onClick: (() -> Unit)?,
     onClickLabel: String?,
+    switch: RowSwitch?,
 ): Modifier {
     val accent = MaterialTheme.colorScheme.primary
     val minHeight =
@@ -170,6 +183,17 @@ private fun Modifier.cardRowSurface(
                     onClickLabel = onClickLabel,
                     role = Role.Button,
                     onClick = onClick,
+                )
+            } else {
+                Modifier
+            },
+        ).then(
+            if (switch != null) {
+                Modifier.toggleable(
+                    value = switch.checked,
+                    enabled = enabled,
+                    role = Role.Switch,
+                    onValueChange = switch.onChange,
                 )
             } else {
                 Modifier

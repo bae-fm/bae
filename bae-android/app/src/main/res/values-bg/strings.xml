@@ -47,6 +47,7 @@
     <string name="collapse">Свиване</string>
     <string name="mute">Заглушаване</string>
     <string name="unmute">Изключване на заглушаването</string>
+    <string name="seek_position">Позиция</string>
     <string name="now_playing_track_by_artist">Текущо възпроизвеждане, %1$s от %2$s</string>
     <string name="queue_clear">Изчистване</string>
     <string name="queue_clear_up_next">Изчистване на „Следва“</string>
@@ -306,6 +307,7 @@
     <string name="loading_closing_library">Библиотеката се затваря…</string>
     <string name="loading_removing_library">Библиотеката се премахва…</string>
     <string name="loading_resetting_device">Това устройство се нулира…</string>
+    <string name="progress_loading">Зарежда се</string>
     <string name="pending_update_no_store">Няма магазин за приложения на това устройство, който да актуализира bae.</string>
     <string name="restore_code_title">Код за възстановяване</string>
     <string name="restore_code_explanation">Отпечатайте този код или го запазете в мениджър на пароли. Той ви връща във вашата библиотека, ако загубите всичките си устройства. Телефон, който настройвате от този, също го получава.</string>

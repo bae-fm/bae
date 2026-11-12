@@ -47,6 +47,7 @@
     <string name="collapse">Összecsukás</string>
     <string name="mute">Némítás</string>
     <string name="unmute">Némítás feloldása</string>
+    <string name="seek_position">Pozíció</string>
     <string name="now_playing_track_by_artist">Most szól: %1$s – %2$s</string>
     <string name="queue_clear">Törlés</string>
     <string name="queue_clear_up_next">Következők törlése</string>
@@ -304,6 +305,7 @@
     <string name="loading_closing_library">A könyvtár bezárása…</string>
     <string name="loading_removing_library">A könyvtár eltávolítása…</string>
     <string name="loading_resetting_device">Az eszköz visszaállítása…</string>
+    <string name="progress_loading">Betöltés</string>
     <string name="pending_update_no_store">Ezen az eszközön nincs olyan alkalmazásbolt, amely frissíteni tudná a bae-t.</string>
     <string name="restore_code_title">Helyreállítási kód</string>
     <string name="restore_code_explanation">Nyomtasd ki ezt a kódot, vagy mentsd jelszókezelőbe. Visszajuttat a könyvtáradhoz, ha elveszíted az összes eszközödet. Az erről beállított telefon is megkapja.</string>

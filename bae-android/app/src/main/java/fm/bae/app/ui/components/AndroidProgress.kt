@@ -138,7 +138,10 @@ internal class StepProgressView<Step : Any>(
     private fun show(step: Step?) {
         if (step != null) {
             val shown = title(step)
-            if (label.text.toString() != shown) label.text = shown
+            if (label.text.toString() != shown) {
+                label.text = shown
+                bar.contentDescription = shown
+            }
             val done = fraction(step)
             val counted = done != null
             if (bar.isIndeterminate == counted) bar.isIndeterminate = !counted

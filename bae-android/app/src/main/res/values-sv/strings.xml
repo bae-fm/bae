@@ -47,6 +47,7 @@
     <string name="collapse">Fäll ihop</string>
     <string name="mute">Ljud av</string>
     <string name="unmute">Ljud på</string>
+    <string name="seek_position">Position</string>
     <string name="now_playing_track_by_artist">Spelas nu, %1$s av %2$s</string>
     <string name="queue_clear">Rensa</string>
     <string name="queue_clear_up_next">Rensa Härnäst</string>
@@ -304,6 +305,7 @@
     <string name="loading_closing_library">Stänger biblioteket…</string>
     <string name="loading_removing_library">Tar bort biblioteket…</string>
     <string name="loading_resetting_device">Återställer den här enheten…</string>
+    <string name="progress_loading">Läser in</string>
     <string name="pending_update_no_store">Ingen appbutik på den här enheten kan uppdatera bae.</string>
     <string name="restore_code_title">Återställningskod</string>
     <string name="restore_code_explanation">Skriv ut koden eller spara den i en lösenordshanterare. Den tar dig tillbaka till ditt bibliotek om du förlorar alla dina enheter. En telefon du konfigurerar från den här får den också.</string>

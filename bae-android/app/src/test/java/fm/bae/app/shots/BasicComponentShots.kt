@@ -10,7 +10,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -30,6 +29,7 @@ import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ButtonTone
 import fm.bae.app.ui.components.DialogHead
 import fm.bae.app.ui.components.RowIcon
+import fm.bae.app.ui.components.RowSwitch
 import fm.bae.app.ui.components.StatusTone
 import org.junit.Test
 
@@ -129,7 +129,7 @@ class BasicComponentShots : BoardShot() {
     @Test
     fun androidComponentRowControls() =
         component("android.component.row.controls", wide = true) {
-            RowInCard { AndroidRow(title = "Sync", trailing = { Switch(checked = true, onCheckedChange = {}) }) }
+            RowInCard { AndroidRow(title = "Sync", switch = RowSwitch(true) {}) }
         }
 
     @Test
@@ -164,7 +164,7 @@ class BasicComponentShots : BoardShot() {
     fun androidComponentRowNested() =
         component("android.component.row.nested", wide = true) {
             RowInCard {
-                AndroidRow(title = "Pause between sides and discs", trailing = { Switch(checked = true, onCheckedChange = {}) })
+                AndroidRow(title = "Pause between sides and discs", switch = RowSwitch(true) {})
                 AndroidRow(title = "Countdown", subtitle = "Off", nested = true)
             }
         }

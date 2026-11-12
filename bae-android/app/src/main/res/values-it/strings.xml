@@ -47,6 +47,7 @@
     <string name="collapse">Comprimi</string>
     <string name="mute">Disattiva audio</string>
     <string name="unmute">Riattiva audio</string>
+    <string name="seek_position">Posizione</string>
     <string name="now_playing_track_by_artist">In riproduzione: %1$s · %2$s</string>
     <string name="queue_clear">Cancella</string>
     <string name="queue_clear_up_next">Cancella «A seguire»</string>
@@ -312,6 +313,7 @@
     <string name="loading_closing_library">Chiusura della libreria…</string>
     <string name="loading_removing_library">Rimozione della libreria…</string>
     <string name="loading_resetting_device">Ripristino di questo dispositivo…</string>
+    <string name="progress_loading">Caricamento</string>
     <string name="pending_update_no_store">Nessuno store di app su questo dispositivo può aggiornare bae.</string>
     <string name="restore_code_title">Codice di ripristino</string>
     <string name="restore_code_explanation">Stampa questo codice o salvalo in un gestore di password. Ti riporta nella tua libreria se perdi tutti i tuoi dispositivi. Anche un telefono che configuri da questo lo riceve.</string>

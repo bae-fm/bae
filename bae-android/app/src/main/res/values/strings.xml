@@ -67,6 +67,7 @@
     <string name="collapse">Collapse</string>
     <string name="mute">Mute</string>
     <string name="unmute">Unmute</string>
+    <string name="seek_position">Position</string>
     <!-- %1$s = track title, %2$s = artist -->
     <string name="now_playing_track_by_artist">Now playing, %1$s by %2$s</string>
 
@@ -356,6 +357,7 @@
     <string name="loading_closing_library">Closing the library…</string>
     <string name="loading_removing_library">Removing the library…</string>
     <string name="loading_resetting_device">Resetting this device…</string>
+    <string name="progress_loading">Loading</string>
     <!-- %1$s = the time left until the next check, as minutes and seconds -->
     <string name="pending_update_no_store">No app store on this device can update bae.</string>
     <string name="restore_code_title">Restore code</string>

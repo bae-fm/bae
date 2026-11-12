@@ -47,6 +47,7 @@
     <string name="collapse">Daralt</string>
     <string name="mute">Sessiz</string>
     <string name="unmute">Sesi aç</string>
+    <string name="seek_position">Konum</string>
     <string name="now_playing_track_by_artist">Çalıyor: %1$s · %2$s</string>
     <string name="queue_clear">Temizle</string>
     <string name="queue_clear_up_next">“Sıradaki” listesini temizle</string>
@@ -306,6 +307,7 @@
     <string name="loading_closing_library">Kitaplık kapatılıyor…</string>
     <string name="loading_removing_library">Kitaplık kaldırılıyor…</string>
     <string name="loading_resetting_device">Bu cihaz sıfırlanıyor…</string>
+    <string name="progress_loading">Yükleniyor</string>
     <string name="pending_update_no_store">Bu cihazdaki hiçbir uygulama mağazası bae’yi güncelleyemiyor.</string>
     <string name="restore_code_title">Geri yükleme kodu</string>
     <string name="restore_code_explanation">Bu kodu yazdırın veya bir parola yöneticisine kaydedin. Tüm cihazlarınızı kaybederseniz sizi kitaplığınıza geri getirir. Bundan kurduğunuz bir telefon da onu alır.</string>

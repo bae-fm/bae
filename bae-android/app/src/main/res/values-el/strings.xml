@@ -47,6 +47,7 @@
     <string name="collapse">Σύμπτυξη</string>
     <string name="mute">Σίγαση</string>
     <string name="unmute">Κατάργηση σίγασης</string>
+    <string name="seek_position">Θέση</string>
     <string name="now_playing_track_by_artist">Αναπαράγεται τώρα, %1$s από %2$s</string>
     <string name="queue_clear">Εκκαθάριση</string>
     <string name="queue_clear_up_next">Εκκαθάριση του Ακολουθεί</string>
@@ -304,6 +305,7 @@
     <string name="loading_closing_library">Κλείσιμο της βιβλιοθήκης…</string>
     <string name="loading_removing_library">Αφαίρεση της βιβλιοθήκης…</string>
     <string name="loading_resetting_device">Επαναφορά αυτής της συσκευής…</string>
+    <string name="progress_loading">Φόρτωση</string>
     <string name="pending_update_no_store">Κανένα κατάστημα εφαρμογών σε αυτή τη συσκευή δεν μπορεί να ενημερώσει το bae.</string>
     <string name="restore_code_title">Κωδικός επαναφοράς</string>
     <string name="restore_code_explanation">Εκτυπώστε αυτόν τον κωδικό ή αποθηκεύστε τον σε έναν διαχειριστή κωδικών. Σας επαναφέρει στη βιβλιοθήκη σας αν χάσετε όλες τις συσκευές σας. Ένα τηλέφωνο που ρυθμίζετε από αυτό τον παίρνει κι αυτό.</string>

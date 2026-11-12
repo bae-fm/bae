@@ -47,6 +47,7 @@
     <string name="collapse">Slå sammen</string>
     <string name="mute">Slå av lyden</string>
     <string name="unmute">Slå på lyden</string>
+    <string name="seek_position">Posisjon</string>
     <string name="now_playing_track_by_artist">Spilles nå, %1$s av %2$s</string>
     <string name="queue_clear">Tøm</string>
     <string name="queue_clear_up_next">Tøm Neste</string>
@@ -304,6 +305,7 @@
     <string name="loading_closing_library">Lukker biblioteket…</string>
     <string name="loading_removing_library">Fjerner biblioteket…</string>
     <string name="loading_resetting_device">Tilbakestiller denne enheten…</string>
+    <string name="progress_loading">Laster</string>
     <string name="pending_update_no_store">Ingen appbutikk på denne enheten kan oppdatere bae.</string>
     <string name="restore_code_title">Gjenopprettingskode</string>
     <string name="restore_code_explanation">Skriv ut denne koden eller lagre den i en passordbehandler. Den får deg tilbake til biblioteket ditt hvis du mister alle enhetene dine. En telefon du setter opp fra denne, får den også.</string>

@@ -47,6 +47,7 @@
     <string name="collapse">收合</string>
     <string name="mute">靜音</string>
     <string name="unmute">取消靜音</string>
+    <string name="seek_position">位置</string>
     <string name="now_playing_track_by_artist">正在播放: %1$s · %2$s</string>
     <string name="queue_clear">清除</string>
     <string name="queue_clear_up_next">清除「待播清單」</string>
@@ -299,6 +300,7 @@
     <string name="loading_closing_library">正在關閉資料庫…</string>
     <string name="loading_removing_library">正在移除資料庫…</string>
     <string name="loading_resetting_device">正在重設此裝置…</string>
+    <string name="progress_loading">正在載入</string>
     <string name="pending_update_no_store">此裝置上沒有可以更新 bae 的 App 商店。</string>
     <string name="restore_code_title">還原碼</string>
     <string name="restore_code_explanation">列印此還原碼，或將其儲存到密碼管理器。如果你遺失了所有裝置，它能讓你找回資料庫。 由此裝置設定的手機也會取得它。</string>

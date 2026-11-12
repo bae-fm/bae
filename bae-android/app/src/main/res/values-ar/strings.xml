@@ -47,6 +47,7 @@
     <string name="collapse">طيّ</string>
     <string name="mute">كتم</string>
     <string name="unmute">إلغاء الكتم</string>
+    <string name="seek_position">الموضع</string>
     <string name="now_playing_track_by_artist">قيد التشغيل الآن، %1$s لـ %2$s</string>
     <string name="queue_clear">مسح</string>
     <string name="queue_clear_up_next">مسح «التالي»</string>
@@ -334,6 +335,7 @@
     <string name="loading_closing_library">جارٍ إغلاق المكتبة…</string>
     <string name="loading_removing_library">جارٍ إزالة المكتبة…</string>
     <string name="loading_resetting_device">جارٍ إعادة تعيين هذا الجهاز…</string>
+    <string name="progress_loading">جارٍ التحميل</string>
     <string name="pending_update_no_store">لا يوجد متجر تطبيقات على هذا الجهاز يمكنه تحديث bae.</string>
     <string name="restore_code_title">رمز الاستعادة</string>
     <string name="restore_code_explanation">اطبع هذا الرمز أو احفظه في مدير كلمات مرور. يعيدك إلى مكتبتك إذا فقدت جميع أجهزتك. والهاتف الذي تُعدّه من هذا الهاتف يحصل عليه أيضًا.</string>

@@ -47,6 +47,7 @@
     <string name="collapse">Einklappen</string>
     <string name="mute">Stummschalten</string>
     <string name="unmute">Stummschaltung aufheben</string>
+    <string name="seek_position">Position</string>
     <string name="now_playing_track_by_artist">Aktuelle Wiedergabe, %1$s von %2$s</string>
     <string name="queue_clear">Leeren</string>
     <string name="queue_clear_up_next">„Als Nächstes“ leeren</string>
@@ -306,6 +307,7 @@
     <string name="loading_closing_library">Bibliothek wird geschlossen…</string>
     <string name="loading_removing_library">Bibliothek wird entfernt…</string>
     <string name="loading_resetting_device">Dieses Gerät wird zurückgesetzt…</string>
+    <string name="progress_loading">Wird geladen</string>
     <string name="pending_update_no_store">Kein App-Store auf diesem Gerät kann bae aktualisieren.</string>
     <string name="restore_code_title">Wiederherstellungscode</string>
     <string name="restore_code_explanation">Drucke diesen Code aus oder speichere ihn in einem Passwortmanager. Mit ihm kommst du wieder in deine Bibliothek, wenn du alle deine Geräte verlierst. Ein Smartphone, das du von diesem aus einrichtest, bekommt ihn ebenfalls.</string>

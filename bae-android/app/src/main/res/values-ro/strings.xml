@@ -47,6 +47,7 @@
     <string name="collapse">Restrânge</string>
     <string name="mute">Fără sunet</string>
     <string name="unmute">Activează sunetul</string>
+    <string name="seek_position">Poziție</string>
     <string name="now_playing_track_by_artist">Se redă acum, %1$s de %2$s</string>
     <string name="queue_clear">Golește</string>
     <string name="queue_clear_up_next">Golește Urmează</string>
@@ -311,6 +312,7 @@
     <string name="loading_closing_library">Se închide biblioteca…</string>
     <string name="loading_removing_library">Se elimină biblioteca…</string>
     <string name="loading_resetting_device">Se resetează acest dispozitiv…</string>
+    <string name="progress_loading">Se încarcă</string>
     <string name="pending_update_no_store">Niciun magazin de aplicații de pe acest dispozitiv nu poate actualiza bae.</string>
     <string name="restore_code_title">Cod de restaurare</string>
     <string name="restore_code_explanation">Imprimă acest cod sau salvează-l într-un manager de parole. Te readuce în biblioteca ta dacă pierzi toate dispozitivele. Un telefon pe care îl configurezi de la acesta îl primește și el.</string>

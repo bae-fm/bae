@@ -47,6 +47,7 @@
     <string name="collapse">Sammenfold</string>
     <string name="mute">Slå lyden fra</string>
     <string name="unmute">Slå lyden til</string>
+    <string name="seek_position">Position</string>
     <string name="now_playing_track_by_artist">Afspilles nu, %1$s af %2$s</string>
     <string name="queue_clear">Ryd</string>
     <string name="queue_clear_up_next">Ryd Næste</string>
@@ -304,6 +305,7 @@
     <string name="loading_closing_library">Lukker biblioteket…</string>
     <string name="loading_removing_library">Fjerner biblioteket…</string>
     <string name="loading_resetting_device">Nulstiller denne enhed…</string>
+    <string name="progress_loading">Indlæser</string>
     <string name="pending_update_no_store">Ingen appbutik på denne enhed kan opdatere bae.</string>
     <string name="restore_code_title">Gendannelseskode</string>
     <string name="restore_code_explanation">Udskriv denne kode, eller gem den i en adgangskodeadministrator. Den får dig tilbage til dit bibliotek, hvis du mister alle dine enheder. En telefon, du konfigurerer fra denne, får den også.</string>
