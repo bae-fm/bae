@@ -269,7 +269,9 @@
   }
   function AndroidSegmentedButtons(props) {
     var o = list(props.options);
-    return h('div', { className: 'bae-a-seg', role: 'radiogroup' }, o.map(function (x) { var on = x === String(props.selected); return h('span', { key: x, role: 'radio', 'aria-checked': on, className: cx('bae-a-seg-btn', on && 'bae-a-seg-on') }, on ? h(Glyph, { name: 'check', size: 18 }) : null, x); }));
+    var seg = h('div', { className: 'bae-a-seg', role: 'radiogroup', 'aria-label': props.label || null }, o.map(function (x) { var on = x === String(props.selected); return h('span', { key: x, role: 'radio', 'aria-checked': on, className: cx('bae-a-seg-btn', on && 'bae-a-seg-on') }, on ? h(Glyph, { name: 'check', size: 18 }) : null, x); }));
+    // `label`: what the choice is, in the secondary text over the buttons, as a form names it.
+    return props.label ? h('div', { className: 'bae-a-seg-field' }, h('div', { className: 'bae-a-seg-label', 'aria-hidden': true }, props.label), seg) : seg;
   }
 
   // What bae keeps on this device, as Settings → Storage heads it: the total, one bar split by kind, and a legend line per kind with its size. `parts` is "Label:size:share,…" in the kinds' fixed order; each kind keeps its colour whatever its size or whichever kinds are shown: Pinned blue, Cache gold, Library orchid, From before the reset mint, anything else the neutral; in that order no two neighbours are hard to tell apart. The legend names every kind, so no colour stands alone.

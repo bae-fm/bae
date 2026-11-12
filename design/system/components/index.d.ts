@@ -344,7 +344,7 @@ export declare function MacPopover(props: { width?: number; top?: number; right?
 export declare function MacActivity(props: { children?: React.ReactNode; attention?: string; record?: string; reason?: string; error?: string; syncing?: boolean; uploads?: string; uploadProgress?: number; uploadsWait?: string; pins?: string; pinProgress?: number; makingLocal?: string; makeLocalProgress?: number; downloadsWait?: string }): React.ReactElement;
 export declare function AndroidNotice(props: NoticeProps): React.ReactElement;
 export declare function AndroidActivity(props: { children?: React.ReactNode; attention?: string; record?: string; reason?: string; error?: string; syncing?: boolean; uploads?: string; uploadProgress?: number; uploadsWait?: string; pins?: string; pinProgress?: number; downloadsWait?: string }): React.ReactElement;
-export declare function AndroidSegmentedButtons(props: { options: string; selected?: string }): React.ReactElement;
+export declare function AndroidSegmentedButtons(props: { options: string; selected?: string; /** What the choice is, over the buttons. */ label?: string }): React.ReactElement;
 export declare function AndroidDownloadsBar(props: { failed?: boolean; paused?: boolean; idle?: boolean }): React.ReactElement;
 export declare function AndroidDownloadRow(props: { title?: string; detail?: string; state?: 'queued' | 'active' | 'failed'; progress?: number; bytes?: string }): React.ReactElement;
 export declare function AndroidSnackbar(props: { message: string; action?: string; close?: boolean }): React.ReactElement;

@@ -2517,7 +2517,7 @@ can do it: the name is the household's, not one person's.
 
 The name lives in the store. A restore code carries no name: it is kept for
 years, written down, and a name inside it would go stale with the first
-rename. An invite carries the current name, since it expires within a week.
+rename. An invite carries the current name, since it expires within 30 days.
 The entry coven keeps a restore code in, in iCloud Keychain on Apple devices
 and in the phone's Block Store on Android, also saves the name, as one of the
 person's devices last saw it, so a new device's list can say which library
@@ -2895,7 +2895,7 @@ and the code screen goes on with the call under way instead, a join first, as
 at launch.
 
 Dan joins. In People, Ana taps **Invite** and enters his Dropbox email and a
-role (no name: Dan types his own when he joins), then picks how long the invite lasts: an hour, a day or a week.
+role (no name: Dan types his own when he joins), then picks how long the invite lasts: 7 days or 30 days.
 Her laptop records the
 invite in one write, offline too, and shows it at once, marked as sharing
 access: sync then checks it again and shares the store's folder with his
