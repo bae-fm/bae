@@ -5,6 +5,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.BugReports
@@ -72,8 +73,8 @@ class InviteDialogTest {
     fun theRoleAndLengthPickedAreTheOnesAsked() =
         createInvite(
             choose = {
-                compose.onNodeWithText("Admin").performClick()
-                compose.onNodeWithText("30 days").performClick()
+                compose.onNodeWithText("Admin").performScrollTo().performClick()
+                compose.onNodeWithText("30 days").performScrollTo().performClick()
             },
             expected =
                 Asked(
