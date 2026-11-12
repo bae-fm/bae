@@ -14,33 +14,11 @@ struct AddDeviceSheet: View {
     let onDismiss: () -> Void
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text("Add a device")
-                    .themeText(.heading)
-                Spacer()
-                Button("Done") { onDismiss() }
-                    .buttonStyle(.borderless)
-            }
-            .padding()
-
-            Divider()
-
-            if let device = store.addedDevice {
-                VStack {
-                    Spacer()
-                    Text("\(device.name) added")
-                        .themeText(.heading)
-                        .multilineTextAlignment(.center)
-                    Spacer()
-                }
-                .padding()
-            }
-            else {
-                codeContent
-            }
-        }
-        .frame(width: 400, height: 600)
+        AddDeviceSheetContent(
+            result: result,
+            addedDevice: store.addedDevice,
+            onDismiss: onDismiss
+        )
         .task(id: watch.map(ObjectIdentifier.init)) {
             guard let watch else { return }
             await store.watchForAddedDevice(watch)
@@ -52,65 +30,55 @@ struct AddDeviceSheet: View {
         guard case .success(let adding) = result else { return nil }
         return adding.watch
     }
+}
+
+/// The sheet's face: the device that joined, `addedDevice`, once one has;
+/// until then the code to scan or type, a spinner while it generates, or why
+/// it couldn't.
+struct AddDeviceSheetContent: View {
+    let result: Result<BridgeAddDevice, Error>?
+    let addedDevice: BridgeActiveDevice?
+    let onDismiss: () -> Void
+
+    var body: some View {
+        MacSheet("Add a device", width: 440) {
+            content
+        } footer: {
+            MacSheetFooter {
+                Button("Done", action: onDismiss)
+                    .buttonStyle(PrimaryButtonStyle())
+                    .keyboardShortcut(.defaultAction)
+            }
+        }
+    }
 
     @ViewBuilder
-    private var codeContent: some View {
-        switch result {
-        case nil:
-            VStack {
-                Spacer()
+    private var content: some View {
+        if let device = addedDevice {
+            Text("\(device.name) added")
+                .themeText(.body)
+        }
+        else {
+            switch result {
+            case nil:
                 MacSpinner("Making a code for your new device…")
-                Spacer()
-            }
-        case .success(let adding):
-            ScrollView {
-                shareContent(adding.share)
-                    .padding()
-            }
-        case .failure(let error):
-            VStack {
-                Spacer()
+            case .success(let adding):
+                // Copy and Share hand out the restore code; the QR code also
+                // holds this device's S3 key, which a device that scans it
+                // then doesn't ask for.
+                MacScanCode(
+                    instruction: "Scan or enter the code on the new device.",
+                    qr: adding.share.qrText,
+                    qrLabel: "Your restore code",
+                    code: adding.share.code
+                )
+            case .failure(let error):
                 // The presenter only records failures that have a line.
                 if let shown = DisplayError(error) {
                     Notice(error: shown)
                 }
-                Spacer()
-            }
-            .padding()
-        }
-    }
-
-    private func shareContent(_ share: BridgeRestoreCodeShare) -> some View {
-        VStack(spacing: ThemeSpace.edge) {
-            QRCode(text: share.qrText)
-                .accessibilityLabel("Your restore code")
-
-            Text(
-                "On the new device, scan this or type the code:"
-            )
-            .themeText(.detail)
-            .foregroundStyle(.secondary)
-            .multilineTextAlignment(.center)
-
-            Text(share.code)
-                .themeText(.mono)
-                .textSelection(.enabled)
-                .multilineTextAlignment(.center)
-
-            Button("Copy") {
-                SystemActions.copyToPasteboard(share.code)
-            }
-
-            if share.qrCarriesS3Key {
-                Text(
-                    "The QR code also carries your S3 access key, so a device that scans it will not ask for the key."
-                )
-                .themeText(.detail)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
             }
         }
-        .frame(maxWidth: .infinity)
     }
 }
 

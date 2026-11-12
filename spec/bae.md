@@ -3134,9 +3134,11 @@ The code to type holds no key, and asks for it separately.
 **Where the code shows.** The code is coven's *restore code*, which the apps and
 this spec name it.
 Carol adds a device from **Add device…** (on Android, **Add…**) on Your devices, under People and devices,
-shown only for a library with storage. Its sheet tells her to choose **Add
-device** on the new device, then scan its QR code or type the code it shows;
-on S3 it says the QR code carries her key. While it shows the code it watches
+shown only for a library with storage. Its sheet tells her to scan or enter the
+code on the new device, over the QR code, with **Copy code** and **Share**
+(**Share…** on a Mac), which hand out the code to type; the code's text is not
+shown beside the QR code. On S3 the QR code carries her key and the code to
+type does not, so the new device asks for the key only when she types the code. While it shows the code it watches
 her devices, as People's list of them does: once a device of hers joins that
 wasn't among them when the sheet made the code, the sheet says that device's
 name was added in place of the code, and **Done** closes it. Her devices are

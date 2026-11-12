@@ -352,13 +352,13 @@
     <string name="add_device_title">Adicionar um dispositivo</string>
     <string name="add_device_added">Dispositivo adicionado: %1$s</string>
     <string name="add_device_making_code">A criar um código para o seu novo dispositivo…</string>
-    <string name="add_device_instructions">No novo dispositivo, leia isto ou introduza o código:</string>
     <string name="invite_email_dropbox">E-mail do Dropbox</string>
     <string name="invite_email_onedrive">E-mail da conta Microsoft</string>
     <string name="invite_email_icloud">E-mail da conta Apple</string>
     <string name="invite_email_help_dropbox">A biblioteca é partilhada com esta conta Dropbox para que a pessoa possa entrar.</string>
     <string name="invite_email_help_onedrive">A biblioteca é partilhada com esta conta Microsoft para que a pessoa possa entrar.</string>
     <string name="invite_email_help_icloud">A biblioteca é partilhada com esta conta Apple para que a pessoa possa entrar.</string>
+    <string name="invite_email">E-mail</string>
     <string name="invite_create">Criar convite</string>
     <string name="invite_title">Convite</string>
     <string name="invite_cancel">Cancelar convite</string>
@@ -377,7 +377,6 @@
     <string name="settings_stored_in">Guardado em</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
-    <string name="restore_code_carries_s3_key">O código QR também contém a sua chave de acesso S3, por isso o dispositivo que o ler não vai pedir a chave.</string>
     <string name="onboarding_s3_key_scanned">A sua chave de acesso S3 veio com o código lido.</string>
     <string name="voice_play_not_found">Não foi possível encontrar %1$s na sua biblioteca.</string>
     <string name="onboarding_saved_codes_title">Guardados neste dispositivo</string>
@@ -463,4 +462,5 @@
     <string name="onboarding_invite_ended_title">Este convite terminou</string>
     <string name="onboarding_invite_ended_ask">Peça um novo a %1$s.</string>
     <string name="onboarding_ok">OK</string>
+    <string name="add_device_instructions">Leia ou introduza o código no novo dispositivo.</string>
 </resources>

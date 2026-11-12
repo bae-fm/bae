@@ -345,13 +345,13 @@
     <string name="add_device_title">デバイスを追加</string>
     <string name="add_device_added">%1$s を追加しました</string>
     <string name="add_device_making_code">新しいデバイス用のコードを作成しています…</string>
-    <string name="add_device_instructions">新しいデバイスでこれをスキャンするか、次のコードを入力してください：</string>
     <string name="invite_email_dropbox">Dropboxのメールアドレス</string>
     <string name="invite_email_onedrive">Microsoftアカウントのメールアドレス</string>
     <string name="invite_email_icloud">Appleアカウントのメールアドレス</string>
     <string name="invite_email_help_dropbox">ライブラリはこのDropboxアカウントと共有され、参加できるようになります。</string>
     <string name="invite_email_help_onedrive">ライブラリはこのMicrosoftアカウントと共有され、参加できるようになります。</string>
     <string name="invite_email_help_icloud">ライブラリはこのAppleアカウントと共有され、参加できるようになります。</string>
+    <string name="invite_email">メールアドレス</string>
     <string name="invite_create">招待を作成</string>
     <string name="invite_title">招待</string>
     <string name="invite_cancel">招待を取り消す</string>
@@ -370,7 +370,6 @@
     <string name="settings_stored_in">保存先</string>
     <string name="storage_location_account">%1$s：%2$s</string>
     <string name="storage_location_bucket">%1$s：%2$s（%3$s）</string>
-    <string name="restore_code_carries_s3_key">QR コードには S3 のアクセスキーも含まれているため、読み取ったデバイスはキーを尋ねません。</string>
     <string name="onboarding_s3_key_scanned">S3 のアクセスキーは読み取ったコードと一緒に届きました。</string>
     <string name="voice_play_not_found">ライブラリに%1$sが見つかりませんでした。</string>
     <string name="onboarding_saved_codes_title">このデバイスに保存済み</string>
@@ -454,4 +453,5 @@
     <string name="onboarding_invite_ended_title">この招待は終了しました</string>
     <string name="onboarding_invite_ended_ask">%1$sさんに新しい招待を頼んでください。</string>
     <string name="onboarding_ok">OK</string>
+    <string name="add_device_instructions">新しいデバイスでコードをスキャンするか入力してください。</string>
 </resources>

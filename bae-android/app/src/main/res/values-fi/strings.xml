@@ -351,13 +351,13 @@
     <string name="add_device_title">Lisää laite</string>
     <string name="add_device_added">%1$s lisätty</string>
     <string name="add_device_making_code">Luodaan koodia uudelle laitteellesi…</string>
-    <string name="add_device_instructions">Skannaa tämä uudella laitteella tai kirjoita koodi:</string>
     <string name="invite_email_dropbox">Dropbox-sähköposti</string>
     <string name="invite_email_onedrive">Microsoft-tilin sähköposti</string>
     <string name="invite_email_icloud">Apple-tilin sähköposti</string>
     <string name="invite_email_help_dropbox">Kirjasto jaetaan tämän Dropbox-tilin kanssa, jotta henkilö voi liittyä.</string>
     <string name="invite_email_help_onedrive">Kirjasto jaetaan tämän Microsoft-tilin kanssa, jotta henkilö voi liittyä.</string>
     <string name="invite_email_help_icloud">Kirjasto jaetaan tämän Apple-tilin kanssa, jotta henkilö voi liittyä.</string>
+    <string name="invite_email">Sähköposti</string>
     <string name="invite_create">Luo kutsu</string>
     <string name="invite_title">Kutsu</string>
     <string name="invite_cancel">Peruuta kutsu</string>
@@ -376,7 +376,6 @@
     <string name="settings_stored_in">Tallennettu</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
-    <string name="restore_code_carries_s3_key">QR-koodi sisältää myös S3-käyttöavaimesi, joten sen skannaava laite ei kysy avainta.</string>
     <string name="onboarding_s3_key_scanned">S3-käyttöavaimesi tuli skannatun koodin mukana.</string>
     <string name="voice_play_not_found">%1$s ei löytynyt kirjastostasi.</string>
     <string name="onboarding_saved_codes_title">Tallennettu tähän laitteeseen</string>
@@ -461,4 +460,5 @@
     <string name="onboarding_invite_ended_title">Kutsu on päättynyt</string>
     <string name="onboarding_invite_ended_ask">Pyydä uusi kutsu henkilöltä %1$s.</string>
     <string name="onboarding_ok">OK</string>
+    <string name="add_device_instructions">Skannaa tai syötä koodi uudella laitteella.</string>
 </resources>

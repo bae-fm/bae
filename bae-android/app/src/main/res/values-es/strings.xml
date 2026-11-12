@@ -359,13 +359,13 @@
     <string name="add_device_title">Añadir un dispositivo</string>
     <string name="add_device_added">Se ha añadido %1$s</string>
     <string name="add_device_making_code">Creando un código para tu nuevo dispositivo…</string>
-    <string name="add_device_instructions">En el nuevo dispositivo, escanea esto o escribe el código:</string>
     <string name="invite_email_dropbox">Correo de Dropbox</string>
     <string name="invite_email_onedrive">Correo de la cuenta de Microsoft</string>
     <string name="invite_email_icloud">Correo de la cuenta de Apple</string>
     <string name="invite_email_help_dropbox">La biblioteca se comparte con esta cuenta de Dropbox para que la persona pueda unirse.</string>
     <string name="invite_email_help_onedrive">La biblioteca se comparte con esta cuenta de Microsoft para que la persona pueda unirse.</string>
     <string name="invite_email_help_icloud">La biblioteca se comparte con esta cuenta de Apple para que la persona pueda unirse.</string>
+    <string name="invite_email">Correo electrónico</string>
     <string name="invite_create">Crear invitación</string>
     <string name="invite_title">Invitación</string>
     <string name="invite_cancel">Cancelar invitación</string>
@@ -384,7 +384,6 @@
     <string name="settings_stored_in">Guardado en</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
-    <string name="restore_code_carries_s3_key">El código QR también lleva tu clave de acceso de S3, así que el dispositivo que lo escanee no te pedirá la clave.</string>
     <string name="onboarding_s3_key_scanned">Tu clave de acceso de S3 venía con el código escaneado.</string>
     <string name="voice_play_not_found">No se encontró %1$s en tu biblioteca.</string>
     <string name="onboarding_saved_codes_title">Guardados en este dispositivo</string>
@@ -470,4 +469,5 @@
     <string name="onboarding_invite_ended_title">Esta invitación ha terminado</string>
     <string name="onboarding_invite_ended_ask">Pídele una nueva a %1$s.</string>
     <string name="onboarding_ok">Aceptar</string>
+    <string name="add_device_instructions">Escanea o introduce el código en el nuevo dispositivo.</string>
 </resources>

@@ -353,13 +353,13 @@
     <string name="add_device_title">Добавяне на устройство</string>
     <string name="add_device_added">Добавено устройство: %1$s</string>
     <string name="add_device_making_code">Създава се код за новото ви устройство…</string>
-    <string name="add_device_instructions">На новото устройство сканирайте това или въведете кода:</string>
     <string name="invite_email_dropbox">Имейл в Dropbox</string>
     <string name="invite_email_onedrive">Имейл на акаунта в Microsoft</string>
     <string name="invite_email_icloud">Имейл на акаунта в Apple</string>
     <string name="invite_email_help_dropbox">Библиотеката се споделя с този акаунт в Dropbox, за да може човекът да се присъедини.</string>
     <string name="invite_email_help_onedrive">Библиотеката се споделя с този акаунт в Microsoft, за да може човекът да се присъедини.</string>
     <string name="invite_email_help_icloud">Библиотеката се споделя с този акаунт в Apple, за да може човекът да се присъедини.</string>
+    <string name="invite_email">Имейл</string>
     <string name="invite_create">Създаване на покана</string>
     <string name="invite_title">Покана</string>
     <string name="invite_cancel">Отмяна на поканата</string>
@@ -378,7 +378,6 @@
     <string name="settings_stored_in">Съхранява се в</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
-    <string name="restore_code_carries_s3_key">QR кодът съдържа и вашия ключ за достъп до S3, така че устройството, което го сканира, няма да поиска ключа.</string>
     <string name="onboarding_s3_key_scanned">Ключът ви за достъп до S3 дойде заедно със сканирания код.</string>
     <string name="voice_play_not_found">%1$s не е намерено във вашата библиотека.</string>
     <string name="onboarding_saved_codes_title">Запазени на това устройство</string>
@@ -463,4 +462,5 @@
     <string name="onboarding_invite_ended_title">Тази покана е приключила</string>
     <string name="onboarding_invite_ended_ask">Помолете %1$s за нова.</string>
     <string name="onboarding_ok">OK</string>
+    <string name="add_device_instructions">Сканирайте или въведете кода на новото устройство.</string>
 </resources>

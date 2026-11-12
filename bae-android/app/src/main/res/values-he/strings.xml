@@ -361,13 +361,13 @@
     <string name="add_device_title">הוספת מכשיר</string>
     <string name="add_device_added">המכשיר %1$s נוסף</string>
     <string name="add_device_making_code">יוצר קוד למכשיר החדש שלך…</string>
-    <string name="add_device_instructions">במכשיר החדש סרוק את זה או הקלד את הקוד:</string>
     <string name="invite_email_dropbox">אימייל ב-Dropbox</string>
     <string name="invite_email_onedrive">אימייל של חשבון Microsoft</string>
     <string name="invite_email_icloud">אימייל של חשבון Apple</string>
     <string name="invite_email_help_dropbox">הספרייה משותפת עם חשבון Dropbox זה כדי שיוכלו להצטרף.</string>
     <string name="invite_email_help_onedrive">הספרייה משותפת עם חשבון Microsoft זה כדי שיוכלו להצטרף.</string>
     <string name="invite_email_help_icloud">הספרייה משותפת עם חשבון Apple זה כדי שיוכלו להצטרף.</string>
+    <string name="invite_email">אימייל</string>
     <string name="invite_create">יצירת הזמנה</string>
     <string name="invite_title">הזמנה</string>
     <string name="invite_cancel">ביטול ההזמנה</string>
@@ -386,7 +386,6 @@
     <string name="settings_stored_in">מאוחסן ב</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
-    <string name="restore_code_carries_s3_key">קוד ה-QR נושא גם את מפתח הגישה שלך ל-S3, כך שמכשיר שסורק אותו לא יבקש את המפתח.</string>
     <string name="onboarding_s3_key_scanned">מפתח הגישה שלך ל-S3 הגיע עם הקוד שנסרק.</string>
     <string name="voice_play_not_found">לא נמצא %1$s בספרייה שלך.</string>
     <string name="onboarding_saved_codes_title">שמורים במכשיר הזה</string>
@@ -472,4 +471,5 @@
     <string name="onboarding_invite_ended_title">ההזמנה הזו הסתיימה</string>
     <string name="onboarding_invite_ended_ask">בקש מ-%1$s הזמנה חדשה.</string>
     <string name="onboarding_ok">אישור</string>
+    <string name="add_device_instructions">סרוק או הזן את הקוד במכשיר החדש.</string>
 </resources>

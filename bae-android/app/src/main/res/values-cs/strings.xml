@@ -369,13 +369,13 @@
     <string name="add_device_title">Přidat zařízení</string>
     <string name="add_device_added">Zařízení přidáno: %1$s</string>
     <string name="add_device_making_code">Vytváří se kód pro vaše nové zařízení…</string>
-    <string name="add_device_instructions">Na novém zařízení tento kód naskenujte, nebo ho opište:</string>
     <string name="invite_email_dropbox">E-mail v Dropboxu</string>
     <string name="invite_email_onedrive">E-mail účtu Microsoft</string>
     <string name="invite_email_icloud">E-mail účtu Apple</string>
     <string name="invite_email_help_dropbox">Knihovna se sdílí s tímto účtem Dropbox, aby se k ní mohl připojit dotyčný.</string>
     <string name="invite_email_help_onedrive">Knihovna se sdílí s tímto účtem Microsoft, aby se k ní mohl připojit dotyčný.</string>
     <string name="invite_email_help_icloud">Knihovna se sdílí s tímto účtem Apple, aby se k ní mohl připojit dotyčný.</string>
+    <string name="invite_email">E-mail</string>
     <string name="invite_create">Vytvořit pozvánku</string>
     <string name="invite_title">Pozvánka</string>
     <string name="invite_cancel">Zrušit pozvánku</string>
@@ -394,7 +394,6 @@
     <string name="settings_stored_in">Uloženo v</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
-    <string name="restore_code_carries_s3_key">QR kód nese i váš přístupový klíč S3, takže zařízení, které ho naskenuje, se na klíč nezeptá.</string>
     <string name="onboarding_s3_key_scanned">Váš přístupový klíč S3 přišel spolu s naskenovaným kódem.</string>
     <string name="voice_play_not_found">%1$s se ve vaší knihovně nepodařilo najít.</string>
     <string name="onboarding_saved_codes_title">Uloženo v tomto zařízení</string>
@@ -481,4 +480,5 @@
     <string name="onboarding_invite_ended_title">Tato pozvánka skončila</string>
     <string name="onboarding_invite_ended_ask">Požádejte %1$s o novou.</string>
     <string name="onboarding_ok">OK</string>
+    <string name="add_device_instructions">Naskenujte nebo zadejte kód na novém zařízení.</string>
 </resources>

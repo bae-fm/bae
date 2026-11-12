@@ -353,13 +353,13 @@
     <string name="add_device_title">Een apparaat toevoegen</string>
     <string name="add_device_added">%1$s toegevoegd</string>
     <string name="add_device_making_code">Code voor je nieuwe apparaat wordt gemaakt…</string>
-    <string name="add_device_instructions">Scan dit op het nieuwe apparaat, of typ de code:</string>
     <string name="invite_email_dropbox">Dropbox-e-mail</string>
     <string name="invite_email_onedrive">E-mailadres van het Microsoft-account</string>
     <string name="invite_email_icloud">E-mailadres van het Apple-account</string>
     <string name="invite_email_help_dropbox">De bibliotheek wordt gedeeld met dit Dropbox-account zodat die persoon kan meedoen.</string>
     <string name="invite_email_help_onedrive">De bibliotheek wordt gedeeld met dit Microsoft-account zodat die persoon kan meedoen.</string>
     <string name="invite_email_help_icloud">De bibliotheek wordt gedeeld met dit Apple-account zodat die persoon kan meedoen.</string>
+    <string name="invite_email">E-mail</string>
     <string name="invite_create">Uitnodiging maken</string>
     <string name="invite_title">Uitnodiging</string>
     <string name="invite_cancel">Uitnodiging annuleren</string>
@@ -378,7 +378,6 @@
     <string name="settings_stored_in">Opgeslagen in</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
-    <string name="restore_code_carries_s3_key">De QR-code bevat ook je S3-toegangssleutel, dus een apparaat dat hem scant, vraagt niet om de sleutel.</string>
     <string name="onboarding_s3_key_scanned">Je S3-toegangssleutel kwam mee met de gescande code.</string>
     <string name="voice_play_not_found">%1$s is niet gevonden in je bibliotheek.</string>
     <string name="onboarding_saved_codes_title">Bewaard op dit apparaat</string>
@@ -463,4 +462,5 @@
     <string name="onboarding_invite_ended_title">Deze uitnodiging is afgelopen</string>
     <string name="onboarding_invite_ended_ask">Vraag %1$s om een nieuwe.</string>
     <string name="onboarding_ok">OK</string>
+    <string name="add_device_instructions">Scan de code of voer hem in op het nieuwe apparaat.</string>
 </resources>

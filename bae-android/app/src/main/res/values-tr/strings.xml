@@ -353,13 +353,13 @@
     <string name="add_device_title">Cihaz ekle</string>
     <string name="add_device_added">%1$s eklendi</string>
     <string name="add_device_making_code">Yeni cihazınız için kod oluşturuluyor…</string>
-    <string name="add_device_instructions">Yeni cihazda bunu tarayın ya da kodu yazın:</string>
     <string name="invite_email_dropbox">Dropbox e-postası</string>
     <string name="invite_email_onedrive">Microsoft hesabının e-postası</string>
     <string name="invite_email_icloud">Apple hesabının e-postası</string>
     <string name="invite_email_help_dropbox">Kitaplık, kişinin katılabilmesi için bu Dropbox hesabıyla paylaşılır.</string>
     <string name="invite_email_help_onedrive">Kitaplık, kişinin katılabilmesi için bu Microsoft hesabıyla paylaşılır.</string>
     <string name="invite_email_help_icloud">Kitaplık, kişinin katılabilmesi için bu Apple hesabıyla paylaşılır.</string>
+    <string name="invite_email">E-posta</string>
     <string name="invite_create">Davet oluştur</string>
     <string name="invite_title">Davet</string>
     <string name="invite_cancel">Daveti iptal et</string>
@@ -378,7 +378,6 @@
     <string name="settings_stored_in">Depolandığı yer</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
-    <string name="restore_code_carries_s3_key">QR kod S3 erişim anahtarınızı da taşır; bu yüzden onu tarayan cihaz anahtarı sormaz.</string>
     <string name="onboarding_s3_key_scanned">S3 erişim anahtarınız taranan kodla birlikte geldi.</string>
     <string name="voice_play_not_found">Kitaplığınızda %1$s bulunamadı.</string>
     <string name="onboarding_saved_codes_title">Bu cihazda kayıtlı</string>
@@ -463,4 +462,5 @@
     <string name="onboarding_invite_ended_title">Bu davet sona erdi</string>
     <string name="onboarding_invite_ended_ask">Yeni bir davet için %1$s ile görüşün.</string>
     <string name="onboarding_ok">Tamam</string>
+    <string name="add_device_instructions">Yeni cihazda kodu tarayın veya girin.</string>
 </resources>

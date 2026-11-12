@@ -6,7 +6,8 @@ import SwiftUI
 extension ShotScene {
     /// People and devices: the first page for an admin and for a member, a
     /// person's page, this person's devices, the sheet that renames this
-    /// person, and the sheet that asks to approve a join request.
+    /// person, the sheet that asks to approve a join request, and the sheet that
+    /// adds a device, with its code and once a device has joined.
     static let peopleScenes: [ShotScene] = [
         people("people-and-devices-admin", asAdmin: true, invites: [invited]),
         people(
@@ -41,6 +42,47 @@ extension ShotScene {
                     onApprove: {},
                     onDecline: {},
                     onClose: {}
+                )
+            )
+        },
+        ShotScene(
+            id: "people-and-devices-add-device",
+            size: CGSize(width: 440, height: 360)
+        ) {
+            ShotStage(
+                AddDeviceSheetContent(
+                    result: .success(
+                        BridgeAddDevice(
+                            share: BridgeRestoreCodeShare(
+                                code:
+                                    "CVR1 ABCD EFGH IJKL MNOP QRST UVWX YZ23 4567",
+                                qrText: "CVR1-ABCDEFGHIJKLMNOPQRSTUVWXYZ234567",
+                                qrCarriesS3Key: false
+                            ),
+                            watch: BridgeAddedDeviceWatch(
+                                noHandle: BridgeAddedDeviceWatch.NoHandle()
+                            )
+                        )
+                    ),
+                    addedDevice: nil,
+                    onDismiss: {}
+                )
+            )
+        },
+        ShotScene(
+            id: "people-and-devices-add-device-added",
+            size: CGSize(width: 440, height: 130)
+        ) {
+            ShotStage(
+                AddDeviceSheetContent(
+                    result: nil,
+                    addedDevice: BridgeActiveDevice(
+                        id: 7,
+                        name: "Tablet",
+                        isSelf: false,
+                        canRemove: true
+                    ),
+                    onDismiss: {}
                 )
             )
         },

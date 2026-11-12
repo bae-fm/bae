@@ -385,13 +385,13 @@
     <string name="add_device_title">إضافة جهاز</string>
     <string name="add_device_added">تمت إضافة %1$s</string>
     <string name="add_device_making_code">جارٍ إنشاء رمز لجهازك الجديد…</string>
-    <string name="add_device_instructions">على الجهاز الجديد، امسح هذا الرمز ضوئيًا أو اكتب الرمز:</string>
     <string name="invite_email_dropbox">بريد Dropbox الإلكتروني</string>
     <string name="invite_email_onedrive">البريد الإلكتروني لحساب Microsoft</string>
     <string name="invite_email_icloud">البريد الإلكتروني لحساب Apple</string>
     <string name="invite_email_help_dropbox">تتم مشاركة المكتبة مع حساب Dropbox هذا ليتمكن من الانضمام.</string>
     <string name="invite_email_help_onedrive">تتم مشاركة المكتبة مع حساب Microsoft هذا ليتمكن من الانضمام.</string>
     <string name="invite_email_help_icloud">تتم مشاركة المكتبة مع حساب Apple هذا ليتمكن من الانضمام.</string>
+    <string name="invite_email">البريد الإلكتروني</string>
     <string name="invite_create">إنشاء دعوة</string>
     <string name="invite_title">دعوة</string>
     <string name="invite_cancel">إلغاء الدعوة</string>
@@ -410,7 +410,6 @@
     <string name="settings_stored_in">مخزّن في</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
-    <string name="restore_code_carries_s3_key">يحمل رمز QR أيضًا مفتاح الوصول إلى S3 الخاص بك، فلن يطلب الجهاز الذي يمسحه المفتاح.</string>
     <string name="onboarding_s3_key_scanned">وصل مفتاح الوصول إلى S3 الخاص بك مع الرمز الممسوح.</string>
     <string name="voice_play_not_found">تعذّر العثور على %1$s في مكتبتك.</string>
     <string name="onboarding_saved_codes_title">محفوظة على هذا الجهاز</string>
@@ -499,4 +498,5 @@
     <string name="onboarding_invite_ended_title">انتهت هذه الدعوة</string>
     <string name="onboarding_invite_ended_ask">اطلب من %1$s دعوة جديدة.</string>
     <string name="onboarding_ok">موافق</string>
+    <string name="add_device_instructions">امسح الرمز أو أدخله على الجهاز الجديد.</string>
 </resources>

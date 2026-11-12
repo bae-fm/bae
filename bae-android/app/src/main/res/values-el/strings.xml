@@ -351,13 +351,13 @@
     <string name="add_device_title">Προσθήκη συσκευής</string>
     <string name="add_device_added">Προστέθηκε η συσκευή %1$s</string>
     <string name="add_device_making_code">Δημιουργία κωδικού για τη νέα σας συσκευή…</string>
-    <string name="add_device_instructions">Στη νέα συσκευή, σαρώστε αυτό ή πληκτρολογήστε τον κωδικό:</string>
     <string name="invite_email_dropbox">Email Dropbox</string>
     <string name="invite_email_onedrive">Email λογαριασμού Microsoft</string>
     <string name="invite_email_icloud">Email λογαριασμού Apple</string>
     <string name="invite_email_help_dropbox">Η βιβλιοθήκη μοιράζεται με αυτόν τον λογαριασμό Dropbox, ώστε το άτομο να μπορέσει να συμμετάσχει.</string>
     <string name="invite_email_help_onedrive">Η βιβλιοθήκη μοιράζεται με αυτόν τον λογαριασμό Microsoft, ώστε το άτομο να μπορέσει να συμμετάσχει.</string>
     <string name="invite_email_help_icloud">Η βιβλιοθήκη μοιράζεται με αυτόν τον λογαριασμό Apple, ώστε το άτομο να μπορέσει να συμμετάσχει.</string>
+    <string name="invite_email">Email</string>
     <string name="invite_create">Δημιουργία πρόσκλησης</string>
     <string name="invite_title">Πρόσκληση</string>
     <string name="invite_cancel">Ακύρωση πρόσκλησης</string>
@@ -376,7 +376,6 @@
     <string name="settings_stored_in">Αποθηκεύεται σε</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
-    <string name="restore_code_carries_s3_key">Ο κωδικός QR περιέχει επίσης το κλειδί πρόσβασης S3, οπότε μια συσκευή που τον σαρώνει δεν θα ζητήσει το κλειδί.</string>
     <string name="onboarding_s3_key_scanned">Το κλειδί πρόσβασης S3 ήρθε μαζί με τον σαρωμένο κωδικό.</string>
     <string name="voice_play_not_found">Δεν βρέθηκε το %1$s στη βιβλιοθήκη σας.</string>
     <string name="onboarding_saved_codes_title">Αποθηκευμένοι σε αυτή τη συσκευή</string>
@@ -461,4 +460,5 @@
     <string name="onboarding_invite_ended_title">Αυτή η πρόσκληση έχει λήξει</string>
     <string name="onboarding_invite_ended_ask">Ζητήστε μια νέα από %1$s.</string>
     <string name="onboarding_ok">OK</string>
+    <string name="add_device_instructions">Σαρώστε ή εισαγάγετε τον κωδικό στη νέα συσκευή.</string>
 </resources>

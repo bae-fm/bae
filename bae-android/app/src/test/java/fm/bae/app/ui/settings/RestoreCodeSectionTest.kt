@@ -186,7 +186,7 @@ class RestoreCodeSectionTest {
         }
 
     @Test
-    fun addDeviceShowsTheCodeToTypeAndTheOnboardingChoice() {
+    fun addDeviceShowsTheInstructionAndTheQrCodeButNotTheCodesText() {
         compose.setContent {
             BaeTheme {
                 AddDeviceDialogContent(
@@ -199,39 +199,13 @@ class RestoreCodeSectionTest {
         }
 
         // The QR code takes the dialog's width, so what follows it is scrolled to.
-        compose
-            .onNodeWithText("On the new device, scan this or type the code:")
-            .performScrollTo()
-            .assertIsDisplayed()
-        compose.onNodeWithText(CODE).performScrollTo().assertIsDisplayed()
-        compose
-            .onNodeWithText("The QR code also carries your S3 access key, so a device that scans it will not ask for the key.")
-            .assertDoesNotExist()
-    }
-
-    @Test
-    fun addDeviceSaysTheQrCarriesTheS3Key() {
-        compose.setContent {
-            BaeTheme {
-                AddDeviceDialogContent(
-                    share = BridgeRestoreCodeShare(code = CODE, qrText = CODE_WITH_KEY, qrCarriesS3Key = true),
-                    added = null,
-                    error = null,
-                    onDismiss = {},
-                )
-            }
-        }
-
-        compose
-            .onNodeWithText("The QR code also carries your S3 access key, so a device that scans it will not ask for the key.")
-            // Below the QR code and the code, past the dialog's visible height.
-            .assertExists()
+        compose.onNodeWithText("Scan or enter the code on the new device.").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Copy code").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Share").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText(CODE).assertDoesNotExist()
     }
 
     private companion object {
         const val CODE = "CVR1 ABCD EFGH IJKL MNOP QRST UVWX YZ23 4567"
-
-        /** The same restore code, longer for the S3 key it holds. */
-        const val CODE_WITH_KEY = "CVR1-ABCDEFGHIJKLMNOPQRSTUVWXYZ234567ABCDEFGHIJKLMNOP"
     }
 }

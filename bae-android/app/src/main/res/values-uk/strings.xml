@@ -369,13 +369,13 @@
     <string name="add_device_title">Додати пристрій</string>
     <string name="add_device_added">Пристрій додано: %1$s</string>
     <string name="add_device_making_code">Створення коду для вашого нового пристрою…</string>
-    <string name="add_device_instructions">На новому пристрої відскануйте це або введіть код:</string>
     <string name="invite_email_dropbox">Ел. пошта Dropbox</string>
     <string name="invite_email_onedrive">Ел. пошта облікового запису Microsoft</string>
     <string name="invite_email_icloud">Ел. пошта облікового запису Apple</string>
     <string name="invite_email_help_dropbox">Бібліотекою діляться з цим обліковим записом Dropbox, щоб людина могла приєднатися.</string>
     <string name="invite_email_help_onedrive">Бібліотекою діляться з цим обліковим записом Microsoft, щоб людина могла приєднатися.</string>
     <string name="invite_email_help_icloud">Бібліотекою діляться з цим обліковим записом Apple, щоб людина могла приєднатися.</string>
+    <string name="invite_email">Ел. пошта</string>
     <string name="invite_create">Створити запрошення</string>
     <string name="invite_title">Запрошення</string>
     <string name="invite_cancel">Скасувати запрошення</string>
@@ -394,7 +394,6 @@
     <string name="settings_stored_in">Зберігається в</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
-    <string name="restore_code_carries_s3_key">QR-код також містить ваш ключ доступу до S3, тож пристрій, який його відсканує, не питатиме ключ.</string>
     <string name="onboarding_s3_key_scanned">Ваш ключ доступу до S3 надійшов разом із відсканованим кодом.</string>
     <string name="voice_play_not_found">%1$s не знайдено у вашій фонотеці.</string>
     <string name="onboarding_saved_codes_title">Збережено на цьому пристрої</string>
@@ -481,4 +480,5 @@
     <string name="onboarding_invite_ended_title">Це запрошення закінчилося</string>
     <string name="onboarding_invite_ended_ask">Попросіть користувача %1$s надіслати нове.</string>
     <string name="onboarding_ok">OK</string>
+    <string name="add_device_instructions">Скануйте або введіть код на новому пристрої.</string>
 </resources>

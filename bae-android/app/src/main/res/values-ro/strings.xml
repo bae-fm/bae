@@ -359,13 +359,13 @@
     <string name="add_device_title">Adaugă un dispozitiv</string>
     <string name="add_device_added">Dispozitiv adăugat: %1$s</string>
     <string name="add_device_making_code">Se creează un cod pentru noul tău dispozitiv…</string>
-    <string name="add_device_instructions">Pe noul dispozitiv, scanează asta sau tastează codul:</string>
     <string name="invite_email_dropbox">E-mail Dropbox</string>
     <string name="invite_email_onedrive">E-mailul contului Microsoft</string>
     <string name="invite_email_icloud">E-mailul contului Apple</string>
     <string name="invite_email_help_dropbox">Biblioteca este partajată cu acest cont Dropbox pentru ca persoana să se poată alătura.</string>
     <string name="invite_email_help_onedrive">Biblioteca este partajată cu acest cont Microsoft pentru ca persoana să se poată alătura.</string>
     <string name="invite_email_help_icloud">Biblioteca este partajată cu acest cont Apple pentru ca persoana să se poată alătura.</string>
+    <string name="invite_email">E-mail</string>
     <string name="invite_create">Creează invitația</string>
     <string name="invite_title">Invitație</string>
     <string name="invite_cancel">Anulează invitația</string>
@@ -384,7 +384,6 @@
     <string name="settings_stored_in">Stocat în</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
-    <string name="restore_code_carries_s3_key">Codul QR conține și cheia ta de acces S3, așa că dispozitivul care îl scanează nu va cere cheia.</string>
     <string name="onboarding_s3_key_scanned">Cheia ta de acces S3 a venit odată cu codul scanat.</string>
     <string name="voice_play_not_found">%1$s nu a fost găsit în biblioteca ta.</string>
     <string name="onboarding_saved_codes_title">Salvate pe acest dispozitiv</string>
@@ -470,4 +469,5 @@
     <string name="onboarding_invite_ended_title">Această invitație s-a încheiat</string>
     <string name="onboarding_invite_ended_ask">Cere-i una nouă persoanei %1$s.</string>
     <string name="onboarding_ok">OK</string>
+    <string name="add_device_instructions">Scanează sau introdu codul pe noul dispozitiv.</string>
 </resources>

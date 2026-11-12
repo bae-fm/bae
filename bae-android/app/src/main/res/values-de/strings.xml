@@ -353,13 +353,13 @@
     <string name="add_device_title">Gerät hinzufügen</string>
     <string name="add_device_added">%1$s hinzugefügt</string>
     <string name="add_device_making_code">Code für dein neues Gerät wird erstellt…</string>
-    <string name="add_device_instructions">Scanne dies auf dem neuen Gerät oder tippe den Code ein:</string>
     <string name="invite_email_dropbox">Dropbox-E-Mail</string>
     <string name="invite_email_onedrive">E-Mail des Microsoft-Kontos</string>
     <string name="invite_email_icloud">E-Mail des Apple-Kontos</string>
     <string name="invite_email_help_dropbox">Die Bibliothek wird mit diesem Dropbox-Konto geteilt, damit die Person beitreten kann.</string>
     <string name="invite_email_help_onedrive">Die Bibliothek wird mit diesem Microsoft-Konto geteilt, damit die Person beitreten kann.</string>
     <string name="invite_email_help_icloud">Die Bibliothek wird mit diesem Apple-Konto geteilt, damit die Person beitreten kann.</string>
+    <string name="invite_email">E-Mail</string>
     <string name="invite_create">Einladung erstellen</string>
     <string name="invite_title">Einladung</string>
     <string name="invite_cancel">Einladung zurückziehen</string>
@@ -378,7 +378,6 @@
     <string name="settings_stored_in">Gespeichert in</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
-    <string name="restore_code_carries_s3_key">Der QR-Code enthält auch deinen S3-Zugriffsschlüssel, daher fragt ein Gerät, das ihn scannt, nicht nach dem Schlüssel.</string>
     <string name="onboarding_s3_key_scanned">Dein S3-Zugriffsschlüssel kam mit dem gescannten Code.</string>
     <string name="voice_play_not_found">%1$s wurde in deiner Mediathek nicht gefunden.</string>
     <string name="onboarding_saved_codes_title">Auf diesem Gerät gespeichert</string>
@@ -463,4 +462,5 @@
     <string name="onboarding_invite_ended_title">Diese Einladung ist beendet</string>
     <string name="onboarding_invite_ended_ask">Bitte %1$s um eine neue.</string>
     <string name="onboarding_ok">OK</string>
+    <string name="add_device_instructions">Scanne den Code oder gib ihn auf dem neuen Gerät ein.</string>
 </resources>

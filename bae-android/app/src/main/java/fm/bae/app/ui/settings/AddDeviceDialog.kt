@@ -3,14 +3,8 @@ package fm.bae.app.ui.settings
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,25 +17,22 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.displayError
 import fm.bae.app.ui.BaeTheme
-import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.AndroidNotice
+import fm.bae.app.ui.components.AndroidScanCode
 import fm.bae.app.ui.components.AndroidSpinner
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.DialogParts
 import fm.bae.app.ui.components.NoticeLook
-import fm.bae.app.ui.components.QRCodeImage
-import fm.bae.app.ui.components.rememberCopyText
 import fm.bae.app.ui.rememberScreenScope
 import fm.bae.screensubscription.ScreenSubscription
 import fm.bae.screensubscription.pulled
@@ -150,13 +141,20 @@ internal fun addDeviceParts(
                     added != null -> {
                         Text(
                             text = stringResource(R.string.add_device_added, added.name),
-                            style = ThemeText.heading.style,
-                            textAlign = TextAlign.Center,
+                            style = ThemeText.body.style,
+                            color = MaterialTheme.colorScheme.onSurface,
                         )
                     }
 
                     share != null -> {
-                        AddDeviceShareContent(share)
+                        // Copy and Share hand out the restore code; the QR code also holds
+                        // this device's S3 key, which a device that scans it then doesn't ask for.
+                        AndroidScanCode(
+                            instruction = stringResource(R.string.add_device_instructions),
+                            qr = share.qrText,
+                            qrDescription = stringResource(R.string.restore_code_title),
+                            code = share.code,
+                        )
                     }
 
                     error == null -> {
@@ -173,47 +171,6 @@ internal fun addDeviceParts(
             AndroidButton(kind = ButtonKind.TEXT, onClick = onDismiss) { Text(stringResource(R.string.done)) }
         },
     )
-
-/**
- * The QR, whose code holds the S3 key when this device has one, then the
- * code to type on the new device and copy.
- */
-@Composable
-private fun AddDeviceShareContent(share: BridgeRestoreCodeShare) {
-    val copy = rememberCopyText()
-    QRCodeImage(
-        text = share.qrText,
-        contentDescription = stringResource(R.string.restore_code_title),
-    )
-    Spacer(modifier = Modifier.height(ThemeSpace.group))
-    Text(
-        text = stringResource(R.string.add_device_instructions),
-        style = ThemeText.body.style,
-        textAlign = TextAlign.Center,
-    )
-    Spacer(modifier = Modifier.height(ThemeSpace.related))
-    SelectionContainer {
-        Text(text = share.code, style = ThemeText.mono.style, textAlign = TextAlign.Center)
-    }
-    AndroidButton(kind = ButtonKind.OUTLINED, onClick = { copy(share.code) }) {
-        Icon(
-            Icons.Filled.ContentCopy,
-            contentDescription = null,
-            modifier = Modifier.size(ThemeIcon.medium),
-        )
-        Spacer(modifier = Modifier.width(ThemeSpace.compact))
-        Text(stringResource(R.string.copy))
-    }
-    if (share.qrCarriesS3Key) {
-        Spacer(modifier = Modifier.height(ThemeSpace.related))
-        Text(
-            text = stringResource(R.string.restore_code_carries_s3_key),
-            style = ThemeText.detail.style,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
-    }
-}
 
 @Preview(showBackground = true)
 @Composable

@@ -345,13 +345,13 @@
     <string name="add_device_title">新增裝置</string>
     <string name="add_device_added">已新增%1$s</string>
     <string name="add_device_making_code">正在為你的新裝置產生代碼…</string>
-    <string name="add_device_instructions">在新裝置上掃描此代碼，或輸入下面的代碼：</string>
     <string name="invite_email_dropbox">Dropbox 電子郵件</string>
     <string name="invite_email_onedrive">Microsoft 帳號電子郵件</string>
     <string name="invite_email_icloud">Apple 帳號電子郵件</string>
     <string name="invite_email_help_dropbox">資料庫將與此 Dropbox 帳號共享，對方即可加入。</string>
     <string name="invite_email_help_onedrive">資料庫將與此 Microsoft 帳號共享，對方即可加入。</string>
     <string name="invite_email_help_icloud">資料庫將與此 Apple 帳號共享，對方即可加入。</string>
+    <string name="invite_email">電子郵件</string>
     <string name="invite_create">建立邀請</string>
     <string name="invite_title">邀請</string>
     <string name="invite_cancel">取消邀請</string>
@@ -370,7 +370,6 @@
     <string name="settings_stored_in">儲存於</string>
     <string name="storage_location_account">%1$s：%2$s</string>
     <string name="storage_location_bucket">%1$s：%2$s（%3$s）</string>
-    <string name="restore_code_carries_s3_key">此 QR 碼也包含你的 S3 存取金鑰，掃描它的裝置不會再要求輸入金鑰。</string>
     <string name="onboarding_s3_key_scanned">你的 S3 存取金鑰已隨掃描的代碼一併傳來。</string>
     <string name="voice_play_not_found">在你的資料庫中找不到%1$s。</string>
     <string name="onboarding_saved_codes_title">儲存在此裝置上</string>
@@ -454,4 +453,5 @@
     <string name="onboarding_invite_ended_title">此邀請已結束</string>
     <string name="onboarding_invite_ended_ask">請向%1$s索取新的邀請。</string>
     <string name="onboarding_ok">好</string>
+    <string name="add_device_instructions">在新裝置上掃描或輸入此代碼。</string>
 </resources>

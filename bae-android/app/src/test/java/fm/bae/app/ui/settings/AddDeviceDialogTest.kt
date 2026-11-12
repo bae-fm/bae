@@ -71,13 +71,13 @@ class AddDeviceDialogTest {
         // The live read's first value: no device has joined yet.
         devices.deliver(null)
         compose.waitForIdle()
-        // The QR code takes the dialog's width, so the code below it is scrolled to.
-        compose.onNodeWithText("CVR1-CODE").performScrollTo().assertIsDisplayed()
+        // The QR code takes the dialog's width, so what follows it is scrolled to.
+        compose.onNodeWithText("Copy code").performScrollTo().assertIsDisplayed()
 
         devices.deliver(BridgeActiveDevice(id = 7u, name = "New Phone", isSelf = false, canRemove = true))
         compose.waitForIdle()
         compose.onNodeWithText("New Phone added").assertIsDisplayed()
-        compose.onNodeWithText("CVR1-CODE").assertDoesNotExist()
+        compose.onNodeWithText("Copy code").assertDoesNotExist()
 
         shown = false
         compose.waitForIdle()

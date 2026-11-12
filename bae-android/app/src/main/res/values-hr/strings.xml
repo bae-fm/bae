@@ -361,13 +361,13 @@
     <string name="add_device_title">Dodaj uređaj</string>
     <string name="add_device_added">Uređaj dodan: %1$s</string>
     <string name="add_device_making_code">Izrada koda za vaš novi uređaj…</string>
-    <string name="add_device_instructions">Na novom uređaju skenirajte ovo ili upišite kod:</string>
     <string name="invite_email_dropbox">E-pošta za Dropbox</string>
     <string name="invite_email_onedrive">E-pošta računa Microsoft</string>
     <string name="invite_email_icloud">E-pošta računa Apple</string>
     <string name="invite_email_help_dropbox">Fonoteka se dijeli s ovim računom Dropbox kako bi se osoba mogla pridružiti.</string>
     <string name="invite_email_help_onedrive">Fonoteka se dijeli s ovim računom Microsoft kako bi se osoba mogla pridružiti.</string>
     <string name="invite_email_help_icloud">Fonoteka se dijeli s ovim računom Apple kako bi se osoba mogla pridružiti.</string>
+    <string name="invite_email">E-pošta</string>
     <string name="invite_create">Stvori pozivnicu</string>
     <string name="invite_title">Pozivnica</string>
     <string name="invite_cancel">Otkaži pozivnicu</string>
@@ -386,7 +386,6 @@
     <string name="settings_stored_in">Pohranjeno u</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
-    <string name="restore_code_carries_s3_key">QR kôd sadrži i vaš pristupni ključ za S3, pa uređaj koji ga skenira neće tražiti ključ.</string>
     <string name="onboarding_s3_key_scanned">Vaš pristupni ključ za S3 stigao je uz skenirani kôd.</string>
     <string name="voice_play_not_found">%1$s nije pronađeno u vašoj fonoteci.</string>
     <string name="onboarding_saved_codes_title">Spremljeno na ovom uređaju</string>
@@ -472,4 +471,5 @@
     <string name="onboarding_invite_ended_title">Ova je pozivnica završila</string>
     <string name="onboarding_invite_ended_ask">Zamolite osobu %1$s za novu.</string>
     <string name="onboarding_ok">U redu</string>
+    <string name="add_device_instructions">Skenirajte ili unesite kôd na novom uređaju.</string>
 </resources>

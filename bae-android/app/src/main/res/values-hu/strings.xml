@@ -351,13 +351,13 @@
     <string name="add_device_title">Eszköz hozzáadása</string>
     <string name="add_device_added">%1$s hozzáadva</string>
     <string name="add_device_making_code">Kód készítése az új eszközödhöz…</string>
-    <string name="add_device_instructions">Az új eszközön olvasd be ezt, vagy add meg a kódot:</string>
     <string name="invite_email_dropbox">Dropbox e-mail-cím</string>
     <string name="invite_email_onedrive">Microsoft-fiók e-mail-címe</string>
     <string name="invite_email_icloud">Apple-fiók e-mail-címe</string>
     <string name="invite_email_help_dropbox">A könyvtár meg lesz osztva ezzel a Dropbox-fiókkal, hogy az illető csatlakozhasson.</string>
     <string name="invite_email_help_onedrive">A könyvtár meg lesz osztva ezzel a Microsoft-fiókkal, hogy az illető csatlakozhasson.</string>
     <string name="invite_email_help_icloud">A könyvtár meg lesz osztva ezzel a Apple-fiókkal, hogy az illető csatlakozhasson.</string>
+    <string name="invite_email">E-mail</string>
     <string name="invite_create">Meghívó létrehozása</string>
     <string name="invite_title">Meghívó</string>
     <string name="invite_cancel">Meghívó visszavonása</string>
@@ -376,7 +376,6 @@
     <string name="settings_stored_in">Tárolás helye</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
-    <string name="restore_code_carries_s3_key">A QR-kód az S3-hozzáférési kulcsodat is tartalmazza, így az azt beolvasó eszköz nem kéri a kulcsot.</string>
     <string name="onboarding_s3_key_scanned">Az S3-hozzáférési kulcsod a beolvasott kóddal együtt érkezett.</string>
     <string name="voice_play_not_found">%1$s nem található a könyvtáradban.</string>
     <string name="onboarding_saved_codes_title">Ezen az eszközön mentve</string>
@@ -461,4 +460,5 @@
     <string name="onboarding_invite_ended_title">Ez a meghívó véget ért</string>
     <string name="onboarding_invite_ended_ask">Kérj egy újat tőle: %1$s.</string>
     <string name="onboarding_ok">OK</string>
+    <string name="add_device_instructions">Olvasd be vagy add meg a kódot az új eszközön.</string>
 </resources>

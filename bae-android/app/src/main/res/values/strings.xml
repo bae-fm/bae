@@ -406,13 +406,14 @@
     <!-- Shown in place of the QR code once the person's new device has joined; the argument is that device's name -->
     <string name="add_device_added">%1$s added</string>
     <string name="add_device_making_code">Making a code for your new device…</string>
-    <string name="add_device_instructions">On the new device, scan this or type the code:</string>
+    <!-- The quoted labels are onboarding_scan_code and onboarding_enter_code, the choices on the new device's first screen -->
     <string name="invite_email_dropbox">Dropbox email</string>
     <string name="invite_email_onedrive">Microsoft account email</string>
     <string name="invite_email_icloud">Apple Account email</string>
     <string name="invite_email_help_dropbox">The library is shared with this Dropbox account so they can join.</string>
     <string name="invite_email_help_onedrive">The library is shared with this Microsoft account so they can join.</string>
     <string name="invite_email_help_icloud">The library is shared with this Apple Account so they can join.</string>
+    <string name="invite_email">Email</string>
     <string name="invite_create">Create invite</string>
     <string name="invite_title">Invite</string>
     <!-- %1$s = the date and time the invite expires -->
@@ -432,7 +433,6 @@
     <string name="settings_stored_in">Stored in</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
-    <string name="restore_code_carries_s3_key">The QR code also carries your S3 access key, so a device that scans it will not ask for the key.</string>
     <string name="onboarding_s3_key_scanned">Your S3 access key came with the scanned code.</string>
     <string name="voice_play_not_found">Could not find %1$s in your library.</string>
     <!-- Restore codes saved on this device, on the welcome screen -->
@@ -520,4 +520,5 @@
     <string name="onboarding_invite_ended_title">This invite has ended</string>
     <string name="onboarding_invite_ended_ask">Ask %1$s for a new one.</string>
     <string name="onboarding_ok">OK</string>
+    <string name="add_device_instructions">Scan or enter the code on the new device.</string>
 </resources>
