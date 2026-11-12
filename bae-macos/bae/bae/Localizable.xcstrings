@@ -82484,7 +82484,7 @@
       }
     },
     "Tracks" : {
-      "comment" : "Search results / edit-metadata: tracks section header",
+      "comment" : "Search results: tracks section header",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
