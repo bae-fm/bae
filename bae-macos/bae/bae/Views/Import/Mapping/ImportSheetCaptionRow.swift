@@ -1,8 +1,9 @@
 import BaeKit
 import SwiftUI
 
-/// A track sheet's summary, then an audio choice row for each FILE reference
-/// with no audio bound; bound references are changed from the summary's menu.
+/// A track sheet's caption: its disc, its name and the audio it describes.
+/// A FILE reference with no audio bound is chosen from the caption's amber
+/// menu; bound references are changed from the summary's menu.
 struct ImportSheetCaptionRow: View {
     let sheet: BridgeSheetGroup
     /// Whether this surface offers the CUE selection and disc control.
@@ -15,25 +16,7 @@ struct ImportSheetCaptionRow: View {
     private var hoveringBound = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: ThemeSpace.compact) {
-            caption
-            ForEach(layout.unbound, id: \.fileReference) { reference in
-                HStack(spacing: ThemeSpace.related) {
-                    Text(verbatim: reference.fileReference)
-                        .themeText(.mono)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    Image(systemName: "arrow.forward")
-                        .foregroundStyle(.tertiary)
-                    ImportSheetBindingMenu(
-                        reference: reference,
-                        onBind: { bind(reference, to: $0) }
-                    )
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-            }
-        }
+        caption
     }
 
     private var layout: ImportSheetBindingLayout {
@@ -63,7 +46,9 @@ struct ImportSheetCaptionRow: View {
                 .fixedSize()
             switch layout.summary {
             case .text:
-                boundText
+                if layout.unbound.isEmpty {
+                    boundText
+                }
             case .choices(let reference):
                 boundMenu {
                     ImportSheetBindingItems(
@@ -84,6 +69,12 @@ struct ImportSheetCaptionRow: View {
                         }
                     }
                 }
+            }
+            if !layout.unbound.isEmpty {
+                ImportSheetUnboundMenu(
+                    references: layout.unbound,
+                    onBind: { bind($0, to: $1) }
+                )
             }
             Spacer(minLength: 0)
         }
@@ -142,7 +133,7 @@ struct ImportSheetCaptionRow: View {
         } label: {
             Text(sheet.name)
                 .themeText(.mono)
-                .foregroundStyle(hoveringName ? .primary : .secondary)
+                .foregroundStyle(.primary)
                 .underline(hoveringName)
                 .lineLimit(1)
                 .truncationMode(.middle)
@@ -230,11 +221,11 @@ struct ImportSheetDiscMenu: View {
                     .themeIcon(.small)
                     .foregroundStyle(.secondary)
             }
-            .padding(.horizontal, ThemeSpace.related)
+            .padding(.horizontal, ThemeSpace.compact)
             .padding(.vertical, ThemeSpace.line)
             .background(
                 hovering ? Theme.pressed : Theme.hover,
-                in: RoundedRectangle(cornerRadius: ThemeRadius.control)
+                in: RoundedRectangle(cornerRadius: ThemeRadius.chip)
             )
         }
         .menuStyle(.borderlessButton)

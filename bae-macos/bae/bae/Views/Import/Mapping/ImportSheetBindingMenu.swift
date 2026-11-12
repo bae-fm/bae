@@ -1,35 +1,48 @@
 import BaeKit
 import SwiftUI
 
-/// The audio choices core offers for one CUE FILE reference with no audio
-/// bound, as its own menu.
-struct ImportSheetBindingMenu: View {
-    let reference: BridgeSheetReferenceOptions
-    let onBind: (String?) -> Void
+/// The audio choices core offers for the CUE FILE references with no audio
+/// bound, as one menu on the sheet's caption: the choices directly for one
+/// reference, a submenu per reference for several.
+struct ImportSheetUnboundMenu: View {
+    let references: [BridgeSheetReferenceOptions]
+    let onBind: (BridgeSheetReferenceOptions, String?) -> Void
 
     @State
     private var hovering = false
 
     var body: some View {
         Menu {
-            ImportSheetBindingItems(reference: reference, onBind: onBind)
+            if let only = references.first, references.count == 1 {
+                ImportSheetBindingItems(
+                    reference: only,
+                    onBind: { onBind(only, $0) }
+                )
+            }
+            else {
+                ForEach(references, id: \.fileReference) { reference in
+                    Menu {
+                        ImportSheetBindingItems(
+                            reference: reference,
+                            onBind: { onBind(reference, $0) }
+                        )
+                    } label: {
+                        Text(verbatim: reference.fileReference)
+                    }
+                }
+            }
         } label: {
-            Text(
-                reference.fileId
-                    ?? localizedCoreString("ui.import.sheet.choose_audio")
-            )
-            .themeText(.mono)
-            .foregroundStyle(
-                reference.fileId == nil ? Theme.warning : Theme.accent
-            )
-            .lineLimit(1)
-            .truncationMode(.middle)
-            .padding(.horizontal, ThemeSpace.compact)
-            .padding(.vertical, ThemeSpace.line)
-            .background(
-                hovering ? Theme.hover : Color.clear,
-                in: RoundedRectangle(cornerRadius: ThemeRadius.control)
-            )
+            Text(localizedCoreString("ui.import.sheet.choose_audio"))
+                .themeText(.mono)
+                .foregroundStyle(Theme.warning)
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .padding(.horizontal, ThemeSpace.compact)
+                .padding(.vertical, ThemeSpace.line)
+                .background(
+                    hovering ? Theme.hover : Color.clear,
+                    in: RoundedRectangle(cornerRadius: ThemeRadius.control)
+                )
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)

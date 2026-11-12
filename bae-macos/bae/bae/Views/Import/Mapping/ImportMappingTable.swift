@@ -99,11 +99,16 @@ struct ImportMappingTable: View {
             .padding(.bottom, ThemeSpace.compact)
     }
 
+    /// The sheet's caption under a hairline.
     private func sheetCaption(_ sheet: BridgeSheetGroup) -> some View {
-        sheetCaptionRow(sheet)
-            .padding(.horizontal, ImportMappingColumns.rowPadding)
-            .padding(.top, ThemeSpace.line)
-            .padding(.bottom, ThemeSpace.related)
+        VStack(spacing: 0) {
+            Rectangle()
+                .fill(Theme.hairline)
+                .frame(height: 1)
+            sheetCaptionRow(sheet)
+                .padding(.horizontal, ImportMappingColumns.rowPadding)
+                .padding(.vertical, ThemeSpace.related)
+        }
     }
 
     private func sheetCaptionRow(_ sheet: BridgeSheetGroup) -> some View {
