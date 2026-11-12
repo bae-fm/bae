@@ -14,7 +14,6 @@ extension NSApplication: ApplicationActivationPolicy {}
 extension AppDelegate {
     func applicationWillFinishLaunching(_ notification: Notification) {
         guard runtime != .preview else { return }
-        PopoverAnimation.disableForEveryPopover()
         guard let application = notification.object as? NSApplication else {
             preconditionFailure(
                 "The launch notification did not contain NSApplication"

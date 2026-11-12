@@ -21,7 +21,7 @@ struct MacInfoTip<Content: View>: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(Text(label))
-        .popover(isPresented: $isShowing, arrowEdge: .bottom) {
+        .macPopover(isPresented: $isShowing, arrowEdge: .bottom) {
             VStack(alignment: .leading, spacing: ThemeSpace.related) {
                 content
             }

@@ -250,7 +250,6 @@ struct LookupCountView: View {
             LookupReleasesPopover(
                 groups: groups.map(ReleaseGroup.init(bridge:))
             )
-            .popoverEntrance(anchor: .top)
         }
     }
 }

@@ -124,7 +124,7 @@ struct CastReceiverRow: View {
                         MacMenuItem("Disconnect", action: onDisconnect)
                     }
                 }
-                .popover(isPresented: $showsDetails, arrowEdge: .bottom) {
+                .macPopover(isPresented: $showsDetails, arrowEdge: .bottom) {
                     CastReceiverDetails(receiver: receiver)
                 }
             }

@@ -69,7 +69,7 @@ struct ActivityButton: View {
                 .buttonStyle(IconHoverButtonStyle())
                 .help(localizedCoreString("core.activity.title"))
                 .accessibilityLabel(localizedCoreString("core.activity.title"))
-                .popover(isPresented: $listShown, arrowEdge: .bottom) {
+                .macPopover(isPresented: $listShown, arrowEdge: .bottom) {
                     ActivityPanel {
                         ActivityList(
                             problems: problems,

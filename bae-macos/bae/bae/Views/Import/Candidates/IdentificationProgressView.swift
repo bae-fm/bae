@@ -68,7 +68,7 @@ struct IdentificationProgressIndicator: View {
         }
         .buttonStyle(.plain)
         .help("Identifying")
-        .popover(isPresented: $lineShown, arrowEdge: .bottom) {
+        .macPopover(isPresented: $lineShown, arrowEdge: .bottom) {
             IdentificationProgressView(
                 identified: identified,
                 total: total,
@@ -181,7 +181,7 @@ struct FolderScanProgressIndicator: View {
         }
         .buttonStyle(.plain)
         .help(localizedCoreString("ui.import.scan.activity"))
-        .popover(isPresented: $detailsShown, arrowEdge: .bottom) {
+        .macPopover(isPresented: $detailsShown, arrowEdge: .bottom) {
             VStack(alignment: .leading, spacing: ThemeSpace.related) {
                 ForEach(activity.folders, id: \.watchedFolderPath) { folder in
                     HStack(spacing: ThemeSpace.group) {

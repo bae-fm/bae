@@ -5804,8 +5804,10 @@ of every menu and pop-up bae draws: a raised face with a hairline edge, the
 chosen item of a pop-up checked, its round chevron button in the control fill.
 Those menus open over or under what opened them, or at the click for a context
 menu; the arrows, Return, Escape and typed letters move through them, a click
-outside closes them, and VoiceOver reads them as menus. The parts macOS draws
-itself, such as the menu bar's menus and the save panel's Format pop-up, take
+outside closes them, and VoiceOver reads them as menus. The Mac's popovers (the
+cast picker, Activity, the ⓘ and ? tips) are drawn the same way, in the raised
+colour with a hairline edge and macOS's arrow. The parts macOS draws itself,
+such as the menu bar's menus and the save panel's Format pop-up, take
 the Pink accent the app declares, as long as the Mac's own accent is
 Multicolor, and the person's Mac accent otherwise; they do not follow the
 accent chosen here. On the Mac Theme and Tone are pop-up buttons; on

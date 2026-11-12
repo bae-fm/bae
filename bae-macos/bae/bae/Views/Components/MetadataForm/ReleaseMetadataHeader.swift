@@ -583,7 +583,7 @@ struct ArtistAssignmentsField: View {
         }
         .buttonStyle(.plain)
         .focusable()
-        .popover(isPresented: $isPresented, arrowEdge: .bottom) {
+        .macPopover(isPresented: $isPresented, arrowEdge: .bottom) {
             ArtistAssignmentsEditor(
                 assignments: assignments,
                 onUseAlbumArtists: onUseAlbumArtists,

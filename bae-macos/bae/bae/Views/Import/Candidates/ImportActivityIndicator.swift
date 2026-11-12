@@ -23,7 +23,7 @@ struct ImportActivityIndicator: View {
         }
         .buttonStyle(.plain)
         .help(String(localized: "Importing\u{2026}"))
-        .popover(isPresented: $detailsShown, arrowEdge: .bottom) {
+        .macPopover(isPresented: $detailsShown, arrowEdge: .bottom) {
             VStack(alignment: .trailing, spacing: ThemeSpace.related) {
                 HStack {
                     Text("Importing\u{2026}")

@@ -14,7 +14,11 @@ struct HoverPopoverModifier<PopoverContent: View>: ViewModifier {
     func body(content: Content) -> some View {
         content
             .onHover { scheduleHover(show: $0) }
-            .popover(isPresented: $isShowing, arrowEdge: arrowEdge) {
+            .macPopover(
+                isPresented: $isShowing,
+                arrowEdge: arrowEdge,
+                takesKeyboard: false
+            ) {
                 popoverContent()
                     .onHover { hovering in
                         if hovering {

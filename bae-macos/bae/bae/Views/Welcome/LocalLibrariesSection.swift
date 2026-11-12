@@ -204,7 +204,7 @@ private struct LibraryRow: View {
 
     private var moreMenu: some View {
         MacMoreMenu { menuItems }
-            .popover(isPresented: $showsDetails, arrowEdge: .bottom) {
+            .macPopover(isPresented: $showsDetails, arrowEdge: .bottom) {
                 WelcomeLibraryDetails(
                     library: library,
                     readStanding: readStanding

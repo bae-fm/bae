@@ -43,7 +43,7 @@ struct DraftAlbumRow: View {
                     isPresented = true
                 }
                 .controlSize(.small)
-                .popover(isPresented: $isPresented, arrowEdge: .bottom) {
+                .macPopover(isPresented: $isPresented, arrowEdge: .bottom) {
                     picker
                         .frame(width: 320)
                         .padding(ThemeSpace.group)
