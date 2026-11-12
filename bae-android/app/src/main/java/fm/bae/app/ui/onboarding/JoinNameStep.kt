@@ -67,7 +67,12 @@ internal fun JoinNameStep(
                 keyboardActions = KeyboardActions(onDone = { if (ready) onJoin(name) }),
             )
             error?.let { AndroidNotice(it, look = NoticeLook.QUIET) }
-            AndroidButton(onClick = { onJoin(name) }, enabled = ready, large = true) {
+            AndroidButton(
+                onClick = { onJoin(name) },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = ready,
+                large = true,
+            ) {
                 Text(stringResource(R.string.onboarding_join))
             }
         }
