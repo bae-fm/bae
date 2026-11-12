@@ -95,10 +95,10 @@ internal fun AndroidSettingsLibrary(
     AndroidScreen(
         title = stringResource(R.string.settings_library),
         onBack = onBack,
-        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+        modifier = Modifier.fillMaxSize(),
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(ThemeSpace.edge),
+            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(ThemeSpace.edge),
             verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
         ) {
             aboveRows()
