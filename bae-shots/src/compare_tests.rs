@@ -214,3 +214,33 @@ fn the_text_under_a_field_is_not_folded_across_another_element() {
     let shot = [field("Name Everyone sees this."), button("Go")];
     assert!(!compare(&board, &shot).findings.is_empty());
 }
+
+#[test]
+fn a_run_of_texts_the_shot_merges_in_order_is_that_one_text() {
+    let board = [text("Title"), text("Artist"), text("3:41"), button("Play")];
+    let shot = [text("Title Artist 3:41"), button("Play")];
+    assert!(compare(&board, &shot).findings.is_empty());
+}
+
+#[test]
+fn texts_the_shot_merges_in_another_order_are_not_folded() {
+    let board = [text("Title"), text("Artist")];
+    let shot = [text("Artist Title")];
+    assert_eq!(compare(&board, &shot).findings.len(), 3);
+}
+
+#[test]
+fn texts_are_not_folded_across_another_element() {
+    let board = [text("Title"), button("Play"), text("Artist")];
+    let shot = [text("Title Artist"), button("Play")];
+    assert!(!compare(&board, &shot).findings.is_empty());
+}
+
+#[test]
+fn a_merged_text_is_not_matched_where_the_shot_keeps_the_texts_apart() {
+    let board = [text("Title"), text("Artist")];
+    let shot = [text("Title"), text("Artist")];
+    let result = compare(&board, &shot);
+    assert!(result.findings.is_empty());
+    assert_eq!(result.pairs.len(), 2);
+}

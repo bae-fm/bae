@@ -66,11 +66,12 @@ pub(crate) fn entries(list: &[Element]) -> Vec<Entry> {
 }
 
 /// The board's entries in the shot's terms, where the shot's tree merges what
-/// the board keeps apart: a field named with the supporting text under it
-/// (Compose puts both in the field's one name). A field followed by a run of
-/// texts whose words, joined in order, are a field of the shot is that one
-/// field; a run that does not join to something the shot holds is left as it
-/// is, and the comparison reports it.
+/// the board keeps apart: a field named with the supporting text under it, and
+/// a tile, row or title whose texts Compose merges into one text. A text or
+/// field followed by a run of texts whose words, joined in order, are one
+/// element of the same kind in the shot is that one element. A run that does
+/// not join to something the shot holds, or that has another kind of element
+/// inside it, is left as it is, and the comparison reports it.
 pub(crate) fn fold_merged(board: Vec<Entry>, shot: &[Entry]) -> Vec<Entry> {
     // The shot's keys not yet taken by a fold.
     let mut available: Vec<_> = shot.iter().map(Entry::key).collect();
@@ -78,7 +79,7 @@ pub(crate) fn fold_merged(board: Vec<Entry>, shot: &[Entry]) -> Vec<Entry> {
     let mut at = 0;
     while at < board.len() {
         let head = &board[at];
-        let run = if head.kind == Role::Field {
+        let run = if matches!(head.kind, Role::Field | Role::Text) {
             board[at + 1..].iter().take_while(|e| e.kind == Role::Text).count()
         } else {
             0
