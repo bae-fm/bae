@@ -122,7 +122,6 @@
 .bae-m-disclosure-mark-open { transform: rotate(90deg); }
 .bae-m-disclosure > .bae-m-row:not(.bae-m-disclosure-toggle) { padding-left: calc(var(--space-group) + var(--size-lead) + var(--space-related)); }
 .bae-m-disclosure > .bae-divider:not(:nth-child(2)) { margin-left: calc(var(--space-group) + var(--size-lead) + var(--space-related)); }
-.bae-a-disclosure-mark { display: inline-flex; color: var(--text-secondary); }
 
 .bae-m-scrim { position: absolute; inset: 0; background: none; display: flex; justify-content: center; align-items: flex-start; z-index: 10; }
 .bae-m-step { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-section); padding: 56px var(--space-page) var(--space-page); font: 400 13px var(--font-sans); color: var(--text-primary); }

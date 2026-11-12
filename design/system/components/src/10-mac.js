@@ -94,8 +94,11 @@
     var trail = kids(props.children);
     // `copy`: one text, after the note; or a list of {text, after}: with more than one, the note ends in a colon and each is a bullet under it.
     var copies = props.copy == null || props.copy === '' ? [] : Array.isArray(props.copy) ? props.copy : [{ text: props.copy }];
-    return h('div', { className: cx('bae-m-row', props.nested && 'bae-m-row-nested', props.nested && props.off && 'bae-m-row-nested-off', !props.nested && props.off && 'bae-off', props.selected && 'bae-m-row-selected', props.action && 'bae-m-row-action', props.destructive && 'bae-m-row-destructive'), onClick: props.onClick },
-      props.label == null ? null : h('span', { className: 'bae-m-row-label' },
+    // A row the person clicks is a button, named by its words: on the whole row, or, when the row ends in controls of its own, on its label alone so a button never holds one.
+    var tap = !!(props.onClick || props.chevron || props.action || props.destructive || props.button);
+    var press = tap ? { role: 'button', 'aria-disabled': props.off ? true : null } : {};
+    return h('div', { className: cx('bae-m-row', props.nested && 'bae-m-row-nested', props.nested && props.off && 'bae-m-row-nested-off', !props.nested && props.off && 'bae-off', props.selected && 'bae-m-row-selected', props.action && 'bae-m-row-action', props.destructive && 'bae-m-row-destructive'), role: trail.length ? null : press.role, 'aria-disabled': trail.length ? null : press['aria-disabled'], onClick: props.onClick },
+      props.label == null ? null : h('span', Object.assign({ className: 'bae-m-row-label' }, trail.length ? press : null),
         h('span', { className: 'bae-m-row-title' }, h('span', { className: props.strong ? 'bae-m-row-strong' : null }, props.label), props.tag ? h(StatusChip, null, props.tag) : null, props.info ? h(MacInfoTip, { label: 'About ' + props.label }) : null),
         props.note || copies.length ? h('span', { className: cx('bae-m-row-note', props.noteTone && 'bae-tone-' + props.noteTone) },
           copies.length > 1 ? [props.note ? props.note + ':' : null, h('ul', { key: 'l', className: 'bae-m-row-notelist' }, copies.map(function (c, i) { return h('li', { key: i }, h(MacCopyText, { hover: props.copyHover, after: c.after }, c.text)); }))]

@@ -45,17 +45,20 @@
 
   // Material's disclosure: a row in its own card, expand_more at its end when closed and expand_less when open; the rows it shows join the card on the same text edge.
   function AndroidDisclosure(props) {
-    var head = h(AndroidRow, { key: 'h', title: props.label, subtitle: props.summary }, h('span', { className: 'bae-a-disclosure-mark' }, h(MSymbol, { name: props.open ? 'expand_less' : 'expand_more', size: 24, fill: 'currentColor' })));
+    var head = h(AndroidRow, { key: 'h', title: props.label, subtitle: props.summary, icon: props.open ? 'expand_less' : 'expand_more', expanded: !!props.open });
     return h(AndroidCard, null, [head].concat(props.open ? kids(props.children) : []));
   }
   // `place` is AndroidCard's: the row's place among the card's rows.
   function AndroidRow(props) {
     var trail = kids(props.children);
-    var lines = h('div', { className: 'bae-a-row-lines' },
+    // A row the person taps is a button, as Compose reads it, named by its words: on the whole row, or, when the row ends in controls of its own, on its words alone so a button never holds one.
+    var tap = !!(props.onClick || props.icon || props.action || props.destructive || props.button);
+    var press = tap ? { role: 'button', 'aria-disabled': props.off ? true : null, 'aria-expanded': props.expanded != null ? !!props.expanded : null } : {};
+    var lines = h('div', Object.assign({ className: 'bae-a-row-lines' }, trail.length ? press : null),
       h('div', { className: cx('bae-a-row-title', props.action && 'bae-a-row-action', props.destructive && 'bae-a-row-destructive') }, props.title, props.tag ? h(StatusChip, null, props.tag) : null),
       props.subtitle ? h('div', { className: cx('bae-a-row-subtitle', props.tone && 'bae-tone-' + props.tone) },
         props.tone ? h('span', { className: 'bae-dot', 'aria-hidden': true }) : null, props.subtitle) : null);
-    return h('div', { className: cx('bae-a-row', props.place && 'bae-a-card-tile bae-a-card-tile-' + props.place, props.nested && 'bae-a-row-nested', !props.subtitle && 'bae-a-row-one', props.selected && 'bae-a-row-selected'), role: props.onClick ? 'button' : null, onClick: props.onClick },
+    return h('div', { className: cx('bae-a-row', props.place && 'bae-a-card-tile bae-a-card-tile-' + props.place, props.nested && 'bae-a-row-nested', !props.subtitle && 'bae-a-row-one', props.selected && 'bae-a-row-selected', props.off && 'bae-off'), role: trail.length ? null : press.role, 'aria-disabled': trail.length ? null : press['aria-disabled'], 'aria-expanded': trail.length ? null : press['aria-expanded'], onClick: props.onClick },
       props.leadingIcon ? h(Material, { name: props.leadingIcon, className: cx('bae-a-row-lead', props.action && 'bae-a-row-lead-action') }) : null,
       lines,
       // `value`: the label's value at the row's far end, as MacRow's: “Joined · March 2026” in a member's details.
