@@ -382,3 +382,25 @@ async fn a_finished_candidate_leaves_no_driver_behind() {
         "and the queue holds nothing for a candidate it has finished with"
     );
 }
+
+/// The setting that decides an automatic import failing to read is recorded
+/// as the candidate's failed import, as any other refused start is.
+#[tokio::test(flavor = "multi_thread")]
+async fn an_unreadable_import_setting_is_the_candidates_failed_import() {
+    let fixture = Fixture::importing("import-setting-unreadable").await;
+    fixture.set_identify_automatically(false).await;
+    let dir = fixture.disc_id_candidate("Album");
+    let key = crate::CandidateKey::folder(&dir);
+    fixture.scan(1).await;
+    bae_preferences::plant_unknown_replay_gain_mode_for_test(fixture._temp.path());
+
+    import_when_identified(&fixture.context, &key, false).await;
+
+    let pane = fixture
+        .context
+        .tables
+        .load_import_candidate_pane_rows(&fixture.content_hash(&dir))
+        .await
+        .unwrap();
+    assert!(pane.failure.is_some(), "the refused start is recorded");
+}

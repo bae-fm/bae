@@ -88,11 +88,10 @@ async fn import_when_identified(context: &Context, key: &crate::CandidateKey, im
         match bae_preferences::preferences(&context.store).await {
             Ok(prefs) if prefs.identification.import_when_identified => {}
             Ok(_) => return,
+            // Nobody asked for this import, so the setting that decides it
+            // failing to read is the candidate's failed import start.
             Err(error) => {
-                warn!(
-                    "identification: {key} is not imported once identified: the setting \
-                     could not be read ({error})"
-                );
+                context.import.refused_automatic_start(key, &crate::ImportError::from(error)).await;
                 return;
             }
         }

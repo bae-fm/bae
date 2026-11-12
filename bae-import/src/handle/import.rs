@@ -78,31 +78,45 @@ impl ImportServiceHandle {
         let candidate_key = candidate_key.clone();
         self.committed(async move {
             let started = this.start_import_write(&candidate_key, ImportRequest::Candidate).await;
-            match &started {
-                Ok(_) => {}
-                // Another import owns the candidate and reports how it went.
-                Err(crate::ImportError::CandidateImportInProgress) => {}
-                // The files are in the library: that is the Done candidate's
-                // own state, not a failed import.
-                Err(crate::ImportError::FilesAlreadyImported { .. }) => {}
-                // The library is closing: nothing failed for the candidate.
-                Err(crate::ImportError::Stopped) => {}
-                Err(error) => {
-                    if matches!(
-                        error,
-                        crate::ImportError::Internal { .. } | crate::ImportError::Database(_)
-                    ) {
-                        this.services.diagnostics.report_failure(
-                            &format!("start the automatic import of {candidate_key}"),
-                            error,
-                        );
-                    }
-                    this.record_failed_start(&candidate_key, error).await
-                }
+            if let Err(error) = &started {
+                this.refused_automatic_start(&candidate_key, error).await;
             }
             started
         })
         .await
+    }
+
+    /// Record why the import of `candidate_key`, which identification just
+    /// settled as auto-importable, did not start, unless nothing failed for
+    /// the candidate: another import owns it, its files are already in the
+    /// library, or the library is closing. One that is a bug is reported as
+    /// one.
+    pub(crate) async fn refused_automatic_start(
+        &self,
+        candidate_key: &crate::CandidateKey,
+        error: &crate::ImportError,
+    ) {
+        match error {
+            // Another import owns the candidate and reports how it went.
+            crate::ImportError::CandidateImportInProgress => {}
+            // The files are in the library: that is the Done candidate's
+            // own state, not a failed import.
+            crate::ImportError::FilesAlreadyImported { .. } => {}
+            // The library is closing: nothing failed for the candidate.
+            crate::ImportError::Stopped => {}
+            error => {
+                if matches!(
+                    error,
+                    crate::ImportError::Internal { .. } | crate::ImportError::Database(_)
+                ) {
+                    self.services.diagnostics.report_failure(
+                        &format!("start the automatic import of {candidate_key}"),
+                        error,
+                    );
+                }
+                self.record_failed_start(candidate_key, error).await
+            }
+        }
     }
 
     /// Record a refused start as `candidate_key`'s failed import. No caller
