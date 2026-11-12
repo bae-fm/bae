@@ -25,7 +25,7 @@ a{color:var(--accent)}a:hover{color:#F6BFD9}
 </style>
 </helmet>
 <x-import component-from-global-scope="Bae.AndroidScreen" title="Settings" back="{{yes}}">
-  <nav aria-label="Settings" style="display: flex; flex-direction: column"><x-import component-from-global-scope="Bae.AndroidCard">
+  <x-import component-from-global-scope="Bae.AndroidCard">
     <x-import component-from-global-scope="Bae.AndroidRow" title="Appearance" subtitle="System · Midnight · Pink"></x-import>
     <x-import component-from-global-scope="Bae.AndroidRow" title="Library" subtitle="Home music · Cloud full"></x-import>
     <x-import component-from-global-scope="Bae.AndroidRow" title="Playback" subtitle="Pauses between sides · Restores on launch"></x-import>
@@ -33,7 +33,7 @@ a{color:var(--accent)}a:hover{color:#F6BFD9}
     <x-import component-from-global-scope="Bae.AndroidRow" title="Storage" subtitle="3.9 GB on this phone"></x-import>
     <x-import component-from-global-scope="Bae.AndroidRow" title="Casting" subtitle="Off"></x-import>
     <x-import component-from-global-scope="Bae.AndroidRow" title="About" subtitle="Version 0.0-dev"></x-import>
-  </x-import></nav>
+  </x-import>
 </x-import>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":412,"height":916}}'>
