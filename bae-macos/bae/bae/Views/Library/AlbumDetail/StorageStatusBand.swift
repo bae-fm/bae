@@ -49,38 +49,30 @@ struct StorageStatusBand: View {
     /// release being pinned or made local, each waiting its turn or moving.
     @ViewBuilder
     private var pill: some View {
-        if let upload = release.summary.upload {
-            if upload.progress.activity == .uploading {
-                StorageUploadingChipContainer(releaseId: release.summary.id)
-            }
-            else {
-                QueuedUploadChip()
-            }
-        }
-        else if let download = release.downloadStatus {
-            switch download {
-            case .queued:
-                StatusChip("Queued to pin", tone: .activity)
-            case .downloading:
-                StoragePinningChipContainer(releaseId: release.summary.id)
-            case .downloaded, .available, .failed:
-                makeLocalPill
-            }
-        }
-        else {
-            makeLocalPill
+        if let transfer {
+            MacStorageChip(release: release.summary, status: transfer)
         }
     }
 
-    @ViewBuilder
-    private var makeLocalPill: some View {
+    /// The storage status of the change on its way, placed as
+    /// `MacStorageChip` words it; nil when nothing is moving. Resting states
+    /// and failures show elsewhere in the band, and a file whose original is
+    /// missing shows as the warning notice alone, so no chip repeats it.
+    private var transfer: BridgeStorageRowStatus? {
+        if let upload = release.summary.upload {
+            return upload.missing == nil ? .uploading : nil
+        }
+        if let download = release.downloadStatus {
+            switch download {
+            case .queued: return .pinning(step: .queued)
+            case .downloading: return .pinning(step: .running)
+            case .downloaded, .available, .failed: break
+            }
+        }
         switch release.makeLocal {
-        case .queued:
-            StatusChip("Queued to make local", tone: .activity)
-        case .making:
-            StorageMakingLocalChipContainer(releaseId: release.summary.id)
-        case .failed, nil:
-            EmptyView()
+        case .queued: return .makingLocal(step: .queued)
+        case .making: return .makingLocal(step: .running)
+        case .failed, nil: return nil
         }
     }
 
