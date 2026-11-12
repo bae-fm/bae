@@ -208,7 +208,6 @@
     <string name="join_request_approve">Schváliť</string>
     <string name="join_request_title">%1$s sa chce pripojiť</string>
     <string name="join_request_match">Uistite sa, že sa zobrazuje tento kód:</string>
-    <string name="join_request_confirmation">Potvrdzovacie číslo</string>
     <string name="onboarding_add_device">Pridať zariadenie</string>
     <string name="onboarding_tagline">Tvoja hudba, všade</string>
     <string name="onboarding_camera_permission_required">Na skenovanie QR kódov je potrebné povolenie kamery</string>
@@ -312,9 +311,7 @@
     <string name="name_shown_to_everyone">Toto meno vidia všetci v knižnici.</string>
     <string name="name_save_failed">Meno sa nepodarilo uložiť.</string>
     <string name="onboarding_restoring_title">Obnovuje sa knižnica</string>
-    <string name="onboarding_joining_library">Pripájanie k %1$s</string>
     <string name="onboarding_invite_ended">Táto pozvánka sa skončila. Bola odmietnutá alebo zrušená, vypršala jej platnosť alebo zariadenie, ktoré ju vytvorilo, už v knižnici nie je.</string>
-    <string name="onboarding_waiting_until">Čaká na schválenie do %1$s</string>
     <string name="onboarding_status_connecting">Pripája sa…</string>
     <string name="onboarding_status_registering">Registruje sa toto zariadenie…</string>
     <string name="onboarding_status_finishing">Dokončuje sa…</string>
@@ -478,4 +475,6 @@
     <string name="file_size_megabytes">%1$s MB</string>
     <string name="file_size_gigabytes">%1$s GB</string>
     <string name="file_size_terabytes">%1$s TB</string>
+    <string name="onboarding_tell_code">Povedzte tento kód osobe %1$s</string>
+    <string name="onboarding_waiting_for_inviter">Čaká sa, kým vás %1$s pustí dovnútra…</string>
 </resources>

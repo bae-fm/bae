@@ -196,7 +196,6 @@
     <string name="join_request_approve">Jóváhagyás</string>
     <string name="join_request_title">%1$s csatlakozni szeretne</string>
     <string name="join_request_match">Győződj meg róla, hogy ez a kód látható:</string>
-    <string name="join_request_confirmation">Megerősítő szám</string>
     <string name="onboarding_add_device">Eszköz hozzáadása</string>
     <string name="onboarding_tagline">A zenéd mindenhol</string>
     <string name="onboarding_camera_permission_required">A QR-kódok beolvasásához kameraengedély szükséges</string>
@@ -298,9 +297,7 @@
     <string name="name_shown_to_everyone">A könyvtárban mindenki ezt a nevet látja.</string>
     <string name="name_save_failed">Nem sikerült menteni a nevet.</string>
     <string name="onboarding_restoring_title">A könyvtárad visszaállítása folyamatban</string>
-    <string name="onboarding_joining_library">Csatlakozás folyamatban: %1$s</string>
     <string name="onboarding_invite_ended">Ez a meghívó véget ért. Elutasították vagy visszavonták, lejárt, vagy az azt létrehozó eszköz már nincs a könyvtárban.</string>
-    <string name="onboarding_waiting_until">Jóváhagyásra vár eddig: %1$s</string>
     <string name="onboarding_status_connecting">Csatlakozás…</string>
     <string name="onboarding_status_registering">Az eszköz regisztrálása…</string>
     <string name="onboarding_status_finishing">Befejezés…</string>
@@ -460,4 +457,6 @@
     <string name="file_size_megabytes">%1$s MB</string>
     <string name="file_size_gigabytes">%1$s GB</string>
     <string name="file_size_terabytes">%1$s TB</string>
+    <string name="onboarding_tell_code">Mondd meg ezt a kódot neki: %1$s</string>
+    <string name="onboarding_waiting_for_inviter">Várakozás, hogy %1$s beengedjen…</string>
 </resources>

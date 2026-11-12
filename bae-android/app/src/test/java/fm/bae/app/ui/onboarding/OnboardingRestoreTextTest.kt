@@ -82,6 +82,7 @@ class OnboardingRestoreTextTest {
                         LatestStream.bootstrapSteps().only,
                     ),
                     onCancel = {},
+                    onBack = {},
                 )
             }
         }
@@ -101,6 +102,7 @@ class OnboardingRestoreTextTest {
                         LatestStream.bootstrapSteps().only,
                     ),
                     onCancel = {},
+                    onBack = {},
                 )
             }
         }

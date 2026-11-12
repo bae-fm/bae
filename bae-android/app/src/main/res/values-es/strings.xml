@@ -197,7 +197,6 @@
     <string name="join_request_approve">Aprobar</string>
     <string name="join_request_title">%1$s quiere unirse</string>
     <string name="join_request_match">Asegúrate de que se muestre este código:</string>
-    <string name="join_request_confirmation">Número de confirmación</string>
     <string name="onboarding_add_device">Añadir dispositivo</string>
     <string name="onboarding_tagline">Tu música, en todas partes</string>
     <string name="onboarding_camera_permission_required">Se necesita permiso de cámara para escanear códigos QR</string>
@@ -306,9 +305,7 @@
     <string name="name_shown_to_everyone">Todos en la biblioteca ven este nombre.</string>
     <string name="name_save_failed">No se pudo guardar el nombre.</string>
     <string name="onboarding_restoring_title">Restaurando tu biblioteca</string>
-    <string name="onboarding_joining_library">Uniéndote a %1$s</string>
     <string name="onboarding_invite_ended">Esta invitación ha terminado. Se rechazó o se canceló, caducó, o el dispositivo que la creó ya no está en la biblioteca.</string>
-    <string name="onboarding_waiting_until">Esperando aprobación hasta %1$s</string>
     <string name="onboarding_status_connecting">Conectando…</string>
     <string name="onboarding_status_registering">Registrando este dispositivo…</string>
     <string name="onboarding_status_finishing">Finalizando…</string>
@@ -469,4 +466,6 @@
     <string name="file_size_megabytes">%1$s MB</string>
     <string name="file_size_gigabytes">%1$s GB</string>
     <string name="file_size_terabytes">%1$s TB</string>
+    <string name="onboarding_tell_code">Dile a %1$s este código</string>
+    <string name="onboarding_waiting_for_inviter">Esperando a que %1$s te deje entrar…</string>
 </resources>

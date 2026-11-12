@@ -187,7 +187,6 @@
     <string name="join_request_approve">承認</string>
     <string name="join_request_title">%1$sさんが参加を希望しています</string>
     <string name="join_request_match">このコードが表示されていることを確認してください：</string>
-    <string name="join_request_confirmation">確認番号</string>
     <string name="onboarding_add_device">デバイスを追加</string>
     <string name="onboarding_tagline">あなたの音楽を、どこでも</string>
     <string name="onboarding_camera_permission_required">QRコードをスキャンするにはカメラの許可が必要です</string>
@@ -293,9 +292,7 @@
     <string name="name_shown_to_everyone">この名前はライブラリの全員に表示されます。</string>
     <string name="name_save_failed">名前を保存できませんでした。</string>
     <string name="onboarding_restoring_title">ライブラリを復元しています</string>
-    <string name="onboarding_joining_library">%1$s に参加しています</string>
     <string name="onboarding_invite_ended">この招待は終了しました。拒否または取り消されたか、期限切れになったか、招待を作成したデバイスがもうライブラリにありません。</string>
-    <string name="onboarding_waiting_until">%1$s まで承認を待っています</string>
     <string name="onboarding_status_connecting">接続しています…</string>
     <string name="onboarding_status_registering">このデバイスを登録しています…</string>
     <string name="onboarding_status_finishing">最終処理をしています…</string>
@@ -453,4 +450,6 @@
     <string name="file_size_megabytes">%1$s MB</string>
     <string name="file_size_gigabytes">%1$s GB</string>
     <string name="file_size_terabytes">%1$s TB</string>
+    <string name="onboarding_tell_code">このコードを%1$sさんに伝えてください</string>
+    <string name="onboarding_waiting_for_inviter">%1$sさんが許可するのを待っています…</string>
 </resources>

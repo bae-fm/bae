@@ -144,7 +144,7 @@ struct BootstrapCodeFormTests {
         invite: BridgeInviteInfo(
             metadata: metadata(carriesS3Key: false),
             libraryName: "Low Tide Hours",
-            expiresAt: Date(timeIntervalSince1970: 4_000_000_000)
+            inviter: "Mara Quill"
         )
     )
 

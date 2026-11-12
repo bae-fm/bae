@@ -2939,10 +2939,14 @@ returns to the first screen. A code whose library already has a join under way
 on his phone goes on with that join instead, with no name step, since coven
 refuses a second, different name. He then joins under that name, which coven
 refuses only by its rule for names, and the step says so. His waiting screen
-shows until when it waits, which is when the invite expires, and his
-confirmation number. It has no countdown and no **Check now**: while it shows,
-the join checks every 5 seconds from the end of its last check, and when it
-doesn't, on coven's doubling waits (a provider's cooldown holds either). When
+says "Tell Ana this code" over his confirmation number, with a spinner beside
+"Waiting for Ana to let you in…" (Ana is the name the invite carries as its
+inviter), and under a "Join library" bar on Android. It has no countdown, no
+**Check now** and no date: while it shows, the join checks every 5 seconds
+from the end of its last check, and when it doesn't, on coven's doubling waits
+(a provider's cooldown holds either). Every other state of a running join (opening,
+connecting, loading, registering, committing, an error) is the same step with the library's
+name as its headline, the progress line under it, and **Cancel** while it can cancel. When
 his request arrives, Ana's laptop shows a dialog with the name Dan typed, asks her to make sure this code is showing, and shows
 the same number under it, with **Approve** and **Decline**. Ana compares it with
 Dan's screen, or asks him for his number, and approves if it matches. Every

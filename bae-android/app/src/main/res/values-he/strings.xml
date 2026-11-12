@@ -197,7 +197,6 @@
     <string name="join_request_approve">אשר</string>
     <string name="join_request_title">בקשת הצטרפות מ-%1$s</string>
     <string name="join_request_match">ודא שהקוד הזה מוצג:</string>
-    <string name="join_request_confirmation">מספר אימות</string>
     <string name="onboarding_add_device">הוספת מכשיר</string>
     <string name="onboarding_tagline">המוזיקה שלך, בכל מקום</string>
     <string name="onboarding_camera_permission_required">נדרשת הרשאת מצלמה כדי לסרוק קודי QR</string>
@@ -307,9 +306,7 @@
     <string name="name_shown_to_everyone">כל מי שבספרייה רואה את השם הזה.</string>
     <string name="name_save_failed">לא ניתן לשמור את השם.</string>
     <string name="onboarding_restoring_title">משחזרים את הספרייה שלך</string>
-    <string name="onboarding_joining_library">מצטרפים אל %1$s</string>
     <string name="onboarding_invite_ended">ההזמנה הזו הסתיימה. היא נדחתה או בוטלה, פג תוקפה, או שהמכשיר שיצר אותה כבר לא בספרייה.</string>
-    <string name="onboarding_waiting_until">ממתין לאישור עד %1$s</string>
     <string name="onboarding_status_connecting">מתחברים…</string>
     <string name="onboarding_status_registering">רושמים את המכשיר הזה…</string>
     <string name="onboarding_status_finishing">מסיימים…</string>
@@ -471,4 +468,6 @@
     <string name="file_size_megabytes">%1$s MB</string>
     <string name="file_size_gigabytes">%1$s GB</string>
     <string name="file_size_terabytes">%1$s TB</string>
+    <string name="onboarding_tell_code">אמור את הקוד הזה ל-%1$s</string>
+    <string name="onboarding_waiting_for_inviter">ממתין ש-%1$s יכניס אותך…</string>
 </resources>

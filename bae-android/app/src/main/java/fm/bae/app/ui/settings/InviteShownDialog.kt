@@ -24,7 +24,6 @@ import fm.bae.app.DisplayError
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
-import fm.bae.app.currentLocale
 import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
@@ -44,9 +43,6 @@ import uniffi.bae_bridge.BridgeInvite
 import uniffi.bae_bridge.BridgeInviteShown
 import uniffi.bae_bridge.BridgeMemberAccess
 import uniffi.bae_bridge.BridgePendingWait
-import java.text.DateFormat
-import java.time.Instant
-import java.util.Date
 
 private val logger = BaeLogger("bae.InviteShownDialog")
 
@@ -135,12 +131,6 @@ internal fun cancelInviteParts(
         },
     )
 }
-
-/** When an invite expires, as the device's locale writes a date and time. */
-internal fun Context.inviteExpiry(expiresAt: Instant): String =
-    DateFormat
-        .getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT, currentLocale())
-        .format(Date.from(expiresAt))
 
 /**
  * The invite to give the person joining: a QR code to scan in bae, and the

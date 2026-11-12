@@ -229,7 +229,6 @@
     <string name="join_request_approve">Approve</string>
     <string name="join_request_title">%1$s wants to join</string>
     <string name="join_request_match">Make sure this code is showing:</string>
-    <string name="join_request_confirmation">Confirmation number</string>
 
     <!-- Onboarding -->
     <string name="onboarding_add_device">Add device</string>
@@ -348,10 +347,8 @@
     <string name="name_save_failed">Could not save the name.</string>
     <string name="onboarding_restoring_title">Restoring your library</string>
     <!-- %1$s = the library's name, from the invite -->
-    <string name="onboarding_joining_library">Joining %1$s</string>
     <string name="onboarding_invite_ended">This invite has ended. It was declined or cancelled, it expired, or the device that made it is no longer in the library.</string>
     <!-- %1$s = the date and time the invite expires, after which the join ends -->
-    <string name="onboarding_waiting_until">Waiting for approval until %1$s</string>
     <string name="onboarding_status_connecting">Connecting…</string>
     <string name="onboarding_status_registering">Registering this device…</string>
     <string name="onboarding_status_finishing">Finishing…</string>
@@ -519,4 +516,6 @@
     <string name="file_size_megabytes">%1$s MB</string>
     <string name="file_size_gigabytes">%1$s GB</string>
     <string name="file_size_terabytes">%1$s TB</string>
+    <string name="onboarding_tell_code">Tell %1$s this code</string>
+    <string name="onboarding_waiting_for_inviter">Waiting for %1$s to let you in…</string>
 </resources>

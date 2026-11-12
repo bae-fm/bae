@@ -38,7 +38,6 @@ import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeUnfinishedJoin
 import uniffi.bae_bridge.BridgeUnfinishedRestore
 import uniffi.bae_bridge.NoHandle
-import java.time.Instant
 
 /** A scanned code goes straight into adding this device; a typed one shows what it read first. */
 @RunWith(BaeRobolectricTestRunner::class)
@@ -287,7 +286,7 @@ class OnboardingFlowTest {
         BridgeInviteInfo(
             metadata = (restoreCode(carriesS3Key = false) as BridgeCodeInfo.Restore).metadata,
             libraryName = "Household",
-            expiresAt = Instant.parse("2026-11-03T16:15:00Z"),
+            inviter = "Ana",
         )
 
     /** An invite's code asks the person's name before it joins, and Join sends the trimmed name. */

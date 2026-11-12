@@ -181,7 +181,7 @@ class WelcomeShots : BoardShot() {
                                             carriesS3Key = false,
                                         ),
                                     libraryName = "Home music",
-                                    expiresAt = Instant.ofEpochSecond(JOIN_NOW_SECONDS + ONE_DAY_SECONDS),
+                                    inviter = "Ana",
                                 ),
                             entry = CodeEntry.NewDevice,
                         ),
@@ -242,11 +242,12 @@ class WelcomeShots : BoardShot() {
                             steps = loadingSteps(),
                         ),
                     onCancel = {},
+                    onBack = {},
                 )
             }
         }
 
-    /** A join waiting for approval: its confirmation number and until when it waits. */
+    /** A join waiting for approval: the step that says whom to tell the code, over the code and the line it waits on. */
     @Test
     fun androidWelcomeJoinWaiting() =
         shot("android.welcome.join.waiting") {
@@ -269,7 +270,7 @@ class WelcomeShots : BoardShot() {
                                                     carriesS3Key = false,
                                                 ),
                                             libraryName = "Home music",
-                                            expiresAt = Instant.ofEpochSecond(JOIN_NOW_SECONDS + ONE_DAY_SECONDS),
+                                            inviter = "Ana",
                                         ),
                                     entry = CodeEntry.NewDevice,
                                 ),
@@ -284,6 +285,7 @@ class WelcomeShots : BoardShot() {
                             steps = LatestStream.bootstrapSteps().only,
                         ),
                     onCancel = null,
+                    onBack = {},
                 )
             }
         }
@@ -296,9 +298,6 @@ private fun loadingSteps() =
                 BridgeLoadProgress(BridgeLoadStep.READING, "core.library.load_step.reading", 2uL, 8uL),
             ),
         ).only
-
-private const val JOIN_NOW_SECONDS = 1_800_000_000L
-private const val ONE_DAY_SECONDS = 86_400L
 
 @Composable
 private fun LibraryDetailsScene(state: BridgeStandingState) {

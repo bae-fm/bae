@@ -187,7 +187,6 @@
     <string name="join_request_approve">승인</string>
     <string name="join_request_title">%1$s님이 참여하려고 합니다</string>
     <string name="join_request_match">이 코드가 표시되어 있는지 확인하세요:</string>
-    <string name="join_request_confirmation">확인 번호</string>
     <string name="onboarding_add_device">기기 추가</string>
     <string name="onboarding_tagline">내 음악, 어디서나</string>
     <string name="onboarding_camera_permission_required">QR 코드를 스캔하려면 카메라 권한이 필요합니다</string>
@@ -293,9 +292,7 @@
     <string name="name_shown_to_everyone">라이브러리의 모든 사람이 이 이름을 봅니다.</string>
     <string name="name_save_failed">이름을 저장할 수 없습니다.</string>
     <string name="onboarding_restoring_title">라이브러리를 복원하는 중</string>
-    <string name="onboarding_joining_library">%1$s 참여 중</string>
     <string name="onboarding_invite_ended">이 초대는 종료되었습니다. 거절 또는 취소되었거나, 만료되었거나, 초대를 만든 기기가 더 이상 라이브러리에 없습니다.</string>
-    <string name="onboarding_waiting_until">%1$s까지 승인을 기다립니다</string>
     <string name="onboarding_status_connecting">연결 중…</string>
     <string name="onboarding_status_registering">이 기기를 등록하는 중…</string>
     <string name="onboarding_status_finishing">마무리하는 중…</string>
@@ -453,4 +450,6 @@
     <string name="file_size_megabytes">%1$sMB</string>
     <string name="file_size_gigabytes">%1$sGB</string>
     <string name="file_size_terabytes">%1$sTB</string>
+    <string name="onboarding_tell_code">%1$s님에게 이 코드를 알려 주세요</string>
+    <string name="onboarding_waiting_for_inviter">%1$s님이 허용하기를 기다리는 중…</string>
 </resources>

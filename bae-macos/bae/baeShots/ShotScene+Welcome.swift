@@ -10,7 +10,7 @@ extension ShotScene {
     /// one, the screens a library opens or resets behind, and the code sheets.
     /// Not shot: the library menu and the Add library menu (system menus),
     /// the reset confirmation (a SwiftUI alert over the screen), the scanner
-    /// (the camera), and Add this device and Join, which aren't built.
+    /// (the camera), and Add this device, which isn't built.
     static let welcomeScenes: [ShotScene] = [
         welcomeWindow(
             "mac.welcome.libraries",
@@ -203,6 +203,36 @@ extension ShotScene {
                         error: nil,
                         canJoin: false,
                         onJoin: {},
+                        onCancel: {}
+                    )
+                }
+            )
+        },
+        ShotScene(id: "mac.welcome.join.waiting", size: WelcomeWindow.size) {
+            ShotStage(
+                MacWelcomeWindow {
+                    JoinWaitingView(
+                        invite: BridgeInviteInfo(
+                            metadata: BridgeCodeMetadata(
+                                libraryId: "home",
+                                memberId: "ana",
+                                provider: .s3,
+                                location: .s3(
+                                    bucket: "music-library",
+                                    region: "us-east-1",
+                                    endpoint: nil,
+                                    profile: nil
+                                ),
+                                oauthAccess: nil,
+                                carriesS3Key: false
+                            ),
+                            libraryName: "Home music",
+                            inviter: "Ana"
+                        ),
+                        status: .waitingForApproval(confirmation: "412 778"),
+                        steps: nil,
+                        error: nil,
+                        cancellable: false,
                         onCancel: {}
                     )
                 }

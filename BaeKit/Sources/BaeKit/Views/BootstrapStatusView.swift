@@ -17,15 +17,10 @@ public struct BootstrapStatusView: View {
             MacSpinner()
         case .connecting:
             progress("Connecting…")
-        case .waitingForApproval(let confirmation):
-            VStack(spacing: ThemeSpace.related) {
-                Text("Confirmation number")
-                    .themeText(.detail)
-                    .foregroundStyle(.secondary)
-                Text(verbatim: confirmation)
-                    .themeText(.title)
-                    .textSelection(.enabled)
-            }
+        case .waitingForApproval:
+            // The join's step draws the confirmation number and the line it
+            // waits on.
+            EmptyView()
         case .registering:
             progress("Registering this device…")
         case .committing:

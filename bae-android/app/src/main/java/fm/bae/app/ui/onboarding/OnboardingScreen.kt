@@ -1,6 +1,7 @@
 package fm.bae.app.ui.onboarding
 
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -38,13 +39,14 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidMatchCode
+import fm.bae.app.ui.components.AndroidScreen
 import fm.bae.app.ui.components.AndroidSpinner
+import fm.bae.app.ui.components.AndroidStep
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.Logo
 import fm.bae.app.ui.components.OpenProgressLine
 import fm.bae.app.ui.components.QRScannerScreen
 import fm.bae.app.ui.rememberScreenScope
-import fm.bae.app.ui.settings.inviteExpiry
 import fm.bae.fastvalues.LatestStream
 import fm.bae.fastvalues.only
 import uniffi.bae_bridge.BootstrapCancellation
@@ -56,11 +58,8 @@ import uniffi.bae_bridge.BridgeCodeMetadata
 import uniffi.bae_bridge.BridgeDropboxLocation
 import uniffi.bae_bridge.BridgeInviteInfo
 import uniffi.bae_bridge.BridgeStorageLocation
-import java.time.Instant
 
 internal val actionWidth = 220.dp
-
-private const val PREVIEW_INVITE_SECONDS = 86_400L
 
 /**
  * Restoring a library over this device's copy: what its code screen says
@@ -259,9 +258,11 @@ internal fun OnboardingSteps(
                 flow.setWaitingScreenShown(true)
                 onStopOrDispose { flow.setWaitingScreenShown(false) }
             }
+            val backs = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
             OnboardingProgress(
                 step = step,
                 onCancel = flow::cancel.takeIf { cancellable },
+                onBack = { checkNotNull(backs).onBackPressed() },
             )
         }
     }
@@ -304,11 +305,14 @@ internal fun OnboardingStartColumn(
     }
 }
 
-/** The heading over a running restore or join; null when none is drawn. */
+/**
+ * The heading over a running restore; null when none is drawn. A join draws
+ * its own headline inside its step.
+ */
 @Composable
 private fun runningTitle(from: OnboardingStep.Attempt): String? =
     when (from) {
-        is OnboardingStep.Invite -> stringResource(R.string.onboarding_joining_library, from.invite.libraryName)
+        is OnboardingStep.Invite -> null
         is OnboardingStep.JoinName -> null
         is OnboardingStep.Restore -> RestoreText.of(from.entry).running?.let { stringResource(it) }
         is OnboardingStep.RestoreSaved -> RestoreText.RESTORE.running?.let { stringResource(it) }
@@ -318,81 +322,109 @@ private fun runningTitle(from: OnboardingStep.Attempt): String? =
 
 /**
  * A restore or join running: what it waits on now, and Cancel while it can
- * be. A join waiting for approval shows its confirmation number.
+ * be. A join is a step under the "Join library" bar, whose arrow, [onBack],
+ * does what the system's Back does here.
  */
 @Composable
 internal fun OnboardingProgress(
     step: OnboardingStep.Running,
     onCancel: (() -> Unit)?,
+    onBack: () -> Unit,
 ) {
+    val invite = (step.from as? OnboardingStep.Invite)?.invite
+    if (invite != null) {
+        JoinProgress(step = step, invite = invite, onCancel = onCancel, onBack = onBack)
+        return
+    }
     val title = runningTitle(step.from)
     OnboardingContainer {
-        val status = step.state?.status
-        // While the restore's open runs a step, its line stands in for the
-        // spinner and the status, which it has moved past.
-        var stepping by remember(step.openSteps) { mutableStateOf(false) }
-        // A counted step's own bar stands in for the spinner.
-        var counting by remember(step.steps) { mutableStateOf(false) }
-        if (status !is BridgeBootstrapStatus.WaitingForApproval) {
-            OpenProgressLine(
-                steps = step.openSteps,
-                modifier = Modifier.widthIn(max = STEP_LINE_MAX_WIDTH),
-                onStepping = { stepping = it },
-            ) {
-                if (!counting) AndroidSpinner()
+        RunningLines(step) {
+            if (title != null) {
+                Text(text = title, style = ThemeText.heading.style, textAlign = TextAlign.Center)
+                Spacer(modifier = Modifier.height(ThemeSpace.related))
             }
-            Spacer(modifier = Modifier.height(ThemeSpace.section))
         }
-        if (title != null) {
-            Text(text = title, style = ThemeText.heading.style, textAlign = TextAlign.Center)
-            Spacer(modifier = Modifier.height(ThemeSpace.related))
-        }
-        when (status) {
-            is BridgeBootstrapStatus.WaitingForApproval -> {
-                // Only a join waits for approval.
-                WaitingForApproval(
-                    status = status,
-                    expiresAt = (step.from as OnboardingStep.Invite).invite.expiresAt,
+        onCancel?.let { CancelButton(it) }
+    }
+}
+
+/**
+ * A join: "Tell <inviter> this code" over the confirmation number with the
+ * line it waits on while it waits for approval, with no way to cancel, since
+ * its request may be sent; in every other state the library's name over what
+ * the join is doing, and Cancel while it can be.
+ */
+@Composable
+private fun JoinProgress(
+    step: OnboardingStep.Running,
+    invite: BridgeInviteInfo,
+    onCancel: (() -> Unit)?,
+    onBack: () -> Unit,
+) {
+    val status = step.state?.status
+    AndroidScreen(
+        title = stringResource(R.string.onboarding_join_library),
+        onBack = onBack,
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        if (status is BridgeBootstrapStatus.WaitingForApproval) {
+            AndroidStep(
+                title = stringResource(R.string.onboarding_tell_code, invite.inviter),
+                modifier = Modifier.weight(1f),
+            ) {
+                AndroidMatchCode(
+                    status.confirmation,
+                    waiting = stringResource(R.string.onboarding_waiting_for_inviter, invite.inviter),
                 )
             }
-
-            else -> {
-                // The open's line has moved past the status.
-                if (!stepping) {
-                    BootstrapStepLine(
-                        steps = step.steps,
-                        modifier = Modifier.widthIn(max = STEP_LINE_MAX_WIDTH),
-                        onStepping = { counting = it },
-                    ) {
-                        StatusLines(status)
-                    }
-                }
+        } else {
+            AndroidStep(title = invite.libraryName, modifier = Modifier.weight(1f)) {
+                RunningLines(step)
+                onCancel?.let { CancelButton(it) }
             }
-        }
-        onCancel?.let {
-            Spacer(modifier = Modifier.height(ThemeSpace.section))
-            AndroidButton(kind = ButtonKind.TONAL, onClick = it) { Text(stringResource(R.string.cancel)) }
         }
     }
 }
 
 /**
- * A join waiting for approval: until when it waits, which is when its invite
- * expires, and its confirmation number.
+ * The line a restore or join shows while it runs: a counted step with its bar
+ * (or the open's own step), else a spinner over what it waits on. [between]
+ * draws what goes under the spinner and over the status lines.
  */
 @Composable
-private fun WaitingForApproval(
-    status: BridgeBootstrapStatus.WaitingForApproval,
-    expiresAt: Instant,
+private fun RunningLines(
+    step: OnboardingStep.Running,
+    between: @Composable () -> Unit = {},
 ) {
-    val context = LocalContext.current
-    val until = remember(expiresAt) { context.inviteExpiry(expiresAt) }
-    Text(
-        text = stringResource(R.string.join_request_confirmation),
-        style = ThemeText.detail.style,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
-    AndroidMatchCode(status.confirmation, waiting = stringResource(R.string.onboarding_waiting_until, until))
+    // While the restore's open runs a step, its line stands in for the
+    // spinner and the status, which it has moved past.
+    var stepping by remember(step.openSteps) { mutableStateOf(false) }
+    // A counted step's own bar stands in for the spinner.
+    var counting by remember(step.steps) { mutableStateOf(false) }
+    OpenProgressLine(
+        steps = step.openSteps,
+        modifier = Modifier.widthIn(max = STEP_LINE_MAX_WIDTH),
+        onStepping = { stepping = it },
+    ) {
+        if (!counting) AndroidSpinner()
+    }
+    Spacer(modifier = Modifier.height(ThemeSpace.section))
+    between()
+    if (!stepping) {
+        BootstrapStepLine(
+            steps = step.steps,
+            modifier = Modifier.widthIn(max = STEP_LINE_MAX_WIDTH),
+            onStepping = { counting = it },
+        ) {
+            StatusLines(step.state?.status)
+        }
+    }
+}
+
+@Composable
+private fun CancelButton(onCancel: () -> Unit) {
+    Spacer(modifier = Modifier.height(ThemeSpace.section))
+    AndroidButton(kind = ButtonKind.TONAL, onClick = onCancel) { Text(stringResource(R.string.cancel)) }
 }
 
 @Composable
@@ -433,7 +465,7 @@ private fun OnboardingProgressWaitingPreview() {
                                             carriesS3Key = false,
                                         ),
                                     libraryName = "Household",
-                                    expiresAt = Instant.now().plusSeconds(PREVIEW_INVITE_SECONDS),
+                                    inviter = "Ana",
                                 ),
                             entry = CodeEntry.NewDevice,
                         ),
@@ -448,6 +480,7 @@ private fun OnboardingProgressWaitingPreview() {
                     steps = LatestStream.bootstrapSteps().only,
                 ),
             onCancel = null,
+            onBack = {},
         )
     }
 }

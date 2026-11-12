@@ -202,7 +202,6 @@
     <string name="join_request_approve">Схвалити</string>
     <string name="join_request_title">%1$s хоче приєднатися</string>
     <string name="join_request_match">Переконайтеся, що показано цей код:</string>
-    <string name="join_request_confirmation">Номер підтвердження</string>
     <string name="onboarding_add_device">Додати пристрій</string>
     <string name="onboarding_tagline">Ваша музика, будь-де</string>
     <string name="onboarding_camera_permission_required">Для сканування QR-кодів потрібен дозвіл на доступ до камери</string>
@@ -314,9 +313,7 @@
     <string name="name_shown_to_everyone">Це ім’я бачать усі в бібліотеці.</string>
     <string name="name_save_failed">Не вдалося зберегти ім’я.</string>
     <string name="onboarding_restoring_title">Відновлення бібліотеки</string>
-    <string name="onboarding_joining_library">Приєднання до %1$s</string>
     <string name="onboarding_invite_ended">Це запрошення завершилося. Його відхилено чи скасовано, термін його дії минув, або пристрою, який його створив, уже немає в бібліотеці.</string>
-    <string name="onboarding_waiting_until">Очікує схвалення до %1$s</string>
     <string name="onboarding_status_connecting">Підключення…</string>
     <string name="onboarding_status_registering">Реєстрація цього пристрою…</string>
     <string name="onboarding_status_finishing">Завершення…</string>
@@ -480,4 +477,6 @@
     <string name="file_size_megabytes">%1$s МБ</string>
     <string name="file_size_gigabytes">%1$s ГБ</string>
     <string name="file_size_terabytes">%1$s ТБ</string>
+    <string name="onboarding_tell_code">Назвіть цей код користувачу %1$s</string>
+    <string name="onboarding_waiting_for_inviter">Очікуємо, поки %1$s пустить вас…</string>
 </resources>

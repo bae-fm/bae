@@ -202,7 +202,6 @@
     <string name="join_request_approve">Zatwierdź</string>
     <string name="join_request_title">%1$s chce dołączyć</string>
     <string name="join_request_match">Upewnij się, że widać ten kod:</string>
-    <string name="join_request_confirmation">Numer potwierdzenia</string>
     <string name="onboarding_add_device">Dodaj urządzenie</string>
     <string name="onboarding_tagline">Twoja muzyka, wszędzie</string>
     <string name="onboarding_camera_permission_required">Do skanowania kodów QR wymagane jest pozwolenie na dostęp do aparatu</string>
@@ -314,9 +313,7 @@
     <string name="name_shown_to_everyone">Tę nazwę widzą wszyscy w bibliotece.</string>
     <string name="name_save_failed">Nie udało się zapisać imienia.</string>
     <string name="onboarding_restoring_title">Przywracanie biblioteki</string>
-    <string name="onboarding_joining_library">Dołączanie do: %1$s</string>
     <string name="onboarding_invite_ended">To zaproszenie się zakończyło. Zostało odrzucone lub anulowane, wygasło albo urządzenia, które je utworzyło, nie ma już w bibliotece.</string>
-    <string name="onboarding_waiting_until">Oczekiwanie na zatwierdzenie do %1$s</string>
     <string name="onboarding_status_connecting">Łączenie…</string>
     <string name="onboarding_status_registering">Rejestrowanie tego urządzenia…</string>
     <string name="onboarding_status_finishing">Kończenie…</string>
@@ -480,4 +477,6 @@
     <string name="file_size_megabytes">%1$s MB</string>
     <string name="file_size_gigabytes">%1$s GB</string>
     <string name="file_size_terabytes">%1$s TB</string>
+    <string name="onboarding_tell_code">Przekaż ten kod osobie %1$s</string>
+    <string name="onboarding_waiting_for_inviter">Czekanie, aż %1$s Cię wpuści…</string>
 </resources>

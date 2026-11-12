@@ -70,7 +70,18 @@ struct CodeEntryScreen<Background: View>: View {
     @ViewBuilder
     private var running: some View {
         if let invite = form.attempt?.invite {
-            JoinWaitingView(form: form, invite: invite)
+            // While the join's step shows, the join checks for approval every
+            // few seconds.
+            JoinWaitingView(
+                invite: invite,
+                status: form.status,
+                steps: form.steps,
+                error: form.error,
+                cancellable: form.cancellable,
+                onCancel: form.cancel
+            )
+            .onAppear { form.setWaitingScreenShown(true) }
+            .onDisappear { form.setWaitingScreenShown(false) }
         }
         else {
             CodeRunningView(

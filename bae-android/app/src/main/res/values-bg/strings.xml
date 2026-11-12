@@ -192,7 +192,6 @@
     <string name="join_request_approve">Одобряване</string>
     <string name="join_request_title">%1$s иска да се присъедини</string>
     <string name="join_request_match">Уверете се, че този код се показва:</string>
-    <string name="join_request_confirmation">Номер за потвърждение</string>
     <string name="onboarding_add_device">Добавяне на устройство</string>
     <string name="onboarding_tagline">Вашата музика, навсякъде</string>
     <string name="onboarding_camera_permission_required">Необходимо е разрешение за камерата, за да сканирате QR кодове</string>
@@ -300,9 +299,7 @@
     <string name="name_shown_to_everyone">Всички в библиотеката виждат това име.</string>
     <string name="name_save_failed">Името не можа да се запази.</string>
     <string name="onboarding_restoring_title">Библиотеката ви се възстановява</string>
-    <string name="onboarding_joining_library">Присъединяване към %1$s</string>
     <string name="onboarding_invite_ended">Тази покана е приключила. Отхвърлена е или е отменена, изтекла е, или устройството, което я е създало, вече не е в библиотеката.</string>
-    <string name="onboarding_waiting_until">Изчаква одобрение до %1$s</string>
     <string name="onboarding_status_connecting">Свързване…</string>
     <string name="onboarding_status_registering">Това устройство се регистрира…</string>
     <string name="onboarding_status_finishing">Завършване…</string>
@@ -462,4 +459,6 @@
     <string name="file_size_megabytes">%1$s MB</string>
     <string name="file_size_gigabytes">%1$s GB</string>
     <string name="file_size_terabytes">%1$s TB</string>
+    <string name="onboarding_tell_code">Кажете на %1$s този код</string>
+    <string name="onboarding_waiting_for_inviter">Изчакване на %1$s да ви пусне…</string>
 </resources>

@@ -26,7 +26,6 @@ import uniffi.bae_bridge.BridgeInviteInfo
 import uniffi.bae_bridge.BridgeLoadProgress
 import uniffi.bae_bridge.BridgeLoadStep
 import uniffi.bae_bridge.BridgeStorageLocation
-import java.time.Instant
 
 @RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
@@ -55,14 +54,14 @@ class OnboardingProgressTest {
                             carriesS3Key = false,
                         ),
                     libraryName = "Household",
-                    expiresAt = Instant.parse("2026-11-03T16:15:00Z"),
+                    inviter = "Ana",
                 ),
             entry = CodeEntry.NewDevice,
         )
 
-    /** A join, waiting, shows until when it waits: the invite's expiry. */
+    /** A waiting join tells the code to the inviter, with no countdown, Check now, date or Cancel. */
     @Test
-    fun aWaitingJoinShowsTheLibraryUntilWhenItWaitsAndItsNumberButNoCountdownCheckNowOrCancel() {
+    fun aWaitingJoinSaysWhoToTellTheNumberAndWhoItWaitsForButNoCountdownCheckNowOrCancel() {
         val waiting =
             OnboardingStep.Running(
                 invite,
@@ -74,16 +73,37 @@ class OnboardingProgressTest {
             )
         compose.mainClock.autoAdvance = false
         compose.setContent {
-            OnboardingProgress(waiting, onCancel = null)
+            BaeTheme { OnboardingProgress(waiting, onCancel = null, onBack = {}) }
         }
 
-        compose.onNodeWithText("Household", substring = true).assertIsDisplayed()
-        compose.onNodeWithText("Waiting for approval until", substring = true).assertIsDisplayed()
-        compose.onNodeWithText("2026", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("Join library").assertIsDisplayed()
+        compose.onNodeWithText("Tell Ana this code").assertIsDisplayed()
         compose.onNodeWithText("041 778").assertIsDisplayed()
+        compose.onNodeWithText("Waiting for Ana to let you in…").assertIsDisplayed()
         compose.onNodeWithText("Next check", substring = true).assertDoesNotExist()
         compose.onNodeWithText("Check now").assertDoesNotExist()
+        compose.onNodeWithText("Waiting for approval until", substring = true).assertDoesNotExist()
         compose.onNodeWithText("Cancel").assertDoesNotExist()
+    }
+
+    /** A join that has not reached approval is headed by the library's name, with Cancel while it can. */
+    @Test
+    fun aJoinBeforeApprovalIsHeadedByTheLibraryNameWithCancel() {
+        val connecting =
+            OnboardingStep.Running(
+                invite,
+                BridgeBootstrapState(BridgeBootstrapStatus.Connecting, cancellable = true),
+                LatestStream.bootstrapSteps().only,
+            )
+        compose.mainClock.autoAdvance = false
+        compose.setContent {
+            BaeTheme { OnboardingProgress(connecting, onCancel = {}, onBack = {}) }
+        }
+
+        compose.onNodeWithText("Household").assertIsDisplayed()
+        compose.onNodeWithText("Connecting…").assertIsDisplayed()
+        compose.onNodeWithText("Cancel").assertIsDisplayed()
+        compose.onNodeWithText("Tell Ana this code").assertDoesNotExist()
     }
 
     /** Registering this device after loading names the step, uncounted. */

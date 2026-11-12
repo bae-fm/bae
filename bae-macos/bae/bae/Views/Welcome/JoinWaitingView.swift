@@ -1,44 +1,50 @@
 import BaeKit
 import SwiftUI
 
-/// A join running: the library's name, what it waits on, and, while it waits
-/// for approval, until when it waits and its confirmation number. While it
-/// shows, the join checks for approval every few seconds. Cancel shows only
+/// A join running. While it waits for approval, a step that says whom to tell
+/// the code to, over the confirmation number and the line it waits on; no
+/// date, no countdown, and no Cancel, since its request may be sent. In every
+/// other state the library's name over what the join is doing, with Cancel
 /// until the request may have been sent.
 struct JoinWaitingView: View {
-    let form: BootstrapCodeForm
     let invite: BridgeInviteInfo
+    let status: BridgeBootstrapStatus?
+    let steps: LatestSource<BridgeBootstrapStep>?
+    let error: DisplayError?
+    let cancellable: Bool
+    let onCancel: () -> Void
 
     var body: some View {
-        VStack(spacing: ThemeSpace.group) {
-            Spacer()
-            Text(verbatim: invite.libraryName)
-                .themeText(.title)
-            if case .waitingForApproval = form.status {
-                Text(
-                    "Waiting for approval until \(invite.expiresAt.formatted(date: .abbreviated, time: .shortened))"
+        if case .waitingForApproval(let confirmation) = status {
+            MacStep(String(localized: "Tell \(invite.inviter) this code")) {
+                MacMatchCode(
+                    code: confirmation,
+                    waiting: String(
+                        localized:
+                            "Waiting for \(invite.inviter) to let you in…"
+                    )
                 )
-                .themeText(.body)
-                .foregroundStyle(.secondary)
             }
-            if let status = form.status {
-                MacProgressContainer(steps: form.steps) {
-                    BootstrapStatusView(status: status)
-                }
-            }
-            if let error = form.error {
-                Notice(error: error)
-            }
-            HStack(spacing: ThemeSpace.group) {
-                if form.cancellable {
-                    Button("Cancel") { form.cancel() }
-                        .buttonStyle(.bordered)
-                }
-            }
-            Spacer()
         }
-        .padding(.horizontal)
-        .onAppear { form.setWaitingScreenShown(true) }
-        .onDisappear { form.setWaitingScreenShown(false) }
+        else {
+            MacStep(invite.libraryName) {
+                VStack(spacing: ThemeSpace.section) {
+                    if let status {
+                        MacProgressContainer(steps: steps) {
+                            BootstrapStatusView(status: status)
+                        }
+                    }
+                    if let error {
+                        Notice(error: error)
+                    }
+                    if cancellable {
+                        MacStepActions {
+                            Button("Cancel", action: onCancel)
+                                .buttonStyle(.bordered)
+                        }
+                    }
+                }
+            }
+        }
     }
 }

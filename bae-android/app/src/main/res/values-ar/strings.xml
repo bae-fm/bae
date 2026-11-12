@@ -212,7 +212,6 @@
     <string name="join_request_approve">موافقة</string>
     <string name="join_request_title">%1$s يطلب الانضمام</string>
     <string name="join_request_match">تأكد من ظهور هذا الرمز:</string>
-    <string name="join_request_confirmation">رقم التأكيد</string>
     <string name="onboarding_add_device">إضافة جهاز</string>
     <string name="onboarding_tagline">موسيقاك في كل مكان</string>
     <string name="onboarding_camera_permission_required">إذن الكاميرا مطلوب لمسح رموز QR</string>
@@ -328,9 +327,7 @@
     <string name="name_shown_to_everyone">يرى هذا الاسم كل من في المكتبة.</string>
     <string name="name_save_failed">تعذّر حفظ الاسم.</string>
     <string name="onboarding_restoring_title">جارٍ استعادة مكتبتك</string>
-    <string name="onboarding_joining_library">جارٍ الانضمام إلى %1$s</string>
     <string name="onboarding_invite_ended">انتهت هذه الدعوة. رُفضت أو أُلغيت، أو انتهت صلاحيتها، أو لم يعد الجهاز الذي أنشأها في المكتبة.</string>
-    <string name="onboarding_waiting_until">بانتظار الموافقة حتى %1$s</string>
     <string name="onboarding_status_connecting">جارٍ الاتصال…</string>
     <string name="onboarding_status_registering">جارٍ تسجيل هذا الجهاز…</string>
     <string name="onboarding_status_finishing">جارٍ الإنهاء…</string>
@@ -498,4 +495,6 @@
     <string name="file_size_megabytes">%1$s م.ب</string>
     <string name="file_size_gigabytes">%1$s غ.ب</string>
     <string name="file_size_terabytes">%1$s تيرابايت</string>
+    <string name="onboarding_tell_code">أخبر %1$s بهذا الرمز</string>
+    <string name="onboarding_waiting_for_inviter">في انتظار %1$s ليسمح لك بالدخول…</string>
 </resources>

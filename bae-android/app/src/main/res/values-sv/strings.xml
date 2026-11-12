@@ -196,7 +196,6 @@
     <string name="join_request_approve">Godkänn</string>
     <string name="join_request_title">%1$s vill gå med</string>
     <string name="join_request_match">Se till att den här koden visas:</string>
-    <string name="join_request_confirmation">Bekräftelsenummer</string>
     <string name="onboarding_add_device">Lägg till enhet</string>
     <string name="onboarding_tagline">Din musik, överallt</string>
     <string name="onboarding_camera_permission_required">Kamerabehörighet krävs för att skanna QR-koder</string>
@@ -298,9 +297,7 @@
     <string name="name_shown_to_everyone">Alla i biblioteket ser det här namnet.</string>
     <string name="name_save_failed">Det gick inte att spara namnet.</string>
     <string name="onboarding_restoring_title">Återställer ditt bibliotek</string>
-    <string name="onboarding_joining_library">Går med i %1$s</string>
     <string name="onboarding_invite_ended">Den här inbjudan har upphört. Den avböjdes eller återkallades, den gick ut, eller så finns enheten som skapade den inte längre i biblioteket.</string>
-    <string name="onboarding_waiting_until">Väntar på godkännande till %1$s</string>
     <string name="onboarding_status_connecting">Ansluter …</string>
     <string name="onboarding_status_registering">Registrerar den här enheten …</string>
     <string name="onboarding_status_finishing">Slutför …</string>
@@ -460,4 +457,6 @@
     <string name="file_size_megabytes">%1$s MB</string>
     <string name="file_size_gigabytes">%1$s GB</string>
     <string name="file_size_terabytes">%1$s TB</string>
+    <string name="onboarding_tell_code">Berätta den här koden för %1$s</string>
+    <string name="onboarding_waiting_for_inviter">Väntar på att %1$s ska släppa in dig…</string>
 </resources>

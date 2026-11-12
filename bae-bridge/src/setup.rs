@@ -95,21 +95,21 @@ pub enum BridgeCodeInfo {
     Invite { invite: BridgeInviteInfo },
 }
 /// What an invite tells before connecting: the library's name as the invite
-/// carried it, and when it expires.
+/// carried it, and the name of the admin who made it.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeInviteInfo {
     pub metadata: BridgeCodeMetadata,
     pub library_name: String,
-    /// When the invite ends, by the inviting device's clock: a join waits
-    /// for approval until then.
-    pub expires_at: std::time::SystemTime,
+    /// The inviting admin's name, for the screens that say whom to tell the
+    /// code and whom the join waits for.
+    pub inviter: String,
 }
 impl BridgeInviteInfo {
     pub(crate) fn from_core(value: coven::InviteInfo) -> Self {
         Self {
             metadata: BridgeCodeMetadata::from_core(value.metadata),
             library_name: value.store_name,
-            expires_at: value.expires_at,
+            inviter: value.inviter,
         }
     }
 }

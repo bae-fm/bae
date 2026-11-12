@@ -54,6 +54,7 @@ internal fun JoinNameStep(
         AndroidStep(
             title = stringResource(R.string.onboarding_invited_to, step.invite.libraryName),
             modifier = Modifier.verticalScroll(rememberScrollState()),
+            top = true,
         ) {
             OutlinedTextField(
                 value = name,

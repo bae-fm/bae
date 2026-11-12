@@ -196,7 +196,6 @@
     <string name="join_request_approve">Έγκριση</string>
     <string name="join_request_title">Ο χρήστης %1$s θέλει να συμμετάσχει</string>
     <string name="join_request_match">Βεβαιωθείτε ότι εμφανίζεται αυτός ο κωδικός:</string>
-    <string name="join_request_confirmation">Αριθμός επιβεβαίωσης</string>
     <string name="onboarding_add_device">Προσθήκη συσκευής</string>
     <string name="onboarding_tagline">Η μουσική σας, παντού</string>
     <string name="onboarding_camera_permission_required">Απαιτείται άδεια κάμερας για τη σάρωση κωδικών QR</string>
@@ -298,9 +297,7 @@
     <string name="name_shown_to_everyone">Όλοι στη βιβλιοθήκη βλέπουν αυτό το όνομα.</string>
     <string name="name_save_failed">Δεν ήταν δυνατή η αποθήκευση του ονόματος.</string>
     <string name="onboarding_restoring_title">Γίνεται επαναφορά της βιβλιοθήκης σας</string>
-    <string name="onboarding_joining_library">Γίνεται συμμετοχή στο %1$s</string>
     <string name="onboarding_invite_ended">Αυτή η πρόσκληση τερματίστηκε. Απορρίφθηκε ή ακυρώθηκε, έληξε, ή η συσκευή που τη δημιούργησε δεν είναι πλέον στη βιβλιοθήκη.</string>
-    <string name="onboarding_waiting_until">Αναμονή για έγκριση έως %1$s</string>
     <string name="onboarding_status_connecting">Γίνεται σύνδεση…</string>
     <string name="onboarding_status_registering">Γίνεται καταχώριση αυτής της συσκευής…</string>
     <string name="onboarding_status_finishing">Γίνεται ολοκλήρωση…</string>
@@ -460,4 +457,6 @@
     <string name="file_size_megabytes">%1$s MB</string>
     <string name="file_size_gigabytes">%1$s GB</string>
     <string name="file_size_terabytes">%1$s TB</string>
+    <string name="onboarding_tell_code">Πείτε σε %1$s αυτόν τον κωδικό</string>
+    <string name="onboarding_waiting_for_inviter">Αναμονή για έγκριση από %1$s…</string>
 </resources>

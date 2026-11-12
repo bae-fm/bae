@@ -187,7 +187,6 @@
     <string name="join_request_approve">批准</string>
     <string name="join_request_title">%1$s 想要加入</string>
     <string name="join_request_match">请确认屏幕上显示的是此代码：</string>
-    <string name="join_request_confirmation">确认码</string>
     <string name="onboarding_add_device">添加设备</string>
     <string name="onboarding_tagline">你的音乐，随处可听</string>
     <string name="onboarding_camera_permission_required">扫描二维码需要相机权限</string>
@@ -293,9 +292,7 @@
     <string name="name_shown_to_everyone">库中的每个人都能看到这个名字。</string>
     <string name="name_save_failed">无法保存姓名。</string>
     <string name="onboarding_restoring_title">正在恢复你的库</string>
-    <string name="onboarding_joining_library">正在加入 %1$s</string>
     <string name="onboarding_invite_ended">此邀请已结束：它已被拒绝或取消、已过期，或者创建它的设备已不在资料库中。</string>
-    <string name="onboarding_waiting_until">等待批准，截止于 %1$s</string>
     <string name="onboarding_status_connecting">正在连接…</string>
     <string name="onboarding_status_registering">正在注册此设备…</string>
     <string name="onboarding_status_finishing">正在完成…</string>
@@ -453,4 +450,6 @@
     <string name="file_size_megabytes">%1$s MB</string>
     <string name="file_size_gigabytes">%1$s GB</string>
     <string name="file_size_terabytes">%1$s TB</string>
+    <string name="onboarding_tell_code">把此代码告诉%1$s</string>
+    <string name="onboarding_waiting_for_inviter">正在等待%1$s让你加入…</string>
 </resources>

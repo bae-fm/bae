@@ -7,7 +7,6 @@ import uniffi.bae_bridge.BridgeCodeInfo
 import uniffi.bae_bridge.BridgeCodeMetadata
 import uniffi.bae_bridge.BridgeInviteInfo
 import uniffi.bae_bridge.BridgeStorageLocation
-import java.time.Instant
 
 class OnboardingCodeRoutingTest {
     private val metadata =
@@ -46,7 +45,7 @@ class OnboardingCodeRoutingTest {
         BridgeInviteInfo(
             metadata = metadata,
             libraryName = "Household",
-            expiresAt = Instant.parse("2026-11-01T17:00:00Z"),
+            inviter = "Ana",
         )
 
     @Test

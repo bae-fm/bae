@@ -196,7 +196,6 @@
     <string name="join_request_approve">Hyväksy</string>
     <string name="join_request_title">%1$s haluaa liittyä</string>
     <string name="join_request_match">Varmista, että tämä koodi näkyy:</string>
-    <string name="join_request_confirmation">Vahvistusnumero</string>
     <string name="onboarding_add_device">Lisää laite</string>
     <string name="onboarding_tagline">Musiikkisi kaikkialla</string>
     <string name="onboarding_camera_permission_required">QR-koodien skannaaminen edellyttää kameran käyttöoikeutta</string>
@@ -298,9 +297,7 @@
     <string name="name_shown_to_everyone">Kaikki kirjastossa näkevät tämän nimen.</string>
     <string name="name_save_failed">Nimeä ei voitu tallentaa.</string>
     <string name="onboarding_restoring_title">Kirjastoasi palautetaan</string>
-    <string name="onboarding_joining_library">Liitytään: %1$s</string>
     <string name="onboarding_invite_ended">Tämä kutsu on päättynyt. Se hylättiin tai peruttiin, se vanheni, tai sen luonut laite ei ole enää kirjastossa.</string>
-    <string name="onboarding_waiting_until">Odottaa hyväksyntää %1$s asti</string>
     <string name="onboarding_status_connecting">Yhdistetään…</string>
     <string name="onboarding_status_registering">Rekisteröidään tätä laitetta…</string>
     <string name="onboarding_status_finishing">Viimeistellään…</string>
@@ -460,4 +457,6 @@
     <string name="file_size_megabytes">%1$s Mt</string>
     <string name="file_size_gigabytes">%1$s Gt</string>
     <string name="file_size_terabytes">%1$s Tt</string>
+    <string name="onboarding_tell_code">Kerro tämä koodi henkilölle %1$s</string>
+    <string name="onboarding_waiting_for_inviter">Odotetaan, että %1$s päästää sinut sisään…</string>
 </resources>
