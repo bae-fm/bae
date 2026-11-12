@@ -54,7 +54,7 @@ struct SettingToggleRow<Help: View>: View {
             Section {
                 SettingToggleRow(
                     title: "Identify automatically",
-                    note: "Looks up each new album as soon as it’s added.",
+                    note: "Looks up each new album as soon as it is added.",
                     isOn: .constant(true)
                 )
             }

@@ -66,7 +66,7 @@ extension ShotScene {
                             library: PreviewData.homeMusic,
                             error: DisplayError(
                                 line:
-                                    "Couldn’t reach the cloud. Check your connection and try again."
+                                    "Could not reach the cloud. Check your connection and try again."
                             ),
                             retry: .ask
                         )

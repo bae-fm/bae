@@ -91,14 +91,14 @@ extension ShotScene {
         },
         notice("mac.component.notice.danger", height: 70) {
             Notice(
-                title: "Couldn’t reach the cloud.",
+                title: "Could not reach the cloud.",
                 advice: nil,
                 error: nil
             )
         },
         notice("mac.component.notice.danger-retry", height: 70) {
             Notice(
-                title: "Couldn’t reach the cloud.",
+                title: "Could not reach the cloud.",
                 advice: nil,
                 error: nil,
                 action: ErrorAction(perform: {})
@@ -106,10 +106,10 @@ extension ShotScene {
         },
         notice("mac.component.notice.danger-details-and-retry", height: 70) {
             Notice(
-                title: "Couldn’t reach the cloud.",
+                title: "Could not reach the cloud.",
                 advice: nil,
                 error: DisplayError(
-                    line: "Couldn’t reach the cloud.",
+                    line: "Could not reach the cloud.",
                     detail: "connection refused"
                 ),
                 action: ErrorAction(perform: {})
@@ -121,10 +121,10 @@ extension ShotScene {
         ) {
             Notice(
                 title:
-                    "Couldn’t reach the cloud. Your changes stay on this device and go up once it’s back; nothing is lost in the meantime.",
+                    "Could not reach the cloud. Your changes stay on this device and go up once it is back; nothing is lost in the meantime.",
                 advice: nil,
                 error: DisplayError(
-                    line: "Couldn’t reach the cloud.",
+                    line: "Could not reach the cloud.",
                     detail: "connection refused"
                 ),
                 action: ErrorAction(perform: {}),
@@ -133,7 +133,7 @@ extension ShotScene {
         },
         notice("mac.component.notice.danger-title-and-subtitle", height: 90) {
             Notice(
-                title: "bae couldn’t open your library",
+                title: "bae could not open your library",
                 advice: "Check your connection, then quit and reopen bae.",
                 error: nil
             )
@@ -152,7 +152,7 @@ extension ShotScene {
         },
         notice("mac.component.notice.danger-quiet-with", height: 70) {
             Notice(
-                title: "Couldn’t close the library",
+                title: "Could not close the library",
                 advice: nil,
                 error: nil,
                 look: .quiet,
@@ -162,10 +162,10 @@ extension ShotScene {
         notice("mac.component.notice.danger-centred-a-failed-view", height: 130)
         {
             Notice(
-                title: "Couldn’t read your library",
+                title: "Could not read your library",
                 advice: nil,
                 error: DisplayError(
-                    line: "Couldn’t read your library",
+                    line: "Could not read your library",
                     detail: "database error"
                 ),
                 look: .centered,

@@ -21,7 +21,7 @@ struct ImportSettingsTab: View {
             Section {
                 SettingToggleRow(
                     title: "Identify automatically",
-                    note: "Looks up each new album as soon as it’s added.",
+                    note: "Looks up each new album as soon as it is added.",
                     isOn: identifyAutomatically
                 )
                 ForEach(sourceSwitches.beforeKey, id: \.catalog) { setting in

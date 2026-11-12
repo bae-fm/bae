@@ -91,10 +91,10 @@ struct ShotElementListTests {
                 "\(json)"
             )
         }
-        let title = try element("text", "Couldn’t remove Home music")
+        let title = try element("text", "Could not remove Home music")
         let message = try element(
             "text",
-            "Couldn’t reach the cloud. Check your connection and try again."
+            "Could not reach the cloud. Check your connection and try again."
         )
         #expect(title.text?.weight == 700, "\(json)")
         let cancel = try element("button", "Cancel")

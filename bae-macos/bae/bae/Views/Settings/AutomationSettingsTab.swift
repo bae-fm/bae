@@ -190,7 +190,8 @@ struct AutomationSettingsContent: View {
                     let failure = DisplayError(error)?
                         .rewording({
                             String(
-                                localized: "Couldn’t update MCP settings: \($0)"
+                                localized:
+                                    "Could not update MCP settings: \($0)"
                             )
                         })
                 else { return }
@@ -275,14 +276,14 @@ struct AutomationSettingsContent: View {
                 case .copy:
                     message = .error(
                         shown.rewording {
-                            String(localized: "Couldn’t copy MCP token: \($0)")
+                            String(localized: "Could not copy MCP token: \($0)")
                         }
                     )
                 case .rotate:
                     message = .error(
                         shown.rewording {
                             String(
-                                localized: "Couldn’t rotate MCP token: \($0)"
+                                localized: "Could not rotate MCP token: \($0)"
                             )
                         }
                     )

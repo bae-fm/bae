@@ -240,7 +240,7 @@ struct PeopleAndDevicesPage: View {
         }
         .alert(
             cutOffRetry?.reason == .deviceNotGone
-                ? "This device’s removal hasn’t reached this Mac yet"
+                ? "This device’s removal has not reached this Mac yet"
                 : "This device is still syncing with the cloud",
             isPresented: Binding(
                 get: { cutOffRetry != nil },
@@ -849,7 +849,7 @@ private struct RefusedInviteRow: View {
                 ErrorText(
                     String(
                         localized:
-                            "Couldn’t invite: \(localizedCoreString(bridgeSharingRefusalKey(refusal: refused.refusal)))"
+                            "Could not invite: \(localizedCoreString(bridgeSharingRefusalKey(refusal: refused.refusal)))"
                     )
                 )
             }

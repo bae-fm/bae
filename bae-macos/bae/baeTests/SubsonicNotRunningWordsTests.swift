@@ -11,7 +11,7 @@ struct SubsonicNotRunningWordsTests {
     func networkGoneUsesTheSystemName() {
         #expect(
             BridgeSubsonicNotRunning.networkGone(interface: "en0")
-                .line(names: names) == "Wi-Fi isn’t connected"
+                .line(names: names) == "Wi-Fi is not connected"
         )
     }
 

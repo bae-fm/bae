@@ -73,7 +73,7 @@ struct DisplayErrorTests {
         #expect(!damaged.offersRetry)
         #expect(!damaged.addingContext("Save failed").offersRetry)
         #expect(damaged.retryAction {} == nil)
-        #expect(DisplayError(line: "Couldn’t load the image").offersRetry)
+        #expect(DisplayError(line: "Could not load the image").offersRetry)
     }
 
     @Test("a not-found renders its entity's line and has no detail to disclose")

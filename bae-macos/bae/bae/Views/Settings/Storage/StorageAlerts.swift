@@ -12,7 +12,7 @@ enum StorageAlerts {
         )
         alert.informativeText = String(
             localized:
-                "\(size) will be removed from this Mac. It can’t be recovered. Your library isn’t affected."
+                "\(size) will be removed from this Mac. It cannot be recovered. Your library is not affected."
         )
         let delete = alert.addButton(withTitle: String(localized: "Delete"))
         delete.hasDestructiveAction = true

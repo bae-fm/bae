@@ -54,7 +54,7 @@ struct CastingSettingsTab: View {
                     )
                 } footer: {
                     Text(
-                        "For tracks a receiver can’t play as they are. WAV keeps full quality but can cut out on weak Wi‑Fi; MP3 holds up better."
+                        "For tracks a receiver cannot play as they are. WAV keeps full quality but can cut out on weak Wi‑Fi; MP3 holds up better."
                     )
                     .themeText(.detail)
                     .foregroundStyle(.secondary)

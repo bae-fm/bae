@@ -107,11 +107,11 @@ public struct RestoreCodeSection: View {
             (Text(
                 "Print this code or save it in a password manager. It gets you back into your library if you lose all your devices."
             ) + Text(verbatim: " ")
-                + Text("It’s also in your iCloud Keychain."))
+                + Text("It is also in your iCloud Keychain."))
                 .themeText(.detail)
                 .foregroundStyle(.secondary)
             if needsS3Key {
-                Text("You’ll also need your S3 access key and secret.")
+                Text("You will also need your S3 access key and secret.")
                     .themeText(.detail)
                     .foregroundStyle(.secondary)
             }

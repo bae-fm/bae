@@ -81,7 +81,7 @@ struct DiscogsKeySection: View {
                 .rewording { line in
                     String(
                         localized:
-                            "Couldn’t read the stored Discogs key: \(line)"
+                            "Could not read the stored Discogs key: \(line)"
                     )
                 }
         }
@@ -112,7 +112,7 @@ struct DiscogsKeySection: View {
                 saveError = DisplayError(error)?
                     .rewording { line in
                         String(
-                            localized: "Couldn’t save the Discogs key: \(line)"
+                            localized: "Could not save the Discogs key: \(line)"
                         )
                     }
             }
@@ -135,7 +135,7 @@ struct DiscogsKeySection: View {
                     .rewording { line in
                         String(
                             localized:
-                                "Couldn’t re-check the Discogs key: \(line)"
+                                "Could not re-check the Discogs key: \(line)"
                         )
                     }
             }

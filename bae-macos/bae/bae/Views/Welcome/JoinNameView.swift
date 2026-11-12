@@ -17,7 +17,7 @@ struct JoinNameView: View {
     private var focused: Bool
 
     var body: some View {
-        MacStep(String(localized: "You’re invited to \(libraryName)")) {
+        MacStep(String(localized: "You are invited to \(libraryName)")) {
             VStack(spacing: ThemeSpace.group) {
                 FieldColumn {
                     MacTextField("Your name") {

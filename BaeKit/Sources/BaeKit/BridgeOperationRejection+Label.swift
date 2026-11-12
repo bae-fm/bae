@@ -8,7 +8,7 @@ extension BridgeOperationRejection {
         case .storeOwner:
             String(
                 localized:
-                    "The account that owns the library’s cloud home can’t be removed."
+                    "The account that owns the library’s cloud home cannot be removed."
             )
         case .personGone:
             String(localized: "That person is no longer in the library.")
@@ -24,7 +24,7 @@ extension BridgeOperationRejection {
                 localized: "That person’s keys were replaced in the meantime."
             )
         case .notAllowed:
-            String(localized: "This device isn’t allowed to make that change.")
+            String(localized: "This device is not allowed to make that change.")
         case .admissionTooLarge:
             String(
                 localized:

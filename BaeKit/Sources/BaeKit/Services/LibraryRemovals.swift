@@ -207,7 +207,7 @@ public final class LibraryRemovals {
             }
             catch {
                 logger.error(
-                    "Couldn’t remove \(library.id): \(String(reflecting: error))"
+                    "Could not remove \(library.id): \(String(reflecting: error))"
                 )
                 failed = DisplayError(error)
                     .map {

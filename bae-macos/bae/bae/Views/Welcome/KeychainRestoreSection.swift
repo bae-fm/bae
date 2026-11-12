@@ -98,7 +98,7 @@ enum SavedCodeDeletion {
     static var message: String {
         String(
             localized:
-                "This removes the restore code from iCloud Keychain on all your Apple devices. It doesn’t delete the library, or anything on this Mac or in the cloud."
+                "This removes the restore code from iCloud Keychain on all your Apple devices. It does not delete the library, or anything on this Mac or in the cloud."
         )
     }
 }
@@ -141,7 +141,7 @@ private struct SavedCodeRow: View {
         switch entry {
         case .readable(let saved): saved.info.name
         case .unreadable:
-            String(localized: "Restore code can’t be used")
+            String(localized: "Restore code cannot be used")
         }
     }
 

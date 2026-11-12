@@ -76,11 +76,11 @@ struct PendingUnpin: Equatable {
         releaseIds.count == 1
             ? String(
                 localized:
-                    "Its files will be removed from this Mac now. It stays in the cloud, and plays from there while you’re online."
+                    "Its files will be removed from this Mac now. It stays in the cloud, and plays from there while you are online."
             )
             : String(
                 localized:
-                    "Their files will be removed from this Mac now. They stay in the cloud, and play from there while you’re online."
+                    "Their files will be removed from this Mac now. They stay in the cloud, and play from there while you are online."
             )
     }
 }
@@ -123,7 +123,7 @@ struct UnpinConfirmation: ViewModifier {
                 Text(verbatim: pending.alertMessage)
             }
             .dialogSuppressionToggle(
-                "Don’t show this again",
+                "Do not show this again",
                 isSuppressed: $dontShowAgain
             )
     }

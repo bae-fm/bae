@@ -19,7 +19,7 @@ extension BridgeSyncCause {
         case .deviceDiskFull:
             String(
                 localized:
-                    "There’s no space left on this Mac. Free some space and bae will try again.",
+                    "There is no space left on this Mac. Free some space and bae will try again.",
                 comment:
                     "Sync failed: the Mac's disk is full; bae retries once there is room."
             )
@@ -31,7 +31,7 @@ extension BridgeSyncCause {
             )
         case .libraryUnreadable:
             String(
-                localized: "bae couldn’t read the library on this Mac.",
+                localized: "bae could not read the library on this Mac.",
                 comment:
                     "Sync failed: the library's database on this Mac couldn't be read."
             )

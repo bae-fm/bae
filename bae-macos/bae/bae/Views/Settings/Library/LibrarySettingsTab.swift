@@ -234,7 +234,7 @@ private struct SyncSettingsPage: View {
                     Notice(
                         title: String(
                             localized:
-                                "Couldn’t read this library’s cloud home."
+                                "Could not read this library’s cloud home."
                         ),
                         advice: nil,
                         error: storageReadError

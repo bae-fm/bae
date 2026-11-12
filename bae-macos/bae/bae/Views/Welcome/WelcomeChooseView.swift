@@ -153,7 +153,7 @@ struct WelcomeChooseView: View {
             if let failure = listings.localLibraries.failure {
                 Notice(
                     title: String(
-                        localized: "Couldn’t list the libraries on this Mac"
+                        localized: "Could not list the libraries on this Mac"
                     ),
                     advice: nil,
                     error: failure
@@ -185,7 +185,7 @@ struct WelcomeChooseView: View {
                 Notice(
                     title: String(
                         localized:
-                            "Couldn’t read restore codes from your keychain"
+                            "Could not read restore codes from your keychain"
                     ),
                     advice: nil,
                     error: failure
@@ -196,7 +196,7 @@ struct WelcomeChooseView: View {
                 if let deleteError = listings.savedCodes.deleteError {
                     Notice(
                         title: String(
-                            localized: "Couldn’t delete the restore code"
+                            localized: "Could not delete the restore code"
                         ),
                         advice: nil,
                         error: deleteError
@@ -265,7 +265,7 @@ private struct UnfinishedRemovalNotice: View {
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
             Notice(
-                title: String(localized: "Couldn’t remove the library"),
+                title: String(localized: "Could not remove the library"),
                 advice: nil,
                 error: error,
                 action: removals.unfinished == nil

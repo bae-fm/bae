@@ -205,7 +205,7 @@ struct FindOnlineAutomaticSection: View {
             PaneAnswerAction(
                 title: Self.keepOwnDraftTitle(needsYou),
                 subtitle: String(
-                    localized: "Keep my info; it’s not in the catalogs"
+                    localized: "Keep my info; it is not in the catalogs"
                 ),
                 action: onKeepOwnDraft
             )

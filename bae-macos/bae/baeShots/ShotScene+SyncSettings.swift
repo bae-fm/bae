@@ -106,7 +106,7 @@ extension ShotScene {
                     LibrarySettingsTabPreviewFixture(storage: nil),
                     shown: .previewSynced,
                     storageReadError: DisplayError(
-                        line: "Couldn’t read the cloud home.",
+                        line: "Could not read the cloud home.",
                         detail: "database error: no such record"
                     )
                 )

@@ -11,7 +11,7 @@ struct MacStorageChip: View {
     var body: some View {
         switch status {
         case .downloadFailed(let error):
-            StatusChip("Couldn’t pin", tone: .danger)
+            StatusChip("Could not pin", tone: .danger)
                 .help(error)
         case .moveFailed(let fileName):
             StatusChip(
@@ -33,7 +33,7 @@ struct MacStorageChip: View {
         case .pinning(.running):
             StoragePinningChipContainer(releaseId: release.id)
         case .makeLocalFailed(let error):
-            StatusChip("Couldn’t make local", tone: .danger)
+            StatusChip("Could not make local", tone: .danger)
                 .help(error)
         case .makingLocal(.queued):
             StatusChip("Queued to make local", tone: .activity)

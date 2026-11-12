@@ -46,11 +46,11 @@ extension BridgeNamePatternError {
     var message: String {
         switch self {
         case .empty:
-            String(localized: "A name can’t be empty.")
+            String(localized: "A name cannot be empty.")
         case .startsWithDot:
-            String(localized: "A name can’t start with a dot.")
+            String(localized: "A name cannot start with a dot.")
         case .forbiddenCharacter(let character):
-            String(localized: "A name can’t have \(character) in it.")
+            String(localized: "A name cannot have \(character) in it.")
         }
     }
 }

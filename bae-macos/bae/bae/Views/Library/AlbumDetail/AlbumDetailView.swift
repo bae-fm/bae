@@ -170,7 +170,7 @@ struct AlbumDetailView: View {
             Button("Cancel", role: .cancel) { releaseIdPendingDelete = nil }
         } message: {
             Text(
-                "This release will be permanently deleted from your devices and the cloud. Original files in your folders won’t be touched."
+                "This release will be permanently deleted from your devices and the cloud. Original files in your folders will not be touched."
             )
         }
         .deleteAlbumConfirmation(albumId: $albumIdPendingDelete) { albumId in

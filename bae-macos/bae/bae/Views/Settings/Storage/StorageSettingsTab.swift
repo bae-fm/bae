@@ -107,7 +107,7 @@ struct StorageSettingsForm: View {
             } footer: {
                 VStack(alignment: .leading, spacing: ThemeSpace.related) {
                     Text(
-                        "Pinned releases stay whole on this Mac to play offline, and don’t count toward the cache."
+                        "Pinned releases stay whole on this Mac to play offline, and do not count toward the cache."
                     )
                     if storage?.beforeReset == nil { localReleasesNote }
                 }
@@ -140,7 +140,7 @@ struct StorageSettingsForm: View {
     }
 
     private var localReleasesNote: some View {
-        Text("Local releases stay in your folders and aren’t counted here.")
+        Text("Local releases stay in your folders and are not counted here.")
     }
 
     private func row(

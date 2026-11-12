@@ -13,7 +13,7 @@
         var errorDescription: String? {
             switch self {
             case .unreadableConfig(let message):
-                String(localized: "Couldn’t read oauth-creds.json: \(message)")
+                String(localized: "Could not read oauth-creds.json: \(message)")
             case .malformedConfig(let message):
                 String(localized: "oauth-creds.json is malformed: \(message)")
             case .missingClientId(let provider):

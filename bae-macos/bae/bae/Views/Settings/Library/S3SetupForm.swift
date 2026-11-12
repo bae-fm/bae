@@ -110,14 +110,14 @@ extension S3SetupFields.KeyRejection {
         case .notAccepted:
             String(
                 localized:
-                    "This key wasn’t accepted. Check the access key ID and secret access key.",
+                    "This key was not accepted. Check the access key ID and secret access key.",
                 comment:
                     "S3 setup, at the top of the form: the service refused the access key."
             )
         case .cannotUseBucket:
             String(
                 localized:
-                    "This key can’t use the bucket. Give it read and write access, or use another key.",
+                    "This key cannot use the bucket. Give it read and write access, or use another key.",
                 comment:
                     "S3 setup, at the top of the form: the key is valid but isn't allowed to use the bucket."
             )

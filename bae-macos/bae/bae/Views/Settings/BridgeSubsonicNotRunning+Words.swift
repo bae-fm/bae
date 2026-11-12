@@ -15,7 +15,7 @@ extension BridgeSubsonicNotRunning {
         case .portTaken:
             String(localized: "Another app is using this port")
         case .networkGone(let interface):
-            String(localized: "\(names.name(of: interface)) isn’t connected")
+            String(localized: "\(names.name(of: interface)) is not connected")
         case .failed(let detail):
             detail
         }

@@ -245,7 +245,7 @@ struct SubsonicSettingsContent: View {
         case .notRunning:
             for case .networkGone(let interface) in causes {
                 let name = names.name(of: interface)
-                return "Not running: \(name) isn’t connected"
+                return "Not running: \(name) is not connected"
             }
             return "Not running"
         }

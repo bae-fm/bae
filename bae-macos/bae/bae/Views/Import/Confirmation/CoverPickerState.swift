@@ -67,7 +67,7 @@ final class CoverPickerState {
             catch {
                 self.error = DisplayError(error)?
                     .rewording {
-                        String(localized: "Couldn’t change the cover: \($0)")
+                        String(localized: "Could not change the cover: \($0)")
                     }
             }
         }

@@ -209,7 +209,7 @@ private struct AttemptDetailsSection: View {
     private func signInNote(_ metadata: BridgeCodeMetadata) -> some View {
         if metadata.oauthAccess != nil {
             Text(
-                "You’ll sign in to \(metadata.provider.displayName) in your browser."
+                "You will sign in to \(metadata.provider.displayName) in your browser."
             )
             .themeText(.detail)
             .foregroundStyle(.secondary)

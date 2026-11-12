@@ -99,7 +99,7 @@ struct SyncStatusStoreTests {
     func deviceCausesAreWordedForTheMac() {
         #expect(
             BridgeSyncCause.deviceDiskFull.macLine
-                == "There’s no space left on this Mac. Free some space and bae will try again."
+                == "There is no space left on this Mac. Free some space and bae will try again."
         )
         #expect(
             BridgeSyncCause.deviceKeysUnreadable.macLine
@@ -107,7 +107,7 @@ struct SyncStatusStoreTests {
         )
         #expect(
             BridgeSyncCause.libraryUnreadable.macLine
-                == "bae couldn’t read the library on this Mac."
+                == "bae could not read the library on this Mac."
         )
     }
 

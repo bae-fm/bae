@@ -31,7 +31,7 @@ struct SyncStatusBlock: View {
         if status.unreadable {
             LabeledContent("Status") {
                 ToneDotValue(
-                    text: String(localized: "Couldn’t read sync status"),
+                    text: String(localized: "Could not read sync status"),
                     tone: .danger
                 )
             }

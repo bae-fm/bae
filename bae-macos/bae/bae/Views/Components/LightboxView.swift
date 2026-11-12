@@ -300,7 +300,7 @@ extension LightboxView {
     fileprivate var loadFailedView: some View {
         Notice(
             error: DisplayError(
-                line: String(localized: "Couldn’t load the image")
+                line: String(localized: "Could not load the image")
             ),
             look: .centeredOnStage,
             action: ErrorAction { attempt += 1 }

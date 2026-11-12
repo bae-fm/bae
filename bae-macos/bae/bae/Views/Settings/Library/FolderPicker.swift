@@ -129,7 +129,7 @@
             if let taken = browser.notEmpty {
                 Section {
                     Text(
-                        "This folder isn’t empty. Choose an empty folder, or make a new one."
+                        "This folder is not empty. Choose an empty folder, or make a new one."
                     )
                     .themeText(.body)
                     .foregroundStyle(Theme.danger)

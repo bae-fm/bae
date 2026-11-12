@@ -22,7 +22,7 @@ extension ImportMappingFlow {
         catch {
             if let failure = DisplayError(error)?
                 .rewording({
-                    String(localized: "Couldn’t change that track: \($0)")
+                    String(localized: "Could not change that track: \($0)")
                 })
             {
                 services.onError(failure)

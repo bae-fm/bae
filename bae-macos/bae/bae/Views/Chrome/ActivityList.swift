@@ -104,7 +104,7 @@ struct ActivityList: View {
         case .syncStatusUnread:
             if let error = store.error {
                 Notice(
-                    title: String(localized: "Couldn’t read sync status"),
+                    title: String(localized: "Could not read sync status"),
                     advice: nil,
                     error: error,
                     look: .quiet,
@@ -141,7 +141,7 @@ struct ActivityList: View {
     @ViewBuilder
     private func subsonicProblem(dismiss: @escaping () -> Void) -> some View {
         if case .notRunning(let causes, let tone) = subsonic {
-            let title = String(localized: "Subsonic server isn’t running")
+            let title = String(localized: "Subsonic server is not running")
             let names = NetworkNames.current()
             Notice(
                 title: title,
