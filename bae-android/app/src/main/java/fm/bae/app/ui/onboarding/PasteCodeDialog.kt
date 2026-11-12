@@ -1,6 +1,7 @@
 package fm.bae.app.ui.onboarding
 
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -9,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeText
@@ -17,8 +19,8 @@ import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ButtonTone
 
-/** The lines a code field is tall at least, and the most it grows to before it scrolls. */
-private const val CODE_FIELD_LINES = 3
+/** A code field is tall at least as three 24dp lines and the design's 28dp of padding, and grows to six lines. */
+private val CODE_FIELD_MIN_HEIGHT = 98.dp
 private const val CODE_FIELD_MAX_LINES = 6
 
 /** The fixed wording of a [PasteCodeDialog], distinct per code it accepts. */
@@ -46,10 +48,9 @@ fun PasteCodeDialog(
                 value = pasteInput,
                 onValueChange = onInputChange,
                 label = { Text(text.label) },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().heightIn(min = CODE_FIELD_MIN_HEIGHT),
                 textStyle = ThemeText.mono.style,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii, autoCorrectEnabled = false),
-                minLines = CODE_FIELD_LINES,
                 maxLines = CODE_FIELD_MAX_LINES,
             )
         },

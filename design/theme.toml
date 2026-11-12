@@ -412,7 +412,8 @@ weight = "regular"
 monospaced = true
 macos = 12
 ios = "footnote"
-android = 12
+android = 15
+android_line = 24
 
 # The library's page heading at its largest, before it shrinks to `title` as
 # the page scrolls.
