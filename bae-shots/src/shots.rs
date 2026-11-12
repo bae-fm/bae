@@ -101,7 +101,7 @@ impl Picture {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct ElementList {
     pub(crate) board: String,

@@ -10,6 +10,7 @@ mod lists;
 mod names;
 mod record;
 mod render;
+mod report;
 mod shots;
 mod verify;
 
@@ -44,6 +45,9 @@ enum Action {
         /// A git ref whose record the pairs are marked new or changed against.
         #[arg(long)]
         base: Option<String>,
+        /// The commit the shots were taken at, for the report.
+        #[arg(long)]
+        sha: String,
     },
     /// Take the shots into a directory.
     Capture {
@@ -136,6 +140,51 @@ fn selected(root: &Path, selection: &Selection) -> Result<Vec<Name>, String> {
     Ok(names)
 }
 
+/// The commit at the checkout's head.
+fn commit(root: &Path) -> Result<String, String> {
+    let out = std::process::Command::new("git")
+        .args(["rev-parse", "--short=9", "HEAD"])
+        .current_dir(root)
+        .output()
+        .map_err(|e| format!("cannot run git: {e}"))?;
+    if !out.status.success() {
+        return Err("git could not name the head commit".to_string());
+    }
+    Ok(String::from_utf8_lossy(&out.stdout).trim().to_string())
+}
+
+fn header(commit: String, base: Option<String>, outcome: &verify::Outcome) -> report::Header {
+    report::Header {
+        commit,
+        base,
+        runtime_published_at: outcome.runtime_published_at.clone(),
+        chrome: format!("Chrome for Testing {}", render::chrome::PINNED),
+    }
+}
+
+/// Prints the outcome, writes the report into `report_dir` and, in CI, the
+/// step summary. True when nothing fails.
+fn finish(
+    outcome: &verify::Outcome,
+    header: &report::Header,
+    report_dir: &Path,
+) -> Result<bool, String> {
+    verify::print(outcome);
+    report::write(report_dir, outcome, header)?;
+    eprintln!("bae-shots: report at {}", report_dir.join("index.html").display());
+    if let Some(summary) = std::env::var_os("GITHUB_STEP_SUMMARY") {
+        use std::io::Write;
+        let mut file = std::fs::OpenOptions::new()
+            .append(true)
+            .create(true)
+            .open(&summary)
+            .map_err(|e| format!("cannot open the step summary: {e}"))?;
+        file.write_all(report::summary(outcome, header).as_bytes())
+            .map_err(|e| format!("cannot write the step summary: {e}"))?;
+    }
+    Ok(outcome.passed())
+}
+
 fn run(action: Action) -> Result<bool, String> {
     let root = repository_root()?;
     match action {
@@ -162,10 +211,10 @@ fn run(action: Action) -> Result<bool, String> {
                 base: None,
                 write_record: true,
             })?;
-            verify::print(&outcome);
-            Ok(outcome.passed())
+            let header = header(commit(&root)?, None, &outcome);
+            finish(&outcome, &header, &root.join("shots/report"))
         }
-        Action::Check { shots, out, base } => {
+        Action::Check { shots, out, base, sha } => {
             let declared = declared::read(&root).map_err(|e| e.to_string())?;
             let names: Vec<Name> = declared.iter().map(|d| d.name.clone()).collect();
             for platform in [Platform::Mac, Platform::Android] {
@@ -183,8 +232,8 @@ fn run(action: Action) -> Result<bool, String> {
                 base: base.as_deref(),
                 write_record: false,
             })?;
-            verify::print(&outcome);
-            Ok(outcome.passed())
+            let header = header(sha, base, &outcome);
+            finish(&outcome, &header, &out)
         }
         Action::Capture { selection, out } => {
             capture(&root, &selection, |_| out.clone())?;

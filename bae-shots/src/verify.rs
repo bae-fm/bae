@@ -33,6 +33,14 @@ pub(crate) struct Verification<'a> {
 /// One pair that was compared.
 pub(crate) struct Checked {
     pub(crate) name: Name,
+    pub(crate) board: ElementList,
+    pub(crate) shot: ElementList,
+    /// The matched elements: (board index, shot index).
+    pub(crate) pairs: Vec<(usize, usize)>,
+    /// How far the shot's frame sits right and down of the board's.
+    pub(crate) offset: (f64, f64),
+    pub(crate) board_png: PathBuf,
+    pub(crate) shot_png: PathBuf,
     pub(crate) findings: Vec<Finding>,
     pub(crate) warnings: Vec<Warning>,
     pub(crate) against_base: Option<Standing>,
@@ -47,6 +55,8 @@ pub(crate) struct Skipped {
 }
 
 pub(crate) struct Outcome {
+    /// When the runtime record says the canvas was published.
+    pub(crate) runtime_published_at: String,
     pub(crate) checked: Vec<Checked>,
     pub(crate) skipped: Vec<Skipped>,
     pub(crate) problems: Vec<Problem>,
@@ -124,6 +134,16 @@ pub(crate) fn verify(job: &Verification) -> Result<Outcome, String> {
         );
         checked.push(Checked {
             name: name.clone(),
+            offset: compare::geometry::frame_offset(
+                &list.elements,
+                &shot.list.elements,
+                &result.pairs,
+            ),
+            pairs: result.pairs.iter().map(|(b, s)| (b.index, s.index)).collect(),
+            board: list,
+            shot: shot.list.clone(),
+            board_png: picture_file,
+            shot_png: (job.shots_for)(name.platform()).join(name.file_name("png")),
             findings: result.findings,
             warnings,
             against_base: standing(name),
@@ -160,7 +180,13 @@ pub(crate) fn verify(job: &Verification) -> Result<Outcome, String> {
         .collect();
     let ready = design::ready_boards(root).map_err(|e| e.to_string())?;
     let lists = lists::lists(&hashed_all(job.declared), &ready, &record, &board_hashes, &problems);
-    Ok(Outcome { checked, skipped, problems, lists })
+    Ok(Outcome {
+        runtime_published_at: runtime.live_published_at,
+        checked,
+        skipped,
+        problems,
+        lists,
+    })
 }
 
 fn hashed_all(declared: &[Declared]) -> Vec<Name> {

@@ -68,6 +68,7 @@ fn a_pair_is_new_against_a_base_that_lacks_it_and_changed_against_one_that_diffe
 #[test]
 fn a_run_passes_without_findings_or_problems() {
     let mut outcome = Outcome {
+        runtime_published_at: String::new(),
         checked: Vec::new(),
         skipped: Vec::new(),
         problems: Vec::new(),
@@ -88,9 +89,17 @@ fn a_pair_with_a_finding_fails_the_run() {
         enabled: true,
         selected: false,
     });
+    let list = crate::shots::ElementList::parse(crate::shots::tests::LIST).unwrap();
     let outcome = Outcome {
+        runtime_published_at: String::new(),
         checked: vec![Checked {
             name: name("mac.welcome.a"),
+            board: list.clone(),
+            shot: list,
+            pairs: Vec::new(),
+            offset: (0.0, 0.0),
+            board_png: PathBuf::new(),
+            shot_png: PathBuf::new(),
             findings: vec![finding],
             warnings: Vec::new(),
             against_base: None,

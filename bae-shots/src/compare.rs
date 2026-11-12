@@ -22,6 +22,17 @@ pub(crate) const DELTA_E_TOLERANCE: f64 = 3.0;
 /// The side of a cell of the region grid, in points.
 pub(crate) const REGION_CELL: f64 = 16.0;
 
+/// The tolerances, named, for the report to print.
+pub(crate) fn tolerances() -> Vec<String> {
+    vec![
+        format!("box edges {EDGE_TOLERANCE} pt"),
+        format!("font size {FONT_SIZE_TOLERANCE} pt"),
+        format!("colour ΔE {DELTA_E_TOLERANCE}"),
+        format!("foreground at least ΔE {} from the background", colour::FAR_FROM_BACKGROUND),
+        format!("region cells {REGION_CELL} pt"),
+    ]
+}
+
 /// What differs between a matched board element and shot element.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Aspect {
