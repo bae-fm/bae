@@ -12,7 +12,6 @@ use crate::CandidateFiles;
 use crate::IdentifyRunId;
 use crate::ImportInFlight;
 use crate::ImportStep;
-use std::path::PathBuf;
 
 pub(super) fn empty_categorized() -> CategorizedFiles {
     CategorizedFiles { files: Vec::new(), parts: Vec::new() }
