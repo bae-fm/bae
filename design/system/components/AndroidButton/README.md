@@ -4,4 +4,6 @@
 
 A `text` button on its own line lines its words up with the text above it: `alignTo: 'text'` under plain text, flush with it; `alignTo: 'field'` under a field, with the field's text, 16dp in.
 
+`off` is Material's disabled button, the same for every kind and tone: the words in the screen's text at 38%, the fill of a filled or tonal one and an outline in it at 12%, so a disabled Join reads grey, not a faded accent.
+
 **In the code:** Android: `AndroidButton` (`ui/components/AndroidButton.kt`), Material's filled, tonal, outlined and text buttons by `kind`, with `tone` destructive or neutral, `large`, and `alignTo` (text or field) for a text button on its own line.

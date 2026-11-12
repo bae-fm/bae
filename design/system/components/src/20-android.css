@@ -63,7 +63,10 @@
 .bae-a-btn-text.bae-a-btn-neutral { color: var(--text-primary); }
 .bae-a-btn-align-text { align-self: flex-start; margin-left: -12px; }
 .bae-a-btn-align-field { align-self: flex-start; margin-left: calc(var(--space-edge) - 12px); }
-.bae-a-btn:disabled { opacity: var(--opacity-off); cursor: default; }
+/* Material's disabled button: the words in the screen's text at 38%, a filled or tonal button's fill and an outline in it at 12%, whatever the kind or tone. */
+.bae-a-btn:disabled { cursor: default; color: color-mix(in srgb, var(--text-primary) 38%, transparent); }
+.bae-a-btn-filled:disabled, .bae-a-btn-tonal:disabled { background: color-mix(in srgb, var(--text-primary) 12%, transparent); }
+.bae-a-btn-outlined:disabled { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text-primary) 12%, transparent); }
 
 .bae-a-iconbtn { width: 48px; height: 48px; flex: none; display: flex; align-items: center; justify-content: center; background: none; border: 0; border-radius: 24px; padding: 0; fill: var(--text-primary); cursor: pointer; }
 .bae-a-inlineicon { flex: none; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; }
