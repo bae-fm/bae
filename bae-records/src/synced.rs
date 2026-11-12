@@ -45,7 +45,8 @@ pub fn synced_tables() -> Vec<SyncedTable> {
         SyncedTable::new("album_artists", RowIdentity::SharedKey),
         SyncedTable::new("releases", RowIdentity::IndependentUuid),
         SyncedTable::new("release_records", RowIdentity::SharedKey),
-        SyncedTable::new("release_mediums", RowIdentity::SharedKey),
+        SyncedTable::new("release_mediums", RowIdentity::SharedKey)
+            .key_columns(["id", "release_id"]),
         SyncedTable::new("release_media", RowIdentity::SharedKey),
         SyncedTable::new("release_barcodes", RowIdentity::SharedKey),
         SyncedTable::new("labels", RowIdentity::SharedKey),

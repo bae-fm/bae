@@ -518,7 +518,7 @@ CREATE INDEX IF NOT EXISTS idx_release_records_catalog_album ON release_records
 -- read from — in order. The id derives from (release, position), so two
 -- devices that write one release's mediums write the same rows.
 CREATE TABLE IF NOT EXISTS release_mediums (
-    id TEXT PRIMARY KEY,
+    id TEXT NOT NULL,
     release_id TEXT NOT NULL,
     -- Counted from one.
     position INTEGER NOT NULL CHECK (position >= 1),
@@ -528,6 +528,11 @@ CREATE TABLE IF NOT EXISTS release_mediums (
     side_count INTEGER NOT NULL CHECK (side_count >= 1),
     created_at TEXT NOT NULL,
     UNIQUE (release_id, position),
+    -- The key includes the release so a track's (medium, release) pair names
+    -- it: a track's medium is one of its own release's.
+    PRIMARY KEY (id, release_id),
+    -- A medium id still names one medium on its own.
+    UNIQUE (id),
     FOREIGN KEY (release_id) REFERENCES releases (id) ON DELETE CASCADE
 ) STRICT;
 
@@ -548,7 +553,7 @@ CREATE TABLE IF NOT EXISTS tracks (
     -- Playing order within the release, from zero across all sides.
     position INTEGER NOT NULL DEFAULT 0 CHECK (position >= 0),
     FOREIGN KEY (release_id) REFERENCES releases (id) ON DELETE CASCADE,
-    FOREIGN KEY (medium_id) REFERENCES release_mediums (id)
+    FOREIGN KEY (medium_id, release_id) REFERENCES release_mediums (id, release_id)
 ) STRICT;
 
 CREATE INDEX IF NOT EXISTS idx_tracks_medium_id ON tracks (medium_id);

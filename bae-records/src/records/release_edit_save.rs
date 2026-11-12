@@ -165,7 +165,7 @@ fn write_applied_rows_on(
         tx.execute(
             "INSERT INTO release_mediums (id, release_id, position, medium, side_count, created_at) \
              VALUES (?, ?, ?, ?, ?, ?) \
-             ON CONFLICT (id) DO UPDATE SET medium = excluded.medium, \
+             ON CONFLICT (id, release_id) DO UPDATE SET medium = excluded.medium, \
                  side_count = excluded.side_count",
             params![
                 medium.id,

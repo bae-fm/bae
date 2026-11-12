@@ -196,6 +196,49 @@ async fn coven_connection_enforces_foreign_keys_for_bae_schema() {
     );
 }
 
+/// A track's medium is one of its own release's: a medium row of another
+/// release is refused.
+#[tokio::test]
+async fn a_track_cannot_sit_on_another_releases_medium() {
+    let (db, _tmp) = bae_store::test_fixtures::temp_db(crate::test_fixtures::TEST_SCHEMA).await;
+    let records = crate::test_fixtures::test_records(&db);
+    crate::test_fixtures::album_with_releases(&records, ALBUM_A, "Album", &[RELEASE_A, RELEASE_B])
+        .await;
+    for release in [RELEASE_A, RELEASE_B] {
+        records.insert_release_medium(&crate::DbReleaseMedium::new_test(release)).await.unwrap();
+    }
+
+    let mut track = DbTrack::new_test(RELEASE_A, TRACK_A, "Track Title A", 1);
+    track.medium_id = crate::identity::release_medium_id(RELEASE_B, 1);
+    let error = records
+        .insert_track(&track)
+        .await
+        .expect_err("a track on another release's medium must violate the foreign key");
+
+    assert!(
+        error.to_string().contains("FOREIGN KEY constraint failed"),
+        "expected a foreign-key violation, got {error}"
+    );
+}
+
+/// A medium id names one medium: another release cannot hold a row with it.
+#[tokio::test]
+async fn a_medium_id_belongs_to_one_release() {
+    let (db, _tmp) = bae_store::test_fixtures::temp_db(crate::test_fixtures::TEST_SCHEMA).await;
+    let records = crate::test_fixtures::test_records(&db);
+    crate::test_fixtures::album_with_releases(&records, ALBUM_A, "Album", &[RELEASE_A, RELEASE_B])
+        .await;
+    records.insert_release_medium(&crate::DbReleaseMedium::new_test(RELEASE_A)).await.unwrap();
+
+    let mut medium = crate::DbReleaseMedium::new_test(RELEASE_B);
+    medium.id = crate::identity::release_medium_id(RELEASE_A, 1);
+    let error = records
+        .insert_release_medium(&medium)
+        .await
+        .expect_err("a second release cannot hold the same medium id");
+    assert!(error.to_string().contains("UNIQUE constraint failed"), "{error}");
+}
+
 /// Every connection to a library knows the natural order bae's schema names:
 /// numbers by value, letters without regard to case, then bytes.
 #[tokio::test]

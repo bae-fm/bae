@@ -420,7 +420,8 @@ impl DbReleaseMediums {
     }
 
     /// Where `track`, one of this release's, sits. Its medium is one of these:
-    /// the schema refuses a track whose medium row is missing.
+    /// the schema refuses a track whose medium row is missing or is another
+    /// release's.
     pub fn place(&self, track: &DbTrack) -> bae_types::mediums::TrackPlace {
         let medium = self
             .0
