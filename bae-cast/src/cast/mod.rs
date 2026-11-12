@@ -10,6 +10,14 @@
 
 pub(crate) mod channel;
 pub(crate) mod discovery;
+// Test-only until the Cast renderer moves onto this client (the commit that
+// drops RustCastChannel).
+#[cfg(test)]
+mod messages;
+// Test-only until the Cast renderer moves onto this client (the commit that
+// drops RustCastChannel).
+#[cfg(test)]
+mod wire;
 
 pub(crate) use channel::RustCastChannel;
 pub(crate) use discovery::CastDiscovery;

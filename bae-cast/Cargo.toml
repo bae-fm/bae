@@ -26,7 +26,7 @@ bae-util = { workspace = true }
 # bae-playback, which must not depend on bae-subsonic (see
 # bae-playback/src/renderer).
 bae-subsonic = { workspace = true }
-tokio = { workspace = true, features = ["rt", "sync", "net"] }
+tokio = { workspace = true, features = ["rt", "sync", "net", "io-util"] }
 tracing = { workspace = true }
 thiserror = { workspace = true }
 # axum 0.8 matches the router bae-subsonic returns.
@@ -44,6 +44,11 @@ local-ip-address = { workspace = true }
 # its own OS thread. Builds on every platform; the receiver fetches audio itself
 # over HTTP.
 rust_cast = { workspace = true, features = ["thread_safe"] }
+# bae's own Cast client (src/cast/wire.rs, messages.rs): the CastMessage
+# protobuf frame, derived with no code generation step, and the JSON payloads.
+prost = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
 mdns-sd = { workspace = true }
 # UPnP/DLNA control point (src/dlna/): parses device-description and SOAP
 # response XML. Read-only DOM, pure Rust (builds on every platform). Outgoing
@@ -91,6 +96,8 @@ rand_core = { workspace = true }
 coven = { workspace = true }
 
 [dev-dependencies]
+# The async tests of bae's Cast client.
+tokio = { workspace = true, features = ["macros", "rt"] }
 # The deterministic id source the sessions' tests use.
 coven = { workspace = true, features = ["test-utils"] }
 # The test libraries the session tests open and play.
