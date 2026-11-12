@@ -319,7 +319,7 @@ private fun JoinRequestDialog(
     val request = invite.requestToDecide ?: return
     val info = remember(request) { request.info() }
     JoinRequestDialogContent(
-        title = stringResource(R.string.join_request_title, info.name),
+        name = info.name,
         confirmation = info.confirmation,
         onApprove = { model.perform("approve a join request") { session.appHandle.approveJoinRequest(request) } },
         onDecline = { model.perform("decline a join request") { session.appHandle.declineJoinRequest(request) } },
@@ -330,7 +330,7 @@ private fun JoinRequestDialog(
 /** The dialog for a request to join: Decline in the text colour, Approve the one coloured button. */
 @Composable
 internal fun JoinRequestDialogContent(
-    title: String,
+    name: String,
     confirmation: String,
     onApprove: () -> Unit,
     onDecline: () -> Unit,
@@ -340,7 +340,7 @@ internal fun JoinRequestDialogContent(
         onDismissRequest = onClose,
         parts =
             joinRequestParts(
-                title = title,
+                name = name,
                 confirmation = confirmation,
                 onApprove = onApprove,
                 onDecline = onDecline,
@@ -350,13 +350,13 @@ internal fun JoinRequestDialogContent(
 
 @Composable
 internal fun joinRequestParts(
-    title: String,
+    name: String,
     confirmation: String,
     onApprove: () -> Unit,
     onDecline: () -> Unit,
 ): DialogParts =
     DialogParts(
-        title = title,
+        title = stringResource(R.string.join_request_title, name),
         message = stringResource(R.string.join_request_match),
         content = { AndroidMatchCode(confirmation, dialog = true) },
         confirmButton = {

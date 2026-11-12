@@ -118,7 +118,7 @@ class SettingsPeopleShots : BoardShot() {
     fun androidSettingsAddDeviceRequest() =
         shot("android.settings.add-device.request") {
             InPlaceDialogScene(behind = { DevicesPageScene(ana()) }) {
-                joinRequestParts(title = "Tablet", confirmation = "412 778", onApprove = {}, onDecline = {})
+                joinRequestParts(name = "Tablet", confirmation = "412 778", onApprove = {}, onDecline = {})
             }
         }
 }

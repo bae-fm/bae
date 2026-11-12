@@ -81,7 +81,7 @@ class SettingsInviteShots : BoardShot() {
     fun androidSettingsInviteRequest() =
         shot("android.settings.invite.request") {
             Invite(invites = listOf(danInvite(waitingCode))) {
-                joinRequestParts(title = "Dan", confirmation = "412 778", onApprove = {}, onDecline = {})
+                joinRequestParts(name = "Dan", confirmation = "412 778", onApprove = {}, onDecline = {})
             }
         }
 
