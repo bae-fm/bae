@@ -253,6 +253,20 @@ extension ShotScene {
                 over: window
             )
         },
+        overWelcome("mac.welcome.add-code.scanning", libraries: []) {
+            _,
+            window in
+            OverWindow.sheet(
+                CodeScannerSheet(
+                    onScan: { _ in },
+                    onDismiss: {},
+                    startsCamera: false
+                )
+                .frame(width: 400)
+                .fixedSize(horizontal: false, vertical: true),
+                over: window
+            )
+        },
         overWelcome("mac.welcome.add-code.half-typed", libraries: []) {
             _,
             window in

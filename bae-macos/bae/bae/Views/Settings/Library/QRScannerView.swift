@@ -9,6 +9,9 @@ private let logger = Logger.bae("QRScanner")
 /// code, or explains why the camera isn't available.
 struct QRScannerView: View {
     let onScan: (String) -> Void
+    /// False keeps the view on its "Starting camera…" placeholder without
+    /// asking for the camera, for a screenshot of the sheet.
+    var startsCamera = true
 
     private enum CameraState {
         case requesting
@@ -43,7 +46,9 @@ struct QRScannerView: View {
                 )
             }
         }
-        .task { await start() }
+        .task {
+            if startsCamera { await start() }
+        }
         .onDisappear { stop() }
     }
 
@@ -168,25 +173,19 @@ private final class CameraCapture: @unchecked Sendable {
 struct CodeScannerSheet: View {
     let onScan: (String) -> Void
     let onDismiss: () -> Void
+    var startsCamera = true
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text("Scan a code")
-                    .themeText(.heading)
-                Spacer()
-                Button("Cancel") { onDismiss() }
-                    .buttonStyle(.borderless)
-                    .foregroundStyle(Theme.textPrimary)
+        MacSheet("Scan a code", width: 400) {
+            QRScannerView(onScan: onScan, startsCamera: startsCamera)
+                .frame(height: 300)
+                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.card))
+        } footer: {
+            MacSheetFooter {
+                Button("Cancel", action: onDismiss)
+                    .keyboardShortcut(.cancelAction)
             }
-            .padding()
-
-            Divider()
-
-            QRScannerView(onScan: onScan)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(width: 400, height: 440)
     }
 }
 
