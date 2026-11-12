@@ -33,12 +33,22 @@ public struct TransferConcurrencyPicker: View {
     }
 
     public var body: some View {
-        Picker(title, selection: binding) {
-            ForEach(Array(1...limit), id: \.self) { n in
-                Text(n.formatted()).tag(n)
+        #if os(macOS)
+            LabeledContent(title) {
+                MacPopUpButton(title, selection: binding) {
+                    for n in 1...limit {
+                        MacPopUpOption(verbatim: n.formatted(), value: n)
+                    }
+                }
             }
-        }
-        .pickerStyle(.menu)
+        #else
+            Picker(title, selection: binding) {
+                ForEach(Array(1...limit), id: \.self) { n in
+                    Text(n.formatted()).tag(n)
+                }
+            }
+            .pickerStyle(.menu)
+        #endif
     }
 
     private var binding: Binding<UInt32> {

@@ -199,11 +199,10 @@ private struct PresetRow: View {
             }
             .buttonStyle(.plain)
             MacMoreMenu {
-                Button("Edit…", action: edit)
-                Button("Delete…") {
+                MacMenuItem("Edit…", action: edit)
+                MacMenuItem("Delete…", disabled: !canDelete) {
                     confirmingDelete = true
                 }
-                .disabled(!canDelete)
             }
             .macAlert(isPresented: $confirmingDelete) {
                 DeleteFormatConfirmation.alert(named: preset.name) { delete() }

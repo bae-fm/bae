@@ -6,22 +6,58 @@ public struct AppearanceControls: View {
 
     public init() {}
 
-    public var body: some View {
-        Picker(selection: preferences.$mode) {
-            ForEach(AppearanceMode.allCases, id: \.self) { mode in
-                Text(mode.title).tag(mode)
-            }
-        } label: {
-            Text("Theme", tableName: "Appearance", bundle: .module)
-        }
+    private var themeLabel: Text {
+        Text("Theme", tableName: "Appearance", bundle: .module)
+    }
 
-        Picker(selection: preferences.$tone) {
-            ForEach(SurfaceTone.allCases, id: \.self) { tone in
-                Text(tone.title).tag(tone)
+    private var toneLabel: Text {
+        Text("Tone", tableName: "Appearance", bundle: .module)
+    }
+
+    public var body: some View {
+        #if os(macOS)
+            LabeledContent {
+                MacPopUpButton(
+                    label: themeLabel,
+                    selection: preferences.$mode
+                ) {
+                    for mode in AppearanceMode.allCases {
+                        MacPopUpOption(verbatim: mode.title, value: mode)
+                    }
+                }
+            } label: {
+                themeLabel
             }
-        } label: {
-            Text("Tone", tableName: "Appearance", bundle: .module)
-        }
+
+            LabeledContent {
+                MacPopUpButton(
+                    label: toneLabel,
+                    selection: preferences.$tone
+                ) {
+                    for tone in SurfaceTone.allCases {
+                        MacPopUpOption(verbatim: tone.title, value: tone)
+                    }
+                }
+            } label: {
+                toneLabel
+            }
+        #else
+            Picker(selection: preferences.$mode) {
+                ForEach(AppearanceMode.allCases, id: \.self) { mode in
+                    Text(mode.title).tag(mode)
+                }
+            } label: {
+                themeLabel
+            }
+
+            Picker(selection: preferences.$tone) {
+                ForEach(SurfaceTone.allCases, id: \.self) { tone in
+                    Text(tone.title).tag(tone)
+                }
+            } label: {
+                toneLabel
+            }
+        #endif
 
         HStack(alignment: .center, spacing: ThemeSpace.group) {
             VStack(alignment: .leading, spacing: ThemeSpace.inline) {

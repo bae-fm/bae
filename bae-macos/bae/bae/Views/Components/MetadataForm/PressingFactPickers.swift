@@ -25,24 +25,27 @@ struct ReleaseAreaPicker: View {
         }
 
     var body: some View {
-        Menu {
-            Button(String(localized: "Not stated")) {
-                choose(nil)
-            }
-            Section(String(localized: "Countries")) {
-                ForEach(Self.countries, id: \.self) { country in
-                    Button(country.text) { choose(country) }
+        MacMenuButton {
+            MacMenuItem("Not stated", checked: area == nil) { choose(nil) }
+            MacMenuSection("Countries") {
+                for country in Self.countries {
+                    MacMenuItem(
+                        verbatim: country.text,
+                        checked: area == country
+                    ) { choose(country) }
                 }
             }
-            Section(String(localized: "Regions")) {
-                ForEach(Self.regions, id: \.self) { region in
-                    Button(region.text) { choose(region) }
+            MacMenuSection("Regions") {
+                for region in Self.regions {
+                    MacMenuItem(
+                        verbatim: region.text,
+                        checked: area == region
+                    ) { choose(region) }
                 }
             }
         } label: {
             FactMenuLabel(text: area?.text)
         }
-        .menuStyle(.borderlessButton)
         .fixedSize()
     }
 
@@ -66,15 +69,15 @@ struct MediaCountsEditor: View {
                     remove: { remove(counted.medium) }
                 )
             }
-            Menu {
-                ForEach(
-                    bridgeMedia()
-                        .filter { medium in
-                            !media.contains { $0.medium == medium }
-                        },
-                    id: \.self
-                ) { medium in
-                    Button(bridgeMediumLabel(medium: medium).text) {
+            MacMenuButton {
+                for medium in bridgeMedia()
+                    .filter({ medium in
+                        !media.contains { $0.medium == medium }
+                    })
+                {
+                    MacMenuItem(
+                        verbatim: bridgeMediumLabel(medium: medium).text
+                    ) {
                         commit(
                             media + [BridgeMediaCount(medium: medium, count: 1)]
                         )
@@ -86,7 +89,6 @@ struct MediaCountsEditor: View {
                     systemImage: media.isEmpty ? nil : "plus"
                 )
             }
-            .menuStyle(.borderlessButton)
             .fixedSize()
         }
     }
@@ -156,17 +158,17 @@ struct ReleaseStatusPicker: View {
     let write: @MainActor (BridgePressingFactEdit) async -> Void
 
     var body: some View {
-        Menu {
-            Button(String(localized: "Not stated")) {
-                choose(nil)
-            }
-            ForEach(bridgeReleaseStatuses(), id: \.self) { status in
-                Button(Self.text(status)) { choose(status) }
+        MacMenuButton {
+            MacMenuItem("Not stated", checked: status == nil) { choose(nil) }
+            for option in bridgeReleaseStatuses() {
+                MacMenuItem(
+                    verbatim: Self.text(option),
+                    checked: status == option
+                ) { choose(option) }
             }
         } label: {
             FactMenuLabel(text: status.map(Self.text))
         }
-        .menuStyle(.borderlessButton)
         .fixedSize()
     }
 
@@ -185,17 +187,19 @@ struct PackagingPicker: View {
     let write: @MainActor (BridgePressingFactEdit) async -> Void
 
     var body: some View {
-        Menu {
-            Button(String(localized: "Not stated")) {
+        MacMenuButton {
+            MacMenuItem("Not stated", checked: packaging == nil) {
                 choose(nil)
             }
-            ForEach(bridgePackagings(), id: \.self) { packaging in
-                Button(Self.text(packaging)) { choose(packaging) }
+            for option in bridgePackagings() {
+                MacMenuItem(
+                    verbatim: Self.text(option),
+                    checked: packaging == option
+                ) { choose(option) }
             }
         } label: {
             FactMenuLabel(text: packaging.map(Self.text))
         }
-        .menuStyle(.borderlessButton)
         .fixedSize()
     }
 
@@ -230,14 +234,15 @@ struct DiscogsDetailsEditor: View {
                     .accessibilityLabel(String(localized: "Remove"))
                 }
             }
-            Menu {
-                ForEach(
-                    bridgeDiscogsDetails().filter { !details.contains($0) },
-                    id: \.self
-                ) { detail in
-                    Button(bridgeDiscogsDetailLabel(detail: detail).text) {
-                        commit(details + [detail])
-                    }
+            MacMenuButton {
+                for detail in bridgeDiscogsDetails()
+                    .filter({
+                        !details.contains($0)
+                    })
+                {
+                    MacMenuItem(
+                        verbatim: bridgeDiscogsDetailLabel(detail: detail).text
+                    ) { commit(details + [detail]) }
                 }
             } label: {
                 FactMenuLabel(
@@ -245,7 +250,6 @@ struct DiscogsDetailsEditor: View {
                     systemImage: details.isEmpty ? nil : "plus"
                 )
             }
-            .menuStyle(.borderlessButton)
             .fixedSize()
         }
     }

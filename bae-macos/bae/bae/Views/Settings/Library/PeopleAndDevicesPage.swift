@@ -357,20 +357,30 @@ extension PeopleAndDevicesPage {
                 LabeledContent("Role", value: me.membership.role.label)
             }
             if let profile = store.selfProfile {
-                Picker(
-                    "Listening history",
-                    selection: Binding(
-                        get: { profile.historySharing },
-                        set: { sharing in
-                            run { try await sync.setHistorySharing(sharing) }
-                        }
-                    )
-                ) {
-                    Text("Off").tag(BridgeHistorySharing.off)
-                    Text("Only me").tag(BridgeHistorySharing.private)
-                    Text("Everyone").tag(BridgeHistorySharing.household)
+                LabeledContent("Listening history") {
+                    MacPopUpButton(
+                        "Listening history",
+                        selection: Binding(
+                            get: { profile.historySharing },
+                            set: { sharing in
+                                run {
+                                    try await sync.setHistorySharing(sharing)
+                                }
+                            }
+                        )
+                    ) {
+                        MacPopUpOption("Off", value: BridgeHistorySharing.off)
+                        MacPopUpOption(
+                            "Only me",
+                            value: BridgeHistorySharing.private
+                        )
+                        MacPopUpOption(
+                            "Everyone",
+                            value: BridgeHistorySharing.household
+                        )
+                    }
+                    .disabled(task != nil)
                 }
-                .disabled(task != nil)
             }
             if let me = selfPerson {
                 PageLinkRow(
@@ -503,7 +513,7 @@ extension PeopleAndDevicesPage {
                 LabeledContent {
                     if device.canRemove {
                         MacMoreMenu {
-                            Button("Remove…") {
+                            MacMenuItem("Remove…") {
                                 removal = .device(device, own: member.isSelf)
                             }
                         }

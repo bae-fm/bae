@@ -141,7 +141,7 @@ private struct SavedCodeRow: View {
                     .buttonStyle(.bordered)
             }
             MacMoreMenu {
-                Button("Delete…", action: onDelete)
+                MacMenuItem("Delete…", action: onDelete)
             }
         }
         .padding(.horizontal, ThemeSpace.group)

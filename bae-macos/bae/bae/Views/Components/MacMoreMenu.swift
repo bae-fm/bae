@@ -3,25 +3,25 @@ import SwiftUI
 
 /// The ⋯ button of a row, with the row's actions in its menu: a row offers
 /// its actions here, not as a button of each.
-struct MacMoreMenu<Items: View>: View {
-    @ViewBuilder
-    let items: Items
+struct MacMoreMenu: View {
+    let items: () -> [MacMenuEntry]
+
+    init(@MacMenuBuilder items: @escaping () -> [MacMenuEntry]) {
+        self.items = items
+    }
 
     var body: some View {
-        Menu {
-            items
-        } label: {
+        MacMenuButton(content: items) {
             Image(systemName: "ellipsis")
                 // The design draws the dots at 15, a size above the icon roles.
                 .font(.system(size: 15, weight: ThemeIcon.medium.weight))
+                .foregroundStyle(.secondary)
                 .frame(
                     width: ThemeSize.hitTarget,
                     height: ThemeSize.hitTarget
                 )
+                .contentShape(Rectangle())
         }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
-        .tint(.secondary)
         .fixedSize()
         .accessibilityLabel(Text("More"))
     }

@@ -424,22 +424,40 @@ extension Notice {
             .disabled(action.isDisabled)
             .keyboardShortcut(action.shortcut)
         case .menu(let choices):
-            colouredButton(
-                Menu {
-                    ForEach(choices.indices, id: \.self) { index in
-                        Button(
-                            choices[index].title,
-                            action: choices[index].perform
-                        )
+            #if os(macOS)
+                colouredButton(
+                    MacMenuButton(bordered: true) {
+                        for choice in choices {
+                            MacMenuItem(
+                                verbatim: choice.title,
+                                action: choice.perform
+                            )
+                        }
+                    } label: {
+                        action.title
                     }
-                } label: {
-                    action.title
-                }
-                .menuStyle(.button)
-                .fixedSize(),
-                borderless: false
-            )
-            .disabled(action.isDisabled)
+                    .fixedSize(),
+                    borderless: false
+                )
+                .disabled(action.isDisabled)
+            #else
+                colouredButton(
+                    Menu {
+                        ForEach(choices.indices, id: \.self) { index in
+                            Button(
+                                choices[index].title,
+                                action: choices[index].perform
+                            )
+                        }
+                    } label: {
+                        action.title
+                    }
+                    .menuStyle(.button)
+                    .fixedSize(),
+                    borderless: false
+                )
+                .disabled(action.isDisabled)
+            #endif
         }
     }
 

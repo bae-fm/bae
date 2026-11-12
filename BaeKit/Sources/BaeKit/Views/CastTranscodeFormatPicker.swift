@@ -31,10 +31,25 @@ public struct CastTranscodeFormatPicker: View {
 
     public var body: some View {
         if Self.isShown(for: configStore.config) {
-            Picker("Convert to", selection: binding) {
-                Text(verbatim: "MP3").tag(BridgeCastTranscodeFormat.mp3)
-                Text("WAV (lossless)").tag(BridgeCastTranscodeFormat.wav)
-            }
+            #if os(macOS)
+                LabeledContent("Convert to") {
+                    MacPopUpButton("Convert to", selection: binding) {
+                        MacPopUpOption(
+                            verbatim: "MP3",
+                            value: BridgeCastTranscodeFormat.mp3
+                        )
+                        MacPopUpOption(
+                            "WAV (lossless)",
+                            value: BridgeCastTranscodeFormat.wav
+                        )
+                    }
+                }
+            #else
+                Picker("Convert to", selection: binding) {
+                    Text(verbatim: "MP3").tag(BridgeCastTranscodeFormat.mp3)
+                    Text("WAV (lossless)").tag(BridgeCastTranscodeFormat.wav)
+                }
+            #endif
         }
     }
 

@@ -98,10 +98,17 @@ struct StorageSettingsForm: View {
                                 "Tracks you played from the cloud, and covers and pictures. They download again when needed."
                         )
                     }
-                    Picker("Keep up to", selection: cacheLimit(storage)) {
-                        ForEach(storage.cacheLimits, id: \.choice) { limit in
-                            Text(verbatim: limit.bytes.fileSizeText)
-                                .tag(limit.choice)
+                    LabeledContent("Keep up to") {
+                        MacPopUpButton(
+                            "Keep up to",
+                            selection: cacheLimit(storage)
+                        ) {
+                            for limit in storage.cacheLimits {
+                                MacPopUpOption(
+                                    verbatim: limit.bytes.fileSizeText,
+                                    value: limit.choice
+                                )
+                            }
                         }
                     }
                 }

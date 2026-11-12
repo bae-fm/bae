@@ -134,7 +134,7 @@ struct SavePresetEditor: View {
     }
 
     private var formatPicker: some View {
-        Picker(
+        MacPopUpButton(
             "Format",
             selection: Binding(
                 get: { preset.codec.format },
@@ -153,16 +153,15 @@ struct SavePresetEditor: View {
                 }
             )
         ) {
-            ForEach(Self.formatGroups.indices, id: \.self) { group in
+            for group in Self.formatGroups.indices {
                 if group > 0 {
-                    Divider()
+                    MacMenuDivider()
                 }
-                ForEach(Self.formatGroups[group], id: \.self) { format in
-                    Text(format.label).tag(format)
+                for format in Self.formatGroups[group] {
+                    MacPopUpOption(verbatim: format.label, value: format)
                 }
             }
         }
-        .labelsHidden()
     }
 
     private func commitName() {

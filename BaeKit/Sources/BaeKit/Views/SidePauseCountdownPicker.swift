@@ -30,21 +30,36 @@ public struct SidePauseCountdownPicker: View {
     }
 
     public var body: some View {
-        Picker("Resume automatically", selection: binding) {
-            ForEach(BridgeSidePauseCountdown.offered, id: \.self) {
-                choice in
-                choiceLabel(choice).tag(choice)
+        #if os(macOS)
+            LabeledContent("Resume automatically") {
+                MacPopUpButton("Resume automatically", selection: binding) {
+                    for choice in BridgeSidePauseCountdown.offered {
+                        MacPopUpOption(
+                            verbatim: choiceTitle(choice),
+                            value: choice
+                        )
+                    }
+                }
             }
-        }
-        .disabled(!Self.isEnabled(for: configStore.config))
+            .disabled(!Self.isEnabled(for: configStore.config))
+        #else
+            Picker("Resume automatically", selection: binding) {
+                ForEach(BridgeSidePauseCountdown.offered, id: \.self) {
+                    choice in
+                    Text(choiceTitle(choice)).tag(choice)
+                }
+            }
+            .disabled(!Self.isEnabled(for: configStore.config))
+        #endif
     }
 
-    private func choiceLabel(_ choice: BridgeSidePauseCountdown) -> Text {
+    private func choiceTitle(_ choice: BridgeSidePauseCountdown) -> String {
         guard let seconds = choice.seconds else {
-            return Text("Never")
+            return String(localized: "Never")
         }
-        return Text(
-            "After \(BridgeSidePauseCountdown.label(seconds: seconds))"
+        return String(
+            localized:
+                "After \(BridgeSidePauseCountdown.label(seconds: seconds))"
         )
     }
 

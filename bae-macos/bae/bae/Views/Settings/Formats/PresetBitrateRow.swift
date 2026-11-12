@@ -11,7 +11,7 @@ struct PresetBitrateRow: View {
 
     var body: some View {
         LabeledContent("Bitrate") {
-            Picker(
+            MacPopUpButton(
                 "Bitrate",
                 selection: Binding(
                     get: { bitrate },
@@ -22,11 +22,13 @@ struct PresetBitrateRow: View {
                     }
                 )
             ) {
-                ForEach(accepted, id: \.self) { kbps in
-                    Text("\(Int(kbps)) kbps").tag(kbps)
+                for kbps in accepted {
+                    MacPopUpOption(
+                        verbatim: String(localized: "\(Int(kbps)) kbps"),
+                        value: kbps
+                    )
                 }
             }
-            .labelsHidden()
         }
     }
 }

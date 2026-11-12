@@ -9,7 +9,7 @@ struct PresetBitDepthRow: View {
 
     var body: some View {
         LabeledContent("Bit depth") {
-            Picker(
+            MacPopUpButton(
                 "Bit depth",
                 selection: Binding(
                     get: { bitDepth },
@@ -20,12 +20,15 @@ struct PresetBitDepthRow: View {
                     }
                 )
             ) {
-                Text(BridgeSaveBitDepth.sameAsSource.label)
-                    .tag(BridgeSaveBitDepth.sameAsSource)
-                Text(BridgeSaveBitDepth.bits16.label)
-                    .tag(BridgeSaveBitDepth.bits16)
+                MacPopUpOption(
+                    verbatim: BridgeSaveBitDepth.sameAsSource.label,
+                    value: BridgeSaveBitDepth.sameAsSource
+                )
+                MacPopUpOption(
+                    verbatim: BridgeSaveBitDepth.bits16.label,
+                    value: BridgeSaveBitDepth.bits16
+                )
             }
-            .labelsHidden()
         }
     }
 }
