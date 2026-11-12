@@ -3,9 +3,6 @@ package fm.bae.app.ui.downloads
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -18,6 +15,7 @@ import fm.bae.app.countText
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.AndroidSegmentedButtons
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -61,17 +59,12 @@ private fun DownloadConcurrencySelector(
             text = stringResource(R.string.pins_at_once),
             style = ThemeText.body.style,
         )
-        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-            options.forEachIndexed { index, option ->
-                SegmentedButton(
-                    selected = option == value,
-                    onClick = { onSelect(option) },
-                    shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
-                ) {
-                    Text(LocalContext.current.countText(option))
-                }
-            }
-        }
+        val context = LocalContext.current
+        AndroidSegmentedButtons(
+            options = options.map { context.countText(it) },
+            selected = options.indexOf(value),
+            onSelect = { onSelect(options[it]) },
+        )
     }
 }
 

@@ -2912,8 +2912,8 @@ at launch.
 Dan joins. In People, Ana taps **Invite** and enters his Dropbox email, with a
 line saying the library is shared with that Dropbox account so he can join, and
 taps **Create invite**. The form asks for no name (Dan types his own when he
-joins), no role (everyone joins as a member) and no lifetime (an invite lasts a
-week). Her laptop records the
+joins), but for his role, Member or Admin, and how long the invite lasts, 7 days
+or 30 days; it starts on Member and 7 days. Her laptop records the
 invite in one write, offline too, and shows it at once, marked as sharing
 access: sync then checks it again and shares the store's folder with his
 account, and the invite's code shows once it has. On S3 the form asks for an

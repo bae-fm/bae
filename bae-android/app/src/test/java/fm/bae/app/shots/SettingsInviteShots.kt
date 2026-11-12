@@ -119,7 +119,7 @@ private fun Invite(
 private fun InviteForm(
     storage: BridgeStorageLocation,
     input: InviteAccessInput,
-) = inviteFormParts(storage = storage, error = null, busy = false, onCreate = {}, onDismiss = {}, input = input)
+) = inviteFormParts(storage = storage, error = null, busy = false, onCreate = { _, _, _ -> }, onDismiss = {}, input = input)
 
 @Composable
 private fun InviteDialog(

@@ -97,10 +97,14 @@ async fn inviter_named(
     membership: &bae_people::Membership,
 ) -> Result<String, bae_people::membership::InviteError> {
     let id = membership
-        .invite_person(coven::InviteAccess::S3AccessKey {
-            access_key_id: "guest-key".into(),
-            secret_access_key: coven::SecretText::new("guest-secret".into()),
-        })
+        .invite_person(
+            coven::MemberRole::Member,
+            coven::InviteAccess::S3AccessKey {
+                access_key_id: "guest-key".into(),
+                secret_access_key: coven::SecretText::new("guest-secret".into()),
+            },
+            coven::InviteLifetime::SevenDays,
+        )
         .await?;
     let code = granted_code(owner, id).await;
     let Ok(coven::CodeInfo::Invite(info)) = coven::decode_code_info(&code) else {
@@ -157,41 +161,49 @@ fn an_invite_names_its_inviter_by_the_name_the_person_goes_by() {
     });
 }
 
-/// An invite made through `Membership` is for a new person and lasts a week:
-/// the invite form asks for neither a role nor a lifetime.
+/// An invite made through `Membership` is for a new person and lasts as long
+/// as the form chose.
 #[test]
-fn an_invite_is_for_a_new_person_and_lasts_a_week() {
-    on_app_runtime(async {
-        let household = Household::new().await;
-        let store = bae_store::test_devices::store_under(
-            household.owner.clone(),
-            household.sources.clock().clone(),
-        );
-        let membership = bae_people::Membership::new(store);
-        let before = household.sources.clock().now();
+fn an_invite_is_for_a_new_person_and_lasts_the_lifetime_chosen() {
+    for (lifetime, days) in
+        [(coven::InviteLifetime::SevenDays, 7), (coven::InviteLifetime::ThirtyDays, 30)]
+    {
+        on_app_runtime(async move {
+            let household = Household::new().await;
+            let store = bae_store::test_devices::store_under(
+                household.owner.clone(),
+                household.sources.clock().clone(),
+            );
+            let membership = bae_people::Membership::new(store);
+            let before = household.sources.clock().now();
 
-        membership
-            .invite_person(coven::InviteAccess::S3AccessKey {
-                access_key_id: "guest-key".into(),
-                secret_access_key: coven::SecretText::new("guest-secret".into()),
-            })
-            .await
-            .unwrap();
+            membership
+                .invite_person(
+                    coven::MemberRole::Admin,
+                    coven::InviteAccess::S3AccessKey {
+                        access_key_id: "guest-key".into(),
+                        secret_access_key: coven::SecretText::new("guest-secret".into()),
+                    },
+                    lifetime,
+                )
+                .await
+                .unwrap();
 
-        let open = household.owner.read(coven::Invite::list).await.unwrap();
-        let [invite] = open.as_slice() else {
-            panic!("one open invite: {open:?}");
-        };
-        let week = std::time::Duration::from_secs(7 * 24 * 60 * 60);
-        assert_eq!(invite.kind, coven::InviteKind::NewPerson);
-        assert!(invite.expires_at >= before + week, "{:?}", invite.expires_at);
-        assert!(
-            invite.expires_at <= before + week + std::time::Duration::from_secs(60),
-            "{:?}",
-            invite.expires_at
-        );
-        household.owner.close().await.unwrap();
-    });
+            let open = household.owner.read(coven::Invite::list).await.unwrap();
+            let [invite] = open.as_slice() else {
+                panic!("one open invite: {open:?}");
+            };
+            let lasts = std::time::Duration::from_secs(days * 24 * 60 * 60);
+            assert_eq!(invite.kind, coven::InviteKind::NewPerson);
+            assert!(invite.expires_at >= before + lasts, "{:?}", invite.expires_at);
+            assert!(
+                invite.expires_at <= before + lasts + std::time::Duration::from_secs(60),
+                "{:?}",
+                invite.expires_at
+            );
+            household.owner.close().await.unwrap();
+        });
+    }
 }
 
 /// A grant Dropbox refuses for good ends the invite: People lists it as a
@@ -220,7 +232,10 @@ fn an_invite_dropbox_refuses_to_share_is_listed_as_refused_until_dismissed() {
                 ..coven::Faults::none()
             })
             .await;
-        membership.invite_person(access()).await.unwrap();
+        membership
+            .invite_person(coven::MemberRole::Member, access(), coven::InviteLifetime::SevenDays)
+            .await
+            .unwrap();
         let listed = bae_library::followed::value_matching(&mut invites, |entries| {
             entries.iter().any(|entry| matches!(entry, bae_views::InviteEntry::Refused(_)))
         })
@@ -233,7 +248,10 @@ fn an_invite_dropbox_refuses_to_share_is_listed_as_refused_until_dismissed() {
 
         // An open invite's operation is no refused invite's.
         household.storage.set_faults(coven::Faults::none()).await;
-        membership.invite_person(access()).await.unwrap();
+        membership
+            .invite_person(coven::MemberRole::Member, access(), coven::InviteLifetime::SevenDays)
+            .await
+            .unwrap();
         let both = bae_library::followed::value_matching(&mut invites, |entries| {
             entries.iter().any(|entry| matches!(entry, bae_views::InviteEntry::Open(_)))
         })
@@ -376,7 +394,7 @@ impl Household {
         let (id, member, _operation) = Box::pin(self.owner.create_invite(
             target,
             access,
-            coven::InviteLifetime::Day,
+            coven::InviteLifetime::SevenDays,
             "Ana".into(),
         ))
         .await

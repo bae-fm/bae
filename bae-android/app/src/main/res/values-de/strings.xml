@@ -356,6 +356,9 @@
     <string name="invite_email_help_onedrive">Die Bibliothek wird mit diesem Microsoft-Konto geteilt, damit die Person beitreten kann.</string>
     <string name="invite_email_help_icloud">Die Bibliothek wird mit diesem Apple-Konto geteilt, damit die Person beitreten kann.</string>
     <string name="invite_create">Einladung erstellen</string>
+    <string name="invite_lasts">Einladung gilt</string>
+    <string name="invite_lasts_7_days">7 Tage</string>
+    <string name="invite_lasts_30_days">30 Tage</string>
     <string name="invite_title">Einladung</string>
     <string name="invite_cancel">Einladung zurückziehen</string>
     <string name="invite_share">Teilen</string>

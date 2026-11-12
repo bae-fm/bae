@@ -74,3 +74,11 @@ fn an_invite_access_crosses_as_covens() {
         coven::InviteAccess::ProviderAccount { email } if email == "dan@example.com"
     ));
 }
+
+/// The invite's lifetime and role cross as coven's.
+#[test]
+fn an_invite_lifetime_crosses_as_covens() {
+    assert_eq!(BridgeInviteLifetime::SevenDays.into_core(), coven::InviteLifetime::SevenDays);
+    assert_eq!(BridgeInviteLifetime::ThirtyDays.into_core(), coven::InviteLifetime::ThirtyDays);
+    assert_eq!(BridgeMemberRole::Admin.into_core(), coven::MemberRole::Admin);
+}

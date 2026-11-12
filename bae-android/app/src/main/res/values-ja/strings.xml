@@ -348,6 +348,9 @@
     <string name="invite_email_help_onedrive">ライブラリはこのMicrosoftアカウントと共有され、参加できるようになります。</string>
     <string name="invite_email_help_icloud">ライブラリはこのAppleアカウントと共有され、参加できるようになります。</string>
     <string name="invite_create">招待を作成</string>
+    <string name="invite_lasts">招待の有効期間</string>
+    <string name="invite_lasts_7_days">7日間</string>
+    <string name="invite_lasts_30_days">30日間</string>
     <string name="invite_title">招待</string>
     <string name="invite_cancel">招待を取り消す</string>
     <string name="invite_share">共有</string>

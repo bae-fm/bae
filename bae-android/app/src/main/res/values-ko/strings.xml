@@ -348,6 +348,9 @@
     <string name="invite_email_help_onedrive">이 Microsoft 계정과 라이브러리를 공유하여 참여할 수 있게 합니다.</string>
     <string name="invite_email_help_icloud">이 Apple 계정과 라이브러리를 공유하여 참여할 수 있게 합니다.</string>
     <string name="invite_create">초대 만들기</string>
+    <string name="invite_lasts">초대 유효 기간</string>
+    <string name="invite_lasts_7_days">7일</string>
+    <string name="invite_lasts_30_days">30일</string>
     <string name="invite_title">초대</string>
     <string name="invite_cancel">초대 취소</string>
     <string name="invite_share">공유</string>

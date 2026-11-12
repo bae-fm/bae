@@ -9,6 +9,15 @@ pub enum BridgeMemberRole {
 mirror_enum! { BridgeMemberRole = coven::MemberRole,
     from_core: pub(crate) fn, into_core: pub(crate) fn, variants: { Admin, Member },
 }
+/// How long an invite stays open after it is made.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeInviteLifetime {
+    SevenDays,
+    ThirtyDays,
+}
+mirror_enum! { BridgeInviteLifetime = coven::InviteLifetime,
+    into_core: pub(crate) fn, variants: { SevenDays, ThirtyDays },
+}
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeFormerDeviceState {
     Removed,

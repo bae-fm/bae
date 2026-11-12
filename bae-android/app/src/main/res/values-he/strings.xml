@@ -364,6 +364,9 @@
     <string name="invite_email_help_onedrive">הספרייה משותפת עם חשבון Microsoft זה כדי שיוכלו להצטרף.</string>
     <string name="invite_email_help_icloud">הספרייה משותפת עם חשבון Apple זה כדי שיוכלו להצטרף.</string>
     <string name="invite_create">יצירת הזמנה</string>
+    <string name="invite_lasts">תוקף ההזמנה</string>
+    <string name="invite_lasts_7_days">7 ימים</string>
+    <string name="invite_lasts_30_days">30 יום</string>
     <string name="invite_title">הזמנה</string>
     <string name="invite_cancel">ביטול ההזמנה</string>
     <string name="invite_share">שיתוף</string>

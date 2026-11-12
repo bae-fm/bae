@@ -354,6 +354,9 @@
     <string name="invite_email_help_onedrive">Η βιβλιοθήκη μοιράζεται με αυτόν τον λογαριασμό Microsoft, ώστε το άτομο να μπορέσει να συμμετάσχει.</string>
     <string name="invite_email_help_icloud">Η βιβλιοθήκη μοιράζεται με αυτόν τον λογαριασμό Apple, ώστε το άτομο να μπορέσει να συμμετάσχει.</string>
     <string name="invite_create">Δημιουργία πρόσκλησης</string>
+    <string name="invite_lasts">Η πρόσκληση ισχύει</string>
+    <string name="invite_lasts_7_days">7 ημέρες</string>
+    <string name="invite_lasts_30_days">30 ημέρες</string>
     <string name="invite_title">Πρόσκληση</string>
     <string name="invite_cancel">Ακύρωση πρόσκλησης</string>
     <string name="invite_share">Κοινοποίηση</string>

@@ -348,6 +348,9 @@
     <string name="invite_email_help_onedrive">資料庫將與此 Microsoft 帳號共享，對方即可加入。</string>
     <string name="invite_email_help_icloud">資料庫將與此 Apple 帳號共享，對方即可加入。</string>
     <string name="invite_create">建立邀請</string>
+    <string name="invite_lasts">邀請有效期</string>
+    <string name="invite_lasts_7_days">7 天</string>
+    <string name="invite_lasts_30_days">30 天</string>
     <string name="invite_title">邀請</string>
     <string name="invite_cancel">取消邀請</string>
     <string name="invite_share">分享</string>

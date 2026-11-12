@@ -37,11 +37,13 @@ public final class Sync: Sendable, Observable {
     public let acknowledgeAdminChange: @Sendable (Int64) async throws -> Void
     /// Dismiss an invite a sharing refusal ended, by its operation.
     public let dismissRefusedInvite: @Sendable (Int64) async throws -> Void
-    /// Invite a person as a member, with the access they reach storage with,
-    /// for a week; answers the new invite's id, which the open invites list
-    /// from its write on. The person types their own name when they join.
+    /// Invite a person in the role chosen, with the access they reach storage
+    /// with, for the lifetime chosen; answers the new invite's id, which the
+    /// open invites list from its write on. The person types their own name
+    /// when they join.
     public let invitePerson:
-        @Sendable (BridgeInviteAccess) async throws -> String
+        @Sendable (BridgeMemberRole, BridgeInviteAccess, BridgeInviteLifetime)
+            async throws -> String
     public let approveJoinRequest:
         @Sendable (BridgeJoinRequest) async throws -> Void
     public let declineJoinRequest:
@@ -113,8 +115,10 @@ public final class Sync: Sendable, Observable {
             @escaping @Sendable (Int64) async throws -> Void =
             { _ in throw StubError.notImplemented },
         invitePerson:
-            @escaping @Sendable (BridgeInviteAccess) async throws -> String = {
-                _ in throw StubError.notImplemented
+            @escaping @Sendable (
+                BridgeMemberRole, BridgeInviteAccess, BridgeInviteLifetime
+            ) async throws -> String = { _, _, _ in
+                throw StubError.notImplemented
             },
         approveJoinRequest:
             @escaping @Sendable (BridgeJoinRequest) async throws -> Void = {
@@ -234,7 +238,7 @@ public final class Sync: Sendable, Observable {
             dismissRefusedInvite: {
                 try await handle.dismissRefusedInvite(operation: $0)
             },
-            invitePerson: { try await handle.invitePerson(access: $0) },
+            invitePerson: handle.invitePerson,
             approveJoinRequest: {
                 try await handle.approveJoinRequest(request: $0)
             },

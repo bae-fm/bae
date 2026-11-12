@@ -24,8 +24,8 @@ enum InviteStorage {
 }
 
 /// An admin invites a person: the account they share the library with, or on
-/// S3 a key made for them or this device's own. They join as a member, and the
-/// invite lasts a week. The invited person types their own name when they
+/// S3 a key made for them or this device's own, the role they join in and how
+/// long the invite lasts. The invited person types their own name when they
 /// join. `onCreated` receives the new invite's id, for People to show its
 /// code.
 struct InvitePersonSheet: View {
@@ -45,6 +45,10 @@ struct InvitePersonSheet: View {
     private var secretAccessKey = ""
     @State
     private var usesOwnKey = false
+    @State
+    private var role = BridgeMemberRole.member
+    @State
+    private var lifetime = BridgeInviteLifetime.sevenDays
     @State
     private var task: Task<Void, Never>?
     @State
@@ -82,6 +86,8 @@ struct InvitePersonSheet: View {
                     accessKeyId: $accessKeyId,
                     secretAccessKey: $secretAccessKey,
                     usesOwnKey: $usesOwnKey,
+                    role: $role,
+                    lifetime: $lifetime,
                     error: error,
                     canCreate: access != nil && task == nil,
                     onCreate: create,
@@ -98,7 +104,7 @@ struct InvitePersonSheet: View {
         task = Task {
             defer { task = nil }
             do {
-                onCreated(try await sync.invitePerson(access))
+                onCreated(try await sync.invitePerson(role, access, lifetime))
             }
             catch is CancellationError {
                 logger.debug("invite creation cancelled")
@@ -114,7 +120,8 @@ struct InvitePersonSheet: View {
 }
 
 /// The invite form: one field for the account email, or on S3 the two key
-/// fields with a line saying why, and Create invite. On S3 a button beside
+/// fields with a line saying why, the role and how long the invite lasts, and
+/// Create invite. On S3 a button beside
 /// the footer switches between a key made for the invited person and this
 /// device's own.
 struct InvitePersonForm: View {
@@ -127,6 +134,10 @@ struct InvitePersonForm: View {
     var secretAccessKey: String
     @Binding
     var usesOwnKey: Bool
+    @Binding
+    var role: BridgeMemberRole
+    @Binding
+    var lifetime: BridgeInviteLifetime
     let error: DisplayError?
     let canCreate: Bool
     let onCreate: () -> Void
@@ -139,6 +150,7 @@ struct InvitePersonForm: View {
         MacSheet("Invite a person", width: 440) {
             VStack(alignment: .leading, spacing: ThemeSpace.related) {
                 fields
+                choices
                 if let error {
                     Notice(error: error)
                 }
@@ -214,6 +226,27 @@ struct InvitePersonForm: View {
                             .boxedTextField()
                     }
                 }
+            }
+        }
+    }
+
+    private var choices: some View {
+        FieldColumn {
+            MacTextField("Role") {
+                Picker("Role", selection: $role) {
+                    Text("Member").tag(BridgeMemberRole.member)
+                    Text("Admin").tag(BridgeMemberRole.admin)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+            }
+            MacTextField("Invite lasts") {
+                Picker("Invite lasts", selection: $lifetime) {
+                    Text("7 days").tag(BridgeInviteLifetime.sevenDays)
+                    Text("30 days").tag(BridgeInviteLifetime.thirtyDays)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
             }
         }
     }

@@ -354,6 +354,9 @@
     <string name="invite_email_help_onedrive">Biblioteket deles med denne Microsoft-konto, så personen kan blive med.</string>
     <string name="invite_email_help_icloud">Biblioteket deles med denne Apple-konto, så personen kan blive med.</string>
     <string name="invite_create">Opret invitation</string>
+    <string name="invite_lasts">Invitationen varer</string>
+    <string name="invite_lasts_7_days">7 dage</string>
+    <string name="invite_lasts_30_days">30 dage</string>
     <string name="invite_title">Invitation</string>
     <string name="invite_cancel">Annuller invitation</string>
     <string name="invite_share">Del</string>

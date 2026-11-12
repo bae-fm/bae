@@ -348,6 +348,9 @@
     <string name="invite_email_help_onedrive">资料库将与此 Microsoft 账户共享，对方即可加入。</string>
     <string name="invite_email_help_icloud">资料库将与此 Apple 账户共享，对方即可加入。</string>
     <string name="invite_create">创建邀请</string>
+    <string name="invite_lasts">邀请有效期</string>
+    <string name="invite_lasts_7_days">7 天</string>
+    <string name="invite_lasts_30_days">30 天</string>
     <string name="invite_title">邀请</string>
     <string name="invite_cancel">取消邀请</string>
     <string name="invite_share">分享</string>

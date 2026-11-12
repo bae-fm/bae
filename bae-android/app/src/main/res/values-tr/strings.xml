@@ -356,6 +356,9 @@
     <string name="invite_email_help_onedrive">Kitaplık, kişinin katılabilmesi için bu Microsoft hesabıyla paylaşılır.</string>
     <string name="invite_email_help_icloud">Kitaplık, kişinin katılabilmesi için bu Apple hesabıyla paylaşılır.</string>
     <string name="invite_create">Davet oluştur</string>
+    <string name="invite_lasts">Davet süresi</string>
+    <string name="invite_lasts_7_days">7 gün</string>
+    <string name="invite_lasts_30_days">30 gün</string>
     <string name="invite_title">Davet</string>
     <string name="invite_cancel">Daveti iptal et</string>
     <string name="invite_share">Paylaş</string>

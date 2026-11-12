@@ -356,6 +356,9 @@
     <string name="invite_email_help_onedrive">De bibliotheek wordt gedeeld met dit Microsoft-account zodat die persoon kan meedoen.</string>
     <string name="invite_email_help_icloud">De bibliotheek wordt gedeeld met dit Apple-account zodat die persoon kan meedoen.</string>
     <string name="invite_create">Uitnodiging maken</string>
+    <string name="invite_lasts">Uitnodiging geldig</string>
+    <string name="invite_lasts_7_days">7 dagen</string>
+    <string name="invite_lasts_30_days">30 dagen</string>
     <string name="invite_title">Uitnodiging</string>
     <string name="invite_cancel">Uitnodiging annuleren</string>
     <string name="invite_share">Delen</string>

@@ -364,6 +364,9 @@
     <string name="invite_email_help_onedrive">Fonoteka se dijeli s ovim računom Microsoft kako bi se osoba mogla pridružiti.</string>
     <string name="invite_email_help_icloud">Fonoteka se dijeli s ovim računom Apple kako bi se osoba mogla pridružiti.</string>
     <string name="invite_create">Stvori pozivnicu</string>
+    <string name="invite_lasts">Pozivnica vrijedi</string>
+    <string name="invite_lasts_7_days">7 dana</string>
+    <string name="invite_lasts_30_days">30 dana</string>
     <string name="invite_title">Pozivnica</string>
     <string name="invite_cancel">Otkaži pozivnicu</string>
     <string name="invite_share">Podijeli</string>

@@ -372,6 +372,9 @@
     <string name="invite_email_help_onedrive">Knihovna se sdílí s tímto účtem Microsoft, aby se k ní mohl připojit dotyčný.</string>
     <string name="invite_email_help_icloud">Knihovna se sdílí s tímto účtem Apple, aby se k ní mohl připojit dotyčný.</string>
     <string name="invite_create">Vytvořit pozvánku</string>
+    <string name="invite_lasts">Pozvánka platí</string>
+    <string name="invite_lasts_7_days">7 dní</string>
+    <string name="invite_lasts_30_days">30 dní</string>
     <string name="invite_title">Pozvánka</string>
     <string name="invite_cancel">Zrušit pozvánku</string>
     <string name="invite_share">Sdílet</string>

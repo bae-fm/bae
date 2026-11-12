@@ -362,6 +362,9 @@
     <string name="invite_email_help_onedrive">Biblioteca este partajată cu acest cont Microsoft pentru ca persoana să se poată alătura.</string>
     <string name="invite_email_help_icloud">Biblioteca este partajată cu acest cont Apple pentru ca persoana să se poată alătura.</string>
     <string name="invite_create">Creează invitația</string>
+    <string name="invite_lasts">Invitația este valabilă</string>
+    <string name="invite_lasts_7_days">7 zile</string>
+    <string name="invite_lasts_30_days">30 de zile</string>
     <string name="invite_title">Invitație</string>
     <string name="invite_cancel">Anulează invitația</string>
     <string name="invite_share">Distribuie</string>

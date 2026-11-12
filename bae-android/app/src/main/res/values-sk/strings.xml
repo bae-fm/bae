@@ -370,6 +370,9 @@
     <string name="invite_email_help_onedrive">Knižnica sa zdieľa s týmto účtom Microsoft, aby sa k nej mohla osoba pripojiť.</string>
     <string name="invite_email_help_icloud">Knižnica sa zdieľa s týmto účtom Apple, aby sa k nej mohla osoba pripojiť.</string>
     <string name="invite_create">Vytvoriť pozvánku</string>
+    <string name="invite_lasts">Pozvánka platí</string>
+    <string name="invite_lasts_7_days">7 dní</string>
+    <string name="invite_lasts_30_days">30 dní</string>
     <string name="invite_title">Pozvánka</string>
     <string name="invite_cancel">Zrušiť pozvánku</string>
     <string name="invite_share">Zdieľať</string>

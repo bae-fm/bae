@@ -362,6 +362,9 @@
     <string name="invite_email_help_onedrive">La libreria è condivisa con questo account Microsoft così che la persona possa unirsi.</string>
     <string name="invite_email_help_icloud">La libreria è condivisa con questo account Apple così che la persona possa unirsi.</string>
     <string name="invite_create">Crea invito</string>
+    <string name="invite_lasts">L’invito dura</string>
+    <string name="invite_lasts_7_days">7 giorni</string>
+    <string name="invite_lasts_30_days">30 giorni</string>
     <string name="invite_title">Invito</string>
     <string name="invite_cancel">Annulla invito</string>
     <string name="invite_share">Condividi</string>

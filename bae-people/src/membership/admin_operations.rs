@@ -241,23 +241,23 @@ pub enum InviteError {
 }
 
 impl Membership {
-    /// Invite a new person, as a member, with the access chosen, for a week.
+    /// Invite a new person, in the role and for the lifetime chosen, with the
+    /// access chosen.
     /// The invite names its inviter by the name this person goes by, which
     /// the joining person's screens show; it carries no name for the invited
     /// person, who types theirs (§5.4, §5.6).
     pub async fn invite_person(
         &self,
+        role: coven::MemberRole,
         access: coven::InviteAccess,
+        lifetime: coven::InviteLifetime,
     ) -> Result<coven::InviteId, InviteError> {
         let inviter = self
             .store
             .read(|sql| Ok(crate::people::name_this_person_goes_by(&sql)?))
             .await?
             .ok_or(InviteError::InviterUnnamed)?;
-        Ok(self
-            .store
-            .invite_person(coven::MemberRole::Member, access, coven::InviteLifetime::Week, inviter)
-            .await?)
+        Ok(self.store.invite_person(role, access, lifetime, inviter).await?)
     }
 }
 

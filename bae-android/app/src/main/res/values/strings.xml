@@ -410,6 +410,10 @@
     <string name="invite_email_help_onedrive">The library is shared with this Microsoft account so they can join.</string>
     <string name="invite_email_help_icloud">The library is shared with this Apple Account so they can join.</string>
     <string name="invite_create">Create invite</string>
+    <!-- The label over the choice of how long the invite lasts, and its two choices -->
+    <string name="invite_lasts">Invite lasts</string>
+    <string name="invite_lasts_7_days">7 days</string>
+    <string name="invite_lasts_30_days">30 days</string>
     <string name="invite_title">Invite</string>
     <!-- %1$s = the date and time the invite expires -->
     <string name="invite_cancel">Cancel invite</string>

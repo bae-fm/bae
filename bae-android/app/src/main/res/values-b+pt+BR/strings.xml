@@ -362,6 +362,9 @@
     <string name="invite_email_help_onedrive">A biblioteca é compartilhada com esta conta Microsoft para que a pessoa possa entrar.</string>
     <string name="invite_email_help_icloud">A biblioteca é compartilhada com esta conta Apple para que a pessoa possa entrar.</string>
     <string name="invite_create">Criar convite</string>
+    <string name="invite_lasts">O convite dura</string>
+    <string name="invite_lasts_7_days">7 dias</string>
+    <string name="invite_lasts_30_days">30 dias</string>
     <string name="invite_title">Convite</string>
     <string name="invite_cancel">Cancelar convite</string>
     <string name="invite_share">Compartilhar</string>

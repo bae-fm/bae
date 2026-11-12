@@ -388,6 +388,9 @@
     <string name="invite_email_help_onedrive">تتم مشاركة المكتبة مع حساب Microsoft هذا ليتمكن من الانضمام.</string>
     <string name="invite_email_help_icloud">تتم مشاركة المكتبة مع حساب Apple هذا ليتمكن من الانضمام.</string>
     <string name="invite_create">إنشاء دعوة</string>
+    <string name="invite_lasts">مدة الدعوة</string>
+    <string name="invite_lasts_7_days">7 أيام</string>
+    <string name="invite_lasts_30_days">30 يومًا</string>
     <string name="invite_title">دعوة</string>
     <string name="invite_cancel">إلغاء الدعوة</string>
     <string name="invite_share">مشاركة</string>

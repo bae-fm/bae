@@ -354,6 +354,9 @@
     <string name="invite_email_help_onedrive">A könyvtár meg lesz osztva ezzel a Microsoft-fiókkal, hogy az illető csatlakozhasson.</string>
     <string name="invite_email_help_icloud">A könyvtár meg lesz osztva ezzel a Apple-fiókkal, hogy az illető csatlakozhasson.</string>
     <string name="invite_create">Meghívó létrehozása</string>
+    <string name="invite_lasts">A meghívó érvényes</string>
+    <string name="invite_lasts_7_days">7 napig</string>
+    <string name="invite_lasts_30_days">30 napig</string>
     <string name="invite_title">Meghívó</string>
     <string name="invite_cancel">Meghívó visszavonása</string>
     <string name="invite_share">Megosztás</string>

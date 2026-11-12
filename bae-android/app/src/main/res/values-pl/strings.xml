@@ -372,6 +372,9 @@
     <string name="invite_email_help_onedrive">Biblioteka jest udostępniana temu kontu Microsoft, aby ta osoba mogła dołączyć.</string>
     <string name="invite_email_help_icloud">Biblioteka jest udostępniana temu kontu Apple, aby ta osoba mogła dołączyć.</string>
     <string name="invite_create">Utwórz zaproszenie</string>
+    <string name="invite_lasts">Zaproszenie ważne</string>
+    <string name="invite_lasts_7_days">7 dni</string>
+    <string name="invite_lasts_30_days">30 dni</string>
     <string name="invite_title">Zaproszenie</string>
     <string name="invite_cancel">Anuluj zaproszenie</string>
     <string name="invite_share">Udostępnij</string>

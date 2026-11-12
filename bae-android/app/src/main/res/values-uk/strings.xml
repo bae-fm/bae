@@ -372,6 +372,9 @@
     <string name="invite_email_help_onedrive">Бібліотекою діляться з цим обліковим записом Microsoft, щоб людина могла приєднатися.</string>
     <string name="invite_email_help_icloud">Бібліотекою діляться з цим обліковим записом Apple, щоб людина могла приєднатися.</string>
     <string name="invite_create">Створити запрошення</string>
+    <string name="invite_lasts">Запрошення діє</string>
+    <string name="invite_lasts_7_days">7 днів</string>
+    <string name="invite_lasts_30_days">30 днів</string>
     <string name="invite_title">Запрошення</string>
     <string name="invite_cancel">Скасувати запрошення</string>
     <string name="invite_share">Поділитися</string>

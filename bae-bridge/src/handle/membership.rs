@@ -128,7 +128,7 @@ forward! {async this => {
     fn confirm_device_cut_off(device:u64)->BridgeDeviceCutOff {Ok(BridgeDeviceCutOff::from_core(this.services.confirm_device_cut_off(coven::DeviceId(device)).await?))}
     fn acknowledge_admin_change(operation:i64)->() {Ok(this.services.acknowledge_admin_change(coven::OperationId(operation)).await?)}
     fn set_member_role(member:String,role:BridgeMemberRole)->() {Ok(this.services.set_member_role(&crate::from_app::member(&member)?,role.into_core()).await?)}
-    fn invite_person(access:BridgeInviteAccess)->String {Ok(this.services.invite_person(access.into_core()).await?.0.to_string())}
+    fn invite_person(role:BridgeMemberRole,access:BridgeInviteAccess,lifetime:BridgeInviteLifetime)->String {Ok(this.services.invite_person(role.into_core(),access.into_core(),lifetime.into_core()).await?.0.to_string())}
     fn dismiss_refused_invite(operation:i64)->() {Ok(this.services.dismiss_refused_invite(coven::OperationId(operation)).await?)}
     fn approve_join_request(request:Arc<BridgeJoinRequest>)->() {Ok(this.services.approve_join_request(&request.request).await?)}
     fn decline_join_request(request:Arc<BridgeJoinRequest>)->() {Ok(this.services.decline_join_request(&request.request).await?)}

@@ -356,6 +356,9 @@
     <string name="invite_email_help_onedrive">Библиотеката се споделя с този акаунт в Microsoft, за да може човекът да се присъедини.</string>
     <string name="invite_email_help_icloud">Библиотеката се споделя с този акаунт в Apple, за да може човекът да се присъедини.</string>
     <string name="invite_create">Създаване на покана</string>
+    <string name="invite_lasts">Поканата важи</string>
+    <string name="invite_lasts_7_days">7 дни</string>
+    <string name="invite_lasts_30_days">30 дни</string>
     <string name="invite_title">Покана</string>
     <string name="invite_cancel">Отмяна на поканата</string>
     <string name="invite_share">Споделяне</string>

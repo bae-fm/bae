@@ -30,6 +30,7 @@ import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.AndroidNotice
+import fm.bae.app.ui.components.AndroidSegmentedButtons
 import fm.bae.app.ui.components.ButtonAlign
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ButtonTone
@@ -39,14 +40,16 @@ import fm.bae.app.ui.components.S3KeyFields
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeInviteAccess
+import uniffi.bae_bridge.BridgeInviteLifetime
+import uniffi.bae_bridge.BridgeMemberRole
 import uniffi.bae_bridge.BridgeStorageLocation
 
 private val logger = BaeLogger("bae.InviteDialog")
 
 /**
  * Invite a person: the access they reach the storage with, an S3 access key
- * or the provider account they sign in with. They join as a member, and the
- * invite lasts a week. The person types their own name when they join.
+ * or the provider account they sign in with, the role they join in, and how long the
+ * invite lasts. The person types their own name when they join.
  * [onCreated] receives the new invite's id, for the people screen to show it.
  */
 @Composable
@@ -64,12 +67,12 @@ internal fun InviteDialog(
         storage = storage,
         error = error,
         busy = busy,
-        onCreate = { access ->
+        onCreate = { role, access, lifetime ->
             busy = true
             error = null
             scope.launch {
                 performBridgeAction(logger, "invite a person", errors, { error = it }) {
-                    onCreated(session.appHandle.invitePerson(access))
+                    onCreated(session.appHandle.invitePerson(role, access, lifetime))
                 }
                 busy = false
             }
@@ -91,6 +94,12 @@ internal class InviteAccessInput(
     /** Whether the invited person uses this device's own S3 key, instead of one made for them. */
     var usesOwnKey by mutableStateOf(false)
 
+    /** The role the invited person joins in. */
+    var role by mutableStateOf(BridgeMemberRole.MEMBER)
+
+    /** How long the invite stays open. */
+    var lifetime by mutableStateOf(BridgeInviteLifetime.SEVEN_DAYS)
+
     /** The access for [storage], or null while what it needs is incomplete. */
     fun access(storage: BridgeStorageLocation): BridgeInviteAccess? =
         if (storage is BridgeStorageLocation.S3) {
@@ -104,7 +113,7 @@ internal class InviteAccessInput(
         }
 }
 
-/** The form's fields: the storage's access, and any [error]. */
+/** The form's fields: the storage's access, the role and the invite's length, and any [error]. */
 @Composable
 private fun InviteFormFields(
     storage: BridgeStorageLocation?,
@@ -117,17 +126,18 @@ private fun InviteFormFields(
     ) {
         // Where the library is stored is a local read; its fields show once it lands.
         storage?.let { InviteAccessFields(it, input) }
+        InviteChoices(input)
         error?.let { AndroidNotice(it, look = NoticeLook.QUIET) }
     }
 }
 
-/** The invite's access, asked for as the library's storage needs it. */
+/** The invite's access, asked for as the library's storage needs it, with its role and length. */
 @Composable
 internal fun InviteFormDialog(
     storage: BridgeStorageLocation?,
     error: DisplayError?,
     busy: Boolean,
-    onCreate: (BridgeInviteAccess) -> Unit,
+    onCreate: (BridgeMemberRole, BridgeInviteAccess, BridgeInviteLifetime) -> Unit,
     onDismiss: () -> Unit,
 ) {
     AndroidDialog(
@@ -143,7 +153,7 @@ internal fun inviteFormParts(
     storage: BridgeStorageLocation?,
     error: DisplayError?,
     busy: Boolean,
-    onCreate: (BridgeInviteAccess) -> Unit,
+    onCreate: (BridgeMemberRole, BridgeInviteAccess, BridgeInviteLifetime) -> Unit,
     onDismiss: () -> Unit,
     input: InviteAccessInput = remember { InviteAccessInput() },
 ): DialogParts =
@@ -155,7 +165,7 @@ internal fun inviteFormParts(
             AndroidButton(
                 kind = ButtonKind.TEXT,
                 enabled = access != null && !busy,
-                onClick = { access?.let(onCreate) },
+                onClick = { access?.let { onCreate(input.role, it, input.lifetime) } },
             ) {
                 Text(stringResource(R.string.invite_create))
             }
@@ -168,6 +178,32 @@ internal fun inviteFormParts(
             ) { Text(stringResource(R.string.cancel)) }
         },
     )
+
+/** The role the invited person joins in, and how long the invite stays open. */
+@Composable
+private fun InviteChoices(input: InviteAccessInput) {
+    val roles = listOf(BridgeMemberRole.MEMBER, BridgeMemberRole.ADMIN)
+    val lifetimes = listOf(BridgeInviteLifetime.SEVEN_DAYS, BridgeInviteLifetime.THIRTY_DAYS)
+    AndroidSegmentedButtons(
+        options = roles.map { stringResource(it.labelRes()) },
+        selected = roles.indexOf(input.role),
+        onSelect = { input.role = roles[it] },
+        label = stringResource(R.string.people_role),
+    )
+    AndroidSegmentedButtons(
+        options = lifetimes.map { stringResource(it.labelRes()) },
+        selected = lifetimes.indexOf(input.lifetime),
+        onSelect = { input.lifetime = lifetimes[it] },
+        label = stringResource(R.string.invite_lasts),
+    )
+}
+
+/** What an invite's length is called on the form. */
+private fun BridgeInviteLifetime.labelRes(): Int =
+    when (this) {
+        BridgeInviteLifetime.SEVEN_DAYS -> R.string.invite_lasts_7_days
+        BridgeInviteLifetime.THIRTY_DAYS -> R.string.invite_lasts_30_days
+    }
 
 /**
  * The fields for the invited person's access to [storage]: the provider

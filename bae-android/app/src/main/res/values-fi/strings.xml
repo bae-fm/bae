@@ -354,6 +354,9 @@
     <string name="invite_email_help_onedrive">Kirjasto jaetaan tämän Microsoft-tilin kanssa, jotta henkilö voi liittyä.</string>
     <string name="invite_email_help_icloud">Kirjasto jaetaan tämän Apple-tilin kanssa, jotta henkilö voi liittyä.</string>
     <string name="invite_create">Luo kutsu</string>
+    <string name="invite_lasts">Kutsu on voimassa</string>
+    <string name="invite_lasts_7_days">7 päivää</string>
+    <string name="invite_lasts_30_days">30 päivää</string>
     <string name="invite_title">Kutsu</string>
     <string name="invite_cancel">Peruuta kutsu</string>
     <string name="invite_share">Jaa</string>

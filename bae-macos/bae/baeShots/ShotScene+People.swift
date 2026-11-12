@@ -101,7 +101,7 @@ extension ShotScene {
         },
         ShotScene(
             id: "people-and-devices-invite-dropbox",
-            size: CGSize(width: 440, height: 230)
+            size: CGSize(width: 440, height: 300)
         ) {
             ShotStage(
                 InvitePersonForm(
@@ -110,6 +110,8 @@ extension ShotScene {
                     accessKeyId: .constant(""),
                     secretAccessKey: .constant(""),
                     usesOwnKey: .constant(false),
+                    role: .constant(.member),
+                    lifetime: .constant(.sevenDays),
                     error: nil,
                     canCreate: false,
                     onCreate: {},
@@ -119,7 +121,7 @@ extension ShotScene {
         },
         ShotScene(
             id: "people-and-devices-invite-onedrive",
-            size: CGSize(width: 440, height: 230)
+            size: CGSize(width: 440, height: 300)
         ) {
             ShotStage(
                 InvitePersonForm(
@@ -128,6 +130,8 @@ extension ShotScene {
                     accessKeyId: .constant(""),
                     secretAccessKey: .constant(""),
                     usesOwnKey: .constant(false),
+                    role: .constant(.member),
+                    lifetime: .constant(.sevenDays),
                     error: nil,
                     canCreate: false,
                     onCreate: {},
@@ -137,7 +141,7 @@ extension ShotScene {
         },
         ShotScene(
             id: "people-and-devices-invite-icloud",
-            size: CGSize(width: 440, height: 230)
+            size: CGSize(width: 440, height: 300)
         ) {
             ShotStage(
                 InvitePersonForm(
@@ -146,6 +150,8 @@ extension ShotScene {
                     accessKeyId: .constant(""),
                     secretAccessKey: .constant(""),
                     usesOwnKey: .constant(false),
+                    role: .constant(.member),
+                    lifetime: .constant(.sevenDays),
                     error: nil,
                     canCreate: false,
                     onCreate: {},
@@ -155,7 +161,7 @@ extension ShotScene {
         },
         ShotScene(
             id: "people-and-devices-invite-s3",
-            size: CGSize(width: 440, height: 260)
+            size: CGSize(width: 440, height: 330)
         ) {
             ShotStage(
                 InvitePersonForm(
@@ -164,6 +170,8 @@ extension ShotScene {
                     accessKeyId: .constant(""),
                     secretAccessKey: .constant(""),
                     usesOwnKey: .constant(false),
+                    role: .constant(.member),
+                    lifetime: .constant(.sevenDays),
                     error: nil,
                     canCreate: false,
                     onCreate: {},
@@ -173,7 +181,7 @@ extension ShotScene {
         },
         ShotScene(
             id: "people-and-devices-invite-s3-own-key",
-            size: CGSize(width: 440, height: 190)
+            size: CGSize(width: 440, height: 260)
         ) {
             ShotStage(
                 InvitePersonForm(
@@ -182,6 +190,8 @@ extension ShotScene {
                     accessKeyId: .constant(""),
                     secretAccessKey: .constant(""),
                     usesOwnKey: .constant(true),
+                    role: .constant(.member),
+                    lifetime: .constant(.sevenDays),
                     error: nil,
                     canCreate: false,
                     onCreate: {},
