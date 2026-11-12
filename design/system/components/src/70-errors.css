@@ -8,8 +8,8 @@
 .bae-notice-centered .bae-notice-body { flex: none; }
 .bae-notice-centered .bae-m-notice, .bae-notice-centered .bae-a-notice { align-items: center; gap: var(--space-group); }
 /* The centred title line carries the title's type, so the glyph in front of it scales with it (1.19 times, centred on the line). */
-.bae-m-notice-box.bae-notice-centered .bae-notice-centered-title { font: 400 15px/20px var(--font-sans); color: var(--text-primary); }
-.bae-a-notice-box.bae-notice-centered .bae-notice-centered-title { font: 400 16px/24px var(--font-android); color: var(--text-primary); }
+.bae-m-notice-box.bae-notice-centered .bae-notice-centered-title { font: 400 15px/20px var(--font-sans); color: var(--text-secondary); }
+.bae-a-notice-box.bae-notice-centered .bae-notice-centered-title { font: 400 16px/24px var(--font-android); color: var(--text-secondary); }
 /* Under a subtitle the centred title is the line to read: primary text, the subtitle, glyph and buttons staying grey. A title alone stays grey. */
 .bae-notice-centered .bae-notice-title-strong { color: var(--text-primary); }
 .bae-notice-centered-row { display: flex; align-items: center; gap: var(--space-group); }
