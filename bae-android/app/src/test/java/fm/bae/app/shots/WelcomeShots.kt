@@ -27,7 +27,9 @@ import fm.bae.app.ui.onboarding.WelcomeLibrariesScene
 import fm.bae.app.ui.onboarding.WelcomeRemovingScene
 import fm.bae.app.ui.onboarding.WelcomeSavedCodesScene
 import fm.bae.app.ui.onboarding.WelcomeScene
+import fm.bae.app.ui.onboarding.deleteSavedCodeParts
 import fm.bae.app.ui.onboarding.removalFailedParts
+import fm.bae.app.ui.onboarding.sceneSavedEntries
 import fm.bae.app.ui.testRecoveryLines
 import fm.bae.fastvalues.LatestStream
 import fm.bae.fastvalues.only
@@ -99,6 +101,15 @@ class WelcomeShots : BoardShot() {
         shot("android.welcome.remove.unsent-changes") {
             InPlaceDialogScene(behind = { WelcomeLibrariesScene() }) {
                 removeLibraryParts(sceneLibrary, RemovalLoss.Counted(holdsUnsent = true), {}, {})
+            }
+        }
+
+    /** The confirmation to delete a saved restore code, which goes from this phone only. */
+    @Test
+    fun androidWelcomeSavedCodeDelete() =
+        shot("android.welcome.saved-code.delete") {
+            InPlaceDialogScene(behind = { WelcomeSavedCodesScene() }) {
+                deleteSavedCodeParts(sceneSavedEntries.first(), {}, {})
             }
         }
 

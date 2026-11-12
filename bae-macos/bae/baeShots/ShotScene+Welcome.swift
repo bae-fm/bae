@@ -77,6 +77,7 @@ extension ShotScene {
                 }
             )
         },
+        savedCodeDeletionAlert(),
         ShotScene(
             id: "mac.welcome.opening.finding-libraries",
             size: WelcomeWindow.size
@@ -350,6 +351,35 @@ extension ShotScene {
                         for: library,
                         losing: loss
                     )
+                }
+            )
+        }
+    }
+
+    /// The confirmation to delete the first saved restore code, as the
+    /// saved-codes section's alert words it (`SavedCodeDeletion`); the section
+    /// shows it with a SwiftUI `alert`, which AppKit lays out as this alert.
+    private static func savedCodeDeletionAlert() -> ShotScene {
+        ShotScene(
+            id: "mac.welcome.saved-code.delete",
+            size: CGSize(width: 340, height: 220)
+        ) {
+            ShotStage(
+                NSAlertShot {
+                    let alert = NSAlert()
+                    alert.messageText = SavedCodeDeletion.title
+                    alert.informativeText = SavedCodeDeletion.message(
+                        for: SavedRestoreEntry(savedCodes[0])
+                    )
+                    let delete = alert.addButton(
+                        withTitle: SavedCodeDeletion.confirm
+                    )
+                    delete.hasDestructiveAction = true
+                    let cancel = alert.addButton(
+                        withTitle: SavedCodeDeletion.cancel
+                    )
+                    cancel.keyEquivalent = "\u{1b}"
+                    return alert
                 }
             )
         }

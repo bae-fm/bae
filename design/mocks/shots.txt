@@ -139,6 +139,7 @@ android.welcome.remove.unsent-changes
 android.welcome.reset.confirm
 android.welcome.reset.offered
 android.welcome.reset.unfinished
+android.welcome.saved-code.delete
 mac.activity.panel.moving
 mac.activity.panel.needs-attention
 mac.activity.panel.paused
@@ -396,3 +397,4 @@ mac.welcome.reset.confirm
 mac.welcome.reset.failed
 mac.welcome.reset.offered
 mac.welcome.reset.unfinished
+mac.welcome.saved-code.delete

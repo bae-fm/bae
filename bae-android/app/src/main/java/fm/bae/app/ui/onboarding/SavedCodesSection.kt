@@ -29,6 +29,7 @@ import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidSection
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ButtonTone
+import fm.bae.app.ui.components.DialogParts
 import fm.bae.app.ui.storageLocationLabel
 import uniffi.bae_bridge.BridgeDropboxAccess
 import uniffi.bae_bridge.BridgeDropboxLocation
@@ -180,8 +181,17 @@ private fun DeleteSavedCodeDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AndroidDialog(
-        onDismissRequest = onDismiss,
+    AndroidDialog(onDismissRequest = onDismiss, parts = deleteSavedCodeParts(entry, onConfirm, onDismiss))
+}
+
+/** The confirmation's words and its buttons, Cancel and the destructive Delete, apart from the window they show in. */
+@Composable
+internal fun deleteSavedCodeParts(
+    entry: SavedRestoreEntry,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+): DialogParts =
+    DialogParts(
         title = stringResource(R.string.onboarding_saved_code_delete_title),
         message = deleteSavedCodeMessage(entry),
         confirmButton = {
@@ -197,7 +207,6 @@ private fun DeleteSavedCodeDialog(
             ) { Text(stringResource(R.string.cancel)) }
         },
     )
-}
 
 @Composable
 private fun deleteSavedCodeMessage(entry: SavedRestoreEntry): String =
@@ -262,7 +271,7 @@ private val previewEntries =
     )
 
 /** The entries the saved-codes boards draw: a Dropbox library's code, and one saved for another library. */
-private val sceneSavedEntries =
+internal val sceneSavedEntries =
     listOf(
         SavedRestoreEntry.Readable(
             SavedRestoreCode(
