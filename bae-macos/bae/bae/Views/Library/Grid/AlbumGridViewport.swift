@@ -67,6 +67,10 @@ final class AlbumGridViewport {
     /// top, held there until the grid scrolls another way, so changes back
     /// and forth return to the same place.
     private(set) var held: AlbumGridSlot?
+    /// Where the held slot and the scroll stood when the last scroll to put
+    /// the slot on top was handed out, so the same standing asks for no
+    /// second scroll.
+    private var lastHoldScroll: HoldScroll?
     /// The row of the track the pending reveal names, while it is laid out.
     private var revealRow: PlacedTrackRow?
     /// How far the pending reveal's scroll to its album has come, so its
@@ -75,6 +79,16 @@ final class AlbumGridViewport {
     /// What the scroll view is doing: a scroll is on its way until this is
     /// idle again.
     private var phase: ScrollPhase = .idle
+
+    /// What decides whether the held slot needs a scroll: where it sits, and
+    /// where the scroll stands.
+    private struct HoldScroll: Equatable {
+        let slot: AlbumGridSlot
+        let columnCount: Int
+        /// The slot's top in the visible area, nil while it is not drawn.
+        let minY: CGFloat?
+        let scroll: AlbumGridScroll
+    }
 
     private enum RevealScroll {
         /// Scrolling the album's card to the top.
@@ -158,12 +172,14 @@ final class AlbumGridViewport {
     /// Holds `slot` on top until the hold ends.
     func hold(_ slot: AlbumGridSlot) {
         held = slot
+        lastHoldScroll = nil
     }
 
     /// Ends the hold, for a scroll or a change in what the grid shows; the
     /// next change of column count keeps whatever is on top then.
     func release() {
         held = nil
+        lastHoldScroll = nil
     }
 
     /// The slot to keep on top as the column count goes from `old` to `new`:
@@ -173,8 +189,31 @@ final class AlbumGridViewport {
     func anchor(from old: Int, to new: Int) -> AlbumGridSlot? {
         let anchor = held ?? topSlot(columnCount: old)
         held = anchor
+        lastHoldScroll = nil
         frames = frames.filter { $0.key.columnCount == new }
         return anchor
+    }
+
+    /// The held slot, when it is off the top and has moved, or the scroll
+    /// with it, since the last scroll handed out for it. A layout reports the
+    /// slot several times in the frame a scroll was asked for, before the
+    /// scroll takes effect; each report finds the slot where it was, and a
+    /// second scroll to the same place would only be asked for again.
+    func scrollBackingHeldSlot(columnCount: Int) -> AlbumGridSlot? {
+        guard let slot = held, !isOnTop(slot, columnCount: columnCount)
+        else { return nil }
+        let standing = HoldScroll(
+            slot: slot,
+            columnCount: columnCount,
+            minY: frames.first {
+                $0.key.columnCount == columnCount && $0.value.slot == slot
+            }?
+            .value.frame.minY,
+            scroll: scroll
+        )
+        guard standing != lastHoldScroll else { return nil }
+        lastHoldScroll = standing
+        return slot
     }
 
     /// Whether `slot`, laid out at `columnCount`, sits at the top.

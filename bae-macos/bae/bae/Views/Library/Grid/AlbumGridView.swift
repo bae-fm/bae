@@ -545,8 +545,8 @@ extension AlbumGridView {
 
     /// Scrolls the held slot back to the top when the grid moved it.
     private func keepHeldSlotOnTop(columnCount: Int) {
-        guard let slot = viewport.held,
-            !viewport.isOnTop(slot, columnCount: columnCount)
+        guard
+            let slot = viewport.scrollBackingHeldSlot(columnCount: columnCount)
         else { return }
         scrollToTop(slot)
     }
