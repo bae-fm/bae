@@ -24,6 +24,7 @@ import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidRadio
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ButtonTone
+import fm.bae.app.ui.components.DialogParts
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.launch
@@ -40,6 +41,17 @@ internal fun ListeningHistoryDialog(
 ) {
     AndroidDialog(
         onDismissRequest = onDismiss,
+        parts = listeningHistoryParts(current = current, onChoose = onChoose, onDismiss = onDismiss),
+    )
+}
+
+@Composable
+internal fun listeningHistoryParts(
+    current: BridgeHistorySharing,
+    onChoose: (BridgeHistorySharing) -> Unit,
+    onDismiss: () -> Unit,
+): DialogParts =
+    DialogParts(
         title = stringResource(R.string.settings_history),
         content = {
             Column {
@@ -66,7 +78,6 @@ internal fun ListeningHistoryDialog(
             ) { Text(stringResource(R.string.cancel)) }
         },
     )
-}
 
 /** Renames this person's profile, which everyone in the library sees; a failure stays in the dialog. */
 @Composable
@@ -107,7 +118,7 @@ internal fun RenameProfileDialog(
 }
 
 @Composable
-private fun RenameProfileDialogContent(
+internal fun RenameProfileDialogContent(
     draft: String,
     error: DisplayError?,
     saving: Boolean,
@@ -117,6 +128,28 @@ private fun RenameProfileDialogContent(
 ) {
     AndroidDialog(
         onDismissRequest = onDismiss,
+        parts =
+            renameProfileParts(
+                draft = draft,
+                error = error,
+                saving = saving,
+                onDraftChange = onDraftChange,
+                onSave = onSave,
+                onDismiss = onDismiss,
+            ),
+    )
+}
+
+@Composable
+internal fun renameProfileParts(
+    draft: String,
+    error: DisplayError?,
+    saving: Boolean,
+    onDraftChange: (String) -> Unit,
+    onSave: () -> Unit,
+    onDismiss: () -> Unit,
+): DialogParts =
+    DialogParts(
         title = stringResource(R.string.onboarding_person_name),
         content = {
             Column {
@@ -144,4 +177,3 @@ private fun RenameProfileDialogContent(
             ) { Text(stringResource(R.string.cancel)) }
         },
     )
-}

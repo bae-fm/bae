@@ -174,7 +174,7 @@ internal fun RestoreCodeSection(
 }
 
 @Composable
-private fun RestoreCodeSectionContent(
+internal fun RestoreCodeSectionContent(
     needsS3Key: Boolean,
     state: RestoreCodeState,
     onShow: () -> Unit,

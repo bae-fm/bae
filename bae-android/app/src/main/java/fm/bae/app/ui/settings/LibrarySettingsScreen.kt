@@ -197,20 +197,35 @@ internal fun RestoreCodeScreen(
     val model = remember(session) { SettingsLibraryModel(session.appHandle, session.errors, scope) }
     LaunchedEffect(model) { model.loadStorage() }
     val location = (model.storage as? Storage.At)?.location
+    // The code is made once the library's storage is read, which prints on its page.
+    AndroidSettingsRestoreCode(
+        onBack = onBack,
+        section =
+            if (location == null) {
+                null
+            } else {
+                {
+                    RestoreCodeSection(
+                        needsS3Key = location is BridgeStorageLocation.S3,
+                        location = storageLocationLabel(location),
+                        generate = { session.appHandle.generateRestoreCode().code },
+                    )
+                }
+            },
+    )
+}
+
+/** The Restore code page: its bar, and the code's [section] once there is a library to make it for. */
+@Composable
+internal fun AndroidSettingsRestoreCode(
+    onBack: () -> Unit,
+    section: (@Composable () -> Unit)?,
+) {
     AndroidScreen(
         title = stringResource(R.string.restore_code_title),
         onBack = onBack,
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
     ) {
-        // The code is made once the library's storage is read, which prints on its page.
-        location?.let {
-            Column(modifier = Modifier.padding(ThemeSpace.edge)) {
-                RestoreCodeSection(
-                    needsS3Key = it is BridgeStorageLocation.S3,
-                    location = storageLocationLabel(it),
-                    generate = { session.appHandle.generateRestoreCode().code },
-                )
-            }
-        }
+        section?.let { Column(modifier = Modifier.padding(ThemeSpace.edge)) { it() } }
     }
 }
