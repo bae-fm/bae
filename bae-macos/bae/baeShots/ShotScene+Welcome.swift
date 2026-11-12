@@ -126,14 +126,9 @@ extension ShotScene {
             ShotStage(MacWelcomeWindow { KeychainLockedView(onRetry: {}) })
         },
         ShotScene(id: "mac.welcome.reset.offered", size: WelcomeWindow.size) {
-            ShotStage(
-                PreviewScenes.deviceReset(
-                    error: LoadError(
-                        .resetOffered,
-                        PreviewData.resetRequiredError
-                    )
-                )
-            )
+            // The reset's own line: a device that must be reset has no error
+            // from opening the library, as when Settings offers it.
+            ShotStage(PreviewScenes.deviceReset(error: nil))
         },
         ShotScene(id: "mac.welcome.opening.resetting", size: WelcomeWindow.size)
         {

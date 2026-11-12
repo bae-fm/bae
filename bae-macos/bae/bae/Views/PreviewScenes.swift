@@ -49,8 +49,8 @@
         }
 
         /// The screen that offers resetting this device, in the welcome
-        /// window's chrome, saying `error`.
-        static func deviceReset(error: LoadError) -> some View {
+        /// window's chrome, saying `error`, or with none, the reset's own line.
+        static func deviceReset(error: LoadError?) -> some View {
             MacWelcomeWindow {
                 DeviceResetView(
                     prompt: .offered,
