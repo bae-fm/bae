@@ -7,7 +7,7 @@
         case divider
         /// A quiet title over the group of items under it.
         case header(String)
-        case submenu(String, [MacMenuEntry])
+        case submenu(String, [MacMenuEntry], MacMenuAccessory?)
 
         /// Whether the highlight can rest on this line.
         var isChoosable: Bool {
@@ -18,12 +18,31 @@
             }
         }
 
-        var title: String? {
+        public var title: String? {
             switch self {
             case .item(let item): item.title
-            case .submenu(let title, _): title
+            case .submenu(let title, _, _): title
             case .divider, .header: nil
             }
+        }
+    }
+
+    /// A glyph at the end of a line, with the words a pointer resting on the
+    /// line shows: a folder's scan state, say.
+    public struct MacMenuAccessory {
+        public enum Tone {
+            case regular, secondary, danger
+        }
+
+        public let symbol: String
+        public let tone: Tone
+        public let help: String?
+
+        public init(symbol: String, tone: Tone = .regular, help: String? = nil)
+        {
+            self.symbol = symbol
+            self.tone = tone
+            self.help = help
         }
     }
 
@@ -105,24 +124,32 @@
     /// A line that opens more items to its side.
     public struct MacMenuSubmenu: MacMenuPart {
         let title: String
+        let accessory: MacMenuAccessory?
         let content: [MacMenuEntry]
 
         public init(
             _ title: LocalizedStringResource,
             @MacMenuBuilder content: () -> [MacMenuEntry]
         ) {
-            self.init(verbatim: String(localized: title), content: content)
+            self.init(
+                verbatim: String(localized: title),
+                content: content
+            )
         }
 
         public init(
             verbatim title: String,
+            accessory: MacMenuAccessory? = nil,
             @MacMenuBuilder content: () -> [MacMenuEntry]
         ) {
             self.title = title
+            self.accessory = accessory
             self.content = content()
         }
 
-        public var entries: [MacMenuEntry] { [.submenu(title, content)] }
+        public var entries: [MacMenuEntry] {
+            [.submenu(title, content, accessory)]
+        }
     }
 
     @resultBuilder

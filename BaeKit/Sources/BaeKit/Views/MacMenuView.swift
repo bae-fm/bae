@@ -53,7 +53,7 @@
     @MainActor
     @Observable
     final class MacMenuLevel {
-        let entries: [MacMenuEntry]
+        var entries: [MacMenuEntry]
         var highlighted: Int?
 
         init(entries: [MacMenuEntry], highlighted: Int? = nil) {
@@ -100,6 +100,18 @@
             .accessibilityHidden(true)
         }
 
+        private func accessoryColor(
+            _ accessory: MacMenuAccessory,
+            _ highlighted: Bool
+        ) -> Color {
+            if highlighted { return Theme.onFill }
+            switch accessory.tone {
+            case .regular: return Theme.textPrimary
+            case .secondary: return Theme.textSecondary
+            case .danger: return Theme.danger
+            }
+        }
+
         @ViewBuilder
         private func line(_ index: Int) -> some View {
             switch level.entries[index] {
@@ -128,13 +140,14 @@
                     disabled: item.isDisabled,
                     submenu: false
                 )
-            case .submenu(let title, _):
+            case .submenu(let title, _, let accessory):
                 row(
                     index,
                     title: title,
                     checked: false,
                     disabled: false,
-                    submenu: true
+                    submenu: true,
+                    accessory: accessory
                 )
             }
         }
@@ -144,7 +157,8 @@
             title: String,
             checked: Bool,
             disabled: Bool,
-            submenu: Bool
+            submenu: Bool,
+            accessory: MacMenuAccessory? = nil
         ) -> some View {
             let highlighted = level.highlighted == index && !disabled
             return HStack(spacing: ThemeSpace.compact) {
@@ -159,6 +173,13 @@
                     .lineLimit(1)
                 if submenu {
                     Spacer(minLength: ThemeSpace.edge)
+                    if let accessory {
+                        Image(systemName: accessory.symbol)
+                            .font(.system(size: 11))
+                            .foregroundStyle(
+                                accessoryColor(accessory, highlighted)
+                            )
+                    }
                     Image(systemName: "chevron.right")
                         .font(.system(size: 9, weight: .semibold))
                 }
@@ -184,6 +205,7 @@
                 )
             )
             .contentShape(Rectangle())
+            .help(accessory?.help ?? "")
             .onHover { hover(index, $0) }
             .onTapGesture { if !disabled { pick(index) } }
         }

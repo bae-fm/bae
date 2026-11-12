@@ -304,3 +304,72 @@
         }
     }
 #endif
+
+#if canImport(AppKit)
+    /// Where a menu opened by AppKit code appears.
+    public enum MacMenuAnchoring {
+        /// Under a view, their left edges together.
+        case below(NSView)
+        /// Its top left corner at the pointer, as a context menu opens.
+        case atPointer
+    }
+
+    /// An open menu, which its opener can change or close.
+    @MainActor
+    public final class MacMenuHandle {
+        private let session: MacMenuSession
+
+        fileprivate init(_ session: MacMenuSession) {
+            self.session = session
+        }
+
+        /// Whether the menu is still open.
+        public var isOpen: Bool { session.isOpen }
+
+        /// Shows `entries` in place of the menu's lines while it is open.
+        public func update(_ entries: [MacMenuEntry]) {
+            session.update(entries)
+        }
+
+        public func close() {
+            session.close()
+        }
+    }
+
+    /// bae's menu for code that draws with AppKit: a table's right click, a
+    /// view that pops a menu up.
+    @MainActor
+    public enum MacMenus {
+        /// Opens `entries` over `window`, drawn in `appearance`'s tone and
+        /// accent, or does nothing when there are none.
+        @discardableResult
+        public static func present(
+            _ entries: [MacMenuEntry],
+            over window: NSWindow,
+            at anchoring: MacMenuAnchoring,
+            appearance: HostedAppearance
+        ) -> MacMenuHandle? {
+            let placement: MacMenuPlacement
+            switch anchoring {
+            case .below(let view):
+                guard let viewWindow = view.window else { return nil }
+                placement = .below(
+                    anchor: viewWindow.convertToScreen(
+                        view.convert(view.bounds, to: nil)
+                    )
+                )
+            case .atPointer:
+                placement = .at(NSEvent.mouseLocation)
+            }
+            return
+                MacMenuSession.present(
+                    entries,
+                    over: window,
+                    placement: placement,
+                    appearance: appearance,
+                    isPopUp: false
+                )
+                .map(MacMenuHandle.init)
+        }
+    }
+#endif

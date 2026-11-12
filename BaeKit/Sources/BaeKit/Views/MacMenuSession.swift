@@ -84,6 +84,7 @@
         private let onClose: @MainActor () -> Void
 
         /// Opens `entries` over `parent`, closing any menu that was open.
+        @discardableResult
         static func present(
             _ entries: [MacMenuEntry],
             over parent: NSWindow,
@@ -91,9 +92,9 @@
             appearance: HostedAppearance,
             isPopUp: Bool,
             onClose: @escaping @MainActor () -> Void = {}
-        ) {
+        ) -> MacMenuSession? {
             current?.close()
-            guard !entries.isEmpty else { return }
+            guard !entries.isEmpty else { return nil }
             let session = MacMenuSession(
                 parent: parent,
                 appearance: appearance,
@@ -102,9 +103,8 @@
             )
             current = session
             session.open(entries, placement: placement)
+            return session
         }
-
-        static var isOpen: Bool { current != nil }
 
         private init(
             parent: NSWindow,
@@ -283,6 +283,45 @@
     }
 
     extension MacMenuSession {
+        /// Whether this menu is the one open.
+        var isOpen: Bool { Self.current === self }
+
+        /// Shows `entries` in place of the menu's own lines while it is
+        /// open, the highlight where it was; the menu's top stays put and
+        /// its height follows.
+        func update(_ entries: [MacMenuEntry]) {
+            guard isOpen, let level = levels.first else { return }
+            closeLevels(after: 0)
+            level.model.entries = entries
+            if level.model.highlighted.map({ $0 >= entries.count }) ?? false {
+                level.model.highlighted = nil
+            }
+            let height = MacMenuMetrics.faceHeight(of: entries)
+            var face = level.face
+            face.origin.y += face.height - height
+            face.size.height = height
+            let room = MacMenuMetrics.shadowRoom
+            level.panel.setFrame(
+                face.insetBy(dx: -room, dy: -room),
+                display: true
+            )
+            if let host = level.panel.contentView as? MenuHostingView {
+                host.frame = NSRect(origin: .zero, size: level.panel.frame.size)
+                host.items = accessibilityItems(
+                    entries,
+                    size: face.size,
+                    level: 0,
+                    host: host,
+                    model: level.model
+                )
+            }
+            levels[0] = OpenLevel(
+                model: level.model,
+                panel: level.panel,
+                face: face
+            )
+        }
+
         // MARK: Listening
 
         private func listen() {
@@ -475,7 +514,8 @@
 
         private func openSubmenu(_ row: Int, level: Int) {
             guard level < levels.count,
-                case .submenu(_, let entries) = levels[level].model.entries[row]
+                case .submenu(_, let entries, _) = levels[level].model
+                    .entries[row]
             else { return }
             closeLevels(after: level)
             let parentLevel = levels[level]
