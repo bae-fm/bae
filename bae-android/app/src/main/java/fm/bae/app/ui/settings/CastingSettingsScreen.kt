@@ -116,7 +116,7 @@ internal fun CastingSettingsScreen(
         }
     }
 
-    CastingPage(
+    AndroidSettingsCasting(
         enabled = config.castEnabled,
         receivers = receivers,
         connectingName = connecting?.name,
@@ -136,7 +136,7 @@ internal fun CastingSettingsScreen(
 
 /** What the Casting page shows; the config subscription moves the switch, so a refused flip leaves it in place. */
 @Composable
-internal fun CastingPage(
+internal fun AndroidSettingsCasting(
     enabled: Boolean,
     receivers: BridgeCastReceiverList,
     connectingName: String?,

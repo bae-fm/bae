@@ -74,45 +74,87 @@ internal fun SettingsScreen(
     var page by rememberSaveable { mutableStateOf<SettingsPage?>(null) }
     BackHandler(enabled = page != null) { page = null }
 
-    val open = page
+    when (page) {
+        null -> {
+            val libraryModel = rememberSettingsLibraryModel(session)
+            LaunchedEffect(libraryModel) { libraryModel.loadStorage() }
+            val line by session.syncStatusStore.line.collectAsState()
+            val setupRunning by session.syncStatusStore.setupRunning.collectAsState()
+            val sync = syncRowSummary(libraryModel.storage, line, setupRunning)
+            AndroidSettingsList(
+                summaries = rememberSettingsSummaries(config, libraryModel.name, sync),
+                onBack = onBack,
+                onOpen = { page = it },
+                onPush = onPush,
+            ) {
+                SettingsLibrarySwitcher(
+                    session = session,
+                    listing = listing,
+                    onReloadLibraries = actions.reloadLibraries,
+                    onSwitchLibrary = actions.switchLibrary,
+                )
+            }
+        }
+
+        SettingsPage.Appearance -> {
+            AndroidSettingsAppearance(onBack = { page = null })
+        }
+
+        SettingsPage.Playback -> {
+            SettingsPlaybackSection(
+                session = session,
+                config = config,
+                ioDispatcher = ioDispatcher,
+                onBack = { page = null },
+            )
+        }
+
+        SettingsPage.About -> {
+            AndroidSettingsAbout(version = installedVersion(), onBack = { page = null })
+        }
+    }
+}
+
+/** The Settings list: a row for each page, then [below]. */
+@Composable
+internal fun AndroidSettingsList(
+    summaries: SettingsSummaries,
+    onBack: () -> Unit,
+    onOpen: (SettingsPage) -> Unit,
+    onPush: (LibraryDestination) -> Unit,
+    below: @Composable () -> Unit = {},
+) {
+    AndroidScreen(title = stringResource(R.string.settings), onBack = onBack, modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+            SettingsMenu(summaries = summaries, onOpen = onOpen, onPush = onPush)
+            below()
+        }
+    }
+}
+
+/** The About page: the sheep over the installed [version]. */
+@Composable
+internal fun AndroidSettingsAbout(
+    version: String,
+    onBack: () -> Unit,
+) {
+    AndroidScreen(title = stringResource(R.string.settings_about), onBack = onBack, modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+            SettingsAboutSection(version)
+        }
+    }
+}
+
+/** The Appearance page: theme, tone and accent. */
+@Composable
+internal fun AndroidSettingsAppearance(onBack: () -> Unit) {
     AndroidScreen(
-        title = stringResource(open?.title ?: R.string.settings),
-        onBack = if (open == null) onBack else ({ page = null }),
+        title = stringResource(R.string.appearance_title),
+        onBack = onBack,
         modifier = Modifier.fillMaxSize(),
     ) {
         Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-            when (open) {
-                null -> {
-                    val libraryModel = rememberSettingsLibraryModel(session)
-                    LaunchedEffect(libraryModel) { libraryModel.loadStorage() }
-                    val line by session.syncStatusStore.line.collectAsState()
-                    val setupRunning by session.syncStatusStore.setupRunning.collectAsState()
-                    val sync = syncRowSummary(libraryModel.storage, line, setupRunning)
-                    SettingsMenu(
-                        summaries = rememberSettingsSummaries(config, libraryModel.name, sync),
-                        onOpen = { page = it },
-                        onPush = onPush,
-                    )
-                    SettingsLibrarySwitcher(
-                        session = session,
-                        listing = listing,
-                        onReloadLibraries = actions.reloadLibraries,
-                        onSwitchLibrary = actions.switchLibrary,
-                    )
-                }
-
-                SettingsPage.Appearance -> {
-                    AppearanceSection()
-                }
-
-                SettingsPage.Playback -> {
-                    SettingsPlaybackSection(session = session, config = config, ioDispatcher = ioDispatcher)
-                }
-
-                SettingsPage.About -> {
-                    SettingsAboutSection(version = installedVersion())
-                }
-            }
+            AppearanceSection()
         }
     }
 }

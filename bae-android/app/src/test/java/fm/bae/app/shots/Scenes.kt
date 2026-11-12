@@ -11,9 +11,16 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.appearance.AccentChoice
+import fm.bae.app.ui.appearance.AppearanceMode
+import fm.bae.app.ui.appearance.AppearancePreferences
+import fm.bae.app.ui.appearance.AppearanceStore
+import fm.bae.app.ui.appearance.SurfaceTone
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidSheetBody
 import uniffi.bae_bridge.BridgeDropboxLocation
@@ -66,6 +73,16 @@ internal fun ScreenScene(content: @Composable () -> Unit) {
     ShotTheme {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { content() }
     }
+}
+
+/**
+ * [content] in the look of a phone whose person chose nothing: the system's mode, Midnight and Pink, so
+ * Appearance reads System. The shots run at night, so the system's mode is dark.
+ */
+@Composable
+internal fun SystemLook(content: @Composable () -> Unit) {
+    val appearance = remember { AppearanceStore(AppearancePreferences(AppearanceMode.SYSTEM, AccentChoice.PINK, SurfaceTone.MIDNIGHT)) {} }
+    BaeTheme(appearance, content)
 }
 
 /** A dialog's words on the dialog's own surface: the dialog opens a window a test doesn't draw. */

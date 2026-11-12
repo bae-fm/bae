@@ -20,13 +20,11 @@ import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.library.LibraryDestination
 import uniffi.bae_bridge.BridgeConfig
 
-/** The sections Settings opens as a page of its own, with the settings top bar. */
-internal enum class SettingsPage(
-    @StringRes val title: Int,
-) {
-    Appearance(R.string.appearance_title),
-    Playback(R.string.settings_playback),
-    About(R.string.settings_about),
+/** The sections Settings opens as a page of its own. */
+internal enum class SettingsPage {
+    Appearance,
+    Playback,
+    About,
 }
 
 /** What each Settings row says under its title: where that setting stands. */

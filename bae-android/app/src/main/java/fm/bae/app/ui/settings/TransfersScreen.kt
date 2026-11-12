@@ -47,7 +47,7 @@ internal fun TransfersScreen(
 ) {
     val config by session.configStore.config.collectAsState()
     val unmeteredOnly by session.downloadStore.unmeteredOnly.collectAsState()
-    TransfersContent(
+    AndroidSettingsTransfers(
         unmeteredOnly = unmeteredOnly,
         concurrency = config.maxConcurrentDownloads,
         limit = config.maxConcurrentTransfers,
@@ -61,7 +61,7 @@ internal fun TransfersScreen(
 
 /** The Transfers page over the values it shows and the changes it asks for. */
 @Composable
-internal fun TransfersContent(
+internal fun AndroidSettingsTransfers(
     unmeteredOnly: LiveValue<Boolean>,
     concurrency: UInt,
     limit: UInt,
@@ -153,9 +153,9 @@ private fun ConcurrencyRow(
 
 @Preview(showBackground = true)
 @Composable
-private fun TransfersContentPreview() {
+private fun AndroidSettingsTransfersPreview() {
     BaeTheme {
-        TransfersContent(
+        AndroidSettingsTransfers(
             unmeteredOnly = LiveValue.Current(false),
             concurrency = 3u,
             limit = 8u,

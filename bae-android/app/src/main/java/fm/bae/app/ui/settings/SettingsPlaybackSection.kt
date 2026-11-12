@@ -6,8 +6,10 @@ import android.icu.util.Measure
 import android.icu.util.MeasureUnit
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Switch
@@ -20,75 +22,89 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.RestorePlaybackPref
 import fm.bae.app.currentLocale
-import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidCard
 import fm.bae.app.ui.components.AndroidRow
+import fm.bae.app.ui.components.AndroidScreen
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.BridgeConfig
 import uniffi.bae_bridge.BridgeSidePauseCountdown
 
+/** The Playback page over this library's settings and this device's restore-on-launch choice. */
 @Composable
 internal fun SettingsPlaybackSection(
     session: OpenLibrary,
     config: BridgeConfig,
     ioDispatcher: CoroutineDispatcher,
+    onBack: () -> Unit,
 ) {
-    Column(modifier = Modifier.fillMaxWidth().padding(ThemeSpace.edge)) {
-        AndroidCard {
-            PauseBetweenSidesRow(session = session, config = config, ioDispatcher = ioDispatcher)
-            SidePauseCountdownRow(session = session, config = config, ioDispatcher = ioDispatcher)
-            RestoreOnLaunchRow()
-        }
-    }
-}
-
-@Composable
-private fun PauseBetweenSidesRow(
-    session: OpenLibrary,
-    config: BridgeConfig,
-    ioDispatcher: CoroutineDispatcher,
-) {
-    AndroidRow(
-        title = stringResource(R.string.settings_pause_between_sides),
-        trailing = {
-            Switch(
-                checked = config.pauseBetweenSides,
-                onCheckedChange = { enabled ->
-                    session.messages.perform("update pause-between-sides setting") {
-                        withContext(ioDispatcher) {
-                            session.appHandle.setPauseBetweenSides(enabled)
-                        }
-                    }
-                },
-            )
-        },
-    )
-}
-
-@Composable
-private fun SidePauseCountdownRow(
-    session: OpenLibrary,
-    config: BridgeConfig,
-    ioDispatcher: CoroutineDispatcher,
-) {
-    SidePauseCountdownPicker(
+    val context = LocalContext.current
+    var restoreOnLaunch by remember { mutableStateOf(RestorePlaybackPref.load(context)) }
+    AndroidSettingsPlayback(
         pauseBetweenSides = config.pauseBetweenSides,
-        selected = config.sidePauseCountdown,
-        onSelect = { countdown ->
-            session.messages.perform("update side-pause countdown setting") {
-                withContext(ioDispatcher) {
-                    session.appHandle.setSidePauseCountdown(countdown)
-                }
+        countdown = config.sidePauseCountdown,
+        restoreOnLaunch = restoreOnLaunch,
+        onBack = onBack,
+        onPauseBetweenSides = { enabled ->
+            session.messages.perform("update pause-between-sides setting") {
+                withContext(ioDispatcher) { session.appHandle.setPauseBetweenSides(enabled) }
             }
         },
+        onCountdown = { countdown ->
+            session.messages.perform("update side-pause countdown setting") {
+                withContext(ioDispatcher) { session.appHandle.setSidePauseCountdown(countdown) }
+            }
+        },
+        onRestoreOnLaunch = { enabled ->
+            restoreOnLaunch = enabled
+            RestorePlaybackPref.save(context, enabled)
+        },
     )
+}
+
+/**
+ * The Playback page over the values it shows and the changes it asks for. Restoring on launch is this device's
+ * choice, not the library's.
+ */
+@Composable
+internal fun AndroidSettingsPlayback(
+    pauseBetweenSides: Boolean,
+    countdown: BridgeSidePauseCountdown,
+    restoreOnLaunch: Boolean,
+    onBack: () -> Unit,
+    onPauseBetweenSides: (Boolean) -> Unit,
+    onCountdown: (BridgeSidePauseCountdown) -> Unit,
+    onRestoreOnLaunch: (Boolean) -> Unit,
+) {
+    AndroidScreen(
+        title = stringResource(R.string.settings_playback),
+        onBack = onBack,
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(ThemeSpace.edge)) {
+            AndroidCard {
+                AndroidRow(
+                    title = stringResource(R.string.settings_pause_between_sides),
+                    trailing = { Switch(checked = pauseBetweenSides, onCheckedChange = onPauseBetweenSides) },
+                )
+                SidePauseCountdownPicker(
+                    pauseBetweenSides = pauseBetweenSides,
+                    selected = countdown,
+                    onSelect = onCountdown,
+                )
+                AndroidRow(
+                    title = stringResource(R.string.settings_restore_on_launch),
+                    subtitle = stringResource(R.string.settings_restore_on_launch_help),
+                    trailing = { Switch(checked = restoreOnLaunch, onCheckedChange = onRestoreOnLaunch) },
+                )
+            }
+        }
+    }
 }
 
 /**
@@ -146,32 +162,4 @@ internal fun Context.sidePauseCountdownLabel(countdown: BridgeSidePauseCountdown
             .getInstance(currentLocale(), MeasureFormat.FormatWidth.WIDE)
             .format(Measure(seconds, MeasureUnit.SECOND))
     return getString(R.string.settings_resume_after, length)
-}
-
-// Device-local, not library config: whether the next launch restores the last session's playback.
-@Composable
-private fun RestoreOnLaunchRow() {
-    val context = LocalContext.current
-    var restoreOnLaunch by remember { mutableStateOf(RestorePlaybackPref.load(context)) }
-    AndroidRow(
-        title = stringResource(R.string.settings_restore_on_launch),
-        subtitle = stringResource(R.string.settings_restore_on_launch_help),
-        trailing = {
-            Switch(
-                checked = restoreOnLaunch,
-                onCheckedChange = { enabled ->
-                    restoreOnLaunch = enabled
-                    RestorePlaybackPref.save(context, enabled)
-                },
-            )
-        },
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun RestoreOnLaunchRowPreview() {
-    BaeTheme {
-        RestoreOnLaunchRow()
-    }
 }
