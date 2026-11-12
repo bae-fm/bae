@@ -12,9 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -24,7 +22,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -38,7 +38,6 @@ import fm.bae.app.ui.appearance.AccentChoice
 import fm.bae.app.ui.appearance.AppearanceMode
 import fm.bae.app.ui.appearance.LocalAppearanceStore
 import fm.bae.app.ui.appearance.SurfaceTone
-import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSize
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.colors
@@ -49,6 +48,7 @@ import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidRadio
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.ButtonKind
+import fm.bae.app.ui.components.joinsTileAbove
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.launch
 import java.io.IOException
@@ -96,7 +96,13 @@ internal fun AppearanceSection() {
                 title = stringResource(R.string.appearance_accent),
                 subtitle = stringResource(preferences.accent.label),
             )
-            Box(modifier = Modifier.padding(horizontal = ThemeSpace.edge).padding(bottom = ThemeSpace.related)) {
+            Box(
+                modifier =
+                    Modifier
+                        .joinsTileAbove()
+                        .padding(horizontal = ThemeSpace.edge)
+                        .padding(bottom = ThemeSpace.group),
+            ) {
                 AndroidAccentPicker(preferences.accent) { accent -> save { store.setAccent(accent) } }
             }
         }
@@ -109,34 +115,51 @@ internal fun AndroidAccentPicker(
     selectedAccent: AccentChoice,
     onSelect: (AccentChoice) -> Unit,
 ) {
-    Row(modifier = Modifier.fillMaxWidth().selectableGroup()) {
+    val gap = MaterialTheme.colorScheme.surfaceContainer
+    val ring = MaterialTheme.colorScheme.onSurface
+    Row(
+        modifier = Modifier.fillMaxWidth().selectableGroup(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
         AccentChoice.entries.forEach { accent ->
             val label = stringResource(accent.label)
             val selected = selectedAccent == accent
             Box(
                 modifier =
                     Modifier
-                        .weight(1f)
-                        .size(ThemeSize.hitTarget)
+                        .size(width = SWATCH_SIZE, height = ThemeSize.hitTarget)
                         .selectable(selected, role = Role.RadioButton) { onSelect(accent) }
                         .semantics { contentDescription = label },
                 contentAlignment = Alignment.Center,
             ) {
                 Box(
-                    modifier = Modifier.size(24.dp).background(accent.colors.fill, CircleShape),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        Icons.Default.Check,
-                        contentDescription = null,
-                        tint = accent.colors.onFill,
-                        modifier = Modifier.size(ThemeIcon.badge).alpha(if (selected) 1f else 0f),
-                    )
-                }
+                    modifier =
+                        Modifier
+                            .size(SWATCH_SIZE)
+                            .drawBehind { if (selected) drawSelectionRing(gap, ring) }
+                            .background(accent.colors.fill, CircleShape),
+                )
             }
         }
     }
 }
+
+/** The chosen swatch's mark: a gap in the card's colour, then a ring in the text colour, outside the disc. */
+private fun DrawScope.drawSelectionRing(
+    gap: Color,
+    ring: Color,
+) {
+    val radius = size.minDimension / 2
+    val gapWidth = RING_GAP.toPx()
+    val ringWidth = RING_WIDTH.toPx()
+    drawCircle(ring, radius = radius + gapWidth + ringWidth)
+    drawCircle(gap, radius = radius + gapWidth)
+}
+
+/** The design's swatch: a 36dp disc, with 3dp of card colour and a 2dp ring around the chosen one. */
+private val SWATCH_SIZE = 36.dp
+private val RING_GAP = 3.dp
+private val RING_WIDTH = 2.dp
 
 /** A row naming the choice made, which opens a dialog of the choices. */
 @Composable
