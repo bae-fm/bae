@@ -101,6 +101,7 @@ private fun Sync(
         restoreCode = RestoreCodeState.Masked(RESTORE_CODE),
         localOnly = false,
         pending = emptyList(),
+        recordsDropped = false,
         onBack = {},
         onFix = {},
         onShowRestoreCode = {},

@@ -11,6 +11,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performScrollToNode
 import fm.bae.app.BaeRobolectricTestRunner
+import fm.bae.app.BugReports
 import fm.bae.app.LocalBugReports
 import fm.bae.app.NoErrorDisplays
 import fm.bae.app.data.SyncStatusStore
@@ -74,6 +75,7 @@ class SyncScreenTest {
                 undoneSetup = null,
             ),
             NoErrorDisplays,
+            BugReports(),
         )
         compose.setContent {
             BaeTheme {
@@ -108,6 +110,7 @@ class SyncScreenTest {
                     ),
                 action = BridgePendingAction.Reconnect,
                 actionKey = "core.pending.action.reconnect",
+                sendsFiles = false,
             )
         compose.setContent { BaeTheme { PendingSection(records = listOf(record), onAction = { ran = it }) } }
 
@@ -149,6 +152,7 @@ class SyncScreenTest {
                 undoneSetup = null,
             ),
             NoErrorDisplays,
+            BugReports(),
         )
         compose.setContent {
             BaeTheme {
@@ -227,6 +231,7 @@ class SyncScreenTest {
             reason = BridgePendingReason(key = "core.pending.reason.provider_pending", detail = null, causes = emptyList()),
             action = BridgePendingAction.SignIn(BridgeCloudProvider.S3),
             actionKey = "core.pending.action.sign_in",
+            sendsFiles = false,
         )
 
     private fun actions() =

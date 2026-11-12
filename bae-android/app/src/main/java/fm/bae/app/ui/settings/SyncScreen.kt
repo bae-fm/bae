@@ -265,6 +265,7 @@ internal fun SyncScreen(
     onPush: (LibraryDestination) -> Unit,
 ) {
     val pending by session.syncStatusStore.pending.collectAsState()
+    val recordsDropped by session.syncStatusStore.recordsDropped.collectAsState()
     val line by session.syncStatusStore.line.collectAsState()
     val setupRunning by session.syncStatusStore.setupRunning.collectAsState()
     val context = LocalContext.current
@@ -303,6 +304,7 @@ internal fun SyncScreen(
         restoreCode = restoreCode.state,
         localOnly = locationRead && location == null && !setupRunning,
         pending = pending,
+        recordsDropped = recordsDropped,
         onBack = onBack,
         onFix = runner::runFix,
         onShowRestoreCode = restoreCode::show,
@@ -319,7 +321,7 @@ internal fun SyncScreen(
 /**
  * The Sync page over what it shows: the state of sync with its fix, [notices] of setups and failed reads, then the
  * library's [location] with its restore code, or the offer to set up storage when it is [localOnly], then what
- * sync waits on in [pending].
+ * sync waits on in [pending]; [recordsDropped] says a record a phone can't have was left out of it and reported.
  */
 @Composable
 internal fun AndroidSettingsSync(
@@ -329,6 +331,7 @@ internal fun AndroidSettingsSync(
     restoreCode: RestoreCodeState,
     localOnly: Boolean,
     pending: List<BridgePendingRecord>?,
+    recordsDropped: Boolean,
     onBack: () -> Unit,
     onFix: (BridgeSyncFix) -> Unit,
     onShowRestoreCode: () -> Unit,
@@ -361,8 +364,8 @@ internal fun AndroidSettingsSync(
                 item { LocalOnly(onSetUp = onSetUp) }
             }
             // What is waiting is a local read; nothing shows until it lands.
-            pending?.takeIf { it.isNotEmpty() }?.let { records ->
-                item { PendingSection(records = records, onAction = onPendingAction) }
+            pending?.takeIf { it.isNotEmpty() || recordsDropped }?.let { records ->
+                item { PendingSection(records = records, onAction = onPendingAction, recordsDropped = recordsDropped) }
             }
         }
     }
@@ -587,6 +590,7 @@ private fun SyncScreenPreview() {
                         ),
                     action = BridgePendingAction.SignIn(BridgeCloudProvider.DROPBOX),
                     actionKey = "core.pending.action.sign_in",
+                    sendsFiles = false,
                 ),
                 BridgePendingRecord(
                     subject = BridgeMessage(key = "core.pending.operation.invite", args = emptyList()),
@@ -598,6 +602,7 @@ private fun SyncScreenPreview() {
                         ),
                     action = BridgePendingAction.RetryOperation(id = 7L),
                     actionKey = "core.pending.action.retry",
+                    sendsFiles = false,
                 ),
             ).let { PendingSection(records = it, onAction = {}) }
         }

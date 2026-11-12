@@ -296,6 +296,7 @@ object PreviewData {
                             reason = BridgePendingReason("core.pending.reason.storage", null, emptyList()),
                             action = BridgePendingAction.SignIn(BridgeCloudProvider.DROPBOX),
                             actionKey = "core.pending.action.sign_in",
+                            sendsFiles = false,
                         ),
                     )
                 } else {

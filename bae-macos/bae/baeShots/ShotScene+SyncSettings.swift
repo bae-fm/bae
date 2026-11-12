@@ -48,7 +48,8 @@ extension ShotScene {
                                 causes: []
                             ),
                             action: .restoreFile,
-                            actionKey: "core.pending.action.restore_file"
+                            actionKey: "core.pending.action.restore_file",
+                            sendsFiles: true
                         ),
                         BridgePendingRecord(
                             subject: BridgeMessage(
@@ -66,7 +67,8 @@ extension ShotScene {
                                 causes: []
                             ),
                             action: .retryOperation(id: 7),
-                            actionKey: "core.pending.action.retry"
+                            actionKey: "core.pending.action.retry",
+                            sendsFiles: true
                         ),
                     ]
                 )

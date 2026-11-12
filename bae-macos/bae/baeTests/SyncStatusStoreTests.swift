@@ -75,7 +75,8 @@ struct SyncStatusStoreTests {
                 causes: []
             ),
             action: .retryOperation(id: 7),
-            actionKey: "core.pending.action.retry"
+            actionKey: "core.pending.action.retry",
+            sendsFiles: false
         )
         let sync = SyncStatusStore()
 

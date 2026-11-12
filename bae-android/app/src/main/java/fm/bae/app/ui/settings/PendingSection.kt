@@ -18,6 +18,7 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidCard
 import fm.bae.app.ui.components.AndroidNote
+import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidSection
 import fm.bae.app.ui.components.ButtonKind
@@ -30,30 +31,43 @@ import uniffi.bae_bridge.BridgePendingRecord
  * What sync waits on: each pending record as a row in a card, its subject over its reason, with the record's action as
  * a text button at the right. A tap on a row with something behind its reason opens that in a dialog; the note under
  * the card says so.
+ *
+ * [recordsDropped] says a record a phone can't have was left out of [records] and reported as a bug
+ * ([fm.bae.app.data.PhonePendingRecords]); "Something went wrong." shows in its place.
  */
 @Composable
 internal fun PendingSection(
     records: List<BridgePendingRecord>,
     onAction: (BridgePendingAction) -> Unit,
+    recordsDropped: Boolean = false,
 ) {
     val context = LocalContext.current
     var shown by remember { mutableStateOf<ErrorDetails?>(null) }
     val details = records.map { pendingDetails(context, it) }
     Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
         AndroidSection(text = stringResource(R.string.sync_pending))
-        AndroidCard {
-            records.forEachIndexed { index, record ->
-                PendingRow(
-                    record = record,
-                    details = details[index],
-                    onAction = onAction,
-                    onOpenDetails = { shown = it },
-                )
+        if (recordsDropped) RecordsDroppedNotice()
+        if (records.isNotEmpty()) {
+            AndroidCard {
+                records.forEachIndexed { index, record ->
+                    PendingRow(
+                        record = record,
+                        details = details[index],
+                        onAction = onAction,
+                        onOpenDetails = { shown = it },
+                    )
+                }
             }
         }
         if (details.any { it != null }) AndroidNote(stringResource(R.string.sync_pending_tap))
     }
     shown?.let { ErrorDetailsDialog(it, onDismiss = { shown = null }) }
+}
+
+/** "Something went wrong." where a record only a Mac can have would be: the bug is already reported. */
+@Composable
+private fun RecordsDroppedNotice() {
+    AndroidNotice(DisplayError(LocalContext.current.coreString("core.error.category.internal")))
 }
 
 /**
@@ -86,9 +100,8 @@ private fun PendingRow(
         trailing = {
             val actionKey = record.actionKey
             when (record.action) {
-                // The reason's details show what a review is of. A file goes back where it was on the device that
-                // imported it, so a phone has nothing to offer for it: a tap on the row shows why.
-                BridgePendingAction.Wait, BridgePendingAction.Review, BridgePendingAction.RestoreFile -> {
+                // The reason's details show what a review is of: a tap on the row shows them.
+                BridgePendingAction.Wait, BridgePendingAction.Review -> {
                     Unit
                 }
 

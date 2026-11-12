@@ -3524,7 +3524,12 @@ reason under it in plain words. On the Mac *Details* (§9.7), when coven kept an
 error behind the record, and the record's action sit at the right of the row;
 the failure of an action shows under its row. On Android the action is a text
 button at the right, a tap on the row opens its details in a dialog, and a note
-under the list says so. On the Mac, a read of this device's own record of the
+under the list says so. A phone sends no release files or covers and can't
+restore a source file, so a record of files it sends (an upload or a move), or
+one whose action is *Restore source file*, never reaches Android's list or its
+Activity panel: one that does is a bug, reported to the crash reporter without
+crashing and left out of both, and the Sync page shows *Something went wrong.*
+in place of its row. On the Mac, a read of this device's own record of the
 cloud home that fails is a bug: the page says *Couldn’t read this library’s
 cloud home.* with *Details* only, and the bug is reported to the crash reporter
 without crashing.

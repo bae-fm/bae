@@ -1,11 +1,15 @@
 package fm.bae.app.data
 
+import fm.bae.app.BugReports
 import fm.bae.app.DisplayError
 import fm.bae.app.ErrorDisplays
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
+import uniffi.bae_bridge.BridgeMessage
+import uniffi.bae_bridge.BridgePendingAction
+import uniffi.bae_bridge.BridgePendingReason
 import uniffi.bae_bridge.BridgePendingRecord
 import uniffi.bae_bridge.BridgePlayOutcome
 import uniffi.bae_bridge.BridgePlaybackErrorReason
@@ -29,6 +33,8 @@ class SyncStatusStoreTest {
             override fun display(outcome: BridgePlayOutcome): DisplayError? = null
         }
 
+    private val bugs = BugReports()
+
     private val synced = shownAs(BridgeSyncStatusWord.SYNCED, "core.sync.synced", BridgeSyncTone.SUCCESS)
 
     /** The state, its fix and its time are core's, and reach the page as read. */
@@ -47,11 +53,11 @@ class SyncStatusStoreTest {
         assertEquals(SyncLine.Checking, sync.line.value)
         assertEquals(null, sync.pending.value)
 
-        sync.apply(status(synced), errors)
+        sync.apply(status(synced), errors, bugs)
         assertEquals(SyncLine.Read(synced), sync.line.value)
         assertEquals(emptyList<BridgePendingRecord>(), sync.pending.value)
 
-        sync.apply(status(signedOut), errors)
+        sync.apply(status(signedOut), errors, bugs)
         assertEquals(SyncLine.Read(signedOut), sync.line.value)
     }
 
@@ -62,7 +68,7 @@ class SyncStatusStoreTest {
         sync.fail()
         assertEquals(SyncLine.Unreadable, sync.line.value)
 
-        sync.apply(status(synced), errors)
+        sync.apply(status(synced), errors, bugs)
         assertEquals(SyncLine.Read(synced), sync.line.value)
     }
 
@@ -72,13 +78,39 @@ class SyncStatusStoreTest {
         val sync = SyncStatusStore()
         val why = BridgeException.Diagnostic(BridgeErrorCategory.StorageSetupUndone, "bae stopped partway")
 
-        sync.apply(status(synced).copy(setupRunning = true), errors)
+        sync.apply(status(synced).copy(setupRunning = true), errors, bugs)
         assertEquals(true, sync.setupRunning.value)
         assertEquals(null, sync.undoneSetup.value)
 
-        sync.apply(status(synced).copy(undoneSetup = BridgeUndoneStorageSetup(7, why)), errors)
+        sync.apply(status(synced).copy(undoneSetup = BridgeUndoneStorageSetup(7, why)), errors, bugs)
         assertEquals(false, sync.setupRunning.value)
         assertEquals(UndoneSetup(7, DisplayError("line for $why", "detail of $why")), sync.undoneSetup.value)
+    }
+
+    /** A phone has no record of files it sends or of a source file to restore: such a record is a bug, kept out of the list. */
+    @Test
+    fun aRecordOnlyAMacCanHaveIsDropped() {
+        val sync = SyncStatusStore()
+
+        fun record(sendsFiles: Boolean) =
+            BridgePendingRecord(
+                subject = BridgeMessage(key = "core.pending.subject.cover", args = emptyList()),
+                reason = BridgePendingReason(key = "core.pending.reason.storage", detail = null, causes = emptyList()),
+                action = BridgePendingAction.Wait,
+                actionKey = null,
+                sendsFiles = sendsFiles,
+            )
+        val fine = record(sendsFiles = false)
+        val bad = record(sendsFiles = true)
+
+        sync.apply(status(synced).copy(pending = listOf(fine, bad)), errors, bugs)
+        sync.apply(status(synced).copy(pending = listOf(fine, bad)), errors, bugs)
+
+        assertEquals(listOf(fine), sync.pending.value)
+        assertEquals(true, sync.recordsDropped.value)
+
+        sync.apply(status(synced).copy(pending = listOf(fine)), errors, bugs)
+        assertEquals(false, sync.recordsDropped.value)
     }
 
     private fun shownAs(

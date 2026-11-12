@@ -13,7 +13,6 @@ import fm.bae.app.ui.settings.StorageSection
 import fm.bae.app.ui.settings.SyncStatusBlock
 import org.junit.Test
 import uniffi.bae_bridge.BridgeMessage
-import uniffi.bae_bridge.BridgeMessageArg
 import uniffi.bae_bridge.BridgePendingAction
 import uniffi.bae_bridge.BridgePendingReason
 import uniffi.bae_bridge.BridgePendingRecord
@@ -54,30 +53,19 @@ class SyncShots : BoardShot() {
     private val pendingRecords =
         listOf(
             BridgePendingRecord(
-                subject =
-                    BridgeMessage(
-                        key = "core.pending.subject.release_file",
-                        args =
-                            listOf(
-                                BridgeMessageArg(name = "file", value = "03 Second Floor.flac"),
-                                BridgeMessageArg(name = "album", value = "Paper Lanterns"),
-                            ),
-                    ),
+                subject = BridgeMessage(key = "core.pending.subject.file", args = emptyList()),
                 reason =
                     BridgePendingReason(
-                        key = "core.pending.reason.file_changed",
-                        detail = "the file changed after it was imported",
+                        key = "core.pending.reason.file_lost",
+                        detail = "the cloud holds nothing where the file should be",
                         causes = emptyList(),
                     ),
-                action = BridgePendingAction.RestoreFile,
-                actionKey = "core.pending.action.restore_file",
+                action = BridgePendingAction.Review,
+                actionKey = "core.pending.action.review",
+                sendsFiles = false,
             ),
             BridgePendingRecord(
-                subject =
-                    BridgeMessage(
-                        key = "core.pending.subject.cover",
-                        args = listOf(BridgeMessageArg(name = "album", value = "Low Tide Hours")),
-                    ),
+                subject = BridgeMessage(key = "core.pending.subject.local_changes", args = emptyList()),
                 reason =
                     BridgePendingReason(
                         key = "core.pending.reason.storage",
@@ -86,6 +74,7 @@ class SyncShots : BoardShot() {
                     ),
                 action = BridgePendingAction.RetryOperation(id = 7L),
                 actionKey = "core.pending.action.retry",
+                sendsFiles = false,
             ),
         )
 }

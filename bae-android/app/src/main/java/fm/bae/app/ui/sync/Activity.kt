@@ -29,6 +29,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
+import fm.bae.app.BugReports
 import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.coreString
@@ -371,7 +372,10 @@ private fun ActivityListPreview() {
 @Preview(showBackground = true)
 @Composable
 private fun ActivityButtonPreview() {
-    val store = remember { SyncActivityStore().apply { apply(PreviewData.syncActivity(needsAttention = true)) } }
+    val store =
+        remember {
+            SyncActivityStore().apply { apply(PreviewData.syncActivity(needsAttention = true), BugReports()) }
+        }
     BaeTheme {
         ActivityButton(
             store = store,

@@ -96,7 +96,8 @@ public final class SyncActivityStore {
                 causes: []
             ),
             action: .signIn(provider: .dropbox),
-            actionKey: "core.pending.action.sign_in"
+            actionKey: "core.pending.action.sign_in",
+            sendsFiles: false
         )
     }
 #endif

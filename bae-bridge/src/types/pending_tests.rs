@@ -26,3 +26,17 @@ fn a_refused_admission_reads_as_a_removal() {
         crate::BridgeDeviceStop::Removed
     );
 }
+
+/// Only this device's uploads and moves of files are its sending files; a
+/// download or a connection is not.
+#[test]
+fn a_record_sends_files_when_it_is_an_upload_or_a_move() {
+    let sends = |subject| {
+        BridgePendingRecord::from_core(bae_sync_status::PendingItem::before_open(
+            coven::PendingRecord::new(subject, coven::PendingReason::NoStorage),
+        ))
+        .sends_files
+    };
+    assert!(sends(coven::PendingSubject::Move { id: coven::MoveId(3) }));
+    assert!(!sends(coven::PendingSubject::Connection));
+}

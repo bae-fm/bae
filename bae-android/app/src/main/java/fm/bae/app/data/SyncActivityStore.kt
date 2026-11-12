@@ -1,5 +1,6 @@
 package fm.bae.app.data
 
+import fm.bae.app.BugReports
 import fm.bae.app.DisplayError
 import fm.bae.fastvalues.LatestSource
 import fm.bae.fastvalues.LatestStream
@@ -24,8 +25,15 @@ class SyncActivityStore(
     private val mutableError = MutableStateFlow<DisplayError?>(null)
     val error: StateFlow<DisplayError?> = mutableError.asStateFlow()
 
-    fun apply(value: BridgeSyncActivity) {
-        mutableActivity.value = value
+    private val phoneRecords = PhonePendingRecords()
+
+    /** Applies [value] without the records of [BridgeSyncActivity.attention] a phone can't have: those are a bug. */
+    fun apply(
+        value: BridgeSyncActivity,
+        bugs: BugReports,
+    ) {
+        val taken = phoneRecords.take(value.attention, "list the records that need attention", bugs::report)
+        mutableActivity.value = value.copy(attention = taken.listed)
         mutableError.value = null
     }
 

@@ -1,5 +1,6 @@
 package fm.bae.app.data
 
+import fm.bae.app.BugReports
 import fm.bae.app.DisplayError
 import fm.bae.app.ErrorDisplays
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -41,6 +42,11 @@ class SyncStatusStore {
     private val _pending = MutableStateFlow<List<BridgePendingRecord>?>(null)
     val pending: StateFlow<List<BridgePendingRecord>?> = _pending.asStateFlow()
 
+    /** Whether the last read held a record a phone can't have: a bug, reported, and kept out of [pending]. */
+    private val _recordsDropped = MutableStateFlow(false)
+    val recordsDropped: StateFlow<Boolean> = _recordsDropped.asStateFlow()
+    private val phoneRecords = PhonePendingRecords()
+
     /**
      * A storage setup runs: a setup screen's, or one past its point of no return that sync's connection finishes after
      * a relaunch. It records the library's location as it finishes, so Settings reads the location again once this
@@ -55,9 +61,12 @@ class SyncStatusStore {
     fun apply(
         status: BridgeSyncStatusSnapshot,
         errors: ErrorDisplays,
+        bugs: BugReports,
     ) {
         _line.value = SyncLine.Read(status.shown)
-        _pending.value = status.pending
+        val taken = phoneRecords.take(status.pending, "list the pending records", bugs::reportShownInPlace)
+        _pending.value = taken.listed
+        _recordsDropped.value = taken.onlyAMacHas.isNotEmpty()
         _setupRunning.value = status.setupRunning
         _undoneSetup.value =
             status.undoneSetup?.let { undone ->
