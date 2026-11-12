@@ -54,6 +54,7 @@ internal fun LoadedPeoplePage(
                     member = person.membership,
                     selfIsAdmin = model.selfIsAdmin,
                     name = person.profile?.name ?: stringResource(R.string.members_unnamed),
+                    adminChanges = model.adminChanges,
                     callbacks = callbacks,
                     error = model.error,
                     onBack = onBack,

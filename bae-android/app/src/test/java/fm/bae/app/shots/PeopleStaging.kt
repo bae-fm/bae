@@ -10,6 +10,9 @@ import fm.bae.app.ui.settings.MemberCallbacks
 import fm.bae.app.ui.settings.NothingFails
 import fm.bae.app.ui.settings.YouActions
 import uniffi.bae_bridge.BridgeActiveDevice
+import uniffi.bae_bridge.BridgeAdminChange
+import uniffi.bae_bridge.BridgeAdminChangeKind
+import uniffi.bae_bridge.BridgeAdminChangeState
 import uniffi.bae_bridge.BridgeFormerDevice
 import uniffi.bae_bridge.BridgeFormerDeviceState
 import uniffi.bae_bridge.BridgeHistorySharing
@@ -51,17 +54,20 @@ internal fun PeoplePageScene(
     onBack = {},
 )
 
-/** [person]'s page, as an admin sees it. */
+/** [person]'s page, as an admin sees it, with the [adminChanges] this phone asked for. */
 @Composable
-internal fun PersonPageScene(person: BridgePerson) =
-    AndroidSettingsPerson(
-        member = person.membership,
-        selfIsAdmin = true,
-        name = checkNotNull(person.profile).name,
-        callbacks = memberCallbacks(),
-        error = null,
-        onBack = {},
-    )
+internal fun PersonPageScene(
+    person: BridgePerson,
+    adminChanges: List<BridgeAdminChange> = emptyList(),
+) = AndroidSettingsPerson(
+    member = person.membership,
+    selfIsAdmin = true,
+    name = checkNotNull(person.profile).name,
+    adminChanges = adminChanges,
+    callbacks = memberCallbacks(),
+    error = null,
+    onBack = {},
+)
 
 /** [person]'s own devices. */
 @Composable
@@ -149,3 +155,11 @@ internal val heldRejected =
 
 /** Dan's code, for which his request hasn't arrived. */
 internal val waitingCode = BridgeInviteShown.Code("0000 0000", BridgeInviteProgress.Waiting)
+
+/** The change that makes Ben an admin, in [state]. */
+internal fun makeBenAdmin(state: BridgeAdminChangeState) =
+    BridgeAdminChange(
+        operation = 1,
+        change = BridgeAdminChangeKind.SetRole(member = BEN_ID, person = "Ben", role = BridgeMemberRole.ADMIN),
+        state = state,
+    )

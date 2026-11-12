@@ -121,7 +121,10 @@ internal fun PeopleHome(
         contentPadding = PaddingValues(ThemeSpace.edge),
         verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
     ) {
-        item { AdminChangesList(changes = adminChanges, onDismiss = callbacks.onDismissChange) }
+        val shownChanges = adminChanges.at(AdminChangePlace.People)
+        if (shownChanges.isNotEmpty()) {
+            item { AdminChangesList(changes = shownChanges, onDismiss = callbacks.onDismissChange) }
+        }
         item { AndroidSection(text = stringResource(R.string.members_you)) }
         item { YouCard(you = you, me = me, requested = requested, onOpenDevices = { onOpen(PeoplePage.Devices) }) }
         item { AndroidSection(text = stringResource(R.string.people_people)) }

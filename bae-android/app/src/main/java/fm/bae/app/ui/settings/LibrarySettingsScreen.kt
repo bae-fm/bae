@@ -34,6 +34,7 @@ import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.library.LibraryDestination
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.launch
+import uniffi.bae_bridge.BridgeAdminChange
 import uniffi.bae_bridge.BridgeMemberRole
 
 /**
@@ -63,6 +64,10 @@ internal fun LibrarySettingsScreen(
         sync = syncRowSummary(storage = storage, line = line, setupRunning = setupRunning),
         peopleAndDevices = if (storage is Storage.At) peopleAndDevices(members.people) else null,
         hasStorage = storage is Storage.At,
+        adminChanges = members.adminChanges.at(AdminChangePlace.Library),
+        onDismissChange = { change ->
+            members.perform("dismiss an admin change") { session.appHandle.acknowledgeAdminChange(change.operation) }
+        },
         onBack = onBack,
         onRename = { renaming = true },
         onOpenSync = { onPush(LibraryDestination.Sync) },
@@ -86,6 +91,8 @@ internal fun AndroidSettingsLibrary(
     sync: SyncRowSummary,
     peopleAndDevices: String?,
     hasStorage: Boolean,
+    adminChanges: List<BridgeAdminChange>,
+    onDismissChange: (BridgeAdminChange) -> Unit,
     onBack: () -> Unit,
     onRename: () -> Unit,
     onOpenSync: () -> Unit,
@@ -131,6 +138,7 @@ internal fun AndroidSettingsLibrary(
                     )
                 }
             }
+            AdminChangesList(changes = adminChanges, onDismiss = onDismissChange)
         }
     }
 }

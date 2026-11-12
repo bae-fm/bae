@@ -30,6 +30,7 @@ import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidSection
 import fm.bae.app.ui.components.ButtonKind
 import uniffi.bae_bridge.BridgeActiveDevice
+import uniffi.bae_bridge.BridgeAdminChange
 import uniffi.bae_bridge.BridgeMember
 import uniffi.bae_bridge.BridgeMemberAccess
 import uniffi.bae_bridge.BridgeMemberRole
@@ -40,12 +41,19 @@ internal fun AndroidSettingsPerson(
     member: BridgeMember,
     selfIsAdmin: Boolean,
     name: String,
+    adminChanges: List<BridgeAdminChange>,
     callbacks: MemberCallbacks,
     error: DisplayError?,
     onBack: () -> Unit,
 ) {
     PeopleFrame(title = name, error = error, onBack = onBack) {
-        PersonPage(member = member, selfIsAdmin = selfIsAdmin, name = name, callbacks = callbacks)
+        PersonPage(
+            member = member,
+            selfIsAdmin = selfIsAdmin,
+            name = name,
+            adminChanges = adminChanges,
+            callbacks = callbacks,
+        )
     }
 }
 
@@ -63,14 +71,15 @@ internal fun AndroidSettingsDevices(
 }
 
 /**
- * A person's page: their role, which an admin changes, removing them from the library, and their devices, each
- * removable when allowed.
+ * A person's page: the role changes this device asked for, their role, which an admin changes, removing them from the
+ * library, and their devices, each removable when allowed.
  */
 @Composable
 internal fun PersonPage(
     member: BridgeMember,
     selfIsAdmin: Boolean,
     name: String,
+    adminChanges: List<BridgeAdminChange>,
     callbacks: MemberCallbacks,
 ) {
     LazyColumn(
@@ -78,6 +87,10 @@ internal fun PersonPage(
         contentPadding = PaddingValues(ThemeSpace.edge),
         verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
     ) {
+        val shownChanges = adminChanges.at(AdminChangePlace.Person(member.id))
+        if (shownChanges.isNotEmpty()) {
+            item { AdminChangesList(changes = shownChanges, onDismiss = callbacks.onDismissChange) }
+        }
         item {
             AndroidCard {
                 AndroidRow(

@@ -5,6 +5,7 @@ import fm.bae.app.ui.settings.cutOffRetryParts
 import fm.bae.app.ui.settings.joinRequestParts
 import org.junit.Test
 import uniffi.bae_bridge.BridgeActiveDevice
+import uniffi.bae_bridge.BridgeAdminChangeState
 import uniffi.bae_bridge.BridgeDeviceCutOff
 import uniffi.bae_bridge.BridgeInviteShown
 import uniffi.bae_bridge.BridgeMemberRole
@@ -55,6 +56,20 @@ class SettingsPeopleShots : BoardShot() {
     @Test
     fun androidSettingsPersonAdmin() =
         shot("android.settings.person.admin") { ScreenScene { PersonPageScene(ben(BridgeMemberRole.ADMIN)) } }
+
+    /** Ben's page while his promotion waits for sync: the change's box above his role, still Member. */
+    @Test
+    fun androidSettingsPersonMakeAdminWaiting() =
+        shot("android.settings.person.make-admin-waiting") {
+            ScreenScene { PersonPageScene(ben(), listOf(makeBenAdmin(BridgeAdminChangeState.Waiting))) }
+        }
+
+    /** Ben's page once the library has the promotion: the box says Done with Dismiss, and his role is Admin. */
+    @Test
+    fun androidSettingsPersonMakeAdminDone() =
+        shot("android.settings.person.make-admin-done") {
+            ScreenScene { PersonPageScene(ben(BridgeMemberRole.ADMIN), listOf(makeBenAdmin(BridgeAdminChangeState.Done))) }
+        }
 
     /** Ana's own devices: this phone, her laptop, Add device, and her removed devices. */
     @Test

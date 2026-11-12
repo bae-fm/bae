@@ -70,6 +70,7 @@ internal fun PeopleScene(
                 member = person.membership,
                 selfIsAdmin = asAdmin,
                 name = "Person Name",
+                adminChanges = emptyList(),
                 callbacks = callbacks,
                 error = null,
                 onBack = {},
