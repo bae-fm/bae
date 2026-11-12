@@ -46,9 +46,10 @@
 .bae-m-notice { position: relative; display: flex; flex-direction: column; gap: 4px; }
 .bae-m-notice-top { display: flex; align-items: flex-start; gap: var(--space-group); }
 .bae-m-notice-words { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-.bae-m-notice-below { align-self: flex-start; display: flex; align-items: center; gap: var(--space-related); margin-top: 4px; }
-/* Under the words, a borderless button keeps the same padding as the button beside it, and the first one pulls out by that padding so its words line up with the text above. */
-.bae-m-notice-below .bae-m-btn-borderless { padding: 0 12px; }
+.bae-m-notice-below { align-self: flex-start; display: flex; align-items: center; gap: var(--space-related); margin-top: var(--space-related); }
+/* A quiet notice is a bare line on the page: its buttons stay close under it. A filled one has room around its words, so the buttons take a step more. */
+.bae-notice-quiet .bae-m-notice-below { margin-top: var(--space-inline); }
+/* Under the words, the first borderless button pulls out by its padding so its words line up with the text above. */
 .bae-m-notice-below > .bae-m-btn-borderless:first-child { margin-left: -12px; }
 /* A Mac notice's text buttons (Details) are the accent, apart from its title, as Android's text buttons already are. */
 .bae-m-notice .bae-m-btn-borderless:not(.bae-m-btn-muted) { color: var(--accent); }
