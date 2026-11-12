@@ -98,7 +98,7 @@ struct ImportSearchFormView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.compact) {
-            HStack(spacing: ThemeSpace.related) {
+            VStack(alignment: .leading, spacing: ThemeSpace.related) {
                 Picker(
                     "Search by",
                     selection: Binding(

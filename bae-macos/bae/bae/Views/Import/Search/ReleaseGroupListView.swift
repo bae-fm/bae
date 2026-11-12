@@ -156,7 +156,7 @@ struct ReleaseGroupSection: View {
     var body: some View {
         let sections = shownSections
         if sections.contains(where: { !$0.rows.isEmpty }) {
-            VStack(alignment: .leading, spacing: ThemeSpace.related) {
+            VStack(alignment: .leading, spacing: ThemeSpace.compact) {
                 ReleaseGroupCard(group: group)
                 pressings(sections)
             }
@@ -172,7 +172,7 @@ struct ReleaseGroupSection: View {
             Rectangle()
                 .fill(Theme.hairline)
                 .frame(width: Self.ruleWidth)
-            VStack(alignment: .leading, spacing: ThemeSpace.hairline) {
+            VStack(alignment: .leading, spacing: ThemeSpace.compact) {
                 ForEach(Array(sections.enumerated()), id: \.offset) {
                     _,
                     section in

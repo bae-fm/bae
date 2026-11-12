@@ -57,10 +57,14 @@ struct ImportSearchResultRow: View {
             .disabled(!isPickable)
 
             HStack(spacing: ThemeSpace.related) {
-                facts
-                    .opacity(isInLibrary ? 0.55 : 1)
-                    .allowsHitTesting(false)
-                signalBadges
+                VStack(alignment: .leading, spacing: ThemeSpace.line) {
+                    HStack(spacing: ThemeSpace.related) {
+                        facts
+                        signalBadges
+                    }
+                    summaryLine
+                }
+                .allowsHitTesting(false)
                 Spacer(minLength: ThemeSpace.related)
                 libraryMarker
                     .allowsHitTesting(false)
@@ -69,6 +73,8 @@ struct ImportSearchResultRow: View {
                 chevron
                     .allowsHitTesting(false)
             }
+            // An "In library" pressing is faded whole, marker included.
+            .opacity(isInLibrary ? 0.55 : 1)
         }
         .padding(.vertical, ThemeSpace.compact)
         .padding(.horizontal, Self.horizontalPadding)
@@ -186,22 +192,6 @@ struct ImportSearchResultRow: View {
                     StatusChip(verbatim: catalogNumber)
                 }
             }
-            let summary = pressing.summaryText
-            if !summary.isEmpty {
-                Text(summary)
-                    .themeText(.detail)
-                    .foregroundStyle(.tertiary)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-            }
-            let details = pressing.detailsText
-            if !details.isEmpty {
-                Text(details)
-                    .themeText(.detail)
-                    .foregroundStyle(.quaternary)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-            }
         }
     }
 
@@ -299,6 +289,33 @@ struct ImportSearchResultRow: View {
                 isSelected ? Theme.accent : Theme.hairlineStrong
             )
             .frame(width: ThemeIcon.small.size)
+    }
+}
+
+extension ImportSearchResultRow {
+    /// The pressing's format and country, and its details, under the facts.
+    @ViewBuilder
+    private var summaryLine: some View {
+        let summary = pressing.summaryText
+        let details = pressing.detailsText
+        if !summary.isEmpty || !details.isEmpty {
+            HStack(spacing: ThemeSpace.related) {
+                if !summary.isEmpty {
+                    Text(summary)
+                        .themeText(.detail)
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
+                if !details.isEmpty {
+                    Text(details)
+                        .themeText(.detail)
+                        .foregroundStyle(.quaternary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
+            }
+        }
     }
 }
 
