@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Restore code</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bae/tokens.css">
+<link rel="stylesheet" href="ds/bae/components/bundle.css">
+<script src="ds/bae/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:var(--background)}
+</style>
+</helmet>
+<div style="width: 100%; display: flex; flex-direction: column; gap: 2px; font-size: 13px; color: var(--text-primary); font-family: var(--font-sans)"><div style="display: flex; align-items: center; gap: 8px; background: var(--surface); border-radius: var(--radius-card); padding: 10px 12px; font: 13px/20px var(--font-mono)"><sc-if value="{{shown}}" hint-placeholder-val="{{ false }}"><span aria-label="Restore code" style="flex: 1; min-width: 0; word-spacing: 4px; color: var(--text-primary); user-select: text; -webkit-user-select: text">{{grouped}}</span></sc-if><sc-if value="{{hidden}}" hint-placeholder-val="{{ true }}"><span aria-label="Restore code, partly hidden" style="flex: 1; display: flex; min-width: 0; white-space: nowrap; user-select: none; -webkit-user-select: none; color: var(--text-secondary)"><span style="overflow: hidden; text-overflow: ellipsis">{{maskedHead}}</span><span style="flex: none">{{maskedTail}}</span></span></sc-if><x-import component-from-global-scope="Bae.MacButton" on-click="{{toggle}}" style="flex: none">{{toggleLabel}}</x-import><x-import component-from-global-scope="Bae.MacButton" style="flex: none">Print…</x-import><x-import component-from-global-scope="Bae.MacButton" kind="icon" icon="{{copyIcon}}" label="{{copyLabel}}" on-click="{{copy}}" style="flex: none"></x-import></div><x-import component-from-global-scope="Bae.MacNote">Print this code or save it in a password manager. It gets you back into your library if you lose all your devices. It’s also in your iCloud Keychain.</x-import><sc-if value="{{s3}}" hint-placeholder-val="{{ false }}"><x-import component-from-global-scope="Bae.MacNote">You’ll also need your S3 access key and secret.</x-import></sc-if></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"shown":{"editor":"boolean","default":false},"s3":{"editor":"boolean","default":false},"$preview":{"width":460,"height":150}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const code = 'CVR1-UJZDEGXDNCF32EPF3DHODZDOCIS2JHTLGMXGEDN73U55XTPLPFT7V4SEH2KVJ72CEUVW75EFR6EDT4SYWB5WKH7DNSIPZZ7FK4ZRI3R2WYOJFLJOOA7LQSAJ2XUID5ZZZZG6ZDMEN4KHVDGAJGXBENYJQWX6HH7566TFJGVQ6KBNXJBTFQXKWOVOMPZOM7WBBR6QMW4WXFOGO6MVN6A6WFHYM6L3VFZ5ZFKKIBJ5J6WJIBAGI3MNB';
+    const copied = !!(this.state && this.state.copied);
+    const p = this.props || {};
+    const shown = this.state && this.state.shown !== undefined ? this.state.shown : (p.shown === true || p.shown === 'true');
+    return {
+      s3: p.s3 === true || p.s3 === 'true',
+      code,
+      shown,
+      hidden: !shown,
+      grouped: 'CVR1 ' + code.slice(5).match(/.{1,4}/g).join(' '),
+      toggleLabel: shown ? 'Hide' : 'Show',
+      toggle: () => this.setState({ shown: !shown }),
+      maskedHead: code.slice(0, 9) + '•'.repeat(code.length - 13),
+      maskedTail: code.slice(-4),
+      copyIcon: copied ? 'check' : 'copy',
+      copyLabel: copied ? 'Copied' : 'Copy',
+      copy: () => {
+        try { navigator.clipboard.writeText(code); } catch (e) {}
+        this.setState({ copied: true });
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>

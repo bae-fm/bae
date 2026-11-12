@@ -2586,7 +2586,7 @@
    "x": 1960,
    "y": 12192
   },
-  "android.parts.restore-code.dc.html": {
+  "mac.parts.restore-code.dc.html": {
    "h": 150,
    "is_interactive": true,
    "page": "shared",
@@ -5285,7 +5285,7 @@
   "mac.settings.sync-setup.icloud-step-1.dc.html",
   "mac.settings.sync-setup.icloud-step-2.dc.html",
   "mac.settings.sync-setup.icloud-step-3.dc.html",
-  "android.parts.restore-code.dc.html",
+  "mac.parts.restore-code.dc.html",
   "mac.settings.sync-setup.icloud-restore-code.dc.html",
   "mac.settings.sync-setup.icloud-done.dc.html",
   "mac.settings.sync-setup.s3-choose-home.dc.html",
