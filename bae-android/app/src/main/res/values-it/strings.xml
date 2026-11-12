@@ -193,6 +193,7 @@
     <string name="members_remove_confirm_title">Rimuovere questo dispositivo?</string>
     <string name="members_remove_confirm_body">%1$s perde l’accesso a questa libreria.</string>
     <string name="join_request_approve">Approva</string>
+    <string name="join_request_title">%1$s vuole unirsi</string>
     <string name="join_request_match">Assicurati che sia mostrato questo codice:</string>
     <string name="join_request_confirmation">Numero di conferma</string>
     <string name="onboarding_add_device">Aggiungi dispositivo</string>
@@ -281,7 +282,7 @@
     <string name="reset_device_confirm">Reimposta</string>
     <string name="restore_device_title">Ripristina questa libreria</string>
     <string name="finish_restore_title">Completa il ripristino di questa libreria</string>
-    <string name="finish_reset">Completa la reimpostazione di questo dispositivo</string>
+    <string name="finish_reset">Completa la reimpostazione</string>
     <string name="finish_removal">Completa la rimozione di questa libreria</string>
     <string name="save">Salva</string>
     <string name="onboarding_scan_code">Scansiona un codice</string>
@@ -311,7 +312,7 @@
     <string name="loading_finding_libraries">Ricerca delle tue librerie…</string>
     <string name="loading_opening_library">Apertura della libreria…</string>
     <string name="loading_closing_library">Chiusura della libreria…</string>
-    <string name="loading_removing_library">Rimozione della libreria…</string>
+    <string name="loading_removing_library">Uscita dalla libreria…</string>
     <string name="loading_resetting_device">Ripristino di questo dispositivo…</string>
     <string name="progress_loading">Caricamento</string>
     <string name="pending_update_no_store">Nessuno store di app su questo dispositivo può aggiornare bae.</string>
@@ -349,7 +350,8 @@
     <string name="device_cut_off_running_body">Attendi che finisca, poi riprova.</string>
     <string name="device_cut_off_not_gone_title">La rimozione non è ancora arrivata su questo dispositivo</string>
     <string name="device_cut_off_not_gone_body">Riprova dopo la prossima sincronizzazione.</string>
-    <string name="members_invite">Invita una persona</string>
+    <string name="members_invite">Invita</string>
+    <string name="invite_person_title">Invita una persona</string>
     <string name="invite_name">Nome</string>
     <string name="invite_lifetime_hour">1 ora</string>
     <string name="invite_lifetime_day">1 giorno</string>
@@ -359,7 +361,12 @@
     <string name="add_device_added">Dispositivo aggiunto: %1$s</string>
     <string name="add_device_making_code">Creazione di un codice per il tuo nuovo dispositivo…</string>
     <string name="add_device_instructions">Sul nuovo dispositivo, scegli “Scansiona un codice” per scansionare questo, o “Inserisci un codice” per digitare:</string>
-    <string name="invite_email">Email</string>
+    <string name="invite_email_dropbox">Email Dropbox</string>
+    <string name="invite_email_onedrive">Indirizzo e-mail del profilo Microsoft</string>
+    <string name="invite_email_icloud">Indirizzo e-mail del profilo Apple</string>
+    <string name="invite_email_help_dropbox">La libreria è condivisa con questo account Dropbox così che la persona possa unirsi.</string>
+    <string name="invite_email_help_onedrive">La libreria è condivisa con questo account Microsoft così che la persona possa unirsi.</string>
+    <string name="invite_email_help_icloud">La libreria è condivisa con questo account Apple così che la persona possa unirsi.</string>
     <string name="invite_create">Crea invito</string>
     <string name="invite_title">Invito</string>
     <string name="invite_cancel">Annulla invito</string>
@@ -397,8 +404,8 @@
     <string name="onboarding_saved_code_removed">Questo codice di ripristino non è più salvato su questo dispositivo.</string>
     <string name="onboarding_saved_library">Libreria</string>
     <string name="members_joining">Si sta unendo</string>
-    <string name="members_sharing_access">Condivisione dell’accesso</string>
-    <string name="invite_granting">Condivisione della libreria. Il codice comparirà quando questa libreria si sarà sincronizzata.</string>
+    <string name="members_invite_shares_access">Condivide l’accesso quando è online</string>
+    <string name="invite_granting">Condivisione della libreria con %1$s…</string>
     <string name="settings_profile_making">Creazione del tuo profilo…</string>
     <string name="settings_profile_making_detail">Il tuo profilo comparirà quando questa libreria si sarà sincronizzata.</string>
     <string name="settings_profile_refused">Non è stato possibile creare il tuo profilo. %1$s</string>

@@ -193,6 +193,7 @@
     <string name="members_remove_confirm_title">¿Eliminar este dispositivo?</string>
     <string name="members_remove_confirm_body">%1$s pierde el acceso a esta biblioteca.</string>
     <string name="join_request_approve">Aprobar</string>
+    <string name="join_request_title">%1$s quiere unirse</string>
     <string name="join_request_match">Asegúrate de que se muestre este código:</string>
     <string name="join_request_confirmation">Número de confirmación</string>
     <string name="onboarding_add_device">Añadir dispositivo</string>
@@ -281,7 +282,7 @@
     <string name="reset_device_confirm">Restablecer</string>
     <string name="restore_device_title">Restaurar esta biblioteca</string>
     <string name="finish_restore_title">Terminar de restaurar esta biblioteca</string>
-    <string name="finish_reset">Terminar de restablecer este dispositivo</string>
+    <string name="finish_reset">Terminar de restablecer</string>
     <string name="finish_removal">Terminar de quitar esta biblioteca</string>
     <string name="save">Guardar</string>
     <string name="onboarding_scan_code">Escanear un código</string>
@@ -311,7 +312,7 @@
     <string name="loading_finding_libraries">Buscando tus bibliotecas…</string>
     <string name="loading_opening_library">Abriendo la biblioteca…</string>
     <string name="loading_closing_library">Cerrando la biblioteca…</string>
-    <string name="loading_removing_library">Eliminando la biblioteca…</string>
+    <string name="loading_removing_library">Saliendo de la biblioteca…</string>
     <string name="loading_resetting_device">Restableciendo este dispositivo…</string>
     <string name="progress_loading">Cargando</string>
     <string name="pending_update_no_store">Ninguna tienda de apps de este dispositivo puede actualizar bae.</string>
@@ -349,7 +350,8 @@
     <string name="device_cut_off_running_body">Espera a que termine y vuelve a intentarlo.</string>
     <string name="device_cut_off_not_gone_title">La eliminación aún no ha llegado a este dispositivo</string>
     <string name="device_cut_off_not_gone_body">Vuelve a intentarlo después de la próxima sincronización.</string>
-    <string name="members_invite">Invitar a una persona</string>
+    <string name="members_invite">Invitar</string>
+    <string name="invite_person_title">Invitar a una persona</string>
     <string name="invite_name">Nombre</string>
     <string name="invite_lifetime_hour">1 hora</string>
     <string name="invite_lifetime_day">1 día</string>
@@ -359,7 +361,12 @@
     <string name="add_device_added">Se ha añadido %1$s</string>
     <string name="add_device_making_code">Creando un código para tu nuevo dispositivo…</string>
     <string name="add_device_instructions">En el nuevo dispositivo, elige “Escanear un código” para escanear esto o “Introducir un código” para escribir:</string>
-    <string name="invite_email">Correo electrónico</string>
+    <string name="invite_email_dropbox">Correo de Dropbox</string>
+    <string name="invite_email_onedrive">Correo de la cuenta de Microsoft</string>
+    <string name="invite_email_icloud">Correo de la cuenta de Apple</string>
+    <string name="invite_email_help_dropbox">La biblioteca se comparte con esta cuenta de Dropbox para que la persona pueda unirse.</string>
+    <string name="invite_email_help_onedrive">La biblioteca se comparte con esta cuenta de Microsoft para que la persona pueda unirse.</string>
+    <string name="invite_email_help_icloud">La biblioteca se comparte con esta cuenta de Apple para que la persona pueda unirse.</string>
     <string name="invite_create">Crear invitación</string>
     <string name="invite_title">Invitación</string>
     <string name="invite_cancel">Cancelar invitación</string>
@@ -397,8 +404,8 @@
     <string name="onboarding_saved_code_removed">Este código de restauración ya no está guardado en este dispositivo.</string>
     <string name="onboarding_saved_library">Biblioteca</string>
     <string name="members_joining">Uniéndose</string>
-    <string name="members_sharing_access">Compartiendo acceso</string>
-    <string name="invite_granting">Compartiendo la biblioteca. El código aparecerá cuando esta biblioteca se sincronice.</string>
+    <string name="members_invite_shares_access">Comparte el acceso cuando esté en línea</string>
+    <string name="invite_granting">Compartiendo la biblioteca con %1$s…</string>
     <string name="settings_profile_making">Creando tu perfil…</string>
     <string name="settings_profile_making_detail">Tu perfil aparecerá cuando esta biblioteca se sincronice.</string>
     <string name="settings_profile_refused">No se pudo crear tu perfil. %1$s</string>

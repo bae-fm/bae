@@ -192,6 +192,7 @@
     <string name="members_remove_confirm_title">Ta bort den här enheten?</string>
     <string name="members_remove_confirm_body">%1$s förlorar åtkomsten till det här biblioteket.</string>
     <string name="join_request_approve">Godkänn</string>
+    <string name="join_request_title">%1$s vill gå med</string>
     <string name="join_request_match">Se till att den här koden visas:</string>
     <string name="join_request_confirmation">Bekräftelsenummer</string>
     <string name="onboarding_add_device">Lägg till enhet</string>
@@ -273,7 +274,7 @@
     <string name="reset_device_confirm">Återställ</string>
     <string name="restore_device_title">Återställ det här biblioteket</string>
     <string name="finish_restore_title">Slutför återställningen av det här biblioteket</string>
-    <string name="finish_reset">Slutför återställningen av den här enheten</string>
+    <string name="finish_reset">Slutför återställningen</string>
     <string name="finish_removal">Slutför borttagningen av biblioteket</string>
     <string name="save">Spara</string>
     <string name="onboarding_scan_code">Skanna en kod</string>
@@ -303,7 +304,7 @@
     <string name="loading_finding_libraries">Söker efter dina bibliotek…</string>
     <string name="loading_opening_library">Öppnar biblioteket…</string>
     <string name="loading_closing_library">Stänger biblioteket…</string>
-    <string name="loading_removing_library">Tar bort biblioteket…</string>
+    <string name="loading_removing_library">Lämnar biblioteket…</string>
     <string name="loading_resetting_device">Återställer den här enheten…</string>
     <string name="progress_loading">Läser in</string>
     <string name="pending_update_no_store">Ingen appbutik på den här enheten kan uppdatera bae.</string>
@@ -341,7 +342,8 @@
     <string name="device_cut_off_running_body">Vänta tills den är klar och försök igen.</string>
     <string name="device_cut_off_not_gone_title">Borttagningen har inte nått den här enheten än</string>
     <string name="device_cut_off_not_gone_body">Försök igen efter nästa synkronisering.</string>
-    <string name="members_invite">Bjud in en person</string>
+    <string name="members_invite">Bjud in</string>
+    <string name="invite_person_title">Bjud in en person</string>
     <string name="invite_name">Namn</string>
     <string name="invite_lifetime_hour">1 timme</string>
     <string name="invite_lifetime_day">1 dag</string>
@@ -351,7 +353,12 @@
     <string name="add_device_added">%1$s har lagts till</string>
     <string name="add_device_making_code">Skapar en kod för din nya enhet…</string>
     <string name="add_device_instructions">Välj ”Skanna en kod” på den nya enheten för att skanna det här, eller ”Ange en kod” för att skriva:</string>
-    <string name="invite_email">E-post</string>
+    <string name="invite_email_dropbox">Dropbox-e-post</string>
+    <string name="invite_email_onedrive">E-post för Microsoft-kontot</string>
+    <string name="invite_email_icloud">E-post för Apple-kontot</string>
+    <string name="invite_email_help_dropbox">Biblioteket delas med det här Dropbox-kontot så att personen kan gå med.</string>
+    <string name="invite_email_help_onedrive">Biblioteket delas med det här Microsoft-kontot så att personen kan gå med.</string>
+    <string name="invite_email_help_icloud">Biblioteket delas med det här Apple-kontot så att personen kan gå med.</string>
     <string name="invite_create">Skapa inbjudan</string>
     <string name="invite_title">Inbjudan</string>
     <string name="invite_cancel">Avbryt inbjudan</string>
@@ -389,8 +396,8 @@
     <string name="onboarding_saved_code_removed">Den här återställningskoden är inte längre sparad på den här enheten.</string>
     <string name="onboarding_saved_library">Bibliotek</string>
     <string name="members_joining">Går med</string>
-    <string name="members_sharing_access">Delar åtkomst</string>
-    <string name="invite_granting">Biblioteket delas. Koden visas när det här biblioteket har synkroniserats.</string>
+    <string name="members_invite_shares_access">Delar åtkomst när enheten är online</string>
+    <string name="invite_granting">Delar biblioteket med %1$s…</string>
     <string name="settings_profile_making">Skapar din profil …</string>
     <string name="settings_profile_making_detail">Din profil visas när det här biblioteket har synkroniserats.</string>
     <string name="settings_profile_refused">Din profil kunde inte skapas. %1$s</string>

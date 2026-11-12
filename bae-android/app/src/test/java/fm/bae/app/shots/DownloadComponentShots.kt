@@ -45,7 +45,7 @@ class DownloadComponentShots : BoardShot() {
     @Test
     fun androidComponentDownloadControlElsewhere() =
         component("android.component.download-control.elsewhere") {
-            UnplayableLine(BridgeMessage("core.release.on_device", listOf(BridgeMessageArg("device", "Ana's Mac"))))
+            UnplayableLine(BridgeMessage("core.release.on_device", listOf(BridgeMessageArg("device", "Ana’s Mac"))))
         }
 
     @Test

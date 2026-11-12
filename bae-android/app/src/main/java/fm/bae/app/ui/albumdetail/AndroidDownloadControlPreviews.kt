@@ -67,7 +67,7 @@ private fun DownloadControlFailedPreview() {
 @Composable
 private fun UnplayableOnAnotherDevicePreview() {
     BaeTheme {
-        UnplayableLine(BridgeMessage("core.release.on_device", listOf(BridgeMessageArg("device", "Ana's Mac"))))
+        UnplayableLine(BridgeMessage("core.release.on_device", listOf(BridgeMessageArg("device", "Ana’s Mac"))))
     }
 }
 
@@ -75,6 +75,6 @@ private fun UnplayableOnAnotherDevicePreview() {
 @Composable
 private fun UnplayableOnARemovedDevicePreview() {
     BaeTheme {
-        UnplayableLine(BridgeMessage("core.release.on_removed_device", listOf(BridgeMessageArg("device", "Ana's Mac"))))
+        UnplayableLine(BridgeMessage("core.release.on_removed_device", listOf(BridgeMessageArg("device", "Ana’s Mac"))))
     }
 }

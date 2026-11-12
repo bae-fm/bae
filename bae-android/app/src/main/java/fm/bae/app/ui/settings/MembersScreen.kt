@@ -373,6 +373,13 @@ internal fun InviteRow(
                 )
                 InviteChip(invite.shown)
             }
+            if (invite.shown is BridgeInviteShown.Granting) {
+                Text(
+                    text = stringResource(R.string.members_invite_shares_access),
+                    style = ThemeText.detail.style,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             invite.held?.let { held ->
                 Text(
                     text = context.coreString(held.reason.key),
@@ -417,7 +424,7 @@ internal fun RefusedInviteRow(
 private fun InviteChip(shown: BridgeInviteShown) {
     when (shown) {
         is BridgeInviteShown.Granting -> {
-            StatusChip(stringResource(R.string.members_sharing_access), tone = StatusTone.ACTIVITY)
+            StatusChip(stringResource(R.string.members_invited))
         }
 
         is BridgeInviteShown.Code -> {

@@ -127,12 +127,12 @@ class PlaybackComponentShots : BoardShot() {
 
     @Test
     fun androidComponentQueueLabelUpNext() =
-        component("android.component.queue-label.up-next", wide = true) { AndroidQueueLabel("Up Next", "Clear Up Next", {}) }
+        component("android.component.queue-label.up-next", wide = true) { AndroidQueueLabel("Up next", "Clear up next", {}) }
 
     @Test
     fun androidComponentQueueLabelPlayingFrom() =
         component("android.component.queue-label.playing-from", wide = true) {
-            AndroidQueueLabel("Playing From", "Clear Playing From", {}, shuffled = false)
+            AndroidQueueLabel("Playing from", "Clear playing from", {}, shuffled = false)
         }
 }
 

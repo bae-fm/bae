@@ -192,6 +192,7 @@
     <string name="members_remove_confirm_title">Fjerne denne enheten?</string>
     <string name="members_remove_confirm_body">%1$s mister tilgangen til dette biblioteket.</string>
     <string name="join_request_approve">Godkjenn</string>
+    <string name="join_request_title">%1$s vil bli med</string>
     <string name="join_request_match">Pass på at denne koden vises:</string>
     <string name="join_request_confirmation">Bekreftelsesnummer</string>
     <string name="onboarding_add_device">Legg til enhet</string>
@@ -273,7 +274,7 @@
     <string name="reset_device_confirm">Tilbakestill</string>
     <string name="restore_device_title">Gjenopprett dette biblioteket</string>
     <string name="finish_restore_title">Fullfør gjenopprettingen av dette biblioteket</string>
-    <string name="finish_reset">Fullfør tilbakestillingen av denne enheten</string>
+    <string name="finish_reset">Fullfør tilbakestillingen</string>
     <string name="finish_removal">Fullfør fjerningen av dette biblioteket</string>
     <string name="save">Lagre</string>
     <string name="onboarding_scan_code">Skann en kode</string>
@@ -303,7 +304,7 @@
     <string name="loading_finding_libraries">Finner bibliotekene dine…</string>
     <string name="loading_opening_library">Åpner biblioteket…</string>
     <string name="loading_closing_library">Lukker biblioteket…</string>
-    <string name="loading_removing_library">Fjerner biblioteket…</string>
+    <string name="loading_removing_library">Forlater biblioteket…</string>
     <string name="loading_resetting_device">Tilbakestiller denne enheten…</string>
     <string name="progress_loading">Laster</string>
     <string name="pending_update_no_store">Ingen appbutikk på denne enheten kan oppdatere bae.</string>
@@ -341,7 +342,8 @@
     <string name="device_cut_off_running_body">Vent til den er ferdig, og prøv igjen.</string>
     <string name="device_cut_off_not_gone_title">Fjerningen har ikke nådd denne enheten ennå</string>
     <string name="device_cut_off_not_gone_body">Prøv igjen etter neste synkronisering.</string>
-    <string name="members_invite">Inviter en person</string>
+    <string name="members_invite">Inviter</string>
+    <string name="invite_person_title">Inviter en person</string>
     <string name="invite_name">Navn</string>
     <string name="invite_lifetime_hour">1 time</string>
     <string name="invite_lifetime_day">1 dag</string>
@@ -351,7 +353,12 @@
     <string name="add_device_added">%1$s er lagt til</string>
     <string name="add_device_making_code">Lager en kode til den nye enheten din…</string>
     <string name="add_device_instructions">Velg «Skann en kode» på den nye enheten for å skanne dette, eller «Skriv inn en kode» for å skrive inn:</string>
-    <string name="invite_email">E-post</string>
+    <string name="invite_email_dropbox">Dropbox-e-post</string>
+    <string name="invite_email_onedrive">E-post for Microsoft-kontoen</string>
+    <string name="invite_email_icloud">E-post for Apple-kontoen</string>
+    <string name="invite_email_help_dropbox">Biblioteket deles med denne Dropbox-kontoen, slik at personen kan bli med.</string>
+    <string name="invite_email_help_onedrive">Biblioteket deles med denne Microsoft-kontoen, slik at personen kan bli med.</string>
+    <string name="invite_email_help_icloud">Biblioteket deles med denne Apple-kontoen, slik at personen kan bli med.</string>
     <string name="invite_create">Opprett invitasjon</string>
     <string name="invite_title">Invitasjon</string>
     <string name="invite_cancel">Avbryt invitasjonen</string>
@@ -389,8 +396,8 @@
     <string name="onboarding_saved_code_removed">Denne gjenopprettingskoden er ikke lenger lagret på denne enheten.</string>
     <string name="onboarding_saved_library">Bibliotek</string>
     <string name="members_joining">Blir med</string>
-    <string name="members_sharing_access">Deler tilgang</string>
-    <string name="invite_granting">Biblioteket deles. Koden vises når dette biblioteket er synkronisert.</string>
+    <string name="members_invite_shares_access">Deler tilgang når enheten er på nett</string>
+    <string name="invite_granting">Deler biblioteket med %1$s…</string>
     <string name="settings_profile_making">Oppretter profilen din …</string>
     <string name="settings_profile_making_detail">Profilen din vises når dette biblioteket er synkronisert.</string>
     <string name="settings_profile_refused">Profilen din kunne ikke opprettes. %1$s</string>

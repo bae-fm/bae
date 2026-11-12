@@ -226,6 +226,7 @@
     <!-- %1$s = the device's name -->
     <string name="members_remove_confirm_body">%1$s loses access to this library.</string>
     <string name="join_request_approve">Approve</string>
+    <string name="join_request_title">%1$s wants to join</string>
     <string name="join_request_match">Make sure this code is showing:</string>
     <string name="join_request_confirmation">Confirmation number</string>
 
@@ -323,7 +324,7 @@
     <string name="reset_device_confirm">Reset</string>
     <string name="restore_device_title">Restore this library</string>
     <string name="finish_restore_title">Finish restoring this library</string>
-    <string name="finish_reset">Finish resetting this device</string>
+    <string name="finish_reset">Finish resetting</string>
     <string name="finish_removal">Finish removing this library</string>
     <string name="save">Save</string>
     <string name="onboarding_scan_code">Scan code</string>
@@ -355,7 +356,7 @@
     <string name="loading_finding_libraries">Finding your libraries…</string>
     <string name="loading_opening_library">Opening the library…</string>
     <string name="loading_closing_library">Closing the library…</string>
-    <string name="loading_removing_library">Removing the library…</string>
+    <string name="loading_removing_library">Leaving the library…</string>
     <string name="loading_resetting_device">Resetting this device…</string>
     <string name="progress_loading">Loading</string>
     <!-- %1$s = the time left until the next check, as minutes and seconds -->
@@ -396,7 +397,8 @@
     <string name="device_cut_off_running_body">Wait for it to end, then try again.</string>
     <string name="device_cut_off_not_gone_title">The removal hasn’t reached this device yet</string>
     <string name="device_cut_off_not_gone_body">Try again after the next sync.</string>
-    <string name="members_invite">Invite a person</string>
+    <string name="members_invite">Invite</string>
+    <string name="invite_person_title">Invite a person</string>
     <string name="invite_name">Name</string>
     <string name="invite_lifetime_hour">1 hour</string>
     <string name="invite_lifetime_day">1 day</string>
@@ -408,7 +410,12 @@
     <string name="add_device_making_code">Making a code for your new device…</string>
     <!-- The quoted labels are onboarding_scan_code and onboarding_enter_code, the choices on the new device's first screen -->
     <string name="add_device_instructions">On the new device, choose “Scan code” to scan this, or “Enter code” to type:</string>
-    <string name="invite_email">Email</string>
+    <string name="invite_email_dropbox">Dropbox email</string>
+    <string name="invite_email_onedrive">Microsoft account email</string>
+    <string name="invite_email_icloud">Apple Account email</string>
+    <string name="invite_email_help_dropbox">The library is shared with this Dropbox account so they can join.</string>
+    <string name="invite_email_help_onedrive">The library is shared with this Microsoft account so they can join.</string>
+    <string name="invite_email_help_icloud">The library is shared with this Apple Account so they can join.</string>
     <string name="invite_create">Create invite</string>
     <string name="invite_title">Invite</string>
     <!-- %1$s = the date and time the invite expires -->
@@ -449,8 +456,9 @@
     <string name="onboarding_saved_code_removed">This restore code is no longer saved on this device.</string>
     <string name="onboarding_saved_library">Library</string>
     <string name="members_joining">Joining</string>
-    <string name="members_sharing_access">Sharing access</string>
-    <string name="invite_granting">Sharing the library. The code shows once this library syncs.</string>
+    <string name="members_invite_shares_access">Shares access once online</string>
+    <!-- %1$s = the address the invite shares with -->
+    <string name="invite_granting">Sharing the library with %1$s…</string>
     <string name="settings_profile_making">Making your profile…</string>
     <string name="settings_profile_making_detail">Your profile appears once this library syncs.</string>
     <string name="settings_profile_refused">Your profile couldn’t be made. %1$s</string>

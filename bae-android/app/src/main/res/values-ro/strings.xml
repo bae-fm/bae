@@ -198,6 +198,7 @@
     <string name="members_remove_confirm_title">Elimini acest dispozitiv?</string>
     <string name="members_remove_confirm_body">%1$s pierde accesul la această bibliotecă.</string>
     <string name="join_request_approve">Aprobă</string>
+    <string name="join_request_title">%1$s vrea să se alăture</string>
     <string name="join_request_match">Asigură-te că este afișat acest cod:</string>
     <string name="join_request_confirmation">Număr de confirmare</string>
     <string name="onboarding_add_device">Adaugă dispozitiv</string>
@@ -280,7 +281,7 @@
     <string name="reset_device_confirm">Resetează</string>
     <string name="restore_device_title">Restaurează această bibliotecă</string>
     <string name="finish_restore_title">Finalizează restaurarea acestei biblioteci</string>
-    <string name="finish_reset">Finalizează resetarea acestui dispozitiv</string>
+    <string name="finish_reset">Finalizează resetarea</string>
     <string name="finish_removal">Finalizează eliminarea acestei biblioteci</string>
     <string name="save">Salvează</string>
     <string name="onboarding_scan_code">Scanează un cod</string>
@@ -310,7 +311,7 @@
     <string name="loading_finding_libraries">Se caută bibliotecile tale…</string>
     <string name="loading_opening_library">Se deschide biblioteca…</string>
     <string name="loading_closing_library">Se închide biblioteca…</string>
-    <string name="loading_removing_library">Se elimină biblioteca…</string>
+    <string name="loading_removing_library">Se părăsește biblioteca…</string>
     <string name="loading_resetting_device">Se resetează acest dispozitiv…</string>
     <string name="progress_loading">Se încarcă</string>
     <string name="pending_update_no_store">Niciun magazin de aplicații de pe acest dispozitiv nu poate actualiza bae.</string>
@@ -349,7 +350,8 @@
     <string name="device_cut_off_running_body">Așteaptă să se termine, apoi încearcă din nou.</string>
     <string name="device_cut_off_not_gone_title">Eliminarea nu a ajuns încă pe acest dispozitiv</string>
     <string name="device_cut_off_not_gone_body">Încearcă din nou după următoarea sincronizare.</string>
-    <string name="members_invite">Invită o persoană</string>
+    <string name="members_invite">Invită</string>
+    <string name="invite_person_title">Invită o persoană</string>
     <string name="invite_name">Nume</string>
     <string name="invite_lifetime_hour">1 oră</string>
     <string name="invite_lifetime_day">1 zi</string>
@@ -359,7 +361,12 @@
     <string name="add_device_added">Dispozitiv adăugat: %1$s</string>
     <string name="add_device_making_code">Se creează un cod pentru noul tău dispozitiv…</string>
     <string name="add_device_instructions">Pe noul dispozitiv, alege „Scanează un cod” ca să scanezi asta sau „Introdu un cod” ca să tastezi:</string>
-    <string name="invite_email">E-mail</string>
+    <string name="invite_email_dropbox">E-mail Dropbox</string>
+    <string name="invite_email_onedrive">E-mailul contului Microsoft</string>
+    <string name="invite_email_icloud">E-mailul contului Apple</string>
+    <string name="invite_email_help_dropbox">Biblioteca este partajată cu acest cont Dropbox pentru ca persoana să se poată alătura.</string>
+    <string name="invite_email_help_onedrive">Biblioteca este partajată cu acest cont Microsoft pentru ca persoana să se poată alătura.</string>
+    <string name="invite_email_help_icloud">Biblioteca este partajată cu acest cont Apple pentru ca persoana să se poată alătura.</string>
     <string name="invite_create">Creează invitația</string>
     <string name="invite_title">Invitație</string>
     <string name="invite_cancel">Anulează invitația</string>
@@ -397,8 +404,8 @@
     <string name="onboarding_saved_code_removed">Acest cod de restaurare nu mai este salvat pe acest dispozitiv.</string>
     <string name="onboarding_saved_library">Bibliotecă</string>
     <string name="members_joining">Se alătură</string>
-    <string name="members_sharing_access">Se partajează accesul</string>
-    <string name="invite_granting">Se partajează biblioteca. Codul apare după ce această bibliotecă se sincronizează.</string>
+    <string name="members_invite_shares_access">Partajează accesul când este online</string>
+    <string name="invite_granting">Se partajează biblioteca cu %1$s…</string>
     <string name="settings_profile_making">Se creează profilul tău…</string>
     <string name="settings_profile_making_detail">Profilul tău apare după ce această bibliotecă se sincronizează.</string>
     <string name="settings_profile_refused">Profilul tău nu a putut fi creat. %1$s</string>

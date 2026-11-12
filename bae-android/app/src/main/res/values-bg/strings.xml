@@ -188,6 +188,7 @@
     <string name="members_remove_confirm_title">Премахване на това устройство?</string>
     <string name="members_remove_confirm_body">%1$s губи достъп до тази библиотека.</string>
     <string name="join_request_approve">Одобряване</string>
+    <string name="join_request_title">%1$s иска да се присъедини</string>
     <string name="join_request_match">Уверете се, че този код се показва:</string>
     <string name="join_request_confirmation">Номер за потвърждение</string>
     <string name="onboarding_add_device">Добавяне на устройство</string>
@@ -275,7 +276,7 @@
     <string name="reset_device_confirm">Нулиране</string>
     <string name="restore_device_title">Възстановяване на тази библиотека</string>
     <string name="finish_restore_title">Завършване на възстановяването на тази библиотека</string>
-    <string name="finish_reset">Завършване на нулирането на това устройство</string>
+    <string name="finish_reset">Завършване на нулирането</string>
     <string name="finish_removal">Завършване на премахването на тази библиотека</string>
     <string name="save">Запазване</string>
     <string name="onboarding_scan_code">Сканиране на код</string>
@@ -305,7 +306,7 @@
     <string name="loading_finding_libraries">Търсене на вашите библиотеки…</string>
     <string name="loading_opening_library">Библиотеката се отваря…</string>
     <string name="loading_closing_library">Библиотеката се затваря…</string>
-    <string name="loading_removing_library">Библиотеката се премахва…</string>
+    <string name="loading_removing_library">Напускане на библиотеката…</string>
     <string name="loading_resetting_device">Това устройство се нулира…</string>
     <string name="progress_loading">Зарежда се</string>
     <string name="pending_update_no_store">Няма магазин за приложения на това устройство, който да актуализира bae.</string>
@@ -343,7 +344,8 @@
     <string name="device_cut_off_running_body">Изчакайте да приключи и опитайте отново.</string>
     <string name="device_cut_off_not_gone_title">Премахването още не е стигнало до това устройство</string>
     <string name="device_cut_off_not_gone_body">Опитайте отново след следващото синхронизиране.</string>
-    <string name="members_invite">Поканване на човек</string>
+    <string name="members_invite">Покани</string>
+    <string name="invite_person_title">Поканване на човек</string>
     <string name="invite_name">Име</string>
     <string name="invite_lifetime_hour">1 час</string>
     <string name="invite_lifetime_day">1 ден</string>
@@ -353,7 +355,12 @@
     <string name="add_device_added">Добавено устройство: %1$s</string>
     <string name="add_device_making_code">Създава се код за новото ви устройство…</string>
     <string name="add_device_instructions">На новото устройство изберете „Сканиране на код“, за да сканирате това, или „Въвеждане на код“, за да въведете:</string>
-    <string name="invite_email">Имейл</string>
+    <string name="invite_email_dropbox">Имейл в Dropbox</string>
+    <string name="invite_email_onedrive">Имейл на акаунта в Microsoft</string>
+    <string name="invite_email_icloud">Имейл на акаунта в Apple</string>
+    <string name="invite_email_help_dropbox">Библиотеката се споделя с този акаунт в Dropbox, за да може човекът да се присъедини.</string>
+    <string name="invite_email_help_onedrive">Библиотеката се споделя с този акаунт в Microsoft, за да може човекът да се присъедини.</string>
+    <string name="invite_email_help_icloud">Библиотеката се споделя с този акаунт в Apple, за да може човекът да се присъедини.</string>
     <string name="invite_create">Създаване на покана</string>
     <string name="invite_title">Покана</string>
     <string name="invite_cancel">Отмяна на поканата</string>
@@ -391,8 +398,8 @@
     <string name="onboarding_saved_code_removed">Този код за възстановяване вече не е запазен на това устройство.</string>
     <string name="onboarding_saved_library">Библиотека</string>
     <string name="members_joining">Присъединява се</string>
-    <string name="members_sharing_access">Споделя се достъп</string>
-    <string name="invite_granting">Библиотеката се споделя. Кодът ще се покаже, след като тази библиотека се синхронизира.</string>
+    <string name="members_invite_shares_access">Споделя достъп, когато е онлайн</string>
+    <string name="invite_granting">Библиотеката се споделя с %1$s…</string>
     <string name="settings_profile_making">Профилът ви се създава…</string>
     <string name="settings_profile_making_detail">Профилът ви ще се появи, след като тази библиотека се синхронизира.</string>
     <string name="settings_profile_refused">Профилът ви не можа да бъде създаден. %1$s</string>

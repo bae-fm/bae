@@ -188,6 +188,7 @@
     <string name="members_remove_confirm_title">Dit apparaat verwijderen?</string>
     <string name="members_remove_confirm_body">%1$s verliest de toegang tot deze bibliotheek.</string>
     <string name="join_request_approve">Goedkeuren</string>
+    <string name="join_request_title">%1$s wil meedoen</string>
     <string name="join_request_match">Controleer of deze code wordt getoond:</string>
     <string name="join_request_confirmation">Bevestigingsnummer</string>
     <string name="onboarding_add_device">Apparaat toevoegen</string>
@@ -275,7 +276,7 @@
     <string name="reset_device_confirm">Herstellen</string>
     <string name="restore_device_title">Deze bibliotheek herstellen</string>
     <string name="finish_restore_title">Herstellen van deze bibliotheek voltooien</string>
-    <string name="finish_reset">Herstellen van dit apparaat voltooien</string>
+    <string name="finish_reset">Herstellen voltooien</string>
     <string name="finish_removal">Verwijderen van deze bibliotheek voltooien</string>
     <string name="save">Opslaan</string>
     <string name="onboarding_scan_code">Code scannen</string>
@@ -305,7 +306,7 @@
     <string name="loading_finding_libraries">Je bibliotheken worden gezocht…</string>
     <string name="loading_opening_library">Bibliotheek wordt geopend…</string>
     <string name="loading_closing_library">Bibliotheek wordt gesloten…</string>
-    <string name="loading_removing_library">Bibliotheek wordt verwijderd…</string>
+    <string name="loading_removing_library">Bibliotheek wordt verlaten…</string>
     <string name="loading_resetting_device">Dit apparaat wordt opnieuw ingesteld…</string>
     <string name="progress_loading">Laden</string>
     <string name="pending_update_no_store">Geen enkele appwinkel op dit apparaat kan bae bijwerken.</string>
@@ -343,7 +344,8 @@
     <string name="device_cut_off_running_body">Wacht tot het klaar is en probeer het dan opnieuw.</string>
     <string name="device_cut_off_not_gone_title">De verwijdering is nog niet op dit apparaat aangekomen</string>
     <string name="device_cut_off_not_gone_body">Probeer het opnieuw na de volgende synchronisatie.</string>
-    <string name="members_invite">Iemand uitnodigen</string>
+    <string name="members_invite">Uitnodigen</string>
+    <string name="invite_person_title">Iemand uitnodigen</string>
     <string name="invite_name">Naam</string>
     <string name="invite_lifetime_hour">1 uur</string>
     <string name="invite_lifetime_day">1 dag</string>
@@ -353,7 +355,12 @@
     <string name="add_device_added">%1$s toegevoegd</string>
     <string name="add_device_making_code">Code voor je nieuwe apparaat wordt gemaakt…</string>
     <string name="add_device_instructions">Kies op het nieuwe apparaat ‘Code scannen’ om dit te scannen, of ‘Code invoeren’ om te typen:</string>
-    <string name="invite_email">E-mail</string>
+    <string name="invite_email_dropbox">Dropbox-e-mail</string>
+    <string name="invite_email_onedrive">E-mailadres van het Microsoft-account</string>
+    <string name="invite_email_icloud">E-mailadres van het Apple-account</string>
+    <string name="invite_email_help_dropbox">De bibliotheek wordt gedeeld met dit Dropbox-account zodat die persoon kan meedoen.</string>
+    <string name="invite_email_help_onedrive">De bibliotheek wordt gedeeld met dit Microsoft-account zodat die persoon kan meedoen.</string>
+    <string name="invite_email_help_icloud">De bibliotheek wordt gedeeld met dit Apple-account zodat die persoon kan meedoen.</string>
     <string name="invite_create">Uitnodiging maken</string>
     <string name="invite_title">Uitnodiging</string>
     <string name="invite_cancel">Uitnodiging annuleren</string>
@@ -391,8 +398,8 @@
     <string name="onboarding_saved_code_removed">Deze herstelcode is niet meer bewaard op dit apparaat.</string>
     <string name="onboarding_saved_library">Bibliotheek</string>
     <string name="members_joining">Treedt toe</string>
-    <string name="members_sharing_access">Toegang wordt gedeeld</string>
-    <string name="invite_granting">De bibliotheek wordt gedeeld. De code verschijnt zodra deze bibliotheek is gesynchroniseerd.</string>
+    <string name="members_invite_shares_access">Deelt toegang zodra het apparaat online is</string>
+    <string name="invite_granting">Bibliotheek wordt gedeeld met %1$s…</string>
     <string name="settings_profile_making">Je profiel wordt gemaakt…</string>
     <string name="settings_profile_making_detail">Je profiel verschijnt zodra deze bibliotheek is gesynchroniseerd.</string>
     <string name="settings_profile_refused">Je profiel kon niet worden gemaakt. %1$s</string>

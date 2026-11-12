@@ -2960,7 +2960,10 @@ device's open invites
 ([coven §13.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#132-adding-a-person-invites)),
 which coven ends when the invite is approved, declined, cancelled or expires, so
 an expired invite leaves People when its lifetime ends. Only the device that
-made it shows the row, since only that device can act on it. The row's refresh
+made it shows the row, since only that device can act on it. Until sync has
+shared the invite's access, the row reads "Invited" with "Shares access once
+online" under it, and its screen says "Sharing the library with" the address.
+The request dialog is titled "<name> wants to join". The row's refresh
 button runs Retry now for the library (§6.4), so the request shows the moment
 Dan says he has entered the code, without waiting for the next check. Opening
 the row shows the invite again, with **Cancel invite**. A row shows coven's

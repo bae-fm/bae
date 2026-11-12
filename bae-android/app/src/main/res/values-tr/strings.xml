@@ -188,6 +188,7 @@
     <string name="members_remove_confirm_title">Bu cihaz kaldırılsın mı?</string>
     <string name="members_remove_confirm_body">%1$s bu kitaplığa erişimini kaybeder.</string>
     <string name="join_request_approve">Onayla</string>
+    <string name="join_request_title">%1$s katılmak istiyor</string>
     <string name="join_request_match">Bu kodun göründüğünden emin olun:</string>
     <string name="join_request_confirmation">Onay numarası</string>
     <string name="onboarding_add_device">Cihaz ekle</string>
@@ -275,7 +276,7 @@
     <string name="reset_device_confirm">Sıfırla</string>
     <string name="restore_device_title">Bu kitaplığı geri yükle</string>
     <string name="finish_restore_title">Bu kitaplığın geri yüklenmesini tamamla</string>
-    <string name="finish_reset">Bu cihazın sıfırlanmasını tamamla</string>
+    <string name="finish_reset">Sıfırlamayı tamamla</string>
     <string name="finish_removal">Bu kitaplığın kaldırılmasını tamamla</string>
     <string name="save">Kaydet</string>
     <string name="onboarding_scan_code">Kod tara</string>
@@ -305,7 +306,7 @@
     <string name="loading_finding_libraries">Kitaplıklarınız aranıyor…</string>
     <string name="loading_opening_library">Kitaplık açılıyor…</string>
     <string name="loading_closing_library">Kitaplık kapatılıyor…</string>
-    <string name="loading_removing_library">Kitaplık kaldırılıyor…</string>
+    <string name="loading_removing_library">Kitaplıktan ayrılınıyor…</string>
     <string name="loading_resetting_device">Bu cihaz sıfırlanıyor…</string>
     <string name="progress_loading">Yükleniyor</string>
     <string name="pending_update_no_store">Bu cihazdaki hiçbir uygulama mağazası bae’yi güncelleyemiyor.</string>
@@ -343,7 +344,8 @@
     <string name="device_cut_off_running_body">Bitmesini bekleyin, sonra tekrar deneyin.</string>
     <string name="device_cut_off_not_gone_title">Kaldırma işlemi henüz bu cihaza ulaşmadı</string>
     <string name="device_cut_off_not_gone_body">Bir sonraki senkronizasyondan sonra tekrar deneyin.</string>
-    <string name="members_invite">Bir kişiyi davet et</string>
+    <string name="members_invite">Davet et</string>
+    <string name="invite_person_title">Bir kişiyi davet et</string>
     <string name="invite_name">Ad</string>
     <string name="invite_lifetime_hour">1 saat</string>
     <string name="invite_lifetime_day">1 gün</string>
@@ -353,7 +355,12 @@
     <string name="add_device_added">%1$s eklendi</string>
     <string name="add_device_making_code">Yeni cihazınız için kod oluşturuluyor…</string>
     <string name="add_device_instructions">Yeni cihazda “Kod tara” seçeneğiyle bunu tarayın ya da “Kod gir” seçeneğiyle şunu yazın:</string>
-    <string name="invite_email">E-posta</string>
+    <string name="invite_email_dropbox">Dropbox e-postası</string>
+    <string name="invite_email_onedrive">Microsoft hesabının e-postası</string>
+    <string name="invite_email_icloud">Apple hesabının e-postası</string>
+    <string name="invite_email_help_dropbox">Kitaplık, kişinin katılabilmesi için bu Dropbox hesabıyla paylaşılır.</string>
+    <string name="invite_email_help_onedrive">Kitaplık, kişinin katılabilmesi için bu Microsoft hesabıyla paylaşılır.</string>
+    <string name="invite_email_help_icloud">Kitaplık, kişinin katılabilmesi için bu Apple hesabıyla paylaşılır.</string>
     <string name="invite_create">Davet oluştur</string>
     <string name="invite_title">Davet</string>
     <string name="invite_cancel">Daveti iptal et</string>
@@ -391,8 +398,8 @@
     <string name="onboarding_saved_code_removed">Bu geri yükleme kodu artık bu cihazda kayıtlı değil.</string>
     <string name="onboarding_saved_library">Kitaplık</string>
     <string name="members_joining">Katılıyor</string>
-    <string name="members_sharing_access">Erişim paylaşılıyor</string>
-    <string name="invite_granting">Kitaplık paylaşılıyor. Kod, bu kitaplık eşitlendiğinde görünür.</string>
+    <string name="members_invite_shares_access">Çevrimiçi olunca erişimi paylaşır</string>
+    <string name="invite_granting">Kitaplık %1$s ile paylaşılıyor…</string>
     <string name="settings_profile_making">Profiliniz oluşturuluyor…</string>
     <string name="settings_profile_making_detail">Profiliniz bu kitaplık eşitlendiğinde görünür.</string>
     <string name="settings_profile_refused">Profiliniz oluşturulamadı. %1$s</string>

@@ -198,6 +198,7 @@
     <string name="members_remove_confirm_title">Odebrat toto zařízení?</string>
     <string name="members_remove_confirm_body">%1$s ztratí přístup k této knihovně.</string>
     <string name="join_request_approve">Schválit</string>
+    <string name="join_request_title">%1$s se chce připojit</string>
     <string name="join_request_match">Ujistěte se, že se zobrazuje tento kód:</string>
     <string name="join_request_confirmation">Potvrzovací číslo</string>
     <string name="onboarding_add_device">Přidat zařízení</string>
@@ -289,7 +290,7 @@
     <string name="reset_device_confirm">Resetovat</string>
     <string name="restore_device_title">Obnovit tuto knihovnu</string>
     <string name="finish_restore_title">Dokončit obnovení této knihovny</string>
-    <string name="finish_reset">Dokončit resetování tohoto zařízení</string>
+    <string name="finish_reset">Dokončit resetování</string>
     <string name="finish_removal">Dokončit odebrání této knihovny</string>
     <string name="save">Uložit</string>
     <string name="onboarding_scan_code">Naskenovat kód</string>
@@ -319,7 +320,7 @@
     <string name="loading_finding_libraries">Hledají se vaše knihovny…</string>
     <string name="loading_opening_library">Otevírá se knihovna…</string>
     <string name="loading_closing_library">Zavírá se knihovna…</string>
-    <string name="loading_removing_library">Odebírá se knihovna…</string>
+    <string name="loading_removing_library">Opouští se knihovna…</string>
     <string name="loading_resetting_device">Resetuje se toto zařízení…</string>
     <string name="progress_loading">Načítání</string>
     <string name="pending_update_no_store">Na tomto zařízení není žádný obchod s aplikacemi, který by mohl bae aktualizovat.</string>
@@ -359,7 +360,8 @@
     <string name="device_cut_off_running_body">Počkejte, až skončí, a zkuste to znovu.</string>
     <string name="device_cut_off_not_gone_title">Odebrání ještě nedorazilo na toto zařízení</string>
     <string name="device_cut_off_not_gone_body">Zkuste to znovu po další synchronizaci.</string>
-    <string name="members_invite">Pozvat osobu</string>
+    <string name="members_invite">Pozvat</string>
+    <string name="invite_person_title">Pozvat osobu</string>
     <string name="invite_name">Jméno</string>
     <string name="invite_lifetime_hour">1 hodina</string>
     <string name="invite_lifetime_day">1 den</string>
@@ -369,7 +371,12 @@
     <string name="add_device_added">Zařízení přidáno: %1$s</string>
     <string name="add_device_making_code">Vytváří se kód pro vaše nové zařízení…</string>
     <string name="add_device_instructions">Na novém zařízení zvolte „Naskenovat kód“ pro naskenování tohoto kódu nebo „Zadat kód“ pro jeho opsání:</string>
-    <string name="invite_email">E-mail</string>
+    <string name="invite_email_dropbox">E-mail v Dropboxu</string>
+    <string name="invite_email_onedrive">E-mail účtu Microsoft</string>
+    <string name="invite_email_icloud">E-mail účtu Apple</string>
+    <string name="invite_email_help_dropbox">Knihovna se sdílí s tímto účtem Dropbox, aby se k ní mohl připojit dotyčný.</string>
+    <string name="invite_email_help_onedrive">Knihovna se sdílí s tímto účtem Microsoft, aby se k ní mohl připojit dotyčný.</string>
+    <string name="invite_email_help_icloud">Knihovna se sdílí s tímto účtem Apple, aby se k ní mohl připojit dotyčný.</string>
     <string name="invite_create">Vytvořit pozvánku</string>
     <string name="invite_title">Pozvánka</string>
     <string name="invite_cancel">Zrušit pozvánku</string>
@@ -407,8 +414,8 @@
     <string name="onboarding_saved_code_removed">Tento kód pro obnovení už v tomto zařízení uložený není.</string>
     <string name="onboarding_saved_library">Knihovna</string>
     <string name="members_joining">Připojuje se</string>
-    <string name="members_sharing_access">Sdílí se přístup</string>
-    <string name="invite_granting">Knihovna se sdílí. Kód se zobrazí, jakmile se tato knihovna synchronizuje.</string>
+    <string name="members_invite_shares_access">Sdílí přístup, jakmile bude online</string>
+    <string name="invite_granting">Sdílí se knihovna s %1$s…</string>
     <string name="settings_profile_making">Vytváří se váš profil…</string>
     <string name="settings_profile_making_detail">Váš profil se objeví, jakmile se tato knihovna synchronizuje.</string>
     <string name="settings_profile_refused">Váš profil se nepodařilo vytvořit. %1$s</string>

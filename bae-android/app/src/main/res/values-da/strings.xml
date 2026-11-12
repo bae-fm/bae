@@ -192,6 +192,7 @@
     <string name="members_remove_confirm_title">Vil du fjerne denne enhed?</string>
     <string name="members_remove_confirm_body">%1$s mister adgangen til dette bibliotek.</string>
     <string name="join_request_approve">Godkend</string>
+    <string name="join_request_title">%1$s vil gerne være med</string>
     <string name="join_request_match">Kontrollér, at denne kode vises:</string>
     <string name="join_request_confirmation">Bekræftelsesnummer</string>
     <string name="onboarding_add_device">Tilføj enhed</string>
@@ -273,7 +274,7 @@
     <string name="reset_device_confirm">Nulstil</string>
     <string name="restore_device_title">Gendan dette bibliotek</string>
     <string name="finish_restore_title">Fuldfør gendannelsen af dette bibliotek</string>
-    <string name="finish_reset">Fuldfør nulstillingen af denne enhed</string>
+    <string name="finish_reset">Fuldfør nulstillingen</string>
     <string name="finish_removal">Fuldfør fjernelsen af dette bibliotek</string>
     <string name="save">Gem</string>
     <string name="onboarding_scan_code">Scan en kode</string>
@@ -303,7 +304,7 @@
     <string name="loading_finding_libraries">Finder dine biblioteker…</string>
     <string name="loading_opening_library">Åbner biblioteket…</string>
     <string name="loading_closing_library">Lukker biblioteket…</string>
-    <string name="loading_removing_library">Fjerner biblioteket…</string>
+    <string name="loading_removing_library">Forlader biblioteket…</string>
     <string name="loading_resetting_device">Nulstiller denne enhed…</string>
     <string name="progress_loading">Indlæser</string>
     <string name="pending_update_no_store">Ingen appbutik på denne enhed kan opdatere bae.</string>
@@ -341,7 +342,8 @@
     <string name="device_cut_off_running_body">Vent, til den er færdig, og prøv igen.</string>
     <string name="device_cut_off_not_gone_title">Fjernelsen er endnu ikke nået til denne enhed</string>
     <string name="device_cut_off_not_gone_body">Prøv igen efter næste synkronisering.</string>
-    <string name="members_invite">Inviter en person</string>
+    <string name="members_invite">Inviter</string>
+    <string name="invite_person_title">Inviter en person</string>
     <string name="invite_name">Navn</string>
     <string name="invite_lifetime_hour">1 time</string>
     <string name="invite_lifetime_day">1 dag</string>
@@ -351,7 +353,12 @@
     <string name="add_device_added">%1$s er tilføjet</string>
     <string name="add_device_making_code">Laver en kode til din nye enhed…</string>
     <string name="add_device_instructions">Vælg »Scan en kode« på den nye enhed for at scanne dette, eller »Indtast en kode« for at skrive:</string>
-    <string name="invite_email">E-mail</string>
+    <string name="invite_email_dropbox">Dropbox-mail</string>
+    <string name="invite_email_onedrive">Microsoft-kontoens mail</string>
+    <string name="invite_email_icloud">Apple-kontoens mail</string>
+    <string name="invite_email_help_dropbox">Biblioteket deles med denne Dropbox-konto, så personen kan blive med.</string>
+    <string name="invite_email_help_onedrive">Biblioteket deles med denne Microsoft-konto, så personen kan blive med.</string>
+    <string name="invite_email_help_icloud">Biblioteket deles med denne Apple-konto, så personen kan blive med.</string>
     <string name="invite_create">Opret invitation</string>
     <string name="invite_title">Invitation</string>
     <string name="invite_cancel">Annuller invitation</string>
@@ -389,8 +396,8 @@
     <string name="onboarding_saved_code_removed">Denne gendannelseskode er ikke længere gemt på denne enhed.</string>
     <string name="onboarding_saved_library">Bibliotek</string>
     <string name="members_joining">Tilslutter sig</string>
-    <string name="members_sharing_access">Deler adgang</string>
-    <string name="invite_granting">Biblioteket deles. Koden vises, når dette bibliotek er synkroniseret.</string>
+    <string name="members_invite_shares_access">Deler adgang, når enheden er online</string>
+    <string name="invite_granting">Deler biblioteket med %1$s…</string>
     <string name="settings_profile_making">Opretter din profil…</string>
     <string name="settings_profile_making_detail">Din profil vises, når dette bibliotek er synkroniseret.</string>
     <string name="settings_profile_refused">Din profil kunne ikke oprettes. %1$s</string>

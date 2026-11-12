@@ -183,6 +183,7 @@
     <string name="members_remove_confirm_title">移除此设备？</string>
     <string name="members_remove_confirm_body">%1$s 将无法访问此库。</string>
     <string name="join_request_approve">批准</string>
+    <string name="join_request_title">%1$s 想要加入</string>
     <string name="join_request_match">请确认屏幕上显示的是此代码：</string>
     <string name="join_request_confirmation">确认码</string>
     <string name="onboarding_add_device">添加设备</string>
@@ -268,7 +269,7 @@
     <string name="reset_device_confirm">重置</string>
     <string name="restore_device_title">恢复此库</string>
     <string name="finish_restore_title">完成恢复此库</string>
-    <string name="finish_reset">完成重置此设备</string>
+    <string name="finish_reset">完成重置</string>
     <string name="finish_removal">完成移除此音乐库</string>
     <string name="save">保存</string>
     <string name="onboarding_scan_code">扫描代码</string>
@@ -298,7 +299,7 @@
     <string name="loading_finding_libraries">正在查找你的资料库…</string>
     <string name="loading_opening_library">正在打开资料库…</string>
     <string name="loading_closing_library">正在关闭资料库…</string>
-    <string name="loading_removing_library">正在移除资料库…</string>
+    <string name="loading_removing_library">正在退出资料库…</string>
     <string name="loading_resetting_device">正在重置此设备…</string>
     <string name="progress_loading">正在加载</string>
     <string name="pending_update_no_store">此设备上没有可以更新 bae 的应用商店。</string>
@@ -335,7 +336,8 @@
     <string name="device_cut_off_running_body">请等它结束后再试一次。</string>
     <string name="device_cut_off_not_gone_title">移除尚未传到此设备</string>
     <string name="device_cut_off_not_gone_body">请在下次同步后再试。</string>
-    <string name="members_invite">邀请成员</string>
+    <string name="members_invite">邀请</string>
+    <string name="invite_person_title">邀请成员</string>
     <string name="invite_name">姓名</string>
     <string name="invite_lifetime_hour">1 小时</string>
     <string name="invite_lifetime_day">1 天</string>
@@ -345,7 +347,12 @@
     <string name="add_device_added">已添加%1$s</string>
     <string name="add_device_making_code">正在为你的新设备生成代码…</string>
     <string name="add_device_instructions">在新设备上选择“扫描代码”来扫描此代码，或选择“输入代码”来输入：</string>
-    <string name="invite_email">电子邮件</string>
+    <string name="invite_email_dropbox">Dropbox 邮箱</string>
+    <string name="invite_email_onedrive">Microsoft 账户邮箱</string>
+    <string name="invite_email_icloud">Apple 账户邮箱</string>
+    <string name="invite_email_help_dropbox">资料库将与此 Dropbox 账户共享，对方即可加入。</string>
+    <string name="invite_email_help_onedrive">资料库将与此 Microsoft 账户共享，对方即可加入。</string>
+    <string name="invite_email_help_icloud">资料库将与此 Apple 账户共享，对方即可加入。</string>
     <string name="invite_create">创建邀请</string>
     <string name="invite_title">邀请</string>
     <string name="invite_cancel">取消邀请</string>
@@ -383,8 +390,8 @@
     <string name="onboarding_saved_code_removed">此恢复码已不再保存在此设备上。</string>
     <string name="onboarding_saved_library">库</string>
     <string name="members_joining">正在加入</string>
-    <string name="members_sharing_access">正在共享访问权限</string>
-    <string name="invite_granting">正在共享资料库。此资料库同步后，代码就会出现。</string>
+    <string name="members_invite_shares_access">联网后共享访问权限</string>
+    <string name="invite_granting">正在与 %1$s 共享资料库…</string>
     <string name="settings_profile_making">正在创建你的个人资料…</string>
     <string name="settings_profile_making_detail">此资料库同步后，你的个人资料就会出现。</string>
     <string name="settings_profile_refused">无法创建你的个人资料。%1$s</string>

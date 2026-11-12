@@ -198,6 +198,7 @@
     <string name="members_remove_confirm_title">Видалити цей пристрій?</string>
     <string name="members_remove_confirm_body">%1$s втрачає доступ до цієї бібліотеки.</string>
     <string name="join_request_approve">Схвалити</string>
+    <string name="join_request_title">%1$s хоче приєднатися</string>
     <string name="join_request_match">Переконайтеся, що показано цей код:</string>
     <string name="join_request_confirmation">Номер підтвердження</string>
     <string name="onboarding_add_device">Додати пристрій</string>
@@ -289,7 +290,7 @@
     <string name="reset_device_confirm">Скинути</string>
     <string name="restore_device_title">Відновити цю бібліотеку</string>
     <string name="finish_restore_title">Завершити відновлення цієї бібліотеки</string>
-    <string name="finish_reset">Завершити скидання цього пристрою</string>
+    <string name="finish_reset">Завершити скидання</string>
     <string name="finish_removal">Завершити вилучення цієї бібліотеки</string>
     <string name="save">Зберегти</string>
     <string name="onboarding_scan_code">Сканувати код</string>
@@ -319,7 +320,7 @@
     <string name="loading_finding_libraries">Пошук ваших бібліотек…</string>
     <string name="loading_opening_library">Відкриття бібліотеки…</string>
     <string name="loading_closing_library">Закриття бібліотеки…</string>
-    <string name="loading_removing_library">Вилучення бібліотеки…</string>
+    <string name="loading_removing_library">Вихід із бібліотеки…</string>
     <string name="loading_resetting_device">Скидання цього пристрою…</string>
     <string name="progress_loading">Завантаження</string>
     <string name="pending_update_no_store">Жодна крамниця застосунків на цьому пристрої не може оновити bae.</string>
@@ -359,7 +360,8 @@
     <string name="device_cut_off_running_body">Зачекайте, поки він завершиться, і спробуйте ще раз.</string>
     <string name="device_cut_off_not_gone_title">Видалення ще не дійшло до цього пристрою</string>
     <string name="device_cut_off_not_gone_body">Спробуйте ще раз після наступної синхронізації.</string>
-    <string name="members_invite">Запросити людину</string>
+    <string name="members_invite">Запросити</string>
+    <string name="invite_person_title">Запросити людину</string>
     <string name="invite_name">Ім’я</string>
     <string name="invite_lifetime_hour">1 година</string>
     <string name="invite_lifetime_day">1 день</string>
@@ -369,7 +371,12 @@
     <string name="add_device_added">Пристрій додано: %1$s</string>
     <string name="add_device_making_code">Створення коду для вашого нового пристрою…</string>
     <string name="add_device_instructions">На новому пристрої виберіть «Сканувати код», щоб відсканувати це, або «Ввести код», щоб ввести:</string>
-    <string name="invite_email">Ел. пошта</string>
+    <string name="invite_email_dropbox">Ел. пошта Dropbox</string>
+    <string name="invite_email_onedrive">Ел. пошта облікового запису Microsoft</string>
+    <string name="invite_email_icloud">Ел. пошта облікового запису Apple</string>
+    <string name="invite_email_help_dropbox">Бібліотекою діляться з цим обліковим записом Dropbox, щоб людина могла приєднатися.</string>
+    <string name="invite_email_help_onedrive">Бібліотекою діляться з цим обліковим записом Microsoft, щоб людина могла приєднатися.</string>
+    <string name="invite_email_help_icloud">Бібліотекою діляться з цим обліковим записом Apple, щоб людина могла приєднатися.</string>
     <string name="invite_create">Створити запрошення</string>
     <string name="invite_title">Запрошення</string>
     <string name="invite_cancel">Скасувати запрошення</string>
@@ -407,8 +414,8 @@
     <string name="onboarding_saved_code_removed">Цей код відновлення більше не збережено на цьому пристрої.</string>
     <string name="onboarding_saved_library">Бібліотека</string>
     <string name="members_joining">Приєднується</string>
-    <string name="members_sharing_access">Надається доступ</string>
-    <string name="invite_granting">Бібліотекою діляться. Код з’явиться, щойно ця бібліотека синхронізується.</string>
+    <string name="members_invite_shares_access">Надасть доступ, коли з’явиться в мережі</string>
+    <string name="invite_granting">Бібліотекою діляться з %1$s…</string>
     <string name="settings_profile_making">Створюється ваш профіль…</string>
     <string name="settings_profile_making_detail">Ваш профіль з’явиться, щойно ця бібліотека синхронізується.</string>
     <string name="settings_profile_refused">Не вдалося створити ваш профіль. %1$s</string>

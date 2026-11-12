@@ -61,7 +61,7 @@ class SettingsPageShots : BoardShot() {
     fun androidSettingsAppearance() =
         shot("android.settings.appearance") {
             CompositionLocalProvider(LocalBugReports provides BugReports()) {
-                SystemLook { ScreenScene { AndroidSettingsAppearance(onBack = {}) } }
+                ScreenScene(SYSTEM_APPEARANCE) { AndroidSettingsAppearance(onBack = {}) }
             }
         }
 

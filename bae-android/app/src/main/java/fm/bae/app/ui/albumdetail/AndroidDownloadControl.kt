@@ -55,7 +55,7 @@ import uniffi.bae_bridge.bridgeTransferActionKey
 /**
  * The shown release's download control; nothing when core offers none for the
  * release. A release this device can't play says why instead, as core words
- * it: the device its audio is on ("On Ana's Mac"), or its originals gone.
+ * it: the device its audio is on ("On Ana’s Mac"), or its originals gone.
  */
 @Composable
 internal fun AndroidDownloadControlContainer(

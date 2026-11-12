@@ -208,6 +208,7 @@
     <string name="members_remove_confirm_title">إزالة هذا الجهاز؟</string>
     <string name="members_remove_confirm_body">سيفقد %1$s الوصول إلى هذه المكتبة.</string>
     <string name="join_request_approve">موافقة</string>
+    <string name="join_request_title">%1$s يطلب الانضمام</string>
     <string name="join_request_match">تأكد من ظهور هذا الرمز:</string>
     <string name="join_request_confirmation">رقم التأكيد</string>
     <string name="onboarding_add_device">إضافة جهاز</string>
@@ -303,7 +304,7 @@
     <string name="reset_device_confirm">إعادة تعيين</string>
     <string name="restore_device_title">استعادة هذه المكتبة</string>
     <string name="finish_restore_title">إنهاء استعادة هذه المكتبة</string>
-    <string name="finish_reset">إنهاء إعادة تعيين هذا الجهاز</string>
+    <string name="finish_reset">إنهاء إعادة التعيين</string>
     <string name="finish_removal">إنهاء إزالة هذه المكتبة</string>
     <string name="save">حفظ</string>
     <string name="onboarding_scan_code">مسح رمز</string>
@@ -333,7 +334,7 @@
     <string name="loading_finding_libraries">جارٍ البحث عن مكتباتك…</string>
     <string name="loading_opening_library">جارٍ فتح المكتبة…</string>
     <string name="loading_closing_library">جارٍ إغلاق المكتبة…</string>
-    <string name="loading_removing_library">جارٍ إزالة المكتبة…</string>
+    <string name="loading_removing_library">جارٍ مغادرة المكتبة…</string>
     <string name="loading_resetting_device">جارٍ إعادة تعيين هذا الجهاز…</string>
     <string name="progress_loading">جارٍ التحميل</string>
     <string name="pending_update_no_store">لا يوجد متجر تطبيقات على هذا الجهاز يمكنه تحديث bae.</string>
@@ -375,7 +376,8 @@
     <string name="device_cut_off_running_body">انتظر حتى ينتهي، ثم حاول مرة أخرى.</string>
     <string name="device_cut_off_not_gone_title">إزالة الجهاز لم تصل إلى هذا الجهاز بعد</string>
     <string name="device_cut_off_not_gone_body">حاول مرة أخرى بعد المزامنة التالية.</string>
-    <string name="members_invite">دعوة شخص</string>
+    <string name="members_invite">دعوة</string>
+    <string name="invite_person_title">دعوة شخص</string>
     <string name="invite_name">الاسم</string>
     <string name="invite_lifetime_hour">ساعة واحدة</string>
     <string name="invite_lifetime_day">يوم واحد</string>
@@ -385,7 +387,12 @@
     <string name="add_device_added">تمت إضافة %1$s</string>
     <string name="add_device_making_code">جارٍ إنشاء رمز لجهازك الجديد…</string>
     <string name="add_device_instructions">على الجهاز الجديد، اختر «مسح رمز» لمسح هذا الرمز، أو «إدخال رمز» لكتابته:</string>
-    <string name="invite_email">البريد الإلكتروني</string>
+    <string name="invite_email_dropbox">بريد Dropbox الإلكتروني</string>
+    <string name="invite_email_onedrive">البريد الإلكتروني لحساب Microsoft</string>
+    <string name="invite_email_icloud">البريد الإلكتروني لحساب Apple</string>
+    <string name="invite_email_help_dropbox">تتم مشاركة المكتبة مع حساب Dropbox هذا ليتمكن من الانضمام.</string>
+    <string name="invite_email_help_onedrive">تتم مشاركة المكتبة مع حساب Microsoft هذا ليتمكن من الانضمام.</string>
+    <string name="invite_email_help_icloud">تتم مشاركة المكتبة مع حساب Apple هذا ليتمكن من الانضمام.</string>
     <string name="invite_create">إنشاء دعوة</string>
     <string name="invite_title">دعوة</string>
     <string name="invite_cancel">إلغاء الدعوة</string>
@@ -423,8 +430,8 @@
     <string name="onboarding_saved_code_removed">لم يعد رمز الاستعادة هذا محفوظًا على هذا الجهاز.</string>
     <string name="onboarding_saved_library">المكتبة</string>
     <string name="members_joining">ينضم</string>
-    <string name="members_sharing_access">جارٍ مشاركة الوصول</string>
-    <string name="invite_granting">جارٍ مشاركة المكتبة. يظهر الرمز بعد مزامنة هذه المكتبة.</string>
+    <string name="members_invite_shares_access">تتم مشاركة الوصول عند الاتصال بالإنترنت</string>
+    <string name="invite_granting">جارٍ مشاركة المكتبة مع %1$s…</string>
     <string name="settings_profile_making">جارٍ إنشاء ملف تعريفك…</string>
     <string name="settings_profile_making_detail">يظهر ملف تعريفك بعد مزامنة هذه المكتبة.</string>
     <string name="settings_profile_refused">تعذّر إنشاء ملف تعريفك. %1$s</string>

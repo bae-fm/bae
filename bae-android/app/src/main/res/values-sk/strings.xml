@@ -204,6 +204,7 @@
     <string name="members_remove_confirm_title">Odstrániť toto zariadenie?</string>
     <string name="members_remove_confirm_body">%1$s stratí prístup k tejto knižnici.</string>
     <string name="join_request_approve">Schváliť</string>
+    <string name="join_request_title">%1$s sa chce pripojiť</string>
     <string name="join_request_match">Uistite sa, že sa zobrazuje tento kód:</string>
     <string name="join_request_confirmation">Potvrdzovacie číslo</string>
     <string name="onboarding_add_device">Pridať zariadenie</string>
@@ -287,7 +288,7 @@
     <string name="reset_device_confirm">Obnoviť</string>
     <string name="restore_device_title">Obnoviť túto knižnicu</string>
     <string name="finish_restore_title">Dokončiť obnovenie tejto knižnice</string>
-    <string name="finish_reset">Dokončiť obnovenie tohto zariadenia</string>
+    <string name="finish_reset">Dokončiť obnovenie</string>
     <string name="finish_removal">Dokončiť odstránenie tejto knižnice</string>
     <string name="save">Uložiť</string>
     <string name="onboarding_scan_code">Naskenovať kód</string>
@@ -317,7 +318,7 @@
     <string name="loading_finding_libraries">Hľadajú sa vaše knižnice…</string>
     <string name="loading_opening_library">Otvára sa knižnica…</string>
     <string name="loading_closing_library">Zatvára sa knižnica…</string>
-    <string name="loading_removing_library">Odstraňuje sa knižnica…</string>
+    <string name="loading_removing_library">Opúšťa sa knižnica…</string>
     <string name="loading_resetting_device">Resetuje sa toto zariadenie…</string>
     <string name="progress_loading">Načítava sa</string>
     <string name="pending_update_no_store">Žiadny obchod s aplikáciami v tomto zariadení nemôže aktualizovať bae.</string>
@@ -357,7 +358,8 @@
     <string name="device_cut_off_running_body">Počkajte, kým skončí, a skúste to znova.</string>
     <string name="device_cut_off_not_gone_title">Odstránenie ešte nedorazilo na toto zariadenie</string>
     <string name="device_cut_off_not_gone_body">Skúste to znova po ďalšej synchronizácii.</string>
-    <string name="members_invite">Pozvať osobu</string>
+    <string name="members_invite">Pozvať</string>
+    <string name="invite_person_title">Pozvať osobu</string>
     <string name="invite_name">Meno</string>
     <string name="invite_lifetime_hour">1 hodina</string>
     <string name="invite_lifetime_day">1 deň</string>
@@ -367,7 +369,12 @@
     <string name="add_device_added">Zariadenie pridané: %1$s</string>
     <string name="add_device_making_code">Vytvára sa kód pre vaše nové zariadenie…</string>
     <string name="add_device_instructions">Na novom zariadení vyberte „Naskenovať kód“ na naskenovanie tohto kódu alebo „Zadať kód“ na jeho prepísanie:</string>
-    <string name="invite_email">E-mail</string>
+    <string name="invite_email_dropbox">E-mail v Dropboxe</string>
+    <string name="invite_email_onedrive">E-mail účtu Microsoft</string>
+    <string name="invite_email_icloud">E-mail účtu Apple</string>
+    <string name="invite_email_help_dropbox">Knižnica sa zdieľa s týmto účtom Dropbox, aby sa k nej mohla osoba pripojiť.</string>
+    <string name="invite_email_help_onedrive">Knižnica sa zdieľa s týmto účtom Microsoft, aby sa k nej mohla osoba pripojiť.</string>
+    <string name="invite_email_help_icloud">Knižnica sa zdieľa s týmto účtom Apple, aby sa k nej mohla osoba pripojiť.</string>
     <string name="invite_create">Vytvoriť pozvánku</string>
     <string name="invite_title">Pozvánka</string>
     <string name="invite_cancel">Zrušiť pozvánku</string>
@@ -405,8 +412,8 @@
     <string name="onboarding_saved_code_removed">Tento kód na obnovenie už v tomto zariadení nie je uložený.</string>
     <string name="onboarding_saved_library">Knižnica</string>
     <string name="members_joining">Pripája sa</string>
-    <string name="members_sharing_access">Zdieľa sa prístup</string>
-    <string name="invite_granting">Knižnica sa zdieľa. Kód sa zobrazí, keď sa táto knižnica synchronizuje.</string>
+    <string name="members_invite_shares_access">Prístup sa zdieľa, keď bude online</string>
+    <string name="invite_granting">Knižnica sa zdieľa s adresou %1$s…</string>
     <string name="settings_profile_making">Vytvára sa váš profil…</string>
     <string name="settings_profile_making_detail">Váš profil sa zobrazí, keď sa táto knižnica synchronizuje.</string>
     <string name="settings_profile_refused">Váš profil sa nepodarilo vytvoriť. %1$s</string>

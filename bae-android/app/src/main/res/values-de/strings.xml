@@ -188,6 +188,7 @@
     <string name="members_remove_confirm_title">Dieses Gerät entfernen?</string>
     <string name="members_remove_confirm_body">%1$s verliert den Zugriff auf diese Bibliothek.</string>
     <string name="join_request_approve">Genehmigen</string>
+    <string name="join_request_title">%1$s möchte beitreten</string>
     <string name="join_request_match">Vergewissere dich, dass dieser Code angezeigt wird:</string>
     <string name="join_request_confirmation">Bestätigungsnummer</string>
     <string name="onboarding_add_device">Gerät hinzufügen</string>
@@ -275,7 +276,7 @@
     <string name="reset_device_confirm">Zurücksetzen</string>
     <string name="restore_device_title">Diese Bibliothek wiederherstellen</string>
     <string name="finish_restore_title">Wiederherstellen dieser Bibliothek abschließen</string>
-    <string name="finish_reset">Zurücksetzen dieses Geräts abschließen</string>
+    <string name="finish_reset">Zurücksetzen abschließen</string>
     <string name="finish_removal">Entfernen dieser Mediathek abschließen</string>
     <string name="save">Speichern</string>
     <string name="onboarding_scan_code">Code scannen</string>
@@ -305,7 +306,7 @@
     <string name="loading_finding_libraries">Deine Bibliotheken werden gesucht…</string>
     <string name="loading_opening_library">Bibliothek wird geöffnet…</string>
     <string name="loading_closing_library">Bibliothek wird geschlossen…</string>
-    <string name="loading_removing_library">Bibliothek wird entfernt…</string>
+    <string name="loading_removing_library">Bibliothek wird verlassen…</string>
     <string name="loading_resetting_device">Dieses Gerät wird zurückgesetzt…</string>
     <string name="progress_loading">Wird geladen</string>
     <string name="pending_update_no_store">Kein App-Store auf diesem Gerät kann bae aktualisieren.</string>
@@ -343,7 +344,8 @@
     <string name="device_cut_off_running_body">Warte, bis sie beendet ist, und versuche es dann erneut.</string>
     <string name="device_cut_off_not_gone_title">Das Entfernen ist noch nicht auf diesem Gerät angekommen</string>
     <string name="device_cut_off_not_gone_body">Versuche es nach der nächsten Synchronisierung erneut.</string>
-    <string name="members_invite">Person einladen</string>
+    <string name="members_invite">Einladen</string>
+    <string name="invite_person_title">Person einladen</string>
     <string name="invite_name">Name</string>
     <string name="invite_lifetime_hour">1 Stunde</string>
     <string name="invite_lifetime_day">1 Tag</string>
@@ -353,7 +355,12 @@
     <string name="add_device_added">%1$s hinzugefügt</string>
     <string name="add_device_making_code">Code für dein neues Gerät wird erstellt…</string>
     <string name="add_device_instructions">Wähle auf dem neuen Gerät „Code scannen“, um dies zu scannen, oder „Code eingeben“, um Folgendes einzutippen:</string>
-    <string name="invite_email">E-Mail</string>
+    <string name="invite_email_dropbox">Dropbox-E-Mail</string>
+    <string name="invite_email_onedrive">E-Mail des Microsoft-Kontos</string>
+    <string name="invite_email_icloud">E-Mail des Apple-Kontos</string>
+    <string name="invite_email_help_dropbox">Die Bibliothek wird mit diesem Dropbox-Konto geteilt, damit die Person beitreten kann.</string>
+    <string name="invite_email_help_onedrive">Die Bibliothek wird mit diesem Microsoft-Konto geteilt, damit die Person beitreten kann.</string>
+    <string name="invite_email_help_icloud">Die Bibliothek wird mit diesem Apple-Konto geteilt, damit die Person beitreten kann.</string>
     <string name="invite_create">Einladung erstellen</string>
     <string name="invite_title">Einladung</string>
     <string name="invite_cancel">Einladung zurückziehen</string>
@@ -391,8 +398,8 @@
     <string name="onboarding_saved_code_removed">Dieser Wiederherstellungscode ist nicht mehr auf diesem Gerät gespeichert.</string>
     <string name="onboarding_saved_library">Bibliothek</string>
     <string name="members_joining">Tritt bei</string>
-    <string name="members_sharing_access">Zugriff wird geteilt</string>
-    <string name="invite_granting">Die Bibliothek wird geteilt. Der Code erscheint, sobald diese Bibliothek synchronisiert ist.</string>
+    <string name="members_invite_shares_access">Teilt den Zugriff, sobald das Gerät online ist</string>
+    <string name="invite_granting">Bibliothek wird mit %1$s geteilt…</string>
     <string name="settings_profile_making">Dein Profil wird erstellt …</string>
     <string name="settings_profile_making_detail">Dein Profil erscheint, sobald diese Bibliothek synchronisiert ist.</string>
     <string name="settings_profile_refused">Dein Profil konnte nicht erstellt werden. %1$s</string>

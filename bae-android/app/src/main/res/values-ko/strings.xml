@@ -183,6 +183,7 @@
     <string name="members_remove_confirm_title">이 기기를 제거할까요?</string>
     <string name="members_remove_confirm_body">%1$s 기기는 이 라이브러리에 접근할 수 없게 됩니다.</string>
     <string name="join_request_approve">승인</string>
+    <string name="join_request_title">%1$s님이 참여하려고 합니다</string>
     <string name="join_request_match">이 코드가 표시되어 있는지 확인하세요:</string>
     <string name="join_request_confirmation">확인 번호</string>
     <string name="onboarding_add_device">기기 추가</string>
@@ -268,7 +269,7 @@
     <string name="reset_device_confirm">초기화</string>
     <string name="restore_device_title">이 라이브러리 복원</string>
     <string name="finish_restore_title">이 라이브러리 복원 완료하기</string>
-    <string name="finish_reset">이 기기 초기화 완료하기</string>
+    <string name="finish_reset">초기화 완료하기</string>
     <string name="finish_removal">이 라이브러리 제거 완료하기</string>
     <string name="save">저장</string>
     <string name="onboarding_scan_code">코드 스캔</string>
@@ -298,7 +299,7 @@
     <string name="loading_finding_libraries">라이브러리를 찾는 중…</string>
     <string name="loading_opening_library">라이브러리를 여는 중…</string>
     <string name="loading_closing_library">라이브러리를 닫는 중…</string>
-    <string name="loading_removing_library">라이브러리를 제거하는 중…</string>
+    <string name="loading_removing_library">라이브러리에서 나가는 중…</string>
     <string name="loading_resetting_device">이 기기를 재설정하는 중…</string>
     <string name="progress_loading">불러오는 중</string>
     <string name="pending_update_no_store">이 기기에는 bae를 업데이트할 수 있는 앱 스토어가 없습니다.</string>
@@ -335,7 +336,8 @@
     <string name="device_cut_off_running_body">요청이 끝날 때까지 기다린 다음 다시 시도하세요.</string>
     <string name="device_cut_off_not_gone_title">제거가 아직 이 기기에 도착하지 않았습니다</string>
     <string name="device_cut_off_not_gone_body">다음 동기화 후에 다시 시도하세요.</string>
-    <string name="members_invite">사람 초대</string>
+    <string name="members_invite">초대</string>
+    <string name="invite_person_title">사람 초대</string>
     <string name="invite_name">이름</string>
     <string name="invite_lifetime_hour">1시간</string>
     <string name="invite_lifetime_day">1일</string>
@@ -345,7 +347,12 @@
     <string name="add_device_added">%1$s 추가됨</string>
     <string name="add_device_making_code">새 기기용 코드를 만드는 중…</string>
     <string name="add_device_instructions">새 기기에서 ‘코드 스캔’을 선택해 이 코드를 스캔하거나, ‘코드 입력’을 선택해 다음을 입력하세요:</string>
-    <string name="invite_email">이메일</string>
+    <string name="invite_email_dropbox">Dropbox 이메일</string>
+    <string name="invite_email_onedrive">Microsoft 계정 이메일</string>
+    <string name="invite_email_icloud">Apple 계정 이메일</string>
+    <string name="invite_email_help_dropbox">이 Dropbox 계정과 라이브러리를 공유하여 참여할 수 있게 합니다.</string>
+    <string name="invite_email_help_onedrive">이 Microsoft 계정과 라이브러리를 공유하여 참여할 수 있게 합니다.</string>
+    <string name="invite_email_help_icloud">이 Apple 계정과 라이브러리를 공유하여 참여할 수 있게 합니다.</string>
     <string name="invite_create">초대 만들기</string>
     <string name="invite_title">초대</string>
     <string name="invite_cancel">초대 취소</string>
@@ -383,8 +390,8 @@
     <string name="onboarding_saved_code_removed">이 복원 코드는 더 이상 이 기기에 저장되어 있지 않습니다.</string>
     <string name="onboarding_saved_library">라이브러리</string>
     <string name="members_joining">참여 중</string>
-    <string name="members_sharing_access">접근 권한 공유 중</string>
-    <string name="invite_granting">라이브러리를 공유하는 중입니다. 이 라이브러리가 동기화되면 코드가 표시됩니다.</string>
+    <string name="members_invite_shares_access">온라인이 되면 접근 권한을 공유합니다</string>
+    <string name="invite_granting">%1$s님과 라이브러리를 공유하는 중…</string>
     <string name="settings_profile_making">프로필을 만드는 중…</string>
     <string name="settings_profile_making_detail">이 라이브러리가 동기화되면 프로필이 표시됩니다.</string>
     <string name="settings_profile_refused">프로필을 만들 수 없습니다. %1$s</string>

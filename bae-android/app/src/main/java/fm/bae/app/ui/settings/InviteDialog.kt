@@ -173,7 +173,7 @@ internal fun inviteFormParts(
 ): DialogParts {
     val fields = remember { InviteFields() }
     return DialogParts(
-        title = stringResource(R.string.members_invite),
+        title = stringResource(R.string.invite_person_title),
         content = {
             InviteFormFields(
                 storage = storage,
@@ -219,13 +219,30 @@ private fun InviteAccessFields(
         OutlinedTextField(
             value = input.email,
             onValueChange = { input.email = it.trim() },
-            label = { Text(stringResource(R.string.invite_email)) },
+            label = { Text(stringResource(storage.emailLabel())) },
+            supportingText = { Text(stringResource(storage.emailHelp())) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, autoCorrectEnabled = false),
         )
     }
 }
+
+/** What the invited person's address is called, by the provider whose account it is. */
+private fun BridgeStorageLocation.emailLabel(): Int =
+    when (this) {
+        is BridgeStorageLocation.OneDrive -> R.string.invite_email_onedrive
+        is BridgeStorageLocation.CloudKit -> R.string.invite_email_icloud
+        else -> R.string.invite_email_dropbox
+    }
+
+/** Why the library is shared with that account. */
+private fun BridgeStorageLocation.emailHelp(): Int =
+    when (this) {
+        is BridgeStorageLocation.OneDrive -> R.string.invite_email_help_onedrive
+        is BridgeStorageLocation.CloudKit -> R.string.invite_email_help_icloud
+        else -> R.string.invite_email_help_dropbox
+    }
 
 @Composable
 private fun RoleChoice(

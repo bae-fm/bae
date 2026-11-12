@@ -183,6 +183,7 @@
     <string name="members_remove_confirm_title">要移除此裝置嗎？</string>
     <string name="members_remove_confirm_body">%1$s 將無法存取此資料庫。</string>
     <string name="join_request_approve">核准</string>
+    <string name="join_request_title">%1$s 想要加入</string>
     <string name="join_request_match">請確認螢幕上顯示的是此代碼：</string>
     <string name="join_request_confirmation">確認碼</string>
     <string name="onboarding_add_device">新增裝置</string>
@@ -268,7 +269,7 @@
     <string name="reset_device_confirm">重設</string>
     <string name="restore_device_title">還原此資料庫</string>
     <string name="finish_restore_title">完成還原此資料庫</string>
-    <string name="finish_reset">完成重設此裝置</string>
+    <string name="finish_reset">完成重設</string>
     <string name="finish_removal">完成移除此音樂庫</string>
     <string name="save">儲存</string>
     <string name="onboarding_scan_code">掃描代碼</string>
@@ -298,7 +299,7 @@
     <string name="loading_finding_libraries">正在尋找你的資料庫…</string>
     <string name="loading_opening_library">正在開啟資料庫…</string>
     <string name="loading_closing_library">正在關閉資料庫…</string>
-    <string name="loading_removing_library">正在移除資料庫…</string>
+    <string name="loading_removing_library">正在離開資料庫…</string>
     <string name="loading_resetting_device">正在重設此裝置…</string>
     <string name="progress_loading">正在載入</string>
     <string name="pending_update_no_store">此裝置上沒有可以更新 bae 的 App 商店。</string>
@@ -335,7 +336,8 @@
     <string name="device_cut_off_running_body">請等它結束後再試一次。</string>
     <string name="device_cut_off_not_gone_title">移除尚未傳到此裝置</string>
     <string name="device_cut_off_not_gone_body">請在下次同步後再試。</string>
-    <string name="members_invite">邀請成員</string>
+    <string name="members_invite">邀請</string>
+    <string name="invite_person_title">邀請成員</string>
     <string name="invite_name">姓名</string>
     <string name="invite_lifetime_hour">1 小時</string>
     <string name="invite_lifetime_day">1 天</string>
@@ -345,7 +347,12 @@
     <string name="add_device_added">已新增%1$s</string>
     <string name="add_device_making_code">正在為你的新裝置產生代碼…</string>
     <string name="add_device_instructions">在新裝置上選擇「掃描代碼」來掃描此代碼，或選擇「輸入代碼」來輸入：</string>
-    <string name="invite_email">電子郵件</string>
+    <string name="invite_email_dropbox">Dropbox 電子郵件</string>
+    <string name="invite_email_onedrive">Microsoft 帳號電子郵件</string>
+    <string name="invite_email_icloud">Apple 帳號電子郵件</string>
+    <string name="invite_email_help_dropbox">資料庫將與此 Dropbox 帳號共享，對方即可加入。</string>
+    <string name="invite_email_help_onedrive">資料庫將與此 Microsoft 帳號共享，對方即可加入。</string>
+    <string name="invite_email_help_icloud">資料庫將與此 Apple 帳號共享，對方即可加入。</string>
     <string name="invite_create">建立邀請</string>
     <string name="invite_title">邀請</string>
     <string name="invite_cancel">取消邀請</string>
@@ -383,8 +390,8 @@
     <string name="onboarding_saved_code_removed">這個還原碼已不再儲存在此裝置上。</string>
     <string name="onboarding_saved_library">資料庫</string>
     <string name="members_joining">正在加入</string>
-    <string name="members_sharing_access">正在共享存取權限</string>
-    <string name="invite_granting">正在共享資料庫。此資料庫同步後，代碼就會出現。</string>
+    <string name="members_invite_shares_access">連線後共享存取權限</string>
+    <string name="invite_granting">正在與 %1$s 共享資料庫…</string>
     <string name="settings_profile_making">正在建立你的個人檔案…</string>
     <string name="settings_profile_making_detail">此資料庫同步後，你的個人檔案就會出現。</string>
     <string name="settings_profile_refused">無法建立你的個人檔案。%1$s</string>

@@ -193,6 +193,7 @@
     <string name="members_remove_confirm_title">להסיר את המכשיר הזה?</string>
     <string name="members_remove_confirm_body">%1$s יאבד גישה לספרייה הזו.</string>
     <string name="join_request_approve">אשר</string>
+    <string name="join_request_title">בקשת הצטרפות מ-%1$s</string>
     <string name="join_request_match">ודא שהקוד הזה מוצג:</string>
     <string name="join_request_confirmation">מספר אימות</string>
     <string name="onboarding_add_device">הוספת מכשיר</string>
@@ -282,7 +283,7 @@
     <string name="reset_device_confirm">איפוס</string>
     <string name="restore_device_title">שחזור הספרייה הזו</string>
     <string name="finish_restore_title">סיום שחזור הספרייה הזו</string>
-    <string name="finish_reset">סיום איפוס המכשיר הזה</string>
+    <string name="finish_reset">סיום האיפוס</string>
     <string name="finish_removal">סיום הסרת הספרייה הזו</string>
     <string name="save">שמירה</string>
     <string name="onboarding_scan_code">סריקת קוד</string>
@@ -312,7 +313,7 @@
     <string name="loading_finding_libraries">מחפש את הספריות שלך…</string>
     <string name="loading_opening_library">פותח את הספרייה…</string>
     <string name="loading_closing_library">סוגר את הספרייה…</string>
-    <string name="loading_removing_library">מסיר את הספרייה…</string>
+    <string name="loading_removing_library">עוזב את הספרייה…</string>
     <string name="loading_resetting_device">מאפס את המכשיר הזה…</string>
     <string name="progress_loading">טוען</string>
     <string name="pending_update_no_store">אין במכשיר הזה חנות אפליקציות שיכולה לעדכן את bae.</string>
@@ -351,7 +352,8 @@
     <string name="device_cut_off_running_body">המתן לסיומה ונסה שוב.</string>
     <string name="device_cut_off_not_gone_title">ההסרה עוד לא הגיעה למכשיר הזה</string>
     <string name="device_cut_off_not_gone_body">נסה שוב אחרי הסנכרון הבא.</string>
-    <string name="members_invite">הזמנת אדם</string>
+    <string name="members_invite">הזמנה</string>
+    <string name="invite_person_title">הזמנת אדם</string>
     <string name="invite_name">שם</string>
     <string name="invite_lifetime_hour">שעה אחת</string>
     <string name="invite_lifetime_day">יום אחד</string>
@@ -361,7 +363,12 @@
     <string name="add_device_added">המכשיר %1$s נוסף</string>
     <string name="add_device_making_code">יוצר קוד למכשיר החדש שלך…</string>
     <string name="add_device_instructions">במכשיר החדש בחר ב“סריקת קוד” כדי לסרוק את זה, או ב“הזנת קוד” כדי להקליד:</string>
-    <string name="invite_email">אימייל</string>
+    <string name="invite_email_dropbox">אימייל ב-Dropbox</string>
+    <string name="invite_email_onedrive">אימייל של חשבון Microsoft</string>
+    <string name="invite_email_icloud">אימייל של חשבון Apple</string>
+    <string name="invite_email_help_dropbox">הספרייה משותפת עם חשבון Dropbox זה כדי שיוכלו להצטרף.</string>
+    <string name="invite_email_help_onedrive">הספרייה משותפת עם חשבון Microsoft זה כדי שיוכלו להצטרף.</string>
+    <string name="invite_email_help_icloud">הספרייה משותפת עם חשבון Apple זה כדי שיוכלו להצטרף.</string>
     <string name="invite_create">יצירת הזמנה</string>
     <string name="invite_title">הזמנה</string>
     <string name="invite_cancel">ביטול ההזמנה</string>
@@ -399,8 +406,8 @@
     <string name="onboarding_saved_code_removed">קוד השחזור הזה כבר לא שמור במכשיר הזה.</string>
     <string name="onboarding_saved_library">ספרייה</string>
     <string name="members_joining">מצטרף</string>
-    <string name="members_sharing_access">משתף גישה</string>
-    <string name="invite_granting">הספרייה משותפת. הקוד יופיע אחרי שהספרייה הזו תסונכרן.</string>
+    <string name="members_invite_shares_access">ישתף גישה כשיהיה מחובר</string>
+    <string name="invite_granting">משתף את הספרייה עם %1$s…</string>
     <string name="settings_profile_making">הפרופיל שלך נוצר…</string>
     <string name="settings_profile_making_detail">הפרופיל שלך יופיע אחרי שהספרייה הזו תסונכרן.</string>
     <string name="settings_profile_refused">לא ניתן היה ליצור את הפרופיל שלך. %1$s</string>

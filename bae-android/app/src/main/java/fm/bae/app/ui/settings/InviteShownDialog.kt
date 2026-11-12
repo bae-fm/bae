@@ -188,7 +188,7 @@ internal fun inviteCodeParts(
             ) {
                 when (val shown = invite.shown) {
                     is BridgeInviteShown.Granting -> {
-                        InviteGranting(invite.held)
+                        InviteGranting(invite.label, invite.held)
                     }
 
                     is BridgeInviteShown.Code -> {
@@ -226,11 +226,14 @@ internal fun inviteCodeParts(
 
 /** Sync hasn't granted the invite's access yet; a refused check or a failed grant says why. */
 @Composable
-private fun InviteGranting(held: BridgePendingWait?) {
+private fun InviteGranting(
+    address: String,
+    held: BridgePendingWait?,
+) {
     val context = LocalContext.current
     when (held) {
         null -> {
-            AndroidSpinner(text = stringResource(R.string.invite_granting))
+            AndroidSpinner(text = stringResource(R.string.invite_granting, address))
         }
 
         else -> {

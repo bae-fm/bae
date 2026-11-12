@@ -13,9 +13,12 @@ import fm.bae.app.ui.appearance.SurfaceTone
 internal val BOARD_APPEARANCE =
     AppearancePreferences(mode = AppearanceMode.DARK, accent = AccentChoice.PINK, tone = SurfaceTone.MIDNIGHT)
 
-/** [BaeTheme] in the boards' look, which nothing a shot taps changes. */
+/** [BaeTheme] in [appearance] (the boards' look by default), which nothing a shot taps changes. */
 @Composable
-internal fun ShotTheme(content: @Composable () -> Unit) {
-    val store = remember { AppearanceStore(BOARD_APPEARANCE) {} }
+internal fun ShotTheme(
+    appearance: AppearancePreferences = BOARD_APPEARANCE,
+    content: @Composable () -> Unit,
+) {
+    val store = remember { AppearanceStore(appearance) {} }
     BaeTheme(appearance = store, content = content)
 }

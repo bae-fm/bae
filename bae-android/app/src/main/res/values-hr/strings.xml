@@ -193,6 +193,7 @@
     <string name="members_remove_confirm_title">Ukloniti ovaj uređaj?</string>
     <string name="members_remove_confirm_body">%1$s gubi pristup ovoj fonoteci.</string>
     <string name="join_request_approve">Odobri</string>
+    <string name="join_request_title">%1$s se želi pridružiti</string>
     <string name="join_request_match">Provjerite prikazuje li se ovaj kôd:</string>
     <string name="join_request_confirmation">Broj potvrde</string>
     <string name="onboarding_add_device">Dodaj uređaj</string>
@@ -282,7 +283,7 @@
     <string name="reset_device_confirm">Ponovno postavi</string>
     <string name="restore_device_title">Vraćanje ove fonoteke</string>
     <string name="finish_restore_title">Dovrši vraćanje ove fonoteke</string>
-    <string name="finish_reset">Dovrši ponovno postavljanje ovog uređaja</string>
+    <string name="finish_reset">Dovrši ponovno postavljanje</string>
     <string name="finish_removal">Dovrši uklanjanje ove fonoteke</string>
     <string name="save">Spremi</string>
     <string name="onboarding_scan_code">Skeniraj kod</string>
@@ -312,7 +313,7 @@
     <string name="loading_finding_libraries">Traženje vaših fonoteka…</string>
     <string name="loading_opening_library">Otvaranje fonoteke…</string>
     <string name="loading_closing_library">Zatvaranje fonoteke…</string>
-    <string name="loading_removing_library">Uklanjanje fonoteke…</string>
+    <string name="loading_removing_library">Napuštanje fonoteke…</string>
     <string name="loading_resetting_device">Ponovno postavljanje ovog uređaja…</string>
     <string name="progress_loading">Učitavanje</string>
     <string name="pending_update_no_store">Nijedna trgovina aplikacija na ovom uređaju ne može ažurirati bae.</string>
@@ -351,7 +352,8 @@
     <string name="device_cut_off_running_body">Pričekajte da završi pa pokušajte ponovno.</string>
     <string name="device_cut_off_not_gone_title">Uklanjanje još nije stiglo na ovaj uređaj</string>
     <string name="device_cut_off_not_gone_body">Pokušajte ponovno nakon sljedeće sinkronizacije.</string>
-    <string name="members_invite">Pozovi osobu</string>
+    <string name="members_invite">Pozovi</string>
+    <string name="invite_person_title">Pozovi osobu</string>
     <string name="invite_name">Ime</string>
     <string name="invite_lifetime_hour">1 sat</string>
     <string name="invite_lifetime_day">1 dan</string>
@@ -361,7 +363,12 @@
     <string name="add_device_added">Uređaj dodan: %1$s</string>
     <string name="add_device_making_code">Izrada koda za vaš novi uređaj…</string>
     <string name="add_device_instructions">Na novom uređaju odaberite „Skeniraj kod” za skeniranje ili „Unesi kod” za upis:</string>
-    <string name="invite_email">E-pošta</string>
+    <string name="invite_email_dropbox">E-pošta za Dropbox</string>
+    <string name="invite_email_onedrive">E-pošta računa Microsoft</string>
+    <string name="invite_email_icloud">E-pošta računa Apple</string>
+    <string name="invite_email_help_dropbox">Fonoteka se dijeli s ovim računom Dropbox kako bi se osoba mogla pridružiti.</string>
+    <string name="invite_email_help_onedrive">Fonoteka se dijeli s ovim računom Microsoft kako bi se osoba mogla pridružiti.</string>
+    <string name="invite_email_help_icloud">Fonoteka se dijeli s ovim računom Apple kako bi se osoba mogla pridružiti.</string>
     <string name="invite_create">Stvori pozivnicu</string>
     <string name="invite_title">Pozivnica</string>
     <string name="invite_cancel">Otkaži pozivnicu</string>
@@ -399,8 +406,8 @@
     <string name="onboarding_saved_code_removed">Ovaj kod za vraćanje više nije spremljen na ovom uređaju.</string>
     <string name="onboarding_saved_library">Fonoteka</string>
     <string name="members_joining">Pridružuje se</string>
-    <string name="members_sharing_access">Dijeli se pristup</string>
-    <string name="invite_granting">Fonoteka se dijeli. Kôd će se pojaviti kad se ova fonoteka sinkronizira.</string>
+    <string name="members_invite_shares_access">Dijeli pristup kad bude na mreži</string>
+    <string name="invite_granting">Dijeljenje fonoteke s %1$s…</string>
     <string name="settings_profile_making">Izrađuje se vaš profil…</string>
     <string name="settings_profile_making_detail">Vaš profil pojavit će se kad se ova fonoteka sinkronizira.</string>
     <string name="settings_profile_refused">Vaš profil nije bilo moguće izraditi. %1$s</string>
