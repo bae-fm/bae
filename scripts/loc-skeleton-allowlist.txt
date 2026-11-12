@@ -103,6 +103,8 @@ nl	e.g. WPCR-80001
 # it "file" plural: Italian loanwords don't inflect for number, so the
 # singular form is correct for both plural-rule categories.
 it	%llu files	one
+it	%llu files · %@	one
+it	%llu files · %@ · %@	one
 
 # Word-order-only or compounding differences the detector can't distinguish
 # from an unmoved English skeleton.

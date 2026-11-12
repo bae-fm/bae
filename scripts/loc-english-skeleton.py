@@ -95,9 +95,9 @@ ANDROID_STRINGS = {
 
 # ── Placeholder / token stripping ───────────────────────────────────────────
 
-# `%1$lld` is one token, not `%1$l` plus the letters "ld": the specifier is
+# `%1$lld` (or `%1$llu`) is one token, not `%1$l` plus the letters "ld": the specifier is
 # matched whole so a positional integer argument reads as an integer.
-PLACEHOLDER_RE = re.compile(r"%\d+\$(?:lld|[a-zA-Z@])|%lld|%@|%[sd]|\{[^}]+\}")
+PLACEHOLDER_RE = re.compile(r"%\d+\$(?:ll[du]|[a-zA-Z@])|%ll[du]|%@|%[sd]|\{[^}]+\}")
 
 # A URL is the same in every language, and its path segments are English words
 # nobody translated ("…/settings/developers"). Strip it before tokenizing, or a
@@ -132,7 +132,7 @@ def placeholder_multiset(s):
     return sorted(PLACEHOLDER_RE.findall(s))
 
 
-_INT_SPECIFIERS = ("lld", "d")
+_INT_SPECIFIERS = ("lld", "llu", "d")
 
 
 def positional_signature(s):
