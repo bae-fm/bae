@@ -32,6 +32,15 @@ fun DialogHead(
     }
 }
 
+/** What a dialog says and offers: its [title], [message] and [content], and its buttons. */
+internal class DialogParts(
+    val confirmButton: @Composable () -> Unit,
+    val dismissButton: @Composable (() -> Unit)? = null,
+    val title: String? = null,
+    val message: String? = null,
+    val content: @Composable (() -> Unit)? = null,
+)
+
 /**
  * Material's [AlertDialog] with the line under the title set as the dialog's
  * [message] (see [DialogHead]); [content] is whatever follows it.
@@ -45,11 +54,21 @@ fun AndroidDialog(
     message: String? = null,
     content: @Composable (() -> Unit)? = null,
 ) {
+    AndroidDialog(onDismissRequest, DialogParts(confirmButton, dismissButton, title, message, content))
+}
+
+/** The dialog [parts] in a window of their own. */
+@Composable
+internal fun AndroidDialog(
+    onDismissRequest: () -> Unit,
+    parts: DialogParts,
+) {
     AlertDialog(
         onDismissRequest = onDismissRequest,
-        title = if (title != null || message != null) ({ DialogHead(title, message) }) else null,
-        text = content,
-        confirmButton = confirmButton,
-        dismissButton = dismissButton,
+        title =
+            if (parts.title != null || parts.message != null) ({ DialogHead(parts.title, parts.message) }) else null,
+        text = parts.content,
+        confirmButton = parts.confirmButton,
+        dismissButton = parts.dismissButton,
     )
 }

@@ -35,6 +35,7 @@ import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ButtonTone
+import fm.bae.app.ui.components.DialogParts
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.components.retryAction
@@ -172,7 +173,7 @@ internal fun RenameLibraryDialog(
 }
 
 @Composable
-private fun RenameLibraryDialogContent(
+internal fun RenameLibraryDialogContent(
     draft: String,
     error: DisplayError?,
     saving: Boolean,
@@ -182,6 +183,28 @@ private fun RenameLibraryDialogContent(
 ) {
     AndroidDialog(
         onDismissRequest = onDismiss,
+        parts =
+            renameLibraryParts(
+                draft = draft,
+                error = error,
+                saving = saving,
+                onDraftChange = onDraftChange,
+                onSave = onSave,
+                onDismiss = onDismiss,
+            ),
+    )
+}
+
+@Composable
+internal fun renameLibraryParts(
+    draft: String,
+    error: DisplayError?,
+    saving: Boolean,
+    onDraftChange: (String) -> Unit,
+    onSave: () -> Unit,
+    onDismiss: () -> Unit,
+): DialogParts =
+    DialogParts(
         title = stringResource(R.string.settings_rename_library_title),
         content = {
             Column {
@@ -209,7 +232,6 @@ private fun RenameLibraryDialogContent(
             ) { Text(stringResource(R.string.cancel)) }
         },
     )
-}
 
 @Preview
 @Composable

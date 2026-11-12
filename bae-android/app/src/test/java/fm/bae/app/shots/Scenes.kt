@@ -1,8 +1,13 @@
 package fm.bae.app.shots
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.AlertDialogDefaults
@@ -23,6 +28,8 @@ import fm.bae.app.ui.appearance.AppearanceStore
 import fm.bae.app.ui.appearance.SurfaceTone
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidSheetBody
+import fm.bae.app.ui.components.DialogHead
+import fm.bae.app.ui.components.DialogParts
 import uniffi.bae_bridge.BridgeDropboxLocation
 import uniffi.bae_bridge.BridgeFolderLabel
 import uniffi.bae_bridge.BridgeLibrary
@@ -94,6 +101,49 @@ internal fun DialogScene(content: @Composable () -> Unit) {
         }
     }
 }
+
+/**
+ * A dialog's [parts] drawn in place, as its window would show them: over [behind], dimmed by the scrim, centred on
+ * the phone, with title, message, content and buttons on the dialog's surface, 340 dp wide as the boards draw it.
+ */
+@Composable
+internal fun InPlaceDialogScene(
+    behind: @Composable () -> Unit = {},
+    dialog: @Composable () -> DialogParts,
+) {
+    ScreenScene {
+        Box(modifier = Modifier.fillMaxSize()) {
+            behind()
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.scrim.copy(alpha = SCRIM_ALPHA))
+                        .padding(ThemeSpace.page),
+                contentAlignment = Alignment.Center,
+            ) {
+                val parts = dialog()
+                DialogSurface {
+                    Column(modifier = Modifier.width(DIALOG_WIDTH), verticalArrangement = Arrangement.spacedBy(ThemeSpace.section)) {
+                        if (parts.title != null || parts.message != null) DialogHead(parts.title, parts.message)
+                        parts.content?.invoke()
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related, Alignment.End),
+                        ) {
+                            parts.dismissButton?.invoke()
+                            parts.confirmButton()
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private const val SCRIM_ALPHA = 0.32f
+
+private val DIALOG_WIDTH = 340.dp
 
 /** The surface a dialog's words sit on. */
 @Composable

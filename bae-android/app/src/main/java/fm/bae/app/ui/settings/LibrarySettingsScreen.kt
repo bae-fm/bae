@@ -59,7 +59,7 @@ internal fun LibrarySettingsScreen(
     val storage = model.storage
     var renaming by remember { mutableStateOf(false) }
     val name = (model.name as? LibraryNameRead.Named)?.name
-    LibrarySettingsContent(
+    AndroidSettingsLibrary(
         name = name,
         canRename = (model.self as? SelfRead.Loaded)?.person?.membership?.role == BridgeMemberRole.ADMIN,
         sync = syncRowSummary(storage = storage, line = line, setupRunning = setupRunning),
@@ -83,7 +83,7 @@ internal fun LibrarySettingsScreen(
  * no row shows. [aboveRows] holds the failures of the reads behind it.
  */
 @Composable
-internal fun LibrarySettingsContent(
+internal fun AndroidSettingsLibrary(
     name: String?,
     canRename: Boolean,
     sync: SyncRowSummary,
