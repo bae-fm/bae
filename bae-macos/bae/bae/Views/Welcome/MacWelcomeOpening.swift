@@ -19,10 +19,10 @@ struct MacWelcomeOpening<Leading: ProgressStep>: View {
     let reset: MacWelcomeOpeningReset?
 
     var body: some View {
-        MacProgressContainer(steps: leading) {
-            MacProgressContainer(steps: opening) {
+        MacProgressContainer(steps: leading, look: .stage) {
+            MacProgressContainer(steps: opening, look: .stage) {
                 if let reset {
-                    MacProgressContainer(steps: reset.steps) {
+                    MacProgressContainer(steps: reset.steps, look: .stage) {
                         BootstrapStatusView(status: reset.status)
                     }
                 }

@@ -21,7 +21,8 @@ struct StepProgressLineTests {
         let size = NSSize(width: 360, height: 120)
         try await SnapshotTestSupport.withHostedWindow(
             MacProgressContainer(
-                steps: LatestStream.closingSteps(holding: Self.stoppingSync).only
+                steps: LatestStream.closingSteps(holding: Self.stoppingSync)
+                    .only
             ) {
                 EmptyView()
             }
@@ -55,8 +56,9 @@ struct StepProgressLineTests {
         let size = NSSize(width: 360, height: 120)
         try await SnapshotTestSupport.withHostedWindow(
             MacProgressContainer(
-                steps: LatestStream.closingSteps(holding: Self.stoppingSync).only,
-                showsBar: false
+                steps: LatestStream.closingSteps(holding: Self.stoppingSync)
+                    .only,
+                look: .note
             ) {
                 EmptyView()
             }
@@ -92,7 +94,8 @@ struct StepProgressLineTests {
         let size = NSSize(width: 360, height: 120)
         try await SnapshotTestSupport.withHostedWindow(
             MacProgressContainer(
-                steps: LatestStream.closingSteps(holding: Self.stoppingSync).only
+                steps: LatestStream.closingSteps(holding: Self.stoppingSync)
+                    .only
             ) {
                 IdleMarker()
             }

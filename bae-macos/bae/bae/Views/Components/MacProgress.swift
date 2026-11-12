@@ -80,6 +80,16 @@ extension SetupLine: ProgressStep {
     }
 }
 
+/// How a call's step shows. `line` is the name over its bar in a pane or
+/// sheet, left-aligned in secondary text. `stage` is the line of a screen the
+/// call fills: the name centred over the bar in primary text, the bar at the
+/// design system's height. `note` is the name alone, as a row's note.
+enum StepProgressLook {
+    case line
+    case stage
+    case note
+}
+
 /// The step a library's open, a setup call, a close or an apply of a catalog
 /// release runs, over a bar of how much of it is done, set straight from the
 /// call's stream once per display frame. Between steps it is hidden. A step
@@ -106,17 +116,33 @@ final class StepProgressNSView<Step: ProgressStep>: NSView {
         set { bar.accent = newValue }
     }
 
-    init(accent: NSColor, showsBar: Bool = true) {
-        bar = ProgressTrackNSView(progress: 0, accent: accent)
-        bar.isHidden = !showsBar
+    init(accent: NSColor, look: StepProgressLook = .line) {
+        bar = ProgressTrackNSView(
+            progress: 0,
+            accent: accent,
+            height: look == .stage
+                ? ProgressTrackNSView.stageHeight
+                : ProgressTrackNSView.trackHeight
+        )
+        bar.isHidden = look == .note
         stack = NSStackView(views: [label, bar])
         super.init(frame: .zero)
-        label.font = .systemFont(ofSize: NSFont.systemFontSize)
-        label.textColor = .secondaryLabelColor
+        switch look {
+        case .line:
+            label.font = .systemFont(ofSize: NSFont.systemFontSize)
+            label.textColor = .secondaryLabelColor
+        case .stage:
+            label.font = .systemFont(ofSize: NSFont.systemFontSize)
+            label.textColor = NSColor(Theme.textPrimary)
+            label.alignment = .center
+        case .note:
+            label.font = ThemeText.detail.nsFont
+            label.textColor = .secondaryLabelColor
+        }
         label.lineBreakMode = .byTruncatingTail
         stack.orientation = .vertical
-        stack.alignment = .leading
-        stack.spacing = ThemeSpace.inline
+        stack.alignment = look == .stage ? .centerX : .leading
+        stack.spacing = look == .stage ? ThemeSpace.related : ThemeSpace.inline
         stack.translatesAutoresizingMaskIntoConstraints = false
         addSubview(stack)
         NSLayoutConstraint.activate([
@@ -124,9 +150,8 @@ final class StepProgressNSView<Step: ProgressStep>: NSView {
             stack.trailingAnchor.constraint(equalTo: trailingAnchor),
             stack.topAnchor.constraint(equalTo: topAnchor),
             bar.widthAnchor.constraint(equalTo: stack.widthAnchor),
-            bar.heightAnchor.constraint(
-                equalToConstant: ProgressTrackNSView.trackHeight
-            ),
+            label.widthAnchor.constraint(lessThanOrEqualTo: stack.widthAnchor),
+            bar.heightAnchor.constraint(equalToConstant: bar.height),
         ])
         isHidden = true
     }
@@ -181,12 +206,12 @@ private struct StepProgressBar<Step: ProgressStep>: NSViewRepresentable {
     @Environment(\.colorScheme)
     private var colorScheme
     let steps: LatestSource<Step>
-    let showsBar: Bool
+    let look: StepProgressLook
     let titled: (Step) -> String
     let onStepping: (Bool) -> Void
 
     func makeNSView(context _: Context) -> StepProgressNSView<Step> {
-        let view = StepProgressNSView<Step>(accent: fill, showsBar: showsBar)
+        let view = StepProgressNSView<Step>(accent: fill, look: look)
         view.onStepping = onStepping
         view.titled = titled
         view.follow(steps)
@@ -261,14 +286,14 @@ extension MacProgress where Bar == ProgressTrackBar {
 /// fraction runs no SwiftUI update. What shows while a library opens or a
 /// setup call runs: `idle` until the
 /// call runs a step, then the step's name over a bar of how much of it is
-/// done, in its place; with `showsBar` off, the name alone, for a line whose
+/// done, in its place; with the `note` look, the name alone, for a line whose
 /// row shows a spinner already. `titled` words each step; by default its own
 /// title. With no call to follow, `idle` alone. Whether a step
 /// runs is read from the call's stream as the line starts to follow it, and
 /// set as the native line tells a step starting or ending.
 struct MacProgressContainer<Step: ProgressStep, Idle: View>: View {
     let steps: LatestSource<Step>?
-    let showsBar: Bool
+    let look: StepProgressLook
     let titled: (Step) -> String
     let idle: Idle
     @State
@@ -276,12 +301,12 @@ struct MacProgressContainer<Step: ProgressStep, Idle: View>: View {
 
     init(
         steps: LatestSource<Step>?,
-        showsBar: Bool = true,
+        look: StepProgressLook = .line,
         titled: @escaping (Step) -> String = { $0.title },
         @ViewBuilder idle: () -> Idle
     ) {
         self.steps = steps
-        self.showsBar = showsBar
+        self.look = look
         self.titled = titled
         self.idle = idle()
         _stepping = State(initialValue: steps?.holdsValue ?? false)
@@ -295,7 +320,7 @@ struct MacProgressContainer<Step: ProgressStep, Idle: View>: View {
             if let steps {
                 StepProgressBar(
                     steps: steps,
-                    showsBar: showsBar,
+                    look: look,
                     titled: titled
                 ) { started in
                     stepping = started

@@ -134,8 +134,8 @@ private struct LibraryRow: View {
             VStack(alignment: .leading, spacing: ThemeSpace.inline) {
                 Text(library.name)
                     .themeText(.strong)
-                MacProgressContainer(steps: removalSteps, showsBar: false) {
-                    MacProgressContainer(steps: openSteps, showsBar: false) {
+                MacProgressContainer(steps: removalSteps, look: .note) {
+                    MacProgressContainer(steps: openSteps, look: .note) {
                         if let line = library.stateLine {
                             Text(line)
                                 .themeText(.detail)

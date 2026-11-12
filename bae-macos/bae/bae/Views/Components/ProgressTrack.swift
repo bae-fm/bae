@@ -63,8 +63,13 @@ enum ProgressTrackDrawing {
 /// The shared progress bar: a fill for 0...1, or for `nil` a marching pill
 /// animated by Core Animation so nothing ticks the view hierarchy.
 class ProgressTrackNSView: NSView {
-    /// Height of the drawn track and of the view.
+    /// Height of the drawn track and of the view, in a pane's or row's line.
     static let trackHeight: CGFloat = 4
+    /// The design system's track height, for a line that stands alone on a
+    /// screen: a loading or restore screen's step over its bar.
+    static let stageHeight: CGFloat = 6
+
+    let height: CGFloat
 
     var progress: Double? {
         didSet {
@@ -86,9 +91,14 @@ class ProgressTrackNSView: NSView {
         }
     }
 
-    init(progress: Double?, accent: NSColor) {
+    init(
+        progress: Double?,
+        accent: NSColor,
+        height: CGFloat = ProgressTrackNSView.trackHeight
+    ) {
         self.progress = progress
         self.accent = accent
+        self.height = height
         super.init(frame: .zero)
         wantsLayer = true
 
@@ -102,16 +112,27 @@ class ProgressTrackNSView: NSView {
         fatalError()
     }
 
+    override func isAccessibilityElement() -> Bool { true }
+
+    override func accessibilityRole() -> NSAccessibility.Role? {
+        .progressIndicator
+    }
+
+    /// The percent done; none while the length is unknown.
+    override func accessibilityValue() -> Any? {
+        progress.map { Int(($0 * 100).rounded()) }
+    }
+
     override var intrinsicContentSize: NSSize {
-        NSSize(width: NSView.noIntrinsicMetric, height: Self.trackHeight)
+        NSSize(width: NSView.noIntrinsicMetric, height: height)
     }
 
     private var trackRect: NSRect {
         NSRect(
             x: 0,
-            y: (bounds.height - Self.trackHeight) / 2,
+            y: (bounds.height - height) / 2,
             width: bounds.width,
-            height: Self.trackHeight
+            height: height
         )
     }
 
