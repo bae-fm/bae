@@ -8,7 +8,7 @@ use crate::{CandidateRuntime, CandidateWork, ImportEvent, ImportEventBus};
 use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::rate_limiter::CallClass;
 use bae_catalogs::InternalFailure;
-use bae_identify::state::{step, IdentifyEvent, IdentifyState, TitleSearch};
+use bae_identify::state::{step, Effect, IdentifyEvent, IdentifyState, TitleSearch};
 use bae_identify::LookupChoices;
 use std::sync::Arc;
 use tokio::sync::mpsc;
@@ -394,7 +394,8 @@ impl Driver {
     /// Feed `event` to the reducer, record the state it lands on and where
     /// it leaves the run standing, send the state, and dispatch the effects
     /// it asked for. A terminal state's effects go out as well: what a run
-    /// keeps beyond itself is asked for in the step that ends it.
+    /// keeps beyond itself is asked for in the step that ends it, and written
+    /// before that state is published.
     async fn advance(
         &self,
         state: IdentifyState,
@@ -407,7 +408,13 @@ impl Driver {
             IdentifyEvent::SignalsUpdated { signals, .. } => Some(signals.clone()),
             _ => None,
         };
-        let (state, effects) = step(state, event);
+        let before = state.clone();
+        let (mut state, mut effects) = step(state, event);
+        // What the run read of albums is kept before its answer is published,
+        // so a keep that fails ends the run as broken, not as a success.
+        if let Err(failure) = self.keep_album_links(&mut effects).await {
+            (state, effects) = step(before, IdentifyEvent::Broke { failure });
+        }
         self.record(&state, signals.as_ref(), standing).await;
 
         // Every state `step` returns is sent, including one identical to the
@@ -428,6 +435,28 @@ impl Driver {
             );
         }
         state
+    }
+
+    /// Write what `effects` ask to keep of the albums the run read, taking
+    /// those effects out of them. Nothing waits on this write but the run,
+    /// which a failed write breaks; the bug is reported as well.
+    async fn keep_album_links(&self, effects: &mut Vec<Effect>) -> Result<(), InternalFailure> {
+        let mut read = Vec::new();
+        effects.retain_mut(|effect| match effect {
+            Effect::KeepAlbumLinks { kept } => {
+                read.append(kept);
+                false
+            }
+            _ => true,
+        });
+        if read.is_empty() {
+            return Ok(());
+        }
+        let what = "keep what a run read of albums";
+        self.inner.tables.replace_group_album_links(read).await.map_err(|error| {
+            self.inner.diagnostics.report_failure(what, &error);
+            InternalFailure { detail: format!("{what}: {error}") }
+        })
     }
 
     /// Store `state` as what the run published, with `signals` where the

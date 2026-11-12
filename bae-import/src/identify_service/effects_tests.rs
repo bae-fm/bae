@@ -683,38 +683,3 @@ async fn a_lookup_that_panics_ends_its_run_as_broken() {
     assert_eq!(failure.detail, "run an identify lookup panicked: the lookup broke");
     assert_eq!(bugs.reports(), Vec::new());
 }
-
-/// What a run read of albums is kept with no caller waiting on it, so a
-/// keep that cannot be written is reported as a bug.
-#[tokio::test]
-async fn album_links_a_run_cannot_keep_are_reported() {
-    let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
-    let (inner, tmp) = crate::identify_service::tests::setup_inner_reporting_to(
-        bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone()),
-    )
-    .await;
-    crate::tables::ImportTables::fail_album_link_writes_for_test(tmp.path()).await;
-    let (event_tx, _event_rx) = mpsc::unbounded_channel();
-
-    dispatch_effect(
-        inner.clone(),
-        Effect::KeepAlbumLinks {
-            kept: vec![(
-                "mb-group".to_string(),
-                vec![bae_catalogs::records::MetadataRef::new(
-                    bae_catalogs::catalog::Catalog::Discogs,
-                    "909",
-                )],
-            )],
-        },
-        CallClass::REQUESTED,
-        event_tx,
-        CancellationToken::new(),
-    );
-    crate::identify_service::tests::drivers_ended(&inner).await;
-
-    let reports = bugs.reports();
-    assert_eq!(reports.len(), 1, "{reports:?}");
-    assert_eq!(reports[0].0, "keep what a run read of albums");
-    assert!(reports[0].1.contains("the disk is full"), "{reports:?}");
-}

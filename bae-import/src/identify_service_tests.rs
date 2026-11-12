@@ -323,11 +323,9 @@ async fn a_cancel_mid_run_reports_idle_and_deregisters() {
     assert!(handle.running_keys().is_empty());
 }
 
-/// The step that settles a run also asks to keep what its documents state
-/// each album is. The run ends on that step, and what it asked for is kept
-/// all the same: a stored release of the album then names the other.
-#[tokio::test(flavor = "multi_thread")]
-async fn what_a_run_keeps_is_kept_by_the_step_that_ends_it() {
+/// The state of a run whose last step settles it and asks to keep that
+/// Discogs album 909 and the MusicBrainz group `mb-group` are one album.
+async fn settle_a_run_that_keeps_album_links(inner: &Arc<IdentifyServiceInner>) -> IdentifyState {
     use bae_catalogs::album_links::AlbumLinks;
     use bae_catalogs::records::{MetadataRef, SourcePayload};
     use bae_identify::documents::{DocumentReading, ReleaseDocument, ReleaseReading};
@@ -336,7 +334,6 @@ async fn what_a_run_keeps_is_kept_by_the_step_that_ends_it() {
         SignalsContext,
     };
 
-    let (inner, _tmp) = setup_inner().await;
     let tables = crate::tables::ImportTables::new(inner.store.clone());
     let discogs = bae_catalogs::payloads::ReleasePayloads::for_test(
         LookupRef::new(LookupCatalog::Discogs, "4242"),
@@ -399,7 +396,7 @@ async fn what_a_run_keeps_is_kept_by_the_step_that_ends_it() {
         event_tx,
         token: CancellationToken::new(),
     };
-    let settled = driver
+    driver
         .advance(
             reading,
             IdentifyEvent::ReleasesRead {
@@ -410,7 +407,18 @@ async fn what_a_run_keeps_is_kept_by_the_step_that_ends_it() {
             },
             &mut RunStanding::NotStarted,
         )
-        .await;
+        .await
+}
+
+/// The step that settles a run also asks to keep what its documents state
+/// each album is. The run ends on that step, and what it asked for is kept
+/// all the same: a stored release of the album then names the other.
+#[tokio::test(flavor = "multi_thread")]
+async fn what_a_run_keeps_is_kept_by_the_step_that_ends_it() {
+    use bae_catalogs::records::MetadataRef;
+
+    let (inner, _tmp) = setup_inner().await;
+    let settled = settle_a_run_that_keeps_album_links(&inner).await;
     assert!(settled.is_terminal(), "the step ends the run: {settled:?}");
 
     drivers_ended(&inner).await;
@@ -429,6 +437,29 @@ async fn what_a_run_keeps_is_kept_by_the_step_that_ends_it() {
         "the kept link joins the group to the stored release: {:?}",
         stored.records()
     );
+}
+
+/// A keep that cannot be written breaks the run: it ends as bae's own error
+/// with the write's failure, not as the answer it reached, and the bug is
+/// reported.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_run_that_cannot_keep_what_it_read_ends_as_broken() {
+    let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
+    let (inner, tmp) = setup_inner_reporting_to(
+        bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone()),
+    )
+    .await;
+    crate::tables::ImportTables::fail_album_link_writes_for_test(tmp.path()).await;
+
+    let settled = settle_a_run_that_keeps_album_links(&inner).await;
+
+    let IdentifyState::Error { failure, .. } = &settled else {
+        panic!("the run ends as broken: {settled:?}");
+    };
+    assert!(failure.detail.contains("the disk is full"), "{failure:?}");
+    let reports = bugs.reports();
+    assert_eq!(reports.len(), 1, "{reports:?}");
+    assert_eq!(reports[0].0, "keep what a run read of albums");
 }
 
 /// A run reads the sources this library asks once, at its start. So the run

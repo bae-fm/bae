@@ -935,7 +935,8 @@ Each Pending row is in exactly one state. The first that applies wins:
    is unknown (§3.5).
 6. **Not looked up**: no lookup is stored for the folder's files.
 7. **Unmatched**: the person kept their own draft over what the lookup offered.
-8. **Error**: bae broke on its own side and the stored lookup ended there.
+8. **Error**: bae broke on its own side and the stored lookup ended there,
+   such as when it could not keep the albums the run read.
 9. **Lookup error**: a catalog could not answer, or could not hand over a
    release it found in full.
 10. **Unmatched**: the lookup took its release for the folder and the person

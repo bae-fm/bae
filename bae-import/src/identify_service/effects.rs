@@ -263,27 +263,10 @@ pub(super) fn dispatch_effect(
         }
 
         // What was read stays true whether or not the run stays current, so
-        // cancelling the run does not stop it being kept. Keeping it, so a
-        // stored release of either album names the other among its records,
-        // has no caller waiting: a write that fails is a bug, and the list's
-        // answer stands.
-        Effect::KeepAlbumLinks { kept } => {
-            let tables = inner.tables.clone();
-            let diagnostics = inner.diagnostics.clone();
-            let keep = async move {
-                if let Err(error) = tables.replace_group_album_links(kept).await {
-                    diagnostics.report_failure("keep what a run read of albums", &error);
-                }
-            };
-            #[cfg(test)]
-            let keep = inner.driver_tasks.track_future(keep);
-            // Nothing waits on it; a panic is reported and keeps nothing.
-            inner.diagnostics.spawn_reported(
-                &runtime,
-                "keep what a run read of albums",
-                keep,
-                |_| {},
-            );
+        // the driver writes it ahead of the step's state (`Driver::advance`)
+        // and a write that fails breaks the run.
+        Effect::KeepAlbumLinks { .. } => {
+            unreachable!("the driver keeps what a run read of albums before dispatching")
         }
 
         // A number in effect is searched under the artist it is narrowed to,
