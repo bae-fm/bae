@@ -73,7 +73,7 @@
 .bae-m-btn-large { height: 28px; padding: 0 14px; border-radius: 999px; line-height: 28px; }
 .bae-m-btn-secondary { background: var(--control); color: var(--text-primary); box-shadow: 0 0 0 0.5px var(--control-edge), 0 0.5px 1px var(--control-edge); }
 .bae-m-btn-primary { background: var(--accent-selection); color: var(--on-fill); }
-.bae-m-btn-borderless { padding: 0 var(--space-inline); background: none; color: var(--text-primary); }
+.bae-m-btn-borderless { background: none; color: var(--text-primary); }
 /* muted: the label in secondary text, for buttons under quiet words (a failed view's centred notice). */
 .bae-m-btn.bae-m-btn-muted { color: var(--text-secondary); }
 .bae-m-btn-destructive { color: var(--danger); }
