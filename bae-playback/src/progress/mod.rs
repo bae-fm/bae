@@ -80,7 +80,8 @@ pub enum PlaybackChange {
     Muted(bool),
     Remote(RemotePlayback),
     Preview(PreviewState),
-    /// Playback failed; the row holds why until playback next plays.
+    /// Playback or a preview failed; the row holds why until playback next
+    /// plays.
     Failed(crate::PlaybackErrorReason),
 }
 
@@ -162,7 +163,8 @@ impl PlaybackValues {
             PlaybackProgress::PreviewStateChanged(state) => {
                 changed(&mut self.preview, state, PlaybackChange::Preview)
             }
-            PlaybackProgress::PlaybackError { reason } => {
+            PlaybackProgress::PlaybackError { reason }
+            | PlaybackProgress::PreviewFailed { reason } => {
                 Some(PlaybackChange::Failed(reason.clone()))
             }
             PlaybackProgress::PositionUpdate { .. }
@@ -248,6 +250,7 @@ impl PlaybackPositions {
             | PlaybackProgress::MuteChanged { .. }
             | PlaybackProgress::RemoteStatusChanged { .. }
             | PlaybackProgress::PlaybackError { .. }
+            | PlaybackProgress::PreviewFailed { .. }
             | PlaybackProgress::TrackCompleted { .. }
             | PlaybackProgress::DecodeStats { .. }
             | PlaybackProgress::ServiceEnded => return None,
@@ -320,6 +323,12 @@ pub enum PlaybackProgress {
     /// Playback error (e.g. storage offline) — a typed reason the UI renders
     /// for its locale.
     PlaybackError {
+        reason: crate::PlaybackErrorReason,
+    },
+    /// A preview failed, before it started or as it played. The preview ends;
+    /// the main player is not the preview's to halt, so it plays on. Screens
+    /// show the reason as they show a playback error.
+    PreviewFailed {
         reason: crate::PlaybackErrorReason,
     },
 

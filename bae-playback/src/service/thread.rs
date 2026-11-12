@@ -351,7 +351,7 @@ async fn follow_the_service(
 
 /// Turn a progress event into the command it asks of the service loop: a
 /// completed track advances the queue, and a mid-flight failure halts playback.
-fn follow_progress(commands: &OwnCommands, progress: PlaybackProgress) {
+pub(super) fn follow_progress(commands: &OwnCommands, progress: PlaybackProgress) {
     match progress {
         PlaybackProgress::TrackCompleted { track_id } => {
             info!("Auto-advance: Track completed, sending AutoAdvance command: {track_id}");
@@ -363,6 +363,9 @@ fn follow_progress(commands: &OwnCommands, progress: PlaybackProgress) {
         PlaybackProgress::PlaybackError { .. } => {
             dispatch_command(commands, PlaybackCommand::HaltOnError);
         }
+        // A preview's failure ends the preview, which reported it; it never
+        // halts the main player.
+        PlaybackProgress::PreviewFailed { .. } => {}
         _ => {}
     }
 }

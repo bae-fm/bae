@@ -397,6 +397,46 @@ async fn preview_listener_maps_completion_to_preview_completed() {
     handle.abort();
 }
 
+/// A preview whose output stops sending ends with its own failure: the
+/// screens are told as for a preview, never as a playback error, and the
+/// preview is asked to stop. Sabotage: report it as a playback error, and the
+/// service halts the main player with it.
+#[tokio::test]
+async fn preview_listener_ends_a_preview_whose_output_failed() {
+    let (progress_tx, mut progress_rx) = tokio_mpsc::unbounded_channel();
+    let (command_tx, mut command_rx) = OwnCommands::channel();
+    let (mut audio_tx, audio_rx) =
+        audio_event_channel(&bae_diagnostics::Diagnostics::noop()).unwrap();
+    let handle = spawn_preview_listener(
+        &tokio::runtime::Handle::current(),
+        &bae_diagnostics::Diagnostics::noop(),
+        progress_tx,
+        command_tx,
+        audio_rx,
+    );
+
+    audio_tx.push_required(AudioEvent::OutputFailed { detail: "the device broke".to_string() });
+
+    let cmd = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, command_rx.recv())
+        .await
+        .expect("the listener dispatches")
+        .expect("a command is sent");
+    assert!(matches!(cmd, PlaybackMessage::Own { command: PlaybackCommand::PreviewStop, .. }));
+    let mut told = Vec::new();
+    while let Ok(progress) = progress_rx.try_recv() {
+        told.push(progress);
+    }
+    assert!(
+        told.iter().any(|progress| matches!(progress, PlaybackProgress::PreviewFailed { .. })),
+        "{told:?}"
+    );
+    assert!(
+        !told.iter().any(|progress| matches!(progress, PlaybackProgress::PlaybackError { .. })),
+        "{told:?}"
+    );
+    handle.abort();
+}
+
 /// A preview seek whose stream rebuild fails tears the preview down outright
 /// (no zombie) and surfaces `PreviewState::Idle` so the UI stops showing it.
 #[tokio::test]

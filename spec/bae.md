@@ -4269,7 +4269,11 @@ serving (the player then serves the next), in the fill reading a track's bytes
 bytes), in the decoder, or in the output pulling samples for the device or a
 receiver. A panic folding one progress event into what the screens show
 loses that event, and the next one shows. A preview whose event listener
-panics ends with an error. A buffer a panic left partway through a change
+panics ends with an error.
+A preview that can't start (its file can't be read, or its audio stream won't
+open) or that fails as it plays ends with an error of its own, which the
+screens show as they show a playback error. It never stops the main player: that
+plays on, or gets back the resume the preview owed it. A buffer a panic left partway through a change
 drops its bytes, and its fill fetches them again.
 
 ### 7.7 Outputs

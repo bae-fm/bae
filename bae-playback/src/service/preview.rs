@@ -65,13 +65,23 @@ impl PlaybackService {
         use crate::preview_player::PreviewPlayOutcome;
         match self.preview.play(target, self.audio_device.as_ref()).await {
             PreviewPlayOutcome::Started => self.pause_main_for_preview(),
-            PreviewPlayOutcome::SetupFailed => {
+            PreviewPlayOutcome::SetupFailed(reason) => {
                 self.telemetry_playback_failed(PlaybackOperation::Preview);
+                self.preview_failed(reason);
             }
-            PreviewPlayOutcome::StreamStartFailed => {
+            PreviewPlayOutcome::StreamStartFailed(reason) => {
                 self.telemetry_playback_failed(PlaybackOperation::StreamStart);
+                self.preview_failed(reason);
             }
         }
+    }
+
+    /// A preview that could not start: tell the screens why. It is the
+    /// preview's failure alone, so the main player plays on, or gets back the
+    /// resume an earlier preview, which this one replaced, owed it.
+    fn preview_failed(&mut self, reason: crate::PlaybackErrorReason) {
+        emit_progress(&self.progress_tx, PlaybackProgress::PreviewFailed { reason });
+        self.preview_stop();
     }
 
     /// Stop any active preview and resume the main player if it was paused for it.

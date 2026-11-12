@@ -37,29 +37,40 @@ use std::time::Duration;
 use tokio::sync::mpsc as tokio_mpsc;
 use tracing::{error, info, warn};
 
+/// A started preview failed: tell the screens why and end the preview. It is
+/// a preview's failure, not playback's, so nothing here halts the main player;
+/// ending the preview hands the main player back any resume it owed.
+fn preview_failed(
+    progress_tx: &tokio_mpsc::UnboundedSender<PlaybackProgress>,
+    command_tx: &OwnCommands,
+    reason: crate::PlaybackErrorReason,
+) {
+    emit_progress(progress_tx, PlaybackProgress::PreviewFailed { reason });
+    dispatch_command(command_tx, PlaybackCommand::PreviewStop);
+}
+
 /// The preview shape of a fill-error handler: the audition has one file and one
 /// buffer, so a failed byte fill can only mean this preview is unplayable — it
-/// goes straight to the UI as a playback error. (The fill has already failed
-/// the buffer with the same error, unblocking the decoder.)
+/// ends with the failure. (The fill has already failed the buffer with the
+/// same error, unblocking the decoder.)
 fn preview_fill_error_handler(
     progress_tx: tokio_mpsc::UnboundedSender<PlaybackProgress>,
+    command_tx: OwnCommands,
 ) -> bae_track_audio::data_source::FillErrorHandler {
     Box::new(move |error| {
-        emit_progress(
-            &progress_tx,
-            PlaybackProgress::PlaybackError { reason: crate::read_failure_reason(&error) },
-        );
+        preview_failed(&progress_tx, &command_tx, crate::read_failure_reason(&error));
     })
 }
 
 /// The outcome of a preview [`PreviewPlayer::play`] attempt. `Started` is the
-/// success; the two failures name which stage failed so the service reports the
-/// right `playback_failed` operation — the file couldn't be prepared (stat/probe)
-/// vs. the audio output stream couldn't be built and started.
+/// success; the two failures name which stage failed, with why, so the service
+/// reports the right `playback_failed` operation and tells the screens — the
+/// file couldn't be prepared (stat/probe) vs. the audio output stream couldn't
+/// be built and started.
 pub(crate) enum PreviewPlayOutcome {
     Started,
-    SetupFailed,
-    StreamStartFailed,
+    SetupFailed(crate::PlaybackErrorReason),
+    StreamStartFailed(crate::PlaybackErrorReason),
 }
 
 #[cfg(test)]
@@ -203,12 +214,16 @@ impl PreviewPlayer {
             Ok(metadata) => metadata.len(),
             Err(e) => {
                 error!("Failed to stat preview file {}: {}", target.path().display(), e);
-                return PreviewPlayOutcome::SetupFailed;
+                return PreviewPlayOutcome::SetupFailed(crate::PlaybackErrorReason::internal(
+                    format!("the file to preview couldn't be read: {e}"),
+                ));
             }
         };
 
         let Some(probe) = probe_preview_audio(&self.diagnostics, target.path()).await else {
-            return PreviewPlayOutcome::SetupFailed;
+            return PreviewPlayOutcome::SetupFailed(crate::PlaybackErrorReason::internal(
+                "the file to preview couldn't be probed",
+            ));
         };
         let Some(duration) = target.duration(probe.duration, probe.sample_rate.get()) else {
             error!(
@@ -217,14 +232,18 @@ impl PreviewPlayer {
                 end_sample = target.span().end_sample,
                 "Preview target has an empty or reversed sample window"
             );
-            return PreviewPlayOutcome::SetupFailed;
+            return PreviewPlayOutcome::SetupFailed(crate::PlaybackErrorReason::internal(
+                "the window to preview is empty or reversed",
+            ));
         };
 
         let buffer = create_sparse_buffer(source_size);
         let reader: Box<dyn AudioDataReader> =
             Box::new(LocalReader::new(target.path(), self.diagnostics.clone()));
-        let fill = reader
-            .start_reading(buffer.clone(), preview_fill_error_handler(self.progress_tx.clone()));
+        let fill = reader.start_reading(
+            buffer.clone(),
+            preview_fill_error_handler(self.progress_tx.clone(), self.command_tx.clone()),
+        );
         #[cfg(test)]
         self.fills.push(fill);
         #[cfg(not(test))]
@@ -248,7 +267,9 @@ impl PreviewPlayer {
             info!("Preview started: {}", target.path().display());
             PreviewPlayOutcome::Started
         } else {
-            PreviewPlayOutcome::StreamStartFailed
+            PreviewPlayOutcome::StreamStartFailed(crate::PlaybackErrorReason::internal(
+                "the preview's audio stream couldn't start",
+            ))
         }
     }
 
@@ -558,13 +579,11 @@ fn spawn_preview_listener(
         "follow the preview's audio events",
         listen_to_preview(diagnostics.clone(), progress_tx, command_tx, audio_events),
         move |failed| {
-            emit_progress(
+            preview_failed(
                 &on_panic_progress,
-                PlaybackProgress::PlaybackError {
-                    reason: crate::PlaybackErrorReason::internal(failed),
-                },
+                &on_panic_command,
+                crate::PlaybackErrorReason::internal(failed),
             );
-            dispatch_command(&on_panic_command, PlaybackCommand::PreviewStop);
         },
     )
 }
@@ -605,11 +624,10 @@ async fn listen_to_preview(
                 // ends with the reason rather than going quiet.
                 AudioEvent::OutputFailed { detail } => {
                     diagnostics.report_bug("keep the preview's audio output playing", &detail);
-                    emit_progress(
+                    preview_failed(
                         &progress_tx,
-                        PlaybackProgress::PlaybackError {
-                            reason: crate::PlaybackErrorReason::internal(detail),
-                        },
+                        &command_tx,
+                        crate::PlaybackErrorReason::internal(detail),
                     );
                     break;
                 }
@@ -624,13 +642,12 @@ async fn listen_to_preview(
             }
         }
         if report_dropped_audio_events(&audio_events, "preview") {
-            emit_progress(
+            preview_failed(
                 &progress_tx,
-                PlaybackProgress::PlaybackError {
-                    reason: crate::PlaybackErrorReason::internal(
-                        "Preview event queue dropped a required audio event".to_string(),
-                    ),
-                },
+                &command_tx,
+                crate::PlaybackErrorReason::internal(
+                    "Preview event queue dropped a required audio event",
+                ),
             );
             break;
         }

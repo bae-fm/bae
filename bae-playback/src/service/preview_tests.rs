@@ -76,3 +76,54 @@ async fn an_invalidated_preview_that_cant_restart_ends_and_resumes_main() {
     }
     assert!(saw_idle, "the UI is told the preview is idle");
 }
+
+/// A preview that fails to start is the preview's failure alone: the screens
+/// are told, and the main player stays on. Here an earlier preview had paused
+/// the main player, and the replacement preview's file is gone; the failure,
+/// taken through the commands the service sends itself, leaves the main
+/// track playing. Sabotage: report it as a playback error, and the service
+/// halts the main player.
+#[tokio::test]
+async fn a_failed_preview_leaves_the_main_track_playing() {
+    let home = seeded_store(&[]).await;
+    let (mut service, mut commands, mut progress_rx) =
+        playback_service_and_commands_over(home.store(), bae_diagnostics::Diagnostics::noop());
+    service.slot =
+        active_slot(test_prepared_track("t", create_sparse_buffer(1_024)), TrackPhase::Playing);
+    let buffer = create_sparse_buffer(1_024);
+    let prepared = test_prepared_track("earlier-preview", buffer.clone());
+    let pipeline = test_pipeline(&prepared, Box::new(TestAudioStream));
+    service.preview.set_active_for_test("earlier-preview".into(), pipeline, buffer);
+    service.pause_main_for_preview();
+    assert!(
+        matches!(&service.slot, PlaybackSlot::Active(cur) if matches!(cur.phase, TrackPhase::Paused(_))),
+        "the earlier preview paused the main player"
+    );
+
+    service
+        .preview_play(bae_track_audio::PreviewTarget::whole_file(
+            "/there/is/no/such/file.flac".into(),
+        ))
+        .await;
+
+    let mut told = Vec::new();
+    while let Ok(progress) = progress_rx.try_recv() {
+        told.push(progress);
+    }
+    assert!(
+        told.iter().any(|progress| matches!(progress, PlaybackProgress::PreviewFailed { .. })),
+        "the preview's failure reaches the screens: {told:?}"
+    );
+    for progress in told {
+        thread::follow_progress(&service.command_tx, progress);
+    }
+    while let Ok(message) = commands.try_recv() {
+        let (PlaybackMessage::Asked(command) | PlaybackMessage::Own { command, .. }) = message;
+        let _served = service.handle_command(command).await;
+    }
+    assert!(!service.preview.is_active());
+    assert!(
+        matches!(&service.slot, PlaybackSlot::Active(cur) if matches!(cur.phase, TrackPhase::Playing)),
+        "the main track plays on"
+    );
+}
