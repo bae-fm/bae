@@ -19,7 +19,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import fm.bae.app.DisplayError
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
-import fm.bae.app.ui.BaeAppChrome
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.S3KeyFields
@@ -162,13 +161,11 @@ internal fun S3SetupFormScene() {
                 failure = DisplayError("The region or endpoint doesn’t match this bucket.")
             }
         }
-    BaeAppChrome {
-        Column(
-            modifier = Modifier.padding(ThemeSpace.edge),
-            verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
-        ) {
-            S3FormFields(input)
-        }
+    Column(
+        modifier = Modifier.padding(ThemeSpace.edge),
+        verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
+    ) {
+        S3FormFields(input)
     }
 }
 

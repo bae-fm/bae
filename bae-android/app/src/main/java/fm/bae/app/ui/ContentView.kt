@@ -127,7 +127,7 @@ fun ContentView(
     }
 }
 
-/** Theme, background and safe-drawing inset every screen sits in; screenshot captures use it too. */
+/** Theme, background and safe-drawing inset every screen sits in: the one place the app opens its theme. */
 @Composable
 internal fun BaeAppChrome(content: @Composable () -> Unit) {
     BaeTheme {

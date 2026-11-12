@@ -50,7 +50,7 @@ private val SCENE_SECTIONS: List<BridgeLibraryBrowseSection> =
 
 /**
  * The library home screenshot scenes: the header over fixture albums with empty
- * cover tiles, in the app chrome, needing no session. The grid starts at its
+ * cover tiles, needing no session. The grid starts at its
  * item [firstItem] (an artist's header counts as one when grouped),
  * [openMenu] shows that header menu's contents open over the grid, and
  * [syncActivity] fills the top bar's place for the Activity button.
@@ -62,27 +62,25 @@ internal fun LibraryGridScene(
     openMenu: LibraryHeaderMenu?,
     syncActivity: @Composable () -> Unit,
 ) {
-    BaeAppChrome {
-        CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
-            val state = remember { LibraryBrowserState().apply { groupAlbumsByArtist = grid == SceneGrid.GROUPED } }
-            val gridState = rememberLazyGridState(initialFirstVisibleItemIndex = firstItem)
-            val collapse = rememberHeadingCollapse(gridState)
-            Column(modifier = Modifier.fillMaxSize()) {
-                LibraryHeader(
-                    state = state,
-                    collapse = { collapse.value },
-                    onShuffleLibrary = {},
-                    onSettings = {},
-                    syncActivity = syncActivity,
-                )
-                Box(modifier = Modifier.weight(1f)) {
-                    when (grid) {
-                        SceneGrid.FLAT -> LibraryGridSceneAlbums(gridState)
-                        SceneGrid.GROUPED -> SceneGroupedAlbums(gridState)
-                    }
-                    if (openMenu != null) {
-                        SceneMenu(menu = openMenu, state = state)
-                    }
+    CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
+        val state = remember { LibraryBrowserState().apply { groupAlbumsByArtist = grid == SceneGrid.GROUPED } }
+        val gridState = rememberLazyGridState(initialFirstVisibleItemIndex = firstItem)
+        val collapse = rememberHeadingCollapse(gridState)
+        Column(modifier = Modifier.fillMaxSize()) {
+            LibraryHeader(
+                state = state,
+                collapse = { collapse.value },
+                onShuffleLibrary = {},
+                onSettings = {},
+                syncActivity = syncActivity,
+            )
+            Box(modifier = Modifier.weight(1f)) {
+                when (grid) {
+                    SceneGrid.FLAT -> LibraryGridSceneAlbums(gridState)
+                    SceneGrid.GROUPED -> SceneGroupedAlbums(gridState)
+                }
+                if (openMenu != null) {
+                    SceneMenu(menu = openMenu, state = state)
                 }
             }
         }
@@ -181,11 +179,11 @@ private fun sceneGroupedRow(index: Int): BridgeAlbumAppearance =
 @Preview(showBackground = true)
 @Composable
 private fun LibraryGridScenePreview() {
-    LibraryGridScene(grid = SceneGrid.FLAT, firstItem = 0, openMenu = null, syncActivity = {})
+    BaeAppChrome { LibraryGridScene(grid = SceneGrid.FLAT, firstItem = 0, openMenu = null, syncActivity = {}) }
 }
 
 @Preview(showBackground = true)
 @Composable
 private fun LibraryGroupedScenePreview() {
-    LibraryGridScene(grid = SceneGrid.GROUPED, firstItem = 0, openMenu = null, syncActivity = {})
+    BaeAppChrome { LibraryGridScene(grid = SceneGrid.GROUPED, firstItem = 0, openMenu = null, syncActivity = {}) }
 }

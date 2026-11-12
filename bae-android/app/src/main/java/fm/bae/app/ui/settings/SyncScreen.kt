@@ -33,7 +33,6 @@ import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.data.SyncLine
 import fm.bae.app.performBridgeAction
-import fm.bae.app.ui.BaeAppChrome
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.DeviceResetDialog
 import fm.bae.app.ui.SessionActions
@@ -509,13 +508,11 @@ private fun openStoreListing(context: Context): DisplayError? =
 /** The top of the Sync page in the state `shown` says, in the app chrome. */
 @Composable
 internal fun SyncStatusScene(shown: BridgeSyncShown) {
-    BaeAppChrome {
-        Column(
-            modifier = Modifier.padding(ThemeSpace.edge),
-            verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
-        ) {
-            SyncStatusBlock(line = SyncLine.Read(shown), onFix = {})
-        }
+    Column(
+        modifier = Modifier.padding(ThemeSpace.edge),
+        verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
+    ) {
+        SyncStatusBlock(line = SyncLine.Read(shown), onFix = {})
     }
 }
 

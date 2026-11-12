@@ -13,7 +13,6 @@ import fm.bae.app.ScreenFailure
 import fm.bae.app.ui.InProgressScreen
 import fm.bae.app.ui.ResetOfferedScreen
 import fm.bae.app.ui.ResetUnfinishedScreen
-import fm.bae.app.ui.testRecoveryLines
 import fm.bae.app.ui.components.RemovalLoss
 import fm.bae.app.ui.components.RemoveLibraryText
 import fm.bae.app.ui.onboarding.CodeEntry
@@ -29,6 +28,7 @@ import fm.bae.app.ui.onboarding.WelcomeLibrariesScene
 import fm.bae.app.ui.onboarding.WelcomeRemovingScene
 import fm.bae.app.ui.onboarding.WelcomeSavedCodesScene
 import fm.bae.app.ui.onboarding.WelcomeScene
+import fm.bae.app.ui.testRecoveryLines
 import fm.bae.fastvalues.LatestStream
 import fm.bae.fastvalues.only
 import org.junit.Test
@@ -53,15 +53,15 @@ import java.time.Instant
 class WelcomeShots : BoardShot() {
     /** The welcome of a phone holding no library: the logo over the tagline, Scan code and Enter code at the foot. */
     @Test
-    fun androidWelcomeLibrariesNone() = shot("android.welcome.libraries.none") { WelcomeScene() }
+    fun androidWelcomeLibrariesNone() = shot("android.welcome.libraries.none") { ScreenScene { WelcomeScene() } }
 
     /** The welcome on a phone that holds two libraries, one of them never synced. */
     @Test
-    fun androidWelcomeLibraries() = shot("android.welcome.libraries") { WelcomeLibrariesScene() }
+    fun androidWelcomeLibraries() = shot("android.welcome.libraries") { ScreenScene { WelcomeLibrariesScene() } }
 
     /** The welcome with restore codes saved for libraries that aren't on the phone, each row ending in its ⋮ menu. */
     @Test
-    fun androidWelcomeLibrariesSavedCodes() = shot("android.welcome.libraries.saved-codes") { WelcomeSavedCodesScene() }
+    fun androidWelcomeLibrariesSavedCodes() = shot("android.welcome.libraries.saved-codes") { ScreenScene { WelcomeSavedCodesScene() } }
 
     /** A library's details sheet, over a Dropbox library that synced two hours ago. */
     @Test
@@ -100,7 +100,7 @@ class WelcomeShots : BoardShot() {
 
     /** The welcome while a library is being removed: its row shows the step, with a spinner where the ⋮ was. */
     @Test
-    fun androidWelcomeRemoveRemoving() = shot("android.welcome.remove.removing") { WelcomeRemovingScene() }
+    fun androidWelcomeRemoveRemoving() = shot("android.welcome.remove.removing") { ScreenScene { WelcomeRemovingScene() } }
 
     /** The dialog for a removal that failed. */
     @Test

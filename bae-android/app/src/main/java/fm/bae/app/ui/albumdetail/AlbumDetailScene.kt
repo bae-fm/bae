@@ -10,8 +10,8 @@ import fm.bae.app.ui.PreviewData
 
 /**
  * The `album-detail` screenshot scene: the album detail body for a fixture
- * release, wrapped in the app chrome — the shared composition the capture and
- * the dev preview below both render. Uses the production [AlbumDetailContent]
+ * release — the shared composition the capture and the dev preview below
+ * both render. Uses the production [AlbumDetailContent]
  * with inert callbacks and no download control (that control needs a live
  * session, and core offers none for a local fixture release). The store resolves
  * nothing, so covers show the placeholder icon.
@@ -22,22 +22,20 @@ import fm.bae.app.ui.PreviewData
  */
 @Composable
 internal fun AlbumDetailScene() {
-    BaeAppChrome {
-        CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
-            AlbumDetailContent(
-                detail = PreviewData.albumDetail(),
-                selectedRelease = PreviewData.release(),
-                cover = PreviewData.imageRef(),
-                playback = AlbumPlaybackState(currentTrackId = null, isPlaying = false),
-                callbacks = inertAlbumDetailCallbacks(),
-                releaseDownloadControl = {},
-            )
-        }
+    CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
+        AlbumDetailContent(
+            detail = PreviewData.albumDetail(),
+            selectedRelease = PreviewData.release(),
+            cover = PreviewData.imageRef(),
+            playback = AlbumPlaybackState(currentTrackId = null, isPlaying = false),
+            callbacks = inertAlbumDetailCallbacks(),
+            releaseDownloadControl = {},
+        )
     }
 }
 
 @Preview(showBackground = true)
 @Composable
 private fun AlbumDetailScenePreview() {
-    AlbumDetailScene()
+    BaeAppChrome { AlbumDetailScene() }
 }

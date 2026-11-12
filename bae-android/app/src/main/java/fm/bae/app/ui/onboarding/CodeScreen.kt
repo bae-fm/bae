@@ -341,8 +341,8 @@ private val LIST_TAGLINE_PADDING =
     PaddingValues(start = ThemeSpace.page, top = TAGLINE_TOP, end = ThemeSpace.page, bottom = ThemeSpace.edge)
 
 /**
- * The welcome screen, on a phone with no saved restore codes, in the app
- * chrome with inert callbacks, for the `welcome` screenshot scene, and for
+ * The welcome screen, on a phone with no saved restore codes, with inert
+ * callbacks, for the `welcome` screenshot scene, and for
  * the one that lists the libraries on the phone, in [libraries], and the one
  * that lists restore codes saved for others, drawn by [savedCodes].
  */
@@ -351,28 +351,26 @@ internal fun WelcomeScene(
     libraries: WelcomeLibrariesView? = null,
     savedCodes: @Composable () -> Unit = {},
 ) {
-    BaeAppChrome {
-        CodeScreenContent(
-            text = null,
-            error = null,
-            libraries = libraries,
-            savedCodes = savedCodes,
-            showCodeDialog = false,
-            codeInput = "",
-            callbacks =
-                CodeScreenCallbacks(
-                    onScan = {},
-                    onShowCodeDialog = {},
-                    onCodeInputChange = {},
-                    onEnterCode = {},
-                    onDismissCodeDialog = {},
-                ),
-        )
-    }
+    CodeScreenContent(
+        text = null,
+        error = null,
+        libraries = libraries,
+        savedCodes = savedCodes,
+        showCodeDialog = false,
+        codeInput = "",
+        callbacks =
+            CodeScreenCallbacks(
+                onScan = {},
+                onShowCodeDialog = {},
+                onCodeInputChange = {},
+                onEnterCode = {},
+                onDismissCodeDialog = {},
+            ),
+    )
 }
 
 @Preview(showBackground = true)
 @Composable
 private fun WelcomeScenePreview() {
-    WelcomeScene()
+    BaeAppChrome { WelcomeScene() }
 }

@@ -119,34 +119,32 @@ private val sceneTrack =
 @Composable
 internal fun MiniPlayerScene(state: PlayerSceneState) {
     val streams = remember(state) { PlayerSceneStreams(state) }
-    BaeAppChrome {
-        CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
-                    LibraryGridSceneAlbums(rememberLazyGridState())
-                }
-                AndroidNowPlayingBar(
-                    track = sceneTrack,
-                    failure = null,
-                    onExpand = {},
-                    transport = {
-                        NowPlayingTransport(
-                            isPlaying = true,
-                            storageWait = streams.storageWait,
-                            repeatMode = BridgeRepeatMode.OFF,
-                            onPrevious = {},
-                            onPlayPause = {},
-                            onNext = {},
-                            // Casting is off: the bar has no Cast control.
-                            castButton = {},
-                            onOpenQueue = {},
-                            onCycleRepeat = {},
-                        )
-                    },
-                    progress = { SceneSeekRow(streams) },
-                    castEnded = {},
-                )
+    CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                LibraryGridSceneAlbums(rememberLazyGridState())
             }
+            AndroidNowPlayingBar(
+                track = sceneTrack,
+                failure = null,
+                onExpand = {},
+                transport = {
+                    NowPlayingTransport(
+                        isPlaying = true,
+                        storageWait = streams.storageWait,
+                        repeatMode = BridgeRepeatMode.OFF,
+                        onPrevious = {},
+                        onPlayPause = {},
+                        onNext = {},
+                        // Casting is off: the bar has no Cast control.
+                        castButton = {},
+                        onOpenQueue = {},
+                        onCycleRepeat = {},
+                    )
+                },
+                progress = { SceneSeekRow(streams) },
+                castEnded = {},
+            )
         }
     }
 }
@@ -155,37 +153,35 @@ internal fun MiniPlayerScene(state: PlayerSceneState) {
 @Composable
 internal fun FullPlayerScene(state: PlayerSceneState) {
     val streams = remember(state) { PlayerSceneStreams(state) }
-    BaeAppChrome {
-        CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
-            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                AndroidFullPlayer(
-                    track = sceneTrack,
-                    failure = null,
-                    onCollapse = {},
-                    seek = { SceneSeekRow(streams) },
-                    transport = {
-                        ExpandedTransportRow(
-                            isPlaying = true,
-                            storageWait = streams.storageWait,
-                            onPrevious = {},
-                            onPlayPause = {},
-                            onNext = {},
-                        )
-                    },
-                    secondaryControls = {
-                        ExpandedSecondaryControls(repeatMode = BridgeRepeatMode.OFF, onCycleRepeat = {})
-                    },
-                    volumeRow = {
-                        ExpandedVolumeRow(
-                            volume = SCENE_VOLUME,
-                            isMuted = false,
-                            onSetMuted = {},
-                            onDragVolume = {},
-                            onSetVolume = {},
-                        )
-                    },
-                )
-            }
+    CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
+        Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+            AndroidFullPlayer(
+                track = sceneTrack,
+                failure = null,
+                onCollapse = {},
+                seek = { SceneSeekRow(streams) },
+                transport = {
+                    ExpandedTransportRow(
+                        isPlaying = true,
+                        storageWait = streams.storageWait,
+                        onPrevious = {},
+                        onPlayPause = {},
+                        onNext = {},
+                    )
+                },
+                secondaryControls = {
+                    ExpandedSecondaryControls(repeatMode = BridgeRepeatMode.OFF, onCycleRepeat = {})
+                },
+                volumeRow = {
+                    ExpandedVolumeRow(
+                        volume = SCENE_VOLUME,
+                        isMuted = false,
+                        onSetMuted = {},
+                        onDragVolume = {},
+                        onSetVolume = {},
+                    )
+                },
+            )
         }
     }
 }
@@ -205,11 +201,11 @@ private fun SceneSeekRow(streams: PlayerSceneStreams) {
 @Preview(showBackground = true)
 @Composable
 private fun MiniPlayerScenePreview() {
-    MiniPlayerScene(PlayerSceneState.PLAYING_WITH_A_GAP)
+    BaeAppChrome { MiniPlayerScene(PlayerSceneState.PLAYING_WITH_A_GAP) }
 }
 
 @Preview(showBackground = true)
 @Composable
 private fun FullPlayerScenePreview() {
-    FullPlayerScene(PlayerSceneState.WAITING_ON_STORAGE)
+    BaeAppChrome { FullPlayerScene(PlayerSceneState.WAITING_ON_STORAGE) }
 }

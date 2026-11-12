@@ -30,7 +30,6 @@ import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.OAuthProviders
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
-import fm.bae.app.ui.BaeAppChrome
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
@@ -316,13 +315,11 @@ internal fun FolderChoiceScene(dropbox: Boolean) {
                 errors = LocaleErrorDisplays(context),
             )
         }
-    BaeAppChrome {
-        Column(
-            modifier = Modifier.padding(ThemeSpace.edge),
-            verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
-        ) {
-            val words = if (dropbox) DROPBOX_WORDS else ONEDRIVE_WORDS
-            FolderChoiceBody(browser, words, setup = null, onCancel = {}, onSetUp = {})
-        }
+    Column(
+        modifier = Modifier.padding(ThemeSpace.edge),
+        verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
+    ) {
+        val words = if (dropbox) DROPBOX_WORDS else ONEDRIVE_WORDS
+        FolderChoiceBody(browser, words, setup = null, onCancel = {}, onSetUp = {})
     }
 }

@@ -1,8 +1,6 @@
 package fm.bae.app.ui.settings
 
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -10,7 +8,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.DisplayError
 import fm.bae.app.ErrorDisplays
 import fm.bae.app.R
-import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.BaeAppChrome
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.components.AndroidScreen
 import uniffi.bae_bridge.BridgeException
@@ -54,58 +52,54 @@ internal fun PeopleScene(
 ) {
     val people = scenePeople()
     val callbacks = MemberCallbacks({}, { _, _ -> }, { _, _ -> }, { _, _ -> }, {}, {})
-    BaeTheme {
-        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            AndroidScreen(
-                title =
-                    when (page) {
-                        PeoplePage.People -> {
-                            stringResource(R.string.members_title)
-                        }
-
-                        PeoplePage.Devices -> {
-                            stringResource(R.string.people_your_devices)
-                        }
-
-                        is PeoplePage.Person -> {
-                            people
-                                .first { it.membership.id == page.memberId }
-                                .profile
-                                ?.name
-                                .orEmpty()
-                        }
-                    },
-                onBack = {},
-                modifier = Modifier.fillMaxSize(),
-            ) {
-                when (page) {
-                    PeoplePage.People -> {
-                        PeopleHome(
-                            you = YouActions(NothingFails, {}, {}, {}),
-                            people = people,
-                            selfIsAdmin = asAdmin,
-                            requested = null,
-                            invites = invites,
-                            adminChanges = emptyList(),
-                            callbacks = callbacks,
-                            inviteCallbacks = InviteCallbacks({}, {}, {}),
-                            onOpen = {},
-                        )
-                    }
-
-                    is PeoplePage.Person -> {
-                        PersonPage(
-                            member = people.first { it.membership.id == page.memberId }.membership,
-                            selfIsAdmin = asAdmin,
-                            name = "Person Name",
-                            callbacks = callbacks,
-                        )
-                    }
-
-                    PeoplePage.Devices -> {
-                        DevicesPage(member = people.first { it.membership.isSelf }.membership, callbacks = callbacks)
-                    }
+    AndroidScreen(
+        title =
+            when (page) {
+                PeoplePage.People -> {
+                    stringResource(R.string.members_title)
                 }
+
+                PeoplePage.Devices -> {
+                    stringResource(R.string.people_your_devices)
+                }
+
+                is PeoplePage.Person -> {
+                    people
+                        .first { it.membership.id == page.memberId }
+                        .profile
+                        ?.name
+                        .orEmpty()
+                }
+            },
+        onBack = {},
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        when (page) {
+            PeoplePage.People -> {
+                PeopleHome(
+                    you = YouActions(NothingFails, {}, {}, {}),
+                    people = people,
+                    selfIsAdmin = asAdmin,
+                    requested = null,
+                    invites = invites,
+                    adminChanges = emptyList(),
+                    callbacks = callbacks,
+                    inviteCallbacks = InviteCallbacks({}, {}, {}),
+                    onOpen = {},
+                )
+            }
+
+            is PeoplePage.Person -> {
+                PersonPage(
+                    member = people.first { it.membership.id == page.memberId }.membership,
+                    selfIsAdmin = asAdmin,
+                    name = "Person Name",
+                    callbacks = callbacks,
+                )
+            }
+
+            PeoplePage.Devices -> {
+                DevicesPage(member = people.first { it.membership.isSelf }.membership, callbacks = callbacks)
             }
         }
     }
@@ -117,17 +111,17 @@ internal val sceneOtherPerson = PeoplePage.Person(OTHER_ID)
 @Preview(showBackground = true)
 @Composable
 private fun PeopleScenePreview() {
-    PeopleScene(PeoplePage.People)
+    BaeAppChrome { PeopleScene(PeoplePage.People) }
 }
 
 @Preview(showBackground = true)
 @Composable
 private fun PersonScenePreview() {
-    PeopleScene(sceneOtherPerson)
+    BaeAppChrome { PeopleScene(sceneOtherPerson) }
 }
 
 @Preview(showBackground = true)
 @Composable
 private fun DevicesScenePreview() {
-    PeopleScene(PeoplePage.Devices)
+    BaeAppChrome { PeopleScene(PeoplePage.Devices) }
 }
