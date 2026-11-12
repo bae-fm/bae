@@ -29,7 +29,7 @@ struct CoverGalleryView: View {
     private var gallery: some View {
         VStack(spacing: 0) {
             HStack(spacing: ThemeSpace.related) {
-                Text(initialLayout == .lightbox ? "Images" : "Change cover")
+                Text("Change cover")
                     .themeText(.title)
                 Spacer()
                 if let onRefresh, remoteItems.canRefresh {
@@ -136,14 +136,7 @@ struct CoverGalleryView: View {
     }
 
     var body: some View {
-        Group {
-            if initialLayout == .lightbox {
-                CoverPickerFrame { gallery }
-            }
-            else {
-                gallery
-            }
-        }
+        gallery
         .disabled(browser.layout == .lightbox)
         .accessibilityHidden(browser.layout == .lightbox)
         .overlay { lightboxOverlay }

@@ -284,27 +284,28 @@ extension AlbumDetailView {
         // again with each update of the window.
         let lightboxLoad = LightboxImageLoad()
         uiStore.presentModal {
-            CoverSheetView(
-                releaseId: selectedReleaseId,
-                lightboxLoad: lightboxLoad,
-                initialLayout: .lightbox,
-                onFindRelease: {
-                    uiStore.dismissModal()
-                    presentReleaseEditor(release: release)
-                },
-                refreshCovers: {
-                    try await releaseEditor.refreshReleaseCovers(
-                        selectedReleaseId
-                    )
-                },
-                onSelect: { selection in
-                    try await releaseEditor.changeCover(
-                        selectedReleaseId,
-                        selection
-                    )
-                },
-                onDone: { uiStore.dismissModal() }
-            )
+            CoverPickerFrame {
+                CoverSheetView(
+                    releaseId: selectedReleaseId,
+                    lightboxLoad: lightboxLoad,
+                    onFindRelease: {
+                        uiStore.dismissModal()
+                        presentReleaseEditor(release: release)
+                    },
+                    refreshCovers: {
+                        try await releaseEditor.refreshReleaseCovers(
+                            selectedReleaseId
+                        )
+                    },
+                    onSelect: { selection in
+                        try await releaseEditor.changeCover(
+                            selectedReleaseId,
+                            selection
+                        )
+                    },
+                    onDone: { uiStore.dismissModal() }
+                )
+            }
         }
     }
 
