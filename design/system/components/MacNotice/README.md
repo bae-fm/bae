@@ -21,4 +21,12 @@ Inside a `MacBox` a filled notice keeps to the rows' edges: it is inset by the r
 
 Its text takes the size of the screen it sits in. The glyph is 1.19 times the text, centred on the first line. In light, info, success, warning and danger fill with their own pale notice colour (`info-notice` …), with `on-notice` text. In dark, every notice has the neutral fill and the screen's text, and only the glyph carries the tone: a coloured fill over a dark screen reads grey or brown when see-through and glares when solid.
 
+### Writing one
+
+A library on the Mac's Welcome list fails to open because its tables don't match the app's.
+
+- Before, a notice over the whole list: "Library failed to open / Choose another library, or restore it with “Enter code”." It doesn't say which library, and Enter code isn't on the screen.
+- Rejected: "Couldn’t open “Home music”" (the row already names it); "This Mac’s copy can’t be read" (copy of what?); "It doesn’t match what this version of bae reads … the library in the cloud is untouched." (the mechanism); "The library is safe in the cloud." (a claim nobody checked, in an advert's voice); "Load it again" (a name the app doesn't use); "Open another library" (true, and no help); "Edits that haven’t synced are lost." (the confirm says it).
+- Final, joined under the library's row: the title Couldn’t open, the line "Something is wrong with this library’s data.", and the buttons Details and Reset from cloud…, whose confirm warns about edits that haven't synced.
+
 **In the code:** macOS: `Notice` (`BaeKit/Sources/BaeKit/Views/Notice.swift`), whose Details button opens an alert and whose centred look draws a view that failed whole.
