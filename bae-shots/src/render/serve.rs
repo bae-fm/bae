@@ -8,11 +8,12 @@
 
 use crate::design::{BUNDLE_CSS, BUNDLE_JS, MOCKS, TOKENS};
 use crate::render::runtime;
+use futures::stream::FuturesUnordered;
+use futures::StreamExt;
 use std::net::SocketAddr;
 use std::path::{Component, Path, PathBuf};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
-use tokio::task::JoinHandle;
 
 /// The file a URL path is served from, if it names one.
 fn route(root: &Path, url_path: &str) -> Option<PathBuf> {
@@ -86,37 +87,46 @@ async fn respond(root: &Path, mut stream: TcpStream) -> std::io::Result<()> {
 
 pub(crate) struct Server {
     address: SocketAddr,
-    task: JoinHandle<()>,
 }
 
 impl Server {
-    /// Serves the tree of `root` on a free port until dropped.
-    pub(crate) async fn start(root: &Path) -> std::io::Result<Self> {
-        let listener = TcpListener::bind("127.0.0.1:0").await?;
-        let address = listener.local_addr()?;
-        let root = root.to_path_buf();
-        let task = tokio::spawn(async move {
-            while let Ok((stream, _)) = listener.accept().await {
-                let root = root.clone();
-                tokio::spawn(async move {
-                    if let Err(error) = respond(&root, stream).await {
-                        eprintln!("bae-shots: serving a request failed: {error}");
-                    }
-                });
-            }
-        });
-        Ok(Self { address, task })
-    }
-
     /// The URL of the board `name`.
     pub(crate) fn board_url(&self, name: &str) -> String {
         format!("http://{}/{name}.dc.html", self.address)
     }
 }
 
-impl Drop for Server {
-    fn drop(&mut self) {
-        self.task.abort();
+/// Answers requests from `listener` until it fails; the connections are
+/// served together, in this future.
+async fn serve(root: &Path, listener: TcpListener) -> std::io::Error {
+    let mut connections = FuturesUnordered::new();
+    loop {
+        tokio::select! {
+            accepted = listener.accept() => match accepted {
+                Ok((stream, _)) => connections.push(respond(root, stream)),
+                Err(error) => return error,
+            },
+            Some(done) = connections.next() => {
+                if let Err(error) = done {
+                    eprintln!("bae-shots: serving a request failed: {error}");
+                }
+            }
+        }
+    }
+}
+
+/// Serves the tree of `root` on a free port while `work` runs with the
+/// server, and stops with it. The requests are answered in this future, so no
+/// task outlives the call.
+pub(crate) async fn with_server<T>(
+    root: &Path,
+    work: impl AsyncFnOnce(&Server) -> T,
+) -> std::io::Result<T> {
+    let listener = TcpListener::bind("127.0.0.1:0").await?;
+    let server = Server { address: listener.local_addr()? };
+    tokio::select! {
+        out = work(&server) => Ok(out),
+        error = serve(root, listener) => Err(error),
     }
 }
 

@@ -64,7 +64,7 @@ fn a_changed_live_record_fails_with_both_hashes_and_when_it_was_published() {
     write(root.path(), LIVE_RECORD, &live_record("f".repeat(64).as_str()));
     let error = check(root.path()).unwrap_err();
     let message = error.to_string();
-    assert!(matches!(error, RuntimeError::LiveChanged { .. }));
+    assert!(matches!(error, RuntimeError::LiveChanged(_)));
     assert!(message.contains(&sha256(SCRIPT)), "{message}");
     assert!(message.contains(&"f".repeat(64)), "{message}");
     assert!(message.contains("version v1"), "{message}");

@@ -1,6 +1,5 @@
 use super::*;
-use crate::render::chrome::Chrome;
-use crate::render::serve::Server;
+use crate::render::fixture;
 use std::path::Path;
 
 fn write(root: &Path, path: &str, text: &str) {
@@ -50,30 +49,31 @@ fn tree() -> tempfile::TempDir {
 #[tokio::test]
 async fn an_x_import_renders_inside_its_wrapper() {
     let root = tree();
-    let server = Server::start(root.path()).await.unwrap();
-    let chrome = Chrome::launch().await.unwrap();
-    let page = chrome.new_page().await.unwrap();
-    let rendered = render(
-        &page,
-        "fixture.wrapped",
-        &server.board_url("fixture.wrapped"),
-        Frame { w: 300, h: 200 },
-        2.0,
-    )
+    let (rendered, display, inner) = fixture::with_browser(root.path(), async |server, chrome| {
+        let page = chrome.new_page().await.unwrap();
+        let rendered = render(
+            &page,
+            "fixture.wrapped",
+            &server.board_url("fixture.wrapped"),
+            Frame { w: 300, h: 200 },
+            2.0,
+        )
+        .await;
+        let display: String = page
+            .evaluate("getComputedStyle(document.querySelector('.row > .sc-host-x')).display")
+            .await
+            .unwrap()
+            .into_value()
+            .unwrap();
+        let inner: String = page
+            .evaluate("document.querySelector('.sc-host-x #inner').textContent")
+            .await
+            .unwrap()
+            .into_value()
+            .unwrap();
+        (rendered, display, inner)
+    })
     .await;
-    let display: String = page
-        .evaluate("getComputedStyle(document.querySelector('.row > .sc-host-x')).display")
-        .await
-        .unwrap()
-        .into_value()
-        .unwrap();
-    let inner: String = page
-        .evaluate("document.querySelector('.sc-host-x #inner').textContent")
-        .await
-        .unwrap()
-        .into_value()
-        .unwrap();
-    chrome.close().await;
     let rendered = rendered.unwrap();
     assert_eq!(display, "contents");
     assert_eq!(inner, "hello");
@@ -85,15 +85,17 @@ async fn an_x_import_renders_inside_its_wrapper() {
 #[tokio::test]
 async fn a_board_renders_to_the_same_picture_twice() {
     let root = tree();
-    let server = Server::start(root.path()).await.unwrap();
-    let chrome = Chrome::launch().await.unwrap();
-    let mut pictures = Vec::new();
-    for _ in 0..2 {
-        let page = chrome.new_page().await.unwrap();
-        let url = server.board_url("fixture.wrapped");
-        pictures.push(render(&page, "fixture.wrapped", &url, Frame { w: 300, h: 200 }, 1.0).await);
-    }
-    chrome.close().await;
+    let pictures = fixture::with_browser(root.path(), async |server, chrome| {
+        let mut pictures = Vec::new();
+        for _ in 0..2 {
+            let page = chrome.new_page().await.unwrap();
+            let url = server.board_url("fixture.wrapped");
+            pictures
+                .push(render(&page, "fixture.wrapped", &url, Frame { w: 300, h: 200 }, 1.0).await);
+        }
+        pictures
+    })
+    .await;
     let pictures: Vec<Vec<u8>> = pictures.into_iter().map(|p| p.unwrap().png).collect();
     assert_eq!(pictures[0], pictures[1]);
 }
@@ -101,18 +103,18 @@ async fn a_board_renders_to_the_same_picture_twice() {
 #[tokio::test]
 async fn a_runtime_error_fails_the_board() {
     let root = tree();
-    let server = Server::start(root.path()).await.unwrap();
-    let chrome = Chrome::launch().await.unwrap();
-    let page = chrome.new_page().await.unwrap();
-    let result = render(
-        &page,
-        "fixture.broken",
-        &server.board_url("fixture.broken"),
-        Frame { w: 300, h: 200 },
-        1.0,
-    )
+    let result = fixture::with_browser(root.path(), async |server, chrome| {
+        let page = chrome.new_page().await.unwrap();
+        render(
+            &page,
+            "fixture.broken",
+            &server.board_url("fixture.broken"),
+            Frame { w: 300, h: 200 },
+            1.0,
+        )
+        .await
+    })
     .await;
-    chrome.close().await;
     match result {
         Err(BoardError::Runtime { board, errors }) => {
             assert_eq!(board, "fixture.broken");

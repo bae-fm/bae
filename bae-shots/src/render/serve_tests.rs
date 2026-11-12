@@ -49,12 +49,15 @@ fn routes_stay_inside_the_mocks() {
 #[tokio::test]
 async fn serves_files_and_refuses_the_rest() {
     let root = tree();
-    let server = Server::start(root.path()).await.unwrap();
-    let board = get(&server, "/mac.a.b.dc.html").await;
-    assert!(board.starts_with("HTTP/1.1 200 OK"), "{board}");
-    assert!(board.contains("text/html"), "{board}");
-    assert!(board.ends_with("<x-dc>board</x-dc>"), "{board}");
-    assert!(get(&server, "/support.js").await.ends_with("runtime"));
-    assert!(get(&server, "/missing.html").await.starts_with("HTTP/1.1 404"));
-    assert!(server.board_url("mac.a.b").ends_with("/mac.a.b.dc.html"));
+    with_server(root.path(), async |server| {
+        let board = get(server, "/mac.a.b.dc.html").await;
+        assert!(board.starts_with("HTTP/1.1 200 OK"), "{board}");
+        assert!(board.contains("text/html"), "{board}");
+        assert!(board.ends_with("<x-dc>board</x-dc>"), "{board}");
+        assert!(get(server, "/support.js").await.ends_with("runtime"));
+        assert!(get(server, "/missing.html").await.starts_with("HTTP/1.1 404"));
+        assert!(server.board_url("mac.a.b").ends_with("/mac.a.b.dc.html"));
+    })
+    .await
+    .unwrap();
 }

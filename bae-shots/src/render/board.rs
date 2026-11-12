@@ -76,9 +76,9 @@ async fn grant(page: &Page, budget: f64) -> Result<(), BoardError> {
 async fn expired(
     expired: &mut (impl futures::Stream<Item = std::sync::Arc<EventVirtualTimeBudgetExpired>> + Unpin),
 ) -> Result<(), BoardError> {
-    tokio::time::timeout(BUDGET_TIMEOUT, expired.next())
-        .await
-        .map_err(|_| BoardError::Protocol("virtual time never ran out".to_string()))?;
+    tokio::time::timeout(BUDGET_TIMEOUT, expired.next()).await.map_err(|elapsed| {
+        BoardError::Protocol(format!("virtual time never ran out: {elapsed}"))
+    })?;
     Ok(())
 }
 
@@ -149,7 +149,7 @@ pub(crate) async fn render(
     while let Ok(Some(event)) = tokio::time::timeout(Duration::from_millis(0), thrown.next()).await
     {
         let details = &event.exception_details;
-        let detail = details.exception.as_ref().map(|e| text(e)).unwrap_or_default();
+        let detail = details.exception.as_ref().map(text).unwrap_or_default();
         errors.push(format!("uncaught: {} {detail}", details.text));
     }
     if !errors.is_empty() {

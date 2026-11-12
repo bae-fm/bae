@@ -2,6 +2,8 @@
 
 pub(crate) mod board;
 pub(crate) mod chrome;
+#[cfg(test)]
+mod fixture;
 pub(crate) mod runtime;
 pub(crate) mod serve;
 
@@ -31,11 +33,15 @@ async fn draw(
     out: &Path,
     runtime: &runtime::Checked,
 ) -> Result<(), String> {
-    let server = serve::Server::start(root).await.map_err(|e| e.to_string())?;
-    let chrome = chrome::Chrome::launch().await.map_err(|e| e.to_string())?;
-    let result = draw_with(root, names, out, runtime, &server, &chrome).await;
-    chrome.close().await;
-    result
+    serve::with_server(root, async |server| {
+        chrome::with_chrome(async |chrome| {
+            draw_with(root, names, out, runtime, server, chrome).await
+        })
+        .await
+        .map_err(|e| e.to_string())?
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 async fn draw_with(
@@ -55,7 +61,9 @@ async fn draw_with(
         let rendered = board::render(&page, &board, &server.board_url(&board), frame, BOARD_SCALE)
             .await
             .map_err(|e| e.to_string());
-        let _ = page.close().await;
+        if let Err(error) = page.close().await {
+            eprintln!("bae-shots: closing a page failed: {error}");
+        }
         let file = out.join(format!("{board}.png"));
         std::fs::write(&file, rendered?.png)
             .map_err(|e| format!("cannot write {}: {e}", file.display()))?;

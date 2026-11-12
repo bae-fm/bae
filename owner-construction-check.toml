@@ -622,12 +622,12 @@ OpenCalls = "LibrarySessions"
     "BridgeBootstrapResult::joined",
     "BridgeBootstrapResult::failure",
 ]
-# The design-board renderer starts its page server and its browser once and
-# draws every board with them; each keeps its background task and stops it
-# when dropped.
-"bae-shots/src/render.rs" = ["boards", "draw"]
-"bae-shots/src/render/chrome.rs" = ["Chrome::launch"]
-"bae-shots/src/render/serve.rs" = ["Server::start"]
+# The design-board renderer builds its runtime, serves its pages and starts its
+# browser once around all the boards it draws; they run in the caller's
+# futures and end with the call.
+"bae-shots/src/render.rs" = ["boards"]
+"bae-shots/src/render/chrome.rs" = ["with_chrome"]
+"bae-shots/src/render/serve.rs" = ["with_server"]
 # A protocol's discovery starts not browsing and listing no device.
 "bae-cast/src/renderer/protocol_discovery.rs" = ["ProtocolDiscovery::new"]
 # A test's catalog fakes: the providers its library asks are built over

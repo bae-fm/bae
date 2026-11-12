@@ -69,18 +69,24 @@ the canvas. The design session writes it at each canvas publish. {}", refresh(.c
     )]
     CopyChanged { actual: String, recorded: String, version: String, canvas: String },
     #[error(
-        "the runtime copy is version {copy_version} ({copy_sha256}) but the canvas was published with \
-version {live_version} ({live_sha256}) at {published_at} by {published_by}. {}", refresh(.canvas)
+        "the runtime copy is version {} ({}) but the canvas was published with \
+version {} ({}) at {} by {}. {}",
+        .0.copy_version, .0.copy_sha256, .0.live_version, .0.live_sha256,
+        .0.published_at, .0.published_by, refresh(&.0.canvas)
     )]
-    LiveChanged {
-        copy_version: String,
-        copy_sha256: String,
-        live_version: String,
-        live_sha256: String,
-        published_at: String,
-        published_by: String,
-        canvas: String,
-    },
+    LiveChanged(Box<LiveChange>),
+}
+
+/// A live record that names another runtime than the copy.
+#[derive(Debug, PartialEq)]
+pub(crate) struct LiveChange {
+    copy_version: String,
+    copy_sha256: String,
+    live_version: String,
+    live_sha256: String,
+    published_at: String,
+    published_by: String,
+    canvas: String,
 }
 
 /// A runtime copy that matched its record and the live record.
@@ -133,7 +139,7 @@ pub(crate) fn check(root: &Path) -> Result<Checked, RuntimeError> {
     }
     let live: LiveRecord = record(&live_path)?;
     if live.runtime_sha256 != actual {
-        return Err(RuntimeError::LiveChanged {
+        return Err(RuntimeError::LiveChanged(Box::new(LiveChange {
             copy_version: recorded.version,
             copy_sha256: actual,
             live_version: live.canvas_version,
@@ -141,7 +147,7 @@ pub(crate) fn check(root: &Path) -> Result<Checked, RuntimeError> {
             published_at: live.published_at,
             published_by: live.published_by,
             canvas: live.canvas,
-        });
+        })));
     }
     Ok(Checked { sha256: actual, version: recorded.version, live_published_at: live.published_at })
 }

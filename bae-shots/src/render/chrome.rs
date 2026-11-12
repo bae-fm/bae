@@ -5,7 +5,6 @@ use chromiumoxide::browser::{Browser, BrowserConfig};
 use chromiumoxide::Page;
 use futures::StreamExt;
 use std::path::{Path, PathBuf};
-use tokio::task::JoinHandle;
 
 /// The Chrome for Testing build every board hash names.
 const PINNED: &str = "157.0.8103.78";
@@ -65,21 +64,10 @@ impl Platform {
     }
 }
 
-/// Holds an exclusive lock on `path` until the returned file is dropped.
-fn lock(path: &Path) -> Result<std::fs::File, ChromeError> {
-    let file = std::fs::OpenOptions::new()
-        .create(true)
-        .truncate(false)
-        .write(true)
-        .open(path)
-        .map_err(|e| ChromeError::Fetch(format!("{}: {e}", path.display())))?;
-    file.lock().map_err(|e| ChromeError::Fetch(format!("{}: {e}", path.display())))?;
-    Ok(file)
-}
-
 /// The pinned browser's executable, downloaded and unpacked into the cache
-/// when it is not there. The unpacking happens beside the final folder and is
-/// renamed into place, so the folder is either whole or absent.
+/// when it is not there. Each run unpacks in a folder of its own and renames
+/// it into place, so the folder is whole or absent; of two runs that fetch at
+/// once, the one that renames second finds the build there and uses it.
 fn installed() -> Result<PathBuf, ChromeError> {
     let platform = Platform::of(std::env::consts::OS, std::env::consts::ARCH).ok_or_else(|| {
         ChromeError::Fetch(format!(
@@ -89,21 +77,17 @@ fn installed() -> Result<PathBuf, ChromeError> {
         ))
     })?;
     let cache = cache_dir()?;
-    std::fs::create_dir_all(&cache).map_err(|e| ChromeError::Fetch(e.to_string()))?;
-    // Two fetches at once, in this process or another, would unpack twice.
-    let _fetching = lock(&cache.join("fetch.lock"))?;
+    let fetch = |e: std::io::Error| ChromeError::Fetch(e.to_string());
+    std::fs::create_dir_all(&cache).map_err(fetch)?;
     let folder = platform.folder(&cache, PINNED);
     let executable = folder.join(platform.executable);
     if executable.is_file() {
         return Ok(executable);
     }
-    let archive = cache.join(format!("{PINNED}-{}.zip", platform.word));
-    let partial = cache.join(format!("{PINNED}-{}.partial", platform.word));
-    let fetch = |e: std::io::Error| ChromeError::Fetch(e.to_string());
-    if partial.exists() {
-        std::fs::remove_dir_all(&partial).map_err(fetch)?;
-    }
-    let (archive_arg, partial_arg) = (archive.to_string_lossy(), partial.to_string_lossy());
+    let work = tempfile::tempdir_in(&cache).map_err(fetch)?;
+    let archive = work.path().join("chrome.zip");
+    let unpacked = work.path().join("unpacked");
+    let (archive_arg, unpacked_arg) = (archive.to_string_lossy(), unpacked.to_string_lossy());
     for step in [
         Step::new(
             "download Chrome for Testing",
@@ -123,14 +107,16 @@ fn installed() -> Result<PathBuf, ChromeError> {
             "unpack Chrome for Testing",
             &cache,
             "unzip",
-            &["-q", &archive_arg, "-d", &partial_arg],
+            &["-q", &archive_arg, "-d", &unpacked_arg],
         ),
     ] {
         step.run().map_err(|e| ChromeError::Fetch(e.to_string()))?;
     }
-    std::fs::rename(&partial, &folder).map_err(fetch)?;
-    std::fs::remove_file(&archive).map_err(fetch)?;
-    Ok(executable)
+    match std::fs::rename(&unpacked, &folder) {
+        Ok(()) => Ok(executable),
+        Err(_) if executable.is_file() => Ok(executable),
+        Err(e) => Err(fetch(e)),
+    }
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -145,34 +131,11 @@ pub(crate) enum ChromeError {
 
 pub(crate) struct Chrome {
     browser: Browser,
-    handler: JoinHandle<()>,
-    /// The browser's profile; one browser per directory.
-    _profile: tempfile::TempDir,
     /// What the browser reports as its product, e.g. `Chrome/157.0.8103.78`.
     version: String,
 }
 
 impl Chrome {
-    /// Fetches the pinned build when the cache does not hold it, and starts it
-    /// headless with sRGB colour and no scrollbars.
-    pub(crate) async fn launch() -> Result<Self, ChromeError> {
-        let executable = installed()?;
-        let profile = tempfile::tempdir().map_err(|e| ChromeError::Launch(e.to_string()))?;
-        let config = BrowserConfig::builder()
-            .user_data_dir(profile.path())
-            .chrome_executable(executable)
-            .viewport(None)
-            .args(["--force-color-profile=srgb", "--hide-scrollbars"])
-            .build()
-            .map_err(ChromeError::Launch)?;
-        let (browser, mut handler) =
-            Browser::launch(config).await.map_err(|e| ChromeError::Launch(e.to_string()))?;
-        let handler = tokio::spawn(async move { while handler.next().await.is_some() {} });
-        let version =
-            browser.version().await.map_err(|e| ChromeError::Protocol(e.to_string()))?.product;
-        Ok(Self { browser, handler, _profile: profile, version })
-    }
-
     pub(crate) fn version(&self) -> &str {
         &self.version
     }
@@ -180,11 +143,46 @@ impl Chrome {
     pub(crate) async fn new_page(&self) -> Result<Page, ChromeError> {
         self.browser.new_page("about:blank").await.map_err(|e| ChromeError::Protocol(e.to_string()))
     }
+}
 
-    pub(crate) async fn close(mut self) {
-        let _ = self.browser.close().await;
-        let _ = self.browser.wait().await;
-        self.handler.abort();
+/// Fetches the pinned build when the cache does not hold it, starts it
+/// headless with sRGB colour and no scrollbars, runs `work` with it and closes
+/// it. The browser's events are driven alongside `work` and end with it, so
+/// no task outlives the call.
+pub(crate) async fn with_chrome<T>(work: impl AsyncFnOnce(&Chrome) -> T) -> Result<T, ChromeError> {
+    let executable = installed()?;
+    let profile = tempfile::tempdir().map_err(|e| ChromeError::Launch(e.to_string()))?;
+    let config = BrowserConfig::builder()
+        .user_data_dir(profile.path())
+        .chrome_executable(executable)
+        .viewport(None)
+        .args(["--force-color-profile=srgb", "--hide-scrollbars"])
+        .build()
+        .map_err(ChromeError::Launch)?;
+    let (browser, mut events) =
+        Browser::launch(config).await.map_err(|e| ChromeError::Launch(e.to_string()))?;
+    let running = async move {
+        let version =
+            browser.version().await.map_err(|e| ChromeError::Protocol(e.to_string()))?.product;
+        let mut chrome = Chrome { browser, version };
+        let out = work(&chrome).await;
+        if let Err(error) = chrome.browser.close().await {
+            eprintln!("bae-shots: closing Chrome failed: {error}");
+        }
+        if let Err(error) = chrome.browser.wait().await {
+            eprintln!("bae-shots: waiting for Chrome failed: {error}");
+        }
+        Ok(out)
+    };
+    // The events end when the browser closes, which `running` does last; a
+    // browser that dies before that fails the work's requests.
+    let driven = async {
+        while events.next().await.is_some() {}
+        std::future::pending::<std::convert::Infallible>().await
+    };
+    tokio::select! {
+        out = running => out,
+        never = driven => match never {},
     }
 }
 
