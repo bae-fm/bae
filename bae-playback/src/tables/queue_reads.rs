@@ -105,16 +105,17 @@ fn queue_items_on(
 /// The `playback_queue` row as the queue screens read it.
 struct QueueHead {
     repeat: RepeatMode,
-    context: Option<(ContextSource, bool, i64)>,
+    shuffled: bool,
+    context: Option<(ContextSource, i64)>,
     manual_version: u64,
     context_version: u64,
 }
 
 fn queue_head_on(sql: &SqlReadContext<'_>) -> Result<QueueHead, DbError> {
-    type Head = (RepeatMode, Option<String>, Option<String>, Option<bool>, Option<i64>, i64, i64);
-    let (repeat, source_kind, source_release_id, shuffled, cursor, manual_version, context_version): Head =
+    type Head = (RepeatMode, bool, Option<String>, Option<String>, Option<i64>, i64, i64);
+    let (repeat, shuffled, source_kind, source_release_id, cursor, manual_version, context_version): Head =
         sql.query_row(
-            "SELECT repeat, source_kind, source_release_id, shuffled, cursor, \
+            "SELECT repeat, shuffled, source_kind, source_release_id, cursor, \
                     manual_version, context_version \
              FROM playback_queue",
             [],
@@ -130,8 +131,8 @@ fn queue_head_on(sql: &SqlReadContext<'_>) -> Result<QueueHead, DbError> {
                 ))
             },
         )?;
-    let context = match (source_kind, shuffled, cursor) {
-        (Some(source_kind), Some(shuffled), Some(cursor)) => Some((
+    let context = match (source_kind, cursor) {
+        (Some(source_kind), Some(cursor)) => Some((
             ContextSource::from_columns(&source_kind, source_release_id.clone()).map_err(
                 |_unwritten| {
                     DbError::unreadable(
@@ -140,15 +141,15 @@ fn queue_head_on(sql: &SqlReadContext<'_>) -> Result<QueueHead, DbError> {
                     )
                 },
             )?,
-            shuffled,
             cursor,
         )),
-        // The table's CHECK keeps the three NULL together.
+        // The table's CHECK keeps the two NULL together.
         _ => None,
     };
     // The table's CHECKs keep both versions at zero or above.
     Ok(QueueHead {
         repeat,
+        shuffled,
         context,
         manual_version: manual_version as u64,
         context_version: context_version as u64,
@@ -176,7 +177,7 @@ fn queue_value_on(sql: &SqlReadContext<'_>) -> Result<crate::ResolvedQueueSnapsh
     )?;
     let (context, has_upcoming, has_previous) = match head.context {
         None => (None, false, false),
-        Some((source, shuffled, cursor)) => {
+        Some((source, cursor)) => {
             let (has_upcoming, has_previous): (bool, bool) = sql.query_row(
                 "SELECT EXISTS (SELECT 1 FROM playback_context WHERE position > ?1), \
                         EXISTS (SELECT 1 FROM playback_context WHERE position < ?1)",
@@ -194,17 +195,14 @@ fn queue_value_on(sql: &SqlReadContext<'_>) -> Result<crate::ResolvedQueueSnapsh
                     .optional()?,
                 ContextSource::Releases | ContextSource::Tracks | ContextSource::Library => None,
             };
-            (
-                Some(crate::ResolvedContext { source, source_title, shuffled }),
-                has_upcoming,
-                has_previous,
-            )
+            (Some(crate::ResolvedContext { source, source_title }), has_upcoming, has_previous)
         }
     };
     let has_next = !manual.is_empty() || has_upcoming || head.repeat != RepeatMode::Off;
     Ok(crate::ResolvedQueueSnapshot {
         manual,
         context,
+        shuffled: head.shuffled,
         has_next,
         has_previous,
         manual_version: head.manual_version,
@@ -221,7 +219,7 @@ fn queue_upcoming_on(
         .map(|window| {
             let items = match head.context {
                 None => Vec::new(),
-                Some((_, _, cursor)) => queue_items_on(
+                Some((_, cursor)) => queue_items_on(
                     sql,
                     "SELECT 'c' || entry AS entry, track_id, position FROM playback_context \
                      WHERE position > ?1 ORDER BY position LIMIT ?2 OFFSET ?3",
@@ -239,7 +237,7 @@ fn queue_upcoming_on(
         context_version: head.context_version,
         upcoming_total: match head.context {
             None => 0,
-            Some((_, _, cursor)) => upcoming_total_on(sql, cursor)?,
+            Some((_, cursor)) => upcoming_total_on(sql, cursor)?,
         },
         windows,
     })

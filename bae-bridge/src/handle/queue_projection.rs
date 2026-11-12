@@ -133,11 +133,10 @@ impl crate::types::BridgeQueueEntry {
 
 impl crate::types::BridgePlaybackContext {
     pub(super) fn from_core(context: bae_playback::ResolvedContext) -> Self {
-        let bae_playback::ResolvedContext { source, source_title, shuffled } = context;
+        let bae_playback::ResolvedContext { source, source_title } = context;
         crate::types::BridgePlaybackContext {
             kind: crate::types::BridgePlaybackSourceKind::from_core(&source),
             source_title,
-            shuffled,
         }
     }
 }
@@ -148,6 +147,7 @@ mirror_struct! {
     fields: {
         manual: (each crate::types::BridgeQueueEntry),
         context: (opt crate::types::BridgePlaybackContext),
+        shuffled,
         has_next,
         has_previous,
         manual_version,

@@ -12,8 +12,7 @@ pub struct QueueItem {
 }
 
 /// The context lane resolved for display: what it plays from (so the UI labels
-/// the section — a release vs the library) and whether it was ordered by
-/// shuffle. Its tracks are read in windows of [`bae_store::LibraryBrowseWindow`].
+/// the section — a release vs the library). Its tracks are read in windows of [`bae_store::LibraryBrowseWindow`].
 /// Carried separately from the manual lane so each UI renders the two as
 /// distinct sections.
 #[derive(Debug, Clone, PartialEq)]
@@ -23,7 +22,6 @@ pub struct ResolvedContext {
     /// the source is a single release, `None` for a multi-release source or the
     /// whole library (those label themselves by kind alone).
     pub source_title: Option<String>,
-    pub shuffled: bool,
 }
 
 /// The display-ready playback queue: manual entries, the current context lane,
@@ -32,6 +30,9 @@ pub struct ResolvedContext {
 pub struct ResolvedQueueSnapshot {
     pub manual: Vec<QueueItem>,
     pub context: Option<ResolvedContext>,
+    /// Whether shuffle is on, which holds with no context too: the next play
+    /// starts shuffled.
+    pub shuffled: bool,
     pub has_next: bool,
     pub has_previous: bool,
     /// How many writes have changed Up Next, as the queue row counts them:

@@ -115,7 +115,7 @@ async fn test_play_release_shuffled_keeps_all_tracks() {
     let mut f = release(&["t1", "t2", "t3", "t4"]).await;
     f.play(ReleaseStart::Shuffled).await;
     assert_eq!(sorted(f.full_order().await), names(&["t1", "t2", "t3", "t4"]));
-    assert!(f.value().await.context.unwrap().shuffled);
+    assert!(f.value().await.shuffled);
 }
 
 /// Unshuffling after a repeat wrap puts every upcoming row back in the order
@@ -155,9 +155,9 @@ async fn test_library_play_holds_all_tracks_in_library_order() {
     let first = f.play_fill(ContextFill::LibraryShuffled).await;
     assert_eq!(sorted(f.full_order().await), names(&["a1", "a2", "b1", "b2", "b3"]));
     let value = f.value().await;
+    assert!(value.shuffled);
     let context = value.context.unwrap();
     assert_eq!(context.source, ContextSource::Library);
-    assert!(context.shuffled);
 
     f.queue.set_shuffle(false).await.unwrap();
 
@@ -184,7 +184,7 @@ async fn test_set_shuffle_on_keeps_history_and_shuffles_only_upcoming() {
         f.queue.set_shuffle(true).await.unwrap();
 
         assert_eq!(f.current(), "t3");
-        assert!(f.value().await.context.unwrap().shuffled);
+        assert!(f.value().await.shuffled);
         assert_eq!(
             f.context_order().await[..3],
             names(&["t1", "t2", "t3"])[..],
@@ -276,7 +276,7 @@ async fn test_set_shuffle_off_restores_source_order_from_current() {
     f.queue.set_shuffle(false).await.unwrap();
 
     assert_eq!(f.current(), "t3");
-    assert!(!f.value().await.context.unwrap().shuffled);
+    assert!(!f.value().await.shuffled);
     assert_eq!(f.full_order().await, names(&["t3", "t4", "t5"]));
 }
 
@@ -339,14 +339,74 @@ async fn play_releases_skips_a_release_without_tracks() {
     assert_eq!(f.context_order().await, names(&["t1", "t2", "t3"]));
 }
 
-/// With nothing playing there is no context to reorder: no context appears
-/// and no track becomes current.
+/// With nothing playing, shuffle is a mode of its own: turning it on or off
+/// records it, and no context appears and no track becomes current.
 #[tokio::test]
-async fn test_set_shuffle_with_no_context_is_noop() {
+async fn test_set_shuffle_with_no_context_records_the_mode() {
     let mut f = release(&["t1"]).await;
+    assert!(!f.value().await.shuffled);
+
     f.queue.set_shuffle(true).await.unwrap();
+    assert!(f.value().await.shuffled);
     assert!(f.value().await.context.is_none());
     assert_eq!(f.current_name(), None);
+
+    f.queue.set_shuffle(false).await.unwrap();
+    assert!(!f.value().await.shuffled);
+}
+
+/// The next play starts shuffled when the mode was turned on with nothing
+/// playing: the whole lane shuffles from a play in order, and a play from a
+/// track starts with it and shuffles the rest.
+#[tokio::test]
+async fn test_a_play_starts_shuffled_when_the_mode_is_on() {
+    let names_in_order = ["t1", "t2", "t3", "t4", "t5", "t6", "t7", "t8"];
+    let mut f = release(&names_in_order).await;
+    f.queue.set_shuffle(true).await.unwrap();
+
+    f.play(ReleaseStart::First).await;
+    assert!(f.value().await.shuffled);
+    assert_eq!(sorted(f.context_order().await), names(&names_in_order));
+
+    let mut moved = false;
+    for _ in 0..8 {
+        f.play(ReleaseStart::First).await;
+        moved |= f.context_order().await != names(&names_in_order);
+    }
+    assert!(moved, "the lane was shuffled, not left in order");
+
+    assert_eq!(f.play_from("t5").await, "t5", "a play from a track starts with it");
+    assert_eq!(f.context_order().await[0], "t5");
+    assert_eq!(sorted(f.context_order().await), names(&names_in_order));
+    assert!(f.value().await.shuffled);
+
+    f.queue.set_shuffle(false).await.unwrap();
+    assert_eq!(
+        f.full_order().await,
+        names(&["t5"])
+            .into_iter()
+            .chain({
+                let mut rest = names(&names_in_order);
+                rest.retain(|name| name != "t5");
+                rest
+            })
+            .collect::<Vec<_>>()
+    );
+}
+
+/// The mode outlives the lane: clearing what is playing from leaves shuffle
+/// as it was, and the next play follows it.
+#[tokio::test]
+async fn test_clearing_the_context_keeps_the_shuffle_mode() {
+    let mut f = release(&["t1", "t2", "t3"]).await;
+    f.queue.set_shuffle(true).await.unwrap();
+    f.play(ReleaseStart::First).await;
+
+    f.queue.clear_playing_from().await.unwrap();
+
+    let value = f.value().await;
+    assert!(value.context.is_none());
+    assert!(value.shuffled);
 }
 
 /// A list of tracks plays exactly those tracks in the order sent, across

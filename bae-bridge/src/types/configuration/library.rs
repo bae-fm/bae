@@ -326,6 +326,9 @@ pub struct BridgeQueueEntry {
 pub struct BridgeQueueSnapshot {
     pub manual: Vec<BridgeQueueEntry>,
     pub context: Option<BridgePlaybackContext>,
+    /// Whether shuffle is on, which holds with no context too: the next play
+    /// starts shuffled.
+    pub shuffled: bool,
     pub has_next: bool,
     pub has_previous: bool,
     /// How many writes have changed Up Next: a screen holding an Up Next row
@@ -375,9 +378,8 @@ impl BridgePlaybackSourceKind {
 
 /// The context lane (what the queue is playing from), delivered alongside the
 /// manual lane so each UI renders the two as distinct sections: its kind
-/// (release, list of tracks or library, for the section label) and whether it
-/// was ordered by shuffle (the UI shows a shuffle indicator when so). Its
-/// tracks are read through `subscribe_queue_upcoming`.
+/// (release, list of tracks or library, for the section label). Its tracks are
+/// read through `subscribe_queue_upcoming`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgePlaybackContext {
     pub kind: BridgePlaybackSourceKind,
@@ -386,7 +388,6 @@ pub struct BridgePlaybackContext {
     /// the whole library. The UI appends it to the section label; the label
     /// prose itself stays UI-side (localized).
     pub source_title: Option<String>,
-    pub shuffled: bool,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]

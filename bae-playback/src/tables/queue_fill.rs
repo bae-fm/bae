@@ -1,6 +1,7 @@
 //! What a play fills the context lane with: the tracks it names, in play
 //! order, where the lane starts, and what it named and left out. One bulk
-//! write replaces the whole queue with them.
+//! write replaces the whole queue with them, shuffled when the play asks for
+//! it or the queue's shuffle mode is on.
 
 use super::queue::{context_from_row, queue_row_on};
 use super::*;
@@ -93,6 +94,20 @@ enum FillCursor {
     Position(i64),
 }
 
+impl FillCursor {
+    /// The lane when shuffled: the row played first leads it and the rest
+    /// follow in random order, so a shuffled play of one track still starts
+    /// with it. SQL over a lane row's `track_id` and `unshuffled`, true for
+    /// the row that leads, with the value it binds as `:lead`.
+    fn lead(&self) -> Option<(&'static str, &dyn rusqlite::ToSql)> {
+        match self {
+            FillCursor::First => None,
+            FillCursor::Track(track_id) => Some(("track_id = :lead", track_id)),
+            FillCursor::Position(position) => Some(("unshuffled = :lead", position)),
+        }
+    }
+}
+
 pub(super) fn fill_on(
     sql: &coven::BulkSqlContext<'_>,
     fill: ContextFill,
@@ -102,7 +117,7 @@ pub(super) fn fill_on(
         source_order: "t.position, t.id",
         source: Some(release_id),
     };
-    let (source, rows, shuffled, start, left_out) = match fill {
+    let (source, rows, whole_shuffled, start, left_out) = match fill {
         ContextFill::ReleaseOfTrack(track_id) => {
             let release_id: Option<String> = sql
                 .query_row("SELECT release_id FROM tracks WHERE id = ?", [&track_id], |row| {
@@ -250,13 +265,22 @@ pub(super) fn fill_on(
         }
     };
 
+    // A play the person asked shuffled shuffles the whole lane, and turns the
+    // mode on. Any other play shuffles while the mode is on, from its start
+    // track when it names one.
+    let shuffled = whole_shuffled || queue_row_on(sql)?.shuffled;
+    let lead = if whole_shuffled { None } else { start.lead() }.filter(|_| shuffled);
     // Up Next empties and the context lane is replaced, with what it plays
     // from written below.
     if sql.execute("DELETE FROM playback_manual", [])? > 0 {
         sql.execute(super::queue::MANUAL_CHANGED, [])?;
     }
     sql.execute("DELETE FROM playback_context", [])?;
-    let play_order = if shuffled { "random()" } else { "unshuffled" };
+    let play_order = match (shuffled, &lead) {
+        (false, _) => "unshuffled".to_string(),
+        (true, None) => "random()".to_string(),
+        (true, Some((leads, _))) => format!("({leads}) DESC, random()"),
+    };
     // The lane's entries are numbered on from the next free entry number, in
     // play order, and inserted in that order: the table and its position
     // index then grow at their end, and only the track index takes its rows
@@ -268,6 +292,9 @@ pub(super) fn fill_on(
     let mut bound: Vec<(&str, &dyn rusqlite::ToSql)> = vec![(":base", &base)];
     if let Some(source) = &rows.source {
         bound.push((":source", source));
+    }
+    if let Some((_, value)) = &lead {
+        bound.push((":lead", *value));
     }
     let track_count = sql.execute(
         &format!(
@@ -285,6 +312,7 @@ pub(super) fn fill_on(
         bound.as_slice(),
     )?;
     let cursor: i64 = match start {
+        _ if lead.is_some() => 1,
         FillCursor::First => 1,
         FillCursor::Track(track_id) => sql.query_row(
             "SELECT position FROM playback_context WHERE track_id = ?",

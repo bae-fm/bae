@@ -6,16 +6,18 @@ CREATE TABLE IF NOT EXISTS playback_queue (
     -- The entry number the next entry of either lane gets: no two entries
     -- ever share one, so an id a screen still holds never names a later row.
     next_entry INTEGER NOT NULL,
+    -- Whether shuffle is on: a mode of its own, kept with nothing playing as
+    -- repeat is. A play starts shuffled while it is on, and the lane's
+    -- upcoming order is shuffled exactly while it is.
+    shuffled          INTEGER NOT NULL CHECK (shuffled IN (0, 1)),
     -- What the context lane plays from (one release, several, a list of
-    -- tracks, or the library), whether it plays shuffled, and the position of
-    -- its track playing or last played: the lane's upcoming tracks are the
-    -- ones after it. NULL together exactly while the lane is empty. Which
-    -- releases several were, or which tracks a list named, is the lane's
-    -- tracks.
+    -- tracks, or the library) and the position of its track playing or last
+    -- played: the lane's upcoming tracks are the ones after it. NULL
+    -- together exactly while the lane is empty. Which releases several were,
+    -- or which tracks a list named, is the lane's tracks.
     source_kind       TEXT CHECK (source_kind IN ('release', 'releases', 'tracks', 'library')),
     -- The release the lane plays, set exactly when it plays one.
     source_release_id TEXT,
-    shuffled          INTEGER CHECK (shuffled IN (0, 1)),
     cursor            INTEGER,
     -- How many times tracks went into Up Next since playback started with
     -- the library, and how many tracks the last of those put in, NULL before
@@ -32,15 +34,14 @@ CREATE TABLE IF NOT EXISTS playback_queue (
     -- the move, and its rows know when to read again.
     manual_version  INTEGER NOT NULL CHECK (manual_version >= 0),
     context_version INTEGER NOT NULL CHECK (context_version >= 0),
-    CHECK ((source_kind IS NULL) = (shuffled IS NULL)
-        AND (source_kind IS NULL) = (cursor IS NULL)),
+    CHECK ((source_kind IS NULL) = (cursor IS NULL)),
     CHECK ((source_kind IS 'release') = (source_release_id IS NOT NULL)),
     CHECK ((additions = 0) = (added_tracks IS NULL))
 ) STRICT;
 
 INSERT OR IGNORE INTO playback_queue (
-    singleton, repeat, next_entry, additions, manual_version, context_version)
-VALUES (1, 'off', 1, 0, 0, 0);
+    singleton, repeat, shuffled, next_entry, additions, manual_version, context_version)
+VALUES (1, 'off', 0, 1, 0, 0, 0);
 
 -- Up Next: tracks queued by hand, drained first, in position order. Each is an
 -- entry of its own, so a track queued twice is two rows. Positions are only an
@@ -88,7 +89,7 @@ BEGIN
     DELETE FROM playback_context WHERE track_id = OLD.id;
     -- The lane's last track deleted takes what it played from with it.
     UPDATE playback_queue
-    SET source_kind = NULL, source_release_id = NULL, shuffled = NULL, cursor = NULL
+    SET source_kind = NULL, source_release_id = NULL, cursor = NULL
     WHERE source_kind IS NOT NULL AND NOT EXISTS (SELECT 1 FROM playback_context);
 END;
 

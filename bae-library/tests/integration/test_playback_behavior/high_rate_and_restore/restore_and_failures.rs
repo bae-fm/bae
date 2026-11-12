@@ -27,7 +27,7 @@ async fn test_restart_resumes_the_stored_queue_in_its_order() {
     handle.pause();
     let before = handle.queue_value().await.expect("queue value");
     let order = handle.queue_upcoming().await.expect("queue upcoming");
-    assert!(before.context.as_ref().is_some_and(|context| context.shuffled));
+    assert!(before.shuffled && before.context.is_some());
     handle.shutdown().await;
 
     let (handle, _capture_rx, _audio_clock) = start_capture_service(&lib.library).await;

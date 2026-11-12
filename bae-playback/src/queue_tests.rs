@@ -525,7 +525,7 @@ async fn test_value_keeps_manual_and_context_separate() {
             .collect::<Vec<_>>(),
         names(&["t2", "t3"])
     );
-    assert!(!context.shuffled);
+    assert!(!value.shuffled);
     assert_eq!(context.source, ContextSource::Release(f.id("r1")));
     assert_eq!(context.source_title.as_deref(), Some("Album Title"));
 }

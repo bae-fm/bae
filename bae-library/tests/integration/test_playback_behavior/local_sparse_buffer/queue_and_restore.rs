@@ -529,14 +529,14 @@ async fn set_shuffle_rearranges_the_context_lane_over_sparse_buffer() {
         playback.playback_handle.set_shuffle(true).await.expect("set_shuffle succeeds");
         let shuffled = playback.playback_handle.queue_value().await.expect("queue value");
         assert!(
-            shuffled.context.as_ref().is_some_and(|c| c.shuffled),
+            shuffled.shuffled && shuffled.context.is_some(),
             "SetShuffle(true) puts the lane in shuffled order"
         );
 
         playback.playback_handle.set_shuffle(false).await.expect("set_shuffle succeeds");
         let sequential = playback.playback_handle.queue_value().await.expect("queue value");
         assert!(
-            !sequential.context.expect("still a playing context").shuffled,
+            !sequential.shuffled && sequential.context.is_some(),
             "SetShuffle(false) puts the lane back in sequential order"
         );
 

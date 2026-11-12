@@ -2,8 +2,8 @@
 //! a play fills is `playback_context`; in both each row is an entry of its own,
 //! named by its entry number and ordered by its position, so a track queued
 //! twice is two rows. The one `playback_queue` row says what the context lane
-//! plays from, which of its rows is playing, how the queue repeats, and the
-//! additions to Up Next since playback started with the library. The
+//! plays from, which of its rows is playing, how the queue repeats and
+//! whether it shuffles, and the additions to Up Next since playback started with the library. The
 //! playback service is the only writer, each change one transaction; the queue
 //! screens read the same tables through live queries. Its tables, `playback_state`
 //! included, are `queue.sql`.
@@ -74,16 +74,6 @@ pub enum ManualPlace {
     At(usize),
 }
 
-/// What turning shuffle on or off did.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ShuffleChange {
-    Changed,
-    /// The context lane was already in that order.
-    Unchanged,
-    /// No context lane to order.
-    NoContext,
-}
-
 /// The playback queue's tables, as the playback service changes them.
 #[derive(Clone)]
 pub struct PlaybackQueueTables {
@@ -123,7 +113,7 @@ pub async fn settle_playback_queue(store: &Store, resume: bool) -> Result<(), Db
                 sql.execute(MANUAL_CHANGED, [])?;
             }
             clear_context_on(sql)?;
-            sql.execute("UPDATE playback_queue SET repeat = 'off'", [])?;
+            sql.execute("UPDATE playback_queue SET repeat = 'off', shuffled = 0", [])?;
             Ok(())
         })
         .await
@@ -195,10 +185,11 @@ impl PlaybackQueueTables {
             .await
     }
 
-    /// Put the context lane's tracks after the playing one in shuffled order,
+    /// Turn shuffle on or off: the mode is kept with nothing playing, and a
+    /// context lane puts its tracks after the playing one in shuffled order,
     /// or back in the order they had before it was shuffled. The playing track
     /// and the ones before it stay where they are.
-    pub async fn set_shuffle(&self, on: bool) -> Result<ShuffleChange, DbError> {
+    pub async fn set_shuffle(&self, on: bool) -> Result<(), DbError> {
         self.store.call(move |sql| set_shuffle_on(sql, on)).await
     }
 
@@ -374,7 +365,7 @@ impl PlaybackQueueTables {
 /// The `playback_queue` row's columns the lane changes read.
 pub(super) struct QueueRow {
     cursor: Option<i64>,
-    shuffled: Option<bool>,
+    pub(super) shuffled: bool,
     pub(super) next_entry: i64,
 }
 
@@ -393,12 +384,12 @@ fn set_cursor_on(sql: &CovenWrite<'_>, position: i64) -> rusqlite::Result<()> {
     Ok(())
 }
 
-/// What the context lane plays from cleared: its source, its shuffle and
-/// its cursor, which the schema keeps NULL together exactly while the lane is
-/// empty. The schema's `tracks_leave_playback_queue` trigger writes the same
+/// What the context lane plays from cleared: its source and its cursor, which
+/// the schema keeps NULL together exactly while the lane is empty. The shuffle
+/// mode stays. The schema's `tracks_leave_playback_queue` trigger writes the same
 /// clear when a deleted track was the lane's last.
 const CONTEXT_SOURCE_CLEARED: &str = "UPDATE playback_queue \
-     SET source_kind = NULL, source_release_id = NULL, shuffled = NULL, cursor = NULL";
+     SET source_kind = NULL, source_release_id = NULL, cursor = NULL";
 
 /// Empty the context lane and clear what it played from, in the same write.
 fn clear_context_on(sql: &coven::BulkSqlContext<'_>) -> rusqlite::Result<()> {
@@ -558,14 +549,16 @@ fn add_manual_on(
     Ok(count as usize)
 }
 
-fn set_shuffle_on(sql: &CovenWrite<'_>, on: bool) -> Result<ShuffleChange, DbError> {
+fn set_shuffle_on(sql: &CovenWrite<'_>, on: bool) -> Result<(), DbError> {
     let row = queue_row_on(sql)?;
-    let (Some(cursor), Some(shuffled)) = (row.cursor, row.shuffled) else {
-        return Ok(ShuffleChange::NoContext);
-    };
-    if shuffled == on {
-        return Ok(ShuffleChange::Unchanged);
+    if row.shuffled == on {
+        return Ok(());
     }
+    // With nothing playing the mode is all there is to change.
+    let Some(cursor) = row.cursor else {
+        sql.execute("UPDATE playback_queue SET shuffled = ?", [on])?;
+        return Ok(());
+    };
     if on {
         // The order shuffle returns to is the lane's order now.
         sql.execute("UPDATE playback_context SET unshuffled = position", [])?;
@@ -577,7 +570,7 @@ fn set_shuffle_on(sql: &CovenWrite<'_>, on: bool) -> Result<ShuffleChange, DbErr
         "UPDATE playback_queue SET shuffled = ?, context_version = context_version + 1",
         [on],
     )?;
-    Ok(ShuffleChange::Changed)
+    Ok(())
 }
 
 fn reorder_on(
@@ -697,10 +690,10 @@ fn advance_on(sql: &CovenWrite<'_>) -> Result<Option<QueueEntry>, DbError> {
 
 fn wrap_on(sql: &CovenWrite<'_>) -> Result<Option<QueueEntry>, DbError> {
     let row = queue_row_on(sql)?;
-    let Some(shuffled) = row.shuffled else {
+    if row.cursor.is_none() {
         return Ok(None);
-    };
-    if shuffled {
+    }
+    if row.shuffled {
         // A new pass in a new order over the rows the lane holds now. The
         // order unshuffling returns to stays the one the lane had when it was
         // shuffled.

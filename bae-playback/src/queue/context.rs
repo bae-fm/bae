@@ -14,13 +14,12 @@ impl PlaybackQueue {
         Ok(filled)
     }
 
-    /// Shuffle the context lane's upcoming tracks, or put them back in the
-    /// order they had before. The playing track and the ones before it stay.
+    /// Turn shuffle on or off. The context lane's upcoming tracks shuffle, or
+    /// go back in the order they had before; the playing track and the ones
+    /// before it stay. With no context lane the mode is kept for the next
+    /// play.
     pub async fn set_shuffle(&mut self, on: bool) -> Result<(), DbError> {
-        if self.tables.set_shuffle(on).await? == ShuffleChange::NoContext {
-            warn!("set_shuffle: no playing context to shuffle; ignoring");
-        }
-        Ok(())
+        self.tables.set_shuffle(on).await
     }
 
     /// Drop the context lane ("Clear playing from"). The playing track keeps

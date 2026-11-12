@@ -355,7 +355,7 @@ async fn set_shuffle_permutes_and_unpermutes_the_context_lane_in_place() {
         fixture.playback_handle.set_shuffle(true).await.expect("set_shuffle succeeds");
         let shuffled = fixture.playback_handle.queue_value().await.expect("queue value");
         assert!(
-            shuffled.context.as_ref().is_some_and(|c| c.shuffled),
+            shuffled.shuffled && shuffled.context.is_some(),
             "SetShuffle(true) puts the lane in shuffled order"
         );
 
@@ -363,8 +363,8 @@ async fn set_shuffle_permutes_and_unpermutes_the_context_lane_in_place() {
         // after the current one, in release order.
         fixture.playback_handle.set_shuffle(false).await.expect("set_shuffle succeeds");
         let sequential = fixture.playback_handle.queue_value().await.expect("queue value");
-        let ctx = sequential.context.expect("still a playing context");
-        assert!(!ctx.shuffled, "SetShuffle(false) puts the lane back in sequential order");
+        sequential.context.as_ref().expect("still a playing context");
+        assert!(!sequential.shuffled, "SetShuffle(false) puts the lane back in sequential order");
         let upcoming: Vec<String> = fixture
             .playback_handle
             .queue_upcoming()
@@ -464,12 +464,12 @@ async fn play_library_shuffled_plays_a_shuffled_library_context() {
             .await
             .expect("a library track starts playing");
         let proj = fixture.playback_handle.queue_value().await.expect("queue value");
-        let ctx = proj.context.expect("a library context");
+        let ctx = proj.context.as_ref().expect("a library context");
         assert!(
             matches!(ctx.source, bae_playback::ContextSource::Library),
             "PlayLibraryShuffled plays from the whole library"
         );
-        assert!(ctx.shuffled, "the library context is shuffled");
+        assert!(proj.shuffled, "the library context is shuffled");
     })
     .await;
 }

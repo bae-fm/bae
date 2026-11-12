@@ -4173,6 +4173,12 @@ rows back in the order they had when it turned on, keeping any removals and
 reorders made meanwhile. Repeating a shuffled list shuffles it afresh for each
 pass.
 
+Like repeat, shuffle is a mode of its own: with nothing playing, turning it on
+or off records it, and the next play starts that way. While it is on, a play
+shuffles what it plays, starting from the track it names when it names one. A
+play asked shuffled turns it on. Clearing what's playing from leaves it as it
+was.
+
 **Previous** goes back one track within the first three seconds of a track,
 and restarts the track after that. Playing an Up next entry, previous goes back
 to the track of what's playing from that it interrupted.
@@ -4535,7 +4541,7 @@ The queue and position are per device. The queue is stored as it changes: Up
 Next, what's playing from (a release, several, a list of tracks, or the
 library) and its tracks
 in play order — shuffled or not, with the session's removals and reorders —
-which track of it is playing, and repeat.
+which track of it is playing, and repeat and shuffle.
 Beside it a device saves the entry playing and its position while a track is
 loaded, the position never more than a second of playing behind, and keeps
 what playback is doing in one row (§9.4), whose volume and mute a resumed
@@ -5607,7 +5613,7 @@ membership's (`membership.sql`).
 
 | Table | Holds |
 |---|---|
-| `playback_queue` | the one row of this device's queue: repeat, what's playing from (its kind, and the release when it plays one), whether it's shuffled, which of its rows is playing, the number the next entry of either part gets, never given twice, and each part's version, the count of writes that changed it, which the screens holding a moved row wait for (§7.1) |
+| `playback_queue` | the one row of this device's queue: repeat, what's playing from (its kind, and the release when it plays one), whether shuffle is on, which of its rows is playing, the number the next entry of either part gets, never given twice, and each part's version, the count of writes that changed it, which the screens holding a moved row wait for (§7.1) |
 | `playback_manual` | Up next entry, in order: the track it plays |
 | `playback_context` | entry of what's playing from, in play order: its track and its place before shuffle |
 | `playback_state` | the one row of what this device was playing (§7.8) |
