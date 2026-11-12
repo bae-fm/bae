@@ -142661,7 +142661,7 @@
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld kbps"
+            "value" : "%lld كيلوبت/ث"
           }
         },
         "bg" : {
@@ -142673,13 +142673,13 @@
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld kbps"
+            "value" : "%lld kb/s"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld kbps"
+            "value" : "%lld kbit/s"
           }
         },
         "en" : {
@@ -142691,7 +142691,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld kbps"
+            "value" : "%lld kbit/s"
           }
         },
         "el" : {
@@ -142709,31 +142709,31 @@
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld kbps"
+            "value" : "%lld kbit/s"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld kbps"
+            "value" : "%lld kbit/s"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld kbps"
+            "value" : "%lld קילוביט/ש׳"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld kbps"
+            "value" : "%lld kb/s"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld kbps"
+            "value" : "%lld kbit/s"
           }
         },
         "it" : {
@@ -142757,7 +142757,7 @@
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld kbps"
+            "value" : "%lld kbit/s"
           }
         },
         "nl" : {
@@ -142769,7 +142769,7 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld kbps"
+            "value" : "%lld kb/s"
           }
         },
         "pt-BR" : {
@@ -142787,19 +142787,19 @@
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld kbps"
+            "value" : "%lld kb/s"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld kbps"
+            "value" : "%lld kb/s"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld kbps"
+            "value" : "%lld kbit/s"
           }
         },
         "tr" : {
@@ -142811,7 +142811,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld kbps"
+            "value" : "%lld кбіт/с"
           }
         },
         "zh-Hans" : {

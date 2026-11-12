@@ -61,7 +61,7 @@ struct AlbumExpansionContent: View {
                         if let year = album.year {
                             Text(verbatim: FactList.glyph)
                                 .foregroundStyle(.tertiary)
-                            Text(String(year))
+                            Text(PressingText.year(year))
                                 .foregroundStyle(.tertiary)
                         }
                     }

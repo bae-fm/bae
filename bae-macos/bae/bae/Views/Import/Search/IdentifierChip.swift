@@ -334,7 +334,7 @@ struct LookupReleaseLine: View {
     var body: some View {
         HStack(spacing: ThemeSpace.compact) {
             if let year = pressing.lead.year {
-                Text(String(year))
+                Text(PressingText.year(year))
                     .themeText(.strong)
                     .monospacedDigit()
             }

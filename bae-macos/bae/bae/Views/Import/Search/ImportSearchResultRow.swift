@@ -154,7 +154,7 @@ struct ImportSearchResultRow: View {
     private var facts: some View {
         HStack(spacing: ThemeSpace.related) {
             if let year = pressing.lead.year {
-                Text(String(year))
+                Text(PressingText.year(year))
                     .themeText(.strong)
                     .monospacedDigit()
             }

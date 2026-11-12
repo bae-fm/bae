@@ -56,17 +56,13 @@ public struct ReleaseDetail: Identifiable, Sendable {
         displayName = bridge.name.text
         pressingSummary = PressingText.line(bridge.pressingSummary)
         pressingDetails = PressingText.line(bridge.pressingDetails)
-        let separator = localizedCoreString("core.audio.list_separator")
         // The play time ends the line, in the words core chose for it
         // ("39 min" / "1 hr, 18 min"); absent when no track reports a length.
-        pressingLine = [
-            bridge.distinctYear.map { String($0) }, pressingSummary,
-            pressingDetails,
-            bridge.totalDuration?.text,
-        ]
-        .compactMap { $0 }
-        .filter { !$0.isEmpty }
-        .joined(separator: separator)
+        let separator = FactList.separator
+        pressingLine = FactList.joined([
+            bridge.distinctYear.map { PressingText.year($0) },
+            pressingSummary, pressingDetails, bridge.totalDuration?.text,
+        ])
         labelsLine = Self.labelsLine(bridge.labels, separator: separator)
         totalDuration = bridge.totalDuration
         downloadStatus = bridge.downloadStatus

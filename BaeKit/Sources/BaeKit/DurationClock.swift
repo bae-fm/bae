@@ -1,7 +1,7 @@
 import Foundation
 
-/// Renders a duration as a clock label — "3:07", "1:12:34", "-0:42" — for the
-/// current locale.
+/// Renders a duration as a clock label — "3:07", "1:12:34", "-0:42" — in the
+/// current locale's format (`Duration.TimeFormatStyle`).
 ///
 /// Core decides the label's fields: whether it has an hours field, whether it
 /// exists at all, and how a countdown behaves at the end of a track
@@ -16,7 +16,7 @@ public enum DurationClock {
     /// row instead carries its clock as a `BridgeDurationClock` field and
     /// renders it through ``label(_:)``.
     public static func text(_ ms: Int64?) -> String {
-        bridgeClock(ms: ms).map(render) ?? ""
+        bridgeClock(ms: ms).map { render($0) } ?? ""
     }
 
     /// The clock label for a pre-computed clock — the fields core rendered onto
@@ -40,29 +40,26 @@ public enum DurationClock {
             durationMs: durationMs,
             showRemaining: showRemaining
         )
-        return (render(clocks.leading), clocks.trailing.map(render) ?? "")
+        return (
+            render(clocks.leading), clocks.trailing.map { render($0) } ?? ""
+        )
     }
 
-    /// `:` between the fields, every field after the first padded to two digits,
-    /// a leading `-` for a countdown.
-    private static func render(_ clock: BridgeDurationClock) -> String {
-        let sign = clock.negative ? "-" : ""
-        let seconds = padded(UInt64(clock.seconds))
-        guard let hours = clock.hours else {
-            return "\(sign)\(plain(UInt64(clock.minutes))):\(seconds)"
-        }
-        let minutes = padded(UInt64(clock.minutes))
-        return "\(sign)\(plain(hours)):\(minutes):\(seconds)"
-    }
-
-    /// The leading field: unpadded, and never grouped ("100:00", not "1,00:00").
-    private static func plain(_ value: UInt64) -> String {
-        value.formatted(.number.grouping(.never))
-    }
-
-    /// A trailing field: two digits, so 7 seconds reads "07". Only ever applied
-    /// to minutes and seconds, which core keeps within 0...59.
-    private static func padded(_ value: UInt64) -> String {
-        value.formatted(.number.precision(.integerLength(2)).grouping(.never))
+    /// The platform's clock format for the locale: its separator and digits,
+    /// every field after the first padded to two digits, and its own sign for
+    /// a countdown (a minus that a right-to-left run keeps on the left).
+    public static func render(
+        _ clock: BridgeDurationClock,
+        locale: Locale = .autoupdatingCurrent
+    ) -> String {
+        let seconds =
+            Int64(clock.minutes) * 60 + Int64(clock.seconds)
+            + Int64(clamping: clock.hours ?? 0) * 3600
+        let duration = Duration.seconds(clock.negative ? -seconds : seconds)
+        let pattern: Duration.TimeFormatStyle.Pattern =
+            clock.hours == nil
+            ? .minuteSecond(padMinuteToLength: 1)
+            : .hourMinuteSecond(padHourToLength: 1)
+        return duration.formatted(.time(pattern: pattern).locale(locale))
     }
 }

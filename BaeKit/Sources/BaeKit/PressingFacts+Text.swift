@@ -17,6 +17,15 @@ public enum PressingText {
         FactList.joined(terms.map(\.text))
     }
 
+    /// A year in the current locale's digits, without a thousands separator
+    /// ("1973", never "1,973").
+    public static func year(
+        _ year: some BinaryInteger,
+        locale: Locale = .autoupdatingCurrent
+    ) -> String {
+        Int(year).formatted(.number.grouping(.never).locale(locale))
+    }
+
     /// A country's name in the current locale, from its ISO 3166-1 code.
     public static func countryName(_ code: String) -> String {
         Locale.current.localizedString(forRegionCode: code) ?? code
@@ -73,7 +82,7 @@ extension BridgeReleaseName {
             name
         case .described(let year, let media):
             Self.described(
-                year: year.map { String($0) },
+                year: year.map { PressingText.year($0) },
                 media: PressingText.line(media)
             )
         case .numbered(let number):
