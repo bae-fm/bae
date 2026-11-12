@@ -157,9 +157,11 @@ struct FormatsSettingsTab: View {
     /// Adds the preset core makes for a new format and opens its editor once
     /// config holds it.
     private func addPreset() {
-        let preset = outputs.newSavePreset(configStore.config.savePresets)
-        let presets = configStore.config.savePresets + [preset]
         set {
+            let preset = try outputs.newSavePreset(
+                configStore.config.savePresets
+            )
+            let presets = configStore.config.savePresets + [preset]
             try await outputs.setSavePresets(presets)
             editingPreset = EditingPreset(id: preset.id)
         }

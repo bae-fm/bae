@@ -140,8 +140,8 @@ fn each_format_starts_at_a_codec_of_its_own_that_saves() {
 #[test]
 fn a_new_preset_is_a_valid_flac_preset_with_its_own_id() {
     let ids = coven::SequentialIds::new();
-    let preset = SavePreset::new_flac(&ids, &[]);
-    let other = SavePreset::new_flac(&ids, &[]);
+    let preset = SavePreset::new_flac(&ids, &[], Numerals::LATIN);
+    let other = SavePreset::new_flac(&ids, &[], Numerals::LATIN);
 
     preset.validate().unwrap();
     assert_ne!(preset.id, other.id, "each new preset has an id of its own");
@@ -161,26 +161,32 @@ fn a_new_preset_is_a_valid_flac_preset_with_its_own_id() {
 #[test]
 fn a_new_format_is_named_with_the_next_free_number() {
     let ids = coven::SequentialIds::new();
-    let named =
-        |name: &str| SavePreset { name: name.to_string(), ..SavePreset::new_flac(&ids, &[]) };
+    let named = |name: &str| SavePreset {
+        name: name.to_string(),
+        ..SavePreset::new_flac(&ids, &[], Numerals::LATIN)
+    };
 
-    assert_eq!(SavePreset::new_flac(&ids, &[]).name, "FLAC");
-    assert_eq!(SavePreset::new_flac(&ids, &[named("FLAC")]).name, "FLAC (2)");
-    assert_eq!(SavePreset::new_flac(&ids, &[named("FLAC"), named("FLAC (2)")]).name, "FLAC (3)");
+    assert_eq!(SavePreset::new_flac(&ids, &[], Numerals::LATIN).name, "FLAC");
+    assert_eq!(SavePreset::new_flac(&ids, &[named("FLAC")], Numerals::LATIN).name, "FLAC (2)");
     assert_eq!(
-        SavePreset::new_flac(&ids, &[named("FLAC"), named("FLAC (3)")]).name,
+        SavePreset::new_flac(&ids, &[named("FLAC"), named("FLAC (2)")], Numerals::LATIN).name,
+        "FLAC (3)"
+    );
+    assert_eq!(
+        SavePreset::new_flac(&ids, &[named("FLAC"), named("FLAC (3)")], Numerals::LATIN).name,
         "FLAC (2)",
         "the first free number, not the one after the last"
     );
-    assert_eq!(SavePreset::new_flac(&ids, &[named("Phone")]).name, "FLAC");
+    assert_eq!(SavePreset::new_flac(&ids, &[named("Phone")], Numerals::LATIN).name, "FLAC");
 }
 
 /// Changing a format re-prefills its name while the name is still a prefill of
 /// the format it had, and leaves a name the person wrote alone.
 #[test]
 fn a_prefilled_name_follows_a_format_change() {
-    let change =
-        |name: &str, from, to, taken: &[&str]| SaveFormat::name_after_change(name, from, to, taken);
+    let change = |name: &str, from, to, taken: &[&str]| {
+        SaveFormat::name_after_change(name, from, to, taken, Numerals::LATIN)
+    };
     assert_eq!(change("FLAC", SaveFormat::Flac, SaveFormat::Mp3, &[]), "MP3");
     assert_eq!(change("FLAC (2)", SaveFormat::Flac, SaveFormat::Mp3, &["MP3"]), "MP3 (2)");
     assert_eq!(change("MP3 (2)", SaveFormat::Mp3, SaveFormat::Flac, &["FLAC"]), "FLAC (2)");
@@ -193,11 +199,52 @@ fn a_prefilled_name_follows_a_format_change() {
 #[test]
 fn a_name_is_taken_only_by_another_format() {
     let ids = coven::SequentialIds::new();
-    let flac = SavePreset::new_flac(&ids, &[]);
-    let mp3 = SavePreset { name: "MP3".to_string(), ..SavePreset::new_flac(&ids, &[]) };
+    let flac = SavePreset::new_flac(&ids, &[], Numerals::LATIN);
+    let mp3 =
+        SavePreset { name: "MP3".to_string(), ..SavePreset::new_flac(&ids, &[], Numerals::LATIN) };
     let presets = vec![flac.clone(), mp3.clone()];
 
     assert!(SavePreset::name_taken("MP3", &flac.id, &presets));
     assert!(!SavePreset::name_taken("MP3", &mp3.id, &presets));
     assert!(!SavePreset::name_taken("Phone", &flac.id, &presets));
+}
+
+/// The number in a name is written in the digits of the viewer's language, and
+/// only those digits make a name a prefill.
+#[test]
+fn a_numbered_name_uses_the_digits_it_is_given() {
+    let ids = coven::SequentialIds::new();
+    let arabic = Numerals::from_zero_digit("٠").unwrap();
+    let named = |name: &str| SavePreset {
+        name: name.to_string(),
+        ..SavePreset::new_flac(&ids, &[], arabic)
+    };
+
+    assert_eq!(SavePreset::new_flac(&ids, &[named("FLAC")], arabic).name, "FLAC (٢)");
+    assert_eq!(
+        SavePreset::new_flac(&ids, &[named("FLAC"), named("FLAC (٢)")], arabic).name,
+        "FLAC (٣)"
+    );
+    let change = |name: &str| {
+        SaveFormat::name_after_change(name, SaveFormat::Flac, SaveFormat::Mp3, &["MP3"], arabic)
+    };
+    assert_eq!(change("FLAC (٢)"), "MP3 (٢)");
+    assert_eq!(change("FLAC (2)"), "FLAC (2)", "Latin digits are not this language's prefill");
+    assert_eq!(Numerals::LATIN.write(12), "12");
+    assert_eq!(arabic.write(10), "١٠");
+    assert_eq!(arabic.read("١٠"), Some(10));
+    assert_eq!(arabic.read("1٠"), None);
+    assert_eq!(arabic.read(""), None);
+}
+
+/// A zero digit that does not start a run of ten decimal digits is refused, so
+/// no `Numerals` holds one.
+#[test]
+fn a_zero_digit_must_start_ten_decimal_digits() {
+    for valid in ["0", "٠", "۰", "०", "০", "๐", "０"] {
+        Numerals::from_zero_digit(valid).unwrap_or_else(|error| panic!("{valid}: {error}"));
+    }
+    for invalid in ["", "00", "a", "1", "9", "٩", " ", "²", "\u{10FFFF}"] {
+        assert!(Numerals::from_zero_digit(invalid).is_err(), "{invalid:?}");
+    }
 }

@@ -11,6 +11,8 @@ struct SavePresetEditor: View {
 
     @Environment(\.dismiss)
     private var dismiss
+    @Environment(UiStore.self)
+    private var uiStore
 
     /// The name field, committed on submit or focus loss; an empty draft
     /// disables Done instead.
@@ -143,12 +145,19 @@ struct SavePresetEditor: View {
                     changed.codec = preset.codec.switched(to: format)
                     // A name that is still a format's prefill follows the
                     // format; a name the user typed stays put.
-                    changed.name = bridgeSaveNameAfterFormatChange(
-                        name: preset.name,
-                        from: preset.codec.format,
-                        to: format,
-                        taken: otherNames
-                    )
+                    do {
+                        changed.name = try bridgeSaveNameAfterFormatChange(
+                            name: preset.name,
+                            from: preset.codec.format,
+                            to: format,
+                            taken: otherNames,
+                            zeroDigit: Outputs.zeroDigit
+                        )
+                    }
+                    catch {
+                        uiStore.showError(error)
+                        return
+                    }
                     update(changed)
                 }
             )
@@ -183,5 +192,6 @@ struct SavePresetEditor: View {
             presets: PreviewData.savePresets,
             update: { preset = $0 }
         )
+        .environment(UiStore())
     }
 #endif

@@ -2401,7 +2401,8 @@ Two ways put a release back on disk, from desktop:
   128, 160, 192, 256 and 320, Opus's 64, 96, 128, 160, 192 and 256. The
   formats are offered FLAC, WAV and AIFF, then MP3, AAC and Opus. A new
   format is named after its codec, with the first free number
-  when that name is taken ("FLAC", "FLAC (2)"); names are unique, and two
+  when that name is taken ("FLAC", "FLAC (2)"), the number in the digits of the
+  viewer's language ("FLAC (٢)" in Arabic); names are unique, and two
   formats may write the same thing. Save as… offers every format, for a track
   and for a release, starting with the one last used; its Format menu ends in
   Edit Formats…, which opens Settings at Save as in front of the panel, which

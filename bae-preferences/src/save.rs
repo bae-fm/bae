@@ -92,6 +92,73 @@ pub enum SaveCodec {
     Aiff { bit_depth: SaveBitDepth },
 }
 
+/// The ten digits a language writes numbers with: the zero digit and the nine
+/// characters after it. It holds only a run of ten decimal digits, so a name
+/// built from it reads back.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Numerals {
+    zero: char,
+}
+
+impl Numerals {
+    /// The digits 0 to 9.
+    pub const LATIN: Numerals = Numerals { zero: '0' };
+
+    /// The numerals whose zero is `zero_digit`, the text a language writes the
+    /// number 0 as. It must be one character that starts a run of ten decimal
+    /// digits (Arabic-Indic "٠" is one, a letter or "9" is not).
+    pub fn from_zero_digit(zero_digit: &str) -> Result<Self, PreferencesError> {
+        let mut chars = zero_digit.chars();
+        let (Some(zero), None) = (chars.next(), chars.next()) else {
+            return Err(PreferencesError::Invalid(format!(
+                "the zero digit {zero_digit:?} is not one character"
+            )));
+        };
+        let run = (0..10).all(|offset| {
+            char::from_u32(zero as u32 + offset).is_some_and(|digit| digit.is_numeric())
+        });
+        // A run that starts mid-way (the "1" of 0 to 9) is not a zero.
+        let starts_run = (zero as u32)
+            .checked_sub(1)
+            .and_then(char::from_u32)
+            .is_none_or(|before| !before.is_numeric());
+        if run && starts_run {
+            Ok(Self { zero })
+        } else {
+            Err(PreferencesError::Invalid(format!(
+                "{zero:?} does not start a run of ten decimal digits"
+            )))
+        }
+    }
+
+    /// `number` written in these digits.
+    pub fn write(self, number: u32) -> String {
+        number
+            .to_string()
+            .chars()
+            .map(|digit| {
+                let value = digit.to_digit(10).expect("a number prints decimal digits");
+                self.digit(value)
+            })
+            .collect()
+    }
+
+    /// The number `text` writes in these digits; `None` for an empty text, a
+    /// character that is not one of these ten, or a number past `u32`.
+    pub fn read(self, text: &str) -> Option<u32> {
+        if text.is_empty() {
+            return None;
+        }
+        text.chars()
+            .map(|character| (character as u32).checked_sub(self.zero as u32).filter(|v| *v < 10))
+            .try_fold(0u32, |sum, value| sum.checked_mul(10)?.checked_add(value?))
+    }
+
+    fn digit(self, value: u32) -> char {
+        char::from_u32(self.zero as u32 + value).expect("from_zero_digit checked the run")
+    }
+}
+
 /// A format a preset saves as. Each codec is one format at its own settings:
 /// a lossless format's bit depth or a lossy one's bitrate.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -145,17 +212,18 @@ impl SaveFormat {
     }
 
     /// The name a new preset of this format starts with: the format's name,
-    /// or with the first free number from 2 ("FLAC (2)") when `taken` has it.
-    pub fn free_name(self, taken: &[&str]) -> String {
+    /// or with the first free number from 2 ("FLAC (2)") when `taken` has it,
+    /// the number written in `numerals`.
+    pub fn free_name(self, taken: &[&str], numerals: Numerals) -> String {
         let name = self.name();
         if !taken.contains(&name) {
             return name.to_string();
         }
         // Some candidate among the first `taken.len() + 1` numbers is free, so
         // the loop ends, and `number` never passes `taken.len() + 2`.
-        let mut number = 2usize;
+        let mut number = 2u32;
         loop {
-            let candidate = format!("{name} ({number})");
+            let candidate = format!("{name} ({})", numerals.write(number));
             if !taken.contains(&candidate.as_str()) {
                 return candidate;
             }
@@ -164,26 +232,30 @@ impl SaveFormat {
     }
 
     /// Whether `name` is what `free_name` makes for this format: its name,
-    /// alone or with a number from 2.
-    fn is_prefill(self, name: &str) -> bool {
+    /// alone or with a number from 2 written in `numerals`.
+    fn is_prefill(self, name: &str, numerals: Numerals) -> bool {
         let format_name = self.name();
         name == format_name
             || name
                 .strip_prefix(format_name)
                 .and_then(|rest| rest.strip_prefix(" ("))
                 .and_then(|rest| rest.strip_suffix(')'))
-                .is_some_and(|number| {
-                    number.chars().all(|digit| digit.is_ascii_digit())
-                        && number.parse::<u32>().is_ok_and(|number| number >= 2)
-                })
+                .and_then(|number| numerals.read(number))
+                .is_some_and(|number| number >= 2)
     }
 
     /// The name of a preset whose format changes from `from` to `to`: a name
     /// still `from`'s prefill becomes `to`'s, free among `taken`; a name the
     /// person wrote stays.
-    pub fn name_after_change(name: &str, from: Self, to: Self, taken: &[&str]) -> String {
-        if from.is_prefill(name) {
-            to.free_name(taken)
+    pub fn name_after_change(
+        name: &str,
+        from: Self,
+        to: Self,
+        taken: &[&str],
+        numerals: Numerals,
+    ) -> String {
+        if from.is_prefill(name, numerals) {
+            to.free_name(taken, numerals)
         } else {
             name.to_string()
         }
@@ -304,14 +376,19 @@ impl Default for SaveExtras {
 
 impl SavePreset {
     /// The preset a person adds to their list: FLAC at its starting codec,
-    /// named for the format with the next free number (`SaveFormat::free_name`),
+    /// named for the format with the next free number (`SaveFormat::free_name`)
+    /// in `numerals`,
     /// embedding the cover, under an id from `ids`.
-    pub fn new_flac(ids: &dyn coven::IdSource, existing: &[SavePreset]) -> Self {
+    pub fn new_flac(
+        ids: &dyn coven::IdSource,
+        existing: &[SavePreset],
+        numerals: Numerals,
+    ) -> Self {
         let format = SaveFormat::Flac;
         let taken: Vec<&str> = existing.iter().map(|preset| preset.name.as_str()).collect();
         SavePreset {
             id: ids.new_id().simple().to_string(),
-            name: format.free_name(&taken),
+            name: format.free_name(&taken, numerals),
             codec: format.default_codec(),
         }
     }

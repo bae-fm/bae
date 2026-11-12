@@ -368,18 +368,23 @@ impl BridgeHost {
 #[uniffi::export]
 impl BridgeHost {
     /// The preset a person adds to the list `existing`, as core makes it: FLAC,
-    /// named with the next free number, the cover embedded, under an id from
-    /// the host's id source.
+    /// named with the next free number written in the digits of the viewer's
+    /// language (`zero_digit` is the text that language writes 0 as; one that
+    /// starts no run of ten decimal digits is an error), the cover embedded,
+    /// under an id from the host's id source.
     pub fn new_save_preset(
         &self,
         existing: Vec<crate::types::BridgeSavePreset>,
-    ) -> crate::types::BridgeSavePreset {
+        zero_digit: String,
+    ) -> Result<crate::types::BridgeSavePreset, BridgeError> {
+        let numerals = bae_preferences::Numerals::from_zero_digit(&zero_digit)?;
         let existing: Vec<_> =
             existing.into_iter().map(crate::types::BridgeSavePreset::into_core).collect();
-        crate::types::BridgeSavePreset::from_core(&bae_preferences::SavePreset::new_flac(
+        Ok(crate::types::BridgeSavePreset::from_core(&bae_preferences::SavePreset::new_flac(
             self.ids.as_ref(),
             &existing,
-        ))
+            numerals,
+        )))
     }
 }
 

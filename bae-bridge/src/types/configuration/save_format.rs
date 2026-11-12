@@ -59,16 +59,27 @@ pub fn bridge_save_format_name(format: BridgeSaveFormat) -> String {
 }
 
 /// The name of a preset called `name` once its format changes from `from` to
-/// `to`, with `taken` the names of the other formats.
+/// `to`, with `taken` the names of the other formats. A number in the name is
+/// written in the digits of the viewer's language, `zero_digit` being the text
+/// that language writes 0 as; a `zero_digit` that starts no run of ten decimal
+/// digits is an error.
 #[uniffi::export]
 pub fn bridge_save_name_after_format_change(
     name: String,
     from: BridgeSaveFormat,
     to: BridgeSaveFormat,
     taken: Vec<String>,
-) -> String {
+    zero_digit: String,
+) -> Result<String, BridgeError> {
+    let numerals = bae_preferences::Numerals::from_zero_digit(&zero_digit)?;
     let taken: Vec<&str> = taken.iter().map(String::as_str).collect();
-    bae_preferences::SaveFormat::name_after_change(&name, from.into_core(), to.into_core(), &taken)
+    Ok(bae_preferences::SaveFormat::name_after_change(
+        &name,
+        from.into_core(),
+        to.into_core(),
+        &taken,
+        numerals,
+    ))
 }
 
 /// Whether a format of `presets` can be deleted: the only one left cannot.

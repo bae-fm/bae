@@ -84,7 +84,10 @@ internal open class NoJoinsHost : EditionFakeBridgeHost() {
         deviceName: String,
     ): BridgeDeviceReset = unfaked("prepareDeviceReset")
 
-    override fun newSavePreset(existing: List<BridgeSavePreset>): BridgeSavePreset = unfaked("newSavePreset")
+    override fun newSavePreset(
+        existing: List<BridgeSavePreset>,
+        zeroDigit: String,
+    ): BridgeSavePreset = unfaked("newSavePreset")
 
     override suspend fun restoreFromCode(
         code: String,

@@ -25,9 +25,10 @@ final class Outputs: Sendable, Observable {
     /// Cancel a release's export — drops a queued/failed entry or aborts the
     /// in-flight one (a partial copy never lands its destination file).
     let cancelOutput: @Sendable (_ releaseId: String) async throws -> Void
-    /// A preset for a new format as core makes it, under an id of its own.
+    /// A preset for a new format as core makes it, under an id of its own,
+    /// its number written in the digits of the app's language.
     let newSavePreset:
-        @Sendable (_ existing: [BridgeSavePreset]) -> BridgeSavePreset
+        @Sendable (_ existing: [BridgeSavePreset]) throws -> BridgeSavePreset
     /// Replace configured export presets.
     let setSavePresets:
         @Sendable (_ presets: [BridgeSavePreset]) async throws -> Void
@@ -46,7 +47,7 @@ final class Outputs: Sendable, Observable {
 
     init(
         newSavePreset:
-            @escaping @Sendable ([BridgeSavePreset]) -> BridgeSavePreset,
+            @escaping @Sendable ([BridgeSavePreset]) throws -> BridgeSavePreset,
         enqueueExport:
             @escaping @Sendable (String, URL)
             async throws -> Void =
@@ -98,9 +99,20 @@ final class Outputs: Sendable, Observable {
         self.setSaveLoudnessTags = setSaveLoudnessTags
     }
 
+    /// The text the app's language writes 0 as: core writes the number of a
+    /// new format's name ("FLAC (2)") in that language's digits.
+    static var zeroDigit: String {
+        (0 as Int).formatted()
+    }
+
     convenience init(handle: any AppHandleProtocol, host: BridgeHost) {
         self.init(
-            newSavePreset: { host.newSavePreset(existing: $0) },
+            newSavePreset: {
+                try host.newSavePreset(
+                    existing: $0,
+                    zeroDigit: Outputs.zeroDigit
+                )
+            },
             enqueueExport: {
                 try await handle.enqueueExport(
                     releaseId: $0,

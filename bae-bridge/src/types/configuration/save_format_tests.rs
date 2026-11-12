@@ -72,9 +72,19 @@ fn the_name_rules_cross_as_core_states_them() {
             BridgeSaveFormat::Flac,
             BridgeSaveFormat::Mp3,
             vec!["MP3".to_string()],
-        ),
+            "0".to_string(),
+        )
+        .unwrap(),
         "MP3 (2)"
     );
+    assert!(bridge_save_name_after_format_change(
+        "FLAC".to_string(),
+        BridgeSaveFormat::Flac,
+        BridgeSaveFormat::Mp3,
+        Vec::new(),
+        "x".to_string(),
+    )
+    .is_err());
     let preset = |id: &str, name: &str| BridgeSavePreset {
         id: id.to_string(),
         name: name.to_string(),
