@@ -168,15 +168,15 @@ fun StatusChip(
 }
 
 /**
- * How a notice sits on its screen: on its tone's fill; with no fill and an outline glyph; or, for a
+ * How a notice sits on its screen: on its tone's fill; with no fill; or, for a
  * view that failed whole, centred in the space it's given (drawn by [AndroidNotice], not by [NoticeFrame]).
  */
 enum class NoticeLook { FILLED, QUIET, CENTERED }
 
 /**
  * A notice in its tone: the tone's glyph at the top left, centred on the first
- * line of body text beside it. [NoticeLook.FILLED] draws it on the tone's fill;
- * [NoticeLook.QUIET] on the screen, with an outline glyph and no side padding.
+ * line of body text beside it, always as an outline. [NoticeLook.FILLED] draws it on the tone's
+ * fill; [NoticeLook.QUIET] on the screen, with no side padding.
  */
 @Composable
 internal fun NoticeFrame(
@@ -208,7 +208,7 @@ internal fun NoticeFrame(
             horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
         ) {
             if (tone.icon(outline = false) != null) {
-                FirstLineGlyph(tone, outline = quiet)
+                FirstLineGlyph(tone)
             }
             content()
         }
@@ -218,13 +218,10 @@ internal fun NoticeFrame(
 /** Where a notice's words start, past its glyph: what a list of notices insets its dividers by. */
 internal val NoticeTextInset = ThemeIcon.medium + ThemeSpace.related
 
-/** The tone's glyph in a [FirstLineBox], so it centres on the first line. */
+/** The tone's glyph, always as an outline, in a [FirstLineBox], so it centres on the first line. */
 @Composable
-private fun FirstLineGlyph(
-    tone: StatusTone,
-    outline: Boolean,
-) {
-    FirstLineBox { StatusGlyph(tone, outline = outline) }
+private fun FirstLineGlyph(tone: StatusTone) {
+    FirstLineBox { StatusGlyph(tone, outline = true) }
 }
 
 /**

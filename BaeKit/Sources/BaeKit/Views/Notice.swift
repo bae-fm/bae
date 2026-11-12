@@ -170,7 +170,7 @@ public struct Notice: View {
         Group {
             if tone.symbol != nil {
                 RowItem {
-                    StatusGlyph(tone, outline: look == .quiet)
+                    StatusGlyph(tone, outline: true)
                         .themeIcon(.medium)
                 } content: {
                     titleLine
@@ -247,7 +247,17 @@ public struct Notice: View {
     private var choiceButtons: some View {
         HStack(spacing: ThemeSpace.related) {
             if let details, detailsOpening == .button {
-                detailsButton(details)
+                if buttons == .below {
+                    // Under the words Details has the padding of the button
+                    // beside it, and pulls out by it so its text lines up with
+                    // the words above.
+                    detailsButton(details)
+                        .padding(.horizontal, ThemeSpace.group)
+                        .padding(.leading, -ThemeSpace.group)
+                }
+                else {
+                    detailsButton(details)
+                }
             }
             if let secondary {
                 actionButton(secondary)
@@ -361,7 +371,8 @@ extension Notice {
         #if canImport(AppKit)
             colouredButton(
                 Button("Details") { showErrorDetails(details) }
-                    .buttonStyle(.borderless)
+                    .buttonStyle(.borderless),
+                borderless: true
             )
         #endif
     }
@@ -370,9 +381,12 @@ extension Notice {
     private func actionButton(_ action: ErrorAction) -> some View {
         switch action.kind {
         case .button(let perform):
-            colouredButton(Button(action: perform) { action.title })
-                .disabled(action.isDisabled)
-                .keyboardShortcut(action.shortcut)
+            colouredButton(
+                Button(action: perform) { action.title },
+                borderless: false
+            )
+            .disabled(action.isDisabled)
+            .keyboardShortcut(action.shortcut)
         case .menu(let choices):
             colouredButton(
                 Menu {
@@ -386,22 +400,23 @@ extension Notice {
                     action.title
                 }
                 .menuStyle(.button)
-                .fixedSize()
+                .fixedSize(),
+                borderless: false
             )
             .disabled(action.isDisabled)
         }
     }
 
-    /// A button in the notice's text: on a toned notice's own fill, its accent
-    /// there; in a failed view's centred notice, the grey of the words beside
-    /// it (the stage's secondary text on a stage); anywhere else the screen's
-    /// text.
+    /// A button in the notice: a borderless one (Details) in the accent in a
+    /// filled or quiet notice; a bordered one (Retry) in the plain button
+    /// look, white on the control grey, with no tint. In a failed view's
+    /// centred notice both take the grey of the words beside it (the stage's
+    /// secondary text on a stage).
     @ViewBuilder
-    private func colouredButton(_ button: some View) -> some View {
-        if look == .filled && tone.hasNoticeFill {
-            button.foregroundStyle(Theme.accent).tint(Theme.accent)
-        }
-        else if look == .centered {
+    private func colouredButton(_ button: some View, borderless: Bool)
+        -> some View
+    {
+        if look == .centered {
             button.foregroundStyle(.secondary).tint(.secondary)
         }
         else if look == .centeredOnStage {
@@ -409,8 +424,11 @@ extension Notice {
                 .foregroundStyle(Theme.onFillSecondary)
                 .tint(Theme.onFillSecondary)
         }
+        else if borderless {
+            button.foregroundStyle(Theme.accent).tint(Theme.accent)
+        }
         else {
-            button.foregroundStyle(.primary).tint(.primary)
+            button
         }
     }
 

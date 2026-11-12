@@ -59,7 +59,7 @@ public enum StatusTone: Sendable, Equatable {
         color.opacity(ThemeOpacity.tint)
     }
 
-    /// The glyph a notice in this tone leads with.
+    /// The filled form of the tone's glyph, for a chip.
     public var symbol: String? {
         switch self {
         case .info: "info.circle.fill"
@@ -70,7 +70,7 @@ public enum StatusTone: Sendable, Equatable {
         }
     }
 
-    /// The outline form of the glyph, for a quiet notice.
+    /// The outline form of the glyph, which every notice draws.
     public var outlineSymbol: String? {
         switch self {
         case .info: "info.circle"
