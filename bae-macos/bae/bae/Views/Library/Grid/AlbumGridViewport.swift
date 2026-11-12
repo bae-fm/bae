@@ -200,8 +200,13 @@ final class AlbumGridViewport {
     /// scroll takes effect; each report finds the slot where it was, and a
     /// second scroll to the same place would only be asked for again.
     func scrollBackingHeldSlot(columnCount: Int) -> AlbumGridSlot? {
-        guard let slot = held, !isOnTop(slot, columnCount: columnCount)
-        else { return nil }
+        guard let slot = held else { return nil }
+        // On top, the last scroll did its work: the slot drifting off again
+        // to where it stood then is a new reason to scroll.
+        guard !isOnTop(slot, columnCount: columnCount) else {
+            lastHoldScroll = nil
+            return nil
+        }
         let standing = HoldScroll(
             slot: slot,
             columnCount: columnCount,
