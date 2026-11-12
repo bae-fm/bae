@@ -563,9 +563,11 @@ enum From<'k> {
 
 impl Reach {
     /// The window `window` covers, clamped to the list's rows: its first
-    /// row's place and how many rows it holds.
+    /// row's place and how many rows it holds. A window past the list's end,
+    /// as a list shrunk under it leaves, holds none, at the end.
     fn clamped(&self, window: &LibraryPageWindow) -> (u64, u64) {
-        (window.offset, window.limit.min(self.total.saturating_sub(window.offset)))
+        let offset = window.offset.min(self.total);
+        (offset, window.limit.min(self.total - offset))
     }
 
     /// The start of the read of `window` that passes the fewest rows before

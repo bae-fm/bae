@@ -255,3 +255,25 @@ fn a_window_reached_from_any_start_holds_its_offsets_rows() {
         }
     }
 }
+
+/// A window that starts past the list's end, as a search that shrank the list
+/// leaves the one the app last asked for, passes no rows and holds none.
+#[test]
+fn a_window_past_the_lists_end_holds_no_rows() {
+    let conn = rows();
+    let order = orders().into_iter().next().unwrap();
+    let reach = Reach { total: 3, stride: 7 };
+    let window = LibraryPageWindow { offset: 150, limit: 6 };
+    assert_eq!(reach.rows_passed(&window, &Places::new()), 0);
+    let WindowsRead { windows, found } = read_windows_reaching(
+        &order,
+        &LibraryPageWindows::from([window]),
+        Places::new(),
+        reach,
+        |seek, limit, offset| read(&conn, &order, seek, limit, offset),
+        |seek, cap| count(&conn, &order, seek, cap),
+    )
+    .unwrap();
+    assert!(windows[0].1.is_empty());
+    assert!(found.is_empty());
+}
