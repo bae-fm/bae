@@ -1,6 +1,7 @@
 package fm.bae.app.ui.settings
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -158,7 +159,10 @@ internal fun DevicesPage(
 
 @Composable
 private fun FormerDevicesIfAny(member: BridgeMember) {
-    if (member.formerDevices.isNotEmpty()) FormerDevices(devices = member.formerDevices)
+    if (member.formerDevices.isNotEmpty()) {
+        // The design sets the removed devices a gap of their own below the devices card.
+        Box(modifier = Modifier.padding(top = ThemeSpace.related)) { FormerDevices(devices = member.formerDevices) }
+    }
 }
 
 @Composable
