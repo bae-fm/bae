@@ -9,7 +9,7 @@ public struct ReleaseDetail: Identifiable, Sendable {
     /// What a list of the album's releases calls this one, in the current
     /// locale.
     public var displayName: String
-    /// The pressing on one line: year, where and what it is, and its play
+    /// The pressing on one line: the year when it differs from the album's, where and what it is, and its play
     /// time. Empty when the release states none of it.
     public var pressingLine: String
     /// The labels on one line: each name once, each catalog number once, as
@@ -60,7 +60,8 @@ public struct ReleaseDetail: Identifiable, Sendable {
         // The play time ends the line, in the words core chose for it
         // ("39 min" / "1 hr, 18 min"); absent when no track reports a length.
         pressingLine = [
-            bridge.year.map { String($0) }, pressingSummary, pressingDetails,
+            bridge.distinctYear.map { String($0) }, pressingSummary,
+            pressingDetails,
             bridge.totalDuration?.text,
         ]
         .compactMap { $0 }

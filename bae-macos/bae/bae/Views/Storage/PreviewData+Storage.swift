@@ -760,7 +760,7 @@
                 id: row.release.id,
                 albumId: row.release.albumId,
                 name: .named(name: row.album.title),
-                year: row.album.year,
+                distinctYear: nil,
                 labels: [],
                 facts: facts,
                 pressingSummary: bridgePressingSummary(facts: facts),

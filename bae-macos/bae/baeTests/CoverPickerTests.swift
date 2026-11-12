@@ -97,7 +97,7 @@ struct CoverPickerTests {
             id: "release-test",
             albumId: "album-test",
             name: .named(name: "Release"),
-            year: nil,
+            distinctYear: nil,
             labels: [],
             facts: facts,
             pressingSummary: bridgePressingSummary(facts: facts),

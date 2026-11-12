@@ -8,17 +8,17 @@ import uniffi.bae_bridge.bridgeAudioChannelsKey
 fun BridgeRelease.pressingLineText(context: Context): String = pressingLineText(context, ::bridgeAudioChannelsKey)
 
 /**
- * The pressing on one line: year, where and what it is, the source audio and
- * the play time. The pressing lines come worded by core on the release itself;
- * the channel word comes in as a function, so the wording here is exercised
- * without the native bridge.
+ * The pressing on one line: the release's year when it differs from the album's, where and what it
+ * is, the source audio and the play time. The pressing lines come worded by core on the release
+ * itself; the channel word comes in as a function, so the wording here is exercised without the
+ * native bridge.
  */
 internal fun BridgeRelease.pressingLineText(
     context: Context,
     audioChannelsKey: (Long) -> String?,
 ): String =
     listOf(
-        year?.toString(),
+        distinctYear?.toString(),
         factLine(context, pressingSummary).ifEmpty { null },
         factLine(context, pressingDetails).ifEmpty { null },
         sourceAudio?.text(context, audioChannelsKey),

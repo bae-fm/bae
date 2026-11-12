@@ -173,7 +173,9 @@
                         year: year,
                         media: bridgeMediaTerms(media: fixture.media)
                     ),
-                year: year,
+                distinctYear: fixture.year.flatMap {
+                    $0 == album.year ? nil : $0
+                },
                 labels: fixture.identifiers?.labels ?? [],
                 facts: facts,
                 pressingSummary: bridgePressingSummary(facts: facts),

@@ -141,7 +141,7 @@ object PreviewData {
             id = id,
             albumId = albumId,
             name = BridgeReleaseName.Named("Release"),
-            year = 2020,
+            distinctYear = null,
             labels = listOf(BridgeLabelLine(names = listOf("Label A"), catalogNumbers = listOf("AB 100"))),
             facts =
                 BridgePressingFacts(

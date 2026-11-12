@@ -165,6 +165,11 @@ release on two lines: its pressing (its own year when that differs from the
 album's, where it was released, its media and details, its audio and its
 length), and its labels, each with the catalog numbers it gives the pressing.
 
+The album page's pressing line starts with the release's year only when it
+differs from the album's year shown above it (a 2001 reissue of a 1992 album
+says 2001; the 1992 original says nothing); core decides this once and hands
+the apps the year or nothing.
+
 Every import is its own release, so the library can hold one pressing twice:
 two folders of the same CD are two releases under one album (§2.7).
 

@@ -41,14 +41,15 @@ func makeBridgeRelease(
     ),
     fileCount: Int64 = 0,
     totalSize: UInt64 = 0,
-    cover: BridgeImageRef? = nil
+    cover: BridgeImageRef? = nil,
+    distinctYear: Int32? = nil
 ) -> BridgeRelease {
     let facts = PreviewData.pressingFacts(media: media)
     return BridgeRelease(
         id: id,
         albumId: albumId,
         name: .named(name: displayName),
-        year: 2024,
+        distinctYear: distinctYear,
         labels: [],
         facts: facts,
         pressingSummary: bridgePressingSummary(facts: facts),

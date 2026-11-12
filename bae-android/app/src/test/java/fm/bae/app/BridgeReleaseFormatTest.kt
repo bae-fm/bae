@@ -36,6 +36,18 @@ class BridgeReleaseFormatTest {
         assertEquals("Japan · CD · Promo", release.pressingLineText(context, stereoKey))
     }
 
+    /** Core hands over the release's year only when it differs from the album's: the line starts with it then. */
+    @Test
+    fun theLineNamesTheYearOnlyWhenCoreHandsOneOver() {
+        val base =
+            BridgeFixtures
+                .release(id = "release-1", albumId = "album-1")
+                .copy(pressingSummary = listOf(BridgeFactTerm.Worded(BridgeTermLabel.Verbatim("CD"))))
+
+        assertEquals("2001 · CD", base.copy(distinctYear = 2001).pressingLineText(context, stereoKey))
+        assertEquals("CD", base.copy(distinctYear = null).pressingLineText(context, stereoKey))
+    }
+
     @Test
     fun aMixedReleaseLineNamesWhatDiffers() {
         val release =

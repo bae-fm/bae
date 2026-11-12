@@ -32,6 +32,19 @@ struct ReleaseFactsLineTests {
         #expect(!release.pressingLine.contains("Label"))
     }
 
+    @Test("the pressing line names the year only when core hands one over")
+    func thePressingLineNamesTheYearOnlyWhenCoreHandsOneOver() {
+        let separator = localizedCoreString("core.audio.list_separator")
+        let reissue = ReleaseDetail(
+            bridge: makeBridgeRelease(distinctYear: 2001)
+        )
+        let original = ReleaseDetail(bridge: makeBridgeRelease())
+
+        #expect(reissue.pressingLine.hasPrefix("2001\(separator)"))
+        #expect(!original.pressingLine.contains("2024"))
+        #expect(!original.pressingLine.hasPrefix(separator))
+    }
+
     @Test("the facts draw as two lines, each on one line of its own")
     func theFactsDrawAsTwoLines() throws {
         let release = try Self.release("a-21")

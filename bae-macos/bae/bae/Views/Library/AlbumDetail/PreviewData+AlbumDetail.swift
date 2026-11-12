@@ -274,7 +274,7 @@
                     year: 2019,
                     media: bridgeMediaTerms(media: PreviewData.media(.cd))
                 ),
-                year: 2019,
+                distinctYear: nil,
                 labels: [
                     BridgeLabelLine(
                         names: ["Some Label"],

@@ -89,7 +89,7 @@ object BridgeFixtures {
             id = id,
             albumId = albumId,
             name = BridgeReleaseName.Numbered(1),
-            year = null,
+            distinctYear = null,
             labels = emptyList(),
             facts =
                 BridgePressingFacts(

@@ -100,6 +100,20 @@ class LibraryComponentShots : BoardShot() {
         }
 
     @Test
+    fun androidComponentAlbumHeaderAReissue() =
+        component("android.component.album-header.a-reissue", wide = true) {
+            Images {
+                AndroidAlbumHeader(
+                    detail = harborDetail,
+                    selectedRelease = harborRelease.copy(distinctYear = 2001),
+                    cover = PreviewData.imageRef(),
+                    galleryItems = emptyList(),
+                    onShowGallery = {},
+                )
+            }
+        }
+
+    @Test
     fun androidComponentTrackRowResting() =
         component("android.component.track-row.resting", wide = true) {
             TrackRowShot(TrackRowData("1", "Harbor Lights", null, "4:32", isCurrent = false, isPlaying = false))
@@ -189,7 +203,7 @@ class LibraryComponentShots : BoardShot() {
 internal val harborRelease: BridgeRelease =
     PreviewData.release().let { release ->
         release.copy(
-            year = 1992,
+            distinctYear = null,
             labels = listOf(BridgeLabelLine(names = listOf("Harbor Records"), catalogNumbers = listOf("HR-1042"))),
             facts = release.facts.copy(area = null, media = listOf(BridgeMediaCount(BridgeMedium.CD, 1u))),
             pressingSummary = listOf(BridgeFactTerm.Worded(BridgeTermLabel.Verbatim("CD"))),
@@ -206,7 +220,7 @@ internal val harborDetail: BridgeAlbumDetail =
 internal val plainDetail: BridgeAlbumDetail =
     PreviewData.albumDetail(
         harborDetail.album,
-        releases = listOf(harborRelease.copy(year = null, labels = emptyList(), pressingSummary = emptyList())),
+        releases = listOf(harborRelease.copy(labels = emptyList(), pressingSummary = emptyList())),
     )
 
 /** The two albums the album grid's and library screen's previews hold. */
