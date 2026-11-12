@@ -14,8 +14,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.FilterChip
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,9 +32,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import fm.bae.app.DisplayError
 import fm.bae.app.LocalBugReports
@@ -45,12 +46,9 @@ import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LiveQueryState
 import fm.bae.app.data.LocalImageStore
 import fm.bae.app.displayError
-import fm.bae.app.durationClockLabel
-import fm.bae.app.durationUnitsText
 import fm.bae.app.labelsLineText
 import fm.bae.app.mainRelease
 import fm.bae.app.pressingLineText
-import fm.bae.app.sideHeaderText
 import fm.bae.app.text
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.PreviewTheme
@@ -58,12 +56,13 @@ import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
-import fm.bae.app.ui.components.AndroidEyebrow
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.CoverImage
 import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.NoticeLook
+import fm.bae.app.ui.components.StatusChip
+import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.components.retryAction
 import fm.bae.app.ui.library.AndroidDetailScreen
 import fm.bae.app.ui.playback.AndroidNowPlayingBarContainer
@@ -342,9 +341,8 @@ internal fun AlbumDetailContent(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(ThemeSpace.edge),
-        verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
     ) {
-        item {
+        block {
             AndroidAlbumHeader(
                 detail = detail,
                 selectedRelease = selectedRelease,
@@ -355,21 +353,27 @@ internal fun AlbumDetailContent(
         }
 
         if (detail.releases.size > 1) {
-            item {
+            block {
                 Row(horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
                     detail.releases.forEach { rel ->
-                        FilterChip(
-                            selected = rel.id == selectedRelease.id,
-                            onClick = { callbacks.onSelectRelease(rel.id) },
-                            label = { Text(rel.name.text(context), maxLines = 1) },
+                        val chosen = rel.id == selectedRelease.id
+                        StatusChip(
+                            text = rel.name.text(context),
+                            tone = if (chosen) StatusTone.ACCENT else StatusTone.NEUTRAL,
+                            modifier =
+                                Modifier.selectable(
+                                    selected = chosen,
+                                    onClick = { callbacks.onSelectRelease(rel.id) },
+                                    role = Role.RadioButton,
+                                ),
                         )
                     }
                 }
             }
         }
 
-        item { releaseDownloadControl(selectedRelease) }
-        item { AlbumActionButtons(callbacks) }
+        block { releaseDownloadControl(selectedRelease) }
+        block { AlbumActionButtons(callbacks) }
         albumTrackGroups(selectedRelease, positionColumnWidth, playback, callbacks, context)
     }
 }
@@ -455,61 +459,9 @@ private fun AlbumActionButtons(callbacks: AlbumDetailCallbacks) {
     }
 }
 
-private fun androidx.compose.foundation.lazy.LazyListScope.albumTrackGroups(
-    release: BridgeRelease,
-    positionColumnWidth: Dp,
-    playback: AlbumPlaybackState,
-    callbacks: AlbumDetailCallbacks,
-    context: android.content.Context,
-) {
-    release.trackGroups.forEach { group ->
-        val header = group.sideHeaderText(context)
-        if (header.isNotEmpty()) {
-            item {
-                AndroidEyebrow(text = header, modifier = Modifier.padding(top = ThemeSpace.related))
-            }
-        }
-        items(group.tracks, key = { it.id }) { track ->
-            val isCurrent = track.id == playback.currentTrackId
-            AndroidTrackRow(
-                data =
-                    TrackRowData(
-                        positionLabel = track.positionText,
-                        title = track.title,
-                        artistNames = track.displayArtist,
-                        durationLabel = context.durationClockLabel(track.durationClock),
-                        isCurrent = isCurrent,
-                        isPlaying = playback.isPlaying,
-                    ),
-                callbacks =
-                    TrackRowCallbacks(
-                        onClick = {
-                            if (isCurrent) {
-                                callbacks.onTogglePlayPause()
-                            } else {
-                                callbacks.onPlayTrack(track.id)
-                            }
-                        },
-                        onPlayNext = { callbacks.onPlayTrackNext(track.id) },
-                        onAddToQueue = { callbacks.onAddTrackToQueue(track.id) },
-                    ),
-                positionColumnWidth = positionColumnWidth,
-            )
-        }
-        // The header shows the total, so only a multi-side release lists each
-        // side's play time.
-        val groupDurationLabel = context.durationUnitsText(group.totalDuration)
-        if (release.trackGroups.size > 1 && groupDurationLabel.isNotEmpty()) {
-            item {
-                Text(
-                    text = groupDurationLabel,
-                    style = ThemeText.detail.style,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = ThemeSpace.related),
-                )
-            }
-        }
-    }
+/** One block of the page: the board spaces them 8 dp apart, while the track rows below touch. */
+private fun LazyListScope.block(content: @Composable () -> Unit) {
+    item { Box(modifier = Modifier.padding(bottom = ThemeSpace.related)) { content() } }
 }
 
 @Preview(showBackground = true)

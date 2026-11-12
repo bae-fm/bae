@@ -111,6 +111,7 @@ internal fun AndroidTrackRow(
             text = data.durationLabel,
             style = ThemeText.detail.style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = ThemeSpace.related),
         )
         TrackRowMenu(
             menuExpanded = menuExpanded,

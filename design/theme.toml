@@ -309,6 +309,7 @@ tracking = -0.5
 macos = 30
 ios = "title"
 android = 24
+android_line = 30
 
 [text.title]
 weight = "bold"
