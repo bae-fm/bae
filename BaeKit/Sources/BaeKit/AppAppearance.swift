@@ -77,7 +77,6 @@ extension View {
         environment(\.surfaceTone, tone)
             .environment(\.accentChoice, accent)
             .accentColor(accentColor)
-            .tint(accentColor)
     }
 }
 
