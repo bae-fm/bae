@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -30,16 +32,20 @@ internal fun AndroidScreen(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(modifier = modifier) {
-        ScreenTopBar(title, onBack)
+        AndroidTopBar(onBack = onBack, title = title)
         content()
     }
 }
 
-/** A screen's bar: its [title], and the way back, on the page's own colour as the design draws it. */
+/**
+ * A screen's bar, as the design draws it: 64 dp on the page's own colour, the way back, then the [title] if the
+ * screen has one, and at the end the screen's own [actions].
+ */
 @Composable
-private fun ScreenTopBar(
-    title: String,
+internal fun AndroidTopBar(
     onBack: () -> Unit,
+    title: String? = null,
+    actions: @Composable RowScope.() -> Unit = {},
 ) {
     Row(
         modifier = Modifier.fillMaxWidth().height(64.dp).padding(horizontal = ThemeSpace.inline),
@@ -49,6 +55,10 @@ private fun ScreenTopBar(
         IconButton(onClick = onBack) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
         }
-        Text(text = title, style = ThemeText.androidBarTitle.style)
+        if (title != null) {
+            Text(text = title, style = ThemeText.androidBarTitle.style)
+        }
+        Spacer(modifier = Modifier.weight(1f))
+        actions()
     }
 }
