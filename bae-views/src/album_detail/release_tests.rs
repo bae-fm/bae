@@ -11,8 +11,19 @@ fn track(id: &str, side: u8, number: u32, duration_ms: u64) -> bae_records::DbTr
 
 /// The detail of a release holding `tracks`.
 fn detail(tracks: Vec<bae_records::DbTrackWithArtists>) -> ReleaseDetail {
+    detail_in_years(tracks, None, None)
+}
+
+/// The detail of a release of `release_year`, in an album of `album_year`.
+fn detail_in_years(
+    tracks: Vec<bae_records::DbTrackWithArtists>,
+    release_year: Option<i32>,
+    album_year: Option<i32>,
+) -> ReleaseDetail {
+    let mut release = bae_records::DbRelease::new_test("album-id", "release-id");
+    release.pressing.year = release_year;
     let raw = bae_records::DbReleaseDetail {
-        release: bae_records::DbRelease::new_test("album-id", "release-id"),
+        release,
         mediums: bae_records::DbReleaseMediums(vec![bae_records::DbReleaseMedium::new(
             "release-id",
             std::num::NonZeroU16::MIN,
@@ -31,7 +42,7 @@ fn detail(tracks: Vec<bae_records::DbTrackWithArtists>) -> ReleaseDetail {
         upload: None,
         cover_version: None,
     };
-    let ctx = ReleaseResolveCtx { syncs: false, cover: None, is_compilation: false };
+    let ctx = ReleaseResolveCtx { syncs: false, cover: None, is_compilation: false, album_year };
     ReleaseDetail::from_raw(raw, None, 0, &ctx)
 }
 
@@ -48,4 +59,21 @@ fn a_release_totals_its_tracks() {
     let group_totals: Vec<_> =
         detail.track_groups.iter().map(|group| group.total_duration_ms).collect();
     assert_eq!(group_totals, [300_000, 300_000]);
+}
+
+/// A line about the pressing names its year only when it differs from the
+/// album's, which is shown above it; the release keeps its year either way.
+#[test]
+fn a_release_names_its_year_only_when_it_differs_from_its_albums() {
+    let reissue = detail_in_years(Vec::new(), Some(2001), Some(1992));
+    assert_eq!((reissue.year, reissue.distinct_year), (Some(2001), Some(2001)));
+
+    let first = detail_in_years(Vec::new(), Some(1992), Some(1992));
+    assert_eq!((first.year, first.distinct_year), (Some(1992), None));
+
+    let album_unknown = detail_in_years(Vec::new(), Some(2001), None);
+    assert_eq!(album_unknown.distinct_year, Some(2001));
+
+    let release_unknown = detail_in_years(Vec::new(), None, Some(1992));
+    assert_eq!(release_unknown.distinct_year, None);
 }

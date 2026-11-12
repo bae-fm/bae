@@ -355,6 +355,7 @@ fn resolve_album_detail(raw: DbAlbumDetail, syncs: bool) -> crate::album_detail:
             syncs,
             cover: bae_records::cover_ref(&detail.release.id, detail.cover_version.clone()),
             is_compilation: raw.album.is_compilation,
+            album_year: raw.album.year,
         };
         releases.push(crate::album_detail::ReleaseDetail::from_raw(detail, download, i, &ctx));
     }

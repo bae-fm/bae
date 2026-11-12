@@ -94,7 +94,8 @@ impl BridgeRelease {
         let bae_views::album_detail::ReleaseDetail {
             summary,
             name,
-            year,
+            year: _,
+            distinct_year,
             labels,
             facts,
             total_duration_ms,
@@ -135,7 +136,7 @@ impl BridgeRelease {
             id,
             album_id,
             name: crate::types::BridgeReleaseName::from_core(name),
-            year,
+            distinct_year,
             labels: bae_types::pressing::label_lines(&labels)
                 .into_iter()
                 .map(crate::types::BridgeLabelLine::from_core)

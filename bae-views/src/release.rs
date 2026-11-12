@@ -91,11 +91,13 @@ fn resolve_release_detail(
     context: ReleaseDetailContext,
     syncs: bool,
 ) -> ReleaseDetail {
-    let ReleaseDetailContext { detail, download, release_index, is_compilation } = context;
+    let ReleaseDetailContext { detail, download, release_index, is_compilation, album_year } =
+        context;
     let ctx = ReleaseResolveCtx {
         syncs,
         cover: bae_records::cover_ref(release_id, detail.cover_version.clone()),
         is_compilation,
+        album_year,
     };
     ReleaseDetail::from_raw(detail, download, release_index, &ctx)
 }
@@ -130,12 +132,14 @@ pub(crate) fn find_release_detail_context_on(
         sql.query_row(RELEASE_INDEX_IN_ALBUM, params![release.id], |row| row.get(0))?;
     let release_index =
         bae_store::query::to_usize(release_index, "a release's index in its album")?;
-    let is_compilation =
-        find_album_by_id_on(sql, &release.album_id)?.is_some_and(|album| album.is_compilation);
+    let album = find_album_by_id_on(sql, &release.album_id)?;
+    let is_compilation = album.as_ref().is_some_and(|album| album.is_compilation);
+    let album_year = album.and_then(|album| album.year);
     Ok(Some(ReleaseContextRows {
         detail: build_release_detail_on(sql, release)?,
         release_index,
         is_compilation,
+        album_year,
     }))
 }
 
@@ -144,6 +148,7 @@ pub(crate) struct ReleaseContextRows {
     detail: ReleaseDetailRows,
     release_index: usize,
     is_compilation: bool,
+    album_year: Option<i32>,
 }
 
 impl ReleaseContextRows {
@@ -154,6 +159,7 @@ impl ReleaseContextRows {
             download,
             release_index: self.release_index,
             is_compilation: self.is_compilation,
+            album_year: self.album_year,
         }
     }
 }

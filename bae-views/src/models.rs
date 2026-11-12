@@ -257,6 +257,8 @@ pub struct ReleaseDetailContext {
     pub download: Option<bae_transfers::DownloadEntry>,
     pub release_index: usize,
     pub is_compilation: bool,
+    /// The album's year, which the release's year is compared with.
+    pub album_year: Option<i32>,
 }
 
 /// Raw per-release slim aggregate for summary views (storage rows, release

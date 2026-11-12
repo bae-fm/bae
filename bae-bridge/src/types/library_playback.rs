@@ -379,7 +379,9 @@ pub struct BridgeRelease {
     pub album_id: String,
     /// What a list of the album's releases calls this one.
     pub name: BridgeReleaseName,
-    pub year: Option<i32>,
+    /// The release's year when it differs from its album's, else `None`: the
+    /// pressing's line names it only then, the album's year being shown above.
+    pub distinct_year: Option<i32>,
     /// The labels the release is on, as a surface shows them: each name
     /// once, each catalog number once.
     pub labels: Vec<crate::types::BridgeLabelLine>,

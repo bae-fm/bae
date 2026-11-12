@@ -16,6 +16,8 @@ pub(crate) struct ReleaseResolveCtx {
     /// Whether the owning album is a compilation. Decides `TrackDetail::display_artist`
     /// — the one album-level fact the per-track artist decision needs.
     pub(crate) is_compilation: bool,
+    /// The owning album's year, which [`ReleaseDetail::distinct_year`] is read against.
+    pub(crate) album_year: Option<i32>,
 }
 
 /// The slim projection a list view (Storage Manager, release pickers) renders one
@@ -128,6 +130,10 @@ pub struct ReleaseDetail {
     /// the index.
     pub name: ReleaseName,
     pub year: Option<i32>,
+    /// The release's year when it differs from its album's, else `None`: what a
+    /// line about the pressing names, since the album's year is already shown
+    /// above it.
+    pub distinct_year: Option<i32>,
     /// Every label the release is on, each with its catalog number.
     pub labels: Vec<bae_types::pressing::ReleaseLabel>,
     /// What the pressing is: its area, media, status, packaging and details.
@@ -281,6 +287,7 @@ impl ReleaseDetail {
             summary,
             name,
             year: release.pressing.year,
+            distinct_year: release.pressing.year.filter(|year| Some(*year) != ctx.album_year),
             labels: release.pressing.labels,
             facts: release.pressing.facts,
             total_duration_ms,
