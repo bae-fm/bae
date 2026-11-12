@@ -1,49 +1,19 @@
 use super::*;
 use crate::render::fixture;
-use std::path::Path;
 
-fn write(root: &Path, path: &str, text: &str) {
-    let path = root.join(path);
-    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
-    std::fs::write(path, text).unwrap();
-}
-
-const HEAD: &str = r#"<!doctype html><html><head><meta charset="utf-8">
-<script src="./support.js"></script>
-<link rel="stylesheet" href="ds/bae/tokens.css">
-<link rel="stylesheet" href="ds/bae/components/bundle.css">
-<script src="ds/bae/components/bundle.js"></script></head><body>"#;
-
-/// A served tree with the real runtime copy and a one-component design system.
 fn tree() -> tempfile::TempDir {
-    let root = tempfile::tempdir().unwrap();
-    let r = root.path();
-    let runtime = Path::new(env!("CARGO_MANIFEST_DIR")).join("canvas/dc-runtime.js");
-    write(r, "bae-shots/canvas/dc-runtime.js", &std::fs::read_to_string(runtime).unwrap());
-    write(r, "design/system/tokens.css", ":root{--text-primary:#fff}");
-    write(r, "design/system/components/bundle.css", "");
-    write(
-        r,
-        "design/system/components/bundle.js",
-        "window.Bae={Box:function(){return React.createElement('div',{id:'inner'},'hello')}};",
-    );
-    write(
-        r,
-        "design/mocks/fixture.wrapped.dc.html",
-        &format!(
-            "{HEAD}<x-dc><helmet><style>body{{margin:0;background:#123}}.row{{display:flex}}</style></helmet>\
-<div class=\"row\"><x-import component-from-global-scope=\"Bae.Box\"></x-import></div></x-dc></body></html>"
+    fixture::tree(&[
+        (
+            "fixture.wrapped",
+            "<x-dc><helmet><style>body{margin:0;background:#123}.row{display:flex}</style></helmet>\
+<div class=\"row\"><x-import component-from-global-scope=\"Bae.Box\"></x-import></div></x-dc>",
         ),
-    );
-    write(
-        r,
-        "design/mocks/fixture.broken.dc.html",
-        &format!(
-            "{HEAD}<x-dc><div>broken</div></x-dc>\
-<script type=\"text/x-dc\" data-dc-script>class Component extends DCLogic {{ renderVals( {{ }}</script></body></html>"
+        (
+            "fixture.broken",
+            "<x-dc><div>broken</div></x-dc>\
+<script type=\"text/x-dc\" data-dc-script>class Component extends DCLogic { renderVals( { }</script>",
         ),
-    );
-    root
+    ])
 }
 
 #[tokio::test]
