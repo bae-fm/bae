@@ -2446,7 +2446,7 @@ always:
 
 Releases imported as local stay in their folders and are not counted.
 
-**Clear Cache** removes every unpinned file and chunk in every kind of file the
+**Clear cache** removes every unpinned file and chunk in every kind of file the
 library keeps, and the catalog images on a desktop. Pinned releases and pins on
 the way stay. It asks nothing, and is off while the cache is empty. The two
 stores are cleared one after the other; a failure of either is reported, what
@@ -2464,11 +2464,11 @@ reset or a restore in place starts it at 20 GB again.
 on this device, after asking; it is offered while one is here. The library
 isn't affected.
 
-On a Mac the pane is a box with the total and the bar over the parts' legend,
-then Cache (with Clear Cache and Keep up to), Pinned (with Ask before
-unpinning, Appendix C) and, while one is here, From before the reset. Android's
-Storage page, after Transfers in Settings, holds the same in a card and
-sections.
+On a Mac the Storage pane, after Transfers in Settings, is a box with the total
+and the bar over the parts' legend, then Cache (with Clear cache and Keep up
+to), Pinned (with Ask before unpinning, Appendix C) and, while one is here, From
+before the reset (its Delete asks first). Android's Storage page, after
+Transfers in Settings, holds the same in a card and sections.
 
 **Edge cases.**
 

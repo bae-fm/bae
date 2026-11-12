@@ -17,6 +17,12 @@ disabled_rules:
 opt_in_rules:
   - force_unwrapping                   # flag optional force-unwraps (expr!)
 
+# A switch over an enum's cases, one view per case, is one choice however
+# many cases the enum has; counting each case would split a flat switch into
+# partial ones that each need a branch for the cases they can't be handed.
+cyclomatic_complexity:
+  ignores_case_statements: true
+
 # detekt's LongMethod threshold, so both platforms share one limit.
 function_body_length:
   warning: 60

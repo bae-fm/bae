@@ -275,6 +275,9 @@ mac.settings.save-as.format-name-taken
 mac.settings.save-as.format-picker
 mac.settings.save-as.last-format
 mac.settings.save-as.name-invalid
+mac.settings.storage
+mac.settings.storage.delete-from-before-reset
+mac.settings.storage.from-before-reset
 mac.settings.subsonic.every-network
 mac.settings.subsonic.network-gone
 mac.settings.subsonic.network-menu

@@ -43,6 +43,9 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
     private let settingsNavigation = SettingsNavigation()
     /// The library's name, read while a screen shows it.
     let libraryNameStore: LibraryNameStore
+    /// What this Mac keeps for the library, read while Settings → Storage
+    /// shows it.
+    private let deviceStorageStore: DeviceStorageStore
 
     // MARK: - Desktop-only domain services
 
@@ -109,6 +112,10 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         self.uiStore = uiStore
         self.importStore = importStore
         libraryNameStore = LibraryNameStore(
+            handle: appHandle,
+            showError: { uiStore.showError($0) }
+        )
+        deviceStorageStore = DeviceStorageStore(
             handle: appHandle,
             showError: { uiStore.showError($0) }
         )
@@ -217,6 +224,7 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
             .environment(storageManagerStore)
             .environment(settingsNavigation)
             .environment(libraryNameStore)
+            .environment(deviceStorageStore)
             .environment(previewAudio)
             .environment(releaseEditor)
             .environment(artistEditor)

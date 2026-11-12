@@ -3,11 +3,12 @@ import SwiftUI
 
 /// The panes, in the order the sidebar lists them (`allCases`): what the app
 /// looks like, then the library it holds, then playing from it, then the
-/// files that move to and from storage, then getting releases in and out, then
-/// the servers and automation around it, then the app itself.
+/// files that move to and from storage, then what this Mac keeps of them,
+/// then getting releases in and out, then the servers and automation around
+/// it, then the app itself.
 enum SettingsTab: Hashable, CaseIterable {
-    case appearance, library, playback, transfers, importing, formats, casting,
-        subsonic, automation, about
+    case appearance, library, playback, transfers, storage, importing, formats,
+        casting, subsonic, automation, about
 
     var title: LocalizedStringKey {
         switch self {
@@ -17,6 +18,7 @@ enum SettingsTab: Hashable, CaseIterable {
         case .importing: "Import"
         case .formats: "Save as"
         case .transfers: "Transfers"
+        case .storage: "Storage"
         case .casting: "Casting"
         case .subsonic: "Subsonic"
         case .automation: "Automation"
@@ -32,6 +34,7 @@ enum SettingsTab: Hashable, CaseIterable {
         case .importing: "square.and.arrow.down"
         case .formats: "square.and.arrow.up"
         case .transfers: "arrow.up.arrow.down"
+        case .storage: "internaldrive"
         case .casting: "hifispeaker"
         case .subsonic: "dot.radiowaves.left.and.right"
         case .automation: "terminal"
@@ -147,9 +150,9 @@ struct SettingsSidebar: View {
 /// The settings window: the panes down the side, the chosen one beside them.
 ///
 /// A sidebar and not the toolbar strip a settings window usually has, because
-/// ten panes do not fit in one: the strip put whatever ran past the window's
+/// eleven panes do not fit in one: the strip put whatever ran past the window's
 /// edge into an overflow menu that renders its entries disabled, so the last
-/// panes could be seen and not reached. Widening the window until ten fit is
+/// panes could be seen and not reached. Widening the window until eleven fit is
 /// no answer either — the titles are translated, and "Automation" is
 /// "การทำงานอัตโนมัติ" in Thai — so the width that fits English hides a pane
 /// somewhere else. A list has no edge to run past: it scrolls, and every pane
@@ -202,6 +205,8 @@ struct SettingsView: View {
             FormatsSettingsTab()
         case .transfers:
             TransfersSettingsTab()
+        case .storage:
+            StorageSettingsTab()
         case .casting:
             CastingSettingsTab()
         case .subsonic:

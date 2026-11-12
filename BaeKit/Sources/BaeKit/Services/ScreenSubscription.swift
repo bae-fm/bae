@@ -168,6 +168,7 @@ extension AddedDeviceSubscription: PulledSubscription {}
 extension ProfilesSubscription: PulledSubscription {}
 extension RequestedProfileSubscription: PulledSubscription {}
 extension LibraryNameSubscription: PulledSubscription {}
+extension DeviceStorageSubscription: PulledSubscription {}
 extension SetupStatesSubscription: PulledSubscription {}
 extension StorageSetupFinishingSubscription: PulledSubscription {}
 extension AlbumBrowseSubscription: PulledSubscription {}
