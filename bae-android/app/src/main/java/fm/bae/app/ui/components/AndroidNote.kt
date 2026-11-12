@@ -18,6 +18,6 @@ internal fun AndroidNote(
         text = text,
         style = ThemeText.detail.style,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = modifier.padding(horizontal = ThemeSpace.related),
+        modifier = modifier.padding(horizontal = ThemeSpace.page - ThemeSpace.edge),
     )
 }

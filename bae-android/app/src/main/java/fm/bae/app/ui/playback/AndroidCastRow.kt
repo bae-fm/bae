@@ -8,9 +8,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Cast
-import androidx.compose.material.icons.filled.Speaker
-import androidx.compose.material.icons.filled.Tv
+import androidx.compose.material.icons.outlined.Cast
+import androidx.compose.material.icons.outlined.Speaker
+import androidx.compose.material.icons.outlined.Tv
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -117,7 +117,7 @@ private fun CastReceiverLabel(
     Column(modifier = modifier) {
         Text(
             text = receiver.name,
-            style = ThemeText.rowTitle.style,
+            style = ThemeText.androidRowTitle.style,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
@@ -230,7 +230,7 @@ internal fun CastReceiverRows(
 private fun WaitingRow(text: String) {
     AndroidSpinner(
         text = text,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.group),
+        modifier = Modifier.fillMaxWidth().padding(ThemeSpace.edge),
     )
 }
 
@@ -246,7 +246,7 @@ private val BridgeRendererKind.productName: String
 /** The icon for a receiver, by the kind of renderer it is. */
 private fun deviceIcon(kind: BridgeRendererKind): ImageVector =
     when (kind) {
-        BridgeRendererKind.CAST -> Icons.Filled.Cast
-        BridgeRendererKind.AIR_PLAY -> Icons.Filled.Speaker
-        BridgeRendererKind.DLNA -> Icons.Filled.Tv
+        BridgeRendererKind.CAST -> Icons.Outlined.Cast
+        BridgeRendererKind.AIR_PLAY -> Icons.Outlined.Speaker
+        BridgeRendererKind.DLNA -> Icons.Outlined.Tv
     }

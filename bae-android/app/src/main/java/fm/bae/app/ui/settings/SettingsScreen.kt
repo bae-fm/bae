@@ -168,7 +168,7 @@ internal fun SectionDivider() {
 internal fun SettingsAboutSection(version: String) {
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = ThemeSpace.edge)) {
         Box(
-            modifier = Modifier.fillMaxWidth().padding(top = ThemeSpace.page, bottom = ThemeSpace.edge),
+            modifier = Modifier.fillMaxWidth().padding(top = ThemeSpace.page, bottom = ThemeSpace.section),
             contentAlignment = Alignment.Center,
         ) {
             Logo(size = ABOUT_LOGO_SIZE, bob = false, glow = false)
