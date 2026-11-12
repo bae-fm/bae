@@ -1,6 +1,6 @@
 name: Screenshots
 
-# Captures the shared UI scenes on macOS and Android (scripts/shots/*)
+# Captures the shared UI scenes on macOS (bae-shots) and Android (scripts/shots/*)
 # and publishes the scene x platform gallery to GitHub Pages. Setup steps mirror
 # each platform's build workflow (ci.yml / android-build.yml) — the
 # scripts do the building; the jobs provision toolchains.
@@ -38,11 +38,13 @@ jobs:
       - name: Capture
         # The runner has no one at it, so the scenes shown in their windows,
         # which bring the app to the front, render here too.
-        run: ./scripts/shots/macos.sh shots-out --windows
+        run: scripts/cargo.sh run -p bae-shots -- capture --platform mac --windows --out shots-out
       - uses: actions/upload-artifact@v4
         with:
           name: shots-macos
-          path: shots-out/*.png
+          path: |
+            shots-out/*.png
+            shots-out/*.json
           if-no-files-found: error
 
   android:

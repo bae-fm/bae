@@ -51,3 +51,35 @@ fn a_preview_row_name_becomes_its_state_id() {
     assert_eq!(state_id("It's  on!"), "it-s-on");
     assert_eq!(state_id("Row 2"), "row-2");
 }
+
+#[test]
+fn a_shot_writes_files_named_after_its_board_and_platform() {
+    let mac = Name::parse("mac.welcome.libraries.none").unwrap();
+    assert_eq!(mac.file_name("png"), "mac.welcome.libraries.none@macos.png");
+    let android = Name::parse("android.component.button.filled").unwrap();
+    assert_eq!(android.file_name("json"), "android.component.button.filled@android.json");
+}
+
+#[test]
+fn a_shot_file_is_read_back_to_its_name() {
+    let name = Name::from_file_name(Platform::Mac, "mac.welcome.libraries@macos.json");
+    assert_eq!(name.unwrap().unwrap(), Name::parse("mac.welcome.libraries").unwrap());
+    assert!(Name::from_file_name(Platform::Mac, "notes.txt").is_none());
+    assert!(Name::from_file_name(Platform::Mac, "a@android.png").is_none());
+    assert!(Name::from_file_name(Platform::Mac, "Bad Name@macos.png").unwrap().is_err());
+}
+
+#[test]
+fn a_prefix_selects_the_names_it_starts() {
+    let prefix = Prefix::parse("mac.welcome.").unwrap();
+    assert_eq!(prefix.platform(), Platform::Mac);
+    assert!(prefix.matches(&Name::parse("mac.welcome.libraries").unwrap()));
+    assert!(!prefix.matches(&Name::parse("mac.settings.library").unwrap()));
+    assert!(!prefix.matches(&Name::parse("android.welcome.libraries").unwrap()));
+    let component = Prefix::parse("android.component.row.").unwrap();
+    assert!(component.matches(&Name::parse("android.component.row.title").unwrap()));
+    assert!(!component.matches(&Name::parse("android.component.row-x.title").unwrap()));
+    for text in ["mac", "ios.welcome.", "mac.Welcome", "mac.welcome "] {
+        assert!(Prefix::parse(text).is_err(), "{text:?}");
+    }
+}

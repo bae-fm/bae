@@ -4,15 +4,16 @@ import Testing
 
 @testable import bae
 
-/// Captures every registered scene to `<id>@macos.png`, with the elements its
-/// view lists beside it as `<id>@macos.json`, in the directory the
-/// harness passes through `TEST_RUNNER_BAE_SHOTS_OUT`. Every scene is attempted;
-/// any failure — a scene that fails to render, encode, or write — fails the run
-/// with the full list, so a broken scene can never be a silent skip.
+/// Captures every registered scene to `<board>@macos.png`, with the elements
+/// its view lists beside it as `<board>@macos.json`, in the directory the
+/// bae-shots tool passes through `TEST_RUNNER_BAE_SHOTS_OUT`. Every scene is
+/// attempted; any failure — a scene that fails to render, encode, or write —
+/// fails the run with the full list, so a broken scene can never be a silent
+/// skip.
 ///
-/// `BAE_SHOTS_SCENES` (comma-separated scene id prefixes) and `BAE_SHOTS_TONES`
-/// (comma-separated surface tones) narrow the run to the scenes and tones a
-/// change touches; unset, every scene renders in every tone, both modes.
+/// Each scene is drawn once, in the look the boards draw: dark, Midnight, Pink.
+/// `BAE_SHOTS_SCENES` (comma-separated board-name prefixes) narrows the run to
+/// the scenes a change touches; unset, every scene renders.
 ///
 /// A scene shown in its window brings the app to the front and makes its
 /// window key, taking the focus from whatever the person at the machine is
@@ -24,48 +25,24 @@ struct CaptureSceneTests {
     func captureAllScenes() async throws {
         let out = try Self.outputDirectory()
 
-        let scenes = try Self.selectedScenes()
-        let tones = try Self.selectedTones()
-
         var failures: [String] = []
-        for mode in [AppearanceMode.dark, .light] {
-            for tone in tones {
-                for scene in scenes {
-                    do {
-                        let accent: AccentChoice =
-                            tone == .standard
-                            ? .standard
-                            : tone == .plum
-                                ? .purple : tone == .slate ? .teal : .blue
-                        let capture = try await ShotRenderer.render(
-                            scene,
-                            mode: mode,
-                            tone: tone,
-                            accent: accent
-                        )
-                        guard !capture.png.isEmpty else {
-                            failures.append("\(scene.id): rendered no bytes")
-                            continue
-                        }
-                        // The stock look carries no suffix.
-                        let suffix =
-                            mode == .dark && tone == .standard
-                            ? "" : "-\(mode.rawValue)-\(tone.rawValue)"
-                        let url = out.appendingPathComponent(
-                            "\(scene.id)\(suffix)@macos.png"
-                        )
-                        try capture.png.write(to: url)
-                        try capture.elements.json()
-                            .write(
-                                to: url.deletingPathExtension()
-                                    .appendingPathExtension("json")
-                            )
-                    }
-                    catch {
-                        failures.append("\(scene.id): \(error)")
-                    }
+        for scene in try Self.selectedScenes() {
+            do {
+                let capture = try await ShotRenderer.render(scene)
+                guard !capture.png.isEmpty else {
+                    failures.append("\(scene.id): rendered no bytes")
+                    continue
                 }
-
+                let url = out.appendingPathComponent("\(scene.id)@macos.png")
+                try capture.png.write(to: url)
+                try capture.elements.json()
+                    .write(
+                        to: url.deletingPathExtension()
+                            .appendingPathExtension("json")
+                    )
+            }
+            catch {
+                failures.append("\(scene.id): \(error)")
             }
         }
 
@@ -96,19 +73,6 @@ struct CaptureSceneTests {
     /// Whether the run renders the scenes shown in their windows.
     private static var rendersWindows: Bool {
         ProcessInfo.processInfo.environment["BAE_SHOTS_WINDOWS"] == "1"
-    }
-
-    /// The tones `BAE_SHOTS_TONES` names, or every tone when it is unset.
-    static func selectedTones() throws -> [SurfaceTone] {
-        guard let names = Self.listed("BAE_SHOTS_TONES") else {
-            return SurfaceTone.allCases
-        }
-        return try names.map { name in
-            guard let tone = SurfaceTone(rawValue: name) else {
-                throw ShotError.unknownSelection("tone", name)
-            }
-            return tone
-        }
     }
 
     private static func listed(_ variable: String) -> [String]? {

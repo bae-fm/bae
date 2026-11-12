@@ -9,36 +9,12 @@ step mac macos-tests-all ./bae-macos/test.sh
 step android android-bridge ./bae-bridge/build-android.sh --abi arm64-v8a
 step android android ./bae-android/compile-all.sh
 step android android-tests ./bae-android/test-unit.sh
-step mac notice-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene notice- --tone midnight
-step mac storage-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene storage-manager --tone midnight
+step mac mac-shots scripts/cargo.sh run -p bae-shots -- run --platform mac
+step mac mac-welcome-shots scripts/cargo.sh run -p bae-shots -- run --platform mac --select mac.welcome.
 step android android-shots ./scripts/shots/android.sh /Volumes/Builds/bae/shots/android
-step mac library-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene library-browse-list --tone midnight
-step mac welcome-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene mac.welcome. --tone midnight
-step mac folder-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene folder-picker- --tone midnight
-step mac import-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene import- --tone midnight
-step mac release-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene release-storage --tone midnight
-step mac release-files-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene release-files- --tone midnight
-step mac sync-setup-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene sync-setup --tone midnight
-step mac settings-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene settings- --tone midnight
-step mac cast-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene cast- --tone midnight
-step mac label-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene sheet-footer- --tone midnight
-step mac activity-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene activity- --tone midnight
-step mac people-shots ./scripts/shots/macos.sh bae-macos/bae/.build/shots --scene people- --tone midnight
 
 limit macos-tests-run 10m
 limit android-tests 10m
-limit notice-shots 20m
-limit storage-shots 20m
+limit mac-shots 20m
+limit mac-welcome-shots 20m
 limit android-shots 20m
-limit library-shots 20m
-limit welcome-shots 20m
-limit folder-shots 20m
-limit import-shots 20m
-limit release-shots 20m
-limit release-files-shots 20m
-limit sync-setup-shots 20m
-limit settings-shots 20m
-limit cast-shots 20m
-limit label-shots 20m
-limit activity-shots 20m
-limit people-shots 20m

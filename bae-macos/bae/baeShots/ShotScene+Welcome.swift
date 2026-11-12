@@ -168,7 +168,7 @@ extension ShotScene {
                 }
             )
         },
-        ShotScene(id: "mac.welcome.create-name", size: WelcomeWindow.size) {
+        ShotScene(id: "mac.welcome.create.name", size: WelcomeWindow.size) {
             ShotStage(
                 PreviewScenes.welcome(
                     initialMode: .create,

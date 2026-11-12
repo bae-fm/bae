@@ -41,6 +41,7 @@ target-ra                             10G
 target-macos                          15G  app 10G  lane mac
 target-ios                            24G  lane mac
 target-android                        13G  app 10G  lane android
+shots                                 1G
 bae-macos/bae/.build                  20G  app 14G  lane mac
 # The app the person launches (main) and tests (the mac lane's app checkout) is
 # built here; builds never ages it out in those two checkouts.

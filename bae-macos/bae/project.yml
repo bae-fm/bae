@@ -210,11 +210,11 @@ targets:
       base:
         SWIFT_VERSION: "6.2"
         GENERATE_INFOPLIST_FILE: YES
-  # Screenshot-capture bundle for the cross-platform gallery. Hosted in the app
-  # (like baeTests) so it can `@testable import bae` and reach the DEBUG
-  # PreviewScenes builders + fixtures. Kept out of the `bae` scheme's test
-  # action — it runs only via its own `baeShots` scheme, which scripts/shots/
-  # macos.sh drives with an output directory; run without one it fails loud.
+  # Screenshot-capture bundle. Hosted in the app (like baeTests) so it can
+  # `@testable import bae` and reach the DEBUG PreviewScenes builders +
+  # fixtures. Kept out of the `bae` scheme's test action — it runs only via its
+  # own `baeShots` scheme, which the bae-shots tool drives with an output
+  # directory; run without one it fails loud.
   baeShots:
     type: bundle.unit-test
     platform: macOS
@@ -256,8 +256,9 @@ schemes:
       config: Debug
     archive:
       config: Release
-  # Screenshot capture only. `scripts/shots/macos.sh` runs
-  # `xcodebuild -scheme baeShots test`; the test writes one PNG per scene.
+  # Screenshot capture only. The bae-shots tool runs
+  # `xcodebuild -scheme baeShots test`; the test writes one PNG and element
+  # list per scene.
   baeShots:
     build:
       preActions:

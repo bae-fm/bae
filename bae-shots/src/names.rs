@@ -17,7 +17,7 @@ pub(crate) enum Platform {
 }
 
 impl Platform {
-    fn parse(word: &str) -> Option<Self> {
+    pub(crate) fn parse(word: &str) -> Option<Self> {
         match word {
             "mac" => Some(Self::Mac),
             "android" => Some(Self::Android),
@@ -26,9 +26,17 @@ impl Platform {
     }
 
     /// The first segment of every name on this platform.
-    fn word(self) -> &'static str {
+    pub(crate) fn word(self) -> &'static str {
         match self {
             Self::Mac => "mac",
+            Self::Android => "android",
+        }
+    }
+
+    /// The platform's word in a shot's file name (`<name>@macos.png`).
+    pub(crate) fn file_word(self) -> &'static str {
+        match self {
+            Self::Mac => "macos",
             Self::Android => "android",
         }
     }
@@ -94,6 +102,72 @@ impl Name {
             })),
             _ => Err(invalid("a screen is <area>.<screen>[.<state>]")),
         }
+    }
+}
+
+impl Name {
+    pub(crate) fn platform(&self) -> Platform {
+        match self {
+            Self::Screen(s) => s.platform,
+            Self::Component(c) => c.platform,
+        }
+    }
+
+    /// The file a shot writes with `extension` (`png` or `json`):
+    /// `<name>@<platform>.<extension>`.
+    pub(crate) fn file_name(&self, extension: &str) -> String {
+        format!("{self}@{}.{extension}", self.platform().file_word())
+    }
+
+    /// The shot a file in a capture directory belongs to, when its name has the
+    /// form of a shot file of `platform`.
+    pub(crate) fn from_file_name(
+        platform: Platform,
+        file_name: &str,
+    ) -> Option<Result<Self, NameError>> {
+        let suffix_png = format!("@{}.png", platform.file_word());
+        let suffix_json = format!("@{}.json", platform.file_word());
+        let stem =
+            file_name.strip_suffix(&suffix_png).or_else(|| file_name.strip_suffix(&suffix_json))?;
+        Some(Self::parse(stem))
+    }
+}
+
+/// The start of board names a run is limited to: `mac.welcome.` is the Mac
+/// welcome boards, `mac.component.row.` one component's states.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Prefix {
+    platform: Platform,
+    text: String,
+}
+
+impl Prefix {
+    pub(crate) fn parse(text: &str) -> Result<Self, NameError> {
+        let invalid = |why| NameError::Invalid(text.to_string(), why);
+        let (platform, rest) = text
+            .split_once('.')
+            .ok_or_else(|| invalid("a prefix is a platform and a dot at least"))?;
+        let platform = Platform::parse(platform)
+            .ok_or_else(|| invalid("it starts with no platform (mac, android)"))?;
+        if !rest
+            .chars()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-' || c == '.')
+        {
+            return Err(invalid("a prefix is lower-case words joined by '-' and '.'"));
+        }
+        Ok(Self { platform, text: text.to_string() })
+    }
+
+    pub(crate) fn platform(&self) -> Platform {
+        self.platform
+    }
+
+    pub(crate) fn matches(&self, name: &Name) -> bool {
+        name.to_string().starts_with(&self.text)
+    }
+
+    pub(crate) fn as_str(&self) -> &str {
+        &self.text
     }
 }
 

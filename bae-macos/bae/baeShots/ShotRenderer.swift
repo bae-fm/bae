@@ -23,12 +23,13 @@ enum ShotRenderer {
         let elements: ShotElementList
     }
 
-    static func render(
-        _ scene: ShotScene,
-        mode: AppearanceMode,
-        tone: SurfaceTone,
-        accent: AccentChoice
-    ) async throws -> Capture {
+    /// The look every shot is drawn in, as the design boards draw: dark,
+    /// Midnight, Pink. A scene whose board shows another look stages it itself.
+    private static let mode = AppearanceMode.dark
+    private static let tone = SurfaceTone.midnight
+    private static let accent = AccentChoice.pink
+
+    static func render(_ scene: ShotScene) async throws -> Capture {
         let suite = "fm.bae.appearance-shots"
         guard let defaults = UserDefaults(suiteName: suite) else {
             preconditionFailure("Cannot create screenshot preferences")

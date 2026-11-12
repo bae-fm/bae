@@ -5,24 +5,12 @@ import Testing
 @testable import bae
 
 /// The element list a shot writes, proved on two known shots: the Enter code
-/// sheet and the Appearance settings pane, whose words, buttons, field and
-/// pop-ups the boards draw.
+/// sheet, whose words, buttons and field the boards draw, and an alert.
 @MainActor
 struct ShotElementListTests {
-    private func list(
-        _ id: String,
-        tone: SurfaceTone = .standard,
-        accent: AccentChoice = .standard
-    ) async throws -> ShotElementList {
+    private func list(_ id: String) async throws -> ShotElementList {
         let scene = try #require(ShotScene.all.first { $0.id == id })
-        return
-            try await ShotRenderer.render(
-                scene,
-                mode: .dark,
-                tone: tone,
-                accent: accent
-            )
-            .elements
+        return try await ShotRenderer.render(scene).elements
     }
 
     private func json(_ list: ShotElementList) throws -> String {
@@ -85,46 +73,6 @@ struct ShotElementListTests {
         #expect(!next.enabled, "nothing is typed yet: \(json)")
     }
 
-    /// The pane's pop-ups and accent buttons say the tone and accent the
-    /// shot was staged with, which the PNG draws.
-    @Test(
-        arguments: [
-            (SurfaceTone.slate, AccentChoice.teal, "Slate", "Teal"),
-            (.midnight, .blue, "Midnight", "Blue"),
-            (.plum, .purple, "Plum", "Purple"),
-        ]
-    )
-    func listsAPaneWithPopUpsAndButtons(
-        tone: SurfaceTone,
-        accent: AccentChoice,
-        toneName: String,
-        accentName: String
-    ) async throws {
-        let list = try await list("appearance", tone: tone, accent: accent)
-        let json = try json(list)
-
-        let theme = try #require(
-            list.elements.first { $0.role == "text" && $0.label == "Theme" },
-            "\(json)"
-        )
-        #expect(theme.text?.size == 13, "\(json)")
-        let popups = list.elements.filter { $0.role == "popup" }
-        #expect(popups.compactMap(\.value) == ["Dark", toneName], "\(json)")
-        for popup in popups {
-            #expect(popup.bounds.height > 20, "\(json)")
-        }
-        #expect(
-            list.elements.contains {
-                $0.role == "text" && $0.label == accentName
-            },
-            "\(json)"
-        )
-        let chosen = list.elements.filter {
-            $0.role == "button" && $0.selected == true
-        }
-        #expect(chosen.map(\.label) == [accentName], "\(json)")
-    }
-
     /// An alert is drawn from AppKit's views; its title, message and
     /// buttons are listed where the image draws them.
     @Test
@@ -154,7 +102,7 @@ struct ShotElementListTests {
     @Test
     func everyBoxLiesInTheShotAndEveryParentComesFirst() async throws {
         for id in [
-            "mac.welcome.add-code.entering", "appearance",
+            "mac.welcome.add-code.entering", "mac.welcome.libraries",
             "mac.welcome.remove.failed",
         ] {
             let list = try await list(id)
