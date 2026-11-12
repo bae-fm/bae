@@ -202,27 +202,34 @@
         public let title: String
         public let value: Value
         public let isDisabled: Bool
+        /// What the closed pop-up shows while this option is chosen, when
+        /// that is shorter than the option's own words.
+        public let closedTitle: String?
 
         public init(
             _ title: LocalizedStringResource,
             value: Value,
-            disabled: Bool = false
+            disabled: Bool = false,
+            closedTitle: String? = nil
         ) {
             self.init(
                 verbatim: String(localized: title),
                 value: value,
-                disabled: disabled
+                disabled: disabled,
+                closedTitle: closedTitle
             )
         }
 
         public init(
             verbatim title: String,
             value: Value,
-            disabled: Bool = false
+            disabled: Bool = false,
+            closedTitle: String? = nil
         ) {
             self.title = title
             self.value = value
             self.isDisabled = disabled
+            self.closedTitle = closedTitle
         }
     }
 

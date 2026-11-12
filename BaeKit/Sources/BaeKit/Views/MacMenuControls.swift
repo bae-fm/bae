@@ -162,7 +162,7 @@
         private var chosenTitle: String {
             for case .option(let option) in options
             where option.value == selection {
-                return option.title
+                return option.closedTitle ?? option.title
             }
             return ""
         }

@@ -284,38 +284,27 @@ extension SubsonicSettingsContent {
         SubsonicFieldRow(title: "Available on") {
             connectNote
         } control: {
-            ClosedTitlePopUp(
-                entries: networkEntries,
-                selection: networkChoice,
-                accessibilityLabel: String(localized: "Available on")
-            )
-        }
-    }
-
-    /// The menu: this Mac, each network with its address, every network. The
-    /// closed button names only the network.
-    private var networkEntries: [ClosedTitlePopUp<NetworkChoice>.Entry] {
-        let thisMachine = String(localized: "This Mac only")
-        var entries: [ClosedTitlePopUp<NetworkChoice>.Entry] = [
-            .choice(.thisMachine, title: thisMachine, closedTitle: thisMachine)
-        ]
-        if !view.networks.isEmpty {
-            entries.append(.separator)
-            for network in view.networks {
-                let name = names.name(of: network.interface)
-                entries.append(
-                    .choice(
-                        .interface(network.interface),
-                        title: networkTitle(network, name: name),
-                        closedTitle: name
-                    )
+            MacPopUpButton("Available on", selection: networkChoice) {
+                MacPopUpOption(
+                    "This Mac only",
+                    value: NetworkChoice.thisMachine
                 )
+                if !view.networks.isEmpty {
+                    MacMenuDivider()
+                    for network in view.networks {
+                        let name = names.name(of: network.interface)
+                        MacPopUpOption(
+                            verbatim: networkTitle(network, name: name),
+                            value: NetworkChoice.interface(network.interface),
+                            closedTitle: name
+                        )
+                    }
+                }
+                MacMenuDivider()
+                MacPopUpOption("Every network", value: NetworkChoice.every)
             }
+            .fixedSize()
         }
-        let every = String(localized: "Every network")
-        entries.append(.separator)
-        entries.append(.choice(.every, title: every, closedTitle: every))
-        return entries
     }
 
     // MARK: The network
