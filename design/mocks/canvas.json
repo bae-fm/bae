@@ -5381,10 +5381,6 @@
   "android.settings.person.admin.dc.html",
   "mac.settings.sync.s3.dc.html",
   "mac.settings.people.dc.html",
-  "android.settings.restore-code.hidden.dc.html",
-  "android.settings.restore-code.shown.dc.html",
-  "mac.settings.restore-code.hidden.dc.html",
-  "mac.settings.restore-code.shown.dc.html",
   "android.settings.library.rename.dc.html",
   "android.settings.library.member.dc.html",
   "android.settings.library.sync-problem.dc.html",
@@ -5814,7 +5810,20 @@
   "mac.settings.storage.dc.html",
   "mac.settings.storage.from-before-reset.dc.html",
   "mac.settings.storage.delete-from-before-reset.dc.html",
-  "mac.welcome.create.name.dc.html"
+  "mac.welcome.create.name.dc.html",
+  "mac.settings.sync.code-shown.dc.html",
+  "android.settings.sync.code-shown.dc.html",
+  "android.welcome.libraries.saved-codes.dc.html",
+  "android.welcome.saved-code.delete.dc.html",
+  "mac.welcome.libraries.saved-codes.dc.html",
+  "mac.welcome.saved-code.delete.dc.html",
+  "mac.settings.sync.pending.dc.html",
+  "mac.settings.sync.setup-undone.dc.html",
+  "mac.settings.sync.cloud-home-unreadable.dc.html",
+  "android.settings.sync.pending.dc.html",
+  "mac.settings.person.s3.dc.html",
+  "android.settings.person.s3.dc.html",
+  "android.parts.restore-code.dc.html"
  ],
  "pages": [
   {
