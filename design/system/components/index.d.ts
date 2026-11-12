@@ -228,8 +228,6 @@ export declare function MacAlbumTile(props: MacAlbumTileProps): React.ReactEleme
 export interface MacTrackRowProps { position?: string; title: string; artist?: string; duration?: string; current?: boolean; playing?: boolean; hover?: boolean }
 export declare function MacTrackRow(props: MacTrackRowProps): React.ReactElement;
 export declare function MacEyebrow(props: { children?: React.ReactNode }): React.ReactElement;
-export interface MacBrowseRowProps { name?: string; count?: string; noImage?: boolean; hover?: boolean; selected?: boolean; loading?: boolean }
-export declare function MacBrowseRow(props: MacBrowseRowProps): React.ReactElement;
 export interface MacDetailHeaderProps { name: string; count?: string; noImage?: boolean }
 export declare function MacDetailHeader(props: MacDetailHeaderProps): React.ReactElement;
 export interface MacQueueRowProps { title: string; artist?: string; album?: string; duration?: string; hover?: boolean }
@@ -284,8 +282,9 @@ export interface MacSearchCardProps { top?: number; right?: number; empty?: stri
 export declare function MacSearchCard(props: MacSearchCardProps): React.ReactElement;
 export declare function MacSearchSection(props: { title: string }): React.ReactElement;
 /** part (Android) indents a work under its group's heading work; inset (Android) is the composer and work pages' rows today, whose text carries a second 16dp padding inside the row's own. */
-export interface SearchRowProps { title: string; subtitle?: string; trailing?: string; art?: string; noArt?: boolean; hover?: boolean; part?: boolean; inset?: boolean }
-export declare function MacSearchRow(props: SearchRowProps): React.ReactElement;
+/** One row of a library list on the Mac: Search's results, the artist and composer lists, the composer and work pages' rows. */
+export interface MacLibraryRowProps { title?: string; subtitle?: string; trailing?: string; art?: string; missing?: boolean; hover?: boolean; selected?: boolean; loading?: boolean; credit?: boolean; bleed?: boolean; part?: boolean; top?: number }
+export declare function MacLibraryRow(props: MacLibraryRowProps): React.ReactElement;
 export declare function AndroidSearchSection(props: { title: string }): React.ReactElement;
 /** One row of a library list: Search's results, the artist and composer lists, the composer and work pages' rows. */
 export interface AndroidLibraryRowProps { title: string; subtitle?: string; trailing?: string; art?: string; noArt?: boolean; missing?: boolean; part?: boolean; inset?: boolean }
@@ -315,8 +314,6 @@ export declare function AndroidCastRow(props: AndroidCastRowProps): React.ReactE
 export interface AndroidCheckboxProps { label: string; on?: boolean }
 export declare function AndroidCheckbox(props: AndroidCheckboxProps): React.ReactElement;
 /** A row of a composer's page or a work's: cover, title, second line. credit is the text-only row; part indents a work; top is the gap above it. */
-export interface MacDetailRowProps { title: string; subtitle?: string; art?: string; noArt?: boolean; credit?: boolean; part?: boolean; top?: number; hover?: boolean }
-export declare function MacDetailRow(props: MacDetailRowProps): React.ReactElement;
 export interface MacSectionHeaderProps { title: string; top?: number; bottom?: number }
 export declare function MacSectionHeader(props: MacSectionHeaderProps): React.ReactElement;
 export declare function MacWorkDetail(props: { title: string; children?: React.ReactNode }): React.ReactElement;

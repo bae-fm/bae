@@ -1,0 +1,23 @@
+<!-- @dsCard group="macOS library" height=720 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>MacLibraryRow</title></head>
+<body class="bae-preview bae-mac" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, h('div', { style: { width: 380 } }, c))); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
+    W('Search: album', h(B.MacLibraryRow, { title: 'Low Tide Hours', subtitle: 'Mara Quill (1992)' })),
+    W('Search: track', h(B.MacLibraryRow, { title: 'Harbor Lights', subtitle: 'Mara Quill - Low Tide Hours', trailing: '4:32', art: 'Low Tide Hours' })),
+    W('Hover', h(B.MacLibraryRow, { title: 'Mara Quill', subtitle: '3 albums', hover: true })),
+    W('Artist', h(B.MacLibraryRow, { title: 'Mara Quill', subtitle: '12 albums' })),
+    W('Selected', h(B.MacLibraryRow, { title: 'Odile Fen', subtitle: '3 albums', selected: true })),
+    W('Loading', h(B.MacLibraryRow, { loading: true })),
+    W('On a page: work', h(B.MacLibraryRow, { title: 'Low Tide Suite', subtitle: 'Ada Lindqvist', art: 'Blue Room Sessions', bleed: true })),
+    W('On a page: part', h(B.MacLibraryRow, { title: 'II. Slack Water', subtitle: 'Ada Lindqvist', art: 'Blue Room Sessions', part: true, bleed: true })),
+    W('On a page: hover', h(B.MacLibraryRow, { title: 'Harbor Waltz', subtitle: 'Ada Lindqvist', art: 'Glass Harbor', hover: true, bleed: true })),
+    W('Credit', h(B.MacLibraryRow, { title: 'Paper Lanterns', subtitle: 'Arranger', credit: true }))));
+</script>
+</body>
+</html>

@@ -166,13 +166,6 @@
 
   function MacEyebrow(props) { return h('div', { className: 'bae-m-eyebrow' }, props.children); }
 
-  function MacBrowseRow(props) {
-    if (props.loading) return h('div', { className: 'bae-m-browse bae-m-browse-loading' }, h('div', { className: 'bae-m-browse-art bae-ph' }), h('div', { className: 'bae-m-browse-text' }, h('div', { className: 'bae-ph', style: { width: 140, height: 11 } }), h('div', { className: 'bae-ph', style: { width: 80, height: 10 } })));
-    return h('div', { className: cx('bae-m-browse', props.selected && 'bae-m-browse-selected', props.hover && 'bae-m-browse-hover') },
-      h(Artwork, { title: props.name, size: 44, radius: 6, missing: props.noImage }),
-      h('div', { className: 'bae-m-browse-text' }, h('div', { className: 'bae-m-browse-name' }, props.name), h('div', { className: 'bae-m-browse-count' }, props.count)));
-  }
-
   function MacDetailHeader(props) {
     return h('div', { className: 'bae-m-dethead' },
       h(Artwork, { title: props.name, size: 72, radius: 10, missing: props.noImage }),

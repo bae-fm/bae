@@ -9,7 +9,7 @@
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, h(B.MacWorkDetail, { title: 'Low Tide Suite' }, h(B.MacSectionHeader, { title: 'Releases' }), h(B.MacDetailRow, { title: 'Blue Room Sessions', subtitle: 'CD', art: 'Blue Room Sessions' }), h(B.MacSectionHeader, { title: 'Recordings' }), h(B.MacDetailRow, { title: 'Low Tide Suite: I. Ebb', subtitle: 'Blue Room Sessions', credit: true }))));
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, h(B.MacWorkDetail, { title: 'Low Tide Suite' }, h(B.MacSectionHeader, { title: 'Releases' }), h(B.MacLibraryRow, { title: 'Blue Room Sessions', subtitle: 'CD', art: 'Blue Room Sessions', bleed: true }), h(B.MacSectionHeader, { title: 'Recordings' }), h(B.MacLibraryRow, { title: 'Low Tide Suite: I. Ebb', subtitle: 'Blue Room Sessions', credit: true }))));
 </script>
 </body>
 </html>

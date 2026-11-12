@@ -4,11 +4,19 @@
     return h('div', { className: 'bae-m-searchcard', style: style }, props.empty ? h('div', { className: 'bae-m-searchcard-empty' }, props.empty) : props.children);
   }
   function MacSearchSection(props) { return h('div', { className: 'bae-m-searchsection' }, props.title); }
-  function MacSearchRow(props) {
-    return h('div', { className: cx('bae-m-searchrow', props.hover && 'bae-m-searchrow-hover') },
-      h(Artwork, { title: props.art || props.title, size: 44, radius: 6, missing: props.noArt }),
-      h('div', { className: 'bae-m-searchrow-text' }, h('div', { className: 'bae-m-searchrow-title' }, props.title), h('div', { className: 'bae-m-searchrow-sub' }, props.subtitle || ' ')),
-      props.trailing ? h('span', { className: 'bae-m-searchrow-trail' }, props.trailing) : null);
+  // One row of a library list on the Mac: Search's results, the artist and composer lists, the composer and work pages' rows.
+  // A 44pt cover, the title over a second line 2pt below (it holds its height when empty), and `trailing` (a track's duration). `hover` and `selected` fill it;
+  // `loading` is the row before it arrives. `credit` is the text-only row of a credit or a recording, which opens nothing. `bleed` lets the fill reach 8pt past
+  // the text, for a row on a page rather than in a list; `part` indents it 16pt under its group's heading work; `top` is the gap above it.
+  function MacLibraryRow(props) {
+    var ml = (props.bleed && !props.credit ? -8 : 0) + (props.part ? 16 : 0);
+    var style = { marginTop: props.top ? Number(props.top) : null, marginLeft: ml || null };
+    if (props.loading) return h('div', { className: 'bae-m-librow', style: style }, h('div', { className: 'bae-ph', style: { width: 44, height: 44, borderRadius: 6, flex: 'none' } }),
+      h('div', { className: 'bae-m-librow-text' }, h('div', { className: 'bae-ph', style: { width: 140, height: 11 } }), h('div', { className: 'bae-ph', style: { width: 80, height: 10 } })));
+    return h('div', { className: cx('bae-m-librow', props.credit && 'bae-m-librow-credit', props.bleed && !props.credit && 'bae-m-librow-bleed', props.hover && 'bae-m-librow-hover', props.selected && 'bae-m-librow-selected'), style: style },
+      props.credit ? null : h(Artwork, { title: props.art || props.title, size: 44, radius: 6, missing: props.missing }),
+      h('div', { className: 'bae-m-librow-text' }, h('div', { className: 'bae-m-librow-title' }, props.title), h('div', { className: 'bae-m-librow-sub' }, props.subtitle || ' ')),
+      props.trailing ? h('span', { className: 'bae-m-librow-trail' }, props.trailing) : null);
   }
   function AndroidSearchSection(props) { return h('div', { className: 'bae-a-searchsection' }, props.title); }
   // One row of a library list: Search's results, the artist and composer lists, the composer and work pages' rows.
@@ -114,20 +122,10 @@
 
 
   // ---- Composer and work pages (macOS) ----
-  // A row of the composer's page or a work's: cover, title, second line. `credit` is the text-only row
-  // (a credit or a recording: nothing to open). `part` indents a work under its group's heading work.
-  // `top` is the gap above the row, which the page sets per row.
-  function MacDetailRow(props) {
-    var style = { marginTop: Number(props.top || 0), marginLeft: props.part ? 16 : 0 };
-    var text = h('div', { className: 'bae-m-drow-text' }, h('div', { className: 'bae-m-drow-title' }, props.title), h('div', { className: 'bae-m-drow-sub' }, props.subtitle || ' '));
-    if (props.credit) return h('div', { className: 'bae-m-drow bae-m-drow-credit', style: style }, text);
-    return h('div', { className: cx('bae-m-drow', props.hover && 'bae-m-drow-hover'), style: style },
-      h(Artwork, { title: props.art || props.title, size: 44, radius: 6, missing: props.noArt }), text);
-  }
   function MacSectionHeader(props) {
     return h('div', { className: 'bae-m-sechead', style: { marginTop: Number(props.top || 0), marginBottom: Number(props.bottom || 0) } }, props.title);
   }
-  // A work's detail: its title, then its sections (MacSectionHeader and MacDetailRow) 12pt apart.
+  // A work's detail: its title, then its sections (MacSectionHeader and MacLibraryRow) 12pt apart.
   function MacWorkDetail(props) {
     return h('div', { className: 'bae-m-work' }, h('div', { className: 'bae-m-work-title' }, props.title), props.children);
   }
