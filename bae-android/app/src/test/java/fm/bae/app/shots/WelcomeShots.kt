@@ -30,6 +30,7 @@ import fm.bae.app.ui.onboarding.WelcomeSavedCodesScene
 import fm.bae.app.ui.onboarding.WelcomeScene
 import fm.bae.app.ui.onboarding.deleteSavedCodeParts
 import fm.bae.app.ui.onboarding.removalFailedParts
+import fm.bae.app.ui.onboarding.sceneSavedEntries
 import fm.bae.app.ui.testRecoveryLines
 import fm.bae.fastvalues.LatestStream
 import fm.bae.fastvalues.only
@@ -111,7 +112,7 @@ class WelcomeShots : BoardShot() {
     fun androidWelcomeSavedCodeDelete() =
         shot("android.welcome.saved-code.delete") {
             InPlaceDialogScene(behind = { WelcomeSavedCodesScene() }) {
-                deleteSavedCodeParts({}, {})
+                deleteSavedCodeParts(sceneSavedEntries.first(), {}, {})
             }
         }
 

@@ -73,7 +73,7 @@ struct KeychainRestoreContainer: View {
                 set: { if $0 == nil { codes.dismissDelete() } }
             )
         ) { pending in
-            SavedCodeDeletion.alert {
+            SavedCodeDeletion.alert(for: pending) {
                 // The person confirmed; the delete finishes even if the
                 // welcome closes meanwhile.
                 Task { await codes.delete(pending, from: setup) }
@@ -84,14 +84,15 @@ struct KeychainRestoreContainer: View {
 
 /// What the confirmation to delete a saved restore code says.
 enum SavedCodeDeletion {
-    /// The alert; Delete runs `onDelete`.
+    /// The alert for deleting `entry`'s code; Delete runs `onDelete`.
     static func alert(
+        for entry: SavedRestoreEntry,
         onDelete: @escaping @MainActor () -> Void
     ) -> (MacAlertWords, [MacAlertButton]) {
         (
             MacAlertWords(
                 Text("Delete this restore code?"),
-                message: Text(verbatim: message)
+                message: Text(verbatim: message(for: entry))
             ),
             [
                 MacAlertButton(
@@ -105,12 +106,21 @@ enum SavedCodeDeletion {
     }
 
     /// That the code goes from iCloud Keychain on all the person's Apple
-    /// devices and nothing else does.
-    static var message: String {
-        String(
-            localized:
-                "This removes the restore code from iCloud Keychain on all your Apple devices. It does not delete the library, or anything on this Mac or in the cloud."
-        )
+    /// devices and nothing else does, naming the library when the code says
+    /// which it is for.
+    static func message(for entry: SavedRestoreEntry) -> String {
+        switch entry {
+        case .readable(let saved):
+            String(
+                localized:
+                    "This removes the restore code for \(saved.info.name) from iCloud Keychain on all your Apple devices. It does not delete the library, or anything on this Mac or in the cloud."
+            )
+        case .unreadable:
+            String(
+                localized:
+                    "This removes the restore code from iCloud Keychain on all your Apple devices. It does not delete the library, or anything on this Mac or in the cloud."
+            )
+        }
     }
 }
 

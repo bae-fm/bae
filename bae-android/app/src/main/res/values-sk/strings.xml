@@ -405,7 +405,8 @@
     <string name="onboarding_saved_code_delete">Odstrániť</string>
     <string name="onboarding_saved_code_delete_menu">Odstrániť…</string>
     <string name="onboarding_saved_code_delete_title">Odstrániť tento kód na obnovenie?</string>
-    <string name="onboarding_saved_code_delete_body">Týmto odstrániš kód na obnovenie iba z tohto zariadenia. Knižnica ani nič v cloude sa neodstráni.</string>
+    <string name="onboarding_saved_code_delete_body">Týmto odstrániš kód na obnovenie knižnice %1$s iba z tohto zariadenia. Knižnica ani nič v cloude sa neodstráni.</string>
+    <string name="onboarding_saved_code_delete_body_unusable">Týmto odstrániš kód na obnovenie iba z tohto zariadenia. Knižnica ani nič v cloude sa neodstráni.</string>
     <string name="onboarding_saved_code_delete_failed">Kód na obnovenie sa nepodarilo odstrániť</string>
     <string name="onboarding_saved_code_removed">Tento kód na obnovenie už v tomto zariadení nie je uložený.</string>
     <string name="onboarding_saved_library">Knižnica</string>

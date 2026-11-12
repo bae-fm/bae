@@ -383,7 +383,8 @@
     <string name="onboarding_saved_code_delete">删除</string>
     <string name="onboarding_saved_code_delete_menu">删除…</string>
     <string name="onboarding_saved_code_delete_title">删除此恢复码？</string>
-    <string name="onboarding_saved_code_delete_body">这只会从此设备上移除该恢复码。不会删除该库，也不会删除云端中的任何内容。</string>
+    <string name="onboarding_saved_code_delete_body">这只会从此设备上移除%1$s的恢复码。不会删除该库，也不会删除云端中的任何内容。</string>
+    <string name="onboarding_saved_code_delete_body_unusable">这只会从此设备上移除该恢复码。不会删除该库，也不会删除云端中的任何内容。</string>
     <string name="onboarding_saved_code_delete_failed">无法删除恢复码</string>
     <string name="onboarding_saved_code_removed">此恢复码已不再保存在此设备上。</string>
     <string name="onboarding_saved_library">库</string>

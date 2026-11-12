@@ -407,7 +407,8 @@
     <string name="onboarding_saved_code_delete">Usuń</string>
     <string name="onboarding_saved_code_delete_menu">Usuń…</string>
     <string name="onboarding_saved_code_delete_title">Usunąć ten kod przywracania?</string>
-    <string name="onboarding_saved_code_delete_body">Spowoduje to usunięcie kodu przywracania tylko z tego urządzenia. Nie usunie to biblioteki ani niczego w chmurze.</string>
+    <string name="onboarding_saved_code_delete_body">Spowoduje to usunięcie kodu przywracania biblioteki %1$s tylko z tego urządzenia. Nie usunie to biblioteki ani niczego w chmurze.</string>
+    <string name="onboarding_saved_code_delete_body_unusable">Spowoduje to usunięcie kodu przywracania tylko z tego urządzenia. Nie usunie to biblioteki ani niczego w chmurze.</string>
     <string name="onboarding_saved_code_delete_failed">Nie udało się usunąć kodu przywracania</string>
     <string name="onboarding_saved_code_removed">Ten kod przywracania nie jest już zapisany na tym urządzeniu.</string>
     <string name="onboarding_saved_library">Biblioteka</string>

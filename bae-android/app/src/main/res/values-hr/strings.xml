@@ -399,7 +399,8 @@
     <string name="onboarding_saved_code_delete">Izbriši</string>
     <string name="onboarding_saved_code_delete_menu">Izbriši…</string>
     <string name="onboarding_saved_code_delete_title">Izbrisati ovaj kod za vraćanje?</string>
-    <string name="onboarding_saved_code_delete_body">Time se kod za vraćanje uklanja samo s ovog uređaja. Ne briše se fonoteka ni išta u oblaku.</string>
+    <string name="onboarding_saved_code_delete_body">Time se kod za vraćanje za %1$s uklanja samo s ovog uređaja. Ne briše se fonoteka ni išta u oblaku.</string>
+    <string name="onboarding_saved_code_delete_body_unusable">Time se kod za vraćanje uklanja samo s ovog uređaja. Ne briše se fonoteka ni išta u oblaku.</string>
     <string name="onboarding_saved_code_delete_failed">Nije moguće izbrisati kod za vraćanje</string>
     <string name="onboarding_saved_code_removed">Ovaj kod za vraćanje više nije spremljen na ovom uređaju.</string>
     <string name="onboarding_saved_library">Fonoteka</string>

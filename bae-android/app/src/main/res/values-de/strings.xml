@@ -391,7 +391,8 @@
     <string name="onboarding_saved_code_delete">Löschen</string>
     <string name="onboarding_saved_code_delete_menu">Löschen…</string>
     <string name="onboarding_saved_code_delete_title">Diesen Wiederherstellungscode löschen?</string>
-    <string name="onboarding_saved_code_delete_body">Damit wird der Wiederherstellungscode nur von diesem Gerät entfernt. Die Bibliothek und alles in der Cloud bleiben erhalten.</string>
+    <string name="onboarding_saved_code_delete_body">Damit wird der Wiederherstellungscode für %1$s nur von diesem Gerät entfernt. Die Bibliothek und alles in der Cloud bleiben erhalten.</string>
+    <string name="onboarding_saved_code_delete_body_unusable">Damit wird der Wiederherstellungscode nur von diesem Gerät entfernt. Die Bibliothek und alles in der Cloud bleiben erhalten.</string>
     <string name="onboarding_saved_code_delete_failed">Der Wiederherstellungscode konnte nicht gelöscht werden</string>
     <string name="onboarding_saved_code_removed">Dieser Wiederherstellungscode ist nicht mehr auf diesem Gerät gespeichert.</string>
     <string name="onboarding_saved_library">Bibliothek</string>

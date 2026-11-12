@@ -448,7 +448,9 @@
     <string name="onboarding_saved_code_delete">Delete</string>
     <string name="onboarding_saved_code_delete_menu">Delete…</string>
     <string name="onboarding_saved_code_delete_title">Delete this restore code?</string>
-    <string name="onboarding_saved_code_delete_body">This removes the restore code from this device only. It does not delete the library, or anything in the cloud.</string>
+    <!-- %1$s = the library's name, saved with the code -->
+    <string name="onboarding_saved_code_delete_body">This removes the restore code for %1$s from this device only. It does not delete the library, or anything in the cloud.</string>
+    <string name="onboarding_saved_code_delete_body_unusable">This removes the restore code from this device only. It does not delete the library, or anything in the cloud.</string>
     <string name="onboarding_saved_code_delete_failed">Could not delete the restore code</string>
     <string name="onboarding_saved_code_removed">This restore code is no longer saved on this device.</string>
     <string name="onboarding_saved_library">Library</string>

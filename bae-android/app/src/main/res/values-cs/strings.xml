@@ -407,7 +407,8 @@
     <string name="onboarding_saved_code_delete">Smazat</string>
     <string name="onboarding_saved_code_delete_menu">Smazat…</string>
     <string name="onboarding_saved_code_delete_title">Smazat tento kód pro obnovení?</string>
-    <string name="onboarding_saved_code_delete_body">Tímto odstraníte kód pro obnovení pouze z tohoto zařízení. Knihovnu ani nic v cloudu to nesmaže.</string>
+    <string name="onboarding_saved_code_delete_body">Tímto odstraníte kód pro obnovení knihovny %1$s pouze z tohoto zařízení. Knihovnu ani nic v cloudu to nesmaže.</string>
+    <string name="onboarding_saved_code_delete_body_unusable">Tímto odstraníte kód pro obnovení pouze z tohoto zařízení. Knihovnu ani nic v cloudu to nesmaže.</string>
     <string name="onboarding_saved_code_delete_failed">Kód pro obnovení nelze smazat</string>
     <string name="onboarding_saved_code_removed">Tento kód pro obnovení už v tomto zařízení uložený není.</string>
     <string name="onboarding_saved_library">Knihovna</string>

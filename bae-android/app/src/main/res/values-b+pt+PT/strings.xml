@@ -390,7 +390,8 @@
     <string name="onboarding_saved_code_delete">Eliminar</string>
     <string name="onboarding_saved_code_delete_menu">Eliminar…</string>
     <string name="onboarding_saved_code_delete_title">Eliminar este código de restauração?</string>
-    <string name="onboarding_saved_code_delete_body">Isto remove o código de restauração apenas deste dispositivo. Não elimina a biblioteca nem nada na nuvem.</string>
+    <string name="onboarding_saved_code_delete_body">Isto remove o código de restauração de %1$s apenas deste dispositivo. Não elimina a biblioteca nem nada na nuvem.</string>
+    <string name="onboarding_saved_code_delete_body_unusable">Isto remove o código de restauração apenas deste dispositivo. Não elimina a biblioteca nem nada na nuvem.</string>
     <string name="onboarding_saved_code_delete_failed">Não foi possível eliminar o código de restauração</string>
     <string name="onboarding_saved_code_removed">Este código de restauração já não está guardado neste dispositivo.</string>
     <string name="onboarding_saved_library">Biblioteca</string>

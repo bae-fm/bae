@@ -389,7 +389,8 @@
     <string name="onboarding_saved_code_delete">Διαγραφή</string>
     <string name="onboarding_saved_code_delete_menu">Διαγραφή…</string>
     <string name="onboarding_saved_code_delete_title">Διαγραφή αυτού του κωδικού επαναφοράς;</string>
-    <string name="onboarding_saved_code_delete_body">Αυτό αφαιρεί τον κωδικό επαναφοράς μόνο από αυτή τη συσκευή. Δεν διαγράφει τη βιβλιοθήκη ούτε τίποτα στο cloud.</string>
+    <string name="onboarding_saved_code_delete_body">Αυτό αφαιρεί τον κωδικό επαναφοράς για %1$s μόνο από αυτή τη συσκευή. Δεν διαγράφει τη βιβλιοθήκη ούτε τίποτα στο cloud.</string>
+    <string name="onboarding_saved_code_delete_body_unusable">Αυτό αφαιρεί τον κωδικό επαναφοράς μόνο από αυτή τη συσκευή. Δεν διαγράφει τη βιβλιοθήκη ούτε τίποτα στο cloud.</string>
     <string name="onboarding_saved_code_delete_failed">Δεν ήταν δυνατή η διαγραφή του κωδικού επαναφοράς</string>
     <string name="onboarding_saved_code_removed">Αυτός ο κωδικός επαναφοράς δεν είναι πλέον αποθηκευμένος σε αυτή τη συσκευή.</string>
     <string name="onboarding_saved_library">Βιβλιοθήκη</string>

@@ -391,7 +391,8 @@
     <string name="onboarding_saved_code_delete">Sil</string>
     <string name="onboarding_saved_code_delete_menu">Sil…</string>
     <string name="onboarding_saved_code_delete_title">Bu geri yükleme kodu silinsin mi?</string>
-    <string name="onboarding_saved_code_delete_body">Bu işlem geri yükleme kodunu yalnızca bu cihazdan kaldırır. Kitaplığı veya buluttaki hiçbir şeyi silmez.</string>
+    <string name="onboarding_saved_code_delete_body">Bu işlem %1$s geri yükleme kodunu yalnızca bu cihazdan kaldırır. Kitaplığı veya buluttaki hiçbir şeyi silmez.</string>
+    <string name="onboarding_saved_code_delete_body_unusable">Bu işlem geri yükleme kodunu yalnızca bu cihazdan kaldırır. Kitaplığı veya buluttaki hiçbir şeyi silmez.</string>
     <string name="onboarding_saved_code_delete_failed">Geri yükleme kodu silinemedi</string>
     <string name="onboarding_saved_code_removed">Bu geri yükleme kodu artık bu cihazda kayıtlı değil.</string>
     <string name="onboarding_saved_library">Kitaplık</string>

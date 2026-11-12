@@ -397,7 +397,8 @@
     <string name="onboarding_saved_code_delete">Șterge</string>
     <string name="onboarding_saved_code_delete_menu">Șterge…</string>
     <string name="onboarding_saved_code_delete_title">Ștergi acest cod de restaurare?</string>
-    <string name="onboarding_saved_code_delete_body">Astfel elimini codul de restaurare doar de pe acest dispozitiv. Biblioteca și conținutul cloudului nu sunt șterse.</string>
+    <string name="onboarding_saved_code_delete_body">Astfel elimini codul de restaurare pentru %1$s doar de pe acest dispozitiv. Biblioteca și conținutul cloudului nu sunt șterse.</string>
+    <string name="onboarding_saved_code_delete_body_unusable">Astfel elimini codul de restaurare doar de pe acest dispozitiv. Biblioteca și conținutul cloudului nu sunt șterse.</string>
     <string name="onboarding_saved_code_delete_failed">Codul de restaurare nu a putut fi șters</string>
     <string name="onboarding_saved_code_removed">Acest cod de restaurare nu mai este salvat pe acest dispozitiv.</string>
     <string name="onboarding_saved_library">Bibliotecă</string>

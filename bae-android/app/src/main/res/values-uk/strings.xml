@@ -407,7 +407,8 @@
     <string name="onboarding_saved_code_delete">Видалити</string>
     <string name="onboarding_saved_code_delete_menu">Видалити…</string>
     <string name="onboarding_saved_code_delete_title">Видалити цей код відновлення?</string>
-    <string name="onboarding_saved_code_delete_body">Код відновлення буде видалено лише з цього пристрою. Бібліотеку й усе у хмарі не буде видалено.</string>
+    <string name="onboarding_saved_code_delete_body">Код відновлення для %1$s буде видалено лише з цього пристрою. Бібліотеку й усе у хмарі не буде видалено.</string>
+    <string name="onboarding_saved_code_delete_body_unusable">Код відновлення буде видалено лише з цього пристрою. Бібліотеку й усе у хмарі не буде видалено.</string>
     <string name="onboarding_saved_code_delete_failed">Не вдалося видалити код відновлення</string>
     <string name="onboarding_saved_code_removed">Цей код відновлення більше не збережено на цьому пристрої.</string>
     <string name="onboarding_saved_library">Бібліотека</string>

@@ -114670,6 +114670,179 @@
         }
       }
     },
+    "This removes the restore code for %@ from iCloud Keychain on all your Apple devices. It does not delete the library, or anything on this Mac or in the cloud." : {
+      "comment" : "Welcome screen: body of the alert confirming deletion of a saved restore code; %@ is the library's name",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This removes the restore code for %@ from iCloud Keychain on all your Apple devices. It does not delete the library, or anything on this Mac or in the cloud."
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يؤدي هذا إلى إزالة رمز الاستعادة الخاص بـ %@ من سلسلة مفاتيح iCloud على جميع أجهزة Apple لديك. لا يحذف المكتبة، ولا أي شيء على جهاز Mac هذا أو في السحابة."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Това премахва кода за възстановяване за %@ от Ключодържателя на iCloud на всички ваши устройства на Apple. Не изтрива библиотеката, нито нещо на този Mac или в облака."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tímto odstraníte kód pro obnovení knihovny %@ z iCloud Klíčenky na všech svých zařízeních Apple. Knihovna ani nic na tomto Macu nebo v cloudu se nesmaže."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dette fjerner gendannelseskoden for %@ fra iCloud-nøglering på alle dine Apple-enheder. Det sletter ikke biblioteket eller noget på denne Mac eller i skyen."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dadurch wird der Wiederherstellungscode für %@ auf allen deinen Apple-Geräten aus dem iCloud-Schlüsselbund entfernt. Die Bibliothek wird nicht gelöscht, ebenso wenig etwas auf diesem Mac oder in der Cloud."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Έτσι αφαιρείται ο κωδικός επαναφοράς για %@ από το Μπρελόκ iCloud σε όλες τις συσκευές Apple σας. Δεν διαγράφεται η βιβλιοθήκη ούτε τίποτα σε αυτό το Mac ή στο cloud."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esto elimina el código de restauración de %@ del llavero de iCloud en todos tus dispositivos Apple. No elimina la biblioteca ni nada de este Mac ni de la nube."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tämä poistaa kirjaston %@ palautuskoodin iCloud-avainnipusta kaikilla Apple-laitteillasi. Se ei poista kirjastoa eikä mitään tältä Macilta tai pilvestäsi."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cette action supprime le code de restauration de « %@ » du trousseau iCloud sur tous vos appareils Apple. Elle ne supprime ni la bibliothèque, ni quoi que ce soit sur ce Mac ou dans le cloud."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "פעולה זו מסירה את קוד השחזור של ״%@״ ממחזיק המפתחות של iCloud בכל מכשירי Apple שלך. היא לא מוחקת את הספרייה, ולא שום דבר ב-Mac הזה או בענן."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Time se kod za vraćanje za %@ uklanja iz iCloud privjeska ključeva na svim vašim Apple uređajima. Ne briše se fonoteka ni išta na ovom Macu ili u oblaku."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ez eltávolítja a(z) %@ visszaállítási kódját az iCloud-kulcstartóból az összes Apple-eszközödön. Nem törli a könyvtárat, sem semmit ezen a Macen vagy a felhőben."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Il codice di ripristino di %@ verrà rimosso dal portachiavi iCloud su tutti i tuoi dispositivi Apple. Non verrà eliminata la libreria, né nulla su questo Mac o nel cloud."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@の復元コードを、すべてのAppleデバイスのiCloudキーチェーンから削除します。ライブラリや、このMacおよびクラウド上のものは削除されません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "모든 Apple 기기의 iCloud 키체인에서 %@의 복원 코드를 제거합니다. 라이브러리나 이 Mac 또는 클라우드에 있는 항목은 삭제되지 않습니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dette fjerner gjenopprettingskoden for %@ fra iCloud-nøkkelringen på alle Apple-enhetene dine. Det sletter ikke biblioteket eller noe på denne Macen eller i skyen."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hiermee wordt de herstelcode voor ‘%@’ verwijderd uit de iCloud-sleutelhanger op al je Apple-apparaten. De bibliotheek wordt niet verwijderd, en ook niets op deze Mac of in de cloud."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spowoduje to usunięcie kodu przywracania dla %@ z pęku kluczy iCloud na wszystkich Twoich urządzeniach Apple. Nie usuwa to biblioteki ani niczego na tym Macu ani w chmurze."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Isso remove o código de restauração de %@ das Chaves do iCloud em todos os seus dispositivos Apple. Não exclui a biblioteca nem nada neste Mac ou na nuvem."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Isto remove o código de restauração de %@ do Porta-chaves iCloud em todos os seus dispositivos Apple. Não elimina a biblioteca nem nada neste Mac ou na nuvem."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Astfel, codul de restaurare pentru %@ este eliminat din brelocul iCloud de pe toate dispozitivele tale Apple. Biblioteca nu este ștearsă și nici nimic de pe acest Mac sau din cloud."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Týmto sa kód na obnovenie pre %@ odstráni z kľúčenky iCloud na všetkých tvojich zariadeniach Apple. Neodstráni sa knižnica ani nič na tomto Macu alebo v cloude."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Detta tar bort återställningskoden för %@ från iCloud-nyckelringen på alla dina Apple-enheter. Biblioteket raderas inte, och inte heller något på den här Macen eller i molnet."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bu işlem, %@ için geri yükleme kodunu tüm Apple cihazlarınızdaki iCloud Anahtar Zinciri’nden kaldırır. Kitaplığı veya bu Mac’teki ya da buluttaki hiçbir şeyi silmez."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Це вилучить код відновлення для %@ із В’язки ключів iCloud на всіх ваших пристроях Apple. Бібліотеку, а також усе на цьому Mac і у хмарі, не буде видалено."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这会从你所有 Apple 设备上的 iCloud 钥匙串中移除%@的恢复码。不会删除该库，也不会删除这台 Mac 上或云端中的任何内容。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "這會從你所有 Apple 裝置上的 iCloud 鑰匙圈中移除%@的還原碼。不會刪除該資料庫，也不會刪除這部 Mac 上或雲端中的任何內容。"
+          }
+        }
+      }
+    },
     "This removes the restore code from iCloud Keychain on all your Apple devices. It does not delete the library, or anything on this Mac or in the cloud." : {
       "comment" : "Welcome screen: message of the alert confirming deletion of a saved restore code that can't be used, so has no library name",
       "localizations" : {

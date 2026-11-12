@@ -383,7 +383,8 @@
     <string name="onboarding_saved_code_delete">削除</string>
     <string name="onboarding_saved_code_delete_menu">削除…</string>
     <string name="onboarding_saved_code_delete_title">この復元コードを削除しますか？</string>
-    <string name="onboarding_saved_code_delete_body">復元コードをこのデバイスからのみ削除します。ライブラリやクラウド内のデータは削除されません。</string>
+    <string name="onboarding_saved_code_delete_body">%1$sの復元コードをこのデバイスからのみ削除します。ライブラリやクラウド内のデータは削除されません。</string>
+    <string name="onboarding_saved_code_delete_body_unusable">復元コードをこのデバイスからのみ削除します。ライブラリやクラウド内のデータは削除されません。</string>
     <string name="onboarding_saved_code_delete_failed">復元コードを削除できませんでした</string>
     <string name="onboarding_saved_code_removed">この復元コードはこのデバイスに保存されていません。</string>
     <string name="onboarding_saved_library">ライブラリ</string>

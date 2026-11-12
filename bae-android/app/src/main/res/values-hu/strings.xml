@@ -389,7 +389,8 @@
     <string name="onboarding_saved_code_delete">Törlés</string>
     <string name="onboarding_saved_code_delete_menu">Törlés…</string>
     <string name="onboarding_saved_code_delete_title">Törlöd ezt a visszaállítási kódot?</string>
-    <string name="onboarding_saved_code_delete_body">Ez csak erről az eszközről távolítja el a visszaállítási kódot. Nem törli a könyvtárat, sem a felhőben lévő tartalmat.</string>
+    <string name="onboarding_saved_code_delete_body">Ez csak erről az eszközről távolítja el a(z) %1$s könyvtár visszaállítási kódját. Nem törli a könyvtárat, sem a felhőben lévő tartalmat.</string>
+    <string name="onboarding_saved_code_delete_body_unusable">Ez csak erről az eszközről távolítja el a visszaállítási kódot. Nem törli a könyvtárat, sem a felhőben lévő tartalmat.</string>
     <string name="onboarding_saved_code_delete_failed">Nem sikerült törölni a visszaállítási kódot</string>
     <string name="onboarding_saved_code_removed">Ez a visszaállítási kód már nincs mentve ezen az eszközön.</string>
     <string name="onboarding_saved_library">Könyvtár</string>

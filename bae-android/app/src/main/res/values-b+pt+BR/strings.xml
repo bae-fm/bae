@@ -397,7 +397,8 @@
     <string name="onboarding_saved_code_delete">Excluir</string>
     <string name="onboarding_saved_code_delete_menu">Excluir…</string>
     <string name="onboarding_saved_code_delete_title">Excluir este código de restauração?</string>
-    <string name="onboarding_saved_code_delete_body">Isto remove o código de restauração somente deste dispositivo. Não exclui a biblioteca nem nada na nuvem.</string>
+    <string name="onboarding_saved_code_delete_body">Isto remove o código de restauração de %1$s somente deste dispositivo. Não exclui a biblioteca nem nada na nuvem.</string>
+    <string name="onboarding_saved_code_delete_body_unusable">Isto remove o código de restauração somente deste dispositivo. Não exclui a biblioteca nem nada na nuvem.</string>
     <string name="onboarding_saved_code_delete_failed">Não foi possível excluir o código de restauração</string>
     <string name="onboarding_saved_code_removed">Este código de restauração não está mais salvo neste dispositivo.</string>
     <string name="onboarding_saved_library">Biblioteca</string>

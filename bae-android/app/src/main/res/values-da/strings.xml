@@ -389,7 +389,8 @@
     <string name="onboarding_saved_code_delete">Slet</string>
     <string name="onboarding_saved_code_delete_menu">Slet…</string>
     <string name="onboarding_saved_code_delete_title">Vil du slette denne gendannelseskode?</string>
-    <string name="onboarding_saved_code_delete_body">Dette fjerner gendannelseskoden kun fra denne enhed. Det sletter ikke biblioteket eller noget i skyen.</string>
+    <string name="onboarding_saved_code_delete_body">Dette fjerner gendannelseskoden til %1$s kun fra denne enhed. Det sletter ikke biblioteket eller noget i skyen.</string>
+    <string name="onboarding_saved_code_delete_body_unusable">Dette fjerner gendannelseskoden kun fra denne enhed. Det sletter ikke biblioteket eller noget i skyen.</string>
     <string name="onboarding_saved_code_delete_failed">Kunne ikke slette gendannelseskoden</string>
     <string name="onboarding_saved_code_removed">Denne gendannelseskode er ikke længere gemt på denne enhed.</string>
     <string name="onboarding_saved_library">Bibliotek</string>

@@ -389,7 +389,8 @@
     <string name="onboarding_saved_code_delete">Slett</string>
     <string name="onboarding_saved_code_delete_menu">Slett…</string>
     <string name="onboarding_saved_code_delete_title">Slette denne gjenopprettingskoden?</string>
-    <string name="onboarding_saved_code_delete_body">Dette fjerner gjenopprettingskoden bare fra denne enheten. Det sletter ikke biblioteket eller noe i skyen.</string>
+    <string name="onboarding_saved_code_delete_body">Dette fjerner gjenopprettingskoden for %1$s bare fra denne enheten. Det sletter ikke biblioteket eller noe i skyen.</string>
+    <string name="onboarding_saved_code_delete_body_unusable">Dette fjerner gjenopprettingskoden bare fra denne enheten. Det sletter ikke biblioteket eller noe i skyen.</string>
     <string name="onboarding_saved_code_delete_failed">Kunne ikke slette gjenopprettingskoden</string>
     <string name="onboarding_saved_code_removed">Denne gjenopprettingskoden er ikke lenger lagret på denne enheten.</string>
     <string name="onboarding_saved_library">Bibliotek</string>

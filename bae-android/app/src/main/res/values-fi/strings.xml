@@ -389,7 +389,8 @@
     <string name="onboarding_saved_code_delete">Poista</string>
     <string name="onboarding_saved_code_delete_menu">Poista…</string>
     <string name="onboarding_saved_code_delete_title">Poistetaanko tämä palautuskoodi?</string>
-    <string name="onboarding_saved_code_delete_body">Tämä poistaa palautuskoodin vain tästä laitteesta. Kirjasto ja pilvesi sisältö säilyvät.</string>
+    <string name="onboarding_saved_code_delete_body">Tämä poistaa kirjaston %1$s palautuskoodin vain tästä laitteesta. Kirjasto ja pilvesi sisältö säilyvät.</string>
+    <string name="onboarding_saved_code_delete_body_unusable">Tämä poistaa palautuskoodin vain tästä laitteesta. Kirjasto ja pilvesi sisältö säilyvät.</string>
     <string name="onboarding_saved_code_delete_failed">Palautuskoodia ei voitu poistaa</string>
     <string name="onboarding_saved_code_removed">Tätä palautuskoodia ei ole enää tallennettu tähän laitteeseen.</string>
     <string name="onboarding_saved_library">Kirjasto</string>

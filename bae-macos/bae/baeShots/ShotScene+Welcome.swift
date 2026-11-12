@@ -457,7 +457,8 @@ extension ShotScene {
             _,
             window in
             OverWindow.alert(
-                SavedCodeDeletion.alert {},
+                SavedCodeDeletion.alert(for: SavedRestoreEntry(savedCodes[0])) {
+                },
                 over: window
             )
         }

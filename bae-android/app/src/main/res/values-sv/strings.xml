@@ -389,7 +389,8 @@
     <string name="onboarding_saved_code_delete">Radera</string>
     <string name="onboarding_saved_code_delete_menu">Radera…</string>
     <string name="onboarding_saved_code_delete_title">Radera den här återställningskoden?</string>
-    <string name="onboarding_saved_code_delete_body">Det här tar bara bort återställningskoden från den här enheten. Biblioteket och allt i molnet finns kvar.</string>
+    <string name="onboarding_saved_code_delete_body">Det här tar bara bort återställningskoden för %1$s från den här enheten. Biblioteket och allt i molnet finns kvar.</string>
+    <string name="onboarding_saved_code_delete_body_unusable">Det här tar bara bort återställningskoden från den här enheten. Biblioteket och allt i molnet finns kvar.</string>
     <string name="onboarding_saved_code_delete_failed">Det gick inte att radera återställningskoden</string>
     <string name="onboarding_saved_code_removed">Den här återställningskoden är inte längre sparad på den här enheten.</string>
     <string name="onboarding_saved_library">Bibliotek</string>
