@@ -1230,8 +1230,11 @@ version = "0.0.0-dev"
 dependencies = [
  "clap",
  "regex",
+ "serde",
+ "sha2 0.10.9",
  "tempfile",
  "thiserror 2.0.18",
+ "toml",
 ]
 
 [[package]]

@@ -5,6 +5,7 @@ mod capture;
 mod declared;
 mod lint;
 mod names;
+mod render;
 
 use clap::{Args, Parser, Subcommand};
 use names::{Name, Platform, Prefix};
@@ -22,6 +23,8 @@ struct Cli {
 enum Action {
     /// List the shots the harnesses declare that have no board.
     Lint,
+    /// Check the canvas runtime copy against its record and the canvas's.
+    Runtime,
     /// Take the shots into shots/<platform>/.
     Run(Selection),
     /// Take the shots into a directory.
@@ -118,6 +121,14 @@ fn run(action: Action) -> Result<bool, String> {
         }
         Action::Capture { selection, out } => {
             capture(&root, &selection, |_| out.clone())?;
+            Ok(true)
+        }
+        Action::Runtime => {
+            let checked = render::runtime::check(&root).map_err(|e| e.to_string())?;
+            println!(
+                "runtime {} ({}), canvas published {}",
+                checked.version, checked.sha256, checked.live_published_at
+            );
             Ok(true)
         }
     }
