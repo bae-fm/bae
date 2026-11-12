@@ -159,7 +159,7 @@ extension ShotScene {
                 PreviewScenes.deviceReset(
                     error: LoadError(
                         .deviceReset,
-                        PreviewData.displayErrorWithDetail
+                        PreviewData.displayErrorRetryable
                     )
                 )
             )

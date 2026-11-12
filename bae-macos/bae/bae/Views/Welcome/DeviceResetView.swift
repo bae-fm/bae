@@ -63,7 +63,8 @@ struct DeviceResetView: View {
                 advice: nil,
                 error: error.error,
                 look: .centered,
-                action: error.error.retryAction(perform: onReset),
+                action: error.error.offersRetry
+                    ? ErrorAction("Try again", perform: onReset) : nil,
                 secondary: cancel
             )
         }
@@ -131,7 +132,7 @@ struct DeviceResetView: View {
 
     #Preview("Reset failed") {
         PreviewScenes.deviceReset(
-            error: LoadError(.deviceReset, PreviewData.displayErrorWithDetail)
+            error: LoadError(.deviceReset, PreviewData.displayErrorRetryable)
         )
     }
 

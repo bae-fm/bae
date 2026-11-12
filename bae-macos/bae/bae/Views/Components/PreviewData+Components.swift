@@ -92,6 +92,13 @@
             return error
         }()
 
+        /// A failure a second try can get past: a core line with a detail, from
+        /// a call that reached no one.
+        static let displayErrorRetryable = DisplayError(
+            line: "Couldn’t reach the cloud.",
+            detail: "timed out connecting to the library's storage"
+        )
+
         /// Opening a library found that this installation is another copy
         /// of a device: only a reset fixes it.
         static let resetRequiredError: DisplayError = {
