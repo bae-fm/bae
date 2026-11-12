@@ -322,7 +322,19 @@ extension Notice {
     private var centered: some View {
         let onStage = look == .centeredOnStage
         let secondaryColor = onStage ? Theme.onFillSecondary : Color.secondary
-        let titleColor = onStage ? Theme.onFillSecondary : Theme.textPrimary
+        // Under advice the title is the line to read; a title alone stays
+        // grey, like the glyph and buttons beside it.
+        let hasAdvice: Bool
+        if case .titled(_, _?, _) = heading {
+            hasAdvice = true
+        }
+        else {
+            hasAdvice = false
+        }
+        let titleColor =
+            onStage
+            ? Theme.onFillSecondary
+            : hasAdvice ? Theme.textPrimary : secondaryColor
         return VStack(spacing: ThemeSpace.group) {
             HStack(
                 alignment: .firstTextBaseline,
