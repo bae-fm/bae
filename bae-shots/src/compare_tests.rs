@@ -195,6 +195,46 @@ fn a_field_named_with_the_text_under_it_is_the_board_field_and_that_text() {
 }
 
 #[test]
+fn the_label_text_above_a_field_is_the_field_when_the_shot_draws_it_inside() {
+    let board =
+        [text("Title"), text("Name"), field("Name"), text("Everyone sees this."), button("Save")];
+    let shot = [text("Title"), field("Name Everyone sees this."), button("Save")];
+    assert!(compare(&board, &shot).findings.is_empty());
+}
+
+#[test]
+fn the_label_text_above_a_field_stays_a_text_when_the_shot_draws_it_beside() {
+    let board = [text("Name"), field("Name")];
+    let shot = [text("Name"), field("Name")];
+    let found = compare(&board, &shot);
+    assert!(found.findings.is_empty());
+    assert_eq!(found.pairs.len(), 2);
+}
+
+fn toggle(words: &str) -> Element {
+    element(Role::Toggle, Some(words), None)
+}
+
+#[test]
+fn a_label_and_its_supporting_text_before_a_toggle_are_the_toggle_the_shot_words_as_one() {
+    let board = [text("Restore"), text("Restores the last session."), toggle("Restore")];
+    let shot = [toggle("Restore Restores the last session.")];
+    assert!(compare(&board, &shot).findings.is_empty());
+}
+
+#[test]
+fn a_label_before_a_toggle_is_the_toggle_when_the_shot_has_no_text_of_it() {
+    assert!(compare(&[text("Pause"), toggle("Pause")], &[toggle("Pause")]).findings.is_empty());
+}
+
+#[test]
+fn a_text_that_names_no_field_after_it_is_not_a_label() {
+    let board = [text("Name"), button("Go"), field("Name")];
+    let shot = [button("Go"), field("Name")];
+    assert_eq!(sentences(&board, &shot), ["Shot is missing the text “Name”"]);
+}
+
+#[test]
 fn a_field_name_that_adds_other_words_is_not_folded() {
     let board = [field("Name"), text("Everyone sees this.")];
     let shot = [field("Name Someone sees this.")];

@@ -93,6 +93,7 @@ pub(crate) fn entries(list: &[Element]) -> Vec<Entry> {
 pub(crate) fn fold_merged(board: Vec<Entry>, shot: &[Entry]) -> Vec<Entry> {
     // The shot's keys not yet taken by a fold.
     let mut available: Vec<_> = shot.iter().map(Entry::key).collect();
+    let board = fold_labels(board, &available);
     let mut folded = Vec::with_capacity(board.len());
     let mut at = 0;
     while at < board.len() {
@@ -111,8 +112,10 @@ pub(crate) fn fold_merged(board: Vec<Entry>, shot: &[Entry]) -> Vec<Entry> {
         match merged {
             Some((tail, place, key)) => {
                 available.swap_remove(place);
-                let with = board[at + 1..=at + tail].iter().map(|e| e.index).collect();
-                folded.push(Entry { words: key.1, folded: with, ..head.clone() });
+                let with: Vec<usize> = board[at + 1..=at + tail].iter().map(|e| e.index).collect();
+                let mut all = head.folded.clone();
+                all.extend(with);
+                folded.push(Entry { words: key.1, folded: all, ..head.clone() });
                 at += tail + 1;
             }
             None => {
@@ -122,6 +125,74 @@ pub(crate) fn fold_merged(board: Vec<Entry>, shot: &[Entry]) -> Vec<Entry> {
         }
     }
     folded
+}
+
+/// The board's fields and toggles with the label text before each one folded
+/// in, where the shot draws the label inside the control: a Compose field or
+/// switch row is one element that holds its label, and the supporting text
+/// that comes between the label and the control. A label text is a text
+/// before a field or toggle that is named with the same words, and any texts
+/// between them are its supporting text. When the shot holds the control
+/// named with the label and that supporting text, they are that control; when
+/// it holds the control by the label alone and no text of the label's words,
+/// the label is the control's. A shot that draws the label as a text (the Mac
+/// draws it beside the field) keeps the board's text as a text.
+fn fold_labels(board: Vec<Entry>, available: &[(Role, String)]) -> Vec<Entry> {
+    let mut out: Vec<Entry> = Vec::with_capacity(board.len());
+    // The texts just before the entry being looked at, not yet written out.
+    let mut texts: Vec<Entry> = Vec::new();
+    for entry in board {
+        if entry.kind == Role::Text {
+            texts.push(entry);
+            continue;
+        }
+        let label = matches!(entry.kind, Role::Field | Role::Toggle)
+            .then(|| texts.iter().rposition(|t| t.words == entry.words))
+            .flatten();
+        match label {
+            Some(at) => {
+                out.extend(texts.drain(..at));
+                out.extend(fold_label(entry, std::mem::take(&mut texts), available));
+            }
+            None => {
+                out.append(&mut texts);
+                out.push(entry);
+            }
+        }
+    }
+    out.append(&mut texts);
+    out
+}
+
+/// `control`, the label text that opens `texts` and the supporting texts after
+/// it, as the entries the comparison sees: the control with what the shot draws
+/// inside it folded in, then the texts that stay.
+fn fold_label(
+    mut control: Entry,
+    mut texts: Vec<Entry>,
+    available: &[(Role, String)],
+) -> Vec<Entry> {
+    let label = texts.remove(0);
+    let kind = control.kind;
+    let holds = |words: &str| available.iter().any(|k| *k == (kind, words.to_string()));
+    let with_support = std::iter::once(label.words.as_str())
+        .chain(texts.iter().map(|t| t.words.as_str()))
+        .collect::<Vec<_>>()
+        .join(" ");
+    if !texts.is_empty() && holds(&with_support) {
+        control.words = with_support;
+        control.folded.extend(std::iter::once(&label).chain(&texts).map(|t| t.index));
+        return vec![control];
+    }
+    if available.iter().any(|k| *k == (Role::Text, label.words.clone())) {
+        let mut out = vec![label];
+        out.extend(texts);
+        out.push(control);
+        return out;
+    }
+    control.folded.push(label.index);
+    texts.push(control);
+    texts
 }
 
 #[cfg(test)]
