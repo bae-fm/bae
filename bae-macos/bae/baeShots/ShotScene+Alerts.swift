@@ -6,8 +6,7 @@ import SwiftUI
 extension ShotScene {
     /// The Mac's alerts, each over the window it opens on: the album and
     /// error alerts over the library window, the pane alerts over Settings,
-    /// and the unpin confirmation of the Storage manager, which no scene
-    /// stages a window for yet, as bae's alert face alone.
+    /// and the unpin confirmation over the Storage manager.
     static let alertScenes: [ShotScene] =
         [
             overLibrary(
@@ -31,17 +30,7 @@ extension ShotScene {
                 ) { _ in },
                 height: 1_000
             ),
-            alert(
-                "mac.storage.unpin-several",
-                UnpinConfirmation.alert(
-                    for: PendingUnpin(
-                        releaseIds: ["a", "b", "c"],
-                        title: nil
-                    ),
-                    dontShowAgain: .constant(false)
-                ) { _ in },
-                height: 220
-            ),
+            unpinSeveral(),
             overLibrary(
                 "mac.errors.alert",
                 ErrorAlertContent.alert(
@@ -291,13 +280,51 @@ extension ShotScene {
         }
     }
 
-    private static func alert(
-        _ id: String,
-        _ alert: (MacAlertWords, [MacAlertButton]),
-        height: CGFloat
-    ) -> ShotScene {
-        ShotScene(id: id, size: CGSize(width: 340, height: height)) {
-            ShotStage(AlertShot(alert: alert))
+    /// The confirmation to unpin several releases, over the Storage manager
+    /// with the first release's inspector open, as the board draws it.
+    private static func unpinSeveral() -> ShotScene {
+        ShotScene(
+            id: "mac.storage.unpin-several",
+            size: CGSize(width: 1_100, height: 660)
+        ) {
+            let fixture = StorageManagerPreviewFixture(
+                selectedReleaseId: "rel-row-1",
+                inspectorPresented: true
+            )
+            let manager = StorageManagerView(
+                initialSelection: fixture.initialSelection,
+                initialInspectorPresented: fixture.initialInspectorPresented
+            )
+            .environment(fixture.library)
+            .environment(fixture.storageManagerStore)
+            .environment(ImageStore.stub())
+            .environment(ReleaseEditor.stub())
+            .environment(Sync.stub())
+            .environment(Downloads.stub())
+            .environment(Outputs.stub())
+            .environment(PreviewData.configStore())
+            .environment(Importer.stub())
+            .environment(fixture.uiStore)
+            .environment(SettingsNavigation())
+            .environment(\.openSettingsWindow, OpenSettingsWindowAction {})
+            .environment(fixture.downloadStore)
+            .environment(fixture.outputStore)
+            .environment(fixture.outboxStore)
+            .frame(width: 1_100, height: 660)
+            return ShotStage(
+                OverWindow.alert(
+                    UnpinConfirmation.alert(
+                        for: PendingUnpin(
+                            releaseIds: ["a", "b", "c"],
+                            title: nil
+                        ),
+                        dontShowAgain: .constant(false)
+                    ) { _ in },
+                    over: manager
+                )
+            ) {
+                fixture.storageManagerStore.list != nil
+            }
         }
     }
 }
