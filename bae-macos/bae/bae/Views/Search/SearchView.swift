@@ -40,6 +40,10 @@ struct SearchView: View {
         }
         .frame(width: Self.width)
         .card(elevated: true)
+        .overlay {
+            RoundedRectangle(cornerRadius: ThemeRadius.card)
+                .strokeBorder(Theme.hairline, lineWidth: 1)
+        }
         // Hidden until the list is measured, so it never shows as a sliver.
         .opacity(showsEmptyState || contentHeight > 0 ? 1 : 0)
     }

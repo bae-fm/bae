@@ -129,8 +129,9 @@ struct MacMainWindowContainer: View {
             if uiStore.showSearchPopover, uiStore.searchResults != nil,
                 let rect = searchFieldFrame
             {
-                // Hangs under the field, trailing edges aligned; the monitor
-                // below dismisses it and lets the click through.
+                // Hangs under the title bar, 4 points below it, with its
+                // trailing edge on the field's; the monitor below dismisses it
+                // and lets the click through.
                 SearchView(
                     results: uiStore.searchResults,
                     onSelectAlbum: selectAlbum,
@@ -145,7 +146,10 @@ struct MacMainWindowContainer: View {
                     searchCardFrame = $0
                 }
                 .padding(.leading, rect.maxX - SearchView.width)
-                .padding(.top, rect.maxY + ThemeSpace.inline)
+                .padding(
+                    .top,
+                    rect.midY + TitleBar.height / 2 + ThemeSpace.inline
+                )
                 .frame(
                     maxWidth: .infinity,
                     maxHeight: .infinity,

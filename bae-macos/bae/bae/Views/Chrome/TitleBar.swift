@@ -12,6 +12,9 @@ private let titleBarLeadingPadding: CGFloat = 80
 private let titleBarTrailingPadding = ThemeSpace.edge
 
 struct TitleBar: View {
+    /// The bar's height, which the search card below it is hung from.
+    static let height: CGFloat = 56
+
     @Environment(LibraryProjectionStore.self)
     private var libraryProjections
     @Environment(UiStore.self)
@@ -74,7 +77,7 @@ struct TitleBar: View {
         }
         .padding(.leading, titleBarLeadingPadding)
         .padding(.trailing, titleBarTrailingPadding)
-        .frame(height: 56)
+        .frame(height: Self.height)
         .background { WindowDragArea() }
         // The window's own background with a hairline under it, not a raised
         // band.

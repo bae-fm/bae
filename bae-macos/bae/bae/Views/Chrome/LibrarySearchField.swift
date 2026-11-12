@@ -13,7 +13,8 @@ struct LibrarySearchField: View {
         HStack(spacing: ThemeSpace.related) {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(.tertiary)
-                .themeIcon(.medium)
+                // The design draws the glyph at 14, between the icon roles.
+                .font(.system(size: 14, weight: ThemeIcon.medium.weight))
             TextField(prompt, text: $text)
                 .textFieldStyle(.plain)
                 .themeText(.body)
@@ -22,28 +23,15 @@ struct LibrarySearchField: View {
                     onEscape()
                     return .handled
                 }
-            if !text.isEmpty {
-                Button(action: { text = "" }) {
-                    Image(systemName: "xmark")
-                        .themeIcon(.badge)
-                        .foregroundStyle(.secondary)
-                        .frame(width: 20, height: 20)
-                        .background(
-                            Circle().fill(Theme.hover)
-                        )
-                        .contentShape(Circle())
-                }
-                .buttonStyle(.plain)
-            }
         }
         .padding(.horizontal, ThemeSpace.group)
-        .frame(height: 36)
+        .frame(height: 28)
         // A sunken well like the section control's.
         .background(
-            RoundedRectangle(cornerRadius: ThemeRadius.control)
+            Capsule()
                 .fill(Theme.well)
                 .overlay(
-                    RoundedRectangle(cornerRadius: ThemeRadius.control)
+                    Capsule()
                         .strokeBorder(
                             focused.wrappedValue ? Theme.accent : Color.clear,
                             lineWidth: 1
