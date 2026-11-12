@@ -2,12 +2,7 @@ package fm.bae.app.ui.playback
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.selection.toggleable
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -15,12 +10,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -35,6 +28,7 @@ import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
+import fm.bae.app.ui.components.AndroidCheckbox
 import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.AndroidSheet
 import fm.bae.app.ui.components.ButtonKind
@@ -181,8 +175,8 @@ fun SidePauseAlert(
                             nowMs = nowMs,
                         )
                     }
-                    KeepPausingCheckbox(
-                        labelKey = wording.keepPausingKey,
+                    AndroidCheckbox(
+                        label = context.coreString(wording.keepPausingKey),
                         checked = keepPausing,
                         onCheckedChange = { keepPausing = it },
                     )
@@ -199,30 +193,6 @@ fun SidePauseAlert(
                 }
             },
         )
-    }
-}
-
-/** The checkbox that keeps pausing at the kind of boundary that ended. */
-@Composable
-private fun KeepPausingCheckbox(
-    labelKey: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-) {
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .toggleable(
-                    value = checked,
-                    role = Role.Checkbox,
-                    onValueChange = onCheckedChange,
-                ),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Checkbox(checked = checked, onCheckedChange = null)
-        Spacer(modifier = Modifier.width(ThemeSpace.related))
-        Text(LocalContext.current.coreString(labelKey))
     }
 }
 

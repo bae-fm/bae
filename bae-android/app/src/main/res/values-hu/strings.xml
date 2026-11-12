@@ -194,6 +194,9 @@
     <string name="qr_scanner_instructions">Olvasd be a bae által az egyik eszközödön mutatott visszaállítási kódot, vagy egy meghívót.</string>
     <string name="pin">Rögzítés</string>
     <string name="unpin">Rögzítés feloldása</string>
+    <string name="unpin_confirm_title">Feloldod ennek a kiadásnak a rögzítését?</string>
+    <string name="unpin_confirm_body">Fájljai azonnal törlődnek erről a telefonról. A felhőben megmarad, és onnan streamelhető, amíg online vagy.</string>
+    <string name="dont_show_again">Ne jelenjen meg újra</string>
     <string name="pinned">Rögzítve</string>
     <string name="pinning">Rögzítés</string>
     <string name="pin_cancel">Rögzítés megszakítása</string>

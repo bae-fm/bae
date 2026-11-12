@@ -191,6 +191,9 @@
     <!-- Pinning -->
     <string name="pin">Anheften</string>
     <string name="unpin">Loslösen</string>
+    <string name="unpin_confirm_title">Diese Veröffentlichung loslösen?</string>
+    <string name="unpin_confirm_body">Ihre Dateien werden jetzt von diesem Smartphone entfernt. Sie bleibt in der Cloud und wird von dort gestreamt, solange du online bist.</string>
+    <string name="dont_show_again">Nicht mehr anzeigen</string>
     <string name="pinned">Angeheftet</string>
     <string name="pinning">Wird angeheftet</string>
     <string name="pin_cancel">Anheften abbrechen</string>

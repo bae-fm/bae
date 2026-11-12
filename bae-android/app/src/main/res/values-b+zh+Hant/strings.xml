@@ -186,6 +186,9 @@
     <!-- Pinning -->
     <string name="pin">釘選</string>
     <string name="unpin">取消釘選</string>
+    <string name="unpin_confirm_title">取消釘選此發行？</string>
+    <string name="unpin_confirm_body">它的檔案將立即從這支手機移除。它會保留在雲端，連線時從雲端串流播放。</string>
+    <string name="dont_show_again">不再顯示此提示</string>
     <string name="pinned">已釘選</string>
     <string name="pinning">正在釘選</string>
     <string name="pin_cancel">停止釘選</string>

@@ -1,6 +1,5 @@
 package fm.bae.app.ui.albumdetail
 
-import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -16,6 +15,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -25,37 +25,32 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
-import fm.bae.app.displayError
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
+import fm.bae.app.ui.components.AndroidCheckbox
+import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidSpinner
 import fm.bae.app.ui.components.ButtonKind
+import fm.bae.app.ui.components.ButtonTone
 import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.downloads.DownloadProgress
 import fm.bae.app.ui.downloads.PinQueuedText
-import fm.bae.app.ui.rememberScreenScope
 import fm.bae.fastvalues.LatestSource
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeDownloadTransferProgress
-import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeMessage
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeReleaseDownloadStatus
 import uniffi.bae_bridge.BridgeReleaseStorageAction
 import uniffi.bae_bridge.bridgeReleasePlayabilityLine
 import uniffi.bae_bridge.bridgeTransferActionKey
-
-private val logger = BaeLogger("bae.AndroidDownloadControlContainer")
 
 /**
  * The shown release's download control; nothing when core offers none for the
@@ -94,16 +89,15 @@ private fun PlayableReleaseDownloadControl(
     release: BridgeRelease,
     status: BridgeReleaseDownloadStatus,
 ) {
-    val context = LocalContext.current
-    val scope = rememberScreenScope()
-    var unpinning by remember(release.id) { mutableStateOf(false) }
-    var unpinError by remember(release.id) { mutableStateOf<DisplayError?>(null) }
+    val unpin = rememberReleaseUnpin(session, release.id)
+    val config by session.configStore.config.collectAsState()
 
     Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.compact)) {
         AndroidDownloadControl(
             status = status,
             progress = session.downloadStore.latestProgress(release.id),
-            unpinning = unpinning,
+            unpinning = unpin.unpinning,
+            asksBeforeUnpinning = config.askBeforeUnpinning,
             // Progress arrives through the download snapshot; core skips ids already queued or pinned.
             onDownload = {
                 session.messages.perform("queue release download") {
@@ -114,49 +108,24 @@ private fun PlayableReleaseDownloadControl(
                 session.messages.perform("cancel download") { session.appHandle.cancelDownload(release.id) }
             },
             onRetry = { session.messages.perform("retry download") { session.appHandle.retryDownload(release.id) } },
-            onRemove = {
-                unpinError = null
-                unpinning = true
-                scope.launch { unpinError = runUnpin(session, release.id, context) { unpinning = false } }
-            },
+            onUnpin = unpin::unpin,
         )
-        unpinError?.let { shown ->
+        unpin.error?.let { shown ->
             AndroidNotice(shown)
         }
     }
 }
-
-/**
- * Unpins [releaseId] and returns the error to show, or null on success; [onSettled] runs either way.
- * Any failure but a typed bridge error is a bug, left to the screen scope's bug handler.
- */
-private suspend fun runUnpin(
-    session: OpenLibrary,
-    releaseId: String,
-    context: Context,
-    onSettled: () -> Unit,
-): DisplayError? =
-    try {
-        session.appHandle.unpinReleases(listOf(releaseId))
-        null
-    } catch (e: CancellationException) {
-        throw e
-    } catch (e: BridgeException) {
-        logger.error("unpinReleases failed for $releaseId", e)
-        context.displayError(e)
-    } finally {
-        onSettled()
-    }
 
 @Composable
 internal fun AndroidDownloadControl(
     status: BridgeReleaseDownloadStatus,
     progress: LatestSource<BridgeDownloadTransferProgress>,
     unpinning: Boolean,
+    asksBeforeUnpinning: Boolean,
     onDownload: () -> Unit,
     onCancel: () -> Unit,
     onRetry: () -> Unit,
-    onRemove: () -> Unit,
+    onUnpin: (stopAsking: Boolean) -> Unit,
 ) {
     when (status) {
         BridgeReleaseDownloadStatus.Available -> {
@@ -183,7 +152,7 @@ internal fun AndroidDownloadControl(
         }
 
         BridgeReleaseDownloadStatus.Downloaded -> {
-            DownloadedControl(unpinning, onRemove)
+            DownloadedControl(unpinning, asksBeforeUnpinning, onUnpin)
         }
     }
 }
@@ -207,8 +176,19 @@ private fun DownloadFailedControl(
 @Composable
 private fun DownloadedControl(
     unpinning: Boolean,
-    onRemove: () -> Unit,
+    asksBeforeUnpinning: Boolean,
+    onUnpin: (stopAsking: Boolean) -> Unit,
 ) {
+    var asking by remember { mutableStateOf(false) }
+    if (asking) {
+        UnpinDialog(
+            onConfirm = { stopAsking ->
+                asking = false
+                onUnpin(stopAsking)
+            },
+            onDismiss = { asking = false },
+        )
+    }
     Row(
         horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
         verticalAlignment = Alignment.CenterVertically,
@@ -232,9 +212,45 @@ private fun DownloadedControl(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         } else {
-            DownloadActionButton(stringResource(R.string.unpin), Icons.Outlined.PushPin, onRemove)
+            DownloadActionButton(stringResource(R.string.unpin), Icons.Outlined.PushPin) {
+                if (asksBeforeUnpinning) asking = true else onUnpin(false)
+            }
         }
     }
+}
+
+/**
+ * Asks before Unpin removes the release's files from this phone. [onConfirm] hears whether "Don't
+ * show this again" was ticked; Cancel and dismissing change nothing, ticked or not.
+ */
+@Composable
+internal fun UnpinDialog(
+    onConfirm: (dontShowAgain: Boolean) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var dontShowAgain by remember { mutableStateOf(false) }
+    AndroidDialog(
+        onDismissRequest = onDismiss,
+        title = stringResource(R.string.unpin_confirm_title),
+        message = stringResource(R.string.unpin_confirm_body),
+        content = {
+            AndroidCheckbox(
+                label = stringResource(R.string.dont_show_again),
+                checked = dontShowAgain,
+                onCheckedChange = { dontShowAgain = it },
+            )
+        },
+        confirmButton = {
+            AndroidButton(kind = ButtonKind.TEXT, onClick = { onConfirm(dontShowAgain) }) {
+                Text(stringResource(R.string.unpin))
+            }
+        },
+        dismissButton = {
+            AndroidButton(kind = ButtonKind.TEXT, tone = ButtonTone.NEUTRAL, onClick = onDismiss) {
+                Text(stringResource(R.string.cancel))
+            }
+        },
+    )
 }
 
 /** The bordered button every download action uses. */

@@ -211,6 +211,9 @@
     <!-- Pinning -->
     <string name="pin">تثبيت</string>
     <string name="unpin">إلغاء التثبيت</string>
+    <string name="unpin_confirm_title">إلغاء تثبيت هذا الإصدار؟</string>
+    <string name="unpin_confirm_body">ستُزال ملفاته من هذا الهاتف الآن. يبقى في السحابة ويُبَثّ منها أثناء اتصالك بالإنترنت.</string>
+    <string name="dont_show_again">عدم إظهار هذا مرة أخرى</string>
     <string name="pinned">مثبّت</string>
     <string name="pinning">جارٍ التثبيت</string>
     <string name="pin_cancel">إلغاء عملية التثبيت</string>

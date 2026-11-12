@@ -196,6 +196,9 @@
     <!-- Pinning -->
     <string name="pin">Épingler</string>
     <string name="unpin">Désépingler</string>
+    <string name="unpin_confirm_title">Désépingler cette édition ?</string>
+    <string name="unpin_confirm_body">Ses fichiers seront supprimés de ce téléphone dès maintenant. Elle reste dans le cloud et est diffusée depuis celui-ci tant que vous êtes en ligne.</string>
+    <string name="dont_show_again">Ne plus afficher ce message</string>
     <string name="pinned">Épinglé</string>
     <string name="pinning">Épinglage</string>
     <string name="pin_cancel">Annuler l’épinglage</string>

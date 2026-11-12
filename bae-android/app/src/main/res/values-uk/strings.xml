@@ -201,6 +201,9 @@
     <!-- Pinning -->
     <string name="pin">Закріпити</string>
     <string name="unpin">Відкріпити</string>
+    <string name="unpin_confirm_title">Відкріпити цей реліз?</string>
+    <string name="unpin_confirm_body">Його файли буде одразу видалено з цього телефона. Він залишиться в хмарі й відтворюватиметься звідти, поки ви онлайн.</string>
+    <string name="dont_show_again">Більше не показувати</string>
     <string name="pinned">Закріплено</string>
     <string name="pinning">Закріплення</string>
     <string name="pin_cancel">Скасувати закріплення</string>

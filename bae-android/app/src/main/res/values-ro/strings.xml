@@ -200,6 +200,9 @@
     <string name="qr_scanner_instructions">Scanează un cod de restaurare afișat în bae pe unul dintre dispozitivele tale sau o invitație.</string>
     <string name="pin">Fixează</string>
     <string name="unpin">Anulează fixarea</string>
+    <string name="unpin_confirm_title">Anulezi fixarea pentru această ediție?</string>
+    <string name="unpin_confirm_body">Fișierele ei vor fi eliminate acum de pe acest telefon. Rămâne în cloud și se redă de acolo în flux cât timp ești online.</string>
+    <string name="dont_show_again">Nu mai afișa acest mesaj</string>
     <string name="pinned">Fixat</string>
     <string name="pinning">Se fixează</string>
     <string name="pin_cancel">Oprește fixarea</string>

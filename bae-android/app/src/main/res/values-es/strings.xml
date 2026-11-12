@@ -196,6 +196,9 @@
     <!-- Pinning -->
     <string name="pin">Fijar</string>
     <string name="unpin">Desfijar</string>
+    <string name="unpin_confirm_title">¿Desfijar esta edición?</string>
+    <string name="unpin_confirm_body">Sus archivos se eliminarán de este teléfono ahora mismo. Sigue en la nube y se reproduce desde ahí mientras tengas conexión.</string>
+    <string name="dont_show_again">No volver a mostrar esto</string>
     <string name="pinned">Fijada</string>
     <string name="pinning">Fijando</string>
     <string name="pin_cancel">Cancelar la fijación</string>

@@ -14,10 +14,11 @@ private fun DownloadControlBodyStub(status: BridgeReleaseDownloadStatus) {
         status = status,
         progress = PreviewData.downloadStore().latestProgress("rel-1"),
         unpinning = false,
+        asksBeforeUnpinning = true,
         onDownload = {},
         onCancel = {},
         onRetry = {},
-        onRemove = {},
+        onUnpin = {},
     )
 }
 

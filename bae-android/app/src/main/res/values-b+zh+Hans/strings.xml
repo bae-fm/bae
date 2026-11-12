@@ -186,6 +186,9 @@
     <!-- Pinning -->
     <string name="pin">固定</string>
     <string name="unpin">取消固定</string>
+    <string name="unpin_confirm_title">取消固定此版本？</string>
+    <string name="unpin_confirm_body">它的文件将立即从这部手机上移除。它会保留在云端，联网时从云端串流播放。</string>
+    <string name="dont_show_again">不再显示此提示</string>
     <string name="pinned">已固定</string>
     <string name="pinning">正在固定</string>
     <string name="pin_cancel">停止固定</string>

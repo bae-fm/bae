@@ -206,6 +206,9 @@
     <string name="qr_scanner_instructions">Naskenuj kód na obnovenie, ktorý bae zobrazuje na niektorom z tvojich zariadení, alebo pozvánku.</string>
     <string name="pin">Pripnúť</string>
     <string name="unpin">Odopnúť</string>
+    <string name="unpin_confirm_title">Odopnúť toto vydanie?</string>
+    <string name="unpin_confirm_body">Jeho súbory sa z tohto telefónu hneď odstránia. Zostane v cloude a bude sa odtiaľ streamovať, kým si online.</string>
+    <string name="dont_show_again">Už nezobrazovať</string>
     <string name="pinned">Pripnuté</string>
     <string name="pinning">Pripína sa</string>
     <string name="pin_cancel">Zrušiť pripínanie</string>

@@ -194,6 +194,9 @@
     <string name="qr_scanner_instructions">Scan en gendannelseskode, der vises i bae på en af dine enheder, eller en invitation.</string>
     <string name="pin">Fastgør</string>
     <string name="unpin">Frigør</string>
+    <string name="unpin_confirm_title">Frigør denne udgivelse?</string>
+    <string name="unpin_confirm_body">Dens filer fjernes fra denne telefon nu. Den bliver i skyen og streames derfra, mens du er online.</string>
+    <string name="dont_show_again">Vis ikke dette igen</string>
     <string name="pinned">Fastgjort</string>
     <string name="pinning">Fastgør</string>
     <string name="pin_cancel">Annuller fastgørelse</string>

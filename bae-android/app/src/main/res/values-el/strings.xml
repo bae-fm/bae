@@ -194,6 +194,9 @@
     <string name="qr_scanner_instructions">Σαρώστε έναν κωδικό επαναφοράς που εμφανίζει το bae σε μία από τις συσκευές σας ή μια πρόσκληση.</string>
     <string name="pin">Καρφίτσωμα</string>
     <string name="unpin">Ξεκαρφίτσωμα</string>
+    <string name="unpin_confirm_title">Ξεκαρφίτσωμα αυτής της κυκλοφορίας;</string>
+    <string name="unpin_confirm_body">Τα αρχεία της θα αφαιρεθούν τώρα από αυτό το τηλέφωνο. Παραμένει στο cloud και αναπαράγεται από εκεί όσο είστε online.</string>
+    <string name="dont_show_again">Να μην εμφανιστεί ξανά</string>
     <string name="pinned">Καρφιτσωμένο</string>
     <string name="pinning">Καρφίτσωμα</string>
     <string name="pin_cancel">Ακύρωση καρφιτσώματος</string>

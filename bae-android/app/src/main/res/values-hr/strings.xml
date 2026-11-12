@@ -196,6 +196,9 @@
     <!-- Pinning -->
     <string name="pin">Prikvači</string>
     <string name="unpin">Otkvači</string>
+    <string name="unpin_confirm_title">Otkvačiti ovo izdanje?</string>
+    <string name="unpin_confirm_body">Njegove datoteke bit će odmah uklonjene s ovog telefona. Ostaje u oblaku i strimuje se odatle dok ste na mreži.</string>
+    <string name="dont_show_again">Ne prikazuj ovo ponovno</string>
     <string name="pinned">Prikvačeno</string>
     <string name="pinning">Prikvačivanje</string>
     <string name="pin_cancel">Otkaži prikvačivanje</string>

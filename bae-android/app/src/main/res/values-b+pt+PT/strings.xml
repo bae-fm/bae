@@ -195,6 +195,9 @@
     <string name="qr_scanner_instructions">Leia um código de restauração apresentado no bae num dos seus dispositivos ou um convite.</string>
     <string name="pin">Fixar</string>
     <string name="unpin">Desafixar</string>
+    <string name="unpin_confirm_title">Desafixar esta edição?</string>
+    <string name="unpin_confirm_body">Os ficheiros da edição serão removidos deste telemóvel agora. Continua na nuvem e é transmitida a partir de lá enquanto estiver online.</string>
+    <string name="dont_show_again">Não mostrar novamente</string>
     <string name="pinned">Fixado</string>
     <string name="pinning">A fixar</string>
     <string name="pin_cancel">Cancelar fixação</string>

@@ -194,6 +194,9 @@
     <string name="qr_scanner_instructions">Skanna en återställningskod som bae visar på en av dina enheter, eller en inbjudan.</string>
     <string name="pin">Fäst</string>
     <string name="unpin">Lossa</string>
+    <string name="unpin_confirm_title">Lossa den här utgåvan?</string>
+    <string name="unpin_confirm_body">Dess filer tas bort från den här telefonen nu. Den ligger kvar i molnet och strömmas därifrån medan du är online.</string>
+    <string name="dont_show_again">Visa inte detta igen</string>
     <string name="pinned">Fäst</string>
     <string name="pinning">Fäster</string>
     <string name="pin_cancel">Avbryt fästning</string>

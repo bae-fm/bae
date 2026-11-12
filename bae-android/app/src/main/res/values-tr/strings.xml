@@ -191,6 +191,9 @@
     <!-- Pinning -->
     <string name="pin">Sabitle</string>
     <string name="unpin">Sabitlemeyi kaldır</string>
+    <string name="unpin_confirm_title">Bu yayının sabitlemesi kaldırılsın mı?</string>
+    <string name="unpin_confirm_body">Dosyaları şimdi bu telefondan kaldırılacak. Bulutta kalır ve çevrimiçi olduğunuzda oradan akışla oynatılır.</string>
+    <string name="dont_show_again">Bunu bir daha gösterme</string>
     <string name="pinned">Sabitlendi</string>
     <string name="pinning">Sabitleniyor</string>
     <string name="pin_cancel">Sabitlemeyi iptal et</string>

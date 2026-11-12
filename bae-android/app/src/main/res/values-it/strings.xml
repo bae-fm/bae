@@ -196,6 +196,9 @@
     <!-- Pinning -->
     <string name="pin">Fissa</string>
     <string name="unpin">Rimuovi fissaggio</string>
+    <string name="unpin_confirm_title">Rimuovere il fissaggio di questa pubblicazione?</string>
+    <string name="unpin_confirm_body">I suoi file verranno rimossi subito da questo telefono. Resta nel cloud e viene riprodotta in streaming da lì finché sei online.</string>
+    <string name="dont_show_again">Non mostrare più</string>
     <string name="pinned">Fissato</string>
     <string name="pinning">Fissaggio</string>
     <string name="pin_cancel">Annulla fissaggio</string>

@@ -196,6 +196,9 @@
     <!-- Pinning -->
     <string name="pin">הצמד</string>
     <string name="unpin">בטל הצמדה</string>
+    <string name="unpin_confirm_title">לבטל את ההצמדה של המהדורה הזו?</string>
+    <string name="unpin_confirm_body">הקבצים שלה יוסרו מהטלפון הזה עכשיו. היא נשארת בענן ומוזרמת משם כל עוד יש חיבור לאינטרנט.</string>
+    <string name="dont_show_again">אל תציג זאת שוב</string>
     <string name="pinned">מוצמד</string>
     <string name="pinning">מצמיד</string>
     <string name="pin_cancel">ביטול תהליך ההצמדה</string>

@@ -237,6 +237,9 @@
     <!-- Pinning -->
     <string name="pin">Pin</string>
     <string name="unpin">Unpin</string>
+    <string name="unpin_confirm_title">Unpin this release?</string>
+    <string name="unpin_confirm_body">Its files will be removed from this phone now. It stays in the cloud, and streams while you’re online.</string>
+    <string name="dont_show_again">Don’t show this again</string>
     <string name="pinned">Pinned</string>
     <string name="pinning">Pinning</string>
     <string name="pin_cancel">Cancel pinning</string>

@@ -194,6 +194,9 @@
     <string name="qr_scanner_instructions">Skannaa palautuskoodi, jonka bae näyttää jossakin laitteessasi, tai kutsu.</string>
     <string name="pin">Kiinnitä</string>
     <string name="unpin">Irrota</string>
+    <string name="unpin_confirm_title">Irrotetaanko tämä julkaisu?</string>
+    <string name="unpin_confirm_body">Sen tiedostot poistetaan tästä puhelimesta nyt. Se pysyy pilvessä ja suoratoistetaan sieltä, kun olet verkossa.</string>
+    <string name="dont_show_again">Älä näytä tätä uudelleen</string>
     <string name="pinned">Kiinnitetty</string>
     <string name="pinning">Kiinnitetään</string>
     <string name="pin_cancel">Peruuta kiinnitys</string>

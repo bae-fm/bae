@@ -194,6 +194,9 @@
     <string name="qr_scanner_instructions">Skann en gjenopprettingskode som bae viser på en av enhetene dine, eller en invitasjon.</string>
     <string name="pin">Fest</string>
     <string name="unpin">Løsne</string>
+    <string name="unpin_confirm_title">Løsne denne utgivelsen?</string>
+    <string name="unpin_confirm_body">Filene fjernes fra denne telefonen nå. Utgivelsen blir værende i skyen og strømmes derfra mens du er på nett.</string>
+    <string name="dont_show_again">Ikke vis dette igjen</string>
     <string name="pinned">Festet</string>
     <string name="pinning">Fester</string>
     <string name="pin_cancel">Avbryt festing</string>

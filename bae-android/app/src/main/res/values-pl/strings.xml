@@ -201,6 +201,9 @@
     <!-- Pinning -->
     <string name="pin">Przypnij</string>
     <string name="unpin">Odepnij</string>
+    <string name="unpin_confirm_title">Odpiąć to wydanie?</string>
+    <string name="unpin_confirm_body">Jego pliki zostaną teraz usunięte z tego telefonu. Pozostanie w chmurze i będzie stamtąd streamowane, gdy jesteś online.</string>
+    <string name="dont_show_again">Nie pokazuj ponownie</string>
     <string name="pinned">Przypięto</string>
     <string name="pinning">Przypinanie</string>
     <string name="pin_cancel">Anuluj przypinanie</string>

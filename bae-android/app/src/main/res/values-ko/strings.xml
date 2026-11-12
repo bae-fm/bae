@@ -186,6 +186,9 @@
     <!-- Pinning -->
     <string name="pin">고정</string>
     <string name="unpin">고정 해제</string>
+    <string name="unpin_confirm_title">이 릴리스의 고정을 해제할까요?</string>
+    <string name="unpin_confirm_body">이 릴리스의 파일이 지금 이 휴대전화에서 제거됩니다. 클라우드에는 그대로 남으며, 온라인일 때 클라우드에서 스트리밍됩니다.</string>
+    <string name="dont_show_again">다시 표시하지 않음</string>
     <string name="pinned">고정됨</string>
     <string name="pinning">고정 중</string>
     <string name="pin_cancel">고정 취소</string>

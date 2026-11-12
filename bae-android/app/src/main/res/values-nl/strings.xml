@@ -191,6 +191,9 @@
     <!-- Pinning -->
     <string name="pin">Vastzetten</string>
     <string name="unpin">Losmaken</string>
+    <string name="unpin_confirm_title">Deze release losmaken?</string>
+    <string name="unpin_confirm_body">De bestanden worden nu van deze telefoon verwijderd. De release blijft in de cloud en wordt daar vandaan gestreamd zolang je online bent.</string>
+    <string name="dont_show_again">Toon dit niet opnieuw</string>
     <string name="pinned">Vastgezet</string>
     <string name="pinning">Vastzetten</string>
     <string name="pin_cancel">Vastzetten annuleren</string>
