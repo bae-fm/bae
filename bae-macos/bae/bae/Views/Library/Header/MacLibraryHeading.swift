@@ -3,7 +3,7 @@ import SwiftUI
 
 /// The library's collapsing header: the mode heading and the mode's controls,
 /// sized between full and compact by `collapseProgress`.
-struct LibraryHeader<Trailing: View>: View {
+struct MacLibraryHeading<Trailing: View>: View {
     let collapseProgress: Double
     /// Span the window instead of centering in the shared capped column
     /// (`Config.libraryFullWidth`).
@@ -51,11 +51,11 @@ struct LibraryHeader<Trailing: View>: View {
         @State
         var headerCollapse = HeaderCollapse()
         VStack(spacing: 0) {
-            LibraryHeader(
+            MacLibraryHeading(
                 collapseProgress: headerCollapse.progress,
                 fullWidth: false
             ) {
-                SortCriteriaRow(
+                MacSortCriteria(
                     criteria: .constant([
                         BridgeSortCriterion(
                             field: .artist,

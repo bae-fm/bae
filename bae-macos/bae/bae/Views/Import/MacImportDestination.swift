@@ -4,7 +4,7 @@ import SwiftUI
 /// Where an import goes, as one pop-up of two choices: this Mac or the cloud.
 /// The one stored choice, shown beside Import on the card, on the bulk pane's
 /// Import row and in Settings.
-struct ImportDestinationPicker: View {
+struct MacImportDestination: View {
     @Binding
     var destination: BridgeImportDestination
 
@@ -38,7 +38,7 @@ extension BridgeImportDestination {
     #Preview("Import destination") {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
             ForEach(BridgeImportDestination.choices, id: \.self) { choice in
-                ImportDestinationPicker(destination: .constant(choice))
+                MacImportDestination(destination: .constant(choice))
             }
         }
         .padding()

@@ -22,7 +22,7 @@ struct CreateNameView: View {
         MacStep(String(localized: "Start a new library")) {
             VStack(spacing: ThemeSpace.group) {
                 FieldColumn {
-                    FieldRow("Your name") {
+                    MacTextField("Your name") {
                         TextField(
                             "Your name",
                             text: $form.name,

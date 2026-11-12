@@ -22,7 +22,7 @@ struct FieldColumn<Rows: View>: View {
 
 /// One row of a `FieldColumn`: the label, then the field, with the note
 /// under it that starts where the field's text starts.
-struct FieldRow<Field: View>: View {
+struct MacTextField<Field: View>: View {
     let label: LocalizedStringKey
     let note: LocalizedStringKey?
     private let field: Field

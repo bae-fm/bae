@@ -161,7 +161,7 @@ struct ImportingCandidatePane: View {
                     }
                 }
                 if !candidate.mapping.images.isEmpty {
-                    ImportImagesSection(
+                    MacImportImages(
                         images: candidate.mapping.images,
                         onOpen: onOpenImages
                     )

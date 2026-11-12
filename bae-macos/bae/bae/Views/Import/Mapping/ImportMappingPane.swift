@@ -91,7 +91,7 @@ struct ImportMappingPane: View {
     /// The folder's images under their own ruled heading, level with the
     /// Tracks heading the table draws beneath them.
     private var imagesSection: some View {
-        ImportImagesSection(
+        MacImportImages(
             images: mapping.images,
             onOpen: mappingActions.openImages
         )

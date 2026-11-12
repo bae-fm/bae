@@ -18,7 +18,7 @@
             alert.messageText = details.title
             alert.informativeText = details.message ?? ""
             alert.accessoryView = AlertAccessory.view(
-                ErrorCausesPanel(
+                MacErrorDetails(
                     detail: details.copyText,
                     excerpt: details.causes
                 )
@@ -52,7 +52,7 @@
     /// The inset panel of an error's causes, one a line and ending in the fault,
     /// with Copy details in its corner, shown under the pointer or keyboard
     /// focus.
-    private struct ErrorCausesPanel: View {
+    private struct MacErrorDetails: View {
         let detail: String
         let excerpt: String
         @State

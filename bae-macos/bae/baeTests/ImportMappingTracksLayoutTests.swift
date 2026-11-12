@@ -22,7 +22,7 @@ struct ImportMappingTracksLayoutTests {
         )
         let size = NSSize(width: tableWidth, height: 40)
         try await SnapshotTestSupport.withHostedWindow(
-            ImportMappingTrackRow(
+            MacImportTrackRow(
                 mapping: pairedMapping,
                 columns: columns,
                 previewingTarget: nil,
@@ -77,7 +77,7 @@ struct ImportMappingTracksLayoutTests {
         let recorder = MappingTrackActionRecorder()
         let size = NSSize(width: tableWidth, height: 40)
         try await SnapshotTestSupport.withHostedWindow(
-            ImportMappingTrackRow(
+            MacImportTrackRow(
                 mapping: pairedMapping,
                 columns: columns,
                 previewingTarget: nil,
@@ -178,7 +178,7 @@ struct ImportMappingTracksLayoutTests {
             height: 40
         )
         try await SnapshotTestSupport.withHostedWindow(
-            ImportMappingTrackRow(
+            MacImportTrackRow(
                 mapping: mapping,
                 columns: columns,
                 previewingTarget: nil,
@@ -466,7 +466,7 @@ extension ImportMappingTracksLayoutTests {
         let size = NSSize(width: tableWidth, height: 40)
         let recorder = MappingTrackActionRecorder()
         return try await SnapshotTestSupport.withHostedWindow(
-            ImportMappingTrackRow(
+            MacImportTrackRow(
                 mapping: pairedMapping,
                 columns: columns,
                 previewingTarget: previewingTarget,

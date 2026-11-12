@@ -236,7 +236,7 @@ struct ImportReleaseHeader: View {
                     .foregroundStyle(Theme.warning)
                 }
                 if configStore.syncs {
-                    ImportDestinationPicker(
+                    MacImportDestination(
                         destination: commit.importDestination
                     )
                 }

@@ -24,7 +24,7 @@ extension BridgeArtistSortCriterion: SortCriterionRepresentable {}
 
 /// One library mode's sort criteria as pills, with a "+" menu that appends an
 /// unused field; precedence is the order the pills were added.
-struct SortCriteriaRow<Criterion: SortCriterionRepresentable>: View {
+struct MacSortCriteria<Criterion: SortCriterionRepresentable>: View {
     @Binding
     var criteria: [Criterion]
 
@@ -108,7 +108,7 @@ extension Array where Element: SortCriterionRepresentable {
             BridgeSortCriterion(field: .dateAdded, direction: .descending),
             BridgeSortCriterion(field: .title, direction: .ascending),
         ]
-        SortCriteriaRow(criteria: $criteria)
+        MacSortCriteria(criteria: $criteria)
             .padding()
     }
 
@@ -118,7 +118,7 @@ extension Array where Element: SortCriterionRepresentable {
         var criteria: [BridgeSortCriterion] = [
             BridgeSortCriterion(field: .artist, direction: .ascending)
         ]
-        SortCriteriaRow(criteria: $criteria)
+        MacSortCriteria(criteria: $criteria)
             .padding()
     }
 #endif

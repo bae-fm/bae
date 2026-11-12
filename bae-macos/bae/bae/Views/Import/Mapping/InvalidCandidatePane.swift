@@ -26,7 +26,7 @@ struct InvalidCandidatePane: View {
                 )
                 card
                 if !detail.images.isEmpty {
-                    ImportImagesSection(
+                    MacImportImages(
                         images: detail.images,
                         onOpen: mappingActions.openImages
                     )

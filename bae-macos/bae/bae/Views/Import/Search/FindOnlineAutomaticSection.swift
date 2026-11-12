@@ -116,7 +116,7 @@ struct FindOnlineAutomaticSection: View {
                             .padding(.horizontal, ThemeSpace.group)
                     }
                     if let run = state.run {
-                        IdentifierBand(
+                        MacIdentifierBand(
                             run: run,
                             onToggleLookup: onToggleLookup,
                             onToggleCatalogAgreement:

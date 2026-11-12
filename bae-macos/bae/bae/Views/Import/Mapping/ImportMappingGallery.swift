@@ -38,7 +38,7 @@ struct ImportMappingGallery: View {
 
 /// The folder's images under their own ruled heading, level with the Tracks
 /// heading the table draws beneath them.
-struct ImportImagesSection: View {
+struct MacImportImages: View {
     let images: [BridgeMappingImage]
     let onOpen: ([BridgeMappingImage], String) -> Void
 

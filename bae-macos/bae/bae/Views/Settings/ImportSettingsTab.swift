@@ -51,7 +51,7 @@ struct ImportSettingsTab: View {
                 )
                 if configStore.syncs {
                     LabeledContent("Import to") {
-                        ImportDestinationPicker(destination: importDestination)
+                        MacImportDestination(destination: importDestination)
                     }
                     .padding(.leading, ThemeSpace.edge)
                     .disabled(!configStore.config.importWhenIdentified)

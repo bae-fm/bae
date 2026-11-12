@@ -4,7 +4,7 @@ import SwiftUI
 /// The run as one wrapping band of chips — Disc ID, Barcode, Catalog #, ISRC,
 /// Title, then the catalog numbers not in effect folded behind their count —
 /// each with every provider's answer.
-struct IdentifierBand: View {
+struct MacIdentifierBand: View {
     let run: BridgeIdentifyRun
     /// Leave an identifier out of the run, or ask about it again.
     let onToggleLookup: (LookupToggle) -> Void
@@ -262,7 +262,7 @@ struct IdentifierBand: View {
     }
 }
 
-extension IdentifierBand {
+extension MacIdentifierBand {
     // MARK: - Title
 
     /// The words the run searches by when the identifiers name nothing, with
@@ -410,7 +410,7 @@ private struct TitleSearchChip<Trailing: View>: View {
     // MARK: - Previews
 
     #Preview("Run in flight") {
-        IdentifierBand(
+        MacIdentifierBand(
             run: PreviewData.identifyRunInFlight,
             onToggleLookup: { _ in },
             onToggleCatalogAgreement: { _ in },
@@ -424,7 +424,7 @@ private struct TitleSearchChip<Trailing: View>: View {
 
     /// One source asked, which does not answer Disc IDs.
     #Preview("Run on one source") {
-        IdentifierBand(
+        MacIdentifierBand(
             run: PreviewData.identifyRunOneSource,
             onToggleLookup: { _ in },
             onToggleCatalogAgreement: { _ in },
@@ -437,7 +437,7 @@ private struct TitleSearchChip<Trailing: View>: View {
     }
 
     #Preview("Run starting") {
-        IdentifierBand(
+        MacIdentifierBand(
             run: PreviewData.identifyRunStarting,
             onToggleLookup: { _ in },
             onToggleCatalogAgreement: { _ in },
@@ -450,7 +450,7 @@ private struct TitleSearchChip<Trailing: View>: View {
     }
 
     #Preview("A provider failed") {
-        IdentifierBand(
+        MacIdentifierBand(
             run: PreviewData.identifyRunProviderFailed,
             onToggleLookup: { _ in },
             onToggleCatalogAgreement: { _ in },
@@ -464,7 +464,7 @@ private struct TitleSearchChip<Trailing: View>: View {
 
     /// "A provider failed" with its catalog number taken back out.
     #Preview("A catalog number waiting to be used") {
-        IdentifierBand(
+        MacIdentifierBand(
             run: PreviewData.identifyRunCatalogWaiting,
             onToggleLookup: { _ in },
             onToggleCatalogAgreement: { _ in },
@@ -480,21 +480,21 @@ private struct TitleSearchChip<Trailing: View>: View {
     /// them left out.
     #Preview("Identifiers left out of the run") {
         VStack(alignment: .leading, spacing: 0) {
-            IdentifierBand(
+            MacIdentifierBand(
                 run: PreviewData.identifyRunDiscIdLeftOut,
                 onToggleLookup: { _ in },
                 onToggleCatalogAgreement: { _ in },
                 onRetryFailed: {},
                 onEditTitleSearch: { _, _ in },
             )
-            IdentifierBand(
+            MacIdentifierBand(
                 run: PreviewData.identifyRunBothBarcodesAsked,
                 onToggleLookup: { _ in },
                 onToggleCatalogAgreement: { _ in },
                 onRetryFailed: {},
                 onEditTitleSearch: { _, _ in },
             )
-            IdentifierBand(
+            MacIdentifierBand(
                 run: PreviewData.identifyRunBarcodeLeftOut,
                 onToggleLookup: { _ in },
                 onToggleCatalogAgreement: { _ in },
@@ -508,7 +508,7 @@ private struct TitleSearchChip<Trailing: View>: View {
     }
 
     #Preview("Nothing found") {
-        IdentifierBand(
+        MacIdentifierBand(
             run: PreviewData.identifyRunNothingFound,
             onToggleLookup: { _ in },
             onToggleCatalogAgreement: { _ in },

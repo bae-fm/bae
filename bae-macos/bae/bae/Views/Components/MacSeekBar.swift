@@ -5,7 +5,7 @@ import SwiftUI
 /// Both seek bars draw their entire timeline from their position stream,
 /// which the native view reads each display frame. SwiftUI hands it the
 /// stream and updates appearance, preferences, and callbacks only.
-struct SeekBarRepresentable: NSViewRepresentable {
+struct MacSeekBar: NSViewRepresentable {
     @Environment(\.accentChoice)
     private var accent
     @Environment(\.colorScheme)

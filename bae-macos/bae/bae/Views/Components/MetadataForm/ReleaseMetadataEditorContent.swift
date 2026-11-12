@@ -47,7 +47,7 @@ struct ReleaseMetadataEditorContent: View {
                 actions: session.albumActions(viewInLibrary: onViewAlbum)
             )
             if !images.isEmpty, let onOpenImages {
-                ImportImagesSection(images: images, onOpen: onOpenImages)
+                MacImportImages(images: images, onOpen: onOpenImages)
             }
             trackTable
             if !session.draft.display.files.isEmpty {

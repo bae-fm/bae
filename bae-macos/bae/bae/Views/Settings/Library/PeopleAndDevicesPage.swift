@@ -737,7 +737,7 @@ private struct RenameProfileSheet: View {
         MacSheet(verbatim: currentName, width: 420) {
             VStack(alignment: .leading, spacing: ThemeSpace.group) {
                 FieldColumn {
-                    FieldRow(
+                    MacTextField(
                         "Name",
                         note: "Everyone in the library sees this name."
                     ) {

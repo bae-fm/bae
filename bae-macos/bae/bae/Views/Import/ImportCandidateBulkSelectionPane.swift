@@ -203,7 +203,7 @@ private struct BulkActionRow: View {
                     )
                     .frame(maxWidth: .infinity, alignment: .leading)
                 if let importDestination {
-                    ImportDestinationPicker(destination: importDestination)
+                    MacImportDestination(destination: importDestination)
                 }
                 if let count = offer.count {
                     StatusChip(

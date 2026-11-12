@@ -12,7 +12,7 @@ struct PlaybackProgressView: View {
     let onToggleRemainingTime: () -> Void
 
     var body: some View {
-        SeekBarRepresentable(
+        MacSeekBar(
             source: source,
             showRemainingTime: showRemainingTime,
             onSeek: onSeek,

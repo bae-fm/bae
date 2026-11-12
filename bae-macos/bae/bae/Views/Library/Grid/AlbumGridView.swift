@@ -374,7 +374,7 @@ extension AlbumGridView {
         width: CGFloat
     ) -> some View {
         if let album = list.row(at: position) {
-            AlbumCardView(
+            MacAlbumTile(
                 title: album.title,
                 artistNames: album.artistNames,
                 year: album.year,

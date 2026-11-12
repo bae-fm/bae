@@ -3,7 +3,7 @@ import SwiftUI
 
 /// One album card in the grid. Hover and selection chrome toggle by opacity so
 /// a state change never re-measures the row.
-struct AlbumCardView: View {
+struct MacAlbumTile: View {
     let title: String
     let artistNames: String
     let year: Int32?
@@ -121,7 +121,7 @@ private struct AlbumCardStack<Art: View>: View {
             onDelete: {}
         )
         HStack(spacing: ThemeSpace.section) {
-            AlbumCardView(
+            MacAlbumTile(
                 title: album.title,
                 artistNames: album.artistNames,
                 year: album.year,
@@ -131,7 +131,7 @@ private struct AlbumCardStack<Art: View>: View {
                 size: 200,
                 menu: menu,
             )
-            AlbumCardView(
+            MacAlbumTile(
                 title: selected.title,
                 artistNames: selected.artistNames,
                 year: selected.year,

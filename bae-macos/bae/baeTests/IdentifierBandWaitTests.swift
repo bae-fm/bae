@@ -71,7 +71,7 @@ struct IdentifierBandWaitTests {
     func bandDrawsNoSpinner() async throws {
         let size = NSSize(width: 1_400, height: 120)
         try await SnapshotTestSupport.withHostedWindow(
-            IdentifierBand(
+            MacIdentifierBand(
                 run: Self.waitingRun,
                 onToggleLookup: { _ in },
                 onToggleCatalogAgreement: { _ in },

@@ -143,7 +143,7 @@ extension LibraryView {
 
     /// The header above every mode; its heading switches modes.
     private var libraryHeader: some View {
-        LibraryHeader(
+        MacLibraryHeading(
             collapseProgress: headerCollapse.progress,
             fullWidth: fullWidth
         ) {
@@ -173,7 +173,7 @@ extension LibraryView {
         _ slot: BrowseListSlot<Row, Criterion>
     ) -> some View
     where Row.ID: Sendable {
-        SortCriteriaRow(
+        MacSortCriteria(
             criteria: Binding(
                 get: { slot.sortCriteria },
                 set: { slot.setSortCriteria($0) }

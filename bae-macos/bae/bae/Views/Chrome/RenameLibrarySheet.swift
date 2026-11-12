@@ -21,7 +21,7 @@ struct RenameLibrarySheet: View {
         MacSheet("Rename library", width: 420) {
             VStack(alignment: .leading, spacing: ThemeSpace.related) {
                 FieldColumn {
-                    FieldRow(
+                    MacTextField(
                         "New name",
                         note: "Everyone in the library sees this name."
                     ) {

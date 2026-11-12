@@ -3,7 +3,7 @@ import SwiftUI
 
 /// One of the folder's audio units alongside the track it becomes. The track's
 /// title and artist edit in place; its audio is the folder's.
-struct ImportMappingTrackRow: View {
+struct MacImportTrackRow: View {
     let mapping: BridgeTrackMapping
     /// The widths the table resolved for this pane, so the row's cells land
     /// under the header's.

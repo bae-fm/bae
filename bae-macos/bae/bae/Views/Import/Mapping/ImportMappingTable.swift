@@ -120,7 +120,7 @@ struct ImportMappingTable: View {
     }
 
     private func trackRow(_ mapping: BridgeTrackMapping) -> some View {
-        ImportMappingTrackRow(
+        MacImportTrackRow(
             mapping: mapping,
             columns: columns,
             previewingTarget: previewingTarget,

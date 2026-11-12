@@ -14,7 +14,7 @@ struct PreviewProgressView: View {
     let onSeek: (Double) -> Void
 
     var body: some View {
-        SeekBarRepresentable(
+        MacSeekBar(
             source: position.map(SeekBarSource.preview),
             showRemainingTime: false,
             onSeek: onSeek,

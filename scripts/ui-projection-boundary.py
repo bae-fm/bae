@@ -49,10 +49,10 @@ RENDER_LEAVES = (
         r"\bstruct\s+TriageRowView\s*:\s*View\b",
     ),
     RenderLeaf(
-        "bae-macos/bae/bae/Views/Library/Grid/AlbumCardView.swift",
-        "AlbumCardView",
+        "bae-macos/bae/bae/Views/Library/Grid/MacAlbumTile.swift",
+        "MacAlbumTile",
         "swift",
-        r"\bstruct\s+AlbumCardView\s*:\s*View\b",
+        r"\bstruct\s+MacAlbumTile\s*:\s*View\b",
     ),
     RenderLeaf(
         "bae-macos/bae/bae/Views/Import/Search/ImportSearchResultRow.swift",
