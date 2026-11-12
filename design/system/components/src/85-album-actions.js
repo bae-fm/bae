@@ -26,7 +26,7 @@
   function MacLightbox(props) {
     return h('div', { className: 'bae-m-lightbox' },
       h('div', { className: 'bae-m-lb-top' }, props.browse ? h('span', { className: 'bae-m-lb-pill' }, h(Sym, { name: 'grid', size: 12 }), 'Browse all images') : h('span'), h('span', { className: 'bae-m-lb-close' }, h(Sym, { name: 'close', size: 15 }))),
-      h('div', { className: 'bae-m-lb-stage' }, h('span', { className: 'bae-m-lb-arrow' }, h(Sym, { name: 'left', size: 22 })), props.state === 'failed' ? h(MacNotice, { layout: 'centered', quiet: true, stage: true, tone: 'danger', title: 'Couldn’t load the image', action: 'Retry' }) : props.state === 'loading' ? h('div', { className: 'bae-m-lb-msg' }, h(MacSpinner, { size: 28 }), 'Loading the image…') : h(Artwork, { title: props.title || 'Low Tide Hours', size: 420, radius: 0 }), h('span', { className: 'bae-m-lb-arrow' }, h(Sym, { name: 'right', size: 22 }))),
+      h('div', { className: 'bae-m-lb-stage' }, h('span', { className: 'bae-m-lb-arrow' }, h(Sym, { name: 'left', size: 22 })), props.state === 'failed' ? h(MacNotice, { layout: 'centered', quiet: true, stage: true, tone: 'danger', title: 'Could not load the image', action: 'Retry' }) : props.state === 'loading' ? h('div', { className: 'bae-m-lb-msg' }, h(MacSpinner, { size: 28 }), 'Loading the image…') : h(Artwork, { title: props.title || 'Low Tide Hours', size: 420, radius: 0 }), h('span', { className: 'bae-m-lb-arrow' }, h(Sym, { name: 'right', size: 22 }))),
       h('div', { className: 'bae-m-lb-cap' }, h('div', null, props.label || 'cover.jpg'), h('div', { style: { opacity: 0.7, fontSize: 11.5 } }, props.source || 'Release Files')),
       h('div', { className: 'bae-m-lb-strip' }, ['Low Tide Hours', 'Low Tide Hours back', 'Low Tide Hours disc', 'Low Tide Hours booklet'].map(function (t, i) { return h('span', { key: i, className: cx('bae-m-lb-thumb', i === 0 && 'bae-m-lb-thumb-on') }, h(Artwork, { title: t, size: 56, radius: 6 })); })));
   }
@@ -44,7 +44,7 @@
       : m === 'making' ? h(MacStorageChip, { state: 'detaching', progress: props.progress })
       : null;
     var missing = s === 'waiting' && props.missing ? h(MacNotice, { tone: 'warning', title: props.missing + ' is missing', subtitle: 'Restore it to finish uploading.' }) : null;
-    var failed = d === 'failed' ? 'Couldn’t pin' : m === 'failed' ? 'Couldn’t make local' : null;
+    var failed = d === 'failed' ? 'Could not pin' : m === 'failed' ? 'Could not make local' : null;
     var still = s === 'uploading' || s === 'waiting' || d === 'downloading' || m === 'queued' || m === 'making';
     return h('div', { className: 'bae-m-sband' },
       h('div', { className: 'bae-m-sband-line' }, restLabel, pill),

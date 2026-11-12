@@ -210,7 +210,7 @@ extension ShotScene {
                 status: .moveFailed(fileName: "01 Harbor Lights.flac")
             )
         },
-        storageChip("mac.component.storage-chip.couldn-t-make-local") {
+        storageChip("mac.component.storage-chip.could-not-make-local") {
             MacStorageChip(
                 release: PreviewData.storageRelease(),
                 status: .makeLocalFailed(

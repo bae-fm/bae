@@ -10,7 +10,7 @@
   ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
     W('File name', h(B.MacBox, null, h(B.MacFileNameField, { label: 'File name', pattern: '[Track №] [Title]', add: 'Artist,Album,Album year,Release year,Disc №,Track total', preview: '04 Low Tide Hours.flac' }))),
     W('Typed text', h(B.MacBox, null, h(B.MacFileNameField, { label: 'Folder name', pattern: '[Artist] - [Album]', add: 'Album year,Release year,Label,Catalog number', preview: 'Mara Quill - Low Tide Hours' }))),
-    W('Error', h(B.MacBox, null, h(B.MacFileNameField, { label: 'Folder name', pattern: '[Artist] / [Album]', add: 'Album year,Release year,Label,Catalog number', error: 'A name can’t contain “/”.' })))));
+    W('Error', h(B.MacBox, null, h(B.MacFileNameField, { label: 'Folder name', pattern: '[Artist] / [Album]', add: 'Album year,Release year,Label,Catalog number', error: 'A name cannot contain “/”.' })))));
 </script>
 </body>
 </html>

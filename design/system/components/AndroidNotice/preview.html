@@ -13,14 +13,14 @@
     W('Success', h(N, { tone: 'success', title: 'Cloud connected.' })),
     W('Warning', h(N, { tone: 'warning', title: 'Unsent changes will be lost' })),
     W('Warning, title and subtitle', h(N, { tone: 'warning', title: 'Mara Quill’s phone is out of date', subtitle: 'Update bae on it to keep syncing.' })),
-    W('Danger', h(N, { tone: 'danger', title: 'Couldn’t reach the cloud.' })),
-    W('Danger, Retry', h(N, { tone: 'danger', title: 'Couldn’t reach the cloud.', action: 'Retry' })),
-    W('Danger, Details and Retry', h(N, { tone: 'danger', title: 'Couldn’t reach the cloud.', secondary: 'Details', action: 'Retry' })),
-    W('Danger, actions below, long text', h(N, { tone: 'danger', title: 'Couldn’t reach the cloud. Your changes stay on this device and go up once it’s back; nothing is lost in the meantime.', secondary: 'Details', action: 'Retry', buttons: 'below' })),
-    W('Danger, title and subtitle', h(N, { tone: 'danger', title: 'bae couldn’t open your library', subtitle: 'Check your connection, then quit and reopen bae.' })),
+    W('Danger', h(N, { tone: 'danger', title: 'Could not reach the cloud.' })),
+    W('Danger, Retry', h(N, { tone: 'danger', title: 'Could not reach the cloud.', action: 'Retry' })),
+    W('Danger, Details and Retry', h(N, { tone: 'danger', title: 'Could not reach the cloud.', secondary: 'Details', action: 'Retry' })),
+    W('Danger, actions below, long text', h(N, { tone: 'danger', title: 'Could not reach the cloud. Your changes stay on this device and go up once it is back; nothing is lost in the meantime.', secondary: 'Details', action: 'Retry', buttons: 'below' })),
+    W('Danger, title and subtitle', h(N, { tone: 'danger', title: 'bae could not open your library', subtitle: 'Check your connection, then quit and reopen bae.' })),
     W('Warning, quiet, actions below, ×', h(N, { quiet: true, dismiss: true, tone: 'warning', title: 'Dropbox signed this device out.', action: 'Open Sync Settings', buttons: 'below' })),
-    W('Danger, quiet, with ×', h(N, { quiet: true, dismiss: true, tone: 'danger', title: 'Couldn’t close the library' })),
-    W('Danger, centred (a failed view)', h(N, { layout: 'centered', quiet: true, tone: 'danger', title: 'Couldn’t read your library', secondary: 'Details', action: 'Retry' }))));
+    W('Danger, quiet, with ×', h(N, { quiet: true, dismiss: true, tone: 'danger', title: 'Could not close the library' })),
+    W('Danger, centred (a failed view)', h(N, { layout: 'centered', quiet: true, tone: 'danger', title: 'Could not read your library', secondary: 'Details', action: 'Retry' }))));
 </script>
 </body>
 </html>

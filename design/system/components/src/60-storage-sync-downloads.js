@@ -79,9 +79,9 @@
       var label = s === 'uploading' ? 'Uploading' : s === 'pinning' ? 'Pinning' : 'Making local…';
       return h('span', { className: cx('bae-m-progchip', s === 'uploading' ? 'bae-m-progchip-up' : 'bae-m-progchip-pin') }, h('span', { className: 'bae-m-progchip-fill', style: { width: (Number(props.progress || 0.4) * 100) + '%' } }), h('span', { className: 'bae-m-progchip-label' }, label));
     }
-    if (s === 'downloadFailed') return chip('danger', 'Couldn’t pin');
+    if (s === 'downloadFailed') return chip('danger', 'Could not pin');
     if (s === 'moveFailed') return chip('danger', 'Move failed: ' + (props.file || '01 Harbor Lights.flac') + ' changed since import');
-    if (s === 'makeLocalFailed') return chip('danger', 'Couldn’t make local');
+    if (s === 'makeLocalFailed') return chip('danger', 'Could not make local');
     if (s === 'queued') return chip('activity', 'Queued to pin');
     if (s === 'uploadQueued') return chip('activity', 'Queued to upload');
     if (s === 'uploadBlocked') return chip('warning', 'Waiting for ' + (props.file || '01 Harbor Lights.flac'));
@@ -96,7 +96,7 @@
     return h('div', { className: 'bae-m-dlrow' },
       h(MacItem, { lead: h(Sym, { name: makeLocal ? 'folder' : 'pin', size: 16, className: 'bae-muted' }), trail: h('span', { className: 'bae-muted', title: 'Cancel' }, h(Sym, { name: 'xcircle', size: 15 })) },
         h('div', { className: 'bae-m-dlrow-text' }, h('span', { className: 'bae-ellipsis' }, props.title || 'Glass Harbor'), h('span', { className: 'bae-muted bae-num bae-m-dlrow-detail' }, props.detail || '9 files · 356 MB'))),
-      h(MacNotice, { quiet: true, tone: 'danger', title: makeLocal ? 'Couldn’t make local' : 'Couldn’t pin', secondary: 'Details', action: 'Retry' }));
+      h(MacNotice, { quiet: true, tone: 'danger', title: makeLocal ? 'Could not make local' : 'Could not pin', secondary: 'Details', action: 'Retry' }));
   }
 
   // Under the list: how many releases, the total, then per queue with work its rate, or in its place what holds the whole queue back (`uploadsWait`, `pinsWait`: Paused, Waiting for network, Waiting for Wi-Fi, Retrying at 6:40 PM), and Pause, or Resume while the person has paused it (`Paused`).
@@ -298,7 +298,7 @@
     var s = props.state || 'queued';
     var state = s === 'queued' ? h('div', { className: 'bae-a-librow-sub' }, 'Queued to pin')
       : s === 'active' ? h('div', null, h('div', { className: 'bae-a-dlbar-track' }, h('div', { style: { width: (Number(props.progress || 0.4) * 100) + '%' } })), h('div', { className: 'bae-a-fine bae-muted' }, props.bytes || '120 MB of 300 MB'))
-      : h(AndroidNotice, { quiet: true, tone: 'danger', title: 'Couldn’t pin', secondary: 'Details', action: 'Retry' });
+      : h(AndroidNotice, { quiet: true, tone: 'danger', title: 'Could not pin', secondary: 'Details', action: 'Retry' });
     return h('div', { className: 'bae-a-dlrow2' },
       h('div', { className: 'bae-a-dlrow2-head' },
         h('div', { className: cx('bae-a-librow-title', !props.title && 'bae-a-dlrow2-gone') }, props.title || 'Release no longer in library'),

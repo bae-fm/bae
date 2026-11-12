@@ -49,7 +49,7 @@ class Component extends DCLogic {
       rows: list.map((name) => ({ name, selected: name === picked, caret: !dropbox })),
       naming: state === 'naming',
       notEmpty: state === 'notEmpty',
-      notEmptyText: `“${names[1]}” isn’t empty. Choose an empty folder, or make a new one.`,
+      notEmptyText: `“${names[1]}” is not empty. Choose an empty folder, or make a new one.`,
       setUpOff: state === 'naming' || state === 'notEmpty' || state === 'empty'
     };
   }

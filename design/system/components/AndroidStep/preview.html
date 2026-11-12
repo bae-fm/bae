@@ -8,7 +8,7 @@
   var B = window.Bae, h = React.createElement;
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
-    W('With a field', h(B.AndroidStep, { title: 'You’re invited to Home music' }, h(B.AndroidTextField, { label: 'Your name', value: 'Dan', helper: 'Everyone in the library sees this name.' }), h(B.AndroidButton, { large: true }, 'Join'))),
+    W('With a field', h(B.AndroidStep, { title: 'You are invited to Home music' }, h(B.AndroidTextField, { label: 'Your name', value: 'Dan', helper: 'Everyone in the library sees this name.' }), h(B.AndroidButton, { large: true }, 'Join'))),
     W('With a line', h(B.AndroidStep, { title: 'This invite has ended', text: 'Ask Ben for a new one.' }, h(B.AndroidButton, { large: true }, 'OK')))));
 </script>
 </body>

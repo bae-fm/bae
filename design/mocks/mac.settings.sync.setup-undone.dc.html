@@ -24,7 +24,7 @@ body{margin:0}
 .foot{font-size:11px;color:var(--text-secondary);padding:6px 4px 0}
 </style>
 </helmet>
-<x-import component-from-global-scope="Bae.MacSettingsWindow" pane="Library" title="Sync" back="Library"><x-import component-from-global-scope="Bae.MacNotice" tone="warning" title="Setting up this library’s cloud home didn’t finish, and what it did was undone. Set up its cloud home again." secondary="Details" action="Dismiss"></x-import>
+<x-import component-from-global-scope="Bae.MacSettingsWindow" pane="Library" title="Sync" back="Library"><x-import component-from-global-scope="Bae.MacNotice" tone="warning" title="Setting up this library’s cloud home did not finish, and what it did was undone. Set up its cloud home again." secondary="Details" action="Dismiss"></x-import>
 <dc-import name="mac.parts.sync-status" status="Not synced" tone="" cause="" fix="" last-synced="" hint-size="100%,60px"></dc-import></x-import>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":690,"height":600}}'>

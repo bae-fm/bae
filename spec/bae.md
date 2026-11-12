@@ -2159,12 +2159,12 @@ shows a download its files have finished. The storage rows and the album and
 release detail read the entry in their own query.
 
 Each row's storage state is the place it sorts by, which core reads with the
-row: Couldn’t pin, its error behind *Details* (§9.7), or Move failed, naming the file whose
+row: Could not pin, its error behind *Details* (§9.7), or Move failed, naming the file whose
 original changed since import, first; Uploading, its chip filled as far
 as its bytes have come while any file is being sent, or Queued to upload while its files only wait; Pinning, filled as far
 as its download has come once it starts, or Queued to pin before; making local, Making local… filled as far as its copies have downloaded
-(§4.4), or Queued to make local before, or Couldn’t make local, its error behind *Details*, in the first place with
-Couldn’t pin; Local, Pinned or
+(§4.4), or Queued to make local before, or Could not make local, its error behind *Details*, in the first place with
+Could not pin; Local, Pinned or
 In cloud at rest. No rate shows beside it, nor how many entries wait ahead
 of it or what holds the queue back: a row's storage is its state and at most
 the one change on its way, every waiting state naming what it waits to do.
@@ -2234,7 +2234,7 @@ platform that cannot tell holds nothing back. What holds the queue back,
 Paused or Waiting for network, shows once where the queue shows: in place of
 its rate under the Storage manager's list, on the Activity panel's Pinning
 and Making local lines and on the phones' Pinning screen, never on a release. A pin that fails stays in the queue with its error,
-nothing of it pinned, and its row sorts first, reading Couldn’t pin; one that breaks on a bug fails the
+nothing of it pinned, and its row sorts first, reading Could not pin; one that breaks on a bug fails the
 same way, reported as one, and the queue goes on to the next. The queue's
 Retry queues every failed pin again, each in its place; a release's own Retry
 queues only that release's failed pin. While a release's pin waits, its
@@ -2269,7 +2269,7 @@ release, the Storage Manager's row menu (one alert for the whole selection,
 naming the release when it is one and counting them when several), and the
 Android album page's download control. The alert says the files leave this
 device now and the release stays in the cloud and plays from there while online.
-Unpin in the alert unpins; with "Don't show this again" ticked it first turns
+Unpin in the alert unpins; with "Do not show this again" ticked it first turns
 the setting off, and if that write fails nothing unpins and the error reaches
 the person. Cancel changes nothing, ticked or not. With the setting off, Unpin
 unpins at once. The MCP tool's unpin never asks.
@@ -2298,7 +2298,7 @@ that is running at once and its entry stays queued; resuming starts it again
 from its start; the queue is kept across restarts, its entries and pause, and
 the entry that was running starts again. A queued make-local reads Queued to
 make local; one that fails stays with its error, reading
-Couldn’t make local, until retried or cancelled. A cancel takes the entry out
+Could not make local, until retried or cancelled. A cancel takes the entry out
 and stops the download. bae hands coven the folder and each release's file
 paths below it, in one call
 ([coven §17.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#173-staging-a-file)).
@@ -2829,7 +2829,7 @@ right click, holds **Remove…**, or **Delete…** for one never synced. A
 library that can't be read, or whose reset, restore or removal stopped
 partway, says so under its name, and its menu offers to finish it first. A
 library that fails to open on a Mac shows the failure joined to its row, under
-its name: **Couldn’t open**, with **Details**; when what failed is the
+its name: **Could not open**, with **Details**; when what failed is the
 library's data on this Mac, such as tables that don't match the app's, it
 says "Something is wrong with this library’s data." and offers **Reset from
 cloud…**, the reset below. A
@@ -2922,7 +2922,7 @@ is a bug of bae's, not a state to show
 
 Dan taps **Scan code** and scans Ana's screen, or Ana sends him the code and
 he taps **Enter code** and pastes it. After the code reads, his phone asks his
-name on a step of its own, "You’re invited to Household", with **Your name**
+name on a step of its own, "You are invited to Household", with **Your name**
 empty (its placeholder says it appears on his profile, ratings and playlists),
 and **Join**, off while the field is blank; **Cancel** (a Mac) or Back (Android)
 returns to the first screen. A code whose library already has a join under way
@@ -2984,9 +2984,9 @@ leaving him half joined.
 
 An invite a sharing refusal ended leaves coven's open invites, and coven keeps
 the operation's outcome until Ana's laptop acknowledges it. People shows a
-notice in the invite's place: the address it was to share with, "Couldn’t
+notice in the invite's place: the address it was to share with, "Could not
 invite:" and what went wrong and what to fix ("Dropbox has no account for it";
-"your Dropbox email isn’t verified. Verify it, then invite them again"), and
+"your Dropbox email is not verified. Verify it, then invite them again"), and
 **Dismiss**. The notice stays until she dismisses it, in its place among the
 rows by when the invite was made. **Dismiss** is one local write that
 acknowledges the operation, so the notice leaves the list in that write; it
@@ -3215,8 +3215,8 @@ typed. A region or endpoint that doesn't match the bucket shows its reason under
 Region; a bucket that isn't there, or that holds other files, under Bucket;
 any other reason at the top of the form, above the fields. The reason
 sits in its field's own row. A
-refused key reads "This key wasn’t accepted. Check the access key ID and secret
-access key.", and a key the bucket doesn't allow reads "This key can’t use the
+refused key reads "This key was not accepted. Check the access key ID and secret
+access key.", and a key the bucket doesn't allow reads "This key cannot use the
 bucket. Give it read and write access, or use another key."
 
 **Choosing where, on macOS.** *Set up sync…* opens a sheet that lists the
@@ -3527,15 +3527,15 @@ words of a button, which are each platform's.
   no space left on this Mac. Free some space and bae will try again.*, *The
   keychain is locked. Unlock it to keep syncing.* and *bae couldn't read the
   library on this Mac.*; on Android, *This device is out of space. Free some up
-  and bae will try again.*, *bae couldn’t read its saved keys on this device.*
-  and *bae couldn’t read the library on this device.* A phone never uploads, so
+  and bae will try again.*, *bae could not read its saved keys on this device.*
+  and *bae could not read the library on this device.* A phone never uploads, so
   its causes are local ones, a provider error or a damaged change. A start that failed with sync
   not running is Sync failed with the start's own line as its cause and
   *Reconnect* as its fix.
 
 The page never says "Sync stopped", "Checking sync…" or "Disconnect". Until
 the status is first read it shows nothing in the block, and if it can't be
-read the block says "Couldn’t read sync status", which is the app's own
+read the block says "Could not read sync status", which is the app's own
 state around the read, with the words in the app's own catalog: core sends
 only the status it read. The Library page's Sync row shows the state only,
 and the Library row in Android's settings and the Library item in the Mac's
@@ -3553,7 +3553,7 @@ one whose action is *Restore source file*, never reaches Android's list or its
 Activity panel: one that does is a bug, reported to the crash reporter without
 crashing and left out of both, and the Sync page shows *Something went wrong.*
 in place of its row. On the Mac, a read of this device's own record of the
-cloud home that fails is a bug: the page says *Couldn’t read this library’s
+cloud home that fails is a bug: the page says *Could not read this library’s
 cloud home.* with *Details* only, and the bug is reported to the crash reporter
 without crashing.
 
@@ -3783,7 +3783,7 @@ alert (a dialog on Android) gives the warning, with *Cancel*. Leaving the
 screen without resetting, by *Cancel* on a Mac or Back on Android, returns to
 the open library, to the Mac's library list, or on a phone with no library
 open, to onboarding. A reset that fails returns to that screen saying
-"Couldn’t reset from cloud", with *Retry*, which resets again without the
+"Could not reset from cloud", with *Retry*, which resets again without the
 warning the person already accepted.
 
 **A reset or restore that stops partway.** A reset, or a restore with the
@@ -3817,7 +3817,7 @@ says why and the code finishes it too, signing in to the provider again, as a
 refused Dropbox or OneDrive sign-in needs. A reset under way can't be
 cancelled, so finishing one offers no *Cancel*. Cancelling a restore before
 its new device registered gives it up, and this device's copy is the library
-again; after, coven keeps it, and the cancel shows "The restore can’t be
+again; after, coven keeps it, and the cancel shows "The restore cannot be
 cancelled: this device was already added to the library. Finish restoring to
 use the library." Going back leaves the library waiting and returns to the
 open library, to the Mac's library list, or on a phone with no library open,
@@ -3869,7 +3869,7 @@ fail, saying the laptop left the library and its files are still on it.
   opened to count what it hasn't sent and again to leave its store, its row
   showing each step under its name, with a spinner in place of the ⋮, and a
   library that can't open is removed without opening, as on a Mac. A removal that fails, or the count
-  before it, shows an alert on a Mac and a dialog on Android, "Couldn’t remove
+  before it, shows an alert on a Mac and a dialog on Android, "Could not remove
   “Household”", with the error's line, *Retry* and *Cancel*: *Retry* counts and
   asks again, or runs again the removal the person confirmed, and the row goes
   back to its name; one that left the store but not this
