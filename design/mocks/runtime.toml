@@ -1,6 +1,8 @@
-# The canvas runtime the boards were last published with. Written at each
-# canvas publish; the shot check draws boards with a copy whose sha256 must
-# match, and fails when it doesn't.
+# The canvas runtime the boards are published with. Each canvas publish reads
+# the runtime; this file changes when its sha256 or the canvas type's release
+# does, and canvas_version is the publish where it was last read. The shot
+# check draws boards with a copy whose sha256 must match, and fails when it
+# doesn't.
 canvas = "https://claude.ai/artifact/9geFwGqEzevbvbh22NqZzJ"
 canvas_version = "1794441585-926d"
 type_release = "1794432898-b799"
