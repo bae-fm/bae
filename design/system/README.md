@@ -40,6 +40,8 @@ The text styles are macOS points. iOS follows Dynamic Type, and the Android comp
 - One primary button per screen, on the right of the footer. Everything else is secondary.
 - A sheet's Cancel goes back one screen, and closes the sheet on the first one. No Back buttons.
 - Components come per platform: `Mac…` for macOS, `Android…` for Android; `StatusChip` serves both. Windows and Linux follow macOS; iOS will get its own. Each component's guidelines end with its counterpart in the code; "none yet" means the code needs one.
+- A wait with no length shows each platform's own spinner: macOS's spokes (`MacSpinner`), Material's ring (`AndroidSpinner`). A spinner is a signal people already read as busy and carries nothing of bae's, so it is not made the same across platforms.
+- The boards are the target: where a board and an app differ, the app changes. A board's words, sizes, names and colours are never copied from an app.
 - On macOS, settings are `MacSection` headings over `MacBox`es of `MacRow`s inside a `MacSettingsWindow`. A row that opens something ends in a chevron.
 - On Android, a screen is an `AndroidScreen` of `AndroidSection` labels over `AndroidCard`s of `AndroidRow`s; changing a value opens an `AndroidDialog`.
 - An empty list is one sentence in the box: "No shared folders yet". No glyph above it.
