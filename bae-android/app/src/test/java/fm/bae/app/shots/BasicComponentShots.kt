@@ -6,10 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
@@ -32,6 +29,7 @@ import fm.bae.app.ui.components.ButtonAlign
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ButtonTone
 import fm.bae.app.ui.components.DialogHead
+import fm.bae.app.ui.components.RowIcon
 import fm.bae.app.ui.components.StatusTone
 import org.junit.Test
 
@@ -107,13 +105,7 @@ class BasicComponentShots : BoardShot() {
                 AndroidRow(
                     title = "Sync",
                     onClick = {},
-                    trailing = {
-                        Icon(
-                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                            null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    },
+                    icon = RowIcon.CHEVRON,
                 )
             }
         }
@@ -125,7 +117,7 @@ class BasicComponentShots : BoardShot() {
                 AndroidRow(
                     title = "Sync",
                     onClick = {},
-                    trailing = { Icon(Icons.Filled.Edit, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                    icon = RowIcon.EDIT,
                 )
             }
         }
@@ -144,7 +136,7 @@ class BasicComponentShots : BoardShot() {
     fun androidComponentRowTag() =
         component("android.component.row.tag", wide = true) {
             RowInCard {
-                AndroidRow(title = "Sync", trailing = { Text("Member", color = MaterialTheme.colorScheme.onSurfaceVariant) })
+                AndroidRow(title = "Sync", tag = "Member")
             }
         }
 

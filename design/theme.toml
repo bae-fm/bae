@@ -423,6 +423,13 @@ weight = "medium"
 android = 14
 android_line = 20
 
+# Android's row title: regular, 16 over a 24 line, as the design's row sets it;
+# an action row is medium, which is `rowTitle`.
+[text.androidRowTitle]
+weight = "regular"
+android = 16
+android_line = 24
+
 [text.mono]
 weight = "regular"
 monospaced = true

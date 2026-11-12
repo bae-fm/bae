@@ -12,6 +12,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -22,17 +25,28 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeOpacity
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 
+/** What a tap on a row does, drawn at its far end: [CHEVRON] opens a page, [EDIT] a dialog that changes the value. */
+internal enum class RowIcon(
+    val image: ImageVector,
+    val size: Dp,
+) {
+    CHEVRON(Icons.AutoMirrored.Filled.KeyboardArrowRight, ThemeIcon.large),
+    EDIT(Icons.Filled.Edit, EDIT_SIZE),
+}
+
 /**
  * One row of a list, in a [AndroidCard] or a sheet: the [title] with an optional [subtitle] under it,
  * whose [tone] colours it and puts a dot before it, and [trailing] content at the far end. [action]
  * makes the row itself the action ("Add device", last in its card), with [leadingIcon] before it when
- * it adds to the list; [selected] tints the row for the one choice made; a [value] is the title's value
+ * it adds to the list; [icon] says what a tap does, and [tag] is a short chip after the title, a role or a state;
+ * [selected] tints the row for the one choice made; a [value] is the title's value
  * at the row's far end, in the secondary colour. The [subtitle] wraps, read whole, as Material's supporting text does;
  * [subtitleContent] draws the line itself where its words change as the row runs. A [nested] row is a
  * setting that belongs to the switch row above it: joined to it in one tile and set in. A row that
@@ -45,6 +59,8 @@ internal fun AndroidRow(
     modifier: Modifier = Modifier,
     subtitle: String? = null,
     value: String? = null,
+    tag: String? = null,
+    icon: RowIcon? = null,
     subtitleContent: (@Composable () -> Unit)? = null,
     tone: StatusTone? = null,
     leadingIcon: ImageVector? = null,
@@ -80,16 +96,7 @@ internal fun AndroidRow(
             )
         }
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = ThemeText.rowTitle.style,
-                color =
-                    when {
-                        destructive -> MaterialTheme.colorScheme.error
-                        action -> accent
-                        else -> MaterialTheme.colorScheme.onSurface
-                    },
-            )
+            Title(title, tag, action = action, destructive = destructive)
             subtitle?.let { Subtitle(it, tone) }
             subtitleContent?.invoke()
         }
@@ -97,6 +104,40 @@ internal fun AndroidRow(
             Text(text = it, style = ThemeText.body.style, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         trailing?.invoke(this)
+        icon?.let {
+            Icon(
+                imageVector = it.image,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(it.size),
+            )
+        }
+    }
+}
+
+/** The title, regular (an action's is medium), with its [tag] as a chip after it. */
+@Composable
+private fun Title(
+    title: String,
+    tag: String?,
+    action: Boolean,
+    destructive: Boolean,
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = title,
+            style = if (action) ThemeText.rowTitle.style else ThemeText.androidRowTitle.style,
+            color =
+                when {
+                    destructive -> MaterialTheme.colorScheme.error
+                    action -> MaterialTheme.colorScheme.primary
+                    else -> MaterialTheme.colorScheme.onSurface
+                },
+        )
+        tag?.let { StatusChip(it) }
     }
 }
 
@@ -164,6 +205,7 @@ private fun Subtitle(
 private val ONE_LINE_HEIGHT = 56.dp
 private val TWO_LINE_HEIGHT = 72.dp
 private val DOT = 8.dp
+private val EDIT_SIZE = 20.dp
 
 /** Material's alpha for a disabled control's content. */
 private const val DISABLED_ALPHA = 0.38f

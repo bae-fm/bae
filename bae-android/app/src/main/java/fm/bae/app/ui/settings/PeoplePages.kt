@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -26,6 +25,7 @@ import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidCard
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidSection
+import fm.bae.app.ui.components.RowIcon
 import uniffi.bae_bridge.BridgeAdminChange
 import uniffi.bae_bridge.BridgeHistorySharing
 import uniffi.bae_bridge.BridgeInvite
@@ -111,7 +111,7 @@ internal fun PeopleHome(
                                 ),
                             ),
                         onClick = if (selfIsAdmin) ({ onOpen(PeoplePage.Person(member.id)) }) else null,
-                        trailing = if (selfIsAdmin) ({ OpensIcon() }) else null,
+                        icon = if (selfIsAdmin) RowIcon.CHEVRON else null,
                     )
                 }
             }
@@ -127,15 +127,6 @@ internal fun PeopleHome(
             }
         }
     }
-}
-
-@Composable
-private fun OpensIcon() {
-    Icon(
-        Icons.AutoMirrored.Filled.KeyboardArrowRight,
-        contentDescription = null,
-        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
 }
 
 /** This person's name, role, listening history and devices; before they have a profile, the form that makes it. */
@@ -211,7 +202,7 @@ private fun DevicesRow(
                 member.activeDevices.size,
             ),
         onClick = onOpen,
-        trailing = { OpensIcon() },
+        icon = RowIcon.CHEVRON,
     )
 }
 
