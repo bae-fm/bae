@@ -11,6 +11,20 @@ struct ComposerDetailPane: View {
     private var uiStore
 
     var body: some View {
+        if session.detailSelection == .none {
+            // Nothing chosen: the placeholder fills the pane, centred.
+            ContentUnavailableView {
+                Text("Composers")
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Theme.surface)
+        }
+        else {
+            page
+        }
+    }
+
+    private var page: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: ThemeSpace.section) {
                 if case .composer(
@@ -22,6 +36,10 @@ struct ComposerDetailPane: View {
                     if let rows {
                         if let error = rows.initialLoadError {
                             Notice(
+                                title: String(
+                                    localized: "Could not load this composer"
+                                ),
+                                advice: nil,
                                 error: error,
                                 look: .centered,
                                 action: error.retryAction {
@@ -72,24 +90,14 @@ struct ComposerDetailPane: View {
                         }
                     )
                 }
-                if session.detailSelection == .none {
-                    ContentUnavailableView {
-                        Text("Composers")
-                    }
-                }
             }
             .padding(ThemeSpace.section)
             .frame(maxWidth: 900, alignment: .leading)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .reportsHeaderScroll(id: "composerDetail")
-        // One surface step above the master list, with a hairline between.
+        // One surface step above the master list.
         .background(Theme.surface)
-        .overlay(alignment: .leading) {
-            Rectangle()
-                .fill(Theme.hairline)
-                .frame(width: 1)
-        }
     }
 
     /// The composer page's rows in core's order, in one lazy stack since

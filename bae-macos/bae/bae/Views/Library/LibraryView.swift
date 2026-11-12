@@ -90,12 +90,6 @@ struct LibraryView: View {
 }
 
 extension LibraryView {
-    /// The split view's widths: the master list's least and ideal, and the
-    /// detail pane's least.
-    private static let listMinWidth: CGFloat = 260
-    private static let listIdealWidth: CGFloat = 320
-    private static let detailMinWidth: CGFloat = 420
-
     /// Play the grid's albums `albumIds`, in the grid's order, which core
     /// reads.
     private func playAlbums(_ albumIds: [String]) {
@@ -186,6 +180,8 @@ extension LibraryView {
             if let albumList = session.albums.list {
                 if let error = albumList.initialLoadError {
                     Notice(
+                        title: String(localized: "Could not read your library"),
+                        advice: nil,
                         error: error,
                         look: .centered,
                         action: error.retryAction {
@@ -240,6 +236,8 @@ extension LibraryView {
             if let composerList = session.composers.list {
                 if let error = composerList.initialLoadError {
                     Notice(
+                        title: String(localized: "Could not read your library"),
+                        advice: nil,
                         error: error,
                         look: .centered,
                         action: error.retryAction {
@@ -254,16 +252,12 @@ extension LibraryView {
                     )
                 }
                 else {
-                    HSplitView {
+                    BrowseSplit {
                         BrowseList(list: composerList) { index in
                             composerRow(at: index, list: composerList)
                         }
-                        .frame(
-                            minWidth: Self.listMinWidth,
-                            idealWidth: Self.listIdealWidth
-                        )
+                    } detail: {
                         ComposerDetailPane(paneDetail: composerPaneDetail)
-                            .frame(minWidth: Self.detailMinWidth)
                             .detailRead(
                                 id: session.detailSelection.composerId,
                                 activate: libraryProjections.activateComposer,
@@ -291,6 +285,8 @@ extension LibraryView {
             if let artistList = session.artists.list {
                 if let error = artistList.initialLoadError {
                     Notice(
+                        title: String(localized: "Could not read your library"),
+                        advice: nil,
                         error: error,
                         look: .centered,
                         action: error.retryAction {
@@ -305,16 +301,12 @@ extension LibraryView {
                     )
                 }
                 else {
-                    HSplitView {
+                    BrowseSplit {
                         BrowseList(list: artistList) { index in
                             artistRow(at: index, list: artistList)
                         }
-                        .frame(
-                            minWidth: Self.listMinWidth,
-                            idealWidth: Self.listIdealWidth
-                        )
+                    } detail: {
                         ArtistDetailPane(detail: selectedArtistDetail)
-                            .frame(minWidth: Self.detailMinWidth)
                             .detailRead(
                                 id: session.selectedArtistId,
                                 activate: libraryProjections.activateArtist,

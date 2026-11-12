@@ -10,6 +10,20 @@ struct ArtistDetailPane: View {
     private var uiStore
 
     var body: some View {
+        if detail == nil, session.selectedArtistId == nil {
+            // Nothing chosen: the placeholder fills the pane, centred.
+            ContentUnavailableView {
+                Text("Artists")
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Theme.surface)
+        }
+        else {
+            page
+        }
+    }
+
+    private var page: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: ThemeSpace.section) {
                 if let detail {
@@ -33,11 +47,6 @@ struct ArtistDetailPane: View {
                                 uiStore.navigateToAlbum(album.id)
                             }
                         }
-                    }
-                }
-                else if session.selectedArtistId == nil {
-                    ContentUnavailableView {
-                        Text("Artists")
                     }
                 }
                 // A selected artist's read is local: nothing shows until it

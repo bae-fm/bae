@@ -443,16 +443,16 @@ extension Notice {
         }
     }
 
-    /// A button in the notice: a borderless one (Details) in the accent in a
-    /// filled or quiet notice; a bordered one (Retry) in the plain button
-    /// look, white on the control grey, with no tint. In a failed view's
-    /// centred notice both take the grey of the words beside it (the stage's
-    /// secondary text on a stage).
+    /// A button in the notice: a borderless one (Details) in the accent,
+    /// apart from a centred notice's grey title; a bordered one (Retry) in
+    /// the plain button look, white on the control grey, with no tint. In a
+    /// failed view's centred notice Retry takes the grey of the words beside
+    /// it; on a stage both take the stage's secondary text.
     @ViewBuilder
     private func colouredButton(_ button: some View, borderless: Bool)
         -> some View
     {
-        if look == .centered {
+        if look == .centered, !borderless {
             button.foregroundStyle(.secondary).tint(.secondary)
         }
         else if look == .centeredOnStage {
