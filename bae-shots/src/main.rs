@@ -38,7 +38,7 @@ enum Action {
     /// Write the record the last `run` made (shots/record.toml) to
     /// design/shots.toml, for whoever commits it.
     Record,
-    /// Take the shots into shots/<platform>/ and check them. Only pairs new or
+    /// Take the shots into shots/, a folder for each platform, and check them. Only pairs new or
     /// changed against origin/main's record fail the run; the rest are listed.
     Run(Selection),
     /// Check shots already taken against their boards.
