@@ -225,23 +225,48 @@ struct DiscogsSettingsContent: View {
     /// the switch turns it on.
     private var keyInput: some View {
         HStack(spacing: ThemeSpace.compact) {
-            KeyTextField(
+            KeyField(
                 text: $draft,
                 label: String(localized: "API key"),
                 prompt: String(localized: "Your free Discogs key")
             )
             Button("Save", action: onSave)
+                .controlSize(.large)
                 .disabled(draft.isEmpty || isValidating)
         }
         .disabled(!isEnabled)
     }
 }
 
+/// The key's field in the chrome every boxed field has.
+private struct KeyField: View {
+    @Binding
+    var text: String
+    let label: String
+    let prompt: String
+
+    @State
+    private var focused = false
+
+    var body: some View {
+        KeyTextField(
+            text: $text,
+            focused: $focused,
+            label: label,
+            prompt: prompt
+        )
+        .modifier(FieldChrome(focused: focused, style: .boxed))
+    }
+}
+
 /// The Discogs key's field: plain text, which takes the keyboard as soon as
-/// it is in a window while enabled, and again each time it is enabled.
+/// it is in a window while enabled, and again each time it is enabled. It
+/// draws no edge of its own; the chrome around it does.
 private struct KeyTextField: NSViewRepresentable {
     @Binding
     var text: String
+    @Binding
+    var focused: Bool
     let label: String
     let prompt: String
 
@@ -249,8 +274,11 @@ private struct KeyTextField: NSViewRepresentable {
         let field = FocusingTextField()
         field.placeholderString = prompt
         field.setAccessibilityLabel(label)
-        field.bezelStyle = .roundedBezel
-        field.isBezeled = true
+        field.isBezeled = false
+        field.isBordered = false
+        field.drawsBackground = false
+        field.focusRingType = .none
+        field.font = ThemeText.body.nsFont
         field.delegate = context.coordinator
         field.cell?.usesSingleLineMode = true
         field.cell?.wraps = false
@@ -268,6 +296,7 @@ private struct KeyTextField: NSViewRepresentable {
 
     func updateNSView(_ field: FocusingTextField, context: Context) {
         context.coordinator.text = $text
+        context.coordinator.focused = $focused
         let enabled = context.environment.isEnabled
         // SwiftUI sets the control's `isEnabled` itself before this runs, so
         // the field cannot say whether the switch just turned it on.
@@ -283,18 +312,28 @@ private struct KeyTextField: NSViewRepresentable {
     }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(text: $text)
+        Coordinator(text: $text, focused: $focused)
     }
 
     @MainActor
     final class Coordinator: NSObject, NSTextFieldDelegate {
         var text: Binding<String>
+        var focused: Binding<Bool>
         let focus = FieldFocus()
         /// Whether the last update left the field enabled.
         var wasEnabled = false
 
-        init(text: Binding<String>) {
+        init(text: Binding<String>, focused: Binding<Bool>) {
             self.text = text
+            self.focused = focused
+        }
+
+        func controlTextDidBeginEditing(_: Notification) {
+            focused.wrappedValue = true
+        }
+
+        func controlTextDidEndEditing(_: Notification) {
+            focused.wrappedValue = false
         }
 
         func controlTextDidChange(_ notification: Notification) {
