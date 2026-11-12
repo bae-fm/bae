@@ -75,10 +75,11 @@ class ImportStore {
     /// Rebuilt from each delivery, so a root that reads cleanly again — or
     /// stops being watched — leaves, and its next break is news.
     @ObservationIgnored
-    private var reportedScanFailures: [Data: String] = [:]
+    private var reportedScanFailures: [Data: ReportedScan] = [:]
 
-    /// Called for each watched root whose scan has newly failed, with the
-    /// folder's path and the untranslated fault. Set by whoever owns an error
+    /// Called for each watched root whose scan has newly failed or that is
+    /// newly not watched, with the folder's name, the untranslated fault or
+    /// reason, and which of the two it is. Set by whoever owns an error
     /// surface — this store has none.
     ///
     /// The failure arrives on the folder scans rather than as a transient
@@ -90,7 +91,12 @@ class ImportStore {
     /// existed, is in the first delivery.
     @ObservationIgnored
     var onScanFailure:
-        ((_ watchedFolderName: String, _ detail: String) -> Void)?
+        (
+            (
+                _ watchedFolderName: String, _ detail: String,
+                _ kind: FolderScanAlertKind
+            ) -> Void
+        )?
 
     /// Take a delivered summary, unless it is the one already held.
     func applySummary(_ next: BridgeImportQueueSummary) {
@@ -117,18 +123,6 @@ class ImportStore {
     func applyPendingFilterEntries(_ next: [BridgePendingFilterEntry]) {
         guard next != pendingFilterEntries else { return }
         pendingFilterEntries = next
-    }
-
-    private func reportNewScanFailures() {
-        var current: [Data: String] = [:]
-        for status in folderScans.statuses {
-            guard case .failed(let detail) = status.status else { continue }
-            current[status.watchedFolderPath] = detail
-            if reportedScanFailures[status.watchedFolderPath] != detail {
-                onScanFailure?(status.watchedFolderName, detail)
-            }
-        }
-        reportedScanFailures = current
     }
 
     /// The selected rows' folders, read by key. A selection opens one
@@ -623,6 +617,30 @@ private struct PendingSelectionClick {
 }
 
 extension ImportStore {
+    private func reportNewScanFailures() {
+        var current: [Data: ReportedScan] = [:]
+        for status in folderScans.statuses {
+            let reported: ReportedScan
+            switch status.status {
+            case .failed(let detail):
+                reported = ReportedScan(kind: .failed, detail: detail)
+            case .notWatched(let reason):
+                reported = ReportedScan(kind: .notWatched, detail: reason)
+            case .scanning, .complete:
+                continue
+            }
+            current[status.watchedFolderPath] = reported
+            if reportedScanFailures[status.watchedFolderPath] != reported {
+                onScanFailure?(
+                    status.watchedFolderName,
+                    reported.detail,
+                    reported.kind
+                )
+            }
+        }
+        reportedScanFailures = current
+    }
+
     /// Take delivered import counts, writing each only when it moved so its
     /// readers redraw only then.
     func applyImportCounts(_ counts: BridgeImportCounts) {
@@ -634,4 +652,19 @@ extension ImportStore {
             importsInFlight = counts.importsInFlight
         }
     }
+}
+
+/// What a root was last reported as, so the same fact raises its alert once,
+/// and a different one raises it again.
+private struct ReportedScan: Equatable {
+    let kind: FolderScanAlertKind
+    let detail: String
+}
+
+/// Which alert a watched folder's scan state raises.
+enum FolderScanAlertKind {
+    /// The folder could not be read.
+    case failed
+    /// The folder was read, and a directory in it could not be watched.
+    case notWatched
 }

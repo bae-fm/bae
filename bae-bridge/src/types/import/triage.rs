@@ -245,7 +245,14 @@ pub fn bridge_network_folder_check_minutes() -> u32 {
 pub enum BridgeFolderScanStatus {
     Scanning,
     Complete,
-    Failed { error: String },
+    Failed {
+        error: String,
+    },
+    /// Read in full, with a directory that could not be watched, for this
+    /// reason (the system's own, untranslated).
+    NotWatched {
+        reason: String,
+    },
 }
 
 // ── Sidebar triage: mirrors of `bae_import::triage` ─────────────────

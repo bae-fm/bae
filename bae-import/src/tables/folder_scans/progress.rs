@@ -16,14 +16,14 @@ use crate::folder_scan_status::{ScanFoundCounts, StoredRootScan, StoredScan, Sto
 /// root. `volume` is never NULL on a root, so a NULL one is a folder with
 /// none.
 const FOLDER_SCAN_PROGRESS: &str = "SELECT watched.path, roots.status, \
-            roots.error, roots.volume \
+            roots.detail, roots.volume \
      FROM watched_import_folders AS watched \
      LEFT JOIN folder_scan_roots AS roots ON roots.watched_folder_path = watched.path \
      ORDER BY watched.position";
 
 fn load_stored_folder_scans_on(sql: &SqlReadContext<'_>) -> Result<Vec<StoredRootScan>, DbError> {
     let mut scans = Vec::new();
-    for (watched_folder_path, status, error, volume) in
+    for (watched_folder_path, status, detail, volume) in
         sql.query(FOLDER_SCAN_PROGRESS, [], |row| {
             Ok((
                 path_column::get(row, 0)?,
@@ -36,7 +36,7 @@ fn load_stored_folder_scans_on(sql: &SqlReadContext<'_>) -> Result<Vec<StoredRoo
         let last_scan = match volume {
             None => None,
             Some(volume) => Some(StoredScan {
-                outcome: stored_outcome(&watched_folder_path, status, error)?,
+                outcome: stored_outcome(&watched_folder_path, status, detail)?,
                 on_network_volume: super::columns::volume_of(&volume)?
                     == crate::VolumeKind::Network,
             }),
@@ -47,20 +47,21 @@ fn load_stored_folder_scans_on(sql: &SqlReadContext<'_>) -> Result<Vec<StoredRoo
 }
 
 /// How a root's current generation ended, from its row: `status` and
-/// `error`.
+/// `detail`.
 fn stored_outcome(
     watched_folder_path: &std::path::Path,
     status: Option<String>,
-    error: Option<String>,
+    detail: Option<String>,
 ) -> Result<StoredScanOutcome, DbError> {
-    Ok(match (status.as_deref(), error) {
+    Ok(match (status.as_deref(), detail) {
         (None, None) => StoredScanOutcome::Unfinished,
         (Some("complete"), None) => StoredScanOutcome::Complete,
         (Some("failed"), Some(error)) => StoredScanOutcome::Failed { error },
+        (Some("unwatched"), Some(reason)) => StoredScanOutcome::NotWatched { reason },
         stored => {
             return Err(DbError::unreadable(
                 format!(
-                    "folder_scan_roots' status and error of {}",
+                    "folder_scan_roots' status and detail of {}",
                     coven::path_text(watched_folder_path)
                 ),
                 stored,

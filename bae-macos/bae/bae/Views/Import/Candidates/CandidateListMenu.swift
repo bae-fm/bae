@@ -60,13 +60,13 @@ struct CandidateListMenu: View {
             .overlay(alignment: .topTrailing) {
                 // A filter hiding Found's rows marks the trigger, so a short
                 // list never reads as a short queue.
-                if pendingFilter != .all && !state.hasFailedScan {
+                if pendingFilter != .all && !state.hasScanProblem {
                     Circle()
                         .fill(Color.accentColor)
                         .frame(width: 6, height: 6)
                         .offset(x: 2, y: -2)
                 }
-                if state.hasFailedScan {
+                if state.hasScanProblem {
                     Image(systemName: "exclamationmark.circle.fill")
                         .themeIcon(.badge)
                         .foregroundStyle(Theme.danger)

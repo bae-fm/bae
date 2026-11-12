@@ -1,4 +1,5 @@
-//! Where each watched folder's scan stands: scanning, complete, or failed; whether the folder is on a network
+//! Where each watched folder's scan stands: scanning, complete, failed, or
+//! read but not watched; whether the folder is on a network
 //! volume; and the walks under way, totalled for the list's chrome.
 //!
 //! Two sources make it. The table holds what a scan stored: the outcome of
@@ -29,7 +30,15 @@ pub struct WatchedFolderScanStatus {
 pub enum FolderScanStatus {
     Scanning,
     Complete,
-    Failed { error: String },
+    Failed {
+        error: String,
+    },
+    /// The folder was read in full, and a directory in it could not be
+    /// watched, for this reason: a change there reaches bae only when the
+    /// folder is read again.
+    NotWatched {
+        reason: String,
+    },
 }
 
 /// How many folders each scan under way has stored, by its root.
@@ -84,6 +93,9 @@ impl FolderScanProgress {
                             (_, StoredScanOutcome::Failed { error }) => {
                                 FolderScanStatus::Failed { error }
                             }
+                            (_, StoredScanOutcome::NotWatched { reason }) => {
+                                FolderScanStatus::NotWatched { reason }
+                            }
                             (Some(RootScanInMemory::Running), StoredScanOutcome::Unfinished) => {
                                 FolderScanStatus::Scanning
                             }
@@ -115,7 +127,9 @@ impl FolderScanProgress {
                     watched_folder_path: folder.watched_folder_path.clone(),
                     watched_folder_name: folder.watched_folder_name.clone(),
                 }),
-                FolderScanStatus::Complete | FolderScanStatus::Failed { .. } => None,
+                FolderScanStatus::Complete
+                | FolderScanStatus::Failed { .. }
+                | FolderScanStatus::NotWatched { .. } => None,
             })
             .collect();
         let activity = (!folders.is_empty()).then_some(FolderScanActivity { folders });
@@ -162,6 +176,10 @@ pub enum StoredScanOutcome {
     Complete,
     Failed {
         error: String,
+    },
+    /// The tree was read in full and a directory in it could not be watched.
+    NotWatched {
+        reason: String,
     },
 }
 

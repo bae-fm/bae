@@ -27,7 +27,7 @@ impl crate::types::BridgeFolderReleaseDecisionKey {
 mirror_enum! {
     crate::types::BridgeFolderScanStatus = bae_import::FolderScanStatus,
     from_core: fn,
-    variants: { Scanning, Complete, Failed { error } },
+    variants: { Scanning, Complete, Failed { error }, NotWatched { reason } },
 }
 
 impl crate::types::BridgeWatchedFolderScanStatus {

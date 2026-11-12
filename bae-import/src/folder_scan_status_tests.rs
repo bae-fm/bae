@@ -100,3 +100,19 @@ fn a_folder_with_no_scan_is_listed_once_its_failure_is_held() {
         assert_eq!(FolderScanProgress::of(never_scanned(), &in_memory).statuses, []);
     }
 }
+
+/// A tree read in full whose directories could not all be watched is its own
+/// status, with the reason: it is neither complete nor a failed scan, and it
+/// is not scanning.
+#[test]
+fn a_tree_read_but_not_watched_is_its_own_status() {
+    let progress = FolderScanProgress::of(
+        stored(StoredScanOutcome::NotWatched { reason: "/music/a: too many open files".into() }),
+        &FolderScansInMemory::new(),
+    );
+    assert_eq!(
+        status(&progress),
+        &FolderScanStatus::NotWatched { reason: "/music/a: too many open files".to_string() }
+    );
+    assert_eq!(progress.activity, None);
+}

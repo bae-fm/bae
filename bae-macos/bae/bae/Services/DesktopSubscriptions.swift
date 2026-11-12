@@ -264,18 +264,24 @@ final class DesktopSubscriptions {
         }
     }
 
-    /// Raise a watched folder that could not be read on the app's alert,
-    /// with the untranslated fault as its detail.
+    /// Raise a watched folder that could not be read, or that is not watched
+    /// for changes, on the app's alert, with the untranslated fault or reason
+    /// as its detail.
     private static func scanFailureAlert(
         on uiStore: UiStore
-    ) -> (_ watchedFolderName: String, _ detail: String) -> Void {
-        { [uiStore] watchedFolderName, detail in
+    ) -> (
+        _ watchedFolderName: String, _ detail: String,
+        _ kind: FolderScanAlertKind
+    ) -> Void {
+        { [uiStore] watchedFolderName, detail, kind in
+            let key =
+                switch kind {
+                case .failed: "ui.import.folder.scan_failed"
+                case .notWatched: "ui.import.folder.not_watched"
+                }
             uiStore.showError(
                 DisplayError(
-                    line: localizedCoreString(
-                        "ui.import.folder.scan_failed",
-                        watchedFolderName
-                    ),
+                    line: localizedCoreString(key, watchedFolderName),
                     detail: detail
                 )
             )

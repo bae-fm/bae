@@ -25,6 +25,18 @@ struct ImportStoreScanFailureTests {
         )
     }
 
+    private static func notWatched(
+        _ path: String,
+        _ reason: String
+    ) -> BridgeWatchedFolderScanStatus {
+        BridgeWatchedFolderScanStatus(
+            watchedFolderPath: Data(path.utf8),
+            watchedFolderName: URL(fileURLWithPath: path).lastPathComponent,
+            status: .notWatched(reason: reason),
+            onNetworkVolume: false
+        )
+    }
+
     private static func complete(_ path: String)
         -> BridgeWatchedFolderScanStatus
     {
@@ -44,7 +56,9 @@ struct ImportStoreScanFailureTests {
     func firstDeliveryReportsAnAlreadyFailedRoot() {
         let store = ImportStore()
         var raised: [(String, String)] = []
-        store.onScanFailure = { name, detail in raised.append((name, detail)) }
+        store.onScanFailure = { name, detail, _ in
+            raised.append((name, detail))
+        }
 
         store.applyFolderScans(
             Self.scans([Self.failed("/Media", "no such column")])
@@ -63,7 +77,9 @@ struct ImportStoreScanFailureTests {
     func repeatedDeliveriesReportOnlyNewFailures() {
         let store = ImportStore()
         var raised: [(String, String)] = []
-        store.onScanFailure = { name, detail in raised.append((name, detail)) }
+        store.onScanFailure = { name, detail, _ in
+            raised.append((name, detail))
+        }
 
         store.applyFolderScans(Self.scans([Self.failed("/Media", "offline")]))
         // A delivery that says the same thing, then one that adds a root so
@@ -81,6 +97,29 @@ struct ImportStoreScanFailureTests {
         #expect(raised.map(\.1) == ["offline", "no such column"])
     }
 
+    /// A root read in full whose directories could not all be watched raises
+    /// its own alert, once, and a failure with the same text after it is a
+    /// different fact.
+    @MainActor
+    @Test("a root that is not watched raises its own alert, once")
+    func aRootThatIsNotWatchedRaisesItsOwnAlert() {
+        let store = ImportStore()
+        var raised: [(String, FolderScanAlertKind)] = []
+        store.onScanFailure = { name, _, kind in raised.append((name, kind)) }
+
+        store.applyFolderScans(
+            Self.scans([Self.notWatched("/Media", "limit reached")])
+        )
+        store.applyFolderScans(
+            Self.scans([Self.notWatched("/Media", "limit reached")])
+        )
+        store.applyFolderScans(
+            Self.scans([Self.failed("/Media", "limit reached")])
+        )
+
+        #expect(raised.map(\.1) == [.notWatched, .failed])
+    }
+
     /// A root that reads cleanly again has no standing failure, so the next
     /// time it breaks the same way it is news.
     @MainActor
@@ -88,7 +127,9 @@ struct ImportStoreScanFailureTests {
     func aRecoveredRootReportsItsNextBreak() {
         let store = ImportStore()
         var raised: [(String, String)] = []
-        store.onScanFailure = { name, detail in raised.append((name, detail)) }
+        store.onScanFailure = { name, detail, _ in
+            raised.append((name, detail))
+        }
 
         store.applyFolderScans(Self.scans([Self.failed("/Media", "offline")]))
         store.applyFolderScans(Self.scans([Self.complete("/Media")]))

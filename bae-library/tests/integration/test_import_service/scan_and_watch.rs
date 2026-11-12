@@ -297,7 +297,9 @@ async fn scan_whose_stored_decisions_cannot_be_read_records_the_failure() {
         .into_iter()
         .find_map(|status| match status.status {
             bae_import::FolderScanStatus::Failed { error } => Some(error),
-            bae_import::FolderScanStatus::Scanning | bae_import::FolderScanStatus::Complete => None,
+            bae_import::FolderScanStatus::Scanning
+            | bae_import::FolderScanStatus::Complete
+            | bae_import::FolderScanStatus::NotWatched { .. } => None,
         })
         .expect("the root's scan failed");
     assert!(

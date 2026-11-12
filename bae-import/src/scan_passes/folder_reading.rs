@@ -60,7 +60,12 @@ pub(super) async fn change_folder_reading(
             detail: format!("{} is not a current release boundary", key.relative_folder.text()),
         });
     }
-    let stored = read_folder_again(root, &folder, Some(target), scan, cancellation).await?;
+    let FolderReadAgain { stored, watch_failures } =
+        read_folder_again(root, &folder, Some(target), scan, cancellation).await?;
+    // The decision is stored and its caller hears so; that the folder is not
+    // watched is the root's status, as a pass that read it would leave it.
+    // A refusal of that write is reported by the write.
+    store_watch_failure(root, &watch_failures, &scan.services).await;
     Ok(crate::list::release_keys_in_path_order(stored.iter().filter(|item| match item {
         ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => {
             candidate.path.starts_with(&decided)
@@ -96,8 +101,16 @@ pub(super) async fn read_changed_folders(
         .unwrap_or_else(|bug| {
             Err(TaskFailed::Panicked(scan.services.diagnostics.panicked(bug)).into())
         });
-        let Err(error) = read else {
-            continue;
+        let error = match read {
+            Ok(FolderReadAgain { watch_failures, .. }) => {
+                if let Some(message) =
+                    store_watch_failure(root, &watch_failures, &scan.services).await
+                {
+                    unstored = Some(message);
+                }
+                continue;
+            }
+            Err(error) => error,
         };
         if cancellation.is_cancelled() {
             break;
@@ -105,7 +118,9 @@ pub(super) async fn read_changed_folders(
         let message =
             format!("{} could not be read again: {error}", coven::path_text(Path::new(folder)));
         warn!("{}: {message}", coven::path_text(root));
-        if let Some(message) = store_reading_failure(root, message, &scan.services).await {
+        if let Some(message) =
+            store_reading_status(root, RootMark::Failed(message), &scan.services).await
+        {
             unstored = Some(message);
         }
     }
@@ -114,14 +129,26 @@ pub(super) async fn read_changed_folders(
     Some(crate::folder_scan_status::UnstoredScanFailure { error, volume })
 }
 
-/// Store `message` as the failure of `root`'s current generation, answering
+/// What a pass over a changed folder stores as the root's status.
+enum RootMark {
+    /// The folder could not be read again, for this reason.
+    Failed(String),
+    /// The folder was read again, and a directory in it could not be watched,
+    /// for this reason.
+    NotWatched(String),
+}
+
+/// Store `mark` as the status of `root`'s current generation, answering
 /// with it when the store would not take it. A refusal is reported as
 /// [`report_refused_scan_write`] says.
-async fn store_reading_failure(
+async fn store_reading_status(
     root: &Path,
-    message: String,
+    mark: RootMark,
     services: &crate::ImportServices,
 ) -> Option<String> {
+    let message = match &mark {
+        RootMark::Failed(message) | RootMark::NotWatched(message) => message.clone(),
+    };
     let diagnostics = &services.diagnostics;
     let generation = match services.tables.current_folder_scan_generation(root).await {
         Ok(Some(generation)) => generation,
@@ -144,7 +171,13 @@ async fn store_reading_failure(
             return Some(message);
         }
     };
-    match record_scan_failure(root, generation, &message, services).await {
+    let recorded = match &mark {
+        RootMark::Failed(message) => record_scan_failure(root, generation, message, services).await,
+        RootMark::NotWatched(reason) => {
+            record_scan_unwatched(root, generation, reason, services).await
+        }
+    };
+    match recorded {
         Ok(true) => None,
         Ok(false) => {
             debug!(
@@ -165,9 +198,32 @@ async fn store_reading_failure(
     }
 }
 
+/// What reading a folder again stored.
+struct FolderReadAgain {
+    /// Every release it stored, as stored, in the order it first stored them.
+    stored: Vec<ScanItem>,
+    /// Each directory in the folder that could not be watched, with the
+    /// reason.
+    watch_failures: Vec<String>,
+}
+
+/// Store as the status of `root`'s current generation that the directories
+/// under it that could not be watched are not. The reading stands: this only
+/// says the folder is not watched. A write the store would not take comes
+/// back as a failure, for the coordinator to hold.
+async fn store_watch_failure(
+    root: &Path,
+    watch_failures: &[String],
+    services: &crate::ImportServices,
+) -> Option<String> {
+    let reason = super::unwatched_reason(watch_failures)?;
+    warn!("{} is not watched for changes: {reason}", coven::path_text(root));
+    store_reading_status(root, RootMark::NotWatched(reason), services).await
+}
+
 /// Read `folder` — directly under `root` — again as `decision`, when there
 /// is one, reads it, store what it yields in one write, and answer with
-/// every release it stored, as stored, in the order it first stored them.
+/// every release it stored (see [`FolderReadAgain`]).
 ///
 /// A folder that is no longer there yields nothing, which removes every
 /// entry that was under it. The root itself must be there: a root that
@@ -178,7 +234,7 @@ async fn read_folder_again(
     decision: Option<&(FolderReleaseDecisionKey, FolderReleaseDecision)>,
     scan: &ScanServices,
     cancellation: &crate::folder_scanner::ScanCancellation,
-) -> Result<Vec<ScanItem>, crate::ImportError> {
+) -> Result<FolderReadAgain, crate::ImportError> {
     let started = std::time::Instant::now();
     let services = &scan.services;
     let tables = &services.tables;
@@ -232,6 +288,7 @@ async fn read_folder_again(
         .await??;
     let read_at = started.elapsed();
 
+    let watch_failures = walked.watch_failures;
     let mut scanned_decisions = Vec::new();
     // Each entry the folder yields, a release with its folder's date.
     let mut dated = Vec::with_capacity(walked.items.len());
@@ -393,7 +450,7 @@ async fn read_folder_again(
             .unwrap_or_default(),
         started.elapsed(),
     );
-    Ok(stored)
+    Ok(FolderReadAgain { stored, watch_failures })
 }
 
 /// What reading one folder directly under a root yielded: its entries in the
@@ -403,6 +460,8 @@ async fn read_folder_again(
 struct TopLevelReading {
     items: Vec<crate::folder_scanner::WalkItem>,
     directory_mtimes: Option<Vec<(PathBuf, i64)>>,
+    /// Each directory in it that could not be watched, with the reason.
+    watch_failures: Vec<String>,
 }
 
 /// Read `folder` under `root` on the calling thread, keeping the watch on
@@ -441,8 +500,8 @@ fn read_top_level_folder(
     let mut seen = HashSet::new();
     let mut directory_mtimes = Some(Vec::new());
     let mut items = Vec::new();
+    let mut watch_failures = Vec::new();
     if present {
-        let mut watch_failures = Vec::new();
         crate::folder_scanner::scan_top_level_folder_with_reader(
             reader,
             root,
@@ -465,22 +524,15 @@ fn read_top_level_folder(
             },
             |item| items.push(item),
         )?;
-        if !watch_failures.is_empty() {
-            warn!(
-                "folder watch unavailable under {} ({}); a refresh reads it again",
-                absolute.display(),
-                watch_failures.join(", ")
-            );
-        }
     } else if wants_folder {
         return Err(crate::ImportError::Watch {
             detail: format!("{} is no longer there", absolute.display()),
         });
     }
     if let Err(error) = watcher.retain_directories_under(root, &absolute, &seen) {
-        warn!("could not reconcile folder watches under {}: {error}", absolute.display());
+        watch_failures.push(format!("{}: {error}", absolute.display()));
     }
-    Ok(TopLevelReading { items, directory_mtimes })
+    Ok(TopLevelReading { items, directory_mtimes, watch_failures })
 }
 
 #[cfg(test)]

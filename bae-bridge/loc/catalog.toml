@@ -5395,6 +5395,40 @@ da = "Hvilken disk i udgivelsen dette arks poster hører til"
 nb = "Hvilken plate i utgivelsen oppføringene i dette arket hører til"
 fi = "Mille julkaisun levylle tämän arkin merkinnät kuuluvat"
 
+[messages."ui.import.folder.not_watched"]
+comment = "Alert headline when a watched folder was read but a directory in it could not be watched, so changes there are not noticed; {folder} is the folder's name. The reason, untranslated, is shown beneath it."
+args = { folder = "Str" }
+value = "Not watching {folder} for changes"
+
+[messages."ui.import.folder.not_watched".translations]
+es = "No se están vigilando los cambios de {folder}"
+fr = "Les modifications de {folder} ne sont pas surveillées"
+de = "Änderungen in {folder} werden nicht überwacht"
+pt-BR = "As alterações em {folder} não estão sendo monitoradas"
+ja = "{folder} の変更を監視していません"
+ko = "{folder}의 변경 사항을 감시하지 않습니다"
+zh-Hans = "未监视 {folder} 的更改"
+ar = "لا تتم مراقبة التغييرات في {folder}"
+he = "השינויים ב-{folder} אינם במעקב"
+uk = "Зміни в {folder} не відстежуються"
+bg = "Промените в {folder} не се следят"
+pl = "Zmiany w {folder} nie są obserwowane"
+cs = "Změny ve složce {folder} se nesledují"
+hr = "Promjene u mapi {folder} ne prate se"
+zh-Hant = "未監看 {folder} 的變更"
+it = "Le modifiche a {folder} non sono monitorate"
+tr = "{folder} içindeki değişiklikler izlenmiyor"
+nl = "Wijzigingen in {folder} worden niet gevolgd"
+sk = "Zmeny v priečinku {folder} sa nesledujú"
+hu = "A(z) {folder} változásait nem figyeli"
+ro = "Modificările din {folder} nu sunt urmărite"
+el = "Οι αλλαγές στο {folder} δεν παρακολουθούνται"
+pt-PT = "As alterações em {folder} não estão a ser monitorizadas"
+sv = "Ändringar i {folder} bevakas inte"
+da = "Ændringer i {folder} overvåges ikke"
+nb = "Endringer i {folder} overvåkes ikke"
+fi = "Kohteen {folder} muutoksia ei seurata"
+
 [messages."ui.import.folder.scan_failed"]
 comment = "Alert headline when reading a watched folder fails; {folder} is the folder's name. The failure's own untranslated text is shown beneath it."
 args = { folder = "Str" }

@@ -25,7 +25,7 @@ fn load_folder_scan_snapshots_on(
     sql: &SqlReadContext<'_>,
 ) -> Result<impl FnOnce() -> Result<Vec<DbFolderScanSnapshot>, DbError> + Send + 'static, DbError> {
     let roots = sql.query(
-        "SELECT watched_folder_path, generation, status, error \
+        "SELECT watched_folder_path, generation, status, detail \
          FROM folder_scan_roots \
          ORDER BY watched_folder_path",
         [],
@@ -40,19 +40,20 @@ fn load_folder_scan_snapshots_on(
     )?;
 
     let mut snapshots = Vec::with_capacity(roots.len());
-    for (watched_folder_path, generation, status, error) in roots {
+    for (watched_folder_path, generation, status, detail) in roots {
         let generation = to_u64(generation, "folder_scan_roots.generation")?;
-        let status = match (status.as_deref(), error) {
+        let status = match (status.as_deref(), detail) {
             (None, None) => crate::StoredScanOutcome::Unfinished,
             (Some("complete"), None) => crate::StoredScanOutcome::Complete,
             (Some("failed"), Some(error)) => crate::StoredScanOutcome::Failed { error },
-            (status, error) => {
+            (Some("unwatched"), Some(reason)) => crate::StoredScanOutcome::NotWatched { reason },
+            (status, detail) => {
                 return Err(DbError::unreadable(
                     format!(
-                        "the status and error of folder scan root {}",
+                        "the status and detail of folder scan root {}",
                         coven::path_text(&watched_folder_path)
                     ),
-                    (status, error),
+                    (status, detail),
                 ))
             }
         };

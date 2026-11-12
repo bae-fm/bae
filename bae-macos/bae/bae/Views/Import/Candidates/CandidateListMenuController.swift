@@ -24,11 +24,14 @@ struct CandidateListMenuState {
     /// Whether the tab on show is Found, the one tab the filter applies to.
     let pendingFilterApplies: Bool
 
-    /// Whether any root's last scan failed, which also marks the trigger.
-    var hasFailedScan: Bool {
+    /// Whether any root's last scan failed or left it not watched, which
+    /// also marks the trigger.
+    var hasScanProblem: Bool {
         scanStatuses.values.contains { status in
-            if case .failed = status { return true }
-            return false
+            switch status {
+            case .failed, .notWatched: true
+            case .scanning, .complete: false
+            }
         }
     }
 }
@@ -176,7 +179,7 @@ final class CandidateListMenuController {
     }
 
     /// One root's line: its scan state is the glyph, and a failed scan's
-    /// error is the tooltip.
+    /// error or a folder's reason it is not watched is the tooltip.
     private func folderLine(_ folder: BridgeWatchedFolder) -> MacMenuEntry {
         let onNetwork = state.networkFolders.contains(folder.path)
         let networkLine = onNetwork ? Self.networkLine() : nil
@@ -188,11 +191,11 @@ final class CandidateListMenuController {
                 tone: .secondary,
                 help: networkLine
             )
-        case .failed(let error):
+        case .failed(let detail), .notWatched(let detail):
             accessory = MacMenuAccessory(
                 symbol: "exclamationmark.circle.fill",
                 tone: .danger,
-                help: [error, networkLine].compactMap { $0 }
+                help: [detail, networkLine].compactMap { $0 }
                     .joined(separator: "\n")
             )
         case .complete, nil:

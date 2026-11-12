@@ -124,6 +124,31 @@ pub(super) fn root_generation_on(
         .optional()?)
 }
 
+/// The end of a generation whose tree was read in full: remove the entries
+/// and sidecars it did not see, rebuild the groupings they fed, and mark the
+/// root complete, or not watched, for `unwatched`, when its directories could
+/// not all be watched.
+fn finish_read_tree(
+    sql: &CovenWrite<'_>,
+    watched_folder_path: &Path,
+    generation: i64,
+    unwatched: Option<&str>,
+) -> Result<FinishedScan, DbError> {
+    let pruned = write::prune_other_generations(sql, watched_folder_path, generation)?;
+    let pruned_sidecars = sidecar::prune_sidecars(sql, watched_folder_path, generation, None)?;
+    let (status, detail) = match unwatched {
+        None => ("complete", None),
+        Some(reason) => ("unwatched", Some(reason)),
+    };
+    sql.execute(
+        "UPDATE folder_scan_roots SET status = ?, detail = ? \
+         WHERE watched_folder_path = ? AND generation = ?",
+        params![status, detail, coven::path_bytes(watched_folder_path), generation],
+    )?;
+    let regrouped = super::release_groupings::rebuild_groupings(sql, &pruned, &pruned_sidecars)?;
+    Ok(FinishedScan { pruned, regrouped })
+}
+
 /// Whether `generation` is still the root's. Read inside the write
 /// transaction, where a newer scan taking the root is decided, so a scan that
 /// lost the root writes nothing over its successor.
@@ -183,10 +208,10 @@ impl ImportTables {
                 let generation = next_folder_scan_generation(sql)?;
                 sql.execute(
                     "INSERT INTO folder_scan_roots \
-                     (watched_folder_path, generation, status, error, volume) \
+                     (watched_folder_path, generation, status, detail, volume) \
                  VALUES (?, ?, NULL, NULL, ?) \
                  ON CONFLICT(watched_folder_path) DO UPDATE SET \
-                     generation = excluded.generation, status = NULL, error = NULL, \
+                     generation = excluded.generation, status = NULL, detail = NULL, \
                      volume = excluded.volume",
                     params![watched_folder_path, generation, volume],
                 )?;
@@ -356,23 +381,63 @@ impl ImportTables {
                 }
                 if let Some(error) = error {
                     sql.execute(
-                        "UPDATE folder_scan_roots SET status = 'failed', error = ? \
+                        "UPDATE folder_scan_roots SET status = 'failed', detail = ? \
                      WHERE watched_folder_path = ? AND generation = ?",
                         params![error, coven::path_bytes(&watched_folder_path), generation],
                     )?;
                     return Ok(Some(FinishedScan::default()));
                 }
-                let pruned = write::prune_other_generations(sql, &watched_folder_path, generation)?;
-                let pruned_sidecars =
-                    sidecar::prune_sidecars(sql, &watched_folder_path, generation, None)?;
+                finish_read_tree(sql, &watched_folder_path, generation, None).map(Some)
+            })
+            .await
+    }
+
+    /// Finish one scan generation whose tree was read in full but could not
+    /// be watched in full: as a finished scan does, remove what it did not
+    /// see and rebuild the groupings they fed, and store `unwatched`, the
+    /// reason a directory could not be watched, as the root's status. `None` when
+    /// `generation` is no longer the root's.
+    pub async fn finish_folder_scan_unwatched(
+        &self,
+        watched_folder_path: &Path,
+        generation: u64,
+        unwatched: &str,
+    ) -> Result<Option<FinishedScan>, DbError> {
+        let watched_folder_path = watched_folder_path.to_path_buf();
+        let generation = generation_column(generation)?;
+        let unwatched = unwatched.to_string();
+        self.store
+            .call(move |sql| {
+                if !holds_generation(sql, &watched_folder_path, generation)? {
+                    return Ok(None);
+                }
+                finish_read_tree(sql, &watched_folder_path, generation, Some(&unwatched)).map(Some)
+            })
+            .await
+    }
+
+    /// Mark `generation`, whose tree was read, as not watched, for `reason`,
+    /// removing nothing. `false` when `generation` is no longer the root's.
+    pub async fn mark_folder_unwatched(
+        &self,
+        watched_folder_path: &Path,
+        generation: u64,
+        reason: &str,
+    ) -> Result<bool, DbError> {
+        let watched_folder_path = watched_folder_path.to_path_buf();
+        let generation = generation_column(generation)?;
+        let reason = reason.to_string();
+        self.store
+            .call(move |sql| {
+                if !holds_generation(sql, &watched_folder_path, generation)? {
+                    return Ok(false);
+                }
                 sql.execute(
-                    "UPDATE folder_scan_roots SET status = 'complete', error = NULL \
-                 WHERE watched_folder_path = ? AND generation = ?",
-                    params![coven::path_bytes(&watched_folder_path), generation],
+                    "UPDATE folder_scan_roots SET status = 'unwatched', detail = ? \
+                     WHERE watched_folder_path = ? AND generation = ?",
+                    params![reason, coven::path_bytes(&watched_folder_path), generation],
                 )?;
-                let regrouped =
-                    super::release_groupings::rebuild_groupings(sql, &pruned, &pruned_sidecars)?;
-                Ok(Some(FinishedScan { pruned, regrouped }))
+                Ok(true)
             })
             .await
     }

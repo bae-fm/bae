@@ -600,3 +600,75 @@ fn a_refused_scan_write_is_a_bug_unless_the_disk_or_the_store_failed() {
     assert!(refusal_is_a_bug(&coven(coven::DbError::StatementFailed)));
     assert!(refusal_is_a_bug(&bae_store::DbError::unreadable("a stored column", "a value")));
 }
+
+/// A folder whose directories could not be watched is read in full, and its
+/// status says it is not watched, rather than reading as complete with the
+/// failure only logged.
+#[tokio::test]
+async fn a_folder_that_could_not_be_watched_is_stored_as_read_and_reads_as_not_watched() {
+    let test = setup_import_service().await;
+    let root = test.temp.path().join("watched");
+    write_disc(&root.join("Album"), 2);
+    let root = crate::tables::watched_path::canonical_absolute_root(&root).unwrap();
+    test.tables().add_watched_import_folder(&root).await.unwrap();
+    let services = test_scan_services(
+        &test,
+        test.event_tx().clone(),
+        Arc::new(FolderWatcher::unavailable_for_test("too many open files")),
+        Arc::new(crate::file_tag_reader::LoftyFileTagReader),
+        Arc::new(crate::folder_scanner::OsDirectoryReader),
+    );
+
+    let ended =
+        rescan_and_reconcile(&root, &services, &crate::folder_scanner::ScanCancellation::new())
+            .await;
+
+    assert_eq!(ended, ScanEnded::Finished);
+    let crate::StoredScanOutcome::NotWatched { reason } = stored_outcome(&test.db).await else {
+        panic!("the unwatched folder is stored as not watched");
+    };
+    assert!(reason.contains("too many open files"), "{reason}");
+    assert_eq!(
+        test.tables().load_folder_scan_items(&root).await.unwrap().len(),
+        1,
+        "what the scan read is stored"
+    );
+}
+
+/// A folder read again after a change, whose directories could not be
+/// watched, reads as not watched too. Only where each directory is watched
+/// on its own (Linux, Android): macOS and Windows hold one watch on the root,
+/// which a folder read again does not install.
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+#[tokio::test]
+async fn a_changed_folder_that_could_not_be_watched_reads_as_not_watched() {
+    let test = setup_import_service().await;
+    let root = test.temp.path().join("watched");
+    write_disc(&root.join("Album"), 2);
+    let root = crate::tables::watched_path::canonical_absolute_root(&root).unwrap();
+    test.tables().add_watched_import_folder(&root).await.unwrap();
+    let (scan, _events) = test.scan();
+    scan.rescan(&root).await.unwrap();
+    assert_eq!(stored_outcome(&test.db).await, crate::StoredScanOutcome::Complete);
+    let unwatched = test_scan_services(
+        &test,
+        test.event_tx().clone(),
+        Arc::new(FolderWatcher::unavailable_for_test("too many open files")),
+        Arc::new(crate::file_tag_reader::LoftyFileTagReader),
+        Arc::new(crate::folder_scanner::OsDirectoryReader),
+    );
+
+    let unstored = read_changed_folders(
+        &root,
+        &std::collections::BTreeSet::from([std::ffi::OsString::from("Album")]),
+        &unwatched,
+        &crate::folder_scanner::ScanCancellation::new(),
+    )
+    .await;
+
+    assert!(unstored.is_none(), "the store took the status");
+    let crate::StoredScanOutcome::NotWatched { reason } = stored_outcome(&test.db).await else {
+        panic!("the unwatched folder is stored as not watched");
+    };
+    assert!(reason.contains("too many open files"), "{reason}");
+}

@@ -128,6 +128,16 @@ impl FolderWatcher {
         Self { state, diagnostics }
     }
 
+    /// A watcher whose watches never started, for `detail`: every install
+    /// and retain fails with it, as the stored failure of a real one does.
+    #[cfg(test)]
+    pub(crate) fn unavailable_for_test(detail: &str) -> Self {
+        Self {
+            state: Arc::new(Mutex::new(Err(detail.to_string()))),
+            diagnostics: bae_diagnostics::Diagnostics::noop(),
+        }
+    }
+
     pub(crate) fn install_directory(
         &self,
         root: &Path,

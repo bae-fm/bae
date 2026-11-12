@@ -20,6 +20,19 @@ pub(super) async fn record_scan_failure(
     Ok(services.tables.finish_folder_scan(root, generation, Some(message)).await?.is_some())
 }
 
+/// Store that `root`'s current generation was read in full but could not be
+/// watched, for `reason`, without removing anything the generation did not
+/// see. Returns `false` when the generation is no longer the root's.
+pub(super) async fn record_scan_unwatched(
+    root: &Path,
+    generation: u64,
+    reason: &str,
+    services: &crate::ImportServices,
+) -> Result<bool, bae_store::DbError> {
+    let _commit = services.folder_state_commit.lock("store an unwatched folder").await;
+    services.tables.mark_folder_unwatched(root, generation, reason).await
+}
+
 /// Say that a write of `root`'s scan state, `operation`, was refused with
 /// `error`. A refusal that is a bug is reported as one, unless the store
 /// reported the bug its call carried back already. One that is the
@@ -313,19 +326,12 @@ async fn walk_and_reconcile(
                     }
                 },
             );
-        if !watch_failures.is_empty() {
-            warn!(
-                "folder watch unavailable for {} ({}); periodic and manual scans remain active",
-                walk_root.display(),
-                watch_failures.join(", ")
-            );
-        }
         if result.is_ok() && watch_available {
             if let Err(error) = walk_watcher.retain_directories(&walk_root, &seen_directories) {
-                warn!("could not reconcile folder watches for {}: {error}", walk_root.display());
+                watch_failures.push(format!("{}: {error}", walk_root.display()));
             }
         }
-        result.map(|()| directory_mtimes)
+        result.map(|()| super::WalkEnd { directory_mtimes, watch_failures })
     });
 
     // A stale generation is found out by the write: `save_folder_scan_items`
@@ -403,8 +409,8 @@ async fn walk_and_reconcile(
     // already committed by this pass plus older items that were not
     // explicitly replaced.
     let walked = walk.await.map_err(|failed| services.diagnostics.bug(failed))?;
-    let directory_mtimes = match walked {
-        Ok(directory_mtimes) => directory_mtimes,
+    let super::WalkEnd { directory_mtimes, watch_failures } = match walked {
+        Ok(end) => end,
         // One of the walk's threads panicked; the rest stopped with it.
         Err(crate::folder_scanner::FolderScanError::Panicked(bug)) => {
             return Err(TaskFailed::Panicked(services.diagnostics.panicked(bug)).into())
@@ -422,9 +428,17 @@ async fn walk_and_reconcile(
     // transaction: a newer decision or scan cannot be pruned by this
     // completed write, and `None` says one took the root first.
     let commit = services.folder_state_commit.lock("finish a scan").await;
-    let Some(crate::tables::FinishedScan { pruned, regrouped }) =
-        tables.finish_folder_scan(root, generation, None).await?
-    else {
+    // A tree read in full but not watched in full is stored as read, and its
+    // status says it is not watched: changes under the directories that are
+    // not watched reach it only when a scan reads it again.
+    let finished = match super::unwatched_reason(&watch_failures) {
+        None => tables.finish_folder_scan(root, generation, None).await?,
+        Some(reason) => {
+            warn!("{} is not watched for changes: {reason}", root.display());
+            tables.finish_folder_scan_unwatched(root, generation, &reason).await?
+        }
+    };
+    let Some(crate::tables::FinishedScan { pruned, regrouped }) = finished else {
         return Ok(());
     };
     let automatic = identifies_automatically(services).await?;

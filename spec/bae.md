@@ -738,7 +738,13 @@ again only the folder directly under the watched root that it reached, and
 only after that folder has been quiet for a second, so a download writing into
 one album for an hour holds back only that album. If gathering the watches'
 reports panics, it is reported as a bug and every watch stops; scans, refreshes
-and the network check go on.
+and the network check go on. A directory that cannot be watched
+(inotify's watch limit on a large tree, or the watches not starting) is not
+hidden: the tree is read and stored as usual, and the folder's status is *not
+watched*, with the first directory that failed and the system's reason. The
+import list marks the folder as it marks a failed scan, and an alert,
+headlined "Not watching {folder} for changes", shows the reason. A folder read
+again after a change reports it the same way.
 
 A watched folder on a network volume is watched like any other, but on macOS
 and Linux a network mount reports only the changes this machine makes (Windows
@@ -773,8 +779,8 @@ and the entries reading the same files, which it finds by their folders, so it
 costs the same however much else the watched folder holds.
 
 **How a scan's state shows.** The folder stores only how its current scan
-ended, complete or failed with the error, and nothing until that scan stores
-it. Whether a scan is reading the folder is never stored: the coordinator
+ended, complete, failed with the error, or not watched with the reason, and
+nothing until that scan stores it. Whether a scan is reading the folder is never stored: the coordinator
 that starts the passes holds it in memory, so it ends with the process and a
 folder never reads as scanning with nothing scanning it. A folder whose
 current scan stored an outcome shows it. One whose scan stored none reads as

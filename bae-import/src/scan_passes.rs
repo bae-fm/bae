@@ -26,14 +26,29 @@ use scan_items::{
 };
 #[cfg(test)]
 use scanning::ScanEnded;
-use scanning::{record_scan_failure, report_refused_scan_write, rescan_and_reconcile};
+use scanning::{
+    record_scan_failure, record_scan_unwatched, report_refused_scan_write, rescan_and_reconcile,
+};
 
-/// What the blocking folder walk returns: the mtimes of the directories it
-/// visited when it could read all of them, or why it could not read the
-/// tree. One of its threads panicking comes back as
+/// What the blocking folder walk returns when it read the tree: the mtimes of
+/// the directories it visited when it could read all of them, and each
+/// directory it could not watch, with the reason. A walk that could not read
+/// the tree returns why. One of its threads panicking comes back as
 /// `FolderScanError::Panicked`, the bug that error carries.
-type FolderWalkOutcome =
-    Result<Option<Vec<(PathBuf, i64)>>, crate::folder_scanner::FolderScanError>;
+type FolderWalkOutcome = Result<WalkEnd, crate::folder_scanner::FolderScanError>;
+
+/// See [`FolderWalkOutcome`].
+struct WalkEnd {
+    directory_mtimes: Option<Vec<(PathBuf, i64)>>,
+    watch_failures: Vec<String>,
+}
+
+/// Why a folder is not watched, for its status: the first directory that
+/// could not be watched and the system's reason. `None` when every directory
+/// is watched.
+fn unwatched_reason(failures: &[String]) -> Option<String> {
+    failures.first().cloned()
+}
 
 /// The walk on the blocking pool, which runs to its end even once its pass
 /// stops waiting; its panic, or its threads', then goes to the crash

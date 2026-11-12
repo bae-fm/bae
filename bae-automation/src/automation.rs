@@ -72,7 +72,8 @@ impl Automation {
                 })??;
                 for status in statuses {
                     match status.status {
-                        bae_import::FolderScanStatus::Complete => {}
+                        bae_import::FolderScanStatus::Complete
+                        | bae_import::FolderScanStatus::NotWatched { .. } => {}
                         bae_import::FolderScanStatus::Failed { error } => {
                             return Err(AutomationError::import(format!(
                                 "{}: {error}",
