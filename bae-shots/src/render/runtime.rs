@@ -16,10 +16,14 @@ const COPY: &str = "bae-shots/canvas/dc-runtime.js";
 const COPY_RECORD: &str = "bae-shots/canvas/runtime.toml";
 const LIVE_RECORD: &str = "design/mocks/runtime.toml";
 
-const REFRESH: &str = "To refresh the copy: read artifact-type/dc-runtime.js of \
-https://claude.ai/artifact/9geFwGqEzevbvbh22NqZzJ with the Artifact tool (action \
-read), save it as bae-shots/canvas/dc-runtime.js, and set sha256, version and read_at \
-in bae-shots/canvas/runtime.toml from that read; commit both files.";
+/// How to refresh the copy from the canvas at `canvas`.
+fn refresh(canvas: &str) -> String {
+    format!(
+        "To refresh the copy: read artifact-type/dc-runtime.js of {canvas} with the \
+Artifact tool (action read), save it as {COPY}, and set sha256, version and read_at in \
+{COPY_RECORD} from that read; commit both files."
+    )
+}
 
 /// `bae-shots/canvas/runtime.toml`.
 #[derive(Debug, Deserialize)]
@@ -27,7 +31,7 @@ in bae-shots/canvas/runtime.toml from that read; commit both files.";
 struct CopyRecord {
     sha256: String,
     version: String,
-    #[allow(dead_code)]
+    /// The canvas the copy was read from.
     source: String,
     #[allow(dead_code)]
     read_at: String,
@@ -37,7 +41,6 @@ struct CopyRecord {
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct LiveRecord {
-    #[allow(dead_code)]
     canvas: String,
     canvas_version: String,
     #[allow(dead_code)]
@@ -57,17 +60,17 @@ pub(crate) enum RuntimeError {
     BadRecord { path: PathBuf, reason: String },
     #[error(
         "the live runtime record {path} is missing, so the copy cannot be checked against \
-the canvas. The design session writes it at each canvas publish. {REFRESH}"
+the canvas. The design session writes it at each canvas publish. {}", refresh(.canvas)
     )]
-    LiveRecordMissing { path: PathBuf },
+    LiveRecordMissing { path: PathBuf, canvas: String },
     #[error(
         "the runtime copy {COPY} hashes to {actual} but {COPY_RECORD} records {recorded} \
-(version {version}); the copy was edited or the record is stale. {REFRESH}"
+(version {version}); the copy was edited or the record is stale. {}", refresh(.canvas)
     )]
-    CopyChanged { actual: String, recorded: String, version: String },
+    CopyChanged { actual: String, recorded: String, version: String, canvas: String },
     #[error(
         "the runtime copy is version {copy_version} ({copy_sha256}) but the canvas was published with \
-version {live_version} ({live_sha256}) at {published_at} by {published_by}. {REFRESH}"
+version {live_version} ({live_sha256}) at {published_at} by {published_by}. {}", refresh(.canvas)
     )]
     LiveChanged {
         copy_version: String,
@@ -76,6 +79,7 @@ version {live_version} ({live_sha256}) at {published_at} by {published_by}. {REF
         live_sha256: String,
         published_at: String,
         published_by: String,
+        canvas: String,
     },
 }
 
@@ -120,11 +124,12 @@ pub(crate) fn check(root: &Path) -> Result<Checked, RuntimeError> {
             actual,
             recorded: recorded.sha256,
             version: recorded.version,
+            canvas: recorded.source,
         });
     }
     let live_path = root.join(LIVE_RECORD);
     if !live_path.exists() {
-        return Err(RuntimeError::LiveRecordMissing { path: live_path });
+        return Err(RuntimeError::LiveRecordMissing { path: live_path, canvas: recorded.source });
     }
     let live: LiveRecord = record(&live_path)?;
     if live.runtime_sha256 != actual {
@@ -135,6 +140,7 @@ pub(crate) fn check(root: &Path) -> Result<Checked, RuntimeError> {
             live_sha256: live.runtime_sha256,
             published_at: live.published_at,
             published_by: live.published_by,
+            canvas: live.canvas,
         });
     }
     Ok(Checked { sha256: actual, version: recorded.version, live_published_at: live.published_at })

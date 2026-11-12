@@ -3,6 +3,7 @@
 
 mod capture;
 mod declared;
+mod design;
 mod lint;
 mod names;
 mod render;
@@ -104,6 +105,20 @@ fn capture(
     Ok(())
 }
 
+/// The declared shots the selection takes, on every platform it names.
+fn selected(root: &Path, selection: &Selection) -> Result<Vec<Name>, String> {
+    let declared: Vec<Name> =
+        declared::read(root).map_err(|e| e.to_string())?.into_iter().map(|d| d.name).collect();
+    let mut names = Vec::new();
+    for platform in selection.platforms() {
+        names.extend(
+            capture::selected(&declared, platform, &selection.prefixes)
+                .map_err(|e| e.to_string())?,
+        );
+    }
+    Ok(names)
+}
+
 fn run(action: Action) -> Result<bool, String> {
     let root = repository_root()?;
     match action {
@@ -117,6 +132,8 @@ fn run(action: Action) -> Result<bool, String> {
         }
         Action::Run(selection) => {
             capture(&root, &selection, |p| root.join("shots").join(p.word()))?;
+            let names = selected(&root, &selection)?;
+            render::boards(&root, &names, &root.join("shots/boards"))?;
             Ok(true)
         }
         Action::Capture { selection, out } => {

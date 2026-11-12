@@ -10,13 +10,13 @@ fn write(root: &Path, path: &str, text: &str) {
 
 fn copy_record(sha256: &str) -> String {
     format!(
-        "sha256 = \"{sha256}\"\nversion = \"v1\"\nsource = \"canvas\"\nread_at = \"2026-11-11T00:00:00Z\"\n"
+        "sha256 = \"{sha256}\"\nversion = \"v1\"\nsource = \"https://example.test/copy\"\nread_at = \"2026-11-11T00:00:00Z\"\n"
     )
 }
 
 fn live_record(sha256: &str) -> String {
     format!(
-        "canvas = \"c\"\ncanvas_version = \"v2\"\ntype_release = \"t\"\nruntime = \"artifact-type/dc-runtime.js\"\nruntime_sha256 = \"{sha256}\"\npublished_at = \"2026-11-12T00:00:00Z\"\npublished_by = \"design\"\n"
+        "canvas = \"https://example.test/live\"\ncanvas_version = \"v2\"\ntype_release = \"t\"\nruntime = \"artifact-type/dc-runtime.js\"\nruntime_sha256 = \"{sha256}\"\npublished_at = \"2026-11-12T00:00:00Z\"\npublished_by = \"design\"\n"
     )
 }
 
@@ -55,6 +55,7 @@ fn a_changed_copy_fails_naming_both_hashes() {
     assert!(message.contains(&sha256(b"edited")), "{message}");
     assert!(message.contains(&sha256(SCRIPT)), "{message}");
     assert!(message.contains("To refresh the copy"), "{message}");
+    assert!(message.contains("https://example.test/copy"), "{message}");
 }
 
 #[test]
@@ -70,6 +71,7 @@ fn a_changed_live_record_fails_with_both_hashes_and_when_it_was_published() {
     assert!(message.contains("version v2"), "{message}");
     assert!(message.contains("2026-11-12T00:00:00Z by design"), "{message}");
     assert!(message.contains("To refresh the copy"), "{message}");
+    assert!(message.contains("https://example.test/live"), "{message}");
 }
 
 #[test]
