@@ -134,14 +134,13 @@ final class StepProgressNSView<Step: ProgressStep>: NSView {
         case .stage:
             label.font = .systemFont(ofSize: NSFont.systemFontSize)
             label.textColor = NSColor(Theme.textPrimary)
-            label.alignment = .center
         case .note:
             label.font = ThemeText.detail.nsFont
             label.textColor = .secondaryLabelColor
         }
         label.lineBreakMode = .byTruncatingTail
         stack.orientation = .vertical
-        stack.alignment = look == .stage ? .centerX : .leading
+        stack.alignment = .leading
         stack.spacing = look == .stage ? ThemeSpace.related : ThemeSpace.inline
         stack.translatesAutoresizingMaskIntoConstraints = false
         addSubview(stack)

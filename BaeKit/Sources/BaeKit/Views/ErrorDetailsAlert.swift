@@ -102,7 +102,7 @@
                 .padding(.trailing, 30)
                 .background(
                     Theme.insetPanel,
-                    in: RoundedRectangle(cornerRadius: ThemeRadius.control)
+                    in: RoundedRectangle(cornerRadius: ThemeRadius.field)
                 )
                 .overlay(alignment: .topTrailing) {
                     Button {
