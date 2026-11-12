@@ -176,7 +176,7 @@ extension ShotScene {
                 )
             )
         },
-        ShotScene(id: "mac.welcome.join-name", size: WelcomeWindow.size) {
+        ShotScene(id: "mac.welcome.join.name", size: WelcomeWindow.size) {
             ShotStage(
                 WelcomeWindowChrome {
                     JoinNameView(
