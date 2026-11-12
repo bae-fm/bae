@@ -154,6 +154,7 @@ struct SettingsSidebar: View {
             .padding(.horizontal, ThemeSpace.fieldInset)
             .padding(.vertical, ThemeSpace.inline + ThemeSpace.hairline)
             .foregroundStyle(chosen ? Theme.onFill : Color.primary)
+            .environment(\.chipsOnFill, chosen)
             .background(
                 chosen ? accent.buttonColor : Color.clear,
                 in: RoundedRectangle(cornerRadius: ThemeRadius.field)
@@ -176,7 +177,7 @@ struct SettingsSidebar: View {
     }
 
     private static let width: CGFloat = 190
-    private static let buttonsRoom: CGFloat = 18
+    private static let buttonsRoom: CGFloat = 24
     private static let cornerRadius: CGFloat = 12
 
     /// The sync state, while it is amber or red.

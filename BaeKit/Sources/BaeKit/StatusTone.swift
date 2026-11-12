@@ -233,14 +233,32 @@ extension View {
     /// the tone's tinted fill. For a chip whose content is more than one
     /// `Text`, which `StatusChip` takes only one of.
     public func chipLook(_ tone: StatusTone) -> some View {
-        self
+        modifier(ChipLook(tone: tone))
+    }
+}
+
+extension EnvironmentValues {
+    /// Whether chips sit on a fill of `onFill` text, as in the chosen row of
+    /// a sidebar: they then draw in `onFill` text on a faint `onFill` tint,
+    /// not in their tone, which the chosen row's fill would swallow.
+    @Entry
+    public var chipsOnFill = false
+}
+
+private struct ChipLook: ViewModifier {
+    let tone: StatusTone
+    @Environment(\.chipsOnFill)
+    private var onFill
+
+    func body(content: Content) -> some View {
+        content
             .themeText(.chip)
             .lineLimit(1)
-            .foregroundStyle(tone.color)
+            .foregroundStyle(onFill ? Theme.onFill : tone.color)
             .padding(.horizontal, ThemeSpace.compact)
             .padding(.vertical, ThemeSpace.line)
             .background(
-                tone.fill,
+                onFill ? Theme.onFill.opacity(0.18) : tone.fill,
                 in: RoundedRectangle(cornerRadius: ThemeRadius.chip)
             )
     }
