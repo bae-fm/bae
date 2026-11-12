@@ -104,7 +104,7 @@ struct ActivityList: View {
         case .syncStatusUnread:
             if let error = store.error {
                 Notice(
-                    title: String(localized: "Couldn't read sync status"),
+                    title: String(localized: "Couldn’t read sync status"),
                     advice: nil,
                     error: error,
                     look: .quiet,

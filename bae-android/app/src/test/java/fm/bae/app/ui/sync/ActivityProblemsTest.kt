@@ -15,7 +15,7 @@ import uniffi.bae_bridge.BridgeSyncActivity
 class ActivityProblemsTest {
     private val signIn =
         AppProblem(ActivityProblemId.SIGN_IN_SETTINGS, "Couldn't read the sign-in settings", null, DisplayError("x"))
-    private val unread = DisplayError("Couldn't read sync status")
+    private val unread = DisplayError("Couldn’t read sync status")
 
     @Test
     fun problemsListInThePanelsOrder() {

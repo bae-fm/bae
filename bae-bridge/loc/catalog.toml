@@ -275,7 +275,7 @@ value = "Album title is required"
 
 [messages."core.import.validation.empty_album_title".translations]
 es = "El título del álbum es obligatorio"
-fr = "Le titre de l'album est obligatoire"
+fr = "Le titre de l’album est obligatoire"
 de = "Albumtitel ist erforderlich"
 pt-BR = "O título do álbum é obrigatório"
 ja = "アルバムタイトルは必須です"
@@ -289,7 +289,7 @@ pl = "Tytuł albumu jest wymagany"
 cs = "Název alba je povinný"
 hr = "Naslov albuma je obavezan"
 zh-Hant = "必須填寫專輯標題"
-it = "Il titolo dell'album è obbligatorio"
+it = "Il titolo dell’album è obbligatorio"
 tr = "Albüm adı gerekli"
 nl = "Albumtitel is vereist"
 sk = "Názov albumu je povinný"
@@ -307,7 +307,7 @@ value = "Album must have at least one artist"
 
 [messages."core.import.validation.no_album_artist".translations]
 es = "El álbum debe tener al menos un artista"
-fr = "L'album doit avoir au moins un artiste"
+fr = "L’album doit avoir au moins un artiste"
 de = "Das Album muss mindestens einen Interpreten haben"
 pt-BR = "O álbum precisa ter pelo menos um artista"
 ja = "アルバムには少なくとも1人のアーティストが必要です"
@@ -321,7 +321,7 @@ pl = "Album musi mieć co najmniej jednego wykonawcę"
 cs = "Album musí mít alespoň jednoho interpreta"
 hr = "Album mora imati barem jednog izvođača"
 zh-Hant = "專輯必須至少有一位演出者"
-it = "L'album deve avere almeno un artista"
+it = "L’album deve avere almeno un artista"
 tr = "Albümde en az bir sanatçı olmalı"
 nl = "Album moet ten minste één artiest hebben"
 sk = "Album musí mať aspoň jedného interpreta"
@@ -339,7 +339,7 @@ value = "Artist name is required"
 
 [messages."core.import.validation.empty_artist_name".translations]
 es = "El nombre del artista es obligatorio"
-fr = "Le nom de l'artiste est obligatoire"
+fr = "Le nom de l’artiste est obligatoire"
 de = "Der Künstlername ist erforderlich"
 pt-BR = "O nome do artista é obrigatório"
 ja = "アーティスト名は必須です"
@@ -353,7 +353,7 @@ pl = "Nazwa wykonawcy jest wymagana"
 cs = "Jméno interpreta je povinné"
 hr = "Ime izvođača je obavezno"
 zh-Hant = "必須填寫演出者名稱"
-it = "Il nome dell'artista è obbligatorio"
+it = "Il nome dell’artista è obbligatorio"
 tr = "Sanatçı adı gerekli"
 nl = "Artiestennaam is vereist"
 sk = "Meno interpreta je povinné"
@@ -371,7 +371,7 @@ value = "Year must be a number"
 
 [messages."core.import.validation.invalid_year".translations]
 es = "El año debe ser un número"
-fr = "L'année doit être un nombre"
+fr = "L’année doit être un nombre"
 de = "Das Jahr muss eine Zahl sein"
 pt-BR = "O ano deve ser um número"
 ja = "年は数字で入力してください"
@@ -385,7 +385,7 @@ pl = "Rok musi być liczbą"
 cs = "Rok musí být číslo"
 hr = "Godina mora biti broj"
 zh-Hant = "年份必須是數字"
-it = "L'anno deve essere un numero"
+it = "L’anno deve essere un numero"
 tr = "Yıl bir sayı olmalı"
 nl = "Jaar moet een getal zijn"
 sk = "Rok musí byť číslo"
@@ -400,7 +400,7 @@ fi = "Vuoden on oltava numero"
 [messages."core.import.sheet.refused_codec"]
 comment = "Import file pane: a track sheet names an audio file bae can't carve tracks out of, because the codec can't back single-file CUE playback ({codec} is the codec name, e.g. MP3). The audio still imports, as one track."
 args = { codec = "Str" }
-value = "{codec} audio can't be split by a sheet"
+value = "{codec} audio can’t be split by a sheet"
 
 [messages."core.import.sheet.refused_codec".translations]
 es = "El audio {codec} no se puede dividir con un CUE"
@@ -633,7 +633,7 @@ fi = "Vioittunut ääni, tiedosto on tyhjä"
 
 [messages."core.import.audio_damage.unreadable"]
 comment = "Import pane of a skipped folder, beside an audio file in its Files list that holds no audio bae can play (cut off, or overwritten with zeros), which is why the folder can't be imported. Keep 'bae' lowercase."
-value = "Damaged audio, bae can't read it"
+value = "Damaged audio, bae can’t read it"
 
 [messages."core.import.audio_damage.unreadable".translations]
 es = "Audio dañado, bae no puede leerlo"
@@ -674,7 +674,7 @@ value = "Something went wrong reading your library."
 
 [messages."core.error.category.database".translations]
 es = "Algo salió mal al leer tu biblioteca."
-fr = "Une erreur s'est produite lors de la lecture de votre bibliothèque."
+fr = "Une erreur s’est produite lors de la lecture de votre bibliothèque."
 de = "Beim Lesen deiner Bibliothek ist etwas schiefgelaufen."
 pt-BR = "Algo deu errado ao ler sua biblioteca."
 ja = "ライブラリの読み込み中に問題が発生しました。"
@@ -706,7 +706,7 @@ value = "Something went wrong with your settings."
 
 [messages."core.error.category.config".translations]
 es = "Algo salió mal con tu configuración."
-fr = "Une erreur s'est produite avec vos paramètres."
+fr = "Une erreur s’est produite avec vos paramètres."
 de = "Mit deinen Einstellungen ist etwas schiefgelaufen."
 pt-BR = "Algo deu errado com suas configurações."
 ja = "設定の処理中に問題が発生しました。"
@@ -771,7 +771,7 @@ value = "Something went wrong."
 
 [messages."core.error.category.internal".translations]
 es = "Algo salió mal."
-fr = "Une erreur s'est produite."
+fr = "Une erreur s’est produite."
 de = "Etwas ist schiefgelaufen."
 pt-BR = "Algo deu errado."
 ja = "問題が発生しました。"
@@ -799,11 +799,11 @@ nb = "Noe gikk galt."
 fi = "Jokin meni pieleen."
 [messages."core.error.category.import"]
 comment = "Generic error line: importing a release failed."
-value = "The import couldn't be completed."
+value = "The import couldn’t be completed."
 
 [messages."core.error.category.import".translations]
 es = "No se pudo completar la importación."
-fr = "L'importation n'a pas pu être effectuée."
+fr = "L’importation n’a pas pu être effectuée."
 de = "Der Import konnte nicht abgeschlossen werden."
 pt-BR = "Não foi possível concluir a importação."
 ja = "インポートを完了できませんでした。"
@@ -817,7 +817,7 @@ pl = "Nie udało się ukończyć importu."
 cs = "Import se nepodařilo dokončit."
 hr = "Uvoz nije bilo moguće dovršiti."
 zh-Hant = "無法完成匯入。"
-it = "Impossibile completare l'importazione."
+it = "Impossibile completare l’importazione."
 tr = "İçe aktarım tamamlanamadı."
 nl = "De import kon niet worden voltooid."
 sk = "Import sa nepodarilo dokončiť."
@@ -865,7 +865,7 @@ fi = "Kohde muuttui ennen kuin tämä ehti toteutua, joten mitään ei muutettu.
 
 [messages."core.error.watched_folder_overlap"]
 comment = "Why a folder wasn't added to the folders bae watches for music to import: it holds, or lies inside, a folder already watched. Both folders show under this line."
-value = "This folder overlaps one already watched, so it wasn't added."
+value = "This folder overlaps one already watched, so it wasn’t added."
 
 [messages."core.error.watched_folder_overlap".translations]
 es = "Esta carpeta se solapa con otra ya vigilada, así que no se añadió."
@@ -898,13 +898,13 @@ fi = "Tämä kansio menee päällekkäin jo tarkkaillun kansion kanssa, joten si
 
 [messages."core.error.category.export"]
 comment = "Generic error line: exporting failed."
-value = "The export couldn't be completed."
+value = "The export couldn’t be completed."
 
 # "… not found" lines, keyed by the missing entity.
 
 [messages."core.error.category.export".translations]
 es = "No se pudo completar la exportación."
-fr = "L'exportation n'a pas pu être effectuée."
+fr = "L’exportation n’a pas pu être effectuée."
 de = "Der Export konnte nicht abgeschlossen werden."
 pt-BR = "Não foi possível concluir a exportação."
 ja = "エクスポートを完了できませんでした。"
@@ -918,7 +918,7 @@ pl = "Nie udało się ukończyć eksportu."
 cs = "Export se nepodařilo dokončit."
 hr = "Izvoz nije bilo moguće dovršiti."
 zh-Hant = "無法完成匯出。"
-it = "Impossibile completare l'esportazione."
+it = "Impossibile completare l’esportazione."
 tr = "Dışa aktarım tamamlanamadı."
 nl = "De export kon niet worden voltooid."
 sk = "Export sa nepodarilo dokončiť."
@@ -932,11 +932,11 @@ nb = "Eksporten kunne ikke fullføres."
 fi = "Vientiä ei voitu viedä loppuun."
 [messages."core.error.category.save"]
 comment = "Generic error line: a save (rendered output) failed."
-value = "The save couldn't be completed."
+value = "The save couldn’t be completed."
 
 [messages."core.error.category.save".translations]
 es = "No se pudo completar el guardado."
-fr = "L'enregistrement n'a pas pu être effectué."
+fr = "L’enregistrement n’a pas pu être effectué."
 de = "Das Speichern konnte nicht abgeschlossen werden."
 pt-BR = "Não foi possível concluir o salvamento."
 ja = "保存を完了できませんでした。"
@@ -965,7 +965,7 @@ fi = "Tallennusta ei voitu viedä loppuun."
 
 [messages."core.error.cloud_setup.region_mismatch"]
 comment = "Storage setup or sync failed because the configured region or endpoint does not identify the bucket's location."
-value = "The region or endpoint doesn't match this bucket."
+value = "The region or endpoint doesn’t match this bucket."
 
 [messages."core.error.cloud_setup.region_mismatch".translations]
 es = "La región o el endpoint no coincide con este bucket."
@@ -1064,7 +1064,7 @@ fi = "Tarkista pilven tunnistetietosi ja yritä uudelleen."
 
 [messages."core.error.category.network"]
 comment = "Generic error line: the cloud or the network to it was unreachable."
-value = "Couldn't reach the cloud. Check your connection and try again."
+value = "Couldn’t reach the cloud. Check your connection and try again."
 
 [messages."core.error.category.network".translations]
 es = "No se pudo conectar con la nube. Comprueba tu conexión e inténtalo de nuevo."
@@ -1097,11 +1097,11 @@ fi = "Pilveen ei saatu yhteyttä. Tarkista yhteytesi ja yritä uudelleen."
 
 [messages."core.error.category.keyring"]
 comment = "Generic error line: the OS keyring (secure credential store) couldn't be read or written."
-value = "Couldn't access your device's secure storage."
+value = "Couldn’t access your device’s secure storage."
 
 [messages."core.error.category.keyring".translations]
 es = "No se pudo acceder al almacenamiento seguro de tu dispositivo."
-fr = "Impossible d'accéder au stockage sécurisé de votre appareil."
+fr = "Impossible d’accéder au stockage sécurisé de votre appareil."
 de = "Auf den sicheren Speicher deines Geräts konnte nicht zugegriffen werden."
 pt-BR = "Não foi possível acessar o armazenamento seguro do seu dispositivo."
 ja = "デバイスの安全なストレージにアクセスできませんでした。"
@@ -1115,7 +1115,7 @@ pl = "Nie można uzyskać dostępu do bezpiecznego magazynu urządzenia."
 cs = "K zabezpečenému úložišti zařízení se nepodařilo přistoupit."
 hr = "Nije moguće pristupiti sigurnoj pohrani vašeg uređaja."
 zh-Hant = "無法存取你裝置的安全儲存空間。"
-it = "Impossibile accedere all'archivio sicuro del dispositivo."
+it = "Impossibile accedere all’archivio sicuro del dispositivo."
 tr = "Cihazınızın güvenli depolamasına erişilemedi."
 nl = "Kan geen toegang krijgen tot de beveiligde opslag van je apparaat."
 sk = "Nepodarilo sa získať prístup k zabezpečenému úložisku zariadenia."
@@ -1130,7 +1130,7 @@ fi = "Laitteesi suojattuun tallennustilaan ei saatu yhteyttä."
 
 [messages."core.error.category.airplay_unsupported"]
 comment = "Error line shown in the device picker when an AirPlay receiver can't be driven — it demands a PIN, needs a pairing the sender doesn't do, or offers only audio encryption the sender doesn't implement."
-value = "This AirPlay receiver isn't supported."
+value = "This AirPlay receiver isn’t supported."
 
 [messages."core.error.category.airplay_unsupported".translations]
 es = "Este receptor AirPlay no es compatible."
@@ -1163,7 +1163,7 @@ fi = "Tätä AirPlay-vastaanotinta ei tueta."
 
 [messages."core.error.category.airplay_unreadable_settings"]
 comment = "Error line shown in the device picker when an AirPlay receiver advertises settings (its features or status flags) that bae can't read, so bae can't tell how to connect to it. AirPlay is a product name; bae is always lowercase."
-value = "Can't connect: this AirPlay receiver advertises settings bae can't read."
+value = "Can’t connect: this AirPlay receiver advertises settings bae can’t read."
 
 [messages."core.error.category.airplay_unreadable_settings".translations]
 es = "No se puede conectar: este receptor AirPlay anuncia ajustes que bae no puede leer."
@@ -1182,7 +1182,7 @@ cs = "Nelze se připojit: tento přijímač AirPlay ohlašuje nastavení, která
 hr = "Povezivanje nije moguće: ovaj AirPlay prijamnik oglašava postavke koje bae ne može pročitati."
 zh-Hant = "無法連線：此 AirPlay 接收裝置通告了 bae 無法讀取的設定。"
 it = "Impossibile connettersi: questo ricevitore AirPlay annuncia impostazioni che bae non riesce a leggere."
-tr = "Bağlanılamıyor: bu AirPlay alıcısı bae'nin okuyamadığı ayarlar bildiriyor."
+tr = "Bağlanılamıyor: bu AirPlay alıcısı bae’nin okuyamadığı ayarlar bildiriyor."
 nl = "Kan geen verbinding maken: deze AirPlay-ontvanger meldt instellingen die bae niet kan lezen."
 sk = "Nedá sa pripojiť: tento prijímač AirPlay ohlasuje nastavenia, ktoré bae nedokáže prečítať."
 hu = "Nem lehet csatlakozni: ez az AirPlay-vevő olyan beállításokat hirdet, amelyeket a bae nem tud beolvasni."
@@ -1196,7 +1196,7 @@ fi = "Yhteyttä ei voi muodostaa: tämä AirPlay-vastaanotin ilmoittaa asetuksia
 
 [messages."core.error.keyring.locked"]
 comment = "The OS keychain refused the read because the session is locked or the display is asleep; the key is present and the read succeeds again after unlock."
-value = "This device's keychain is locked. Unlock the device and bae will pick up where it left off."
+value = "This device’s keychain is locked. Unlock the device and bae will pick up where it left off."
 
 [messages."core.error.keyring.locked".translations]
 es = "El llavero de este dispositivo está bloqueado. Desbloquea el dispositivo y bae continuará donde lo dejó."
@@ -1229,7 +1229,7 @@ fi = "Tämän laitteen avainnippu on lukittu. Avaa laitteen lukitus, niin bae ja
 
 [messages."core.error.keyring.entitlement_missing"]
 comment = "Apple's keychain refused every call because this copy of the app was signed without its keychain entitlement. A packaging fault: the person's keychain is fine, and retrying or unlocking doesn't help."
-value = "This build of bae was signed without permission to use the keychain, so it can't read or save your keys."
+value = "This build of bae was signed without permission to use the keychain, so it can’t read or save your keys."
 
 [messages."core.error.keyring.entitlement_missing".translations]
 es = "Esta versión de bae se firmó sin permiso para usar el llavero, así que no puede leer ni guardar tus claves."
@@ -1248,7 +1248,7 @@ cs = "Tato verze bae byla podepsána bez oprávnění používat klíčenku, tak
 hr = "Ova verzija aplikacije bae potpisana je bez dopuštenja za korištenje privjeska ključeva pa ne može čitati ni spremati vaše ključeve."
 zh-Hant = "此 bae 版本在簽署時未取得使用鑰匙圈的權限，因此無法讀取或儲存你的密鑰。"
 it = "Questa versione di bae è stata firmata senza il permesso di usare il portachiavi, quindi non può leggere né salvare le tue chiavi."
-tr = "bae'nin bu sürümü anahtar zincirini kullanma izni olmadan imzalandığı için anahtarlarınızı okuyamaz veya kaydedemez."
+tr = "bae’nin bu sürümü anahtar zincirini kullanma izni olmadan imzalandığı için anahtarlarınızı okuyamaz veya kaydedemez."
 nl = "Deze versie van bae is ondertekend zonder toestemming om de sleutelhanger te gebruiken, dus kan ze je sleutels niet lezen of bewaren."
 sk = "Táto verzia bae bola podpísaná bez povolenia používať kľúčenku, takže nemôže čítať ani ukladať tvoje kľúče."
 hu = "A bae ezen verzióját a kulcstartó használatára vonatkozó engedély nélkül írták alá, ezért nem tudja olvasni vagy menteni a kulcsaidat."
@@ -1262,7 +1262,7 @@ fi = "Tämä bae-versio on allekirjoitettu ilman lupaa käyttää avainnippua, j
 
 [messages."core.error.keyring.saved_codes_full"]
 comment = "Android's Block Store, where coven saves the person's restore codes on a device, already holds as many entries as Android keeps for an app, so this library's restore code couldn't be saved."
-value = "This device already keeps as many restore codes as Android allows, so this library's code can't be saved on it."
+value = "This device already keeps as many restore codes as Android allows, so this library’s code can’t be saved on it."
 
 [messages."core.error.keyring.saved_codes_full".translations]
 es = "Este dispositivo ya guarda tantos códigos de restauración como permite Android, así que no se puede guardar el de esta biblioteca."
@@ -1281,7 +1281,7 @@ cs = "Toto zařízení už uchovává tolik kódů pro obnovení, kolik Android 
 hr = "Ovaj uređaj već čuva onoliko kodova za vraćanje koliko Android dopušta pa se kod ove fonoteke ne može spremiti na njega."
 zh-Hant = "此裝置儲存的還原碼已達 Android 允許的上限，因此無法儲存此資料庫的還原碼。"
 it = "Questo dispositivo conserva già tutti i codici di ripristino consentiti da Android, quindi non è possibile salvarvi il codice di questa libreria."
-tr = "Bu cihaz Android'in izin verdiği kadar geri yükleme kodunu zaten saklıyor, bu yüzden bu kitaplığın kodu kaydedilemiyor."
+tr = "Bu cihaz Android’in izin verdiği kadar geri yükleme kodunu zaten saklıyor, bu yüzden bu kitaplığın kodu kaydedilemiyor."
 nl = "Dit apparaat bewaart al zoveel herstelcodes als Android toestaat, dus de code van deze bibliotheek kan er niet op worden bewaard."
 sk = "Toto zariadenie už uchováva toľko kódov na obnovenie, koľko Android dovoľuje, takže kód tejto knižnice doň nemožno uložiť."
 hu = "Ez az eszköz már annyi visszaállítási kódot tárol, amennyit az Android enged, ezért ennek a könyvtárnak a kódja nem menthető rá."
@@ -1295,7 +1295,7 @@ fi = "Tähän laitteeseen on jo tallennettu niin monta palautuskoodia kuin Andro
 
 [messages."core.error.keyring.saved_code_too_large"]
 comment = "The restore code coven saves for the person doesn't fit in one entry of Android's Block Store, even with the library's name shortened."
-value = "This library's restore code is too large to save on this device."
+value = "This library’s restore code is too large to save on this device."
 
 [messages."core.error.keyring.saved_code_too_large".translations]
 es = "El código de restauración de esta biblioteca es demasiado grande para guardarlo en este dispositivo."
@@ -1332,7 +1332,7 @@ value = "Something went wrong updating library sharing."
 
 [messages."core.error.category.membership".translations]
 es = "Algo salió mal al actualizar el uso compartido de la biblioteca."
-fr = "Une erreur s'est produite lors de la mise à jour du partage de la bibliothèque."
+fr = "Une erreur s’est produite lors de la mise à jour du partage de la bibliothèque."
 de = "Beim Aktualisieren der Bibliotheksfreigabe ist etwas schiefgelaufen."
 pt-BR = "Algo deu errado ao atualizar o compartilhamento da biblioteca."
 ja = "ライブラリの共有を更新する際に問題が発生しました。"
@@ -1346,7 +1346,7 @@ pl = "Coś poszło nie tak podczas aktualizacji udostępniania biblioteki."
 cs = "Při aktualizaci sdílení knihovny došlo k chybě."
 hr = "Nešto je pošlo po zlu pri ažuriranju dijeljenja fonoteke."
 zh-Hant = "更新資料庫共享時發生問題。"
-it = "Si è verificato un problema durante l'aggiornamento della condivisione della libreria."
+it = "Si è verificato un problema durante l’aggiornamento della condivisione della libreria."
 tr = "Kitaplık paylaşımı güncellenirken bir sorun oluştu."
 nl = "Er is iets misgegaan bij het bijwerken van het delen van de bibliotheek."
 sk = "Pri aktualizácii zdieľania knižnice sa niečo pokazilo."
@@ -1426,11 +1426,11 @@ fi = "Kirjaudu sisään tilillä, jossa tämä kirjasto on."
 
 [messages."core.error.category.renderer"]
 comment = "Generic error line: the Cast or DLNA device playback was sent to refused a command (a load, a play, a seek) while still connected."
-value = "The device you're playing on reported a problem."
+value = "The device you’re playing on reported a problem."
 
 [messages."core.error.category.renderer".translations]
 es = "El dispositivo en el que estás reproduciendo informó de un problema."
-fr = "L'appareil sur lequel vous écoutez a signalé un problème."
+fr = "L’appareil sur lequel vous écoutez a signalé un problème."
 de = "Das Gerät, auf dem du abspielst, hat ein Problem gemeldet."
 "pt-BR" = "O dispositivo em que você está reproduzindo relatou um problema."
 ja = "再生先のデバイスで問題が発生しました。"
@@ -1463,7 +1463,7 @@ value = "Playback on {device} stopped."
 
 [messages."core.cast.ended".translations]
 es = "La reproducción en {device} se detuvo."
-fr = "La lecture sur {device} s'est arrêtée."
+fr = "La lecture sur {device} s’est arrêtée."
 de = "Die Wiedergabe auf {device} wurde beendet."
 "pt-BR" = "A reprodução em {device} parou."
 ja = "{device}での再生が停止しました。"
@@ -1627,7 +1627,7 @@ fi = "{count, plural, one {# albumilla ei ole raitoja, joten se jätettiin pois}
 [messages."core.play.left_out_tracks"]
 comment = "Shown after a list of tracks played, such as one a car or watch sent: this many of its tracks aren't in the library, so the rest play without them."
 args = { count = "Int" }
-value = "{count, plural, one {# track isn't in the library and was left out} other {# tracks aren't in the library and were left out}}"
+value = "{count, plural, one {# track isn’t in the library and was left out} other {# tracks aren’t in the library and were left out}}"
 
 [messages."core.play.left_out_tracks".translations]
 es = "{count, plural, one {# pista no está en la biblioteca y se omitió} other {# pistas no están en la biblioteca y se omitieron}}"
@@ -1659,11 +1659,11 @@ nb = "{count, plural, one {# spor er ikke i biblioteket og ble utelatt} other {#
 fi = "{count, plural, one {# raita ei ole kirjastossa, joten se jätettiin pois} other {# raitaa ei ole kirjastossa, joten ne jätettiin pois}}"
 [messages."core.playback.error.sync_disconnected"]
 comment = "Playback error: a cloud-only track isn't pinned and sync is offline."
-value = "Reconnect to play this release. It isn't pinned to this device yet."
+value = "Reconnect to play this release. It isn’t pinned to this device yet."
 
 [messages."core.playback.error.sync_disconnected".translations]
 es = "Vuelve a conectarte para reproducir esta edición: aún no está fijada en este dispositivo."
-fr = "Reconnectez-vous pour lire cette édition. Elle n'est pas encore épinglée sur cet appareil."
+fr = "Reconnectez-vous pour lire cette édition. Elle n’est pas encore épinglée sur cet appareil."
 de = "Stelle die Verbindung wieder her, um diese Veröffentlichung abzuspielen. Sie ist noch nicht auf diesem Gerät angeheftet."
 pt-BR = "Reconecte-se para reproduzir esta edição. Ela ainda não foi fixada neste dispositivo."
 ja = "このリリースを再生するには再接続してください。まだこのデバイスにピン留めされていません。"
@@ -1691,11 +1691,11 @@ nb = "Koble til på nytt for å spille av denne utgivelsen. Den er ikke festet p
 fi = "Yhdistä uudelleen, jotta voit toistaa tämän julkaisun. Sitä ei ole vielä kiinnitetty tälle laitteelle."
 [messages."core.playback.error.audio_device_unavailable"]
 comment = "Playback error: the audio output couldn't start because the output device (speakers, headphones, an interface) was disconnected or is no longer available."
-value = "The audio device was disconnected or isn't available."
+value = "The audio device was disconnected or isn’t available."
 
 [messages."core.playback.error.audio_device_unavailable".translations]
 es = "El dispositivo de audio se desconectó o no está disponible."
-fr = "L'appareil audio a été déconnecté ou n'est pas disponible."
+fr = "L’appareil audio a été déconnecté ou n’est pas disponible."
 de = "Das Audiogerät wurde getrennt oder ist nicht verfügbar."
 pt-BR = "O dispositivo de áudio foi desconectado ou não está disponível."
 ja = "オーディオデバイスが切断されたか、利用できません。"
@@ -1703,7 +1703,7 @@ ko = "오디오 기기의 연결이 끊어졌거나 사용할 수 없습니다."
 zh-Hans = "音频设备已断开或不可用。"
 ar = "تم فصل جهاز الصوت أو أنه غير متاح."
 he = "התקן השמע נותק או שאינו זמין."
-uk = "Аудіопристрій від'єднано або він недоступний."
+uk = "Аудіопристрій від’єднано або він недоступний."
 bg = "Аудиоустройството е изключено или не е налично."
 pl = "Urządzenie audio zostało odłączone lub jest niedostępne."
 cs = "Zvukové zařízení bylo odpojeno nebo není dostupné."
@@ -1724,11 +1724,11 @@ fi = "Äänilaite on irrotettu tai se ei ole käytettävissä."
 
 [messages."core.playback.error.audio_format_unsupported"]
 comment = "Playback error: the audio output couldn't start because the output device doesn't take this track's sample rate or number of channels."
-value = "The audio device can't play this track's sample rate."
+value = "The audio device can’t play this track’s sample rate."
 
 [messages."core.playback.error.audio_format_unsupported".translations]
 es = "El dispositivo de audio no puede reproducir la frecuencia de muestreo de esta pista."
-fr = "L'appareil audio ne peut pas lire la fréquence d'échantillonnage de cette piste."
+fr = "L’appareil audio ne peut pas lire la fréquence d’échantillonnage de cette piste."
 de = "Das Audiogerät kann die Abtastrate dieses Titels nicht wiedergeben."
 pt-BR = "O dispositivo de áudio não consegue reproduzir a taxa de amostragem desta faixa."
 ja = "オーディオデバイスはこのトラックのサンプルレートを再生できません。"
@@ -1757,11 +1757,11 @@ fi = "Äänilaite ei pysty toistamaan tämän kappaleen näytteenottotaajuutta."
 
 [messages."core.playback.error.airplay_refused"]
 comment = "Playback error: the AirPlay speaker couldn't be reached or didn't accept bae's connection when playback started on it. AirPlay is a product name; bae is always lowercase."
-value = "The AirPlay speaker didn't accept the connection."
+value = "The AirPlay speaker didn’t accept the connection."
 
 [messages."core.playback.error.airplay_refused".translations]
 es = "El altavoz AirPlay no aceptó la conexión."
-fr = "Le haut-parleur AirPlay n'a pas accepté la connexion."
+fr = "Le haut-parleur AirPlay n’a pas accepté la connexion."
 de = "Der AirPlay-Lautsprecher hat die Verbindung nicht angenommen."
 pt-BR = "O alto-falante AirPlay não aceitou a conexão."
 ja = "AirPlayスピーカーが接続を受け付けませんでした。"
@@ -1769,7 +1769,7 @@ ko = "AirPlay 스피커가 연결을 받아들이지 않았습니다."
 zh-Hans = "AirPlay 扬声器没有接受连接。"
 ar = "لم يقبل مكبر صوت AirPlay الاتصال."
 he = "רמקול ה‑AirPlay לא קיבל את החיבור."
-uk = "Динамік AirPlay не прийняв з'єднання."
+uk = "Динамік AirPlay не прийняв з’єднання."
 bg = "Високоговорителят AirPlay не прие връзката."
 pl = "Głośnik AirPlay nie przyjął połączenia."
 cs = "Reproduktor AirPlay nepřijal připojení."
@@ -1843,7 +1843,7 @@ cs = "Přehrávání je pozastaveno. Pokračujte stisknutím Přehrát."
 hr = "Reprodukcija je pauzirana. Pritisnite Reproduciraj za nastavak."
 zh-Hant = "播放已暫停。按播放繼續。"
 it = "La riproduzione è in pausa. Premi Riproduci per continuare."
-tr = "Çalma duraklatıldı. Devam etmek için Oynat'a basın."
+tr = "Çalma duraklatıldı. Devam etmek için Oynat’a basın."
 nl = "Het afspelen is gepauzeerd. Druk op Afspelen om verder te gaan."
 sk = "Prehrávanie je pozastavené. Pokračuj stlačením Prehrať."
 hu = "A lejátszás szünetel. A folytatáshoz nyomd meg a Lejátszás gombot."
@@ -2871,7 +2871,7 @@ nb = "Fjerner den lokale kopien"
 fi = "Poistetaan paikallista kopiota"
 [messages."core.lookup.failure.network"]
 comment = "Metadata lookup failed: couldn't reach the provider (no network response)."
-value = "Couldn't reach the metadata provider"
+value = "Couldn’t reach the metadata provider"
 
 [messages."core.lookup.failure.network".translations]
 es = "No se pudo conectar con el proveedor de metadatos"
@@ -2883,7 +2883,7 @@ ko = "메타데이터 제공자에 연결할 수 없습니다"
 zh-Hans = "无法连接到元数据提供方"
 ar = "تعذّر الوصول إلى مزوّد البيانات الوصفية"
 he = "לא ניתן היה להגיע לספק המטא-נתונים"
-uk = "Не вдалося з'єднатися з постачальником метаданих"
+uk = "Не вдалося з’єднатися з постачальником метаданих"
 bg = "Не може да се достигне доставчикът на метаданни"
 pl = "Nie można połączyć się z dostawcą metadanych"
 cs = "Nepodařilo se spojit s poskytovatelem metadat"
@@ -3006,7 +3006,7 @@ value = "{count} uploading"
 
 [messages."core.queue.uploading".translations]
 es = "{count} subiéndose"
-fr = "{count} en cours d'envoi"
+fr = "{count} en cours d’envoi"
 de = "{count} werden hochgeladen"
 pt-BR = "{count} enviando"
 ja = "{count}件アップロード中"
@@ -3308,7 +3308,7 @@ value = "{count} pinning"
 
 [messages."core.queue.pinning".translations]
 es = "{count} fijándose"
-fr = "{count} en cours d'épinglage"
+fr = "{count} en cours d’épinglage"
 de = "{count} werden angeheftet"
 pt-BR = "{count} fixando"
 ja = "{count}件ピン留め中"
@@ -3550,7 +3550,7 @@ ja = "{rate}/秒"
 ko = "{rate}/초"
 zh-Hans = "{rate}/秒"
 ar = "{rate}/ث"
-he = "{rate}/ש'"
+he = "{rate}/ש׳"
 uk = "{rate}/с"
 bg = "{rate}/с"
 pl = "{rate}/s"
@@ -4507,7 +4507,7 @@ value = "Network folder. Changes made on other computers are checked every {minu
 
 [messages."core.import.folder.network_watch".translations]
 es = "Carpeta en red. Los cambios hechos en otros equipos se comprueban cada {minutes} minutos."
-fr = "Dossier réseau. Les modifications faites sur d'autres ordinateurs sont vérifiées toutes les {minutes} minutes."
+fr = "Dossier réseau. Les modifications faites sur d’autres ordinateurs sont vérifiées toutes les {minutes} minutes."
 de = "Netzwerkordner. Änderungen von anderen Computern werden alle {minutes} Minuten geprüft."
 "pt-BR" = "Pasta em rede. As alterações feitas em outros computadores são verificadas a cada {minutes} minutos."
 ja = "ネットワークフォルダです。他のコンピュータで加えられた変更は {minutes} 分ごとに確認されます。"
@@ -4515,7 +4515,7 @@ ko = "네트워크 폴더입니다. 다른 컴퓨터에서 변경한 내용은 {
 "zh-Hans" = "网络文件夹。其他电脑上所做的更改每 {minutes} 分钟检查一次。"
 ar = "مجلد على الشبكة. يجري التحقق من التغييرات التي تُجرى على أجهزة أخرى كل {minutes} دقيقة."
 he = "תיקייה ברשת. שינויים שבוצעו במחשבים אחרים נבדקים כל {minutes} דקות."
-uk = "Мережева тека. Зміни, зроблені на інших комп'ютерах, перевіряються кожні {minutes} хв."
+uk = "Мережева тека. Зміни, зроблені на інших комп’ютерах, перевіряються кожні {minutes} хв."
 bg = "Мрежова папка. Промените, направени на други компютри, се проверяват на всеки {minutes} минути."
 pl = "Folder sieciowy. Zmiany wprowadzone na innych komputerach są sprawdzane co {minutes} minut."
 cs = "Síťová složka. Změny provedené na jiných počítačích se kontrolují každých {minutes} minut."
@@ -4702,13 +4702,13 @@ ko = "바코드가 아닙니다: 한 숫자만 반복된 값은 비어 있는 �
 
 [messages."core.import.search.barcode.store_internal"]
 comment = "Import pane, typed barcode search: what was searched for is from the number range GS1 leaves to shops to assign themselves (price stickers, in-store items), so it identifies no product."
-value = "A shop's own number, like a price sticker: it names no product"
+value = "A shop’s own number, like a price sticker: it names no product"
 
 [messages."core.import.search.barcode.store_internal".translations]
 de = "Eine eigene Nummer eines Geschäfts, etwa von einem Preisaufkleber: Sie bezeichnet kein Produkt"
 fr = "Un numéro propre à un magasin, comme une étiquette de prix : il ne désigne aucun produit"
 es = "Un número propio de una tienda, como una etiqueta de precio: no identifica ningún producto"
-it = "Un numero interno di un negozio, come un'etichetta del prezzo: non indica alcun prodotto"
+it = "Un numero interno di un negozio, come un’etichetta del prezzo: non indica alcun prodotto"
 nl = "Een eigen nummer van een winkel, zoals een prijssticker: het duidt geen product aan"
 pl = "Własny numer sklepu, np. z naklejki z ceną: nie oznacza żadnego produktu"
 cs = "Vlastní číslo obchodu, například z cenovky: neoznačuje žádný produkt"
@@ -5298,7 +5298,7 @@ fi = "Ohitettu"
 
 [messages."ui.import.sheet.disc_help"]
 comment = "Import mapping table: tooltip on the disc-assignment control of a track sheet."
-value = "Which disc of the release this sheet's entries are"
+value = "Which disc of the release this sheet’s entries are"
 
 [messages."ui.import.sheet.disc_help".translations]
 es = "Qué disco de la edición son las entradas de esta hoja"
@@ -5332,7 +5332,7 @@ fi = "Mille julkaisun levylle tämän arkin merkinnät kuuluvat"
 [messages."ui.import.folder.scan_failed"]
 comment = "Alert headline when reading a watched folder fails; {folder} is the folder's name. The failure's own untranslated text is shown beneath it."
 args = { folder = "Str" }
-value = "Couldn't scan {folder}"
+value = "Couldn’t scan {folder}"
 
 [messages."ui.import.folder.scan_failed".translations]
 es = "No se pudo escanear {folder}"
@@ -5485,7 +5485,7 @@ pl = "Płyty {discs} tego wydania pasują do folderu równie dobrze. Wybierz inn
 cs = "Disky {discs} tohoto vydání odpovídají složce stejně dobře. Vyberte jiné vydání nebo použijte metadata souborů."
 hr = "Diskovi {discs} ovog izdanja jednako dobro odgovaraju mapi. Odaberite drugo izdanje ili upotrijebite metapodatke datoteka."
 zh-Hant = "此發行版本的光碟 {discs} 與資料夾同樣吻合。請選擇其他發行版本，或使用檔案的中繼資料。"
-it = "I dischi {discs} di questa edizione corrispondono alla cartella allo stesso modo. Scegli un'altra edizione o usa i metadati dei file."
+it = "I dischi {discs} di questa edizione corrispondono alla cartella allo stesso modo. Scegli un’altra edizione o usa i metadati dei file."
 tr = "Bu sürümün {discs} numaralı diskleri klasörle aynı derecede eşleşiyor. Başka bir sürüm seçin veya dosyaların meta verilerini kullanın."
 nl = "De schijven {discs} van deze uitgave passen even goed bij de map. Kies een andere uitgave of gebruik de metadata van de bestanden."
 sk = "Disky {discs} tohto vydania zodpovedajú priečinku rovnako dobre. Vyber iné vydanie alebo použi metadáta súborov."
@@ -5504,7 +5504,7 @@ value = "This release changed after the editor opened it. Cancel to see it as it
 
 [messages."core.release_edit.error.changed_since_opened".translations]
 es = "Esta edición cambió después de abrirse el editor. Cancela para verla tal como está ahora."
-fr = "Cette édition a changé après l'ouverture de l'éditeur. Annulez pour la voir telle qu'elle est maintenant."
+fr = "Cette édition a changé après l’ouverture de l’éditeur. Annulez pour la voir telle qu’elle est maintenant."
 de = "Diese Veröffentlichung wurde geändert, nachdem der Editor geöffnet wurde. Brich ab, um sie so zu sehen, wie sie jetzt ist."
 pt-BR = "Esta edição mudou depois que o editor foi aberto. Cancele para vê-la como está agora."
 ja = "エディタを開いた後にこのリリースが変更されました。キャンセルすると現在の内容が表示されます。"
@@ -5518,7 +5518,7 @@ pl = "To wydanie zmieniło się po otwarciu edytora. Anuluj, aby zobaczyć je w 
 cs = "Toto vydání se změnilo poté, co byl editor otevřen. Zrušte, abyste ho viděli v současné podobě."
 hr = "Ovo se izdanje promijenilo nakon otvaranja uređivača. Odustanite da biste ga vidjeli kakvo je sada."
 zh-Hant = "此發行版本在編輯器開啟後已變更。請取消以查看其目前內容。"
-it = "Questa edizione è cambiata dopo l'apertura dell'editor. Annulla per vederla com'è ora."
+it = "Questa edizione è cambiata dopo l’apertura dell’editor. Annulla per vederla com’è ora."
 tr = "Bu sürüm, düzenleyici açıldıktan sonra değişti. Şu anki hâlini görmek için iptal edin."
 nl = "Deze uitgave is gewijzigd nadat de editor werd geopend. Annuleer om haar te zien zoals ze nu is."
 sk = "Toto vydanie sa zmenilo po otvorení editora. Zruš, aby si ho videl v súčasnej podobe."
@@ -10996,7 +10996,7 @@ nb = "Denne versjonsinnstillingen støttes ikke."
 fi = "Tätä säilön versiointiasetusta ei tueta."
 
 [messages."core.error.storage.location_change"]
-value = "Changing this library's cloud home is not supported."
+value = "Changing this library’s cloud home is not supported."
 
 [messages."core.error.storage.location_change".translations]
 es = "No se admite cambiar el hogar en la nube de esta biblioteca."
@@ -11190,7 +11190,7 @@ fi = "Avaimesi korvattiin toisella laitteellasi. Palauta tämä kirjasto nykyise
 
 [messages."core.error.storage_setup_undone"]
 comment = "Shown in the library's sync settings, until the person dismisses it: a cloud home setup ended undone while no setup screen waited for it, such as one bae stopped partway, or one sync finished and the library refused. The cloud home isn't set up."
-value = "Setting up this library's cloud home didn't finish, and what it did was undone. Set up its cloud home again."
+value = "Setting up this library’s cloud home didn’t finish, and what it did was undone. Set up its cloud home again."
 
 [messages."core.error.storage_setup_undone".translations]
 es = "La configuración del hogar en la nube de esta biblioteca no terminó y se deshizo lo que había hecho. Vuelve a configurar su hogar en la nube."
@@ -11448,7 +11448,7 @@ nb = "Dette skyhjemmet inneholder allerede et bibliotek."
 fi = "Tämä pilvikoti sisältää jo kirjaston."
 
 [messages."core.error.cloud_setup.invalid_configuration"]
-value = "Check the cloud home's settings."
+value = "Check the cloud home’s settings."
 
 [messages."core.error.cloud_setup.invalid_configuration".translations]
 es = "Comprueba los ajustes del hogar en la nube."
@@ -12288,7 +12288,7 @@ value = "Cancel upload"
 
 [messages."core.pending.action.cancel_upload".translations]
 es = "Cancelar carga"
-fr = "Annuler l'envoi"
+fr = "Annuler l’envoi"
 de = "Upload abbrechen"
 pt-BR = "Cancelar envio"
 ja = "アップロードをキャンセル"
@@ -12767,7 +12767,7 @@ nb = "Opprydding i skyen"
 fi = "Pilven siivous"
 [messages."core.pending.subject.library_data"]
 comment = "Pending sync list: the data every member of the library shares."
-value = "The library's shared data"
+value = "The library’s shared data"
 
 [messages."core.pending.subject.library_data".translations]
 es = "Los datos compartidos de la biblioteca"
@@ -12959,7 +12959,7 @@ nb = "Legger til denne enheten"
 fi = "Tätä laitetta lisätään"
 [messages."core.pending.operation.set_role"]
 comment = "Pending sync list: one of the library's operations that waits, named by what it does."
-value = "Changing a person's role"
+value = "Changing a person’s role"
 
 [messages."core.pending.operation.set_role".translations]
 es = "Cambiando el rol de una persona"
@@ -12991,7 +12991,7 @@ nb = "Endrer en persons rolle"
 fi = "Henkilön roolia muutetaan"
 [messages."core.pending.operation.set_access"]
 comment = "Pending sync list: one of the library's operations that waits, named by what it does."
-value = "Changing a person's access to the cloud"
+value = "Changing a person’s access to the cloud"
 
 [messages."core.pending.operation.set_access".translations]
 es = "Cambiando el acceso de una persona a la nube"
@@ -13247,7 +13247,7 @@ nb = "Lagrer en kopi av biblioteket i skyen"
 fi = "Kirjaston kopiota tallennetaan pilveen"
 [messages."core.pending.operation.schema_change"]
 comment = "Pending sync list: one of the library's operations that waits, named by what it does."
-value = "Updating the library's format"
+value = "Updating the library’s format"
 
 [messages."core.pending.operation.schema_change".translations]
 es = "Actualizando el formato de la biblioteca"
@@ -13567,7 +13567,7 @@ nb = "Inviterer en person"
 fi = "Henkilöä kutsutaan"
 [messages."core.pending.operation.revoke_access"]
 comment = "Pending sync list: one of the library's operations that waits, named by what it does."
-value = "Updating an account's access to the cloud"
+value = "Updating an account’s access to the cloud"
 
 [messages."core.pending.operation.revoke_access".translations]
 es = "Actualizando el acceso de una cuenta a la nube"
@@ -13599,7 +13599,7 @@ nb = "Oppdaterer en kontos tilgang til skyen"
 fi = "Tilin käyttöoikeutta pilveen päivitetään"
 [messages."core.pending.operation.replace_member_keys"]
 comment = "Pending sync list: one of the library's operations that waits, named by what it does."
-value = "Replacing a person's keys"
+value = "Replacing a person’s keys"
 
 [messages."core.pending.operation.replace_member_keys".translations]
 es = "Reemplazando las claves de una persona"
@@ -13632,7 +13632,7 @@ fi = "Henkilön avaimia vaihdetaan"
 
 [messages."core.pending.operation.storage_setup"]
 comment = "Pending sync list: one of the library's operations that waits, named by what it does. This one connects the library to its cloud home."
-value = "Setting up the library's cloud home"
+value = "Setting up the library’s cloud home"
 
 [messages."core.pending.operation.storage_setup".translations]
 es = "Configurando el hogar en la nube de la biblioteca"
@@ -14840,7 +14840,7 @@ cs = "{provider} požádal bae o počkání. Synchronizace se obnoví v {time}."
 hr = "{provider} je zatražio da bae pričeka. Sinkronizacija se nastavlja u {time}."
 zh-Hant = "{provider} 要求 bae 等待。同步將在 {time} 恢復。"
 it = "{provider} ha chiesto a bae di attendere. La sincronizzazione riprenderà alle {time}."
-tr = "{provider}, bae'den beklemesini istedi. Eşitleme {time} saatinde devam edecek."
+tr = "{provider}, bae’den beklemesini istedi. Eşitleme {time} saatinde devam edecek."
 nl = "{provider} heeft bae gevraagd te wachten. De synchronisatie gaat verder om {time}."
 sk = "{provider} požiadal bae o počkanie. Synchronizácia sa obnoví o {time}."
 hu = "A {provider} arra kérte a baet, hogy várjon. A szinkronizálás {time}-kor folytatódik."
@@ -14873,7 +14873,7 @@ cs = "Aktualizujte bae, aby synchronizace mohla pokračovat."
 hr = "Ažurirajte bae kako bi se sinkronizacija nastavila."
 zh-Hant = "請更新 bae 以繼續同步。"
 it = "Aggiorna bae per continuare a sincronizzare."
-tr = "Eşitlemeye devam etmek için bae'yi güncelleyin."
+tr = "Eşitlemeye devam etmek için bae’yi güncelleyin."
 nl = "Werk bae bij om te blijven synchroniseren."
 sk = "Aktualizuj bae, aby synchronizácia mohla pokračovať."
 hu = "Frissítsd a baet a szinkronizálás folytatásához."
@@ -15038,7 +15038,7 @@ cs = "Přihlaste se k iCloudu v Nastavení systému, aby synchronizace mohla pok
 hr = "Prijavite se na iCloud u Postavkama sustava kako bi se sinkronizacija nastavila."
 zh-Hant = "請在「系統設定」中登入 iCloud 以繼續同步。"
 it = "Accedi a iCloud in Impostazioni di Sistema per continuare a sincronizzare."
-tr = "Eşitlemeye devam etmek için Sistem Ayarları'nda iCloud'da oturum açın."
+tr = "Eşitlemeye devam etmek için Sistem Ayarları’nda iCloud’da oturum açın."
 nl = "Meld je aan bij iCloud in Systeeminstellingen om te blijven synchroniseren."
 sk = "Prihláste sa do iCloudu v Nastaveniach systému, aby synchronizácia mohla pokračovať."
 hu = "Jelentkezz be az iCloudba a Rendszerbeállításokban a szinkronizálás folytatásához."
@@ -15119,7 +15119,7 @@ fi = "Tiedosto puuttuu tai on muuttunut. Palauta se ennalleen."
 
 [messages."core.sync.cause.disk_failed"]
 comment = "Why sync failed: reading or writing a file on this device failed for a reason that is neither a full disk nor a refused file; sync retries by itself."
-value = "bae couldn't read or write a file on this device. It will try again."
+value = "bae couldn’t read or write a file on this device. It will try again."
 
 [messages."core.sync.cause.disk_failed".translations]
 es = "bae no pudo leer ni escribir un archivo en este dispositivo. Volverá a intentarlo."
@@ -15153,7 +15153,7 @@ fi = "bae ei voinut lukea tai kirjoittaa tiedostoa tällä laitteella. Se yritt�
 [messages."core.sync.cause.disk_denied"]
 comment = "Why sync failed: the operating system refused bae a file it needs ({file} is its name)."
 args = { file = "Str" }
-value = "Couldn't read “{file}”: bae isn't allowed to open it."
+value = "Couldn’t read “{file}”: bae isn’t allowed to open it."
 
 [messages."core.sync.cause.disk_denied".translations]
 es = "No se pudo leer «{file}»: bae no tiene permiso para abrirlo."
@@ -15186,7 +15186,7 @@ fi = "Tiedostoa ”{file}” ei voitu lukea: bae ei saa avata sitä."
 
 [messages."core.sync.cause.disk_denied_unnamed"]
 comment = "Why sync failed: the operating system refused bae a file it needs, and no row names it."
-value = "bae isn't allowed to open a file it needs."
+value = "bae isn’t allowed to open a file it needs."
 
 [messages."core.sync.cause.disk_denied_unnamed".translations]
 es = "bae no tiene permiso para abrir un archivo que necesita."
@@ -15253,7 +15253,7 @@ fi = "{provider} palautti virheen: {detail}"
 
 [messages."core.sync.cause.change_damaged"]
 comment = "Why sync failed: a change another device sent is damaged."
-value = "A change from another device is damaged and can't be applied."
+value = "A change from another device is damaged and can’t be applied."
 
 [messages."core.sync.cause.change_damaged".translations]
 es = "Un cambio de otro dispositivo está dañado y no se puede aplicar."
@@ -15305,7 +15305,7 @@ cs = "V aplikaci bae se něco pokazilo."
 hr = "Nešto je pošlo po zlu u aplikaciji bae."
 zh-Hant = "bae 發生了問題。"
 it = "Qualcosa è andato storto in bae."
-tr = "bae'de bir şeyler ters gitti."
+tr = "bae’de bir şeyler ters gitti."
 nl = "Er is iets misgegaan in bae."
 sk = "V aplikácii bae sa niečo pokazilo."
 hu = "Hiba történt a baeben."
@@ -15353,7 +15353,7 @@ fi = "Pilvipalvelun tarjoaja pyysi odottamaan {until} asti. Synkronointi jatkuu 
 
 [messages."core.sync.retry.not_syncing"]
 comment = "Snackbar after the person pulled to refresh or tapped Retry Now: sync isn't running on this device, such as when no storage is set up or syncing was stopped, so nothing was refreshed."
-value = "Sync isn't running, so nothing was refreshed."
+value = "Sync isn’t running, so nothing was refreshed."
 
 [messages."core.sync.retry.not_syncing".translations]
 es = "La sincronización no está activa, así que no se actualizó nada."
@@ -16207,7 +16207,7 @@ fi = "Poistetaan tallennettuja palautuskoodeja…"
 
 [messages."core.library.setup_step.clearing_app_data"]
 comment = "Setting up a library: the line over its progress bar while bae deletes its own files on this device before it starts afresh."
-value = "Deleting bae's files on this device…"
+value = "Deleting bae’s files on this device…"
 
 [messages."core.library.setup_step.clearing_app_data".translations]
 es = "Eliminando los archivos de bae en este dispositivo…"
@@ -16339,7 +16339,7 @@ fi = "Yhdistetään pilvikotiisi…"
 
 [messages."core.library.closing_step.stopping_servers"]
 comment = "Closing a library on the desktop: the line shown while bae stops the servers it runs for the library, the music server other apps play from and the server AI assistants read the library through."
-value = "Stopping the library's servers…"
+value = "Stopping the library’s servers…"
 
 [messages."core.library.closing_step.stopping_servers".translations]
 es = "Deteniendo los servidores de la biblioteca…"
@@ -16570,7 +16570,7 @@ fi = "Poistutaan kirjastosta…"
 
 [messages."core.library.closing_step.deleting_files"]
 comment = "Removing the open library from this device: the line shown while bae deletes this device's settings and caches for the library, its last step."
-value = "Deleting this device's files…"
+value = "Deleting this device’s files…"
 
 [messages."core.library.closing_step.deleting_files".translations]
 es = "Eliminando los archivos de este dispositivo…"
@@ -16867,7 +16867,7 @@ fi = "Tarkistetaan pilvikotiasi…"
 
 [messages."core.library.storage_setup_step.detecting_settings"]
 comment = "Setting up S3 storage: the line over its progress bar while bae probes the service for the settings this location needs."
-value = "Detecting the service's settings…"
+value = "Detecting the service’s settings…"
 
 [messages."core.library.storage_setup_step.detecting_settings".translations]
 es = "Detectando la configuración del servicio…"
@@ -16904,7 +16904,7 @@ value = "Preparing iCloud…"
 
 [messages."core.library.storage_setup_step.preparing_zone".translations]
 es = "Preparando iCloud…"
-fr = "Préparation d'iCloud…"
+fr = "Préparation d’iCloud…"
 de = "iCloud wird vorbereitet…"
 pt-BR = "Preparando o iCloud…"
 ja = "iCloud を準備しています…"
@@ -16951,7 +16951,7 @@ pl = "Odczytywanie konta…"
 cs = "Načítá se účet…"
 hr = "Čitanje računa…"
 zh-Hant = "正在讀取帳號…"
-it = "Lettura dell'account…"
+it = "Lettura dell’account…"
 tr = "Hesap okunuyor…"
 nl = "Account wordt gelezen…"
 sk = "Načítava sa účet…"

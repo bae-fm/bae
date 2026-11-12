@@ -504,7 +504,7 @@ pub enum BridgeSyncCause {
     DeviceDiskFull,
     /// The keys bae saved on this device couldn't be read.
     DeviceKeysUnreadable,
-    /// bae couldn't read the library on this device.
+    /// bae couldn’t read the library on this device.
     LibraryUnreadable,
 }
 

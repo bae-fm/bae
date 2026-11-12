@@ -83,7 +83,7 @@ struct ShotElementListTests {
         let texts = list.elements.filter { $0.role == "text" }
         #expect(
             texts.compactMap(\.label) == [
-                "Couldn't remove “Home music”",
+                "Couldn’t remove “Home music”",
                 "Couldn’t reach the cloud. Check your connection and try again.",
             ],
             "\(json)"

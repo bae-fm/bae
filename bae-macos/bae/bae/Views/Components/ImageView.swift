@@ -178,7 +178,7 @@ struct ImagePlaceholderView: View {
             .buttonStyle(.plain)
             .help(
                 String(
-                    localized: "Couldn't load the image. Click to try again."
+                    localized: "Couldn’t load the image. Click to try again."
                 )
             )
             .accessibilityLabel(

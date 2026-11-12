@@ -28,6 +28,10 @@ refuses three full stops in a core string or any of its translations, and
 scripts/loc-english-skeleton.py refuses them in the macOS and Android
 catalogs, source and every locale.
 
+An apostrophe is the curly "’", never the straight "'" ("Couldn’t pin",
+"l’album"). The same two checks refuse the straight one, in a String Catalog
+key as in a value.
+
 ## The library and where it lives
 
 - **Library.** One catalog and its files. A synced library is kept in

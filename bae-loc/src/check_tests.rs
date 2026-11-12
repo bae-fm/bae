@@ -66,7 +66,7 @@ value = "oops"
 fn flags_a_translation_that_ends_a_sentence_twice() {
     let c = cat(r#"
 [messages."core.x"]
-value = "Reconnect to play this release. It isn't downloaded yet."
+value = "Reconnect to play this release. It isn’t downloaded yet."
 translations = { zh-Hans = "请重新连接以播放此发行版。。它尚未下载。" }
 "#);
     let errs = validate(&c).unwrap_err();
@@ -88,6 +88,33 @@ translations = { de = "Bucket wird geprüft..." }
             "core.x [de]: `...` is an ellipsis written as three full stops; write `…`",
         ]
     );
+}
+
+#[test]
+fn flags_a_straight_apostrophe() {
+    let c = cat(r#"
+[messages."core.x"]
+value = "It isn't downloaded"
+translations = { fr = "Il n'est pas téléchargé" }
+"#);
+    let errs = validate(&c).unwrap_err();
+    assert_eq!(
+        errs,
+        [
+            "core.x [en]: `'` is an apostrophe written as a straight quote; write `’`",
+            "core.x [fr]: `'` is an apostrophe written as a straight quote; write `’`",
+        ]
+    );
+}
+
+#[test]
+fn accepts_the_curly_apostrophe() {
+    let c = cat(r#"
+[messages."core.x"]
+value = "It isn’t downloaded"
+translations = { fr = "Il n’est pas téléchargé" }
+"#);
+    assert!(validate(&c).is_ok());
 }
 
 #[test]

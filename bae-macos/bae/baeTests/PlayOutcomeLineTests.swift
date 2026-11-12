@@ -25,7 +25,7 @@ struct PlayOutcomeLineTests {
             ])
             .shown?
             .line
-                == "2 tracks aren't in the library and were left out"
+                == "2 tracks aren’t in the library and were left out"
         )
         #expect(
             BridgePlayOutcome.playingWithoutReleases(releaseIds: ["rel-1"])

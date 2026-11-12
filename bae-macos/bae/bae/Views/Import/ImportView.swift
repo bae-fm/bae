@@ -121,7 +121,7 @@ struct ImportView: View {
     /// would wrongly say no folder is watched.
     private func failedState(_ failure: DisplayError) -> some View {
         Notice(
-            title: String(localized: "The import list couldn't be read"),
+            title: String(localized: "The import list couldn’t be read"),
             advice: nil,
             error: failure,
             look: .centered,
@@ -139,7 +139,7 @@ struct ImportView: View {
             catch {
                 if let failure = DisplayError(error)?
                     .rewording({
-                        String(localized: "Couldn't remove folder: \($0)")
+                        String(localized: "Couldn’t remove folder: \($0)")
                     })
                 {
                     uiStore.showError(failure)

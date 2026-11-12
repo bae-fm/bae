@@ -31,7 +31,7 @@ struct SyncStatusBlock: View {
         if status.unreadable {
             LabeledContent("Status") {
                 ToneDotValue(
-                    text: String(localized: "Couldn't read sync status"),
+                    text: String(localized: "Couldn’t read sync status"),
                     tone: .danger
                 )
             }
@@ -206,7 +206,7 @@ struct SyncFixButton: View {
             logger.warning("no app opened the folder's web address \(url)")
             error = DisplayError(
                 line: String(
-                    localized: "No app on this device opened the folder's page."
+                    localized: "No app on this device opened the folder’s page."
                 )
             )
         }

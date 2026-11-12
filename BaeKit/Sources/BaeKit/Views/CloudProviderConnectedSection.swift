@@ -83,7 +83,7 @@ public struct OpenFolderInBrowserRow: View {
             logger.warning("no app opened the folder's web address \(url)")
             openFailure = DisplayError(
                 line: String(
-                    localized: "No app on this device opened the folder's page."
+                    localized: "No app on this device opened the folder’s page."
                 )
             )
         }

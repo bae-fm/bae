@@ -241,20 +241,20 @@ extension BridgePaneFailure {
         case .import, .keepOwnDraft, .linkSharedAlbum, .unlink:
             return why
         case .readFileTags:
-            return String(localized: "Couldn't read file tags: \(why)")
+            return String(localized: "Couldn’t read file tags: \(why)")
         case .changeLookups:
             return String(
                 localized:
-                    "Couldn't change what identification looks up: \(why)"
+                    "Couldn’t change what identification looks up: \(why)"
             )
         case .changeSearchWords:
             return String(
                 localized:
-                    "Couldn't change what identification searches by: \(why)"
+                    "Couldn’t change what identification searches by: \(why)"
             )
         case .changeAgreements:
             return String(
-                localized: "Couldn't change what counts as an agreement: \(why)"
+                localized: "Couldn’t change what counts as an agreement: \(why)"
             )
         }
     }

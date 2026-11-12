@@ -71,8 +71,8 @@ struct DownloadRow: View {
         if case .failed(let error) = op.state {
             Notice(
                 title: op.kind == .pin
-                    ? String(localized: "Couldn't pin")
-                    : String(localized: "Couldn't make local"),
+                    ? String(localized: "Couldn’t pin")
+                    : String(localized: "Couldn’t make local"),
                 advice: nil,
                 error: DisplayError(line: error),
                 look: .quiet,

@@ -33,21 +33,21 @@ struct PaneFailureTests {
             Self.line(.changeLookups)
                 == String(
                     localized:
-                        "Couldn't change what identification looks up: \(Self.why)"
+                        "Couldn’t change what identification looks up: \(Self.why)"
                 )
         )
         #expect(
             Self.line(.changeSearchWords)
                 == String(
                     localized:
-                        "Couldn't change what identification searches by: \(Self.why)"
+                        "Couldn’t change what identification searches by: \(Self.why)"
                 )
         )
         #expect(
             Self.line(.changeAgreements)
                 == String(
                     localized:
-                        "Couldn't change what counts as an agreement: \(Self.why)"
+                        "Couldn’t change what counts as an agreement: \(Self.why)"
                 )
         )
     }
@@ -56,7 +56,7 @@ struct PaneFailureTests {
     func readingFileTagsSaysSo() {
         #expect(
             Self.line(.readFileTags)
-                == String(localized: "Couldn't read file tags: \(Self.why)")
+                == String(localized: "Couldn’t read file tags: \(Self.why)")
         )
     }
 }

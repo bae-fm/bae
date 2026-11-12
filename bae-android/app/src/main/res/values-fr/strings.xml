@@ -18,17 +18,17 @@
     <string name="sort_title">Titre</string>
     <string name="sort_artist">Artiste</string>
     <string name="sort_year">Année</string>
-    <string name="sort_date_added">Date d\'ajout</string>
+    <string name="sort_date_added">Date d’ajout</string>
     <string name="sort_ascending">Croissant</string>
     <string name="sort_descending">Décroissant</string>
     <string name="sort_by">Trier par</string>
-    <string name="library_empty_albums">Aucun album pour l\'instant</string>
+    <string name="library_empty_albums">Aucun album pour l’instant</string>
     <string name="library_load_failed">Impossible de charger votre bibliothèque.</string>
-    <string name="library_load_more_albums_failed">Impossible de charger plus d\'albums.</string>
-    <string name="library_load_more_artists_failed">Impossible de charger plus d\'artistes.</string>
+    <string name="library_load_more_albums_failed">Impossible de charger plus d’albums.</string>
+    <string name="library_load_more_artists_failed">Impossible de charger plus d’artistes.</string>
     <string name="library_load_more_composers_failed">Impossible de charger plus de compositeurs.</string>
     <string name="library">Bibliothèque</string>
-    <string name="album_not_in_library">Cet album n\'est plus dans votre bibliothèque.</string>
+    <string name="album_not_in_library">Cet album n’est plus dans votre bibliothèque.</string>
     <string name="shuffle">Lecture aléatoire</string>
     <string name="play_next">Lire à la suite</string>
     <string name="add_to_queue">Ajouter à la file</string>
@@ -90,9 +90,9 @@
         <item quantity="other">%1$d albums</item>
     </plurals>
     <string name="artist_detail_load_failed">Impossible de charger cet artiste.</string>
-    <string name="artist_detail_not_found">Détails de l\'artiste introuvables</string>
+    <string name="artist_detail_not_found">Détails de l’artiste introuvables</string>
     <string name="sort_name">Nom</string>
-    <string name="image_load_failed">Impossible de charger l\'image</string>
+    <string name="image_load_failed">Impossible de charger l’image</string>
     <string name="gallery_loading_image">Chargement de l’image…</string>
     <string name="settings_library">Bibliothèque</string>
     <string name="library_name_row">Nom</string>
@@ -115,7 +115,7 @@
     <string name="settings_resume_never">Jamais</string>
     <string name="settings_resume_after">Après %1$s</string>
     <string name="settings_restore_on_launch">Restaurer au lancement</string>
-    <string name="settings_restore_on_launch_help">Restaure la piste, la position, la file et le volume de la dernière session à l\'ouverture de l\'app.</string>
+    <string name="settings_restore_on_launch_help">Restaure la piste, la position, la file et le volume de la dernière session à l’ouverture de l’app.</string>
     <string name="settings_playback">Lecture</string>
     <string name="settings_about">À propos</string>
     <string name="settings_version">Version</string>
@@ -126,7 +126,7 @@
     <string name="settings_about_summary">Version %1$s</string>
     <plurals name="transfers_pins_summary">
         <item quantity="one">%1$d épinglage à la fois</item>
-        <item quantity="many">%1$d d\'épinglages à la fois</item>
+        <item quantity="many">%1$d d’épinglages à la fois</item>
         <item quantity="other">%1$d épinglages à la fois</item>
     </plurals>
     <string name="copy_code">Copier le code</string>
@@ -156,7 +156,7 @@
     <string name="settings_endpoint">Point de terminaison</string>
     <string name="settings_folder">Dossier</string>
     <string name="settings_open_in_browser">Ouvrir dans le navigateur</string>
-    <string name="settings_folder_no_app">Aucune application de cet appareil n\'a ouvert la page du dossier.</string>
+    <string name="settings_folder_no_app">Aucune application de cet appareil n’a ouvert la page du dossier.</string>
     <string name="settings_transfers">Transferts</string>
     <string name="transfers_wifi_only">Épingler en Wi-Fi uniquement</string>
     <string name="transfers_wifi_only_footer">Les sorties épinglées attendent le Wi-Fi. Lire une piste non épinglée utilise toujours les données mobiles.</string>
@@ -185,7 +185,7 @@
     <string name="join_request_confirmation">Numéro de confirmation</string>
     <string name="onboarding_add_device">Ajouter un appareil</string>
     <string name="onboarding_tagline">Votre musique, partout</string>
-    <string name="onboarding_camera_permission_required">L\'autorisation de la caméra est requise pour scanner des codes QR</string>
+    <string name="onboarding_camera_permission_required">L’autorisation de la caméra est requise pour scanner des codes QR</string>
     <string name="oauth_unconfigured">La connexion à l’espace cloud de cette bibliothèque n’est pas configurée sur cette version.</string>
     <string name="signing_in">Connexion…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
@@ -210,12 +210,12 @@
         <item quantity="other">%1$d fichiers</item>
     </plurals>
     <plurals name="queue_items_added">
-        <item quantity="one">%d piste ajoutée à la file d\'attente</item>
-        <item quantity="other">%d pistes ajoutées à la file d\'attente</item>
+        <item quantity="one">%d piste ajoutée à la file d’attente</item>
+        <item quantity="other">%d pistes ajoutées à la file d’attente</item>
     </plurals>
     <!-- Now-playing home-screen widget -->
     <string name="widget_label">bae</string>
-    <string name="widget_description">Commandes de lecture sur votre écran d\'accueil.</string>
+    <string name="widget_description">Commandes de lecture sur votre écran d’accueil.</string>
     <string name="widget_nothing_playing">Aucune lecture en cours</string>
     <string name="shortcut_resume_long">Reprendre la lecture</string>
     <string name="shortcut_search_long">Rechercher dans la bibliothèque</string>
@@ -225,7 +225,7 @@
     <string name="cast_receiver_type">Type</string>
     <string name="cast_receiver_model">Modèle</string>
     <string name="cast_receiver_address">Adresse</string>
-    <string name="cast_looking_for_devices">Recherche d\'appareils…</string>
+    <string name="cast_looking_for_devices">Recherche d’appareils…</string>
     <string name="cast_connecting">Connexion à %1$s…</string>
     <string name="cast_turn_off_title">Désactiver la diffusion ?</string>
     <string name="cast_turn_off_message">La diffusion vers %1$s sera interrompue.</string>
@@ -363,7 +363,7 @@
     <string name="members_add_device">Ajouter un appareil</string>
     <string name="add_device_title">Ajouter un appareil</string>
     <string name="add_device_added">Appareil ajouté : %1$s</string>
-    <string name="add_device_making_code">Création d\'un code pour votre nouvel appareil…</string>
+    <string name="add_device_making_code">Création d’un code pour votre nouvel appareil…</string>
     <string name="add_device_instructions">Sur le nouvel appareil, choisissez « Scanner un code » pour scanner ceci ou « Saisir un code » pour saisir :</string>
     <string name="invite_email">E-mail</string>
     <string name="invite_create">Créer l’invitation</string>

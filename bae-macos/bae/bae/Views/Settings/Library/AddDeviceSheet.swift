@@ -103,7 +103,7 @@ struct AddDeviceSheet: View {
 
             if share.qrCarriesS3Key {
                 Text(
-                    "The QR code also carries your S3 access key, so a device that scans it won't ask for the key."
+                    "The QR code also carries your S3 access key, so a device that scans it won’t ask for the key."
                 )
                 .themeText(.detail)
                 .foregroundStyle(.secondary)

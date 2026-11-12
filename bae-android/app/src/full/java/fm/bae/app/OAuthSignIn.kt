@@ -143,7 +143,7 @@ class OAuthSignIn private constructor(
                     logger.debug("assets/oauth-creds.json not bundled; provider sign-in unavailable")
                     return null
                 } catch (e: IOException) {
-                    throw IllegalStateException("Couldn't read oauth-creds.json: ${e.message}", e)
+                    throw IllegalStateException("Couldn’t read oauth-creds.json: ${e.message}", e)
                 }
             val root =
                 try {

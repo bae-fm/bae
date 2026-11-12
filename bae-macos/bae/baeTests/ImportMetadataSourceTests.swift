@@ -113,7 +113,7 @@ extension ImportMetadataSourceTests {
 
         #expect(
             recorder.errors.map(\.line) == [
-                "Couldn't save that change: Source changed"
+                "Couldn’t save that change: Source changed"
             ]
         )
         #expect(recorder.fileTagApplications.isEmpty)

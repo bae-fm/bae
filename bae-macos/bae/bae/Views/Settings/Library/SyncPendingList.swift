@@ -288,7 +288,7 @@ struct S3KeySheet: View {
                     TextField("Access key", text: $accessKey)
                     SecureField("Secret key", text: $secretKey)
                 } footer: {
-                    Text("Enter an access key for this library's bucket.")
+                    Text("Enter an access key for this library’s bucket.")
                 }
             }
             .formStyle(.grouped)

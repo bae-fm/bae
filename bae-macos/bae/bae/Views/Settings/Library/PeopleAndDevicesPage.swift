@@ -240,7 +240,7 @@ struct PeopleAndDevicesPage: View {
         }
         .alert(
             cutOffRetry?.reason == .deviceNotGone
-                ? "This device's removal hasn't reached this Mac yet"
+                ? "This device’s removal hasn’t reached this Mac yet"
                 : "This device is still syncing with the cloud",
             isPresented: Binding(
                 get: { cutOffRetry != nil },

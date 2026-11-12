@@ -10,12 +10,12 @@ extension BridgeDeviceStop {
         case .replaced:
             String(
                 localized:
-                    "A restore replaced this device's copy of the library."
+                    "A restore replaced this device’s copy of the library."
             )
         case .copied:
             String(
                 localized:
-                    "Another copy of this device's library is syncing as this device."
+                    "Another copy of this device’s library is syncing as this device."
             )
         case .memberKeysReplaced:
             String(

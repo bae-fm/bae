@@ -90,14 +90,14 @@ struct StorageStatusBand: View {
     private var failure: some View {
         if case .failed(let error) = release.downloadStatus {
             Notice(
-                title: String(localized: "Couldn't pin"),
+                title: String(localized: "Couldn’t pin"),
                 advice: nil,
                 error: DisplayError(line: error)
             )
         }
         if case .failed(let error) = release.makeLocal {
             Notice(
-                title: String(localized: "Couldn't make local"),
+                title: String(localized: "Couldn’t make local"),
                 advice: nil,
                 error: DisplayError(line: error)
             )

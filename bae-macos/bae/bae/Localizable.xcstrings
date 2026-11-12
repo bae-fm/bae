@@ -175,7 +175,7 @@
         }
       }
     },
-    "Every release of this album will be permanently deleted from your devices and the cloud. Original files in your folders won't be touched." : {
+    "Every release of this album will be permanently deleted from your devices and the cloud. Original files in your folders won’t be touched." : {
       "comment" : "Album grid and album detail: what deleting an album deletes and keeps",
       "localizations" : {
         "ar" : {
@@ -217,7 +217,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Every release of this album will be permanently deleted from your devices and the cloud. Original files in your folders won't be touched."
+            "value" : "Every release of this album will be permanently deleted from your devices and the cloud. Original files in your folders won’t be touched."
           }
         },
         "es" : {
@@ -927,7 +927,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible de charger l'image"
+            "value" : "Impossible de charger l’image"
           }
         },
         "he" : {
@@ -951,7 +951,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossibile caricare l'immagine"
+            "value" : "Impossibile caricare l’immagine"
           }
         },
         "ja" : {
@@ -1213,7 +1213,7 @@
         }
       }
     },
-    "Couldn't make local" : {
+    "Couldn’t make local" : {
       "comment" : "Storage Manager and album detail: a make-local the download queue could not finish; its error is in the help text",
       "localizations" : {
         "ar" : {
@@ -1243,7 +1243,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn't make local"
+            "value" : "Couldn’t make local"
           }
         },
         "de" : {
@@ -3149,7 +3149,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Création d'un code pour votre nouvel appareil…"
+            "value" : "Création d’un code pour votre nouvel appareil…"
           }
         },
         "he" : {
@@ -4788,7 +4788,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "iCloud Anahtar Zinciri'nde de bulunur."
+            "value" : "iCloud Anahtar Zinciri’nde de bulunur."
           }
         },
         "uk" : {
@@ -5304,7 +5304,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tüm cihazlarınızı kaybederseniz yeni bir cihazda bae'yi açın ve bunu taramak için Kod tara'yı, kodu yazmak için Kod gir'i seçin. Bu sayfaya ve bulutunuza erişimi olan herkes kitaplığınızı açabilir: özel bir yerde saklayın."
+            "value" : "Tüm cihazlarınızı kaybederseniz yeni bir cihazda bae’yi açın ve bunu taramak için Kod tara’yı, kodu yazmak için Kod gir’i seçin. Bu sayfaya ve bulutunuza erişimi olan herkes kitaplığınızı açabilir: özel bir yerde saklayın."
           }
         },
         "uk" : {
@@ -6005,7 +6005,7 @@
         }
       }
     },
-    "This device's removal hasn't reached this Mac yet" : {
+    "This device’s removal hasn’t reached this Mac yet" : {
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -6196,7 +6196,7 @@
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nøglen kan ikke bruge bucket'en. Giv den læse- og skriveadgang, eller brug en anden nøgle."
+            "value" : "Nøglen kan ikke bruge bucket’en. Giv den læse- og skriveadgang, eller brug en anden nøgle."
           }
         },
         "de" : {
@@ -6322,7 +6322,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bu anahtar bucket'ı kullanamıyor. Ona okuma ve yazma erişimi ver veya başka bir anahtar kullan."
+            "value" : "Bu anahtar bucket’ı kullanamıyor. Ona okuma ve yazma erişimi ver veya başka bir anahtar kullan."
           }
         },
         "uk" : {
@@ -6406,7 +6406,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cette clé n'a pas été acceptée. Vérifiez l'ID de la clé d'accès et la clé d'accès secrète."
+            "value" : "Cette clé n’a pas été acceptée. Vérifiez l’ID de la clé d’accès et la clé d’accès secrète."
           }
         },
         "he" : {
@@ -6519,7 +6519,7 @@
         }
       }
     },
-    "This release will be permanently deleted from your devices and the cloud. Original files in your folders won't be touched." : {
+    "This release will be permanently deleted from your devices and the cloud. Original files in your folders won’t be touched." : {
       "comment" : "Album detail: delete-release confirmation message",
       "localizations" : {
         "ar" : {
@@ -6561,7 +6561,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "This release will be permanently deleted from your devices and the cloud. Original files in your folders won't be touched."
+            "value" : "This release will be permanently deleted from your devices and the cloud. Original files in your folders won’t be touched."
           }
         },
         "es" : {
@@ -6943,7 +6943,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Usa ciò che queste pubblicazioni hanno in comune; lascia il resto com'è"
+            "value" : "Usa ciò che queste pubblicazioni hanno in comune; lascia il resto com’è"
           }
         },
         "ja" : {
@@ -7362,7 +7362,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Від'єднати"
+            "value" : "Від’єднати"
           }
         },
         "zh-Hans" : {
@@ -7900,7 +7900,7 @@
         }
       }
     },
-    "Keep my info; it's not in the catalogs" : {
+    "Keep my info; it’s not in the catalogs" : {
       "comment" : "Find online pane, a folder waiting on the person: what the None of these / Keep my info button does",
       "extractionState" : "manual",
       "localizations" : {
@@ -7943,7 +7943,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Keep my info; it's not in the catalogs"
+            "value" : "Keep my info; it’s not in the catalogs"
           }
         },
         "es" : {
@@ -7961,7 +7961,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Garder mes informations ; il n'est pas dans les catalogues"
+            "value" : "Garder mes informations ; il n’est pas dans les catalogues"
           }
         },
         "he" : {
@@ -8989,7 +8989,7 @@
         }
       }
     },
-    "The catalog doesn't list this release's tracks, so we couldn't check it fits." : {
+    "The catalog doesn’t list this release’s tracks, so we couldn’t check it fits." : {
       "comment" : "Find online pane, a folder waiting on the person: the one release found lists no tracks",
       "extractionState" : "manual",
       "localizations" : {
@@ -9032,7 +9032,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The catalog doesn't list this release's tracks, so we couldn't check it fits."
+            "value" : "The catalog doesn’t list this release’s tracks, so we couldn’t check it fits."
           }
         },
         "es" : {
@@ -9050,7 +9050,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Le catalogue ne liste pas les pistes de cette sortie, nous n'avons donc pas pu vérifier qu'elle correspond."
+            "value" : "Le catalogue ne liste pas les pistes de cette sortie, nous n’avons donc pas pu vérifier qu’elle correspond."
           }
         },
         "he" : {
@@ -9224,7 +9224,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aucun catalogue ne l'a."
+            "value" : "Aucun catalogue ne l’a."
           }
         },
         "he" : {
@@ -9398,7 +9398,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Votre dossier n'a ni identifiant de disque, ni code-barres, ni numéro de catalogue, ni noms avec lesquels chercher."
+            "value" : "Votre dossier n’a ni identifiant de disque, ni code-barres, ni numéro de catalogue, ni noms avec lesquels chercher."
           }
         },
         "he" : {
@@ -10670,7 +10670,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Erreur d'importation"
+            "value" : "Erreur d’importation"
           }
         },
         "he" : {
@@ -12086,7 +12086,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Importa automaticamente dopo l'identificazione"
+            "value" : "Importa automaticamente dopo l’identificazione"
           }
         },
         "ja" : {
@@ -14089,13 +14089,13 @@
         }
       }
     },
-    "Couldn't load the image. Click to try again." : {
+    "Couldn’t load the image. Click to try again." : {
       "comment" : "Cover image that failed to load: help tag on the placeholder, which loads the image again when clicked",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn't load the image. Click to try again."
+            "value" : "Couldn’t load the image. Click to try again."
           }
         },
         "ar" : {
@@ -14892,7 +14892,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Regio's"
+            "value" : "Regio’s"
           }
         },
         "pl" : {
@@ -23181,7 +23181,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Clé d'accès"
+            "value" : "Clé d’accès"
           }
         },
         "he" : {
@@ -24687,7 +24687,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ajoutez un dossier d'où importer de la musique"
+            "value" : "Ajoutez un dossier d’où importer de la musique"
           }
         },
         "he" : {
@@ -25319,7 +25319,7 @@
         }
       }
     },
-    "Use the release's album" : {
+    "Use the release’s album" : {
       "comment" : "Import pane: album picker's link that drops the picked album, so the import joins the album its release names",
       "localizations" : {
         "ar" : {
@@ -25349,7 +25349,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Use the release's album"
+            "value" : "Use the release’s album"
           }
         },
         "de" : {
@@ -25379,7 +25379,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Utiliser l'album de la parution"
+            "value" : "Utiliser l’album de la parution"
           }
         },
         "he" : {
@@ -25403,7 +25403,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Usa l'album della pubblicazione"
+            "value" : "Usa l’album della pubblicazione"
           }
         },
         "ja" : {
@@ -27282,7 +27282,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pochette de l'album"
+            "value" : "Pochette de l’album"
           }
         },
         "he" : {
@@ -27455,7 +27455,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Artiste de l'album"
+            "value" : "Artiste de l’album"
           }
         },
         "he" : {
@@ -27628,7 +27628,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Titre de l'album"
+            "value" : "Titre de l’album"
           }
         },
         "he" : {
@@ -27801,7 +27801,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Année de l'album"
+            "value" : "Année de l’album"
           }
         },
         "he" : {
@@ -28344,7 +28344,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Un'altra pubblicazione di questo album è già nella tua libreria"
+            "value" : "Un’altra pubblicazione di questo album è già nella tua libreria"
           }
         },
         "ja" : {
@@ -28493,7 +28493,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Clé d'API"
+            "value" : "Clé d’API"
           }
         },
         "he" : {
@@ -29012,7 +29012,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nom de l'artiste"
+            "value" : "Nom de l’artiste"
           }
         },
         "he" : {
@@ -29108,7 +29108,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ім'я виконавця"
+            "value" : "Ім’я виконавця"
           }
         },
         "zh-Hans" : {
@@ -30566,7 +30566,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "L'accès à la caméra est désactivé. Activez-le dans Réglages Système, ou collez le code ci-dessous."
+            "value" : "L’accès à la caméra est désactivé. Activez-le dans Réglages Système, ou collez le code ci-dessous."
           }
         },
         "he" : {
@@ -30590,7 +30590,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "L'accesso alla fotocamera è disattivato. Attivalo in Impostazioni di Sistema, oppure incolla il codice qui sotto."
+            "value" : "L’accesso alla fotocamera è disattivato. Attivalo in Impostazioni di Sistema, oppure incolla il codice qui sotto."
           }
         },
         "ja" : {
@@ -30656,7 +30656,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kamera erişimi kapalı. Sistem Ayarları'ndan aç veya kodu aşağıya yapıştır."
+            "value" : "Kamera erişimi kapalı. Sistem Ayarları’ndan aç veya kodu aşağıya yapıştır."
           }
         },
         "uk" : {
@@ -35236,7 +35236,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Copier l'ID de la bibliothèque"
+            "value" : "Copier l’ID de la bibliothèque"
           }
         },
         "he" : {
@@ -35326,7 +35326,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kitaplık ID'sini Kopyala"
+            "value" : "Kitaplık ID’sini Kopyala"
           }
         },
         "uk" : {
@@ -35755,7 +35755,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible de lire l'élément déposé"
+            "value" : "Impossible de lire l’élément déposé"
           }
         },
         "he" : {
@@ -35779,7 +35779,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossibile leggere l'elemento rilasciato"
+            "value" : "Impossibile leggere l’elemento rilasciato"
           }
         },
         "ja" : {
@@ -35868,7 +35868,7 @@
         }
       }
     },
-    "Couldn't add folder" : {
+    "Couldn’t add folder" : {
       "comment" : "Error context when adding a watched folder fails",
       "localizations" : {
         "ar" : {
@@ -35898,7 +35898,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn't add folder"
+            "value" : "Couldn’t add folder"
           }
         },
         "de" : {
@@ -35928,7 +35928,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible d'ajouter le dossier"
+            "value" : "Impossible d’ajouter le dossier"
           }
         },
         "he" : {
@@ -36041,7 +36041,7 @@
         }
       }
     },
-    "Couldn't change that track: %@" : {
+    "Couldn’t change that track: %@" : {
       "comment" : "Import mapping table: storing an edited track row failed; arg is the system error description",
       "localizations" : {
         "ar" : {
@@ -36071,7 +36071,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn't change that track: %@"
+            "value" : "Couldn’t change that track: %@"
           }
         },
         "de" : {
@@ -36214,7 +36214,7 @@
         }
       }
     },
-    "Couldn't change the cover: %@" : {
+    "Couldn’t change the cover: %@" : {
       "comment" : "Import pane: storing the chosen cover failed; arg is the system error description",
       "localizations" : {
         "ar" : {
@@ -36244,7 +36244,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn't change the cover: %@"
+            "value" : "Couldn’t change the cover: %@"
           }
         },
         "de" : {
@@ -36387,7 +36387,7 @@
         }
       }
     },
-    "Couldn't change what %@ describes: %@" : {
+    "Couldn’t change what %@ describes: %@" : {
       "comment" : "Import roles table: re-binding a track sheet failed; args are the sheet's file name and the system error description",
       "localizations" : {
         "ar" : {
@@ -36417,7 +36417,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn't change what %1$@ describes: %2$@"
+            "value" : "Couldn’t change what %1$@ describes: %2$@"
           }
         },
         "de" : {
@@ -36560,7 +36560,7 @@
         }
       }
     },
-    "Couldn't change what identification looks up: %@" : {
+    "Couldn’t change what identification looks up: %@" : {
       "comment" : "Import pane: storing what a candidate's identification looks up failed; arg is the system error description",
       "localizations" : {
         "ar" : {
@@ -36590,7 +36590,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn't change what identification looks up: %@"
+            "value" : "Couldn’t change what identification looks up: %@"
           }
         },
         "de" : {
@@ -36620,7 +36620,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible de modifier ce que l'identification recherche : %@"
+            "value" : "Impossible de modifier ce que l’identification recherche : %@"
           }
         },
         "he" : {
@@ -36644,7 +36644,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossibile cambiare cosa cerca l'identificazione: %@"
+            "value" : "Impossibile cambiare cosa cerca l’identificazione: %@"
           }
         },
         "ja" : {
@@ -36733,7 +36733,7 @@
         }
       }
     },
-    "Couldn't change what identification searches by: %@" : {
+    "Couldn’t change what identification searches by: %@" : {
       "comment" : "Import pane: storing the words a candidate's identification searches by failed; arg is the system error description",
       "localizations" : {
         "ar" : {
@@ -36763,7 +36763,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn't change what identification searches by: %@"
+            "value" : "Couldn’t change what identification searches by: %@"
           }
         },
         "de" : {
@@ -36793,7 +36793,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible de modifier les mots avec lesquels l'identification recherche : %@"
+            "value" : "Impossible de modifier les mots avec lesquels l’identification recherche : %@"
           }
         },
         "he" : {
@@ -36817,7 +36817,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossibile cambiare le parole con cui cerca l'identificazione: %@"
+            "value" : "Impossibile cambiare le parole con cui cerca l’identificazione: %@"
           }
         },
         "ja" : {
@@ -36906,7 +36906,7 @@
         }
       }
     },
-    "Couldn't change which disc %@ is: %@" : {
+    "Couldn’t change which disc %@ is: %@" : {
       "comment" : "Import mapping table: assigning a track sheet to one of the release's discs failed; args are the sheet's file name and the system error description",
       "localizations" : {
         "ar" : {
@@ -36936,7 +36936,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn't change which disc %1$@ is: %2$@"
+            "value" : "Couldn’t change which disc %1$@ is: %2$@"
           }
         },
         "de" : {
@@ -37079,7 +37079,7 @@
         }
       }
     },
-    "Couldn't copy MCP token: %@" : {
+    "Couldn’t copy MCP token: %@" : {
       "comment" : "Automation settings: token copy error; %@ is the system error",
       "localizations" : {
         "ar" : {
@@ -37109,7 +37109,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn't copy MCP token: %@"
+            "value" : "Couldn’t copy MCP token: %@"
           }
         },
         "de" : {
@@ -37252,7 +37252,7 @@
         }
       }
     },
-    "Couldn't list the libraries on this Mac" : {
+    "Couldn’t list the libraries on this Mac" : {
       "comment" : "Welcome screen callout title when discovering the libraries on this Mac fails",
       "localizations" : {
         "ar" : {
@@ -37282,7 +37282,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn't list the libraries on this Mac"
+            "value" : "Couldn’t list the libraries on this Mac"
           }
         },
         "de" : {
@@ -37402,7 +37402,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bu Mac'teki kitaplıklar listelenemedi"
+            "value" : "Bu Mac’teki kitaplıklar listelenemedi"
           }
         },
         "uk" : {
@@ -37425,7 +37425,7 @@
         }
       }
     },
-    "Couldn't re-check the Discogs key: %@" : {
+    "Couldn’t re-check the Discogs key: %@" : {
       "comment" : "Discogs settings: error re-validating the key; %@ is the system error",
       "localizations" : {
         "ar" : {
@@ -37455,7 +37455,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn't re-check the Discogs key: %@"
+            "value" : "Couldn’t re-check the Discogs key: %@"
           }
         },
         "de" : {
@@ -37598,7 +37598,7 @@
         }
       }
     },
-    "Couldn't read file tags: %@" : {
+    "Couldn’t read file tags: %@" : {
       "comment" : "Import search: shown on the row when reading the folder's audio file tags fails; %@ is the underlying reason",
       "localizations" : {
         "ar" : {
@@ -37628,7 +37628,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn't read file tags: %@"
+            "value" : "Couldn’t read file tags: %@"
           }
         },
         "de" : {
@@ -37771,7 +37771,7 @@
         }
       }
     },
-    "Couldn't read restore codes from your keychain" : {
+    "Couldn’t read restore codes from your keychain" : {
       "comment" : "Welcome screen callout title when the keychain recovery-code lookup fails",
       "localizations" : {
         "ar" : {
@@ -37801,7 +37801,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn't read restore codes from your keychain"
+            "value" : "Couldn’t read restore codes from your keychain"
           }
         },
         "de" : {
@@ -37927,7 +37927,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Не вдалося прочитати коди відновлення з вашої в'язки ключів"
+            "value" : "Не вдалося прочитати коди відновлення з вашої в’язки ключів"
           }
         },
         "zh-Hans" : {
@@ -37944,7 +37944,7 @@
         }
       }
     },
-    "Couldn't read the stored Discogs key: %@" : {
+    "Couldn’t read the stored Discogs key: %@" : {
       "comment" : "Discogs settings: error reading the stored key; %@ is the system error",
       "localizations" : {
         "ar" : {
@@ -37974,7 +37974,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn't read the stored Discogs key: %@"
+            "value" : "Couldn’t read the stored Discogs key: %@"
           }
         },
         "de" : {
@@ -38117,7 +38117,7 @@
         }
       }
     },
-    "Couldn't remove folder: %@" : {
+    "Couldn’t remove folder: %@" : {
       "comment" : "Error shown when removing a watched folder fails; %@ is the system error",
       "localizations" : {
         "ar" : {
@@ -38147,7 +38147,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn't remove folder: %@"
+            "value" : "Couldn’t remove folder: %@"
           }
         },
         "de" : {
@@ -38290,7 +38290,7 @@
         }
       }
     },
-    "Couldn't rotate MCP token: %@" : {
+    "Couldn’t rotate MCP token: %@" : {
       "comment" : "Automation settings: token rotation error; %@ is the system error",
       "localizations" : {
         "ar" : {
@@ -38320,7 +38320,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn't rotate MCP token: %@"
+            "value" : "Couldn’t rotate MCP token: %@"
           }
         },
         "de" : {
@@ -38463,7 +38463,7 @@
         }
       }
     },
-    "Couldn't save that change: %@" : {
+    "Couldn’t save that change: %@" : {
       "comment" : "Import pane: storing an edited metadata field failed; arg is the system error description",
       "localizations" : {
         "ar" : {
@@ -38493,7 +38493,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn't save that change: %@"
+            "value" : "Couldn’t save that change: %@"
           }
         },
         "de" : {
@@ -38636,7 +38636,7 @@
         }
       }
     },
-    "Couldn't save the Discogs key: %@" : {
+    "Couldn’t save the Discogs key: %@" : {
       "comment" : "Discogs settings: error saving the key; %@ is the system error",
       "localizations" : {
         "ar" : {
@@ -38666,7 +38666,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn't save the Discogs key: %@"
+            "value" : "Couldn’t save the Discogs key: %@"
           }
         },
         "de" : {
@@ -38696,7 +38696,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible d'enregistrer la clé Discogs : %@"
+            "value" : "Impossible d’enregistrer la clé Discogs : %@"
           }
         },
         "he" : {
@@ -38809,7 +38809,7 @@
         }
       }
     },
-    "Couldn't update MCP settings: %@" : {
+    "Couldn’t update MCP settings: %@" : {
       "comment" : "Automation settings: MCP config save error; %@ is the system error",
       "localizations" : {
         "ar" : {
@@ -38839,7 +38839,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn't update MCP settings: %@"
+            "value" : "Couldn’t update MCP settings: %@"
           }
         },
         "de" : {
@@ -40599,7 +40599,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Supprimer l'édition"
+            "value" : "Supprimer l’édition"
           }
         },
         "he" : {
@@ -40820,7 +40820,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Formaat '%@' verwijderen?"
+            "value" : "Formaat “%@” verwijderen?"
           }
         },
         "pl" : {
@@ -41470,7 +41470,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "מס' דיסק"
+            "value" : "מס׳ דיסק"
           }
         },
         "hr" : {
@@ -43887,7 +43887,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Échec de l'exportation"
+            "value" : "Échec de l’exportation"
           }
         },
         "he" : {
@@ -45098,7 +45098,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Échec du chargement des détails de l'édition : %@"
+            "value" : "Échec du chargement des détails de l’édition : %@"
           }
         },
         "he" : {
@@ -45122,7 +45122,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Caricamento dei dettagli dell'edizione non riuscito: %@"
+            "value" : "Caricamento dei dettagli dell’edizione non riuscito: %@"
           }
         },
         "ja" : {
@@ -45271,7 +45271,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Échec de la définition de l'édition principale"
+            "value" : "Échec de la définition de l’édition principale"
           }
         },
         "he" : {
@@ -47783,7 +47783,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Şimdi Çalan'a Git"
+            "value" : "Şimdi Çalan’a Git"
           }
         },
         "uk" : {
@@ -51671,7 +51671,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Échec de l'ouverture de la bibliothèque"
+            "value" : "Échec de l’ouverture de la bibliothèque"
           }
         },
         "he" : {
@@ -57207,7 +57207,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rien ici pour l'instant"
+            "value" : "Rien ici pour l’instant"
           }
         },
         "he" : {
@@ -58072,7 +58072,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ouvrez d'abord une bibliothèque"
+            "value" : "Ouvrez d’abord une bibliothèque"
           }
         },
         "he" : {
@@ -58245,7 +58245,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ouvrez d'abord une bibliothèque pour accéder aux réglages"
+            "value" : "Ouvrez d’abord une bibliothèque pour accéder aux réglages"
           }
         },
         "he" : {
@@ -58704,7 +58704,7 @@
         }
       }
     },
-    "Couldn't read this album's links on %@; it may also be listed separately." : {
+    "Couldn’t read this album’s links on %@; it may also be listed separately." : {
       "comment" : "Import album card: a source whose page linking this album to the other catalog could not be read; %@ is the source name",
       "localizations" : {
         "ar" : {
@@ -58746,7 +58746,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn't read this album's links on %@; it may also be listed separately."
+            "value" : "Couldn’t read this album’s links on %@; it may also be listed separately."
           }
         },
         "es" : {
@@ -64362,7 +64362,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fichiers de l'édition"
+            "value" : "Fichiers de l’édition"
           }
         },
         "he" : {
@@ -66348,7 +66348,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“%@” bu Mac'ten kaldırılsın mı?"
+            "value" : "“%@” bu Mac’ten kaldırılsın mı?"
           }
         },
         "uk" : {
@@ -68079,13 +68079,13 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "iCloud Anahtar Zinciri'nden geri yükle"
+            "value" : "iCloud Anahtar Zinciri’nden geri yükle"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Відновити з В'язки ключів iCloud"
+            "value" : "Відновити з В’язки ключів iCloud"
           }
         },
         "zh-Hans" : {
@@ -68185,7 +68185,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ripristina all'avvio"
+            "value" : "Ripristina all’avvio"
           }
         },
         "ja" : {
@@ -68357,7 +68357,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ripristina all'avvio"
+            "value" : "Ripristina all’avvio"
           }
         },
         "ja" : {
@@ -68447,7 +68447,7 @@
       },
       "comment" : "Menu bar Playback menu: restore the last session when bae opens"
     },
-    "Restores the last session's track, position, queue, and volume when the app opens." : {
+    "Restores the last session’s track, position, queue, and volume when the app opens." : {
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -68476,7 +68476,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Restores the last session's track, position, queue, and volume when the app opens."
+            "value" : "Restores the last session’s track, position, queue, and volume when the app opens."
           }
         },
         "de" : {
@@ -68506,7 +68506,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Restaure la piste, la position, la file et le volume de la dernière session à l'ouverture de l'app."
+            "value" : "Restaure la piste, la position, la file et le volume de la dernière session à l’ouverture de l’app."
           }
         },
         "he" : {
@@ -68530,7 +68530,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ripristina traccia, posizione, coda e volume dell'ultima sessione all'apertura dell'app."
+            "value" : "Ripristina traccia, posizione, coda e volume dell’ultima sessione all’apertura dell’app."
           }
         },
         "ja" : {
@@ -68851,7 +68851,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Réessayer l'import"
+            "value" : "Réessayer l’import"
           }
         },
         "he" : {
@@ -69114,7 +69114,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Finder'da göster"
+            "value" : "Finder’da göster"
           }
         },
         "uk" : {
@@ -69287,7 +69287,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kitaplığı Finder'da Göster"
+            "value" : "Kitaplığı Finder’da Göster"
           }
         },
         "uk" : {
@@ -70061,7 +70061,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Échec de l'enregistrement : %@"
+            "value" : "Échec de l’enregistrement : %@"
           }
         },
         "he" : {
@@ -71642,7 +71642,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Seleziona un'uscita"
+            "value" : "Seleziona un’uscita"
           }
         },
         "ja" : {
@@ -77782,7 +77782,7 @@
         }
       }
     },
-    "The import list couldn't be read" : {
+    "The import list couldn’t be read" : {
       "comment" : "Import tab: shown in place of the list when the import list query itself failed — nothing is known, including whether any folder is watched.",
       "localizations" : {
         "ar" : {
@@ -77812,7 +77812,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The import list couldn't be read"
+            "value" : "The import list couldn’t be read"
           }
         },
         "de" : {
@@ -77955,7 +77955,7 @@
         }
       }
     },
-    "This library isn't synced, so it will be deleted for good. Your audio files stay in their folders." : {
+    "This library isn’t synced, so it will be deleted for good. Your audio files stay in their folders." : {
       "comment" : "Library deletion: body of the confirmation for a library that was never synced, and the Library settings footer for it",
       "localizations" : {
         "ar" : {
@@ -77997,7 +77997,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "This library isn't synced, so it will be deleted for good. Your audio files stay in their folders."
+            "value" : "This library isn’t synced, so it will be deleted for good. Your audio files stay in their folders."
           }
         },
         "es" : {
@@ -78015,7 +78015,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cette bibliothèque n'est pas synchronisée, elle sera donc supprimée définitivement. Vos fichiers audio restent dans leurs dossiers."
+            "value" : "Cette bibliothèque n’est pas synchronisée, elle sera donc supprimée définitivement. Vos fichiers audio restent dans leurs dossiers."
           }
         },
         "he" : {
@@ -79578,7 +79578,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "מס' רצועה"
+            "value" : "מס׳ רצועה"
           }
         },
         "hr" : {
@@ -82166,7 +82166,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nom d'utilisateur"
+            "value" : "Nom d’utilisateur"
           }
         },
         "he" : {
@@ -82262,7 +82262,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ім'я користувача"
+            "value" : "Ім’я користувача"
           }
         },
         "zh-Hans" : {
@@ -82858,7 +82858,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "En attente d'identification"
+            "value" : "En attente d’identification"
           }
         },
         "he" : {
@@ -83031,7 +83031,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "En attente d'importation"
+            "value" : "En attente d’importation"
           }
         },
         "he" : {
@@ -84613,7 +84613,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Trascina qui un'immagine o fai clic per scegliere"
+            "value" : "Trascina qui un’immagine o fai clic per scegliere"
           }
         },
         "ja" : {
@@ -85800,7 +85800,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aucune correspondance. Essayez d'autres termes."
+            "value" : "Aucune correspondance. Essayez d’autres termes."
           }
         },
         "he" : {
@@ -89544,7 +89544,7 @@
         }
       }
     },
-    "Couldn't change what counts as an agreement: %@" : {
+    "Couldn’t change what counts as an agreement: %@" : {
       "comment" : "Import pane: storing which catalog numbers count as agreements failed; arg is the system error description",
       "localizations" : {
         "ar" : {
@@ -89574,7 +89574,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn't change what counts as an agreement: %@"
+            "value" : "Couldn’t change what counts as an agreement: %@"
           }
         },
         "de" : {
@@ -91972,7 +91972,7 @@
         }
       }
     },
-    "No ISRC in the files' tags" : {
+    "No ISRC in the files’ tags" : {
       "comment" : "Find online band: help on the ISRC chip when no audio file's tags carry one",
       "extractionState" : "manual",
       "localizations" : {
@@ -92015,7 +92015,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No ISRC in the files' tags"
+            "value" : "No ISRC in the files’ tags"
           }
         },
         "es" : {
@@ -92817,7 +92817,7 @@
         }
       }
     },
-    "Couldn't remove the library" : {
+    "Couldn’t remove the library" : {
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -92983,7 +92983,7 @@
         }
       }
     },
-    "Couldn't remove “%@”" : {
+    "Couldn’t remove “%@”" : {
       "comment" : "Library removal: title of the alert when the count before it, or the removal, failed. %@ is the library's name",
       "localizations" : {
         "ar" : {
@@ -93025,7 +93025,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn't remove “%@”"
+            "value" : "Couldn’t remove “%@”"
           }
         },
         "es" : {
@@ -93986,7 +93986,7 @@
         }
       }
     },
-    "Enter an access key for this library's bucket." : {
+    "Enter an access key for this library’s bucket." : {
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -94129,7 +94129,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bu kitaplığın bucket'ı için bir erişim anahtarı girin."
+            "value" : "Bu kitaplığın bucket’ı için bir erişim anahtarı girin."
           }
         },
         "uk" : {
@@ -97284,7 +97284,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "iCloud Anahtar Zinciri'nde kayıtlı kodla geri yükleyin."
+            "value" : "iCloud Anahtar Zinciri’nde kayıtlı kodla geri yükleyin."
           }
         },
         "uk" : {
@@ -99123,7 +99123,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bu geri yükleme kodu artık iCloud Anahtar Zinciri'nde kayıtlı değil."
+            "value" : "Bu geri yükleme kodu artık iCloud Anahtar Zinciri’nde kayıtlı değil."
           }
         },
         "uk" : {
@@ -99484,7 +99484,7 @@
         }
       }
     },
-    "You'll sign in to %@ in your browser." : {
+    "You’ll sign in to %@ in your browser." : {
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -99816,12 +99816,12 @@
         }
       }
     },
-    "Couldn't read oauth-creds.json: %@" : {
+    "Couldn’t read oauth-creds.json: %@" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn't read oauth-creds.json: %@"
+            "value" : "Couldn’t read oauth-creds.json: %@"
           }
         },
         "es" : {
@@ -100838,7 +100838,7 @@
         }
       }
     },
-    "The QR code also carries your S3 access key, so a device that scans it won't ask for the key." : {
+    "The QR code also carries your S3 access key, so a device that scans it won’t ask for the key." : {
       "comment" : "Add a device sheet: the QR code shown on the person's own device also carries their S3 key",
       "extractionState" : "manual",
       "localizations" : {
@@ -102182,7 +102182,7 @@
         }
       }
     },
-    "This library can't be opened, so any changes on this Mac that weren't sent are lost. Its copy on this Mac is deleted; if the library is kept in the cloud, it stays there." : {
+    "This library can’t be opened, so any changes on this Mac that weren’t sent are lost. Its copy on this Mac is deleted; if the library is kept in the cloud, it stays there." : {
       "comment" : "Remove-library confirmation for a library that can't open: what it hasn't sent can't be counted and is lost, and only this Mac's copy is deleted.",
       "localizations" : {
         "ar" : {
@@ -102224,7 +102224,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "This library can't be opened, so any changes on this Mac that weren't sent are lost. Its copy on this Mac is deleted; if the library is kept in the cloud, it stays there."
+            "value" : "This library can’t be opened, so any changes on this Mac that weren’t sent are lost. Its copy on this Mac is deleted; if the library is kept in the cloud, it stays there."
           }
         },
         "es" : {
@@ -102332,7 +102332,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bu kitaplık açılamıyor, bu nedenle bu Mac'te gönderilmemiş tüm değişiklikler kaybolur. Bu Mac'teki kopyası silinir; kitaplık bulutta tutuluyorsa orada kalır."
+            "value" : "Bu kitaplık açılamıyor, bu nedenle bu Mac’te gönderilmemiş tüm değişiklikler kaybolur. Bu Mac’teki kopyası silinir; kitaplık bulutta tutuluyorsa orada kalır."
           }
         },
         "uk" : {
@@ -110832,7 +110832,7 @@
         }
       }
     },
-    "You'll also need your S3 access key and secret." : {
+    "You’ll also need your S3 access key and secret." : {
       "comment" : "Settings, Restore code section, S3 libraries only: the code alone doesn't open the bucket.",
       "localizations" : {
         "ar" : {
@@ -110874,7 +110874,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "You'll also need your S3 access key and secret."
+            "value" : "You’ll also need your S3 access key and secret."
           }
         },
         "es" : {
@@ -111524,7 +111524,7 @@
         }
       }
     },
-    "This removes the restore code for “%@” from iCloud Keychain on all your Apple devices. It doesn't delete the library, or anything on this Mac or in the cloud." : {
+    "This removes the restore code for “%@” from iCloud Keychain on all your Apple devices. It doesn’t delete the library, or anything on this Mac or in the cloud." : {
       "comment" : "Welcome screen: body of the alert confirming deletion of a saved restore code; %@ is the library's name",
       "localizations" : {
         "ar" : {
@@ -111566,7 +111566,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "This removes the restore code for “%@” from iCloud Keychain on all your Apple devices. It doesn't delete the library, or anything on this Mac or in the cloud."
+            "value" : "This removes the restore code for “%@” from iCloud Keychain on all your Apple devices. It doesn’t delete the library, or anything on this Mac or in the cloud."
           }
         },
         "es" : {
@@ -111620,7 +111620,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "모든 Apple 기기의 iCloud 키체인에서 '%@'의 복원 코드를 제거합니다. 라이브러리나 이 Mac 또는 클라우드에 있는 항목은 삭제되지 않습니다."
+            "value" : "모든 Apple 기기의 iCloud 키체인에서 “%@”의 복원 코드를 제거합니다. 라이브러리나 이 Mac 또는 클라우드에 있는 항목은 삭제되지 않습니다."
           }
         },
         "nb" : {
@@ -111674,7 +111674,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bu işlem, “%@” için geri yükleme kodunu tüm Apple cihazlarınızdaki iCloud Anahtar Zinciri'nden kaldırır. Kitaplığı veya bu Mac'teki ya da buluttaki hiçbir şeyi silmez."
+            "value" : "Bu işlem, “%@” için geri yükleme kodunu tüm Apple cihazlarınızdaki iCloud Anahtar Zinciri’nden kaldırır. Kitaplığı veya bu Mac’teki ya da buluttaki hiçbir şeyi silmez."
           }
         },
         "uk" : {
@@ -111697,7 +111697,7 @@
         }
       }
     },
-    "Couldn't delete the restore code" : {
+    "Couldn’t delete the restore code" : {
       "comment" : "Welcome screen callout title when deleting a restore code saved in iCloud Keychain fails",
       "localizations" : {
         "ar" : {
@@ -111739,7 +111739,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn't delete the restore code"
+            "value" : "Couldn’t delete the restore code"
           }
         },
         "es" : {
@@ -111870,13 +111870,13 @@
         }
       }
     },
-    "Restore code can't be used" : {
+    "Restore code can’t be used" : {
       "comment" : "Welcome screen: title of a restore code row in the iCloud Keychain list that bae can't restore from",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Restore code can't be used"
+            "value" : "Restore code can’t be used"
           }
         },
         "ar" : {
@@ -112043,13 +112043,13 @@
         }
       }
     },
-    "Saved in a format bae can't read" : {
+    "Saved in a format bae can’t read" : {
       "comment" : "Saved restore code list: why a code can't be used — it was saved in an older or damaged format",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Saved in a format bae can't read"
+            "value" : "Saved in a format bae can’t read"
           }
         },
         "ar" : {
@@ -112193,7 +112193,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae'nin okuyamadığı bir biçimde kaydedilmiş"
+            "value" : "bae’nin okuyamadığı bir biçimde kaydedilmiş"
           }
         },
         "uk" : {
@@ -112300,7 +112300,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Salvato per un'altra libreria"
+            "value" : "Salvato per un’altra libreria"
           }
         },
         "ja" : {
@@ -112562,13 +112562,13 @@
         }
       }
     },
-    "This removes the restore code from iCloud Keychain on all your Apple devices. It doesn't delete the library, or anything on this Mac or in the cloud." : {
+    "This removes the restore code from iCloud Keychain on all your Apple devices. It doesn’t delete the library, or anything on this Mac or in the cloud." : {
       "comment" : "Welcome screen: message of the alert confirming deletion of a saved restore code that can't be used, so has no library name",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "This removes the restore code from iCloud Keychain on all your Apple devices. It doesn't delete the library, or anything on this Mac or in the cloud."
+            "value" : "This removes the restore code from iCloud Keychain on all your Apple devices. It doesn’t delete the library, or anything on this Mac or in the cloud."
           }
         },
         "ar" : {
@@ -112712,7 +112712,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bu işlem, geri yükleme kodunu tüm Apple cihazlarınızdaki iCloud Anahtar Zinciri'nden kaldırır. Kitaplığı veya bu Mac'teki ya da buluttaki hiçbir şeyi silmez."
+            "value" : "Bu işlem, geri yükleme kodunu tüm Apple cihazlarınızdaki iCloud Anahtar Zinciri’nden kaldırır. Kitaplığı veya bu Mac’teki ya da buluttaki hiçbir şeyi silmez."
           }
         },
         "uk" : {
@@ -113640,7 +113640,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Інше ім'я"
+            "value" : "Інше ім’я"
           }
         },
         "zh-Hans" : {
@@ -113890,7 +113890,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Modifier l'édition"
+            "value" : "Modifier l’édition"
           }
         },
         "he" : {
@@ -118562,7 +118562,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Supprimer l'album…"
+            "value" : "Supprimer l’album…"
           }
         },
         "he" : {
@@ -118735,7 +118735,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Supprimer l'album"
+            "value" : "Supprimer l’album"
           }
         },
         "he" : {
@@ -118844,174 +118844,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "刪除專輯"
-          }
-        }
-      }
-    },
-    "Couldn't read sync status" : {
-      "comment" : "The sync status line when reading the sync status failed; the error shows under it.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "تعذّرت قراءة حالة المزامنة"
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Състоянието на синхронизирането не можа да бъде прочетено"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Stav synchronizace nelze načíst"
-          }
-        },
-        "da" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Synkroniseringsstatus kunne ikke læses"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Synchronisierungsstatus konnte nicht gelesen werden"
-          }
-        },
-        "el" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Δεν ήταν δυνατή η ανάγνωση της κατάστασης συγχρονισμού"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No se pudo leer el estado de la sincronización"
-          }
-        },
-        "fi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Synkronoinnin tilaa ei voitu lukea"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Impossible de lire l’état de la synchronisation"
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "לא ניתן לקרוא את מצב הסנכרון"
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nije moguće pročitati stanje sinkronizacije"
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "A szinkronizálás állapota nem olvasható"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Impossibile leggere lo stato della sincronizzazione"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "同期の状態を読み取れませんでした"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "동기화 상태를 읽을 수 없음"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kunne ikke lese synkroniseringsstatus"
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Synchronisatiestatus kan niet worden gelezen"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nie można odczytać stanu synchronizacji"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Não foi possível ler o status da sincronização"
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Não foi possível ler o estado da sincronização"
-          }
-        },
-        "ro" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Starea sincronizării nu a putut fi citită"
-          }
-        },
-        "sk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Stav synchronizácie sa nepodarilo načítať"
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Det gick inte att läsa synkroniseringsstatus"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Eşitleme durumu okunamadı"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Не вдалося прочитати стан синхронізації"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "无法读取同步状态"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "無法讀取同步狀態"
           }
         }
       }
@@ -119180,6 +119012,174 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "無法讀取此資料庫的雲端家園。"
+          }
+        }
+      }
+    },
+    "Couldn’t read sync status" : {
+      "comment" : "The sync status line when reading the sync status failed; the error shows under it.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تعذّرت قراءة حالة المزامنة"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Състоянието на синхронизирането не можа да бъде прочетено"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stav synchronizace nelze načíst"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Synkroniseringsstatus kunne ikke læses"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Synchronisierungsstatus konnte nicht gelesen werden"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Δεν ήταν δυνατή η ανάγνωση της κατάστασης συγχρονισμού"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo leer el estado de la sincronización"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Synkronoinnin tilaa ei voitu lukea"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible de lire l’état de la synchronisation"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לא ניתן לקרוא את מצב הסנכרון"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nije moguće pročitati stanje sinkronizacije"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A szinkronizálás állapota nem olvasható"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossibile leggere lo stato della sincronizzazione"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "同期の状態を読み取れませんでした"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "동기화 상태를 읽을 수 없음"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kunne ikke lese synkroniseringsstatus"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Synchronisatiestatus kan niet worden gelezen"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nie można odczytać stanu synchronizacji"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não foi possível ler o status da sincronização"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não foi possível ler o estado da sincronização"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Starea sincronizării nu a putut fi citită"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stav synchronizácie sa nepodarilo načítať"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Det gick inte att läsa synkroniseringsstatus"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eşitleme durumu okunamadı"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не вдалося прочитати стан синхронізації"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法读取同步状态"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無法讀取同步狀態"
           }
         }
       }
@@ -119670,7 +119670,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "OneDrive'ınızdaki klasörler okunuyor…"
+            "value" : "OneDrive’ınızdaki klasörler okunuyor…"
           }
         },
         "uk" : {
@@ -122257,7 +122257,7 @@
         }
       }
     },
-    "Your profile couldn't be made. %@" : {
+    "Your profile couldn’t be made. %@" : {
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -122423,7 +122423,7 @@
         }
       }
     },
-    "The account that owns the library's cloud home can't be removed." : {
+    "The account that owns the library’s cloud home can’t be removed." : {
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -123419,7 +123419,7 @@
         }
       }
     },
-    "That person's keys were replaced in the meantime." : {
+    "That person’s keys were replaced in the meantime." : {
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -123585,7 +123585,7 @@
         }
       }
     },
-    "This device isn't allowed to make that change." : {
+    "This device isn’t allowed to make that change." : {
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -125753,7 +125753,7 @@
         }
       }
     },
-    "A restore replaced this device's copy of the library." : {
+    "A restore replaced this device’s copy of the library." : {
       "comment" : "Why a change this device asked for was never made: restoring the library put another copy in this device's place.",
       "localizations" : {
         "ar" : {
@@ -125920,7 +125920,7 @@
         }
       }
     },
-    "Another copy of this device's library is syncing as this device." : {
+    "Another copy of this device’s library is syncing as this device." : {
       "comment" : "Why a change this device asked for was never made here: a copy of this device's library, such as one moved to another computer, syncs under this device's identity. That copy may still make the change.",
       "localizations" : {
         "ar" : {
@@ -127103,7 +127103,7 @@
         }
       }
     },
-    "No app on this device opened the folder's page." : {
+    "No app on this device opened the folder’s page." : {
       "comment" : "Sync settings: shown when Open in browser found no app to open the folder's web address",
       "localizations" : {
         "ar" : {
@@ -127157,7 +127157,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aucune application de cet appareil n'a ouvert la page du dossier."
+            "value" : "Aucune application de cet appareil n’a ouvert la page du dossier."
           }
         },
         "he" : {
@@ -127847,7 +127847,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ID de la clé d'accès"
+            "value" : "ID de la clé d’accès"
           }
         },
         "he" : {
@@ -128021,7 +128021,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Clé d'accès secrète"
+            "value" : "Clé d’accès secrète"
           }
         },
         "he" : {
@@ -128828,7 +128828,7 @@
         }
       }
     },
-    "Choose where this library is kept. Everything is encrypted on this Mac before it's uploaded." : {
+    "Choose where this library is kept. Everything is encrypted on this Mac before it’s uploaded." : {
       "comment" : "Set up sync's sheet: the line above the list of storage providers.",
       "localizations" : {
         "ar" : {
@@ -128870,7 +128870,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Choose where this library is kept. Everything is encrypted on this Mac before it's uploaded."
+            "value" : "Choose where this library is kept. Everything is encrypted on this Mac before it’s uploaded."
           }
         },
         "es" : {
@@ -128978,7 +128978,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bu kitaplığın nerede saklanacağını seçin. Her şey yüklenmeden önce bu Mac'te şifrelenir."
+            "value" : "Bu kitaplığın nerede saklanacağını seçin. Her şey yüklenmeden önce bu Mac’te şifrelenir."
           }
         },
         "uk" : {
@@ -129151,7 +129151,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bu Mac'te oturum açılmış Apple Hesabı'nı kullanır."
+            "value" : "Bu Mac’te oturum açılmış Apple Hesabı’nı kullanır."
           }
         },
         "uk" : {
@@ -129324,7 +129324,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dropbox'ınızdaki paylaşılan bir klasör."
+            "value" : "Dropbox’ınızdaki paylaşılan bir klasör."
           }
         },
         "uk" : {
@@ -129497,7 +129497,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "OneDrive'ınızdaki bir klasör."
+            "value" : "OneDrive’ınızdaki bir klasör."
           }
         },
         "uk" : {
@@ -129693,7 +129693,7 @@
         }
       }
     },
-    "This library's cloud home will be bae's space in iCloud, using the Apple Account this Mac is signed in to." : {
+    "This library’s cloud home will be bae’s space in iCloud, using the Apple Account this Mac is signed in to." : {
       "comment" : "Set up sync's iCloud screen: what choosing iCloud does.",
       "localizations" : {
         "ar" : {
@@ -129717,7 +129717,7 @@
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dette biblioteks skyhjem bliver bae's område i iCloud med den Apple-konto, som denne Mac er logget ind på."
+            "value" : "Dette biblioteks skyhjem bliver bae’s område i iCloud med den Apple-konto, som denne Mac er logget ind på."
           }
         },
         "de" : {
@@ -129735,7 +129735,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "This library's cloud home will be bae's space in iCloud, using the Apple Account this Mac is signed in to."
+            "value" : "This library’s cloud home will be bae’s space in iCloud, using the Apple Account this Mac is signed in to."
           }
         },
         "es" : {
@@ -129843,7 +129843,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bu kitaplığın bulut evi, bu Mac'te oturum açılmış Apple Hesabı kullanılarak bae'nin iCloud'daki alanı olacak."
+            "value" : "Bu kitaplığın bulut evi, bu Mac’te oturum açılmış Apple Hesabı kullanılarak bae’nin iCloud’daki alanı olacak."
           }
         },
         "uk" : {
@@ -134660,7 +134660,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Finder'da göster"
+            "value" : "Finder’da göster"
           }
         },
         "uk" : {
@@ -135186,7 +135186,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Усі в бібліотеці бачать це ім'я."
+            "value" : "Усі в бібліотеці бачать це ім’я."
           }
         },
         "zh-Hans" : {
@@ -135700,7 +135700,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bu kitaplık yalnızca bu Mac'te."
+            "value" : "Bu kitaplık yalnızca bu Mac’te."
           }
         },
         "uk" : {
@@ -137883,7 +137883,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bu Mac'ten kaldır…"
+            "value" : "Bu Mac’ten kaldır…"
           }
         },
         "nl" : {
@@ -140036,13 +140036,13 @@
         }
       }
     },
-    "Couldn't pin" : {
+    "Couldn’t pin" : {
       "comment" : "Storage state and notice: a pin the download queue could not finish; its error is behind Details or in the help text",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn't pin"
+            "value" : "Couldn’t pin"
           }
         },
         "ar" : {
@@ -143065,7 +143065,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Scegli un'altra libreria o ripristinala con “Inserisci un codice”."
+            "value" : "Scegli un’altra libreria o ripristinala con “Inserisci un codice”."
           }
         },
         "ja" : {
@@ -144172,7 +144172,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hem MusicBrainz'de hem Discogs'ta aramak, bae'nin albümlerinizin daha fazlasını otomatik olarak tanımasına yardımcı olur."
+            "value" : "Hem MusicBrainz’de hem Discogs’ta aramak, bae’nin albümlerinizin daha fazlasını otomatik olarak tanımasına yardımcı olur."
           }
         },
         "uk" : {
@@ -145210,7 +145210,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Anahtarınız bu Mac'in anahtar zincirinde saklanır."
+            "value" : "Anahtarınız bu Mac’in anahtar zincirinde saklanır."
           }
         },
         "uk" : {
@@ -148622,7 +148622,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Extra's"
+            "value" : "Extra’s"
           }
         },
         "pl" : {
@@ -149375,7 +149375,7 @@
         }
       }
     },
-    "There's no space left on this Mac. Free some space and bae will try again." : {
+    "There’s no space left on this Mac. Free some space and bae will try again." : {
       "comment" : "Sync failed: the Mac's disk is full; bae retries once there is room.",
       "extractionState" : "manual",
       "localizations" : {
@@ -149418,7 +149418,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "There's no space left on this Mac. Free some space and bae will try again."
+            "value" : "There’s no space left on this Mac. Free some space and bae will try again."
           }
         },
         "es" : {
@@ -149723,7 +149723,7 @@
         }
       }
     },
-    "bae couldn't read the library on this Mac." : {
+    "bae couldn’t read the library on this Mac." : {
       "comment" : "Sync failed: the library's database on this Mac couldn't be read.",
       "extractionState" : "manual",
       "localizations" : {
@@ -149766,7 +149766,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae couldn't read the library on this Mac."
+            "value" : "bae couldn’t read the library on this Mac."
           }
         },
         "es" : {

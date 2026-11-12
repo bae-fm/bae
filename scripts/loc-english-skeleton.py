@@ -216,7 +216,8 @@ GLOSSARY_NOUN_ENDINGS = {
 }
 GLUED_MORPHOLOGY_LOCALES = tuple(GLOSSARY_NOUN_ENDINGS)
 
-NON_ASCII_WORD_RE = re.compile(r"\b\w*[^\x00-\x7f]\w*(ing|ed|s)\b", re.UNICODE)
+# The curly apostrophe is non-ASCII but not a foreign letter ("Regio’s").
+NON_ASCII_WORD_RE = re.compile(r"\b\w*[^\x00-\x7f\u2019]\w*(ing|ed|s)\b", re.UNICODE)
 GLOSSARY_NOUN_ENDING_RE = re.compile(
     r"\b\w*("
     + "|".join(sorted({e for es in GLOSSARY_NOUN_ENDINGS.values() for e in es}))
@@ -494,6 +495,32 @@ def print_three_dots(label, found):
     return len(found)
 
 
+# An apostrophe is the curly "’" in the source and every translation
+# (spec/words.md "Punctuation"); the straight "'" never stands for it.
+STRAIGHT_APOSTROPHE = "'"
+
+
+def straight_apostrophe_values(leaves):
+    """Every (locale, key, value) that writes an apostrophe as "'", the key
+    itself included: a String Catalog's key is its English source."""
+    found = set()
+    for key, _form, en_value, values in leaves:
+        if STRAIGHT_APOSTROPHE in key or STRAIGHT_APOSTROPHE in en_value:
+            found.add(("en", key, en_value if STRAIGHT_APOSTROPHE in en_value else key))
+        for locale, value in values.items():
+            if STRAIGHT_APOSTROPHE in value:
+                found.add((locale, key, value))
+    return sorted(found)
+
+
+def print_straight_apostrophes(label, found):
+    if found:
+        print(f"=== {label}: {len(found)} value(s) writing an apostrophe as \"'\" ===")
+        for locale, key, value in found:
+            print(f"  [{locale}] {key!r}: {value!r}")
+    return len(found)
+
+
 def print_dashed(label, dashed):
     if dashed:
         print(f"=== {label}: {len(dashed)} English source(s) with a sentence dash ===")
@@ -529,6 +556,9 @@ def main():
 
         total_gating_failures += print_dashed(label, dashed_sources(leaves))
         total_gating_failures += print_three_dots(label, three_dot_values(leaves))
+        total_gating_failures += print_straight_apostrophes(
+            label, straight_apostrophe_values(leaves)
+        )
 
         mismatches = placeholder_mismatches(leaves)
         if mismatches:
@@ -557,6 +587,9 @@ def main():
         )
         total_gating_failures += print_three_dots(
             "Android strings.xml", three_dot_values(android_leaves_all)
+        )
+        total_gating_failures += print_straight_apostrophes(
+            "Android strings.xml", straight_apostrophe_values(android_leaves_all)
         )
 
         mismatches = placeholder_mismatches(android_leaves_all)

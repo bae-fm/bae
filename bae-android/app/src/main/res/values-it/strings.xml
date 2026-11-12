@@ -92,7 +92,7 @@
     <string name="artist_detail_load_failed">Impossibile caricare questo artista.</string>
     <string name="artist_detail_not_found">Dettaglio artista non trovato</string>
     <string name="sort_name">Nome</string>
-    <string name="image_load_failed">Impossibile caricare l\'immagine</string>
+    <string name="image_load_failed">Impossibile caricare l’immagine</string>
     <string name="gallery_loading_image">Caricamento dell’immagine…</string>
     <string name="settings_library">Libreria</string>
     <string name="library_name_row">Nome</string>
@@ -114,15 +114,15 @@
     <string name="settings_resume_automatically">Riprendi automaticamente</string>
     <string name="settings_resume_never">Mai</string>
     <string name="settings_resume_after">Dopo %1$s</string>
-    <string name="settings_restore_on_launch">Ripristina all\'avvio</string>
-    <string name="settings_restore_on_launch_help">Ripristina traccia, posizione, coda e volume dell\'ultima sessione all\'apertura dell\'app.</string>
+    <string name="settings_restore_on_launch">Ripristina all’avvio</string>
+    <string name="settings_restore_on_launch_help">Ripristina traccia, posizione, coda e volume dell’ultima sessione all’apertura dell’app.</string>
     <string name="settings_playback">Riproduzione</string>
     <string name="settings_about">Informazioni</string>
     <string name="settings_version">Versione</string>
     <string name="settings_summary_off">Disattivato</string>
     <string name="settings_summary_on">Attivato</string>
     <string name="settings_summary_pauses_between_sides">Pausa tra i lati</string>
-    <string name="settings_summary_restores_on_launch">Ripristina all\'avvio</string>
+    <string name="settings_summary_restores_on_launch">Ripristina all’avvio</string>
     <string name="settings_about_summary">Versione %1$s</string>
     <plurals name="transfers_pins_summary">
         <item quantity="one">%1$d fissaggio alla volta</item>

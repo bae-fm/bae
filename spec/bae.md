@@ -2149,12 +2149,12 @@ shows a download its files have finished. The storage rows and the album and
 release detail read the entry in their own query.
 
 Each row's storage state is the place it sorts by, which core reads with the
-row: Couldn't pin, its error behind *Details* (§9.7), or Move failed, naming the file whose
+row: Couldn’t pin, its error behind *Details* (§9.7), or Move failed, naming the file whose
 original changed since import, first; Uploading, its chip filled as far
 as its bytes have come while any file is being sent, or Queued to upload while its files only wait; Pinning, filled as far
 as its download has come once it starts, or Queued to pin before; making local, Making local… filled as far as its copies have downloaded
-(§4.4), or Queued to make local before, or Couldn't make local, its error behind *Details*, in the first place with
-Couldn't pin; Local, Pinned or
+(§4.4), or Queued to make local before, or Couldn’t make local, its error behind *Details*, in the first place with
+Couldn’t pin; Local, Pinned or
 In cloud at rest. No rate shows beside it, nor how many entries wait ahead
 of it or what holds the queue back: a row's storage is its state and at most
 the one change on its way, every waiting state naming what it waits to do.
@@ -2222,7 +2222,7 @@ platform that cannot tell holds nothing back. What holds the queue back,
 Paused or Waiting for network, shows once where the queue shows: in place of
 its rate under the Storage manager's list, on the Activity panel's Pinning
 and Making local lines and on the phones' Pinning screen, never on a release. A pin that fails stays in the queue with its error,
-nothing of it pinned, and its row sorts first, reading Couldn't pin; one that breaks on a bug fails the
+nothing of it pinned, and its row sorts first, reading Couldn’t pin; one that breaks on a bug fails the
 same way, reported as one, and the queue goes on to the next. The queue's
 Retry queues every failed pin again, each in its place; a release's own Retry
 queues only that release's failed pin. While a release's pin waits, its
@@ -2275,7 +2275,7 @@ that is running at once and its entry stays queued; resuming starts it again
 from its start; the queue is kept across restarts, its entries and pause, and
 the entry that was running starts again. A queued make-local reads Queued to
 make local; one that fails stays with its error, reading
-Couldn't make local, until retried or cancelled. A cancel takes the entry out
+Couldn’t make local, until retried or cancelled. A cancel takes the entry out
 and stops the download. bae hands coven the folder and each release's file
 paths below it, in one call
 ([coven §17.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#173-staging-a-file)).
@@ -3446,15 +3446,15 @@ words of a button, which are each platform's.
   no space left on this Mac. Free some space and bae will try again.*, *The
   keychain is locked. Unlock it to keep syncing.* and *bae couldn't read the
   library on this Mac.*; on Android, *This device is out of space. Free some up
-  and bae will try again.*, *bae couldn't read its saved keys on this device.*
-  and *bae couldn't read the library on this device.* A phone never uploads, so
+  and bae will try again.*, *bae couldn’t read its saved keys on this device.*
+  and *bae couldn’t read the library on this device.* A phone never uploads, so
   its causes are local ones, a provider error or a damaged change. A start that failed with sync
   not running is Sync failed with the start's own line as its cause and
   *Reconnect* as its fix.
 
 The page never says "Sync stopped", "Checking sync…" or "Disconnect". Until
 the status is first read it shows nothing in the block, and if it can't be
-read the block says "Couldn't read sync status", which is the app's own
+read the block says "Couldn’t read sync status", which is the app's own
 state around the read, with the words in the app's own catalog: core sends
 only the status it read. The Library page's Sync row shows the state only,
 and the Library row in Android's settings and the Library item in the Mac's
@@ -3783,7 +3783,7 @@ fail, saying the laptop left the library and its files are still on it.
   opened to count what it hasn't sent and again to leave its store, its row
   showing each step under its name, with a spinner in place of the ⋮, and a
   library that can't open is removed without opening, as on a Mac. A removal that fails, or the count
-  before it, shows an alert on a Mac and a dialog on Android, "Couldn't remove
+  before it, shows an alert on a Mac and a dialog on Android, "Couldn’t remove
   “Household”", with the error's line, *Retry* and *Cancel*: *Retry* counts and
   asks again, or runs again the removal the person confirmed, and the row goes
   back to its name; one that left the store but not this

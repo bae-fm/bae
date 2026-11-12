@@ -205,7 +205,7 @@ class RestoreCodeSectionTest {
             .assertIsDisplayed()
         compose.onNodeWithText(CODE).performScrollTo().assertIsDisplayed()
         compose
-            .onNodeWithText("The QR code also carries your S3 access key, so a device that scans it won't ask for the key.")
+            .onNodeWithText("The QR code also carries your S3 access key, so a device that scans it won’t ask for the key.")
             .assertDoesNotExist()
     }
 
@@ -223,7 +223,7 @@ class RestoreCodeSectionTest {
         }
 
         compose
-            .onNodeWithText("The QR code also carries your S3 access key, so a device that scans it won't ask for the key.")
+            .onNodeWithText("The QR code also carries your S3 access key, so a device that scans it won’t ask for the key.")
             // Below the QR code and the code, past the dialog's visible height.
             .assertExists()
     }

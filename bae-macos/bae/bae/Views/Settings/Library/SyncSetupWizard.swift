@@ -128,9 +128,9 @@ struct SyncSetupWizard: View {
     private var headerMessage: LocalizedStringKey? {
         switch step {
         case .selectProvider:
-            "Choose where this library is kept. Everything is encrypted on this Mac before it's uploaded."
+            "Choose where this library is kept. Everything is encrypted on this Mac before it’s uploaded."
         case .configure(.cloudKit):
-            "This library's cloud home will be bae's space in iCloud, using the Apple Account this Mac is signed in to."
+            "This library’s cloud home will be bae’s space in iCloud, using the Apple Account this Mac is signed in to."
         case .configure, .restoreCode:
             nil
         }

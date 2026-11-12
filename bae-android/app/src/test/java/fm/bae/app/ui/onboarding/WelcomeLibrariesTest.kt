@@ -277,7 +277,7 @@ class WelcomeLibrariesTest {
         compose.waitUntil(HANG_GUARD_MS) { fake.calls.contains("unsent local") }
         compose.onNodeWithText("Delete “Local Library”?").assertIsDisplayed()
         compose
-            .onNodeWithText("This library isn't synced, so it will be deleted for good. Your audio files stay in their folders.")
+            .onNodeWithText("This library isn’t synced, so it will be deleted for good. Your audio files stay in their folders.")
             .assertIsDisplayed()
 
         compose.onNode(hasText("Delete") and hasAnyAncestor(isDialog())).performClick()
@@ -321,7 +321,7 @@ class WelcomeLibrariesTest {
         compose.onNodeWithText("Unsent changes will be lost").assertDoesNotExist()
         compose
             .onNodeWithText(
-                "This library can't be opened, so any changes on this device that weren't sent are lost. " +
+                "This library can’t be opened, so any changes on this device that weren’t sent are lost. " +
                     "Its copy on this device is deleted; if the library is kept in the cloud, it stays there.",
             ).assertIsDisplayed()
     }

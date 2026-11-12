@@ -92,7 +92,7 @@ struct ImportFolderEntry {
     private func report(_ error: any Error) {
         guard let displayed = DisplayError(error) else { return }
         uiStore.showError(
-            displayed.addingContext(String(localized: "Couldn't add folder"))
+            displayed.addingContext(String(localized: "Couldn’t add folder"))
         )
     }
 }

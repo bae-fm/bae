@@ -5,7 +5,8 @@
 //! declared argument the message never uses, a plural over a non-integer, a
 //! malformed MF1 value, an id outside the `core.`/`ui.` namespaces, a source
 //! or translation that ends a sentence twice ("。。") or writes an ellipsis as
-//! three full stops ("..." for "…"), or an English source that breaks a
+//! three full stops ("..." for "…") or an apostrophe as a straight quote
+//! mark, or an English source that breaks a
 //! sentence with a dash.
 //!
 //! `locale_coverage` holds the catalog to `TARGET_LOCALES`. A message missing a
@@ -67,6 +68,12 @@ pub fn validate(cat: &Catalog) -> Result<(), Vec<String>> {
             if text.contains("...") {
                 errs.push(format!(
                     "{id} [{locale}]: `...` is an ellipsis written as three full stops; write `…`"
+                ));
+            }
+            // One form for the apostrophe in every locale: the curly one.
+            if text.contains('\'') {
+                errs.push(format!(
+                    "{id} [{locale}]: `'` is an apostrophe written as a straight quote; write `’`"
                 ));
             }
         }

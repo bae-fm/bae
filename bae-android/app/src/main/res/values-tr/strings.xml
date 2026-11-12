@@ -154,7 +154,7 @@
     <string name="settings_open_in_browser">Tarayıcıda aç</string>
     <string name="settings_folder_no_app">Bu cihazdaki hiçbir uygulama klasörün sayfasını açmadı.</string>
     <string name="settings_transfers">Aktarımlar</string>
-    <string name="transfers_wifi_only">Yalnızca Wi-Fi\'de sabitle</string>
+    <string name="transfers_wifi_only">Yalnızca Wi-Fi’de sabitle</string>
     <string name="transfers_wifi_only_footer">Sabitlenen yayınlar Wi-Fi’yi bekler. Sabitlenmemiş bir parçayı çalmak yine mobil veri kullanır.</string>
     <string name="transfers_concurrency_footer">Aynı anda kaç dosyanın sabitleneceği.</string>
     <string name="members_title">Kişiler ve cihazlar</string>
@@ -300,7 +300,7 @@
     <string name="storage_s3_endpoint_hint">Amazon S3 için boş bırakın.</string>
     <string name="storage_set_up">Ayarla</string>
     <string name="storage_dropbox_reading">Paylaşılan Dropbox klasörleriniz okunuyor…</string>
-    <string name="storage_onedrive_reading">OneDrive\'ınızdaki klasörler okunuyor…</string>
+    <string name="storage_onedrive_reading">OneDrive’ınızdaki klasörler okunuyor…</string>
     <string name="storage_creating_folder">Klasör oluşturuluyor…</string>
     <string name="storage_dropbox_name_taken">Dropbox’ınızda “%1$s” adlı bir klasör zaten var. Başka bir ad seçin.</string>
     <string name="storage_dropbox_heading">Bu kitaplık için boş bir paylaşılan klasör seçin.</string>
@@ -324,7 +324,7 @@
     <string name="restore_code_partly_hidden">Geri yükleme kodu, kısmen gizli</string>
     <string name="restore_code_print_title">bae geri yükleme kodu</string>
     <string name="restore_code_printed">Yazdırılma tarihi: %1$s</string>
-    <string name="restore_code_print_keep">Tüm cihazlarınızı kaybederseniz yeni bir cihazda bae\'yi açın ve bunu taramak için Kod tara\'yı, kodu yazmak için Kod gir\'i seçin. Bu sayfaya ve bulutunuza erişimi olan herkes kitaplığınızı açabilir: özel bir yerde saklayın.</string>
+    <string name="restore_code_print_keep">Tüm cihazlarınızı kaybederseniz yeni bir cihazda bae’yi açın ve bunu taramak için Kod tara’yı, kodu yazmak için Kod gir’i seçin. Bu sayfaya ve bulutunuza erişimi olan herkes kitaplığınızı açabilir: özel bir yerde saklayın.</string>
     <string name="done">Bitti</string>
     <string name="members_you">Siz</string>
     <string name="members_unnamed">Henüz ad yok</string>

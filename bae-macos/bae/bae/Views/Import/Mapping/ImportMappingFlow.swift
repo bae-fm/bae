@@ -107,7 +107,7 @@ enum ImportMappingFlow {
             catch {
                 if let failure = DisplayError(error)?
                     .rewording({
-                        String(localized: "Couldn't save that change: \($0)")
+                        String(localized: "Couldn’t save that change: \($0)")
                     })
                 {
                     services.onError(failure)
@@ -231,7 +231,7 @@ extension ImportMappingFlow {
                 .rewording({
                     String(
                         localized:
-                            "Couldn't change what \(sheetFileId) describes: \($0)"
+                            "Couldn’t change what \(sheetFileId) describes: \($0)"
                     )
                 })
             {
@@ -262,7 +262,7 @@ extension ImportMappingFlow {
                 .rewording({
                     String(
                         localized:
-                            "Couldn't change which disc \(sheetFileId) is: \($0)"
+                            "Couldn’t change which disc \(sheetFileId) is: \($0)"
                     )
                 })
             {

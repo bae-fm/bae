@@ -38,7 +38,7 @@ struct ReleaseGroupCard: View {
                     if source.albumLinksUnread {
                         let name = bridgeCatalogName(catalog: source.source)
                         Text(
-                            "Couldn't read this album's links on \(name); it may also be listed separately."
+                            "Couldn’t read this album’s links on \(name); it may also be listed separately."
                         )
                         .themeText(.detail)
                         .foregroundStyle(.secondary)

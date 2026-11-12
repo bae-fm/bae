@@ -70,7 +70,7 @@ struct DraftAlbumRow: View {
     private var picker: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
             if case .picked = album {
-                Button(String(localized: "Use the release's album")) {
+                Button(String(localized: "Use the release’s album")) {
                     actions.pick(nil)
                     isPresented = false
                 }

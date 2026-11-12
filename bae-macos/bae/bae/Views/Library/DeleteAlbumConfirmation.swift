@@ -24,7 +24,7 @@ struct DeleteAlbumConfirmation: ViewModifier {
             Button("Cancel", role: .cancel) {}
         } message: { _ in
             Text(
-                "Every release of this album will be permanently deleted from your devices and the cloud. Original files in your folders won't be touched."
+                "Every release of this album will be permanently deleted from your devices and the cloud. Original files in your folders won’t be touched."
             )
         }
     }

@@ -36,7 +36,7 @@ struct PlaybackSettingsTab: View {
                 Toggle("Restore on launch", isOn: $persistPlayback)
             } footer: {
                 Text(
-                    "Restores the last session's track, position, queue, and volume when the app opens."
+                    "Restores the last session’s track, position, queue, and volume when the app opens."
                 )
                 .themeText(.detail)
                 .foregroundStyle(.secondary)

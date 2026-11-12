@@ -30,7 +30,7 @@ extension BridgeNeedsYouReason {
         case .noTracklist:
             String(
                 localized:
-                    "The catalog doesn't list this release's tracks, so we couldn't check it fits."
+                    "The catalog doesn’t list this release’s tracks, so we couldn’t check it fits."
             )
         case .notFound:
             String(localized: "No catalog has this.")

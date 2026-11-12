@@ -222,7 +222,7 @@ struct MacIdentifierBand: View {
             IdentifierChip(label: label) { ChipWait(waitingOn: run.isrc) }
         case .absent:
             IdentifierChip(label: label) { IdentifierDash() }
-                .help("No ISRC in the files' tags")
+                .help("No ISRC in the files’ tags")
         // Only Settings can switch on the catalog that answers ISRCs.
         case .read(let isrcs, .notAsked(reason: _)):
             IdentifierChip(label: label, value: isrcs.first ?? "") {

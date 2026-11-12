@@ -159,7 +159,7 @@ internal fun S3SetupFormScene() {
                 accessKeyId = "a1b2c3d4e5f6"
                 secretAccessKey = "abcdefghijkl"
                 failedField = S3Field.REGION
-                failure = DisplayError("The region or endpoint doesn't match this bucket.")
+                failure = DisplayError("The region or endpoint doesn’t match this bucket.")
             }
         }
     BaeAppChrome {

@@ -111,7 +111,7 @@ public struct RestoreCodeSection: View {
                 .themeText(.detail)
                 .foregroundStyle(.secondary)
             if needsS3Key {
-                Text("You'll also need your S3 access key and secret.")
+                Text("You’ll also need your S3 access key and secret.")
                     .themeText(.detail)
                     .foregroundStyle(.secondary)
             }

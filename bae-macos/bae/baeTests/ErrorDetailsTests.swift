@@ -43,7 +43,7 @@ struct ErrorDetailsTests {
     @Test("a titled notice with no detail has the line alone")
     func titledWithoutDetail() {
         let details = ErrorDetails(
-            title: "Couldn't remove",
+            title: "Couldn’t remove",
             advice: nil,
             error: DisplayError(line: "In use")
         )
