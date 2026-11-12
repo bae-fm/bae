@@ -183,10 +183,17 @@ def quit_bae() -> None:
     if not running():
         return
     print(f"Quitting the running bae ({BUNDLE_ID})...")
-    subprocess.run(
+    asked = subprocess.run(
         ["osascript", "-e", f'tell application id "{BUNDLE_ID}" to quit'],
-        check=True,
+        capture_output=True, text=True,
     )
+    if asked.returncode != 0:
+        # bae refuses a quit while it can't close its library cleanly, and
+        # the refusal comes back as "User canceled".
+        fail(
+            f"bae didn't quit ({asked.stderr.strip()}); quit it yourself, "
+            "after reading what it shows, and run this again"
+        )
     deadline = time.monotonic() + 30
     while running():
         if time.monotonic() > deadline:
@@ -209,6 +216,10 @@ def main() -> None:
     profile = read_profile(args.profile)
     if not args.app.is_dir():
         fail(f"no app at {args.app}; build it with builds build-app bae mac")
+    for field in ("library_name", "creator_name"):
+        value = profile.get(field)
+        if not isinstance(value, str) or not value.strip():
+            fail(f"{args.profile}: {field} is missing or empty")
     s3 = profile.get("s3", {})
     for field in S3_FIELDS:
         if not isinstance(s3.get(field), str) or not s3[field].strip():
