@@ -25,6 +25,7 @@
                         displayArtist: nil,
                         positionText: positionText(index),
                         works: [],
+                        myStars: nil,
                     )
                 }
         }
@@ -234,6 +235,11 @@
                     cover: nil,
                 ),
                 releases: releases,
+                rating: BridgeAlbumRating(
+                    canRate: false,
+                    mine: nil,
+                    raters: []
+                ),
             )
         }
 

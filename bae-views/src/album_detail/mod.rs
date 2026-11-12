@@ -46,6 +46,7 @@ mod track;
 
 pub use album::*;
 pub use artist::*;
+pub use bae_people::collections::Stars;
 pub use composer::*;
 pub use file_kind::{FileKind, FilePlace};
 pub(crate) use playability::release_playability;

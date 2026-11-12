@@ -8,7 +8,6 @@ forward! { async this => {
     fn set_avatar(bytes: Option<Vec<u8>>) -> () { Ok(this.services.set_avatar(bytes).await?) }
     fn avatar(person: String) -> Option<Vec<u8>> { Ok(this.services.avatar(crate::from_app::member(&person)?).await?) }
     fn set_rating(target: BridgeRatingTarget, stars: Option<BridgeStars>) -> () { Ok(this.services.set_rating(target.into_core(), stars.map(BridgeStars::into_core)).await?) }
-    fn ratings() -> Vec<BridgeRating> { Ok(this.services.ratings().await?.into_iter().map(BridgeRating::from_core).collect()) }
     fn create_playlist(name: String, sharing: BridgeSharing, track_ids: Vec<String>) -> String { Ok(this.services.create_playlist(&name,sharing.into_core(),track_ids).await?.to_string()) }
     fn play_playlist(playlist_id: String, start_position_id: Option<String>) -> BridgePlayOutcome {
         let start = start_position_id.map(|id| id.parse().map_err(BridgeError::config)).transpose()?;

@@ -1,5 +1,8 @@
 use super::*;
-use crate::collections::{CollectionError, Playlist, PlaylistEntry, Rating, RatingTarget, Stars};
+use crate::collections::{
+    AlbumRatings, CollectionError, OtherRating, Playlist, PlaylistEntry, Rating, RatingTarget,
+    Stars,
+};
 use crate::people::Sharing;
 use bae_util::name_key::SortLanguage;
 
@@ -27,6 +30,7 @@ impl People {
         Ok(())
     }
 
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn ratings(&self) -> Result<Vec<Rating>, DbError> {
         self.inner.store.read(|sql| Ok(ratings(&sql)?)).await
     }
@@ -188,6 +192,7 @@ impl People {
     }
 }
 
+#[cfg(any(test, feature = "test-utils"))]
 fn ratings(sql: &SqlReadContext<'_>) -> rusqlite::Result<Vec<Rating>> {
     sql.query("SELECT person_id, album_id, track_id, stars FROM ratings ORDER BY id", [], |row| {
         let target = match (row.get::<_, Option<String>>(1)?, row.get::<_, Option<String>>(2)?) {
@@ -232,3 +237,70 @@ fn entries(sql: &SqlReadContext<'_>, playlist: uuid::Uuid) -> rusqlite::Result<V
 #[cfg(test)]
 #[path = "collections_tests.rs"]
 mod tests;
+
+/// The member using this device, and whether they have a profile; `None`
+/// until their registration has applied. A profile is what ratings and
+/// playlists belong to.
+fn own_member_sql() -> String {
+    format!(
+        "SELECT m.member, EXISTS (SELECT 1 FROM people AS p WHERE p.id = m.member) \
+         FROM coven_members AS m WHERE NOT m.removed AND {}",
+        super::profiles::IS_OWN_MEMBER
+    )
+}
+
+/// Every person's stars for the album `?1`, by name then id; `ratings_album`
+/// finds the album's ratings.
+pub(super) const ALBUM_RATINGS_SQL: &str = "SELECT r.person_id, p.name, r.stars \
+     FROM ratings AS r JOIN people AS p ON p.id = r.person_id \
+     WHERE r.album_id = ?1 ORDER BY p.name, p.id";
+
+/// This person's stars for the tracks of the release `?2`, by the track,
+/// found through `ratings`' key on the person and the track.
+pub(super) const TRACK_STARS_SQL: &str = "SELECT r.track_id, r.stars FROM ratings AS r \
+     JOIN tracks AS t ON t.id = r.track_id WHERE r.person_id = ?1 AND t.release_id = ?2";
+
+/// The id of this person's profile, once they have one.
+fn own_profile_id(sql: &SqlReadContext<'_>) -> rusqlite::Result<Option<(String, bool)>> {
+    Ok(sql
+        .query(&own_member_sql(), [], |row| Ok((row.get::<_, String>(0)?, row.get::<_, bool>(1)?)))?
+        .pop())
+}
+
+/// What the album `album_id`'s page reads of its ratings, for the person
+/// using this device.
+pub fn album_ratings_on(
+    sql: &SqlReadContext<'_>,
+    album_id: &str,
+) -> rusqlite::Result<AlbumRatings> {
+    let own = own_profile_id(sql)?;
+    let rows = sql.query(ALBUM_RATINGS_SQL, [album_id], |row| {
+        Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?, Stars::from_sql(row.get(2)?)?))
+    })?;
+    let mut mine = None;
+    let mut others = Vec::new();
+    for (person, name, stars) in rows {
+        match &own {
+            Some((member, true)) if *member == person => mine = Some(stars),
+            _ => others.push(OtherRating { name, stars }),
+        }
+    }
+    Ok(AlbumRatings { can_rate: matches!(own, Some((_, true))), mine, others })
+}
+
+/// This person's stars for the tracks of the release `release_id` that they
+/// rated, by track id; none without a profile.
+pub fn track_stars_on(
+    sql: &SqlReadContext<'_>,
+    release_id: &str,
+) -> rusqlite::Result<std::collections::HashMap<String, Stars>> {
+    let Some((member, true)) = own_profile_id(sql)? else {
+        return Ok(std::collections::HashMap::new());
+    };
+    Ok(sql
+        .query(TRACK_STARS_SQL, params![member, release_id], |row| {
+            Ok((row.get::<_, String>(0)?, Stars::from_sql(row.get(1)?)?))
+        })?
+        .into_iter()
+        .collect())
+}

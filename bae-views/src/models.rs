@@ -1,9 +1,11 @@
 //! The raw rows the library's views read, before they are resolved into
 //! what a screen shows.
 
+use bae_people::collections::Stars;
 use bae_records::*;
 use bae_store::*;
 use chrono::{DateTime, Utc};
+use std::collections::HashMap;
 
 /// Raw combined search-result aggregate. No formatting — resolving it
 /// produces the display-ready `crate::album_detail::SearchResults`.
@@ -74,6 +76,8 @@ pub struct DbAlbumDetail {
     pub primary_release_id: String,
     /// The version of that release's cover; `None` when it has none.
     pub primary_cover_version: Option<String>,
+    /// The album's ratings, and whether this person can rate.
+    pub ratings: bae_people::collections::AlbumRatings,
 }
 
 /// One row of the album grid: an album, listed once when the grid is flat and
@@ -256,6 +260,8 @@ pub struct ReleaseDetailContext {
     /// The release's entry in the download queue.
     pub download: Option<bae_transfers::DownloadEntry>,
     pub release_index: usize,
+    /// This person's stars for the release's tracks, by track id.
+    pub my_stars: HashMap<String, Stars>,
     pub is_compilation: bool,
     /// The album's year, which the release's year is compared with.
     pub album_year: Option<i32>,
@@ -374,4 +380,6 @@ pub struct DbFileUpload {
 pub struct ReleaseDetailRead {
     pub detail: DbReleaseDetail,
     pub download: Option<bae_transfers::DownloadEntry>,
+    /// This person's stars for the release's tracks, by track id.
+    pub my_stars: HashMap<String, Stars>,
 }

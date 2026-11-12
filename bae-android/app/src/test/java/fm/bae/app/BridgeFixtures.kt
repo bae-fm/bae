@@ -2,6 +2,7 @@ package fm.bae.app
 
 import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeAlbumDetail
+import uniffi.bae_bridge.BridgeAlbumRating
 import uniffi.bae_bridge.BridgeAlbumSearchResult
 import uniffi.bae_bridge.BridgeArtistSummary
 import uniffi.bae_bridge.BridgeCacheLimit
@@ -127,7 +128,12 @@ object BridgeFixtures {
     fun albumDetail(
         album: BridgeAlbum,
         releases: List<BridgeRelease> = listOf(release(id = album.primaryReleaseId, albumId = album.id)),
-    ): BridgeAlbumDetail = BridgeAlbumDetail(album = album, releases = releases)
+    ): BridgeAlbumDetail =
+        BridgeAlbumDetail(
+            album = album,
+            releases = releases,
+            rating = BridgeAlbumRating(canRate = false, mine = null, raters = emptyList()),
+        )
 
     fun albumSearchResult(
         id: String = "alb-1",

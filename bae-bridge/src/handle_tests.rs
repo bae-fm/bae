@@ -24,6 +24,7 @@ fn track_detail(
         position_text: "1".to_string(),
         position,
         works: Vec::new(),
+        my_stars: None,
     }
 }
 

@@ -72,15 +72,15 @@ fn profiles_ratings_playlists_and_history_use_the_same_store() {
             .set_rating(BridgeRatingTarget::Album { id: album.id.clone() }, Some(BridgeStars::Four))
             .await
             .unwrap();
-        let ratings = app.clone().ratings().await.unwrap();
+        let ratings = people.ratings().await.unwrap();
         assert_eq!(ratings.len(), 1);
-        assert_eq!(ratings[0].stars, BridgeStars::Four);
-        assert_eq!(ratings[0].person, profile.id);
+        assert_eq!(ratings[0].stars, bae_people::collections::Stars::Four);
+        assert_eq!(ratings[0].person.0.to_string(), profile.id);
         app.clone()
             .set_rating(BridgeRatingTarget::Album { id: album.id.clone() }, None)
             .await
             .unwrap();
-        assert!(app.clone().ratings().await.unwrap().is_empty());
+        assert!(people.ratings().await.unwrap().is_empty());
         let playlist_id = app
             .clone()
             .create_playlist("Evening".into(), BridgeSharing::Private, Vec::new())

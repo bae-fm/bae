@@ -45,7 +45,6 @@ import uniffi.bae_bridge.BridgeOutboxFeeds
 import uniffi.bae_bridge.BridgePerson
 import uniffi.bae_bridge.BridgePlayOutcome
 import uniffi.bae_bridge.BridgePreviewTarget
-import uniffi.bae_bridge.BridgeRating
 import uniffi.bae_bridge.BridgeRatingTarget
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeRendererService
@@ -696,8 +695,6 @@ internal open class FakeAppHandle(
         playlistId: String,
         startPositionId: String?,
     ): BridgePlayOutcome = unfaked("playPlaylist")
-
-    override suspend fun ratings(): List<BridgeRating> = unfaked("ratings")
 
     override suspend fun removePlaylistEntry(
         playlist: String,

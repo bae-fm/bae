@@ -16,6 +16,7 @@ struct TrackTests {
                 displayArtist: nil,
                 positionText: "A",
                 works: [],
+                myStars: nil,
             )
         )
 

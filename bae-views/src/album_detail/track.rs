@@ -1,6 +1,7 @@
 //! A release's tracks as its detail shows them, grouped by the side of the
 //! record each sits on.
 
+use super::Stars;
 use bae_types::mediums::{TrackPosition, TrackSide};
 
 /// Track with resolved artist names and a structured display position.
@@ -26,6 +27,8 @@ pub struct TrackDetail {
     pub position: TrackPosition,
     /// The works the track performs, in the order it performs them.
     pub works: Vec<TrackWork>,
+    /// The stars this person gave the track.
+    pub my_stars: Option<Stars>,
 }
 
 /// A work a track performs.

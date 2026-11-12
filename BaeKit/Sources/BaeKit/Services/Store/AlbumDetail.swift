@@ -7,12 +7,15 @@ import Foundation
 public struct AlbumDetail: Sendable {
     public let album: BridgeAlbum
     public let releases: [ReleaseDetail]
+    /// Who rated the album, and whether this person can.
+    public let rating: BridgeAlbumRating
     /// The release the album plays by default and shows the cover of.
     public let primaryRelease: ReleaseDetail
 
     public init(bridge: BridgeAlbumDetail) {
         album = bridge.album
         releases = bridge.releases.map(ReleaseDetail.init(bridge:))
+        rating = bridge.rating
         guard
             let primary = releases.first(where: {
                 $0.id == bridge.album.primaryReleaseId

@@ -566,9 +566,13 @@ fn everyone_sql() -> String {
     people_sql("")
 }
 
+/// What names the member using this device, over `coven_members AS m`: the
+/// person using this device is the member coven marks as this device's own.
+pub(super) const IS_OWN_MEMBER: &str = "m.is_self";
+
 /// The person using this device.
 fn own_person_sql() -> String {
-    people_sql(" AND m.is_self")
+    people_sql(&format!(" AND {IS_OWN_MEMBER}"))
 }
 
 /// The people `statement` reads, from [`people_sql`].

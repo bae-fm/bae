@@ -9,6 +9,7 @@ use std::collections::HashSet;
 use std::sync::Arc;
 
 mod collections;
+pub use collections::{album_ratings_on, track_stars_on};
 mod history;
 mod profile_request;
 mod profiles;

@@ -7,6 +7,7 @@ import fm.bae.fastvalues.LatestStream
 import uniffi.bae_bridge.BridgeActiveDevice
 import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeAlbumDetail
+import uniffi.bae_bridge.BridgeAlbumRating
 import uniffi.bae_bridge.BridgeAlbumSearchResult
 import uniffi.bae_bridge.BridgeArtistDetail
 import uniffi.bae_bridge.BridgeArtistSummary
@@ -122,6 +123,7 @@ object PreviewData {
             displayArtist = null,
             positionText = number.toString(),
             works = emptyList(),
+            myStars = null,
         )
 
     fun trackGroup(
@@ -187,7 +189,12 @@ object PreviewData {
     fun albumDetail(
         album: BridgeAlbum = album(),
         releases: List<BridgeRelease> = listOf(release(albumId = album().id)),
-    ): BridgeAlbumDetail = BridgeAlbumDetail(album = album, releases = releases)
+    ): BridgeAlbumDetail =
+        BridgeAlbumDetail(
+            album = album,
+            releases = releases,
+            rating = BridgeAlbumRating(canRate = false, mine = null, raters = emptyList()),
+        )
 
     fun albumSearchResult(
         id: String = "alb-1",

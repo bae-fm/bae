@@ -350,12 +350,15 @@ fn resolve_album_detail(raw: DbAlbumDetail, syncs: bool) -> crate::album_detail:
 
     let cover = bae_records::cover_ref(&primary_release_id, raw.primary_cover_version);
     let mut releases = Vec::with_capacity(raw.releases.len());
-    for (i, ReleaseDetailRead { detail, download }) in raw.releases.into_iter().enumerate() {
+    for (i, ReleaseDetailRead { detail, download, my_stars }) in
+        raw.releases.into_iter().enumerate()
+    {
         let ctx = crate::album_detail::ReleaseResolveCtx {
             syncs,
             cover: bae_records::cover_ref(&detail.release.id, detail.cover_version.clone()),
             is_compilation: raw.album.is_compilation,
             album_year: raw.album.year,
+            my_stars,
         };
         releases.push(crate::album_detail::ReleaseDetail::from_raw(detail, download, i, &ctx));
     }
@@ -367,6 +370,7 @@ fn resolve_album_detail(raw: DbAlbumDetail, syncs: bool) -> crate::album_detail:
         releases,
         primary_release_id,
         cover,
+        rating: crate::album_detail::AlbumRating::from_raw(raw.ratings),
     }
 }
 
@@ -551,7 +555,9 @@ fn find_album_detail_on(
         .into_iter()
         .map(|release| build_release_detail_on(sql, release))
         .collect::<Result<Vec<_>, _>>()?;
+    let ratings = bae_people::people::album_ratings_on(sql, album_id)?;
     Ok(Some(AlbumDetailRows {
+        ratings,
         album,
         artists,
         releases,
@@ -567,6 +573,7 @@ struct AlbumDetailRows {
     releases: Vec<ReleaseDetailRows>,
     primary_release_id: String,
     primary_cover_version: Option<String>,
+    ratings: bae_people::collections::AlbumRatings,
 }
 
 impl AlbumDetailRows {
@@ -577,6 +584,7 @@ impl AlbumDetailRows {
             releases: self.releases.into_iter().map(ReleaseDetailRows::process).collect(),
             primary_release_id: self.primary_release_id,
             primary_cover_version: self.primary_cover_version,
+            ratings: self.ratings,
         }
     }
 }

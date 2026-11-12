@@ -3,6 +3,8 @@
 
 use super::*;
 use crate::album_detail::{ReleaseDetail, ReleaseResolveCtx};
+use bae_people::collections::Stars;
+use std::collections::HashMap;
 
 impl LibraryViews {
     /// Resolved release detail for the album-detail view: a `ReleaseSummary` plus
@@ -91,13 +93,20 @@ fn resolve_release_detail(
     context: ReleaseDetailContext,
     syncs: bool,
 ) -> ReleaseDetail {
-    let ReleaseDetailContext { detail, download, release_index, is_compilation, album_year } =
-        context;
+    let ReleaseDetailContext {
+        detail,
+        download,
+        release_index,
+        my_stars,
+        is_compilation,
+        album_year,
+    } = context;
     let ctx = ReleaseResolveCtx {
         syncs,
         cover: bae_records::cover_ref(release_id, detail.cover_version.clone()),
         is_compilation,
         album_year,
+        my_stars,
     };
     ReleaseDetail::from_raw(detail, download, release_index, &ctx)
 }
@@ -153,10 +162,11 @@ pub(crate) struct ReleaseContextRows {
 
 impl ReleaseContextRows {
     pub(crate) fn process(self) -> ReleaseDetailContext {
-        let ReleaseDetailRead { detail, download } = self.detail.process();
+        let ReleaseDetailRead { detail, download, my_stars } = self.detail.process();
         ReleaseDetailContext {
             detail,
             download,
+            my_stars,
             release_index: self.release_index,
             is_compilation: self.is_compilation,
             album_year: self.album_year,
@@ -171,18 +181,24 @@ pub(crate) fn build_release_detail_on(
     release: DbRelease,
 ) -> Result<ReleaseDetailRows, DbError> {
     let download = bae_transfers::release_download_entry_on(sql, &release.id)?;
-    Ok(ReleaseDetailRows { rows: release_detail_rows_on(sql, release)?, download })
+    let my_stars = bae_people::people::track_stars_on(sql, &release.id)?;
+    Ok(ReleaseDetailRows { rows: release_detail_rows_on(sql, release)?, download, my_stars })
 }
 
 #[derive(Clone, PartialEq)]
 pub(crate) struct ReleaseDetailRows {
     rows: DbReleaseDetailRows,
     download: Option<bae_transfers::DownloadEntry>,
+    my_stars: HashMap<String, Stars>,
 }
 
 impl ReleaseDetailRows {
     pub(crate) fn process(self) -> ReleaseDetailRead {
-        ReleaseDetailRead { detail: self.rows.process(), download: self.download }
+        ReleaseDetailRead {
+            detail: self.rows.process(),
+            download: self.download,
+            my_stars: self.my_stars,
+        }
     }
 }
 

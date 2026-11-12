@@ -61,7 +61,13 @@ fn detail_of(
         upload: None,
         cover_version: None,
     };
-    let ctx = ReleaseResolveCtx { syncs: false, cover: None, is_compilation: false, album_year };
+    let ctx = ReleaseResolveCtx {
+        syncs: false,
+        cover: None,
+        is_compilation: false,
+        album_year,
+        my_stars: HashMap::new(),
+    };
     ReleaseDetail::from_raw(raw, None, 0, &ctx)
 }
 

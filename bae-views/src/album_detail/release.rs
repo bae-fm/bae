@@ -4,6 +4,7 @@
 use super::*;
 use crate::DbReleaseSummary;
 use bae_records::DbReleaseDetail;
+use std::collections::HashMap;
 
 /// The per-release inputs the library's views read beside the release's rows and
 /// threads into the release projections: whether the library syncs at all
@@ -18,6 +19,8 @@ pub(crate) struct ReleaseResolveCtx {
     pub(crate) is_compilation: bool,
     /// The owning album's year, which [`ReleaseDetail::distinct_year`] is read against.
     pub(crate) album_year: Option<i32>,
+    /// This person's stars for the release's tracks, by track id.
+    pub(crate) my_stars: HashMap<String, Stars>,
 }
 
 /// The slim projection a list view (Storage Manager, release pickers) renders one
@@ -192,7 +195,9 @@ impl ReleaseDetail {
                 // album header names no single one; on a single-artist album the
                 // row would only repeat the header, so it shows nothing.
                 let display_artist = ctx.is_compilation.then(|| artist_line.clone());
+                let my_stars = ctx.my_stars.get(&entry.track.id).copied();
                 TrackDetail {
+                    my_stars,
                     id: entry.track.id,
                     title: entry.track.title,
                     duration_ms: entry.track.duration_ms,

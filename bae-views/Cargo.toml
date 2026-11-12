@@ -26,7 +26,7 @@ bae-diagnostics = { workspace = true }
 # The transfer queues' entries and the storage transition each release is
 # in, as the detail views, the Storage Manager and the activity read them.
 bae-transfers = { workspace = true }
-# Playlists and who made them.
+# Playlists and who made them, and the ratings an album's page shows.
 bae-people = { workspace = true }
 # The pressing values and storage actions the screens show.
 bae-types = { workspace = true }

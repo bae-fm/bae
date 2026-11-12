@@ -111,19 +111,43 @@ impl BridgeRequestedProfile {
     }
 }
 
+/// An album's ratings as its page shows them.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct BridgeRating {
-    pub person: String,
-    pub target: BridgeRatingTarget,
-    pub stars: BridgeStars,
+pub struct BridgeAlbumRating {
+    /// Whether this person can rate: only a person with a profile does.
+    pub can_rate: bool,
+    /// The stars this person gave the album.
+    pub mine: Option<BridgeStars>,
+    /// Who rated the album: this person first, when they did, then each
+    /// other person who did, by name.
+    pub raters: Vec<BridgeRater>,
 }
-impl BridgeRating {
-    pub(crate) fn from_core(value: bae_people::collections::Rating) -> Self {
-        let bae_people::collections::Rating { person, target, stars } = value;
+
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeRater {
+    /// This person; their stars are `BridgeAlbumRating.mine`.
+    You,
+    Person {
+        name: String,
+        stars: BridgeStars,
+    },
+}
+
+impl BridgeAlbumRating {
+    pub(crate) fn from_core(rating: bae_views::album_detail::AlbumRating) -> Self {
+        let bae_views::album_detail::AlbumRating { can_rate, mine, raters } = rating;
         Self {
-            person: person.0.to_string(),
-            target: BridgeRatingTarget::from_core(target),
-            stars: BridgeStars::from_core(stars),
+            can_rate,
+            mine: mine.map(BridgeStars::from_core),
+            raters: raters
+                .into_iter()
+                .map(|rater| match rater {
+                    bae_views::album_detail::Rater::You => BridgeRater::You,
+                    bae_views::album_detail::Rater::Person { name, stars } => {
+                        BridgeRater::Person { name, stars: BridgeStars::from_core(stars) }
+                    }
+                })
+                .collect(),
         }
     }
 }

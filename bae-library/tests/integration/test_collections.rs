@@ -289,3 +289,81 @@ async fn playlists_list_by_name_in_the_devices_language() {
     assert_eq!(listed, ["Apa", "Zebra", "Ängel"]);
     library.manager().close().await.unwrap();
 }
+
+/// Rating an album or one of its tracks delivers a new album detail: the
+/// person's stars on the album with them first among its raters, and on the
+/// track.
+#[tokio::test]
+async fn rating_delivers_a_new_album_detail() {
+    let directory = tempfile::tempdir().unwrap();
+    let (library, storage) = storage_library(
+        directory.path(),
+        bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
+        bae_util::http::Http::for_test(),
+    )
+    .await;
+    let people = bae_people::People::new(library.store().clone());
+    connect_storage(library.manager(), library.store(), &storage).await;
+    made_profile(library.manager(), library.people(), "Robin").await;
+    let release = test_uuid("rating-release");
+    let track = test_uuid("rating-track");
+    let album = test_uuid("rating-album");
+    bae_records::test_fixtures::album_with_tracks(
+        library.records(),
+        (&album, "Rated"),
+        &release,
+        &[(&track, "Only")],
+    )
+    .await;
+
+    let mut values = bae_views::LibraryViews::new(library.store().clone())
+        .subscribe_album_detail(Some(album.clone()));
+    let first = next_detail(&mut values).await;
+    assert!(first.rating.can_rate);
+    assert_eq!(first.rating.mine, None);
+
+    people.set_rating(RatingTarget::Album(album.clone()), Some(Stars::Four)).await.unwrap();
+    let rated = next_detail_matching(&mut values, |detail| detail.rating.mine.is_some()).await;
+    assert_eq!(rated.rating.mine, Some(Stars::Four));
+    assert_eq!(rated.rating.raters, vec![bae_views::album_detail::Rater::You]);
+
+    people.set_rating(RatingTarget::Track(track.clone()), Some(Stars::Two)).await.unwrap();
+    let tracked = next_detail_matching(&mut values, |detail| {
+        detail.releases[0].tracks.iter().any(|track| track.my_stars.is_some())
+    })
+    .await;
+    assert_eq!(tracked.releases[0].tracks[0].my_stars, Some(Stars::Two));
+    drop(values);
+    library.manager().close().await.unwrap();
+}
+
+async fn next_detail(
+    values: &mut coven::ReconfigurableLiveQuery<
+        Option<String>,
+        bae_views::AlbumDetailProjection,
+        bae_store::DbError,
+    >,
+) -> bae_views::album_detail::AlbumDetail {
+    let event = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, values.next())
+        .await
+        .expect("the album detail arrives")
+        .expect("the album detail's read stays open");
+    bae_views::album::resolve_album_detail_projection(event.result.expect("the album detail reads"))
+        .expect("the album is present")
+}
+
+async fn next_detail_matching(
+    values: &mut coven::ReconfigurableLiveQuery<
+        Option<String>,
+        bae_views::AlbumDetailProjection,
+        bae_store::DbError,
+    >,
+    wanted: impl Fn(&bae_views::album_detail::AlbumDetail) -> bool,
+) -> bae_views::album_detail::AlbumDetail {
+    loop {
+        let detail = next_detail(values).await;
+        if wanted(&detail) {
+            return detail;
+        }
+    }
+}

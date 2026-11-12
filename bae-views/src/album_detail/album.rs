@@ -26,6 +26,47 @@ pub struct AlbumDetail {
     /// row. The version moves when the bytes do, so subscribers receive a changed
     /// field and the UI re-renders.
     pub cover: Option<ImageRef>,
+    /// Who rated the album, and whether this person can.
+    pub rating: AlbumRating,
+}
+
+/// An album's ratings as its page shows them.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AlbumRating {
+    /// Whether this person can rate: only a person with a profile does.
+    pub can_rate: bool,
+    /// The stars this person gave the album.
+    pub mine: Option<Stars>,
+    /// Who rated the album: this person first, when they did, then each other
+    /// person who did, by name then id.
+    pub raters: Vec<Rater>,
+}
+
+/// One person who rated an album, as the album's rating line names them.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Rater {
+    /// This person; their stars are [`AlbumRating::mine`].
+    You,
+    Person {
+        name: String,
+        stars: Stars,
+    },
+}
+
+impl AlbumRating {
+    pub(crate) fn from_raw(raw: bae_people::collections::AlbumRatings) -> Self {
+        let raters = raw
+            .mine
+            .map(|_| Rater::You)
+            .into_iter()
+            .chain(
+                raw.others
+                    .into_iter()
+                    .map(|other| Rater::Person { name: other.name, stars: other.stars }),
+            )
+            .collect();
+        Self { can_rate: raw.can_rate, mine: raw.mine, raters }
+    }
 }
 
 /// The slim projection a list view renders. Composed into [`AlbumDetail`] for

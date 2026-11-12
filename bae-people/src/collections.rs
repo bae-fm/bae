@@ -35,6 +35,25 @@ pub struct Rating {
     pub stars: Stars,
 }
 
+/// What the album's page reads of its ratings: whether this person can rate
+/// (they have a profile), the stars they gave it, and the stars each other
+/// person gave it, by name then id.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AlbumRatings {
+    pub can_rate: bool,
+    pub mine: Option<Stars>,
+    pub others: Vec<OtherRating>,
+}
+
+/// One other person's stars for an album, under the name their profile
+/// carries. A removed person's profile stays, so their rating still names
+/// them.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct OtherRating {
+    pub name: String,
+    pub stars: Stars,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Playlist {
     pub id: uuid::Uuid,

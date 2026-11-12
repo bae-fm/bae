@@ -1,5 +1,5 @@
 use super::*;
-use bae_people::collections::{CollectionError, Rating, RatingTarget, Stars};
+use bae_people::collections::{CollectionError, RatingTarget, Stars};
 use bae_people::people::Sharing;
 
 impl AppServices {
@@ -19,7 +19,6 @@ impl AppServices {
     delegate_lib!(people, people => people() -> Vec<bae_people::people::Person>);
     delegate_lib!(people, own_person => own_person() -> Option<bae_people::people::Person>);
     delegate_async!(people, set_rating => set_rating(target: RatingTarget, stars: Option<Stars>) -> Result<(), CollectionError>);
-    delegate_async!(people, ratings => ratings() -> Result<Vec<Rating>, bae_store::DbError>);
     delegate_async!(manager, create_playlist => create_playlist(name: &str, sharing: Sharing, tracks: Vec<String>) -> Result<uuid::Uuid, CollectionError>);
     delegate_async!(people, rename_playlist => rename_playlist(id: uuid::Uuid, name: &str) -> Result<(), CollectionError>);
     delegate_async!(people, set_playlist_sharing => set_playlist_sharing(id: uuid::Uuid, sharing: Sharing) -> Result<(), CollectionError>);

@@ -117,6 +117,7 @@ func makeBridgeAlbumDetail(
             primaryReleaseId: releases[0].id
         ),
         releases: releases,
+        rating: BridgeAlbumRating(canRate: false, mine: nil, raters: []),
     )
 }
 

@@ -67,6 +67,7 @@ impl BridgeTrack {
             // UI renders `position_text` and the group headers, not this.
             position: _,
             works,
+            my_stars,
         } = t;
         BridgeTrack {
             id,
@@ -84,6 +85,7 @@ impl BridgeTrack {
                     composer_names: work.composer_names,
                 })
                 .collect(),
+            my_stars: my_stars.map(crate::types::BridgeStars::from_core),
         }
     }
 }
@@ -320,6 +322,7 @@ impl BridgeAlbumDetail {
             releases,
             primary_release_id,
             cover,
+            rating,
         } = detail;
         let release_ids: Vec<String> = releases.iter().map(|r| r.summary.id.clone()).collect();
         let bae_records::DbAlbum {
@@ -347,6 +350,7 @@ impl BridgeAlbumDetail {
         BridgeAlbumDetail {
             album,
             releases: releases.into_iter().map(BridgeRelease::from_core).collect(),
+            rating: crate::types::BridgeAlbumRating::from_core(rating),
         }
     }
 }

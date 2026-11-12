@@ -2635,7 +2635,11 @@ to a track. Ana gives *Album Title* four stars; Ben gives it two. They are two
 rows, one per person, keyed by the person and the album, so Ana rating it again
 from her phone changes her one row. Clearing a rating deletes the row. A
 track's rating belongs to one release's track, so the tracks of two copies of a
-pressing (§2.7) are rated apart.
+pressing (§2.7) are rated apart. An album's page shows the person's own stars
+for it and a line naming who rated it: *You* when they did, then each other
+person who did, with their stars, by name. A track's stars on the page are the
+person's own. Only a person with a profile rates (§5.4); the page's detail says
+whether this person can.
 
 Ben keeps his history private. Carol's devices never see what he played. He
 makes a playlist for a party and shares it: it moves from his circle to the
@@ -4777,7 +4781,8 @@ holding it.
 
 Reads come two ways:
 
-- **One-time reads** return the library as it stands: an album's detail, a
+- **One-time reads** return the library as it stands: an album's detail (which
+  carries the album's ratings and the person's stars for each track), a
   release's tracks and files, an artist, a work, a search.
 - **Live subscriptions** deliver a value, then a new one each time the rows it
   read change. The album grid, the artist and composer lists, a composer's

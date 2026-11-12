@@ -533,6 +533,8 @@ pub struct BridgeTrack {
     pub position_text: String,
     /// The works the track performs, in the order it performs them.
     pub works: Vec<BridgeTrackWork>,
+    /// The stars this person gave the track.
+    pub my_stars: Option<crate::types::BridgeStars>,
 }
 
 /// A work a track performs.
@@ -852,6 +854,8 @@ pub struct BridgeGalleryItem {
 pub struct BridgeAlbumDetail {
     pub album: BridgeAlbum,
     pub releases: Vec<BridgeRelease>,
+    /// Who rated the album, and whether this person can.
+    pub rating: crate::types::BridgeAlbumRating,
 }
 
 #[derive(Debug, Clone, uniffi::Enum)]

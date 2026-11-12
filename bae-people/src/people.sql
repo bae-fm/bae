@@ -26,6 +26,9 @@ CREATE TABLE ratings (
     UNIQUE (person_id, track_id)
 ) STRICT;
 
+-- An album's ratings read along the album.
+CREATE INDEX ratings_album ON ratings(album_id);
+
 CREATE TABLE playlists (
     id TEXT PRIMARY KEY NOT NULL,
     person_id TEXT NOT NULL REFERENCES people(id) ON DELETE CASCADE,

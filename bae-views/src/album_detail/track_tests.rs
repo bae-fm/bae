@@ -14,6 +14,7 @@ fn track(id: &str, position: TrackPosition) -> TrackDetail {
         position_text: position.text(),
         position,
         works: Vec::new(),
+        my_stars: None,
     }
 }
 

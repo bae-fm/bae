@@ -12,6 +12,8 @@ public struct Track: Identifiable, Sendable {
     public var positionText: String
     /// The works the track performs, in the order it performs them.
     public var works: [BridgeTrackWork]
+    /// The stars this person gave the track.
+    public var myStars: BridgeStars?
 
     public var durationLabel: String { DurationClock.label(durationClock) }
 
@@ -23,5 +25,6 @@ public struct Track: Identifiable, Sendable {
         displayArtist = bridge.displayArtist
         positionText = bridge.positionText
         works = bridge.works
+        myStars = bridge.myStars
     }
 }
