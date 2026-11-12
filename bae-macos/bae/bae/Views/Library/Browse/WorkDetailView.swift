@@ -17,14 +17,13 @@ struct WorkDetailView: View {
                 SectionHeader(title: String(localized: "Works"))
                 VStack(alignment: .leading, spacing: ThemeSpace.hairline) {
                     ForEach(detail.childWorks, id: \.workId) { work in
-                        Button(action: { openWork(work.workId) }) {
-                            DetailMediaRow(
-                                image: work.representativeCover,
-                                title: work.title,
-                                subtitle: work.composerNames
-                            )
-                        }
-                        .buttonStyle(DetailRowButtonStyle())
+                        MacLibraryRowButton(
+                            picture: work.representativeCover,
+                            title: work.title,
+                            subtitle: work.composerNames,
+                            bleed: true,
+                            action: { openWork(work.workId) }
+                        )
                     }
                 }
             }
@@ -32,16 +31,15 @@ struct WorkDetailView: View {
                 SectionHeader(title: String(localized: "Releases"))
                 VStack(alignment: .leading, spacing: ThemeSpace.hairline) {
                     ForEach(detail.releases, id: \.releaseId) { release in
-                        Button(action: {
-                            openAlbum(release.albumId, release.releaseId)
-                        }) {
-                            DetailMediaRow(
-                                image: release.cover,
-                                title: release.albumTitle,
-                                subtitle: workReleaseMetadata(release)
-                            )
-                        }
-                        .buttonStyle(DetailRowButtonStyle())
+                        MacLibraryRowButton(
+                            picture: release.cover,
+                            title: release.albumTitle,
+                            subtitle: workReleaseMetadata(release),
+                            bleed: true,
+                            action: {
+                                openAlbum(release.albumId, release.releaseId)
+                            }
+                        )
                     }
                 }
             }
@@ -49,9 +47,11 @@ struct WorkDetailView: View {
                 SectionHeader(title: String(localized: "Recordings"))
                 VStack(alignment: .leading, spacing: ThemeSpace.hairline) {
                     ForEach(detail.tracks, id: \.trackId) { track in
-                        CreditRow(
+                        MacLibraryRow(
                             title: track.trackTitle,
-                            subtitle: track.albumTitle
+                            subtitle: track.albumTitle,
+                            bleed: true,
+                            credit: true
                         )
                     }
                 }

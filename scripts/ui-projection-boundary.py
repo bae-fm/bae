@@ -67,10 +67,10 @@ RENDER_LEAVES = (
         r"\bstruct\s+TrackRowView\s*:\s*View\b",
     ),
     RenderLeaf(
-        "bae-macos/bae/bae/Views/Library/Browse/BrowseListRow.swift",
-        "BrowseSummaryRow",
+        "bae-macos/bae/bae/Views/Components/MacLibraryRow.swift",
+        "MacLibraryRow",
         "swift",
-        r"\bstruct\s+BrowseSummaryRow\s*<[^>{}]+>\s*:\s*View\b",
+        r"\bstruct\s+MacLibraryRow\s*:\s*View\b",
     ),
     RenderLeaf(
         "bae-android/app/src/main/java/fm/bae/app/ui/albumdetail/AndroidTrackRow.kt",

@@ -57,7 +57,7 @@ struct SearchView: View {
     private func resultsList(_ results: SearchResults) -> some View {
         VStack(alignment: .leading, spacing: ThemeSpace.hairline) {
             resultsSection("Albums", results.albums, id: \.id) { album in
-                SearchResultRow(
+                MacLibraryRowButton(
                     picture: album.cover,
                     title: album.title,
                     subtitle: albumSubtitle(album),
@@ -65,7 +65,7 @@ struct SearchView: View {
                 )
             }
             resultsSection("Artists", results.artists, id: \.id) { artist in
-                SearchResultRow(
+                MacLibraryRowButton(
                     picture: artist.image,
                     title: artist.name,
                     subtitle: artist.countLine.localizedLine,
@@ -73,7 +73,7 @@ struct SearchView: View {
                 )
             }
             resultsSection("Tracks", results.tracks, id: \.id) { track in
-                SearchResultRow(
+                MacLibraryRowButton(
                     picture: track.cover,
                     title: track.title,
                     subtitle: trackSubtitle(track),
@@ -83,7 +83,7 @@ struct SearchView: View {
             }
             resultsSection("Composers", results.composers, id: \.id) {
                 composer in
-                SearchResultRow(
+                MacLibraryRowButton(
                     picture: composer.image,
                     title: composer.name,
                     subtitle: composer.countLine.localizedLine,
@@ -91,7 +91,7 @@ struct SearchView: View {
                 )
             }
             resultsSection("Works", results.works, id: \.id) { work in
-                SearchResultRow(
+                MacLibraryRowButton(
                     picture: work.representativeCover,
                     title: work.title,
                     subtitle: work.composerNames,
@@ -119,7 +119,7 @@ struct SearchView: View {
     private func sectionHeader(_ title: LocalizedStringKey) -> some View {
         Eyebrow(title)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, ThemeSpace.group)
+            .padding(.horizontal, ThemeSpace.related)
             .padding(.top, ThemeSpace.group)
             .padding(.bottom, ThemeSpace.related)
     }
@@ -139,66 +139,6 @@ struct SearchView: View {
             track.artistName,
             track.albumTitle
         )
-    }
-}
-
-/// One search hit: a picture, a title over an optional subtitle, and an
-/// optional trailing label.
-private struct SearchResultRow: View {
-    let picture: BridgeImageRef?
-    let title: String
-    let subtitle: String?
-    var trailing: String?
-    let action: () -> Void
-
-    @State
-    private var hovering = false
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: ThemeSpace.group) {
-                ImageView(imageRef: picture, pointSize: ThemeSize.rowArtwork)
-                    .frame(
-                        width: ThemeSize.rowArtwork,
-                        height: ThemeSize.rowArtwork
-                    )
-                    .clipShape(
-                        RoundedRectangle(cornerRadius: ThemeRadius.artwork)
-                    )
-
-                VStack(alignment: .leading, spacing: ThemeSpace.line) {
-                    Text(title)
-                        .themeText(.rowTitle)
-                        .lineLimit(1)
-                    StableOptionalText(
-                        text: subtitle,
-                        font: ThemeText.detail.font,
-                        foreground: .secondary,
-                        lineHeight: 14,
-                        lineLimit: 1
-                    )
-                }
-
-                Spacer(minLength: ThemeSpace.related)
-
-                if let trailing {
-                    Text(trailing)
-                        .themeText(.detail)
-                        .monospacedDigit()
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .padding(.horizontal, ThemeSpace.group)
-            .padding(.vertical, ThemeSpace.related)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .contentShape(Rectangle())
-            .background(
-                RoundedRectangle(cornerRadius: ThemeRadius.control)
-                    .fill(hovering ? Theme.hover : Color.clear)
-            )
-        }
-        .buttonStyle(.plain)
-        .onHover { hovering = $0 }
     }
 }
 

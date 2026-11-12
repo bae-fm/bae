@@ -20,7 +20,7 @@ struct ShotScene {
     /// Every macOS scene, one for each board it is shot for. A scene is
     /// present only when it has a real staging; a missing scene is a
     /// deliberate omission, never a swallowed failure.
-    static let all: [ShotScene] = welcomeScenes
+    static let all: [ShotScene] = welcomeScenes + componentScenes
 }
 
 /// A scene's view, built with its fixture, and whether what the view shows

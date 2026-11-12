@@ -123,26 +123,29 @@ struct ComposerDetailPane: View {
                 }
                 switch row.item {
                 case .work(let work, let part):
-                    workRow(work)
-                        .padding(.leading, part ? ThemeSpace.edge : 0)
+                    workRow(work, part: part)
                         .padding(
                             .top,
                             part || row.heading != nil
                                 ? ThemeSpace.hairline : ThemeSpace.edge
                         )
                 case .releaseCredit(let credit):
-                    CreditRow(
+                    MacLibraryRow(
                         title: credit.albumTitle,
-                        subtitle: credit.sourceCredit
+                        subtitle: credit.sourceCredit,
+                        bleed: true,
+                        credit: true
                     )
                     .padding(
                         .top,
                         row.heading != nil ? 0 : ThemeSpace.section
                     )
                 case .trackCredit(let credit):
-                    CreditRow(
+                    MacLibraryRow(
                         title: credit.trackTitle,
-                        subtitle: credit.albumTitle
+                        subtitle: credit.albumTitle,
+                        bleed: true,
+                        credit: true
                     )
                     .padding(
                         .top,
@@ -165,15 +168,15 @@ struct ComposerDetailPane: View {
     }
 
     /// One work in the works list; opens that work in this pane.
-    private func workRow(_ work: BridgeWorkSummary) -> some View {
-        Button(action: { openWork(work.workId) }) {
-            DetailMediaRow(
-                image: work.representativeCover,
-                title: work.title,
-                subtitle: work.composerNames
-            )
-        }
-        .buttonStyle(DetailRowButtonStyle())
+    private func workRow(_ work: BridgeWorkSummary, part: Bool) -> some View {
+        MacLibraryRowButton(
+            picture: work.representativeCover,
+            title: work.title,
+            subtitle: work.composerNames,
+            bleed: true,
+            part: part,
+            action: { openWork(work.workId) }
+        )
     }
 
     private func openWork(_ workId: String) {

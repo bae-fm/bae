@@ -343,25 +343,38 @@ extension LibraryView {
     }
 
     private func artistRow(at index: Int, list: ArtistList) -> some View {
-        let summary = list.row(at: index)
-        return BrowseListRow(
-            summary: summary,
-            isSelected: summary != nil
-                && session.selectedArtistId == summary?.id,
-            select: { id in
-                session.selectArtist(id)
-            }
-        )
+        browseRow(list.row(at: index), selectedId: session.selectedArtistId) {
+            session.selectArtist($0)
+        }
     }
 
     private func composerRow(at index: Int, list: ComposerList) -> some View {
-        let summary = list.row(at: index)
-        return BrowseListRow(
-            summary: summary,
-            isSelected: summary != nil
-                && session.detailSelection.composerId == summary?.id,
-            select: { id in
-                session.selectComposer(id)
+        browseRow(
+            list.row(at: index),
+            selectedId: session.detailSelection.composerId
+        ) {
+            session.selectComposer($0)
+        }
+    }
+
+    /// One row of a master list, drawn from the row the list's query
+    /// returned at its position; until that row's page loads it is the
+    /// loading row and cannot be selected.
+    private func browseRow<Summary: BrowseSummaryDisplay & Identifiable>(
+        _ summary: Summary?,
+        selectedId: String?,
+        select: @escaping (String) -> Void
+    ) -> some View where Summary.ID == String {
+        MacLibraryRowButton(
+            picture: summary?.image,
+            title: summary?.name,
+            subtitle: summary?.countText,
+            selected: summary != nil && selectedId == summary?.id,
+            loading: summary == nil,
+            action: {
+                if let summary {
+                    select(summary.id)
+                }
             }
         )
     }

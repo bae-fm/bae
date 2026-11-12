@@ -64,7 +64,7 @@
         }
 
         /// PNG bytes for one placeholder, its hue decided by the name.
-        private static func previewArtData(_ name: String) -> Data {
+        static func previewArtData(_ name: String) -> Data {
             let side: CGFloat = 600
             let hash = name.unicodeScalars.reduce(into: UInt32(5381)) {
                 $0 = $0 &* 33 &+ $1.value
