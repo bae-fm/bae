@@ -59,6 +59,7 @@ class OnboardingFlowTest {
         val resumed = mutableListOf<BridgeUnfinishedRestore>()
         var restoreAnswer: BridgeBootstrapResult? = null
         var joinsUnderWay = emptyList<BridgeUnfinishedJoin>()
+        var joinAnswer: BridgeBootstrapResult? = null
         val joined = mutableListOf<Pair<String, String>>()
         val resumedJoins = mutableListOf<BridgeUnfinishedJoin>()
 
@@ -72,6 +73,7 @@ class OnboardingFlowTest {
             control: BridgeJoinControl,
         ): BridgeBootstrapResult {
             joined += code to name
+            joinAnswer?.let { return it }
             awaitCancellation()
         }
 
@@ -81,6 +83,7 @@ class OnboardingFlowTest {
             control: BridgeJoinControl,
         ): BridgeBootstrapResult {
             resumedJoins += join
+            joinAnswer?.let { return it }
             awaitCancellation()
         }
 
@@ -322,6 +325,41 @@ class OnboardingFlowTest {
         assertEquals(JoinStart.Unfinished(underWay), (running.from as OnboardingStep.Invite).start)
         assertEquals(listOf(underWay), host.resumedJoins)
         assertEquals(emptyList<Pair<String, String>>(), host.joined)
+    }
+
+    /** A join that ends without letting the device in shows the ended step, and OK returns to the code screen. */
+    @Test
+    fun aDeclinedJoinEndsOnTheEndedStep() {
+        val flow = newFlow()
+        val invite = invite()
+        host.joinAnswer = BridgeBootstrapResult.Declined
+        flow.advance(enterCode, INVITE_CODE, BridgeCodeInfo.Invite(invite), CodeSource.SCANNED)
+        shadowOf(Looper.getMainLooper()).idle()
+
+        flow.join(flow.step as OnboardingStep.JoinName, "Dan")
+        shadowOf(Looper.getMainLooper()).idle()
+
+        val ended = flow.step as OnboardingStep.JoinEnded
+        assertEquals(OnboardingStep.JoinEnded(invite, CodeEntry.NewDevice), ended)
+        assertNull(flow.error)
+
+        flow.back(ended)
+
+        assertEquals(enterCode, flow.step)
+    }
+
+    /** A join under way that ends is the same ended step. */
+    @Test
+    fun aDeclinedResumedJoinEndsOnTheEndedStep() {
+        val flow = newFlow()
+        val invite = invite()
+        host.joinsUnderWay = listOf(BridgeUnfinishedJoin(NoHandle))
+        host.joinAnswer = BridgeBootstrapResult.Declined
+
+        flow.advance(enterCode, INVITE_CODE, BridgeCodeInfo.Invite(invite), CodeSource.SCANNED)
+        shadowOf(Looper.getMainLooper()).idle()
+
+        assertEquals(OnboardingStep.JoinEnded(invite, CodeEntry.NewDevice), flow.step)
     }
 
     /** A restore refused because another join or restore of the library is under way here goes on with that one. */

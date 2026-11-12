@@ -304,7 +304,6 @@
     <string name="name_shown_to_everyone">Toți cei din bibliotecă văd acest nume.</string>
     <string name="name_save_failed">Numele nu a putut fi salvat.</string>
     <string name="onboarding_restoring_title">Se restaurează biblioteca</string>
-    <string name="onboarding_invite_ended">Această invitație s-a încheiat. A fost refuzată sau anulată, a expirat sau dispozitivul care a creat-o nu mai este în bibliotecă.</string>
     <string name="onboarding_status_connecting">Se conectează…</string>
     <string name="onboarding_status_registering">Se înregistrează acest dispozitiv…</string>
     <string name="onboarding_status_finishing">Se finalizează…</string>
@@ -468,4 +467,7 @@
     <string name="file_size_terabytes">%1$s TB</string>
     <string name="onboarding_tell_code">Spune acest cod persoanei %1$s</string>
     <string name="onboarding_waiting_for_inviter">Se așteaptă ca %1$s să te lase înăuntru…</string>
+    <string name="onboarding_invite_ended_title">Această invitație s-a încheiat</string>
+    <string name="onboarding_invite_ended_ask">Cere-i una nouă persoanei %1$s.</string>
+    <string name="onboarding_ok">OK</string>
 </resources>

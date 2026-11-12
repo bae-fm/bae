@@ -16,6 +16,7 @@ import fm.bae.app.ui.ResetUnfinishedScreen
 import fm.bae.app.ui.components.RemovalLoss
 import fm.bae.app.ui.components.removeLibraryParts
 import fm.bae.app.ui.onboarding.CodeEntry
+import fm.bae.app.ui.onboarding.JoinEndedStep
 import fm.bae.app.ui.onboarding.JoinNameStep
 import fm.bae.app.ui.onboarding.JoinStart
 import fm.bae.app.ui.onboarding.LibraryDetailsRows
@@ -187,6 +188,35 @@ class WelcomeShots : BoardShot() {
                         ),
                     error = null,
                     onJoin = {},
+                    onBack = {},
+                )
+            }
+        }
+
+    /** A join that ended without letting this device in: the step that says so and whom to ask. */
+    @Test
+    fun androidWelcomeJoinEnded() =
+        shot("android.welcome.join.ended") {
+            ScreenScene {
+                JoinEndedStep(
+                    step =
+                        OnboardingStep.JoinEnded(
+                            invite =
+                                BridgeInviteInfo(
+                                    metadata =
+                                        BridgeCodeMetadata(
+                                            libraryId = "home",
+                                            memberId = "ana",
+                                            provider = BridgeCloudProvider.DROPBOX,
+                                            location = sceneDropbox,
+                                            oauthAccess = null,
+                                            carriesS3Key = false,
+                                        ),
+                                    libraryName = "Home music",
+                                    inviter = "Ana",
+                                ),
+                            entry = CodeEntry.NewDevice,
+                        ),
                     onBack = {},
                 )
             }

@@ -306,7 +306,6 @@
     <string name="name_shown_to_everyone">כל מי שבספרייה רואה את השם הזה.</string>
     <string name="name_save_failed">לא ניתן לשמור את השם.</string>
     <string name="onboarding_restoring_title">משחזרים את הספרייה שלך</string>
-    <string name="onboarding_invite_ended">ההזמנה הזו הסתיימה. היא נדחתה או בוטלה, פג תוקפה, או שהמכשיר שיצר אותה כבר לא בספרייה.</string>
     <string name="onboarding_status_connecting">מתחברים…</string>
     <string name="onboarding_status_registering">רושמים את המכשיר הזה…</string>
     <string name="onboarding_status_finishing">מסיימים…</string>
@@ -470,4 +469,7 @@
     <string name="file_size_terabytes">%1$s TB</string>
     <string name="onboarding_tell_code">אמור את הקוד הזה ל-%1$s</string>
     <string name="onboarding_waiting_for_inviter">ממתין ש-%1$s יכניס אותך…</string>
+    <string name="onboarding_invite_ended_title">ההזמנה הזו הסתיימה</string>
+    <string name="onboarding_invite_ended_ask">בקש מ-%1$s הזמנה חדשה.</string>
+    <string name="onboarding_ok">אישור</string>
 </resources>

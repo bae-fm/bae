@@ -292,7 +292,6 @@
     <string name="name_shown_to_everyone">库中的每个人都能看到这个名字。</string>
     <string name="name_save_failed">无法保存姓名。</string>
     <string name="onboarding_restoring_title">正在恢复你的库</string>
-    <string name="onboarding_invite_ended">此邀请已结束：它已被拒绝或取消、已过期，或者创建它的设备已不在资料库中。</string>
     <string name="onboarding_status_connecting">正在连接…</string>
     <string name="onboarding_status_registering">正在注册此设备…</string>
     <string name="onboarding_status_finishing">正在完成…</string>
@@ -452,4 +451,7 @@
     <string name="file_size_terabytes">%1$s TB</string>
     <string name="onboarding_tell_code">把此代码告诉%1$s</string>
     <string name="onboarding_waiting_for_inviter">正在等待%1$s让你加入…</string>
+    <string name="onboarding_invite_ended_title">此邀请已结束</string>
+    <string name="onboarding_invite_ended_ask">请向%1$s索取新的邀请。</string>
+    <string name="onboarding_ok">好</string>
 </resources>

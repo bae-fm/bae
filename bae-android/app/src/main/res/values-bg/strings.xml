@@ -299,7 +299,6 @@
     <string name="name_shown_to_everyone">Всички в библиотеката виждат това име.</string>
     <string name="name_save_failed">Името не можа да се запази.</string>
     <string name="onboarding_restoring_title">Библиотеката ви се възстановява</string>
-    <string name="onboarding_invite_ended">Тази покана е приключила. Отхвърлена е или е отменена, изтекла е, или устройството, което я е създало, вече не е в библиотеката.</string>
     <string name="onboarding_status_connecting">Свързване…</string>
     <string name="onboarding_status_registering">Това устройство се регистрира…</string>
     <string name="onboarding_status_finishing">Завършване…</string>
@@ -461,4 +460,7 @@
     <string name="file_size_terabytes">%1$s TB</string>
     <string name="onboarding_tell_code">Кажете на %1$s този код</string>
     <string name="onboarding_waiting_for_inviter">Изчакване на %1$s да ви пусне…</string>
+    <string name="onboarding_invite_ended_title">Тази покана е приключила</string>
+    <string name="onboarding_invite_ended_ask">Помолете %1$s за нова.</string>
+    <string name="onboarding_ok">OK</string>
 </resources>

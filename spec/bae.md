@@ -3030,10 +3030,12 @@ Dan's phone sends no request once the invite has expired by its clock, and a
 request that arrives after the invite ended is turned away rather than left
 waiting. A code he enters after it expired, with no join of that library under
 way on his phone, says the invite ended before asking him to sign in to his
-provider. When the invite ends without letting him in, Dan's phone returns to
-the first screen and says it ended: it was declined or cancelled, it expired,
+provider. When the invite ends without letting him in, Dan's phone shows one
+screen, "This invite has ended" with "Ask Ana for a new one.", and **OK**,
+which returns to the first screen: it was declined or cancelled, it expired,
 or the device that made it is no longer in the library. Each ends his request
-the same way, so his phone can't tell which.
+the same way, so his phone can't tell which, and a join that was under way at
+launch ends on the same screen.
 
 Removing a person deletes their circle and its rows: their private history and
 private playlists. Their household ratings, history and playlists stay,

@@ -5,8 +5,9 @@ import SwiftUI
 /// code, and the S3 key a restore needs, are sheets over the first screen
 /// (`background`); an invite's code goes on to the step that asks the
 /// person's name, in the window; a running restore takes the whole window,
-/// with Cancel, and a running join takes it with its wait for approval. A restore or join
-/// that stops, or a code that doesn't read, brings the sheet back with why.
+/// with Cancel, and a running join takes it with its wait for approval. A join
+/// that ends without letting this device in takes it with one step that says
+/// so. A restore or join that stops, or a code that doesn't read, brings the sheet back with why.
 /// Cancel on the sheet, or leaving the scanner, closes the screen.
 struct CodeEntryScreen<Background: View>: View {
     @State
@@ -36,6 +37,13 @@ struct CodeEntryScreen<Background: View>: View {
         Group {
             if form.isRunning {
                 running
+            }
+            else if let invite = form.ended {
+                JoinEndedView(inviter: invite.inviter) {
+                    form.acknowledgeEnd()
+                    // A join resumed at launch has no code screen to return to.
+                    if case .resume = form.entry { onClose() }
+                }
             }
             else if let invite = form.asksName {
                 JoinNameView(

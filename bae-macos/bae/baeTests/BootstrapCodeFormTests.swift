@@ -26,6 +26,8 @@ private final class RestoreRecordingHost: BridgeHost, @unchecked Sendable {
     private let recordResume: AsyncStream<ObjectIdentifier>.Continuation
     /// What a restore from a code answers, in place of ending as cancelled.
     var restoreAnswer: BridgeBootstrapResult?
+    /// What a join, new or resumed, answers, in place of ending as cancelled.
+    var joinAnswer: BridgeBootstrapResult?
 
     init() {
         (restoredCodes, record) = AsyncStream.makeStream(of: String.self)
@@ -66,6 +68,7 @@ private final class RestoreRecordingHost: BridgeHost, @unchecked Sendable {
         control _: BridgeJoinControl
     ) async throws -> BridgeBootstrapResult {
         recordJoin.yield(JoinCall(code: code, name: name))
+        if let joinAnswer { return joinAnswer }
         throw CancellationError()
     }
 
@@ -75,6 +78,7 @@ private final class RestoreRecordingHost: BridgeHost, @unchecked Sendable {
         control _: BridgeJoinControl
     ) async throws -> BridgeBootstrapResult {
         recordResumedJoin.yield(ObjectIdentifier(join))
+        if let joinAnswer { return joinAnswer }
         throw CancellationError()
     }
 
@@ -405,5 +409,45 @@ struct BootstrapCodeFormTests {
 
         var resumed = host.resumedRestores.makeAsyncIterator()
         #expect(await resumed.next() == ObjectIdentifier(restore))
+    }
+}
+
+extension BootstrapCodeFormTests {
+    @Test("a join that ends without letting the device in shows the ended step")
+    func aDeclinedJoinEnds() async throws {
+        host.joinAnswer = .declined
+        let form = form(reading: Self.invite)
+        form.edit(code: Self.code)
+        form.decodeCode()
+        try await asksName(form)
+        form.joinName = "Odile Fen"
+
+        form.join()
+        try await Wait.until { form.ended != nil }
+
+        #expect(form.ended?.inviter == "Mara Quill")
+        #expect(form.error == nil)
+        #expect(!form.isRunning)
+
+        form.acknowledgeEnd()
+
+        #expect(form.ended == nil)
+        #expect(form.codeInput.isEmpty)
+        #expect(form.attempt == nil)
+    }
+
+    @Test("a resumed join that ends shows the ended step with its inviter")
+    func aDeclinedResumedJoinEnds() async throws {
+        host.joinAnswer = .declined
+        let underWay = BridgeUnfinishedJoin(
+            noHandle: BridgeUnfinishedJoin.NoHandle()
+        )
+        let form = form(reading: Self.invite, unfinishedJoins: [underWay])
+
+        form.edit(code: Self.code)
+        form.decodeCode()
+        try await Wait.until { form.ended != nil }
+
+        #expect(form.ended?.libraryName == "Low Tide Hours")
     }
 }

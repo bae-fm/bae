@@ -238,6 +238,13 @@ extension ShotScene {
                 }
             )
         },
+        ShotScene(id: "mac.welcome.join.ended", size: WelcomeWindow.size) {
+            ShotStage(
+                MacWelcomeWindow {
+                    JoinEndedView(inviter: "Ana", onOK: {})
+                }
+            )
+        },
         overWelcome("mac.welcome.add-code.entering", libraries: []) {
             _,
             window in

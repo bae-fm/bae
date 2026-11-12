@@ -305,7 +305,6 @@
     <string name="name_shown_to_everyone">Tutti nella libreria vedono questo nome.</string>
     <string name="name_save_failed">Impossibile salvare il nome.</string>
     <string name="onboarding_restoring_title">Ripristino della libreria in corso</string>
-    <string name="onboarding_invite_ended">Questo invito è terminato. È stato rifiutato o annullato, è scaduto, oppure il dispositivo che l’ha creato non fa più parte della libreria.</string>
     <string name="onboarding_status_connecting">Connessione…</string>
     <string name="onboarding_status_registering">Registrazione del dispositivo in corso…</string>
     <string name="onboarding_status_finishing">Completamento in corso…</string>
@@ -468,4 +467,7 @@
     <string name="file_size_terabytes">%1$s TB</string>
     <string name="onboarding_tell_code">Di’ a %1$s questo codice</string>
     <string name="onboarding_waiting_for_inviter">In attesa che %1$s ti faccia entrare…</string>
+    <string name="onboarding_invite_ended_title">Questo invito è terminato</string>
+    <string name="onboarding_invite_ended_ask">Chiedine uno nuovo a %1$s.</string>
+    <string name="onboarding_ok">OK</string>
 </resources>

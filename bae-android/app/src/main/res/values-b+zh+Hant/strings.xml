@@ -292,7 +292,6 @@
     <string name="name_shown_to_everyone">資料庫中的每個人都能看到這個名字。</string>
     <string name="name_save_failed">無法儲存姓名。</string>
     <string name="onboarding_restoring_title">正在還原你的資料庫</string>
-    <string name="onboarding_invite_ended">此邀請已結束：它已被拒絕或取消、已過期，或者建立它的裝置已不在資料庫中。</string>
     <string name="onboarding_status_connecting">正在連線…</string>
     <string name="onboarding_status_registering">正在註冊此裝置…</string>
     <string name="onboarding_status_finishing">正在完成…</string>
@@ -452,4 +451,7 @@
     <string name="file_size_terabytes">%1$s TB</string>
     <string name="onboarding_tell_code">把此代碼告訴%1$s</string>
     <string name="onboarding_waiting_for_inviter">正在等待%1$s讓你加入…</string>
+    <string name="onboarding_invite_ended_title">此邀請已結束</string>
+    <string name="onboarding_invite_ended_ask">請向%1$s索取新的邀請。</string>
+    <string name="onboarding_ok">好</string>
 </resources>

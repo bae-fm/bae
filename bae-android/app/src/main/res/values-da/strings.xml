@@ -297,7 +297,6 @@
     <string name="name_shown_to_everyone">Alle i biblioteket kan se dette navn.</string>
     <string name="name_save_failed">Navnet kunne ikke gemmes.</string>
     <string name="onboarding_restoring_title">Gendanner dit bibliotek</string>
-    <string name="onboarding_invite_ended">Denne invitation er afsluttet. Den blev afvist eller annulleret, den udløb, eller enheden, der lavede den, er ikke længere i biblioteket.</string>
     <string name="onboarding_status_connecting">Opretter forbindelse…</string>
     <string name="onboarding_status_registering">Registrerer denne enhed…</string>
     <string name="onboarding_status_finishing">Afslutter…</string>
@@ -459,4 +458,7 @@
     <string name="file_size_terabytes">%1$s TB</string>
     <string name="onboarding_tell_code">Fortæl %1$s denne kode</string>
     <string name="onboarding_waiting_for_inviter">Venter på, at %1$s lukker dig ind…</string>
+    <string name="onboarding_invite_ended_title">Denne invitation er afsluttet</string>
+    <string name="onboarding_invite_ended_ask">Bed %1$s om en ny.</string>
+    <string name="onboarding_ok">OK</string>
 </resources>

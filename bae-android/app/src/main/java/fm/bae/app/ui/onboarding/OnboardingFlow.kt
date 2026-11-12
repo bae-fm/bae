@@ -141,6 +141,17 @@ internal sealed interface OnboardingStep {
         OnboardingStep
 
     /**
+     * A join that ended without letting this device in, whether the invite
+     * was declined, cancelled or expired, or the device that made it is gone:
+     * one step that says so and whom to ask for a new one. OK, and Back,
+     * return to the code screen.
+     */
+    data class JoinEnded(
+        val invite: BridgeInviteInfo,
+        val entry: CodeEntry,
+    ) : OnboardingStep
+
+    /**
      * An invite joining, from a name just given, or a join under way that
      * continues with the name its request carries: joining starts at once,
      * with no form, from [start].
@@ -454,6 +465,12 @@ internal class OnboardingFlow(
         step = OnboardingStep.EnterCode(from.entry)
     }
 
+    /** Back to the code screen from an ended join. */
+    fun back(from: OnboardingStep.JoinEnded) {
+        error = null
+        step = OnboardingStep.EnterCode(from.entry)
+    }
+
     fun restore(
         from: OnboardingStep.Restore,
         credentials: BridgeS3Credentials?,
@@ -560,8 +577,8 @@ internal class OnboardingFlow(
                 following.cancel()
                 when (result) {
                     BridgeBootstrapResult.Declined -> {
-                        step = OnboardingStep.EnterCode(from.entry)
-                        error = DisplayError(context.getString(R.string.onboarding_invite_ended))
+                        val join = from as? OnboardingStep.Invite ?: error("only a join ends without letting it in")
+                        step = OnboardingStep.JoinEnded(join.invite, join.entry)
                     }
 
                     // The cancel came as the request was sent: the join goes on.

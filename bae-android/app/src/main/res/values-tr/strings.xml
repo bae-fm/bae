@@ -299,7 +299,6 @@
     <string name="name_shown_to_everyone">Kitaplıktaki herkes bu adı görür.</string>
     <string name="name_save_failed">Ad kaydedilemedi.</string>
     <string name="onboarding_restoring_title">Kitaplığınız geri yükleniyor</string>
-    <string name="onboarding_invite_ended">Bu davet sona erdi. Reddedildi veya iptal edildi, süresi doldu ya da daveti oluşturan cihaz artık kitaplıkta değil.</string>
     <string name="onboarding_status_connecting">Bağlanıyor…</string>
     <string name="onboarding_status_registering">Bu cihaz kaydediliyor…</string>
     <string name="onboarding_status_finishing">Tamamlanıyor…</string>
@@ -461,4 +460,7 @@
     <string name="file_size_terabytes">%1$s TB</string>
     <string name="onboarding_tell_code">Bu kodu %1$s kişisine söyleyin</string>
     <string name="onboarding_waiting_for_inviter">%1$s sizi içeri alana kadar bekleniyor…</string>
+    <string name="onboarding_invite_ended_title">Bu davet sona erdi</string>
+    <string name="onboarding_invite_ended_ask">Yeni bir davet için %1$s ile görüşün.</string>
+    <string name="onboarding_ok">Tamam</string>
 </resources>

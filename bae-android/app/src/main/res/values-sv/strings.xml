@@ -297,7 +297,6 @@
     <string name="name_shown_to_everyone">Alla i biblioteket ser det här namnet.</string>
     <string name="name_save_failed">Det gick inte att spara namnet.</string>
     <string name="onboarding_restoring_title">Återställer ditt bibliotek</string>
-    <string name="onboarding_invite_ended">Den här inbjudan har upphört. Den avböjdes eller återkallades, den gick ut, eller så finns enheten som skapade den inte längre i biblioteket.</string>
     <string name="onboarding_status_connecting">Ansluter …</string>
     <string name="onboarding_status_registering">Registrerar den här enheten …</string>
     <string name="onboarding_status_finishing">Slutför …</string>
@@ -459,4 +458,7 @@
     <string name="file_size_terabytes">%1$s TB</string>
     <string name="onboarding_tell_code">Berätta den här koden för %1$s</string>
     <string name="onboarding_waiting_for_inviter">Väntar på att %1$s ska släppa in dig…</string>
+    <string name="onboarding_invite_ended_title">Den här inbjudan har upphört</string>
+    <string name="onboarding_invite_ended_ask">Be %1$s om en ny.</string>
+    <string name="onboarding_ok">OK</string>
 </resources>

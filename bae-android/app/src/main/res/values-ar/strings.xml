@@ -327,7 +327,6 @@
     <string name="name_shown_to_everyone">يرى هذا الاسم كل من في المكتبة.</string>
     <string name="name_save_failed">تعذّر حفظ الاسم.</string>
     <string name="onboarding_restoring_title">جارٍ استعادة مكتبتك</string>
-    <string name="onboarding_invite_ended">انتهت هذه الدعوة. رُفضت أو أُلغيت، أو انتهت صلاحيتها، أو لم يعد الجهاز الذي أنشأها في المكتبة.</string>
     <string name="onboarding_status_connecting">جارٍ الاتصال…</string>
     <string name="onboarding_status_registering">جارٍ تسجيل هذا الجهاز…</string>
     <string name="onboarding_status_finishing">جارٍ الإنهاء…</string>
@@ -497,4 +496,7 @@
     <string name="file_size_terabytes">%1$s تيرابايت</string>
     <string name="onboarding_tell_code">أخبر %1$s بهذا الرمز</string>
     <string name="onboarding_waiting_for_inviter">في انتظار %1$s ليسمح لك بالدخول…</string>
+    <string name="onboarding_invite_ended_title">انتهت هذه الدعوة</string>
+    <string name="onboarding_invite_ended_ask">اطلب من %1$s دعوة جديدة.</string>
+    <string name="onboarding_ok">موافق</string>
 </resources>

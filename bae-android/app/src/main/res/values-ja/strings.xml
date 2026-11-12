@@ -292,7 +292,6 @@
     <string name="name_shown_to_everyone">この名前はライブラリの全員に表示されます。</string>
     <string name="name_save_failed">名前を保存できませんでした。</string>
     <string name="onboarding_restoring_title">ライブラリを復元しています</string>
-    <string name="onboarding_invite_ended">この招待は終了しました。拒否または取り消されたか、期限切れになったか、招待を作成したデバイスがもうライブラリにありません。</string>
     <string name="onboarding_status_connecting">接続しています…</string>
     <string name="onboarding_status_registering">このデバイスを登録しています…</string>
     <string name="onboarding_status_finishing">最終処理をしています…</string>
@@ -452,4 +451,7 @@
     <string name="file_size_terabytes">%1$s TB</string>
     <string name="onboarding_tell_code">このコードを%1$sさんに伝えてください</string>
     <string name="onboarding_waiting_for_inviter">%1$sさんが許可するのを待っています…</string>
+    <string name="onboarding_invite_ended_title">この招待は終了しました</string>
+    <string name="onboarding_invite_ended_ask">%1$sさんに新しい招待を頼んでください。</string>
+    <string name="onboarding_ok">OK</string>
 </resources>

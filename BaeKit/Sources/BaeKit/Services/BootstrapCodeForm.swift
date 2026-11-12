@@ -107,6 +107,9 @@ public final class BootstrapCodeForm {
     /// Whether the join's waiting screen shows, which each join's control is
     /// told as it starts and whenever this changes.
     public private(set) var waitingScreenShown = false
+    /// The invite of a join that ended without letting this device in, until
+    /// the person acknowledges it.
+    public private(set) var ended: BridgeInviteInfo?
     /// The running attempt, which reports its progress.
     private var bootstrap: LibraryBootstrap?
     public private(set) var isRunning = false
@@ -334,6 +337,7 @@ public final class BootstrapCodeForm {
         let bootstrap = makeBootstrap()
         bootstrap.setWaitingScreenShown(waitingScreenShown)
         self.bootstrap = bootstrap
+        let invite = attempt?.invite
         error = nil
         isRunning = true
         task = Task {
@@ -345,7 +349,7 @@ public final class BootstrapCodeForm {
                 let result = try await work(bootstrap)
                 // A result that holds an open store is delivered even after a
                 // cancel raced it, so the store is opened rather than leaked.
-                deliver(result)
+                deliver(result, invite: invite)
             }
             catch is CancellationError {
                 logger.debug("bootstrap cancelled")
@@ -464,6 +468,14 @@ extension BootstrapCodeForm {
         }
     }
 
+    /// The person read that the join ended: the ended step goes, and the code
+    /// screen is the first one again, with no code in it.
+    public func acknowledgeEnd() {
+        ended = nil
+        codeInput = ""
+        clearReading()
+    }
+
     /// Whether the join's waiting screen shows: while it does, the join
     /// checks for approval every few seconds. Applied to the running join's
     /// control and to each one made after.
@@ -493,11 +505,17 @@ extension BootstrapCodeForm {
                 bootstrap.setWaitingScreenShown(waitingScreenShown)
                 if let join = try await joins().first {
                     self.bootstrap = bootstrap
-                    deliver(try await bootstrap.resume(join))
+                    deliver(
+                        try await bootstrap.resume(join),
+                        invite: join.info()
+                    )
                 }
                 else if let restore = try await restores().first {
                     self.bootstrap = bootstrap
-                    deliver(try await bootstrap.resumeRestore(restore))
+                    deliver(
+                        try await bootstrap.resumeRestore(restore),
+                        invite: nil
+                    )
                 }
             }
             catch is CancellationError {
@@ -512,19 +530,22 @@ extension BootstrapCodeForm {
         }
     }
 
-    private func deliver(_ result: BridgeBootstrapResult) {
+    /// Show what the attempt came to. `invite` is the join's, which ends
+    /// without a library only a join does.
+    private func deliver(
+        _ result: BridgeBootstrapResult,
+        invite: BridgeInviteInfo?
+    ) {
         switch result {
         case .opened(let library):
             onLibraryReady(library, nil)
         case .published(let library, let warning):
             onLibraryReady(library, warning)
         case .declined:
-            error = DisplayError(
-                line: String(
-                    localized:
-                        "This invite has ended. It was declined or cancelled, it expired, or the device that made it is no longer in the library."
-                )
-            )
+            guard let invite else {
+                preconditionFailure("only a join ends without letting it in")
+            }
+            ended = invite
         case .joinRequestSent, .callUnderWay:
             // After the running attempt's task has ended.
             Task { resumeUnfinished() }

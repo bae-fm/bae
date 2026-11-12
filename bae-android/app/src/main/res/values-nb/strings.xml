@@ -297,7 +297,6 @@
     <string name="name_shown_to_everyone">Alle i biblioteket ser dette navnet.</string>
     <string name="name_save_failed">Kunne ikke lagre navnet.</string>
     <string name="onboarding_restoring_title">Gjenoppretter biblioteket ditt</string>
-    <string name="onboarding_invite_ended">Denne invitasjonen er avsluttet. Den ble avslått eller avbrutt, den utløp, eller enheten som laget den, er ikke lenger i biblioteket.</string>
     <string name="onboarding_status_connecting">Kobler til …</string>
     <string name="onboarding_status_registering">Registrerer denne enheten …</string>
     <string name="onboarding_status_finishing">Fullfører …</string>
@@ -459,4 +458,7 @@
     <string name="file_size_terabytes">%1$s TB</string>
     <string name="onboarding_tell_code">Si denne koden til %1$s</string>
     <string name="onboarding_waiting_for_inviter">Venter på at %1$s skal slippe deg inn…</string>
+    <string name="onboarding_invite_ended_title">Denne invitasjonen er avsluttet</string>
+    <string name="onboarding_invite_ended_ask">Be %1$s om en ny.</string>
+    <string name="onboarding_ok">OK</string>
 </resources>

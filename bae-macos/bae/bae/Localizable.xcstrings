@@ -127840,173 +127840,6 @@
         }
       }
     },
-    "This invite has ended. It was declined or cancelled, it expired, or the device that made it is no longer in the library." : {
-      "comment" : "Joining: the invite ended without letting this device in. The joining device can't tell which of these ended it.",
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "انتهت هذه الدعوة. رُفضت أو أُلغيت، أو انتهت صلاحيتها، أو لم يعد الجهاز الذي أنشأها في المكتبة."
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Тази покана е приключила. Отхвърлена е или е отменена, изтекла е, или устройството, което я е създало, вече не е в библиотеката."
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tato pozvánka skončila. Byla odmítnuta nebo zrušena, vypršela, nebo zařízení, které ji vytvořilo, už v knihovně není."
-          }
-        },
-        "da" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Denne invitation er afsluttet. Den blev afvist eller annulleret, den udløb, eller enheden, der lavede den, er ikke længere i biblioteket."
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Diese Einladung ist beendet. Sie wurde abgelehnt oder zurückgezogen, ist abgelaufen, oder das Gerät, das sie erstellt hat, ist nicht mehr in der Bibliothek."
-          }
-        },
-        "el" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Αυτή η πρόσκληση τερματίστηκε. Απορρίφθηκε ή ακυρώθηκε, έληξε, ή η συσκευή που τη δημιούργησε δεν είναι πλέον στη βιβλιοθήκη."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Esta invitación ha terminado. Se rechazó o se canceló, caducó, o el dispositivo que la creó ya no está en la biblioteca."
-          }
-        },
-        "fi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tämä kutsu on päättynyt. Se hylättiin tai peruttiin, se vanheni, tai sen luonut laite ei ole enää kirjastossa."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cette invitation a pris fin. Elle a été refusée ou annulée, elle a expiré, ou l’appareil qui l’a créée ne fait plus partie de la bibliothèque."
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ההזמנה הזו הסתיימה. היא נדחתה או בוטלה, פג תוקפה, או שהמכשיר שיצר אותה כבר לא בספרייה."
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ova je pozivnica završila. Odbijena je ili otkazana, istekla je ili uređaj koji ju je izradio više nije u fonoteci."
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ez a meghívó véget ért. Elutasították vagy visszavonták, lejárt, vagy az azt létrehozó eszköz már nincs a könyvtárban."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Questo invito è terminato. È stato rifiutato o annullato, è scaduto, oppure il dispositivo che l’ha creato non fa più parte della libreria."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "この招待は終了しました。拒否または取り消されたか、期限切れになったか、招待を作成したデバイスがもうライブラリにありません。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "이 초대는 종료되었습니다. 거절 또는 취소되었거나, 만료되었거나, 초대를 만든 기기가 더 이상 라이브러리에 없습니다."
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Denne invitasjonen er avsluttet. Den ble avslått eller avbrutt, den utløp, eller enheten som laget den, er ikke lenger i biblioteket."
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Deze uitnodiging is beëindigd. Ze is geweigerd of ingetrokken, ze is verlopen, of het apparaat dat haar heeft gemaakt zit niet meer in de bibliotheek."
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "To zaproszenie się zakończyło. Zostało odrzucone lub anulowane, wygasło albo urządzenia, które je utworzyło, nie ma już w bibliotece."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Este convite terminou. Ele foi recusado ou cancelado, expirou, ou o dispositivo que o criou não está mais na biblioteca."
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Este convite terminou. Foi recusado ou cancelado, expirou, ou o dispositivo que o criou já não está na biblioteca."
-          }
-        },
-        "ro" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Această invitație s-a încheiat. A fost refuzată sau anulată, a expirat sau dispozitivul care a creat-o nu mai este în bibliotecă."
-          }
-        },
-        "sk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Táto pozvánka sa skončila. Bola odmietnutá alebo zrušená, vypršala jej platnosť alebo zariadenie, ktoré ju vytvorilo, už v knižnici nie je."
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Den här inbjudan har upphört. Den avböjdes eller återkallades, den gick ut, eller så finns enheten som skapade den inte längre i biblioteket."
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bu davet sona erdi. Reddedildi veya iptal edildi, süresi doldu ya da daveti oluşturan cihaz artık kitaplıkta değil."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Це запрошення завершилося. Його відхилено чи скасовано, термін його дії минув, або пристрою, який його створив, уже немає в бібліотеці."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "此邀请已结束：它已被拒绝或取消、已过期，或者创建它的设备已不在资料库中。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "此邀請已結束：它已被拒絕或取消、已過期，或者建立它的裝置已不在資料庫中。"
-          }
-        }
-      }
-    },
     "Registering this device…" : {
       "comment" : "Restore or join status: this device is being registered with the library, after loading it and before it opens.",
       "extractionState" : "manual",
@@ -162178,6 +162011,352 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "正在等待%@讓你加入…"
+          }
+        }
+      }
+    },
+    "This invite has ended" : {
+      "comment" : "Join: the step shown when the invite ended without letting this device in",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "انتهت هذه الدعوة"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тази покана е приключила"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tato pozvánka skončila"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Denne invitation er afsluttet"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Einladung ist beendet"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Αυτή η πρόσκληση έχει λήξει"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This invite has ended"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta invitación ha terminado"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kutsu on päättynyt"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cette invitation a pris fin"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ההזמנה הזו הסתיימה"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ova je pozivnica završila"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ez a meghívó véget ért"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Questo invito è terminato"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "この招待は終了しました"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 초대가 종료되었습니다"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Denne invitasjonen er avsluttet"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deze uitnodiging is afgelopen"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To zaproszenie dobiegło końca"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este convite terminou"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este convite terminou"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Această invitație s-a încheiat"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Táto pozvánka sa skončila"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Den här inbjudan har upphört"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bu davet sona erdi"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Це запрошення закінчилося"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此邀请已结束"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此邀請已結束"
+          }
+        }
+      }
+    },
+    "Ask %@ for a new one." : {
+      "comment" : "Join: under the ended invite's headline; %@ is the name of the person who invited",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "اطلب من %@ دعوة جديدة."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Помолете %@ за нова."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Požádejte %@ o novou."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bed %@ om en ny."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bitte %@ um eine neue."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ζητήστε μια νέα από %@."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ask %@ for a new one."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pídele una nueva a %@."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pyydä uusi kutsu henkilöltä %@."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Demandez-en une nouvelle à %@."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "בקש מ-%@ הזמנה חדשה."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zamolite osobu %@ za novu."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kérj egy újat tőle: %@."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chiedine uno nuovo a %@."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@さんに新しい招待を頼んでください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@님에게 새 초대를 요청하세요."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Be %@ om en ny."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vraag %@ om een nieuwe."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Poproś osobę %@ o nowe."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Peça um novo a %@."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Peça um novo a %@."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cere-i una nouă persoanei %@."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Požiadajte osobu %@ o novú."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Be %@ om en ny."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yeni bir davet için %@ ile görüşün."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Попросіть користувача %@ надіслати нове."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请向%@索取新的邀请。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "請向%@索取新的邀請。"
           }
         }
       }

@@ -298,7 +298,6 @@
     <string name="name_shown_to_everyone">Todos na biblioteca veem este nome.</string>
     <string name="name_save_failed">Não foi possível guardar o nome.</string>
     <string name="onboarding_restoring_title">A restaurar a sua biblioteca</string>
-    <string name="onboarding_invite_ended">Este convite terminou. Foi recusado ou cancelado, expirou, ou o dispositivo que o criou já não está na biblioteca.</string>
     <string name="onboarding_status_connecting">A ligar…</string>
     <string name="onboarding_status_registering">A registar este dispositivo…</string>
     <string name="onboarding_status_finishing">A concluir…</string>
@@ -461,4 +460,7 @@
     <string name="file_size_terabytes">%1$s TB</string>
     <string name="onboarding_tell_code">Diga este código a %1$s</string>
     <string name="onboarding_waiting_for_inviter">A aguardar que %1$s o deixe entrar…</string>
+    <string name="onboarding_invite_ended_title">Este convite terminou</string>
+    <string name="onboarding_invite_ended_ask">Peça um novo a %1$s.</string>
+    <string name="onboarding_ok">OK</string>
 </resources>

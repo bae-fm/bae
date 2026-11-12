@@ -313,7 +313,6 @@
     <string name="name_shown_to_everyone">Tę nazwę widzą wszyscy w bibliotece.</string>
     <string name="name_save_failed">Nie udało się zapisać imienia.</string>
     <string name="onboarding_restoring_title">Przywracanie biblioteki</string>
-    <string name="onboarding_invite_ended">To zaproszenie się zakończyło. Zostało odrzucone lub anulowane, wygasło albo urządzenia, które je utworzyło, nie ma już w bibliotece.</string>
     <string name="onboarding_status_connecting">Łączenie…</string>
     <string name="onboarding_status_registering">Rejestrowanie tego urządzenia…</string>
     <string name="onboarding_status_finishing">Kończenie…</string>
@@ -479,4 +478,7 @@
     <string name="file_size_terabytes">%1$s TB</string>
     <string name="onboarding_tell_code">Przekaż ten kod osobie %1$s</string>
     <string name="onboarding_waiting_for_inviter">Czekanie, aż %1$s Cię wpuści…</string>
+    <string name="onboarding_invite_ended_title">To zaproszenie dobiegło końca</string>
+    <string name="onboarding_invite_ended_ask">Poproś osobę %1$s o nowe.</string>
+    <string name="onboarding_ok">OK</string>
 </resources>

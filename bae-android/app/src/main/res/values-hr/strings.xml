@@ -306,7 +306,6 @@
     <string name="name_shown_to_everyone">Svi u fonoteci vide ovo ime.</string>
     <string name="name_save_failed">Nije moguće spremiti ime.</string>
     <string name="onboarding_restoring_title">Vraćanje fonoteke</string>
-    <string name="onboarding_invite_ended">Ova je pozivnica završila. Odbijena je ili otkazana, istekla je ili uređaj koji ju je izradio više nije u fonoteci.</string>
     <string name="onboarding_status_connecting">Povezivanje…</string>
     <string name="onboarding_status_registering">Registriranje ovog uređaja…</string>
     <string name="onboarding_status_finishing">Dovršavanje…</string>
@@ -470,4 +469,7 @@
     <string name="file_size_terabytes">%1$s TB</string>
     <string name="onboarding_tell_code">Recite ovaj kôd osobi %1$s</string>
     <string name="onboarding_waiting_for_inviter">Čekanje da vas %1$s pusti unutra…</string>
+    <string name="onboarding_invite_ended_title">Ova je pozivnica završila</string>
+    <string name="onboarding_invite_ended_ask">Zamolite osobu %1$s za novu.</string>
+    <string name="onboarding_ok">U redu</string>
 </resources>

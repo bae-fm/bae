@@ -38,10 +38,7 @@ import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
-import fm.bae.app.ui.components.AndroidMatchCode
-import fm.bae.app.ui.components.AndroidScreen
 import fm.bae.app.ui.components.AndroidSpinner
-import fm.bae.app.ui.components.AndroidStep
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.Logo
 import fm.bae.app.ui.components.OpenProgressLine
@@ -237,6 +234,11 @@ internal fun OnboardingSteps(
             )
         }
 
+        is OnboardingStep.JoinEnded -> {
+            BackHandler { flow.back(step) }
+            JoinEndedStep(step = step, onBack = { flow.back(step) })
+        }
+
         is OnboardingStep.RestoreSaved -> {
             BackHandler { flow.back(step) }
             SavedRestoreForm(
@@ -248,24 +250,34 @@ internal fun OnboardingSteps(
         }
 
         is OnboardingStep.Running -> {
-            // Once a join's request may have been sent there is no cancel:
-            // Back leaves the screen, and the join goes on at the next launch.
-            val cancellable = step.state?.cancellable == true
-            BackHandler(enabled = cancellable) { flow.cancel() }
-            // The join checks for approval every few seconds while this screen
-            // is started (core holds that exactly as long as it says so).
-            LifecycleStartEffect(flow) {
-                flow.setWaitingScreenShown(true)
-                onStopOrDispose { flow.setWaitingScreenShown(false) }
-            }
-            val backs = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
-            OnboardingProgress(
-                step = step,
-                onCancel = flow::cancel.takeIf { cancellable },
-                onBack = { checkNotNull(backs).onBackPressed() },
-            )
+            RunningStep(flow, step)
         }
     }
+}
+
+/**
+ * A restore or join running. Once a join's request may have been sent there is
+ * no cancel: Back leaves the screen, and the join goes on at the next launch.
+ */
+@Composable
+private fun RunningStep(
+    flow: OnboardingFlow,
+    step: OnboardingStep.Running,
+) {
+    val cancellable = step.state?.cancellable == true
+    BackHandler(enabled = cancellable) { flow.cancel() }
+    // The join checks for approval every few seconds while this screen
+    // is started (core holds that exactly as long as it says so).
+    LifecycleStartEffect(flow) {
+        flow.setWaitingScreenShown(true)
+        onStopOrDispose { flow.setWaitingScreenShown(false) }
+    }
+    val backs = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
+    OnboardingProgress(
+        step = step,
+        onCancel = flow::cancel.takeIf { cancellable },
+        onBack = { checkNotNull(backs).onBackPressed() },
+    )
 }
 
 /**
@@ -349,50 +361,12 @@ internal fun OnboardingProgress(
 }
 
 /**
- * A join: "Tell <inviter> this code" over the confirmation number with the
- * line it waits on while it waits for approval, with no way to cancel, since
- * its request may be sent; in every other state the library's name over what
- * the join is doing, and Cancel while it can be.
- */
-@Composable
-private fun JoinProgress(
-    step: OnboardingStep.Running,
-    invite: BridgeInviteInfo,
-    onCancel: (() -> Unit)?,
-    onBack: () -> Unit,
-) {
-    val status = step.state?.status
-    AndroidScreen(
-        title = stringResource(R.string.onboarding_join_library),
-        onBack = onBack,
-        modifier = Modifier.fillMaxSize(),
-    ) {
-        if (status is BridgeBootstrapStatus.WaitingForApproval) {
-            AndroidStep(
-                title = stringResource(R.string.onboarding_tell_code, invite.inviter),
-                modifier = Modifier.weight(1f),
-            ) {
-                AndroidMatchCode(
-                    status.confirmation,
-                    waiting = stringResource(R.string.onboarding_waiting_for_inviter, invite.inviter),
-                )
-            }
-        } else {
-            AndroidStep(title = invite.libraryName, modifier = Modifier.weight(1f)) {
-                RunningLines(step)
-                onCancel?.let { CancelButton(it) }
-            }
-        }
-    }
-}
-
-/**
  * The line a restore or join shows while it runs: a counted step with its bar
  * (or the open's own step), else a spinner over what it waits on. [between]
  * draws what goes under the spinner and over the status lines.
  */
 @Composable
-private fun RunningLines(
+internal fun RunningLines(
     step: OnboardingStep.Running,
     between: @Composable () -> Unit = {},
 ) {
@@ -422,7 +396,7 @@ private fun RunningLines(
 }
 
 @Composable
-private fun CancelButton(onCancel: () -> Unit) {
+internal fun CancelButton(onCancel: () -> Unit) {
     Spacer(modifier = Modifier.height(ThemeSpace.section))
     AndroidButton(kind = ButtonKind.TONAL, onClick = onCancel) { Text(stringResource(R.string.cancel)) }
 }

@@ -297,7 +297,6 @@
     <string name="name_shown_to_everyone">Kaikki kirjastossa näkevät tämän nimen.</string>
     <string name="name_save_failed">Nimeä ei voitu tallentaa.</string>
     <string name="onboarding_restoring_title">Kirjastoasi palautetaan</string>
-    <string name="onboarding_invite_ended">Tämä kutsu on päättynyt. Se hylättiin tai peruttiin, se vanheni, tai sen luonut laite ei ole enää kirjastossa.</string>
     <string name="onboarding_status_connecting">Yhdistetään…</string>
     <string name="onboarding_status_registering">Rekisteröidään tätä laitetta…</string>
     <string name="onboarding_status_finishing">Viimeistellään…</string>
@@ -459,4 +458,7 @@
     <string name="file_size_terabytes">%1$s Tt</string>
     <string name="onboarding_tell_code">Kerro tämä koodi henkilölle %1$s</string>
     <string name="onboarding_waiting_for_inviter">Odotetaan, että %1$s päästää sinut sisään…</string>
+    <string name="onboarding_invite_ended_title">Kutsu on päättynyt</string>
+    <string name="onboarding_invite_ended_ask">Pyydä uusi kutsu henkilöltä %1$s.</string>
+    <string name="onboarding_ok">OK</string>
 </resources>
