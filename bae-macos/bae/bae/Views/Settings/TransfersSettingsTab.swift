@@ -125,17 +125,13 @@ struct TransfersSettingsTab: View {
         value: UInt32,
         setValue: @escaping @Sendable (UInt32) async throws -> Void
     ) -> some View {
-        LabeledContent(label) {
-            TransferConcurrencyPicker(
-                title: label,
-                value: value,
-                limit: configStore.config.maxConcurrentTransfers,
-                setValue: setValue,
-                showError: { uiStore.showError($0) }
-            )
-            .labelsHidden()
-            .fixedSize()
-        }
+        TransferConcurrencyPicker(
+            title: label,
+            value: value,
+            limit: configStore.config.maxConcurrentTransfers,
+            setValue: setValue,
+            showError: { uiStore.showError($0) }
+        )
     }
 }
 

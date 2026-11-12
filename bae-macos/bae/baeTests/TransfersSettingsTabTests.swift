@@ -37,12 +37,12 @@ struct TransfersSettingsTabTests {
             try await SnapshotTestSupport.settle(host)
 
             // Uploads first, downloads second, in the order the tab lists them.
-            // Segment n stands for n + 1 simultaneous transfers.
+            // Item n stands for n + 1 simultaneous transfers.
             let controls = pickers(in: host)
             try #require(controls.count == 2)
-            select(segment: 4, in: controls[0])
+            select(item: 4, in: controls[0])
             try await Wait.until { !recorder.uploadWrites.isEmpty }
-            select(segment: 0, in: controls[1])
+            select(item: 0, in: controls[1])
             try await Wait.until { !recorder.downloadWrites.isEmpty }
 
             #expect(recorder.uploadWrites == [5])
@@ -99,16 +99,15 @@ struct TransfersSettingsTabTests {
             .environment(UiStore())
     }
 
-    private func pickers(in host: NSView) -> [NSSegmentedControl] {
+    private func pickers(in host: NSView) -> [NSPopUpButton] {
         SnapshotTestSupport.descendants(of: host)
-            .compactMap { $0 as? NSSegmentedControl }
+            .compactMap { $0 as? NSPopUpButton }
     }
 
-    private func select(segment: Int, in control: NSSegmentedControl) {
-        control.selectedSegment = segment
-        if let action = control.action {
-            NSApp.sendAction(action, to: control.target, from: control)
-        }
+    /// Chooses the item the way a click on it does: the menu runs the item's
+    /// action, which selects it and tells SwiftUI.
+    private func select(item: Int, in control: NSPopUpButton) {
+        control.menu?.performActionForItem(at: item)
     }
 }
 

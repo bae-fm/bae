@@ -2075,8 +2075,8 @@ Other devices go on showing the release without playing it.
   streams.
 - **Transfers on the Mac.** Settings lists Transfers after Playback in its
   sidebar, and its pane holds Pause uploads and
-  Pause downloads, then Uploads at once and Downloads at once, how many files
-  each moves at a time. Downloads are pins and make-locals, which share one
+  Pause downloads, then Uploads at once and Downloads at once, pop-ups of how
+  many files each moves at a time. Downloads are pins and make-locals, which share one
   queue so they contend for the same downloads; the pause and the limit cover
   both, and nothing else counts or names one as the other. Either
   pause lasts across restarts, and while either holds, the sidebar says Paused

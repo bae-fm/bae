@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// A segmented picker, 1 up to core's limit, for a file-transfer concurrency
+/// A pop-up of the counts 1 up to core's limit, for a file-transfer concurrency
 /// setting: simultaneous uploads or downloads. Reads the current value from the
 /// config mirror and writes it through `setValue`; a failed write (an out-of-range
 /// value, a config-write error) is surfaced and the picker keeps showing the
@@ -38,7 +38,7 @@ public struct TransferConcurrencyPicker: View {
                 Text(n.formatted()).tag(n)
             }
         }
-        .pickerStyle(.segmented)
+        .pickerStyle(.menu)
     }
 
     private var binding: Binding<UInt32> {
