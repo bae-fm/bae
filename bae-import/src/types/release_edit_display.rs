@@ -233,12 +233,7 @@ impl ReleaseEditDisplayContext {
                 raw.files.iter().filter_map(|file| file.source_audio.as_ref()?.summarized()),
             ),
             sides: ReleaseEditTrackSide::lay_out(contexts),
-            files: raw
-                .files
-                .iter()
-                .filter(|file| file.source_audio.as_ref().and_then(|audio| audio.layout).is_none())
-                .map(carried_file)
-                .collect(),
+            files: raw.files.iter().filter(|file| !file.plays_tracks()).map(carried_file).collect(),
         })
     }
 }

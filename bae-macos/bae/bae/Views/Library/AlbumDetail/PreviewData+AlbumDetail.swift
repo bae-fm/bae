@@ -297,6 +297,7 @@
                         format: previewReleaseAudioFormat
                     )
                 ),
+                otherFiles: [],
                 imageFiles: [previewReleaseCoverFile],
                 coverFiles: [previewReleaseCoverFile],
                 galleryItems: [],

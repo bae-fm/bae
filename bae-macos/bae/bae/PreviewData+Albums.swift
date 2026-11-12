@@ -188,6 +188,7 @@
                 tracks: tracks,
                 trackGroups: groups,
                 sourceAudio: nil,
+                otherFiles: [],
                 imageFiles: [],
                 coverFiles: [],
                 galleryItems: [],

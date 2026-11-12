@@ -143,6 +143,9 @@ pub struct ReleaseDetail {
     pub tracks: Vec<TrackDetail>,
     pub track_groups: Vec<TrackGroup>,
     pub files: Vec<FileDetail>,
+    /// The files no track plays from, in `files` order: the files the editor's
+    /// Files section lists.
+    pub other_files: Vec<FileDetail>,
     pub source_audio: Option<SourceAudioSummary>,
     pub image_files: Vec<FileDetail>,
     /// Image files eligible for cover normalization; previews use `image_files`.
@@ -206,14 +209,19 @@ impl ReleaseDetail {
         let remote = raw.remote;
         let playability = release_playability(&raw.unstored_audio);
         let mut cover_files = Vec::new();
+        let mut other_files = Vec::new();
         let files: Vec<FileDetail> = raw
             .files
             .into_iter()
             .map(|row| {
+                let plays_tracks = row.plays_tracks();
                 let supports_cover = row.content_type.is_supported_cover();
                 let file = FileDetail::from_raw(row);
                 if supports_cover {
                     cover_files.push(file.clone());
+                }
+                if !plays_tracks {
+                    other_files.push(file.clone());
                 }
                 file
             })
@@ -294,6 +302,7 @@ impl ReleaseDetail {
             tracks,
             track_groups,
             files,
+            other_files,
             source_audio,
             image_files,
             cover_files,

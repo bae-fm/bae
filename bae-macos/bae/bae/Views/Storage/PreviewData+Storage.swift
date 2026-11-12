@@ -685,6 +685,7 @@
                         format: audioFormat
                     )
                 ),
+                otherFiles: [],
                 imageFiles: [imageFile],
                 coverFiles: [imageFile],
                 galleryItems: [],

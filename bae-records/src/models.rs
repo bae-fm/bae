@@ -483,6 +483,16 @@ pub struct DbFile {
     pub created_at: DateTime<Utc>,
 }
 
+impl DbFile {
+    /// Whether the scan read this file as audio a track plays from: its source
+    /// audio states a layout. A file for which this is false (a cue sheet, a
+    /// rip log, an image, audio the scan could not lay out) is carried by the
+    /// release without a track playing from it.
+    pub fn plays_tracks(&self) -> bool {
+        self.source_audio.as_ref().and_then(|audio| audio.layout).is_some()
+    }
+}
+
 /// A release file's row as a write inserts it, before coven has the file:
 /// the write stages the file and the row references the id staging gives.
 /// Its size and where it is are coven's, read back as [`DbFile`].

@@ -110,6 +110,7 @@ struct CoverPickerTests {
             tracks: [],
             trackGroups: [],
             sourceAudio: nil,
+            otherFiles: [],
             imageFiles: [file, bitmap],
             coverFiles: [file],
             galleryItems: [],

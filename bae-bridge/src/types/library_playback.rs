@@ -421,6 +421,9 @@ pub struct BridgeRelease {
     pub tracks: Vec<BridgeTrack>,
     pub track_groups: Vec<BridgeTrackGroup>,
     pub source_audio: Option<BridgeSourceAudioSummary>,
+    /// The files no track plays from, in the release's file order: a cue sheet,
+    /// a rip log, an image.
+    pub other_files: Vec<BridgeFile>,
     pub image_files: Vec<BridgeFile>,
     /// Core-selected cover inputs; the gallery still contains every image.
     pub cover_files: Vec<BridgeFile>,
