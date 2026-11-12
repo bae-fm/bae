@@ -25,7 +25,7 @@
 .bae-m-heading + .bae-m-section, .bae-m-heading + .sc-host-x > .bae-m-section { margin-top: 4px; }
 .bae-m-section-title { margin: 0 4px; font: 600 13px var(--font-sans); color: var(--text-primary); }
 
-.bae-m-box { display: flex; flex-direction: column; background: var(--surface); border-radius: 12px; overflow: hidden; color: var(--text-primary); font: 400 13px var(--font-sans); }
+.bae-m-box { display: flex; flex-direction: column; background: var(--surface); border-radius: var(--radius-card); overflow: hidden; color: var(--text-primary); font: 400 13px var(--font-sans); }
 .bae-m-box-elevated { background: var(--elevated); box-shadow: 0 var(--space-compact) var(--space-group) var(--shadow); }
 .bae-m-box > .bae-divider { margin: 0 var(--space-group); opacity: 0.6; }
 /* MacItem: the row piece. The leading column is size-lead wide and as tall as the first line, so its icon centres on that line. */
