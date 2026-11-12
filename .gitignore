@@ -94,6 +94,8 @@ bae-ios/bae/Features.xcconfig
 bae-bridge/kotlin-bindings-full/
 bae-bridge/kotlin-bindings-baeium/
 bae-android/app/src/main/jniLibs/
+# The screenshot plugin renders its reference PNGs into the source tree.
+bae-android/app/src/*/screenshotTest/reference/
 bae-android/debug-symbols
 bae-android/local.properties
 
