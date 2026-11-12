@@ -160,6 +160,11 @@ album    Album Title, Artist Name
   release  download                           (Ben's MP3s)
 ```
 
+An album's page heads with its title, artists and year, then the selected
+release on two lines: its pressing (its own year when that differs from the
+album's, where it was released, its media and details, its audio and its
+length), and its labels, each with the catalog numbers it gives the pressing.
+
 Every import is its own release, so the library can hold one pressing twice:
 two folders of the same CD are two releases under one album (§2.7).
 
