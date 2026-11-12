@@ -79,6 +79,20 @@ extension View {
     }
 }
 
+/// Rows on the surface with a line between each and the next, as a settings
+/// form draws a section's, for a box that is not part of a form: a popover's.
+struct SettingsBox<Content: View>: View {
+    @ViewBuilder
+    let content: Content
+
+    var body: some View {
+        Group(subviews: content) { rows in
+            SettingsFormBox(rows: rows)
+        }
+        .settingsRowControls()
+    }
+}
+
 /// One section: its heading, its rows in a box, and its footer.
 private struct SettingsFormSection: View {
     let section: SectionConfiguration

@@ -126,7 +126,16 @@ struct CastReceiverRow: View {
                 }
             }
         }
-        .padding(.vertical, ThemeSpace.related + ThemeSpace.line)
+        .padding(.vertical, rowPadding)
+    }
+
+    /// The space over and under a row's two lines: the picker's list gives
+    /// none of its own; a settings box's rows already have theirs.
+    private var rowPadding: CGFloat {
+        switch place {
+        case .picker: ThemeSpace.related + ThemeSpace.line
+        case .page: 0
+        }
     }
 
     /// The glyph for the receiver's protocol.
@@ -134,7 +143,7 @@ struct CastReceiverRow: View {
         switch receiver.kind {
         case .cast: "hifispeaker"
         case .dlna: "tv"
-        case .airPlay: "airplayaudio"
+        case .airPlay: "airplayvideo"
         }
     }
 }

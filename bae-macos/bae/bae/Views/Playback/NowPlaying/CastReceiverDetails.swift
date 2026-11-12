@@ -6,26 +6,29 @@ import SwiftUI
 struct CastReceiverDetails: View {
     let receiver: BridgeCastReceiver
 
+    private let popoverInset: CGFloat = 14
+
     var body: some View {
-        VStack(alignment: .leading, spacing: ThemeSpace.group) {
+        VStack(alignment: .leading, spacing: ThemeSpace.compact) {
             Text(verbatim: receiver.name)
+                .padding(.horizontal, ThemeSpace.inline)
                 .themeText(.strong)
-            Form {
-                Section {
-                    LabeledContent(
-                        "Type",
-                        value: receiver.kind.productName
-                    )
-                    if let model = receiver.model {
-                        LabeledContent("Model", value: model)
-                    }
-                    LabeledContent("Address", value: receiver.address)
+            SettingsBox {
+                LabeledContent(
+                    "Type",
+                    value: receiver.kind.productName
+                )
+                if let model = receiver.model {
+                    LabeledContent("Model", value: model)
                 }
+                LabeledContent("Address", value: receiver.address)
             }
-            .formStyle(.grouped)
-            .scrollDisabled(true)
         }
-        .padding()
+        // The popover's own inset, as the boards draw it: 14 at the sides and
+        // bottom, and the title 18 down.
+        .padding(.horizontal, popoverInset)
+        .padding(.top, popoverInset + ThemeSpace.inline)
+        .padding(.bottom, popoverInset)
         .frame(width: 320)
     }
 }
