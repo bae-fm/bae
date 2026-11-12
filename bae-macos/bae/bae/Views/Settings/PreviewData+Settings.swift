@@ -171,10 +171,14 @@
             ),
         ]
 
-        /// A restore code shaped like coven's: `CVR1-` and uppercase base32.
+        /// A restore code shaped like coven's: `CVR1-` and uppercase base32,
+        /// the one the restore-code board shows.
         static let restoreCode =
-            "CVR1-"
-            + String(repeating: "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567", count: 6)
+            "CVR1-UJZDEGXDNCF32EPF3DHODZDOCIS2JHTLGMXGEDN73U55XTPLPFT"
+            + "7V4SEH2KVJ72CEUVW75EFR6EDT4SYWB5WKH7DNSIPZZ7FK4ZRI3R2WYO"
+            + "JFLJOOA7LQSAJ2XUID5ZZZZG6ZDMEN4KHVDGAJGXBENYJQWX6HH7566T"
+            + "FJGVQ6KBNXJBTFQXKWOVOMPZOM7WBBR6QMW4WXFOGO6MVN6A6WFHYM6L"
+            + "3VFZ5ZFKKIBJ5J6WJIBAGI3MNB"
 
         /// That code in groups of four, as the restore code shows.
         static let restoreCodeGrouped: String = {
