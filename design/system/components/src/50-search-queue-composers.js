@@ -60,7 +60,7 @@
   var CAST_KIND = { cast: 'Chromecast', airplay: 'AirPlay', upnp: 'UPnP' };
   function MacCastRow(props) {
     var glyph = { cast: 'cast', airplay: 'airplay', upnp: 'tv' }[props.kind || 'cast'];
-    return h('div', { className: 'bae-m-castrow' }, h(MacItem, { lead: h(Glyph, { set: 'mac', name: glyph, size: 15, className: props.active ? 'bae-accent' : 'bae-muted' }), trail: props.menu ? h(MacIconButton, { icon: 'ellipsis', size: 15, label: 'More' }) : props.active ? h(MacButton, { kind: 'borderless', size: 'small' }, 'Disconnect') : null },
+    return h('div', { className: 'bae-m-castrow' }, h(MacItem, { lead: h(Glyph, { set: 'mac', name: glyph, size: 15, className: props.active ? 'bae-accent' : 'bae-muted' }), trail: props.menu ? h(MacMoreMenu, {}) : props.active ? h(MacButton, { kind: 'borderless', size: 'small' }, 'Disconnect') : null },
       h('span', { className: 'bae-m-castpop-text' }, h('span', { className: 'bae-m-castpop-name' }, props.name), h('span', { className: props.active ? 'bae-m-castpop-state' : 'bae-m-castpop-kind' }, props.active ? 'Casting' : CAST_KIND[props.kind || 'cast']))));
   }
   function MacCastPopover(props) {

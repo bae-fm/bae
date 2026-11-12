@@ -303,3 +303,6 @@
 .bae-m-cu { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center; min-height: 240px; }
 .bae-a-librow-part { padding-left: 32px; }
 .bae-a-librow-inset .bae-a-librow-text { padding: 8px 16px; }
+.bae-m-moremenu { position: relative; display: inline-flex; }
+.bae-m-moremenu-pop { position: absolute; top: 100%; right: 0; margin-top: 4px; z-index: 5; }
+.bae-a-moremenu { position: relative; display: inline-flex; }

@@ -17,9 +17,9 @@ body{margin:0;background:var(--background)}
 </helmet>
 <div class="bae-mac" style="font-family: var(--font-sans)"><x-import component-from-global-scope="Bae.MacSection" title="Your libraries">
   <x-import component-from-global-scope="Bae.MacBox">
-    <sc-if value="{{resting}}" hint-placeholder-val="{{ true }}"><x-import component-from-global-scope="Bae.MacRow" label="Home music" strong="{{yes}}"><x-import component-from-global-scope="Bae.MacIconButton" icon="ellipsis" size="15" label="More"></x-import></x-import></sc-if>
+    <sc-if value="{{resting}}" hint-placeholder-val="{{ true }}"><x-import component-from-global-scope="Bae.MacRow" label="Home music" strong="{{yes}}"><x-import component-from-global-scope="Bae.MacMoreMenu"></x-import></x-import></sc-if>
     <sc-if value="{{removing}}" hint-placeholder-val="{{ false }}"><x-import component-from-global-scope="Bae.MacRow" label="Home music" strong="{{yes}}" note="Leaving the library…"><div style="width: 28px; height: 28px; display: flex; align-items: center; justify-content: center"><x-import component-from-global-scope="Bae.MacSpinner"></x-import></div></x-import></sc-if>
-    <x-import component-from-global-scope="Bae.MacRow" label="Odile’s records" strong="{{yes}}" off="{{removing}}"><x-import component-from-global-scope="Bae.MacIconButton" icon="ellipsis" size="15" label="More"></x-import></x-import>
+    <x-import component-from-global-scope="Bae.MacRow" label="Odile’s records" strong="{{yes}}" off="{{removing}}"><x-import component-from-global-scope="Bae.MacMoreMenu"></x-import></x-import>
   </x-import>
   <x-import component-from-global-scope="Bae.MacSheetFooter"><x-import component-from-global-scope="Bae.MacButton" off="{{removing}}">Add library…</x-import></x-import>
 </x-import></div>

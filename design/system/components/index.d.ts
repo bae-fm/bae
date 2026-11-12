@@ -256,6 +256,10 @@ export interface AndroidDownloadControlProps { state?: 'available' | 'queued' | 
 export declare function AndroidDownloadControl(props: AndroidDownloadControlProps): React.ReactElement;
 export declare function AndroidUploadLine(props: { phase?: string; missing?: string }): React.ReactElement;
 export interface MacAlbumPanelProps { title: string; artist?: string; year?: string; releases?: string; release?: string; pressing?: string; labels?: string; unplayable?: string; noCover?: boolean; coverSize?: number; children?: React.ReactNode }
+/** A row's ⋯ / ⋮ button with the row's actions in its menu; `open` draws the menu, `items` its entries ("-" for a line). */
+export interface MoreMenuProps { open?: boolean; items?: string; highlighted?: string }
+export declare function MacMoreMenu(props: MoreMenuProps): React.ReactElement;
+export declare function AndroidMoreMenu(props: MoreMenuProps): React.ReactElement;
 /** The close control of a docked pane and of an open album. */
 export declare function MacCloseButton(props: { label?: string }): React.ReactElement;
 export declare function MacAlbumPanel(props: MacAlbumPanelProps): React.ReactElement;

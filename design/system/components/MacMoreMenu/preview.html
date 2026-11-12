@@ -1,0 +1,16 @@
+<!-- @dsCard group="macOS" height=260 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>MacMoreMenu</title></head>
+<body class="bae-preview bae-preview-mac" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function right(c, ht) { return h('div', { style: { display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-start', height: ht || 'auto' } }, c); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
+    W('Closed', right(h(B.MacMoreMenu, {}))),
+    W('Open', right(h(B.MacMoreMenu, { open: true, items: 'Details…,Rename…,-,Remove from this Mac…', highlighted: 'Rename…' }), 150))));
+</script>
+</body>
+</html>

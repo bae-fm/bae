@@ -66,6 +66,23 @@
       h(Glyph, { set: 'mac', name: props.icon, size: props.size || 17 }));
   }
 
+  // A row's ⋯ button with the row's actions in its menu: a row offers its actions here, not as a button of each. `open` draws the menu under it, `items` its entries ("-" for a line between groups), `highlighted` the one under the pointer.
+  function MacMoreMenu(props) {
+    var btn = h(MacIconButton, { icon: 'ellipsis', size: 15, label: 'More', active: props.open });
+    if (!props.open) return btn;
+    return h('span', { className: 'bae-m-moremenu' }, btn, h('div', { className: 'bae-m-moremenu-pop' }, h(MacMenu, null, list(props.items).map(function (t, i) {
+      return t === '-' ? h(MacMenuItem, { key: i, divider: true }) : h(MacMenuItem, { key: i, highlighted: t === props.highlighted }, t);
+    }))));
+  }
+  // The same on Android: the row's ⋮, its menu under it when `open`.
+  function AndroidMoreMenu(props) {
+    var btn = h(AndroidIconButton, { icon: 'more', label: 'More' });
+    if (!props.open) return btn;
+    return h('span', { className: 'bae-a-moremenu' }, btn, h(AndroidMenu, { top: 44, right: 0 }, list(props.items).map(function (t, i) {
+      return t === '-' ? h(AndroidMenuItem, { key: i, divider: true }) : h(AndroidMenuItem, { key: i, pressed: t === props.highlighted }, t);
+    })));
+  }
+
   function MacPlayPause(props) {
     return h('span', { className: 'bae-m-playpause' },
       props.waiting ? h('svg', { className: 'bae-waitarc', width: 48, height: 48, viewBox: '0 0 48 48', 'aria-label': 'Downloading the track…' }, h('path', { d: 'M24 1.25A22.75 22.75 0 0 1 46.75 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2.5, strokeLinecap: 'round' })) : null,
