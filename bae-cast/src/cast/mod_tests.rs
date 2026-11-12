@@ -3,6 +3,7 @@
 
 use std::net::{IpAddr, Ipv6Addr};
 
+use super::channel::receiver_time;
 use super::discovery::{instance_name, map_device};
 use crate::renderer::{RendererConnection, RendererDevice};
 use crate::test_support::v4;
@@ -116,4 +117,14 @@ fn resolved_service_without_address_is_unusable() {
         .is_none(),
         "a service with no address can't be reached, so it is dropped"
     );
+}
+
+/// A receiver's time is taken only when it is a time: finite, not negative and
+/// within a year.
+#[test]
+fn a_receiver_time_that_is_not_a_time_is_none() {
+    assert_eq!(receiver_time(12.5), Some(std::time::Duration::from_millis(12_500)));
+    for seconds in [f32::INFINITY, f32::NEG_INFINITY, f32::NAN, -1.0, 1e30, 1e12] {
+        assert_eq!(receiver_time(seconds), None, "{seconds}");
+    }
 }

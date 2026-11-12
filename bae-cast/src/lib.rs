@@ -23,9 +23,15 @@ pub mod renderer;
 #[cfg(test)]
 mod test_support;
 
+/// The longest position or duration a receiver may state: a year. A receiver
+/// stating more, a negative time or one that isn't a number is not stating a
+/// time, and its status carries none.
+pub(crate) const LONGEST_RECEIVER_TIME: Duration = Duration::from_secs(366 * 24 * 60 * 60);
+
 use std::collections::HashSet;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
+use std::time::Duration;
 
 use bae_app::AppServices;
 use bae_diagnostics::{lock_or_crash, Diagnostics, ReportedTask};

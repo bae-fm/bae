@@ -12,7 +12,8 @@ use std::time::Duration;
 
 use super::discovery::{parse_device_description, parse_ssdp_location};
 use super::soap::{
-    self, parse_position_info, parse_transport_state, DidlMetadata, PositionInfo, TransportState,
+    self, parse_hms, parse_position_info, parse_transport_state, DidlMetadata, PositionInfo,
+    TransportState,
 };
 use crate::renderer::{RendererConnection, RendererDevice};
 
@@ -799,4 +800,14 @@ fn zero_track_duration_parses_as_unknown() {
         info.track_duration, None,
         "a zero TrackDuration is unknown (still loading), not a real duration"
     );
+}
+
+/// A renderer's time past what a time can hold is none, not a panic or a
+/// wrapped position.
+#[test]
+fn a_renderer_time_too_long_to_be_a_time_is_none() {
+    assert_eq!(parse_hms("1:02:03"), Some(Duration::from_secs(3723)));
+    for time in ["99999999999999999:00:00", "5124095576030431:00:00", "9000:00:00"] {
+        assert_eq!(parse_hms(time), None, "{time}");
+    }
 }

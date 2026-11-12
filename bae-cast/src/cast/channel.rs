@@ -15,6 +15,8 @@ use bae_playback::renderer::{
 };
 use bae_util::error_text::CauseChain;
 
+use crate::LONGEST_RECEIVER_TIME;
+
 /// The one real Cast [`RendererChannel`], over `rust_cast`. Owned and driven
 /// entirely on the session's thread — `rust_cast`'s channel calls block on the
 /// socket, so this is never shared across threads.
@@ -211,16 +213,17 @@ impl RendererChannel for RustCastChannel {
 
         Ok(ReceiverStatus {
             player_state: player_state_from(entry),
-            position: entry.current_time.filter(|t| *t >= 0.0).map(Duration::from_secs_f32),
-            duration: entry
-                .media
-                .as_ref()
-                .and_then(|m| m.duration)
-                .filter(|d| *d >= 0.0)
-                .map(Duration::from_secs_f32),
+            position: entry.current_time.and_then(receiver_time),
+            duration: entry.media.as_ref().and_then(|m| m.duration).and_then(receiver_time),
             volume,
         })
     }
+}
+
+/// A time in seconds a receiver stated, when it is a time: finite, not
+/// negative and no longer than [`LONGEST_RECEIVER_TIME`].
+pub(super) fn receiver_time(seconds: f32) -> Option<Duration> {
+    Duration::try_from_secs_f32(seconds).ok().filter(|time| *time <= LONGEST_RECEIVER_TIME)
 }
 
 /// Map a receiver media-status entry to our player state. An IDLE entry whose

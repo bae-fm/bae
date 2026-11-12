@@ -224,9 +224,9 @@ fn element_text(xml: &str, local_name: &str) -> Option<String> {
 }
 
 /// Parse a UPnP `H:MM:SS` (or `HH:MM:SS`, with an optional fractional-seconds
-/// suffix) time into a duration. `NOT_IMPLEMENTED`, empty, and malformed values
-/// yield `None`.
-fn parse_hms(value: &str) -> Option<Duration> {
+/// suffix) time into a duration. `NOT_IMPLEMENTED`, empty, malformed and
+/// longer-than-any-receiver-states values yield `None`.
+pub(super) fn parse_hms(value: &str) -> Option<Duration> {
     let value = value.trim();
     if value.is_empty() || value == "NOT_IMPLEMENTED" {
         return None;
@@ -248,5 +248,6 @@ fn parse_hms(value: &str) -> Option<Duration> {
     if minutes >= 60 || seconds >= 60 {
         return None;
     }
-    Some(Duration::from_secs(hours * 3600 + minutes * 60 + seconds))
+    let total = hours.checked_mul(3600)?.checked_add(minutes * 60 + seconds)?;
+    Some(Duration::from_secs(total)).filter(|time| *time <= crate::LONGEST_RECEIVER_TIME)
 }
