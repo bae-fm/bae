@@ -16,27 +16,6 @@ import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeLibraryState
 import uniffi.bae_bridge.BridgeStorageLocation
 
-/**
- * What ends a library on this device: a synced library is removed, and a
- * never-synced one, which exists only here, is deleted.
- */
-internal enum class LibraryEnding {
-    REMOVE,
-    DELETE,
-    ;
-
-    companion object {
-        /** A library that can't open is removed: whether it has a cloud copy can't be read. */
-        fun of(state: BridgeLibraryState): LibraryEnding =
-            when (state) {
-                is BridgeLibraryState.Openable -> ofSyncs(syncs = state.storage != null)
-                else -> REMOVE
-            }
-
-        fun ofSyncs(syncs: Boolean): LibraryEnding = if (syncs) REMOVE else DELETE
-    }
-}
-
 /** What ending a library loses, for the person to confirm. */
 internal sealed interface RemovalLoss {
     /** Whether this device holds changes it hasn't sent, as core found it. */
@@ -79,23 +58,11 @@ internal fun removeLibraryParts(
         message = words.lead,
         content = words.rest,
         confirmButton = {
-            // Removing loses nothing, so it is the accent action; only Delete is red.
-            when (LibraryEnding.of(library.state)) {
-                LibraryEnding.REMOVE -> {
-                    AndroidButton(
-                        kind = ButtonKind.TEXT,
-                        onClick = onConfirm,
-                    ) { Text(stringResource(R.string.settings_remove)) }
-                }
-
-                LibraryEnding.DELETE -> {
-                    AndroidButton(
-                        kind = ButtonKind.TEXT,
-                        tone = ButtonTone.DESTRUCTIVE,
-                        onClick = onConfirm,
-                    ) { Text(stringResource(R.string.library_delete)) }
-                }
-            }
+            // Removing loses nothing, so it is the accent action.
+            AndroidButton(
+                kind = ButtonKind.TEXT,
+                onClick = onConfirm,
+            ) { Text(stringResource(R.string.settings_remove)) }
         },
         dismissButton = {
             AndroidButton(
@@ -128,22 +95,8 @@ private fun removalWords(
     library: BridgeLibrary,
     loss: RemovalLoss,
 ): RemovalWords {
-    val ending = LibraryEnding.of(library.state)
-    val title =
-        stringResource(
-            when (ending) {
-                LibraryEnding.REMOVE -> R.string.library_remove_confirm_title
-                LibraryEnding.DELETE -> R.string.library_delete_confirm_title
-            },
-            library.name,
-        )
-    val message =
-        stringResource(
-            when (ending) {
-                LibraryEnding.REMOVE -> R.string.settings_remove_library_confirm_body
-                LibraryEnding.DELETE -> R.string.library_delete_confirm_body
-            },
-        )
+    val title = stringResource(R.string.library_remove_confirm_title, library.name)
+    val message = stringResource(R.string.settings_remove_library_confirm_body)
     val bodyColor = MaterialTheme.colorScheme.onSurfaceVariant
     return when (loss) {
         RemovalLoss.Uncounted -> {
@@ -189,9 +142,6 @@ private val previewHome =
         isActive = false,
     )
 
-private val previewLocal =
-    previewHome.copy(id = "local", name = "Local music", state = BridgeLibraryState.Openable(storage = null))
-
 private val previewUnreadable =
     previewHome.copy(
         id = "stopped",
@@ -213,12 +163,6 @@ private fun RemoveLibraryUnsentPreview() {
 @Composable
 private fun RemoveLibraryPreview() {
     BaeTheme { RemovalWordsPreview(removeLibraryParts(previewHome, nothingUnsent, {}, {})) }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun DeleteLibraryPreview() {
-    BaeTheme { RemovalWordsPreview(removeLibraryParts(previewLocal, nothingUnsent, {}, {})) }
 }
 
 @Preview(showBackground = true)

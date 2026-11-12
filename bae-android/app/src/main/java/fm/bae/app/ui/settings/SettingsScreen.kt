@@ -42,6 +42,9 @@ import uniffi.bae_bridge.BridgeTelemetryEvent
 internal sealed interface Storage {
     data object Loading : Storage
 
+    /** The library has no storage, which a phone's never lacks: a reported bug, and Settings says so in its place. */
+    data object Missing : Storage
+
     data class At(
         val location: BridgeStorageLocation,
     ) : Storage

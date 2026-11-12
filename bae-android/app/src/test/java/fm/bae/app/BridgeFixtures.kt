@@ -47,6 +47,7 @@ import uniffi.bae_bridge.BridgeSidePauseCountdown
 import uniffi.bae_bridge.BridgeSourceAudioSummary
 import uniffi.bae_bridge.BridgeSourceAvailability
 import uniffi.bae_bridge.BridgeStorageKind
+import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeStoragePart
 import uniffi.bae_bridge.BridgeSubsonicConfig
 import uniffi.bae_bridge.BridgeSubsonicNetwork
@@ -254,7 +255,7 @@ object BridgeFixtures {
             id = id,
             name = name,
             path = "/tmp/$id",
-            state = BridgeLibraryState.Openable(storage = null),
+            state = BridgeLibraryState.Openable(BridgeStorageLocation.S3("music", "us-east-1", null, null)),
             isActive = false,
         )
 

@@ -127,14 +127,10 @@
     <string name="settings_remove_library_confirm_body">库会保留在云端和你的其他设备上。</string>
     <string name="settings_remove">移除</string>
     <string name="onboarding_libraries_title">你的库</string>
-    <string name="library_delete_confirm_title">删除“%1$s”？</string>
     <string name="library_unsent_changes_lost">未发送的更改将会丢失</string>
     <string name="library_remove_failed_title">无法移除“%1$s”</string>
-    <string name="library_delete_confirm_body">该库未同步，因此将被永久删除。你的音频文件会保留在原文件夹中。</string>
-    <string name="library_delete">删除</string>
     <string name="details_menu">详情…</string>
     <string name="library_remove_menu">移除…</string>
-    <string name="library_delete_menu">删除…</string>
     <string name="library_last_synced">上次同步</string>
     <string name="library_unsent_changes">未发送的更改</string>
     <string name="removal_uncounted_body">此库无法打开，因此此设备上尚未发送的更改都会丢失。此设备上的副本将被删除；如果该库保存在云端，它会保留在那里。</string>

@@ -52,13 +52,10 @@ internal sealed interface StandingRead {
     ) : StandingRead
 }
 
-/**
- * The library whose details the person asked for, with how it stands with its storage: [standing] is null for a
- * library that never synced, which has nothing to read.
- */
+/** The library whose details the person asked for, with how it stands with its storage. */
 internal data class LibraryDetails(
     val library: BridgeLibrary,
-    val standing: StandingRead?,
+    val standing: StandingRead,
 )
 
 /** A library the person is asked to remove, with what removing it loses. */
@@ -215,15 +212,9 @@ internal class WelcomeLibraries(
 
     /**
      * Show [library]'s details, reading how it stands with its storage as the
-     * sheet opens. A failed read shows in the sheet; a library that never
-     * synced has nothing to read.
+     * sheet opens. A failed read shows in the sheet.
      */
     fun showDetails(library: BridgeLibrary) {
-        val storage = (library.state as? BridgeLibraryState.Openable)?.storage
-        if (storage == null) {
-            details = LibraryDetails(library, standing = null)
-            return
-        }
         details = LibraryDetails(library, StandingRead.Loading)
         standingRead =
             scope.launch {

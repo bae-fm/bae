@@ -135,14 +135,10 @@
     <string name="settings_remove_library_confirm_body">Kirjasto säilyy pilvessä ja muilla laitteillasi.</string>
     <string name="settings_remove">Poista</string>
     <string name="onboarding_libraries_title">Kirjastosi</string>
-    <string name="library_delete_confirm_title">Poistetaanko ”%1$s”?</string>
     <string name="library_unsent_changes_lost">Lähettämättömät muutokset menetetään</string>
     <string name="library_remove_failed_title">Kirjastoa ”%1$s” ei voitu poistaa</string>
-    <string name="library_delete_confirm_body">Tätä kirjastoa ei ole synkronoitu, joten se poistetaan pysyvästi. Äänitiedostosi pysyvät kansioissaan.</string>
-    <string name="library_delete">Poista</string>
     <string name="details_menu">Tiedot…</string>
     <string name="library_remove_menu">Poista…</string>
-    <string name="library_delete_menu">Poista…</string>
     <string name="library_last_synced">Viimeksi synkronoitu</string>
     <string name="library_unsent_changes">Lähettämättömät muutokset</string>
     <string name="removal_uncounted_body">Tätä kirjastoa ei voi avata, joten kaikki tämän laitteen muutokset, joita ei ole lähetetty, menetetään. Sen kopio poistetaan tältä laitteelta; jos kirjasto on pilvessä, se säilyy siellä.</string>

@@ -135,14 +135,10 @@
     <string name="settings_remove_library_confirm_body">Biblioteket forbliver i skyen og på dine andre enheder.</string>
     <string name="settings_remove">Fjern</string>
     <string name="onboarding_libraries_title">Dine biblioteker</string>
-    <string name="library_delete_confirm_title">Vil du slette “%1$s”?</string>
     <string name="library_unsent_changes_lost">Ændringer, der ikke er sendt, går tabt</string>
     <string name="library_remove_failed_title">“%1$s” kunne ikke fjernes</string>
-    <string name="library_delete_confirm_body">Dette bibliotek er ikke synkroniseret, så det slettes for altid. Dine lydfiler bliver liggende i deres mapper.</string>
-    <string name="library_delete">Slet</string>
     <string name="details_menu">Detaljer…</string>
     <string name="library_remove_menu">Fjern…</string>
-    <string name="library_delete_menu">Slet…</string>
     <string name="library_last_synced">Senest synkroniseret</string>
     <string name="library_unsent_changes">Usendte ændringer</string>
     <string name="removal_uncounted_body">Dette bibliotek kan ikke åbnes, så alle ændringer på denne enhed, der ikke er sendt, går tabt. Dets kopi på denne enhed slettes; hvis biblioteket ligger i skyen, bliver det der.</string>

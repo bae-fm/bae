@@ -135,14 +135,10 @@
     <string name="settings_remove_library_confirm_body">Η βιβλιοθήκη παραμένει στο cloud και στις άλλες συσκευές σας.</string>
     <string name="settings_remove">Αφαίρεση</string>
     <string name="onboarding_libraries_title">Οι βιβλιοθήκες σας</string>
-    <string name="library_delete_confirm_title">Διαγραφή της βιβλιοθήκης «%1$s»;</string>
     <string name="library_unsent_changes_lost">Οι αλλαγές που δεν έχουν σταλεί θα χαθούν</string>
     <string name="library_remove_failed_title">Δεν ήταν δυνατή η αφαίρεση της βιβλιοθήκης «%1$s»</string>
-    <string name="library_delete_confirm_body">Αυτή η βιβλιοθήκη δεν είναι συγχρονισμένη, οπότε θα διαγραφεί οριστικά. Τα αρχεία ήχου σας παραμένουν στους φακέλους τους.</string>
-    <string name="library_delete">Διαγραφή</string>
     <string name="details_menu">Λεπτομέρειες…</string>
     <string name="library_remove_menu">Αφαίρεση…</string>
-    <string name="library_delete_menu">Διαγραφή…</string>
     <string name="library_last_synced">Τελευταίος συγχρονισμός</string>
     <string name="library_unsent_changes">Μη απεσταλμένες αλλαγές</string>
     <string name="removal_uncounted_body">Αυτή η βιβλιοθήκη δεν μπορεί να ανοίξει, οπότε όσες αλλαγές σε αυτή τη συσκευή δεν στάλθηκαν χάνονται. Το αντίγραφό της σε αυτή τη συσκευή διαγράφεται· αν η βιβλιοθήκη φυλάσσεται στο cloud, παραμένει εκεί.</string>

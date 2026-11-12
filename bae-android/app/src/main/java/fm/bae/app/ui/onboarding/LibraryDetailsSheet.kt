@@ -2,15 +2,19 @@ package fm.bae.app.ui.onboarding
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import fm.bae.app.LocalBugReports
 import fm.bae.app.R
+import fm.bae.app.data.LibraryWithoutStorage
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidSheet
 import fm.bae.app.ui.components.AndroidSpinner
+import fm.bae.app.ui.components.SomethingWentWrongNotice
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.settings.StorageRows
 import fm.bae.app.ui.settings.statusTone
@@ -30,35 +34,41 @@ internal fun LibraryDetailsSheet(
     onDismiss: () -> Unit,
 ) {
     AndroidSheet(title = details.library.name, onDismiss = onDismiss) {
-        LibraryDetailsRows((details.library.state as? BridgeLibraryState.Openable)?.storage, details.standing)
+        val storage = (details.library.state as? BridgeLibraryState.Openable)?.storage
+        if (storage == null) {
+            val bugs = LocalBugReports.current
+            LaunchedEffect(details.library.id) {
+                bugs.reportShownInPlace("show a library's details", LibraryWithoutStorage())
+            }
+            SomethingWentWrongNotice()
+        } else {
+            LibraryDetailsRows(storage, details.standing)
+        }
     }
 }
 
 /**
- * The details' rows. A library whose [storage] isn't known has none to show.
- * Otherwise its Status and when it last synced come from [standing], as sync's
+ * The details' rows: its Status and when it last synced come from [standing], as sync's
  * state is worded on the Sync page or as unsent changes, with the storage's
  * rows after them. A failed read shows its error in place of those two rows.
  */
 @Composable
 internal fun LibraryDetailsRows(
-    storage: BridgeStorageLocation?,
-    standing: StandingRead?,
+    storage: BridgeStorageLocation,
+    standing: StandingRead,
 ) {
-    if (storage == null) return
     val context = LocalContext.current
-    val read = checkNotNull(standing) { "a library with storage has its standing read" }
-    when (read) {
+    when (standing) {
         StandingRead.Loading -> {
             AndroidSpinner(modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.group))
         }
 
         is StandingRead.Failed -> {
-            AndroidNotice(read.error, modifier = Modifier.padding(horizontal = ThemeSpace.edge))
+            AndroidNotice(standing.error, modifier = Modifier.padding(horizontal = ThemeSpace.edge))
         }
 
         is StandingRead.Loaded -> {
-            val loaded = read.standing
+            val loaded = standing.standing
             when (val state = loaded.state) {
                 BridgeStandingState.UnsentChanges -> {
                     AndroidRow(

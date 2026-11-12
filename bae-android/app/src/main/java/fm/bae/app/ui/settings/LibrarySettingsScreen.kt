@@ -30,6 +30,7 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidCard
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidScreen
+import fm.bae.app.ui.components.SomethingWentWrongNotice
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.library.LibraryDestination
 import fm.bae.app.ui.rememberScreenScope
@@ -71,6 +72,7 @@ internal fun LibrarySettingsScreen(
         onOpenSync = { onPush(LibraryDestination.Sync) },
         onOpenPeople = { onPush(LibraryDestination.Members) },
     ) {
+        if (storage is Storage.Missing) SomethingWentWrongNotice()
         LibraryNameFailures(model = model)
     }
     if (renaming && name != null) {

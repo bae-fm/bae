@@ -135,14 +135,10 @@
     <string name="settings_remove_library_confirm_body">Fonoteka ostaje u oblaku i na vašim drugim uređajima.</string>
     <string name="settings_remove">Ukloni</string>
     <string name="onboarding_libraries_title">Vaše fonoteke</string>
-    <string name="library_delete_confirm_title">Izbrisati „%1$s”?</string>
     <string name="library_unsent_changes_lost">Neposlane promjene bit će izgubljene</string>
     <string name="library_remove_failed_title">Nije moguće ukloniti „%1$s”</string>
-    <string name="library_delete_confirm_body">Ova fonoteka nije sinkronizirana, pa će se trajno izbrisati. Vaše audiodatoteke ostaju u svojim mapama.</string>
-    <string name="library_delete">Izbriši</string>
     <string name="details_menu">Pojedinosti…</string>
     <string name="library_remove_menu">Ukloni…</string>
-    <string name="library_delete_menu">Izbriši…</string>
     <string name="library_last_synced">Zadnja sinkronizacija</string>
     <string name="library_unsent_changes">Neposlane promjene</string>
     <string name="removal_uncounted_body">Ova se fonoteka ne može otvoriti pa se gube sve promjene na ovom uređaju koje nisu poslane. Njezina se kopija na ovom uređaju briše; ako je fonoteka u oblaku, tamo i ostaje.</string>

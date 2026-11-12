@@ -131,14 +131,10 @@
     <string name="settings_remove_library_confirm_body">Библиотеката остава в облака и на другите ви устройства.</string>
     <string name="settings_remove">Премахване</string>
     <string name="onboarding_libraries_title">Вашите библиотеки</string>
-    <string name="library_delete_confirm_title">Изтриване на „%1$s“?</string>
     <string name="library_unsent_changes_lost">Неизпратените промени ще бъдат загубени</string>
     <string name="library_remove_failed_title">Премахването на „%1$s“ не бе успешно</string>
-    <string name="library_delete_confirm_body">Тази библиотека не е синхронизирана, затова ще бъде изтрита завинаги. Аудиофайловете ви остават в папките си.</string>
-    <string name="library_delete">Изтриване</string>
     <string name="details_menu">Подробности…</string>
     <string name="library_remove_menu">Премахване…</string>
-    <string name="library_delete_menu">Изтриване…</string>
     <string name="library_last_synced">Последно синхронизиране</string>
     <string name="library_unsent_changes">Неизпратени промени</string>
     <string name="removal_uncounted_body">Тази библиотека не може да бъде отворена, затова всички промени на това устройство, които не са изпратени, се губят. Копието ѝ на това устройство се изтрива; ако библиотеката се пази в облака, тя остава там.</string>

@@ -135,14 +135,10 @@
     <string name="settings_remove_library_confirm_body">A könyvtár megmarad a felhőben és a többi eszközödön.</string>
     <string name="settings_remove">Eltávolítás</string>
     <string name="onboarding_libraries_title">A könyvtáraid</string>
-    <string name="library_delete_confirm_title">Törlöd a(z) „%1$s” könyvtárat?</string>
     <string name="library_unsent_changes_lost">Az el nem küldött módosítások elvesznek</string>
     <string name="library_remove_failed_title">Nem sikerült eltávolítani a(z) „%1$s” könyvtárat</string>
-    <string name="library_delete_confirm_body">Ez a könyvtár nincs szinkronizálva, ezért véglegesen törlődik. A hangfájljaid a mappáikban maradnak.</string>
-    <string name="library_delete">Törlés</string>
     <string name="details_menu">Részletek…</string>
     <string name="library_remove_menu">Eltávolítás…</string>
-    <string name="library_delete_menu">Törlés…</string>
     <string name="library_last_synced">Utolsó szinkronizálás</string>
     <string name="library_unsent_changes">Elküldetlen módosítások</string>
     <string name="removal_uncounted_body">Ez a könyvtár nem nyitható meg, ezért az ezen az eszközön lévő, el nem küldött módosítások elvesznek. A könyvtár másolata törlődik erről az eszközről; ha a könyvtár a felhőben van, ott is marad.</string>

@@ -8,6 +8,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -19,9 +20,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.LibraryListing
+import fm.bae.app.LocalBugReports
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
+import fm.bae.app.data.LibraryWithoutStorage
 import fm.bae.app.localizedLine
 import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.BaeTheme
@@ -269,14 +272,22 @@ private fun LibrarySwitcherPreview() {
 /**
  * The line under a library's name: its provider and account, or why it doesn't
  * open: its settings can't be read, a reset or restore of this device's copy
- * stopped partway, or removing it from this device stopped partway.
+ * stopped partway, or removing it from this device stopped partway. A library
+ * with no storage, which a phone never has, is a reported bug, said in place.
  */
 @Composable
 internal fun libraryDetail(state: BridgeLibraryState): LibraryDetail {
     val context = LocalContext.current
     return when (state) {
         is BridgeLibraryState.Openable -> {
-            LibraryDetail(state.storage?.let { storageLocationLabel(it) }, tone = null)
+            val storage = state.storage
+            if (storage == null) {
+                val bugs = LocalBugReports.current
+                LaunchedEffect(state) { bugs.reportShownInPlace("show a library's storage", LibraryWithoutStorage()) }
+                LibraryDetail(context.coreString("core.error.category.internal"), StatusTone.DANGER)
+            } else {
+                LibraryDetail(storageLocationLabel(storage), tone = null)
+            }
         }
 
         is BridgeLibraryState.Unreadable -> {
@@ -305,6 +316,6 @@ internal fun libraryDetail(state: BridgeLibraryState): LibraryDetail {
 
 /** The line a library row shows under its name, and the tone it is in. */
 internal data class LibraryDetail(
-    val text: String?,
+    val text: String,
     val tone: StatusTone?,
 )

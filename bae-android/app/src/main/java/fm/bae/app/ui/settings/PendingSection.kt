@@ -18,12 +18,12 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidCard
 import fm.bae.app.ui.components.AndroidNote
-import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidSection
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ErrorDetails
 import fm.bae.app.ui.components.ErrorDetailsDialog
+import fm.bae.app.ui.components.SomethingWentWrongNotice
 import uniffi.bae_bridge.BridgePendingAction
 import uniffi.bae_bridge.BridgePendingRecord
 
@@ -46,7 +46,7 @@ internal fun PendingSection(
     val details = records.map { pendingDetails(context, it) }
     Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
         AndroidSection(text = stringResource(R.string.sync_pending))
-        if (recordsDropped) RecordsDroppedNotice()
+        if (recordsDropped) SomethingWentWrongNotice()
         if (records.isNotEmpty()) {
             AndroidCard {
                 records.forEachIndexed { index, record ->
@@ -62,12 +62,6 @@ internal fun PendingSection(
         if (details.any { it != null }) AndroidNote(stringResource(R.string.sync_pending_tap))
     }
     shown?.let { ErrorDetailsDialog(it, onDismiss = { shown = null }) }
-}
-
-/** "Something went wrong." where a record only a Mac can have would be: the bug is already reported. */
-@Composable
-private fun RecordsDroppedNotice() {
-    AndroidNotice(DisplayError(LocalContext.current.coreString("core.error.category.internal")))
 }
 
 /**

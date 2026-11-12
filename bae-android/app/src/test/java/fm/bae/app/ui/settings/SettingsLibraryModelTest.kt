@@ -50,7 +50,7 @@ class SettingsLibraryModelTest {
     @Test
     fun aFailedSelfReadIsAFailureAndRetryReadsAgain() {
         val handle = SettingsHandle(ownPerson = listOf(Result.failure(offline()), Result.success(PreviewData.person())))
-        val model = SettingsLibraryModel(handle, TestErrorDisplays, scope)
+        val model = SettingsLibraryModel(handle, TestErrorDisplays, scope) { _, _ -> }
 
         runBlocking { model.loadSelf() }
         assertEquals(SelfRead.Failed(DisplayError("couldn't reach the cloud")), model.self)
@@ -62,7 +62,7 @@ class SettingsLibraryModelTest {
     @Test
     fun aFailedNameSubscriptionIsAFailureAndRetrySubscribesAgain() {
         val handle = SettingsHandle()
-        val model = SettingsLibraryModel(handle, TestErrorDisplays, scope)
+        val model = SettingsLibraryModel(handle, TestErrorDisplays, scope) { _, _ -> }
 
         model.watchName()
         handle.names
@@ -85,7 +85,7 @@ class SettingsLibraryModelTest {
     @Test
     fun aReplacedNameSubscriptionCannotOverwriteItsReplacement() {
         val handle = SettingsHandle()
-        val model = SettingsLibraryModel(handle, TestErrorDisplays, scope)
+        val model = SettingsLibraryModel(handle, TestErrorDisplays, scope) { _, _ -> }
         model.watchName()
         val replaced = handle.names.last().pulls
         model.watchName()
@@ -100,7 +100,7 @@ class SettingsLibraryModelTest {
     fun aCancelledSelfReadLeavesTheReadAsItWas() {
         val handle =
             SettingsHandle(ownPerson = listOf(Result.failure(BridgeException.Cancelled()), Result.failure(offline())))
-        val model = SettingsLibraryModel(handle, TestErrorDisplays, scope)
+        val model = SettingsLibraryModel(handle, TestErrorDisplays, scope) { _, _ -> }
 
         runBlocking { model.loadSelf() }
         assertEquals(SelfRead.Loading, model.self)
@@ -112,7 +112,7 @@ class SettingsLibraryModelTest {
     @Test
     fun aCancelledNameSubscriptionLeavesTheNameAsItWas() {
         val handle = SettingsHandle()
-        val model = SettingsLibraryModel(handle, TestErrorDisplays, scope)
+        val model = SettingsLibraryModel(handle, TestErrorDisplays, scope) { _, _ -> }
         model.watchName()
         handle.names
             .last()

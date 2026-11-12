@@ -139,14 +139,10 @@
     <string name="settings_remove_library_confirm_body">Бібліотека залишиться у хмарі та на інших ваших пристроях.</string>
     <string name="settings_remove">Видалити</string>
     <string name="onboarding_libraries_title">Ваші бібліотеки</string>
-    <string name="library_delete_confirm_title">Видалити «%1$s»?</string>
     <string name="library_unsent_changes_lost">Ненадіслані зміни буде втрачено</string>
     <string name="library_remove_failed_title">Не вдалося вилучити «%1$s»</string>
-    <string name="library_delete_confirm_body">Цю бібліотеку не синхронізовано, тому її буде видалено назавжди. Ваші аудіофайли залишаться у своїх теках.</string>
-    <string name="library_delete">Видалити</string>
     <string name="details_menu">Подробиці…</string>
     <string name="library_remove_menu">Видалити…</string>
-    <string name="library_delete_menu">Видалити…</string>
     <string name="library_last_synced">Остання синхронізація</string>
     <string name="library_unsent_changes">Невідправлені зміни</string>
     <string name="removal_uncounted_body">Цю бібліотеку не вдається відкрити, тому всі не надіслані зміни на цьому пристрої буде втрачено. Її копію на цьому пристрої буде видалено; якщо бібліотека зберігається у хмарі, вона там і залишиться.</string>

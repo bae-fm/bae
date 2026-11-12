@@ -147,14 +147,10 @@
     <string name="settings_remove_library_confirm_body">تبقى المكتبة في السحابة وعلى أجهزتك الأخرى.</string>
     <string name="settings_remove">إزالة</string>
     <string name="onboarding_libraries_title">مكتباتك</string>
-    <string name="library_delete_confirm_title">حذف «%1$s»؟</string>
     <string name="library_unsent_changes_lost">ستُفقد التغييرات غير المُرسلة</string>
     <string name="library_remove_failed_title">تعذّرت إزالة «%1$s»</string>
-    <string name="library_delete_confirm_body">هذه المكتبة غير متزامنة، لذا ستُحذف نهائيًا. تبقى ملفاتك الصوتية في مجلداتها.</string>
-    <string name="library_delete">حذف</string>
     <string name="details_menu">التفاصيل…</string>
     <string name="library_remove_menu">إزالة…</string>
-    <string name="library_delete_menu">حذف…</string>
     <string name="library_last_synced">آخر مزامنة</string>
     <string name="library_unsent_changes">تغييرات غير مرسلة</string>
     <string name="removal_uncounted_body">لا يمكن فتح هذه المكتبة، لذا تُفقد أي تغييرات على هذا الجهاز لم تُرسل. تُحذف نسختها على هذا الجهاز؛ وإن كانت المكتبة محفوظة في السحابة فهي تبقى هناك.</string>

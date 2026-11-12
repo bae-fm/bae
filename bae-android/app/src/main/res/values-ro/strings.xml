@@ -140,14 +140,10 @@
     <string name="settings_remove_library_confirm_body">Biblioteca rămâne în cloud și pe celelalte dispozitive ale tale.</string>
     <string name="settings_remove">Elimină</string>
     <string name="onboarding_libraries_title">Bibliotecile tale</string>
-    <string name="library_delete_confirm_title">Ștergi „%1$s”?</string>
     <string name="library_unsent_changes_lost">Modificările netrimise se vor pierde</string>
     <string name="library_remove_failed_title">Nu s-a putut elimina „%1$s”</string>
-    <string name="library_delete_confirm_body">Această bibliotecă nu este sincronizată, așa că va fi ștearsă definitiv. Fișierele tale audio rămân în dosarele lor.</string>
-    <string name="library_delete">Șterge</string>
     <string name="details_menu">Detalii…</string>
     <string name="library_remove_menu">Elimină…</string>
-    <string name="library_delete_menu">Șterge…</string>
     <string name="library_last_synced">Ultima sincronizare</string>
     <string name="library_unsent_changes">Modificări netrimise</string>
     <string name="removal_uncounted_body">Această bibliotecă nu poate fi deschisă, așa că modificările de pe acest dispozitiv care nu au fost trimise se pierd. Copia ei de pe acest dispozitiv este ștearsă; dacă biblioteca este păstrată în cloud, rămâne acolo.</string>

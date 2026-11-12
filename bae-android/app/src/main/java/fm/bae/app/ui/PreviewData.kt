@@ -54,6 +54,7 @@ import uniffi.bae_bridge.BridgeReleasePlayability
 import uniffi.bae_bridge.BridgeReleaseStorageState
 import uniffi.bae_bridge.BridgeSearchResults
 import uniffi.bae_bridge.BridgeSidePausePrompt
+import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeSyncActivity
 import uniffi.bae_bridge.BridgeTermLabel
 import uniffi.bae_bridge.BridgeTrack
@@ -338,7 +339,7 @@ object PreviewData {
             id = id,
             name = name,
             path = "/tmp/$id",
-            state = BridgeLibraryState.Openable(storage = null),
+            state = BridgeLibraryState.Openable(BridgeStorageLocation.S3("music", "us-east-1", null, null)),
             isActive = isActive,
         )
 

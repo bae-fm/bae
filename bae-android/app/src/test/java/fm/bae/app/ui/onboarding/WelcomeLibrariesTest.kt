@@ -1,6 +1,7 @@
 package fm.bae.app.ui.onboarding
 
 import android.app.Application
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
@@ -11,15 +12,17 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import fm.bae.app.BaeRobolectricTestRunner
+import fm.bae.app.BugReports
 import fm.bae.app.DisplayError
 import fm.bae.app.HANG_GUARD_MS
+import fm.bae.app.LocalBugReports
 import fm.bae.app.NoErrorDisplays
 import fm.bae.app.ui.BaeTheme
-import fm.bae.app.ui.components.LibraryEnding
 import fm.bae.app.ui.components.RemovalLoss
 import fm.bae.app.ui.components.RemoveLibraryDialog
 import kotlinx.coroutines.CoroutineScope
@@ -55,7 +58,17 @@ private val synced =
             BridgeStorageLocation.Dropbox(BridgeDropboxLocation.AppFolder, accountLabel = "ana@example.com", folderLabel = null),
         ),
     )
-private val neverSynced = library("local", "Local Library", BridgeLibraryState.Openable(storage = null))
+private val other =
+    library(
+        "other",
+        "Office Library",
+        BridgeLibraryState.Openable(
+            BridgeStorageLocation.Dropbox(BridgeDropboxLocation.AppFolder, accountLabel = "bo@example.com", folderLabel = null),
+        ),
+    )
+
+/** A phone's library always has storage; one without is a bug. */
+private val noStorage = library("none", "No Storage Library", BridgeLibraryState.Openable(storage = null))
 private val removalStopped = library("stopped", "Half Removed", BridgeLibraryState.DeletionUnfinished("core.error.deletion_unfinished"))
 
 /** What the welcome's library core was asked, in order, and what it answers. */
@@ -106,7 +119,7 @@ private class FakeLibraries(
         )
 }
 
-/** The welcome lists this device's libraries: Remove, or Delete for one that was never synced, asks first. */
+/** The welcome lists this device's libraries: Remove asks first. */
 @RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
 class WelcomeLibrariesTest {
@@ -117,8 +130,10 @@ class WelcomeLibrariesTest {
         compose.setContent {
             val scope = rememberCoroutineScope()
             val model = remember { fake.model(scope) }
-            BaeTheme {
-                WelcomeLibrariesSection(model, onOpen = { fake.calls += "open ${it.id}" }, onAdd = { fake.calls += "add" })
+            CompositionLocalProvider(LocalBugReports provides BugReports()) {
+                BaeTheme {
+                    WelcomeLibrariesSection(model, onOpen = { fake.calls += "open ${it.id}" }, onAdd = { fake.calls += "add" })
+                }
             }
         }
     }
@@ -163,19 +178,12 @@ class WelcomeLibrariesTest {
     }
 
     @Test
-    fun aLibraryThatSyncsIsRemovedAndOneThatDoesntIsDeleted() {
-        assertEquals(LibraryEnding.REMOVE, LibraryEnding.of(synced.state))
-        assertEquals(LibraryEnding.DELETE, LibraryEnding.of(neverSynced.state))
-        assertEquals(LibraryEnding.REMOVE, LibraryEnding.of(removalStopped.state))
-    }
-
-    @Test
     fun theListNamesEachLibraryAndNothingElse() {
-        showLibraries(FakeLibraries(listOf(synced, neverSynced)))
+        showLibraries(FakeLibraries(listOf(synced, other)))
 
         compose.onNodeWithText("Your libraries").assertIsDisplayed()
         compose.onNodeWithText("Home Library").assertIsDisplayed()
-        compose.onNodeWithText("Local Library").assertIsDisplayed()
+        compose.onNodeWithText("Office Library").assertIsDisplayed()
         compose.onNodeWithText("Dropbox: ana@example.com").assertDoesNotExist()
         compose.onAllNodesWithContentDescription("More").assertCountEquals(2)
     }
@@ -183,7 +191,7 @@ class WelcomeLibrariesTest {
     /** The row being counted shows what it waits on as words under its name, a spinner where the ⋮ was, and nothing else taps. */
     @Test
     fun aLibraryBeingCountedShowsWhatItWaitsOnInsteadOfItsMenu() {
-        val fake = FakeLibraries(listOf(synced, neverSynced))
+        val fake = FakeLibraries(listOf(synced, other))
         compose.setContent {
             BaeTheme {
                 WelcomeLibrariesContent(
@@ -204,7 +212,7 @@ class WelcomeLibrariesTest {
         compose.onNodeWithText("Opening the library…").assertIsDisplayed()
         compose.onAllNodesWithContentDescription("More").assertCountEquals(1)
 
-        compose.onNodeWithText("Local Library").performClick()
+        compose.onNodeWithText("Office Library").performClick()
         compose.onNodeWithText("Add library").performClick()
 
         assertEquals(emptyList<String>(), fake.calls)
@@ -212,7 +220,7 @@ class WelcomeLibrariesTest {
 
     @Test
     fun addLibraryIsTheListsLastRow() {
-        val fake = FakeLibraries(listOf(synced, neverSynced))
+        val fake = FakeLibraries(listOf(synced, other))
         showLibraries(fake)
 
         compose.onNodeWithText("Add library").assertIsDisplayed()
@@ -266,25 +274,6 @@ class WelcomeLibrariesTest {
         compose.onNodeWithText("Unsent changes will be lost").assertDoesNotExist()
     }
 
-    @Test
-    fun deleteAsksForANeverSyncedLibraryAndSaysItIsGoneForGood() {
-        val fake = FakeLibraries(listOf(neverSynced))
-        showLibraries(fake)
-
-        chooseFromMenu("Delete…")
-
-        compose.waitUntil(HANG_GUARD_MS) { fake.calls.contains("unsent local") }
-        compose.onNodeWithText("Delete “Local Library”?").assertIsDisplayed()
-        compose
-            .onNodeWithText("This library isn’t synced, so it will be deleted for good. Your audio files stay in their folders.")
-            .assertIsDisplayed()
-
-        compose.onNode(hasText("Delete") and hasAnyAncestor(isDialog())).performClick()
-
-        compose.waitUntil(HANG_GUARD_MS) { fake.calls.contains("remove local") }
-        compose.waitUntil(HANG_GUARD_MS) { fake.libraries.isEmpty() }
-    }
-
     /** A library that can't open has no count to read, so asking goes straight to the confirmation. */
     @Test
     fun aLibraryThatCantOpenIsNotOpenedToCountButRemovedWithoutOpening() =
@@ -327,15 +316,15 @@ class WelcomeLibrariesTest {
 
     @Test
     fun cancellingTheConfirmationChangesNothing() {
-        val fake = FakeLibraries(listOf(neverSynced))
+        val fake = FakeLibraries(listOf(synced))
         showLibraries(fake)
 
-        chooseFromMenu("Delete…")
-        compose.waitUntil(HANG_GUARD_MS) { fake.calls.contains("unsent local") }
+        chooseFromMenu("Remove…")
+        compose.waitUntil(HANG_GUARD_MS) { fake.calls.contains("unsent synced") }
         compose.onNode(hasText("Cancel") and hasAnyAncestor(isDialog())).performClick()
 
-        compose.onNodeWithText("Local Library").assertIsDisplayed()
-        assertEquals(listOf("list", "unsent local"), fake.calls)
+        compose.onNodeWithText("Home Library").assertIsDisplayed()
+        assertEquals(listOf("list", "unsent synced"), fake.calls)
     }
 
     @Test
@@ -396,17 +385,16 @@ class WelcomeLibrariesTest {
             assertEquals(null, model.details)
         }
 
+    /** A library with no storage broke the guarantee a phone's libraries keep: the bug is reported, and its row and sheet say so. */
     @Test
-    fun aLibraryThatNeverSyncedHasNothingToRead() =
-        runBlocking {
-            val fake = FakeLibraries(listOf(neverSynced))
-            val model = fake.model(CoroutineScope(Dispatchers.Unconfined))
+    fun aLibraryWithNoStorageShowsSomethingWentWrongInItsRowAndSheet() {
+        showLibraries(FakeLibraries(listOf(noStorage)))
 
-            model.showDetails(neverSynced)
+        compose.onAllNodesWithText("Something went wrong.").assertCountEquals(1)
 
-            assertEquals(emptyList<String>(), fake.calls)
-            assertEquals(LibraryDetails(neverSynced, standing = null), model.details)
-        }
+        chooseFromMenu("Details…")
+        compose.onAllNodesWithText("Something went wrong.").assertCountEquals(2)
+    }
 
     @Test
     fun aFailedReadShowsItsErrorInTheSheet() =

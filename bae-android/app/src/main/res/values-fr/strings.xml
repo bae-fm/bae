@@ -135,14 +135,10 @@
     <string name="settings_remove_library_confirm_body">La bibliothèque reste dans le cloud et sur vos autres appareils.</string>
     <string name="settings_remove">Supprimer</string>
     <string name="onboarding_libraries_title">Vos bibliothèques</string>
-    <string name="library_delete_confirm_title">Supprimer « %1$s » ?</string>
     <string name="library_unsent_changes_lost">Les modifications non envoyées seront perdues</string>
     <string name="library_remove_failed_title">Impossible de supprimer « %1$s »</string>
-    <string name="library_delete_confirm_body">Cette bibliothèque n’est pas synchronisée, elle sera donc supprimée définitivement. Vos fichiers audio restent dans leurs dossiers.</string>
-    <string name="library_delete">Supprimer</string>
     <string name="details_menu">Détails…</string>
     <string name="library_remove_menu">Supprimer…</string>
-    <string name="library_delete_menu">Supprimer…</string>
     <string name="library_last_synced">Dernière synchronisation</string>
     <string name="library_unsent_changes">Modifications non envoyées</string>
     <string name="removal_uncounted_body">Cette bibliothèque ne peut pas être ouverte : les modifications de cet appareil qui n’ont pas été envoyées sont donc perdues. Sa copie sur cet appareil est supprimée ; si la bibliothèque est conservée dans le cloud, elle y reste.</string>

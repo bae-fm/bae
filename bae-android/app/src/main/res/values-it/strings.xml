@@ -135,14 +135,10 @@
     <string name="settings_remove_library_confirm_body">La libreria resta nel cloud e sugli altri tuoi dispositivi.</string>
     <string name="settings_remove">Rimuovi</string>
     <string name="onboarding_libraries_title">Le tue librerie</string>
-    <string name="library_delete_confirm_title">Eliminare «%1$s»?</string>
     <string name="library_unsent_changes_lost">Le modifiche non inviate andranno perse</string>
     <string name="library_remove_failed_title">Impossibile rimuovere «%1$s»</string>
-    <string name="library_delete_confirm_body">Questa libreria non è sincronizzata, quindi verrà eliminata per sempre. I tuoi file audio restano nelle loro cartelle.</string>
-    <string name="library_delete">Elimina</string>
     <string name="details_menu">Dettagli…</string>
     <string name="library_remove_menu">Rimuovi…</string>
-    <string name="library_delete_menu">Elimina…</string>
     <string name="library_last_synced">Ultima sincronizzazione</string>
     <string name="library_unsent_changes">Modifiche non inviate</string>
     <string name="removal_uncounted_body">Questa libreria non può essere aperta, quindi le modifiche su questo dispositivo non inviate vanno perse. La sua copia su questo dispositivo viene eliminata; se la libreria è nel cloud, resta lì.</string>

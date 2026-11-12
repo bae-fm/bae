@@ -11,7 +11,9 @@ import androidx.compose.runtime.setValue
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.ErrorDisplays
+import fm.bae.app.LocalBugReports
 import fm.bae.app.OpenLibrary
+import fm.bae.app.data.LibraryWithoutStorage
 import fm.bae.app.ui.rememberScreenScope
 import fm.bae.screensubscription.ScreenSubscription
 import fm.bae.screensubscription.pulled
@@ -63,6 +65,7 @@ internal class SettingsLibraryModel(
     private val appHandle: AppHandleInterface,
     private val errors: ErrorDisplays,
     private val scope: CoroutineScope,
+    private val reportBug: (operation: String, error: Throwable) -> Unit,
 ) {
     var storage by mutableStateOf<Storage>(Storage.Loading)
         private set
@@ -86,7 +89,13 @@ internal class SettingsLibraryModel(
     /** Read the storage as Settings opens. A phone's library always has a cloud home; one without is a bug. */
     suspend fun loadStorage() {
         try {
-            storage = Storage.At(checkNotNull(appHandle.storageLocation()) { "a phone's library has no cloud home" })
+            val location = appHandle.storageLocation()
+            if (location == null) {
+                reportBug("read the library's storage", LibraryWithoutStorage())
+                storage = Storage.Missing
+            } else {
+                storage = Storage.At(location)
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (e: BridgeException) {
@@ -139,7 +148,11 @@ internal class SettingsLibraryModel(
 @Composable
 internal fun rememberSettingsLibraryModel(session: OpenLibrary): SettingsLibraryModel {
     val scope = rememberScreenScope()
-    val model = remember(session) { SettingsLibraryModel(session.appHandle, session.errors, scope) }
+    val bugs = LocalBugReports.current
+    val model =
+        remember(session) {
+            SettingsLibraryModel(session.appHandle, session.errors, scope, bugs::reportShownInPlace)
+        }
     ReloadStorageWhenSetupEnds(session = session, model = model)
     DisposableEffect(model) {
         model.watchName()

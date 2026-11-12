@@ -33,7 +33,6 @@ import fm.bae.app.ui.components.AndroidProgress
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidSection
 import fm.bae.app.ui.components.AndroidSpinner
-import fm.bae.app.ui.components.LibraryEnding
 import fm.bae.app.ui.components.OpenProgressLine
 import fm.bae.app.ui.components.RemoveLibraryDialog
 import fm.bae.app.ui.settings.libraryDetail
@@ -146,8 +145,7 @@ internal fun WelcomeLibrariesContent(
 
 /**
  * One library: its name alone, or under it, in red, why it doesn't open, with a
- * ⋮ menu of Details, for a library that opens, and Remove, or Delete for a
- * library that was never synced. A tap opens it, unless its settings can't be
+ * ⋮ menu of Details, for a library that opens, and Remove. A tap opens it, unless its settings can't be
  * read. While it is counted or removed the row shows the step.
  */
 @Composable
@@ -161,7 +159,8 @@ private fun WelcomeLibraryRow(
         RunningLibraryRow(library, running)
         return
     }
-    val problem = libraryDetail(library.state).takeIf { library.state !is BridgeLibraryState.Openable }
+    val problem =
+        libraryDetail(library.state).takeIf { (library.state as? BridgeLibraryState.Openable)?.storage == null }
     AndroidRow(
         title = library.name,
         subtitle = problem?.text,
@@ -197,14 +196,7 @@ private fun LibraryMenu(
         }
         DropdownMenuItem(
             text = {
-                Text(
-                    stringResource(
-                        when (LibraryEnding.of(library.state)) {
-                            LibraryEnding.REMOVE -> R.string.library_remove_menu
-                            LibraryEnding.DELETE -> R.string.library_delete_menu
-                        },
-                    ),
-                )
+                Text(stringResource(R.string.library_remove_menu))
             },
             onClick = {
                 close()

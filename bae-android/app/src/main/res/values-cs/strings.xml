@@ -139,14 +139,10 @@
     <string name="settings_remove_library_confirm_body">Knihovna zůstane v cloudu a na vašich dalších zařízeních.</string>
     <string name="settings_remove">Odebrat</string>
     <string name="onboarding_libraries_title">Vaše knihovny</string>
-    <string name="library_delete_confirm_title">Smazat „%1$s“?</string>
     <string name="library_unsent_changes_lost">Neodeslané změny budou ztraceny</string>
     <string name="library_remove_failed_title">„%1$s“ se nepodařilo odebrat</string>
-    <string name="library_delete_confirm_body">Tato knihovna není synchronizovaná, takže se smaže natrvalo. Vaše zvukové soubory zůstanou ve svých složkách.</string>
-    <string name="library_delete">Smazat</string>
     <string name="details_menu">Podrobnosti…</string>
     <string name="library_remove_menu">Odebrat…</string>
-    <string name="library_delete_menu">Smazat…</string>
     <string name="library_last_synced">Poslední synchronizace</string>
     <string name="library_unsent_changes">Neodeslané změny</string>
     <string name="removal_uncounted_body">Tuto knihovnu nelze otevřít, takže všechny změny na tomto zařízení, které nebyly odeslány, budou ztraceny. Její kopie na tomto zařízení se smaže; pokud je knihovna uložena v cloudu, zůstane tam.</string>

@@ -135,14 +135,10 @@
     <string name="settings_remove_library_confirm_body">הספרייה תישאר בענן ובמכשירים האחרים שלך.</string>
     <string name="settings_remove">הסר</string>
     <string name="onboarding_libraries_title">הספריות שלך</string>
-    <string name="library_delete_confirm_title">למחוק את ”%1$s“?</string>
     <string name="library_unsent_changes_lost">שינויים שלא נשלחו יאבדו</string>
     <string name="library_remove_failed_title">לא ניתן היה להסיר את ”%1$s“</string>
-    <string name="library_delete_confirm_body">הספרייה הזו אינה מסונכרנת, ולכן היא תימחק לצמיתות. קובצי האודיו שלך יישארו בתיקיות שלהם.</string>
-    <string name="library_delete">מחיקה</string>
     <string name="details_menu">פרטים…</string>
     <string name="library_remove_menu">הסר…</string>
-    <string name="library_delete_menu">מחיקה…</string>
     <string name="library_last_synced">סונכרן לאחרונה</string>
     <string name="library_unsent_changes">שינויים שלא נשלחו</string>
     <string name="removal_uncounted_body">לא ניתן לפתוח את הספרייה הזו, ולכן שינויים במכשיר הזה שלא נשלחו יאבדו. העותק שלה במכשיר הזה יימחק; אם הספרייה שמורה בענן, היא נשארת שם.</string>

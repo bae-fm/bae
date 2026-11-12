@@ -135,14 +135,10 @@
     <string name="settings_remove_library_confirm_body">Biblioteket finns kvar i molnet och på dina andra enheter.</string>
     <string name="settings_remove">Ta bort</string>
     <string name="onboarding_libraries_title">Dina bibliotek</string>
-    <string name="library_delete_confirm_title">Radera ”%1$s”?</string>
     <string name="library_unsent_changes_lost">Ändringar som inte har skickats går förlorade</string>
     <string name="library_remove_failed_title">Det gick inte att ta bort ”%1$s”</string>
-    <string name="library_delete_confirm_body">Det här biblioteket är inte synkroniserat, så det raderas för alltid. Dina ljudfiler ligger kvar i sina mappar.</string>
-    <string name="library_delete">Radera</string>
     <string name="details_menu">Detaljer…</string>
     <string name="library_remove_menu">Ta bort…</string>
-    <string name="library_delete_menu">Radera…</string>
     <string name="library_last_synced">Senast synkroniserad</string>
     <string name="library_unsent_changes">Osända ändringar</string>
     <string name="removal_uncounted_body">Det här biblioteket kan inte öppnas, så ändringar på den här enheten som inte har skickats går förlorade. Dess kopia på den här enheten raderas; om biblioteket finns i molnet ligger det kvar där.</string>

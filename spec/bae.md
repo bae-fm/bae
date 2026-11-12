@@ -2810,8 +2810,7 @@ joins someone's library, and the person's own restore code adds this device to
 theirs. An Android phone that holds libraries lists them under **Your libraries**,
 ending in **Add library**, which opens a sheet with **Scan code** and **Enter
 code** in place of the buttons, each library opening on a tap, with a ⋮ menu holding
-**Details…** for a library that opens, and **Remove…**, or **Delete…** for one
-that was never synced (§6.4). **Details…** shows, in a sheet, the library's sync
+**Details…** for a library that opens, and **Remove…** (§6.4). **Details…** shows, in a sheet, the library's sync
 status as this phone last knew it (as on a Mac, below), when it last synced, and
 its provider, account and folder (no *Open in browser*: the Sync page has it). One that has restore codes saved on it lists
 them below those (below). A Mac lists its libraries the same
@@ -3832,19 +3831,19 @@ is an admin entry, so it needs storage. Offline, removal says so and waits
 rather than deleting the local copy and leaving a device listed that will
 never come back. A library that doesn't sync was never synced: it has no
 members to leave and exists only on this device, so it is deleted at once, and
-the apps call that **Delete**, never Remove. If the laptop has left but closing
+the Mac calls that **Delete**, never Remove. If the laptop has left but closing
 its copy then fails, coven discards the closed copy without opening it, and the
 removal goes on to delete bae's files for it. Only if that discard fails too does the removal
 fail, saying the laptop left the library and its files are still on it.
 
 - **The confirmation.** On a Mac, Remove asks "Remove “Household” from this
   Mac?", naming the library, and Delete asks "Delete “Household”?"; on Android
-  they ask "Remove “Household” from this device?" and "Delete “Household”?". Remove says
+  Remove asks "Remove “Household” from this device?". Remove says
   "The library will remain in the cloud and on your other devices." Delete says
   the library isn't synced, so it will be deleted for good, and that the audio
   files stay in their folders. The first screens on a Mac and on Android ask this way,
-  and neither platform's Settings removes the library. A library that doesn't sync
-  offers *Delete* in place of *Remove*. Neither platform
+  and neither platform's Settings removes the library. On a Mac, a library that
+  doesn't sync offers *Delete* in place of *Remove*. Neither platform
   asks the person to unlock the device first: the confirmation is the only step.
   *Remove* loses nothing (the library stays in the cloud), so it is the
   confirmation's accent button, the Mac alert's default; only *Delete* is red.

@@ -131,14 +131,10 @@
     <string name="settings_remove_library_confirm_body">Die Bibliothek bleibt in der Cloud und auf deinen anderen Geräten erhalten.</string>
     <string name="settings_remove">Entfernen</string>
     <string name="onboarding_libraries_title">Deine Bibliotheken</string>
-    <string name="library_delete_confirm_title">„%1$s“ löschen?</string>
     <string name="library_unsent_changes_lost">Nicht gesendete Änderungen gehen verloren</string>
     <string name="library_remove_failed_title">„%1$s“ konnte nicht entfernt werden</string>
-    <string name="library_delete_confirm_body">Diese Bibliothek ist nicht synchronisiert und wird daher endgültig gelöscht. Deine Audiodateien bleiben in ihren Ordnern.</string>
-    <string name="library_delete">Löschen</string>
     <string name="details_menu">Details…</string>
     <string name="library_remove_menu">Entfernen…</string>
-    <string name="library_delete_menu">Löschen…</string>
     <string name="library_last_synced">Zuletzt synchronisiert</string>
     <string name="library_unsent_changes">Nicht gesendete Änderungen</string>
     <string name="removal_uncounted_body">Diese Bibliothek lässt sich nicht öffnen, daher gehen alle nicht gesendeten Änderungen auf diesem Gerät verloren. Ihre Kopie auf diesem Gerät wird gelöscht; liegt die Bibliothek in der Cloud, bleibt sie dort.</string>

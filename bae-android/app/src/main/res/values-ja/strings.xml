@@ -127,14 +127,10 @@
     <string name="settings_remove_library_confirm_body">ライブラリはクラウドとほかのデバイスに残ります。</string>
     <string name="settings_remove">削除</string>
     <string name="onboarding_libraries_title">ライブラリ</string>
-    <string name="library_delete_confirm_title">「%1$s」を削除しますか？</string>
     <string name="library_unsent_changes_lost">未送信の変更は失われます</string>
     <string name="library_remove_failed_title">「%1$s」を削除できませんでした</string>
-    <string name="library_delete_confirm_body">このライブラリは同期されていないため、完全に削除されます。オーディオファイルはそれぞれのフォルダに残ります。</string>
-    <string name="library_delete">削除</string>
     <string name="details_menu">詳細…</string>
     <string name="library_remove_menu">削除…</string>
-    <string name="library_delete_menu">削除…</string>
     <string name="library_last_synced">最終同期</string>
     <string name="library_unsent_changes">未送信の変更</string>
     <string name="removal_uncounted_body">このライブラリは開けないため、このデバイス上で送信されていない変更はすべて失われます。このデバイス上のコピーは削除されます。ライブラリがクラウドにある場合は、そのまま残ります。</string>
