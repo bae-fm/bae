@@ -283,19 +283,23 @@ extension ShotScene {
         }
     }
 
-    /// The confirmation to unpin several releases, over the Storage manager
-    /// with the first release's inspector open, as the board draws it.
+    /// The confirmation to unpin the three pinned releases the board selects
+    /// in its twelve, over the Storage manager in its window with the
+    /// inspector open.
     private static func unpinSeveral() -> ShotScene {
         ShotScene(
             id: "mac.storage.unpin-several",
-            size: CGSize(width: 1_100, height: 660)
+            size: CGSize(width: 1_100, height: 660),
+            frame: .window(title: "Storage Manager")
         ) {
+            let pinned: Set<String> = ["rel-row-3", "rel-row-10", "rel-row-12"]
             let fixture = StorageManagerPreviewFixture(
-                selectedReleaseId: "rel-row-1",
-                inspectorPresented: true
+                rows: boardStorageRows,
+                inspectorPresented: true,
+                uploads: []
             )
             let manager = StorageManagerView(
-                initialSelection: fixture.initialSelection,
+                initialSelection: pinned,
                 initialInspectorPresented: fixture.initialInspectorPresented
             )
             .environment(fixture.library)
@@ -318,7 +322,7 @@ extension ShotScene {
                 OverWindow.alert(
                     UnpinConfirmation.alert(
                         for: PendingUnpin(
-                            releaseIds: ["a", "b", "c"],
+                            releaseIds: pinned.sorted(),
                             title: nil
                         ),
                         dontShowAgain: .constant(false)
