@@ -137,7 +137,6 @@ impl LibraryManager {
         let built = {
             let clock = self.clock.clone();
             let ids = self.ids.clone();
-            let diagnostics = self.diagnostics.clone();
             let tracks = tracks_to_files.clone();
             self.diagnostics
                 .blocking("build a fixture's audio formats", move || {
@@ -146,7 +145,6 @@ impl LibraryManager {
                         &file_ids,
                         clock.as_ref(),
                         ids.as_ref(),
-                        &diagnostics,
                     )
                 })
                 .await

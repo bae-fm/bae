@@ -74,12 +74,12 @@ pub(super) fn cue_audio_pregap(
 ///
 /// The scan opened and probed every image a sheet names, and admitted only
 /// audio of a usable format, so these offsets can always be read.
-/// An error saying why they couldn't is a bug, which the caller reports.
+/// An error saying why they couldn't fails the import.
 pub(super) fn cue_file_landing_bytes(
     file: &crate::types::CueAnalyzedAudioFile,
     cue_sheet: &crate::cue_sheet::CueSheet,
-) -> Result<HashMap<u64, u64>, String> {
-    ensure_probe_audio_format(&file.path, &file.probe).map_err(|error| error.to_string())?;
+) -> Result<HashMap<u64, u64>, ImportError> {
+    ensure_probe_audio_format(&file.path, &file.probe)?;
     let sample_rate = u64::from(file.probe.sample_rate.get());
     let start_samples: Vec<u64> = cue_sheet
         .playable_tracks()
@@ -88,23 +88,26 @@ pub(super) fn cue_file_landing_bytes(
         .filter(|index| matches!(index.number, 0 | 1))
         .map(|index| crate::cue_sheet::cue_frames_to_samples(index.frames, sample_rate))
         .collect();
-    let landings = bae_audio::seek_landing_bytes(&file.path, &start_samples)?;
+    let landings = bae_audio::seek_landing_bytes(&file.path, &start_samples).map_err(|reason| {
+        ImportError::Internal {
+            detail: format!(
+                "could not read where each track of the CUE image {} starts: {reason}",
+                file.path.display()
+            ),
+        }
+    })?;
     Ok(start_samples.into_iter().zip(landings).collect())
 }
 
 fn cue_segment_byte(
-    byte_landings_by_file: &HashMap<PathBuf, Option<HashMap<u64, u64>>>,
+    byte_landings_by_file: &HashMap<PathBuf, HashMap<u64, u64>>,
     file_path: &Path,
     sample: u64,
 ) -> Option<u64> {
     if sample == 0 {
         return None;
     }
-    byte_landings_by_file
-        .get(file_path)
-        .and_then(|map| map.as_ref())
-        .and_then(|map| map.get(&sample))
-        .copied()
+    byte_landings_by_file.get(file_path).and_then(|map| map.get(&sample)).copied()
 }
 
 pub(super) fn cue_segments(
@@ -112,7 +115,7 @@ pub(super) fn cue_segments(
     cue_pair: &CueFlacAnalysis,
     cue_index: usize,
     file_ids: &HashMap<PathBuf, String>,
-    byte_landings_by_file: &HashMap<PathBuf, Option<HashMap<u64, u64>>>,
+    byte_landings_by_file: &HashMap<PathBuf, HashMap<u64, u64>>,
     ids: &dyn coven::IdSource,
     now: chrono::DateTime<chrono::Utc>,
 ) -> Result<Vec<DbAudioSegment>, ImportError> {

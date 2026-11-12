@@ -476,16 +476,9 @@ impl ImportService {
             let file_ids = file_ids.clone();
             let clock = self.clock.clone();
             let ids = self.ids.clone();
-            let diagnostics = self.diagnostics.clone();
             self.diagnostics
                 .blocking("build the import's audio formats", move || {
-                    super::build_audio_formats(
-                        &tracks,
-                        &file_ids,
-                        clock.as_ref(),
-                        ids.as_ref(),
-                        &diagnostics,
-                    )
+                    super::build_audio_formats(&tracks, &file_ids, clock.as_ref(), ids.as_ref())
                 })
                 .await??
         };

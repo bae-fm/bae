@@ -136,19 +136,19 @@ pub(super) fn audio_segment(
     }
 }
 
-/// Build audio format records for all tracks from the scan's stored facts,
-/// reporting to `bugs` a CUE image whose track starts can't be read.
+/// Build audio format records for all tracks from the scan's stored facts. A
+/// CUE image whose track starts can't be read fails the build: the records
+/// would otherwise be stored without their byte positions for good.
 pub fn build_audio_formats(
     tracks_to_files: &[TrackFile],
     file_ids: &HashMap<PathBuf, String>,
     clock: &dyn coven::Clock,
     ids: &dyn coven::IdSource,
-    bugs: &bae_diagnostics::Diagnostics,
 ) -> Result<BuiltAudioFormats, ImportError> {
     let now = bae_store::utc_now(clock);
     let mut audio_formats = Vec::with_capacity(tracks_to_files.len());
     let mut audio_segments = Vec::new();
-    let mut cue_landings_by_file: HashMap<PathBuf, Option<HashMap<u64, u64>>> = HashMap::new();
+    let mut cue_landings_by_file: HashMap<PathBuf, HashMap<u64, u64>> = HashMap::new();
 
     for track_file in tracks_to_files {
         let db_track = &track_file.db_track;
@@ -162,20 +162,10 @@ pub fn build_audio_formats(
                     now,
                 )?;
                 for audio_file in &cue_pair.audio_files {
-                    cue_landings_by_file.entry(audio_file.path.clone()).or_insert_with(|| {
-                        match cue_file_landing_bytes(audio_file, &cue_pair.cue_sheet) {
-                            Ok(landings) => Some(landings),
-                            // The image's tracks hold no byte window and
-                            // keep the whole-file read-ahead span.
-                            Err(reason) => {
-                                bugs.report_bug(
-                                    "read where each track of a CUE image starts",
-                                    &format!("{}: {reason}", audio_file.path.display()),
-                                );
-                                None
-                            }
-                        }
-                    });
+                    if !cue_landings_by_file.contains_key(&audio_file.path) {
+                        let landings = cue_file_landing_bytes(audio_file, &cue_pair.cue_sheet)?;
+                        cue_landings_by_file.insert(audio_file.path.clone(), landings);
+                    }
                 }
                 let segments = cue_segments::cue_segments(
                     &af.id,

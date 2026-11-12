@@ -47,14 +47,8 @@ fn build_audio_formats_uses_stored_standalone_facts() {
     let file_ids = HashMap::from([(path, "file-0".to_string())]);
     let ids = coven::SequentialIds::new();
 
-    let built = build_audio_formats(
-        &[track],
-        &file_ids,
-        &test_clock(),
-        &ids,
-        &bae_diagnostics::Diagnostics::noop(),
-    )
-    .expect("build audio formats");
+    let built =
+        build_audio_formats(&[track], &file_ids, &test_clock(), &ids).expect("build audio formats");
 
     assert_eq!(built.audio_formats.len(), 1);
     assert_eq!(built.audio_formats[0].track_id, "track-0");

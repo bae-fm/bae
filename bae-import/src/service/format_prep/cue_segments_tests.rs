@@ -6,6 +6,7 @@ use super::*;
 use crate::service::format_prep::tests::*;
 use crate::service::format_prep::*;
 use crate::types::{CueAnalyzedAudioFile, CueFlacAnalysis, TrackFile};
+use crate::ImportError;
 use bae_audio::ProbeResult;
 use bae_records::DbTrack;
 use bae_util::content_type::ContentType;
@@ -141,14 +142,8 @@ INDEX 01 01:00:00
     let file_ids = HashMap::from([(audio_path, "file-id".to_string())]);
     let ids = coven::SequentialIds::new();
 
-    let built = build_audio_formats(
-        &tracks_to_files,
-        &file_ids,
-        &test_clock(),
-        &ids,
-        &bae_diagnostics::Diagnostics::noop(),
-    )
-    .expect("build audio formats");
+    let built = build_audio_formats(&tracks_to_files, &file_ids, &test_clock(), &ids)
+        .expect("build audio formats");
 
     // Exactly one track (track 2) has a real audio pregap.
     let pregaps: Vec<_> = built
@@ -296,18 +291,9 @@ INDEX 01 11:01:30
         .into(),
     );
     let ids = coven::SequentialIds::new();
-    let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
 
-    let built = build_audio_formats(
-        &tracks_to_files,
-        &file_ids,
-        &clock,
-        &ids,
-        &bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone()),
-    )
-    .expect("build audio formats");
-    let reports = bugs.reports();
-    assert!(reports.is_empty(), "the image's track starts read: {reports:?}");
+    let built = build_audio_formats(&tracks_to_files, &file_ids, &clock, &ids)
+        .expect("build audio formats");
     let main_segments: Vec<_> = built
         .audio_segments
         .iter()
@@ -476,7 +462,6 @@ FILE "second.flac" WAVE
         &file_ids,
         &test_clock(),
         &coven::SequentialIds::new(),
-        &bae_diagnostics::Diagnostics::noop(),
     )
     .expect("build audio formats");
 
@@ -598,11 +583,10 @@ fn an_aac_image_tracks_start_byte_is_the_frame_holding_its_first_sample() {
 }
 
 /// The scan probed every image a sheet names, so where its tracks start can
-/// always be read; an image where it can't is a bug. It reaches the crash
-/// reporter naming the image and why, and the import goes on with the
-/// image's tracks holding no byte window.
+/// always be read; an image where it can't fails the import, naming the
+/// image, rather than store its tracks without their byte windows for good.
 #[test]
-fn an_image_whose_track_starts_cannot_be_read_is_reported_as_a_bug() {
+fn an_image_whose_track_starts_cannot_be_read_fails_the_import() {
     bae_audio::init();
     let temp = tempfile::tempdir().expect("tempdir");
     let cue_path = temp.path().join("album.cue");
@@ -636,31 +620,16 @@ fn an_image_whose_track_starts_cannot_be_read_is_reported_as_a_bug() {
             },
         })
         .collect();
-    let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
 
-    let built = build_audio_formats(
+    let Err(ImportError::Internal { detail }) = build_audio_formats(
         &tracks_to_files,
         &HashMap::from([(path.clone(), "image".to_string())]),
         &test_clock(),
         &coven::SequentialIds::new(),
-        &bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone()),
-    )
-    .expect("the import goes on");
-
-    let reports = bugs.reports();
-    let [(operation, detail)] = reports.as_slice() else {
-        panic!("one bug reported, got {reports:?}");
+    ) else {
+        panic!("an image whose track starts can't be read fails the import");
     };
-    assert_eq!(operation, "read where each track of a CUE image starts");
-    assert!(detail.contains(&path.display().to_string()), "the report names the image: {detail}");
-    assert!(
-        built
-            .audio_segments
-            .iter()
-            .all(|segment| segment.start_byte.is_none() && segment.end_byte.is_none()),
-        "the image's tracks hold no byte window: {:?}",
-        built.audio_segments
-    );
+    assert!(detail.contains(&path.display().to_string()), "the failure names the image: {detail}");
 }
 
 /// Build the CUE-backed track list for a single-file CUE album, reusing
@@ -720,14 +689,8 @@ fn build_audio_formats_gives_ape_cue_tracks_real_end_bytes() {
     let mut file_ids = HashMap::new();
     file_ids.insert(PathBuf::from(format!("{dir}/Test Album.ape")), "file-1".to_string());
 
-    let built = build_audio_formats(
-        &tracks,
-        &file_ids,
-        &test_clock(),
-        &SequentialIds::new(),
-        &bae_diagnostics::Diagnostics::noop(),
-    )
-    .expect("build_audio_formats");
+    let built = build_audio_formats(&tracks, &file_ids, &test_clock(), &SequentialIds::new())
+        .expect("build_audio_formats");
 
     let main_segments: Vec<_> = built
         .audio_segments
@@ -801,7 +764,6 @@ fn cue_image(
         &HashMap::from([(path, "image".to_string())]),
         &coven::FixedClock::new(std::time::SystemTime::UNIX_EPOCH),
         &coven::SequentialIds::new(),
-        &bae_diagnostics::Diagnostics::noop(),
     )
     .expect("build audio formats");
     (bytes, built.audio_segments)
