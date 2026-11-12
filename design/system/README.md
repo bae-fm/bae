@@ -68,7 +68,7 @@ The text styles are macOS points. iOS follows Dynamic Type, and the Android comp
 
 Icons appear only when they are the control (copy, a chevron, a disclosure mark) or carry meaning the words beside them don't (a status glyph). Android uses Material Symbols (Rounded, weight 400), loaded from Google Fonts. Apple platforms use SF Symbols; the boards draw stand-ins, since SF Symbols can't be loaded on a web page.
 
-A status glyph is a filled circle with its mark (`StatusGlyph`): info `i`, success a check, warning and danger `!`, told apart by color and by the words beside them. No octagons, no triangles: nothing that reads as a road sign.
+A status glyph is a filled circle with its mark (`StatusGlyph`): info `i`, success a check, warning and danger `!`, told apart by color and by the words beside them. A notice draws it as an outline, a ring with the mark inside, so it stays quieter than the words. No octagons, no triangles: nothing that reads as a road sign.
 
 ## Logo
 

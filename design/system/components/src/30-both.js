@@ -71,7 +71,7 @@
   // The outline form (info.circle, checkmark.circle, exclamationmark.circle): a ring, the mark solid inside it.
   var STATUS_RING = STATUS_CIRCLE + 'M12 3.6a8.4 8.4 0 1 1 0 16.8 8.4 8.4 0 1 1 0-16.8z';
   var STATUS_MATERIAL = { info: 'info', success: 'check_circle', warning: 'error', danger: 'error' };
-  // A tone's glyph in the tone's colour; set="mac" for macOS. `outline` draws the outline form, for a quiet notice; `inline` sizes it at 1.19 times the text beside it instead of `size`; `muted` draws it in secondary text. Neutral, accent and activity have none.
+  // A tone's glyph in the tone's colour; set="mac" for macOS. `outline` draws the outline form, which every notice uses; `inline` sizes it at 1.19 times the text beside it instead of `size`; `muted` draws it in secondary text. Neutral, accent and activity have none.
   function StatusGlyph(props) {
     var tone = props.tone, size = Number(props.size || 15);
     if (!STATUS_MATERIAL[tone]) return null;
