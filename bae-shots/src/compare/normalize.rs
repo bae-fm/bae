@@ -3,13 +3,16 @@
 //! control folded into the control's name, and elements with no words (which
 //! are structure, or pictures the regions check covers) left out.
 
-use crate::shots::{words, Element, Role};
+use crate::shots::{words, Bounds, Element, Role};
 
 /// An element as the comparison sees it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Entry {
     /// The element's index in the list it came from.
     pub(crate) index: usize,
+    /// The indices of the elements folded into this one by [`fold_merged`]:
+    /// the texts after a board field or text that the shot holds as one.
+    pub(crate) folded: Vec<usize>,
     pub(crate) kind: Role,
     pub(crate) words: String,
     /// A field's text, `on` or `off`, a pop-up's choice; empty when none.
@@ -19,6 +22,20 @@ pub(crate) struct Entry {
 }
 
 impl Entry {
+    /// The box of the element, with the boxes of what was folded into it:
+    /// the shot draws all of them as one.
+    pub(crate) fn bounds(&self, list: &[Element]) -> Bounds {
+        let boxes = std::iter::once(&self.index).chain(&self.folded).map(|i| list[*i].bounds);
+        let (mut left, mut top, mut right, mut bottom) = (f64::MAX, f64::MAX, f64::MIN, f64::MIN);
+        for b in boxes {
+            left = left.min(b.x);
+            top = top.min(b.y);
+            right = right.max(b.x + b.width);
+            bottom = bottom.max(b.y + b.height);
+        }
+        Bounds { x: left, y: top, width: right - left, height: bottom - top }
+    }
+
     pub(crate) fn key(&self) -> (Role, String) {
         (self.kind, self.words.clone())
     }
@@ -55,6 +72,7 @@ pub(crate) fn entries(list: &[Element]) -> Vec<Entry> {
         }
         entries.push(Entry {
             index,
+            folded: Vec::new(),
             kind: element.role,
             words,
             value: element.value.as_deref().map(crate::shots::words).unwrap_or_default(),
@@ -93,7 +111,8 @@ pub(crate) fn fold_merged(board: Vec<Entry>, shot: &[Entry]) -> Vec<Entry> {
         match merged {
             Some((tail, place, key)) => {
                 available.swap_remove(place);
-                folded.push(Entry { words: key.1, ..head.clone() });
+                let with = board[at + 1..=at + tail].iter().map(|e| e.index).collect();
+                folded.push(Entry { words: key.1, folded: with, ..head.clone() });
                 at += tail + 1;
             }
             None => {

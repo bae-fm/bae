@@ -144,3 +144,20 @@ fn a_font_part_only_one_side_gives_is_not_compared() {
     let board = [styled(Some(13.0), None)];
     assert!(warnings(&board, &[styled(None, Some(700))]).is_empty());
 }
+
+#[test]
+fn a_folded_run_is_compared_by_the_union_of_its_boxes() {
+    let board = vec![
+        boxed(Role::Text, "Title", 10.0, 10.0, 60.0, 14.0),
+        boxed(Role::Text, "Artist", 10.0, 26.0, 40.0, 14.0),
+    ];
+    let shot = vec![boxed(Role::Text, "Title Artist", 10.0, 10.0, 60.0, 30.0)];
+    let pairs = compare(&board, &shot).pairs;
+    assert_eq!(pairs.len(), 1);
+    assert!(boxes(&board, &shot, &pairs, (0.0, 0.0)).is_empty());
+    assert_eq!(frame_offset(&board, &shot, &pairs), (0.0, 0.0));
+    // A shot text that is taller than the run still warns.
+    let tall = vec![boxed(Role::Text, "Title Artist", 10.0, 10.0, 60.0, 50.0)];
+    let pairs = compare(&board, &tall).pairs;
+    assert_eq!(boxes(&board, &tall, &pairs, (0.0, 0.0)).len(), 1);
+}

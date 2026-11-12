@@ -85,6 +85,7 @@ fn a_run_passes_without_findings_or_problems() {
 fn outcome_with_finding(gate: Gate, base_empty: bool, against_base: Option<Standing>) -> Outcome {
     let finding = Finding::Missing(crate::compare::normalize::Entry {
         index: 0,
+        folded: Vec::new(),
         kind: crate::shots::Role::Text,
         words: "x".into(),
         value: String::new(),

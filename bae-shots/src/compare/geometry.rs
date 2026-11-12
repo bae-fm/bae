@@ -25,8 +25,8 @@ pub(crate) fn frame_offset(
     shot: &[Element],
     pairs: &[(Entry, Entry)],
 ) -> (f64, f64) {
-    let dx = pairs.iter().map(|(b, s)| shot[s.index].bounds.x - board[b.index].bounds.x);
-    let dy = pairs.iter().map(|(b, s)| shot[s.index].bounds.y - board[b.index].bounds.y);
+    let dx = pairs.iter().map(|(b, s)| shot[s.index].bounds.x - b.bounds(board).x);
+    let dy = pairs.iter().map(|(b, s)| shot[s.index].bounds.y - b.bounds(board).y);
     (median(dx.collect()), median(dy.collect()))
 }
 
@@ -87,35 +87,25 @@ pub(crate) fn boxes(
 ) -> Vec<Warning> {
     let mut warnings = Vec::new();
     for (b, s) in pairs {
-        let (from, to) = (&board[b.index], &shot[s.index]);
+        let (from, to) = (b.bounds(board), &shot[s.index]);
         let to_bounds =
             Bounds { x: to.bounds.x - offset.0, y: to.bounds.y - offset.1, ..to.bounds };
         let (horizontal, vertical) = if b.kind == Role::Text {
             // A platform's text box may span its container, so its left edge
             // and width say something only where the two widths agree.
-            let widths_agree = (to_bounds.width - from.bounds.width).abs() <= EDGE_TOLERANCE;
+            let widths_agree = (to_bounds.width - from.width).abs() <= EDGE_TOLERANCE;
             (
                 widths_agree
                     .then(|| {
-                        Axis::start_and_length(
-                            from.bounds.x,
-                            from.bounds.width,
-                            to_bounds.x,
-                            to_bounds.width,
-                        )
+                        Axis::start_and_length(from.x, from.width, to_bounds.x, to_bounds.width)
                     })
                     .flatten(),
-                Axis::start_and_length(
-                    from.bounds.y,
-                    from.bounds.height,
-                    to_bounds.y,
-                    to_bounds.height,
-                ),
+                Axis::start_and_length(from.y, from.height, to_bounds.y, to_bounds.height),
             )
         } else {
             (
-                Axis::edges(from.bounds.x, from.bounds.width, to_bounds.x, to_bounds.width),
-                Axis::edges(from.bounds.y, from.bounds.height, to_bounds.y, to_bounds.height),
+                Axis::edges(from.x, from.width, to_bounds.x, to_bounds.width),
+                Axis::edges(from.y, from.height, to_bounds.y, to_bounds.height),
             )
         };
         let moved = |axis: &Option<Axis>| {

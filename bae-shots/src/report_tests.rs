@@ -9,6 +9,7 @@ use crate::shots::{ElementList, Role};
 fn entry(index: usize, words: &str, kind: Role) -> Entry {
     Entry {
         index,
+        folded: Vec::new(),
         kind,
         words: words.to_string(),
         value: String::new(),

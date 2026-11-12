@@ -177,7 +177,7 @@ pub(crate) fn pairs(board: &Side, shot: &Side, pairs: &[(Entry, Entry)]) -> Vec<
     for (b, s) in pairs {
         let (from, to) = (&board.elements[b.index], &shot.elements[s.index]);
         if let (Some((from_back, from_fore)), Some((to_back, to_fore))) = (
-            palette(board.picture, board.scale, from.bounds),
+            palette(board.picture, board.scale, b.bounds(board.elements)),
             palette(shot.picture, shot.scale, to.bounds),
         ) {
             differ(b, Part::Background, from_back, to_back);
