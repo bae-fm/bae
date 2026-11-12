@@ -77,6 +77,9 @@ extension View {
         environment(\.surfaceTone, tone)
             .environment(\.accentChoice, accent)
             .accentColor(accentColor)
+            #if os(macOS)
+                .background(AccentTextSelection(accent: accent))
+            #endif
     }
 }
 

@@ -15,12 +15,7 @@ final class BrowsedTableRowView: NSTableRowView {
     /// the hover tint, which stripes a table without the system's colours.
     init(accent: AccentChoice, alternate: Bool = false) {
         self.alternate = alternate
-        tint = NSColor(name: nil) { appearance in
-            let dark =
-                appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
-            return NSColor(accent.color(in: dark ? .dark : .light))
-                .withAlphaComponent(ThemeOpacity.tint)
-        }
+        tint = accent.appKitColor.withAlphaComponent(ThemeOpacity.tint)
         super.init(frame: .zero)
     }
 
