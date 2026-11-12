@@ -4,6 +4,7 @@ import android.os.Looper
 import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.DisplayError
 import fm.bae.app.ErrorDisplays
+import fm.bae.app.data.LibraryWithoutStorage
 import fm.bae.app.playback.FakeAppHandle
 import fm.bae.app.playback.FakeLibraryNameSubscription
 import fm.bae.app.ui.PreviewData
@@ -22,6 +23,7 @@ import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgePerson
 import uniffi.bae_bridge.BridgePlayOutcome
 import uniffi.bae_bridge.BridgePlaybackErrorReason
+import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeSyncRetryOutcome
 import uniffi.bae_bridge.LibraryNameSubscription
 
@@ -129,6 +131,31 @@ class SettingsLibraryModelTest {
         assertEquals(LibraryNameRead.Named("Household"), model.name)
     }
 
+    @Test
+    fun aFailedStorageReadIsAFailureAndReadingAgainRecovers() {
+        val location = BridgeStorageLocation.S3("music", "us-east-1", null, null)
+        val handle = SettingsHandle(storage = listOf(Result.failure(offline()), Result.success(location)))
+        val model = SettingsLibraryModel(handle, TestErrorDisplays, scope) { _, _ -> }
+
+        runBlocking { model.loadStorage() }
+        assertEquals(Storage.Failed(DisplayError("couldn't reach the cloud")), model.storage)
+
+        runBlocking { model.loadStorage() }
+        assertEquals(Storage.At(location), model.storage)
+    }
+
+    @Test
+    fun aLibraryWithNoStorageIsReportedAsABug() {
+        val bugs = mutableListOf<Pair<String, Throwable>>()
+        val handle = SettingsHandle(storage = listOf(Result.success(null)))
+        val model = SettingsLibraryModel(handle, TestErrorDisplays, scope) { operation, error -> bugs += operation to error }
+
+        runBlocking { model.loadStorage() }
+
+        assertEquals(Storage.Missing, model.storage)
+        assertEquals(LibraryWithoutStorage::class, bugs.single().second::class)
+    }
+
     private fun offline() = BridgeException.Diagnostic(BridgeErrorCategory.Network, "offline")
 
     /** Core's answer for what each failure shows: a cancellation shows nothing. */
@@ -145,10 +172,14 @@ class SettingsLibraryModelTest {
 
     private class SettingsHandle(
         private val ownPerson: List<Result<BridgePerson?>> = emptyList(),
+        private val storage: List<Result<BridgeStorageLocation?>> = emptyList(),
     ) : FakeAppHandle() {
         var reads = 0
             private set
+        private var storageReads = 0
         val names = mutableListOf<FakeLibraryNameSubscription>()
+
+        override suspend fun storageLocation(): BridgeStorageLocation? = storage[storageReads++].getOrThrow()
 
         override suspend fun ownPerson(): BridgePerson? = ownPerson[reads++].getOrThrow()
 

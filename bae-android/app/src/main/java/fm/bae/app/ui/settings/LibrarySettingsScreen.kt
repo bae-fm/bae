@@ -143,10 +143,13 @@ internal fun AndroidSettingsLibrary(
     }
 }
 
-/** Why the name or the person couldn't be read, each with Retry. */
+/** Why the storage, the name or the person couldn't be read, each with Retry. */
 @Composable
 private fun LibraryNameFailures(model: SettingsLibraryModel) {
     val scope = rememberScreenScope()
+    (model.storage as? Storage.Failed)?.let {
+        ReadFailure(error = it.error, onRetry = { scope.launch { model.loadStorage() } })
+    }
     (model.name as? LibraryNameRead.Failed)?.let { ReadFailure(error = it.error, onRetry = model::watchName) }
     (model.self as? SelfRead.Failed)?.let {
         ReadFailure(error = it.error, onRetry = { scope.launch { model.loadSelf() } })
