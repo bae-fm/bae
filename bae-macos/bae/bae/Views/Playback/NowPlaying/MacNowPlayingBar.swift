@@ -169,7 +169,7 @@ struct MacNowPlayingBar: View {
             toggleLabel(glyph, active: active)
         }
         .buttonStyle(IconHoverButtonStyle())
-        .help("Repeat")
+        .help(Self.repeatHelp(repeatMode))
         .accessibilityLabel("Repeat")
         .accessibilityValue(Self.repeatValue(repeatMode))
     }
@@ -242,7 +242,23 @@ struct MacNowPlayingBar: View {
         .accessibilityLabel("Playback position")
     }
 
-    /// The repeat button is named Repeat; the mode is its value.
+    /// The repeat button's tooltip: one whole string per mode, so each
+    /// language orders its own words.
+    private static func repeatHelp(
+        _ repeatMode: BridgeRepeatMode
+    ) -> LocalizedStringKey {
+        switch repeatMode {
+        case .off:
+            "Repeat: off"
+        case .context:
+            "Repeat: all"
+        case .track:
+            "Repeat: one"
+        }
+    }
+
+    /// The mode as the button's accessibility value, which VoiceOver reads
+    /// after the name Repeat and announces when it changes.
     private static func repeatValue(
         _ repeatMode: BridgeRepeatMode
     ) -> LocalizedStringKey {
