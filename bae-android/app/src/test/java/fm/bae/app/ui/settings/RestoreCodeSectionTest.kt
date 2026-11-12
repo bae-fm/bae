@@ -83,7 +83,7 @@ class RestoreCodeSectionTest {
             }
         }
 
-        compose.onNodeWithText("You’ll also need your S3 access key and secret.").assertIsDisplayed()
+        compose.onNodeWithText("You will also need your S3 access key and secret.").assertIsDisplayed()
     }
 
     @Test
@@ -96,7 +96,7 @@ class RestoreCodeSectionTest {
             }
         }
 
-        compose.onNodeWithText("You’ll also need your S3 access key and secret.").assertDoesNotExist()
+        compose.onNodeWithText("You will also need your S3 access key and secret.").assertDoesNotExist()
     }
 
     @Test
@@ -163,13 +163,13 @@ class RestoreCodeSectionTest {
                 RestoreCodeReveal(
                     this,
                     generate = { throw BridgeException.Diagnostic(BridgeErrorCategory.Config, "storage unreachable") },
-                    errorDisplay = { DisplayError("Couldn’t reach the cloud.", it.diagnosticDetail) },
+                    errorDisplay = { DisplayError("Could not reach the cloud.", it.diagnosticDetail) },
                 )
             reveal.open()
             advanceUntilIdle()
 
             assertEquals(
-                RestoreCodeState.Failed(DisplayError("Couldn’t reach the cloud.", "storage unreachable")),
+                RestoreCodeState.Failed(DisplayError("Could not reach the cloud.", "storage unreachable")),
                 reveal.state,
             )
         }
@@ -205,7 +205,7 @@ class RestoreCodeSectionTest {
             .assertIsDisplayed()
         compose.onNodeWithText(CODE).performScrollTo().assertIsDisplayed()
         compose
-            .onNodeWithText("The QR code also carries your S3 access key, so a device that scans it won’t ask for the key.")
+            .onNodeWithText("The QR code also carries your S3 access key, so a device that scans it will not ask for the key.")
             .assertDoesNotExist()
     }
 
@@ -223,7 +223,7 @@ class RestoreCodeSectionTest {
         }
 
         compose
-            .onNodeWithText("The QR code also carries your S3 access key, so a device that scans it won’t ask for the key.")
+            .onNodeWithText("The QR code also carries your S3 access key, so a device that scans it will not ask for the key.")
             // Below the QR code and the code, past the dialog's visible height.
             .assertExists()
     }

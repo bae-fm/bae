@@ -82,7 +82,7 @@ private fun RemovalFailedPreview() {
         val parts =
             removalFailedParts(
                 library = PreviewData.library(id = "lib-1", name = "Home music", isActive = false),
-                error = DisplayError("Couldn’t reach the cloud."),
+                error = DisplayError("Could not reach the cloud."),
                 onRetry = {},
                 onCancel = {},
             )

@@ -263,7 +263,7 @@ private fun AddDeviceDialogContentFailedPreview() {
             added = null,
             error =
                 DisplayError(
-                    "Couldn’t reach the cloud.",
+                    "Could not reach the cloud.",
                     "S3: Network: dispatch failure: io error: connection refused",
                 ),
             onDismiss = {

@@ -55,7 +55,7 @@ class UnpinAskTest {
         compose.onNodeWithText("Unpin").performClick()
 
         compose.onNode(inDialog("Unpin this release?")).assertExists()
-        compose.onNode(inDialog("Don’t show this again")).assertExists()
+        compose.onNode(inDialog("Do not show this again")).assertExists()
         assertEquals(emptyList<Boolean>(), unpinned)
     }
 
@@ -75,7 +75,7 @@ class UnpinAskTest {
         showControl(asksBeforeUnpinning = true)
 
         compose.onNodeWithText("Unpin").performClick()
-        compose.onNode(inDialog("Don’t show this again")).performClick()
+        compose.onNode(inDialog("Do not show this again")).performClick()
         compose.onNode(inDialog("Cancel")).performClick()
 
         assertEquals(emptyList<Boolean>(), unpinned)
@@ -96,7 +96,7 @@ class UnpinAskTest {
         showControl(asksBeforeUnpinning = true)
 
         compose.onNodeWithText("Unpin").performClick()
-        compose.onNode(inDialog("Don’t show this again")).performClick()
+        compose.onNode(inDialog("Do not show this again")).performClick()
         compose.onNode(inDialog("Unpin")).performClick()
 
         assertEquals(listOf(true), unpinned)

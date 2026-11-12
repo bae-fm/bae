@@ -36,7 +36,7 @@ class ErrorDetailsTest {
 
     @Test
     fun aTitledNoticeWithNoDetailHasTheLineAlone() {
-        val details = ErrorDetails.titled("Couldn’t remove the library", null, DisplayError("Disk full."))
+        val details = ErrorDetails.titled("Could not remove the library", null, DisplayError("Disk full."))
 
         assertEquals("Disk full.", details.causes)
         assertEquals("Disk full.", details.copyText)

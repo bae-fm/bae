@@ -355,7 +355,7 @@ private fun RestoreCodeSectionFailedPreview() {
             needsS3Key = false,
             state =
                 RestoreCodeState.Failed(
-                    DisplayError("Couldn’t reach the cloud.", "S3: Network: dispatch failure"),
+                    DisplayError("Could not reach the cloud.", "S3: Network: dispatch failure"),
                 ),
             onShow = {},
             onHide = {},

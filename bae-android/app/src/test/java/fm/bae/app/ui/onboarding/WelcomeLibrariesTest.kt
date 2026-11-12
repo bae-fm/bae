@@ -309,7 +309,7 @@ class WelcomeLibrariesTest {
         compose.onNodeWithText("Unsent changes will be lost").assertDoesNotExist()
         compose
             .onNodeWithText(
-                "This library can’t be opened, so any changes on this device that weren’t sent are lost. " +
+                "This library cannot be opened, so any changes on this device that were not sent are lost. " +
                     "Its copy on this device is deleted; if the library is kept in the cloud, it stays there.",
             ).assertIsDisplayed()
     }
@@ -338,7 +338,7 @@ class WelcomeLibrariesTest {
         compose.onNode(hasText("Remove") and hasAnyAncestor(isDialog())).performClick()
 
         compose.waitUntil(HANG_GUARD_MS) { compose.onAllNodesWithTextCount("Retry") == 1 }
-        compose.onNodeWithText("Couldn’t remove Home Library").assertIsDisplayed()
+        compose.onNodeWithText("Could not remove Home Library").assertIsDisplayed()
         compose.onNodeWithText("Storage refused").assertIsDisplayed()
 
         fake.failure = null

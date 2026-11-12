@@ -199,7 +199,7 @@ class SettingsStorageTest {
         compose.onNode(inDialog("Delete data from before the reset?")).assertExists()
         compose
             .onNode(
-                inDialog("540 MB will be removed from this phone. It can’t be recovered. Your library isn’t affected."),
+                inDialog("540 MB will be removed from this phone. It cannot be recovered. Your library is not affected."),
             ).assertExists()
         compose.onNode(inDialog("Cancel")).performClick()
         assertEquals(0 to 1, deleted to dismissed)

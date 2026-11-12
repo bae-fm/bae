@@ -54,12 +54,12 @@ class NoticeComponentShots : BoardShot() {
 
     @Test
     fun androidComponentNoticeDanger() =
-        component("android.component.notice.danger", wide = true) { Titled("Couldn’t reach the cloud.", StatusTone.DANGER) }
+        component("android.component.notice.danger", wide = true) { Titled("Could not reach the cloud.", StatusTone.DANGER) }
 
     @Test
     fun androidComponentNoticeDangerRetry() =
         component("android.component.notice.danger-retry", wide = true) {
-            Titled("Couldn’t reach the cloud.", StatusTone.DANGER, action = ErrorAction("Retry") {})
+            Titled("Could not reach the cloud.", StatusTone.DANGER, action = ErrorAction("Retry") {})
         }
 
     @Test
@@ -74,7 +74,7 @@ class NoticeComponentShots : BoardShot() {
             AndroidNotice(
                 error =
                     DisplayError(
-                        "Couldn’t reach the cloud. Your changes stay on this device and go up once it’s back; " +
+                        "Could not reach the cloud. Your changes stay on this device and go up once it is back; " +
                             "nothing is lost in the meantime.",
                         "dns error",
                     ),
@@ -87,7 +87,7 @@ class NoticeComponentShots : BoardShot() {
     fun androidComponentNoticeDangerTitleAndSubtitle() =
         component("android.component.notice.danger-title-and-subtitle", wide = true) {
             Titled(
-                "bae couldn’t open your library",
+                "bae could not open your library",
                 StatusTone.DANGER,
                 advice = "Check your connection, then quit and reopen bae.",
             )
@@ -112,7 +112,7 @@ class NoticeComponentShots : BoardShot() {
     fun androidComponentNoticeDangerQuietWith() =
         component("android.component.notice.danger-quiet-with", wide = true) {
             AndroidNotice(
-                title = "Couldn’t close the library",
+                title = "Could not close the library",
                 advice = null,
                 error = null,
                 tone = StatusTone.DANGER,
@@ -125,9 +125,9 @@ class NoticeComponentShots : BoardShot() {
     fun androidComponentNoticeDangerCentredAFailedView() =
         component("android.component.notice.danger-centred-a-failed-view", wide = true) {
             AndroidNotice(
-                title = "Couldn’t read your library",
+                title = "Could not read your library",
                 advice = null,
-                error = DisplayError("Couldn’t read your library", "disk I/O error"),
+                error = DisplayError("Could not read your library", "disk I/O error"),
                 look = NoticeLook.CENTERED,
                 action = ErrorAction("Retry") {},
             )
@@ -146,7 +146,7 @@ class NoticeComponentShots : BoardShot() {
     @Test
     fun androidComponentErrorBannerDefault() =
         component("android.component.error-banner.default", wide = true) {
-            AndroidErrorBanner(error = DisplayError("Couldn’t read more albums."), onRetry = {})
+            AndroidErrorBanner(error = DisplayError("Could not read more albums."), onRetry = {})
         }
 
     @Test
@@ -184,7 +184,7 @@ class NoticeComponentShots : BoardShot() {
         }
 }
 
-private val CLOUD_ERROR = DisplayError("Couldn’t reach the cloud.", "dns error: failed to lookup address information")
+private val CLOUD_ERROR = DisplayError("Could not reach the cloud.", "dns error: failed to lookup address information")
 
 @Composable
 private fun Titled(

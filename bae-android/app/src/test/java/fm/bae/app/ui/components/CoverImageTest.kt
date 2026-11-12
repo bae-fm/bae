@@ -95,6 +95,6 @@ class CoverImageTest {
 
     private companion object {
         const val COVER = "Album Title cover"
-        const val FAILED = "Couldn’t load image"
+        const val FAILED = "Could not load image"
     }
 }

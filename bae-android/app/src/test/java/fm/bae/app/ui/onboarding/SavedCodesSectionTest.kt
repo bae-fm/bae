@@ -70,9 +70,9 @@ class SavedCodesSectionTest {
 
         compose.onNodeWithText("Home Library").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Dropbox: ana@example.com").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Restore code can’t be used").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Restore code cannot be used").performScrollTo().assertIsDisplayed()
         compose
-            .onNodeWithText("Saved in a format bae can’t read · $UNREADABLE_LIBRARY")
+            .onNodeWithText("Saved in a format bae cannot read · $UNREADABLE_LIBRARY")
             .performScrollTo()
             .assertIsDisplayed()
         compose.onNodeWithText("Scan code").assertIsDisplayed()
@@ -110,7 +110,7 @@ class SavedCodesSectionTest {
         compose
             .onNodeWithText(
                 "This removes the restore code from this device only. " +
-                    "It doesn’t delete the library, or anything in the cloud.",
+                    "It does not delete the library, or anything in the cloud.",
             ).assertIsDisplayed()
         assertEquals(emptyList<String>(), host.forgotten)
 

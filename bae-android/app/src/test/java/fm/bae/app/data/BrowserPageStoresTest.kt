@@ -150,7 +150,7 @@ class BrowserPageStoresTest {
         query.fail(BridgeException.Diagnostic(BridgeErrorCategory.Database, "read failed"))
         shadowOf(Looper.getMainLooper()).idle()
 
-        assertEquals("Couldn’t load more artists.", store.error?.error?.line)
+        assertEquals("Could not load more artists.", store.error?.error?.line)
     }
 
     @Test
@@ -161,7 +161,7 @@ class BrowserPageStoresTest {
         store.queries.single().fail(BridgeException.Diagnostic(BridgeErrorCategory.Database, "read failed"))
         shadowOf(Looper.getMainLooper()).idle()
 
-        assertEquals("Couldn’t load your library.", store.error?.error?.line)
+        assertEquals("Could not load your library.", store.error?.error?.line)
     }
 
     /** A read core says reading again can't get past, such as a damaged database, offers no Retry. */

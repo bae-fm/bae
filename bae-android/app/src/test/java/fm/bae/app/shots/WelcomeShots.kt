@@ -125,7 +125,7 @@ class WelcomeShots : BoardShot() {
             InPlaceDialogScene(behind = { WelcomeLibrariesScene() }) {
                 removalFailedParts(
                     sceneLibrary,
-                    DisplayError("Couldn’t reach the cloud. Check your connection and try again."),
+                    DisplayError("Could not reach the cloud. Check your connection and try again."),
                     onRetry = {},
                     onCancel = {},
                 )

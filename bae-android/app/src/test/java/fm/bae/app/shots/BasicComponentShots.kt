@@ -59,7 +59,7 @@ class BasicComponentShots : BoardShot() {
         component("android.component.button.under-text", wide = true) {
             Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
                 Text(
-                    "They’ll use your key.",
+                    "They will use your key.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
