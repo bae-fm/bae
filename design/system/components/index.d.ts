@@ -295,6 +295,7 @@ export declare function MacQueuePanel(props: MacQueuePanelProps): React.ReactEle
 export interface MacQueueSectionProps { title: string; clear?: boolean; shuffle?: boolean }
 export declare function MacQueueSection(props: MacQueueSectionProps): React.ReactElement;
 export declare function MacQueuePlaceholderRow(props: {}): React.ReactElement;
+export declare function AndroidQueuePlaceholderRow(): React.ReactElement;
 export declare function MacQueueInsertLine(props: {}): React.ReactElement;
 export interface SidePauseProps { kind?: 'side' | 'disc'; label?: string; countdown?: number; unchecked?: boolean }
 export declare function MacSidePause(props: SidePauseProps): React.ReactElement;
