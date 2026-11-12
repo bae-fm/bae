@@ -32,7 +32,7 @@ body{margin:0}
       </x-import>
       <x-import component-from-global-scope="Bae.MacRow" label="Role" value="Admin"></x-import>
       <x-import component-from-global-scope="Bae.MacRow" label="Listening history">
-        <span style="position: relative; display: inline-block"><x-import component-from-global-scope="Bae.MacPopUpButton" value="Only me"></x-import><span style="position: absolute; right: 0; top: 26px; z-index: 2"><x-import component-from-global-scope="Bae.MacMenu"><x-import component-from-global-scope="Bae.MacMenuItem">Off</x-import><x-import component-from-global-scope="Bae.MacMenuItem" checked="{{yes}}" highlighted="{{yes}}">Only me</x-import><x-import component-from-global-scope="Bae.MacMenuItem">Everyone</x-import></x-import></span></span>
+        <span style="position: relative; display: inline-block"><x-import component-from-global-scope="Bae.MacPopUpButton" value="Only me" menu-inside="{{yes}}" open="{{yes}}" items="Off,Only me,Everyone"></x-import></span>
       </x-import>
       <x-import component-from-global-scope="Bae.MacRow" label="Devices" value="2 devices" chevron="{{yes}}"></x-import>
     </x-import>

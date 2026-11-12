@@ -1,4 +1,4 @@
-<!-- @dsCard group="macOS" height=110 -->
+<!-- @dsCard group="macOS" height=200 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>MacPopUpButton</title></head>
@@ -9,7 +9,7 @@
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, N('Resting', h(B.MacPopUpButton, { value: 'Only me' })), N('Off', h(B.MacPopUpButton, { value: 'Only me', off: true }))));
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, N('Resting', h(B.MacPopUpButton, { value: 'Only me' })), N('Off', h(B.MacPopUpButton, { value: 'Only me', off: true })), N('Open', h('div', { style: { padding: '40px 0 50px 40px' } }, h(B.MacPopUpButton, { value: 'Only me', open: true, items: 'Off,Only me,Everyone' })))));
 </script>
 </body>
 </html>

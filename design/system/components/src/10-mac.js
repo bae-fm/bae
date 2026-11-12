@@ -25,6 +25,7 @@
   function MacAlert(props) {
     return h('div', { className: 'bae-m-scrim' },
       h('div', { role: 'alertdialog', 'aria-label': props.title, className: 'bae-m-alert' },
+        h('div', { className: 'bae-m-alert-icon', 'aria-hidden': true }, h(AppIcon, { size: 52 })),
         h('div', { className: 'bae-m-alert-title' }, props.title),
         // `warning`: what the choice costs, as a quiet notice between the title and the message ("Unsent changes will be lost").
         props.warning ? h(MacNotice, { quiet: true, flush: true, tone: 'warning', title: props.warning }) : null,
@@ -176,11 +177,27 @@
         props.note ? h('span', { className: 'bae-m-row-note' }, props.note) : null));
   }
 
+  // macOS's pop-up (a Picker in the menu style): the chosen value as text, then a round button holding the up-and-down chevron.
+  // `open` draws its menu as macOS opens it: over the control, the chosen item on the button's line with its words over the value's,
+  // `items` the choices in order ("-" for a line between groups), `chosen` the checked one when its words differ from the value, `highlighted` the one under the pointer.
+  // A board whose window would crop the menu moves it as macOS keeps a menu on screen: `menuInside` sets its right edge at the control's, `menuTop` its top against the control's.
   function MacPopUpButton(props) {
-    return h('button', { type: 'button', className: 'bae-m-popupbutton', 'aria-haspopup': 'menu', disabled: !!props.off, style: props.width ? { width: Number(props.width) } : null },
-      h('span', null, props.children != null ? props.children : props.value),
-      h('svg', { className: 'bae-m-popupbutton-mark', width: 8, height: 12, viewBox: '0 0 8 12', 'aria-hidden': true, fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round', strokeLinejoin: 'round' }, h('path', { d: 'M1.5 4.5 4 2l2.5 2.5M1.5 7.5 4 10l2.5-2.5' })));
+    var value = props.children != null ? props.children : props.value;
+    var btn = h(MacPopUpFace, props, value);
+    if (!props.open) return btn;
+    var checked = props.chosen || String(value), items = list(props.items), chosen = items.indexOf(checked), seps = items.slice(0, Math.max(chosen, 0)).filter(function (t) { return t === '-'; }).length;
+    var top = -(6 + (Math.max(chosen, 0) - seps) * 24 + seps * 11);
+    return h('span', { className: 'bae-m-popupbutton-open' }, btn,
+      h('div', { className: 'bae-m-popupbutton-menu', style: props.menuInside ? { top: props.menuTop != null ? Number(props.menuTop) : top, left: 'auto', right: -6 } : { top: props.menuTop != null ? Number(props.menuTop) : top } }, h(MacMenu, null, items.map(function (t, i) {
+        return t === '-' ? h(MacMenuItem, { key: i, divider: true }) : h(MacMenuItem, { key: i, checked: t === checked, highlighted: t === (props.highlighted || checked) }, t);
+      }))));
   }
+  function MacPopUpFace(props) {
+    return h('button', { type: 'button', className: 'bae-m-popupbutton', 'aria-haspopup': 'menu', disabled: !!props.off, style: props.width ? { width: Number(props.width), justifyContent: 'space-between' } : null },
+      h('span', { className: 'bae-m-popupbutton-value' }, props.children),
+      h('span', { className: 'bae-m-popupbutton-mark', 'aria-hidden': true }, h('svg', { width: 8, height: 12, viewBox: '0 0 8 12', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round', strokeLinejoin: 'round' }, h('path', { d: 'M1.5 4.5 4 2l2.5 2.5M1.5 7.5 4 10l2.5-2.5' }))));
+  }
+
 
   function MacSegmentedControl(props) {
     var options = String(props.options || '').split(',').map(function (o) { return o.trim(); }).filter(Boolean);

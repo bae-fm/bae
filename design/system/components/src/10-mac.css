@@ -2,9 +2,9 @@
 
 .bae-m-window { position: relative; display: flex; overflow: hidden; border-radius: 16px; background: var(--background); color: var(--text-primary); font: 400 13px var(--font-sans); box-shadow: inset 0 0 0 1px var(--hairline); }
 .bae-m-window-plain { flex-direction: column; }
-.bae-m-alert { width: 260px; margin-top: 36px; padding: 20px 16px 16px; border-radius: 20px; background: var(--elevated); box-shadow: 0 10px 30px var(--shadow); display: flex; flex-direction: column; gap: 10px; text-align: left; color: var(--text-primary); font: 400 13px var(--font-sans); }
+.bae-m-alert { width: 260px; margin-top: 36px; padding: 20px 16px 16px; border-radius: 20px; background: var(--mac-system-surface); box-shadow: 0 10px 30px var(--shadow); display: flex; flex-direction: column; gap: 10px; text-align: left; color: var(--text-primary); font: 400 13px var(--font-sans); }
 .bae-m-alert-title { font-weight: 700; }
-.bae-m-alert-message { font-size: 11px; line-height: 14px; color: var(--text-secondary); }
+.bae-m-alert-message { font-size: 13px; line-height: 17px; color: var(--text-primary); }
 .bae-m-alert-buttons { display: flex; flex-direction: row-reverse; gap: 8px; margin-top: 6px; }
 .bae-m-alert-buttons > :not(.sc-host-x), .bae-m-alert-buttons > .sc-host-x > * { flex: 1; min-width: 0; }
 .bae-m-alert-buttons:has(> :nth-child(3)) { flex-direction: column; }
@@ -106,8 +106,9 @@
 .bae-m-radio-dot-on { border: 0; background: var(--accent-fill); position: relative; }
 .bae-m-radio-dot-on::after { content: ''; position: absolute; left: 4.5px; top: 4.5px; width: 5px; height: 5px; border-radius: 3px; background: var(--on-accent-fill); }
 
-.bae-m-popupbutton { height: 24px; padding: 0 var(--space-related) 0 12px; border: 0; border-radius: 999px; background: var(--control); color: var(--text-primary); font: 400 13px var(--font-sans); display: inline-flex; align-items: center; justify-content: space-between; gap: var(--space-related); box-sizing: border-box; cursor: pointer; box-shadow: 0 0 0 0.5px var(--control-edge), 0 0.5px 1px var(--control-edge); }
-.bae-m-popupbutton-mark { flex: none; color: var(--text-secondary); }
+.bae-m-popupbutton { height: 24px; padding: 0; border: 0; background: none; color: var(--text-primary); font: 400 13px var(--font-sans); display: inline-flex; align-items: center; justify-content: flex-end; gap: var(--space-related); box-sizing: border-box; cursor: pointer; }
+.bae-m-popupbutton-value { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bae-m-popupbutton-mark { flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--mac-system-fill); color: var(--text-primary); display: inline-flex; align-items: center; justify-content: center; }
 .bae-m-segmented { display: inline-flex; height: 28px; box-sizing: border-box; padding: 3px; border-radius: 999px; background: var(--tile); }
 .bae-m-segment { display: flex; align-items: center; padding: 0 14px; border-radius: 999px; font: 400 13px var(--font-sans); color: var(--text-primary); cursor: pointer; }
 .bae-m-segment-on { background: var(--hover); box-shadow: inset 0 0 0 100px var(--hairline-strong); }
@@ -142,3 +143,12 @@
 .bae-m-progress { display: flex; flex-direction: column; gap: var(--space-related); text-align: left; color: var(--text-primary); font: 400 13px var(--font-sans); }
 .bae-m-note { padding: 6px 4px 0; font: 400 11.5px var(--font-sans); line-height: 15px; color: var(--text-secondary); }
 .bae-m-pane-on .bae-chip { background: color-mix(in srgb, var(--on-fill) 18%, transparent); color: var(--on-fill); }
+.bae-m-alert-icon { display: flex; margin-bottom: 4px; }
+.bae-m-alert .bae-m-btn { height: 28px; border-radius: 999px; background: var(--mac-system-fill); color: var(--text-primary); }
+.bae-m-alert .bae-m-btn-primary { background: var(--mac-system-accent); color: #FFFFFF; }
+.bae-m-alert .bae-m-btn-destructive { background: color-mix(in srgb, var(--mac-system-red) 22%, transparent); color: var(--mac-system-red); }
+.bae-m-popupbutton-open { position: relative; display: inline-flex; }
+.bae-m-popupbutton-menu { position: absolute; left: -31px; z-index: 6; }
+.bae-m-box:has(.bae-m-popupbutton-open) { overflow: visible; }
+.bae-m-popupbutton-menu .bae-m-menu { min-width: 0; white-space: nowrap; }
+.bae-m-popupbutton-menu .bae-m-menu-item { padding-right: 16px; }

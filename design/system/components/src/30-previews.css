@@ -20,9 +20,9 @@
 .bae-a-accents { display: flex; justify-content: space-between; }
 .bae-a-accents .bae-swatch { width: 36px; height: 36px; }
 .bae-a-accents .bae-swatch-on { box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--text-primary); }
-.bae-m-menu { display: flex; flex-direction: column; min-width: 190px; padding: 6px; border-radius: 12px; background: var(--tile); box-shadow: 0 8px 24px var(--shadow); font: 400 13px var(--font-sans); color: var(--text-primary); }
+.bae-m-menu { display: flex; flex-direction: column; min-width: 190px; padding: 6px; border-radius: 12px; background: var(--mac-system-surface); box-shadow: inset 0 0 0 1px var(--hairline-strong), 0 8px 24px var(--shadow); font: 400 13px var(--font-sans); color: var(--text-primary); }
 .bae-m-menu-item { display: flex; align-items: center; gap: var(--space-compact); padding: 4px var(--space-related); border-radius: 6px; }
-.bae-m-menu-item-on { background: var(--accent-selection); color: var(--on-fill); }
+.bae-m-menu-item-on { background: var(--mac-system-accent); color: #FFFFFF; }
 .bae-m-menu-item-off { color: var(--text-tertiary); }
 .bae-m-menu-check { width: 11px; display: flex; }
 

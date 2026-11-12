@@ -64,7 +64,7 @@ export interface MacRadioProps { label: string; note?: string; checked?: boolean
 export declare function MacRadio(props: MacRadioProps): React.ReactElement;
 
 /** A pop-up menu showing its current choice. */
-export interface MacPopUpButtonProps { value?: string; width?: number; off?: boolean; children?: React.ReactNode }
+export interface MacPopUpButtonProps { value?: string; width?: number; off?: boolean; children?: React.ReactNode; /** Its menu drawn open, as macOS opens it: the chosen item over the control. */ open?: boolean; /** The choices, comma-separated ("-" for a line). */ items?: string; chosen?: string; highlighted?: string; /** Keeps the menu inside a board's window: its right edge at the control's. */ menuInside?: boolean; /** The menu's top against the control's, when macOS would move it to stay on screen. */ menuTop?: number }
 export declare function MacPopUpButton(props: MacPopUpButtonProps): React.ReactElement;
 
 /** An on/off switch; label is its accessible name. */
