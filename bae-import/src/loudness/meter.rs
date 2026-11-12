@@ -9,7 +9,6 @@
 //! across them (`EbuR128::loudness_global_multiple`, order-independent).
 
 use ebur128::{EbuR128, Mode};
-use tracing::warn;
 
 /// A track too quiet to derive a gain from. EBU R128 integrated loudness for
 /// silence is `-inf`; without a floor, the derived boost (`target - loudness`)
@@ -86,18 +85,16 @@ fn max_true_peak(meter: &EbuR128, channels: u32) -> Result<f64, String> {
 /// Album integrated loudness combined across the tracks' meters, in LUFS.
 /// Order-independent (`loudness_global_multiple`). `None` when there are no
 /// meters or the combined loudness is non-finite / below the silence floor (an
-/// all-silent album), so the album falls back to unity gain.
-pub fn album_loudness(meters: &[EbuR128]) -> Option<f64> {
+/// all-silent album), so the album falls back to unity gain. `Err` is a
+/// measurement failure, which is not an all-silent album.
+pub fn album_loudness(meters: &[EbuR128]) -> Result<Option<f64>, String> {
     if meters.is_empty() {
-        return None;
+        return Ok(None);
     }
     match EbuR128::loudness_global_multiple(meters.iter()) {
-        Ok(lufs) if lufs.is_finite() && lufs >= SILENCE_FLOOR_LUFS => Some(lufs),
-        Ok(_) => None,
-        Err(e) => {
-            warn!("ebur128 loudness_global_multiple failed: {e:?}; album loudness unmeasured");
-            None
-        }
+        Ok(lufs) if lufs.is_finite() && lufs >= SILENCE_FLOOR_LUFS => Ok(Some(lufs)),
+        Ok(_) => Ok(None),
+        Err(e) => Err(format!("ebur128 loudness_global_multiple failed: {e:?}")),
     }
 }
 

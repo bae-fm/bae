@@ -59,6 +59,16 @@ async fn measured_frames_control_progress_value_and_determinacy() {
 /// valid header) or any fatal decode error. A full-window decode, including
 /// one that discarded an invalid packet, is not broken.
 #[tokio::test]
+async fn a_failed_meter_makes_the_track_broken_not_silent() {
+    let mut sink = sink_with(Some(1000), 1000, 0).await;
+    sink.error = Some("ebur128 add_frames failed: NoMem".to_string());
+    let (measured, broken) = settle_sink(sink, 0);
+    assert!(measured.is_none());
+    let reason = broken.expect("a failed meter is a broken track");
+    assert!(reason.contains("add_frames failed"), "{reason}");
+}
+
+#[tokio::test]
 async fn broken_reason_flags_shortfall_and_errors_not_clean() {
     assert!(
         sink_with(Some(1000), 1000, 0).await.broken_reason().is_none(),

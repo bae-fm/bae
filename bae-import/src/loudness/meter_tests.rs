@@ -103,16 +103,24 @@ fn album_loudness_combines_meters_order_independently() {
     let (m1, _) = measure_track(&sine(0.1, 1_000.0, sr, 3.0), 2, sr).unwrap();
     let (m2, _) = measure_track(&sine(0.5, 1_000.0, sr, 3.0), 2, sr).unwrap();
 
-    let forward = album_loudness(&[m1, m2]).expect("usable album loudness");
+    let forward = album_loudness(&[m1, m2]).unwrap().expect("usable album loudness");
 
     let (m1b, _) = measure_track(&sine(0.1, 1_000.0, sr, 3.0), 2, sr).unwrap();
     let (m2b, _) = measure_track(&sine(0.5, 1_000.0, sr, 3.0), 2, sr).unwrap();
-    let reversed = album_loudness(&[m2b, m1b]).expect("usable album loudness");
+    let reversed = album_loudness(&[m2b, m1b]).unwrap().expect("usable album loudness");
 
     assert!(
         (forward - reversed).abs() < 1e-6,
         "album loudness must be order-independent: {forward} vs {reversed}"
     );
+}
+
+#[test]
+fn album_loudness_failure_is_an_error_not_an_unmeasured_album() {
+    let sr = 48_000;
+    let (measured, _) = measure_track(&sine(0.1, 1_000.0, sr, 3.0), 2, sr).unwrap();
+    let without_integrated_mode = EbuR128::new(2, sr, Mode::M).unwrap();
+    assert!(album_loudness(&[measured, without_integrated_mode]).is_err());
 }
 
 #[test]

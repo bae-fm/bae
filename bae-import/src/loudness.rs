@@ -353,28 +353,39 @@ fn measure_track(
             TrackOutcome::Decoded { measured: None, broken: Some(reason), scrub_points: Vec::new() }
         }
         Ok(scrub_points) => {
-            // A decode that fails outright is broken, but so is one that
-            // returns Ok over fatal errors or a truncated body — `broken_reason`
-            // reads the error count and frame shortfall the sink captured.
-            let broken = sink.broken_reason();
-            let measured = match sink.into_result() {
-                Ok((meter, Some(m))) => Some((meter, m.loudness_lufs, m.peak_linear)),
-                Ok((_, None)) => {
-                    debug!(
-                        "loudness: track {} has no usable loudness (silent); unmeasured",
-                        track.index + 1
-                    );
-                    None
-                }
-                Err(e) => {
-                    warn!(
-                        "loudness: measure failed for track {}: {e}; track stays unmeasured",
-                        track.index + 1
-                    );
-                    None
-                }
-            };
+            let (measured, broken) = settle_sink(sink, track.index);
             TrackOutcome::Decoded { measured, broken, scrub_points }
+        }
+    }
+}
+
+/// What a track's decode, fully fed to `sink`, measured and whether it looks
+/// broken. A decode that fails outright is broken, but so is one that returns
+/// Ok over fatal errors or a truncated body (`broken_reason` reads the error
+/// count and frame shortfall the sink captured), and so is one whose meter
+/// failed: a failed measurement is not a silent track, so the import fails
+/// rather than store the track as having no loudness.
+fn settle_sink(
+    sink: LoudnessProgressSink,
+    track_index: usize,
+) -> (Option<(ebur128::EbuR128, f64, f64)>, Option<String>) {
+    let broken = sink.broken_reason();
+    match sink.into_result() {
+        Ok((meter, Some(m))) => (Some((meter, m.loudness_lufs, m.peak_linear)), broken),
+        Ok((_, None)) => {
+            debug!(
+                "loudness: track {} has no usable loudness (silent); unmeasured",
+                track_index + 1
+            );
+            (None, broken)
+        }
+        Err(e) => {
+            let measure_failure = format!("loudness measurement failed: {e}");
+            let reason = match broken {
+                Some(decode) => format!("{decode}; {measure_failure}"),
+                None => measure_failure,
+            };
+            (None, Some(reason))
         }
     }
 }
@@ -459,9 +470,10 @@ fn decode_track(
 /// keeps a window ahead of each decode and evicts behind them. At most
 /// `parallelism` source files are open at once however many tracks there are.
 ///
-/// A track that decodes but can't be measured, or that is too quiet to have a
-/// usable loudness, keeps NULL loudness/peak and still imports — the skip is
-/// logged with its file path, and a measurement failure never aborts the import.
+/// A track that is too quiet to have a usable loudness keeps NULL loudness/peak
+/// and still imports. A track whose meter fails is broken like one whose decode
+/// fails, and so is the album's combined loudness failing: the import fails
+/// rather than store a failed measurement as silence.
 ///
 /// The full decode doubles as verification: a track whose decode stops, reports
 /// a fatal error, or gives output frames far short of the expected window (a
@@ -651,7 +663,8 @@ pub(super) async fn measure_loudness(
         return Err(crate::ImportError::DecodeVerification { broken: broken_tracks });
     }
 
-    let album_loudness = meter::album_loudness(&meters);
+    let album_loudness =
+        meter::album_loudness(&meters).map_err(|detail| crate::ImportError::Internal { detail })?;
     let album_peak = meter::album_peak(&track_peaks);
     Ok(LoudnessResult {
         album_loudness_lufs: album_loudness,
