@@ -6,6 +6,11 @@
 //! the full list is in the Subsonic API doc.
 
 /// A Subsonic error: a numeric code plus a human-readable message.
+///
+/// The messages are English on purpose, here and in every `generic` detail
+/// built from a Rust error: a Subsonic request carries no locale, the client
+/// app (not bae) decides what the person reads, and the code is what clients
+/// act on. They are not in the localization catalog.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct SubError {
     pub(crate) code: u32,

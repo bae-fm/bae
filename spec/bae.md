@@ -4532,7 +4532,9 @@ connects to his laptop, lists the artists, opens an album and plays it.
   salt of at least six characters, and the MD5 of password plus salt. It doesn't run
   without both a username and a password. Failures come back as Subsonic
   error documents, which clients read, not HTTP errors; a request that hits a
-  bug is reported as one and answered with a generic error document.
+  bug is reported as one and answered with a generic error document. The messages in those
+  documents are always English: the request carries no language, so bae has
+  none to translate them into, and clients act on the code.
 - **Where it listens.** On this machine only by default. Available on
   offers this machine only, each network the machine is on (Wi-Fi, a VPN),
   by name and address, or every network. A network is kept as that network,
