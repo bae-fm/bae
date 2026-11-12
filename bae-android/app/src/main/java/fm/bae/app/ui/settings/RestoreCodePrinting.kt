@@ -19,6 +19,7 @@ import android.text.Layout
 import android.text.StaticLayout
 import android.text.TextPaint
 import fm.bae.app.R
+import fm.bae.app.currentLocale
 import fm.bae.app.ui.components.encodeQRCode
 import java.io.FileOutputStream
 import java.io.IOException
@@ -52,7 +53,7 @@ internal class RestoreCodePage(
                 printed =
                     context.getString(
                         R.string.restore_code_printed,
-                        DateFormat.getDateInstance(DateFormat.LONG).format(date),
+                        DateFormat.getDateInstance(DateFormat.LONG, context.currentLocale()).format(date),
                     ),
                 code = code,
                 keep = context.getString(R.string.restore_code_print_keep),

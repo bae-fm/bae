@@ -94,6 +94,7 @@
     <string name="sort_name">名稱</string>
     <string name="image_load_failed">無法載入影像</string>
     <string name="gallery_loading_image">正在載入圖片…</string>
+    <string name="gallery_page_counter">第 %1$s 張，共 %2$s 張</string>
     <string name="settings_library">資料庫</string>
     <string name="library_name_row">名稱</string>
     <plurals name="people_count">

@@ -35,6 +35,7 @@ import fm.bae.app.ui.components.AndroidLibraryRow
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.retryAction
+import fm.bae.app.yearText
 import uniffi.bae_bridge.BridgeSearchResults
 import uniffi.bae_bridge.BridgeTrackSearchResult
 
@@ -133,7 +134,7 @@ private fun SearchResultsList(
             items(results.albums, key = { "album:${it.id}" }) { album ->
                 AndroidLibraryRow(
                     title = album.title,
-                    subtitle = context.factsLine(listOf(album.artistName, album.year?.toString())),
+                    subtitle = context.factsLine(listOf(album.artistName, album.year?.let(context::yearText))),
                     art = album.cover,
                     onClick = { onSelectAlbum(album.id) },
                 )

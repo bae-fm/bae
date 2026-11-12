@@ -24,6 +24,7 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidLibraryRow
 import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.playback.AndroidNowPlayingBarContainer
+import fm.bae.app.yearText
 import uniffi.bae_bridge.BridgeArtistDetail
 
 @Composable
@@ -101,7 +102,7 @@ private fun ArtistDetailContent(
             items(detail.albums, key = { it.id }) { album ->
                 AndroidLibraryRow(
                     title = album.title,
-                    subtitle = album.year?.toString(),
+                    subtitle = album.year?.let(context::yearText),
                     art = album.cover,
                     inset = true,
                     onClick = { onSelectAlbum(album.id) },

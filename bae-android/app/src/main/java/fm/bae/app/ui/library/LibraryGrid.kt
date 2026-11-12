@@ -16,6 +16,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -27,6 +28,7 @@ import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeSpace
+import fm.bae.app.yearText
 import uniffi.bae_bridge.BridgeAlbumAppearance
 import uniffi.bae_bridge.BridgeLibraryBrowseSection
 
@@ -135,7 +137,7 @@ private fun LazyGridScope.albumItems(
 /** A grouped card's line under an album's title: the year, and the album's other credits when it has any. */
 @Composable
 private fun groupedCardLine(row: BridgeAlbumAppearance): String {
-    val year = row.album.year?.toString()
+    val year = row.album.year?.let(LocalContext.current::yearText)
     val creditedWith = row.creditedWith
     return when {
         creditedWith == null -> year.orEmpty()

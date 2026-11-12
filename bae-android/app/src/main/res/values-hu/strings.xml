@@ -99,6 +99,7 @@
     <string name="sort_name">Név</string>
     <string name="image_load_failed">A képet nem sikerült betölteni</string>
     <string name="gallery_loading_image">Kép betöltése…</string>
+    <string name="gallery_page_counter">%1$s / %2$s</string>
     <string name="settings_library">Könyvtár</string>
     <string name="library_name_row">Név</string>
     <plurals name="people_count">

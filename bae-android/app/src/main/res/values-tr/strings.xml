@@ -95,6 +95,7 @@
     <string name="sort_name">Ad</string>
     <string name="image_load_failed">Görüntü yüklenemedi</string>
     <string name="gallery_loading_image">Görsel yükleniyor…</string>
+    <string name="gallery_page_counter">%1$s / %2$s</string>
     <string name="settings_library">Kitaplık</string>
     <string name="library_name_row">Ad</string>
     <plurals name="people_count">

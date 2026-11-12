@@ -47,6 +47,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
@@ -58,6 +59,7 @@ import androidx.compose.ui.window.DialogWindowProvider
 import androidx.core.view.WindowCompat
 import fm.bae.app.BaeLogger
 import fm.bae.app.R
+import fm.bae.app.countText
 import fm.bae.app.data.DecodeSize
 import fm.bae.app.data.ImageContent
 import fm.bae.app.data.ImageStore
@@ -229,7 +231,12 @@ private fun BoxScope.GalleryCaption(
         Text(text = items[currentPage].label, color = BaeTheme.colors.onFill)
         if (items.size > 1) {
             Text(
-                text = "${currentPage + 1} / ${items.size}",
+                text =
+                    stringResource(
+                        R.string.gallery_page_counter,
+                        LocalContext.current.countText(currentPage + 1),
+                        LocalContext.current.countText(items.size),
+                    ),
                 color = BaeTheme.colors.onFillSecondary,
             )
         }

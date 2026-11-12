@@ -96,6 +96,7 @@
     <string name="sort_name">Nome</string>
     <string name="image_load_failed">Não foi possível carregar a imagem</string>
     <string name="gallery_loading_image">Carregando a imagem…</string>
+    <string name="gallery_page_counter">%1$s de %2$s</string>
     <string name="settings_library">Biblioteca</string>
     <string name="library_name_row">Nome</string>
     <plurals name="people_count">

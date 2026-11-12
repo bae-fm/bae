@@ -16,10 +16,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.countText
 import fm.bae.app.data.LiveValue
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
@@ -121,7 +123,7 @@ private fun ConcurrencyRow(
 ) {
     var open by remember { mutableStateOf(false) }
     val title = stringResource(R.string.pins_at_once)
-    AndroidRow(title = title, subtitle = value.toString(), onClick = { open = true })
+    AndroidRow(title = title, subtitle = LocalContext.current.countText(value), onClick = { open = true })
     if (open) {
         AndroidDialog(
             onDismissRequest = { open = false },
@@ -130,7 +132,7 @@ private fun ConcurrencyRow(
                 Column(modifier = Modifier.selectableGroup()) {
                     for (option in 1u..limit) {
                         AndroidRadio(
-                            label = option.toString(),
+                            label = LocalContext.current.countText(option),
                             checked = option == value,
                             onClick = {
                                 open = false

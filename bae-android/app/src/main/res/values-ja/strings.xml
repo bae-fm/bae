@@ -94,6 +94,7 @@
     <string name="sort_name">名前</string>
     <string name="image_load_failed">画像を読み込めませんでした</string>
     <string name="gallery_loading_image">画像を読み込み中…</string>
+    <string name="gallery_page_counter">%1$s / %2$s</string>
     <string name="settings_library">ライブラリ</string>
     <string name="library_name_row">名前</string>
     <plurals name="people_count">

@@ -99,6 +99,7 @@
     <string name="sort_name">Navn</string>
     <string name="image_load_failed">Billedet kunne ikke indlæses</string>
     <string name="gallery_loading_image">Indlæser billedet…</string>
+    <string name="gallery_page_counter">%1$s af %2$s</string>
     <string name="settings_library">Bibliotek</string>
     <string name="library_name_row">Navn</string>
     <plurals name="people_count">

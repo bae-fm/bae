@@ -95,6 +95,7 @@
     <string name="sort_name">Име</string>
     <string name="image_load_failed">Изображението не може да бъде заредено</string>
     <string name="gallery_loading_image">Зареждане на изображението…</string>
+    <string name="gallery_page_counter">%1$s от %2$s</string>
     <string name="settings_library">Библиотека</string>
     <string name="library_name_row">Име</string>
     <plurals name="people_count">

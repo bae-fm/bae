@@ -1,7 +1,11 @@
 package fm.bae.app
 
 import android.content.Context
+import android.icu.text.DecimalFormatSymbols
+import android.icu.text.MeasureFormat
 import android.icu.text.MessageFormat
+import android.icu.util.Measure
+import android.icu.util.MeasureUnit
 import android.text.format.Formatter
 import uniffi.bae_bridge.BridgeCountLabel
 import uniffi.bae_bridge.BridgeDurationClock
@@ -101,24 +105,25 @@ private fun Context.durationWord(
 ): String = coreString(key, mapOf(arg to count.toLong()))
 
 /**
- * Render a clock's fields: `:` between them, every field after the first padded
- * to two digits, a leading `-` for a countdown. [String.format] substitutes the
- * locale's digits, so an Arabic-Indic locale reads "٣:٠٧" where "en" reads
- * "3:07" — which is why this lives here and not in core.
+ * Render a clock's fields in the locale's own time format (ICU's numeric
+ * duration pattern): its digits, its separator and field order, so an
+ * Arabic-Indic locale reads "٣:٠٧" where "en" reads "3:07". A countdown takes
+ * the locale's minus sign. The spread passes at most three measures to ICU's varargs entry point.
  */
+@Suppress("SpreadOperator")
 internal fun clockText(
     clock: BridgeDurationClock,
     locale: Locale,
 ): String {
-    val sign = if (clock.negative) "-" else ""
-    val minutes = clock.minutes.toLong()
-    val seconds = clock.seconds.toLong()
-    val hours = clock.hours
-    return if (hours == null) {
-        String.format(locale, "%s%d:%02d", sign, minutes, seconds)
-    } else {
-        String.format(locale, "%s%d:%02d:%02d", sign, hours.toLong(), minutes, seconds)
-    }
+    val parts =
+        listOfNotNull(
+            clock.hours?.let { Measure(it.toLong(), MeasureUnit.HOUR) },
+            Measure(clock.minutes.toLong(), MeasureUnit.MINUTE),
+            Measure(clock.seconds.toLong(), MeasureUnit.SECOND),
+        )
+    val format = MeasureFormat.getInstance(locale, MeasureFormat.FormatWidth.NUMERIC)
+    val time = format.formatMeasures(*parts.toTypedArray())
+    return if (clock.negative) DecimalFormatSymbols.getInstance(locale).minusSignString + time else time
 }
 
 /** Format a byte count for the current locale (e.g. "35 MB" / "35 Mo"). */

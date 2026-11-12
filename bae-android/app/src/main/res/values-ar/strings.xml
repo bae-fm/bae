@@ -99,6 +99,7 @@
     <string name="sort_name">الاسم</string>
     <string name="image_load_failed">تعذّر تحميل الصورة</string>
     <string name="gallery_loading_image">جارٍ تحميل الصورة…</string>
+    <string name="gallery_page_counter">%1$s من %2$s</string>
     <string name="settings_library">المكتبة</string>
     <string name="library_name_row">الاسم</string>
     <plurals name="people_count">

@@ -18,7 +18,7 @@ internal fun BridgeRelease.pressingLineText(
     audioChannelsKey: (Long) -> String?,
 ): String =
     listOf(
-        distinctYear?.toString(),
+        distinctYear?.let(context::yearText),
         factLine(context, pressingSummary).ifEmpty { null },
         factLine(context, pressingDetails).ifEmpty { null },
         sourceAudio?.text(context, audioChannelsKey),

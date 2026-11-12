@@ -63,7 +63,7 @@ fun BridgeReleaseName.text(context: Context): String =
         }
 
         is BridgeReleaseName.Described -> {
-            listOfNotNull(year?.toString(), factLine(context, media).ifEmpty { null })
+            listOfNotNull(year?.let(context::yearText), factLine(context, media).ifEmpty { null })
                 .joinToString(" ")
         }
 

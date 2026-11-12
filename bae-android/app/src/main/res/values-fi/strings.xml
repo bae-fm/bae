@@ -99,6 +99,7 @@
     <string name="sort_name">Nimi</string>
     <string name="image_load_failed">Kuvaa ei voitu ladata</string>
     <string name="gallery_loading_image">Ladataan kuvaa…</string>
+    <string name="gallery_page_counter">%1$s / %2$s</string>
     <string name="settings_library">Kirjasto</string>
     <string name="library_name_row">Nimi</string>
     <plurals name="people_count">

@@ -2,6 +2,8 @@ package fm.bae.app
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeDurationClock
 import java.util.Locale
 
@@ -10,6 +12,8 @@ import java.util.Locale
  * has (bae-util's `duration` tests pin that), and this turns those fields
  * into digits. Nothing is shown for a clock core declined to produce.
  */
+@RunWith(BaeRobolectricTestRunner::class)
+@Config(sdk = [35])
 class ClockTextTest {
     private val en = Locale.forLanguageTag("en-US")
 
@@ -39,10 +43,15 @@ class ClockTextTest {
         assertEquals("-0:00", clockText(clock(negative = true, minutes = 0u, seconds = 0u), en))
     }
 
-    /** The digits are the locale's; the `:` separators and the padding are not. */
+    /** The digits, the separator and the minus are the locale's. */
     @Test
     fun digitsFollowTheLocale() {
         assertEquals("٣:٠٧", clockText(clock(minutes = 3u, seconds = 7u), Locale.forLanguageTag("ar-EG")))
         assertEquals("3:07", clockText(clock(minutes = 3u, seconds = 7u), Locale.forLanguageTag("de-DE")))
+    }
+
+    @Test
+    fun aCountdownTakesTheLocalesMinus() {
+        assertEquals("\u22122:30", clockText(clock(negative = true, minutes = 2u, seconds = 30u), Locale.forLanguageTag("sv-SE")))
     }
 }

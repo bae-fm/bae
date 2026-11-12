@@ -68,6 +68,7 @@ import fm.bae.app.ui.components.retryAction
 import fm.bae.app.ui.library.AndroidDetailScreen
 import fm.bae.app.ui.playback.AndroidNowPlayingBarContainer
 import fm.bae.app.ui.rememberScreenScope
+import fm.bae.app.yearText
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -405,7 +406,7 @@ internal fun AndroidAlbumHeader(
             )
             album.year?.let {
                 Text(
-                    text = it.toString(),
+                    text = LocalContext.current.yearText(it),
                     style = ThemeText.detail.style,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

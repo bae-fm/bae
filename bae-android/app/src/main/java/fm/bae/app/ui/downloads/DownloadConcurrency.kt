@@ -9,10 +9,12 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.countText
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
@@ -66,7 +68,7 @@ private fun DownloadConcurrencySelector(
                     onClick = { onSelect(option) },
                     shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
                 ) {
-                    Text(option.toString())
+                    Text(LocalContext.current.countText(option))
                 }
             }
         }

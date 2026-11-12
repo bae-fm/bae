@@ -96,6 +96,7 @@
     <string name="sort_name">Naziv</string>
     <string name="image_load_failed">Nije moguće učitati sliku</string>
     <string name="gallery_loading_image">Učitavanje slike…</string>
+    <string name="gallery_page_counter">%1$s od %2$s</string>
     <string name="settings_library">Fonoteka</string>
     <string name="library_name_row">Naziv</string>
     <plurals name="people_count">
