@@ -341,6 +341,7 @@
                 .environment(PlaybackStore())
                 .environment(UiStore())
                 .environment(SettingsNavigation())
+                .environment(\.openSettingsWindow, OpenSettingsWindowAction {})
                 .environment(ImportStore())
                 .environment(OutboxStore(uploadsPaused: false))
                 .environment(PreviewData.configStore())
