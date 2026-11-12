@@ -119,9 +119,9 @@ struct CastReceiverRow: View {
                 }
             case .page:
                 MacMoreMenu {
-                    Button("Details…") { showsDetails = true }
+                    MacMenuItem("Details…") { showsDetails = true }
                     if case .casting(let onDisconnect) = role {
-                        Button("Disconnect", action: onDisconnect)
+                        MacMenuItem("Disconnect", action: onDisconnect)
                     }
                 }
                 .popover(isPresented: $showsDetails, arrowEdge: .bottom) {

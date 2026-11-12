@@ -52,17 +52,13 @@ struct SortCriterionPill<Criterion: SortCriterionRepresentable>: View {
 
     /// Every field, the current one checked; picking it again is a no-op.
     private var fieldMenu: some View {
-        Menu {
-            ForEach(Criterion.Field.allCases, id: \.self) { field in
-                Toggle(
-                    isOn: Binding(
-                        get: { field == criterion.field },
-                        set: { _ in onSetField(field) }
-                    )
-                ) {
-                    Text(field.displayName)
-                }
-                .disabled(takenFields.contains(field))
+        MacMenuButton {
+            for field in Criterion.Field.allCases {
+                MacMenuItem(
+                    field.displayName,
+                    checked: field == criterion.field,
+                    disabled: takenFields.contains(field)
+                ) { onSetField(field) }
             }
         } label: {
             // One run of text, since a menu label puts its image before the
@@ -74,8 +70,6 @@ struct SortCriterionPill<Criterion: SortCriterionRepresentable>: View {
                 .font(ThemeIcon.badge.font)
                 .foregroundStyle(.secondary)
         }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
         .fixedSize()
         .accessibilityLabel(Text(criterion.field.displayName))
         .help("Change sort field")

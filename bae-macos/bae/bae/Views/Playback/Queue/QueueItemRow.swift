@@ -75,8 +75,8 @@ struct QueueItemRow: View {
         .onTapGesture(count: 2) {
             onSkipTo(item.id)
         }
-        .contextMenu {
-            Button("Remove from queue") {
+        .macContextMenu {
+            MacMenuItem("Remove from queue") {
                 onRemove(item.id)
             }
         }

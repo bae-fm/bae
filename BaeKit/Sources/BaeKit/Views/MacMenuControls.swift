@@ -62,7 +62,7 @@
     }
 
     /// A button that opens bae's menu under itself. The label is whatever the
-    /// caller draws; `bordered` draws it in a push button.
+    /// caller draws; `bordered` draws it in the secondary button.
     public struct MacMenuButton<Label: View>: View {
         let bordered: Bool
         let content: () -> [MacMenuEntry]
@@ -90,7 +90,7 @@
             Group {
                 if bordered {
                     Button(action: open) { label }
-                        .buttonStyle(.bordered)
+                        .buttonStyle(SecondaryButtonStyle())
                 }
                 else {
                     Button(action: open) { label }

@@ -124,28 +124,24 @@ struct AlbumExpansionContent: View {
     }
 
     private var albumMenu: some View {
-        Menu {
-            Button("Play", action: onPlay)
-            Button("Shuffle", action: onShuffle)
-            Divider()
-            Button("Play next") { onAddNextAlbum() }
-            Button("Add to queue") { onAddAlbumToQueue() }
-            Divider()
-            Button("Edit…") { onEdit() }
-            Button("Storage…") { onOpenStorage() }
-            Button("Export…") { onExportRelease() }
-            Button("Save as…") { onSaveReleaseAs() }
+        MacMenuButton {
+            MacMenuItem("Play", action: onPlay)
+            MacMenuItem("Shuffle", action: onShuffle)
+            MacMenuDivider()
+            MacMenuItem("Play next") { onAddNextAlbum() }
+            MacMenuItem("Add to queue") { onAddAlbumToQueue() }
+            MacMenuDivider()
+            MacMenuItem("Edit…") { onEdit() }
+            MacMenuItem("Storage…") { onOpenStorage() }
+            MacMenuItem("Export…") { onExportRelease() }
+            MacMenuItem("Save as…") { onSaveReleaseAs() }
             if releaseCursor.canCycle, canSetAsPrimaryRelease {
-                Divider()
-                Button("Set as primary release") { onSetPrimaryRelease() }
+                MacMenuDivider()
+                MacMenuItem("Set as primary release") { onSetPrimaryRelease() }
             }
-            Divider()
-            Button(
-                "Delete release",
-                role: .destructive,
-                action: onDeleteRelease
-            )
-            Button("Delete album…", role: .destructive, action: onDeleteAlbum)
+            MacMenuDivider()
+            MacMenuItem("Delete release", action: onDeleteRelease)
+            MacMenuItem("Delete album…", action: onDeleteAlbum)
         } label: {
             Image(systemName: "ellipsis")
                 .themeIcon(.medium)
@@ -156,8 +152,6 @@ struct AlbumExpansionContent: View {
                     in: RoundedRectangle(cornerRadius: ThemeRadius.control)
                 )
         }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
         .fixedSize()
     }
 

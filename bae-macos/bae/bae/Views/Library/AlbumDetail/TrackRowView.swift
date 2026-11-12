@@ -155,12 +155,12 @@ struct TrackRowView: View {
                 hoverWorkItem = nil
             }
         }
-        .contextMenu {
-            Button("Play") { onPlay() }
-            Button("Play next") { onAddNext(track.id) }
-            Button("Add to queue") { onAddToQueue(track.id) }
-            Divider()
-            Button("Save as…") { onExportTrack(track.id) }
+        .macContextMenu {
+            MacMenuItem("Play") { onPlay() }
+            MacMenuItem("Play next") { onAddNext(track.id) }
+            MacMenuItem("Add to queue") { onAddToQueue(track.id) }
+            MacMenuDivider()
+            MacMenuItem("Save as…") { onExportTrack(track.id) }
         }
         .draggable(track.id)
     }

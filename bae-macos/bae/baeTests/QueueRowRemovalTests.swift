@@ -58,21 +58,63 @@ struct QueueRowRemovalTests {
                 ),
                 to: nil
             )
-            let menu = try #require(
-                try HostedInput.contextMenu(at: lastRow, in: host)
+            // Right-click the row: its menu opens in a panel of its own, and
+            // a line is picked as VoiceOver picks it.
+            try openContextMenu(at: lastRow, in: host)
+            let element = try #require(
+                menuItem(titled: String(localized: "Remove from queue")),
+                "the row's menu has Remove from queue"
             )
-            let remove = try #require(
-                menu.items.firstIndex {
-                    $0.title == String(localized: "Remove from queue")
-                },
-                "the row's menu: \(menu.items.map(\.title))"
-            )
-            menu.performActionForItem(at: remove)
+            #expect(element.accessibilityPerformPress())
 
             try await Wait.until { !removals.ids.isEmpty }
             #expect(removals.ids.count == 1)
             #expect(items.map(\.id).contains(removals.ids[0]))
         }
+    }
+
+    /// A right click at `point` (in the window's coordinates) on the view
+    /// that takes right clicks there.
+    @MainActor
+    private func openContextMenu(at point: NSPoint, in host: NSView) throws {
+        let window = try #require(host.window)
+        let catcher = try #require(
+            SnapshotTestSupport.descendants(of: host)
+                .last {
+                    String(describing: type(of: $0))
+                        .contains("ContextClickView")
+                        && $0.convert($0.bounds, to: nil).contains(point)
+                },
+            "a view takes the row's right click"
+        )
+        let event = try #require(
+            NSEvent.mouseEvent(
+                with: .rightMouseDown,
+                location: point,
+                modifierFlags: [],
+                timestamp: ProcessInfo.processInfo.systemUptime,
+                windowNumber: window.windowNumber,
+                context: nil,
+                eventNumber: 0,
+                clickCount: 1,
+                pressure: 1
+            )
+        )
+        catcher.rightMouseDown(with: event)
+    }
+
+    /// The open menu's line called `title`, as VoiceOver finds it.
+    @MainActor
+    private func menuItem(titled title: String) -> NSAccessibilityElement? {
+        for window in NSApp.windows {
+            guard let content = window.contentView,
+                content.accessibilityRole() == .menu
+            else { continue }
+            let items = content.accessibilityChildren() as? [Any] ?? []
+            return items.compactMap { $0 as? NSAccessibilityElement }
+                .first { $0.accessibilityLabel() == title }
+        }
+        return nil
     }
 
     /// The entries the hosted section asked core to remove.

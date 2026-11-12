@@ -71,16 +71,13 @@ struct LocalLibrariesSection: View {
             }
             .card()
             MacSheetFooter {
-                Menu {
-                    Button("Create new library…", action: onCreate)
-                    Button("Scan code…", action: onScanCode)
-                    Button("Enter code…", action: onEnterCode)
+                MacMenuButton(bordered: true) {
+                    MacMenuItem("Create new library…", action: onCreate)
+                    MacMenuItem("Scan code…", action: onScanCode)
+                    MacMenuItem("Enter code…", action: onEnterCode)
                 } label: {
                     Text("Add library…")
                 }
-                .menuStyle(.button)
-                .buttonStyle(SecondaryButtonStyle())
-                .menuIndicator(.hidden)
                 .fixedSize()
                 .disabled(disabled)
             }
@@ -159,7 +156,7 @@ private struct LibraryRow: View {
         .padding(.horizontal, ThemeSpace.group)
         .padding(.vertical, ThemeSpace.related + ThemeSpace.line)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .contextMenu { menuItems }
+        .macContextMenu { menuItems }
         .disabled(disabled)
     }
 
@@ -215,25 +212,44 @@ private struct LibraryRow: View {
             }
     }
 
-    @ViewBuilder
-    private var menuItems: some View {
+    private var menuItems: [MacMenuEntry] {
+        var entries: [MacMenuEntry] = []
         switch library.state {
         case .replacementUnfinished(let by, _):
-            Button(finishTitle(by)) { onFinish(library, by) }
+            entries.append(
+                .item(
+                    MacMenuItem(finishTitle(by)) { onFinish(library, by) }
+                )
+            )
         case .deletionUnfinished:
-            Button("Finish removing") { onFinishRemoving(library) }
+            entries.append(
+                .item(
+                    MacMenuItem("Finish removing") {
+                        onFinishRemoving(library)
+                    }
+                )
+            )
         case .openable:
-            Button("Details…") { showsDetails = true }
+            entries.append(
+                .item(MacMenuItem("Details…") { showsDetails = true })
+            )
         case .unreadable:
-            EmptyView()
+            break
         }
-        Button(LibraryRemovalConfirmation.Ending(of: library).menuItem) {
-            onRemove(library)
-        }
-        .disabled(deleteDisabled)
+        entries.append(
+            .item(
+                MacMenuItem(
+                    verbatim: LibraryRemovalConfirmation.Ending(of: library)
+                        .menuItem,
+                    disabled: deleteDisabled
+                ) { onRemove(library) }
+            )
+        )
+        return entries
     }
 
-    private func finishTitle(_ by: BridgeReplacedBy) -> LocalizedStringKey {
+    private func finishTitle(_ by: BridgeReplacedBy) -> LocalizedStringResource
+    {
         switch by {
         case .restore: "Finish restoring"
         case .reset: "Finish reset from cloud"

@@ -19,7 +19,7 @@ struct LibraryModeHeading: View {
     private var uiStore
 
     var body: some View {
-        Menu {
+        MacMenuButton {
             LibraryModeButtons(selected: uiStore.libraryBrowserMode) { mode in
                 uiStore.setLibraryBrowserMode(mode)
             }
@@ -41,9 +41,6 @@ struct LibraryModeHeading: View {
                 // text.
                 .padding(.bottom, -size * Self.descenderTrim)
         }
-        .menuStyle(.button)
-        .buttonStyle(StaticLabelButtonStyle())
-        .menuIndicator(.hidden)
         .fixedSize()
     }
 
@@ -58,13 +55,6 @@ struct LibraryModeHeading: View {
         let full = ThemeText.display[keyPath: measure]
         let collapsed = ThemeText.title[keyPath: measure]
         return full + (collapsed - full) * collapseProgress
-    }
-}
-
-/// Draws the label unchanged while the menu is open.
-private struct StaticLabelButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
     }
 }
 
