@@ -38,7 +38,9 @@ use crate::error::PlaybackError;
 use crate::preview_player::PreviewPlayer;
 use crate::progress::emit_progress;
 use crate::progress::{PlaybackProgress, PlaybackProgressHandle};
-use crate::tables::{ContextFill, ContextFilled, LeftOut, PlaybackResumeRow, ReleaseStart};
+use crate::tables::{
+    ContextFill, ContextFilled, LeftOut, ManualPlace, PlaybackResumeRow, ReleaseStart,
+};
 use bae_audio::DecodeError;
 use bae_diagnostics::{
     AnomalyKind, Diagnostics, LocalId, PlaybackCommandKind, PlaybackOperation, PlaybackStartSource,
@@ -92,12 +94,12 @@ use crate::stream_pipeline::{
     cancel_and_join_decoder, log_stream_diagnostic, report_dropped_audio_events, spawn_decoder,
     DecodeFailureReport, DecoderSetup,
 };
-use api::PlayReply;
 pub(crate) use api::PlaybackCommand;
 pub use api::{
     LoadingTrack, PlayError, PlayOutcome, PlaybackHandle, PlaybackPauseReason, PlaybackState,
     QueueEditError,
 };
+use api::{PlayReply, QueueEditReply};
 use bae_track_audio::{SegmentDecodeParams, StreamDecodeParams};
 use file_buffers::{prepare_track_for_playback, FileBuffers};
 use library_follow::LibraryFollow;
@@ -119,6 +121,9 @@ mod tests;
 
 #[cfg(test)]
 mod command_kind_tests;
+
+#[cfg(test)]
+mod queue_commands_tests;
 
 mod runtime;
 
@@ -623,10 +628,10 @@ fn playback_command_kind(command: &PlaybackCommand) -> Option<PlaybackCommandKin
             Some(PlaybackCommandKind::CancelSidePauseCountdown)
         }
         PlaybackCommand::Stop => Some(PlaybackCommandKind::Stop),
-        PlaybackCommand::SetShuffle(_) => Some(PlaybackCommandKind::SetShuffle),
-        PlaybackCommand::SetRepeatMode(_) => Some(PlaybackCommandKind::SetRepeat),
-        PlaybackCommand::AddReleaseToQueue(_) => Some(PlaybackCommandKind::AddReleaseToQueue),
-        PlaybackCommand::AddReleaseNext(_) => Some(PlaybackCommandKind::AddReleaseNext),
+        PlaybackCommand::SetShuffle(..) => Some(PlaybackCommandKind::SetShuffle),
+        PlaybackCommand::SetRepeatMode(..) => Some(PlaybackCommandKind::SetRepeat),
+        PlaybackCommand::AddReleaseToQueue(..) => Some(PlaybackCommandKind::AddReleaseToQueue),
+        PlaybackCommand::AddReleaseNext(..) => Some(PlaybackCommandKind::AddReleaseNext),
         PlaybackCommand::RemoveFromQueue { .. } => Some(PlaybackCommandKind::RemoveFromQueue),
         PlaybackCommand::ReorderQueue { .. } => Some(PlaybackCommandKind::ReorderQueue),
         PlaybackCommand::SkipTo { .. } => Some(PlaybackCommandKind::SkipTo),
@@ -635,9 +640,9 @@ fn playback_command_kind(command: &PlaybackCommand) -> Option<PlaybackCommandKin
         | PlaybackCommand::HaltOnError
         | PlaybackCommand::ReadFailed { .. }
         | PlaybackCommand::DecodeFailed { .. }
-        | PlaybackCommand::AddToQueue(_)
-        | PlaybackCommand::AddNext(_)
-        | PlaybackCommand::InsertInQueue(_, _)
+        | PlaybackCommand::AddToQueue(..)
+        | PlaybackCommand::AddNext(..)
+        | PlaybackCommand::InsertInQueue(..)
         | PlaybackCommand::ClearUpNext(_)
         | PlaybackCommand::ClearPlayingFrom(_)
         | PlaybackCommand::ReevaluateSidePauseStaging
@@ -682,16 +687,16 @@ fn cancels_side_pause_countdown(command: &PlaybackCommand) -> bool {
         | PlaybackCommand::Previous
         | PlaybackCommand::Seek(_)
         | PlaybackCommand::SeekByRatio(_)
-        | PlaybackCommand::AddToQueue(_)
-        | PlaybackCommand::AddNext(_)
-        | PlaybackCommand::AddReleaseToQueue(_)
-        | PlaybackCommand::AddReleaseNext(_)
-        | PlaybackCommand::InsertInQueue(_, _)
+        | PlaybackCommand::AddToQueue(..)
+        | PlaybackCommand::AddNext(..)
+        | PlaybackCommand::AddReleaseToQueue(..)
+        | PlaybackCommand::AddReleaseNext(..)
+        | PlaybackCommand::InsertInQueue(..)
         | PlaybackCommand::RemoveFromQueue { .. }
         | PlaybackCommand::ReorderQueue { .. }
         | PlaybackCommand::ClearUpNext(_)
         | PlaybackCommand::ClearPlayingFrom(_)
-        | PlaybackCommand::SetShuffle(_)
+        | PlaybackCommand::SetShuffle(..)
         | PlaybackCommand::SkipTo { .. }
         | PlaybackCommand::PreviewPlay(_)
         | PlaybackCommand::PlayOn(_)
@@ -707,7 +712,7 @@ fn cancels_side_pause_countdown(command: &PlaybackCommand) -> bool {
         | PlaybackCommand::SetVolume(_)
         | PlaybackCommand::SetVolumeLive(_)
         | PlaybackCommand::SetMuted(_)
-        | PlaybackCommand::SetRepeatMode(_)
+        | PlaybackCommand::SetRepeatMode(..)
         | PlaybackCommand::ReevaluateSidePauseStaging
         | PlaybackCommand::PreviewStop
         | PlaybackCommand::PreviewTogglePause

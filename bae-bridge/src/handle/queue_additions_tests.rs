@@ -57,10 +57,12 @@ fn each_addition_reaches_the_app_once() {
         })
     };
 
-    handle.handle().add_to_queue(tracks.clone());
+    let add_to_queue = handle.handle().clone().add_to_queue(tracks.clone());
+    handle.handle().runtime.block_on(add_to_queue).expect("the tracks are added");
     assert_eq!(pull(), crate::types::BridgeQueueAddition { number: 1, tracks: 2 });
     for (number, track) in [(2, &tracks[0]), (3, &tracks[1])] {
-        handle.handle().add_next(vec![track.clone()]);
+        let add_next = handle.handle().clone().add_next(vec![track.clone()]);
+        handle.handle().runtime.block_on(add_next).expect("the track is added");
         assert_eq!(pull(), crate::types::BridgeQueueAddition { number, tracks: 1 });
     }
 

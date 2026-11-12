@@ -44,8 +44,10 @@ internal class QueueFailures(
     }
 
     /**
-     * Run a queue command that answers, as [run] does, and hand back its answer; null when it failed,
-     * which is shown, or when the command answered that it moved nothing.
+     * Run a queue command and hand back its answer; null when it failed, which is shown, or when the
+     * command answered that it moved nothing. A queue command fails only with a typed bridge error, so
+     * any other exception is a bug: reported, and shown as "Something went wrong". A success clears the
+     * last failure.
      */
     suspend fun <T : Any> answer(
         operation: String,
@@ -64,28 +66,6 @@ internal class QueueFailures(
             command = DisplayError(context.coreString("core.error.category.internal"))
             null
         }
-
-    /**
-     * Run a queue command; a failure is logged and shown, a success clears the
-     * last one. A queue command fails only with a typed bridge error, so any
-     * other exception is a bug: reported, and shown as "Something went wrong".
-     */
-    fun run(
-        operation: String,
-        action: () -> Unit,
-    ) {
-        command =
-            try {
-                action()
-                null
-            } catch (e: BridgeException) {
-                logger.error("$operation failed", e)
-                context.displayError(e)
-            } catch (e: Exception) {
-                bugs.reportShownInPlace(operation, e)
-                DisplayError(context.coreString("core.error.category.internal"))
-            }
-    }
 }
 
 @Composable

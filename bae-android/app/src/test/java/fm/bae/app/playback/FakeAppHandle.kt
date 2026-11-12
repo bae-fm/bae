@@ -290,19 +290,19 @@ internal open class FakeAppHandle(
 
     override fun subscribeAlbumSelection(): AlbumSelectionSubscription = unfaked("subscribeAlbumSelection")
 
-    override fun addNext(trackIds: List<String>) {
+    override suspend fun addNext(trackIds: List<String>) {
         unfaked("addNext")
     }
 
-    override fun addReleaseNext(releaseId: String) {
+    override suspend fun addReleaseNext(releaseId: String) {
         unfaked("addReleaseNext")
     }
 
-    override fun addReleaseToQueue(releaseId: String) {
+    override suspend fun addReleaseToQueue(releaseId: String) {
         unfaked("addReleaseToQueue")
     }
 
-    override fun addToQueue(trackIds: List<String>) {
+    override suspend fun addToQueue(trackIds: List<String>) {
         unfaked("addToQueue")
     }
 
@@ -352,7 +352,7 @@ internal open class FakeAppHandle(
 
     override suspend fun getDownloadCounts(): BridgeDownloadCounts = unfaked("getDownloadCounts")
 
-    override fun insertInQueue(
+    override suspend fun insertInQueue(
         trackIds: List<String>,
         index: UInt,
     ) {
@@ -462,11 +462,11 @@ internal open class FakeAppHandle(
         unfaked("setPrimaryRelease")
     }
 
-    override fun setRepeatMode(mode: BridgeRepeatMode) {
+    override suspend fun setRepeatMode(mode: BridgeRepeatMode) {
         unfaked("setRepeatMode")
     }
 
-    override fun setShuffle(on: Boolean) {
+    override suspend fun setShuffle(on: Boolean) {
         unfaked("setShuffle")
     }
 

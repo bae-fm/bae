@@ -176,6 +176,11 @@ impl SeededStore {
     pub(super) fn store(&self) -> &bae_store::Store {
         &self.db
     }
+
+    /// The directory holding the library's file.
+    pub(super) fn directory(&self) -> &std::path::Path {
+        self.home.path()
+    }
 }
 
 pub(super) async fn seeded_store(releases: &[(&str, &[&str])]) -> SeededStore {

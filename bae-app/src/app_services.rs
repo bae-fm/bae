@@ -682,13 +682,69 @@ impl AppServices {
     delegate_sync!(playback, playback_preview_stop => preview_stop() -> ());
     delegate_sync!(playback, playback_preview_toggle_pause => preview_toggle_pause() -> ());
     delegate_sync!(playback, playback_preview_seek_by_ratio => preview_seek_by_ratio(ratio: f64) -> ());
-    delegate_sync!(playback, playback_set_repeat_mode => set_repeat_mode(mode: bae_playback::RepeatMode) -> ());
-    delegate_sync!(playback, playback_set_shuffle => set_shuffle(on: bool) -> ());
-    delegate_sync!(playback, playback_add_to_queue => add_to_queue(track_ids: Vec<String>) -> ());
-    delegate_sync!(playback, playback_add_next => add_next(track_ids: Vec<String>) -> ());
-    delegate_sync!(playback, playback_add_release_to_queue => add_release_to_queue(release_id: String) -> ());
-    delegate_sync!(playback, playback_add_release_next => add_release_next(release_id: String) -> ());
-    delegate_sync!(playback, playback_insert_in_queue => insert_in_queue(track_ids: Vec<String>, index: usize) -> ());
+    /// Set how the queue repeats, sent at this call; the future answers once it is set or why it is not.
+    pub fn playback_set_repeat_mode(
+        &self,
+        mode: bae_playback::RepeatMode,
+    ) -> impl std::future::Future<Output = Result<(), bae_playback::QueueEditError>> + Send + 'static
+    {
+        self.inner.playback.set_repeat_mode(mode)
+    }
+
+    /// Shuffle the context lane or put it back in order, sent at this call; the future answers once it is done or why it is not.
+    pub fn playback_set_shuffle(
+        &self,
+        on: bool,
+    ) -> impl std::future::Future<Output = Result<(), bae_playback::QueueEditError>> + Send + 'static
+    {
+        self.inner.playback.set_shuffle(on)
+    }
+
+    /// Add tracks to the end of Up Next, sent at this call; the future answers once they are in or why they are not.
+    pub fn playback_add_to_queue(
+        &self,
+        track_ids: Vec<String>,
+    ) -> impl std::future::Future<Output = Result<(), bae_playback::QueueEditError>> + Send + 'static
+    {
+        self.inner.playback.add_to_queue(track_ids)
+    }
+
+    /// Add tracks to the front of Up Next, sent at this call; the future answers once they are in or why they are not.
+    pub fn playback_add_next(
+        &self,
+        track_ids: Vec<String>,
+    ) -> impl std::future::Future<Output = Result<(), bae_playback::QueueEditError>> + Send + 'static
+    {
+        self.inner.playback.add_next(track_ids)
+    }
+
+    /// Add a release's tracks to the end of Up Next, sent at this call; the future answers once they are in or why they are not.
+    pub fn playback_add_release_to_queue(
+        &self,
+        release_id: String,
+    ) -> impl std::future::Future<Output = Result<(), bae_playback::QueueEditError>> + Send + 'static
+    {
+        self.inner.playback.add_release_to_queue(release_id)
+    }
+
+    /// Add a release's tracks to the front of Up Next, sent at this call; the future answers once they are in or why they are not.
+    pub fn playback_add_release_next(
+        &self,
+        release_id: String,
+    ) -> impl std::future::Future<Output = Result<(), bae_playback::QueueEditError>> + Send + 'static
+    {
+        self.inner.playback.add_release_next(release_id)
+    }
+
+    /// Insert tracks into Up Next before the entry at `index`, sent at this call; the future answers once they are in or why they are not.
+    pub fn playback_insert_in_queue(
+        &self,
+        track_ids: Vec<String>,
+        index: usize,
+    ) -> impl std::future::Future<Output = Result<(), bae_playback::QueueEditError>> + Send + 'static
+    {
+        self.inner.playback.insert_in_queue(track_ids, index)
+    }
 
     /// Remove a queue entry, sent at this call, in order with the playback
     /// commands sent before and after it; an entry no longer queued is

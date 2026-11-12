@@ -391,7 +391,11 @@ async fn test_cue_ape_auto_advance_no_replay() {
     // NOT mint a new stream — track 2 plays through the seek stream below, so
     // that single buffer holds track 1's tail followed by track 2.
     let _track1_play = fixture.next_capture_stream().await;
-    fixture.playback_handle.add_to_queue(vec![track2_id.clone()]);
+    fixture
+        .playback_handle
+        .add_to_queue(vec![track2_id.clone()])
+        .await
+        .expect("add_to_queue succeeds");
 
     // Wait for track 1 to start
     bae_playback::test_capture::wait_until_playing(&mut fixture.progress_rx, &track1_id).await;

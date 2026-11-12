@@ -174,7 +174,7 @@ async fn assert_preload_refreshed_after_queue_mutation<F>(
 ) where
     F: FnOnce(&bae_playback::PlaybackHandle, &[bae_playback::QueueEntry]),
 {
-    fixture.playback_handle.add_to_queue(initial_queue);
+    fixture.playback_handle.add_to_queue(initial_queue).await.expect("add_to_queue succeeds");
     fixture.playback_handle.play(track0.to_string());
 
     // `play` refills the context lane from the track's release, minting fresh
@@ -229,7 +229,7 @@ async fn test_add_next_displaces_preloaded_track() {
             vec![track1],
             &track0,
             &track2,
-            move |h, _entries| h.add_next(vec![t2]),
+            move |h, _entries| drop(h.add_next(vec![t2])), // the command is sent at the call; the assertions read its effect
         )
         .await;
     })
@@ -275,7 +275,7 @@ async fn test_insert_in_queue_displaces_preloaded_track() {
             vec![track1],
             &track0,
             &track2,
-            move |h, _entries| h.insert_in_queue(vec![t2], 0),
+            move |h, _entries| drop(h.insert_in_queue(vec![t2], 0)), // the command is sent at the call; the assertions read its effect
         )
         .await;
     })
@@ -352,7 +352,7 @@ async fn set_shuffle_permutes_and_unpermutes_the_context_lane_in_place() {
 
         // Shuffle on re-materializes the playing context into a shuffled order —
         // not merely a persisted seed.
-        fixture.playback_handle.set_shuffle(true);
+        fixture.playback_handle.set_shuffle(true).await.expect("set_shuffle succeeds");
         let shuffled = fixture.playback_handle.queue_value().await.expect("queue value");
         assert!(
             shuffled.context.as_ref().is_some_and(|c| c.shuffled),
@@ -361,7 +361,7 @@ async fn set_shuffle_permutes_and_unpermutes_the_context_lane_in_place() {
 
         // Shuffle off unpermutes the lane: the not-yet-played tail is the two tracks
         // after the current one, in release order.
-        fixture.playback_handle.set_shuffle(false);
+        fixture.playback_handle.set_shuffle(false).await.expect("set_shuffle succeeds");
         let sequential = fixture.playback_handle.queue_value().await.expect("queue value");
         let ctx = sequential.context.expect("still a playing context");
         assert!(!ctx.shuffled, "SetShuffle(false) puts the lane back in sequential order");
@@ -420,7 +420,7 @@ async fn shuffling_makes_the_next_track_follow_the_reshuffled_queue_front() {
     // read the new front off the projection, the same way a UI learns it.
     let mut shuffled_next = None;
     for _ in 0..32 {
-        fixture.playback_handle.set_shuffle(true);
+        fixture.playback_handle.set_shuffle(true).await.expect("set_shuffle succeeds");
         let front = fixture
             .playback_handle
             .queue_upcoming()
@@ -434,7 +434,7 @@ async fn shuffling_makes_the_next_track_follow_the_reshuffled_queue_front() {
             shuffled_next = Some(front);
             break;
         }
-        fixture.playback_handle.set_shuffle(false);
+        fixture.playback_handle.set_shuffle(false).await.expect("set_shuffle succeeds");
     }
     let shuffled_next =
         shuffled_next.expect("a shuffle that moves a different track to the lane's front");
@@ -514,7 +514,7 @@ async fn play_tracks_tells_its_caller_which_tracks_it_left_out() {
 async fn a_reorder_answers_its_lanes_version_or_that_it_moved_nothing() {
     with_fixture(PlaybackTestFixture::new(), async |fixture| {
         let handle = &fixture.playback_handle;
-        handle.add_to_queue(fixture.track_ids[..3].to_vec());
+        handle.add_to_queue(fixture.track_ids[..3].to_vec()).await.expect("add_to_queue succeeds");
         let entries = handle.queue_value().await.expect("queue value").manual;
         assert_eq!(entries.len(), 3);
         let id = |i: usize| entries[i].entry_id.parse::<bae_playback::QueueEntryId>().unwrap();
@@ -548,7 +548,7 @@ async fn a_reorder_answers_its_lanes_version_or_that_it_moved_nothing() {
 async fn skipping_to_or_removing_an_entry_no_longer_queued_changes_nothing() {
     with_fixture(PlaybackTestFixture::new(), async |fixture| {
         let handle = &fixture.playback_handle;
-        handle.add_to_queue(fixture.track_ids[..3].to_vec());
+        handle.add_to_queue(fixture.track_ids[..3].to_vec()).await.expect("add_to_queue succeeds");
         let entries = handle.queue_value().await.expect("queue value").manual;
         assert_eq!(entries.len(), 3);
         let id = |i: usize| entries[i].entry_id.parse::<bae_playback::QueueEntryId>().unwrap();
@@ -589,7 +589,11 @@ async fn set_repeat_mode_applies_and_reports_each_mode() {
     with_fixture(PlaybackTestFixture::new(), async |fixture| {
         let values = playback_values(fixture);
         for expected in [RepeatMode::Context, RepeatMode::Track, RepeatMode::Off] {
-            fixture.playback_handle.set_repeat_mode(expected);
+            fixture
+                .playback_handle
+                .set_repeat_mode(expected)
+                .await
+                .expect("set_repeat_mode succeeds");
             tokio::time::timeout(HANG_GUARD, async {
                 loop {
                     let value = values.next().await.expect("the playback values resolve");
@@ -683,7 +687,7 @@ async fn clear_up_next_empties_the_manual_lane_keeping_the_context() {
             )
             .await
             .expect("the release starts playing");
-        fixture.playback_handle.add_to_queue(vec![second]);
+        fixture.playback_handle.add_to_queue(vec![second]).await.expect("add_to_queue succeeds");
         let before = fixture.playback_handle.queue_value().await.expect("queue value");
         assert!(!before.manual.is_empty(), "the manual lane has the added track");
 
@@ -710,7 +714,11 @@ async fn clear_playing_from_drops_the_context_while_the_track_keeps_playing() {
             )
             .await
             .expect("the release starts playing");
-        fixture.playback_handle.add_to_queue(vec![queued.clone()]);
+        fixture
+            .playback_handle
+            .add_to_queue(vec![queued.clone()])
+            .await
+            .expect("add_to_queue succeeds");
 
         fixture.playback_handle.clear_playing_from().await.expect("the context lane clears");
 
@@ -746,7 +754,11 @@ async fn add_release_to_queue_appends_its_tracks_to_the_manual_lane() {
             .await
             .expect("the release starts playing");
         let release_id = current_release_id(&fixture.playback_handle).await;
-        fixture.playback_handle.add_release_to_queue(release_id);
+        fixture
+            .playback_handle
+            .add_release_to_queue(release_id)
+            .await
+            .expect("add_release_to_queue succeeds");
         let proj = fixture.playback_handle.queue_value().await.expect("queue value");
         assert_eq!(
             proj.manual.len(),
@@ -770,9 +782,17 @@ async fn add_release_next_puts_its_tracks_at_the_front_of_the_manual_lane() {
             .await
             .expect("the release starts playing");
         // A marker already in the manual lane: AddReleaseNext must land before it.
-        fixture.playback_handle.add_to_queue(vec![second.clone()]);
+        fixture
+            .playback_handle
+            .add_to_queue(vec![second.clone()])
+            .await
+            .expect("add_to_queue succeeds");
         let release_id = current_release_id(&fixture.playback_handle).await;
-        fixture.playback_handle.add_release_next(release_id);
+        fixture
+            .playback_handle
+            .add_release_next(release_id)
+            .await
+            .expect("add_release_next succeeds");
         let proj = fixture.playback_handle.queue_value().await.expect("queue value");
         assert_eq!(proj.manual.len(), 4, "three release tracks plus the marker");
         assert_eq!(
@@ -944,7 +964,7 @@ async fn tracks_deleted_clears_a_preloaded_next_then_stops_on_the_current() {
     .expect("release A starts playing");
 
     // Queue B's first track as the preloaded next.
-    handle.add_next(vec![b_first.clone()]);
+    handle.add_next(vec![b_first.clone()]).await.expect("add_next succeeds");
     let queued = handle.queue_value().await.expect("queue value");
     assert!(
         queued.manual.iter().any(|e| e.track_id == b_first),

@@ -166,7 +166,11 @@ async fn repeat_track_does_not_side_pause_at_boundary() {
             let repeated_track_id = fixture.track_ids[1].clone();
 
             fixture.play_track_and_wait(&repeated_track_id).await;
-            fixture.playback_handle.set_repeat_mode(RepeatMode::Track);
+            fixture
+                .playback_handle
+                .set_repeat_mode(RepeatMode::Track)
+                .await
+                .expect("set_repeat_mode succeeds");
 
             fixture.play_out_from_near_the_end().await;
 

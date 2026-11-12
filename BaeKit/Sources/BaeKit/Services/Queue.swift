@@ -83,11 +83,31 @@ public final class Queue: Sendable, Observable {
         self.subscribeUpcoming = subscribeUpcoming
     }
 
-    public convenience init(handle: any AppHandleProtocol) {
+    /// Queue commands over `handle`. An add, an insert or a shuffle has no
+    /// caller waiting on it: why one failed goes to `show`.
+    public convenience init(
+        handle: any AppHandleProtocol,
+        show: @escaping @MainActor @Sendable (DisplayError) -> Void
+    ) {
         self.init(
-            addToQueue: { handle.addToQueue(trackIds: $0) },
-            addNext: { handle.addNext(trackIds: $0) },
-            insertInQueue: { handle.insertInQueue(trackIds: $0, index: $1) },
+            addToQueue: { trackIds in
+                answerCommand(show) {
+                    try await handle.addToQueue(trackIds: trackIds)
+                }
+            },
+            addNext: { trackIds in
+                answerCommand(show) {
+                    try await handle.addNext(trackIds: trackIds)
+                }
+            },
+            insertInQueue: { trackIds, index in
+                answerCommand(show) {
+                    try await handle.insertInQueue(
+                        trackIds: trackIds,
+                        index: index
+                    )
+                }
+            },
             removeEntry: { try await handle.removeEntry(entryId: $0) },
             clearUpNext: { try await handle.clearUpNext() },
             clearPlayingFrom: { try await handle.clearPlayingFrom() },
@@ -95,7 +115,9 @@ public final class Queue: Sendable, Observable {
                 try await handle.reorderEntry(entryId: $0, beforeEntryId: $1)
             },
             skipToEntry: { try await handle.skipToEntry(entryId: $0) },
-            setShuffle: { handle.setShuffle(on: $0) },
+            setShuffle: { on in
+                answerCommand(show) { try await handle.setShuffle(on: on) }
+            },
             subscribeUpcoming: {
                 let subscription = handle.subscribeQueueUpcoming()
                 return QueueUpcomingQuery(

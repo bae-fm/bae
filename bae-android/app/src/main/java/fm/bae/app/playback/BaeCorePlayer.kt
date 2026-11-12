@@ -763,8 +763,17 @@ class BaeCorePlayer(
                 Player.REPEAT_MODE_ALL -> BridgeRepeatMode.CONTEXT
                 else -> BridgeRepeatMode.OFF
             }
-        appHandle.setRepeatMode(mode)
-        return Futures.immediateVoidFuture()
+        val set = SettableFuture.create<Unit>()
+        scope.launch(CoroutineName("setRepeatMode $mode")) {
+            try {
+                appHandle.setRepeatMode(mode)
+                set.set(Unit)
+            } catch (e: BridgeException) {
+                logger.error("setting the repeat mode to $mode failed", e)
+                set.setException(e)
+            }
+        }
+        return set
     }
 
     override fun handleRelease(): ListenableFuture<*> {

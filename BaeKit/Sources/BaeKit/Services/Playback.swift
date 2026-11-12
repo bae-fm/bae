@@ -101,7 +101,7 @@ public final class Playback: Sendable, Observable {
     }
 
     /// Transport over `handle`. A play's outcome or failure that has a line
-    /// goes to `show`.
+    /// goes to `show`, as does why a repeat mode change failed.
     public convenience init(
         handle: any AppHandleProtocol,
         show: @escaping @MainActor @Sendable (DisplayError) -> Void
@@ -116,7 +116,11 @@ public final class Playback: Sendable, Observable {
             setVolume: { handle.setVolume(volume: $0) },
             setVolumeLive: { handle.setVolumeLive(volume: $0) },
             setMuted: { handle.setMuted(muted: $0) },
-            setRepeatMode: { handle.setRepeatMode(mode: $0) },
+            setRepeatMode: { mode in
+                answerCommand(show) {
+                    try await handle.setRepeatMode(mode: mode)
+                }
+            },
             playRelease: { releaseId, startTrackId, shuffle in
                 Self.answer(show) {
                     try await handle.playRelease(

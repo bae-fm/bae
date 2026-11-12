@@ -59,7 +59,6 @@ import fm.bae.app.ui.rememberScreenScope
 import fm.bae.fastvalues.LatestSource
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeRepeatMode
-import uniffi.bae_bridge.bridgeNextRepeatMode
 
 private val logger = BaeLogger("bae.AndroidFullPlayerContainer")
 
@@ -161,7 +160,7 @@ private fun ExpandedPlayer(
         secondaryControls = {
             ExpandedSecondaryControls(
                 repeatMode = repeatMode,
-                onCycleRepeat = { session.appHandle.setRepeatMode(bridgeNextRepeatMode(repeatMode)) },
+                onCycleRepeat = { cycleRepeatMode(session, repeatMode) },
             )
         },
         volumeRow = {

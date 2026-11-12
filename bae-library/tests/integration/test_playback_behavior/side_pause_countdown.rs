@@ -215,7 +215,11 @@ async fn a_queue_edit_during_the_countdown_stops_it() {
         async |fixture| {
             fixture.pause_after_side_a().await;
 
-            fixture.playback_handle.add_to_queue(vec![fixture.track_ids[0].clone()]);
+            fixture
+                .playback_handle
+                .add_to_queue(vec![fixture.track_ids[0].clone()])
+                .await
+                .expect("add_to_queue succeeds");
             fixture.wait_for_countdown_cancelled().await;
 
             fixture.assert_next_side_waits(None, "a queue edit stops the countdown").await;

@@ -109,7 +109,11 @@ async fn cd_manual_next_and_repeat_track_do_not_pause_at_disc_boundary() {
                 let second = fixture.track_ids[1].clone();
                 fixture.play_track_and_wait(&first).await;
                 let expected = if repeat_track {
-                    fixture.playback_handle.set_repeat_mode(RepeatMode::Track);
+                    fixture
+                        .playback_handle
+                        .set_repeat_mode(RepeatMode::Track)
+                        .await
+                        .expect("set_repeat_mode succeeds");
                     fixture.play_out_from_near_the_end().await;
                     &first
                 } else {

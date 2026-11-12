@@ -295,40 +295,6 @@ forward! { sync this => {
     fn preview_seek_by_ratio(ratio: f64) {
         this.services.playback_preview_seek_by_ratio(ratio);
     }
-
-    fn set_repeat_mode(mode: BridgeRepeatMode) {
-        this.services.playback_set_repeat_mode(mode.into_core());
-    }
-
-    fn set_shuffle(on: bool) {
-        this.services.playback_set_shuffle(on);
-    }
-
-    // =========================================================================
-    // Queue
-    // =========================================================================
-
-    fn add_to_queue(track_ids: Vec<String>) {
-        this.services.playback_add_to_queue(track_ids);
-    }
-
-    fn add_next(track_ids: Vec<String>) {
-        this.services.playback_add_next(track_ids);
-    }
-
-    fn add_release_to_queue(release_id: String) {
-        this.services.playback_add_release_to_queue(release_id);
-    }
-
-    fn add_release_next(release_id: String) {
-        this.services.playback_add_release_next(release_id);
-    }
-
-    fn insert_in_queue(track_ids: Vec<String>, index: u32) {
-        this.services
-            .playback_insert_in_queue(track_ids, index as usize);
-    }
-
 } }
 
 #[uniffi::export(async_runtime = "tokio", cancellable)]
@@ -352,6 +318,80 @@ impl AppHandle {
         let answer = self.services.playback_reorder_entry(entry_id, before);
         self.run_exported("AppHandle.reorder_entry", move |_| async move { Ok(answer.await?) })
             .await
+    }
+
+    /// Add tracks to the end of Up Next, answering once they are in. The
+    /// command is sent before the call first waits, so commands sent one after
+    /// another reach the queue in that order.
+    pub async fn add_to_queue(
+        self: std::sync::Arc<Self>,
+        track_ids: Vec<String>,
+    ) -> Result<(), BridgeError> {
+        let answer = self.services.playback_add_to_queue(track_ids);
+        self.run_exported("AppHandle.add_to_queue", move |_| async move { Ok(answer.await?) }).await
+    }
+
+    /// Add tracks to the front of Up Next, answering once they are in.
+    pub async fn add_next(
+        self: std::sync::Arc<Self>,
+        track_ids: Vec<String>,
+    ) -> Result<(), BridgeError> {
+        let answer = self.services.playback_add_next(track_ids);
+        self.run_exported("AppHandle.add_next", move |_| async move { Ok(answer.await?) }).await
+    }
+
+    /// Add a release's tracks to the end of Up Next, answering once they are
+    /// in.
+    pub async fn add_release_to_queue(
+        self: std::sync::Arc<Self>,
+        release_id: String,
+    ) -> Result<(), BridgeError> {
+        let answer = self.services.playback_add_release_to_queue(release_id);
+        self.run_exported(
+            "AppHandle.add_release_to_queue",
+            move |_| async move { Ok(answer.await?) },
+        )
+        .await
+    }
+
+    /// Add a release's tracks to the front of Up Next, answering once they
+    /// are in.
+    pub async fn add_release_next(
+        self: std::sync::Arc<Self>,
+        release_id: String,
+    ) -> Result<(), BridgeError> {
+        let answer = self.services.playback_add_release_next(release_id);
+        self.run_exported("AppHandle.add_release_next", move |_| async move { Ok(answer.await?) })
+            .await
+    }
+
+    /// Insert tracks into Up Next before the entry at `index`, answering once
+    /// they are in.
+    pub async fn insert_in_queue(
+        self: std::sync::Arc<Self>,
+        track_ids: Vec<String>,
+        index: u32,
+    ) -> Result<(), BridgeError> {
+        let answer = self.services.playback_insert_in_queue(track_ids, index as usize);
+        self.run_exported("AppHandle.insert_in_queue", move |_| async move { Ok(answer.await?) })
+            .await
+    }
+
+    /// Set how the queue repeats, answering once it is set.
+    pub async fn set_repeat_mode(
+        self: std::sync::Arc<Self>,
+        mode: BridgeRepeatMode,
+    ) -> Result<(), BridgeError> {
+        let answer = self.services.playback_set_repeat_mode(mode.into_core());
+        self.run_exported("AppHandle.set_repeat_mode", move |_| async move { Ok(answer.await?) })
+            .await
+    }
+
+    /// Shuffle the context lane or put it back in order, answering once it is
+    /// done.
+    pub async fn set_shuffle(self: std::sync::Arc<Self>, on: bool) -> Result<(), BridgeError> {
+        let answer = self.services.playback_set_shuffle(on);
+        self.run_exported("AppHandle.set_shuffle", move |_| async move { Ok(answer.await?) }).await
     }
 
     /// Remove the queue entry `entry_id`. An entry no longer queued is already

@@ -53,10 +53,9 @@ pub enum PlayError {
 /// Where a play command's answer goes.
 pub(crate) type PlayReply = oneshot::Sender<Result<PlayOutcome, PlayError>>;
 
-/// Why a queue command that names an entry, or empties a part of the queue,
-/// failed. A command naming an entry the queue no longer holds is not a
-/// failure: the queue changed under the screen that asked, which shows the
-/// queue as it now is.
+/// Why a queue command failed. A command naming an entry the queue no longer
+/// holds is not a failure: the queue changed under the screen that asked, which
+/// shows the queue as it now is.
 #[derive(Debug, thiserror::Error)]
 pub enum QueueEditError {
     #[error("couldn't change the queue: {0}")]
@@ -164,11 +163,16 @@ pub(crate) enum PlaybackCommand {
     /// Move the output to this level while a slider is dragged: nothing is
     /// announced or stored until the drag's final `SetVolume`.
     SetVolumeLive(crate::Volume),
-    AddToQueue(Vec<String>),
-    AddNext(Vec<String>),
-    AddReleaseToQueue(String),
-    AddReleaseNext(String),
-    InsertInQueue(Vec<String>, usize),
+    /// Add tracks to the end of Up Next.
+    AddToQueue(Vec<String>, QueueEditReply<()>),
+    /// Add tracks to the front of Up Next.
+    AddNext(Vec<String>, QueueEditReply<()>),
+    /// Add a release's tracks to the end of Up Next.
+    AddReleaseToQueue(String, QueueEditReply<()>),
+    /// Add a release's tracks to the front of Up Next.
+    AddReleaseNext(String, QueueEditReply<()>),
+    /// Insert tracks into Up Next before the entry at the index.
+    InsertInQueue(Vec<String>, usize, QueueEditReply<()>),
     /// Remove the queue row with this id.
     RemoveFromQueue {
         entry_id: QueueEntryId,
@@ -185,11 +189,11 @@ pub(crate) enum PlaybackCommand {
     /// Drop the context lane. The playing track keeps playing; when it ends, Up
     /// Next drains and then playback stops.
     ClearPlayingFrom(QueueEditReply<()>),
-    SetRepeatMode(RepeatMode),
+    SetRepeatMode(RepeatMode, QueueEditReply<()>),
     /// Shuffle the context lane's upcoming rows with a new seed, or put them back
     /// in the order they had when shuffle turned on. The current track keeps
     /// playing.
-    SetShuffle(bool),
+    SetShuffle(bool, QueueEditReply<()>),
     /// Sent when `pause_between_sides` turns on: staging is decided at preload
     /// time, so a next track already staged for gapless playback is held here if
     /// its boundary needs a pause.
@@ -564,20 +568,52 @@ impl PlaybackHandle {
         self.dispatch(PlaybackCommand::GetQueue(tx));
         rx.await.map_err(|e| format!("playback loop dropped the queue response channel: {e}"))?
     }
-    pub fn add_to_queue(&self, track_ids: Vec<String>) {
-        self.dispatch(PlaybackCommand::AddToQueue(track_ids));
+    /// Add tracks to the end of Up Next, answering once they are in or why
+    /// they are not. The command is sent at the call, in order with the
+    /// commands sent before and after it.
+    pub fn add_to_queue(
+        &self,
+        track_ids: Vec<String>,
+    ) -> impl std::future::Future<Output = Result<(), QueueEditError>> + Send + 'static {
+        let (reply, answer) = oneshot::channel();
+        self.edit_queue(PlaybackCommand::AddToQueue(track_ids, reply), answer)
     }
-    pub fn add_next(&self, track_ids: Vec<String>) {
-        self.dispatch(PlaybackCommand::AddNext(track_ids));
+    /// Add tracks to the front of Up Next, answering once they are in or why
+    /// they are not.
+    pub fn add_next(
+        &self,
+        track_ids: Vec<String>,
+    ) -> impl std::future::Future<Output = Result<(), QueueEditError>> + Send + 'static {
+        let (reply, answer) = oneshot::channel();
+        self.edit_queue(PlaybackCommand::AddNext(track_ids, reply), answer)
     }
-    pub fn add_release_to_queue(&self, release_id: String) {
-        self.dispatch(PlaybackCommand::AddReleaseToQueue(release_id));
+    /// Add a release's tracks to the end of Up Next, answering once they are
+    /// in or why they are not.
+    pub fn add_release_to_queue(
+        &self,
+        release_id: String,
+    ) -> impl std::future::Future<Output = Result<(), QueueEditError>> + Send + 'static {
+        let (reply, answer) = oneshot::channel();
+        self.edit_queue(PlaybackCommand::AddReleaseToQueue(release_id, reply), answer)
     }
-    pub fn add_release_next(&self, release_id: String) {
-        self.dispatch(PlaybackCommand::AddReleaseNext(release_id));
+    /// Add a release's tracks to the front of Up Next, answering once they are
+    /// in or why they are not.
+    pub fn add_release_next(
+        &self,
+        release_id: String,
+    ) -> impl std::future::Future<Output = Result<(), QueueEditError>> + Send + 'static {
+        let (reply, answer) = oneshot::channel();
+        self.edit_queue(PlaybackCommand::AddReleaseNext(release_id, reply), answer)
     }
-    pub fn insert_in_queue(&self, track_ids: Vec<String>, index: usize) {
-        self.dispatch(PlaybackCommand::InsertInQueue(track_ids, index));
+    /// Insert tracks into Up Next before the entry at `index`, answering once
+    /// they are in or why they are not.
+    pub fn insert_in_queue(
+        &self,
+        track_ids: Vec<String>,
+        index: usize,
+    ) -> impl std::future::Future<Output = Result<(), QueueEditError>> + Send + 'static {
+        let (reply, answer) = oneshot::channel();
+        self.edit_queue(PlaybackCommand::InsertInQueue(track_ids, index, reply), answer)
     }
     /// Remove the queue row with this id. The command is sent at the call, in
     /// order with the commands sent before and after it; the answer is the
@@ -634,12 +670,23 @@ impl PlaybackHandle {
             answer.await.map_err(QueueEditError::Stopped)?
         }
     }
-    pub fn set_repeat_mode(&self, mode: RepeatMode) {
-        self.dispatch(PlaybackCommand::SetRepeatMode(mode));
+    /// Set how the queue repeats, answering once it is set or why it is not.
+    pub fn set_repeat_mode(
+        &self,
+        mode: RepeatMode,
+    ) -> impl std::future::Future<Output = Result<(), QueueEditError>> + Send + 'static {
+        let (reply, answer) = oneshot::channel();
+        self.edit_queue(PlaybackCommand::SetRepeatMode(mode, reply), answer)
     }
 
-    pub fn set_shuffle(&self, on: bool) {
-        self.dispatch(PlaybackCommand::SetShuffle(on));
+    /// Shuffle the context lane or put it back in order, answering once it is
+    /// done or why it is not.
+    pub fn set_shuffle(
+        &self,
+        on: bool,
+    ) -> impl std::future::Future<Output = Result<(), QueueEditError>> + Send + 'static {
+        let (reply, answer) = oneshot::channel();
+        self.edit_queue(PlaybackCommand::SetShuffle(on, reply), answer)
     }
 
     /// Save playback state, stop the service, and join its thread so the store

@@ -82,7 +82,7 @@ class RepeatModeMappingTest {
     private class RepeatModeRecordingHandle : FakeAppHandle() {
         val repeatModes = mutableListOf<BridgeRepeatMode>()
 
-        override fun setRepeatMode(mode: BridgeRepeatMode) {
+        override suspend fun setRepeatMode(mode: BridgeRepeatMode) {
             repeatModes += mode
         }
     }

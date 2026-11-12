@@ -94,7 +94,10 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
             handle: appHandle,
             show: { uiStore.showError($0) }
         )
-        let queue = Queue(handle: appHandle)
+        let queue = Queue(
+            handle: appHandle,
+            show: { uiStore.showError($0) }
+        )
         let imageStore = ImageStore(handle: appHandle)
         let sync = Sync(handle: appHandle, deviceName: deviceName, host: host)
         let downloads = Downloads(handle: appHandle)

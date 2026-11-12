@@ -321,6 +321,10 @@ private fun ContextSectionLabel(
         clearDescription = stringResource(R.string.queue_clear_playing_from),
         onClear = { scope.launch { failures.answer("clearPlayingFrom") { session.appHandle.clearPlayingFrom() } } },
         shuffled = shuffled,
-        onShuffle = { failures.run("setShuffle ${!shuffled}") { session.appHandle.setShuffle(!shuffled) } },
+        onShuffle = {
+            scope.launch {
+                failures.answer("setShuffle ${!shuffled}") { session.appHandle.setShuffle(!shuffled) }
+            }
+        },
     )
 }

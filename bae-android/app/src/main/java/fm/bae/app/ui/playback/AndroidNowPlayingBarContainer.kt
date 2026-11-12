@@ -253,9 +253,8 @@ private fun NowPlayingTransportButtons(
         onNext = { player.seekToNextMediaItem() },
         castButton = { CastButton(session) },
         onOpenQueue = onOpenQueue,
-        // `setRepeatMode` does not throw; the new mode arrives through the
-        // playback subscription.
-        onCycleRepeat = { session.appHandle.setRepeatMode(bridgeNextRepeatMode(repeatMode)) },
+        // The new mode arrives through the playback subscription; a failure shows as a message.
+        onCycleRepeat = { cycleRepeatMode(session, repeatMode) },
     )
 }
 
@@ -276,5 +275,15 @@ private fun SidePauseAlertPreview() {
             onPlay = {},
             onClose = {},
         )
+    }
+}
+
+/** Set the repeat mode that follows [repeatMode]; a failure shows as a session message. */
+internal fun cycleRepeatMode(
+    session: OpenLibrary,
+    repeatMode: BridgeRepeatMode,
+) {
+    session.messages.perform("setRepeatMode") {
+        session.appHandle.setRepeatMode(bridgeNextRepeatMode(repeatMode))
     }
 }

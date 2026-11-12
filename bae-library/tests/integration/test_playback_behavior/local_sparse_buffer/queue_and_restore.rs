@@ -348,7 +348,7 @@ async fn assert_preload_refreshed_over_sparse_buffer<F>(
 ) where
     F: FnOnce(&bae_playback::PlaybackHandle, &[bae_playback::QueueEntry]),
 {
-    playback.playback_handle.add_to_queue(initial_queue);
+    playback.playback_handle.add_to_queue(initial_queue).await.expect("add_to_queue succeeds");
     playback.playback_handle.play(track0.to_string());
 
     let (played, entries) =
@@ -398,7 +398,7 @@ async fn add_next_displaces_preloaded_track_over_sparse_buffer() {
             vec![track1],
             &track0,
             &track2,
-            move |h, _entries| h.add_next(vec![t2]),
+            move |h, _entries| drop(h.add_next(vec![t2])), // the command is sent at the call; the assertions read its effect
         )
         .await;
     })
@@ -469,7 +469,7 @@ async fn insert_in_queue_displaces_preloaded_track_over_sparse_buffer() {
             vec![track1],
             &track0,
             &track2,
-            move |h, _entries| h.insert_in_queue(vec![t2], 0),
+            move |h, _entries| drop(h.insert_in_queue(vec![t2], 0)), // the command is sent at the call; the assertions read its effect
         )
         .await;
     })
@@ -526,14 +526,14 @@ async fn set_shuffle_rearranges_the_context_lane_over_sparse_buffer() {
         let first = playback.track_ids[0].clone();
         playback.play_and_wait(&first).await;
 
-        playback.playback_handle.set_shuffle(true);
+        playback.playback_handle.set_shuffle(true).await.expect("set_shuffle succeeds");
         let shuffled = playback.playback_handle.queue_value().await.expect("queue value");
         assert!(
             shuffled.context.as_ref().is_some_and(|c| c.shuffled),
             "SetShuffle(true) puts the lane in shuffled order"
         );
 
-        playback.playback_handle.set_shuffle(false);
+        playback.playback_handle.set_shuffle(false).await.expect("set_shuffle succeeds");
         let sequential = playback.playback_handle.queue_value().await.expect("queue value");
         assert!(
             !sequential.context.expect("still a playing context").shuffled,

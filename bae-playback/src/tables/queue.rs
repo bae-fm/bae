@@ -849,6 +849,20 @@ impl PlaybackQueueTables {
     }
 }
 
+/// Plant damage for a test: every write of the queue row of the library
+/// stored under `directory` fails, as a full disk fails it. The queue row
+/// counts every change to either lane and holds the repeat mode and the
+/// context lane's cursor, so each queue command that writes fails.
+#[cfg(any(test, feature = "test-utils"))]
+pub fn fail_queue_writes_for_test(directory: &std::path::Path) {
+    bae_store::test_fixtures::planted_damage::plant_in_library_file(
+        directory,
+        "playback_queue",
+        "CREATE TRIGGER fail_playback_queue_write BEFORE UPDATE ON playback_queue \
+         BEGIN SELECT RAISE(ABORT, 'the disk is full'); END;",
+    );
+}
+
 #[cfg(test)]
 #[path = "queue_tests.rs"]
 mod tests;

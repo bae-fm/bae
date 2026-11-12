@@ -14,16 +14,50 @@ impl PlaybackService {
     }
 
     /// Tracks went into Up Next, or the write failed.
-    pub(super) async fn queue_added(&mut self, added: Result<usize, bae_store::DbError>) {
+    pub(super) async fn queue_added(
+        &mut self,
+        added: Result<usize, bae_store::DbError>,
+    ) -> Result<(), QueueEditError> {
         match added {
             // The write counted the addition on the queue row, which the
             // screens confirming it read.
-            Ok(_) => self.on_queue_mutated().await,
-            Err(e) => {
-                error!("couldn't add tracks to the queue: {e}");
-                self.telemetry_playback_failed(PlaybackOperation::QueueAdd);
+            Ok(_) => {
+                self.on_queue_mutated().await;
+                Ok(())
             }
+            Err(e) => Err(self.queue_add_failed("add tracks to the queue", e)),
         }
+    }
+
+    /// Put a release's tracks into Up Next at `place`. A release with no
+    /// tracks has nothing to put in.
+    pub(super) async fn add_release(
+        &mut self,
+        release_id: &str,
+        place: ManualPlace,
+    ) -> Result<(), QueueEditError> {
+        let track_ids = match self.records.get_track_ids_for_release(release_id).await {
+            Ok(track_ids) => track_ids,
+            Err(e) => {
+                return Err(self.queue_add_failed(&format!("read release {release_id}'s tracks"), e))
+            }
+        };
+        if track_ids.is_empty() {
+            return Ok(());
+        }
+        let added = match place {
+            ManualPlace::Front => self.playback_queue.add_next(track_ids).await,
+            ManualPlace::End => self.playback_queue.add_to_queue(track_ids).await,
+            ManualPlace::At(index) => self.playback_queue.insert_at(index, track_ids).await,
+        };
+        self.queue_added(added).await
+    }
+
+    /// An add to Up Next failed: the queue is as it was.
+    fn queue_add_failed(&self, doing: &str, error: bae_store::DbError) -> QueueEditError {
+        error!("couldn't {doing}: {error}");
+        self.telemetry_playback_failed(PlaybackOperation::QueueAdd);
+        QueueEditError::Queue(error)
     }
 
     /// A play filled the context lane: play its first track.
@@ -51,19 +85,27 @@ impl PlaybackService {
             Ok(next) => next,
             Err(e) => {
                 self.queue_failed("move the queue on", &e);
+                emit_progress(
+                    &self.progress_tx,
+                    PlaybackProgress::PlaybackError { reason: PlaybackError::from(e).ui_reason() },
+                );
                 NextEntry::Stop
             }
         }
     }
 
-    pub(super) async fn apply_repeat_mode(&mut self, mode: RepeatMode) {
+    pub(super) async fn apply_repeat_mode(
+        &mut self,
+        mode: RepeatMode,
+    ) -> Result<(), QueueEditError> {
         if self.playback_queue.repeat_mode() == mode {
-            return;
+            return Ok(());
         }
         if let Err(e) = self.playback_queue.set_repeat_mode(mode).await {
             self.queue_failed("set the repeat mode", &e);
-            return;
+            return Err(QueueEditError::Queue(e));
         }
         self.persist_playback_state().await;
+        Ok(())
     }
 }

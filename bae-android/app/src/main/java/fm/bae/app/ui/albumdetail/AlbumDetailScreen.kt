@@ -68,9 +68,6 @@ import fm.bae.app.ui.library.AndroidDetailScreen
 import fm.bae.app.ui.playback.AndroidNowPlayingBarContainer
 import fm.bae.app.ui.rememberScreenScope
 import fm.bae.app.yearText
-import kotlinx.coroutines.CoroutineName
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeRelease
@@ -159,7 +156,7 @@ fun AlbumDetailScreen(
                         selectedRelease = release,
                         cover = release.cover,
                         playback = AlbumPlaybackState(nowPlaying?.trackId, isPlaying),
-                        callbacks = buildAlbumDetailCallbacks(session, release, scope) { selectedReleaseId = it },
+                        callbacks = buildAlbumDetailCallbacks(session, release) { selectedReleaseId = it },
                         releaseDownloadControl = { rel -> ReleaseTransferLines(session = session, release = rel) },
                     )
                 }
@@ -235,15 +232,10 @@ private fun BoxScope.MissingMainReleaseNotice(detail: BridgeAlbumDetail) {
     )
 }
 
-/**
- * The page's commands, each run in [scope], whose bug handler reports one that
- * fails: these calls fail only if this device's library is broken, never in
- * normal use.
- */
+/** The page's commands, each run in the session, which shows a failure as a message. */
 private fun buildAlbumDetailCallbacks(
     session: OpenLibrary,
     release: BridgeRelease,
-    scope: CoroutineScope,
     onSelectRelease: (String) -> Unit,
 ): AlbumDetailCallbacks {
     fun runPlayReleaseCommand(
@@ -258,21 +250,17 @@ private fun buildAlbumDetailCallbacks(
 
     fun runReleaseTransportCommand(
         operation: String,
-        command: (String) -> Unit,
+        command: suspend (String) -> Unit,
     ) {
-        scope.launch(CoroutineName("$operation ${release.id}")) {
-            command(release.id)
-        }
+        session.messages.perform("$operation ${release.id}") { command(release.id) }
     }
 
     fun runTrackTransportCommand(
         trackId: String,
         operation: String,
-        command: (List<String>) -> Unit,
+        command: suspend (List<String>) -> Unit,
     ) {
-        scope.launch(CoroutineName("$operation $trackId")) {
-            command(listOf(trackId))
-        }
+        session.messages.perform("$operation $trackId") { command(listOf(trackId)) }
     }
 
     return AlbumDetailCallbacks(

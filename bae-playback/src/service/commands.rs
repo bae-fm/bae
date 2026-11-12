@@ -111,43 +111,28 @@ impl PlaybackService {
             PlaybackCommand::SetMuted(muted) => {
                 self.set_muted(muted);
             }
-            PlaybackCommand::AddToQueue(track_ids) => {
+            PlaybackCommand::AddToQueue(track_ids, reply) => {
                 let added = self.playback_queue.add_to_queue(track_ids).await;
-                self.queue_added(added).await;
+                let answer = self.queue_added(added).await;
+                answer_queue_edit(reply, answer, "an add to the queue");
             }
-            PlaybackCommand::AddNext(track_ids) => {
+            PlaybackCommand::AddNext(track_ids, reply) => {
                 let added = self.playback_queue.add_next(track_ids).await;
-                self.queue_added(added).await;
+                let answer = self.queue_added(added).await;
+                answer_queue_edit(reply, answer, "an add next");
             }
-            PlaybackCommand::AddReleaseToQueue(release_id) => {
-                match self.records.get_track_ids_for_release(&release_id).await {
-                    Ok(track_ids) if !track_ids.is_empty() => {
-                        let added = self.playback_queue.add_to_queue(track_ids).await;
-                        self.queue_added(added).await;
-                    }
-                    Ok(_) => {}
-                    Err(e) => {
-                        error!("Failed to add release {release_id} to queue: {e}");
-                        self.telemetry_playback_failed(PlaybackOperation::QueueAdd);
-                    }
-                }
+            PlaybackCommand::AddReleaseToQueue(release_id, reply) => {
+                let answer = self.add_release(&release_id, ManualPlace::End).await;
+                answer_queue_edit(reply, answer, "an add of a release to the queue");
             }
-            PlaybackCommand::AddReleaseNext(release_id) => {
-                match self.records.get_track_ids_for_release(&release_id).await {
-                    Ok(track_ids) if !track_ids.is_empty() => {
-                        let added = self.playback_queue.add_next(track_ids).await;
-                        self.queue_added(added).await;
-                    }
-                    Ok(_) => {}
-                    Err(e) => {
-                        error!("Failed to add release {release_id} next in queue: {e}");
-                        self.telemetry_playback_failed(PlaybackOperation::QueueAdd);
-                    }
-                }
+            PlaybackCommand::AddReleaseNext(release_id, reply) => {
+                let answer = self.add_release(&release_id, ManualPlace::Front).await;
+                answer_queue_edit(reply, answer, "an add of a release next");
             }
-            PlaybackCommand::InsertInQueue(track_ids, index) => {
+            PlaybackCommand::InsertInQueue(track_ids, index, reply) => {
                 let added = self.playback_queue.insert_at(index, track_ids).await;
-                self.queue_added(added).await;
+                let answer = self.queue_added(added).await;
+                answer_queue_edit(reply, answer, "an insert in the queue");
             }
             PlaybackCommand::RemoveFromQueue { entry_id, reply } => {
                 let removed = match self.playback_queue.remove(entry_id).await {
@@ -218,16 +203,24 @@ impl PlaybackService {
                     debug!("a clear of the context lane answered a caller that stopped waiting");
                 }
             }
-            PlaybackCommand::SetRepeatMode(mode) => {
-                self.apply_repeat_mode(mode).await;
+            PlaybackCommand::SetRepeatMode(mode, reply) => {
+                let answer = self.apply_repeat_mode(mode).await;
+                answer_queue_edit(reply, answer, "a repeat mode change");
             }
-            PlaybackCommand::SetShuffle(on) => {
+            PlaybackCommand::SetShuffle(on, reply) => {
                 // Shuffling changes what plays next, so the preload and the
                 // staged side-pause reconcile like any queue mutation.
-                match self.playback_queue.set_shuffle(on).await {
-                    Ok(()) => self.on_queue_mutated().await,
-                    Err(e) => self.queue_failed("shuffle the queue", &e),
-                }
+                let answer = match self.playback_queue.set_shuffle(on).await {
+                    Ok(()) => {
+                        self.on_queue_mutated().await;
+                        Ok(())
+                    }
+                    Err(e) => {
+                        self.queue_failed("shuffle the queue", &e);
+                        Err(super::api::QueueEditError::Queue(e))
+                    }
+                };
+                answer_queue_edit(reply, answer, "a shuffle change");
             }
             PlaybackCommand::ReevaluateSidePauseStaging => {
                 self.reevaluate_side_pause_staging().await;
@@ -392,5 +385,13 @@ impl PlaybackService {
 fn answer_play(reply: PlayReply, played: Result<PlayOutcome, PlayError>) {
     if reply.send(played).is_err() {
         debug!("a play answered a caller that stopped waiting");
+    }
+}
+
+/// Tell a queue command's caller what it did. A caller that stopped waiting
+/// has no one to tell.
+fn answer_queue_edit(reply: QueueEditReply<()>, answer: Result<(), QueueEditError>, what: &str) {
+    if reply.send(answer).is_err() {
+        debug!("{what} answered a caller that stopped waiting");
     }
 }

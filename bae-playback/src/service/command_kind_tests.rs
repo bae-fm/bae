@@ -14,7 +14,10 @@ fn playback_command_kind_maps_user_intent_only() {
         Some(PlaybackCommandKind::Play)
     ));
     assert!(matches!(
-        playback_command_kind(&PlaybackCommand::SetRepeatMode(RepeatMode::Off)),
+        playback_command_kind(&PlaybackCommand::SetRepeatMode(
+            RepeatMode::Off,
+            oneshot::channel().0
+        )),
         Some(PlaybackCommandKind::SetRepeat)
     ));
     // A continuous input and an internal command ship nothing.
@@ -37,9 +40,9 @@ fn commands_that_steer_playback_stop_the_countdown_and_the_rest_leave_it() {
         PlaybackCommand::SeekByRatio(0.5),
         PlaybackCommand::Play("track".to_string()),
         PlaybackCommand::PlayLibraryShuffled(oneshot::channel().0),
-        PlaybackCommand::AddToQueue(vec!["track".to_string()]),
+        PlaybackCommand::AddToQueue(vec!["track".to_string()], oneshot::channel().0),
         PlaybackCommand::ClearUpNext(oneshot::channel().0),
-        PlaybackCommand::SetShuffle(true),
+        PlaybackCommand::SetShuffle(true, oneshot::channel().0),
         PlaybackCommand::StopRemote,
     ];
     for command in &stops {
@@ -49,7 +52,7 @@ fn commands_that_steer_playback_stop_the_countdown_and_the_rest_leave_it() {
         PlaybackCommand::Resume,
         PlaybackCommand::SetVolume(crate::Volume::new(0.5).unwrap()),
         PlaybackCommand::SetMuted(true),
-        PlaybackCommand::SetRepeatMode(RepeatMode::Context),
+        PlaybackCommand::SetRepeatMode(RepeatMode::Context, oneshot::channel().0),
         PlaybackCommand::AutoAdvance { track_id: "track".to_string() },
     ];
     for command in &leaves {

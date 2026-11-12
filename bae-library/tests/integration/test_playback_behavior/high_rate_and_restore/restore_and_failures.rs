@@ -23,7 +23,7 @@ async fn test_restart_resumes_the_stored_queue_in_its_order() {
         wait_for_state_on(&mut progress_rx, |s| matches!(s, PlaybackState::Playing { .. }))
             .await
             .expect("the shuffled release plays");
-    handle.add_to_queue(vec![lib.track_ids[0].clone()]);
+    handle.add_to_queue(vec![lib.track_ids[0].clone()]).await.expect("add_to_queue succeeds");
     handle.pause();
     let before = handle.queue_value().await.expect("queue value");
     let order = handle.queue_upcoming().await.expect("queue upcoming");
