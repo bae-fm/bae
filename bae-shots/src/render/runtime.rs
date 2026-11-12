@@ -33,7 +33,6 @@ struct CopyRecord {
     version: String,
     /// The canvas the copy was read from.
     source: String,
-    #[allow(dead_code)]
     read_at: String,
 }
 
@@ -43,9 +42,9 @@ struct CopyRecord {
 struct LiveRecord {
     canvas: String,
     canvas_version: String,
-    #[allow(dead_code)]
+    /// The canvas type's release the runtime was read from.
     type_release: String,
-    #[allow(dead_code)]
+    /// Where the runtime sits in the canvas type.
     runtime: String,
     runtime_sha256: String,
     published_at: String,
@@ -65,14 +64,21 @@ the canvas. The design session writes it at each canvas publish. {}", refresh(.c
     LiveRecordMissing { path: PathBuf, canvas: String },
     #[error(
         "the runtime copy {COPY} hashes to {actual} but {COPY_RECORD} records {recorded} \
-(version {version}); the copy was edited or the record is stale. {}", refresh(.canvas)
+(version {version}, read at {read_at}); the copy was edited or the record is stale. {}",
+        refresh(.canvas)
     )]
-    CopyChanged { actual: String, recorded: String, version: String, canvas: String },
+    CopyChanged {
+        actual: String,
+        recorded: String,
+        version: String,
+        read_at: String,
+        canvas: String,
+    },
     #[error(
         "the runtime copy is version {} ({}) but the canvas was published with \
-version {} ({}) at {} by {}. {}",
+version {} ({}, {} of canvas type release {}) at {} by {}. {}",
         .0.copy_version, .0.copy_sha256, .0.live_version, .0.live_sha256,
-        .0.published_at, .0.published_by, refresh(&.0.canvas)
+        .0.runtime, .0.type_release, .0.published_at, .0.published_by, refresh(&.0.canvas)
     )]
     LiveChanged(Box<LiveChange>),
 }
@@ -84,6 +90,8 @@ pub(crate) struct LiveChange {
     copy_sha256: String,
     live_version: String,
     live_sha256: String,
+    runtime: String,
+    type_release: String,
     published_at: String,
     published_by: String,
     canvas: String,
@@ -130,6 +138,7 @@ pub(crate) fn check(root: &Path) -> Result<Checked, RuntimeError> {
             actual,
             recorded: recorded.sha256,
             version: recorded.version,
+            read_at: recorded.read_at,
             canvas: recorded.source,
         });
     }
@@ -144,6 +153,8 @@ pub(crate) fn check(root: &Path) -> Result<Checked, RuntimeError> {
             copy_sha256: actual,
             live_version: live.canvas_version,
             live_sha256: live.runtime_sha256,
+            runtime: live.runtime,
+            type_release: live.type_release,
             published_at: live.published_at,
             published_by: live.published_by,
             canvas: live.canvas,
