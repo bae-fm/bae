@@ -7,7 +7,7 @@
 <script>
   var B = window.Bae, h = React.createElement;
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Queued', h(B.AndroidUploadLine, {})), W('Paused', h(B.AndroidUploadLine, { wait: 'Paused' })), W('Waiting for network', h(B.AndroidUploadLine, { wait: 'Waiting for network' })), W('Waiting for Wi-Fi', h(B.AndroidUploadLine, { wait: 'Waiting for Wi-Fi' })), W('Retrying at 6:40 PM', h(B.AndroidUploadLine, { wait: 'Retrying at 6:40 PM' })), W('Waiting for 01 Harbor Lights.flac', h(B.AndroidUploadLine, { missing: '01 Harbor Lights.flac' }))));
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Queued', h(B.AndroidUploadLine, {})), W('Waiting for 01 Harbor Lights.flac', h(B.AndroidUploadLine, { missing: '01 Harbor Lights.flac' }))));
 </script>
 </body>
 </html>
