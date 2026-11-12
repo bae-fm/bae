@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.view.ViewCompat
 import androidx.media3.common.C
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
@@ -256,6 +257,11 @@ internal class PlaybackProgressView(
     fun setPosition(state: SeekBarState) {
         leadingTextView.showText(state.leading)
         trailingTextView.showText(state.trailing)
+        // The bar's value for a screen reader: the clocks it shows beside it.
+        val spoken = listOf(state.leading, state.trailing).filter { it.isNotEmpty() }.joinToString(", ")
+        if (ViewCompat.getStateDescription(seekBar)?.toString() != spoken) {
+            ViewCompat.setStateDescription(seekBar, spoken)
+        }
         seekBar.isEnabled = state.seekable
         if (!isDragging) {
             seekBar.progress = progressToSeekBar(state.progress)

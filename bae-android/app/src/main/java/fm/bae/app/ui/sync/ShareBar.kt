@@ -6,12 +6,16 @@ import android.graphics.Paint
 import android.graphics.RectF
 import android.util.TypedValue
 import android.view.View
+import android.view.accessibility.AccessibilityNodeInfo
+import android.widget.ProgressBar
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.viewinterop.AndroidView
 import fm.bae.app.ui.appearance.ThemeOpacity
 import fm.bae.fastvalues.FrameFollowing
@@ -19,29 +23,39 @@ import fm.bae.fastvalues.LatestSource
 
 private const val BAR_HEIGHT_DP = 4f
 
+/** The range a screen reader is told the bar runs over. */
+private const val PERCENT = 100f
+
 /** The gap between the filled part and the rest of the track, and the stop dot's size: Material 3's own. */
 private const val GAP_DP = 4f
 
 /**
  * A transfer line's bar: how much of its batch's bytes are done, filled in the accent over a
  * track of the accent's tint, or moving while there is no share to show, as the line for
- * syncing has none. A share reads from [share]'s latest value each display frame while its bytes
+ * syncing has none. Screen readers name it [description], the line's words. A share reads from
+ * [share]'s latest value each display frame while its bytes
  * move: arriving bytes recompose nothing.
  */
 @Composable
 internal fun ShareBar(
     share: LatestSource<Double>?,
+    description: String,
     modifier: Modifier = Modifier,
 ) {
     val accent = MaterialTheme.colorScheme.primary
     val track = accent.copy(alpha = ThemeOpacity.tintStrong)
     if (share == null) {
-        LinearProgressIndicator(modifier = modifier.fillMaxWidth(), color = accent, trackColor = track)
+        LinearProgressIndicator(
+            modifier = modifier.fillMaxWidth().semantics { contentDescription = description },
+            color = accent,
+            trackColor = track,
+        )
     } else {
         AndroidView(
             modifier = modifier.fillMaxWidth(),
             factory = { context -> ShareBarView(context) },
             update = { view ->
+                view.contentDescription = description
                 view.applyColors(accent = accent.toArgb(), track = track.toArgb())
                 view.follow(share)
             },
@@ -64,7 +78,20 @@ internal class ShareBarView(
     private val bounds = RectF()
 
     init {
-        importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO
+        importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_YES
+    }
+
+    /** A progress bar of a percent, so a screen reader says how much is done. */
+    override fun onInitializeAccessibilityNodeInfo(info: AccessibilityNodeInfo) {
+        super.onInitializeAccessibilityNodeInfo(info)
+        info.className = ProgressBar::class.java.name
+        info.rangeInfo =
+            AccessibilityNodeInfo.RangeInfo.obtain(
+                AccessibilityNodeInfo.RangeInfo.RANGE_TYPE_PERCENT,
+                0f,
+                PERCENT,
+                fraction * PERCENT,
+            )
     }
 
     fun applyColors(

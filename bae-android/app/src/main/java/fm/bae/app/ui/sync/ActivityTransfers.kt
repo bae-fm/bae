@@ -96,7 +96,7 @@ private fun TransferLine(
             count?.let { Text(text = it, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             end?.invoke()
         }
-        ShareBar(share)
+        ShareBar(share, description = title)
     }
 }
 
