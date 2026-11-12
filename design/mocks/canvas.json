@@ -3754,6 +3754,30 @@
    "w": 690,
    "x": 1754,
    "y": 14240
+  },
+  "mac.settings.sync.pending.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Sync: pending",
+   "w": 690,
+   "x": 0,
+   "y": 25888
+  },
+  "mac.settings.sync.setup-undone.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Sync: setup undone",
+   "w": 690,
+   "x": 770,
+   "y": 25888
+  },
+  "mac.settings.sync.cloud-home-unreadable.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Sync: cloud home unreadable",
+   "w": 690,
+   "x": 1540,
+   "y": 25888
   }
  },
  "createdOnFiles": {
@@ -5246,6 +5270,23 @@
    "x": 2524,
    "y": 14240,
    "text": "What the code needs for these boards:\n- Both: the restore codes saved for libraries not on this device show on Welcome under Your libraries, one row each: the library's name over its provider and account; a code bae can't read says “Restore code can’t be used” over why and the library id. Each row ends in a ⋯ / ⋮ menu with Delete…, which asks first. Today the Mac draws Restore and a red trash Delete button side by side, under “Restore from iCloud Keychain” with an info tip (KeychainRestoreSection.swift); the boards title it “Saved in iCloud Keychain” with the note under the box.\n- macOS: Restore is a button on the row. Android: tapping the row restores, as its note says. Today Android lists them on the Enter code screen (SavedCodesSection.kt, CodeScreen.kt), not on Welcome. bae change."
+  },
+  "row-sync-more": {
+   "page": "library",
+   "x": 0,
+   "y": 25748,
+   "text": "Sync page: pending, undone setup, unreadable cloud home (macOS)",
+   "kind": "title1",
+   "w": 240,
+   "maxW": 3200
+  },
+  "code-sync-more": {
+   "page": "library",
+   "size": 24,
+   "w": 460,
+   "x": 2310,
+   "y": 25888,
+   "text": "What the code needs for these boards:\n- Pending: one row per record, its subject over its reason, Details and the record's action at the right, in the box like every other Settings row. Today each record is its subject over a neutral notice holding the reason and the action (PendingRecordsView.swift). The status above says Waiting to sync while anything is pending.\n- Setup undone: the warning notice with Details and Dismiss heads the page, over Not synced. It is the app's UndoneSetupLine as it is.\n- Unreadable cloud home: a read of this device's own record that failed is a bug: the notice says so with Details only, and the bug is reported. The app shows the notice; no Try again."
   }
  },
  "order": [
