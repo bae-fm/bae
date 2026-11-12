@@ -1,7 +1,9 @@
 package fm.bae.app.shots
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -13,6 +15,7 @@ import fm.bae.app.ui.albumdetail.AndroidAlbumHeader
 import fm.bae.app.ui.albumdetail.AndroidTrackRow
 import fm.bae.app.ui.albumdetail.TrackRowCallbacks
 import fm.bae.app.ui.albumdetail.TrackRowData
+import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidLibraryRow
 import fm.bae.app.ui.library.AndroidAlbumGrid
 import fm.bae.app.ui.library.AndroidAlbumTile
@@ -21,11 +24,18 @@ import fm.bae.app.ui.library.AndroidMenuItem
 import fm.bae.app.ui.library.AndroidSearchSection
 import org.junit.Test
 import uniffi.bae_bridge.BridgeAlbumAppearance
+import uniffi.bae_bridge.BridgeAlbumDetail
+import uniffi.bae_bridge.BridgeFactTerm
+import uniffi.bae_bridge.BridgeLabelLine
 import uniffi.bae_bridge.BridgeLibraryBrowseSection
 import uniffi.bae_bridge.BridgeLibraryPageWindow
+import uniffi.bae_bridge.BridgeMediaCount
+import uniffi.bae_bridge.BridgeMedium
+import uniffi.bae_bridge.BridgeRelease
+import uniffi.bae_bridge.BridgeTermLabel
 
 private val callbacks = TrackRowCallbacks(onClick = {}, onPlayNext = {}, onAddToQueue = {})
-private val section = BridgeLibraryBrowseSection("artist-1", "Mara Quill", null, BridgeLibraryPageWindow(0uL, 3uL))
+private val section = BridgeLibraryBrowseSection("artist-1", "Mara Quill", null, BridgeLibraryPageWindow(0uL, 12uL))
 
 /** The component shots of the library's parts: the album grid and its tiles, the artist heading, the album header and track rows. */
 class LibraryComponentShots : BoardShot() {
@@ -33,8 +43,11 @@ class LibraryComponentShots : BoardShot() {
     fun androidComponentAlbumTileDefault() =
         component("android.component.album-tile.default") {
             Images {
-                Box(Modifier.width(160.dp)) {
-                    AndroidAlbumTile("Low Tide Hours", "Mara Quill", PreviewData.imageRef(), onClick = {})
+                Row(horizontalArrangement = Arrangement.spacedBy(ThemeSpace.edge)) {
+                    Box(Modifier.width(160.dp)) {
+                        AndroidAlbumTile("Low Tide Hours", "Mara Quill", PreviewData.imageRef(), onClick = {})
+                    }
+                    Box(Modifier.width(160.dp)) { AndroidAlbumTile("Copper Sky", "1972", null, onClick = {}) }
                 }
             }
         }
@@ -43,14 +56,7 @@ class LibraryComponentShots : BoardShot() {
     fun androidComponentAlbumGridDefault() =
         component("android.component.album-grid.default", wide = true) {
             Images {
-                val rows =
-                    listOf(
-                        BridgeAlbumAppearance(PreviewData.album(id = "a1", title = "Low Tide Hours", artistNames = "Mara Quill"), null),
-                        BridgeAlbumAppearance(
-                            PreviewData.album(id = "a2", title = "Paper Lanterns", artistNames = "The Slow Orchards"),
-                            null,
-                        ),
-                    )
+                val rows = previewAlbums
                 Box(Modifier.width(380.dp).height(240.dp)) {
                     AndroidAlbumGrid(
                         count = rows.size,
@@ -81,8 +87,8 @@ class LibraryComponentShots : BoardShot() {
         component("android.component.album-header.default", wide = true) {
             Images {
                 AndroidAlbumHeader(
-                    detail = PreviewData.albumDetail(PreviewData.album(title = "Low Tide Hours", artistNames = "Mara Quill")),
-                    selectedRelease = PreviewData.release(),
+                    detail = harborDetail,
+                    selectedRelease = harborRelease,
                     cover = PreviewData.imageRef(),
                     galleryItems = emptyList(),
                     onShowGallery = {},
@@ -164,11 +170,45 @@ class LibraryComponentShots : BoardShot() {
     fun androidComponentMenuItemDefault() =
         component("android.component.menu-item.default") {
             Column {
-                AndroidMenuItem("Album", selected = true, onClick = {})
-                AndroidMenuItem("Artist", selected = false, onClick = {})
+                AndroidMenuItem("Albums", selected = true, onClick = {})
+                AndroidMenuItem("Artists", selected = false, onClick = {})
+                AndroidMenuItem("Composers (pressed)", selected = false, onClick = {})
+                AndroidMenuItem("Group by artist", selected = false, onClick = {})
+                AndroidMenuItem("Group by artist", selected = true, onClick = {})
             }
         }
 }
+
+/** Low Tide Hours as the design system's previews pressed it: a 1992 CD on Harbor Records. */
+internal val harborRelease: BridgeRelease =
+    PreviewData.release().let { release ->
+        release.copy(
+            year = 1992,
+            labels = listOf(BridgeLabelLine(names = listOf("Harbor Records"), catalogNumbers = listOf("HR-1042"))),
+            facts = release.facts.copy(area = null, media = listOf(BridgeMediaCount(BridgeMedium.CD, 1u))),
+            pressingSummary = listOf(BridgeFactTerm.Worded(BridgeTermLabel.Verbatim("CD"))),
+        )
+    }
+
+internal val harborDetail: BridgeAlbumDetail =
+    PreviewData.albumDetail(
+        PreviewData.album(title = "Low Tide Hours", year = 1992, artistNames = "Mara Quill"),
+        releases = listOf(harborRelease),
+    )
+
+/** Low Tide Hours as the detail screen's preview draws its header: the title, artist and year. */
+internal val plainDetail: BridgeAlbumDetail =
+    PreviewData.albumDetail(
+        harborDetail.album,
+        releases = listOf(harborRelease.copy(year = null, labels = emptyList(), pressingSummary = emptyList())),
+    )
+
+/** The two albums the album grid's and library screen's previews hold. */
+internal val previewAlbums =
+    listOf(
+        BridgeAlbumAppearance(PreviewData.album(id = "a1", title = "Low Tide Hours", artistNames = "Mara Quill"), null),
+        BridgeAlbumAppearance(PreviewData.album(id = "a2", title = "Paper Lanterns", artistNames = "The Slow Orchards"), null),
+    )
 
 @Composable
 private fun TrackRowShot(data: TrackRowData) = AndroidTrackRow(data, callbacks, positionColumnWidth = 40.dp)

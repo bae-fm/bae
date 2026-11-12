@@ -15,10 +15,10 @@ import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.albumdetail.AndroidAlbumHeader
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidScreen
+import fm.bae.app.ui.library.AndroidAlbumGrid
 import fm.bae.app.ui.library.AndroidDetailScreen
 import fm.bae.app.ui.library.AndroidLibraryScreen
 import fm.bae.app.ui.library.LibraryBrowserState
-import fm.bae.app.ui.library.LibraryGridSceneAlbums
 import org.junit.Test
 
 /** The component shots of the two screen frames: a settings screen's, and a library detail page's. */
@@ -26,8 +26,8 @@ class ScreenComponentShots : BoardShot() {
     @Test
     fun androidComponentScreenDefault() =
         component("android.component.screen.default", wide = true) {
-            AndroidScreen(title = "Transfers", onBack = {}, modifier = Modifier.height(280.dp)) {
-                Text("The screen's content", modifier = Modifier.padding(ThemeSpace.edge))
+            AndroidScreen(title = "Library", onBack = {}, modifier = Modifier.height(360.dp)) {
+                Text("The screen’s content", modifier = Modifier.padding(ThemeSpace.edge))
             }
         }
 
@@ -44,7 +44,16 @@ class ScreenComponentShots : BoardShot() {
                         syncActivity = {},
                         nowPlayingBar = { Bar(playing) },
                     ) { modifier ->
-                        Box(modifier) { LibraryGridSceneAlbums(state.gridState) }
+                        Box(modifier) {
+                            AndroidAlbumGrid(
+                                count = previewAlbums.size,
+                                sections = emptyList(),
+                                rowAt = previewAlbums::get,
+                                gridState = state.gridState,
+                                onSelectAlbum = {},
+                                onSelectArtist = {},
+                            )
+                        }
                     }
                 }
             }
@@ -62,8 +71,8 @@ class ScreenComponentShots : BoardShot() {
                 ) {
                     Box(Modifier.padding(ThemeSpace.edge).weight(1f)) {
                         AndroidAlbumHeader(
-                            detail = PreviewData.albumDetail(PreviewData.album(title = "Low Tide Hours", artistNames = "Mara Quill")),
-                            selectedRelease = PreviewData.release(),
+                            detail = plainDetail,
+                            selectedRelease = plainDetail.releases.single(),
                             cover = PreviewData.imageRef(),
                             galleryItems = emptyList(),
                             onShowGallery = {},

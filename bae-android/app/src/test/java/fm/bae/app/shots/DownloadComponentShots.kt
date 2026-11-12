@@ -54,9 +54,9 @@ class DownloadComponentShots : BoardShot() {
             val downloads = PreviewData.downloadStore(downloadingReleaseId = "rel-2")
             Column {
                 listOf(
-                    PreviewData.downloadOp(releaseId = "rel-2", state = BridgeDownloadState.Active),
-                    PreviewData.downloadOp(releaseId = "rel-1", state = BridgeDownloadState.Queued),
-                    PreviewData.downloadOp(releaseId = "rel-3", state = BridgeDownloadState.Failed("Network unreachable")),
+                    previewDownload("rel-2", "Late Arrivals", 10UL, 344_000_000UL, BridgeDownloadState.Active),
+                    previewDownload("rel-1", "Winter Kitchen", 10UL, 331_000_000UL, BridgeDownloadState.Queued),
+                    previewDownload("rel-3", "Glass Harbor", 9UL, 356_000_000UL, BridgeDownloadState.Failed("Network unreachable")),
                 ).forEach { op ->
                     AndroidDownloadRow(op, downloads.latestProgress(op.releaseId), onCancel = {}, onRetry = {})
                 }
@@ -105,6 +105,16 @@ class DownloadComponentShots : BoardShot() {
         component("android.component.upload-line.waiting-for-01-harbor-lights-flac", wide = true) {
             AndroidUploadLine("Queued to upload", "01 Harbor Lights.flac")
         }
+}
+
+private fun previewDownload(
+    releaseId: String,
+    title: String,
+    files: ULong,
+    bytes: ULong,
+    state: BridgeDownloadState,
+) = PreviewData.downloadOp(releaseId = releaseId, state = state, title = title).let { op ->
+    op.copy(release = checkNotNull(op.release).copy(fileCount = files, totalSize = bytes))
 }
 
 @Composable

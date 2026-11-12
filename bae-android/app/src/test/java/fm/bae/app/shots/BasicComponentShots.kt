@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -177,7 +178,13 @@ class BasicComponentShots : BoardShot() {
         component("android.component.radio.unchecked") { AndroidRadio("Only me", checked = false, onClick = {}) }
 
     @Test
-    fun androidComponentSectionDefault() = component("android.component.section.default", wide = true) { AndroidSection("People") }
+    fun androidComponentSectionDefault() =
+        component("android.component.section.default", wide = true) {
+            Column {
+                AndroidSection("People")
+                Text("The card that follows", modifier = Modifier.padding(ThemeSpace.edge))
+            }
+        }
 
     @Test
     fun androidComponentEyebrowDefault() = component("android.component.eyebrow.default") { AndroidEyebrow("Side A") }
