@@ -3136,10 +3136,10 @@ shown or not; **Print…** on a Mac and **Print** on Android print one page: the
 QR code, the code in groups of four, where the library is stored, the date, and
 how to use and keep the code. The page names no library and holds no S3 key,
 and its QR code holds the code to type. Closing Settings drops the code. A
-caption under it says to print it or keep it in a password manager, then on
-Apple devices that it is also in her iCloud Keychain, and on Android that a
-phone she sets up from this one gets it too; on S3 the section also says she
-will need her access key and secret.
+caption under it says to print it or keep it in a password manager, and
+nothing about iCloud Keychain or a phone's backup: whether those hold it
+depends on settings bae can't read. On S3 the section also says she will need
+her access key and secret.
 
 **Removing a device.** Ben's old phone is lost. He removes it from his laptop.
 Had he lost every device, Ana, an admin, could remove it for him: admins can
