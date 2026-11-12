@@ -207,7 +207,7 @@ extension LightboxView {
     }
 
     fileprivate var labelView: some View {
-        VStack(spacing: ThemeSpace.line) {
+        VStack(spacing: 0) {
             Text(verbatim: cursor.current.label)
                 .themeText(.body)
                 .foregroundStyle(Theme.onFill)
@@ -218,7 +218,7 @@ extension LightboxView {
         }
         .multilineTextAlignment(.center)
         .padding(.horizontal, ThemeSpace.section)
-        .padding(.bottom, ThemeSpace.related)
+        .padding(.vertical, ThemeSpace.related)
         .fadesWhenZoomed(at: magnification)
     }
 
@@ -227,14 +227,14 @@ extension LightboxView {
             circleIconButton(
                 systemName: "chevron.backward",
                 diameter: navButtonDiameter,
-                icon: .large,
+                icon: .stageArrow,
                 action: goPrevious
             )
             Spacer()
             circleIconButton(
                 systemName: "chevron.forward",
                 diameter: navButtonDiameter,
-                icon: .large,
+                icon: .stageArrow,
                 action: goNext
             )
         }
@@ -247,14 +247,16 @@ extension LightboxView {
             HStack {
                 if let onBrowseAll {
                     Button(action: onBrowseAll) {
-                        Label(
-                            "Browse all images",
-                            systemImage: "square.grid.2x2"
-                        )
+                        HStack(spacing: ThemeSpace.compact) {
+                            Image(systemName: "square.grid.2x2")
+                                .themeIcon(.stageBrowse)
+                            Text("Browse all images")
+                        }
                     }
                     .buttonStyle(.borderless)
                     .foregroundStyle(Theme.onFill)
-                    .padding(ThemeSpace.related)
+                    .padding(.vertical, ThemeSpace.compact)
+                    .padding(.horizontal, ThemeSpace.group)
                     .background(Theme.scrim, in: Capsule())
                     .padding(ThemeSpace.group)
                 }
@@ -262,7 +264,7 @@ extension LightboxView {
                 circleIconButton(
                     systemName: "xmark",
                     diameter: 36,
-                    icon: .medium
+                    icon: .stageClose
                 ) {
                     onDismiss()
                 }

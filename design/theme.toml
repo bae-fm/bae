@@ -473,6 +473,26 @@ macos = 17
 ios = 22
 android = 24
 
+# The lightbox's close glyph, arrows and "Browse all images" glyph, as the
+# design's stage draws them.
+[icon.stageClose]
+weight = "semibold"
+macos = 15
+ios = 17
+android = 20
+
+[icon.stageBrowse]
+weight = "regular"
+macos = 12
+ios = 13
+android = 16
+
+[icon.stageArrow]
+weight = "medium"
+macos = 22
+ios = 22
+android = 24
+
 [icon.hero]
 weight = "thin"
 macos = 44

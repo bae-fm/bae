@@ -139,50 +139,7 @@ struct CoverGalleryView: View {
         }
         .disabled(browser.layout == .lightbox)
         .accessibilityHidden(browser.layout == .lightbox)
-        .overlay {
-            if browser.layout == .lightbox {
-                VStack(spacing: 0) {
-                    if let cursor = browser.cursor {
-                        LightboxView(
-                            cursor: cursor,
-                            load: lightboxLoad,
-                            onUpdate: { browser.cursor = $0 },
-                            onDismiss: {
-                                if initialLayout == .lightbox {
-                                    onDone()
-                                }
-                                else {
-                                    showGrid()
-                                }
-                            },
-                            onBrowseAll: showGrid
-                        )
-                    }
-                    else {
-                        if remoteItems.isLoading {
-                            MacSpinner("Fetching covers…")
-                                .frame(
-                                    maxWidth: .infinity,
-                                    maxHeight: .infinity
-                                )
-                        }
-                        else {
-                            ContentUnavailableView {
-                                Text("No cover art available")
-                            }
-                        }
-                        Button("Browse all images", action: showGrid)
-                        Button("Done", action: onDone)
-                            .keyboardShortcut(.cancelAction)
-                    }
-                    if remoteItems.hasStatus || error != nil {
-                        lightboxStatus
-                    }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Theme.background)
-            }
-        }
+        .overlay { lightboxOverlay }
         .onAppear {
             browser.layout = initialLayout
             rebuild()
@@ -208,6 +165,57 @@ struct CoverGalleryView: View {
             browser.cursor?.goToNext()
             return .handled
         }
+    }
+
+    @ViewBuilder
+    private var lightboxOverlay: some View {
+        if browser.layout == .lightbox {
+            VStack(spacing: 0) {
+                if let cursor = browser.cursor {
+                    LightboxView(
+                        cursor: cursor,
+                        load: lightboxLoad,
+                        onUpdate: { browser.cursor = $0 },
+                        onDismiss: {
+                            if initialLayout == .lightbox {
+                                onDone()
+                            }
+                            else {
+                                showGrid()
+                            }
+                        },
+                        onBrowseAll: showGrid
+                    )
+                }
+                else {
+                    if remoteItems.isLoading {
+                        MacSpinner("Fetching covers…")
+                            .frame(
+                                maxWidth: .infinity,
+                                maxHeight: .infinity
+                            )
+                    }
+                    else {
+                        ContentUnavailableView {
+                            Text("No cover art available")
+                        }
+                    }
+                    Button("Browse all images", action: showGrid)
+                    Button("Done", action: onDone)
+                        .keyboardShortcut(.cancelAction)
+                }
+                if remoteItems.hasStatus || error != nil {
+                    lightboxStatus
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // The lightbox lays its own backdrop over the window; only
+            // the empty state needs the page behind it.
+            .background {
+                if browser.cursor == nil { Rectangle().fill(Theme.background) }
+            }
+        }
+
     }
 
     private var gridPreviewShown: Bool {
