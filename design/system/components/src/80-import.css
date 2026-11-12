@@ -43,6 +43,7 @@
 .bae-m-idraft-records { display: flex; gap: 10px; align-items: center; padding-top: 8px; border-top: 1px solid var(--hairline); }
 /* The link-out arrow is larger than the text beside it; held to the text's line height, it never makes the line taller. */
 .bae-linkout { display: inline-flex; align-items: center; height: 1lh; }
+.bae-m-reclinks { display: flex; flex-wrap: wrap; gap: 4px 12px; min-width: 0; }
 .bae-m-reclink { display: inline-flex; align-items: center; gap: 3px; font: 600 10.5px var(--font-sans); color: var(--text-secondary); }
 .bae-m-itable { display: flex; flex-direction: column; font: 400 13px var(--font-sans); }
 .bae-m-itable-row { display: grid; grid-template-columns: minmax(180px, 1.2fr) 52px 1fr 1fr 88px; gap: 10px; align-items: center; }

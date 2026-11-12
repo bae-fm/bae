@@ -1,0 +1,15 @@
+<!-- @dsCard group="macOS import" height=150 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>MacRecordLinks</title></head>
+<body class="bae-preview bae-preview-mac" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
+    W('Two catalogs', h(B.MacRecordLinks, { records: 'MusicBrainz,Discogs' })),
+    W('Wrapped', h('div', { style: { width: 300 } }, h(B.MacRecordLinks, { records: 'MusicBrainz,Discogs,AllMusic,Apple Music,Bandcamp,Deezer,Genius' })))));
+</script>
+</body>
+</html>

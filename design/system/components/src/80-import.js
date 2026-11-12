@@ -61,7 +61,7 @@
           h('div', { className: 'bae-m-tertiary', style: { fontSize: 11.5 } }, props.audio || 'FLAC · 16-bit · 44.1 kHz · 10 files'))),
       h('div', { className: 'bae-m-formhead' }, 'Release'),
       h('div', { className: 'bae-m-idraft-grid' }, rows.map(function (r, i) { return [h('span', { key: 'l' + i, className: 'bae-muted' }, r[0]), h('span', { key: 'v' + i, className: r[1] === '—' ? 'bae-m-tertiary' : null }, r[1])]; })),
-      props.records ? h('div', { className: 'bae-m-idraft-records' }, list(props.records).map(function (s) { return h('span', { key: s, className: 'bae-m-reclink' }, s, h('span', { className: 'bae-linkout' }, h(Sym, { name: 'external', size: 12 }))); }), h('span', { style: { flex: 1 } }), h('span', { className: 'bae-accent' }, 'Unlink')) : null);
+      props.records ? h('div', { className: 'bae-m-idraft-records' }, h(MacRecordLinks, { records: props.records }), h('span', { style: { flex: 1 } }), h('span', { className: 'bae-accent' }, 'Unlink')) : null);
   }
   // The mapping table: Source | Track | Title | Artist | Length, a side's eyebrow, CUE captions and rows.
   // The folder's images under the release: a ruled Images heading, then each image at 128pt (`images`: artwork titles, comma-separated).
@@ -111,9 +111,13 @@
         cap ? cap.split('+').map(function (cc, j) { var q = cc.split('='); return h('span', { key: j, className: 'bae-m-capsule' }, q[0], q[1] === '…' ? h('span', { className: 'bae-m-tertiary' }, 'Searching…') : h(StatusChip, { tone: Number(q[1]) > 0 ? 'success' : 'neutral' }, q[1])); }) : null);
     }));
   }
+  // Every catalog that describes a release, as a wrapped row of links to each catalog's page, in the order core lists them (`records`: catalog names, comma-separated).
+  function MacRecordLinks(props) {
+    return h('span', { className: 'bae-m-reclinks' }, list(props.records).map(function (s) { return h('span', { key: s, className: 'bae-m-reclink' }, s, h('span', { className: 'bae-linkout' }, h(Sym, { name: 'external', size: 12 }))); }));
+  }
   function MacReleaseCard(props) {
     return h('div', { className: 'bae-m-rcard' },
-      h('div', { className: 'bae-m-rcard-head' }, h(Artwork, { title: props.title, size: 44, radius: 6 }), h('div', { style: { flex: 1, minWidth: 0 } }, h('div', { className: 'bae-strong', style: { fontSize: 15 } }, props.title), h('div', { className: 'bae-muted' }, props.artist + (props.label ? ' · ' + props.label : ''))), list(props.sources || 'Discogs,MusicBrainz').map(function (s) { return h('span', { key: s, className: 'bae-m-reclink' }, s, h('span', { className: 'bae-linkout' }, h(Sym, { name: 'external', size: 12 }))); })),
+      h('div', { className: 'bae-m-rcard-head' }, h(Artwork, { title: props.title, size: 44, radius: 6 }), h('div', { style: { flex: 1, minWidth: 0 } }, h('div', { className: 'bae-strong', style: { fontSize: 15 } }, props.title), h('div', { className: 'bae-muted' }, props.artist + (props.label ? ' · ' + props.label : ''))), h(MacRecordLinks, { records: props.sources || 'MusicBrainz,Discogs' })),
       h('div', { className: 'bae-m-rcard-rows' }, props.children));
   }
   function MacPressingRow(props) {
@@ -122,7 +126,7 @@
         h('div', { style: { display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' } }, props.year ? h('span', { className: 'bae-strong bae-num' }, props.year) : h('span', { className: 'bae-m-tertiary' }, 'Year unknown'), h('span', { className: 'bae-muted' }, props.labels), props.catalog ? h(StatusChip, null, props.catalog) : null, list(props.badges).map(function (b) { return h(StatusChip, { key: b, tone: 'accent' }, b); })),
         props.summary ? h('div', { className: 'bae-m-tertiary', style: { fontSize: 11.5 } }, props.summary) : null),
       h('span', { style: { display: 'flex', alignItems: 'center', gap: 4, opacity: props.inLibrary ? 1 : 0, fontSize: 11.5 }, className: 'bae-m-tertiary' }, h(Sym, { name: 'check', size: 11, className: 'bae-success' }), 'In library'),
-      h('span', { className: 'bae-m-tertiary', style: { fontSize: 11.5 } }, props.sources || 'Discogs · MusicBrainz'),
+      h('span', { className: 'bae-m-tertiary', style: { fontSize: 11.5 } }, props.sources || 'MusicBrainz · Discogs'),
       h(Sym, { name: 'right', size: 11, className: props.selected ? 'bae-accent' : 'bae-m-tertiary' }));
   }
   // Several rows selected: the count, then the actions in groups, each with how many it applies to.
