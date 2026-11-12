@@ -37,6 +37,7 @@ import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
+import fm.bae.app.ui.components.AndroidMatchCode
 import fm.bae.app.ui.components.AndroidSpinner
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.Logo
@@ -383,18 +384,11 @@ private fun WaitingForApproval(
     val context = LocalContext.current
     val until = remember(expiresAt) { context.inviteExpiry(expiresAt) }
     Text(
-        text = stringResource(R.string.onboarding_waiting_until, until),
-        style = ThemeText.body.style,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        textAlign = TextAlign.Center,
-    )
-    Spacer(modifier = Modifier.height(ThemeSpace.related))
-    Text(
         text = stringResource(R.string.join_request_confirmation),
         style = ThemeText.detail.style,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
-    Text(text = status.confirmation, style = ThemeText.hero.style)
+    AndroidMatchCode(status.confirmation, waiting = stringResource(R.string.onboarding_waiting_until, until))
     Spacer(modifier = Modifier.height(ThemeSpace.related))
     val due =
         when (val next = status.nextCheck) {

@@ -191,8 +191,14 @@ class BasicComponentShots : BoardShot() {
         component("android.component.spinner.with-words", wide = true) { AndroidSpinner(text = "Looking for receivers…") }
 
     @Test
+    fun androidComponentMatchCodeOnAScreen() =
+        component("android.component.match-code.on-a-screen", wide = true) {
+            AndroidMatchCode("412 778", waiting = "Waiting for your other device…")
+        }
+
+    @Test
     fun androidComponentMatchCodeInADialog() =
-        component("android.component.match-code.in-a-dialog", wide = true) { AndroidMatchCode("412 778") }
+        component("android.component.match-code.in-a-dialog", wide = true) { AndroidMatchCode("412 778", dialog = true) }
 
     /** The dialog's window isn't drawn in a test: its words and buttons are, on the surface a dialog has. */
     @Test

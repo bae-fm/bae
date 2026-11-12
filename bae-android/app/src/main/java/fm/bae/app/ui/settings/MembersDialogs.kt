@@ -371,7 +371,7 @@ internal fun JoinRequestDialogContent(
         onDismissRequest = onClose,
         title = title,
         message = stringResource(R.string.join_request_match),
-        content = { AndroidMatchCode(confirmation) },
+        content = { AndroidMatchCode(confirmation, dialog = true) },
         confirmButton = {
             AndroidButton(
                 kind = ButtonKind.TEXT,
