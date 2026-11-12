@@ -677,13 +677,13 @@ async fn probe_preview_audio(
 
 fn resolve_preview_probe(
     path: &Path,
-    result: Result<Option<bae_audio::ProbeResult>, TaskFailed>,
+    result: Result<Result<bae_audio::ProbeResult, bae_audio::ProbeError>, TaskFailed>,
 ) -> Option<bae_audio::ProbeResult> {
     let path = path.display();
     match result {
-        Ok(Some(probe)) => Some(probe),
-        Ok(None) => {
-            warn!("Failed to probe preview file {}", path);
+        Ok(Ok(probe)) => Some(probe),
+        Ok(Err(e)) => {
+            warn!("Failed to probe preview file {}: {}", path, e);
             None
         }
         Err(e) => {

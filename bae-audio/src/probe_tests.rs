@@ -163,7 +163,32 @@ fn probe_reads_the_file_through_its_handle() {
     assert_eq!(probe.content_type, ContentType::Pcm);
     assert_eq!((probe.sample_rate.get(), probe.channels.get()), (44_100, 2));
     assert_eq!(probe.duration, std::time::Duration::from_secs(1));
-    assert!(probe_audio_from_path(&dir.path().join("Absent.wav")).is_none());
+    assert!(matches!(
+        probe_audio_from_path(&dir.path().join("Absent.wav")),
+        Err(ProbeError::Io(_))
+    ));
+}
+
+/// A file whose bytes can't be read is an `Io` failure, not a file that holds
+/// no audio: a directory opens but every read of it errors.
+#[cfg(unix)]
+#[test]
+fn a_failed_read_is_an_io_error_not_a_file_without_audio() {
+    init();
+    let dir = tempfile::tempdir().unwrap();
+
+    assert!(matches!(probe_audio_from_path(dir.path()), Err(ProbeError::Io(_))));
+}
+
+/// Bytes that read fine but are no audio are `NotAudio`.
+#[test]
+fn bytes_that_are_no_audio_are_not_audio() {
+    init();
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("Track.flac");
+    std::fs::write(&path, vec![0u8; 4096]).unwrap();
+
+    assert!(matches!(probe_audio_from_path(&path), Err(ProbeError::NotAudio(_))));
 }
 
 /// A file whose name isn't UTF-8 probes like any other: FFmpeg is handed the
@@ -200,7 +225,7 @@ fn probe_audio_from_path_maps_audio_format_fixtures() {
     ] {
         let path = fixture(name);
         let probe = probe_audio_from_path(std::path::Path::new(&path))
-            .unwrap_or_else(|| panic!("probe {name}"));
+            .unwrap_or_else(|e| panic!("probe {name}: {e}"));
         assert_eq!(probe.content_type, expected, "{name}");
         assert_eq!(probe.container, container, "{name}");
     }

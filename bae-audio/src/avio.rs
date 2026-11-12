@@ -222,11 +222,23 @@ pub(crate) unsafe extern "C" fn streaming_avio_seek_callback(
 /// protocol can't spell on Windows, opens like any other.
 pub(super) struct FileAvioContext {
     file: std::fs::File,
+    /// The first read of the file that failed, if one did. FFmpeg only sees
+    /// an I/O error code from the read callback, and what it makes of one
+    /// depends on where it lands (a probe that reads nothing is "Invalid data
+    /// found"), so the probe consults this to report the read's own cause
+    /// instead.
+    read_error: Option<std::io::Error>,
 }
 
 impl FileAvioContext {
     pub(super) fn new(file: std::fs::File) -> Self {
-        Self { file }
+        Self { file, read_error: None }
+    }
+
+    /// The first failed read of the file, taken: `None` when every read
+    /// succeeded.
+    pub(super) fn take_read_error(&mut self) -> Option<std::io::Error> {
+        self.read_error.take()
     }
 }
 
@@ -244,6 +256,9 @@ pub(super) unsafe extern "C" fn file_avio_read_callback(
             Err(e) if e.kind() == std::io::ErrorKind::Interrupted => {}
             Err(e) => {
                 warn!("AVIO file read failed: {e}");
+                // Keep the first: every later read fails the same way, or
+                // follows from it.
+                ctx.read_error.get_or_insert(e);
                 return ffmpeg_sys_next::AVERROR(ffmpeg_sys_next::EIO);
             }
         }

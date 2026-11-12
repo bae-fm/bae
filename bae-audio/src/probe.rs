@@ -100,6 +100,19 @@ pub(super) fn container_from_demuxer(name: &str) -> AudioContainer {
     }
 }
 
+/// Why a file gave no probe.
+#[derive(Debug, thiserror::Error)]
+pub enum ProbeError {
+    /// Reading the file failed (it would not open, or a read of it errored),
+    /// which says nothing of what the file holds.
+    #[error("the file could not be read: {0}")]
+    Io(#[source] std::io::Error),
+    /// The file was read and holds no audio stream bae can use, for this
+    /// reason.
+    #[error("{0}")]
+    NotAudio(String),
+}
+
 /// A file FFmpeg has opened through the handle Rust opened it with (see
 /// [`FileAvioContext`]): the format context reading it, the AVIO context under
 /// that, and the file. Dropping it closes all three.
@@ -107,6 +120,14 @@ struct OpenedFile {
     fmt_ctx: *mut ffmpeg_sys_next::AVFormatContext,
     avio: *mut ffmpeg_sys_next::AVIOContext,
     file: *mut FileAvioContext,
+}
+
+impl OpenedFile {
+    /// The first failed read of the file, taken.
+    fn take_read_error(&mut self) -> Option<std::io::Error> {
+        // SAFETY: `file` is the box this opening owns until it drops.
+        unsafe { (*self.file).take_read_error() }
+    }
 }
 
 impl Drop for OpenedFile {
@@ -119,18 +140,19 @@ impl Drop for OpenedFile {
 }
 
 /// Open the file at `path` for FFmpeg to read, and find its best audio stream.
-/// Returns the opened file and the stream index, or why not: the file can't be
-/// opened, its stream info can't be read, or it has no audio stream.
-unsafe fn open_best_audio_stream(path: &Path) -> Result<(OpenedFile, c_int), String> {
+/// Returns the opened file and the stream index, or why not: a read of the file
+/// failed (`Io`), or its stream info can't be read or it has no audio stream
+/// (`NotAudio`).
+unsafe fn open_best_audio_stream(path: &Path) -> Result<(OpenedFile, c_int), ProbeError> {
     use ffmpeg_sys_next::*;
 
-    let file = std::fs::File::open(path).map_err(|e| format!("failed to open the file ({e})"))?;
+    let file = std::fs::File::open(path).map_err(ProbeError::Io)?;
     let file = Box::into_raw(Box::new(FileAvioContext::new(file)));
     // FFmpeg takes ownership of this buffer.
     let buffer = av_malloc(super::AVIO_BUFFER_SIZE) as *mut u8;
     if buffer.is_null() {
         drop(Box::from_raw(file));
-        return Err("failed to allocate the AVIO buffer".to_string());
+        return Err(ProbeError::NotAudio("failed to allocate the AVIO buffer".to_string()));
     }
     let avio = avio_alloc_context(
         buffer,
@@ -144,13 +166,13 @@ unsafe fn open_best_audio_stream(path: &Path) -> Result<(OpenedFile, c_int), Str
     if avio.is_null() {
         av_free(buffer as *mut c_void);
         drop(Box::from_raw(file));
-        return Err("failed to create the AVIO context".to_string());
+        return Err(ProbeError::NotAudio("failed to create the AVIO context".to_string()));
     }
     let mut fmt_ctx = avformat_alloc_context();
     if fmt_ctx.is_null() {
         free_custom_avio_context(avio);
         drop(Box::from_raw(file));
-        return Err("failed to allocate the format context".to_string());
+        return Err(ProbeError::NotAudio("failed to allocate the format context".to_string()));
     }
     (*fmt_ctx).pb = avio;
     // No name: FFmpeg reads only through `avio`. A failed open frees the
@@ -158,13 +180,25 @@ unsafe fn open_best_audio_stream(path: &Path) -> Result<(OpenedFile, c_int), Str
     let opened = avformat_open_input(&mut fmt_ctx, ptr::null(), ptr::null(), ptr::null_mut());
     if opened < 0 {
         free_custom_avio_context(avio);
-        drop(Box::from_raw(file));
-        return Err(format!("failed to open input ({})", super::av_err_str(opened)));
+        let mut file = Box::from_raw(file);
+        return Err(match file.take_read_error() {
+            Some(error) => ProbeError::Io(error),
+            None => ProbeError::NotAudio(format!(
+                "failed to open input ({})",
+                super::av_err_str(opened)
+            )),
+        });
     }
-    let opened = OpenedFile { fmt_ctx, avio, file };
+    let mut opened = OpenedFile { fmt_ctx, avio, file };
     let found = avformat_find_stream_info(opened.fmt_ctx, ptr::null_mut());
+    if let Some(error) = opened.take_read_error() {
+        return Err(ProbeError::Io(error));
+    }
     if found < 0 {
-        return Err(format!("failed to read stream info ({})", super::av_err_str(found)));
+        return Err(ProbeError::NotAudio(format!(
+            "failed to read stream info ({})",
+            super::av_err_str(found)
+        )));
     }
     let stream_index = av_find_best_stream(
         opened.fmt_ctx,
@@ -175,7 +209,7 @@ unsafe fn open_best_audio_stream(path: &Path) -> Result<(OpenedFile, c_int), Str
         0,
     );
     if stream_index < 0 {
-        return Err("no audio stream".to_string());
+        return Err(ProbeError::NotAudio("no audio stream".to_string()));
     }
     Ok((opened, stream_index))
 }
@@ -299,25 +333,21 @@ fn stated_count(value: c_int) -> Option<std::num::NonZeroU32> {
     u32::try_from(value).ok().and_then(std::num::NonZeroU32::new)
 }
 
-/// The audio properties of the file at `path`, read from its current bytes.
-pub fn probe_audio_from_path(path: &Path) -> Option<ProbeResult> {
+/// The audio properties of the file at `path`, read from its current bytes:
+/// `NotAudio` when it holds no audio stream bae can use, `Io` when reading the
+/// file failed, which says nothing of what it holds.
+pub fn probe_audio_from_path(path: &Path) -> Result<ProbeResult, ProbeError> {
     open_and_probe(path)
 }
 
-/// Open the file and read its best audio stream through FFmpeg. `None`
-/// (already logged) when it cannot be opened, has no audio stream, or states
-/// no sample rate, channels or usable duration.
-fn open_and_probe(path: &Path) -> Option<ProbeResult> {
+/// Open the file and read its best audio stream through FFmpeg. `NotAudio`
+/// when it has no audio stream, or states no sample rate, channels or usable
+/// duration; `Io` when a read of it failed, wherever FFmpeg met the failure.
+fn open_and_probe(path: &Path) -> Result<ProbeResult, ProbeError> {
     #[cfg(feature = "test-instrumentation")]
     crate::test_reads::record_probe(path);
     unsafe {
-        let (opened, stream_index) = match open_best_audio_stream(path) {
-            Ok(opened) => opened,
-            Err(reason) => {
-                warn!("probe_audio_from_path: {reason} for {}", path.display());
-                return None;
-            }
-        };
+        let (mut opened, stream_index) = open_best_audio_stream(path)?;
         let fmt_ctx = opened.fmt_ctx;
         let stream = *(*fmt_ctx).streams.add(stream_index as usize);
         let duration = probed_duration(path, fmt_ctx, stream);
@@ -328,12 +358,10 @@ fn open_and_probe(path: &Path) -> Option<ProbeResult> {
             &std::ffi::CStr::from_ptr((*(*fmt_ctx).iformat).name).to_string_lossy(),
         );
         let Some(sample_rate) = stated_count((*codecpar).sample_rate) else {
-            warn!(
-                "probe_audio_from_path: the audio stream states sample rate {} in {}",
-                (*codecpar).sample_rate,
-                path.display()
-            );
-            return None;
+            return Err(ProbeError::NotAudio(format!(
+                "the audio stream states sample rate {}",
+                (*codecpar).sample_rate
+            )));
         };
         let bits_per_sample = if !content_type.is_lossless_audio() {
             None
@@ -345,12 +373,10 @@ fn open_and_probe(path: &Path) -> Option<ProbeResult> {
             None
         };
         let Some(channels) = stated_count((*codecpar).ch_layout.nb_channels) else {
-            warn!(
-                "probe_audio_from_path: the audio stream states {} channels in {}",
-                (*codecpar).ch_layout.nb_channels,
-                path.display()
-            );
-            return None;
+            return Err(ProbeError::NotAudio(format!(
+                "the audio stream states {} channels",
+                (*codecpar).ch_layout.nb_channels
+            )));
         };
 
         let bitrate_kbps = if content_type.is_lossless_audio() {
@@ -360,11 +386,16 @@ fn open_and_probe(path: &Path) -> Option<ProbeResult> {
                 probed_lossy_bitrate_kbps(path, fmt_ctx, stream_index, duration)
             })
         };
+        // A read that failed while measuring the bitrate leaves it unmeasured,
+        // which is no fact about the file.
+        if let Some(error) = opened.take_read_error() {
+            return Err(ProbeError::Io(error));
+        }
 
         drop(opened);
 
-        if let Some(duration) = duration {
-            Some(ProbeResult {
+        match duration {
+            Some(duration) => Ok(ProbeResult {
                 content_type,
                 container,
                 duration,
@@ -372,10 +403,8 @@ fn open_and_probe(path: &Path) -> Option<ProbeResult> {
                 bits_per_sample,
                 bitrate_kbps,
                 channels,
-            })
-        } else {
-            debug!("probe_audio_from_path: no usable container duration for {}", path.display());
-            None
+            }),
+            None => Err(ProbeError::NotAudio("no usable container duration".to_string())),
         }
     }
 }
@@ -429,7 +458,7 @@ unsafe fn stream_timestamps(
 #[cfg(desktop)]
 pub fn seek_landing_bytes(path: &Path, samples: &[u64]) -> Result<Vec<u64>, String> {
     unsafe {
-        let (opened, stream_index) = open_best_audio_stream(path)?;
+        let (opened, stream_index) = open_best_audio_stream(path).map_err(|e| e.to_string())?;
         let fmt_ctx = opened.fmt_ctx;
         let stream = *(*fmt_ctx).streams.add(stream_index as usize);
         let codecpar = (*stream).codecpar;

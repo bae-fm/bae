@@ -734,8 +734,16 @@ fn probe(
 ) -> Result<(Playability, Option<Result<FileTagRead, TagReadFailure>>), FolderScanError> {
     unchanged(file, "changed before its audio facts could be read")?;
     let stream = match bae_audio::probe_audio_from_path(&file.version.path) {
-        None => Playability::Unplayable,
-        Some(probe) => match scanned_audio(&probe) {
+        // A failed read says nothing of the file's audio: the pass fails, and
+        // nothing is stored for the file.
+        Err(bae_audio::ProbeError::Io(source)) => {
+            return Err(FolderScanError::io(&file.version.path, source));
+        }
+        Err(bae_audio::ProbeError::NotAudio(reason)) => {
+            info!("Invalid candidate: {} is no audio: {reason}", file.relative_path);
+            Playability::Unplayable
+        }
+        Ok(probe) => match scanned_audio(&probe) {
             Some(audio) => Playability::Measured(audio),
             None => {
                 info!("Invalid candidate: {} is no audio stream bae plays", file.relative_path);

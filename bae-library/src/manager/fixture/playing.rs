@@ -51,7 +51,9 @@ impl LibraryManager {
             }
             let path = folder.join(&track.file_reference);
             let unplayable = || invalid(format!("{} is no audio bae plays", path.display()));
-            let probe = bae_audio::probe_audio_from_path(&path).ok_or_else(unplayable)?;
+            let probe = bae_audio::probe_audio_from_path(&path).map_err(|error| {
+                invalid(format!("{} is no audio bae plays: {error}", path.display()))
+            })?;
             scanned_audio
                 .push(bae_import::folder_scanner::scanned_audio(&probe).ok_or_else(unplayable)?);
             audio_files.push(CueAnalyzedAudioFile {

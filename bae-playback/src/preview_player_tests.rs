@@ -496,13 +496,14 @@ async fn failed_preview_seek_surfaces_idle() {
 }
 
 /// Neither shape of "no usable probe" — the prober ran and found nothing
-/// (`Ok(None)`, a file that isn't audio) nor the probe task itself failed
+/// (`Ok(Err(_))`, a file that isn't audio) nor the probe task itself failed
 /// (`Err`, a panic) — resolves to a probe; both fall through to the same
 /// `None` rather than a caller mistaking either for a usable format and
 /// driving a decoder with defaults.
 #[tokio::test]
 async fn resolve_preview_probe_rejects_absent_or_failed_probe() {
-    let unprobeable: Result<Option<bae_audio::ProbeResult>, TaskFailed> = Ok(None);
+    let unprobeable: Result<Result<bae_audio::ProbeResult, _>, TaskFailed> =
+        Ok(Err(bae_audio::ProbeError::NotAudio("no audio stream".to_string())));
     assert!(resolve_preview_probe(std::path::Path::new("path"), unprobeable).is_none());
 
     let probe_panicked = Err(TaskFailed::Panicked(bae_util::task_failure::Bug::new(
@@ -528,7 +529,7 @@ fn probe(sample_rate: u32, channels: u32) -> bae_audio::ProbeResult {
 /// A probe resolves to itself.
 #[test]
 fn resolve_preview_probe_accepts_usable_format() {
-    let result: Result<_, TaskFailed> = Ok(Some(probe(44100, 2)));
+    let result: Result<_, TaskFailed> = Ok(Ok(probe(44100, 2)));
     let resolved = resolve_preview_probe(std::path::Path::new("path"), result)
         .expect("a usable format passes");
     assert_eq!(resolved.sample_rate.get(), 44100);

@@ -195,3 +195,35 @@ fn same_size_same_mtime_corrupt_replacement_is_not_served_from_probe_cache() {
         .iter()
         .any(|item| matches!(item, ScanItem::Valid(candidate) if candidate.name == "Album")));
 }
+
+/// A track whose bytes can't be read says nothing of its audio: the scan
+/// fails with the read's error instead of reading the folder as damaged audio.
+#[cfg(unix)]
+#[test]
+fn an_unreadable_track_fails_the_scan_instead_of_reading_as_damaged_audio() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let tmp = tempfile::tempdir().unwrap();
+    let album = tmp.path().join("Album");
+    std::fs::create_dir_all(&album).unwrap();
+    let track = album.join("01.flac");
+    std::fs::write(&track, fake_flac()).unwrap();
+    std::fs::set_permissions(&track, std::fs::Permissions::from_mode(0o000)).unwrap();
+
+    let result = scan_for_candidates_with_decisions(
+        tmp.path().to_path_buf(),
+        &StoredCandidateEdits::none(),
+        &FolderReleaseDecisions::default(),
+        &coven::SequentialIds::new(),
+        |_| {},
+    );
+
+    std::fs::set_permissions(&track, std::fs::Permissions::from_mode(0o600)).unwrap();
+    match result {
+        Err(FolderScanError::Io { path, source }) => {
+            assert_eq!(path, track);
+            assert_eq!(source.kind(), std::io::ErrorKind::PermissionDenied);
+        }
+        other => panic!("expected the track's read error, got {other:?}"),
+    }
+}
