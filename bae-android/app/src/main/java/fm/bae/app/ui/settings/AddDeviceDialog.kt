@@ -195,7 +195,7 @@ private fun AddDeviceShareContent(share: BridgeRestoreCodeShare) {
     SelectionContainer {
         Text(text = share.code, style = ThemeText.mono.style, textAlign = TextAlign.Center)
     }
-    AndroidButton(kind = ButtonKind.TEXT, onClick = { copy(share.code) }) {
+    AndroidButton(kind = ButtonKind.OUTLINED, onClick = { copy(share.code) }) {
         Icon(
             Icons.Filled.ContentCopy,
             contentDescription = null,
