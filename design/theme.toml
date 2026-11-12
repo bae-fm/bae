@@ -286,6 +286,8 @@ onFillSecondary = "#B3FFFFFF"
 [opacity]
 tint = 0.14
 tintStrong = 0.26
+# A control that is off, as the design draws it (tokens.json `opacity-off`).
+off = 0.4
 
 # Corner radii, in points on Apple and dp on Android. `artwork` is cover art in
 # rows and lists, `cover` a release's cover shown large; `bar` rounds skeleton

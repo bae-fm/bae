@@ -79,6 +79,7 @@ struct LocalLibrariesSection: View {
                     Text("Add library…")
                 }
                 .menuStyle(.button)
+                .buttonStyle(SecondaryButtonStyle())
                 .menuIndicator(.hidden)
                 .fixedSize()
                 .disabled(disabled)

@@ -205,7 +205,7 @@
                                 ? Theme.danger : Color.primary
                         )
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(SecondaryButtonStyle())
                 }
             }
             .controlSize(.large)
