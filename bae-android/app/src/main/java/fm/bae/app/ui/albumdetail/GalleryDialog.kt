@@ -70,6 +70,7 @@ import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeSpace
+import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidSpinner
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.CancellationException
@@ -209,7 +210,7 @@ private fun BoxScope.GalleryCloseButton(onDismiss: () -> Unit) {
                 .align(Alignment.TopEnd)
                 .windowInsetsPadding(
                     WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
-                ).padding(ThemeSpace.related),
+                ).padding(ThemeSpace.inline),
     ) {
         Icon(
             imageVector = Icons.Filled.Close,
@@ -240,6 +241,7 @@ private fun BoxScope.GalleryCaption(
     ) {
         Text(
             text = LocalContext.current.galleryLabelText(items[currentPage].label),
+            style = ThemeText.body.style,
             color = BaeTheme.colors.onFill,
         )
         if (items.size > 1) {
@@ -250,6 +252,7 @@ private fun BoxScope.GalleryCaption(
                         LocalContext.current.countText(currentPage + 1),
                         LocalContext.current.countText(items.size),
                     ),
+                style = ThemeText.body.style,
                 color = BaeTheme.colors.onFillSecondary,
             )
         }
@@ -312,11 +315,12 @@ private fun GalleryImage(
             else -> {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
+                    verticalArrangement = Arrangement.spacedBy(ThemeSpace.group),
                 ) {
                     AndroidSpinner(color = BaeTheme.colors.onFill)
                     Text(
                         text = stringResource(R.string.gallery_loading_image),
+                        style = ThemeText.body.style,
                         color = BaeTheme.colors.onFillSecondary,
                     )
                 }

@@ -95,7 +95,7 @@
     <string name="sort_name">Name</string>
     <string name="image_load_failed">Bild konnte nicht geladen werden</string>
     <string name="gallery_loading_image">Bild wird geladen…</string>
-    <string name="gallery_page_counter">%1$s von %2$s</string>
+    <string name="gallery_page_counter">%1$s / %2$s</string>
     <string name="settings_library">Bibliothek</string>
     <string name="library_name_row">Name</string>
     <plurals name="people_count">

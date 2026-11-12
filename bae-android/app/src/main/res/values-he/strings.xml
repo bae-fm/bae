@@ -96,7 +96,7 @@
     <string name="sort_name">שם</string>
     <string name="image_load_failed">לא ניתן לטעון את התמונה.</string>
     <string name="gallery_loading_image">טוען את התמונה…</string>
-    <string name="gallery_page_counter">%1$s מתוך %2$s</string>
+    <string name="gallery_page_counter">%1$s / %2$s</string>
     <string name="settings_library">ספרייה</string>
     <string name="library_name_row">שם</string>
     <plurals name="people_count">

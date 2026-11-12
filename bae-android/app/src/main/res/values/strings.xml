@@ -127,7 +127,7 @@
     <!-- An image that exists but couldn't be read or decoded: a gallery page, or a cover tile to tap to retry. -->
     <string name="image_load_failed">Could not load image</string>
     <string name="gallery_loading_image">Loading the image…</string>
-    <string name="gallery_page_counter">%1$s of %2$s</string>
+    <string name="gallery_page_counter">%1$s / %2$s</string>
 
     <!-- Settings -->
     <string name="settings_library">Library</string>
