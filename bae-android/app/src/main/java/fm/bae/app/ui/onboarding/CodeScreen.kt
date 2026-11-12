@@ -326,7 +326,7 @@ private fun EmptyWelcome(
 private fun Tagline(modifier: Modifier = Modifier) {
     Text(
         text = stringResource(R.string.onboarding_tagline),
-        style = ThemeText.body.style,
+        style = ThemeText.androidBodyLarge.style,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         textAlign = TextAlign.Center,
         modifier = modifier,

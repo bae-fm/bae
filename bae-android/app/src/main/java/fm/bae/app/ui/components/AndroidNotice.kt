@@ -221,7 +221,7 @@ private fun CenteredNotice(
             StatusGlyph(tone, outline = true, muted = true)
             Text(
                 text = title,
-                style = MaterialTheme.typography.bodyLarge,
+                style = ThemeText.androidBodyLarge.style,
                 color = MaterialTheme.colorScheme.onSurface,
                 textAlign = TextAlign.Center,
             )

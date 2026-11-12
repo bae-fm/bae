@@ -35,11 +35,11 @@ internal fun AndroidRadio(
                 .fillMaxWidth()
                 .defaultMinSize(minHeight = MIN_HEIGHT)
                 .selectable(selected = checked, role = Role.RadioButton, onClick = onClick),
-        horizontalArrangement = Arrangement.spacedBy(ThemeSpace.group),
+        horizontalArrangement = Arrangement.spacedBy(ThemeSpace.edge),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         RadioButton(selected = checked, onClick = null)
-        Text(text = label, style = ThemeText.rowTitle.style)
+        Text(text = label, style = ThemeText.androidRowTitle.style)
     }
 }
 
