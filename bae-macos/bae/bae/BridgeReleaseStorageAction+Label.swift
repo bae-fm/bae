@@ -18,14 +18,4 @@ extension BridgeReleaseStorageAction {
     static var cancelPinningLabel: String {
         String(localized: "Cancel pinning")
     }
-
-    /// SF Symbol name paired with `label`.
-    var systemImage: String {
-        switch self {
-        case .upload: "arrow.down.to.line"
-        case .detachAudio: "arrow.up.forward.square"
-        case .pin: "pin"
-        case .unpin: "pin.slash"
-        }
-    }
 }

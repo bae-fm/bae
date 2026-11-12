@@ -374,7 +374,7 @@ extension AlbumDetailView {
                 onDone: { uiStore.dismissModal() },
             )
             .frame(width: 640, height: 600)
-            .background(Theme.background)
+            .background(Theme.surfaceElevated)
         }
     }
 
@@ -450,7 +450,6 @@ extension AlbumDetailView {
                 onCancel: { uiStore.dismissModal() },
             )
             .frame(width: 420)
-            .background(Theme.background)
         }
     }
 

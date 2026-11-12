@@ -7,7 +7,7 @@ struct MoveToCloudConfirmSheet: View {
     let onCancel: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: ThemeSpace.group) {
+        VStack(alignment: .leading, spacing: 10) {
             Text("Move to cloud")
                 .themeText(.heading)
             MacSheetFooter {
@@ -18,7 +18,10 @@ struct MoveToCloudConfirmSheet: View {
                     .keyboardShortcut(.defaultAction)
             }
         }
-        .padding()
+        .padding(.horizontal, ThemeSpace.edge)
+        .padding(.top, ThemeSpace.group)
+        .padding(.bottom, ThemeSpace.edge)
+        .background(Theme.surfaceElevated)
     }
 }
 

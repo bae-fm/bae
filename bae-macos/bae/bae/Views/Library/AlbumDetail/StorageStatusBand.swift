@@ -49,19 +49,21 @@ struct StorageStatusBand: View {
     /// release being pinned or made local, each waiting its turn or moving.
     @ViewBuilder
     private var pill: some View {
-        if let transfer {
+        if release.summary.upload?.missing != nil {
+            QueuedUploadChip()
+        }
+        else if let transfer {
             MacStorageChip(release: release.summary, status: transfer)
         }
     }
 
     /// The storage status of the change on its way, placed as
     /// `MacStorageChip` words it; nil when nothing is moving. Resting states
-    /// and failures show elsewhere in the band, and a file whose original is
-    /// missing shows as the warning notice alone, so no chip repeats it.
+    /// and failures show elsewhere in the band. An upload held by a missing
+    /// original shows as the queued upload beside the warning notice that
+    /// names the file.
     private var transfer: BridgeStorageRowStatus? {
-        if let upload = release.summary.upload {
-            return upload.missing == nil ? .uploading : nil
-        }
+        if release.summary.upload != nil { return .uploading }
         if let download = release.downloadStatus {
             switch download {
             case .queued: return .pinning(step: .queued)
@@ -104,16 +106,16 @@ struct StorageStatusBand: View {
 
     /// The resting storage state.
     private var storageStatus: some View {
-        HStack(spacing: ThemeSpace.inline) {
+        HStack(spacing: ThemeSpace.compact) {
             switch release.summary.storageState {
             case .onOneDevice:
-                Image(systemName: "folder")
+                Image(systemName: "folder").themeIcon(.medium)
                 Text("Local")
             case .inStorage(pinned: true):
-                Image(systemName: "pin.fill")
+                Image(systemName: "pin").themeIcon(.medium)
                 Text("Pinned")
             case .inStorage(pinned: false):
-                Image(systemName: "cloud")
+                Image(systemName: "cloud").themeIcon(.medium)
                 Text("In cloud")
             }
         }
@@ -122,29 +124,21 @@ struct StorageStatusBand: View {
     }
 
     private var transferActions: some View {
-        Group {
+        FlowLayout(spacing: ThemeSpace.related) {
             ForEach(release.storageActions, id: \.self) { action in
                 if action == .pin && pinQueued {
-                    Button(action: onCancelPin) {
-                        Label(
-                            BridgeReleaseStorageAction.cancelPinningLabel,
-                            systemImage: "pin.slash"
-                        )
-                    }
+                    Button(
+                        BridgeReleaseStorageAction.cancelPinningLabel,
+                        action: onCancelPin
+                    )
                 }
                 else {
-                    Button(action: { onAction(action) }) {
-                        Label(action.label, systemImage: action.systemImage)
-                    }
+                    Button(action.label) { onAction(action) }
                 }
             }
             // Export and Save As change no state, so every release offers them.
-            Button(action: { onExport() }) {
-                Label("Export…", systemImage: "square.and.arrow.up")
-            }
-            Button(action: { onSaveAs() }) {
-                Label("Save as…", systemImage: "square.and.arrow.down")
-            }
+            Button("Export…", action: onExport)
+            Button("Save as…", action: onSaveAs)
         }
     }
 }

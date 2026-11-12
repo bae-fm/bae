@@ -90,7 +90,8 @@ struct ReleaseStorageSheet: View {
                 Button("Done") { onDone() }
                     .keyboardShortcut(.cancelAction)
             }
-            .padding()
+            .padding(.horizontal, ThemeSpace.edge)
+            .padding(.vertical, 14)
             Divider()
             if let releaseError {
                 Notice(error: releaseError)

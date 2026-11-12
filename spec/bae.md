@@ -2142,8 +2142,8 @@ from coven's `coven_sending`, a live view of the uploads in flight. While none
 is being sent, the row reads Queued to upload, and names nothing else that
 holds the files back but a file whose original is missing, from coven's
 `coven_pending`: Waiting for that file, named, since only restoring it lets
-the move go on; the release's storage band shows it as a warning that names the
-file. A pause, the network, a metered network or a retry's time holds the whole
+the move go on; the release's storage band shows Queued to upload and, under it, a
+warning that names the file. A pause, the network, a metered network or a retry's time holds the whole
 queue, so it shows once, where the queue shows, never on a release: in place of
 the queue's rate under the list, on the Activity panel's Uploading line, and on
 the phones' Pinning screen. How far
