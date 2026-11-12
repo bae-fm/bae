@@ -28,7 +28,7 @@ body{margin:0}
   <div style="position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 28px 0 48px"><x-import component-from-global-scope="Bae.Logo" size="72" bob="{{yes}}" glow="{{yes}}"></x-import><div style="margin-top: 10px; font-size: 15px; color: var(--text-secondary)">Your music, everywhere</div><div style="width: 420px; margin-top: 28px; display: flex; flex-direction: column; gap: 8px"><dc-import name="mac.parts.welcome-libraries" hint-size="100%,170px"></dc-import><x-import component-from-global-scope="Bae.MacSection" title="Saved in iCloud Keychain"><x-import component-from-global-scope="Bae.MacBox"><x-import component-from-global-scope="Bae.MacRow" label="Garden" strong="{{yes}}" note="Dropbox · ana@example.com"><x-import component-from-global-scope="Bae.MacButton">Restore</x-import><x-import component-from-global-scope="Bae.MacMoreMenu"></x-import></x-import><x-import component-from-global-scope="Bae.MacRow" label="Restore code can’t be used" strong="{{yes}}" note="Saved for a different library · 7f3c9a1e"><x-import component-from-global-scope="Bae.MacMoreMenu"></x-import></x-import></x-import><x-import component-from-global-scope="Bae.MacNote">Restore codes your other Apple devices saved. Restoring brings that library onto this Mac.</x-import></x-import></div></div>
 </x-import>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":690,"height":600}}'>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":900,"height":600}}'>
 class Component extends DCLogic {
   renderVals() { return { yes: true }; }
 }
