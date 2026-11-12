@@ -381,6 +381,7 @@
     <string name="onboarding_saved_code_reason_other_library">为另一个库保存</string>
     <string name="onboarding_saved_code_reason_ambiguous">保存了不止一次</string>
     <string name="onboarding_saved_code_delete">删除</string>
+    <string name="onboarding_saved_code_delete_menu">删除…</string>
     <string name="onboarding_saved_code_delete_title">删除此恢复码？</string>
     <string name="onboarding_saved_code_delete_body">这只会从此设备上移除“%1$s”的恢复码。不会删除该库，也不会删除云端中的任何内容。</string>
     <string name="onboarding_saved_code_delete_body_unusable">这只会从此设备上移除该恢复码。不会删除该库，也不会删除云端中的任何内容。</string>

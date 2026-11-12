@@ -12,6 +12,7 @@ import androidx.compose.ui.test.hasProgressBarRangeInfo
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -26,7 +27,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 
-/** The welcome lists the codes saved on this phone: a tap restores one, and Delete asks first. */
+/** The welcome lists the codes saved on this phone: a tap restores one, and its menu's Delete… asks first. */
 @RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
 class SavedCodesSectionTest {
@@ -55,6 +56,12 @@ class SavedCodesSectionTest {
                 }
             BaeTheme { OnboardingSteps(flow) }
         }
+    }
+
+    /** Opens the only row's ⋮ menu and chooses Delete…. */
+    private fun chooseDelete() {
+        compose.onNodeWithContentDescription("More").performScrollTo().performClick()
+        compose.onNodeWithText("Delete…").performClick()
     }
 
     @Test
@@ -98,7 +105,7 @@ class SavedCodesSectionTest {
         val host = SavedCodesHost(listOf(dropboxCode))
         showWelcome(host)
 
-        compose.onNodeWithText("Delete").performScrollTo().performClick()
+        chooseDelete()
 
         compose
             .onNodeWithText(
@@ -122,10 +129,10 @@ class SavedCodesSectionTest {
         host.deleteGate = gate
         showWelcome(host)
 
-        compose.onNodeWithText("Delete").performScrollTo().performClick()
+        chooseDelete()
         compose.onNode(hasText("Delete") and hasAnyAncestor(isDialog())).performClick()
 
-        compose.onNodeWithText("Delete").assertIsDisplayed().assertIsNotEnabled()
+        compose.onNodeWithContentDescription("More").assertIsDisplayed().assertIsNotEnabled()
         compose.onNode(hasProgressBarRangeInfo(ProgressBarRangeInfo.Indeterminate)).assertDoesNotExist()
 
         gate.complete(Unit)
@@ -137,7 +144,7 @@ class SavedCodesSectionTest {
         val host = SavedCodesHost(listOf(dropboxCode))
         showWelcome(host)
 
-        compose.onNodeWithText("Delete").performScrollTo().performClick()
+        chooseDelete()
         compose.onNode(hasText("Cancel") and hasAnyAncestor(isDialog())).performClick()
 
         compose.onNodeWithText("Home Library").performScrollTo().assertIsDisplayed()

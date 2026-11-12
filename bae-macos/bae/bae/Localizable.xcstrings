@@ -3778,6 +3778,179 @@
         }
       }
     },
+    "Saved in iCloud Keychain" : {
+      "comment" : "Welcome screen: title of the section listing restore codes saved in iCloud Keychain for libraries not on this Mac",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "المحفوظة في سلسلة مفاتيح iCloud"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запазени в Ключодържател на iCloud"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uloženo v klíčence iCloud"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gemt i iCloud-nøglering"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Im iCloud-Schlüsselbund gespeichert"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Αποθηκευμένα στο Μπρελόκ iCloud"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saved in iCloud Keychain"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guardados en el llavero de iCloud"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tallennettu iCloud-avainnippuun"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enregistrés dans le trousseau iCloud"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שמורים במחזיק המפתחות של iCloud"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spremljeno u iCloud privjesku ključeva"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mentve az iCloud-kulcstartóban"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salvati nel portachiavi iCloud"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloudキーチェーンに保存済み"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud 키체인에 저장됨"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lagret i iCloud-nøkkelringen"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bewaard in iCloud-sleutelhanger"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zapisane w pęku kluczy iCloud"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salvos nas Chaves do iCloud"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guardados no Porta-chaves iCloud"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salvate în brelocul iCloud"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uložené v kľúčenke iCloud"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sparade i iCloud-nyckelringen"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud Anahtar Zinciri’nde kayıtlı"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Збережено у В’язці ключів iCloud"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已保存在 iCloud 钥匙串中"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已儲存於 iCloud 鑰匙圈"
+          }
+        }
+      }
+    },
     "Show" : {
       "localizations" : {
         "ar" : {
@@ -14780,6 +14953,179 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "地區"
+          }
+        }
+      }
+    },
+    "Restore codes your other Apple devices saved. Restoring brings that library onto this Mac." : {
+      "comment" : "Welcome screen: note under the saved restore codes list",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "رموز الاستعادة التي حفظتها أجهزة Apple الأخرى لديك. تؤدي الاستعادة إلى جلب تلك المكتبة إلى جهاز Mac هذا."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Кодове за възстановяване, запазени от другите ви устройства на Apple. Възстановяването пренася тази библиотека на този Mac."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kódy pro obnovení, které uložila vaše další zařízení Apple. Obnovením se tato knihovna přenese do tohoto Macu."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gendannelseskoder, som dine andre Apple-enheder har gemt. Gendannelse henter biblioteket over på denne Mac."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wiederherstellungscodes, die deine anderen Apple-Geräte gespeichert haben. Beim Wiederherstellen kommt diese Bibliothek auf diesen Mac."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Κωδικοί επαναφοράς που αποθήκευσαν οι άλλες συσκευές σας Apple. Η επαναφορά φέρνει αυτή τη βιβλιοθήκη σε αυτό το Mac."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restore codes your other Apple devices saved. Restoring brings that library onto this Mac."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Códigos de restauración que guardaron tus otros dispositivos Apple. Al restaurar, esa biblioteca pasa a este Mac."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Muiden Apple-laitteidesi tallentamat palautuskoodit. Palauttaminen tuo kyseisen kirjaston tälle Macille."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Codes de restauration enregistrés par vos autres appareils Apple. La restauration importe cette bibliothèque sur ce Mac."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "קודי שחזור שהמכשירים האחרים שלך מבית Apple שמרו. שחזור מביא את הספרייה הזו ל-Mac הזה."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kodovi za vraćanje koje su spremili vaši drugi Apple uređaji. Vraćanjem se ta biblioteka prenosi na ovaj Mac."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A többi Apple-eszközöd által mentett helyreállítási kódok. A visszaállítás ezt a könyvtárat ráhozza erre a Macre."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Codici di ripristino salvati dagli altri tuoi dispositivi Apple. Il ripristino porta quella libreria su questo Mac."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ほかのAppleデバイスが保存した復元コードです。復元すると、そのライブラリがこのMacに追加されます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "다른 Apple 기기가 저장한 복원 코드입니다. 복원하면 해당 보관함이 이 Mac으로 옮겨집니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gjenopprettingskoder som de andre Apple-enhetene dine har lagret. Når du gjenoppretter, kommer biblioteket til denne Macen."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Herstelcodes die je andere Apple-apparaten hebben bewaard. Bij het herstellen komt die bibliotheek op deze Mac."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kody przywracania zapisane przez Twoje inne urządzenia Apple. Przywrócenie przenosi tę bibliotekę na ten komputer Mac."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Códigos de restauração que seus outros dispositivos Apple salvaram. Restaurar traz essa biblioteca para este Mac."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Códigos de restauração que os seus outros dispositivos Apple guardaram. Restaurar traz essa biblioteca para este Mac."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coduri de restaurare salvate de celelalte dispozitive Apple ale tale. Restaurarea aduce acea bibliotecă pe acest Mac."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kódy na obnovenie, ktoré uložili vaše ďalšie zariadenia Apple. Obnovením sa táto knižnica prenesie do tohto Macu."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Återställningskoder som dina andra Apple-enheter har sparat. Vid återställning hamnar biblioteket på den här Macen."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diğer Apple cihazlarınızın kaydettiği geri yükleme kodları. Geri yükleme, o kütüphaneyi bu Mac’e getirir."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Коди відновлення, які зберегли ваші інші пристрої Apple. Відновлення переносить цю бібліотеку на цей Mac."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你的其他 Apple 设备保存的恢复码。恢复会把该资料库带到这台 Mac 上。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你其他 Apple 裝置所儲存的還原碼。還原會將該資料庫帶到這台 Mac。"
           }
         }
       }
@@ -39848,7 +40194,7 @@
       }
     },
     "Delete" : {
-      "comment" : "Delete button: confirms the delete-release alert in album detail; on the welcome screen, a saved restore code row's delete button and the confirm button of its delete alert; on the welcome list and in Library settings, the button that deletes a library that was never synced",
+      "comment" : "Delete button: confirms the delete-release alert in album detail; on the welcome screen, the confirm button of a saved restore code's delete alert; on the welcome list and in Library settings, the button that deletes a library that was never synced",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -50746,180 +51092,6 @@
         }
       }
     },
-    "Libraries whose restore codes are saved in your keychain." : {
-      "comment" : "Welcome restore list: explains which libraries appear",
-      "extractionState" : "stale",
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "المكتبات التي حُفظت رموز استعادتها في سلسلة المفاتيح لديك."
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Библиотеки, чиито кодове за възстановяване са запазени във вашия ключодържател."
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Knihovny, jejichž kódy pro obnovení jsou uložené ve vaší klíčence."
-          }
-        },
-        "da" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Biblioteker, hvis gendannelseskoder er gemt i din nøglering."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Libraries whose restore codes are saved in your keychain."
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bibliotheken, deren Wiederherstellungscodes in deinem Schlüsselbund gesichert sind."
-          }
-        },
-        "el" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Οι βιβλιοθήκες των οποίων οι κωδικοί επαναφοράς είναι αποθηκευμένοι στο μπρελόκ σας."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bibliotecas cuyos códigos de restauración están guardados en tu llavero."
-          }
-        },
-        "fi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kirjastot, joiden palautuskoodit on tallennettu avainnippuusi."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bibliothèques dont les codes de restauration sont enregistrés dans votre trousseau."
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ספריות שקודי השחזור שלהן שמורים במחזיק המפתחות שלך."
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fonoteke čiji su kodovi za vraćanje spremljeni u vašem privjesku ključeva."
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Azok a könyvtárak, amelyek visszaállítási kódja a kulcstartódban van."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Librerie i cui codici di ripristino sono salvati nel tuo portachiavi."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "復元コードがキーチェーンに保存されているライブラリ。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "복원 코드가 키체인에 저장된 보관함입니다."
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bibliotek der gjenopprettingskodene er lagret i nøkkelringen din."
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bibliotheken waarvan de herstelcodes in je sleutelhanger zijn bewaard."
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Biblioteki, których kody przywracania są zapisane w pęku kluczy."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bibliotecas cujos códigos de restauração estão salvos nas suas chaves."
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bibliotecas cujos códigos de restauração estão guardados no seu porta-chaves."
-          }
-        },
-        "ro" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bibliotecile ale căror coduri de restaurare sunt salvate în brelocul tău."
-          }
-        },
-        "sk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Knižnice, ktorých kódy na obnovenie sú uložené v tvojej kľúčenke."
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bibliotek vars återställningskoder är sparade i din nyckelring."
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Geri yükleme kodları anahtar zincirinde kayıtlı olan kitaplıklar."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Бібліотеки, коди відновлення яких збережено у вашій в'язці ключів."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "恢复码已保存在钥匙串中的资料库。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "還原碼已儲存於鑰匙圈的資料庫。"
-          }
-        }
-      }
-    },
     "Library" : {
       "comment" : "Restore screen labeled value / library section / library nav title",
       "localizations" : {
@@ -57663,180 +57835,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "好"
-          }
-        }
-      }
-    },
-    "On this device" : {
-      "comment" : "Welcome screen: section header over the libraries already present locally",
-      "extractionState" : "stale",
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "على هذا الجهاز"
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "На това устройство"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "V tomto zařízení"
-          }
-        },
-        "da" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "På denne enhed"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "On this device"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Auf diesem Gerät"
-          }
-        },
-        "el" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Σε αυτή τη συσκευή"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "En este dispositivo"
-          }
-        },
-        "fi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tällä laitteella"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sur cet appareil"
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "במכשיר זה"
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Na ovom uređaju"
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ezen az eszközön"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Su questo dispositivo"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "このデバイス上"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "이 기기에서"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "På denne enheten"
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Op dit apparaat"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Na tym urządzeniu"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Neste dispositivo"
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Neste dispositivo"
-          }
-        },
-        "ro" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pe acest dispozitiv"
-          }
-        },
-        "sk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Na tomto zariadení"
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "På den här enheten"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bu cihazda"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "На цьому пристрої"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "在此设备上"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "在此裝置上"
           }
         }
       }
@@ -97139,178 +97137,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "重設此裝置？"
-          }
-        }
-      }
-    },
-    "Restore codes saved by your other devices signed in to this Apple Account." : {
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "رموز الاستعادة التي حفظتها أجهزتك الأخرى المسجّل دخولها إلى حساب Apple هذا."
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Кодове за възстановяване, запазени от другите ви устройства, влезли в този акаунт в Apple."
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kódy pro obnovení uložené vašimi dalšími zařízeními přihlášenými k tomuto Apple účtu."
-          }
-        },
-        "da" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gendannelseskoder gemt af dine andre enheder, der er logget ind på denne Apple-konto."
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wiederherstellungscodes, die deine anderen Geräte mit diesem Apple Account gespeichert haben."
-          }
-        },
-        "el" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Κωδικοί επαναφοράς που αποθηκεύτηκαν από τις άλλες συσκευές σας συνδεδεμένες σε αυτόν τον λογαριασμό Apple."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Códigos de restauración guardados por tus otros dispositivos con sesión iniciada en esta cuenta de Apple."
-          }
-        },
-        "fi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Palautuskoodit, jotka muut tähän Apple-tiliin kirjautuneet laitteesi ovat tallentaneet."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Codes de restauration enregistrés par vos autres appareils connectés à ce compte Apple."
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "קודי שחזור שנשמרו על ידי המכשירים האחרים שלך המחוברים לחשבון Apple הזה."
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kodovi za vraćanje koje su spremili vaši drugi uređaji prijavljeni na ovaj Apple račun."
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Helyreállítási kódok, amelyeket az ebbe az Apple-fiókba bejelentkezett többi eszközöd mentett."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Codici di ripristino salvati dagli altri dispositivi che hanno effettuato l’accesso a questo Account Apple."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "この Apple アカウントにサインインしているほかのデバイスが保存した復元コード。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "이 Apple 계정에 로그인된 다른 기기가 저장한 복원 코드입니다."
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gjenopprettingskoder lagret av de andre enhetene dine som er logget på denne Apple-kontoen."
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Herstelcodes die zijn bewaard door je andere apparaten die met dit Apple-account zijn ingelogd."
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kody przywracania zapisane przez Twoje inne urządzenia zalogowane na to konto Apple."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Códigos de restauração salvos pelos seus outros dispositivos conectados a esta Conta Apple."
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Códigos de restauração guardados pelos seus outros dispositivos com sessão iniciada nesta Conta Apple."
-          }
-        },
-        "ro" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Coduri de restaurare salvate de celelalte dispozitive ale tale conectate la acest cont Apple."
-          }
-        },
-        "sk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kódy na obnovenie uložené vašimi ďalšími zariadeniami prihlásenými do tohto účtu Apple."
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Återställningskoder som sparats av dina andra enheter som är inloggade på det här Apple-kontot."
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bu Apple Hesabı'nda oturum açmış diğer cihazlarınızın kaydettiği geri yükleme kodları."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Коди відновлення, збережені іншими вашими пристроями з входом у цей обліковий запис Apple."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "登录了此 Apple 账户的其他设备保存的恢复码。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "登入此 Apple 帳號的其他裝置所儲存的還原碼。"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Restore codes saved by your other devices signed in to this Apple Account."
           }
         }
       }
@@ -137955,7 +137781,7 @@
       }
     },
     "Delete…" : {
-      "comment" : "Welcome library list: the menu item that deletes a library that never synced, after asking",
+      "comment" : "Welcome screen: the menu item that deletes a library that never synced, or a saved restore code, after asking",
       "extractionState" : "manual",
       "localizations" : {
         "ar" : {

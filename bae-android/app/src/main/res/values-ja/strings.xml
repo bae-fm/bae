@@ -381,6 +381,7 @@
     <string name="onboarding_saved_code_reason_other_library">別のライブラリ用に保存されています</string>
     <string name="onboarding_saved_code_reason_ambiguous">複数回保存されています</string>
     <string name="onboarding_saved_code_delete">削除</string>
+    <string name="onboarding_saved_code_delete_menu">削除…</string>
     <string name="onboarding_saved_code_delete_title">この復元コードを削除しますか？</string>
     <string name="onboarding_saved_code_delete_body">「%1$s」の復元コードをこのデバイスからのみ削除します。ライブラリやクラウド内のデータは削除されません。</string>
     <string name="onboarding_saved_code_delete_body_unusable">復元コードをこのデバイスからのみ削除します。ライブラリやクラウド内のデータは削除されません。</string>

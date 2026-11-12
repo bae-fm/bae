@@ -27,6 +27,7 @@ import fm.bae.app.ui.onboarding.StandingRead
 import fm.bae.app.ui.onboarding.WelcomeActions
 import fm.bae.app.ui.onboarding.WelcomeLibrariesScene
 import fm.bae.app.ui.onboarding.WelcomeRemovingScene
+import fm.bae.app.ui.onboarding.WelcomeSavedCodesScene
 import fm.bae.app.ui.onboarding.WelcomeScene
 import fm.bae.fastvalues.LatestStream
 import fm.bae.fastvalues.only
@@ -57,6 +58,10 @@ class WelcomeShots : BoardShot() {
     /** The welcome on a phone that holds two libraries, one of them never synced. */
     @Test
     fun androidWelcomeLibraries() = shot("android.welcome.libraries") { WelcomeLibrariesScene() }
+
+    /** The welcome with restore codes saved for libraries that aren't on the phone, each row ending in its ⋮ menu. */
+    @Test
+    fun androidWelcomeLibrariesSavedCodes() = shot("android.welcome.libraries.saved-codes") { WelcomeSavedCodesScene() }
 
     /** A library's details sheet, over a Dropbox library that synced two hours ago. */
     @Test

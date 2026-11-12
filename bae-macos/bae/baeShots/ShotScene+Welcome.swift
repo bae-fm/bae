@@ -17,6 +17,11 @@ extension ShotScene {
             libraries: PreviewData.boardLibraries
         ),
         welcomeWindow("mac.welcome.libraries.none", libraries: []),
+        welcomeWindow(
+            "mac.welcome.libraries.saved-codes",
+            libraries: PreviewData.boardLibraries,
+            savedCodes: savedCodes
+        ),
         detailsScene("mac.welcome.library-details", PreviewData.standingSynced),
         detailsScene(
             "mac.welcome.library-details.unsent-changes",
@@ -253,10 +258,14 @@ extension ShotScene {
     /// The welcome window over `libraries`, on the first screen.
     private static func welcomeWindow(
         _ id: String,
-        libraries: [BridgeLibrary]
+        libraries: [BridgeLibrary],
+        savedCodes: [BridgeSavedRestoreEntry] = []
     ) -> ShotScene {
         ShotScene(id: id, size: WelcomeWindow.size) {
-            let reads = CountedReads(libraries: libraries)
+            let reads = CountedReads(
+                libraries: libraries,
+                savedCodes: savedCodes
+            )
             return ShotStage(
                 PreviewScenes.welcome(
                     initialMode: .choose,
@@ -303,6 +312,29 @@ extension ShotScene {
         oauthAccess: nil,
         carriesS3Key: false
     )
+
+    /// The restore codes the saved-codes boards list: a Dropbox library's, and
+    /// one saved for a different library, which can't be used.
+    private static var savedCodes: [BridgeSavedRestoreEntry] {
+        [
+            .readable(
+                code: PreviewSavedRestoreCode(
+                    BridgeSavedRestoreCodeInfo(
+                        name: "Garden",
+                        libraryId: "saved-garden",
+                        location: .dropbox(
+                            location: .appFolder,
+                            accountLabel: "ana@example.com",
+                            folderLabel: nil
+                        ),
+                        oauthAccess: .dropbox(access: .appFolder),
+                        hasS3Credentials: false
+                    )
+                )
+            ),
+            .unreadable(libraryId: "7f3c9a1e", reason: .otherLibrary),
+        ]
+    }
 
     /// The confirmation `library` asks before it is removed, counted as
     /// `loss`.
@@ -351,9 +383,15 @@ private final class CountedReads {
     private(set) var answered = 0
     /// The libraries on this Mac the listing answers.
     let libraries: [BridgeLibrary]
+    /// The restore codes the saved-code listing answers.
+    let savedCodes: [BridgeSavedRestoreEntry]
 
-    init(libraries: [BridgeLibrary] = []) {
+    init(
+        libraries: [BridgeLibrary] = [],
+        savedCodes: [BridgeSavedRestoreEntry] = []
+    ) {
         self.libraries = libraries
+        self.savedCodes = savedCodes
     }
 
     var setup: LibrarySetup {
@@ -367,7 +405,7 @@ private final class CountedReads {
             createLibrary: { _, _ in throw UnservedReadError() },
             savedRestoreCodes: { [self] in
                 await answer()
-                return []
+                return savedCodes
             },
             forgetSavedRestoreCode: { _ in throw UnservedReadError() },
             unfinishedJoins: { [] },

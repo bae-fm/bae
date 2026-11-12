@@ -395,6 +395,7 @@
     <string name="onboarding_saved_code_reason_other_library">Salvo para outra biblioteca</string>
     <string name="onboarding_saved_code_reason_ambiguous">Salvo mais de uma vez</string>
     <string name="onboarding_saved_code_delete">Excluir</string>
+    <string name="onboarding_saved_code_delete_menu">Excluir…</string>
     <string name="onboarding_saved_code_delete_title">Excluir este código de restauração?</string>
     <string name="onboarding_saved_code_delete_body">Isto remove o código de restauração de “%1$s” somente deste dispositivo. Não exclui a biblioteca nem nada na nuvem.</string>
     <string name="onboarding_saved_code_delete_body_unusable">Isto remove o código de restauração somente deste dispositivo. Não exclui a biblioteca nem nada na nuvem.</string>

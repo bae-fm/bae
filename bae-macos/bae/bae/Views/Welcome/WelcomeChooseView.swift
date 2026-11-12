@@ -203,7 +203,7 @@ struct WelcomeChooseView: View {
                     )
                     .frame(maxWidth: WelcomeLayout.columnWidth)
                 }
-                KeychainRestoreSection(
+                KeychainRestoreContainer(
                     codes: listings.savedCodes,
                     disabled: isBusy,
                     onRestore: { onRestoreSaved($0.code) }

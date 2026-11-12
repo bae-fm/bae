@@ -381,6 +381,7 @@
     <string name="onboarding_saved_code_reason_other_library">為其他資料庫儲存</string>
     <string name="onboarding_saved_code_reason_ambiguous">儲存了不只一次</string>
     <string name="onboarding_saved_code_delete">刪除</string>
+    <string name="onboarding_saved_code_delete_menu">刪除…</string>
     <string name="onboarding_saved_code_delete_title">要刪除這個還原碼嗎？</string>
     <string name="onboarding_saved_code_delete_body">這只會從此裝置移除「%1$s」的還原碼。不會刪除資料庫，也不會刪除雲端中的任何內容。</string>
     <string name="onboarding_saved_code_delete_body_unusable">這只會從此裝置移除還原碼。不會刪除資料庫，也不會刪除雲端中的任何內容。</string>

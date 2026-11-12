@@ -387,6 +387,7 @@
     <string name="onboarding_saved_code_reason_other_library">Egy másik könyvtárhoz mentve</string>
     <string name="onboarding_saved_code_reason_ambiguous">Többször mentve</string>
     <string name="onboarding_saved_code_delete">Törlés</string>
+    <string name="onboarding_saved_code_delete_menu">Törlés…</string>
     <string name="onboarding_saved_code_delete_title">Törlöd ezt a visszaállítási kódot?</string>
     <string name="onboarding_saved_code_delete_body">Ez csak erről az eszközről távolítja el a(z) „%1$s” könyvtár visszaállítási kódját. Nem törli a könyvtárat, sem a felhőben lévő tartalmat.</string>
     <string name="onboarding_saved_code_delete_body_unusable">Ez csak erről az eszközről távolítja el a visszaállítási kódot. Nem törli a könyvtárat, sem a felhőben lévő tartalmat.</string>

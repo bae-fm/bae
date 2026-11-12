@@ -6,7 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -22,6 +22,8 @@ import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidCard
 import fm.bae.app.ui.components.AndroidDialog
+import fm.bae.app.ui.components.AndroidMoreMenu
+import fm.bae.app.ui.components.AndroidNote
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidSection
@@ -48,9 +50,9 @@ internal class SavedCodesCallbacks(
 
 /**
  * The welcome's list of restore codes saved on this phone, read from coven
- * each time the welcome shows. Tapping a library restores it; Delete asks
- * first, then removes the code from this phone only. Nothing shows while the
- * list loads or when nothing is saved.
+ * each time the welcome shows. Tapping a library restores it; a row's ⋮ menu
+ * holds Delete…, which asks first, then removes the code from this phone only.
+ * Nothing shows while the list loads or when nothing is saved.
  */
 @Composable
 internal fun SavedCodesSection(
@@ -74,12 +76,12 @@ internal fun SavedCodesSection(
 }
 
 /**
- * The saved codes under their heading, with a failed delete above them; or
- * why they couldn't be read. While a delete runs, its row shows progress and
- * no row can be tapped.
+ * The saved codes under their heading, with a failed delete above them and a
+ * note under; or why they couldn't be read. While a delete runs no row can be
+ * tapped or opened.
  */
 @Composable
-private fun SavedCodesContent(
+internal fun SavedCodesContent(
     list: SavedCodesList,
     deletingLibraryId: String?,
     deleteError: DisplayError?,
@@ -100,11 +102,6 @@ private fun SavedCodesContent(
             if (list.entries.isEmpty()) return
             Column(modifier = column, verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
                 AndroidSection(stringResource(R.string.onboarding_saved_codes_title))
-                Text(
-                    text = stringResource(R.string.onboarding_saved_codes_explanation),
-                    style = ThemeText.detail.style,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
                 deleteError?.let { error ->
                     Text(
                         text = stringResource(R.string.onboarding_saved_code_delete_failed),
@@ -121,6 +118,7 @@ private fun SavedCodesContent(
                         )
                     }
                 }
+                AndroidNote(stringResource(R.string.onboarding_saved_codes_explanation))
             }
         }
     }
@@ -130,8 +128,8 @@ private fun SavedCodesContent(
  * One saved entry. A readable code shows the library's saved name over where
  * it is stored, which tells apart two libraries with one name, and the row
  * restores it; one bae can't read says why, with its library id, and only
- * deletes. Both have Delete, disabled while any delete runs: a local
- * keystore call that ends at once.
+ * deletes. Both end in a ⋮ menu of Delete…, disabled while any delete runs: a
+ * local keystore call that ends at once.
  */
 @Composable
 private fun SavedCodeRow(
@@ -160,13 +158,14 @@ private fun SavedCodeRow(
         onClick = onClick,
         onClickLabel = stringResource(R.string.onboarding_restore_action),
     ) {
-        AndroidButton(
-            kind = ButtonKind.TEXT,
-            tone = ButtonTone.DESTRUCTIVE,
-            onClick = { callbacks.onDelete(entry) },
-            enabled = enabled,
-        ) {
-            Text(stringResource(R.string.onboarding_saved_code_delete))
+        AndroidMoreMenu(enabled = enabled) { close ->
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.onboarding_saved_code_delete_menu)) },
+                onClick = {
+                    close()
+                    callbacks.onDelete(entry)
+                },
+            )
         }
     }
 }
@@ -181,20 +180,10 @@ private fun DeleteSavedCodeDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val body =
-        when (entry) {
-            is SavedRestoreEntry.Readable -> {
-                stringResource(R.string.onboarding_saved_code_delete_body, entry.saved.info.name)
-            }
-
-            is SavedRestoreEntry.Unreadable -> {
-                stringResource(R.string.onboarding_saved_code_delete_body_unusable)
-            }
-        }
     AndroidDialog(
         onDismissRequest = onDismiss,
         title = stringResource(R.string.onboarding_saved_code_delete_title),
-        message = body,
+        message = deleteSavedCodeMessage(entry),
         confirmButton = {
             AndroidButton(kind = ButtonKind.TEXT, tone = ButtonTone.DESTRUCTIVE, onClick = onConfirm) {
                 Text(stringResource(R.string.onboarding_saved_code_delete))
@@ -209,6 +198,18 @@ private fun DeleteSavedCodeDialog(
         },
     )
 }
+
+@Composable
+private fun deleteSavedCodeMessage(entry: SavedRestoreEntry): String =
+    when (entry) {
+        is SavedRestoreEntry.Readable -> {
+            stringResource(R.string.onboarding_saved_code_delete_body, entry.saved.info.name)
+        }
+
+        is SavedRestoreEntry.Unreadable -> {
+            stringResource(R.string.onboarding_saved_code_delete_body_unusable)
+        }
+    }
 
 /** Why a saved code can't be used, as its row says it. */
 @StringRes
@@ -259,6 +260,48 @@ private val previewEntries =
         ),
         SavedRestoreEntry.Unreadable("6f1c2a9e-4b7d-4e2a-9c3f-2d8e5b1a7c40", BridgeUnreadableSavedCode.FORMAT),
     )
+
+/** The entries the saved-codes boards draw: a Dropbox library's code, and one saved for another library. */
+private val sceneSavedEntries =
+    listOf(
+        SavedRestoreEntry.Readable(
+            SavedRestoreCode(
+                BridgeSavedRestoreCode(NoHandle),
+                BridgeSavedRestoreCodeInfo(
+                    name = "Garden",
+                    libraryId = "saved-garden",
+                    location =
+                        BridgeStorageLocation.Dropbox(
+                            location = BridgeDropboxLocation.AppFolder,
+                            accountLabel = "ana@example.com",
+                            folderLabel = null,
+                        ),
+                    oauthAccess = BridgeOAuthAccess.Dropbox(BridgeDropboxAccess.APP_FOLDER),
+                    hasS3Credentials = false,
+                ),
+            ),
+        ),
+        SavedRestoreEntry.Unreadable("7f3c9a1e", BridgeUnreadableSavedCode.OTHER_LIBRARY),
+    )
+
+/**
+ * The welcome on a phone that holds libraries and has restore codes saved for
+ * others, for the `welcome-libraries-saved-codes` screenshot scene.
+ */
+@Composable
+internal fun WelcomeSavedCodesScene() {
+    WelcomeScene(
+        libraries = WelcomeLibrariesView(listed = true) { onAdd -> WelcomeLibrariesPreviewContent(onAdd) },
+        savedCodes = {
+            SavedCodesContent(
+                list = SavedCodesList.Loaded(sceneSavedEntries),
+                deletingLibraryId = null,
+                deleteError = null,
+                callbacks = SavedCodesCallbacks(onOpen = {}, onDelete = {}),
+            )
+        },
+    )
+}
 
 @Preview(showBackground = true)
 @Composable

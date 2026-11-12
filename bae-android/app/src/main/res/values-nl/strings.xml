@@ -389,6 +389,7 @@
     <string name="onboarding_saved_code_reason_other_library">Bewaard voor een andere bibliotheek</string>
     <string name="onboarding_saved_code_reason_ambiguous">Meer dan eens bewaard</string>
     <string name="onboarding_saved_code_delete">Verwijderen</string>
+    <string name="onboarding_saved_code_delete_menu">Verwijderen…</string>
     <string name="onboarding_saved_code_delete_title">Deze herstelcode verwijderen?</string>
     <string name="onboarding_saved_code_delete_body">Hiermee verwijder je de herstelcode voor ‘%1$s’ alleen van dit apparaat. De bibliotheek en alles in de cloud blijven bestaan.</string>
     <string name="onboarding_saved_code_delete_body_unusable">Hiermee verwijder je de herstelcode alleen van dit apparaat. De bibliotheek en alles in de cloud blijven bestaan.</string>

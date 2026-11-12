@@ -343,16 +343,20 @@ private val LIST_TAGLINE_PADDING =
 /**
  * The welcome screen, on a phone with no saved restore codes, in the app
  * chrome with inert callbacks, for the `welcome` screenshot scene, and for
- * the one that lists the libraries on the phone, in [libraries].
+ * the one that lists the libraries on the phone, in [libraries], and the one
+ * that lists restore codes saved for others, drawn by [savedCodes].
  */
 @Composable
-internal fun WelcomeScene(libraries: WelcomeLibrariesView? = null) {
+internal fun WelcomeScene(
+    libraries: WelcomeLibrariesView? = null,
+    savedCodes: @Composable () -> Unit = {},
+) {
     BaeAppChrome {
         CodeScreenContent(
             text = null,
             error = null,
             libraries = libraries,
-            savedCodes = {},
+            savedCodes = savedCodes,
             showCodeDialog = false,
             codeInput = "",
             callbacks =

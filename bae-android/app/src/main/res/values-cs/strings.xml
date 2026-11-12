@@ -405,6 +405,7 @@
     <string name="onboarding_saved_code_reason_other_library">Uloženo pro jinou knihovnu</string>
     <string name="onboarding_saved_code_reason_ambiguous">Uloženo více než jednou</string>
     <string name="onboarding_saved_code_delete">Smazat</string>
+    <string name="onboarding_saved_code_delete_menu">Smazat…</string>
     <string name="onboarding_saved_code_delete_title">Smazat tento kód pro obnovení?</string>
     <string name="onboarding_saved_code_delete_body">Tímto odstraníte kód pro obnovení knihovny „%1$s“ pouze z tohoto zařízení. Knihovnu ani nic v cloudu to nesmaže.</string>
     <string name="onboarding_saved_code_delete_body_unusable">Tímto odstraníte kód pro obnovení pouze z tohoto zařízení. Knihovnu ani nic v cloudu to nesmaže.</string>

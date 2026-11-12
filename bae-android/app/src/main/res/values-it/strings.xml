@@ -395,6 +395,7 @@
     <string name="onboarding_saved_code_reason_other_library">Salvato per un’altra libreria</string>
     <string name="onboarding_saved_code_reason_ambiguous">Salvato più di una volta</string>
     <string name="onboarding_saved_code_delete">Elimina</string>
+    <string name="onboarding_saved_code_delete_menu">Elimina…</string>
     <string name="onboarding_saved_code_delete_title">Eliminare questo codice di ripristino?</string>
     <string name="onboarding_saved_code_delete_body">Il codice di ripristino di «%1$s» verrà rimosso solo da questo dispositivo. La libreria e il contenuto del cloud non verranno eliminati.</string>
     <string name="onboarding_saved_code_delete_body_unusable">Il codice di ripristino verrà rimosso solo da questo dispositivo. La libreria e il contenuto del cloud non verranno eliminati.</string>

@@ -283,7 +283,7 @@ internal fun WelcomeRemovingScene() {
 }
 
 @Composable
-private fun WelcomeLibrariesPreviewContent(
+internal fun WelcomeLibrariesPreviewContent(
     onAdd: () -> Unit,
     running: RunningRemoval? = null,
 ) {

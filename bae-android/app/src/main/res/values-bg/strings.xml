@@ -389,6 +389,7 @@
     <string name="onboarding_saved_code_reason_other_library">Запазен за друга библиотека</string>
     <string name="onboarding_saved_code_reason_ambiguous">Запазен повече от веднъж</string>
     <string name="onboarding_saved_code_delete">Изтриване</string>
+    <string name="onboarding_saved_code_delete_menu">Изтриване…</string>
     <string name="onboarding_saved_code_delete_title">Изтриване на този код за възстановяване?</string>
     <string name="onboarding_saved_code_delete_body">Това премахва кода за възстановяване за „%1$s“ само от това устройство. Не изтрива библиотеката, нито нещо в облака.</string>
     <string name="onboarding_saved_code_delete_body_unusable">Това премахва кода за възстановяване само от това устройство. Не изтрива библиотеката, нито нещо в облака.</string>

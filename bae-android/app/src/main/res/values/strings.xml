@@ -446,6 +446,7 @@
     <string name="onboarding_saved_code_reason_other_library">Saved for a different library</string>
     <string name="onboarding_saved_code_reason_ambiguous">Saved more than once</string>
     <string name="onboarding_saved_code_delete">Delete</string>
+    <string name="onboarding_saved_code_delete_menu">Delete…</string>
     <string name="onboarding_saved_code_delete_title">Delete this restore code?</string>
     <!-- %1$s = the library's name, saved with the code -->
     <string name="onboarding_saved_code_delete_body">This removes the restore code for “%1$s” from this device only. It doesn’t delete the library, or anything in the cloud.</string>

@@ -397,6 +397,7 @@
     <string name="onboarding_saved_code_reason_other_library">Spremljeno za drugu fonoteku</string>
     <string name="onboarding_saved_code_reason_ambiguous">Spremljeno više puta</string>
     <string name="onboarding_saved_code_delete">Izbriši</string>
+    <string name="onboarding_saved_code_delete_menu">Izbriši…</string>
     <string name="onboarding_saved_code_delete_title">Izbrisati ovaj kod za vraćanje?</string>
     <string name="onboarding_saved_code_delete_body">Time se kod za vraćanje za „%1$s” uklanja samo s ovog uređaja. Ne briše se fonoteka ni išta u oblaku.</string>
     <string name="onboarding_saved_code_delete_body_unusable">Time se kod za vraćanje uklanja samo s ovog uređaja. Ne briše se fonoteka ni išta u oblaku.</string>

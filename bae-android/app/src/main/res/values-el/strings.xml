@@ -387,6 +387,7 @@
     <string name="onboarding_saved_code_reason_other_library">Αποθηκεύτηκε για άλλη βιβλιοθήκη</string>
     <string name="onboarding_saved_code_reason_ambiguous">Αποθηκεύτηκε περισσότερες από μία φορές</string>
     <string name="onboarding_saved_code_delete">Διαγραφή</string>
+    <string name="onboarding_saved_code_delete_menu">Διαγραφή…</string>
     <string name="onboarding_saved_code_delete_title">Διαγραφή αυτού του κωδικού επαναφοράς;</string>
     <string name="onboarding_saved_code_delete_body">Αυτό αφαιρεί τον κωδικό επαναφοράς για «%1$s» μόνο από αυτή τη συσκευή. Δεν διαγράφει τη βιβλιοθήκη ούτε τίποτα στο cloud.</string>
     <string name="onboarding_saved_code_delete_body_unusable">Αυτό αφαιρεί τον κωδικό επαναφοράς μόνο από αυτή τη συσκευή. Δεν διαγράφει τη βιβλιοθήκη ούτε τίποτα στο cloud.</string>

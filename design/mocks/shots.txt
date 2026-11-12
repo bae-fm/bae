@@ -122,6 +122,7 @@ android.welcome.join.name
 android.welcome.join.waiting
 android.welcome.libraries
 android.welcome.libraries.none
+android.welcome.libraries.saved-codes
 android.welcome.library-details
 android.welcome.library-details.unsent-changes
 android.welcome.library-menu
@@ -375,6 +376,7 @@ mac.welcome.join.name
 mac.welcome.join.waiting
 mac.welcome.libraries
 mac.welcome.libraries.none
+mac.welcome.libraries.saved-codes
 mac.welcome.library-details
 mac.welcome.library-details.unsent-changes
 mac.welcome.library-menu

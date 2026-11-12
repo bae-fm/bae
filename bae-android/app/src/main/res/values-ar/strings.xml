@@ -421,6 +421,7 @@
     <string name="onboarding_saved_code_reason_other_library">محفوظ لمكتبة أخرى</string>
     <string name="onboarding_saved_code_reason_ambiguous">محفوظ أكثر من مرة</string>
     <string name="onboarding_saved_code_delete">حذف</string>
+    <string name="onboarding_saved_code_delete_menu">حذف…</string>
     <string name="onboarding_saved_code_delete_title">حذف رمز الاستعادة هذا؟</string>
     <string name="onboarding_saved_code_delete_body">يؤدي هذا إلى إزالة رمز الاستعادة الخاص بـ«%1$s» من هذا الجهاز فقط. لا يحذف المكتبة، ولا أي شيء في السحابة.</string>
     <string name="onboarding_saved_code_delete_body_unusable">يؤدي هذا إلى إزالة رمز الاستعادة من هذا الجهاز فقط. لا يحذف المكتبة، ولا أي شيء في السحابة.</string>

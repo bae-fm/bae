@@ -389,6 +389,7 @@
     <string name="onboarding_saved_code_reason_other_library">Başka bir kitaplık için kaydedilmiş</string>
     <string name="onboarding_saved_code_reason_ambiguous">Birden fazla kez kaydedilmiş</string>
     <string name="onboarding_saved_code_delete">Sil</string>
+    <string name="onboarding_saved_code_delete_menu">Sil…</string>
     <string name="onboarding_saved_code_delete_title">Bu geri yükleme kodu silinsin mi?</string>
     <string name="onboarding_saved_code_delete_body">Bu işlem “%1$s” geri yükleme kodunu yalnızca bu cihazdan kaldırır. Kitaplığı veya buluttaki hiçbir şeyi silmez.</string>
     <string name="onboarding_saved_code_delete_body_unusable">Bu işlem geri yükleme kodunu yalnızca bu cihazdan kaldırır. Kitaplığı veya buluttaki hiçbir şeyi silmez.</string>

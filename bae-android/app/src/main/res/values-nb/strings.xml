@@ -387,6 +387,7 @@
     <string name="onboarding_saved_code_reason_other_library">Lagret for et annet bibliotek</string>
     <string name="onboarding_saved_code_reason_ambiguous">Lagret mer enn én gang</string>
     <string name="onboarding_saved_code_delete">Slett</string>
+    <string name="onboarding_saved_code_delete_menu">Slett…</string>
     <string name="onboarding_saved_code_delete_title">Slette denne gjenopprettingskoden?</string>
     <string name="onboarding_saved_code_delete_body">Dette fjerner gjenopprettingskoden for «%1$s» bare fra denne enheten. Det sletter ikke biblioteket eller noe i skyen.</string>
     <string name="onboarding_saved_code_delete_body_unusable">Dette fjerner gjenopprettingskoden bare fra denne enheten. Det sletter ikke biblioteket eller noe i skyen.</string>

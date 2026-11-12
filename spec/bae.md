@@ -2968,12 +2968,15 @@ tablet gets the code one of these ways:
   between them, or the same characters run together. The spaces drop before
   the code decodes.
 
-The saved-code list shows each code under its library's name as Carol's
+The saved-code list sits on the first screen under Your libraries, titled
+*Saved in iCloud Keychain* on a Mac and *Saved on this device* on an Android
+phone, with a line under it saying what the codes are. Each row ends in a ⋯
+menu (⋮ on Android). The list shows each code under its library's name as Carol's
 devices last saw it (§5.1), over where the library is stored: the provider and
 account. Dropbox and OneDrive show the account's email; S3 shows the bucket and
 endpoint; iCloud shows iCloud. Two libraries can share a name, and a rename
 none of her devices has seen yet leaves the old one, so the location is what
-tells them apart. On a Mac the restore screen for a saved code shows both. On
+tells them apart. On a Mac a row has a **Restore** button, and the restore screen for a saved code shows both. On
 an Android phone a tap restores at once, as a scanned code does; only an S3
 code with no key saved beside it stops first, on a screen that shows both and
 asks for the key, and a failed restore returns to that screen, to try again. A
@@ -2984,7 +2987,7 @@ stored until the tablet has loaded it, then the library's current name.
 
 **Deleting a saved code.** Carol once tried a library on S3, then deleted its
 bucket, and her new tablet still offers it. Each code in the saved-code list
-has **Delete**. It asks first, saying that it removes the saved code from
+has **Delete…** in its menu. It asks first, saying that it removes the saved code from
 iCloud Keychain on all her Apple devices, or on Android from this device only,
 and doesn't delete the library, or anything on this device or in her storage;
 then the list is read again, without the code. Her other Android phones keep
@@ -2997,8 +3000,8 @@ one of her devices saves the code again
 from: saved in an older format or damaged, holding a different library's code
 than the one it's saved under, or, in iCloud Keychain, saved more than once. The list
 still shows it, as a row saying the code can't be used and why, with the
-library's id beneath, since the entry has no name to show. It has **Delete**
-only, which asks and deletes as for any saved code; there is nothing to
+library's id beside the reason, since the entry has no name to show. Its menu
+holds **Delete…** only, which asks and deletes as for any saved code; there is nothing to
 restore from. One such entry never hides the codes beside it. When one of
 Carol's devices opens the library, or applies a rename to it, it replaces the
 entry with the library's current name and its own current code, so the row

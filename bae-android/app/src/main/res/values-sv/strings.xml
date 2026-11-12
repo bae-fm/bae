@@ -387,6 +387,7 @@
     <string name="onboarding_saved_code_reason_other_library">Sparad för ett annat bibliotek</string>
     <string name="onboarding_saved_code_reason_ambiguous">Sparad mer än en gång</string>
     <string name="onboarding_saved_code_delete">Radera</string>
+    <string name="onboarding_saved_code_delete_menu">Radera…</string>
     <string name="onboarding_saved_code_delete_title">Radera den här återställningskoden?</string>
     <string name="onboarding_saved_code_delete_body">Det här tar bara bort återställningskoden för ”%1$s” från den här enheten. Biblioteket och allt i molnet finns kvar.</string>
     <string name="onboarding_saved_code_delete_body_unusable">Det här tar bara bort återställningskoden från den här enheten. Biblioteket och allt i molnet finns kvar.</string>

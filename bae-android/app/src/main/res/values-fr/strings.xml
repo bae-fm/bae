@@ -395,6 +395,7 @@
     <string name="onboarding_saved_code_reason_other_library">Enregistré pour une autre bibliothèque</string>
     <string name="onboarding_saved_code_reason_ambiguous">Enregistré plusieurs fois</string>
     <string name="onboarding_saved_code_delete">Supprimer</string>
+    <string name="onboarding_saved_code_delete_menu">Supprimer…</string>
     <string name="onboarding_saved_code_delete_title">Supprimer ce code de restauration ?</string>
     <string name="onboarding_saved_code_delete_body">Le code de restauration de « %1$s » sera supprimé de cet appareil uniquement. La bibliothèque et le contenu du cloud ne seront pas supprimés.</string>
     <string name="onboarding_saved_code_delete_body_unusable">Le code de restauration sera supprimé de cet appareil uniquement. La bibliothèque et le contenu du cloud ne seront pas supprimés.</string>
