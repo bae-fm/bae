@@ -681,7 +681,8 @@ internal open class FakeAppHandle(
     override suspend fun createPlaylist(
         name: String,
         sharing: BridgeSharing,
-    ): BridgePlaylist = unfaked("createPlaylist")
+        trackIds: List<String>,
+    ): String = unfaked("createPlaylist")
 
     override suspend fun createProfile(name: String) {
         unfaked("createProfile")
@@ -692,6 +693,11 @@ internal open class FakeAppHandle(
     }
 
     override suspend fun libraryName(): String = unfaked("libraryName")
+
+    override suspend fun playPlaylist(
+        playlistId: String,
+        startPositionId: String?,
+    ): BridgePlayOutcome = unfaked("playPlaylist")
 
     override suspend fun playlistEntries(id: String): List<BridgePlaylistEntry> = unfaked("playlistEntries")
 

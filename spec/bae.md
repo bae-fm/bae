@@ -2631,7 +2631,13 @@ and a *position id*, a fresh id per entry, so the same track can sit in a
 playlist twice. Each entry also has a position number that orders it.
 Playlists list by name, and profiles list by name too. A name a person gives
 a library, a profile, a playlist or another printed name of an artist is kept
-without its leading and trailing spaces, and a blank one is refused.
+without its leading and trailing spaces, and a blank one is refused; core
+answers whether a typed name is blank, so a Create button disables on the same
+rule. A playlist made from a track holds that track from its first write, and
+one made with a track the library lacks is not made. A playlist plays as a list
+of its tracks in its order (§7.1), from the entry picked, or from the first;
+one with no entries plays nothing, and a picked entry the playlist no longer
+holds plays nothing.
 
 Ben's phone and laptop each add a track to his party playlist while offline.
 Both take the next position, 7. When they sync, both entries stay; equal

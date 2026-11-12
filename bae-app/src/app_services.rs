@@ -918,6 +918,7 @@ mod storage_reads;
 mod tests;
 
 mod personal;
+pub use personal::PlayPlaylistError;
 
 mod removal;
 

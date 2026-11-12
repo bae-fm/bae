@@ -74,3 +74,12 @@ impl From<bae_playback::PlayError> for super::BridgeError {
         }
     }
 }
+
+impl From<bae_app::PlayPlaylistError> for super::BridgeError {
+    fn from(error: bae_app::PlayPlaylistError) -> Self {
+        match error {
+            bae_app::PlayPlaylistError::Entries(error) => error.into(),
+            bae_app::PlayPlaylistError::Play(error) => error.into(),
+        }
+    }
+}

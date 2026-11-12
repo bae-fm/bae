@@ -1,14 +1,20 @@
 use super::*;
-use bae_people::collections::{CollectionError, Playlist};
+use bae_people::collections::CollectionError;
 use bae_people::people::Sharing;
 
 impl LibraryManager {
+    /// Makes a playlist holding `tracks` in that order, from its first write,
+    /// and returns its id.
     pub async fn create_playlist(
         &self,
         name: &str,
         sharing: Sharing,
-    ) -> Result<Playlist, CollectionError> {
-        self.people.create_playlist(self.ids.new_id(), name, sharing).await
+        tracks: Vec<String>,
+    ) -> Result<uuid::Uuid, CollectionError> {
+        let entries = tracks.into_iter().map(|track| (self.ids.new_id(), track)).collect();
+        let playlist =
+            self.people.create_playlist(self.ids.new_id(), name, sharing, entries).await?;
+        Ok(playlist.id)
     }
 
     pub async fn append_playlist_entry(

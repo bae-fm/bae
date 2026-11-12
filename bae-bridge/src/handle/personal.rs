@@ -9,7 +9,11 @@ forward! { async this => {
     fn avatar(person: String) -> Option<Vec<u8>> { Ok(this.services.avatar(crate::from_app::member(&person)?).await?) }
     fn set_rating(target: BridgeRatingTarget, stars: Option<BridgeStars>) -> () { Ok(this.services.set_rating(target.into_core(), stars.map(BridgeStars::into_core)).await?) }
     fn ratings() -> Vec<BridgeRating> { Ok(this.services.ratings().await?.into_iter().map(BridgeRating::from_core).collect()) }
-    fn create_playlist(name: String, sharing: BridgeSharing) -> BridgePlaylist { Ok(BridgePlaylist::from_core(this.services.create_playlist(&name,sharing.into_core()).await?)) }
+    fn create_playlist(name: String, sharing: BridgeSharing, track_ids: Vec<String>) -> String { Ok(this.services.create_playlist(&name,sharing.into_core(),track_ids).await?.to_string()) }
+    fn play_playlist(playlist_id: String, start_position_id: Option<String>) -> BridgePlayOutcome {
+        let start = start_position_id.map(|id| id.parse().map_err(BridgeError::config)).transpose()?;
+        Ok(BridgePlayOutcome::from_core(this.services.play_playlist(playlist_id.parse().map_err(BridgeError::config)?, start).await?))
+    }
     fn playlists() -> Vec<BridgePlaylist> { Ok(this.services.playlists().await?.into_iter().map(BridgePlaylist::from_core).collect()) }
     fn rename_playlist(id: String, name: String) -> () { Ok(this.services.rename_playlist(id.parse().map_err(BridgeError::config)?,&name).await?) }
     fn set_playlist_sharing(id: String, sharing: BridgeSharing) -> () { Ok(this.services.set_playlist_sharing(id.parse().map_err(BridgeError::config)?,sharing.into_core()).await?) }
@@ -20,6 +24,13 @@ forward! { async this => {
     fn reorder_playlist(playlist: String, order: Vec<String>) -> () { Ok(this.services.reorder_playlist(playlist.parse().map_err(BridgeError::config)?,order.into_iter().map(|id| id.parse().map_err(BridgeError::config)).collect::<Result<_,_>>()?).await?) }
     fn library_name() -> String { Ok(this.services.library_name().await?) }
 } }
+
+/// Whether a name typed for a library, profile or playlist is blank, which
+/// core refuses.
+#[uniffi::export]
+pub fn entered_name_is_blank(text: String) -> bool {
+    bae_store::EnteredName::parse(&text).is_err()
+}
 
 #[uniffi::export]
 impl AppHandle {

@@ -30,12 +30,16 @@ impl People {
         self.inner.store.read(|sql| Ok(ratings(&sql)?)).await
     }
 
-    /// The caller obtains ids from its injected IdSource, including on retries.
+    /// Writes the playlist and its `entries` (a position id and a track id
+    /// each, at positions 0…n) in one write, so a playlist is never seen, or
+    /// left, without the tracks it was made with. The caller obtains ids from
+    /// its injected IdSource, including on retries.
     pub async fn create_playlist(
         &self,
         id: uuid::Uuid,
         name: &str,
         sharing: Sharing,
+        entries: Vec<(uuid::Uuid, String)>,
     ) -> Result<Playlist, CollectionError> {
         let name = bae_store::EnteredName::parse(name)?.into_string();
         let person = self.own_profile().await?;
@@ -53,6 +57,12 @@ impl People {
                     "INSERT INTO playlists (id, person_id, name, audience) VALUES (?, ?, ?, ?)",
                     params![row.id.to_string(), row.person.to_string(), row.name, row.audience],
                 )?;
+                for (position, (position_id, track_id)) in entries.iter().enumerate() {
+                    sql.execute(
+                        "INSERT INTO playlist_entries (playlist_id, position_id, track_id, position) VALUES (?, ?, ?, ?)",
+                        params![row.id.to_string(), position_id.to_string(), track_id, position as i64],
+                    )?;
+                }
                 Ok(())
             })
             .await?;

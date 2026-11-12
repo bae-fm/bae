@@ -39,7 +39,8 @@ async fn ratings_and_playlist_edits_preserve_identity_order_and_audience() {
     people.set_rating(RatingTarget::Album(album.clone()), Some(Stars::Two)).await.unwrap();
 
     let id = coven::IdSource::new_id(&coven::UuidIds);
-    let playlist = people.create_playlist(id, "Evening", Sharing::Private).await.unwrap();
+    let playlist =
+        people.create_playlist(id, "Evening", Sharing::Private, Vec::new()).await.unwrap();
     assert_eq!(playlist.audience, coven::Audience::Circle(person.private_circle));
     let a = coven::IdSource::new_id(&coven::UuidIds);
     let b = coven::IdSource::new_id(&coven::UuidIds);
@@ -80,5 +81,51 @@ async fn ratings_and_playlist_edits_preserve_identity_order_and_audience() {
     people.delete_playlist(id).await.unwrap();
     assert!(people.playlists().await.unwrap().is_empty());
     assert!(people.playlist_entries(id).await.unwrap().is_empty());
+    library.manager().close().await.unwrap();
+}
+
+#[tokio::test]
+async fn a_playlist_is_made_holding_its_tracks_or_not_at_all() {
+    let directory = tempfile::tempdir().unwrap();
+    let (library, storage) = storage_library(
+        directory.path(),
+        bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
+        bae_util::http::Http::for_test(),
+    )
+    .await;
+    let people = bae_people::People::new(library.store().clone());
+    connect_storage(library.manager(), library.store(), &storage).await;
+    made_profile(library.manager(), library.people(), "Robin").await;
+    let release = test_uuid("made-release");
+    let first = test_uuid("made-first");
+    let second = test_uuid("made-second");
+    bae_records::test_fixtures::album_with_tracks(
+        library.records(),
+        (&test_uuid("made-album"), "Made"),
+        &release,
+        &[(&first, "First"), (&second, "Second")],
+    )
+    .await;
+
+    let id = library
+        .manager()
+        .create_playlist(
+            "Evening",
+            Sharing::Private,
+            vec![second.clone(), first.clone(), second.clone()],
+        )
+        .await
+        .unwrap();
+    let tracks: Vec<String> =
+        people.playlist_entries(id).await.unwrap().into_iter().map(|e| e.track_id).collect();
+    assert_eq!(tracks, vec![second.clone(), first.clone(), second.clone()]);
+
+    let unknown = test_uuid("made-unknown");
+    let refused =
+        library.manager().create_playlist("Morning", Sharing::Private, vec![first, unknown]).await;
+    assert!(refused.is_err());
+    let names: Vec<String> =
+        people.playlists().await.unwrap().into_iter().map(|p| p.name).collect();
+    assert_eq!(names, vec!["Evening".to_string()]);
     library.manager().close().await.unwrap();
 }
