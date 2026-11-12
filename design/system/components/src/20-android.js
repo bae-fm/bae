@@ -100,8 +100,8 @@
       h('label', { className: 'bae-a-field-box' },
         h('span', { className: 'bae-a-field-label' }, props.label),
         props.code
-          ? h('div', { role: 'textbox', 'aria-multiline': true, 'aria-label': props.label, className: 'bae-a-input bae-a-codetext' },
-              props.value ? groupCode(props.value) : h('span', { className: 'bae-codetext-placeholder' }, props.placeholder))
+          ? h('div', { role: 'textbox', 'aria-multiline': true, 'aria-label': props.label, 'aria-placeholder': props.placeholder || null, className: 'bae-a-input bae-a-codetext' },
+              props.value ? groupCode(props.value) : h('span', { className: 'bae-codetext-placeholder', 'aria-hidden': true }, props.placeholder))
           : h('input', { className: 'bae-a-input', defaultValue: props.value || '', placeholder: props.placeholder, 'aria-label': props.label, spellCheck: false })),
       line ? h('div', { className: 'bae-a-field-line' }, line) : null);
   }
