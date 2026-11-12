@@ -161,6 +161,12 @@ run_check "test keychain" \
     exit 1
 }
 
+# The design canvas is where views are drawn: the apps carry no IDE previews.
+run_check "no IDE previews" \
+    sh -c 'python3 scripts/check-no-previews.py && python3 scripts/tests/check-no-previews-test.py' || {
+    exit 1
+}
+
 run_check "macOS native Cargo cache" scripts/check-macos-build-cache.sh || {
     exit 1
 }

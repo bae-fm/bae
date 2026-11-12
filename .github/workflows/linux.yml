@@ -77,6 +77,11 @@ jobs:
         python3 scripts/check-test-keychain.py
         python3 scripts/tests/check-test-keychain-test.py
 
+    - name: Check that the apps carry no IDE previews
+      run: |
+        python3 scripts/check-no-previews.py
+        python3 scripts/tests/check-no-previews-test.py
+
     - name: Test the performance suite's comparison
       run: python3 scripts/tests/perf-test.py
 
