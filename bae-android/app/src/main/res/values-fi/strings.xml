@@ -447,4 +447,5 @@
     <string name="onboarding_join">Liity</string>
     <string name="onboarding_your_name">Nimesi</string>
     <string name="onboarding_name_placeholder">Näkyy profiilissasi, arvioinneissasi ja soittolistoissasi</string>
+    <string name="members_invite_refused">Kutsu ei onnistunut: %1$s</string>
 </resources>

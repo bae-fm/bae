@@ -448,4 +448,5 @@
     <string name="onboarding_join">Aderir</string>
     <string name="onboarding_your_name">O seu nome</string>
     <string name="onboarding_name_placeholder">Aparece no seu perfil, nas suas classificações e nas suas listas de reprodução</string>
+    <string name="members_invite_refused">Não foi possível convidar: %1$s</string>
 </resources>

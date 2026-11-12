@@ -447,4 +447,5 @@
     <string name="onboarding_join">Csatlakozás</string>
     <string name="onboarding_your_name">A neved</string>
     <string name="onboarding_name_placeholder">Megjelenik a profilodon, az értékeléseiden és a lejátszási listáidon</string>
+    <string name="members_invite_refused">A meghívás nem sikerült: %1$s</string>
 </resources>

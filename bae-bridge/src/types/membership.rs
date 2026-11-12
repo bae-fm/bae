@@ -214,6 +214,47 @@ pub struct BridgeInvite {
     /// failed grant, which cancelling the invite ends.
     pub held: Option<crate::BridgePendingWait>,
 }
+/// An invite the provider refused to share the library's folder for, for a
+/// reason only a person can fix. It left the open invites; People shows a
+/// notice in its place until the person dismisses it.
+#[derive(Clone, Debug, PartialEq, uniffi::Record)]
+pub struct BridgeRefusedInvite {
+    /// The invite's operation, which dismissing acknowledges.
+    pub operation: i64,
+    /// The address the invite was to share with.
+    pub address: String,
+    pub refusal: BridgeSharingRefusal,
+}
+impl BridgeRefusedInvite {
+    pub(crate) fn from_core(value: bae_views::RefusedInvite) -> Self {
+        let bae_views::RefusedInvite { operation, address, refusal } = value;
+        Self { operation: operation.0, address, refusal: BridgeSharingRefusal::from_core(refusal) }
+    }
+}
+/// A row of People's invites: an open invite, or one a sharing refusal ended.
+#[derive(Clone, uniffi::Enum)]
+pub enum BridgeInviteEntry {
+    Open { invite: BridgeInvite },
+    Refused { refused: BridgeRefusedInvite },
+}
+impl BridgeInviteEntry {
+    pub(crate) fn from_core(value: bae_views::InviteEntry) -> Self {
+        match value {
+            bae_views::InviteEntry::Open(open) => {
+                Self::Open { invite: BridgeInvite::from_core(open) }
+            }
+            bae_views::InviteEntry::Refused(refused) => {
+                Self::Refused { refused: BridgeRefusedInvite::from_core(refused) }
+            }
+        }
+    }
+}
+/// The core string that says what a sharing refusal went wrong on and what to
+/// fix; it follows "Couldn’t invite: " on the notice.
+#[uniffi::export]
+pub fn bridge_sharing_refusal_key(refusal: BridgeSharingRefusal) -> String {
+    refusal.loc_key().to_string()
+}
 /// Where an open invite stands.
 #[derive(Clone, uniffi::Enum)]
 pub enum BridgeInviteShown {

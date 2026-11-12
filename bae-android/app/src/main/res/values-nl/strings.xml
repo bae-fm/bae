@@ -449,4 +449,5 @@
     <string name="onboarding_join">Deelnemen</string>
     <string name="onboarding_your_name">Je naam</string>
     <string name="onboarding_name_placeholder">Verschijnt op je profiel, bij je beoordelingen en in je afspeellijsten</string>
+    <string name="members_invite_refused">Uitnodigen mislukt: %1$s</string>
 </resources>

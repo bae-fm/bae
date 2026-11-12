@@ -113,7 +113,7 @@ final class FakeSyncActivity: SyncActivitySubscription,
 
 /// This device's open invites, a list a test hands the app at a time.
 final class FakeInvites: InvitesSubscription, @unchecked Sendable {
-    let values = PullQueue<[BridgeInvite]>()
+    let values = PullQueue<[BridgeInviteEntry]>()
 
     init() {
         super.init(noHandle: InvitesSubscription.NoHandle())
@@ -127,7 +127,7 @@ final class FakeInvites: InvitesSubscription, @unchecked Sendable {
     private var cancelCount = 0
     var cancels: Int { cancelLock.withLock { cancelCount } }
 
-    override func next() async throws -> [BridgeInvite] {
+    override func next() async throws -> [BridgeInviteEntry] {
         try await values.next()
     }
 

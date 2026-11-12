@@ -465,4 +465,5 @@
     <string name="onboarding_join">Dołącz</string>
     <string name="onboarding_your_name">Twoje imię</string>
     <string name="onboarding_name_placeholder">Widoczne w Twoim profilu, ocenach i playlistach</string>
+    <string name="members_invite_refused">Nie udało się zaprosić: %1$s</string>
 </resources>

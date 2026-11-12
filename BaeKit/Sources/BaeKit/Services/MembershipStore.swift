@@ -22,8 +22,21 @@ public final class MembershipStore {
     public private(set) var selfProfile: BridgePersonProfile?
     /// The profile this device's person asked for, until it is written.
     public private(set) var requestedProfile: BridgeRequestedProfile?
-    /// This device's open invites, each with its request once it arrives.
-    public private(set) var invites: [BridgeInvite] = []
+    /// The rows of People's invites in the order they were made: this
+    /// device's open invites, each with its request once it arrives, and the
+    /// invites a sharing refusal ended, until the person dismisses them.
+    public private(set) var inviteEntries: [BridgeInviteEntry] = []
+    /// This device's open invites.
+    public var invites: [BridgeInvite] {
+        inviteEntries.compactMap {
+            if case .open(let invite) = $0 {
+                invite
+            }
+            else {
+                nil
+            }
+        }
+    }
     /// The admin changes this device asked for, each until the person
     /// dismisses its outcome.
     public private(set) var adminChanges: [BridgeAdminChange] = []
@@ -90,8 +103,8 @@ public final class MembershipStore {
                     ),
                     ScreenSubscription(
                         handle.subscribeInvites(),
-                        onValue: { [weak store] invites in
-                            store?.invites = invites
+                        onValue: { [weak store] entries in
+                            store?.inviteEntries = entries
                         },
                         onError: { [weak store] error in store?.fail(error) }
                     ),
@@ -130,13 +143,14 @@ public final class MembershipStore {
     }
 
     #if DEBUG
-        /// A store showing `invites` from the start and `people` once its
+        /// A store showing `invites` and `refusedInvites` from the start and `people` once its
         /// read of them answers, with no subscriptions; watching for an added
         /// device finds `addedDevice`.
         public static func stub(
             people: [BridgePerson],
             selfIsAdmin: Bool,
             invites: [BridgeInvite] = [],
+            refusedInvites: [BridgeRefusedInvite] = [],
             requestedProfile: BridgeRequestedProfile? = nil,
             adminChanges: [BridgeAdminChange] = [],
             addedDevice: BridgeActiveDevice? = nil
@@ -158,7 +172,9 @@ public final class MembershipStore {
                 }
             )
             store.selfIsAdmin = selfIsAdmin
-            store.invites = invites
+            store.inviteEntries =
+                invites.map { .open(invite: $0) }
+                + refusedInvites.map { .refused(refused: $0) }
             store.requestedProfile = requestedProfile
             store.adminChanges = adminChanges
             store.readPeople()
@@ -189,7 +205,7 @@ public final class MembershipStore {
         members = nil
         selfProfile = nil
         requestedProfile = nil
-        invites = []
+        inviteEntries = []
         adminChanges = []
         error = nil
     }
@@ -241,4 +257,24 @@ public final class MembershipStore {
 private struct PeopleRead: Sendable {
     let people: [BridgePerson]
     let own: BridgePerson?
+}
+
+extension BridgeInviteEntry {
+    /// What identifies the row among People's invites.
+    public var rowId: String {
+        switch self {
+        case .open(let invite): invite.id
+        case .refused(let refused): "refused-\(refused.operation)"
+        }
+    }
+
+    /// The invite a sharing refusal ended, if this row is one.
+    public var refusedInvite: BridgeRefusedInvite? {
+        if case .refused(let refused) = self {
+            refused
+        }
+        else {
+            nil
+        }
+    }
 }

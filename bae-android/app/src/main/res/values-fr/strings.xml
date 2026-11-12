@@ -455,4 +455,5 @@
     <string name="onboarding_join">Rejoindre</string>
     <string name="onboarding_your_name">Votre nom</string>
     <string name="onboarding_name_placeholder">Apparaît sur votre profil, vos notes et vos listes de lecture</string>
+    <string name="members_invite_refused">Impossible d’inviter : %1$s</string>
 </resources>

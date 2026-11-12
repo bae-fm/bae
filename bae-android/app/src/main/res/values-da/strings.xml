@@ -447,4 +447,5 @@
     <string name="onboarding_join">Deltag</string>
     <string name="onboarding_your_name">Dit navn</string>
     <string name="onboarding_name_placeholder">Vises på din profil, dine vurderinger og afspilningslister</string>
+    <string name="members_invite_refused">Kunne ikke invitere: %1$s</string>
 </resources>

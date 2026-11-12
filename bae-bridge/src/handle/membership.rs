@@ -109,6 +109,7 @@ forward! {async this => {
     fn acknowledge_admin_change(operation:i64)->() {Ok(this.services.acknowledge_admin_change(coven::OperationId(operation)).await?)}
     fn set_member_role(member:String,role:BridgeMemberRole)->() {Ok(this.services.set_member_role(&crate::from_app::member(&member)?,role.into_core()).await?)}
     fn invite_person(role:BridgeMemberRole,access:BridgeInviteAccess,lifetime:BridgeInviteLifetime)->String {Ok(this.services.invite_person(role.into_core(),access.into_core(),lifetime.into_core()).await?.0.to_string())}
+    fn dismiss_refused_invite(operation:i64)->() {Ok(this.services.dismiss_refused_invite(coven::OperationId(operation)).await?)}
     fn approve_join_request(request:Arc<BridgeJoinRequest>)->() {Ok(this.services.approve_join_request(&request.request).await?)}
     fn decline_join_request(request:Arc<BridgeJoinRequest>)->() {Ok(this.services.decline_join_request(&request.request).await?)}
     fn cancel_invite(invite:String)->() {Ok(this.services.cancel_invite(&coven::InviteId(invite.parse().map_err(BridgeError::config)?)).await?)}

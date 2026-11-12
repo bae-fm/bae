@@ -161,6 +161,76 @@ fn an_invite_names_its_inviter_by_the_name_the_person_goes_by() {
     });
 }
 
+/// A grant Dropbox refuses for good ends the invite: People lists it as a
+/// refused invite, with the address and the refusal, in place of the open
+/// invite, until the person dismisses it; dismissing anything else is
+/// refused.
+#[test]
+fn an_invite_dropbox_refuses_to_share_is_listed_as_refused_until_dismissed() {
+    on_app_runtime(async {
+        let sign_in = DropboxSignIn::start().await;
+        let household = Household::on_dropbox(&sign_in).await;
+        let store = bae_store::test_devices::store_under(
+            household.owner.clone(),
+            household.sources.clock().clone(),
+        );
+        let membership = bae_people::Membership::new(store.clone());
+        let mut invites = bae_views::LibraryViews::new(store).subscribe_invites();
+        let access = || coven::InviteAccess::ProviderAccount { email: GUEST_ACCOUNT.into() };
+
+        household
+            .storage
+            .set_faults(coven::Faults {
+                grant_failure: Some(coven::StorageFailure::SharingRefused(
+                    coven::SharingRefusal::InvalidAddress,
+                )),
+                ..coven::Faults::none()
+            })
+            .await;
+        membership
+            .invite_person(coven::MemberRole::Member, access(), coven::InviteLifetime::Day)
+            .await
+            .unwrap();
+        let listed = bae_library::followed::value_matching(&mut invites, |entries| {
+            entries.iter().any(|entry| matches!(entry, bae_views::InviteEntry::Refused(_)))
+        })
+        .await;
+        let [bae_views::InviteEntry::Refused(refused)] = listed.as_slice() else {
+            panic!("one refused invite and nothing open: {listed:?}");
+        };
+        assert_eq!(refused.address, GUEST_ACCOUNT);
+        assert_eq!(refused.refusal, coven::SharingRefusal::InvalidAddress);
+
+        // An open invite's operation is no refused invite's.
+        household.storage.set_faults(coven::Faults::none()).await;
+        membership
+            .invite_person(coven::MemberRole::Member, access(), coven::InviteLifetime::Day)
+            .await
+            .unwrap();
+        let both = bae_library::followed::value_matching(&mut invites, |entries| {
+            entries.iter().any(|entry| matches!(entry, bae_views::InviteEntry::Open(_)))
+        })
+        .await;
+        let open = both.iter().find_map(bae_views::InviteEntry::open).unwrap();
+        assert!(matches!(
+            membership.dismiss_refused_invite(open.invite.operation).await,
+            Err(bae_people::membership::RefusedInviteDismissError::NotRefusedInvite(_))
+        ));
+
+        membership.dismiss_refused_invite(refused.operation).await.unwrap();
+        let after = bae_library::followed::value_matching(&mut invites, |entries| {
+            !entries.iter().any(|entry| matches!(entry, bae_views::InviteEntry::Refused(_)))
+        })
+        .await;
+        assert_eq!(after.len(), 1, "only the open invite remains: {after:?}");
+        assert!(matches!(
+            membership.dismiss_refused_invite(refused.operation).await,
+            Err(bae_people::membership::RefusedInviteDismissError::NotRefusedInvite(_))
+        ));
+        household.owner.close().await.unwrap();
+    });
+}
+
 /// Run a test body on the worker stack the app gives native invite and
 /// bootstrap futures.
 pub(super) fn on_app_runtime(body: impl std::future::Future<Output = ()> + Send + 'static) {

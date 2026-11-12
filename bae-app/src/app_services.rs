@@ -587,9 +587,10 @@ impl AppServices {
     /// operation when coven holds one.
     pub fn subscribe_invites(
         &self,
-    ) -> bae_store::live_query::LiveValues<Vec<bae_views::OpenInvite>> {
+    ) -> bae_store::live_query::LiveValues<Vec<bae_views::InviteEntry>> {
         self.inner.manager.values_until_closed(self.inner.views.subscribe_invites())
     }
+    delegate_lib!(membership, dismiss_refused_invite => dismiss_refused_invite(operation: coven::OperationId) -> ());
     delegate_lib!(membership, approve_join_request => approve_join_request(request: &coven::JoinRequest) -> ());
     delegate_lib!(store, decline_join_request => decline_join_request(request: &coven::JoinRequest) -> ());
     delegate_async!(manager, cancel_invite => cancel_invite(invite: &coven::InviteId) -> Result<(), bae_library::LibraryError>);

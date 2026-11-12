@@ -30,7 +30,7 @@ mod browse;
 pub mod composer;
 pub mod composer_detail;
 mod invites;
-pub use invites::OpenInvite;
+pub use invites::{InviteEntry, OpenInvite, RefusedInvite};
 mod models;
 pub mod release;
 #[cfg(desktop)]

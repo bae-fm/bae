@@ -455,4 +455,5 @@
     <string name="onboarding_join">Unirse</string>
     <string name="onboarding_your_name">Tu nombre</string>
     <string name="onboarding_name_placeholder">Aparece en tu perfil, tus valoraciones y tus listas de reproducción</string>
+    <string name="members_invite_refused">No se pudo invitar: %1$s</string>
 </resources>

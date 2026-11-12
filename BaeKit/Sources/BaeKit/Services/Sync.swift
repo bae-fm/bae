@@ -35,6 +35,8 @@ public final class Sync: Sendable, Observable {
         @Sendable (String, BridgeMemberRole) async throws -> Void
     /// Dismiss a finished admin change by its operation.
     public let acknowledgeAdminChange: @Sendable (Int64) async throws -> Void
+    /// Dismiss an invite a sharing refusal ended, by its operation.
+    public let dismissRefusedInvite: @Sendable (Int64) async throws -> Void
     /// Invite a person, with a role, the access they reach storage with, and
     /// how long the invite lasts; answers the new invite's id, which the open
     /// invites list from its write on. The person types their own name when
@@ -110,6 +112,9 @@ public final class Sync: Sendable, Observable {
         acknowledgeAdminChange:
             @escaping @Sendable (Int64) async throws -> Void =
             { _ in throw StubError.notImplemented },
+        dismissRefusedInvite:
+            @escaping @Sendable (Int64) async throws -> Void =
+            { _ in throw StubError.notImplemented },
         invitePerson:
             @escaping @Sendable (
                 BridgeMemberRole, BridgeInviteAccess, BridgeInviteLifetime
@@ -177,6 +182,7 @@ public final class Sync: Sendable, Observable {
         self.holdsStore = holdsStore
         self.setMemberRole = setMemberRole
         self.acknowledgeAdminChange = acknowledgeAdminChange
+        self.dismissRefusedInvite = dismissRefusedInvite
         self.invitePerson = invitePerson
         self.approveJoinRequest = approveJoinRequest
         self.declineJoinRequest = declineJoinRequest
@@ -198,7 +204,7 @@ public final class Sync: Sendable, Observable {
     /// The production wiring over the open library's handle; a storage
     /// setup's steps are pulled on `host`'s runtime. It has one closure for
     /// each of the handle's calls, so it grows with them.
-    public convenience init(
+    public convenience init(  // swiftlint:disable:this function_body_length
         handle: any AppHandleProtocol,
         deviceName: String,
         host: BridgeHost
@@ -229,6 +235,9 @@ public final class Sync: Sendable, Observable {
             },
             acknowledgeAdminChange: {
                 try await handle.acknowledgeAdminChange(operation: $0)
+            },
+            dismissRefusedInvite: {
+                try await handle.dismissRefusedInvite(operation: $0)
             },
             invitePerson: {
                 try await handle.invitePerson(

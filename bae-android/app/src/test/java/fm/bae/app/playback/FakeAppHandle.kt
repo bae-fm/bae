@@ -36,6 +36,7 @@ import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeImportDestination
 import uniffi.bae_bridge.BridgeInvite
 import uniffi.bae_bridge.BridgeInviteAccess
+import uniffi.bae_bridge.BridgeInviteEntry
 import uniffi.bae_bridge.BridgeInviteLifetime
 import uniffi.bae_bridge.BridgeJoinRequest
 import uniffi.bae_bridge.BridgeLibraryClosing
@@ -56,6 +57,7 @@ import uniffi.bae_bridge.BridgeProviderSignOut
 import uniffi.bae_bridge.BridgeQueueAddition
 import uniffi.bae_bridge.BridgeRating
 import uniffi.bae_bridge.BridgeRatingTarget
+import uniffi.bae_bridge.BridgeRefusedInvite
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeRendererService
 import uniffi.bae_bridge.BridgeRendererServiceType
@@ -658,6 +660,10 @@ internal open class FakeAppHandle(
 
     override fun subscribeAdminChanges(): AdminChangesSubscription = adminChanges
 
+    override suspend fun dismissRefusedInvite(operation: Long) {
+        unfaked("dismissRefusedInvite")
+    }
+
     override suspend fun acknowledgeAdminChange(operation: Long) {
         unfaked("acknowledgeAdminChange")
     }
@@ -896,13 +902,16 @@ internal class FakeAdminChangesSubscription : AdminChangesSubscription(NoHandle)
 
 /** Open invites a test hands the app a list at a time: each pull waits for the next. */
 internal class FakeInvitesSubscription : InvitesSubscription(NoHandle) {
-    private val values = Channel<List<BridgeInvite>>(Channel.UNLIMITED)
+    private val values = Channel<List<BridgeInviteEntry>>(Channel.UNLIMITED)
 
-    fun deliver(invites: List<BridgeInvite>) {
-        values.trySend(invites)
+    fun deliver(
+        invites: List<BridgeInvite>,
+        refused: List<BridgeRefusedInvite> = emptyList(),
+    ) {
+        values.trySend(invites.map { BridgeInviteEntry.Open(it) } + refused.map { BridgeInviteEntry.Refused(it) })
     }
 
-    override suspend fun next(): List<BridgeInvite> = values.receive()
+    override suspend fun next(): List<BridgeInviteEntry> = values.receive()
 
     override suspend fun cancel() {
         values.close(BridgeException.Cancelled())

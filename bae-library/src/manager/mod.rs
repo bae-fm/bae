@@ -208,6 +208,10 @@ pub enum LibraryError {
     /// is no admin change of this device's, or the store failed.
     #[error(transparent)]
     AdminChangeDismiss(bae_people::admin_change::AdminChangeDismissError),
+    /// A dismissal of an invite a sharing refusal ended did not commit: the
+    /// operation is no such invite's, or the store failed.
+    #[error(transparent)]
+    RefusedInviteDismiss(bae_people::membership::RefusedInviteDismissError),
     /// Making a release its album's primary did not commit: the release is
     /// not one of the album's, or the store failed.
     #[error(transparent)]
@@ -378,6 +382,7 @@ impl bae_util::task_failure::ReportedBug for LibraryError {
             LibraryError::StorageMove(error) => error.reported_bug(),
             LibraryError::SetupDismiss(error) => error.reported_bug(),
             LibraryError::AdminChangeDismiss(error) => error.reported_bug(),
+            LibraryError::RefusedInviteDismiss(error) => error.reported_bug(),
             LibraryError::PrimaryRelease(error) => error.reported_bug(),
             LibraryError::CreditName(error) => error.reported_bug(),
             LibraryError::Deletion(error) => error.reported_bug(),
@@ -440,6 +445,7 @@ impl LibraryError {
             }
             LibraryError::SetupDismiss(error) => setup_dismiss_category(error),
             LibraryError::AdminChangeDismiss(error) => admin_change_dismiss_category(error),
+            LibraryError::RefusedInviteDismiss(error) => refused_invite_dismiss_category(error),
             LibraryError::PrimaryRelease(error) => primary_release_category(error),
             LibraryError::CreditName(error) => credit_name_category(error),
             LibraryError::Deletion(error) => write_error_category(error, deletion_refusal_category),
@@ -594,6 +600,29 @@ fn admin_change_dismiss_category(
     match error {
         E::Database(error) => bae_diagnostics::database_category(error),
         E::NotAdminChange(_) => bae_diagnostics::UiErrorCategory::Internal,
+    }
+}
+
+/// The class a surface words a refused dismissal of a refused invite in: the
+/// list offers only this device's, so another is bae's own fault.
+fn refused_invite_dismiss_category(
+    error: &bae_people::membership::RefusedInviteDismissError,
+) -> bae_diagnostics::UiErrorCategory {
+    use bae_people::membership::RefusedInviteDismissError as E;
+    match error {
+        E::Database(error) => bae_diagnostics::database_category(error),
+        E::NotRefusedInvite(_) => bae_diagnostics::UiErrorCategory::Internal,
+    }
+}
+
+impl From<bae_people::membership::RefusedInviteDismissError> for LibraryError {
+    fn from(error: bae_people::membership::RefusedInviteDismissError) -> Self {
+        match error {
+            bae_people::membership::RefusedInviteDismissError::Database(error) => {
+                Self::Database(error)
+            }
+            error => Self::RefusedInviteDismiss(error),
+        }
     }
 }
 

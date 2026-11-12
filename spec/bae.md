@@ -2832,7 +2832,8 @@ it. A grant the provider refuses for good, for a reason only a person can
 fix (Dropbox has no account for the address, the inviter's email is
 unverified, their team doesn't share outside the team, their plan has no
 sharing, or the folder holds as many people as the plan allows), ends the
-invite at once instead of being retried. Either way the invite carries the
+invite at once instead of being retried, and the invite is a notice until Ana
+dismisses it (**Open invites**, below). Either way the invite carries the
 library's current name and Ana's, the name she goes by (her profile's, else the
 name her pending profile request asked for, else the one her library kept from
 its creation (§5.4)); a person with none of the three can't be an inviter, which
@@ -2897,6 +2898,16 @@ too; sync then lets Dan in. From that write until the invite ends, Dan's row is
 marked joining and offers no Approve or Decline. Once Ana's laptop has begun
 letting Dan in, cancelling fails and says Dan is already joining, rather than
 leaving him half joined.
+
+An invite a sharing refusal ended leaves coven's open invites, and coven keeps
+the operation's outcome until Ana's laptop acknowledges it. People shows a
+notice in the invite's place: the address it was to share with, "Couldn’t
+invite:" and what went wrong and what to fix ("Dropbox has no account for it";
+"your Dropbox email isn’t verified. Verify it, then invite them again"), and
+**Dismiss**. The notice stays until she dismisses it, in its place among the
+rows by when the invite was made. **Dismiss** is one local write that
+acknowledges the operation, so the notice leaves the list in that write; it
+refuses an operation that is no refused invite's.
 
 On S3 the invite's screen also shows the id of the key it carries, and says to
 delete that key in the provider's console if nobody uses the invite: bae keeps

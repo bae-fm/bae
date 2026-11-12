@@ -447,4 +447,5 @@
     <string name="onboarding_join">Συμμετοχή</string>
     <string name="onboarding_your_name">Το όνομά σας</string>
     <string name="onboarding_name_placeholder">Εμφανίζεται στο προφίλ, τις βαθμολογίες και τις λίστες αναπαραγωγής σας</string>
+    <string name="members_invite_refused">Δεν ήταν δυνατή η πρόσκληση: %1$s</string>
 </resources>

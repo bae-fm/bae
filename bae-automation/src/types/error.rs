@@ -90,6 +90,7 @@ impl From<LibraryError> for AutomationError {
             | LibraryError::StorageMove(_)
             | LibraryError::SetupDismiss(_)
             | LibraryError::AdminChangeDismiss(_)
+            | LibraryError::RefusedInviteDismiss(_)
             | LibraryError::PrimaryRelease(_)
             | LibraryError::CreditName(_)
             | LibraryError::Deletion(_)

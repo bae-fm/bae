@@ -21,6 +21,7 @@ import uniffi.bae_bridge.BridgeAdminChangeState
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeInvite
+import uniffi.bae_bridge.BridgeInviteEntry
 import uniffi.bae_bridge.BridgeInviteProgress
 import uniffi.bae_bridge.BridgeInviteShown
 import uniffi.bae_bridge.BridgeMemberAccess
@@ -29,8 +30,10 @@ import uniffi.bae_bridge.BridgePerson
 import uniffi.bae_bridge.BridgePersonProfile
 import uniffi.bae_bridge.BridgePlayOutcome
 import uniffi.bae_bridge.BridgePlaybackErrorReason
+import uniffi.bae_bridge.BridgeRefusedInvite
 import uniffi.bae_bridge.BridgeRequestedProfile
 import uniffi.bae_bridge.BridgeRequestedProfileState
+import uniffi.bae_bridge.BridgeSharingRefusal
 import uniffi.bae_bridge.BridgeSyncRetryOutcome
 import uniffi.bae_bridge.MembersSubscription
 import uniffi.bae_bridge.NoHandle
@@ -113,6 +116,27 @@ class MembersModelTest {
         handle.invites.deliver(emptyList())
         shadowOf(Looper.getMainLooper()).idle()
         assertEquals(emptyList<BridgeInvite>(), model.invites)
+        stop()
+    }
+
+    /** An invite a sharing refusal ended arrives beside the open ones, in the order they came, and leaves with the list. */
+    @Test
+    fun anInviteARefusalEndedArrivesBesideTheOpenOnes() {
+        val handle = SilentMembersHandle()
+        val model =
+            MembersModel(handle, TestErrorDisplays, CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
+        val stop = model.subscribe()
+        val refused = BridgeRefusedInvite(operation = 7L, address = "dan@example.com", refusal = BridgeSharingRefusal.INVALID_ADDRESS)
+
+        handle.invites.deliver(emptyList(), refused = listOf(refused))
+        shadowOf(Looper.getMainLooper()).idle()
+
+        assertEquals(listOf<BridgeInviteEntry>(BridgeInviteEntry.Refused(refused)), model.inviteEntries)
+        assertEquals(emptyList<BridgeInvite>(), model.invites)
+
+        handle.invites.deliver(emptyList())
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(emptyList<BridgeInviteEntry>(), model.inviteEntries)
         stop()
     }
 

@@ -358,11 +358,12 @@ pulled_read! {
 }
 
 pulled_read! {
-    /// This device's open invites, each with what coven holds its work for.
+    /// This device's open invites, each with what coven holds its work for,
+    /// and the invites a sharing refusal ended, in the order they were made.
     InvitesSubscription:
-        LiveValues<Vec<bae_views::OpenInvite>> => Vec<crate::types::BridgeInvite>,
-    converted by |invites: Vec<bae_views::OpenInvite>| {
-        invites.into_iter().map(crate::types::BridgeInvite::from_core).collect::<Vec<_>>()
+        LiveValues<Vec<bae_views::InviteEntry>> => Vec<crate::types::BridgeInviteEntry>,
+    converted by |invites: Vec<bae_views::InviteEntry>| {
+        invites.into_iter().map(crate::types::BridgeInviteEntry::from_core).collect::<Vec<_>>()
     },
     built by invites
 }

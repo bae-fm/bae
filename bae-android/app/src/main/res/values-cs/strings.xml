@@ -465,4 +465,5 @@
     <string name="onboarding_join">Připojit se</string>
     <string name="onboarding_your_name">Vaše jméno</string>
     <string name="onboarding_name_placeholder">Zobrazí se ve vašem profilu, hodnoceních a seznamech skladeb</string>
+    <string name="members_invite_refused">Pozvání se nezdařilo: %1$s</string>
 </resources>

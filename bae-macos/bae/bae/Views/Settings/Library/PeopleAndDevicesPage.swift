@@ -381,17 +381,31 @@ extension PeopleAndDevicesPage {
                     action: { subpage = .person(memberId: member.id) }
                 )
             }
-            ForEach(store.invites, id: \.id) { invite in
-                InviteRow(
-                    invite: invite,
-                    onOpen: { open(invite) },
-                    onRefresh: {
-                        run {
-                            actionError = try await sync.nudges.retryNow()
-                                .failure
+            ForEach(store.inviteEntries, id: \.rowId) { entry in
+                switch entry {
+                case .open(let invite):
+                    InviteRow(
+                        invite: invite,
+                        onOpen: { open(invite) },
+                        onRefresh: {
+                            run {
+                                actionError = try await sync.nudges.retryNow()
+                                    .failure
+                            }
                         }
-                    }
-                )
+                    )
+                case .refused(let refused):
+                    RefusedInviteRow(
+                        refused: refused,
+                        onDismiss: {
+                            run {
+                                try await sync.dismissRefusedInvite(
+                                    refused.operation
+                                )
+                            }
+                        }
+                    )
+                }
             }
         } header: {
             Text("People")
@@ -812,6 +826,33 @@ private struct FormerDevicesDisclosure: View {
                 .themeText(.detail)
                 .foregroundStyle(.secondary)
         }
+    }
+}
+
+/// An invite a sharing refusal ended, in its row's place: the address it was
+/// to share with, why the provider refused and what to fix, and Dismiss,
+/// which removes the notice for good.
+private struct RefusedInviteRow: View {
+    let refused: BridgeRefusedInvite
+    let onDismiss: () -> Void
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: ThemeSpace.related) {
+            VStack(alignment: .leading, spacing: ThemeSpace.line) {
+                Text(verbatim: refused.address)
+                    .themeText(.rowTitle)
+                ErrorText(
+                    String(
+                        localized:
+                            "Couldn’t invite: \(localizedCoreString(bridgeSharingRefusalKey(refusal: refused.refusal)))"
+                    )
+                )
+            }
+            Spacer()
+            Button("Dismiss", action: onDismiss)
+                .buttonStyle(.borderless)
+        }
+        .padding(.vertical, ThemeSpace.line)
     }
 }
 

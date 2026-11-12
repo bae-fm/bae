@@ -14,6 +14,7 @@ import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.components.AndroidScreen
 import uniffi.bae_bridge.BridgeException
+import uniffi.bae_bridge.BridgeInviteEntry
 import uniffi.bae_bridge.BridgeMemberRole
 import uniffi.bae_bridge.BridgePerson
 import uniffi.bae_bridge.BridgePlayOutcome
@@ -49,6 +50,7 @@ private object NothingFails : ErrorDisplays {
 internal fun PeopleScene(
     page: PeoplePage,
     asAdmin: Boolean = true,
+    invites: List<BridgeInviteEntry> = emptyList(),
 ) {
     val people = scenePeople()
     val callbacks = MemberCallbacks({}, { _, _ -> }, { _, _ -> }, { _, _ -> }, {}, {})
@@ -83,10 +85,10 @@ internal fun PeopleScene(
                             people = people,
                             selfIsAdmin = asAdmin,
                             requested = null,
-                            invites = emptyList(),
+                            invites = invites,
                             adminChanges = emptyList(),
                             callbacks = callbacks,
-                            inviteCallbacks = InviteCallbacks({}, {}),
+                            inviteCallbacks = InviteCallbacks({}, {}, {}),
                             onOpen = {},
                         )
                     }

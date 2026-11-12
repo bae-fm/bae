@@ -447,4 +447,5 @@
     <string name="onboarding_join">Anslut dig</string>
     <string name="onboarding_your_name">Ditt namn</string>
     <string name="onboarding_name_placeholder">Visas på din profil, i dina betyg och i dina spellistor</string>
+    <string name="members_invite_refused">Det gick inte att bjuda in: %1$s</string>
 </resources>

@@ -449,4 +449,5 @@
     <string name="onboarding_join">Присъединяване</string>
     <string name="onboarding_your_name">Вашето име</string>
     <string name="onboarding_name_placeholder">Показва се в профила, оценките и плейлистите ви</string>
+    <string name="members_invite_refused">Поканата не беше изпратена: %1$s</string>
 </resources>

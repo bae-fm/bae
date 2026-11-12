@@ -441,4 +441,5 @@
     <string name="onboarding_join">参加</string>
     <string name="onboarding_your_name">あなたの名前</string>
     <string name="onboarding_name_placeholder">プロフィール、評価、プレイリストに表示されます</string>
+    <string name="members_invite_refused">招待できませんでした: %1$s</string>
 </resources>

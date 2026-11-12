@@ -457,4 +457,5 @@
     <string name="onboarding_join">הצטרפות</string>
     <string name="onboarding_your_name">השם שלך</string>
     <string name="onboarding_name_placeholder">מופיע בפרופיל, בדירוגים וברשימות ההשמעה שלך</string>
+    <string name="members_invite_refused">לא ניתן היה להזמין: %1$s</string>
 </resources>

@@ -449,4 +449,5 @@
     <string name="onboarding_join">Katıl</string>
     <string name="onboarding_your_name">Adınız</string>
     <string name="onboarding_name_placeholder">Profilinizde, puanlarınızda ve çalma listelerinizde görünür</string>
+    <string name="members_invite_refused">Davet edilemedi: %1$s</string>
 </resources>

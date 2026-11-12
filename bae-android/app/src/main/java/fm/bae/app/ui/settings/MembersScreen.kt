@@ -37,8 +37,11 @@ import fm.bae.app.coreString
 import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidNotice
+import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidScreen
+import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.StatusChip
 import fm.bae.app.ui.components.StatusTone
@@ -55,13 +58,16 @@ import uniffi.bae_bridge.BridgeActiveDevice
 import uniffi.bae_bridge.BridgeAdminChange
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeInvite
+import uniffi.bae_bridge.BridgeInviteEntry
 import uniffi.bae_bridge.BridgeInviteProgress
 import uniffi.bae_bridge.BridgeInviteShown
 import uniffi.bae_bridge.BridgeMember
 import uniffi.bae_bridge.BridgeMemberRole
 import uniffi.bae_bridge.BridgePerson
+import uniffi.bae_bridge.BridgeRefusedInvite
 import uniffi.bae_bridge.BridgeRequestedProfile
 import uniffi.bae_bridge.BridgeStorageLocation
+import uniffi.bae_bridge.bridgeSharingRefusalKey
 
 private const val TAG = "bae.MembersScreen"
 private val logger = BaeLogger(TAG)
@@ -95,9 +101,16 @@ internal class MembersModel(
     var selfIsAdmin by mutableStateOf(false)
         private set
 
-    /** This device's open invites, each with its request once it arrives. */
-    var invites by mutableStateOf<List<BridgeInvite>>(emptyList())
+    /**
+     * The rows of People's invites in the order they were made: this device's open invites, each with its request
+     * once it arrives, and the invites a sharing refusal ended, until the person dismisses them.
+     */
+    var inviteEntries by mutableStateOf<List<BridgeInviteEntry>>(emptyList())
         private set
+
+    /** This device's open invites. */
+    val invites: List<BridgeInvite>
+        get() = inviteEntries.filterIsInstance<BridgeInviteEntry.Open>().map { it.invite }
     var storage by mutableStateOf<BridgeStorageLocation?>(null)
         private set
 
@@ -186,7 +199,7 @@ internal class MembersModel(
             ScreenSubscription(
                 appHandle.subscribeInvites().let { pulled(it::next, it::cancel) },
                 scope,
-                onValue = { value -> invites = value },
+                onValue = { value -> inviteEntries = value },
                 onError = { error ->
                     logger.error("reading the library's invites failed", error)
                     this@MembersModel.error = errors.display(error)
@@ -301,10 +314,10 @@ private fun PeopleContent(
                         people = read.people,
                         selfIsAdmin = model.selfIsAdmin,
                         requested = model.requestedProfile,
-                        invites = model.invites,
+                        invites = model.inviteEntries,
                         adminChanges = model.adminChanges,
                         callbacks = callbacks,
-                        inviteCallbacks = inviteCallbacks(session, dialogs),
+                        inviteCallbacks = inviteCallbacks(session, model, dialogs),
                         onOpen = onOpen,
                     )
                 }
@@ -385,12 +398,16 @@ private fun memberCallbacks(
 
 private fun inviteCallbacks(
     session: OpenLibrary,
+    model: MembersModel,
     dialogs: MembersDialogs,
 ): InviteCallbacks =
     InviteCallbacks(
         onOpen = dialogs::open,
         // Retry now reads a request that has arrived at once, instead of at the next check.
         onRefresh = { session.messages.startRetrySync(session.appHandle::retryNow) },
+        onDismissRefused = { refused ->
+            model.perform("dismiss a refused invite") { session.appHandle.dismissRefusedInvite(refused.operation) }
+        },
     )
 
 /** What this device's person can do to the library's members and their devices. */
@@ -408,6 +425,7 @@ internal class MemberCallbacks(
 internal class InviteCallbacks(
     val onOpen: (BridgeInvite) -> Unit,
     val onRefresh: () -> Unit,
+    val onDismissRefused: (BridgeRefusedInvite) -> Unit,
 )
 
 /**
@@ -448,6 +466,32 @@ internal fun InviteRow(
             Icon(Icons.Filled.Refresh, contentDescription = stringResource(R.string.members_check_invites))
         }
     }
+}
+
+/**
+ * An invite a sharing refusal ended, in its row's place: the address it was to share with, why the provider refused
+ * and what to fix, and Dismiss, which removes the notice for good.
+ */
+@Composable
+internal fun RefusedInviteRow(
+    refused: BridgeRefusedInvite,
+    callbacks: InviteCallbacks,
+) {
+    val context = LocalContext.current
+    AndroidRow(
+        title = refused.address,
+        subtitle =
+            stringResource(
+                R.string.members_invite_refused,
+                context.coreString(bridgeSharingRefusalKey(refused.refusal)),
+            ),
+        tone = StatusTone.DANGER,
+        trailing = {
+            AndroidButton(kind = ButtonKind.TEXT, onClick = { callbacks.onDismissRefused(refused) }) {
+                Text(stringResource(R.string.dismiss))
+            }
+        },
+    )
 }
 
 @Composable

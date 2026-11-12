@@ -457,4 +457,5 @@
     <string name="onboarding_join">Pridruži se</string>
     <string name="onboarding_your_name">Vaše ime</string>
     <string name="onboarding_name_placeholder">Prikazuje se na vašem profilu, ocjenama i popisima za reprodukciju</string>
+    <string name="members_invite_refused">Pozivanje nije uspjelo: %1$s</string>
 </resources>

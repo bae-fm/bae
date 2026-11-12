@@ -481,4 +481,5 @@
     <string name="onboarding_join">انضمام</string>
     <string name="onboarding_your_name">اسمك</string>
     <string name="onboarding_name_placeholder">يظهر في ملفك الشخصي وتقييماتك وقوائم التشغيل</string>
+    <string name="members_invite_refused">تعذّرت الدعوة: %1$s</string>
 </resources>

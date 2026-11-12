@@ -449,4 +449,5 @@
     <string name="onboarding_join">Beitreten</string>
     <string name="onboarding_your_name">Dein Name</string>
     <string name="onboarding_name_placeholder">Erscheint in deinem Profil, deinen Bewertungen und Wiedergabelisten</string>
+    <string name="members_invite_refused">Einladung nicht möglich: %1$s</string>
 </resources>

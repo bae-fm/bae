@@ -455,4 +455,5 @@
     <string name="onboarding_join">Alătură-te</string>
     <string name="onboarding_your_name">Numele tău</string>
     <string name="onboarding_name_placeholder">Apare în profilul tău, în evaluări și în liste de redare</string>
+    <string name="members_invite_refused">Nu s-a putut invita: %1$s</string>
 </resources>

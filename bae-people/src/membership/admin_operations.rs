@@ -7,6 +7,7 @@ use super::*;
 use crate::admin_change::{
     AdminChange, AdminChangeDismissError, AdminChangeKind, AdminChangeState,
 };
+use rusqlite::OptionalExtension;
 
 /// What an admin change changes, as its `admin_operations` row holds it.
 pub(super) enum AdminTarget {
@@ -202,6 +203,29 @@ impl Membership {
     }
 }
 
+/// Why the person's dismissal of an invite a sharing refusal ended was
+/// refused.
+#[derive(Debug, thiserror::Error)]
+pub enum RefusedInviteDismissError {
+    /// The operation is no invite's that a refused sharing ended, or one
+    /// dismissed already. Nothing was acknowledged.
+    #[error("operation {0:?} is no invite a sharing refusal ended")]
+    NotRefusedInvite(coven::OperationId),
+    #[error(transparent)]
+    Database(#[from] bae_store::DbError),
+}
+
+/// A bug the store's write carried back, which the store reported as it
+/// returned; a refusal holds none.
+impl bae_util::task_failure::ReportedBug for RefusedInviteDismissError {
+    fn reported_bug(&self) -> Option<&coven::task::Bug> {
+        match self {
+            Self::Database(error) => error.reported_bug(),
+            Self::NotRefusedInvite(_) => None,
+        }
+    }
+}
+
 /// Why an invite couldn't be made.
 #[derive(Debug, thiserror::Error)]
 pub enum InviteError {
@@ -237,6 +261,40 @@ impl Membership {
 }
 
 impl Membership {
+    /// Dismiss an invite a sharing refusal ended: coven's operation outcome
+    /// is acknowledged, so the notice leaves the list in that write. Any other
+    /// operation, an invite's or not, is refused with
+    /// `NotRefusedInvite`, as is one dismissed already.
+    pub async fn dismiss_refused_invite(
+        &self,
+        operation: coven::OperationId,
+    ) -> Result<(), RefusedInviteDismissError> {
+        let acknowledged = self
+            .store
+            .call(move |sql| {
+                let outcome = sql
+                    .query_row(
+                        "SELECT outcome FROM coven_operations \
+                         WHERE operation = ?1 AND kind = 'Invite'",
+                        [operation.0],
+                        |row| row.get::<_, Option<coven::OperationOutcome>>(0),
+                    )
+                    .optional()?;
+                match outcome.flatten() {
+                    Some(coven::OperationOutcome::SharingRefused { .. }) => {
+                        sql.acknowledge_operation(operation)?;
+                        Ok(true)
+                    }
+                    _ => Ok(false),
+                }
+            })
+            .await?;
+        match acknowledged {
+            true => Ok(()),
+            false => Err(RefusedInviteDismissError::NotRefusedInvite(operation)),
+        }
+    }
+
     /// Rename the store as an admin: the write journals the rename, which
     /// a pass claims, and records it to show (§5.6).
     pub async fn rename_store(&self, name: &str) -> Result<(), coven::SyncError> {

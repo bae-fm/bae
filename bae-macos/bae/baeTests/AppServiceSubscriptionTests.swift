@@ -206,6 +206,27 @@ struct InvitesSubscriptionTests {
     }
 
     @Test(
+        "an invite a sharing refusal ended reaches the store beside the open ones"
+    )
+    func refusedInvitesReachTheStore() async throws {
+        let handle = FakeAppHandle()
+        let store = MembershipStore(handle: handle)
+        store.start()
+        store.show()
+
+        let refused = BridgeRefusedInvite(
+            operation: 7,
+            address: "dan@example.com",
+            refusal: .invalidAddress
+        )
+        handle.deliverInvites([invite(id: "11")], refused: [refused])
+        try await Wait.until { store.inviteEntries.count == 2 }
+
+        #expect(store.invites.map(\.id) == ["11"])
+        #expect(store.inviteEntries.contains { $0.refusedInvite == refused })
+    }
+
+    @Test(
         "the people and invites are read while a screen shows them; the admin read runs throughout"
     )
     func shownReadsFollowTheScreen() async throws {
@@ -629,8 +650,14 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
 
     override func ownPerson() async throws -> BridgePerson? { nil }
 
-    func deliverInvites(_ value: [BridgeInvite]) {
-        invites.values.deliver(value)
+    func deliverInvites(
+        _ value: [BridgeInvite],
+        refused: [BridgeRefusedInvite] = []
+    ) {
+        invites.values.deliver(
+            value.map { .open(invite: $0) }
+                + refused.map { .refused(refused: $0) }
+        )
     }
 
     override func subscribeQueue() -> QueueSubscription {

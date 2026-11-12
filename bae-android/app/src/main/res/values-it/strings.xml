@@ -455,4 +455,5 @@
     <string name="onboarding_join">Unisciti</string>
     <string name="onboarding_your_name">Il tuo nome</string>
     <string name="onboarding_name_placeholder">Compare nel tuo profilo, nelle valutazioni e nelle playlist</string>
+    <string name="members_invite_refused">Impossibile invitare: %1$s</string>
 </resources>

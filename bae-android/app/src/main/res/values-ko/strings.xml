@@ -441,4 +441,5 @@
     <string name="onboarding_join">참여</string>
     <string name="onboarding_your_name">내 이름</string>
     <string name="onboarding_name_placeholder">프로필, 평점, 재생목록에 표시됩니다</string>
+    <string name="members_invite_refused">초대하지 못했습니다: %1$s</string>
 </resources>

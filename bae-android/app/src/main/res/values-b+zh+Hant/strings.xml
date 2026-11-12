@@ -441,4 +441,5 @@
     <string name="onboarding_join">加入</string>
     <string name="onboarding_your_name">你的名字</string>
     <string name="onboarding_name_placeholder">顯示在你的個人檔案、評分和播放列表中</string>
+    <string name="members_invite_refused">無法邀請：%1$s</string>
 </resources>

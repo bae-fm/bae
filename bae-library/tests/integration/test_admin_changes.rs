@@ -23,15 +23,16 @@ fn an_approval_is_listed_by_the_joiners_name_until_dismissed() {
         let approving = async {
             let mut invites =
                 bae_views::LibraryViews::new(library.store().clone()).subscribe_invites();
-            let deciding = |open: &bae_views::OpenInvite| match bae_library::people::invite_shown(
-                &open.invite,
-            ) {
-                bae_library::people::InviteShown::Code {
-                    progress: bae_library::people::InviteProgress::Deciding(request),
-                    ..
-                } => Some((request, open.requester.clone())),
-                bae_library::people::InviteShown::Code { .. }
-                | bae_library::people::InviteShown::Granting => None,
+            let deciding = |entry: &bae_views::InviteEntry| {
+                let open = entry.open()?;
+                match bae_library::people::invite_shown(&open.invite) {
+                    bae_library::people::InviteShown::Code {
+                        progress: bae_library::people::InviteProgress::Deciding(request),
+                        ..
+                    } => Some((request, open.requester.clone())),
+                    bae_library::people::InviteShown::Code { .. }
+                    | bae_library::people::InviteShown::Granting => None,
+                }
             };
             let request = bae_library::followed::value_matching(&mut invites, |invites| {
                 invites.iter().any(|open| deciding(open).is_some())

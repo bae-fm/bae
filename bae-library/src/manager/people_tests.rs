@@ -307,19 +307,26 @@ fn an_invite_is_listed_until_it_is_cancelled() {
         let listed =
             crate::followed::value_matching(&mut invites, |invites| !invites.is_empty()).await;
         assert_eq!(
-            listed.iter().map(|listed| (listed.invite.id, listed.invite.kind)).collect::<Vec<_>>(),
+            listed
+                .iter()
+                .filter_map(bae_views::InviteEntry::open)
+                .map(|listed| (listed.invite.id, listed.invite.kind))
+                .collect::<Vec<_>>(),
             vec![(invite, coven::InviteKind::NewPerson)]
         );
         let granted = crate::followed::value_matching(&mut invites, |invites| {
             invites.iter().any(|listed| {
                 matches!(
-                    crate::people::invite_shown(&listed.invite),
+                    crate::people::invite_shown(&listed.open().unwrap().invite),
                     crate::people::InviteShown::Code { .. }
                 )
             })
         })
         .await;
-        assert!(granted.iter().all(|listed| listed.held.is_none()));
+        assert!(granted
+            .iter()
+            .filter_map(bae_views::InviteEntry::open)
+            .all(|listed| listed.held.is_none()));
         manager.cancel_invite(&invite).await.unwrap();
         crate::followed::value_matching(&mut invites, Vec::is_empty).await;
     });

@@ -465,4 +465,5 @@
     <string name="onboarding_join">Приєднатися</string>
     <string name="onboarding_your_name">Ваше ім’я</string>
     <string name="onboarding_name_placeholder">Показується у вашому профілі, оцінках і плейлистах</string>
+    <string name="members_invite_refused">Не вдалося запросити: %1$s</string>
 </resources>

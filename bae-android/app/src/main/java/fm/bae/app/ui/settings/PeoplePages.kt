@@ -28,7 +28,7 @@ import fm.bae.app.ui.components.AndroidSection
 import fm.bae.app.ui.components.RowIcon
 import uniffi.bae_bridge.BridgeAdminChange
 import uniffi.bae_bridge.BridgeHistorySharing
-import uniffi.bae_bridge.BridgeInvite
+import uniffi.bae_bridge.BridgeInviteEntry
 import uniffi.bae_bridge.BridgeMember
 import uniffi.bae_bridge.BridgePerson
 import uniffi.bae_bridge.BridgePersonProfile
@@ -78,7 +78,7 @@ internal fun PeopleHome(
     people: List<BridgePerson>,
     selfIsAdmin: Boolean,
     requested: BridgeRequestedProfile?,
-    invites: List<BridgeInvite>,
+    invites: List<BridgeInviteEntry>,
     adminChanges: List<BridgeAdminChange>,
     callbacks: MemberCallbacks,
     inviteCallbacks: InviteCallbacks,
@@ -116,8 +116,11 @@ internal fun PeopleHome(
                 }
             }
         }
-        items(invites, key = { invite -> invite.id }) { invite ->
-            InviteRow(invite = invite, callbacks = inviteCallbacks)
+        items(invites, key = { entry -> entry.rowId() }) { entry ->
+            when (entry) {
+                is BridgeInviteEntry.Open -> InviteRow(invite = entry.invite, callbacks = inviteCallbacks)
+                is BridgeInviteEntry.Refused -> RefusedInviteRow(refused = entry.refused, callbacks = inviteCallbacks)
+            }
         }
         if (selfIsAdmin) {
             item {
@@ -235,4 +238,11 @@ internal fun BridgeHistorySharing.labelRes(): Int =
         BridgeHistorySharing.OFF -> R.string.settings_history_off
         BridgeHistorySharing.PRIVATE -> R.string.settings_history_private
         BridgeHistorySharing.HOUSEHOLD -> R.string.settings_history_household
+    }
+
+/** What identifies the row among People's invites. */
+private fun BridgeInviteEntry.rowId(): String =
+    when (this) {
+        is BridgeInviteEntry.Open -> invite.id
+        is BridgeInviteEntry.Refused -> "refused-${refused.operation}"
     }
