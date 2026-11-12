@@ -66,7 +66,7 @@ value = "oops"
 fn flags_a_translation_that_ends_a_sentence_twice() {
     let c = cat(r#"
 [messages."core.x"]
-value = "Reconnect to play this release. It isn’t downloaded yet."
+value = "Reconnect to play this release. It is not downloaded yet."
 translations = { zh-Hans = "请重新连接以播放此发行版。。它尚未下载。" }
 "#);
     let errs = validate(&c).unwrap_err();
@@ -111,7 +111,7 @@ translations = { fr = "Il n'est pas téléchargé" }
 fn accepts_the_curly_apostrophe() {
     let c = cat(r#"
 [messages."core.x"]
-value = "It isn’t downloaded"
+value = "It is not downloaded"
 translations = { fr = "Il n’est pas téléchargé" }
 "#);
     assert!(validate(&c).is_ok());

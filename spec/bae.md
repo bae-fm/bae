@@ -3801,7 +3801,7 @@ library waits for it to finish
 bae still lists the library, under the name the new copy loaded, with the
 call that began it, and opening it fails with that call's own line:
 "Restoring this library on this device did not finish." or "Reset from cloud
-didn’t finish." Coven keeps what finishing needs on
+did not finish." Coven keeps what finishing needs on
 the device: a reset's device name, and a restore's code, its S3 key inside
 the code, and its provider sign-in. So `resume_replacement` finishes either
 without the code or a sign-in, and so does running the call that began it

@@ -400,7 +400,7 @@ fi = "Vuoden on oltava numero"
 [messages."core.import.sheet.refused_codec"]
 comment = "Import file pane: a track sheet names an audio file bae can't carve tracks out of, because the codec can't back single-file CUE playback ({codec} is the codec name, e.g. MP3). The audio still imports, as one track."
 args = { codec = "Str" }
-value = "{codec} audio can’t be split by a sheet"
+value = "{codec} audio cannot be split by a sheet"
 
 [messages."core.import.sheet.refused_codec".translations]
 es = "El audio {codec} no se puede dividir con un CUE"
@@ -433,7 +433,7 @@ fi = "Ääntä {codec} ei voi jakaa arkin perusteella"
 
 [messages."core.import.sheet.refused_unreadable"]
 comment = "Import file pane: an audio file cannot back a track sheet's binding because bae cannot read the file at all — a truncated download, or otherwise broken audio. Shown on the file in the sheet's audio picker."
-value = "This audio can\u2019t be read"
+value = "This audio cannot be read"
 
 [messages."core.import.sheet.refused_unreadable".translations]
 es = "No se puede leer este audio"
@@ -633,7 +633,7 @@ fi = "Vioittunut ääni, tiedosto on tyhjä"
 
 [messages."core.import.audio_damage.unreadable"]
 comment = "Import pane of a skipped folder, beside an audio file in its Files list that holds no audio bae can play (cut off, or overwritten with zeros), which is why the folder can't be imported. Keep 'bae' lowercase."
-value = "Damaged audio, bae can’t read it"
+value = "Damaged audio, bae cannot read it"
 
 [messages."core.import.audio_damage.unreadable".translations]
 es = "Audio dañado, bae no puede leerlo"
@@ -799,7 +799,7 @@ nb = "Noe gikk galt."
 fi = "Jokin meni pieleen."
 [messages."core.error.category.import"]
 comment = "Generic error line: importing a release failed."
-value = "The import couldn’t be completed."
+value = "The import could not be completed."
 
 [messages."core.error.category.import".translations]
 es = "No se pudo completar la importación."
@@ -865,7 +865,7 @@ fi = "Kohde muuttui ennen kuin tämä ehti toteutua, joten mitään ei muutettu.
 
 [messages."core.error.watched_folder_overlap"]
 comment = "Why a folder wasn't added to the folders bae watches for music to import: it holds, or lies inside, a folder already watched. Both folders show under this line."
-value = "This folder overlaps one already watched, so it wasn’t added."
+value = "This folder overlaps one already watched, so it was not added."
 
 [messages."core.error.watched_folder_overlap".translations]
 es = "Esta carpeta se solapa con otra ya vigilada, así que no se añadió."
@@ -898,7 +898,7 @@ fi = "Tämä kansio menee päällekkäin jo tarkkaillun kansion kanssa, joten si
 
 [messages."core.error.category.export"]
 comment = "Generic error line: exporting failed."
-value = "The export couldn’t be completed."
+value = "The export could not be completed."
 
 # "… not found" lines, keyed by the missing entity.
 
@@ -932,7 +932,7 @@ nb = "Eksporten kunne ikke fullføres."
 fi = "Vientiä ei voitu viedä loppuun."
 [messages."core.error.category.save"]
 comment = "Generic error line: a save (rendered output) failed."
-value = "The save couldn’t be completed."
+value = "The save could not be completed."
 
 [messages."core.error.category.save".translations]
 es = "No se pudo completar el guardado."
@@ -965,7 +965,7 @@ fi = "Tallennusta ei voitu viedä loppuun."
 
 [messages."core.error.cloud_setup.region_mismatch"]
 comment = "Storage setup or sync failed because the configured region or endpoint does not identify the bucket's location."
-value = "The region or endpoint doesn’t match this bucket."
+value = "The region or endpoint does not match this bucket."
 
 [messages."core.error.cloud_setup.region_mismatch".translations]
 es = "La región o el endpoint no coincide con este bucket."
@@ -1064,7 +1064,7 @@ fi = "Tarkista pilven tunnistetietosi ja yritä uudelleen."
 
 [messages."core.error.category.network"]
 comment = "Generic error line: the cloud or the network to it was unreachable."
-value = "Couldn’t reach the cloud. Check your connection and try again."
+value = "Could not reach the cloud. Check your connection and try again."
 
 [messages."core.error.category.network".translations]
 es = "No se pudo conectar con la nube. Comprueba tu conexión e inténtalo de nuevo."
@@ -1097,7 +1097,7 @@ fi = "Pilveen ei saatu yhteyttä. Tarkista yhteytesi ja yritä uudelleen."
 
 [messages."core.error.category.keyring"]
 comment = "Generic error line: the OS keyring (secure credential store) couldn't be read or written."
-value = "Couldn’t access your device’s secure storage."
+value = "Could not access your device’s secure storage."
 
 [messages."core.error.category.keyring".translations]
 es = "No se pudo acceder al almacenamiento seguro de tu dispositivo."
@@ -1130,7 +1130,7 @@ fi = "Laitteesi suojattuun tallennustilaan ei saatu yhteyttä."
 
 [messages."core.error.category.airplay_unsupported"]
 comment = "Error line shown in the device picker when an AirPlay receiver can't be driven — it demands a PIN, needs a pairing the sender doesn't do, or offers only audio encryption the sender doesn't implement."
-value = "This AirPlay receiver isn’t supported."
+value = "This AirPlay receiver is not supported."
 
 [messages."core.error.category.airplay_unsupported".translations]
 es = "Este receptor AirPlay no es compatible."
@@ -1163,7 +1163,7 @@ fi = "Tätä AirPlay-vastaanotinta ei tueta."
 
 [messages."core.error.category.airplay_unreadable_settings"]
 comment = "Error line shown in the device picker when an AirPlay receiver advertises settings (its features or status flags) that bae can't read, so bae can't tell how to connect to it. AirPlay is a product name; bae is always lowercase."
-value = "Can’t connect: this AirPlay receiver advertises settings bae can’t read."
+value = "Cannot connect: this AirPlay receiver advertises settings bae cannot read."
 
 [messages."core.error.category.airplay_unreadable_settings".translations]
 es = "No se puede conectar: este receptor AirPlay anuncia ajustes que bae no puede leer."
@@ -1229,7 +1229,7 @@ fi = "Tämän laitteen avainnippu on lukittu. Avaa laitteen lukitus, niin bae ja
 
 [messages."core.error.keyring.entitlement_missing"]
 comment = "Apple's keychain refused every call because this copy of the app was signed without its keychain entitlement. A packaging fault: the person's keychain is fine, and retrying or unlocking doesn't help."
-value = "This build of bae was signed without permission to use the keychain, so it can’t read or save your keys."
+value = "This build of bae was signed without permission to use the keychain, so it cannot read or save your keys."
 
 [messages."core.error.keyring.entitlement_missing".translations]
 es = "Esta versión de bae se firmó sin permiso para usar el llavero, así que no puede leer ni guardar tus claves."
@@ -1262,7 +1262,7 @@ fi = "Tämä bae-versio on allekirjoitettu ilman lupaa käyttää avainnippua, j
 
 [messages."core.error.keyring.saved_codes_full"]
 comment = "Android's Block Store, where coven saves the person's restore codes on a device, already holds as many entries as Android keeps for an app, so this library's restore code couldn't be saved."
-value = "This device already keeps as many restore codes as Android allows, so this library’s code can’t be saved on it."
+value = "This device already keeps as many restore codes as Android allows, so this library’s code cannot be saved on it."
 
 [messages."core.error.keyring.saved_codes_full".translations]
 es = "Este dispositivo ya guarda tantos códigos de restauración como permite Android, así que no se puede guardar el de esta biblioteca."
@@ -1426,7 +1426,7 @@ fi = "Kirjaudu sisään tilillä, jossa tämä kirjasto on."
 
 [messages."core.error.category.renderer"]
 comment = "Generic error line: the Cast or DLNA device playback was sent to refused a command (a load, a play, a seek) while still connected."
-value = "The device you’re playing on reported a problem."
+value = "The device you are playing on reported a problem."
 
 [messages."core.error.category.renderer".translations]
 es = "El dispositivo en el que estás reproduciendo informó de un problema."
@@ -1627,7 +1627,7 @@ fi = "{count, plural, one {# albumilla ei ole raitoja, joten se jätettiin pois}
 [messages."core.play.left_out_tracks"]
 comment = "Shown after a list of tracks played, such as one a car or watch sent: this many of its tracks aren't in the library, so the rest play without them."
 args = { count = "Int" }
-value = "{count, plural, one {# track isn’t in the library and was left out} other {# tracks aren’t in the library and were left out}}"
+value = "{count, plural, one {# track is not in the library and was left out} other {# tracks are not in the library and were left out}}"
 
 [messages."core.play.left_out_tracks".translations]
 es = "{count, plural, one {# pista no está en la biblioteca y se omitió} other {# pistas no están en la biblioteca y se omitieron}}"
@@ -1659,7 +1659,7 @@ nb = "{count, plural, one {# spor er ikke i biblioteket og ble utelatt} other {#
 fi = "{count, plural, one {# raita ei ole kirjastossa, joten se jätettiin pois} other {# raitaa ei ole kirjastossa, joten ne jätettiin pois}}"
 [messages."core.playback.error.sync_disconnected"]
 comment = "Playback error: a cloud-only track isn't pinned and sync is offline."
-value = "Reconnect to play this release. It isn’t pinned to this device yet."
+value = "Reconnect to play this release. It is not pinned to this device yet."
 
 [messages."core.playback.error.sync_disconnected".translations]
 es = "Vuelve a conectarte para reproducir esta edición: aún no está fijada en este dispositivo."
@@ -1691,7 +1691,7 @@ nb = "Koble til på nytt for å spille av denne utgivelsen. Den er ikke festet p
 fi = "Yhdistä uudelleen, jotta voit toistaa tämän julkaisun. Sitä ei ole vielä kiinnitetty tälle laitteelle."
 [messages."core.playback.error.audio_device_unavailable"]
 comment = "Playback error: the audio output couldn't start because the output device (speakers, headphones, an interface) was disconnected or is no longer available."
-value = "The audio device was disconnected or isn’t available."
+value = "The audio device was disconnected or is not available."
 
 [messages."core.playback.error.audio_device_unavailable".translations]
 es = "El dispositivo de audio se desconectó o no está disponible."
@@ -1724,7 +1724,7 @@ fi = "Äänilaite on irrotettu tai se ei ole käytettävissä."
 
 [messages."core.playback.error.audio_format_unsupported"]
 comment = "Playback error: the audio output couldn't start because the output device doesn't take this track's sample rate or number of channels."
-value = "The audio device can’t play this track’s sample rate."
+value = "The audio device cannot play this track’s sample rate."
 
 [messages."core.playback.error.audio_format_unsupported".translations]
 es = "El dispositivo de audio no puede reproducir la frecuencia de muestreo de esta pista."
@@ -1757,7 +1757,7 @@ fi = "Äänilaite ei pysty toistamaan tämän kappaleen näytteenottotaajuutta."
 
 [messages."core.playback.error.airplay_refused"]
 comment = "Playback error: the AirPlay speaker couldn't be reached or didn't accept bae's connection when playback started on it. AirPlay is a product name; bae is always lowercase."
-value = "The AirPlay speaker didn’t accept the connection."
+value = "The AirPlay speaker did not accept the connection."
 
 [messages."core.playback.error.airplay_refused".translations]
 es = "El altavoz AirPlay no aceptó la conexión."
@@ -2871,7 +2871,7 @@ nb = "Fjerner den lokale kopien"
 fi = "Poistetaan paikallista kopiota"
 [messages."core.lookup.failure.network"]
 comment = "Metadata lookup failed: couldn't reach the provider (no network response)."
-value = "Couldn’t reach the metadata provider"
+value = "Could not reach the metadata provider"
 
 [messages."core.lookup.failure.network".translations]
 es = "No se pudo conectar con el proveedor de metadatos"
@@ -3736,7 +3736,7 @@ fi = "Tunnistettu"
 
 [messages."ui.load_error.startup.title"]
 comment = "Shown when bae stopped while starting up, before any library could open. The details follow."
-value = "bae couldn’t start"
+value = "bae could not start"
 
 [messages."ui.load_error.startup.title".translations]
 es = "bae no pudo iniciarse"
@@ -3801,8 +3801,8 @@ nb = "Lukk bae og åpne det igjen. Detaljene viser hvilket steg som mislyktes."
 fi = "Sulje bae ja avaa se uudelleen. Tiedoissa kerrotaan, mikä vaihe epäonnistui."
 
 [messages."ui.load_error.secure_storage.title"]
-comment = "Shown when bae couldn’t open the device’s secure storage (the keychain or keystore) where library keys live. The details follow."
-value = "Couldn’t open secure storage"
+comment = "Shown when bae could not open the device’s secure storage (the keychain or keystore) where library keys live. The details follow."
+value = "Could not open secure storage"
 
 [messages."ui.load_error.secure_storage.title".translations]
 es = "No se pudo abrir el almacenamiento seguro"
@@ -3867,8 +3867,8 @@ nb = "Ingen bibliotek kan åpnes før bae kan bruke enhetens sikre lagring. Deta
 fi = "Mikään kirjasto ei aukea ennen kuin bae voi käyttää tämän laitteen suojattua tallennustilaa. Syy kerrotaan tiedoissa."
 
 [messages."ui.load_error.sign_in_settings.title"]
-comment = "Shown when this build of bae couldn’t read its bundled Dropbox and OneDrive sign-in settings. The details follow."
-value = "Couldn’t load sign-in settings"
+comment = "Shown when this build of bae could not read its bundled Dropbox and OneDrive sign-in settings. The details follow."
+value = "Could not load sign-in settings"
 
 [messages."ui.load_error.sign_in_settings.title".translations]
 es = "No se pudo cargar la configuración de inicio de sesión"
@@ -3901,7 +3901,7 @@ fi = "Kirjautumisasetuksia ei voitu ladata"
 
 [messages."ui.load_error.sign_in_settings.advice"]
 comment = "What follows a failure to read the bundled Dropbox and OneDrive sign-in settings. Dropbox and OneDrive are product names."
-value = "This copy of bae can’t read its Dropbox and OneDrive sign-in settings, so it can’t sign in to them. Reinstall bae."
+value = "This copy of bae cannot read its Dropbox and OneDrive sign-in settings, so it cannot sign in to them. Reinstall bae."
 
 [messages."ui.load_error.sign_in_settings.advice".translations]
 es = "Esta copia de bae no puede leer su configuración de inicio de sesión de Dropbox y OneDrive, así que no puede iniciar sesión en ellos. Reinstala bae."
@@ -3933,8 +3933,8 @@ nb = "Denne kopien av bae kan ikke lese påloggingsinnstillingene for Dropbox og
 fi = "Tämä bae-kopio ei pysty lukemaan Dropboxin ja OneDriven kirjautumisasetuksia, joten se ei voi kirjautua niihin. Asenna bae uudelleen."
 
 [messages."ui.load_error.library_list.title"]
-comment = "Shown when bae couldn’t read which libraries are on this device. The details follow."
-value = "Couldn’t list the libraries on this device"
+comment = "Shown when bae could not read which libraries are on this device. The details follow."
+value = "Could not list the libraries on this device"
 
 [messages."ui.load_error.library_list.title".translations]
 es = "No se pudieron mostrar las bibliotecas de este dispositivo"
@@ -3966,8 +3966,8 @@ nb = "Kunne ikke vise bibliotekene på denne enheten"
 fi = "Tämän laitteen kirjastoja ei voitu luetella"
 
 [messages."ui.load_error.library_list.advice"]
-comment = "What the person can do after bae couldn’t read which libraries are on this device."
-value = "Open bae again to retry. The details say what couldn’t be read."
+comment = "What the person can do after bae could not read which libraries are on this device."
+value = "Open bae again to retry. The details say what could not be read."
 
 [messages."ui.load_error.library_list.advice".translations]
 es = "Vuelve a abrir bae para intentarlo de nuevo. Los detalles indican qué no se pudo leer."
@@ -3999,8 +3999,8 @@ nb = "Åpne bae igjen for å prøve på nytt. Detaljene viser hva som ikke kunne
 fi = "Avaa bae uudelleen yrittääksesi uudestaan. Tiedoissa kerrotaan, mitä ei voitu lukea."
 
 [messages."ui.load_error.library_open.title"]
-comment = "Shown on a phone when the library bae tried to open didn’t open. The details follow."
-value = "The library didn’t open"
+comment = "Shown on a phone when the library bae tried to open did not open. The details follow."
+value = "The library did not open"
 
 [messages."ui.load_error.library_open.title".translations]
 es = "La biblioteca no se abrió"
@@ -4032,7 +4032,7 @@ nb = "Biblioteket ble ikke åpnet"
 fi = "Kirjasto ei auennut"
 
 [messages."ui.load_error.library_open.advice"]
-comment = "What the person can do after a library didn’t open on a phone."
+comment = "What the person can do after a library did not open on a phone."
 value = "Open bae again to retry. The details say why."
 
 [messages."ui.load_error.library_open.advice".translations]
@@ -4065,8 +4065,8 @@ nb = "Åpne bae igjen for å prøve på nytt. Detaljene forklarer hvorfor."
 fi = "Avaa bae uudelleen yrittääksesi uudestaan. Syy kerrotaan tiedoissa."
 
 [messages."ui.load_error.reset_offered.title"]
-comment = "Heading over the reason a library didn’t open, on the screen that offers resetting this device."
-value = "Why the library didn’t open"
+comment = "Heading over the reason a library did not open, on the screen that offers resetting this device."
+value = "Why the library did not open"
 
 [messages."ui.load_error.reset_offered.title".translations]
 es = "Por qué no se abrió la biblioteca"
@@ -4099,7 +4099,7 @@ fi = "Miksi kirjasto ei auennut"
 
 [messages."ui.load_error.device_reset.title"]
 comment = "Shown when Reset from cloud for a library failed. The details follow."
-value = "Couldn’t reset from cloud"
+value = "Could not reset from cloud"
 
 [messages."ui.load_error.device_reset.title".translations]
 es = "No se pudo restablecer desde la nube"
@@ -4164,8 +4164,8 @@ nb = "Tilbakestill igjen for å prøve på nytt. Detaljene viser hva som stoppet
 fi = "Nollaa uudelleen yrittääksesi uudestaan. Tiedoissa kerrotaan, mikä sen pysäytti."
 
 [messages."ui.load_error.restore_close.title"]
-comment = "Shown when bae couldn’t close the open library before restoring it over this device’s copy. The details follow."
-value = "Couldn’t close the library to restore it"
+comment = "Shown when bae could not close the open library before restoring it over this device’s copy. The details follow."
+value = "Could not close the library to restore it"
 
 [messages."ui.load_error.restore_close.title".translations]
 es = "No se pudo cerrar la biblioteca para restaurarla"
@@ -4197,7 +4197,7 @@ nb = "Kunne ikke lukke biblioteket for å gjenopprette det"
 fi = "Kirjastoa ei voitu sulkea palauttamista varten"
 
 [messages."ui.load_error.restore_close.advice"]
-comment = "What the person can do after bae couldn’t close the library to restore it."
+comment = "What the person can do after bae could not close the library to restore it."
 value = "Open the library again and start the restore once more."
 
 [messages."ui.load_error.restore_close.advice".translations]
@@ -4231,7 +4231,7 @@ fi = "Avaa kirjasto uudelleen ja aloita palautus vielä kerran."
 
 [messages."ui.load_error.shutdown.title"]
 comment = "Shown when closing the open library failed. The details follow."
-value = "Couldn’t close the library"
+value = "Could not close the library"
 
 [messages."ui.load_error.shutdown.title".translations]
 es = "No se pudo cerrar la biblioteca"
@@ -4297,7 +4297,7 @@ fi = "Kirjasto on yhä auki. Sulje se uudelleen tai lopeta bae."
 
 [messages."ui.load_error.removal.title"]
 comment = "Shown when removing a library from this device failed. The details follow."
-value = "Couldn’t remove the library"
+value = "Could not remove the library"
 
 [messages."ui.load_error.removal.title".translations]
 es = "No se pudo quitar la biblioteca"
@@ -4330,7 +4330,7 @@ fi = "Kirjastoa ei voitu poistaa"
 
 [messages."ui.load_error.removal.advice"]
 comment = "What follows a failed removal: the library stayed on this device and opened again."
-value = "It’s still on this device and open again. Try removing it again."
+value = "It is still on this device and open again. Try removing it again."
 
 [messages."ui.load_error.removal.advice".translations]
 es = "Sigue en este dispositivo y está abierta de nuevo. Intenta quitarla otra vez."
@@ -5332,7 +5332,7 @@ fi = "Mille julkaisun levylle tämän arkin merkinnät kuuluvat"
 [messages."ui.import.folder.scan_failed"]
 comment = "Alert headline when reading a watched folder fails; {folder} is the folder's name. The failure's own untranslated text is shown beneath it."
 args = { folder = "Str" }
-value = "Couldn’t scan {folder}"
+value = "Could not scan {folder}"
 
 [messages."ui.import.folder.scan_failed".translations]
 es = "No se pudo escanear {folder}"
@@ -5365,7 +5365,7 @@ fi = "Kohdetta {folder} ei voitu käydä läpi"
 
 [messages."ui.queue.upcoming_failed"]
 comment = "The queue, under the rows of what's playing from: reading the rest of them failed; the rows past it stay empty until Retry, and Details opens the error."
-value = "Couldn’t read the rest of the queue"
+value = "Could not read the rest of the queue"
 
 [messages."ui.queue.upcoming_failed".translations]
 es = "No se pudo leer el resto de la cola"
@@ -11060,7 +11060,7 @@ nb = "Enheten må tilbakestilles før synkronisering."
 fi = "Tämä laite on nollattava ennen synkronointia."
 [messages."core.error.replacement_unfinished.reset"]
 comment = "A library's line, and why it didn't open: a Reset from cloud of this device's copy stopped partway, and only resetting again finishes it."
-value = "Reset from cloud didn’t finish."
+value = "Reset from cloud did not finish."
 
 [messages."core.error.replacement_unfinished.reset".translations]
 es = "El restablecimiento desde la nube no terminó."
@@ -11124,7 +11124,7 @@ nb = "Gjenopprettingen av dette biblioteket på denne enheten ble ikke fullført
 fi = "Tämän kirjaston palauttaminen tälle laitteelle ei valmistunut."
 [messages."core.error.restore_registered"]
 comment = "Shown after the person cancelled a restore: this device had already been added to the library, so the restore can't be cancelled and stays unfinished until it is finished."
-value = "The restore can’t be cancelled: this device was already added to the library. Finish restoring to use the library."
+value = "The restore cannot be cancelled: this device was already added to the library. Finish restoring to use the library."
 
 [messages."core.error.restore_registered".translations]
 es = "La restauración no se puede cancelar: este dispositivo ya se añadió a la biblioteca. Termina la restauración para usar la biblioteca."
@@ -11190,7 +11190,7 @@ fi = "Avaimesi korvattiin toisella laitteellasi. Palauta tämä kirjasto nykyise
 
 [messages."core.error.storage_setup_undone"]
 comment = "Shown in the library's sync settings, until the person dismisses it: a cloud home setup ended undone while no setup screen waited for it, such as one bae stopped partway, or one sync finished and the library refused. The cloud home isn't set up."
-value = "Setting up this library’s cloud home didn’t finish, and what it did was undone. Set up its cloud home again."
+value = "Setting up this library’s cloud home did not finish, and what it did was undone. Set up its cloud home again."
 
 [messages."core.error.storage_setup_undone".translations]
 es = "La configuración del hogar en la nube de esta biblioteca no terminó y se deshizo lo que había hecho. Vuelve a configurar su hogar en la nube."
@@ -14920,7 +14920,7 @@ fi = "Pyydä tämän pilvikodin hallitsijaa antamaan sinulle pääsy uudelleen."
 
 [messages."core.sync.cause.old_copy"]
 comment = "Why sync stopped: an admin removed this device from the library."
-value = "An admin removed this device. What’s here is an old copy."
+value = "An admin removed this device. What is here is an old copy."
 
 [messages."core.sync.cause.old_copy".translations]
 es = "Un administrador eliminó este dispositivo. Lo que hay aquí es una copia antigua."
@@ -15119,7 +15119,7 @@ fi = "Tiedosto puuttuu tai on muuttunut. Palauta se ennalleen."
 
 [messages."core.sync.cause.disk_failed"]
 comment = "Why sync failed: reading or writing a file on this device failed for a reason that is neither a full disk nor a refused file; sync retries by itself."
-value = "bae couldn’t read or write a file on this device. It will try again."
+value = "bae could not read or write a file on this device. It will try again."
 
 [messages."core.sync.cause.disk_failed".translations]
 es = "bae no pudo leer ni escribir un archivo en este dispositivo. Volverá a intentarlo."
@@ -15153,7 +15153,7 @@ fi = "bae ei voinut lukea tai kirjoittaa tiedostoa tällä laitteella. Se yritt�
 [messages."core.sync.cause.disk_denied"]
 comment = "Why sync failed: the operating system refused bae a file it needs ({file} is its name)."
 args = { file = "Str" }
-value = "Couldn’t read {file}: bae isn’t allowed to open it."
+value = "Could not read {file}: bae is not allowed to open it."
 
 [messages."core.sync.cause.disk_denied".translations]
 es = "No se pudo leer {file}: bae no tiene permiso para abrirlo."
@@ -15186,7 +15186,7 @@ fi = "Tiedostoa {file} ei voitu lukea: bae ei saa avata sitä."
 
 [messages."core.sync.cause.disk_denied_unnamed"]
 comment = "Why sync failed: the operating system refused bae a file it needs, and no row names it."
-value = "bae isn’t allowed to open a file it needs."
+value = "bae is not allowed to open a file it needs."
 
 [messages."core.sync.cause.disk_denied_unnamed".translations]
 es = "bae no tiene permiso para abrir un archivo que necesita."
@@ -15253,7 +15253,7 @@ fi = "{provider} palautti virheen: {detail}"
 
 [messages."core.sync.cause.change_damaged"]
 comment = "Why sync failed: a change another device sent is damaged."
-value = "A change from another device is damaged and can’t be applied."
+value = "A change from another device is damaged and cannot be applied."
 
 [messages."core.sync.cause.change_damaged".translations]
 es = "Un cambio de otro dispositivo está dañado y no se puede aplicar."
@@ -15353,7 +15353,7 @@ fi = "Pilvipalvelun tarjoaja pyysi odottamaan {until} asti. Synkronointi jatkuu 
 
 [messages."core.sync.retry.not_syncing"]
 comment = "Snackbar after the person pulled to refresh or tapped Retry Now: sync isn't running on this device, such as when no storage is set up or syncing was stopped, so nothing was refreshed."
-value = "Sync isn’t running, so nothing was refreshed."
+value = "Sync is not running, so nothing was refreshed."
 
 [messages."core.sync.retry.not_syncing".translations]
 es = "La sincronización no está activa, así que no se actualizó nada."
@@ -17132,7 +17132,7 @@ nb = "Henter omslaget fra {catalog}…"
 fi = "Haetaan kansikuvaa palvelusta {catalog}…"
 
 [messages."core.invite.refused.invalid_address"]
-comment = "People, an invite a sharing refusal ended: why Dropbox refused the invited address. It follows \"Couldn’t invite: \" on the notice that replaces the invite's row; the address is the notice's title."
+comment = "People, an invite a sharing refusal ended: why Dropbox refused the invited address. It follows \"Could not invite: \" on the notice that replaces the invite's row; the address is the notice's title."
 value = "Dropbox has no account for it"
 
 [messages."core.invite.refused.invalid_address".translations]
@@ -17165,8 +17165,8 @@ nb = "Dropbox har ingen konto for den adressen"
 fi = "Dropboxilla ei ole tiliä tälle osoitteelle"
 
 [messages."core.invite.refused.email_unverified"]
-comment = "People, an invite a sharing refusal ended: the inviting person's own Dropbox email isn't verified, and what to do. It follows \"Couldn’t invite: \"."
-value = "your Dropbox email isn’t verified. Verify it, then invite them again"
+comment = "People, an invite a sharing refusal ended: the inviting person's own Dropbox email isn't verified, and what to do. It follows \"Could not invite: \"."
+value = "your Dropbox email is not verified. Verify it, then invite them again"
 
 [messages."core.invite.refused.email_unverified".translations]
 es = "tu correo de Dropbox no está verificado. Verifícalo y vuelve a invitar a la persona"
@@ -17198,8 +17198,8 @@ nb = "Dropbox-e-posten din er ikke bekreftet. Bekreft den, og inviter personen p
 fi = "Dropbox-sähköpostiosoitettasi ei ole vahvistettu. Vahvista se ja kutsu henkilö uudelleen"
 
 [messages."core.invite.refused.team_sharing_off"]
-comment = "People, an invite a sharing refusal ended: the inviting person's Dropbox team doesn't share outside the team, and what to do. It follows \"Couldn’t invite: \"."
-value = "your Dropbox team doesn’t share outside the team. Ask its admin to allow it, then invite them again"
+comment = "People, an invite a sharing refusal ended: the inviting person's Dropbox team doesn't share outside the team, and what to do. It follows \"Could not invite: \"."
+value = "your Dropbox team does not share outside the team. Ask its admin to allow it, then invite them again"
 
 [messages."core.invite.refused.team_sharing_off".translations]
 es = "tu equipo de Dropbox no comparte fuera del equipo. Pide a su administrador que lo permita y vuelve a invitar a la persona"
@@ -17231,8 +17231,8 @@ nb = "Dropbox-teamet ditt deler ikke utenfor teamet. Be administratoren om å ti
 fi = "Dropbox-tiimisi ei jaa tiimin ulkopuolelle. Pyydä sen ylläpitäjää sallimaan se ja kutsu henkilö uudelleen"
 
 [messages."core.invite.refused.plan_without_sharing"]
-comment = "People, an invite a sharing refusal ended: the inviting person's Dropbox plan has no sharing, and what to do. It follows \"Couldn’t invite: \"."
-value = "your Dropbox plan can’t share folders. Upgrade it, then invite them again"
+comment = "People, an invite a sharing refusal ended: the inviting person's Dropbox plan has no sharing, and what to do. It follows \"Could not invite: \"."
+value = "your Dropbox plan cannot share folders. Upgrade it, then invite them again"
 
 [messages."core.invite.refused.plan_without_sharing".translations]
 es = "tu plan de Dropbox no permite compartir carpetas. Mejóralo y vuelve a invitar a la persona"
@@ -17264,7 +17264,7 @@ nb = "Dropbox-abonnementet ditt tillater ikke deling av mapper. Oppgrader det, o
 fi = "Dropbox-tilauksesi ei salli kansioiden jakamista. Päivitä se ja kutsu henkilö uudelleen"
 
 [messages."core.invite.refused.too_many_members"]
-comment = "People, an invite a sharing refusal ended: the library's Dropbox folder holds as many people as the plan allows, and what to do. It follows \"Couldn’t invite: \"."
+comment = "People, an invite a sharing refusal ended: the library's Dropbox folder holds as many people as the plan allows, and what to do. It follows \"Could not invite: \"."
 value = "the library’s folder already has as many people as your Dropbox plan allows. Remove one, then invite them again"
 
 [messages."core.invite.refused.too_many_members".translations]

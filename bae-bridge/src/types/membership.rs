@@ -250,7 +250,7 @@ impl BridgeInviteEntry {
     }
 }
 /// The core string that says what a sharing refusal went wrong on and what to
-/// fix; it follows "Couldn’t invite: " on the notice.
+/// fix; it follows "Could not invite: " on the notice.
 #[uniffi::export]
 pub fn bridge_sharing_refusal_key(refusal: BridgeSharingRefusal) -> String {
     refusal.loc_key().to_string()
