@@ -9,9 +9,12 @@ import SwiftUI
 /// system accent, which is not the app's, and turns the row's text white.
 final class BrowsedTableRowView: NSTableRowView {
     private let tint: NSColor
+    private let alternate: Bool
 
-    /// A row whose selection is `accent`'s tint.
-    init(accent: AccentChoice) {
+    /// A row whose selection is `accent`'s tint; an `alternate` row sits on
+    /// the hover tint, which stripes a table without the system's colours.
+    init(accent: AccentChoice, alternate: Bool = false) {
+        self.alternate = alternate
         tint = NSColor(name: nil) { appearance in
             let dark =
                 appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
@@ -24,6 +27,12 @@ final class BrowsedTableRowView: NSTableRowView {
     @available(*, unavailable)
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    override func drawBackground(in dirtyRect: NSRect) {
+        guard alternate else { return }
+        NSColor(Theme.hover).setFill()
+        bounds.fill()
     }
 
     /// AppKit's own selection, its shape kept and its colour replaced by

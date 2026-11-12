@@ -11,7 +11,7 @@ struct StorageRowPlaceholderCell: View {
             if column == .release {
                 RoundedRectangle(cornerRadius: ThemeRadius.bar)
                     .fill(Theme.placeholder)
-                    .frame(height: 14)
+                    .frame(width: 180, height: 14)
             }
             else {
                 EmptyView()

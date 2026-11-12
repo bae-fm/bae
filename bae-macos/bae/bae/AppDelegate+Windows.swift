@@ -58,7 +58,7 @@ extension AppDelegate {
             ?? HostingWindowController(
                 content: StorageManagerWindowRoot(appDelegate: self)
                     .appAppearance(),
-                contentSize: CGSize(width: 800, height: 500),
+                contentSize: CGSize(width: 1100, height: 660),
                 sizing: .minSize,
                 bridging: .toolbars,
                 onClose: { [weak self] in self?.storageManagerWindow = nil }

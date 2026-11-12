@@ -104,8 +104,12 @@ struct StorageManagerView: View {
             ToolbarItem(placement: .primaryAction) {
                 Toggle(isOn: $inspectorPresented) {
                     Label("Inspector", systemImage: "sidebar.trailing")
+                        .labelStyle(.iconOnly)
                 }
                 .toggleStyle(.button)
+                .foregroundStyle(
+                    inspectorPresented ? Theme.accent : Color.secondary
+                )
             }
         }
         .onAppear {

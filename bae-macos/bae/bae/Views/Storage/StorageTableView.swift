@@ -75,7 +75,6 @@ struct StorageTableView: NSViewRepresentable {
         tableView.allowsMultipleSelection = true
         tableView.allowsColumnReordering = true
         tableView.allowsColumnResizing = true
-        tableView.usesAlternatingRowBackgroundColors = true
         tableView.columnAutoresizingStyle =
             .firstColumnOnlyAutoresizingStyle
         tableView.rowHeight = 28
@@ -477,8 +476,11 @@ extension StorageTableView.Coordinator {
         return cell
     }
 
-    func tableView(_: NSTableView, rowViewForRow _: Int) -> NSTableRowView? {
-        BrowsedTableRowView(accent: appearance.accent)
+    func tableView(_: NSTableView, rowViewForRow row: Int) -> NSTableRowView? {
+        BrowsedTableRowView(
+            accent: appearance.accent,
+            alternate: row % 2 == 1
+        )
     }
 
     private func dequeueCell(
@@ -556,7 +558,6 @@ extension StorageTableView.Coordinator: NSMenuDelegate {
                 to: menu,
                 title: String(localized: "Cancel"),
                 action: #selector(cancelTransitionsAction(_:)),
-                symbol: "xmark.circle",
                 representedObject: transitioning.map(\.id)
             )
             return
@@ -566,7 +567,6 @@ extension StorageTableView.Coordinator: NSMenuDelegate {
                 to: menu,
                 title: action.label,
                 action: #selector(runStorageAction(_:)),
-                symbol: action.systemImage,
                 representedObject: StorageActionInvocation(
                     action: action,
                     releaseIds: targets.map(\.id)
@@ -580,14 +580,12 @@ extension StorageTableView.Coordinator: NSMenuDelegate {
             to: menu,
             title: String(localized: "Export…"),
             action: #selector(runExportAction(_:)),
-            symbol: "square.and.arrow.up",
             representedObject: targets.map(\.id)
         )
         addMenuItem(
             to: menu,
             title: String(localized: "Save as…"),
             action: #selector(runSaveAsAction(_:)),
-            symbol: "square.and.arrow.down",
             representedObject: targets.map(\.id)
         )
     }
@@ -597,7 +595,6 @@ extension StorageTableView.Coordinator: NSMenuDelegate {
             to: menu,
             title: String(localized: "Inspect"),
             action: #selector(inspectReleaseAction(_:)),
-            symbol: "sidebar.trailing",
             representedObject: releaseId
         )
         menu.addItem(.separator())
@@ -609,14 +606,9 @@ extension StorageTableView.Coordinator: NSMenuDelegate {
         to menu: NSMenu,
         title: String,
         action: Selector,
-        symbol: String,
         representedObject: Any
     ) {
         let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
-        item.image = NSImage(
-            systemSymbolName: symbol,
-            accessibilityDescription: nil
-        )
         item.target = self
         item.representedObject = representedObject
         menu.addItem(item)
