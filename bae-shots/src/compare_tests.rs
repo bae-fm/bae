@@ -36,6 +36,44 @@ fn a_shot_element_the_board_lacks_is_extra() {
     );
 }
 
+fn dialog() -> Element {
+    let mut dialog = element(Role::Other, None, None);
+    dialog.native = "alertdialog".to_string();
+    dialog
+}
+
+#[test]
+fn a_dialog_the_shot_lists_first_is_not_out_of_order() {
+    let board = [text("Title"), button("Play"), dialog(), text("Delete"), button("OK")]
+        .into_iter()
+        .enumerate()
+        .map(|(i, mut e)| {
+            if i > 2 {
+                e.parent = Some(2);
+            }
+            e
+        })
+        .collect::<Vec<_>>();
+    let shot = [text("Delete"), button("OK"), text("Title"), button("Play")];
+    assert!(compare(&board, &shot).findings.is_empty());
+}
+
+#[test]
+fn a_dialog_read_in_another_order_inside_itself_is_out_of_order() {
+    let board = [text("Title"), dialog(), text("Delete"), button("OK")]
+        .into_iter()
+        .enumerate()
+        .map(|(i, mut e)| {
+            if i > 1 {
+                e.parent = Some(1);
+            }
+            e
+        })
+        .collect::<Vec<_>>();
+    let shot = [button("OK"), text("Delete"), text("Title")];
+    assert_eq!(compare(&board, &shot).findings.len(), 1);
+}
+
 #[test]
 fn a_swapped_pair_is_one_out_of_order_finding_not_two() {
     let result = compare(&[text("A"), text("B"), text("C")], &[text("A"), text("C"), text("B")]);

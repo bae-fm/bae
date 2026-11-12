@@ -75,12 +75,11 @@ pub(crate) struct Comparison {
 }
 
 /// Compares the board's list with the shot's.
-pub(crate) fn compare(board: &[Element], shot: &[Element]) -> Comparison {
+pub(crate) fn compare(boards: &[Element], shot: &[Element]) -> Comparison {
     let shot = entries(shot);
-    let board = fold_merged(entries(board), &shot);
-    let board_keys: Vec<_> = board.iter().map(Entry::key).collect();
-    let shot_keys: Vec<_> = shot.iter().map(Entry::key).collect();
-    let steps = align::align(&board_keys, &shot_keys);
+    let board = fold_merged(entries(boards), &shot);
+    let in_dialog: Vec<bool> = board.iter().map(|e| inside_dialog(boards, e.index)).collect();
+    let steps = align_by_window(&board, &in_dialog, &shot);
 
     // Findings with their step number, which orders them.
     let mut pairs = Vec::new();
@@ -149,6 +148,89 @@ pub(crate) fn compare(board: &[Element], shot: &[Element]) -> Comparison {
     }
     found.sort_by_key(|(at, _)| *at);
     Comparison { pairs, findings: found.into_iter().map(|(_, f)| f).collect() }
+}
+
+/// Whether the board's element `index` sits inside a dialog or alert.
+fn inside_dialog(board: &[Element], index: usize) -> bool {
+    let mut at = Some(index);
+    while let Some(i) = at {
+        if matches!(board[i].native.as_str(), "dialog" | "alertdialog") {
+            return true;
+        }
+        at = board[i].parent.filter(|p| *p < i);
+    }
+    false
+}
+
+/// The alignment of the board's entries with the shot's, comparing reading
+/// order inside the window and inside the dialog, never between them: the
+/// platform lists the front dialog before the window behind it, and the board
+/// lists it last. The window's entries are aligned with the whole shot, then
+/// the dialog's with the shot elements the window did not take.
+fn align_by_window(board: &[Entry], in_dialog: &[bool], shot: &[Entry]) -> Vec<Step> {
+    let window: Vec<usize> = (0..board.len()).filter(|i| !in_dialog[*i]).collect();
+    let dialog: Vec<usize> = (0..board.len()).filter(|i| in_dialog[*i]).collect();
+    let keys = |entries: &[Entry], at: &[usize]| -> Vec<_> {
+        at.iter().map(|i| entries[*i].key()).collect()
+    };
+    let all_shot: Vec<usize> = (0..shot.len()).collect();
+    let steps = align::align(&keys(board, &window), &keys(shot, &all_shot));
+    let steps: Vec<Step> = steps
+        .into_iter()
+        .map(|step| match step {
+            Step::Match(b, s) => Step::Match(window[b], s),
+            Step::Board(b) => Step::Board(window[b]),
+            Step::Shot(s) => Step::Shot(s),
+        })
+        .collect();
+    if dialog.is_empty() {
+        return steps;
+    }
+    // The shot elements the window left over, and the dialog aligned to them.
+    let left: Vec<usize> = steps
+        .iter()
+        .filter_map(|step| if let Step::Shot(s) = step { Some(*s) } else { None })
+        .collect();
+    let inner: Vec<Step> = align::align(&keys(board, &dialog), &keys(shot, &left))
+        .into_iter()
+        .map(|step| match step {
+            Step::Match(b, s) => Step::Match(dialog[b], left[s]),
+            Step::Board(b) => Step::Board(dialog[b]),
+            Step::Shot(s) => Step::Shot(left[s]),
+        })
+        .collect();
+    // A dialog entry the shot lacks goes before the next shot element of the
+    // dialog's alignment, or last.
+    let mut matched = std::collections::HashMap::new();
+    let mut before: std::collections::HashMap<usize, Vec<usize>> = Default::default();
+    let mut last = Vec::new();
+    let mut pending = Vec::new();
+    for step in &inner {
+        match *step {
+            Step::Board(b) => pending.push(b),
+            Step::Match(b, s) => {
+                matched.insert(s, b);
+                before.entry(s).or_default().append(&mut pending);
+            }
+            Step::Shot(s) => before.entry(s).or_default().append(&mut pending),
+        }
+    }
+    last.append(&mut pending);
+    let mut out = Vec::with_capacity(steps.len() + dialog.len());
+    for step in steps {
+        match step {
+            Step::Shot(s) => {
+                out.extend(before.remove(&s).into_iter().flatten().map(Step::Board));
+                out.push(match matched.get(&s) {
+                    Some(b) => Step::Match(*b, s),
+                    None => Step::Shot(s),
+                });
+            }
+            other => out.push(other),
+        }
+    }
+    out.extend(last.into_iter().map(Step::Board));
+    out
 }
 
 /// One side of a comparison: its elements and its picture, which is `scale`
