@@ -150,7 +150,7 @@ internal fun RestoreCodeSection(
     location: String,
 ) {
     val context = LocalContext.current
-    RestoreCodeSectionContent(
+    RestoreCodeBody(
         needsS3Key = needsS3Key,
         state = reveal.state,
         onShow = reveal::show,
@@ -173,6 +173,7 @@ internal fun RestoreCodeSection(
     )
 }
 
+/** The restore code under its own heading, as a page that holds other things shows it. */
 @Composable
 internal fun RestoreCodeSectionContent(
     needsS3Key: Boolean,
@@ -186,6 +187,23 @@ internal fun RestoreCodeSectionContent(
         verticalArrangement = Arrangement.spacedBy(ThemeSpace.group),
     ) {
         AndroidSection(text = stringResource(R.string.restore_code_title))
+        RestoreCodeBody(needsS3Key = needsS3Key, state = state, onShow = onShow, onHide = onHide, onPrint = onPrint)
+    }
+}
+
+/** What the restore code shows: its caption and the code, a spinner while it is made, or why it couldn't be. */
+@Composable
+internal fun RestoreCodeBody(
+    needsS3Key: Boolean,
+    state: RestoreCodeState,
+    onShow: () -> Unit,
+    onHide: () -> Unit,
+    onPrint: (String) -> Unit,
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(ThemeSpace.group),
+    ) {
         when (state) {
             RestoreCodeState.Closed -> {
                 Unit
@@ -214,7 +232,11 @@ internal fun RestoreCodeSectionContent(
 
 @Composable
 private fun Caption(needsS3Key: Boolean) {
-    Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
+    // The caption's text lines up with the rows' text, as a section heading does.
+    Column(
+        modifier = Modifier.padding(horizontal = ThemeSpace.page - ThemeSpace.edge),
+        verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
+    ) {
         Text(
             text = stringResource(R.string.restore_code_explanation),
             style = ThemeText.body.style,
