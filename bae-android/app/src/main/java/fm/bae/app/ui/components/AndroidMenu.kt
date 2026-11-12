@@ -14,7 +14,7 @@ import androidx.compose.ui.unit.sp
 
 /**
  * A dropdown menu as the design draws it: at least [minWidth] wide (200dp unless a board says otherwise), 4dp
- * corners, its items' words medium 14 over a 20 line, where Material's are regular 16.
+ * corners on the elevated colour, its items' words medium 14 over a 20 line, where Material's are regular 16.
  */
 @Composable
 fun AndroidMenu(
@@ -37,6 +37,7 @@ fun AndroidMenu(
         onDismissRequest = onDismissRequest,
         modifier = modifier.widthIn(min = minWidth),
         shape = RoundedCornerShape(MENU_RADIUS),
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
     ) {
         // A menu item sets its words in Material's body large, so the menu's own is that style.
         MaterialTheme(typography = typography.copy(bodyLarge = itemText)) { content() }
