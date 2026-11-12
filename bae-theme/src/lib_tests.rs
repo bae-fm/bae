@@ -282,12 +282,12 @@ fn the_launch_background_is_the_standard_tones() {
 #[test]
 fn a_text_role_with_an_android_line_height_carries_it_into_kotlin() {
     let theme = from_toml(&THEME.replace(
-        "[text.body]\nweight = \"regular\"\nmacos = 13\nios = \"body\"\nandroid = 14\n",
         "[text.body]\nweight = \"regular\"\nmacos = 13\nios = \"body\"\nandroid = 14\nandroid_line = 20\n",
+        "[text.body]\nweight = \"regular\"\nmacos = 13\nios = \"body\"\nandroid = 14\nandroid_line = 22\n",
     ))
     .unwrap();
     let kotlin = android::kotlin(&theme);
-    assert!(kotlin.contains("fontSize = 14.sp,\n                    lineHeight = 20.sp,\n"));
+    assert!(kotlin.contains("fontSize = 14.sp,\n                    lineHeight = 22.sp,\n"));
 }
 
 #[test]
