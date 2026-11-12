@@ -3,9 +3,7 @@ package fm.bae.app.ui.playback
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cast
-import androidx.compose.material.icons.filled.CastConnected
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -58,9 +56,9 @@ fun CastButton(session: OpenLibrary) {
         )
     }
 
-    IconButton(onClick = { pickerOpen = true }) {
+    BarIconButton(onClick = { pickerOpen = true }) {
         Icon(
-            imageVector = if (castingTo == null) Icons.Filled.Cast else Icons.Filled.CastConnected,
+            imageVector = Icons.Filled.Cast,
             contentDescription = stringResource(R.string.cast),
             tint =
                 if (castingTo == null) {

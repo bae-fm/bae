@@ -17,7 +17,6 @@ import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -144,7 +143,7 @@ internal fun NowPlayingTransport(
     onOpenQueue: () -> Unit,
     onCycleRepeat: () -> Unit,
 ) {
-    IconButton(onClick = onPrevious) {
+    BarIconButton(onClick = onPrevious) {
         Icon(Icons.Filled.SkipPrevious, contentDescription = stringResource(R.string.player_previous))
     }
     AndroidPlayPause(
@@ -153,14 +152,14 @@ internal fun NowPlayingTransport(
         storageWait = storageWait,
         onToggle = onPlayPause,
     )
-    IconButton(onClick = onNext) {
+    BarIconButton(onClick = onNext) {
         Icon(Icons.Filled.SkipNext, contentDescription = stringResource(R.string.player_next))
     }
     castButton()
-    IconButton(onClick = onOpenQueue) {
+    BarIconButton(onClick = onOpenQueue) {
         Icon(Icons.AutoMirrored.Filled.List, contentDescription = stringResource(R.string.queue))
     }
-    IconButton(onClick = onCycleRepeat) {
+    BarIconButton(onClick = onCycleRepeat) {
         Icon(
             imageVector = if (repeatMode == BridgeRepeatMode.TRACK) Icons.Filled.RepeatOne else Icons.Filled.Repeat,
             contentDescription = stringResource(R.string.player_repeat),
