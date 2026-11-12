@@ -406,7 +406,7 @@ extension CoverGalleryView {
                     Button {
                         browser.cursor?.goToPrevious()
                     } label: {
-                        Image(systemName: "chevron.left")
+                        Image(systemName: "chevron.backward")
                     }
                     .accessibilityLabel(Text("Previous image"))
                     Text("\(cursor.index + 1) of \(cursor.items.count)")
@@ -414,7 +414,7 @@ extension CoverGalleryView {
                     Button {
                         browser.cursor?.goToNext()
                     } label: {
-                        Image(systemName: "chevron.right")
+                        Image(systemName: "chevron.forward")
                     }
                     .accessibilityLabel(Text("Next image"))
                 }

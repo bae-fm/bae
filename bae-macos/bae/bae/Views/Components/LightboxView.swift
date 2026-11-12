@@ -225,14 +225,14 @@ extension LightboxView {
     fileprivate var cycleNavButtons: some View {
         HStack {
             circleIconButton(
-                systemName: "chevron.left",
+                systemName: "chevron.backward",
                 diameter: navButtonDiameter,
                 icon: .large,
                 action: goPrevious
             )
             Spacer()
             circleIconButton(
-                systemName: "chevron.right",
+                systemName: "chevron.forward",
                 diameter: navButtonDiameter,
                 icon: .large,
                 action: goNext

@@ -95,7 +95,10 @@ extension BridgeTrackMapping {
         switch (source.durationMs, durationMs) {
         case (let sourceMs?, let metadataMs?) where lengthsDisagree:
             return
-                "\(releaseDurationText(sourceMs)) → \(releaseDurationText(metadataMs))"
+                String(
+                    localized:
+                        "\(releaseDurationText(sourceMs)) → \(releaseDurationText(metadataMs))"
+                )
         case (_, let metadataMs?):
             return releaseDurationText(metadataMs)
         case (let sourceMs?, nil):

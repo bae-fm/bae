@@ -24,7 +24,7 @@ struct ImportSheetCaptionRow: View {
                         .lineLimit(1)
                         .truncationMode(.middle)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                    Text(verbatim: "→")
+                    Image(systemName: "arrow.forward")
                         .foregroundStyle(.tertiary)
                     ImportSheetBindingMenu(
                         reference: reference,
@@ -57,8 +57,8 @@ struct ImportSheetCaptionRow: View {
             }
             formatTag
             nameButton
-            Text(verbatim: "→")
-                .themeText(.detail)
+            Image(systemName: "arrow.forward")
+                .themeIcon(.small)
                 .foregroundStyle(.tertiary)
                 .fixedSize()
             switch layout.summary {
@@ -124,7 +124,9 @@ struct ImportSheetCaptionRow: View {
     private func referenceTitle(
         _ reference: BridgeSheetReferenceOptions
     ) -> String {
-        "\(reference.fileReference) → \(reference.fileId ?? "")"
+        String(
+            localized: "\(reference.fileReference) → \(reference.fileId ?? "")"
+        )
     }
 
     /// What kind of sheet this is; a format name, so it is not translated.

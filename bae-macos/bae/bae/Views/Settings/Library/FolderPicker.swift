@@ -153,7 +153,7 @@
                     Button {
                         browser.open(folder)
                     } label: {
-                        Image(systemName: "chevron.right")
+                        Image(systemName: "chevron.forward")
                     }
                     .buttonStyle(.borderless)
                     .disabled(browser.isWorking)

@@ -13,7 +13,7 @@ struct FindOnlineHeader: View {
             HStack(spacing: ThemeSpace.group) {
                 if let onBack {
                     Button(action: onBack) {
-                        Label("Back", systemImage: "chevron.left")
+                        Label("Back", systemImage: "chevron.backward")
                     }
                     .buttonStyle(.borderless)
                     .themeText(.body)

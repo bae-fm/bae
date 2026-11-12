@@ -83,7 +83,7 @@ struct FindOnlineSectionHeader: View {
         // nothing, and it stays fully drawn rather than dimming as disabled.
         Button(action: { if !isOpen { onOpen() } }) {
             HStack(spacing: ThemeSpace.related) {
-                Image(systemName: isOpen ? "chevron.down" : "chevron.right")
+                Image(systemName: isOpen ? "chevron.down" : "chevron.forward")
                     .themeIcon(.small)
                     .foregroundStyle(dimmed ? .quaternary : .tertiary)
                     .frame(width: ThemeIcon.small.size)

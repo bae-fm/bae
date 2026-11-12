@@ -713,7 +713,7 @@ private struct PageLinkRow: View {
             Text(verbatim: value)
                 .foregroundStyle(.secondary)
             if opens {
-                Image(systemName: "chevron.right")
+                Image(systemName: "chevron.forward")
                     .themeIcon(.small)
                     .foregroundStyle(.tertiary)
             }

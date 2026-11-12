@@ -14,9 +14,8 @@ struct NarrowedOutDisclosure: View {
             isExpanded = !isExpanded
         } label: {
             HStack(spacing: ThemeSpace.inline) {
-                Image(systemName: "chevron.right")
+                DisclosureChevron(isExpanded: isExpanded)
                     .themeIcon(.small)
-                    .rotationEffect(.degrees(isExpanded ? 90 : 0))
                 Text(verbatim: Self.title(count: count, isExpanded: isExpanded))
             }
             .themeText(.body)

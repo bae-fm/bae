@@ -124,7 +124,7 @@ final class CandidateListMenuController: NSObject, NSMenuDelegate {
         items.append(.sectionHeader(title: String(localized: "Groups")))
         for (title, symbol, expanded) in [
             (String(localized: "Expand all"), "chevron.down", true),
-            (String(localized: "Collapse all"), "chevron.right", false),
+            (String(localized: "Collapse all"), "chevron.forward", false),
         ] {
             let item = ActionMenuItem(title: title, symbol: symbol) {
                 [weak self] in

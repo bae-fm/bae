@@ -16,7 +16,7 @@ struct SettingsPageHeader: View {
             HStack {
                 Button(action: onBack) {
                     HStack(spacing: ThemeSpace.line) {
-                        Image(systemName: "chevron.left")
+                        Image(systemName: "chevron.backward")
                         Text(verbatim: backTitle)
                     }
                 }

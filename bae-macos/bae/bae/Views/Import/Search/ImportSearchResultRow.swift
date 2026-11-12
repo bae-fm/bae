@@ -293,7 +293,7 @@ struct ImportSearchResultRow: View {
     }
 
     private var chevron: some View {
-        Image(systemName: "chevron.right")
+        Image(systemName: "chevron.forward")
             .themeIcon(.small)
             .foregroundStyle(
                 isSelected ? Theme.accent : Theme.hairlineStrong

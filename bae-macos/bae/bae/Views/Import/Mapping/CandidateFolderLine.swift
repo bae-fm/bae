@@ -29,7 +29,7 @@ struct CandidateFolderLine: View {
                 }
                 .buttonStyle(.plain)
                 .fixedSize()
-                Image(systemName: "chevron.right")
+                Image(systemName: "chevron.forward")
                     .themeIcon(.small)
                     .foregroundStyle(.tertiary)
             }

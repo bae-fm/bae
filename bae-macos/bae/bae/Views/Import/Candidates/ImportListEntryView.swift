@@ -119,7 +119,7 @@ struct ImportListGroupHeader: View {
             onSetExpanded(!expanded)
         } label: {
             HStack(spacing: ImportListHierarchyLayout.headerSpacing) {
-                Image(systemName: expanded ? "chevron.down" : "chevron.right")
+                Image(systemName: expanded ? "chevron.down" : "chevron.forward")
                     .themeIcon(ImportListHierarchyLayout.headerChevron)
                     .foregroundStyle(.tertiary)
                     .frame(width: ImportListHierarchyLayout.headerChevron.size)
