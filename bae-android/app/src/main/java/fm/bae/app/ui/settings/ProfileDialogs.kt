@@ -27,6 +27,7 @@ import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ButtonTone
 import fm.bae.app.ui.components.DialogParts
 import fm.bae.app.ui.components.NoticeLook
+import fm.bae.app.ui.components.focusOnShow
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeHistorySharing
@@ -160,7 +161,7 @@ internal fun renameProfileParts(
                     label = { Text(stringResource(R.string.invite_name)) },
                     supportingText = { Text(stringResource(R.string.name_shown_to_everyone)) },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().focusOnShow(),
                 )
                 error?.let {
                     AndroidNotice(

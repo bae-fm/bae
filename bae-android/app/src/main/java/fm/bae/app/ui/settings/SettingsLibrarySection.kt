@@ -41,6 +41,7 @@ import fm.bae.app.ui.components.ButtonTone
 import fm.bae.app.ui.components.DialogParts
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.StatusTone
+import fm.bae.app.ui.components.focusOnShow
 import fm.bae.app.ui.components.retryAction
 import fm.bae.app.ui.rememberScreenScope
 import fm.bae.app.ui.storageLocationLabel
@@ -217,7 +218,7 @@ internal fun renameLibraryParts(
                     label = { Text(stringResource(R.string.settings_library_new_name)) },
                     supportingText = { Text(stringResource(R.string.name_shown_to_everyone)) },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().focusOnShow(),
                 )
                 error?.let { AndroidNotice(it, look = NoticeLook.QUIET) }
             }
