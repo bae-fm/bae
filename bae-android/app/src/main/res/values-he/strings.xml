@@ -40,9 +40,10 @@
     <string name="delete_album_confirm">מחיקה</string>
     <string name="now_playing">מתנגן כעת</string>
     <string name="paused">מושהה</string>
-    <string name="previous_track">הרצועה הקודמת</string>
-    <string name="next_track">הרצועה הבאה</string>
+    <string name="player_previous">הקודם</string>
+    <string name="player_next">הבא</string>
     <string name="queue">תור</string>
+    <string name="player_repeat">חזרה</string>
     <string name="repeat_mode">מצב חזרה</string>
     <string name="collapse">כווץ</string>
     <string name="mute">השתק</string>
@@ -60,7 +61,7 @@
     <string name="shuffle_library">ערבוב הספרייה</string>
     <string name="queue_nothing_up_next">אין דבר בהמשך</string>
     <string name="queue_empty">התור ריק</string>
-    <string name="queue_remove">הסר מהתור</string>
+    <string name="queue_remove">הסר</string>
     <string name="queue_drag_to_reorder">גרור לסידור מחדש</string>
     <string name="queue_shuffle_on">ערבב</string>
     <string name="queue_shuffle_off">כבה ערבוב</string>

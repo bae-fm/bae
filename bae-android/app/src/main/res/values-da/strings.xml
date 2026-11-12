@@ -40,9 +40,10 @@
     <string name="delete_album_confirm">Slet</string>
     <string name="now_playing">Afspilles nu</string>
     <string name="paused">På pause</string>
-    <string name="previous_track">Forrige spor</string>
-    <string name="next_track">Næste spor</string>
+    <string name="player_previous">Forrige</string>
+    <string name="player_next">Næste</string>
     <string name="queue">Kø</string>
+    <string name="player_repeat">Gentag</string>
     <string name="repeat_mode">Gentagelsestilstand</string>
     <string name="collapse">Sammenfold</string>
     <string name="mute">Slå lyden fra</string>
@@ -60,7 +61,7 @@
     <string name="shuffle_library">Bland biblioteket</string>
     <string name="queue_nothing_up_next">Intet næste</string>
     <string name="queue_empty">Køen er tom</string>
-    <string name="queue_remove">Fjern fra køen</string>
+    <string name="queue_remove">Fjern</string>
     <string name="queue_drag_to_reorder">Træk for at omarrangere</string>
     <string name="queue_shuffle_on">Bland</string>
     <string name="queue_shuffle_off">Slå bland fra</string>

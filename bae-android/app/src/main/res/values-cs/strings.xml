@@ -40,9 +40,10 @@
     <string name="delete_album_confirm">Smazat</string>
     <string name="now_playing">Právě hraje</string>
     <string name="paused">Pozastaveno</string>
-    <string name="previous_track">Předchozí skladba</string>
-    <string name="next_track">Další skladba</string>
+    <string name="player_previous">Předchozí</string>
+    <string name="player_next">Další</string>
     <string name="queue">Fronta</string>
+    <string name="player_repeat">Opakování</string>
     <string name="repeat_mode">Režim opakování</string>
     <string name="collapse">Sbalit</string>
     <string name="mute">Ztlumit</string>
@@ -60,7 +61,7 @@
     <string name="shuffle_library">Náhodně přehrát knihovnu</string>
     <string name="queue_nothing_up_next">Nic dalšího v pořadí</string>
     <string name="queue_empty">Fronta je prázdná</string>
-    <string name="queue_remove">Odebrat z fronty</string>
+    <string name="queue_remove">Odebrat</string>
     <string name="queue_drag_to_reorder">Tažením změníte pořadí</string>
     <string name="queue_shuffle_on">Náhodně</string>
     <string name="queue_shuffle_off">Vypnout náhodné přehrávání</string>

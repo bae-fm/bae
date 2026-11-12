@@ -40,9 +40,10 @@
     <string name="delete_album_confirm">Löschen</string>
     <string name="now_playing">Aktuelle Wiedergabe</string>
     <string name="paused">Pausiert</string>
-    <string name="previous_track">Vorheriger Titel</string>
-    <string name="next_track">Nächster Titel</string>
+    <string name="player_previous">Zurück</string>
+    <string name="player_next">Weiter</string>
     <string name="queue">Warteschlange</string>
+    <string name="player_repeat">Wiederholen</string>
     <string name="repeat_mode">Wiederholmodus</string>
     <string name="collapse">Einklappen</string>
     <string name="mute">Stummschalten</string>
@@ -60,7 +61,7 @@
     <string name="shuffle_library">Mediathek zufällig wiedergeben</string>
     <string name="queue_nothing_up_next">Nichts als Nächstes</string>
     <string name="queue_empty">Warteschlange ist leer</string>
-    <string name="queue_remove">Aus Warteschlange entfernen</string>
+    <string name="queue_remove">Entfernen</string>
     <string name="queue_drag_to_reorder">Zum Umsortieren ziehen</string>
     <string name="queue_shuffle_on">Zufallswiedergabe</string>
     <string name="queue_shuffle_off">Zufallswiedergabe ausschalten</string>

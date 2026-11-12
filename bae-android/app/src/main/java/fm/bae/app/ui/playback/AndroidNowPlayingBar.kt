@@ -144,7 +144,7 @@ internal fun NowPlayingTransport(
     onCycleRepeat: () -> Unit,
 ) {
     IconButton(onClick = onPrevious) {
-        Icon(Icons.Filled.SkipPrevious, contentDescription = stringResource(R.string.previous_track))
+        Icon(Icons.Filled.SkipPrevious, contentDescription = stringResource(R.string.player_previous))
     }
     AndroidPlayPause(
         isPlaying = isPlaying,
@@ -153,7 +153,7 @@ internal fun NowPlayingTransport(
         onToggle = onPlayPause,
     )
     IconButton(onClick = onNext) {
-        Icon(Icons.Filled.SkipNext, contentDescription = stringResource(R.string.next_track))
+        Icon(Icons.Filled.SkipNext, contentDescription = stringResource(R.string.player_next))
     }
     castButton()
     IconButton(onClick = onOpenQueue) {
@@ -162,7 +162,7 @@ internal fun NowPlayingTransport(
     IconButton(onClick = onCycleRepeat) {
         Icon(
             imageVector = if (repeatMode == BridgeRepeatMode.TRACK) Icons.Filled.RepeatOne else Icons.Filled.Repeat,
-            contentDescription = stringResource(R.string.repeat_mode),
+            contentDescription = stringResource(R.string.player_repeat),
             tint =
                 if (repeatMode == BridgeRepeatMode.OFF) {
                     MaterialTheme.colorScheme.onSurfaceVariant

@@ -171,7 +171,7 @@ private fun NowPlayingWidgetContent(
             Spacer(GlanceModifier.width(ThemeSpace.inline))
             TransportButton(
                 iconRes = R.drawable.ic_widget_next,
-                descriptionRes = R.string.next_track,
+                descriptionRes = R.string.player_next,
                 command = COMMAND_NEXT,
             )
         }

@@ -40,9 +40,10 @@
     <string name="delete_album_confirm">削除</string>
     <string name="now_playing">再生中</string>
     <string name="paused">一時停止中</string>
-    <string name="previous_track">前のトラック</string>
-    <string name="next_track">次のトラック</string>
+    <string name="player_previous">前へ</string>
+    <string name="player_next">次へ</string>
     <string name="queue">キュー</string>
+    <string name="player_repeat">リピート</string>
     <string name="repeat_mode">リピートモード</string>
     <string name="collapse">折りたたむ</string>
     <string name="mute">ミュート</string>
@@ -60,7 +61,7 @@
     <string name="shuffle_library">ライブラリをシャッフル</string>
     <string name="queue_nothing_up_next">次の項目はありません</string>
     <string name="queue_empty">キューは空です</string>
-    <string name="queue_remove">キューから削除</string>
+    <string name="queue_remove">削除</string>
     <string name="queue_drag_to_reorder">ドラッグで並べ替え</string>
     <string name="queue_shuffle_on">シャッフル</string>
     <string name="queue_shuffle_off">シャッフルをオフにする</string>

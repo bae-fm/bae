@@ -40,9 +40,10 @@
     <string name="delete_album_confirm">삭제</string>
     <string name="now_playing">지금 재생 중</string>
     <string name="paused">일시 정지됨</string>
-    <string name="previous_track">이전 트랙</string>
-    <string name="next_track">다음 트랙</string>
+    <string name="player_previous">이전</string>
+    <string name="player_next">다음</string>
     <string name="queue">대기열</string>
+    <string name="player_repeat">반복</string>
     <string name="repeat_mode">반복 모드</string>
     <string name="collapse">접기</string>
     <string name="mute">음소거</string>
@@ -60,7 +61,7 @@
     <string name="shuffle_library">라이브러리 셔플</string>
     <string name="queue_nothing_up_next">다음 항목 없음</string>
     <string name="queue_empty">대기열이 비어 있습니다</string>
-    <string name="queue_remove">대기열에서 제거</string>
+    <string name="queue_remove">제거</string>
     <string name="queue_drag_to_reorder">끌어서 순서 변경</string>
     <string name="queue_shuffle_on">셔플</string>
     <string name="queue_shuffle_off">셔플 끄기</string>

@@ -40,9 +40,10 @@
     <string name="delete_album_confirm">删除</string>
     <string name="now_playing">正在播放</string>
     <string name="paused">已暂停</string>
-    <string name="previous_track">上一曲</string>
-    <string name="next_track">下一曲</string>
+    <string name="player_previous">上一曲</string>
+    <string name="player_next">下一曲</string>
     <string name="queue">队列</string>
+    <string name="player_repeat">重复</string>
     <string name="repeat_mode">重复模式</string>
     <string name="collapse">折叠</string>
     <string name="mute">静音</string>
@@ -60,7 +61,7 @@
     <string name="shuffle_library">随机播放音乐库</string>
     <string name="queue_nothing_up_next">没有接下来的内容</string>
     <string name="queue_empty">队列为空</string>
-    <string name="queue_remove">从队列移除</string>
+    <string name="queue_remove">移除</string>
     <string name="queue_drag_to_reorder">拖动以重新排序</string>
     <string name="queue_shuffle_on">随机播放</string>
     <string name="queue_shuffle_off">关闭随机播放</string>

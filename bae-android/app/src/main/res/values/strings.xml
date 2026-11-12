@@ -60,9 +60,10 @@
     <string name="paused">Paused</string>
 
     <!-- Now playing / transport -->
-    <string name="previous_track">Previous track</string>
-    <string name="next_track">Next track</string>
+    <string name="player_previous">Previous</string>
+    <string name="player_next">Next</string>
     <string name="queue">Queue</string>
+    <string name="player_repeat">Repeat</string>
     <string name="repeat_mode">Repeat mode</string>
     <string name="collapse">Collapse</string>
     <string name="mute">Mute</string>
@@ -83,7 +84,7 @@
     <string name="shuffle_library">Shuffle library</string>
     <string name="queue_nothing_up_next">Nothing up next</string>
     <string name="queue_empty">Queue is empty</string>
-    <string name="queue_remove">Remove from queue</string>
+    <string name="queue_remove">Remove</string>
     <string name="queue_drag_to_reorder">Drag to reorder</string>
     <string name="queue_shuffle_on">Shuffle</string>
     <string name="queue_shuffle_off">Turn off shuffle</string>

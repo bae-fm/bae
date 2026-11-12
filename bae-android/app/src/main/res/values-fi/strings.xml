@@ -40,9 +40,10 @@
     <string name="delete_album_confirm">Poista</string>
     <string name="now_playing">Nyt toistetaan</string>
     <string name="paused">Tauolla</string>
-    <string name="previous_track">Edellinen raita</string>
-    <string name="next_track">Seuraava raita</string>
+    <string name="player_previous">Edellinen</string>
+    <string name="player_next">Seuraava</string>
     <string name="queue">Jono</string>
+    <string name="player_repeat">Toista uudelleen</string>
     <string name="repeat_mode">Toistotila</string>
     <string name="collapse">Tiivistä</string>
     <string name="mute">Mykistä</string>
@@ -60,7 +61,7 @@
     <string name="shuffle_library">Sekoita kirjasto</string>
     <string name="queue_nothing_up_next">Ei mitään seuraavaksi</string>
     <string name="queue_empty">Jono on tyhjä</string>
-    <string name="queue_remove">Poista jonosta</string>
+    <string name="queue_remove">Poista</string>
     <string name="queue_drag_to_reorder">Vedä järjestääksesi uudelleen</string>
     <string name="queue_shuffle_on">Sekoita</string>
     <string name="queue_shuffle_off">Ota sekoitus pois käytöstä</string>

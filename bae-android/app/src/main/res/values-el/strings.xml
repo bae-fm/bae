@@ -40,9 +40,10 @@
     <string name="delete_album_confirm">Διαγραφή</string>
     <string name="now_playing">Αναπαράγεται τώρα</string>
     <string name="paused">Σε παύση</string>
-    <string name="previous_track">Προηγούμενο κομμάτι</string>
-    <string name="next_track">Επόμενο κομμάτι</string>
+    <string name="player_previous">Προηγούμενο</string>
+    <string name="player_next">Επόμενο</string>
     <string name="queue">Ουρά</string>
+    <string name="player_repeat">Επανάληψη</string>
     <string name="repeat_mode">Λειτουργία επανάληψης</string>
     <string name="collapse">Σύμπτυξη</string>
     <string name="mute">Σίγαση</string>
@@ -60,7 +61,7 @@
     <string name="shuffle_library">Τυχαία αναπαραγωγή βιβλιοθήκης</string>
     <string name="queue_nothing_up_next">Δεν ακολουθεί τίποτα</string>
     <string name="queue_empty">Η ουρά είναι κενή</string>
-    <string name="queue_remove">Αφαίρεση από την ουρά</string>
+    <string name="queue_remove">Αφαίρεση</string>
     <string name="queue_drag_to_reorder">Σύρετε για αναδιάταξη</string>
     <string name="queue_shuffle_on">Τυχαία σειρά</string>
     <string name="queue_shuffle_off">Απενεργοποίηση τυχαίας σειράς</string>

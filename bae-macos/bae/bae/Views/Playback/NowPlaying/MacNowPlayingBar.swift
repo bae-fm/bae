@@ -121,7 +121,7 @@ struct MacNowPlayingBar: View {
 
                 navButton(
                     "backward.fill",
-                    help: "Previous track",
+                    help: "Previous",
                     action: onPrevious
                 )
 
@@ -129,7 +129,7 @@ struct MacNowPlayingBar: View {
 
                 navButton(
                     "forward.fill",
-                    help: "Next track",
+                    help: "Next",
                     action: onNext
                 )
 
@@ -163,15 +163,15 @@ struct MacNowPlayingBar: View {
     private func repeatButton(_ repeatMode: BridgeRepeatMode) -> some View {
         let active = repeatMode != .off
         let glyph = repeatMode == .track ? "repeat.1" : "repeat"
-        let help = Self.repeatHelp(repeatMode)
         return Button {
             onSetRepeatMode(bridgeNextRepeatMode(mode: repeatMode))
         } label: {
             toggleLabel(glyph, active: active)
         }
         .buttonStyle(IconHoverButtonStyle())
-        .help(help)
-        .accessibilityLabel(help)
+        .help("Repeat")
+        .accessibilityLabel("Repeat")
+        .accessibilityValue(Self.repeatValue(repeatMode))
     }
 
     /// The room one icon control takes, holding a control's place while
@@ -242,16 +242,17 @@ struct MacNowPlayingBar: View {
         .accessibilityLabel("Playback position")
     }
 
-    private static func repeatHelp(
+    /// The repeat button is named Repeat; the mode is its value.
+    private static func repeatValue(
         _ repeatMode: BridgeRepeatMode
     ) -> LocalizedStringKey {
         switch repeatMode {
         case .off:
-            "Repeat: off"
+            "Off"
         case .context:
-            "Repeat: all"
+            "All"
         case .track:
-            "Repeat: one"
+            "One"
         }
     }
 }

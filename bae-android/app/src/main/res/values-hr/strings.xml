@@ -40,9 +40,10 @@
     <string name="delete_album_confirm">Izbriši</string>
     <string name="now_playing">Trenutno svira</string>
     <string name="paused">Pauzirano</string>
-    <string name="previous_track">Prethodna skladba</string>
-    <string name="next_track">Sljedeća skladba</string>
+    <string name="player_previous">Prethodna</string>
+    <string name="player_next">Sljedeća</string>
     <string name="queue">Red</string>
+    <string name="player_repeat">Ponavljanje</string>
     <string name="repeat_mode">Način ponavljanja</string>
     <string name="collapse">Sažmi</string>
     <string name="mute">Utišaj</string>
@@ -60,7 +61,7 @@
     <string name="shuffle_library">Nasumično reproduciraj fonoteku</string>
     <string name="queue_nothing_up_next">Ništa nije na redu</string>
     <string name="queue_empty">Red je prazan</string>
-    <string name="queue_remove">Ukloni iz reda</string>
+    <string name="queue_remove">Ukloni</string>
     <string name="queue_drag_to_reorder">Povucite za promjenu redoslijeda</string>
     <string name="queue_shuffle_on">Naizmjenično</string>
     <string name="queue_shuffle_off">Isključi naizmjenično</string>

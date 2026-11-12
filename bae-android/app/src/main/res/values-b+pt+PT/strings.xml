@@ -40,9 +40,10 @@
     <string name="delete_album_confirm">Eliminar</string>
     <string name="now_playing">A reproduzir</string>
     <string name="paused">Em pausa</string>
-    <string name="previous_track">Faixa anterior</string>
-    <string name="next_track">Faixa seguinte</string>
+    <string name="player_previous">Anterior</string>
+    <string name="player_next">Seguinte</string>
     <string name="queue">Fila</string>
+    <string name="player_repeat">Repetir</string>
     <string name="repeat_mode">Modo de repetição</string>
     <string name="collapse">Reduzir</string>
     <string name="mute">Silenciar</string>
@@ -60,7 +61,7 @@
     <string name="shuffle_library">Reproduzir biblioteca aleatoriamente</string>
     <string name="queue_nothing_up_next">Nada a seguir</string>
     <string name="queue_empty">A fila está vazia</string>
-    <string name="queue_remove">Remover da fila</string>
+    <string name="queue_remove">Remover</string>
     <string name="queue_drag_to_reorder">Arraste para reordenar</string>
     <string name="queue_shuffle_on">Aleatório</string>
     <string name="queue_shuffle_off">Desligar a reprodução aleatória</string>

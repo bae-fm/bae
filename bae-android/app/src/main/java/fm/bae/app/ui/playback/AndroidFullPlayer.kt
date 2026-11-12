@@ -284,7 +284,7 @@ internal fun ExpandedTransportRow(
         IconButton(onClick = onPrevious) {
             Icon(
                 Icons.Filled.SkipPrevious,
-                contentDescription = stringResource(R.string.previous_track),
+                contentDescription = stringResource(R.string.player_previous),
                 modifier = Modifier.size(skipGlyphSize),
             )
         }
@@ -299,7 +299,7 @@ internal fun ExpandedTransportRow(
         IconButton(onClick = onNext) {
             Icon(
                 Icons.Filled.SkipNext,
-                contentDescription = stringResource(R.string.next_track),
+                contentDescription = stringResource(R.string.player_next),
                 modifier = Modifier.size(skipGlyphSize),
             )
         }

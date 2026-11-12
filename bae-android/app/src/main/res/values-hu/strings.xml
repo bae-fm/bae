@@ -40,9 +40,10 @@
     <string name="delete_album_confirm">Törlés</string>
     <string name="now_playing">Most szól</string>
     <string name="paused">Szüneteltetve</string>
-    <string name="previous_track">Előző szám</string>
-    <string name="next_track">Következő szám</string>
+    <string name="player_previous">Előző</string>
+    <string name="player_next">Következő</string>
     <string name="queue">Sor</string>
+    <string name="player_repeat">Ismétlés</string>
     <string name="repeat_mode">Ismétlési mód</string>
     <string name="collapse">Összecsukás</string>
     <string name="mute">Némítás</string>
@@ -60,7 +61,7 @@
     <string name="shuffle_library">Könyvtár keverése</string>
     <string name="queue_nothing_up_next">Nincs következő</string>
     <string name="queue_empty">A sor üres</string>
-    <string name="queue_remove">Eltávolítás a sorból</string>
+    <string name="queue_remove">Eltávolítás</string>
     <string name="queue_drag_to_reorder">Húzd az átrendezéshez</string>
     <string name="queue_shuffle_on">Keverés</string>
     <string name="queue_shuffle_off">Keverés kikapcsolása</string>

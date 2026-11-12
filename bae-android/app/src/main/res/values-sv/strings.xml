@@ -40,9 +40,10 @@
     <string name="delete_album_confirm">Radera</string>
     <string name="now_playing">Spelas nu</string>
     <string name="paused">Pausad</string>
-    <string name="previous_track">Föregående spår</string>
-    <string name="next_track">Nästa spår</string>
+    <string name="player_previous">Föregående</string>
+    <string name="player_next">Nästa</string>
     <string name="queue">Kö</string>
+    <string name="player_repeat">Upprepa</string>
     <string name="repeat_mode">Upprepningsläge</string>
     <string name="collapse">Fäll ihop</string>
     <string name="mute">Ljud av</string>
@@ -60,7 +61,7 @@
     <string name="shuffle_library">Blanda biblioteket</string>
     <string name="queue_nothing_up_next">Inget härnäst</string>
     <string name="queue_empty">Kön är tom</string>
-    <string name="queue_remove">Ta bort från kön</string>
+    <string name="queue_remove">Ta bort</string>
     <string name="queue_drag_to_reorder">Dra för att ordna om</string>
     <string name="queue_shuffle_on">Blanda</string>
     <string name="queue_shuffle_off">Stäng av blandning</string>

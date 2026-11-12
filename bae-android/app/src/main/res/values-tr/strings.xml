@@ -40,9 +40,10 @@
     <string name="delete_album_confirm">Sil</string>
     <string name="now_playing">Çalıyor</string>
     <string name="paused">Duraklatıldı</string>
-    <string name="previous_track">Önceki parça</string>
-    <string name="next_track">Sonraki parça</string>
+    <string name="player_previous">Önceki</string>
+    <string name="player_next">Sonraki</string>
     <string name="queue">Kuyruk</string>
+    <string name="player_repeat">Tekrarla</string>
     <string name="repeat_mode">Tekrar modu</string>
     <string name="collapse">Daralt</string>
     <string name="mute">Sessiz</string>
@@ -60,7 +61,7 @@
     <string name="shuffle_library">Kitaplığı karıştır</string>
     <string name="queue_nothing_up_next">Sırada bir şey yok</string>
     <string name="queue_empty">Sıra boş</string>
-    <string name="queue_remove">Sıradan kaldır</string>
+    <string name="queue_remove">Kaldır</string>
     <string name="queue_drag_to_reorder">Yeniden sıralamak için sürükle</string>
     <string name="queue_shuffle_on">Karışık çal</string>
     <string name="queue_shuffle_off">Karışık çalmayı kapat</string>

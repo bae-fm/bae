@@ -40,9 +40,10 @@
     <string name="delete_album_confirm">Usuń</string>
     <string name="now_playing">Teraz odtwarzane</string>
     <string name="paused">Wstrzymano</string>
-    <string name="previous_track">Poprzedni utwór</string>
-    <string name="next_track">Następny utwór</string>
+    <string name="player_previous">Poprzedni</string>
+    <string name="player_next">Następny</string>
     <string name="queue">Kolejka</string>
+    <string name="player_repeat">Powtarzanie</string>
     <string name="repeat_mode">Tryb powtarzania</string>
     <string name="collapse">Zwiń</string>
     <string name="mute">Wycisz</string>
@@ -60,7 +61,7 @@
     <string name="shuffle_library">Odtwarzaj bibliotekę losowo</string>
     <string name="queue_nothing_up_next">Brak następnych pozycji</string>
     <string name="queue_empty">Kolejka jest pusta</string>
-    <string name="queue_remove">Usuń z kolejki</string>
+    <string name="queue_remove">Usuń</string>
     <string name="queue_drag_to_reorder">Przeciągnij, aby zmienić kolejność</string>
     <string name="queue_shuffle_on">Odtwarzaj losowo</string>
     <string name="queue_shuffle_off">Wyłącz odtwarzanie losowe</string>

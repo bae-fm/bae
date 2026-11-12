@@ -40,9 +40,10 @@
     <string name="delete_album_confirm">Odstrániť</string>
     <string name="now_playing">Prehráva sa</string>
     <string name="paused">Pozastavené</string>
-    <string name="previous_track">Predchádzajúca skladba</string>
-    <string name="next_track">Ďalšia skladba</string>
+    <string name="player_previous">Predchádzajúca</string>
+    <string name="player_next">Ďalšia</string>
     <string name="queue">Poradie</string>
+    <string name="player_repeat">Opakovanie</string>
     <string name="repeat_mode">Režim opakovania</string>
     <string name="collapse">Zbaliť</string>
     <string name="mute">Stlmiť</string>
@@ -60,7 +61,7 @@
     <string name="shuffle_library">Náhodne prehrať knižnicu</string>
     <string name="queue_nothing_up_next">Nič nenasleduje</string>
     <string name="queue_empty">Poradie je prázdne</string>
-    <string name="queue_remove">Odstrániť z poradia</string>
+    <string name="queue_remove">Odstrániť</string>
     <string name="queue_drag_to_reorder">Presuň a zmeň poradie</string>
     <string name="queue_shuffle_on">Náhodne</string>
     <string name="queue_shuffle_off">Vypnúť náhodné prehrávanie</string>

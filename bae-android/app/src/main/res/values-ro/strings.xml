@@ -40,9 +40,10 @@
     <string name="delete_album_confirm">Șterge</string>
     <string name="now_playing">Se redă acum</string>
     <string name="paused">În pauză</string>
-    <string name="previous_track">Piesa anterioară</string>
-    <string name="next_track">Piesa următoare</string>
+    <string name="player_previous">Anterioară</string>
+    <string name="player_next">Următoare</string>
     <string name="queue">Coadă</string>
+    <string name="player_repeat">Repetare</string>
     <string name="repeat_mode">Mod de repetare</string>
     <string name="collapse">Restrânge</string>
     <string name="mute">Fără sunet</string>
@@ -60,7 +61,7 @@
     <string name="shuffle_library">Redă biblioteca aleatoriu</string>
     <string name="queue_nothing_up_next">Nimic în continuare</string>
     <string name="queue_empty">Coada este goală</string>
-    <string name="queue_remove">Elimină din coadă</string>
+    <string name="queue_remove">Elimină</string>
     <string name="queue_drag_to_reorder">Trage pentru a reordona</string>
     <string name="queue_shuffle_on">Aleatoriu</string>
     <string name="queue_shuffle_off">Oprește redarea aleatorie</string>

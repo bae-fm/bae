@@ -38,7 +38,7 @@ final class PlayingFixtureTests: XCTestCase {
         XCTAssertTrue(
             seekBarLabel("0:05", in: window).waitForExistence(timeout: 20)
         )
-        let previous = window.buttons["Previous track"]
+        let previous = window.buttons["Previous"]
 
         previous.click()
         XCTAssertTrue(

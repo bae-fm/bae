@@ -40,9 +40,10 @@
     <string name="delete_album_confirm">Verwijderen</string>
     <string name="now_playing">Speelt nu</string>
     <string name="paused">Gepauzeerd</string>
-    <string name="previous_track">Vorig nummer</string>
-    <string name="next_track">Volgend nummer</string>
+    <string name="player_previous">Vorige</string>
+    <string name="player_next">Volgende</string>
     <string name="queue">Wachtrij</string>
+    <string name="player_repeat">Herhalen</string>
     <string name="repeat_mode">Herhaalmodus</string>
     <string name="collapse">Inklappen</string>
     <string name="mute">Dempen</string>
@@ -60,7 +61,7 @@
     <string name="shuffle_library">Bibliotheek shufflen</string>
     <string name="queue_nothing_up_next">Niets hierna</string>
     <string name="queue_empty">Wachtrij is leeg</string>
-    <string name="queue_remove">Uit wachtrij verwijderen</string>
+    <string name="queue_remove">Verwijderen</string>
     <string name="queue_drag_to_reorder">Sleep om te herschikken</string>
     <string name="queue_shuffle_on">Shuffle</string>
     <string name="queue_shuffle_off">Shuffle uitschakelen</string>

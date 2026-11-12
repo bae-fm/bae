@@ -40,9 +40,10 @@
     <string name="delete_album_confirm">Elimina</string>
     <string name="now_playing">In riproduzione</string>
     <string name="paused">In pausa</string>
-    <string name="previous_track">Brano precedente</string>
-    <string name="next_track">Brano successivo</string>
+    <string name="player_previous">Precedente</string>
+    <string name="player_next">Successivo</string>
     <string name="queue">Coda</string>
+    <string name="player_repeat">Ripeti</string>
     <string name="repeat_mode">Modalità ripetizione</string>
     <string name="collapse">Comprimi</string>
     <string name="mute">Disattiva audio</string>
@@ -60,7 +61,7 @@
     <string name="shuffle_library">Riproduci libreria in ordine casuale</string>
     <string name="queue_nothing_up_next">Niente in coda</string>
     <string name="queue_empty">La coda è vuota</string>
-    <string name="queue_remove">Rimuovi dalla coda</string>
+    <string name="queue_remove">Rimuovi</string>
     <string name="queue_drag_to_reorder">Trascina per riordinare</string>
     <string name="queue_shuffle_on">Casuale</string>
     <string name="queue_shuffle_off">Disattiva riproduzione casuale</string>

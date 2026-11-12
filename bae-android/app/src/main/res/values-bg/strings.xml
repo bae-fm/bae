@@ -40,9 +40,10 @@
     <string name="delete_album_confirm">Изтриване</string>
     <string name="now_playing">Текущо възпроизвеждане</string>
     <string name="paused">На пауза</string>
-    <string name="previous_track">Предишна песен</string>
-    <string name="next_track">Следваща песен</string>
+    <string name="player_previous">Предишна</string>
+    <string name="player_next">Следваща</string>
     <string name="queue">Опашка</string>
+    <string name="player_repeat">Повтаряне</string>
     <string name="repeat_mode">Режим на повторение</string>
     <string name="collapse">Свиване</string>
     <string name="mute">Заглушаване</string>
@@ -60,7 +61,7 @@
     <string name="shuffle_library">Разбъркване на библиотеката</string>
     <string name="queue_nothing_up_next">Няма следващо</string>
     <string name="queue_empty">Опашката е празна</string>
-    <string name="queue_remove">Премахване от опашката</string>
+    <string name="queue_remove">Премахване</string>
     <string name="queue_drag_to_reorder">Плъзнете за пренареждане</string>
     <string name="queue_shuffle_on">Разбъркване</string>
     <string name="queue_shuffle_off">Изключване на разбъркването</string>
