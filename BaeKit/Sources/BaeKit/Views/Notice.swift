@@ -172,6 +172,7 @@ public struct Notice: View {
                 RowItem {
                     StatusGlyph(tone, outline: true)
                         .themeIcon(.medium)
+                        .accessibilityHidden(true)
                 } content: {
                     titleLine
                 }
@@ -313,7 +314,7 @@ extension Notice {
     private var centered: some View {
         let onStage = look == .centeredOnStage
         let secondaryColor = onStage ? Theme.onFillSecondary : Color.secondary
-        let titleColor = onStage ? Theme.onFillSecondary : Color.primary
+        let titleColor = onStage ? Theme.onFillSecondary : Theme.textPrimary
         return VStack(spacing: ThemeSpace.group) {
             HStack(
                 alignment: .firstTextBaseline,
@@ -322,9 +323,11 @@ extension Notice {
                 if onStage, let symbol = tone.outlineSymbol {
                     Image(systemName: symbol)
                         .foregroundStyle(Theme.onFillSecondary)
+                        .accessibilityHidden(true)
                 }
                 else {
                     StatusGlyph(tone, outline: true, muted: true)
+                        .accessibilityHidden(true)
                 }
                 Text(verbatim: centeredTitle)
                     .themeText(.heading)
