@@ -91,34 +91,10 @@ RENDER_LEAVES = (
         r"\bfun\s+AndroidAlbumTile\s*\(",
     ),
     RenderLeaf(
-        "bae-android/app/src/main/java/fm/bae/app/ui/library/ArtistBrowser.kt",
-        "ArtistSummaryRow",
+        "bae-android/app/src/main/java/fm/bae/app/ui/components/AndroidLibraryRow.kt",
+        "AndroidLibraryRow",
         "kotlin",
-        r"\bfun\s+ArtistSummaryRow\s*\(",
-    ),
-    RenderLeaf(
-        "bae-android/app/src/main/java/fm/bae/app/ui/library/ComposerBrowser.kt",
-        "ComposerSummaryRow",
-        "kotlin",
-        r"\bfun\s+ComposerSummaryRow\s*\(",
-    ),
-    RenderLeaf(
-        "bae-android/app/src/main/java/fm/bae/app/ui/library/SearchResultsScreen.kt",
-        "AlbumResultRow",
-        "kotlin",
-        r"\bfun\s+AlbumResultRow\s*\(",
-    ),
-    RenderLeaf(
-        "bae-android/app/src/main/java/fm/bae/app/ui/library/SearchResultsScreen.kt",
-        "TrackResultRow",
-        "kotlin",
-        r"\bfun\s+TrackResultRow\s*\(",
-    ),
-    RenderLeaf(
-        "bae-android/app/src/main/java/fm/bae/app/ui/library/SearchResultsScreen.kt",
-        "WorkResultRow",
-        "kotlin",
-        r"\bfun\s+WorkResultRow\s*\(",
+        r"\bfun\s+AndroidLibraryRow\s*\(",
     ),
 )
 

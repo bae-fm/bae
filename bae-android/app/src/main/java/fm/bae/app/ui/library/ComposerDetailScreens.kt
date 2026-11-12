@@ -1,45 +1,34 @@
 package fm.bae.app.ui.library
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.snapshotFlow
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.coreString
 import fm.bae.app.data.ComposerDetailRowsPageStore
-import fm.bae.app.data.ImageStore
-import fm.bae.app.data.LocalImageStore
 import fm.bae.app.metadataText
 import fm.bae.app.ui.BaeTheme
-import fm.bae.app.ui.PreviewData
-import fm.bae.app.ui.appearance.ThemeRadius
-import fm.bae.app.ui.appearance.ThemeSize
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.AndroidLibraryRow
 import fm.bae.app.ui.components.AndroidNotice
-import fm.bae.app.ui.components.CoverImage
 import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.retryAction
@@ -50,7 +39,6 @@ import uniffi.bae_bridge.BridgeComposerDetailItem
 import uniffi.bae_bridge.BridgeComposerDetailRow
 import uniffi.bae_bridge.BridgeComposerHeading
 import uniffi.bae_bridge.BridgeWorkDetail
-import uniffi.bae_bridge.BridgeWorkSummary
 
 @Composable
 internal fun ComposerDetailScreen(
@@ -125,6 +113,7 @@ private fun ComposerDetailContent(
     onSelectWork: (String) -> Unit,
     onSelectAlbum: (String, String) -> Unit,
 ) {
+    val context = LocalContext.current
     val listState = rememberLazyListState()
     LaunchedEffect(rows, listState) {
         snapshotFlow {
@@ -147,9 +136,11 @@ private fun ComposerDetailContent(
         }
         LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
             item {
-                ComposerSummaryRow(
-                    composer = detail.composer,
-                    onClick = null,
+                AndroidLibraryRow(
+                    title = detail.composer.name,
+                    subtitle = context.coreString(detail.composer.countLine),
+                    art = detail.composer.image,
+                    missing = detail.composer.image == null,
                 )
             }
             items(
@@ -179,28 +170,30 @@ private fun ComposerDetailRowContent(
         row.heading?.let { AndroidSearchSection(stringResource(it.titleRes)) }
         when (val item = row.item) {
             is BridgeComposerDetailItem.Work -> {
-                WorkSummaryRow(
-                    work = item.work,
+                AndroidLibraryRow(
+                    title = item.work.title,
+                    subtitle = item.work.composerNames,
+                    art = item.work.representativeCover,
                     part = item.part,
+                    inset = true,
                     onClick = { onSelectWork(item.work.workId) },
                 )
             }
 
             is BridgeComposerDetailItem.ReleaseCredit -> {
-                Text(
-                    text = item.credit.albumTitle,
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .clickable { onSelectAlbum(item.credit.albumId, item.credit.releaseId) }
-                            .padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
-                    style = ThemeText.rowTitle.style,
-                    maxLines = 1,
+                AndroidLibraryRow(
+                    title = item.credit.albumTitle,
+                    noArt = true,
+                    onClick = { onSelectAlbum(item.credit.albumId, item.credit.releaseId) },
                 )
             }
 
             is BridgeComposerDetailItem.TrackCredit -> {
-                TwoLineText(title = item.credit.trackTitle, subtitle = item.credit.albumTitle)
+                AndroidLibraryRow(
+                    title = item.credit.trackTitle,
+                    subtitle = item.credit.albumTitle,
+                    noArt = true,
+                )
             }
         }
     }
@@ -278,15 +271,24 @@ private fun WorkDetailContent(
     onSelectWork: (String) -> Unit,
     onSelectAlbum: (String, String) -> Unit,
 ) {
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val context = LocalContext.current
     LazyColumn(modifier = Modifier.fillMaxSize()) {
-        item { WorkSummaryRow(work = detail.work, part = false, onClick = null) }
+        item {
+            AndroidLibraryRow(
+                title = detail.work.title,
+                subtitle = detail.work.composerNames,
+                art = detail.work.representativeCover,
+                inset = true,
+            )
+        }
         if (detail.childWorks.isNotEmpty()) {
             item { AndroidSearchSection(stringResource(R.string.search_section_works)) }
             items(detail.childWorks, key = { it.workId }) { work ->
-                WorkSummaryRow(
-                    work = work,
-                    part = false,
+                AndroidLibraryRow(
+                    title = work.title,
+                    subtitle = work.composerNames,
+                    art = work.representativeCover,
+                    inset = true,
                     onClick = { onSelectWork(work.workId) },
                 )
             }
@@ -294,77 +296,20 @@ private fun WorkDetailContent(
         if (detail.releases.isNotEmpty()) {
             item { AndroidSearchSection(stringResource(R.string.search_section_releases)) }
             items(detail.releases, key = { it.releaseId }) { release ->
-                Row(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .clickable { onSelectAlbum(release.albumId, release.releaseId) }
-                            .padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    CoverImage(
-                        cover = release.cover,
-                        cornerRadius = ThemeRadius.artwork,
-                        iconPadding = ThemeSpace.group,
-                        modifier = Modifier.size(ThemeSize.rowArtwork),
-                        contentDescription = release.albumTitle,
-                    )
-                    Spacer(modifier = Modifier.width(ThemeSpace.group))
-                    TwoLineText(title = release.albumTitle, subtitle = release.metadataText(context))
-                }
+                AndroidLibraryRow(
+                    title = release.albumTitle,
+                    subtitle = release.metadataText(context),
+                    art = release.cover,
+                    inset = true,
+                    onClick = { onSelectAlbum(release.albumId, release.releaseId) },
+                )
             }
         }
         if (detail.tracks.isNotEmpty()) {
             item { AndroidSearchSection(stringResource(R.string.search_section_recordings)) }
             items(detail.tracks, key = { it.trackId }) { track ->
-                TwoLineText(title = track.trackTitle, subtitle = track.albumTitle)
+                AndroidLibraryRow(title = track.trackTitle, subtitle = track.albumTitle, noArt = true)
             }
-        }
-    }
-}
-
-/** A work's row; [part] indents it under the work heading its group on a composer's page. */
-@Composable
-private fun WorkSummaryRow(
-    work: BridgeWorkSummary,
-    part: Boolean,
-    onClick: (() -> Unit)?,
-) {
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-                .padding(start = if (part) ThemeSpace.edge else 0.dp)
-                .padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        CoverImage(
-            cover = work.representativeCover,
-            cornerRadius = ThemeRadius.artwork,
-            iconPadding = ThemeSpace.group,
-            modifier = Modifier.size(ThemeSize.rowArtwork),
-            contentDescription = work.title,
-        )
-        Spacer(modifier = Modifier.width(ThemeSpace.group))
-        TwoLineText(title = work.title, subtitle = work.composerNames)
-    }
-}
-
-@Composable
-internal fun TwoLineText(
-    title: String,
-    subtitle: String?,
-) {
-    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related)) {
-        Text(text = title, style = ThemeText.rowTitle.style, maxLines = 1)
-        if (!subtitle.isNullOrBlank()) {
-            Text(
-                text = subtitle,
-                style = ThemeText.detail.style,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-            )
         }
     }
 }
@@ -377,16 +322,6 @@ internal fun AndroidSearchSection(title: String) {
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.fillMaxWidth().padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
     )
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun WorkSummaryRowPreview() {
-    BaeTheme {
-        CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
-            WorkSummaryRow(work = PreviewData.workSummary(), part = false, onClick = {})
-        }
-    }
 }
 
 @Preview(showBackground = true)

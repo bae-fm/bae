@@ -13,6 +13,7 @@ import fm.bae.app.ui.albumdetail.AndroidAlbumHeader
 import fm.bae.app.ui.albumdetail.AndroidTrackRow
 import fm.bae.app.ui.albumdetail.TrackRowCallbacks
 import fm.bae.app.ui.albumdetail.TrackRowData
+import fm.bae.app.ui.components.AndroidLibraryRow
 import fm.bae.app.ui.library.AndroidAlbumGrid
 import fm.bae.app.ui.library.AndroidAlbumTile
 import fm.bae.app.ui.library.AndroidArtistHeading
@@ -105,6 +106,52 @@ class LibraryComponentShots : BoardShot() {
     fun androidComponentTrackRowCompilation() =
         component("android.component.track-row.compilation", wide = true) {
             TrackRowShot(TrackRowData("3", "Low Tide Hours", "Mara Quill", "5:03", isCurrent = false, isPlaying = false))
+        }
+
+    @Test
+    fun androidComponentLibraryRowArtist() =
+        component("android.component.library-row.artist", wide = true) {
+            Images { AndroidLibraryRow(title = "Mara Quill", subtitle = "12 albums", art = PreviewData.imageRef()) }
+        }
+
+    @Test
+    fun androidComponentLibraryRowNoPicture() =
+        component("android.component.library-row.no-picture", wide = true) {
+            Images { AndroidLibraryRow(title = "Odile Fen", subtitle = "3 albums", missing = true) }
+        }
+
+    @Test
+    fun androidComponentLibraryRowAlbum() =
+        component("android.component.library-row.album", wide = true) {
+            Images { AndroidLibraryRow(title = "Low Tide Hours", subtitle = "Mara Quill · 1992", art = PreviewData.imageRef()) }
+        }
+
+    @Test
+    fun androidComponentLibraryRowTrack() =
+        component("android.component.library-row.track", wide = true) {
+            AndroidLibraryRow(title = "Harbor Lights", subtitle = "Mara Quill, Low Tide Hours", trailing = "4:32", noArt = true)
+        }
+
+    @Test
+    fun androidComponentLibraryRowWork() =
+        component("android.component.library-row.work", wide = true) {
+            Images {
+                AndroidLibraryRow(title = "Low Tide Suite", subtitle = "Ada Lindqvist", art = PreviewData.imageRef(), inset = true)
+            }
+        }
+
+    @Test
+    fun androidComponentLibraryRowPart() =
+        component("android.component.library-row.part", wide = true) {
+            Images {
+                AndroidLibraryRow(
+                    title = "II. Slack Water",
+                    subtitle = "Ada Lindqvist",
+                    art = PreviewData.imageRef(),
+                    part = true,
+                    inset = true,
+                )
+            }
         }
 
     @Test

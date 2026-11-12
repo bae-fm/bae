@@ -1,29 +1,17 @@
 package fm.bae.app.ui.library
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.snapshotFlow
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
@@ -33,14 +21,9 @@ import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
-import fm.bae.app.ui.appearance.ThemeRadius
-import fm.bae.app.ui.appearance.ThemeSize
-import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.CoverImage
+import fm.bae.app.ui.components.AndroidLibraryRow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import uniffi.bae_bridge.BridgeArtistSortCriterion
-import uniffi.bae_bridge.BridgeArtistSummary
 
 @Composable
 internal fun rememberArtistPage(
@@ -75,61 +58,35 @@ internal fun ArtistListContent(
                 page.reportVisibleRange(first, last)
             }
         }
+        val context = LocalContext.current
         LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
             items(page.totalCount, key = { index -> page.rows[index]?.artistId ?: "artist-slot-$index" }) { index ->
                 page.rows[index]?.let { artist ->
-                    ArtistSummaryRow(artist = artist, onClick = { onSelectArtist(artist.artistId) })
+                    AndroidLibraryRow(
+                        title = artist.name,
+                        subtitle = context.coreString(artist.countLine),
+                        art = artist.image,
+                        missing = artist.image == null,
+                        onClick = { onSelectArtist(artist.artistId) },
+                    )
                 }
             }
         }
     }
 }
 
-@Composable
-internal fun ArtistSummaryRow(
-    artist: BridgeArtistSummary,
-    onClick: (() -> Unit)?,
-) {
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-                .padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        CoverImage(
-            cover = artist.image,
-            cornerRadius = ThemeRadius.artwork,
-            iconPadding = ThemeSpace.group,
-            modifier = Modifier.size(ThemeSize.rowArtwork),
-            contentDescription = artist.name,
-        )
-        Spacer(modifier = Modifier.width(ThemeSpace.group))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = artist.name,
-                style = ThemeText.rowTitle.style,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = LocalContext.current.coreString(artist.countLine),
-                style = ThemeText.detail.style,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-    }
-}
-
 @Preview(showBackground = true)
 @Composable
-private fun ArtistSummaryRowPreview() {
+private fun ArtistListRowPreview() {
     BaeTheme {
         CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
-            ArtistSummaryRow(artist = PreviewData.artistSummary(), onClick = {})
+            val artist = PreviewData.artistSummary()
+            AndroidLibraryRow(
+                title = artist.name,
+                subtitle = LocalContext.current.coreString(artist.countLine),
+                art = artist.image,
+                missing = artist.image == null,
+            )
         }
     }
 }
