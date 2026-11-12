@@ -204,21 +204,19 @@ struct BootstrapCodeFormTests {
         #expect(form.codeInput == codeInGroups(text: Self.code))
     }
 
-    /// Let the form's look for a join under way for the invite's library
-    /// finish.
-    private func routed(_ form: BootstrapCodeForm) async {
-        for _ in 0..<1000 where form.asksName == nil && !form.isRunning {
-            await Task.yield()
-        }
+    /// Wait for the form's look for a join under way for the invite's
+    /// library to end in the name step.
+    private func asksName(_ form: BootstrapCodeForm) async throws {
+        try await Wait.until { form.asksName != nil }
     }
 
     @Test("an invite's code goes to the name step and starts nothing")
-    func anInvitesCodeAsksTheName() async {
+    func anInvitesCodeAsksTheName() async throws {
         let form = form(reading: Self.invite)
 
         form.edit(code: Self.code)
         form.decodeCode()
-        await routed(form)
+        try await asksName(form)
 
         guard case .join(let code, let invite) = form.attempt else {
             Issue.record("an invite decodes to a join")
@@ -232,11 +230,11 @@ struct BootstrapCodeFormTests {
     }
 
     @Test("Join is off while the name is blank, and sends the trimmed name")
-    func joinSendsTheTrimmedName() async {
+    func joinSendsTheTrimmedName() async throws {
         let form = form(reading: Self.invite)
         form.edit(code: Self.code)
         form.decodeCode()
-        await routed(form)
+        try await asksName(form)
 
         form.joinName = "   "
         #expect(!form.canJoin)
@@ -254,7 +252,7 @@ struct BootstrapCodeFormTests {
     }
 
     @Test("a join under way for the invite's library goes on without a name")
-    func aJoinUnderWayAsksNoName() async {
+    func aJoinUnderWayAsksNoName() async throws {
         let underWay = BridgeUnfinishedJoin(
             noHandle: BridgeUnfinishedJoin.NoHandle()
         )
@@ -262,12 +260,13 @@ struct BootstrapCodeFormTests {
 
         form.edit(code: Self.code)
         form.decodeCode()
-        await routed(form)
 
-        #expect(form.asksName == nil)
-        #expect(form.isRunning)
+        // The join goes on at once: its resume is the event to wait for, and the
+        // call ends as soon as the recording host answers, so the form is
+        // not necessarily still running.
         var resumed = host.resumedJoins.makeAsyncIterator()
         #expect(await resumed.next() == ObjectIdentifier(underWay))
+        #expect(form.asksName == nil)
     }
 
     @Test("a code typed in groups is passed on without the spaces")
