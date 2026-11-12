@@ -9,8 +9,8 @@ import XCTest
 final class StorageManagerLayoutTests: XCTestCase {
     func testQueueMessagesResolveFromBaeKitCatalog() {
         XCTAssertEqual(
-            localizedCoreString("core.queue.uploading"),
-            "%lld uploading"
+            localizedCoreString("core.queue.uploading", 3),
+            "3 uploading"
         )
     }
 

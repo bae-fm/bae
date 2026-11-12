@@ -75,7 +75,7 @@ private fun channelsText(
     return if (key != null) {
         context.coreString(key)
     } else {
-        context.coreString("core.audio.channels.count", mapOf("value" to channels))
+        context.coreString("core.audio.channels.count", mapOf("count" to channels))
     }
 }
 
