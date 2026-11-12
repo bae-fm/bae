@@ -8,7 +8,7 @@ macOS's notice: a tinted box in its tone, the tone's glyph at the top left. It s
 | `title` | What happened. |
 | `subtitle` | What to do about it. |
 | `action` | The primary button's label (Retry). |
-| `quiet` | Drawn as a row: no fill, the screen's text, the glyph in its tone in its outline form. For a list of problems, such as the Activity panel's Needs Attention. Also inside an alert or dialog, always: a filled box there stands out from everything else in it.|
+| `quiet` | Drawn as a row: no fill, the screen's text. For a list of problems, such as the Activity panel's Needs Attention. Also inside an alert or dialog, always: a filled box there stands out from everything else in it.|
 | `secondary` | The secondary button's label: Dismiss, or Details (opens the error's causes in a popup). Secondary comes first, before the primary. |
 | `layout` | `paragraph` (the default) or `centered`: in the middle of the space it's given, the glyph (an outline, in grey) in front of the title, the title in primary text, the buttons' labels in secondary text, the buttons centred under it. For a view that failed whole (the album grid, the import list, a composer's page, the lightbox's image), or a part of one (the rest of the queue). |
 | `buttons` | Where the buttons go in the paragraph layout: `inline` (the default), on the text's line at the right, centred on it, the text wrapping beside them; or `below`, on a line of their own under the text, in line with it, for a long button in a narrow place (the Activity panel's Open Sync Settings). The centred layout always puts them in one row under the title. |
@@ -20,6 +20,8 @@ macOS's notice: a tinted box in its tone, the tone's glyph at the top left. It s
 Inside a `MacBox` a filled notice keeps to the rows' edges: it is inset by the rows' padding, never out to the box's sides.
 
 Its text takes the size of the screen it sits in. The glyph is 1.19 times the text, centred on the first line. In light, info, success, warning and danger fill with their own pale notice colour (`info-notice` …), with `on-notice` text. In dark, every notice has the neutral fill and the screen's text, and only the glyph carries the tone: a coloured fill over a dark screen reads grey or brown when see-through and glares when solid.
+
+Every notice's glyph is the outline form, in the tone's colour (grey in the centred layout): a filled disc is louder than the words beside it.
 
 ### Writing one
 

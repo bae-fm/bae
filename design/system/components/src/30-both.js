@@ -85,7 +85,7 @@
   // `look.quiet` draws it with no fill, the screen's text, the glyph in its tone as an outline; `look.centered` centres everything in the space it's given (a view that failed whole), its glyph drawn by the caller in the title line (noticeGlyph); `look.stage` is for the lightbox's dark stage; `look.platform` is the app's own class (bae-m-notice-box or bae-a-notice-box).
   // The notice's glyph: an outline when quiet; centred, grey, in front of the title (it says something went wrong and nothing more).
   function noticeGlyph(tone, icon, look) {
-    return icon !== false && STATUS_MATERIAL[tone] ? h('span', { className: 'bae-notice-icon' }, h(StatusGlyph, { tone: tone, set: 'mac', inline: true, outline: !!(look.quiet || look.centered), muted: !!look.centered })) : null;
+    return icon !== false && STATUS_MATERIAL[tone] ? h('span', { className: 'bae-notice-icon' }, h(StatusGlyph, { tone: tone, set: 'mac', inline: true, outline: true, muted: !!look.centered })) : null;
   }
   function NoticeBox(tone, icon, body, look) {
     var quiet = look.quiet;
