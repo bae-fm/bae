@@ -5769,7 +5769,11 @@ Accent, so named in every locale; Accent names the chosen colour under its
 title, as Theme and Tone show theirs. The apps start with the System theme, the
 Plum tone and the Pink accent. The accents are Blue, Orchid, Pink, Coral, Gold,
 Lime, Mint and Sky, in that order, each named in every locale; a stored accent
-the app doesn't have reads as Pink. On the Mac Theme and Tone are pop-up buttons; on
+the app doesn't have reads as Pink. On the Mac the chosen Settings pane
+is drawn in the chosen accent's selection colour. The parts macOS draws itself,
+such as a menu's highlighted item, take the Pink accent the app declares, as
+long as the Mac's own accent is Multicolor, and the person's Mac accent
+otherwise; they do not follow the accent chosen here. On the Mac Theme and Tone are pop-up buttons; on
 Android the Appearance page has no heading over its card, the top bar names it.
 Android's Settings rows each say where that setting stands under their title:
 Appearance's theme, tone and accent, the library's name and its sync state,

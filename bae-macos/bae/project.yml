@@ -133,6 +133,12 @@ targets:
         # parser-based catalog sync misses strings in some closure shapes —
         # only the compile-emitted data is trustworthy.)
         SWIFT_EMIT_LOC_STRINGS: YES
+        # The accent macOS draws system parts in (the Settings sidebar's
+        # chosen row, a menu's highlighted item, a default button) when the
+        # person's system accent is Multicolor: bae's standard accent, whose
+        # colour AccentColor.colorset holds (bae-theme's tests hold it to
+        # design/system/tokens.json).
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         # CODE_SIGN_ENTITLEMENTS is set in Signing.xcconfig (full) and overridden
         # by the generated Features.xcconfig (baeium), not here — a setting in this
         # block lands in the pbxproj and would override the xcconfig layer the

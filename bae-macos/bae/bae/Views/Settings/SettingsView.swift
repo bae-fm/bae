@@ -97,6 +97,10 @@ private struct SubsonicBadge: View {
 
 /// The panes down the side of the settings window, with the state some of them
 /// carry beside their title.
+///
+/// The chosen pane is drawn here, in the accent the person chose, and not by a
+/// `List`'s selection: macOS draws that in its own accent, which the app can
+/// declare once (the AccentColor asset) and cannot change while it runs.
 struct SettingsSidebar: View {
     @Binding
     var selection: SettingsTab
@@ -109,9 +113,34 @@ struct SettingsSidebar: View {
     private var syncStatus
     @Environment(SubsonicStore.self)
     private var subsonicStore
+    @Environment(\.accentChoice)
+    private var accent
+
+    @FocusState
+    private var focused: Bool
 
     var body: some View {
-        List(SettingsTab.allCases, id: \.self, selection: $selection) { tab in
+        ScrollView {
+            VStack(spacing: ThemeSpace.line) {
+                ForEach(SettingsTab.allCases, id: \.self) { tab in
+                    row(tab)
+                }
+            }
+            .padding(.horizontal, ThemeSpace.related)
+            .padding(.vertical, ThemeSpace.related)
+        }
+        .focusable()
+        .focused($focused)
+        .focusEffectDisabled()
+        .onKeyPress(.upArrow) { move(by: -1) }
+        .onKeyPress(.downArrow) { move(by: 1) }
+    }
+
+    private func row(_ tab: SettingsTab) -> some View {
+        let chosen = tab == selection
+        return Button {
+            selection = tab
+        } label: {
             HStack {
                 Label(tab.title, systemImage: tab.symbol)
                 if tab == .transfers,
@@ -134,8 +163,29 @@ struct SettingsSidebar: View {
                     SubsonicBadge(tone: tone.statusTone)
                 }
             }
-            .tag(tab)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, ThemeSpace.fieldInset)
+            .padding(.vertical, ThemeSpace.inline + ThemeSpace.hairline)
+            .foregroundStyle(chosen ? Theme.onFill : Color.primary)
+            .background(
+                chosen ? accent.buttonColor : Color.clear,
+                in: RoundedRectangle(cornerRadius: ThemeRadius.field)
+            )
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(chosen ? .isSelected : [])
+    }
+
+    /// Moves the chosen pane `step` panes down the list, stopping at its ends.
+    private func move(by step: Int) -> KeyPress.Result {
+        let tabs = SettingsTab.allCases
+        guard let index = tabs.firstIndex(of: selection) else {
+            return .ignored
+        }
+        let target = min(max(index + step, 0), tabs.count - 1)
+        selection = tabs[target]
+        return .handled
     }
 
     /// The sync state, while it is amber or red.

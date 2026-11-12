@@ -298,3 +298,24 @@ fn a_text_role_needs_a_size_somewhere() {
     ));
     assert_eq!(theme.unwrap_err(), ["text body has no size on any platform"]);
 }
+
+/// The Mac app's AccentColor asset is the standard accent's selection colour,
+/// which macOS draws system parts in while the person's system accent is
+/// Multicolor. The asset is a catalog file Xcode compiles, so theme-gen
+/// cannot write it; this holds it to the theme.
+#[test]
+fn the_mac_apps_accent_color_asset_is_the_standard_accents_selection() {
+    const ASSET: &str =
+        include_str!("../../bae-macos/bae/bae/Assets.xcassets/AccentColor.colorset/Contents.json");
+    let theme = from_toml(THEME).unwrap();
+    let Argb(selection) = theme.accents[theme.standard.accent].selection;
+    let asset: serde_json::Value = serde_json::from_str(ASSET).unwrap();
+    let components = &asset["colors"][0]["color"]["components"];
+    let channel = |name: &str| {
+        let hex = components[name].as_str().unwrap().trim_start_matches("0x");
+        u32::from_str_radix(hex, 16).unwrap()
+    };
+    let drawn = channel("red") << 16 | channel("green") << 8 | channel("blue");
+    assert_eq!(drawn, selection & 0x00FF_FFFF);
+    assert_eq!(components["alpha"], "1.000");
+}

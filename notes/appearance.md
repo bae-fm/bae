@@ -32,6 +32,12 @@ selection colour with white text to preserve contrast in both modes. The macOS
 mode selector uses it for its selected segment. The picker lists the accents in
 tokens.json's order. A stored accent the apps no longer have reads as the
 standard one.
+The Mac declares the standard accent's selection colour as its AccentColor
+asset (`bae-theme`'s tests hold it to tokens.json), which macOS draws its own
+parts in, such as a menu's highlighted item, while the system accent is
+Multicolor. macOS cannot change that colour while the app runs, so what the
+person's chosen accent must colour, such as the chosen Settings pane, is drawn
+by the app.
 Semantic colours do not change with the tone or accent: danger for errors,
 warning for what needs attention, success, info, activity for work in
 progress such as a transfer, an upload among them, and pinning for files
