@@ -52,7 +52,7 @@ extension ShotScene {
 
     /// `CastReceiverRow` in the cast popover.
     private static let castRowScenes: [ShotScene] = [
-        component("mac.component.cast-row.receivers", height: 200) {
+        component("mac.component.cast-row.receivers", height: 270) {
             ShotBox {
                 CastReceiverRow(
                     receiver: receiver("Living Room", .cast),
@@ -71,7 +71,7 @@ extension ShotScene {
                 )
             }
         },
-        component("mac.component.cast-row.long-name", height: 100) {
+        component("mac.component.cast-row.long-name", height: 140) {
             ShotBox {
                 CastReceiverRow(
                     receiver: receiver(
