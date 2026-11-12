@@ -26,6 +26,11 @@ struct CandidateListMenu: View {
     let pendingFilterApplies: Bool
     let actions: CandidateListMenuActions
 
+    @Environment(\.surfaceTone)
+    private var tone
+    @Environment(\.accentChoice)
+    private var accent
+
     private var state: CandidateListMenuState {
         let statuses = importStore.folderScans.statuses
         return CandidateListMenuState(
@@ -74,7 +79,11 @@ struct CandidateListMenu: View {
             // press.
             .accessibilityHidden(true)
             .overlay {
-                CandidateListMenuTrigger(state: state, actions: actions)
+                CandidateListMenuTrigger(
+                    state: state,
+                    actions: actions,
+                    appearance: HostedAppearance(tone: tone, accent: accent)
+                )
             }
     }
 }
@@ -84,16 +93,21 @@ struct CandidateListMenu: View {
 private struct CandidateListMenuTrigger: NSViewRepresentable {
     let state: CandidateListMenuState
     let actions: CandidateListMenuActions
+    let appearance: HostedAppearance
 
     func makeCoordinator() -> CandidateListMenuController {
         CandidateListMenuController(state: state, actions: actions)
     }
 
     func makeNSView(context: Context) -> TriggerView {
-        TriggerView(controller: context.coordinator)
+        TriggerView(
+            controller: context.coordinator,
+            appearance: appearance
+        )
     }
 
-    func updateNSView(_: TriggerView, context: Context) {
+    func updateNSView(_ view: TriggerView, context: Context) {
+        view.menuAppearance = appearance
         context.coordinator.actions = actions
         context.coordinator.show(state)
     }
@@ -102,9 +116,14 @@ private struct CandidateListMenuTrigger: NSViewRepresentable {
     /// VoiceOver presents itself as one.
     final class TriggerView: NSView {
         private let controller: CandidateListMenuController
+        var menuAppearance: HostedAppearance
 
-        init(controller: CandidateListMenuController) {
+        init(
+            controller: CandidateListMenuController,
+            appearance: HostedAppearance
+        ) {
             self.controller = controller
+            menuAppearance = appearance
             super.init(frame: .zero)
             let label = String(
                 localized: "Sorting, filtering and watched folders"
@@ -135,11 +154,7 @@ private struct CandidateListMenuTrigger: NSViewRepresentable {
         }
 
         private func popUp() {
-            controller.menu.popUp(
-                positioning: nil,
-                at: NSPoint(x: 0, y: isFlipped ? bounds.maxY : bounds.minY),
-                in: self
-            )
+            controller.present(from: self, appearance: menuAppearance)
         }
     }
 }

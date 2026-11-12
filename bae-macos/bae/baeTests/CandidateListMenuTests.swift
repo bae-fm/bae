@@ -1,11 +1,11 @@
-import AppKit
 import BaeKit
+import Foundation
 import Testing
 
 @testable import bae
 
-/// The candidate list's menu while it is open: the filter's counts move in
-/// the items on screen, and what else changes waits for the next opening.
+/// The candidate list's menu: the filter's counts move in the lines of the
+/// menu on screen, and what else changes waits for the next opening.
 @MainActor
 @Suite("Candidate list menu")
 struct CandidateListMenuTests {
@@ -62,53 +62,50 @@ struct CandidateListMenuTests {
     /// The item titled with `entry`'s label and count.
     private func item(
         _ entry: BridgePendingFilterEntry,
-        in menu: NSMenu
-    ) -> NSMenuItem? {
-        menu.items.first {
-            $0.title == entry.filter.label(count: entry.count)
+        in lines: [MacMenuEntry]
+    ) -> MacMenuItem? {
+        for case .item(let item) in lines
+        where item.title == entry.filter.label(count: entry.count) {
+            return item
         }
+        return nil
     }
 
-    /// A count moving while the menu is open retitles and re-enables the
-    /// filter items on screen, the same items in the same menu: the menu is
-    /// not built again, so it stays open under the pointer.
-    @Test("the filter's counts move in the open menu's items")
-    func theCountsMoveInTheOpenMenu() throws {
+    /// A count moving retitles and re-enables the filter's lines.
+    @Test("the filter's counts move in the menu's lines")
+    func theCountsMoveInTheMenu() throws {
         let idle = entries(inProgress: 0)
         let controller = CandidateListMenuController(
             state: state(entries: idle),
             actions: actions
         )
-        controller.menuNeedsUpdate(controller.menu)
-        let opened = controller.menu.items
-        let inProgress = try #require(item(idle[1], in: controller.menu))
-        #expect(!inProgress.isEnabled)
+        let inProgress = try #require(item(idle[1], in: controller.entries))
+        #expect(inProgress.isDisabled)
 
         let running = entries(inProgress: 1)
         controller.show(state(entries: running))
 
-        #expect(controller.menu.items == opened, "the menu was built again")
-        #expect(
-            inProgress.title == BridgePendingFilter.inProgress.label(count: 1)
-        )
-        #expect(inProgress.isEnabled)
-        #expect(item(running[2], in: controller.menu) != nil)
+        let moved = try #require(item(running[1], in: controller.entries))
+        #expect(!moved.isDisabled)
+        #expect(item(running[2], in: controller.entries) != nil)
     }
 
-    /// The first delivery's entries reach a menu opened before it, after the
-    /// Filter header.
-    @Test("entries arriving while the menu is open fill its Filter section")
-    func entriesArrivingWhileOpenFillTheFilterSection() throws {
+    /// The first delivery's entries fill the Filter section, after its
+    /// header.
+    @Test("entries arriving fill the Filter section")
+    func entriesArrivingFillTheFilterSection() throws {
         let controller = CandidateListMenuController(
             state: state(entries: []),
             actions: actions
         )
-        controller.menuNeedsUpdate(controller.menu)
 
         let delivered = entries(inProgress: 0)
         controller.show(state(entries: delivered))
 
-        let titles = controller.menu.items.map(\.title)
+        let titles = controller.entries.compactMap { entry -> String? in
+            if case .header(let title) = entry { return title }
+            return entry.title
+        }
         let header = try #require(titles.firstIndex(of: "Filter"))
         #expect(
             Array(titles[(header + 1)...(header + delivered.count)])
@@ -116,19 +113,21 @@ struct CandidateListMenuTests {
         )
     }
 
-    /// A folder's scan state is drawn as the menu opens: a change while it is
-    /// open is in the next opening.
-    @Test("a scan's state reaches the folder's entry at the next opening")
-    func aScanStateReachesTheNextOpening() throws {
+    /// A folder's scan state is drawn as the menu opens.
+    @Test("a scan's state reaches the folder's line")
+    func aScanStateReachesTheFoldersLine() throws {
         let controller = CandidateListMenuController(
             state: state(entries: entries(inProgress: 0)),
             actions: actions
         )
-        controller.menuNeedsUpdate(controller.menu)
-        let folder = try #require(
-            controller.menu.items.first { $0.title == "Imports" }
-        )
-        #expect(folder.toolTip == nil)
+        func accessory() -> MacMenuAccessory? {
+            for case .submenu("Imports", _, let accessory) in controller.entries
+            {
+                return accessory
+            }
+            return nil
+        }
+        #expect(accessory() == nil)
 
         controller.show(
             state(
@@ -136,11 +135,7 @@ struct CandidateListMenuTests {
                 scanStatus: .failed(error: "The volume could not be reached.")
             )
         )
-        controller.menuNeedsUpdate(controller.menu)
 
-        let reopened = try #require(
-            controller.menu.items.first { $0.title == "Imports" }
-        )
-        #expect(reopened.toolTip == "The volume could not be reached.")
+        #expect(accessory()?.help == "The volume could not be reached.")
     }
 }

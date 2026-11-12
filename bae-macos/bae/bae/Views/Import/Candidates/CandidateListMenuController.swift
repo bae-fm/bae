@@ -48,92 +48,106 @@ struct CandidateListMenuActions {
 /// The candidate list's menu: sort order, Found's filter, watched folders,
 /// and expanding or collapsing every folder group.
 ///
-/// An AppKit menu, built from the state as it stands each time it opens.
-/// While it is open, a change to the filter's counts retitles and re-enables
-/// its filter items where they stand, so the counts on screen are the list's
-/// latest and the menu stays open under the pointer. Everything else it shows
-/// is taken up the next time it opens.
+/// Drawn by bae's menu, built from the state as it stands each time it
+/// opens. While it is open, a change to the filter's counts or to what can be
+/// chosen is shown in its lines where they stand, so the counts on screen are
+/// the list's latest and the menu stays open under the pointer. Everything
+/// else it shows is taken up the next time it opens.
 @MainActor
-final class CandidateListMenuController: NSObject, NSMenuDelegate {
-    let menu = NSMenu()
+final class CandidateListMenuController {
     private(set) var state: CandidateListMenuState
     var actions: CandidateListMenuActions
-    /// The Filter section's header, which its items follow.
-    private let filterHeader = NSMenuItem.sectionHeader(
-        title: String(localized: "Filter")
-    )
-    /// The filter's items in the menu as last built, in core's order, each
-    /// with the entry it shows.
-    private var filterItems: [(filter: BridgePendingFilter, item: NSMenuItem)] =
-        []
+    private var handle: MacMenuHandle?
 
     init(state: CandidateListMenuState, actions: CandidateListMenuActions) {
         self.state = state
         self.actions = actions
-        super.init()
-        menu.delegate = self
-        menu.autoenablesItems = false
-        rebuild()
     }
 
-    /// Show `state`: the filter's items take it at once, the rest when the
-    /// menu next opens.
+    /// Show `state`: an open menu takes the filter's entries at once, the
+    /// rest of it when the menu next opens.
     func show(_ state: CandidateListMenuState) {
+        let before = filterLines(of: self.state)
         self.state = state
-        updateFilterItems()
+        guard let handle, handle.isOpen else { return }
+        if filterLines(of: state) != before {
+            handle.update(entries)
+        }
     }
 
-    func menuNeedsUpdate(_ menu: NSMenu) {
-        guard menu === self.menu else { return }
-        rebuild()
+    /// Opens the menu under `view`.
+    func present(from view: NSView, appearance: HostedAppearance) {
+        guard let window = view.window else { return }
+        handle = MacMenus.present(
+            entries,
+            over: window,
+            at: .below(view),
+            appearance: appearance
+        )
+    }
+
+    /// What Found's filter shows: each entry's words, whether it can be
+    /// chosen and whether it is the chosen one.
+    private func filterLines(
+        of state: CandidateListMenuState
+    ) -> [String] {
+        state.pendingFilterEntries.map { entry in
+            [
+                entry.filter.label(count: entry.count),
+                String(state.pendingFilterApplies && entry.selectable),
+                String(entry.filter == state.pendingFilter),
+            ]
+            .joined(separator: "|")
+        }
     }
 
     // MARK: Building
 
-    private func rebuild() {
-        menu.removeAllItems()
-        var items: [NSMenuItem] = []
-        items.append(.sectionHeader(title: String(localized: "Sort")))
+    /// The menu's lines as the state stands now.
+    var entries: [MacMenuEntry] {
+        var lines: [MacMenuEntry] = [.header(String(localized: "Sort"))]
         for (title, order) in Self.sortOrders {
-            let item = ActionMenuItem(title: title) { [weak self] in
-                self?.actions.onSetSortOrder(order)
-            }
-            item.state = order == state.sortOrder ? .on : .off
-            items.append(item)
+            lines.append(
+                .item(
+                    MacMenuItem(
+                        verbatim: title,
+                        checked: order == state.sortOrder
+                    ) { [weak self] in
+                        self?.actions.onSetSortOrder(order)
+                    }
+                )
+            )
         }
-        items.append(.separator())
-        items.append(filterHeader)
-        filterItems = state.pendingFilterEntries.map {
-            ($0.filter, filterItem($0))
-        }
-        items.append(contentsOf: filterItems.map(\.item))
-        items.append(.separator())
-        items.append(.sectionHeader(title: String(localized: "Folders")))
-        items.append(
-            ActionMenuItem(
-                title: String(localized: "Add a folder\u{2026}"),
-                symbol: "plus"
-            ) { [weak self] in
-                self?.actions.onAddFolder()
-            }
+        lines.append(.divider)
+        lines.append(.header(String(localized: "Filter")))
+        lines.append(contentsOf: state.pendingFilterEntries.map(filterLine))
+        lines.append(.divider)
+        lines.append(.header(String(localized: "Folders")))
+        lines.append(
+            .item(
+                MacMenuItem(verbatim: String(localized: "Add a folder\u{2026}"))
+                { [weak self] in
+                    self?.actions.onAddFolder()
+                }
+            )
         )
-        for folder in state.watchedFolders {
-            items.append(folderItem(folder))
-        }
-        items.append(.separator())
-        items.append(.sectionHeader(title: String(localized: "Groups")))
-        for (title, symbol, expanded) in [
-            (String(localized: "Expand all"), "chevron.down", true),
-            (String(localized: "Collapse all"), "chevron.forward", false),
+        lines.append(contentsOf: state.watchedFolders.map(folderLine))
+        lines.append(.divider)
+        lines.append(.header(String(localized: "Groups")))
+        for (title, expanded) in [
+            (String(localized: "Expand all"), true),
+            (String(localized: "Collapse all"), false),
         ] {
-            let item = ActionMenuItem(title: title, symbol: symbol) {
-                [weak self] in
-                self?.actions.onSetAllGroupsExpanded(expanded)
-            }
-            item.isEnabled = state.hasGroups
-            items.append(item)
+            lines.append(
+                .item(
+                    MacMenuItem(verbatim: title, disabled: !state.hasGroups) {
+                        [weak self] in
+                        self?.actions.onSetAllGroupsExpanded(expanded)
+                    }
+                )
+            )
         }
-        menu.items = items
+        return lines
     }
 
     private static let sortOrders: [(String, BridgeImportListOrder)] = [
@@ -143,119 +157,75 @@ final class CandidateListMenuController: NSObject, NSMenuDelegate {
         (String(localized: "Folder name (Z–A)"), .pathDescending),
     ]
 
-    /// One entry of Found's filter, checked when it is the chosen one.
-    /// Choosing the chosen entry again changes nothing.
-    private func filterItem(_ entry: BridgePendingFilterEntry) -> NSMenuItem {
+    /// One entry of Found's filter, checked when it is the chosen one: an
+    /// entry holding no row cannot be chosen, one already chosen stays
+    /// checked, none can be chosen off Found, and choosing the chosen entry
+    /// again changes nothing.
+    private func filterLine(_ entry: BridgePendingFilterEntry) -> MacMenuEntry {
         let filter = entry.filter
-        let item = ActionMenuItem(title: "") { [weak self] in
-            guard let self, filter != state.pendingFilter else { return }
-            actions.onSetPendingFilter(filter)
-        }
-        configure(item, for: entry)
-        return item
-    }
-
-    /// Title, check and enabled state from `entry`: an entry holding no row
-    /// cannot be chosen, one already chosen stays checked, and none can be
-    /// chosen off Found.
-    private func configure(
-        _ item: NSMenuItem,
-        for entry: BridgePendingFilterEntry
-    ) {
-        item.title = entry.filter.label(count: entry.count)
-        item.state = entry.filter == state.pendingFilter ? .on : .off
-        item.isEnabled = state.pendingFilterApplies && entry.selectable
-    }
-
-    /// Retitle, recheck and re-enable the built filter items from the
-    /// state's entries. Core lists every entry, in one order, on every
-    /// delivery, so the entries line up with the items built from an earlier
-    /// one; the items built before the first delivery, of which there are
-    /// none, are replaced where they stand.
-    private func updateFilterItems() {
-        let entries = state.pendingFilterEntries
-        guard entries.map(\.filter) == filterItems.map(\.filter) else {
-            replaceFilterItems()
-            return
-        }
-        for ((_, item), entry) in zip(filterItems, entries) {
-            configure(item, for: entry)
-        }
-    }
-
-    /// Put items for the state's entries after the Filter header, in place of
-    /// the ones there.
-    private func replaceFilterItems() {
-        for (_, item) in filterItems {
-            menu.removeItem(item)
-        }
-        filterItems = state.pendingFilterEntries.map {
-            ($0.filter, filterItem($0))
-        }
-        let header = menu.index(of: filterHeader)
-        for (offset, (_, item)) in filterItems.enumerated() {
-            menu.insertItem(item, at: header + 1 + offset)
-        }
-    }
-
-    /// One root's entry: its scan state is the icon, and a failed scan's
-    /// error is the tooltip.
-    private func folderItem(_ folder: BridgeWatchedFolder) -> NSMenuItem {
-        let item = NSMenuItem(
-            title: folder.name,
-            action: nil,
-            keyEquivalent: ""
+        return .item(
+            MacMenuItem(
+                verbatim: filter.label(count: entry.count),
+                checked: filter == state.pendingFilter,
+                disabled: !(state.pendingFilterApplies && entry.selectable)
+            ) { [weak self] in
+                guard let self, filter != state.pendingFilter else { return }
+                actions.onSetPendingFilter(filter)
+            }
         )
+    }
+
+    /// One root's line: its scan state is the glyph, and a failed scan's
+    /// error is the tooltip.
+    private func folderLine(_ folder: BridgeWatchedFolder) -> MacMenuEntry {
         let onNetwork = state.networkFolders.contains(folder.path)
         let networkLine = onNetwork ? Self.networkLine() : nil
+        let accessory: MacMenuAccessory?
         switch state.scanStatuses[folder.path] {
         case .scanning:
-            item.image = Self.symbol("progress.indicator")
-            item.toolTip = networkLine
-        case .failed(let error):
-            item.image = Self.symbol(
-                "exclamationmark.circle.fill",
-                color: NSColor(Theme.danger)
+            accessory = MacMenuAccessory(
+                symbol: "progress.indicator",
+                tone: .secondary,
+                help: networkLine
             )
-            item.toolTip = [error, networkLine]
-                .compactMap { $0 }
-                .joined(separator: "\n")
+        case .failed(let error):
+            accessory = MacMenuAccessory(
+                symbol: "exclamationmark.circle.fill",
+                tone: .danger,
+                help: [error, networkLine].compactMap { $0 }
+                    .joined(separator: "\n")
+            )
         case .complete, nil:
-            if onNetwork {
-                item.image = Self.symbol(
-                    "network",
-                    color: .secondaryLabelColor
-                )
-            }
-            item.toolTip = networkLine
+            accessory =
+                onNetwork
+                ? MacMenuAccessory(
+                    symbol: "network",
+                    tone: .secondary,
+                    help: networkLine
+                ) : nil
         }
-        let submenu = NSMenu()
-        submenu.autoenablesItems = false
         let refreshing = state.refreshingFolders.contains(folder.path)
-        let refresh = ActionMenuItem(
-            title: refreshing
-                ? String(localized: "Refreshing\u{2026}")
-                : String(localized: "Refresh"),
-            symbol: "arrow.clockwise"
-        ) { [weak self] in
-            self?.actions.onRefreshFolder(folder)
-        }
-        refresh.isEnabled = !refreshing
-        submenu.addItem(refresh)
-        submenu.addItem(
-            ActionMenuItem(title: String(localized: "Reveal in Finder")) {
+        let submenu = MacMenuSubmenu(
+            verbatim: folder.name,
+            accessory: accessory
+        ) {
+            MacMenuItem(
+                verbatim: refreshing
+                    ? String(localized: "Refreshing\u{2026}")
+                    : String(localized: "Refresh"),
+                disabled: refreshing
+            ) { [weak self] in
+                self?.actions.onRefreshFolder(folder)
+            }
+            MacMenuItem("Reveal in Finder") {
                 SystemActions.revealInFinder(folder: folder.path)
             }
-        )
-        submenu.addItem(.separator())
-        submenu.addItem(
-            ActionMenuItem(title: String(localized: "Remove folder")) {
-                [weak self] in
+            MacMenuDivider()
+            MacMenuItem("Remove folder") { [weak self] in
                 self?.actions.onRemoveFolder(folder.path)
             }
-        )
-        item.submenu = submenu
-        return item
+        }
+        return submenu.entries[0]
     }
 
     /// The tooltip line saying how a network folder is checked.
@@ -264,48 +234,5 @@ final class CandidateListMenuController: NSObject, NSMenuDelegate {
             bridgeNetworkFolderWatchKey(),
             Int(bridgeNetworkFolderCheckMinutes())
         )
-    }
-
-    private static func symbol(
-        _ name: String,
-        color: NSColor? = nil
-    ) -> NSImage? {
-        let image = NSImage(
-            systemSymbolName: name,
-            accessibilityDescription: nil
-        )
-        guard let color else { return image }
-        return image?
-            .withSymbolConfiguration(
-                NSImage.SymbolConfiguration(paletteColors: [color])
-            )
-    }
-}
-
-/// A menu item that runs a closure when chosen.
-@MainActor
-final class ActionMenuItem: NSMenuItem {
-    private let perform: () -> Void
-
-    init(title: String, symbol: String? = nil, perform: @escaping () -> Void) {
-        self.perform = perform
-        super.init(title: title, action: #selector(choose), keyEquivalent: "")
-        target = self
-        if let symbol {
-            image = NSImage(
-                systemSymbolName: symbol,
-                accessibilityDescription: nil
-            )
-        }
-    }
-
-    @available(*, unavailable)
-    required init(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-
-    @objc
-    private func choose() {
-        perform()
     }
 }

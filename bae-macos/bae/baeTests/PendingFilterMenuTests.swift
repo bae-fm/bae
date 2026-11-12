@@ -1,4 +1,3 @@
-import AppKit
 import BaeKit
 import Testing
 
@@ -12,6 +11,8 @@ import Testing
 struct PendingFilterMenuTests {
     final class Recorder {
         var chosen: [BridgePendingFilter] = []
+        /// The menu's controller, which its items' actions point back to.
+        var controller: CandidateListMenuController?
     }
 
     private func entry(
@@ -37,11 +38,11 @@ struct PendingFilterMenuTests {
         ]
     }
 
-    /// The menu's controller, its menu as it opens with `selected` chosen.
+    /// The menu's items as it opens with `selected` chosen.
     private func opened(
         _ selected: BridgePendingFilter,
         recorder: Recorder = Recorder()
-    ) -> CandidateListMenuController {
+    ) -> [MacMenuItem] {
         let controller = CandidateListMenuController(
             state: CandidateListMenuState(
                 watchedFolders: [],
@@ -63,96 +64,87 @@ struct PendingFilterMenuTests {
                 onRemoveFolder: { _ in }
             )
         )
-        controller.menuNeedsUpdate(controller.menu)
-        return controller
+        recorder.controller = controller
+        return controller.entries.compactMap { entry in
+            if case .item(let item) = entry { return item }
+            return nil
+        }
     }
 
     private func title(_ entry: BridgePendingFilterEntry) -> String {
         entry.filter.label(count: entry.count)
     }
 
-    private func position(
+    /// The item of `entry`.
+    private func item(
         of entry: BridgePendingFilterEntry,
-        in menu: NSMenu
-    ) -> Int? {
-        menu.items.firstIndex { $0.title == title(entry) }
+        in items: [MacMenuItem]
+    ) -> MacMenuItem? {
+        items.first { $0.title == title(entry) }
     }
 
-    /// Where `filter`'s entry sits in the menu.
-    private func position(
+    /// The item of `filter`'s entry.
+    private func item(
         of filter: BridgePendingFilter,
-        in menu: NSMenu
-    ) -> Int? {
+        in items: [MacMenuItem]
+    ) -> MacMenuItem? {
         entries.first { $0.filter == filter }
-            .flatMap { position(of: $0, in: menu) }
+            .flatMap { item(of: $0, in: items) }
     }
 
     @Test("core's entries list in core's order, each with its count")
     func entriesListInCoreOrderWithCounts() {
         let expected = entries.map(title)
-        let controller = opened(.all)
-        #expect(
-            controller.menu.items.map(\.title).filter(expected.contains)
-                == expected
-        )
+        let items = opened(.all)
+        #expect(items.map(\.title).filter(expected.contains) == expected)
     }
 
     @Test("the chosen entry is checked, and no other")
     func theChosenEntryIsChecked() throws {
-        let controller = opened(.identified)
-        let menu = controller.menu
+        let items = opened(.identified)
         for entry in entries {
-            let index = try #require(position(of: entry, in: menu))
-            #expect(
-                menu.items[index].state
-                    == (entry.filter == .identified ? .on : .off)
-            )
+            let found = try #require(item(of: entry, in: items))
+            #expect(found.isChecked == (entry.filter == .identified))
         }
     }
 
     @Test("an entry holding no row cannot be chosen")
     func anEmptyEntryIsDisabled() throws {
-        let controller = opened(.all)
-        let menu = controller.menu
+        let items = opened(.all)
         for entry in entries {
-            let index = try #require(position(of: entry, in: menu))
-            #expect(menu.items[index].isEnabled == entry.selectable)
+            let found = try #require(item(of: entry, in: items))
+            #expect(found.isDisabled == !entry.selectable)
         }
     }
 
     @Test("a chosen entry holding no row stays chosen")
     func aChosenEmptyEntryStaysChecked() throws {
-        let controller = opened(.inProgress)
-        let menu = controller.menu
-        let index = try #require(
-            position(of: .inProgress, in: menu)
+        let items = opened(.inProgress)
+        let found = try #require(
+            item(of: BridgePendingFilter.inProgress, in: items)
         )
-        #expect(menu.items[index].state == .on)
+        #expect(found.isChecked)
     }
 
     @Test("choosing an entry says which it is")
     func choosingAnEntrySendsIt() throws {
         let recorder = Recorder()
-        let controller = opened(.all, recorder: recorder)
-        let menu = controller.menu
-        let index = try #require(position(of: .needsYou, in: menu))
-        withExtendedLifetime(controller) {
-            menu.performActionForItem(at: index)
-        }
+        let items = opened(.all, recorder: recorder)
+        let needsYou = try #require(
+            item(of: BridgePendingFilter.needsYou, in: items)
+        )
+        needsYou.action()
         #expect(recorder.chosen == [.needsYou])
     }
 
     @Test("choosing the chosen entry again changes nothing")
     func choosingTheChosenEntryAgainSendsNothing() throws {
         let recorder = Recorder()
-        let controller = opened(.identified, recorder: recorder)
-        let menu = controller.menu
-        let index = try #require(
-            position(of: .identified, in: menu)
+        let items = opened(.identified, recorder: recorder)
+        let identified = try #require(
+            item(of: BridgePendingFilter.identified, in: items)
         )
-        withExtendedLifetime(controller) {
-            menu.performActionForItem(at: index)
-        }
+        identified.action()
         #expect(recorder.chosen.isEmpty)
     }
 }
