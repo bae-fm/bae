@@ -150,7 +150,7 @@ extension LibraryView {
                         set: { session.setGroupAlbumsByArtist($0) }
                     )
                 )
-                .toggleStyle(.checkbox)
+                .toggleStyle(.accentCheckbox)
                 sortControls(session.albums)
             case .composers:
                 sortControls(session.composers)

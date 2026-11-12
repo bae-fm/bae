@@ -72,7 +72,7 @@ private struct SidePausePromptCard: View {
                 Text(verbatim: prompt.keepPausingLabel())
             }
             #if os(macOS)
-                .toggleStyle(.checkbox)
+                .toggleStyle(.accentCheckbox)
             #endif
             // Unchecking turns the setting off, which also ends these
             // prompts, so the card says where to turn it back on.

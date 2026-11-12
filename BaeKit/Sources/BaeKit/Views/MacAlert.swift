@@ -130,7 +130,7 @@
                 }
                 if let suppression = words.suppression {
                     Toggle(isOn: suppression.isOn) { suppression.label }
-                        .toggleStyle(.checkbox)
+                        .toggleStyle(.accentCheckbox)
                         .themeText(.detail)
                 }
                 buttonRow

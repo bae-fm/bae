@@ -33,9 +33,23 @@ extension ShotScene {
                     }
                 }
             },
-        ] + castRowScenes + copyTextScenes + disclosureScenes
+        ] + checkboxScenes + castRowScenes + copyTextScenes + disclosureScenes
         + downloadRowScenes + fieldRowScenes + fileNameFieldScenes
         + importDestinationScenes
+
+    /// `MacCheckbox`, off and on.
+    private static let checkboxScenes: [ShotScene] = [
+        component("mac.component.checkbox.off", height: 40) {
+            Toggle("Group by artist", isOn: .constant(false))
+                .toggleStyle(.accentCheckbox)
+                .themeText(.body)
+        },
+        component("mac.component.checkbox.on", height: 40) {
+            Toggle("Group by artist", isOn: .constant(true))
+                .toggleStyle(.accentCheckbox)
+                .themeText(.body)
+        },
+    ]
 
     private static func receiver(
         _ name: String,
