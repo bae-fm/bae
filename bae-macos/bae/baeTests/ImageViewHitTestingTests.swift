@@ -81,11 +81,24 @@ struct ImageViewRetryTests {
             try await Wait.until { await attempts.count == 1 }
             try await SnapshotTestSupport.settle(host)
 
-            try HostedInput.click(
-                at: NSPoint(x: side / 2, y: side / 2),
-                in: window
-            )
-            try await Wait.until { await attempts.count == 2 }
+            // The failed tile is drawn once the load's error has reached the
+            // main actor, a turn after the store was asked; a click before
+            // that lands on the plain tile and asks for nothing. The tree
+            // has no AppKit view or accessibility element to wait on, so
+            // click at each idle of the run loop until the store is asked.
+            let end = ContinuousClock.now.advanced(by: Wait.deadline)
+            while await attempts.count < 2 {
+                try HostedInput.click(
+                    at: NSPoint(x: side / 2, y: side / 2),
+                    in: window
+                )
+                try await Wait.nextIdle(
+                    before: end,
+                    timeout: Wait.deadline,
+                    file: #filePath,
+                    line: #line
+                )
+            }
             try await Wait.until(
                 notices: [Wait.Notice(ImageStore.didStoreImage, of: nil)]
             ) {
