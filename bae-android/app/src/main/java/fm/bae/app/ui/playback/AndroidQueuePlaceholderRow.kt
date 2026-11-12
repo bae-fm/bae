@@ -24,7 +24,7 @@ import fm.bae.app.ui.appearance.ThemeSpace
 
 /** A skeleton for a row whose item hasn't loaded yet. */
 @Composable
-internal fun QueueRowPlaceholder() {
+internal fun AndroidQueuePlaceholderRow() {
     val placeholderColor = BaeTheme.surfaces.placeholder
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = ThemeSpace.group, vertical = ThemeSpace.related),
@@ -68,8 +68,8 @@ internal fun QueueRowPlaceholder() {
 
 @Preview(showBackground = true)
 @Composable
-private fun QueueRowPlaceholderPreview() {
+private fun AndroidQueuePlaceholderRowPreview() {
     BaeTheme {
-        QueueRowPlaceholder()
+        AndroidQueuePlaceholderRow()
     }
 }

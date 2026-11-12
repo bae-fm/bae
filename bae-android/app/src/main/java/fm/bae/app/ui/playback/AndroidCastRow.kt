@@ -30,11 +30,11 @@ import fm.bae.app.data.isEmpty
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
+import fm.bae.app.ui.components.AndroidMoreMenu
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidSheet
 import fm.bae.app.ui.components.AndroidSpinner
 import fm.bae.app.ui.components.ButtonKind
-import fm.bae.app.ui.components.MoreMenu
 import uniffi.bae_bridge.BridgeCastReceiver
 import uniffi.bae_bridge.BridgeCastReceiverList
 import uniffi.bae_bridge.BridgeRendererKind
@@ -154,7 +154,7 @@ private fun CastReceiverEnd(
         }
 
         CastReceiverPlace.PAGE -> {
-            MoreMenu { close ->
+            AndroidMoreMenu { close ->
                 CastReceiverMenuItems(role = role, onDetails = onDetails, close = close)
             }
         }

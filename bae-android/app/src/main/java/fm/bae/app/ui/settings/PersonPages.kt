@@ -24,10 +24,10 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidCard
+import fm.bae.app.ui.components.AndroidMoreMenu
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidSection
 import fm.bae.app.ui.components.ButtonKind
-import fm.bae.app.ui.components.MoreMenu
 import uniffi.bae_bridge.BridgeActiveDevice
 import uniffi.bae_bridge.BridgeMember
 import uniffi.bae_bridge.BridgeMemberAccess
@@ -150,7 +150,7 @@ private fun RemoveDeviceButton(
     own: Boolean,
     callbacks: MemberCallbacks,
 ) {
-    MoreMenu { close ->
+    AndroidMoreMenu { close ->
         DropdownMenuItem(
             text = { Text(stringResource(R.string.members_remove_menu)) },
             onClick = {

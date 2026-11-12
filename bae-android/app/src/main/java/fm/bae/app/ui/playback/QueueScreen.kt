@@ -254,7 +254,7 @@ private fun LazyListScope.queueRows(
                     QUEUE_UPCOMING_LOAD_BATCH_SIZE,
                 )
             }
-            QueueRowPlaceholder()
+            AndroidQueuePlaceholderRow()
         } else {
             ReorderableItem(reorderState, key = item.entryId) { isDragging ->
                 Surface(tonalElevation = if (isDragging) 4.dp else 0.dp, color = MaterialTheme.colorScheme.surface) {

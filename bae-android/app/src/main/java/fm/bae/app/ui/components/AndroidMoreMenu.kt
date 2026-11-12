@@ -20,7 +20,7 @@ import fm.bae.app.R
  * [items] gets a function that closes the menu, for an item to call before it acts.
  */
 @Composable
-fun MoreMenu(
+fun AndroidMoreMenu(
     enabled: Boolean = true,
     items: @Composable ColumnScope.(close: () -> Unit) -> Unit,
 ) {

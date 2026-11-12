@@ -14,6 +14,7 @@ import fm.bae.app.ui.playback.AndroidFullPlayer
 import fm.bae.app.ui.playback.AndroidNowPlayingBar
 import fm.bae.app.ui.playback.AndroidPlayPause
 import fm.bae.app.ui.playback.AndroidQueueLabel
+import fm.bae.app.ui.playback.AndroidQueuePlaceholderRow
 import fm.bae.app.ui.playback.AndroidQueueRow
 import fm.bae.app.ui.playback.ExpandedSecondaryControls
 import fm.bae.app.ui.playback.ExpandedTransportRow
@@ -100,6 +101,27 @@ class PlaybackComponentShots : BoardShot() {
         component("android.component.queue-row.now-playing", wide = true) {
             Images {
                 AndroidQueueRow(title = "Low Tide Hours", artist = "Mara Quill", cover = playing.track.coverImage, current = true)
+            }
+        }
+
+    @Test
+    fun androidComponentQueuePlaceholderRowNotLoaded() =
+        component("android.component.queue-placeholder-row.not-loaded", wide = true) { AndroidQueuePlaceholderRow() }
+
+    @Test
+    fun androidComponentQueuePlaceholderRowBesideALoadedRow() =
+        component("android.component.queue-placeholder-row.beside-a-loaded-row", wide = true) {
+            Images {
+                Column {
+                    AndroidQueueRow(
+                        title = "Margins",
+                        artist = "Mara Quill",
+                        cover = playing.track.coverImage,
+                        album = "Northbound",
+                        duration = "4:55",
+                    )
+                    AndroidQueuePlaceholderRow()
+                }
             }
         }
 

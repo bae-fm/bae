@@ -16,7 +16,7 @@ import fm.bae.app.ui.appearance.ThemeIcon
  * glyph is [ThemeIcon.medium] wide, and its touch area overhangs the row's padding.
  */
 @Composable
-internal fun InlineIconButton(
+internal fun AndroidInlineIconButton(
     icon: ImageVector,
     contentDescription: String,
     onClick: () -> Unit,

@@ -23,9 +23,9 @@ import fm.bae.app.formatFileSize
 import fm.bae.app.requireDisplayableByteCount
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.AndroidInlineIconButton
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.ErrorAction
-import fm.bae.app.ui.components.InlineIconButton
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.fastvalues.LatestSource
 import uniffi.bae_bridge.BridgeDownloadOp
@@ -68,7 +68,7 @@ internal fun AndroidDownloadRow(
                     modifier = Modifier.weight(1f),
                 )
             }
-            InlineIconButton(Icons.Filled.Close, stringResource(R.string.cancel), onCancel)
+            AndroidInlineIconButton(Icons.Filled.Close, stringResource(R.string.cancel), onCancel)
         }
         if (release != null) {
             Text(

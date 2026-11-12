@@ -315,7 +315,7 @@ private fun NoticeButtonRow(
 /** The × at a notice's right. */
 @Composable
 private fun DismissButton(onDismiss: () -> Unit) {
-    InlineIconButton(Icons.Filled.Close, stringResource(R.string.dismiss), onDismiss, tint = onNoticeSecondary)
+    AndroidInlineIconButton(Icons.Filled.Close, stringResource(R.string.dismiss), onDismiss, tint = onNoticeSecondary)
 }
 
 private val ACTION_PADDING = PaddingValues(horizontal = ThemeSpace.related)
