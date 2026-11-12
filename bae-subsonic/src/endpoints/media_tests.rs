@@ -26,3 +26,18 @@ async fn a_body_whose_producer_panics_ends_with_an_error() {
     assert!(body.recv().await.is_none());
     assert_eq!(bugs.reports(), Vec::new());
 }
+
+/// A `maxBitRate` is a limit, so one past a `u32` asks for the most instead of
+/// wrapping to a small bitrate (4294967424 truncates to 128).
+#[test]
+fn a_max_bit_rate_past_u32_asks_for_the_most() {
+    assert_eq!(requested_kbps(None), 128);
+    assert_eq!(requested_kbps(Some(0)), 128);
+    assert_eq!(requested_kbps(Some(192)), 192);
+    assert_eq!(requested_kbps(Some(4_294_967_424)), u32::MAX);
+    assert_eq!(requested_kbps(Some(i64::MAX)), u32::MAX);
+    assert_eq!(
+        requested_kbps(Some(4_294_967_424)).clamp(*MP3_STREAM_KBPS.start(), *MP3_STREAM_KBPS.end()),
+        320
+    );
+}

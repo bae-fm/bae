@@ -289,6 +289,14 @@ const MP3_STREAM_KBPS: std::ops::RangeInclusive<u32> = 32..=320;
 /// The same for an Opus stream.
 const OPUS_STREAM_KBPS: std::ops::RangeInclusive<u32> = 32..=512;
 
+/// The bitrate, in kbps, a client's `maxBitRate` asks a transcode for: its
+/// limit, or 128 when it states none (absent or zero, which the API reads as
+/// no limit). A limit past what a `u32` holds is a limit no encoder reaches,
+/// so it asks for the most.
+fn requested_kbps(max_bitrate: Option<i64>) -> u32 {
+    max_bitrate.filter(|&b| b > 0).map_or(128, |b| u32::try_from(b).unwrap_or(u32::MAX))
+}
+
 /// The transcode for the requested format and bitrate. `wav` is the track's
 /// stream uncompressed, at its stored depth (what a Cast device set to
 /// lossless conversion asks for); an unknown or absent format defaults to MP3
@@ -298,7 +306,7 @@ fn transcode_format(
     requested_format: Option<&str>,
     max_bitrate: Option<i64>,
 ) -> StreamEncodeFormat {
-    let bitrate = max_bitrate.filter(|&b| b > 0).unwrap_or(128) as u32;
+    let bitrate = requested_kbps(max_bitrate);
     match requested_format {
         Some("wav") => wav_stream_format(audio),
         Some("opus") | Some("ogg") => StreamEncodeFormat::OpusOgg {
