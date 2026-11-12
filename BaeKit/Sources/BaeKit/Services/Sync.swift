@@ -23,14 +23,11 @@ public final class Sync: Sendable, Observable {
     public let addDevice: @Sendable () async throws -> BridgeAddDevice
     public let removeMember: @Sendable (String) async throws -> Void
     public let removeDevice:
-        @Sendable (UInt64) async throws -> BridgeProviderSignOut?
+        @Sendable (UInt64) async throws -> BridgeDeviceRemoval
     /// The person did the provider step for a device they removed: nothing
     /// it sent can land any more.
     public let confirmDeviceCutOff:
         @Sendable (UInt64) async throws -> BridgeDeviceCutOff
-    /// Whether this device's person's account holds the library's storage:
-    /// only then can they confirm a device cut off.
-    public let holdsStore: @Sendable () async throws -> Bool
     public let setMemberRole:
         @Sendable (String, BridgeMemberRole) async throws -> Void
     /// Dismiss a finished admin change by its operation.
@@ -97,14 +94,11 @@ public final class Sync: Sendable, Observable {
             throw StubError.notImplemented
         },
         removeDevice:
-            @escaping @Sendable (UInt64) async throws -> BridgeProviderSignOut? =
+            @escaping @Sendable (UInt64) async throws -> BridgeDeviceRemoval =
             { _ in throw StubError.notImplemented },
         confirmDeviceCutOff:
             @escaping @Sendable (UInt64) async throws -> BridgeDeviceCutOff =
             { _ in throw StubError.notImplemented },
-        holdsStore: @escaping @Sendable () async throws -> Bool = {
-            throw StubError.notImplemented
-        },
         setMemberRole:
             @escaping @Sendable (String, BridgeMemberRole) async throws -> Void =
             { _, _ in throw StubError.notImplemented },
@@ -178,7 +172,6 @@ public final class Sync: Sendable, Observable {
         self.removeMember = removeMember
         self.removeDevice = removeDevice
         self.confirmDeviceCutOff = confirmDeviceCutOff
-        self.holdsStore = holdsStore
         self.setMemberRole = setMemberRole
         self.acknowledgeAdminChange = acknowledgeAdminChange
         self.dismissRefusedInvite = dismissRefusedInvite
@@ -228,7 +221,6 @@ public final class Sync: Sendable, Observable {
             confirmDeviceCutOff: {
                 try await handle.confirmDeviceCutOff(device: $0)
             },
-            holdsStore: { try await handle.holdsStore() },
             setMemberRole: {
                 try await handle.setMemberRole(member: $0, role: $1)
             },

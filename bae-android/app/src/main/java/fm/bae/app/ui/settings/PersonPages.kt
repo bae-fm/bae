@@ -171,7 +171,7 @@ private fun DevicesCard(
             AndroidRow(
                 title = device.name,
                 subtitle = if (device.isSelf) stringResource(R.string.members_this_device) else null,
-                trailing = if (device.canRemove) ({ RemoveDeviceButton(device, member.isSelf, callbacks) }) else null,
+                trailing = if (device.canRemove) ({ RemoveDeviceButton(device, callbacks) }) else null,
             )
         }
         if (addLast && member.isSelf) {
@@ -188,7 +188,6 @@ private fun DevicesCard(
 @Composable
 private fun RemoveDeviceButton(
     device: BridgeActiveDevice,
-    own: Boolean,
     callbacks: MemberCallbacks,
 ) {
     AndroidMoreMenu { close ->
@@ -196,7 +195,7 @@ private fun RemoveDeviceButton(
             text = { Text(stringResource(R.string.members_remove_menu)) },
             onClick = {
                 close()
-                callbacks.onRemoveDevice(device, own)
+                callbacks.onRemoveDevice(device)
             },
         )
     }
@@ -209,7 +208,7 @@ private fun DevicesPagePreview() {
         Column(modifier = Modifier.padding(ThemeSpace.edge)) {
             DevicesCard(
                 member = PreviewData.member(),
-                callbacks = MemberCallbacks({}, { _, _ -> }, { _, _ -> }, { _, _ -> }, {}, {}),
+                callbacks = MemberCallbacks({}, { _, _ -> }, { _, _ -> }, { _ -> }, {}, {}),
                 addLast = true,
             )
         }

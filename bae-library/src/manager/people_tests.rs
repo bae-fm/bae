@@ -396,15 +396,20 @@ fn a_profile_request_shows_the_stop_that_ended_its_circle() {
 }
 
 /// Robin's library is on S3, where no account is shared and none holds the
-/// storage: her laptop says so, so it doesn't offer to confirm a cut-off, and
-/// confirming one is refused as an error, since it can't succeed (§14.2).
+/// storage: removing her own tablet leaves nothing to do at the provider and
+/// offers no cut-off, and confirming one is refused as an error, since it
+/// can't succeed (§14.2).
 #[test]
 fn on_s3_no_member_holds_the_storage_and_a_cut_off_cant_be_confirmed() {
     run_two_device_test(async |devices| {
         let (laptop, tablet) = (devices.a(), devices.b());
-        let holds = laptop.manager().holds_store().await;
-        assert!(matches!(holds, Ok(false)), "{holds:?}");
-        let answer = laptop.manager().confirm_device_cut_off(tablet.store().device_id()).await;
+        let tablet_id = tablet.store().device_id();
+        laptop
+            .wait_until("the tablet's registration", || has_member_device(laptop, &tablet_id))
+            .await;
+        let removal = laptop.manager().remove_device(tablet_id).await.unwrap();
+        assert!(removal.instruction.is_none() && !removal.offers_cut_off, "{removal:?}");
+        let answer = laptop.manager().confirm_device_cut_off(tablet_id).await;
         assert!(
             matches!(
                 answer,

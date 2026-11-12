@@ -98,10 +98,20 @@ impl LibraryManager {
         self.membership.subscribe_admin_changes()
     }
 
-    /// Whether this device's person's account holds the library's storage:
-    /// only then can they confirm a device cut off (coven §20.9).
-    pub async fn holds_store(&self) -> Result<bool, LibraryError> {
-        Ok(self.store.holds_store().await?)
+    /// Remove a device. When it is one of this person's own and their account
+    /// holds the library's storage, the answer offers the cut-off (coven
+    /// §20.9), decided here before anything is removed: a failed read fails the
+    /// removal, changing nothing, and the person retries it.
+    pub async fn remove_device(
+        &self,
+        device: coven::DeviceId,
+    ) -> Result<DeviceRemoval, LibraryError> {
+        let own = self.membership.members().await?.members.iter().any(|member| {
+            member.is_self && member.active_devices.iter().any(|active| active.id == device)
+        });
+        let holds_store = own && self.store.holds_store().await?;
+        let instruction = self.membership.remove_device(device).await?;
+        Ok(DeviceRemoval { offers_cut_off: holds_store && instruction.is_some(), instruction })
     }
 
     /// The person did the provider step for a device they removed, so
@@ -125,6 +135,15 @@ impl LibraryManager {
             result => Ok(result?),
         }
     }
+}
+
+/// What removing a device left to do.
+#[derive(Debug)]
+pub struct DeviceRemoval {
+    /// The step at the provider, when there is one.
+    pub instruction: Option<coven::ProviderSignOut>,
+    /// Whether the person may confirm they cut the device off.
+    pub offers_cut_off: bool,
 }
 
 /// How confirming a device cut off ended.

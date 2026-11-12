@@ -2841,10 +2841,12 @@ every account the lost device's shares named that no member or open invite
 uses
 ([coven §14.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#142-provider-access),
 [§20.9](https://github.com/bae-fm/coven/blob/main/spec/coven.md#209-sharing-with-accounts)).
-The app asks coven's `holds_store` as the message is made: only the member
-whose account holds the store has devices that change sharing, so for anyone
-else, and on S3, the button would only be refused and isn't offered. When that
-read fails the app logs it and offers nothing. Coven refuses a device the
+Removing the device asks coven's `holds_store` before anything is removed
+and returns the message's instruction together with whether the cut-off is
+offered: only the member whose account holds the store has devices that change
+sharing, so for anyone else, and on S3, the button would only be refused and
+isn't offered. When that read fails the removal fails to the person, changing
+nothing, and they retry it. Coven refuses a device the
 history doesn't have removed yet, which the removal on this device may not have
 reached; the app then says the removal hasn't reached this device yet and asks
 to **Try again** after the next sync, or **Not yet**. While a request to one of

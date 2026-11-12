@@ -160,6 +160,23 @@ impl BridgeProviderSignOut {
         }
     }
 }
+/// What removing a device left to do.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeDeviceRemoval {
+    /// The step at the provider, when there is one.
+    pub instruction: Option<BridgeProviderSignOut>,
+    /// Whether the person may confirm they cut the device off: it is one of
+    /// their own and their account holds the library's storage.
+    pub offers_cut_off: bool,
+}
+impl BridgeDeviceRemoval {
+    pub(crate) fn from_core(value: bae_library::DeviceRemoval) -> Self {
+        Self {
+            instruction: value.instruction.map(BridgeProviderSignOut::from_core),
+            offers_cut_off: value.offers_cut_off,
+        }
+    }
+}
 /// How confirming a removed device cut off ended.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeDeviceCutOff {

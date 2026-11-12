@@ -75,7 +75,7 @@ internal fun PersonPageScene(
 internal fun DevicesPageScene(person: BridgePerson) =
     AndroidSettingsDevices(member = person.membership, callbacks = memberCallbacks(), error = null, onBack = {})
 
-internal fun memberCallbacks() = MemberCallbacks({}, { _, _ -> }, { _, _ -> }, { _, _ -> }, {}, {})
+internal fun memberCallbacks() = MemberCallbacks({}, { _, _ -> }, { _, _ -> }, { _ -> }, {}, {})
 
 /** Dan's open invite. */
 internal fun danInvite(shown: BridgeInviteShown) = invitation("dan@example.com", shown, DAN_ID)

@@ -10,7 +10,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
@@ -23,17 +22,13 @@ import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ButtonTone
 import fm.bae.app.ui.components.DialogParts
-import kotlinx.coroutines.CancellationException
 import uniffi.bae_bridge.BridgeActiveDevice
 import uniffi.bae_bridge.BridgeDeviceCutOff
-import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeInvite
 import uniffi.bae_bridge.BridgeMember
 import uniffi.bae_bridge.BridgeMemberAccess
 import uniffi.bae_bridge.BridgeProviderSignOut
 import uniffi.bae_bridge.bridgeProviderSignOutKey
-
-private val logger = BaeLogger("bae.MembersDialogs")
 
 /** A removal waiting on the person's confirmation. */
 internal sealed interface PendingRemoval {
@@ -44,8 +39,6 @@ internal sealed interface PendingRemoval {
 
     data class Device(
         val device: BridgeActiveDevice,
-        /** Whether it is this person's own device. */
-        val own: Boolean,
     ) : PendingRemoval
 }
 
@@ -184,27 +177,12 @@ private fun remove(
 
         is PendingRemoval.Device -> {
             model.perform("remove a device") {
-                val instruction = session.appHandle.removeDevice(removal.device.id)
-                val offersCutOff = removal.own && holdsStore(session)
-                dialogs.signOut = instruction?.let { CutOffStep(removal.device.id, it, offersCutOff) }
+                val removed = session.appHandle.removeDevice(removal.device.id)
+                dialogs.signOut = removed.instruction?.let { CutOffStep(removal.device.id, it, removed.offersCutOff) }
             }
         }
     }
 }
-
-/**
- * Whether this person's account holds the library's storage. When the read fails nothing is offered, since confirming
- * would only be refused.
- */
-private suspend fun holdsStore(session: OpenLibrary): Boolean =
-    try {
-        session.appHandle.holdsStore()
-    } catch (e: CancellationException) {
-        throw e
-    } catch (e: BridgeException) {
-        logger.error("reading whether this account holds the storage failed", e)
-        false
-    }
 
 /** Tell the library the person cut a removed device off at the provider. */
 private fun confirmCutOff(

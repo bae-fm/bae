@@ -147,8 +147,7 @@ struct PeopleAndDevicesPage: View {
 
     private enum Removal {
         case person(BridgeMember, name: String)
-        /// A device, and whether it is this person's own.
-        case device(BridgeActiveDevice, own: Bool)
+        case device(BridgeActiveDevice)
     }
 
     init(
@@ -259,7 +258,7 @@ struct PeopleAndDevicesPage: View {
                     else {
                         loses
                     }
-            case .device(let device, _):
+            case .device(let device):
                 title = String(localized: "Remove \(device.name)?")
                 message = Text("The device loses access to the library.")
             }
@@ -514,7 +513,7 @@ extension PeopleAndDevicesPage {
                     if device.canRemove {
                         MacMoreMenu {
                             MacMenuItem("Remove…") {
-                                removal = .device(device, own: member.isSelf)
+                                removal = .device(device)
                             }
                         }
                         .disabled(task != nil)
@@ -588,32 +587,17 @@ extension PeopleAndDevicesPage {
             run { try await sync.removeMember(member.id) }
             // The person is gone: their page with them.
             subpage = .people
-        case .device(let device, let own):
+        case .device(let device):
             run {
-                let instruction = try await sync.removeDevice(device.id)
-                let offersCutOff = own ? await holdsStore() : false
-                signOut = instruction.map {
+                let removed = try await sync.removeDevice(device.id)
+                signOut = removed.instruction.map {
                     CutOffStep(
                         device: device.id,
                         instruction: $0,
-                        offersCutOff: offersCutOff
+                        offersCutOff: removed.offersCutOff
                     )
                 }
             }
-        }
-    }
-
-    /// Whether this person's account holds the library's storage. When the
-    /// read fails nothing is offered, since confirming would only be refused.
-    private func holdsStore() async -> Bool {
-        do {
-            return try await sync.holdsStore()
-        }
-        catch {
-            logger.error(
-                "Couldn't read whether this account holds the storage: \(String(reflecting: error))"
-            )
-            return false
         }
     }
 

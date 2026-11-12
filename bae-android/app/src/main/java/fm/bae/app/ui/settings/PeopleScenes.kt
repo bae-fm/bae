@@ -47,7 +47,7 @@ internal fun PeopleScene(
     invites: List<BridgeInviteEntry> = emptyList(),
 ) {
     val people = scenePeople()
-    val callbacks = MemberCallbacks({}, { _, _ -> }, { _, _ -> }, { _, _ -> }, {}, {})
+    val callbacks = MemberCallbacks({}, { _, _ -> }, { _, _ -> }, { _ -> }, {}, {})
     when (page) {
         PeoplePage.People -> {
             AndroidSettingsPeople(
