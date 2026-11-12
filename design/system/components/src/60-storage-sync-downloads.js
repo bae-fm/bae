@@ -149,9 +149,9 @@
   function MacNotice(props) {
     var tone = props.tone || 'neutral';
     var centered = props.layout === 'centered';
-    // Centred, the notice is quiet words: its buttons' labels are secondary text, so nothing in it is brighter than the message.
+    // Centred, the notice is quiet words: its button's label is secondary text, so nothing in it is brighter than the message; Details is in the accent, as in every notice, apart from the grey title.
     var primary = props.action ? h(MacButton, { key: 'p', muted: centered, tinted: !props.quiet }, props.action) : null;
-    var secondary = props.secondary ? h(MacButton, { key: 's', kind: 'borderless', muted: centered }, props.secondary) : null;
+    var secondary = props.secondary ? h(MacButton, { key: 's', kind: 'borderless' }, props.secondary) : null;
     var dismiss = props.dismiss ? h('span', { key: 'x', className: 'bae-m-notice-dismiss' }, h(MacIconButton, { icon: 'close', size: 14, faint: true, label: 'Dismiss' })) : null;
     if (centered) {
       // The glyph sits beside the title only; a subtitle is its own smaller, grey line under them, so the two lines read as a heading and what to do.
