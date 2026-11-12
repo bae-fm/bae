@@ -89,11 +89,7 @@ struct SyncSetupWizard: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-
-            Divider()
-
+        MacSheet(verbatim: headerTitle, message: headerMessage, width: 460) {
             Group {
                 switch step {
                 case .selectProvider:
@@ -105,23 +101,11 @@ struct SyncSetupWizard: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } footer: {
+            EmptyView()
         }
-        .frame(width: 460, height: 560)
+        .frame(height: 560)
         .environment(run)
-    }
-
-    // MARK: - Header
-
-    private var header: some View {
-        VStack(alignment: .leading, spacing: ThemeSpace.related) {
-            Text(headerTitle)
-                .themeText(.heading)
-            if let headerMessage {
-                SheetMessage(headerMessage)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding()
     }
 
     /// The line under the title, where the step has one.

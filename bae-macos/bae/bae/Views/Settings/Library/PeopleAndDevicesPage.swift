@@ -913,14 +913,18 @@ struct JoinRequestSheet: View {
     let onClose: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: ThemeSpace.group) {
-            Text(verbatim: title)
-                .themeText(.heading)
-            SheetMessage("Make sure this code is showing:")
-            MacMatchCode(code: confirmation, dialog: true)
-            if let error {
-                Notice(error: error)
+        MacSheet(
+            verbatim: title,
+            message: "Make sure this code is showing:",
+            width: 400
+        ) {
+            VStack(alignment: .leading, spacing: ThemeSpace.group) {
+                MacMatchCode(code: confirmation, dialog: true)
+                if let error {
+                    Notice(error: error)
+                }
             }
+        } footer: {
             MacSheetFooter(
                 lead: {
                     Button("Close", action: onClose)
@@ -935,8 +939,6 @@ struct JoinRequestSheet: View {
                 }
             )
         }
-        .padding()
-        .frame(width: 400)
     }
 }
 
