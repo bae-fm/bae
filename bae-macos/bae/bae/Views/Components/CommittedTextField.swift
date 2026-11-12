@@ -215,8 +215,10 @@ private struct CommittedTextEditor: NSViewRepresentable {
     func makeNSView(context: Context) -> NSTextField {
         let field: NSTextField =
             secret
-            ? SecureEditorField(onEditingChange: onEditingChange(context))
-            : EditorField(onEditingChange: onEditingChange(context))
+            ? SecureEditorField(
+                onEditingChange: onEditingChange(context.coordinator)
+            )
+            : EditorField(onEditingChange: onEditingChange(context.coordinator))
         field.isBordered = false
         field.isBezeled = false
         field.drawsBackground = false
@@ -228,8 +230,8 @@ private struct CommittedTextEditor: NSViewRepresentable {
         return field
     }
 
-    private func onEditingChange(_ context: Context) -> (Bool) -> Void {
-        { [coordinator = context.coordinator] editing in
+    private func onEditingChange(_ coordinator: Coordinator) -> (Bool) -> Void {
+        { [coordinator] editing in
             if coordinator.parent.focused != editing {
                 coordinator.parent.focused = editing
             }
