@@ -618,7 +618,7 @@
    "x": 1280,
    "y": 4596
   },
-  "android.parts.folder-picker.dc.html": {
+  "mac.parts.folder-picker.dc.html": {
    "h": 300,
    "page": "shared",
    "title": "Folder picker",
@@ -2603,7 +2603,7 @@
    "x": 2524,
    "y": 23336
   },
-  "android.parts.s3-form.dc.html": {
+  "mac.parts.s3-form.dc.html": {
    "h": 420,
    "page": "shared",
    "title": "S3-compatible form",
@@ -5248,8 +5248,8 @@
   "android.settings.library.renamed.dc.html",
   "mac.settings.library.renamed.dc.html",
   "mac.settings.sync-setup.choose-cloud.dc.html",
-  "android.parts.folder-picker.dc.html",
-  "android.parts.s3-form.dc.html",
+  "mac.parts.folder-picker.dc.html",
+  "mac.parts.s3-form.dc.html",
   "mac.settings.sync-setup.dropbox-choose-home.dc.html",
   "mac.settings.sync-setup.dropbox-signing-in.dc.html",
   "mac.settings.sync-setup.dropbox-reading-folders.dc.html",
