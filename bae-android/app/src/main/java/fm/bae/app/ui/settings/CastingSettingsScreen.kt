@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -24,11 +23,11 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.data.castingDeviceName
 import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidCard
 import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.AndroidMenu
+import fm.bae.app.ui.components.AndroidNote
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidScreen
 import fm.bae.app.ui.components.AndroidSection
@@ -159,7 +158,7 @@ internal fun AndroidSettingsCasting(
             AndroidCard {
                 CastEnabledRow(enabled = enabled, onChange = onEnabledChange)
             }
-            CastingCaption(stringResource(R.string.settings_casting_help))
+            AndroidNote(stringResource(R.string.settings_casting_help))
             if (enabled) {
                 AndroidSection(text = stringResource(R.string.settings_casting_receivers))
                 AndroidCard {
@@ -175,21 +174,10 @@ internal fun AndroidSettingsCasting(
                 AndroidCard {
                     CastTranscodeFormatPicker(selected = transcodeFormat, onSelect = onTranscodeFormatChange)
                 }
-                CastingCaption(stringResource(R.string.settings_cast_transcode_help))
+                AndroidNote(stringResource(R.string.settings_cast_transcode_help))
             }
         }
     }
-}
-
-/** What the card above it does, in line with the card's rows. */
-@Composable
-private fun CastingCaption(text: String) {
-    Text(
-        text = text,
-        modifier = Modifier.padding(start = ThemeSpace.edge, end = ThemeSpace.edge, bottom = ThemeSpace.related),
-        style = ThemeText.detail.style,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
 }
 
 /** What a track a device can't play directly is converted to; core applies it per device flavor. */

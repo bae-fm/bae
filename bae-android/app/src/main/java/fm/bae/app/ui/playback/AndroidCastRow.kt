@@ -107,7 +107,7 @@ internal fun AndroidCastRow(
     }
 }
 
-/** A receiver's name over its kind, or over "Casting" when playback is on it. */
+/** A receiver's name, medium as the design sets it, over its kind, or over "Casting" when playback is on it. */
 @Composable
 private fun CastReceiverLabel(
     receiver: BridgeCastReceiver,
@@ -117,7 +117,7 @@ private fun CastReceiverLabel(
     Column(modifier = modifier) {
         Text(
             text = receiver.name,
-            style = ThemeText.androidRowTitle.style,
+            style = ThemeText.rowTitle.style,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
