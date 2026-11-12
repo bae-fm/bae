@@ -225,8 +225,8 @@ fn artist_search_rows_on(
         ),
         params![
             query.as_str(),
-            window.limit as i64,
-            window.offset as i64,
+            bae_store::list_windows::sql_bound(window.limit),
+            bae_store::list_windows::sql_bound(window.offset),
             search_pattern(query.as_str())
         ],
         |row| {

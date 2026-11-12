@@ -70,6 +70,21 @@ async fn artist_search_moves_between_texts_and_windows_on_one_subscription() {
     assert!(none.windows[0].rows.is_empty());
 }
 
+/// A window whose offset is past what SQLite counts finds no rows, rather than
+/// the list's first.
+#[tokio::test]
+async fn a_window_far_past_the_end_is_empty() {
+    let (db, _tmp) = seeded().await;
+    let mut live = LibraryViews::new(db.clone()).subscribe_artist_search(view(
+        "artist name",
+        &[window(1 << 63, 2), window(u64::MAX, u64::MAX)],
+    ));
+
+    let found = live.next().await.expect("the query stays open").result.unwrap();
+    assert_eq!(found.total_count, 3);
+    assert!(found.windows.iter().all(|window| window.rows.is_empty()));
+}
+
 /// A new artist the text finds, and another printed name of a found artist,
 /// each wake the search with what it now finds.
 #[tokio::test]
