@@ -68,6 +68,7 @@ import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidSpinner
 import fm.bae.app.ui.rememberScreenScope
@@ -411,7 +412,7 @@ private fun ZoomableGalleryImage(
 @Preview(showBackground = true)
 @Composable
 private fun GalleryDialogPreview() {
-    BaeTheme {
+    PreviewTheme {
         CompositionLocalProvider(LocalImageStore provides ImageStore()) {
             GalleryDialog(
                 releaseId = "rel-1",

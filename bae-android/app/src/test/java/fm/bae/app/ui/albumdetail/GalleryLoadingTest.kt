@@ -10,8 +10,8 @@ import fm.bae.app.BugReports
 import fm.bae.app.LocalBugReports
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
-import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.TestTheme
 import kotlinx.coroutines.awaitCancellation
 import org.junit.Rule
 import org.junit.Test
@@ -30,7 +30,7 @@ class GalleryLoadingTest {
         // Bytes that never arrive keep the gallery on its load.
         val store = ImageStore(fetchLibraryImageBytes = { awaitCancellation() }, fetchReleaseImageBytes = { _, _ -> awaitCancellation() })
         compose.setContent {
-            BaeTheme {
+            TestTheme {
                 CompositionLocalProvider(LocalImageStore provides store, LocalBugReports provides BugReports()) {
                     GalleryDialog(releaseId = "rel-1", items = listOf(PreviewData.galleryItem()), onDismiss = {})
                 }

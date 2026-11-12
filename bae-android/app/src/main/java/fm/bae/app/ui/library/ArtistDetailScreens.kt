@@ -18,8 +18,8 @@ import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
-import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidLibraryRow
 import fm.bae.app.ui.components.ErrorText
@@ -115,7 +115,7 @@ private fun ArtistDetailContent(
 @Preview(showBackground = true)
 @Composable
 private fun ArtistDetailContentPreview() {
-    BaeTheme {
+    PreviewTheme {
         CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
             ArtistDetailContent(
                 detail = PreviewData.artistDetail(),

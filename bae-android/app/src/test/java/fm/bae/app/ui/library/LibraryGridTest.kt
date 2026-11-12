@@ -11,8 +11,8 @@ import androidx.compose.ui.test.performClick
 import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
-import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.TestTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -41,7 +41,7 @@ class LibraryGridTest {
         onSelectArtist: (String) -> Unit = {},
     ) {
         compose.setContent {
-            BaeTheme {
+            TestTheme {
                 CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
                     AndroidAlbumGrid(
                         count = rows.size,

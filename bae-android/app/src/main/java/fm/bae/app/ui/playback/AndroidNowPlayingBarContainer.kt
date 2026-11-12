@@ -23,8 +23,8 @@ import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.data.castEndedFailure
 import fm.bae.app.playback.NowPlaying
-import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
@@ -244,7 +244,7 @@ private fun NowPlayingTransportButtons(
 @Preview(showBackground = true)
 @Composable
 private fun SidePauseAlertPreview() {
-    BaeTheme {
+    PreviewTheme {
         SidePauseAlert(
             track =
                 NowPlaying(

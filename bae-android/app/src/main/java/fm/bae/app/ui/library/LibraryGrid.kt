@@ -25,8 +25,8 @@ import fm.bae.app.R
 import fm.bae.app.data.AlbumPageStore
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
-import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.yearText
 import uniffi.bae_bridge.BridgeAlbumAppearance
@@ -149,7 +149,7 @@ private fun groupedCardLine(row: BridgeAlbumAppearance): String {
 @Preview(showBackground = true)
 @Composable
 private fun AlbumGridCardPreview() {
-    BaeTheme {
+    PreviewTheme {
         CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
             val row = BridgeAlbumAppearance(album = PreviewData.album(), creditedWith = "Another Artist")
             AndroidAlbumTile(

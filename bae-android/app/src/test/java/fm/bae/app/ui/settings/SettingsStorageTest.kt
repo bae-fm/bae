@@ -27,7 +27,7 @@ import fm.bae.app.formatFileSize
 import fm.bae.app.openTestLibrary
 import fm.bae.app.playback.FakeAppHandle
 import fm.bae.app.playback.FakeDeviceStorageSubscription
-import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.TestTheme
 import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.library.LibraryDestination
 import org.junit.Assert.assertEquals
@@ -82,7 +82,7 @@ class SettingsStorageTest {
     fun theSettingsListShowsTheStorageRowUnderTransfersAndOpensIt() {
         val pushed = mutableListOf<LibraryDestination>()
         compose.setContent {
-            BaeTheme {
+            TestTheme {
                 AndroidSettingsList(
                     summaries = summaries(storage = "3.9 GB on this phone"),
                     onBack = {},
@@ -101,7 +101,7 @@ class SettingsStorageTest {
     @Test
     fun theStorageRowHasNoSecondLineBeforeTheFirstMeasurement() {
         compose.setContent {
-            BaeTheme { AndroidSettingsList(summaries = summaries(storage = null), onBack = {}, onOpen = {}, onPush = {}) }
+            TestTheme { AndroidSettingsList(summaries = summaries(storage = null), onBack = {}, onOpen = {}, onPush = {}) }
         }
 
         compose.onNodeWithText("Storage").assertExists()
@@ -111,7 +111,7 @@ class SettingsStorageTest {
     @Test
     fun fromBeforeTheResetShowsOnlyWhileAResetKeptData() {
         var storage: BridgeDeviceStorage by mutableStateOf(BridgeFixtures.deviceStorage())
-        compose.setContent { BaeTheme { Page(storage) } }
+        compose.setContent { TestTheme { Page(storage) } }
 
         compose.onNodeWithText("Delete data from before the reset").assertDoesNotExist()
 
@@ -125,7 +125,7 @@ class SettingsStorageTest {
     fun clearCacheIsOffWhileTheCacheIsEmpty() {
         val empty = BridgeFixtures.deviceStorage().copy(cache = 0uL, canClearCache = false)
         var cleared = 0
-        compose.setContent { BaeTheme { Page(empty, onClearCache = { cleared++ }) } }
+        compose.setContent { TestTheme { Page(empty, onClearCache = { cleared++ }) } }
 
         compose.onNodeWithText("Clear cache").assertIsNotEnabled()
         compose.onNodeWithText("Clear cache").performScrollTo().performClick()
@@ -136,7 +136,7 @@ class SettingsStorageTest {
     @Test
     fun clearCacheNamesTheCacheAndAsksToClearIt() {
         var cleared = 0
-        compose.setContent { BaeTheme { Page(BridgeFixtures.deviceStorage(), onClearCache = { cleared++ }) } }
+        compose.setContent { TestTheme { Page(BridgeFixtures.deviceStorage(), onClearCache = { cleared++ }) } }
 
         // The row names the cache's size, as the legend line of the bar does.
         compose.onAllNodesWithText(size(1_200_000_000)).assertCountEquals(2)
@@ -147,7 +147,7 @@ class SettingsStorageTest {
 
     @Test
     fun keepUpToNamesTheLimit() {
-        compose.setContent { BaeTheme { Page(BridgeFixtures.deviceStorage()) } }
+        compose.setContent { TestTheme { Page(BridgeFixtures.deviceStorage()) } }
 
         compose.onNodeWithText("Keep up to").assertExists()
         compose.onNodeWithText(size(20_000_000_000)).assertExists()
@@ -157,7 +157,7 @@ class SettingsStorageTest {
     fun theSwitchAsksForTheOppositeOfTheSetting() {
         val asked = mutableListOf<Boolean>()
         compose.setContent {
-            BaeTheme { Page(BridgeFixtures.deviceStorage(), asksBeforeUnpinning = true, onAskBeforeUnpinning = asked::add) }
+            TestTheme { Page(BridgeFixtures.deviceStorage(), asksBeforeUnpinning = true, onAskBeforeUnpinning = asked::add) }
         }
 
         compose.onNode(isToggleable()).performScrollTo().performClick()
@@ -170,7 +170,7 @@ class SettingsStorageTest {
         val storage = BridgeFixtures.deviceStorage()
         val chosen = mutableListOf<BridgeCacheLimitChoice>()
         compose.setContent {
-            BaeTheme {
+            TestTheme {
                 AndroidDialog(onDismissRequest = {}, parts = keepUpToParts(storage.cacheLimits, storage.cacheLimit.choice, chosen::add, {}))
             }
         }
@@ -188,7 +188,7 @@ class SettingsStorageTest {
         var deleted = 0
         var dismissed = 0
         compose.setContent {
-            BaeTheme {
+            TestTheme {
                 AndroidDialog(
                     onDismissRequest = {},
                     parts = deleteBeforeResetParts(540_000_000uL, onConfirm = { deleted++ }, onDismiss = { dismissed++ }),
@@ -213,7 +213,7 @@ class SettingsStorageTest {
         val handle = StorageHandle()
         val session = openTestLibrary(handle)
         compose.setContent {
-            BaeTheme {
+            TestTheme {
                 CompositionLocalProvider(LocalBugReports provides session.bugs) { StorageScreen(session = session, onBack = {}) }
             }
         }
@@ -242,7 +242,7 @@ class SettingsStorageTest {
         val handle = StorageHandle()
         val session = openTestLibrary(handle)
         compose.setContent {
-            BaeTheme {
+            TestTheme {
                 CompositionLocalProvider(LocalBugReports provides session.bugs) { StorageScreen(session = session, onBack = {}) }
             }
         }

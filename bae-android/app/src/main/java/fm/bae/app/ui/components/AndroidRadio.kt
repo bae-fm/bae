@@ -14,7 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 
@@ -48,7 +48,7 @@ private val MIN_HEIGHT = 48.dp
 @Preview(showBackground = true)
 @Composable
 private fun AndroidRadioPreview() {
-    BaeTheme {
+    PreviewTheme {
         Column {
             AndroidRadio(label = "Off", checked = false, onClick = {})
             AndroidRadio(label = "Per track", checked = false, onClick = {})

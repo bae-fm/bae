@@ -2,8 +2,8 @@ package fm.bae.app.ui.albumdetail
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
-import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.PreviewTheme
 import uniffi.bae_bridge.BridgeMessage
 import uniffi.bae_bridge.BridgeMessageArg
 import uniffi.bae_bridge.BridgeReleaseDownloadStatus
@@ -25,7 +25,7 @@ private fun DownloadControlBodyStub(status: BridgeReleaseDownloadStatus) {
 @Preview(showBackground = true)
 @Composable
 private fun DownloadControlAvailablePreview() {
-    BaeTheme {
+    PreviewTheme {
         DownloadControlBodyStub(BridgeReleaseDownloadStatus.Available)
     }
 }
@@ -33,7 +33,7 @@ private fun DownloadControlAvailablePreview() {
 @Preview(showBackground = true)
 @Composable
 private fun DownloadControlDownloadingPreview() {
-    BaeTheme {
+    PreviewTheme {
         DownloadControlBodyStub(BridgeReleaseDownloadStatus.Downloading)
     }
 }
@@ -41,7 +41,7 @@ private fun DownloadControlDownloadingPreview() {
 @Preview(showBackground = true)
 @Composable
 private fun DownloadControlQueuedPreview() {
-    BaeTheme {
+    PreviewTheme {
         DownloadControlBodyStub(BridgeReleaseDownloadStatus.Queued)
     }
 }
@@ -49,7 +49,7 @@ private fun DownloadControlQueuedPreview() {
 @Preview(showBackground = true)
 @Composable
 private fun DownloadControlDownloadedPreview() {
-    BaeTheme {
+    PreviewTheme {
         DownloadControlBodyStub(BridgeReleaseDownloadStatus.Downloaded)
     }
 }
@@ -57,7 +57,7 @@ private fun DownloadControlDownloadedPreview() {
 @Preview(showBackground = true)
 @Composable
 private fun DownloadControlFailedPreview() {
-    BaeTheme {
+    PreviewTheme {
         DownloadControlBodyStub(BridgeReleaseDownloadStatus.Failed("Network unreachable"))
     }
 }
@@ -66,7 +66,7 @@ private fun DownloadControlFailedPreview() {
 @Preview(showBackground = true)
 @Composable
 private fun UnplayableOnAnotherDevicePreview() {
-    BaeTheme {
+    PreviewTheme {
         UnplayableLine(BridgeMessage("core.release.on_device", listOf(BridgeMessageArg("device", "Ana’s Mac"))))
     }
 }
@@ -74,7 +74,7 @@ private fun UnplayableOnAnotherDevicePreview() {
 @Preview(showBackground = true)
 @Composable
 private fun UnplayableOnARemovedDevicePreview() {
-    BaeTheme {
+    PreviewTheme {
         UnplayableLine(BridgeMessage("core.release.on_removed_device", listOf(BridgeMessageArg("device", "Ana’s Mac"))))
     }
 }

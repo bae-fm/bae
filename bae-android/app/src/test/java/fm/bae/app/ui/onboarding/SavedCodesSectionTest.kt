@@ -19,7 +19,7 @@ import androidx.compose.ui.test.performScrollTo
 import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.HANG_GUARD_MS
 import fm.bae.app.NoErrorDisplays
-import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.TestTheme
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -54,7 +54,7 @@ class SavedCodesSectionTest {
                         null,
                     ) {}
                 }
-            BaeTheme { OnboardingSteps(flow) }
+            TestTheme { OnboardingSteps(flow) }
         }
     }
 

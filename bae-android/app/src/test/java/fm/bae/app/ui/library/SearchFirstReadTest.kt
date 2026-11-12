@@ -15,7 +15,7 @@ import fm.bae.app.data.LocalImageStore
 import fm.bae.app.data.SEARCH_DEBOUNCE_MS
 import fm.bae.app.openTestLibrary
 import fm.bae.app.playback.FakeAppHandle
-import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.TestTheme
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -39,7 +39,7 @@ class SearchFirstReadTest {
             )
         val session = openTestLibrary(handle)
         compose.setContent {
-            BaeTheme {
+            TestTheme {
                 CompositionLocalProvider(LocalImageStore provides session.imageStore) {
                     SearchResultsScreen(
                         session = session,

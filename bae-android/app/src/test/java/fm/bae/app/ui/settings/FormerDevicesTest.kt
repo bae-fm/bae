@@ -6,7 +6,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import fm.bae.app.BaeRobolectricTestRunner
-import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.TestTheme
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -23,7 +23,7 @@ class FormerDevicesTest {
     @Test
     fun removedDevicesStayClosedUntilOpenedThenShowHowEachLostAccess() {
         compose.setContent {
-            BaeTheme {
+            TestTheme {
                 FormerDevices(
                     devices =
                         listOf(
@@ -48,7 +48,7 @@ class FormerDevicesTest {
     @Test
     fun oneRemovedDeviceIsNamedInTheSingular() {
         compose.setContent {
-            BaeTheme {
+            TestTheme {
                 FormerDevices(
                     devices = listOf(BridgeFormerDevice(id = 4uL, name = "Tablet", state = BridgeFormerDeviceState.REMOVED)),
                 )

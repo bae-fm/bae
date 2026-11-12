@@ -19,8 +19,8 @@ import fm.bae.app.coreString
 import fm.bae.app.data.ComposerPageStore
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
-import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.components.AndroidLibraryRow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import uniffi.bae_bridge.BridgeComposerSortCriterion
@@ -81,7 +81,7 @@ internal fun ComposerListContent(
 @Preview(showBackground = true)
 @Composable
 private fun ComposerListRowPreview() {
-    BaeTheme {
+    PreviewTheme {
         CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
             val composer = PreviewData.composerSummary()
             AndroidLibraryRow(

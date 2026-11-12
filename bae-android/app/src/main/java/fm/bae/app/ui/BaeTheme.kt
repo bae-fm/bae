@@ -19,7 +19,6 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.LocalView
 import androidx.glance.appwidget.updateAll
 import fm.bae.app.ui.appearance.AppearanceMode
@@ -29,12 +28,10 @@ import fm.bae.app.ui.appearance.LocalAppearanceStore
 import fm.bae.app.ui.appearance.SemanticColors
 import fm.bae.app.ui.appearance.ToneSurfaces
 import fm.bae.app.ui.appearance.appearanceColorScheme
-import fm.bae.app.ui.appearance.appearanceFile
 import fm.bae.app.ui.appearance.colors
 import fm.bae.app.ui.appearance.semanticColors
 import fm.bae.app.ui.appearance.surfaces
 import fm.bae.app.widget.NowPlayingWidget
-import kotlinx.coroutines.Dispatchers
 
 val LocalPrimaryFill = staticCompositionLocalOf<Color> { error("BaeTheme provides primary button colors") }
 private val LocalSemanticColors = staticCompositionLocalOf<SemanticColors> { error("BaeTheme provides colours") }
@@ -60,30 +57,16 @@ object BaeTheme {
         get() = LocalIsDark.current
 }
 
-@Composable
-private fun rememberAppearanceStore(): AppearanceStore {
-    val context = LocalContext.current
-    val preview = LocalInspectionMode.current
-    return remember(context, preview) {
-        if (preview) {
-            AppearanceStore(AppearancePreferences()) {}
-        } else {
-            AppearanceStore.fromFile(appearanceFile(context), Dispatchers.IO)
-        }
-    }
-}
-
+/**
+ * The theme for the chosen [appearance]. The app opens it once, at the activity's root, with the store read from
+ * the person's appearance file; every screen below inherits it.
+ */
 @Composable
 fun BaeTheme(
-    appearance: AppearanceStore = rememberAppearanceStore(),
+    appearance: AppearanceStore,
     content: @Composable () -> Unit,
 ) {
     val preferences by appearance.preferences.collectAsState()
-    val context = LocalContext.current
-    if (!LocalInspectionMode.current) {
-        // The home-screen widget draws with the same appearance.
-        LaunchedEffect(preferences) { NowPlayingWidget().updateAll(context.applicationContext) }
-    }
     val isDark =
         when (preferences.mode) {
             AppearanceMode.SYSTEM -> isSystemInDarkTheme()
@@ -91,18 +74,6 @@ fun BaeTheme(
             AppearanceMode.DARK -> true
         }
     val colorScheme = remember(preferences, isDark) { appearanceColorScheme(preferences, isDark) }
-    val view = LocalView.current
-    if (!view.isInEditMode) {
-        val activity = view.context as ComponentActivity
-        SideEffect {
-            activity.window.setBackgroundDrawable(ColorDrawable(colorScheme.background.toArgb()))
-            // The app draws edge to edge on every release, as Android 15 and
-            // later require: the bars are clear over the window's background,
-            // with icons dark or light for the chosen appearance.
-            val bars = SystemBarStyle.auto(Color.Transparent.toArgb(), Color.Transparent.toArgb()) { isDark }
-            activity.enableEdgeToEdge(statusBarStyle = bars, navigationBarStyle = bars)
-        }
-    }
     CompositionLocalProvider(
         LocalAppearanceStore provides appearance,
         LocalPrimaryFill provides preferences.accent.colors.selection,
@@ -113,4 +84,33 @@ fun BaeTheme(
     ) {
         MaterialTheme(colorScheme = colorScheme, content = content)
     }
+}
+
+/**
+ * What the activity does for the chosen appearance, placed once under the root [BaeTheme]: the window draws the
+ * theme's background and the bars' icons follow its mode, and the home-screen widget redraws with the same look.
+ */
+@Composable
+fun ActivityAppearance() {
+    val context = LocalContext.current
+    val activity = LocalView.current.context as ComponentActivity
+    val preferences by LocalAppearanceStore.current.preferences.collectAsState()
+    val background = MaterialTheme.colorScheme.background
+    val isDark = BaeTheme.isDark
+    LaunchedEffect(preferences) { NowPlayingWidget().updateAll(context.applicationContext) }
+    SideEffect {
+        activity.window.setBackgroundDrawable(ColorDrawable(background.toArgb()))
+        // The app draws edge to edge on every release, as Android 15 and
+        // later require: the bars are clear over the window's background,
+        // with icons dark or light for the chosen appearance.
+        val bars = SystemBarStyle.auto(Color.Transparent.toArgb(), Color.Transparent.toArgb()) { isDark }
+        activity.enableEdgeToEdge(statusBarStyle = bars, navigationBarStyle = bars)
+    }
+}
+
+/** A preview's theme: the default appearance, nothing read from the person's files. */
+@Composable
+fun PreviewTheme(content: @Composable () -> Unit) {
+    val appearance = remember { AppearanceStore(AppearancePreferences()) {} }
+    BaeTheme(appearance, content)
 }

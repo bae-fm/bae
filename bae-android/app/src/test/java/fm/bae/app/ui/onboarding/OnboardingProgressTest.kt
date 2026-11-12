@@ -6,7 +6,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import fm.bae.app.BaeRobolectricTestRunner
-import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.TestTheme
 import fm.bae.app.ui.shownTexts
 import fm.bae.app.ui.tellStep
 import fm.bae.fastvalues.LatestStream
@@ -73,7 +73,7 @@ class OnboardingProgressTest {
             )
         compose.mainClock.autoAdvance = false
         compose.setContent {
-            BaeTheme { OnboardingProgress(waiting, onCancel = null, onBack = {}) }
+            TestTheme { OnboardingProgress(waiting, onCancel = null, onBack = {}) }
         }
 
         compose.onNodeWithText("Join library").assertIsDisplayed()
@@ -97,7 +97,7 @@ class OnboardingProgressTest {
             )
         compose.mainClock.autoAdvance = false
         compose.setContent {
-            BaeTheme { OnboardingProgress(connecting, onCancel = {}, onBack = {}) }
+            TestTheme { OnboardingProgress(connecting, onCancel = {}, onBack = {}) }
         }
 
         compose.onNodeWithText("Household").assertIsDisplayed()
@@ -134,7 +134,7 @@ class OnboardingProgressTest {
             )
         val steps = LatestStream.written<BridgeBootstrapStep>()
         compose.setContent {
-            BaeTheme {
+            TestTheme {
                 BootstrapStepLine(steps = steps.source(STEP_KEY)) { StatusLines(BridgeBootstrapStatus.Loading) }
             }
         }

@@ -22,7 +22,7 @@ import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.displayError
-import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
@@ -174,7 +174,7 @@ internal fun addDeviceParts(
 @Preview(showBackground = true)
 @Composable
 private fun AddDeviceDialogContentReadyPreview() {
-    BaeTheme {
+    PreviewTheme {
         AddDeviceDialogContent(
             share =
                 BridgeRestoreCodeShare(
@@ -191,7 +191,7 @@ private fun AddDeviceDialogContentReadyPreview() {
 @Preview(showBackground = true)
 @Composable
 private fun AddDeviceDialogContentAddedPreview() {
-    BaeTheme {
+    PreviewTheme {
         AddDeviceDialogContent(
             share = null,
             added = BridgeActiveDevice(id = 7u, name = "New Phone", isSelf = false, canRemove = true),
@@ -204,7 +204,7 @@ private fun AddDeviceDialogContentAddedPreview() {
 @Preview(showBackground = true)
 @Composable
 private fun AddDeviceDialogContentLoadingPreview() {
-    BaeTheme {
+    PreviewTheme {
         AddDeviceDialogContent(share = null, added = null, error = null, onDismiss = {})
     }
 }
@@ -212,7 +212,7 @@ private fun AddDeviceDialogContentLoadingPreview() {
 @Preview(showBackground = true)
 @Composable
 private fun AddDeviceDialogContentFailedPreview() {
-    BaeTheme {
+    PreviewTheme {
         AddDeviceDialogContent(
             share = null,
             added = null,

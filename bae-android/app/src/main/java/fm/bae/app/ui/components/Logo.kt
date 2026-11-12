@@ -24,7 +24,6 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -34,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.times
 import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.SemanticColors
 import kotlin.math.PI
 import kotlin.math.cos
@@ -135,13 +135,12 @@ internal fun Logo(
 /**
  * The seconds since the logo appeared, read only inside a graphics layer so a
  * frame redraws without recomposing; null when it doesn't move: no [bob], the
- * system's animations off ("Remove animations"), or a preview.
+ * system's animations off ("Remove animations").
  */
 @Composable
 private fun rememberBobSeconds(bob: Boolean): (() -> Double)? {
     val resolver = LocalContext.current.contentResolver
-    val preview = LocalInspectionMode.current
-    val moves = bob && !preview && Settings.Global.getFloat(resolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) != 0f
+    val moves = bob && Settings.Global.getFloat(resolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) != 0f
     var millis by remember { mutableLongStateOf(0L) }
     LaunchedEffect(moves) {
         if (!moves) return@LaunchedEffect
@@ -222,7 +221,7 @@ private fun DrawScope.drawGlow(colors: SemanticColors) {
 @Preview(showBackground = true)
 @Composable
 private fun LogoPreview() {
-    BaeTheme {
+    PreviewTheme {
         Box(modifier = Modifier.size(300.dp), contentAlignment = Alignment.Center) {
             Logo(size = 120.dp, bob = true, glow = true)
         }

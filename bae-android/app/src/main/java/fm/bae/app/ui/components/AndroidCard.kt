@@ -23,7 +23,7 @@ import androidx.compose.ui.layout.ParentDataModifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
-import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSpace
 
@@ -144,7 +144,7 @@ private val INNER_RADIUS = 4.dp
 @Preview(showBackground = true)
 @Composable
 private fun AndroidCardPreview() {
-    BaeTheme {
+    PreviewTheme {
         AndroidCard(modifier = Modifier.padding(ThemeSpace.edge)) {
             AndroidRow(title = "Status", subtitle = "Up to date", tone = StatusTone.SUCCESS)
             AndroidRow(title = "Library Name", subtitle = "Dropbox · name@example.com", selected = true, onClick = {})

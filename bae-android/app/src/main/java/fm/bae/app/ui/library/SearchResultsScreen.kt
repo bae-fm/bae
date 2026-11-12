@@ -28,8 +28,8 @@ import fm.bae.app.data.LocalImageStore
 import fm.bae.app.displayError
 import fm.bae.app.durationClockLabel
 import fm.bae.app.factsLine
-import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidLibraryRow
 import fm.bae.app.ui.components.AndroidNotice
@@ -199,7 +199,7 @@ private fun LazyListScope.trackResults(
 @Preview(showBackground = true)
 @Composable
 private fun SearchResultsListPreview() {
-    BaeTheme {
+    PreviewTheme {
         CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
             SearchResultsList(
                 results = PreviewData.searchResults(),

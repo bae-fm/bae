@@ -38,8 +38,8 @@ import fm.bae.app.data.DownloadStore
 import fm.bae.app.data.LiveValue
 import fm.bae.app.factSeparator
 import fm.bae.app.queueWaitText
-import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
@@ -263,7 +263,7 @@ internal fun DownloadsList(
 @Preview(showBackground = true)
 @Composable
 private fun DownloadsListPreview() {
-    BaeTheme {
+    PreviewTheme {
         val rows =
             listOf(
                 PreviewData.downloadOp(releaseId = "rel-1", state = BridgeDownloadState.Active),

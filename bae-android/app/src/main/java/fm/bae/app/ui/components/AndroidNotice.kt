@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSpace
@@ -372,7 +373,7 @@ private val CAUSES_COPY_INSET = ThemeSpace.page + ThemeSpace.group
 @Preview(showBackground = true)
 @Composable
 private fun AndroidNoticePreview() {
-    BaeTheme {
+    PreviewTheme {
         AndroidNotice(
             DisplayError(
                 "Couldn't reach the network.",
@@ -387,7 +388,7 @@ private fun AndroidNoticePreview() {
 @Preview(showBackground = true)
 @Composable
 private fun TitledAndroidNoticePreview() {
-    BaeTheme {
+    PreviewTheme {
         AndroidNotice(
             title = "Couldn't read the sign-in settings",
             advice = "Dropbox and OneDrive sign-in are unavailable until this build is reinstalled.",

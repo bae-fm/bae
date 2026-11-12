@@ -8,7 +8,7 @@ import androidx.compose.ui.test.onNodeWithText
 import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
-import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.TestTheme
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -42,7 +42,7 @@ class AndroidQueueRowTest {
                 durationClock = BridgeDurationClock(negative = false, hours = null, minutes = 3u, seconds = 0u),
             )
         compose.setContent {
-            BaeTheme {
+            TestTheme {
                 CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
                     AndroidQueueRow(
                         title = item.display.title,

@@ -38,6 +38,7 @@ import fm.bae.app.data.ImageContent
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSpace
 import kotlinx.coroutines.CancellationException
@@ -210,7 +211,7 @@ private fun CoverTile(
 @Preview(showBackground = true)
 @Composable
 private fun CoverImagePreview() {
-    BaeTheme {
+    PreviewTheme {
         CompositionLocalProvider(LocalImageStore provides ImageStore()) {
             CoverImage(
                 cover = null,

@@ -3,8 +3,6 @@ package fm.bae.app.shots
 import android.app.Application
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onRoot
@@ -76,12 +74,12 @@ internal fun isSelected(
 /**
  * Draws [content] and stops at the same frame every run: the clock advances only by [SETTLE_MILLIS],
  * so a spinner, the welcome logo's bob and glow, or a progress bar is caught at one moment, and an
- * animation that never ends can't keep the test waiting for idle. The content is in inspection mode,
- * as a preview is: the person's files aren't read.
+ * animation that never ends can't keep the test waiting for idle. The content stages its own look
+ * through the appearance store it gives [fm.bae.app.ui.BaeTheme], as [ShotTheme] does.
  */
 internal fun ComposeContentTestRule.settle(content: @Composable () -> Unit) {
     mainClock.autoAdvance = false
-    setContent { CompositionLocalProvider(LocalInspectionMode provides true, content = content) }
+    setContent(content)
     mainClock.advanceTimeBy(SETTLE_MILLIS)
 }
 

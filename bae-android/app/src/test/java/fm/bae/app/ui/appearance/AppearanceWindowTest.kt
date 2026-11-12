@@ -8,6 +8,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.core.view.WindowCompat
 import fm.bae.app.BaeRobolectricTestRunner
+import fm.bae.app.ui.ActivityAppearance
 import fm.bae.app.ui.BaeTheme
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -28,7 +29,12 @@ class AppearanceWindowTest {
     fun theWindowAndItsBarsFollowTheAppModeAndTone() {
         val initial = AppearancePreferences(mode = AppearanceMode.DARK, tone = SurfaceTone.PLUM)
         val store = AppearanceStore(initial) {}
-        compose.setContent { BaeTheme(store) { Text("Appearance") } }
+        compose.setContent {
+            BaeTheme(store) {
+                ActivityAppearance()
+                Text("Appearance")
+            }
+        }
         compose.runOnIdle {
             val window = compose.activity.window
             assertEquals(appearanceColorScheme(initial, dark = true).background.toArgb(), window.backgroundColor())

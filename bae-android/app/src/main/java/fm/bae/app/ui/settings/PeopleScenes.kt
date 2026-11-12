@@ -6,6 +6,7 @@ import fm.bae.app.DisplayError
 import fm.bae.app.ErrorDisplays
 import fm.bae.app.ui.BaeAppChrome
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.PreviewTheme
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeInviteEntry
 import uniffi.bae_bridge.BridgeMemberRole
@@ -95,17 +96,17 @@ internal val sceneOtherPerson = PeoplePage.Person(OTHER_ID)
 @Preview(showBackground = true)
 @Composable
 private fun PeopleScenePreview() {
-    BaeAppChrome { PeopleScene(PeoplePage.People) }
+    PreviewTheme { BaeAppChrome { PeopleScene(PeoplePage.People) } }
 }
 
 @Preview(showBackground = true)
 @Composable
 private fun PersonScenePreview() {
-    BaeAppChrome { PeopleScene(sceneOtherPerson) }
+    PreviewTheme { BaeAppChrome { PeopleScene(sceneOtherPerson) } }
 }
 
 @Preview(showBackground = true)
 @Composable
 private fun DevicesScenePreview() {
-    BaeAppChrome { PeopleScene(PeoplePage.Devices) }
+    PreviewTheme { BaeAppChrome { PeopleScene(PeoplePage.Devices) } }
 }

@@ -12,7 +12,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.R
-import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidDialog
@@ -76,7 +76,7 @@ fun PasteCodeDialog(
 @Preview
 @Composable
 private fun PasteCodeDialogPreview() {
-    BaeTheme {
+    PreviewTheme {
         PasteCodeDialog(
             text =
                 PasteDialogText(

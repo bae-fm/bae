@@ -8,7 +8,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.coreString
-import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.PreviewTheme
 import fm.bae.fastvalues.LatestSource
 import fm.bae.fastvalues.LatestStream
 import fm.bae.fastvalues.only
@@ -43,7 +43,7 @@ internal fun OpenProgressLine(
 @Preview(showBackground = true)
 @Composable
 private fun OpenProgressLineMigratingPreview() {
-    BaeTheme {
+    PreviewTheme {
         OpenProgressLine(
             steps =
                 LatestStream
@@ -58,7 +58,7 @@ private fun OpenProgressLineMigratingPreview() {
 @Preview(showBackground = true)
 @Composable
 private fun OpenProgressLineRebuildingPreview() {
-    BaeTheme {
+    PreviewTheme {
         OpenProgressLine(
             steps =
                 LatestStream
@@ -73,7 +73,7 @@ private fun OpenProgressLineRebuildingPreview() {
 @Preview(showBackground = true)
 @Composable
 private fun OpenProgressLineBetweenStepsPreview() {
-    BaeTheme {
+    PreviewTheme {
         OpenProgressLine(
             steps = LatestStream.openProgress().only,
             modifier = Modifier.widthIn(max = 360.dp).padding(16.dp),

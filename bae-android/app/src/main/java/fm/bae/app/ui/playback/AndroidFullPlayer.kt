@@ -49,7 +49,7 @@ import fm.bae.app.DisplayError
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.performBridgeAction
-import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
@@ -368,7 +368,7 @@ internal fun ExpandedVolumeRow(
 @Preview(showBackground = true)
 @Composable
 private fun ExpandedTrackInfoPreview() {
-    BaeTheme {
+    PreviewTheme {
         Column {
             ExpandedTrackInfo(title = "Track Title", artist = "Artist Name")
         }

@@ -24,7 +24,7 @@ import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.displayError
-import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
@@ -330,7 +330,7 @@ internal fun RestoreCodeScene(shown: Boolean) {
 @Preview(showBackground = true)
 @Composable
 private fun RestoreCodeSectionMaskedPreview() {
-    BaeTheme {
+    PreviewTheme {
         RestoreCodeSectionContent(
             needsS3Key = true,
             state = RestoreCodeState.Masked(PREVIEW_CODE),
@@ -344,7 +344,7 @@ private fun RestoreCodeSectionMaskedPreview() {
 @Preview(showBackground = true)
 @Composable
 private fun RestoreCodeSectionLoadingPreview() {
-    BaeTheme {
+    PreviewTheme {
         RestoreCodeSectionContent(
             needsS3Key = false,
             state = RestoreCodeState.Loading,
@@ -358,7 +358,7 @@ private fun RestoreCodeSectionLoadingPreview() {
 @Preview(showBackground = true)
 @Composable
 private fun RestoreCodeSectionShownPreview() {
-    BaeTheme {
+    PreviewTheme {
         RestoreCodeSectionContent(
             needsS3Key = true,
             state = RestoreCodeState.Shown(PREVIEW_CODE),
@@ -372,7 +372,7 @@ private fun RestoreCodeSectionShownPreview() {
 @Preview(showBackground = true)
 @Composable
 private fun RestoreCodeSectionFailedPreview() {
-    BaeTheme {
+    PreviewTheme {
         RestoreCodeSectionContent(
             needsS3Key = false,
             state =

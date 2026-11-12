@@ -21,6 +21,7 @@ import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.BaeAppChrome
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import uniffi.bae_bridge.BridgeAlbumAppearance
 import uniffi.bae_bridge.BridgeLibraryBrowseSection
@@ -179,11 +180,15 @@ private fun sceneGroupedRow(index: Int): BridgeAlbumAppearance =
 @Preview(showBackground = true)
 @Composable
 private fun LibraryGridScenePreview() {
-    BaeAppChrome { LibraryGridScene(grid = SceneGrid.FLAT, firstItem = 0, openMenu = null, syncActivity = {}) }
+    PreviewTheme {
+        BaeAppChrome { LibraryGridScene(grid = SceneGrid.FLAT, firstItem = 0, openMenu = null, syncActivity = {}) }
+    }
 }
 
 @Preview(showBackground = true)
 @Composable
 private fun LibraryGroupedScenePreview() {
-    BaeAppChrome { LibraryGridScene(grid = SceneGrid.GROUPED, firstItem = 0, openMenu = null, syncActivity = {}) }
+    PreviewTheme {
+        BaeAppChrome { LibraryGridScene(grid = SceneGrid.GROUPED, firstItem = 0, openMenu = null, syncActivity = {}) }
+    }
 }

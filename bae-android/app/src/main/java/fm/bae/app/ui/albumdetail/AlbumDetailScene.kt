@@ -7,6 +7,7 @@ import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.BaeAppChrome
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.PreviewTheme
 
 /**
  * The `album-detail` screenshot scene: the album detail body for a fixture
@@ -37,5 +38,5 @@ internal fun AlbumDetailScene() {
 @Preview(showBackground = true)
 @Composable
 private fun AlbumDetailScenePreview() {
-    BaeAppChrome { AlbumDetailScene() }
+    PreviewTheme { BaeAppChrome { AlbumDetailScene() } }
 }

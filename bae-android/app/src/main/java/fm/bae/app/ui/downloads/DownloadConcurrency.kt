@@ -12,7 +12,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.countText
-import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidSegmentedButtons
@@ -71,7 +71,7 @@ private fun DownloadConcurrencySelector(
 @Preview(showBackground = true)
 @Composable
 private fun DownloadConcurrencySelectorPreview() {
-    BaeTheme {
+    PreviewTheme {
         DownloadConcurrencySelector(value = 3u, limit = 8u, onSelect = {})
     }
 }

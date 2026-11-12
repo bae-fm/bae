@@ -15,7 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.R
-import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
@@ -79,7 +79,7 @@ private fun BridgeRequestedProfileState.unmadeRes(): Int? =
 @Preview(showBackground = true)
 @Composable
 private fun ProfileSetupRefusedPreview() {
-    BaeTheme {
+    PreviewTheme {
         ProfileSetup(
             requested =
                 BridgeRequestedProfile(
@@ -94,7 +94,7 @@ private fun ProfileSetupRefusedPreview() {
 @Preview(showBackground = true)
 @Composable
 private fun ProfileSetupMakingPreview() {
-    BaeTheme {
+    PreviewTheme {
         ProfileSetup(
             requested = BridgeRequestedProfile(name = "Robin", state = BridgeRequestedProfileState.Making),
             onCreate = {},

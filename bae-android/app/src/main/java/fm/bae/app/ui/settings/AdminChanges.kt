@@ -9,7 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.R
-import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidCard
@@ -152,7 +152,7 @@ private fun BridgeAdminChangeKind.description(): String {
 @Preview(showBackground = true)
 @Composable
 private fun AdminChangesListPreview() {
-    BaeTheme {
+    PreviewTheme {
         AdminChangesList(
             changes =
                 listOf(

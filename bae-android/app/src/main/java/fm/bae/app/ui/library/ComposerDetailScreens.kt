@@ -24,7 +24,7 @@ import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.data.ComposerDetailRowsPageStore
 import fm.bae.app.metadataText
-import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidLibraryRow
@@ -327,7 +327,7 @@ internal fun AndroidSearchSection(title: String) {
 @Preview(showBackground = true)
 @Composable
 private fun LibrarySectionHeaderPreview() {
-    BaeTheme {
+    PreviewTheme {
         AndroidSearchSection(title = "Works")
     }
 }

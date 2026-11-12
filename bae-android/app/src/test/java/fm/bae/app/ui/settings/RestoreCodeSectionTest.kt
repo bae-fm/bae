@@ -13,7 +13,7 @@ import fm.bae.app.BugReports
 import fm.bae.app.DisplayError
 import fm.bae.app.LocalBugReports
 import fm.bae.app.diagnosticDetail
-import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.TestTheme
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -37,7 +37,7 @@ class RestoreCodeSectionTest {
     @Test
     fun theCodeIsMadeWhenTheSectionOpensAndStaysMaskedUntilShown() {
         compose.setContent {
-            BaeTheme {
+            TestTheme {
                 CompositionLocalProvider(LocalBugReports provides BugReports()) {
                     RestoreCodeSection(needsS3Key = false, location = "Dropbox", generate = { CODE })
                 }
@@ -59,7 +59,7 @@ class RestoreCodeSectionTest {
     @Test
     fun theCaptionSaysWhereElseTheCodeIs() {
         compose.setContent {
-            BaeTheme {
+            TestTheme {
                 CompositionLocalProvider(LocalBugReports provides BugReports()) {
                     RestoreCodeSection(needsS3Key = false, location = "Dropbox", generate = { CODE })
                 }
@@ -76,7 +76,7 @@ class RestoreCodeSectionTest {
     @Test
     fun anS3LibraryAlsoNamesTheAccessKey() {
         compose.setContent {
-            BaeTheme {
+            TestTheme {
                 CompositionLocalProvider(LocalBugReports provides BugReports()) {
                     RestoreCodeSection(needsS3Key = true, location = "S3", generate = { CODE })
                 }
@@ -89,7 +89,7 @@ class RestoreCodeSectionTest {
     @Test
     fun anotherProviderNamesNoAccessKey() {
         compose.setContent {
-            BaeTheme {
+            TestTheme {
                 CompositionLocalProvider(LocalBugReports provides BugReports()) {
                     RestoreCodeSection(needsS3Key = false, location = "Dropbox", generate = { CODE })
                 }
@@ -188,7 +188,7 @@ class RestoreCodeSectionTest {
     @Test
     fun addDeviceShowsTheInstructionAndTheQrCodeButNotTheCodesText() {
         compose.setContent {
-            BaeTheme {
+            TestTheme {
                 AddDeviceDialogContent(
                     share = BridgeRestoreCodeShare(code = CODE, qrText = CODE),
                     added = null,

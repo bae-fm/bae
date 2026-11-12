@@ -14,7 +14,7 @@ import fm.bae.app.BugReports
 import fm.bae.app.LocalBugReports
 import fm.bae.app.playback.FakeAddedDeviceSubscription
 import fm.bae.app.playback.FakeAppHandle
-import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.TestTheme
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -58,7 +58,7 @@ class AddDeviceDialogTest {
         val handle = AddedDeviceHandle()
         var shown by mutableStateOf(true)
         compose.setContent {
-            BaeTheme {
+            TestTheme {
                 CompositionLocalProvider(LocalBugReports provides BugReports()) {
                     if (shown) AddDeviceDialog(appHandle = handle, onDismiss = { shown = false })
                 }

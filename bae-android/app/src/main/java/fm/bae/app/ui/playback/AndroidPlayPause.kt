@@ -18,7 +18,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import fm.bae.app.R
-import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.PreviewTheme
 import fm.bae.fastvalues.LatestSource
 
 /** How far the arc sits outside the glyph, on each side. */
@@ -66,7 +66,7 @@ fun AndroidPlayPause(
 @Preview(showBackground = true)
 @Composable
 private fun PlayPauseControlPlayingPreview() {
-    BaeTheme {
+    PreviewTheme {
         AndroidPlayPause(isPlaying = true, iconSize = 48.dp, storageWait = null, onToggle = {})
     }
 }
@@ -74,7 +74,7 @@ private fun PlayPauseControlPlayingPreview() {
 @Preview(showBackground = true)
 @Composable
 private fun PlayPauseControlPausedPreview() {
-    BaeTheme {
+    PreviewTheme {
         AndroidPlayPause(isPlaying = false, iconSize = 48.dp, storageWait = null, onToggle = {})
     }
 }

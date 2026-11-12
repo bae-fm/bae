@@ -6,8 +6,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.DisplayError
 import fm.bae.app.R
-import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.ButtonKind
@@ -78,7 +78,7 @@ internal fun removalFailedParts(
 @Preview(showBackground = true)
 @Composable
 private fun RemovalFailedPreview() {
-    BaeTheme {
+    PreviewTheme {
         val parts =
             removalFailedParts(
                 library = PreviewData.library(id = "lib-1", name = "Home music", isActive = false),

@@ -136,7 +136,7 @@ internal fun SetupStepScreen(
 @Preview(showBackground = true)
 @Composable
 private fun LoadingScreenPreview() {
-    BaeTheme {
+    PreviewTheme {
         LoadingScreen(steps = null, title = R.string.loading_finding_libraries)
     }
 }
@@ -144,7 +144,7 @@ private fun LoadingScreenPreview() {
 @Preview(showBackground = true)
 @Composable
 private fun OpeningScreenPreview() {
-    BaeTheme {
+    PreviewTheme {
         LoadingScreen(
             steps =
                 LatestStream
@@ -159,7 +159,7 @@ private fun OpeningScreenPreview() {
 @Preview(showBackground = true)
 @Composable
 private fun FinishingRemovalsPreview() {
-    BaeTheme {
+    PreviewTheme {
         SetupStepScreen(
             steps =
                 LatestStream
@@ -179,7 +179,7 @@ private fun FinishingRemovalsPreview() {
 @Preview(showBackground = true)
 @Composable
 private fun ClosingScreenPreview() {
-    BaeTheme {
+    PreviewTheme {
         ClosingScreen(
             steps =
                 LatestStream

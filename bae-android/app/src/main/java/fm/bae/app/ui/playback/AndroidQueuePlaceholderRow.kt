@@ -18,6 +18,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSize
 import fm.bae.app.ui.appearance.ThemeSpace
@@ -69,7 +70,7 @@ internal fun AndroidQueuePlaceholderRow() {
 @Preview(showBackground = true)
 @Composable
 private fun AndroidQueuePlaceholderRowPreview() {
-    BaeTheme {
+    PreviewTheme {
         AndroidQueuePlaceholderRow()
     }
 }

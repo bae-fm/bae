@@ -24,7 +24,7 @@ import fm.bae.app.ErrorDisplays
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.performBridgeAction
-import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidDialog
@@ -156,7 +156,7 @@ internal fun DeleteAlbumDialog(
 @Preview(showBackground = true)
 @Composable
 private fun DeleteAlbumDialogPreview() {
-    BaeTheme {
+    PreviewTheme {
         DeleteAlbumDialog(onConfirm = {}, onDismiss = {})
     }
 }

@@ -271,7 +271,7 @@ private fun LifecycleMessage(
 @Preview(showBackground = true)
 @Composable
 private fun RemovalIncompleteScreenPreview() {
-    BaeTheme {
+    PreviewTheme {
         RemovalIncompleteScreen(
             error = DisplayError("Couldn't delete this library's settings.", "permission denied"),
             onRetry = {},

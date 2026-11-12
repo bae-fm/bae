@@ -27,8 +27,8 @@ import fm.bae.app.coreString
 import fm.bae.app.data.LibraryWithoutStorage
 import fm.bae.app.localizedLine
 import fm.bae.app.performBridgeAction
-import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
@@ -240,7 +240,7 @@ internal fun renameLibraryParts(
 @Preview
 @Composable
 private fun RenameLibraryDialogContentPreview() {
-    BaeTheme {
+    PreviewTheme {
         RenameLibraryDialogContent(
             draft = "Household",
             error = null,
@@ -255,7 +255,7 @@ private fun RenameLibraryDialogContentPreview() {
 @Preview(showBackground = true)
 @Composable
 private fun LibrarySwitcherPreview() {
-    BaeTheme {
+    PreviewTheme {
         Column {
             LibrarySwitcher(
                 libraries =

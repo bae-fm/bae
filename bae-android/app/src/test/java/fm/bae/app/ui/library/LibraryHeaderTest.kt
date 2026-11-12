@@ -6,7 +6,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import fm.bae.app.BaeRobolectricTestRunner
-import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.TestTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -24,7 +24,7 @@ class LibraryHeaderTest {
 
     private fun showHeader(state: LibraryBrowserState) {
         compose.setContent {
-            BaeTheme {
+            TestTheme {
                 LibraryHeader(
                     state = state,
                     collapse = { 0f },
@@ -73,7 +73,7 @@ class LibraryHeaderTest {
         var shuffled = false
         var settingsOpened = false
         compose.setContent {
-            BaeTheme {
+            TestTheme {
                 LibraryHeader(
                     state = state,
                     collapse = { 0f },

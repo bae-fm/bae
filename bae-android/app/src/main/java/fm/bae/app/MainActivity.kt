@@ -9,7 +9,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.lifecycleScope
+import fm.bae.app.ui.ActivityAppearance
+import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.ContentView
+import fm.bae.app.ui.appearance.AppearanceStore
+import fm.bae.app.ui.appearance.appearanceFile
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 private const val TAG = "bae.MainActivity"
@@ -32,15 +37,20 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         pendingShortcut = shortcutActionFromIntent(intent)
         val app = application as BaeApp
+        val startupFailure = app.startupError?.let { (step, error) -> ScreenFailure(step, displayError(error)) }
+        val appearance = AppearanceStore.fromFile(appearanceFile(this), Dispatchers.IO)
         setContent {
-            ContentView(
-                oauthProviders = app.oauthProviders,
-                oauthProvidersError = app.oauthProvidersError,
-                startupFailure = app.startupError?.let { (step, error) -> ScreenFailure(step, displayError(error)) },
-                bugs = app.bugs,
-                shortcutAction = pendingShortcut,
-                onShortcutHandled = { pendingShortcut = null },
-            )
+            BaeTheme(appearance) {
+                ActivityAppearance()
+                ContentView(
+                    oauthProviders = app.oauthProviders,
+                    oauthProvidersError = app.oauthProvidersError,
+                    startupFailure = startupFailure,
+                    bugs = app.bugs,
+                    shortcutAction = pendingShortcut,
+                    onShortcutHandled = { pendingShortcut = null },
+                )
+            }
         }
     }
 

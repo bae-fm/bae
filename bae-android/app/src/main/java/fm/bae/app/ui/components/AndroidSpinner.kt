@@ -18,7 +18,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import fm.bae.app.R
-import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
@@ -74,7 +74,7 @@ private const val TRACK_ALPHA = 0.2f
 @Preview(showBackground = true)
 @Composable
 private fun AndroidSpinnerPreview() {
-    BaeTheme {
+    PreviewTheme {
         AndroidSpinner(text = "Making your restore code…")
     }
 }

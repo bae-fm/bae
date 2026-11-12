@@ -34,7 +34,7 @@ import fm.bae.app.R
 import fm.bae.app.data.LibraryOpenProgress
 import fm.bae.app.data.LibrarySetupStatus
 import fm.bae.app.displayError
-import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
@@ -414,7 +414,7 @@ private fun OnboardingContainer(content: @Composable ColumnScope.() -> Unit) {
 @Preview(showBackground = true)
 @Composable
 private fun OnboardingProgressWaitingPreview() {
-    BaeTheme {
+    PreviewTheme {
         OnboardingProgress(
             step =
                 OnboardingStep.Running(

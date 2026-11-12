@@ -72,7 +72,7 @@ class SetupStepScreenTest {
 
     private fun show() {
         compose.setContent {
-            BaeTheme {
+            TestTheme {
                 SetupStepScreen(
                     steps = steps.source(KEY),
                     title = R.string.loading_removing_library,

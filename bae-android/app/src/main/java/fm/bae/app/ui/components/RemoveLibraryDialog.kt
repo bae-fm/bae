@@ -9,7 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.R
-import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import uniffi.bae_bridge.BridgeDropboxLocation
 import uniffi.bae_bridge.BridgeLibrary
@@ -156,17 +156,17 @@ private val someUnsent = RemovalLoss.Counted(holdsUnsent = true)
 @Preview(showBackground = true)
 @Composable
 private fun RemoveLibraryUnsentPreview() {
-    BaeTheme { RemovalWordsPreview(removeLibraryParts(previewHome, someUnsent, {}, {})) }
+    PreviewTheme { RemovalWordsPreview(removeLibraryParts(previewHome, someUnsent, {}, {})) }
 }
 
 @Preview(showBackground = true)
 @Composable
 private fun RemoveLibraryPreview() {
-    BaeTheme { RemovalWordsPreview(removeLibraryParts(previewHome, nothingUnsent, {}, {})) }
+    PreviewTheme { RemovalWordsPreview(removeLibraryParts(previewHome, nothingUnsent, {}, {})) }
 }
 
 @Preview(showBackground = true)
 @Composable
 private fun RemoveUnreadableLibraryPreview() {
-    BaeTheme { RemovalWordsPreview(removeLibraryParts(previewUnreadable, RemovalLoss.Uncounted, {}, {})) }
+    PreviewTheme { RemovalWordsPreview(removeLibraryParts(previewUnreadable, RemovalLoss.Uncounted, {}, {})) }
 }

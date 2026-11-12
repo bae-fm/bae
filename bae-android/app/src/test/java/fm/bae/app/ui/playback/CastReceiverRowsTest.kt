@@ -14,7 +14,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import fm.bae.app.BaeRobolectricTestRunner
-import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.TestTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -46,7 +46,7 @@ class CastReceiverRowsTest {
         onCast: (BridgeCastReceiver) -> Unit = {},
     ) {
         compose.setContent {
-            BaeTheme {
+            TestTheme {
                 Column {
                     CastReceiverRows(
                         place = place,
@@ -151,7 +151,7 @@ class CastReceiverRowsTest {
     fun anEmptyListIsStillLookingAndReceiversAppearAsFound() {
         var receivers by mutableStateOf(found())
         compose.setContent {
-            BaeTheme {
+            TestTheme {
                 Column {
                     CastReceiverRows(
                         place = CastReceiverPlace.PICKER,
@@ -179,7 +179,7 @@ class CastReceiverRowsTest {
     fun aConnectingCastNamesItsReceiver() {
         var connecting by mutableStateOf<String?>(null)
         compose.setContent {
-            BaeTheme {
+            TestTheme {
                 Column {
                     CastReceiverRows(
                         place = CastReceiverPlace.PICKER,

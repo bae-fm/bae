@@ -8,8 +8,8 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import fm.bae.app.BaeRobolectricTestRunner
-import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.TestTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -31,7 +31,7 @@ class UnpinAskTest {
 
     private fun showControl(asksBeforeUnpinning: Boolean) {
         compose.setContent {
-            BaeTheme {
+            TestTheme {
                 AndroidDownloadControl(
                     status = BridgeReleaseDownloadStatus.Downloaded,
                     progress = PreviewData.downloadStore().latestProgress("rel-1"),

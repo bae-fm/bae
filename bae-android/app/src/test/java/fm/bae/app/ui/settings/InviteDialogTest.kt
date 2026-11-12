@@ -12,7 +12,7 @@ import fm.bae.app.HANG_GUARD_MS
 import fm.bae.app.LocalBugReports
 import fm.bae.app.openTestLibrary
 import fm.bae.app.playback.FakeAppHandle
-import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.TestTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -91,7 +91,7 @@ class InviteDialogTest {
         val session = openTestLibrary(handle)
         val created = mutableListOf<String>()
         compose.setContent {
-            BaeTheme {
+            TestTheme {
                 CompositionLocalProvider(LocalBugReports provides BugReports()) {
                     InviteDialog(
                         session = session,

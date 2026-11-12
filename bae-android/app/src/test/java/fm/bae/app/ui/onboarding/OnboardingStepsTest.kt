@@ -11,7 +11,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.NoErrorDisplays
-import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.TestTheme
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -49,7 +49,7 @@ class OnboardingStepsTest {
                         restoreOver,
                     ) {}
                 }
-            BaeTheme { OnboardingSteps(flow) }
+            TestTheme { OnboardingSteps(flow) }
         }
     }
 

@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import fm.bae.app.R
 import fm.bae.app.data.AlbumPageStore
 import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 
 /** A later page of the album grid that failed to load, above the rows that did, with Retry. */
@@ -90,7 +91,7 @@ internal fun LibrarySearchBar(
 @Preview(showBackground = true)
 @Composable
 private fun LibrarySearchBarPreview() {
-    BaeTheme {
+    PreviewTheme {
         LibrarySearchBar(query = "search text", onQueryChange = {}, onClose = {})
     }
 }

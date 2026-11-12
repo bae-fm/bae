@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSize
 import fm.bae.app.ui.appearance.ThemeSpace
@@ -126,7 +127,7 @@ private fun RowArt(
 @Preview(showBackground = true)
 @Composable
 private fun AndroidLibraryRowPreview() {
-    BaeTheme {
+    PreviewTheme {
         CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
             Column {
                 AndroidLibraryRow(title = "Mara Quill", subtitle = "12 albums")

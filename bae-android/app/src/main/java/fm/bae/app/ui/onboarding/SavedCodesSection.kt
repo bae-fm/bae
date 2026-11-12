@@ -18,7 +18,7 @@ import androidx.compose.ui.unit.dp
 import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.factSeparator
-import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
@@ -303,7 +303,7 @@ internal fun WelcomeSavedCodesScene() {
 @Preview(showBackground = true)
 @Composable
 private fun SavedCodesPreview() {
-    BaeTheme {
+    PreviewTheme {
         Column(modifier = Modifier.padding(ThemeSpace.page)) {
             SavedCodesContent(
                 list = SavedCodesList.Loaded(previewEntries),
@@ -318,7 +318,7 @@ private fun SavedCodesPreview() {
 @Preview(showBackground = true)
 @Composable
 private fun DeleteSavedCodePreview() {
-    BaeTheme {
+    PreviewTheme {
         DeleteSavedCodeDialog(onConfirm = {}, onDismiss = {})
     }
 }

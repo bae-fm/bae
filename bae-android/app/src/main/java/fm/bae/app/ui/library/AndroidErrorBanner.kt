@@ -5,7 +5,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.DisplayError
-import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.NoticeLook
@@ -27,7 +27,7 @@ internal fun AndroidErrorBanner(
 @Preview(showBackground = true)
 @Composable
 private fun AndroidErrorBannerPreview() {
-    BaeTheme {
+    PreviewTheme {
         AndroidErrorBanner(
             error = DisplayError("Couldn't reach the library.", "database error: disk I/O error"),
             onRetry = {},
@@ -38,7 +38,7 @@ private fun AndroidErrorBannerPreview() {
 @Preview(showBackground = true)
 @Composable
 private fun AndroidErrorBannerNoRetryPreview() {
-    BaeTheme {
+    PreviewTheme {
         AndroidErrorBanner(error = DisplayError("Couldn't reach the library."))
     }
 }

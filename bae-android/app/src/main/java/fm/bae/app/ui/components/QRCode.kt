@@ -19,7 +19,7 @@ import com.google.zxing.common.BitMatrix
 import com.google.zxing.qrcode.QRCodeWriter
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import fm.bae.app.BaeLogger
-import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.PreviewTheme
 
 private const val TAG = "bae.QRCode"
 private val logger = BaeLogger(TAG)
@@ -99,7 +99,7 @@ private fun BitMatrix.toBitmap(): Bitmap {
 @Preview(showBackground = true)
 @Composable
 private fun QRCodeImagePreview() {
-    BaeTheme {
+    PreviewTheme {
         QRCodeImage(
             text = "CVR1-ABCDEFGHIJKLMNOPQRSTUVWXYZ234567ABCDEFGHIJKLMNOPQRSTUVWXYZ234567",
             contentDescription = null,

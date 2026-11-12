@@ -127,17 +127,15 @@ fun ContentView(
     }
 }
 
-/** Theme, background and safe-drawing inset every screen sits in: the one place the app opens its theme. */
+/** The background and safe-drawing inset every screen sits in, in the theme the root opened. */
 @Composable
 internal fun BaeAppChrome(content: @Composable () -> Unit) {
-    BaeTheme {
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.background,
-        ) {
-            Box(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
-                content()
-            }
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background,
+    ) {
+        Box(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
+            content()
         }
     }
 }
@@ -424,7 +422,7 @@ private fun FailedScreen(failure: ScreenFailure) {
 @Preview(showBackground = true)
 @Composable
 private fun FailedScreenPreview() {
-    BaeTheme {
+    PreviewTheme {
         FailedScreen(
             failure =
                 ScreenFailure(

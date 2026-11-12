@@ -40,7 +40,7 @@ class ResetOfferedScreenTest {
                 DisplayError("This device must be reset before syncing.", "another copy of this device"),
             )
         compose.setContent {
-            BaeTheme {
+            TestTheme {
                 ResetOfferedScreen(
                     libraryId = "home",
                     error = why,
@@ -74,7 +74,7 @@ class ResetOfferedScreenTest {
                 DisplayError("This device must be reset before syncing.", "another copy of this device"),
             )
         compose.setContent {
-            BaeTheme {
+            TestTheme {
                 ResetOfferedScreen(
                     libraryId = "home",
                     error = why,

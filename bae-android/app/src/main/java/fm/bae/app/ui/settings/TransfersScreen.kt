@@ -23,7 +23,7 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.countText
 import fm.bae.app.data.LiveValue
-import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidCard
@@ -156,7 +156,7 @@ private fun ConcurrencyRow(
 @Preview(showBackground = true)
 @Composable
 private fun AndroidSettingsTransfersPreview() {
-    BaeTheme {
+    PreviewTheme {
         AndroidSettingsTransfers(
             unmeteredOnly = LiveValue.Current(false),
             concurrency = 3u,

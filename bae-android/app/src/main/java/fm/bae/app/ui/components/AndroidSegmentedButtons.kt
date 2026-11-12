@@ -11,7 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 
@@ -52,7 +52,7 @@ internal fun AndroidSegmentedButtons(
 @Preview(showBackground = true)
 @Composable
 private fun AndroidSegmentedButtonsPreview() {
-    BaeTheme {
+    PreviewTheme {
         AndroidSegmentedButtons(
             options = listOf("Member", "Admin"),
             selected = 0,

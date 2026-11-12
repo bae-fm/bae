@@ -17,8 +17,8 @@ import fm.bae.app.NoErrorDisplays
 import fm.bae.app.data.SyncStatusStore
 import fm.bae.app.openTestLibrary
 import fm.bae.app.playback.FakeAppHandle
-import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.SessionActions
+import fm.bae.app.ui.TestTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -79,7 +79,7 @@ class SyncScreenTest {
             BugReports(),
         )
         compose.setContent {
-            BaeTheme {
+            TestTheme {
                 CompositionLocalProvider(LocalBugReports provides session.bugs) {
                     SyncScreen(session = session, actions = actions(), onBack = {})
                 }
@@ -113,7 +113,7 @@ class SyncScreenTest {
                 actionKey = "core.pending.action.reconnect",
                 sendsFiles = false,
             )
-        compose.setContent { BaeTheme { PendingSection(records = listOf(record), onAction = { ran = it }) } }
+        compose.setContent { TestTheme { PendingSection(records = listOf(record), onAction = { ran = it }) } }
 
         compose.onNodeWithText("Tap a row to see what happened.").assertExists()
         compose.onNodeWithText("Cloud request failed").performClick()
@@ -156,7 +156,7 @@ class SyncScreenTest {
             BugReports(),
         )
         compose.setContent {
-            BaeTheme {
+            TestTheme {
                 CompositionLocalProvider(LocalBugReports provides session.bugs) {
                     SyncScreen(session = session, actions = actions(), onBack = {})
                 }
@@ -188,7 +188,7 @@ class SyncScreenTest {
             }
         val session = openTestLibrary(handle, SyncStatusStore())
         compose.setContent {
-            BaeTheme {
+            TestTheme {
                 CompositionLocalProvider(LocalBugReports provides session.bugs) {
                     SyncScreen(session = session, actions = actions(), onBack = {})
                 }

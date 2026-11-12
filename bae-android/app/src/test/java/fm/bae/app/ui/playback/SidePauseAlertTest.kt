@@ -9,8 +9,8 @@ import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.R
 import fm.bae.app.playback.NowPlaying
 import fm.bae.app.playback.SidePausePrompt
-import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.TestTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -45,7 +45,7 @@ class SidePauseAlertTest {
         // moves when asked keeps the rule from chasing it forever.
         compose.mainClock.autoAdvance = false
         compose.setContent {
-            BaeTheme {
+            TestTheme {
                 SidePauseAlert(
                     track =
                         NowPlaying(

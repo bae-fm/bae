@@ -72,7 +72,7 @@ class ClosingScreenTest {
 
     private fun show() {
         compose.setContent {
-            BaeTheme {
+            TestTheme {
                 ClosingScreen(
                     steps = steps.source(KEY),
                     title = R.string.loading_closing_library,

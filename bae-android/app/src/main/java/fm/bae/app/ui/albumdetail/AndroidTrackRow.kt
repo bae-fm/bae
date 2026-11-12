@@ -30,7 +30,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import fm.bae.app.R
-import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidMenu
@@ -194,7 +194,7 @@ private val previewPositionLabels = listOf("1", "2")
 @Preview(showBackground = true)
 @Composable
 private fun TrackRowPreview() {
-    BaeTheme {
+    PreviewTheme {
         AndroidTrackRow(
             data =
                 TrackRowData(
@@ -214,7 +214,7 @@ private fun TrackRowPreview() {
 @Preview(showBackground = true)
 @Composable
 private fun TrackRowCurrentPreview() {
-    BaeTheme {
+    PreviewTheme {
         AndroidTrackRow(
             data =
                 TrackRowData(

@@ -37,6 +37,7 @@ import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.ui.BaeAppChrome
+import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
@@ -372,5 +373,5 @@ internal fun WelcomeScene(
 @Preview(showBackground = true)
 @Composable
 private fun WelcomeScenePreview() {
-    BaeAppChrome { WelcomeScene() }
+    PreviewTheme { BaeAppChrome { WelcomeScene() } }
 }

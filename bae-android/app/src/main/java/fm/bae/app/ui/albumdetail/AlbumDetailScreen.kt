@@ -52,8 +52,8 @@ import fm.bae.app.mainRelease
 import fm.bae.app.pressingLineText
 import fm.bae.app.sideHeaderText
 import fm.bae.app.text
-import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
@@ -515,7 +515,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.albumTrackGroups(
 @Preview(showBackground = true)
 @Composable
 private fun AlbumDetailHeaderPreview() {
-    BaeTheme {
+    PreviewTheme {
         CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
             AndroidAlbumHeader(
                 detail = PreviewData.albumDetail(),
@@ -531,7 +531,7 @@ private fun AlbumDetailHeaderPreview() {
 @Preview(showBackground = true)
 @Composable
 private fun AlbumActionButtonsPreview() {
-    BaeTheme {
+    PreviewTheme {
         AlbumActionButtons(callbacks = inertAlbumDetailCallbacks())
     }
 }

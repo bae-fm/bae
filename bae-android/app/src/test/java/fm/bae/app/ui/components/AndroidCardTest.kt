@@ -9,7 +9,7 @@ import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeRobolectricTestRunner
-import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.TestTheme
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -24,7 +24,7 @@ class AndroidCardTest {
 
     @Test
     fun aCardWithNoRowsMeasuresZeroHigh() {
-        compose.setContent { BaeTheme { AndroidCard(modifier = Modifier.testTag("card")) {} } }
+        compose.setContent { TestTheme { AndroidCard(modifier = Modifier.testTag("card")) {} } }
 
         compose.onNodeWithTag("card").assertHeightIsEqualTo(0.dp)
     }

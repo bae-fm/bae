@@ -13,7 +13,7 @@ import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
 import fm.bae.app.data.TestImages
-import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.TestTheme
 import kotlinx.coroutines.Dispatchers
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -78,7 +78,7 @@ class CoverImageTest {
         cover: BridgeImageRef?,
     ) {
         compose.setContent {
-            BaeTheme {
+            TestTheme {
                 CompositionLocalProvider(LocalImageStore provides store) {
                     CoverImage(
                         cover = cover,

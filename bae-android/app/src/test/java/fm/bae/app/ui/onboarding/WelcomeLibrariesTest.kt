@@ -22,7 +22,7 @@ import fm.bae.app.DisplayError
 import fm.bae.app.HANG_GUARD_MS
 import fm.bae.app.LocalBugReports
 import fm.bae.app.NoErrorDisplays
-import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.TestTheme
 import fm.bae.app.ui.components.RemovalLoss
 import fm.bae.app.ui.components.RemoveLibraryDialog
 import kotlinx.coroutines.CoroutineScope
@@ -131,7 +131,7 @@ class WelcomeLibrariesTest {
             val scope = rememberCoroutineScope()
             val model = remember { fake.model(scope) }
             CompositionLocalProvider(LocalBugReports provides BugReports()) {
-                BaeTheme {
+                TestTheme {
                     WelcomeLibrariesSection(model, onOpen = { fake.calls += "open ${it.id}" }, onAdd = { fake.calls += "add" })
                 }
             }
@@ -160,7 +160,7 @@ class WelcomeLibrariesTest {
                     ) {}
                 }
             val model = remember { fake.model(scope) }
-            BaeTheme {
+            TestTheme {
                 OnboardingSteps(
                     flow,
                     WelcomeLibrariesView(listed = fake.libraries.isNotEmpty()) { onAdd ->
@@ -193,7 +193,7 @@ class WelcomeLibrariesTest {
     fun aLibraryBeingCountedShowsWhatItWaitsOnInsteadOfItsMenu() {
         val fake = FakeLibraries(listOf(synced, other))
         compose.setContent {
-            BaeTheme {
+            TestTheme {
                 WelcomeLibrariesContent(
                     list = WelcomeLibrariesList.Loaded(fake.libraries),
                     running = RunningRemoval(synced.id, removing = false, opening = null, closing = null),
@@ -295,7 +295,7 @@ class WelcomeLibrariesTest {
     @Test
     fun theConfirmationForALibraryThatCantOpenSaysItsUnsentChangesAreLost() {
         compose.setContent {
-            BaeTheme {
+            TestTheme {
                 RemoveLibraryDialog(
                     library = removalStopped,
                     loss = RemovalLoss.Uncounted,

@@ -37,6 +37,7 @@ import fm.bae.app.data.LocalImageStore
 import fm.bae.app.playback.NowPlaying
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSize
@@ -176,7 +177,7 @@ internal fun NowPlayingTransport(
 @Preview(showBackground = true)
 @Composable
 private fun NowPlayingTrackInfoPreview() {
-    BaeTheme {
+    PreviewTheme {
         CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
             Row {
                 NowPlayingTrackInfo(

@@ -5,7 +5,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import fm.bae.app.BaeRobolectricTestRunner
-import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.TestTheme
 import fm.bae.fastvalues.LatestStream
 import fm.bae.fastvalues.only
 import org.junit.Rule
@@ -53,7 +53,7 @@ class OnboardingRestoreTextTest {
 
     @Test
     fun aRestoreCodeOnANewDeviceAddsThisDevice() {
-        compose.setContent { BaeTheme { RestoreForm(restore(CodeEntry.NewDevice), null, {}, {}) } }
+        compose.setContent { TestTheme { RestoreForm(restore(CodeEntry.NewDevice), null, {}, {}) } }
 
         compose.onNodeWithText("Add device").assertIsDisplayed()
         compose.onNodeWithText("Add").assertIsDisplayed()
@@ -62,7 +62,7 @@ class OnboardingRestoreTextTest {
 
     @Test
     fun restoringOverThisDevicesCopyStillRestores() {
-        compose.setContent { BaeTheme { RestoreForm(restore(restoreOver), null, {}, {}) } }
+        compose.setContent { TestTheme { RestoreForm(restore(restoreOver), null, {}, {}) } }
 
         compose.onNodeWithText("Restore your library").assertIsDisplayed()
         compose.onNodeWithText("Restore").assertIsDisplayed()
@@ -74,7 +74,7 @@ class OnboardingRestoreTextTest {
         // The spinner animates forever; a frozen clock lets the content settle.
         compose.mainClock.autoAdvance = false
         compose.setContent {
-            BaeTheme {
+            TestTheme {
                 OnboardingProgress(
                     OnboardingStep.Running(
                         restore(CodeEntry.NewDevice),
@@ -94,7 +94,7 @@ class OnboardingRestoreTextTest {
     fun restoringOverThisDevicesCopySaysRestoringWhileItRuns() {
         compose.mainClock.autoAdvance = false
         compose.setContent {
-            BaeTheme {
+            TestTheme {
                 OnboardingProgress(
                     OnboardingStep.Running(
                         restore(restoreOver),

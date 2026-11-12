@@ -20,6 +20,7 @@ import fm.bae.app.data.LocalImageStore
 import fm.bae.app.playback.NowPlaying
 import fm.bae.app.ui.BaeAppChrome
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.library.LibraryGridSceneAlbums
 import fm.bae.fastvalues.LatestStream
 import uniffi.bae_bridge.BridgeDurationClock
@@ -201,11 +202,11 @@ private fun SceneSeekRow(streams: PlayerSceneStreams) {
 @Preview(showBackground = true)
 @Composable
 private fun MiniPlayerScenePreview() {
-    BaeAppChrome { MiniPlayerScene(PlayerSceneState.PLAYING_WITH_A_GAP) }
+    PreviewTheme { BaeAppChrome { MiniPlayerScene(PlayerSceneState.PLAYING_WITH_A_GAP) } }
 }
 
 @Preview(showBackground = true)
 @Composable
 private fun FullPlayerScenePreview() {
-    BaeAppChrome { FullPlayerScene(PlayerSceneState.WAITING_ON_STORAGE) }
+    PreviewTheme { BaeAppChrome { FullPlayerScene(PlayerSceneState.WAITING_ON_STORAGE) } }
 }
