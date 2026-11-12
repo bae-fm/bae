@@ -42,6 +42,23 @@ where
     Arc::new(KeyedValueStream::new(values, stop, runtime))
 }
 
+/// Wait for `next`, the feed's read of what changed. Meanwhile every key of
+/// `writers` whose value has gone unsaid for [`QUIET`](crate::keyed_values::QUIET) rests (a paused
+/// download, a held bar: the watches say a value only when it changes), so a
+/// view stops reading it each frame until it moves again.
+async fn resting_while<T>(writers: &[&StreamWriter], next: impl Future<Output = T>) -> T {
+    let mut next = std::pin::pin!(next);
+    let rest = || writers.iter().filter_map(|writer| writer.rest_quiet()).min();
+    let mut next_rest = rest();
+    loop {
+        let Some(at) = next_rest else { return next.await };
+        tokio::select! {
+            item = &mut next => return item,
+            () = tokio::time::sleep_until(at) => next_rest = rest(),
+        }
+    }
+}
+
 /// Write each batch of a release transfer watch: every release a `Reset`
 /// names, then each one that moved or left.
 fn write_release_changes<Progress>(
@@ -163,7 +180,7 @@ pub(crate) fn outbox_transfer_feeds(
     let (releases, total) = feed_pair(runtime, run, move |services, releases, total| {
         let mut transfers = services.watch_outbox_transfers();
         async move {
-            while let Some(changes) = transfers.next().await {
+            while let Some(changes) = resting_while(&[&releases, &total], transfers.next()).await {
                 let changes = match changes {
                     Ok(changes) => changes,
                     Err(error) => {
@@ -188,7 +205,7 @@ pub(crate) fn upload_file_shares(
     feed(runtime, run, move |services, writer| {
         let mut files = services.watch_upload_file_transfers();
         async move {
-            while let Some(changes) = files.next().await {
+            while let Some(changes) = resting_while(&[&writer], files.next()).await {
                 write_file_changes(&writer, changes);
             }
         }
@@ -203,7 +220,7 @@ pub(crate) fn pin_file_shares(
     feed(runtime, run, move |services, writer| {
         let mut files = services.watch_pin_file_transfers();
         async move {
-            while let Some(changes) = files.next().await {
+            while let Some(changes) = resting_while(&[&writer], files.next()).await {
                 write_file_changes(&writer, changes);
             }
         }
@@ -215,7 +232,7 @@ pub(crate) fn activity_bars(runtime: OperationRuntime, run: impl RunFeed) -> Arc
     feed(runtime, run, move |services, writer| {
         let mut bars = services.watch_activity_bars();
         async move {
-            while let Some(read) = bars.next().await {
+            while let Some(read) = resting_while(&[&writer], bars.next()).await {
                 match read {
                     Ok(bars) => writer.reset(activity_bars_held(bars)),
                     Err(error) => writer.fail(BridgeError::database_query(error)),
@@ -297,7 +314,7 @@ pub(crate) fn download_transfers(
     feed(runtime, run, move |services, writer| {
         let mut transfers = services.watch_download_transfers();
         async move {
-            while let Some(changes) = transfers.next().await {
+            while let Some(changes) = resting_while(&[&writer], transfers.next()).await {
                 write_release_changes(
                     &writer,
                     download_changes(changes, pin_progress),
@@ -318,7 +335,7 @@ pub(crate) fn make_local_transfers(
     feed(runtime, run, move |services, writer| {
         let mut transfers = services.watch_download_transfers();
         async move {
-            while let Some(changes) = transfers.next().await {
+            while let Some(changes) = resting_while(&[&writer], transfers.next()).await {
                 write_release_changes(
                     &writer,
                     download_changes(changes, make_local_progress),
@@ -377,8 +394,7 @@ pub(crate) fn track_storage_waits(
         let mut waits = services.subscribe_storage_waits();
         async move {
             loop {
-                let held = track_storage_wait(waits.waiting());
-                writer.reset(held);
+                write_storage_wait(&writer, waits.waiting());
                 if waits.changed().await.is_err() {
                     return;
                 }
@@ -489,7 +505,7 @@ pub(crate) fn export_percents(
     feed(runtime, run, move |services, writer| {
         let mut transfers = services.watch_output_transfers();
         async move {
-            while let Some(changes) = transfers.next().await {
+            while let Some(changes) = resting_while(&[&writer], transfers.next()).await {
                 write_release_changes(&writer, changes, |percent| BridgeFastValue::ExportPercent {
                     percent,
                 });
@@ -575,6 +591,13 @@ fn track_is_fully_buffered(value: &BridgeFastValue) -> bool {
         BridgeFastValue::TrackBuffered { buffered }
             if matches!(buffered.ranges.as_slice(), [span] if span.start == 0.0 && span.end == 1.0)
     )
+}
+
+/// The stream holds the track whose load waits on storage, at rest: the wait
+/// is the whole value, so a view reads it once when it comes, and the arc it
+/// shows turns on its own clock.
+fn write_storage_wait(writer: &StreamWriter, waiting: Option<String>) {
+    writer.reset_resting(track_storage_wait(waiting), |_, _| true);
 }
 
 /// The track whose load waits on storage as its stream holds it: under its

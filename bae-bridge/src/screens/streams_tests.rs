@@ -51,6 +51,19 @@ fn a_storage_wait_is_held_under_its_track() {
     assert!(track_storage_wait(None).is_empty());
 }
 
+/// A track's wait on storage is at rest from the moment it is held: its
+/// value cannot change, so a view is told once when it comes and when it goes.
+#[test]
+fn a_storage_wait_is_at_rest() {
+    let values = StreamValues::new();
+    let writer = StreamWriter::new(values.clone());
+    write_storage_wait(&writer, Some("track-1".into()));
+    assert!(!values.moving(b"track-1"));
+    assert_eq!(values.latest(b"track-1"), Some(BridgeFastValue::TrackWaitsOnStorage));
+    write_storage_wait(&writer, None);
+    assert_eq!(values.latest(b"track-1"), None);
+}
+
 /// A stream of one kind of download names only the releases doing that
 /// kind: a release that turns to the other kind leaves it, and a reset
 /// names only its own.

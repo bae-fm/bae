@@ -216,3 +216,106 @@ fn a_key_at_rest_is_pulled_when_it_flips_or_its_value_changes() {
     assert_eq!(pulled_now(&values), keys(&["a"]), "coming to rest is pulled");
     assert!(!stream.moving(b"missing".to_vec()));
 }
+
+fn download(bytes_done: u64) -> BridgeFastValue {
+    BridgeFastValue::Download {
+        progress: crate::types::BridgeDownloadTransferProgress {
+            bytes_done,
+            bytes_total: 1000,
+            fraction: bytes_done as f64 / 1000.0,
+            throughput_bps: None,
+        },
+    }
+}
+
+/// A value the feed says only when it changes (a download's bytes) rests once
+/// it has gone [`QUIET`] unsaid, and moves again when it changes. A view is
+/// told of each flip, and of a change while at rest.
+#[test]
+fn a_value_unchanged_for_the_quiet_time_rests_and_moves_again_when_it_changes() {
+    let runtime = tokio::runtime::Runtime::new().unwrap();
+    let (stream, writer, values) = fed_stream(&runtime);
+    let start = Instant::now();
+
+    writer.set_at("a", download(100), start);
+    assert!(stream.moving(b"a".to_vec()));
+    assert_eq!(pulled_now(&values), keys(&["a"]));
+
+    // Not quiet long enough: still moving, and the next rest is due then.
+    let almost = start + QUIET - Duration::from_millis(1);
+    assert_eq!(writer.rest_quiet_at(almost), Some(start + QUIET));
+    assert!(stream.moving(b"a".to_vec()));
+    assert_eq!(pulled_now(&values), None);
+
+    // A paused download: nothing said for the quiet time.
+    assert_eq!(writer.rest_quiet_at(start + QUIET), None);
+    assert!(!stream.moving(b"a".to_vec()));
+    assert_eq!(pulled_now(&values), keys(&["a"]), "coming to rest is pulled");
+    assert_eq!(stream.latest(b"a".to_vec()), Some(download(100)));
+
+    // Saying the same value again changes nothing.
+    writer.set_at("a", download(100), start + QUIET * 2);
+    assert!(!stream.moving(b"a".to_vec()));
+    assert_eq!(pulled_now(&values), None);
+
+    // Bytes move again.
+    writer.set_at("a", download(200), start + QUIET * 3);
+    assert!(stream.moving(b"a".to_vec()));
+    assert_eq!(pulled_now(&values), keys(&["a"]), "starting to move is pulled");
+    assert_eq!(writer.rest_quiet_at(start + QUIET * 4), None);
+    assert!(!stream.moving(b"a".to_vec()));
+}
+
+/// Each key rests on its own clock: one that keeps moving does not hold a
+/// stalled one awake, and a reset that repeats a key's value leaves it be.
+#[test]
+fn each_key_rests_on_its_own_clock() {
+    let runtime = tokio::runtime::Runtime::new().unwrap();
+    let (stream, writer, values) = fed_stream(&runtime);
+    let start = Instant::now();
+    let half = QUIET / 2;
+
+    writer.reset_at(
+        HashMap::from([(b"stalled".to_vec(), share(0.1)), (b"going".to_vec(), share(0.1))]),
+        start,
+    );
+    assert_eq!(pulled_now(&values), keys(&["going", "stalled"]));
+    writer.reset_at(
+        HashMap::from([(b"stalled".to_vec(), share(0.1)), (b"going".to_vec(), share(0.2))]),
+        start + half,
+    );
+    assert_eq!(pulled_now(&values), None);
+
+    assert_eq!(writer.rest_quiet_at(start + QUIET), Some(start + half + QUIET));
+    assert!(!stream.moving(b"stalled".to_vec()));
+    assert!(stream.moving(b"going".to_vec()));
+    assert_eq!(pulled_now(&values), keys(&["stalled"]));
+
+    assert_eq!(writer.rest_quiet_at(start + half + QUIET), None);
+    assert!(!stream.moving(b"going".to_vec()));
+    assert_eq!(pulled_now(&values), keys(&["going"]));
+}
+
+/// The frames a view following a paused download asks for: FrameFollowing
+/// requests one per 60 Hz frame while the key is moving and none at rest.
+/// A download that stops at 1 s and stays paused for 10 s asks for every
+/// frame of those 10 s with the key always moving, and for the frames of the
+/// quiet time alone once it rests.
+#[test]
+fn a_paused_download_asks_for_frames_only_for_the_quiet_time() {
+    let runtime = tokio::runtime::Runtime::new().unwrap();
+    let (stream, writer, _values) = fed_stream(&runtime);
+    let start = Instant::now();
+    let frame = Duration::from_micros(16_667);
+
+    writer.set_at("a", download(500), start);
+    let mut requested = 0;
+    for n in 0..600 {
+        let now = start + frame * n;
+        writer.rest_quiet_at(now);
+        if stream.moving(b"a".to_vec()) {
+            requested += 1;
+        }
+    }
+    assert_eq!(requested, 60, "600 frames over 10 s; only the first second asks");
+}

@@ -17,6 +17,7 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 use bae_library::CancellationToken;
 use tokio::sync::Notify;
+use tokio::time::{Duration, Instant};
 
 use crate::operation_runtime::OperationRuntime;
 use crate::types::{BridgeError, BridgeFastValue};
@@ -58,12 +59,22 @@ enum Values {
     Cancelled,
 }
 
+/// How long a value the feed writes only when it changes goes unchanged
+/// before it counts as at rest: a stalled or paused download, a held bar.
+/// Longer than a display frame, so a value moving at a steady pace is not
+/// flipped between moving and resting; the key rests when the feed has
+/// said nothing of it for this long.
+pub(crate) const QUIET: Duration = Duration::from_secs(1);
+
 /// One key's value, and whether it is at rest: not changing until the feed
 /// says so, so a view need not read it each frame.
 #[derive(Clone)]
 struct Entry {
     value: BridgeFastValue,
     resting: bool,
+    /// When the value last changed (when the key came, for a key at rest by
+    /// the feed's say-so).
+    changed_at: Instant,
 }
 
 impl Entry {
@@ -100,10 +111,23 @@ impl StreamValues {
     }
 
     /// Whether the key holds a value that is not at rest.
-    fn moving(&self, key: &[u8]) -> bool {
+    pub(crate) fn moving(&self, key: &[u8]) -> bool {
         match &lock(&self.held).values {
             Values::Open(values) => values.get(key).is_some_and(|entry| !entry.resting),
             Values::Cancelled => false,
+        }
+    }
+
+    /// When the first key that is moving has gone [`QUIET`] unchanged, if any
+    /// is moving: the feed rests it then (see [`StreamWriter::rest_quiet`]).
+    fn next_rest(&self) -> Option<Instant> {
+        match &lock(&self.held).values {
+            Values::Open(values) => values
+                .values()
+                .filter(|entry| !entry.resting)
+                .map(|entry| entry.changed_at + QUIET)
+                .min(),
+            Values::Cancelled => None,
         }
     }
 
@@ -261,11 +285,20 @@ impl StreamWriter {
         Self { values }
     }
 
-    /// The stream names `key` with `value`, a value that keeps changing.
+    /// The stream names `key` with `value`, a value that keeps changing until
+    /// the feed has said nothing of it for [`QUIET`] (see [`Self::rest_quiet`]).
+    /// The value it already holds changes nothing.
     pub(crate) fn set(&self, key: impl Into<Vec<u8>>, value: BridgeFastValue) {
+        self.set_at(key, value, Instant::now());
+    }
+
+    fn set_at(&self, key: impl Into<Vec<u8>>, value: BridgeFastValue, now: Instant) {
         let key = key.into();
-        let entry = Entry { value, resting: false };
         self.values.write(|values| {
+            if values.get(&key).is_some_and(|held| held.value == value) {
+                return vec![];
+            }
+            let entry = Entry { value, resting: false, changed_at: now };
             let tell = entry.tells_change_from(values.get(&key));
             values.insert(key.clone(), entry);
             if tell {
@@ -295,9 +328,47 @@ impl StreamWriter {
     }
 
     /// The stream names every key in `all`, and none other, each with a value
-    /// that keeps changing.
+    /// that keeps changing until the feed has said nothing of it for
+    /// [`QUIET`]. A key whose value is the one it holds stays as it is.
     pub(crate) fn reset(&self, all: HashMap<Vec<u8>, BridgeFastValue>) {
-        self.reset_resting(all, |_, _| false);
+        self.reset_at(all, Instant::now());
+    }
+
+    fn reset_at(&self, all: HashMap<Vec<u8>, BridgeFastValue>, now: Instant) {
+        self.values.write(|values| {
+            let all: HashMap<Vec<u8>, Entry> = all
+                .into_iter()
+                .map(|(key, value)| {
+                    let entry = match values.get(&key) {
+                        Some(held) if held.value == value => held.clone(),
+                        _ => Entry { value, resting: false, changed_at: now },
+                    };
+                    (key, entry)
+                })
+                .collect();
+            replace_values(values, all)
+        });
+    }
+
+    /// Every key whose value has gone [`QUIET`] without changing rests, and
+    /// a view is told of each; a value that changes again moves it again.
+    /// Answers when the next moving key will have been quiet that long.
+    pub(crate) fn rest_quiet(&self) -> Option<Instant> {
+        self.rest_quiet_at(Instant::now())
+    }
+
+    fn rest_quiet_at(&self, now: Instant) -> Option<Instant> {
+        self.values.write(|values| {
+            values
+                .iter_mut()
+                .filter(|(_, entry)| !entry.resting && entry.changed_at + QUIET <= now)
+                .map(|(key, entry)| {
+                    entry.resting = true;
+                    key.clone()
+                })
+                .collect()
+        });
+        self.values.next_rest()
     }
 
     /// The stream names every key in `all`, and none other; `resting` says
@@ -307,26 +378,16 @@ impl StreamWriter {
         all: HashMap<Vec<u8>, BridgeFastValue>,
         resting: impl Fn(&[u8], &BridgeFastValue) -> bool,
     ) {
+        let now = Instant::now();
         self.values.write(|values| {
             let all: HashMap<Vec<u8>, Entry> = all
                 .into_iter()
                 .map(|(key, value)| {
                     let resting = resting(&key, &value);
-                    (key, Entry { value, resting })
+                    (key, Entry { value, resting, changed_at: now })
                 })
                 .collect();
-            let changed: Vec<Vec<u8>> = values
-                .keys()
-                .filter(|key| !all.contains_key(*key))
-                .chain(
-                    all.iter()
-                        .filter(|(key, entry)| entry.tells_change_from(values.get(*key)))
-                        .map(|(key, _)| key),
-                )
-                .cloned()
-                .collect();
-            *values = all;
-            changed
+            replace_values(values, all)
         });
     }
 
@@ -336,6 +397,27 @@ impl StreamWriter {
         self.reset(HashMap::new());
         self.values.fail(error);
     }
+}
+
+/// Hold `all` in place of `values`, and answer the keys a view must be told
+/// of: those that left, and those that came or flipped (see
+/// [`Entry::tells_change_from`]).
+fn replace_values(
+    values: &mut HashMap<Vec<u8>, Entry>,
+    all: HashMap<Vec<u8>, Entry>,
+) -> Vec<Vec<u8>> {
+    let changed: Vec<Vec<u8>> = values
+        .keys()
+        .filter(|key| !all.contains_key(*key))
+        .chain(
+            all.iter()
+                .filter(|(key, entry)| entry.tells_change_from(values.get(*key)))
+                .map(|(key, _)| key),
+        )
+        .cloned()
+        .collect();
+    *values = all;
+    changed
 }
 
 impl Drop for StreamWriter {
