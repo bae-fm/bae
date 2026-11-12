@@ -108,18 +108,20 @@ pub(crate) fn selected(
 
 const EXTENSIONS: [&str; 2] = ["png", "json"];
 
-/// Removes the files of `selected` from `out`, so a shot the harness fails to
-/// write cannot pass on the file an earlier run left.
-pub(crate) fn clear(out: &Path, selected: &[Name]) -> Result<(), CaptureError> {
+/// Empties `out` of `platform`'s shot files, so a capture starts from nothing
+/// and the completeness check sees only what this run wrote. The folder is
+/// shared by every branch built in a checkout; what another branch left behind
+/// would otherwise read as undeclared.
+pub(crate) fn clear(out: &Path, platform: Platform) -> Result<(), CaptureError> {
     std::fs::create_dir_all(out).map_err(|e| CaptureError::Directory(out.to_path_buf(), e))?;
-    for name in selected {
-        for extension in EXTENSIONS {
-            let file = out.join(name.file_name(extension));
-            match std::fs::remove_file(&file) {
-                Ok(()) => {}
-                Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
-                Err(e) => return Err(CaptureError::Directory(file, e)),
-            }
+    let entries =
+        std::fs::read_dir(out).map_err(|e| CaptureError::Directory(out.to_path_buf(), e))?;
+    for entry in entries {
+        let entry = entry.map_err(|e| CaptureError::Directory(out.to_path_buf(), e))?;
+        let file = entry.file_name().to_string_lossy().into_owned();
+        if Name::from_file_name(platform, &file).is_some() {
+            std::fs::remove_file(entry.path())
+                .map_err(|e| CaptureError::Directory(entry.path(), e))?;
         }
     }
     Ok(())

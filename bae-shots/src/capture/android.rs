@@ -19,7 +19,7 @@ pub(crate) fn capture(
     out: &Path,
 ) -> Result<(), CaptureError> {
     let wanted = selected(declared, Platform::Android, prefixes)?;
-    clear(out, &wanted)?;
+    clear(out, Platform::Android)?;
 
     Step::new("build-layout", root, "scripts/build-layout.sh", &[]).run()?;
     // The tests compile against the full edition's generated Kotlin bindings

@@ -19,7 +19,7 @@ pub(crate) fn capture(
     out: &Path,
 ) -> Result<(), CaptureError> {
     let wanted = selected(declared, Platform::Mac, prefixes)?;
-    clear(out, &wanted)?;
+    clear(out, Platform::Mac)?;
 
     let xcode = root.join(XCODE_DIRECTORY);
     for step in [

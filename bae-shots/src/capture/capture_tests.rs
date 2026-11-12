@@ -99,16 +99,36 @@ fn a_shot_file_no_harness_declares_fails() {
 }
 
 #[test]
-fn clearing_removes_the_selected_shots_files_only() {
+fn clearing_empties_the_platforms_shot_files_and_leaves_other_files() {
     let out = tempfile::tempdir().unwrap();
     write(
         out.path(),
-        &["mac.welcome.a@macos.png", "mac.welcome.a@macos.json", "mac.welcome.b@macos.png"],
+        &[
+            "mac.welcome.a@macos.png",
+            "mac.welcome.a@macos.json",
+            "mac.welcome.left-by-another-branch@macos.png",
+            "Not A Name@macos.json",
+            "android.welcome.a@android.png",
+            "notes.txt",
+        ],
     );
-    clear(out.path(), &names(&["mac.welcome.a"])).unwrap();
-    assert!(!out.path().join("mac.welcome.a@macos.png").exists());
-    assert!(!out.path().join("mac.welcome.a@macos.json").exists());
-    assert!(out.path().join("mac.welcome.b@macos.png").exists());
+    clear(out.path(), Platform::Mac).unwrap();
+    let mut left: Vec<String> = std::fs::read_dir(out.path())
+        .unwrap()
+        .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    left.sort();
+    assert_eq!(left, ["android.welcome.a@android.png", "notes.txt"]);
+}
+
+#[test]
+fn a_shot_another_branch_left_behind_is_not_undeclared_after_clearing() {
+    let out = tempfile::tempdir().unwrap();
+    write_shot(out.path(), "mac.welcome.old");
+    clear(out.path(), Platform::Mac).unwrap();
+    write_shot(out.path(), "mac.welcome.a");
+    let declared = names(&["mac.welcome.a"]);
+    check_complete(out.path(), Platform::Mac, &declared, &declared).unwrap();
 }
 
 #[test]
