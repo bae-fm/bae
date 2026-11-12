@@ -36,6 +36,16 @@ final class SeekBarNSView: NSView {
     }
 
     var onSeek: ((Double) -> Void)?
+    /// Whether the labels read "0:00" at half strength while nothing plays,
+    /// instead of showing nothing.
+    var showsIdleClock = false {
+        didSet {
+            if showsIdleClock != oldValue {
+                updateLabels()
+            }
+        }
+    }
+
     /// Called on a click on the leading label; the owner writes the config,
     /// which sets `showRemainingTime` back here.
     var onToggleRemainingTime: (() -> Void)?
@@ -211,14 +221,27 @@ final class SeekBarNSView: NSView {
 
     // MARK: - Internal
 
+    private static let idleLabelAlpha: CGFloat = 0.5
+
     /// Both labels come from one core projection, so they agree on which clock
     /// they show; during a drag the leading one reads the dropped position.
     private func updateLabels() {
         guard let shown = position else {
-            elapsedField.show("")
-            durationField.show("")
+            let idle =
+                showsIdleClock
+                ? DurationClock.seekBar(
+                    positionMs: 0,
+                    durationMs: 0,
+                    showRemaining: false
+                ) : (leading: "", trailing: "")
+            elapsedField.show(idle.leading)
+            durationField.show(idle.trailing)
+            elapsedField.alphaValue = Self.idleLabelAlpha
+            durationField.alphaValue = Self.idleLabelAlpha
             return
         }
+        elapsedField.alphaValue = 1
+        durationField.alphaValue = 1
         let labels = DurationClock.seekBar(
             positionMs: draggingPositionMs ?? shown.positionMs,
             durationMs: shown.durationMs,

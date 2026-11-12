@@ -51,7 +51,7 @@ struct MacNowPlayingBar: View {
     private var queueButtonDropTargeted = false
 
     var body: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: ThemeSpace.section) {
             trackInfo
                 .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -64,8 +64,11 @@ struct MacNowPlayingBar: View {
         .padding(.vertical, ThemeSpace.group)
         .padding(.horizontal, ThemeSpace.section)
         // Docked in the window's bottom row, so a flat surface with no card
-        // chrome.
+        // chrome, a hairline along its top edge.
         .background(Theme.surface)
+        .overlay(alignment: .top) {
+            Theme.hairline.frame(height: ThemeSpace.hairline)
+        }
     }
 
     // MARK: - Left: track info
@@ -151,9 +154,9 @@ struct MacNowPlayingBar: View {
         return Button {
             onSetShuffle(!(shuffled ?? false))
         } label: {
-            toggleLabel("shuffle", active: active)
+            toggleLabel("shuffle")
         }
-        .buttonStyle(IconHoverButtonStyle())
+        .buttonStyle(IconHoverButtonStyle(isOn: active))
         .disabled(!enabled)
         .opacity(enabled ? 1 : 0.4)
         .help(active ? "Turn off shuffle" : "Shuffle")
@@ -166,9 +169,9 @@ struct MacNowPlayingBar: View {
         return Button {
             onSetRepeatMode(bridgeNextRepeatMode(mode: repeatMode))
         } label: {
-            toggleLabel(glyph, active: active)
+            toggleLabel(glyph)
         }
-        .buttonStyle(IconHoverButtonStyle())
+        .buttonStyle(IconHoverButtonStyle(isOn: active))
         .help(Self.repeatHelp(repeatMode))
         .accessibilityLabel("Repeat")
         .accessibilityValue(Self.repeatValue(repeatMode))
@@ -181,26 +184,13 @@ struct MacNowPlayingBar: View {
             .frame(width: ThemeSize.hitTarget, height: ThemeSize.hitTarget)
     }
 
-    /// The slot shuffle and repeat share: an accent glyph on an accent fill
-    /// when active.
-    @ViewBuilder
-    private func toggleLabel(_ systemName: String, active: Bool) -> some View {
-        let glyph = Image(systemName: systemName)
+    /// The slot shuffle and repeat share; `IconHoverButtonStyle` draws it
+    /// accent on an accent tint when the button is on.
+    private func toggleLabel(_ systemName: String) -> some View {
+        Image(systemName: systemName)
             .themeIcon(.large)
-        Group {
-            if active {
-                glyph.foregroundStyle(Theme.accent)
-            }
-            else {
-                glyph
-            }
-        }
-        .frame(width: ThemeSize.hitTarget, height: ThemeSize.hitTarget)
-        .background(
-            RoundedRectangle(cornerRadius: ThemeRadius.control)
-                .fill(active ? Theme.accentSoft : Color.clear),
-        )
-        .contentShape(Rectangle())
+            .frame(width: ThemeSize.hitTarget, height: ThemeSize.hitTarget)
+            .contentShape(Rectangle())
     }
 
     private func navButton(
@@ -303,11 +293,12 @@ extension MacNowPlayingBar {
 
     fileprivate var queueButton: some View {
         Button(action: { onSetQueuePresented(!showQueue) }) {
-            queueGlyph
+            Image(systemName: "list.bullet")
+                .themeIcon(.large)
                 .frame(width: ThemeSize.hitTarget, height: ThemeSize.hitTarget)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(IconHoverButtonStyle())
+        .buttonStyle(IconHoverButtonStyle(isOn: showQueue))
         .help("Queue")
         .accessibilityLabel("Queue")
         .background(
@@ -344,18 +335,6 @@ extension MacNowPlayingBar {
                     )
                 )
             )
-        }
-    }
-
-    @ViewBuilder
-    fileprivate var queueGlyph: some View {
-        let glyph = Image(systemName: "list.bullet")
-            .themeIcon(.large)
-        if showQueue {
-            glyph.foregroundStyle(Theme.accent)
-        }
-        else {
-            glyph
         }
     }
 
@@ -543,7 +522,7 @@ struct MacPlayPause: View {
     var body: some View {
         PlayPauseControl(
             isPlaying: isPlaying,
-            glyphFont: ThemeIcon.large.font,
+            glyphFont: .system(size: 20, weight: .medium),
             targetSize: 48,
             onToggle: onToggle
         )

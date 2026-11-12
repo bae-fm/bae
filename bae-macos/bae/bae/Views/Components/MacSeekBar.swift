@@ -14,6 +14,8 @@ struct MacSeekBar: NSViewRepresentable {
     /// `nil` while nothing plays.
     let source: SeekBarSource?
     let showRemainingTime: Bool
+    /// Whether the labels read "0:00" while `source` is `nil`.
+    var showsIdleClock = false
     let onSeek: (Double) -> Void
     let onToggleRemainingTime: (() -> Void)?
 
@@ -38,6 +40,7 @@ struct MacSeekBar: NSViewRepresentable {
         view.onSeek = onSeek
         view.onToggleRemainingTime = onToggleRemainingTime
         view.showRemainingTime = showRemainingTime
+        view.showsIdleClock = showsIdleClock
         view.follow(source)
     }
 }

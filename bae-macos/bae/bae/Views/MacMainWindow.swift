@@ -41,7 +41,6 @@ struct MacMainWindow<
             }
             .animation(QueuePanelMotion.spring, value: showQueue)
 
-            Divider()
             nowPlayingBar()
         }
     }

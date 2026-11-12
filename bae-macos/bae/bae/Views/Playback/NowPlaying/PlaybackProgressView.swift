@@ -15,6 +15,7 @@ struct PlaybackProgressView: View {
         MacSeekBar(
             source: source,
             showRemainingTime: showRemainingTime,
+            showsIdleClock: true,
             onSeek: onSeek,
             onToggleRemainingTime: onToggleRemainingTime
         )

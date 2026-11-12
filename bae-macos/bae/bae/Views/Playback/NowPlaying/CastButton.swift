@@ -22,10 +22,9 @@ struct CastButton: View {
             Image(systemName: active ? "hifispeaker.fill" : "hifispeaker")
                 .themeIcon(.large)
                 .frame(width: ThemeSize.hitTarget, height: ThemeSize.hitTarget)
-                .foregroundStyle(active ? Theme.accent : Color.primary)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(IconHoverButtonStyle())
+        .buttonStyle(IconHoverButtonStyle(isOn: active))
         .help(help(casting: castingName, connecting: connectingName))
         .accessibilityLabel("Cast")
         .popover(isPresented: $showPicker, arrowEdge: .top) {
