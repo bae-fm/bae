@@ -13,11 +13,8 @@ struct ComposerDetailPane: View {
     var body: some View {
         if session.detailSelection == .none {
             // Nothing chosen: the placeholder fills the pane, centred.
-            ContentUnavailableView {
-                Text("Composers")
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Theme.surface)
+            PlaceholderTitle("Composers")
+                .background(Theme.surface)
         }
         else {
             page

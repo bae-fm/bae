@@ -41,16 +41,29 @@ struct LibraryEmptyState: View {
             .padding(ThemeSpace.page)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         case (.some, .some(let nothingCredited)):
-            ContentUnavailableView {
-                Text(nothingCredited)
-            }
+            PlaceholderTitle(nothingCredited)
         case (nil, .some):
             // Core has not counted the albums yet, so which it is is not
             // known; the title alone is true either way.
-            ContentUnavailableView {
-                Text(title)
-            }
+            PlaceholderTitle(title)
         }
+    }
+}
+
+/// A pane with nothing to show, saying so in a centred title alone.
+struct PlaceholderTitle: View {
+    let title: LocalizedStringKey
+
+    init(_ title: LocalizedStringKey) {
+        self.title = title
+    }
+
+    var body: some View {
+        Text(title)
+            .themeText(.contentTitle)
+            .multilineTextAlignment(.center)
+            .padding(ThemeSpace.page)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 

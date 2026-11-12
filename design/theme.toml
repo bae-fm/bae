@@ -324,6 +324,15 @@ weight = "semibold"
 macos = 15
 ios = "headline"
 android = 16
+android_line = 24
+
+# The title of a pane with nothing to show, centred in it ("No artist credits
+# in your library", the unchosen detail pane's name), as the design's content
+# unavailable part sets it.
+[text.contentTitle]
+weight = "bold"
+macos = 17
+ios = "title3"
 
 [text.rowTitle]
 weight = "medium"
@@ -429,6 +438,7 @@ tracking = -1.1
 macos = 46
 ios = "largeTitle"
 android = 32
+android_line = 40
 
 # Gaps and insets, the same on every platform (points on Apple, dp on
 # Android): `line` between the lines of one text block, `inline` between a

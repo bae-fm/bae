@@ -12,11 +12,8 @@ struct ArtistDetailPane: View {
     var body: some View {
         if detail == nil, session.selectedArtistId == nil {
             // Nothing chosen: the placeholder fills the pane, centred.
-            ContentUnavailableView {
-                Text("Artists")
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Theme.surface)
+            PlaceholderTitle("Artists")
+                .background(Theme.surface)
         }
         else {
             page
