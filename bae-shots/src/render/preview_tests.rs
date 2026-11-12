@@ -66,7 +66,7 @@ async fn a_row_reads_as_the_state_it_names() {
             (Role::Text, Some("Pause between sides and discs"), None),
             (Role::Toggle, Some("Pause"), Some("off")),
             (Role::Text, Some("Resume automatically"), None),
-            (Role::Button, Some("Never"), None),
+            (Role::Popup, Some("Never"), None),
         ]
     );
     let switch = &row.elements[1];
