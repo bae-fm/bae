@@ -42,7 +42,7 @@ extension ShotScene {
     private static let moreMenuScenes: [ShotScene] = [
         component("mac.component.more-menu.closed", height: 60) {
             MacMoreMenu {
-                Button("Details…") {}
+                MacMenuItem("Details…") {}
             }
         }
     ]

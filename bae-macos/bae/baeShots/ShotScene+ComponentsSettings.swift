@@ -169,11 +169,9 @@ extension ShotScene {
             Form {
                 FormDisclosure(isExpanded: .constant(true)) {
                     LabeledContent("Bit depth") {
-                        Picker("Bit depth", selection: .constant(16)) {
-                            Text("16-bit").tag(16)
+                        MacPopUpButton("Bit depth", selection: .constant(16)) {
+                            MacPopUpOption(verbatim: "16-bit", value: 16)
                         }
-                        .labelsHidden()
-                        .pickerStyle(.menu)
                         .fixedSize()
                     }
                     Toggle("Keep the pregap", isOn: .constant(false))

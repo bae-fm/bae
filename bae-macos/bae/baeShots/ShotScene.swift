@@ -23,7 +23,7 @@ struct ShotScene {
     static let all: [ShotScene] =
         welcomeScenes + componentScenes + syncSettingsScenes
         + storageSettingsScenes + alertScenes + importListScenes
-        + adminChangeScenes
+        + adminChangeScenes + menuScenes
 }
 
 /// A scene's view, built with its fixture, and whether what the view shows
