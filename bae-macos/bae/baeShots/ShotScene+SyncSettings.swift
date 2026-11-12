@@ -14,7 +14,7 @@ extension ShotScene {
         ShotScene(
             id: "mac.settings.sync.pending",
             size: CGSize(width: 690, height: 600),
-            frame: .window(title: "Settings")
+            frame: .window(title: "Settings", titleBar: .hidden)
         ) {
             ShotStage(
                 syncSettingsWindow(
@@ -80,7 +80,7 @@ extension ShotScene {
         ShotScene(
             id: "mac.settings.sync.setup-undone",
             size: CGSize(width: 690, height: 600),
-            frame: .window(title: "Settings")
+            frame: .window(title: "Settings", titleBar: .hidden)
         ) {
             ShotStage(
                 syncSettingsWindow(
@@ -99,7 +99,7 @@ extension ShotScene {
         ShotScene(
             id: "mac.settings.sync.cloud-home-unreadable",
             size: CGSize(width: 690, height: 600),
-            frame: .window(title: "Settings")
+            frame: .window(title: "Settings", titleBar: .hidden)
         ) {
             ShotStage(
                 syncSettingsWindow(
@@ -115,7 +115,7 @@ extension ShotScene {
         ShotScene(
             id: "mac.settings.sync.code-shown",
             size: CGSize(width: 690, height: 600),
-            frame: .window(title: "Settings")
+            frame: .window(title: "Settings", titleBar: .hidden)
         ) {
             ShotStage(
                 syncSettingsWindow(
@@ -144,7 +144,7 @@ private func syncSettingsWindow(
         code: PreviewData.restoreCodeGrouped
     )
 ) -> some View {
-    SyncSettingsWindow(
+    SettingsWindowShot(
         shown: shown,
         pending: pending,
         undoneSetup: undoneSetup,
@@ -157,42 +157,6 @@ private func syncSettingsWindow(
             restoreCode: restoreCode
         )
     )
-}
-
-private struct SyncSettingsWindow<Page: View>: View {
-    let shown: BridgeSyncShown
-    let pending: [BridgePendingRecord]
-    let undoneSetup: BridgeUndoneStorageSetup?
-    let page: Page
-
-    /// The pane the window is on, as the person left it.
-    @State
-    private var selection = SettingsTab.library
-
-    var body: some View {
-        NavigationSplitView(columnVisibility: .constant(.all)) {
-            SettingsSidebar(selection: $selection)
-                .navigationSplitViewColumnWidth(190)
-        } detail: {
-            page.frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-        .toolbar(removing: .sidebarToggle)
-        // The size SettingsView gives its window.
-        .frame(width: 690, height: 600)
-        .environment(DownloadStore())
-        .environment(OutboxStore(uploadsPaused: false))
-        .environment(SubsonicStore())
-        .environment(
-            SyncStatusStore(
-                snapshot: BridgeSyncStatusSnapshot(
-                    shown: shown,
-                    pending: pending,
-                    setupRunning: false,
-                    undoneSetup: undoneSetup
-                )
-            )
-        )
-    }
 }
 
 /// The Settings window on the Library pane, showing People and devices
@@ -210,7 +174,7 @@ func peopleSettingsWindow(
     )
     return OverWindow.alert(
         alert,
-        over: SyncSettingsWindow(
+        over: SettingsWindowShot(
             shown: .previewSynced,
             pending: [],
             undoneSetup: nil,

@@ -274,16 +274,20 @@ extension ShotScene {
     /// sync, and once it is done: the change's box above their role, which
     /// reads Member until the library has the change.
     static let adminChangeScenes: [ShotScene] = [
-        makeAdmin(
-            "mac.settings.person.make-admin-waiting",
-            role: .member,
-            state: .waiting
-        ),
-        makeAdmin(
-            "mac.settings.person.make-admin-done",
-            role: .admin,
-            state: .done
-        ),
+        ShotScene(
+            id: "mac.settings.person.make-admin-waiting",
+            size: CGSize(width: 690, height: 600),
+            frame: .window(title: "Settings", titleBar: .hidden)
+        ) {
+            makeAdmin(role: .member, state: .waiting)
+        },
+        ShotScene(
+            id: "mac.settings.person.make-admin-done",
+            size: CGSize(width: 690, height: 600),
+            frame: .window(title: "Settings", titleBar: .hidden)
+        ) {
+            makeAdmin(role: .admin, state: .done)
+        },
     ]
 
     /// The preview people with the other person named Ben, who has a tablet.
@@ -312,32 +316,30 @@ extension ShotScene {
     }
 
     private static func makeAdmin(
-        _ id: String,
         role: BridgeMemberRole,
         state: BridgeAdminChangeState
-    ) -> ShotScene {
-        ShotScene(id: id, size: CGSize(width: 500, height: 480)) {
-            let membership = MembershipStore.stub(
-                people: peopleWithBen(role: role),
-                selfIsAdmin: true,
-                adminChanges: [
-                    BridgeAdminChange(
-                        operation: 1,
-                        change: .setRole(
-                            member: otherMemberId,
-                            person: "Ben",
-                            role: .admin
-                        ),
-                        state: state
-                    )
-                ]
-            )
-            return ShotStage(
-                PeopleAndDevicesPage(
+    ) -> ShotStage {
+        let membership = MembershipStore.stub(
+            people: peopleWithBen(role: role),
+            selfIsAdmin: true,
+            adminChanges: [
+                BridgeAdminChange(
+                    operation: 1,
+                    change: .setRole(
+                        member: otherMemberId,
+                        person: "Ben",
+                        role: .admin
+                    ),
+                    state: state
+                )
+            ]
+        )
+        return ShotStage(
+            SettingsWindowShot(
+                page: PeopleAndDevicesPage(
                     onBack: {},
                     subpage: .person(memberId: otherMemberId)
                 )
-                .frame(width: 500, height: 480)
                 .environment(
                     PreviewData.previewSync(storage: PreviewData.previewStorage)
                 )
@@ -347,10 +349,9 @@ extension ShotScene {
                     )
                 )
                 .environment(membership)
-                .environment(SyncStatusStore())
-            ) {
-                membership.members != nil
-            }
+            )
+        ) {
+            membership.members != nil
         }
     }
 

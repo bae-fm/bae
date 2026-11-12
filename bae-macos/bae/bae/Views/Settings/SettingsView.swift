@@ -189,6 +189,39 @@ struct SettingsSidebar: View {
     }
 }
 
+/// The settings window's frame: the sidebar down the side and `pane` beside
+/// it. The settings window and the screenshots of it both draw this, so a
+/// shot shows the window the app opens.
+struct SettingsWindowLayout<Pane: View>: View {
+    @Binding
+    var selection: SettingsTab
+    let pane: Pane
+
+    init(
+        selection: Binding<SettingsTab>,
+        @ViewBuilder pane: () -> Pane
+    ) {
+        _selection = selection
+        self.pane = pane()
+    }
+
+    var body: some View {
+        // No title bar and no sidebar toggle: the window's buttons sit in the
+        // sidebar's top, and each pane puts its own title at its top left.
+        HStack(spacing: 0) {
+            SettingsSidebar(selection: $selection)
+            pane
+                .scrollContentBackground(.hidden)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .windowBackground()
+        }
+        .windowBackground()
+        .ignoresSafeArea(.container, edges: .top)
+        // The sidebar's width plus the width every pane was drawn against.
+        .frame(width: 690, height: 600)
+    }
+}
+
 /// The settings window: the panes down the side, the chosen one beside them.
 ///
 /// A sidebar and not the toolbar strip a settings window usually has, because
@@ -212,19 +245,9 @@ struct SettingsView: View {
     var body: some View {
         @Bindable
         var navigation = navigation
-        // No title bar and no sidebar toggle: the window's buttons sit in the
-        // sidebar's top, and each pane puts its own title at its top left.
-        HStack(spacing: 0) {
-            SettingsSidebar(selection: $navigation.selectedTab)
+        SettingsWindowLayout(selection: $navigation.selectedTab) {
             pane(for: navigation.selectedTab)
-                .scrollContentBackground(.hidden)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .windowBackground()
         }
-        .windowBackground()
-        .ignoresSafeArea(.container, edges: .top)
-        // The sidebar's width plus the width every pane was drawn against.
-        .frame(width: 690, height: 600)
     }
 
     @ViewBuilder

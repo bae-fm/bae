@@ -209,15 +209,23 @@ enum ShotRenderer {
             window.animationBehavior = .none
             window.contentView = host
             return (window, host)
-        case .window(let title):
+        case .window(let title, let titleBar):
             let hosting = NSHostingController(rootView: rootView)
-            hosting.sceneBridgingOptions = .toolbars
+            // A window with a hidden title bar has no toolbar either: its
+            // content holds what a toolbar would.
+            hosting.sceneBridgingOptions =
+                titleBar == .shown ? .toolbars : []
             let window = ShotWindow(
                 contentRect: bounds,
                 styleMask: [.titled, .closable, .miniaturizable, .resizable],
                 backing: .buffered,
                 defer: false
             )
+            if titleBar == .hidden {
+                window.styleMask.insert(.fullSizeContentView)
+                window.titlebarAppearsTransparent = true
+                window.titleVisibility = .hidden
+            }
             // Ordering a window in plays its zoom-in, which the window
             // server's capture can catch partway.
             window.animationBehavior = .none

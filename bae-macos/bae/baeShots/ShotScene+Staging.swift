@@ -2,6 +2,8 @@ import AppKit
 import BaeKit
 import SwiftUI
 
+@testable import bae
+
 /// A dialog laid over the window it opens on, as the boards draw it: the
 /// window as it stands, and the alert, sheet or popover on top. The app
 /// shows these in AppKit's own windows, which a capture of the view can't
@@ -70,5 +72,50 @@ enum OverWindow {
                 .padding(.top, top)
                 .padding(.trailing, trailing)
         }
+    }
+}
+
+/// The Settings window as the app draws it, `SettingsWindowLayout`, on the
+/// pane `tab`, with `page` as that pane, and the sync state the sidebar's
+/// badges read.
+struct SettingsWindowShot<Page: View>: View {
+    let shown: BridgeSyncShown
+    let pending: [BridgePendingRecord]
+    let undoneSetup: BridgeUndoneStorageSetup?
+    let page: Page
+
+    /// The pane the window is on, as the person left it.
+    @State
+    private var selection: SettingsTab
+
+    init(
+        tab: SettingsTab = .library,
+        shown: BridgeSyncShown = .previewSynced,
+        pending: [BridgePendingRecord] = [],
+        undoneSetup: BridgeUndoneStorageSetup? = nil,
+        page: Page
+    ) {
+        self.shown = shown
+        self.pending = pending
+        self.undoneSetup = undoneSetup
+        self.page = page
+        _selection = State(initialValue: tab)
+    }
+
+    var body: some View {
+        SettingsWindowLayout(selection: $selection) { page }
+            .environment(DownloadStore())
+            .environment(OutboxStore(uploadsPaused: false))
+            .environment(SubsonicStore())
+            .environment(
+                SyncStatusStore(
+                    snapshot: BridgeSyncStatusSnapshot(
+                        shown: shown,
+                        pending: pending,
+                        setupRunning: false,
+                        undoneSetup: undoneSetup
+                    )
+                )
+            )
     }
 }

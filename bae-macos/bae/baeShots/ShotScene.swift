@@ -73,5 +73,13 @@ struct ShotStage {
 /// without `--windows` reports these shots as not taken, never as missing.
 enum ShotFrame {
     case content
-    case window(title: String)
+    case window(title: String, titleBar: TitleBar = .shown)
+
+    /// How a window draws its title bar: as a titled window does, or, as
+    /// the Settings window does, transparent and without its title, the
+    /// content reaching under it and the window's buttons sitting over it.
+    enum TitleBar {
+        case shown
+        case hidden
+    }
 }

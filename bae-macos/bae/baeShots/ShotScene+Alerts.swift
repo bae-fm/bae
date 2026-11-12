@@ -4,22 +4,23 @@ import SwiftUI
 @testable import bae
 
 extension ShotScene {
-    /// The Mac's alerts that ask or report without a window's state behind
-    /// them (`mac.errors.alert*`, the delete and unpin confirmations): bae's
-    /// alert face alone.
+    /// The Mac's alerts, each over the window it opens on: the album and
+    /// error alerts over the library window, the pane alerts over Settings,
+    /// and the unpin confirmation of the Storage manager, which no scene
+    /// stages a window for yet, as bae's alert face alone.
     static let alertScenes: [ShotScene] =
         [
-            alert(
+            overLibrary(
                 "mac.album.delete-album",
                 DeleteAlbumConfirmation.alert {},
-                height: 170
+                height: 1_000
             ),
-            alert(
+            overLibrary(
                 "mac.album.delete-release",
                 DeleteReleaseConfirmation.alert {},
-                height: 170
+                height: 1_000
             ),
-            alert(
+            overLibrary(
                 "mac.album.storage.unpin",
                 UnpinConfirmation.alert(
                     for: PendingUnpin(
@@ -28,7 +29,7 @@ extension ShotScene {
                     ),
                     dontShowAgain: .constant(false)
                 ) { _ in },
-                height: 220
+                height: 1_000
             ),
             alert(
                 "mac.storage.unpin-several",
@@ -41,17 +42,7 @@ extension ShotScene {
                 ) { _ in },
                 height: 220
             ),
-            alert(
-                "mac.settings.import.turn-off-discogs",
-                TurnOffDiscogsConfirmation.alert {},
-                height: 140
-            ),
-            alert(
-                "mac.settings.save-as.delete-format",
-                DeleteFormatConfirmation.alert(named: "MP3") {},
-                height: 130
-            ),
-            alert(
+            overLibrary(
                 "mac.errors.alert",
                 ErrorAlertContent.alert(
                     title: Text("Error"),
@@ -60,24 +51,66 @@ extension ShotScene {
                         detail: "dns error: failed to lookup address"
                     )
                 ),
-                height: 200
+                height: 760
             ),
-            alert(
+            overLibrary(
                 "mac.errors.alert.play-outcome",
                 ErrorAlertContent.alert(
                     title: Text("Error"),
                     error: DisplayError(line: "There are no tracks to play.")
                 ),
-                height: 130
+                height: 760
             ),
-        ] + devicesAlertScenes + overWindowAlertScenes
+        ] + settingsPaneAlertScenes + devicesAlertScenes + overWindowAlertScenes
+
+    /// The alerts the Import and Save as panes raise, over the Settings
+    /// window on that pane.
+    private static let settingsPaneAlertScenes: [ShotScene] = [
+        ShotScene(
+            id: "mac.settings.import.turn-off-discogs",
+            size: CGSize(width: 690, height: 600),
+            frame: .window(title: "Settings", titleBar: .hidden)
+        ) {
+            ShotStage(
+                OverWindow.alert(
+                    TurnOffDiscogsConfirmation.alert {},
+                    over: SettingsWindowShot(
+                        tab: .importing,
+                        page: ImportSettingsTab()
+                            .environment(PreviewData.configStore())
+                            .environment(Discogs.stub())
+                            .environment(Importer.stub())
+                            .environment(UiStore())
+                    )
+                )
+            )
+        },
+        ShotScene(
+            id: "mac.settings.save-as.delete-format",
+            size: CGSize(width: 690, height: 600),
+            frame: .window(title: "Settings", titleBar: .hidden)
+        ) {
+            ShotStage(
+                OverWindow.alert(
+                    DeleteFormatConfirmation.alert(named: "MP3") {},
+                    over: SettingsWindowShot(
+                        tab: .formats,
+                        page: FormatsSettingsTab()
+                            .environment(PreviewData.configStore())
+                            .environment(Outputs.stub())
+                            .environment(UiStore())
+                    )
+                )
+            )
+        },
+    ]
 
     /// The alerts People and devices raises, over the Settings window.
     private static let devicesAlertScenes: [ShotScene] = [
         ShotScene(
             id: "mac.settings.devices.cut-off",
             size: CGSize(width: 690, height: 600),
-            frame: .window(title: "Settings")
+            frame: .window(title: "Settings", titleBar: .hidden)
         ) {
             ShotStage(
                 peopleSettingsWindow(
@@ -92,7 +125,7 @@ extension ShotScene {
         ShotScene(
             id: "mac.settings.devices.cut-off-other",
             size: CGSize(width: 690, height: 600),
-            frame: .window(title: "Settings")
+            frame: .window(title: "Settings", titleBar: .hidden)
         ) {
             ShotStage(
                 peopleSettingsWindow(
@@ -107,7 +140,7 @@ extension ShotScene {
         ShotScene(
             id: "mac.settings.devices.cut-off-running",
             size: CGSize(width: 690, height: 600),
-            frame: .window(title: "Settings")
+            frame: .window(title: "Settings", titleBar: .hidden)
         ) {
             ShotStage(
                 peopleSettingsWindow(
@@ -119,7 +152,7 @@ extension ShotScene {
         ShotScene(
             id: "mac.settings.devices.cut-off-not-here",
             size: CGSize(width: 690, height: 600),
-            frame: .window(title: "Settings")
+            frame: .window(title: "Settings", titleBar: .hidden)
         ) {
             ShotStage(
                 peopleSettingsWindow(
@@ -131,7 +164,7 @@ extension ShotScene {
         ShotScene(
             id: "mac.settings.invite.cancel",
             size: CGSize(width: 690, height: 600),
-            frame: .window(title: "Settings")
+            frame: .window(title: "Settings", titleBar: .hidden)
         ) {
             let invite = BridgeInvite(
                 id: "11",
@@ -231,6 +264,32 @@ extension ShotScene {
             }
         },
     ]
+
+    /// An alert hung over the library window as the app shows it, 1200
+    /// points wide and `height` tall as the boards draw it.
+    private static func overLibrary(
+        _ id: String,
+        _ alert: (MacAlertWords, [MacAlertButton]),
+        height: CGFloat
+    ) -> ShotScene {
+        let size = CGSize(width: 1_200, height: height)
+        return ShotScene(id: id, size: size) {
+            let uiStore = UiStore()
+            let backing = LibraryView.previewGridBacking(uiStore: uiStore)
+            return ShotStage(
+                OverWindow.alert(
+                    alert,
+                    over: PreviewScenes.libraryWindow(
+                        uiStore: uiStore,
+                        backing: backing,
+                        size: size
+                    )
+                )
+            ) {
+                (backing.session.albums.list?.totalCount ?? 0) > 0
+            }
+        }
+    }
 
     private static func alert(
         _ id: String,
