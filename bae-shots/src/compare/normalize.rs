@@ -65,6 +65,45 @@ pub(crate) fn entries(list: &[Element]) -> Vec<Entry> {
     entries
 }
 
+/// The board's entries in the shot's terms, where the shot's tree merges what
+/// the board keeps apart: a field named with the supporting text under it
+/// (Compose puts both in the field's one name). A field followed by a run of
+/// texts whose words, joined in order, are a field of the shot is that one
+/// field; a run that does not join to something the shot holds is left as it
+/// is, and the comparison reports it.
+pub(crate) fn fold_merged(board: Vec<Entry>, shot: &[Entry]) -> Vec<Entry> {
+    // The shot's keys not yet taken by a fold.
+    let mut available: Vec<_> = shot.iter().map(Entry::key).collect();
+    let mut folded = Vec::with_capacity(board.len());
+    let mut at = 0;
+    while at < board.len() {
+        let head = &board[at];
+        let run = if head.kind == Role::Field {
+            board[at + 1..].iter().take_while(|e| e.kind == Role::Text).count()
+        } else {
+            0
+        };
+        let merged = (1..=run).rev().find_map(|tail| {
+            let mut parts = vec![head.words.as_str()];
+            parts.extend(board[at + 1..=at + tail].iter().map(|e| e.words.as_str()));
+            let key = (head.kind, parts.join(" "));
+            available.iter().position(|k| *k == key).map(|place| (tail, place, key))
+        });
+        match merged {
+            Some((tail, place, key)) => {
+                available.swap_remove(place);
+                folded.push(Entry { words: key.1, ..head.clone() });
+                at += tail + 1;
+            }
+            None => {
+                folded.push(head.clone());
+                at += 1;
+            }
+        }
+    }
+    folded
+}
+
 #[cfg(test)]
 #[path = "normalize_tests.rs"]
 pub(crate) mod tests;

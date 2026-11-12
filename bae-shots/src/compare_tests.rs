@@ -182,3 +182,35 @@ fn an_offset_under_the_tolerance_is_not_reported() {
     )
     .is_empty());
 }
+
+fn field(words: &str) -> Element {
+    element(Role::Field, Some(words), None)
+}
+
+#[test]
+fn a_field_named_with_the_text_under_it_is_the_board_field_and_that_text() {
+    let board = [text("Title"), field("Name"), text("Everyone sees this."), button("Save")];
+    let shot = [text("Title"), field("Name Everyone sees this."), button("Save")];
+    assert!(compare(&board, &shot).findings.is_empty());
+}
+
+#[test]
+fn a_field_name_that_adds_other_words_is_not_folded() {
+    let board = [field("Name"), text("Everyone sees this.")];
+    let shot = [field("Name Someone sees this.")];
+    assert_eq!(
+        sentences(&board, &shot),
+        [
+            "Shot is missing the field “Name”",
+            "Shot is missing the text “Everyone sees this.”",
+            "Shot has the field “Name Someone sees this.”, which the board does not"
+        ]
+    );
+}
+
+#[test]
+fn the_text_under_a_field_is_not_folded_across_another_element() {
+    let board = [field("Name"), button("Go"), text("Everyone sees this.")];
+    let shot = [field("Name Everyone sees this."), button("Go")];
+    assert!(!compare(&board, &shot).findings.is_empty());
+}

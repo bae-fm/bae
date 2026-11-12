@@ -11,7 +11,7 @@ pub(crate) mod regions;
 use crate::shots::{Bounds, Element, Picture};
 use align::Step;
 use colour::{hex, Rgb};
-use normalize::{entries, Entry};
+use normalize::{entries, fold_merged, Entry};
 
 /// A box edge may differ by this many points before it warns.
 pub(crate) const EDGE_TOLERANCE: f64 = 2.0;
@@ -76,8 +76,8 @@ pub(crate) struct Comparison {
 
 /// Compares the board's list with the shot's.
 pub(crate) fn compare(board: &[Element], shot: &[Element]) -> Comparison {
-    let board = entries(board);
     let shot = entries(shot);
+    let board = fold_merged(entries(board), &shot);
     let board_keys: Vec<_> = board.iter().map(Entry::key).collect();
     let shot_keys: Vec<_> = shot.iter().map(Entry::key).collect();
     let steps = align::align(&board_keys, &shot_keys);
