@@ -54,9 +54,7 @@ struct ImportMappingTable: View {
     private var tracksSection: some View {
         ScrollView(.horizontal) {
             rowStack {
-                if table.trackSides.isEmpty {
-                    trackHeaderRow
-                }
+                trackHeaderRow
                 ForEach(
                     Array(table.trackSides.enumerated()),
                     id: \.offset
@@ -65,13 +63,10 @@ struct ImportMappingTable: View {
                         sideHeader(side.sideHeaderText, index: index)
                     }
                     ForEach(Array(side.runs.enumerated()), id: \.offset) {
-                        runIndex,
+                        _,
                         run in
                         if case .sheet(let sheet, _) = run {
                             sheetCaption(sheet)
-                        }
-                        if index == 0 && runIndex == 0 {
-                            trackHeaderRow
                         }
                         trackRunRows(run)
                     }
@@ -157,7 +152,7 @@ struct ImportMappingTable: View {
             eyebrow("ui.import.slots.column.length")
                 .frame(
                     width: ReleaseMetadataTrackColumns.length,
-                    alignment: .trailing
+                    alignment: .leading
                 )
         }
     }

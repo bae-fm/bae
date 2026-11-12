@@ -187,7 +187,7 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
             eyebrow("ui.import.slots.column.length")
                 .frame(
                     width: ReleaseMetadataTrackColumns.length,
-                    alignment: .trailing
+                    alignment: .leading
                 )
         }
         .padding(.horizontal, ReleaseMetadataTrackColumns.rowPadding)

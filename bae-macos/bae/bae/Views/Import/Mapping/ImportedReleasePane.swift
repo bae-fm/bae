@@ -250,7 +250,10 @@ private struct ReadOnlyCandidateMappingTable: View {
             Eyebrow("Source")
                 .frame(width: columns.source, alignment: .leading)
             Eyebrow("Track")
-                .frame(width: ReleaseMetadataTrackColumns.track)
+                .frame(
+                    width: ReleaseMetadataTrackColumns.track,
+                    alignment: .leading
+                )
             Eyebrow("Title")
                 .frame(width: columns.title, alignment: .leading)
             Eyebrow("Artist")
@@ -258,7 +261,10 @@ private struct ReadOnlyCandidateMappingTable: View {
             Eyebrow(
                 verbatim: localizedCoreString("ui.import.slots.column.length")
             )
-            .frame(width: ReleaseMetadataTrackColumns.length)
+            .frame(
+                width: ReleaseMetadataTrackColumns.length,
+                alignment: .leading
+            )
         }
         .padding(.vertical, ThemeSpace.compact)
     }
@@ -278,7 +284,10 @@ private struct ReadOnlyCandidateMappingTable: View {
             readOnlySource(mapping.source)
                 .frame(width: columns.source, alignment: .leading)
             Text(verbatim: mapping.position)
-                .frame(width: ReleaseMetadataTrackColumns.track)
+                .frame(
+                    width: ReleaseMetadataTrackColumns.track,
+                    alignment: .leading
+                )
             Text(mapping.track.title)
                 .frame(width: columns.title, alignment: .leading)
                 .lineLimit(1)
@@ -289,7 +298,7 @@ private struct ReadOnlyCandidateMappingTable: View {
                 .monospacedDigit()
                 .frame(
                     width: ReleaseMetadataTrackColumns.length,
-                    alignment: .trailing
+                    alignment: .leading
                 )
         }
         .themeText(.body)
