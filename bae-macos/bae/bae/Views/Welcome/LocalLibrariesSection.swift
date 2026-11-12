@@ -34,6 +34,7 @@ struct LocalLibrariesSection: View {
         VStack(alignment: .leading, spacing: ThemeSpace.compact) {
             Text("Your libraries")
                 .themeText(.strong)
+                .foregroundStyle(.secondary)
                 .padding(.horizontal, ThemeSpace.inline)
             VStack(spacing: 0) {
                 ForEach(
