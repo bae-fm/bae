@@ -34,16 +34,13 @@ extension ShotScene {
         ) {
             let store = DeviceStorageStore.staging(.previewBeforeReset)
             return ShotStage(
-                storageSettingsPreview(store)
-                    .frame(width: 500, height: 820)
-                    .overlay {
-                        Color.black.opacity(0.3)
-                        NSAlertShot {
-                            StorageAlerts.deleteBeforeReset(
-                                size: UInt64(960_000_000).fileSizeText
-                            )
-                        }
-                    }
+                OverWindow.alert(
+                    StorageAlerts.deleteBeforeReset(
+                        size: UInt64(960_000_000).fileSizeText
+                    ),
+                    over: storageSettingsPreview(store)
+                        .frame(width: 500, height: 820)
+                )
             ) { store.storage != nil }
         },
     ]

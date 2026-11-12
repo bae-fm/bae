@@ -50,24 +50,13 @@ struct InviteCodeSheet: View {
             if ended { onDismiss() }
         }
         .task { await store.holdInviteScreenSync() }
-        .alert(
-            localizedCoreString("core.invite.cancel_confirm.title"),
-            isPresented: $confirmingCancel,
-            presenting: invite
+        .macAlert(
+            item: Binding(
+                get: { confirmingCancel ? invite : nil },
+                set: { if $0 == nil { confirmingCancel = false } }
+            )
         ) { shown in
-            Button("Cancel invite") { cancel(shown) }
-            Button(
-                localizedCoreString("core.invite.cancel_confirm.keep"),
-                role: .cancel
-            ) {}
-        } message: { shown in
-            if let forgetLine = shown.access.forgetLine {
-                Text("\(shown.label) will not be able to use this invite.")
-                    + Text(verbatim: "\n\n\(forgetLine)")
-            }
-            else {
-                Text("\(shown.label) will not be able to use this invite.")
-            }
+            InviteCancelAlert.alert(for: shown) { cancel(shown) }
         }
         .onDisappear { task?.cancel() }
     }
@@ -188,5 +177,42 @@ struct InviteCodeSheetContent: View {
                     .multilineTextAlignment(.center)
             }
         }
+    }
+}
+
+/// The alert that asks before an invite is cancelled.
+enum InviteCancelAlert {
+    /// The alert for `invite`; Cancel invite runs `onCancel`.
+    static func alert(
+        for invite: BridgeInvite,
+        onCancel: @escaping @MainActor () -> Void
+    ) -> (MacAlertWords, [MacAlertButton]) {
+        (
+            MacAlertWords(
+                Text(
+                    verbatim: localizedCoreString(
+                        "core.invite.cancel_confirm.title"
+                    )
+                ),
+                message: message(for: invite)
+            ),
+            [
+                MacAlertButton(Text("Cancel invite"), action: onCancel),
+                MacAlertButton(
+                    Text(
+                        verbatim: localizedCoreString(
+                            "core.invite.cancel_confirm.keep"
+                        )
+                    ),
+                    role: .cancel
+                ),
+            ]
+        )
+    }
+
+    private static func message(for invite: BridgeInvite) -> Text {
+        let line = Text("\(invite.label) will not be able to use this invite.")
+        guard let forgetLine = invite.access.forgetLine else { return line }
+        return line + Text(verbatim: "\n\n\(forgetLine)")
     }
 }

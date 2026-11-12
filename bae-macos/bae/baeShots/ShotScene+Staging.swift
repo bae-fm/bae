@@ -1,4 +1,5 @@
 import AppKit
+import BaeKit
 import SwiftUI
 
 /// A dialog laid over the window it opens on, as the boards draw it: the
@@ -26,17 +27,19 @@ enum OverWindow {
         }
     }
 
-    /// An alert: the image AppKit draws it as, on the opaque panel a modal
-    /// alert has.
+    /// An alert, hung from the top edge as the app's overlay hangs it: bae's
+    /// own face, 20 points rounded, over the window.
     @MainActor
     static func alert(
-        _ alert: @escaping () -> NSAlert,
+        _ alert: (MacAlertWords, [MacAlertButton]),
         over window: some View
     ) -> some View {
-        sheet(
-            NSAlertShot(alert: alert).fixedSize(),
-            over: window
-        )
+        ZStack(alignment: .top) {
+            window
+            MacAlertView(alert.0, buttons: alert.1)
+                .elevatedFace()
+                .padding(.top, hangs)
+        }
     }
 
     /// A popover, its top edge `top` points below the window's top and its

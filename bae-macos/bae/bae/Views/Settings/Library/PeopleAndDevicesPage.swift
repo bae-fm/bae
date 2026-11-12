@@ -13,7 +13,7 @@ private struct CutOffStep {
     let offersCutOff: Bool
 }
 
-private enum CutOffReason {
+enum CutOffReason {
     case providerRequestRunning
     case deviceNotGone
 }
@@ -22,6 +22,57 @@ private enum CutOffReason {
 private struct CutOffRetry {
     let device: UInt64
     let reason: CutOffReason
+}
+
+/// The alerts of cutting a removed device off from the provider.
+enum CutOffAlerts {
+    /// The step still to do in the provider, `instruction`. When this
+    /// person's account holds the library's storage (`offersCutOff`), they say
+    /// they did it; otherwise OK.
+    static func step(
+        _ instruction: BridgeProviderSignOut,
+        offersCutOff: Bool,
+        onCutOff: @escaping @MainActor () -> Void
+    ) -> (MacAlertWords, [MacAlertButton]) {
+        let words = MacAlertWords(
+            Text("The device will be removed"),
+            message: Text(verbatim: instruction.text)
+        )
+        guard offersCutOff else {
+            return (words, [MacAlertButton(Text("OK"))])
+        }
+        return (
+            words,
+            [
+                MacAlertButton(Text("I cut off this device"), action: onCutOff),
+                MacAlertButton(Text("Not yet"), role: .cancel),
+            ]
+        )
+    }
+
+    /// Why confirming the cut-off changed nothing, with Try again.
+    static func retry(
+        _ reason: CutOffReason,
+        onRetry: @escaping @MainActor () -> Void
+    ) -> (MacAlertWords, [MacAlertButton]) {
+        let title: Text
+        let message: Text
+        switch reason {
+        case .providerRequestRunning:
+            title = Text("This device is still syncing with the cloud")
+            message = Text("Wait for it to end, then try again.")
+        case .deviceNotGone:
+            title = Text("This device’s removal has not reached this Mac yet")
+            message = Text("Try again after the next sync.")
+        }
+        return (
+            MacAlertWords(title, message: message),
+            [
+                MacAlertButton(Text("Try again"), action: onRetry),
+                MacAlertButton(Text("Not yet"), role: .cancel),
+            ]
+        )
+    }
 }
 
 /// The library's people and devices, on pages of their own. The first page has
@@ -192,73 +243,44 @@ struct PeopleAndDevicesPage: View {
             )
             .task { await generateAddDeviceShare() }
         }
-        .confirmationDialog(
-            removalTitle,
-            isPresented: Binding(
-                get: { removal != nil },
-                set: { if !$0 { removal = nil } }
-            ),
-            titleVisibility: .visible,
-            presenting: removal
-        ) { selected in
-            Button("Remove", role: .destructive) { remove(selected) }
-            Button("Cancel", role: .cancel) {}
-        } message: { selected in
+        .macAlert(item: $removal) { selected in
+            let title: String
+            let message: Text
             switch selected {
-            case .person(let member, _):
-                if let forgetLine = member.access.forgetLine {
-                    Text(
-                        "They lose access to the library. Their private history and private playlists are deleted; what they shared stays."
-                    ) + Text(verbatim: "\n\n\(forgetLine)")
-                }
-                else {
-                    Text(
-                        "They lose access to the library. Their private history and private playlists are deleted; what they shared stays."
-                    )
-                }
-            case .device:
-                Text("The device loses access to the library.")
+            case .person(let member, let name):
+                title = String(localized: "Remove \(name)?")
+                let loses = Text(
+                    "They lose access to the library. Their private history and private playlists are deleted; what they shared stays."
+                )
+                message =
+                    if let forgetLine = member.access.forgetLine {
+                        loses + Text(verbatim: "\n\n\(forgetLine)")
+                    }
+                    else {
+                        loses
+                    }
+            case .device(let device, _):
+                title = String(localized: "Remove \(device.name)?")
+                message = Text("The device loses access to the library.")
             }
+            return (
+                MacAlertWords(Text(verbatim: title), message: message),
+                [
+                    MacAlertButton(Text("Remove"), role: .destructive) {
+                        remove(selected)
+                    },
+                    MacAlertButton(Text("Cancel"), role: .cancel),
+                ]
+            )
         }
-        .alert(
-            "The device will be removed",
-            isPresented: Binding(
-                get: { signOut != nil },
-                set: { if !$0 { signOut = nil } }
-            ),
-            presenting: signOut
-        ) { step in
-            if step.offersCutOff {
-                Button("I cut off this device") {
-                    confirmCutOff(step.device)
-                }
-                Button("Not yet", role: .cancel) {}
-            }
-            else {
-                Button("OK", role: .cancel) {}
-            }
-        } message: { step in
-            Text(step.instruction.text)
+        .macAlert(item: $signOut) { step in
+            CutOffAlerts.step(
+                step.instruction,
+                offersCutOff: step.offersCutOff
+            ) { confirmCutOff(step.device) }
         }
-        .alert(
-            cutOffRetry?.reason == .deviceNotGone
-                ? "This device’s removal has not reached this Mac yet"
-                : "This device is still syncing with the cloud",
-            isPresented: Binding(
-                get: { cutOffRetry != nil },
-                set: { if !$0 { cutOffRetry = nil } }
-            ),
-            presenting: cutOffRetry
-        ) { retry in
-            Button("Try again") { confirmCutOff(retry.device) }
-            Button("Not yet", role: .cancel) {}
-        } message: { retry in
-            switch retry.reason {
-            case .providerRequestRunning:
-                Text("Wait for it to end, then try again.")
-            case .deviceNotGone:
-                Text("Try again after the next sync.")
-            }
+        .macAlert(item: $cutOffRetry) { retry in
+            CutOffAlerts.retry(retry.reason) { confirmCutOff(retry.device) }
         }
     }
 
@@ -544,14 +566,6 @@ extension PeopleAndDevicesPage {
     private func decline(_ invite: BridgeInvite) {
         guard let request = invite.requestToDecide else { return }
         run { try await sync.declineJoinRequest(request) }
-    }
-
-    private var removalTitle: String {
-        switch removal {
-        case .person(_, let name): String(localized: "Remove \(name)?")
-        case .device(let device, _): String(localized: "Remove \(device.name)?")
-        case nil: ""
-        }
     }
 
     private func setRole(_ member: BridgeMember, _ role: BridgeMemberRole) {

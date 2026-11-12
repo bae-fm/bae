@@ -2,33 +2,9 @@
     import AppKit
     import SwiftUI
 
-    /// The alert a notice's Details opens: the title, the message, and the
-    /// causes in an inset panel with Copy in its corner. An `NSAlert`, since
-    /// SwiftUI's alert holds only text and buttons; run modally it opens the
-    /// same way from a window, a sheet or a popover. AppKit adds its own OK.
-    @MainActor
-    public enum ErrorDetailsAlert {
-        public static func show(_ details: ErrorDetails) {
-            makeAlert(details).runModal()
-        }
-
-        /// The alert as `show` runs it, before it runs.
-        public static func makeAlert(_ details: ErrorDetails) -> NSAlert {
-            let alert = NSAlert()
-            alert.messageText = details.title
-            alert.informativeText = details.message ?? ""
-            alert.accessoryView = AlertAccessory.view(
-                HoverErrorDetails(
-                    detail: details.copyText,
-                    excerpt: details.causes
-                )
-            )
-            return alert
-        }
-    }
-
-    /// How a notice shows its details. The default opens the alert; a panel
-    /// that must close before the alert runs modally sets its own.
+    /// How a notice shows its details when something other than the notice
+    /// does: a popover that must close before the alert opens sets one in the
+    /// environment. Without one, the notice opens the alert itself.
     public struct ShowErrorDetailsAction {
         private let handler: @MainActor (ErrorDetails) -> Void
 
@@ -44,8 +20,56 @@
 
     extension EnvironmentValues {
         @Entry
-        public var showErrorDetails = ShowErrorDetailsAction {
-            ErrorDetailsAlert.show($0)
+        public var showErrorDetails: ShowErrorDetailsAction?
+    }
+
+    /// What a view with a Details button holds: calling it opens the alert,
+    /// through the environment's `showErrorDetails` when one is set and else
+    /// by presenting the alert from the view, which applies
+    /// `errorDetailsAlert(_:)` with `presented`.
+    @MainActor
+    struct ErrorDetailsOpener: DynamicProperty {
+        @Environment(\.showErrorDetails)
+        private var hosted
+        @State
+        private var opened: ErrorDetails?
+
+        var presented: Binding<ErrorDetails?> { $opened }
+
+        func callAsFunction(_ details: ErrorDetails) {
+            if let hosted {
+                hosted(details)
+            }
+            else {
+                opened = details
+            }
+        }
+    }
+
+    extension ErrorDetails {
+        /// The alert Details opens: the title, the message, the causes in an
+        /// inset panel with Copy, and OK.
+        public var alert: (MacAlertWords, [MacAlertButton]) {
+            (
+                MacAlertWords(
+                    Text(verbatim: title),
+                    message: message.map { Text(verbatim: $0) },
+                    details: MacAlertWords.Details(
+                        copyText: copyText,
+                        causes: causes
+                    )
+                ),
+                [MacAlertButton(Text("OK"))]
+            )
+        }
+    }
+
+    extension View {
+        /// Shows the alert a notice's Details opens, while `details` is set.
+        public func errorDetailsAlert(_ details: Binding<ErrorDetails?>)
+            -> some View
+        {
+            macAlert(item: details) { $0.alert }
         }
     }
 
@@ -99,7 +123,7 @@
     }
 
     /// A `MacErrorDetails` that follows the pointer.
-    private struct HoverErrorDetails: View {
+    struct HoverErrorDetails: View {
         let detail: String
         let excerpt: String
         @State

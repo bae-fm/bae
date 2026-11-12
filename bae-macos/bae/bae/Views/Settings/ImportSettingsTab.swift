@@ -59,11 +59,10 @@ struct ImportSettingsTab: View {
             }
         }
         .formStyle(.grouped)
-        .alert("Turn off Discogs?", isPresented: $confirmsTurningDiscogsOff) {
-            Button("Turn off") { setSource(.discogs, enabled: false) }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("Your saved key will be cleared.")
+        .macAlert(isPresented: $confirmsTurningDiscogsOff) {
+            TurnOffDiscogsConfirmation.alert {
+                setSource(.discogs, enabled: false)
+            }
         }
     }
 
@@ -210,6 +209,26 @@ struct ImportSettingsTab: View {
                     }
                 }
             }
+        )
+    }
+}
+
+/// The alert that asks before the Discogs source is turned off and its saved
+/// key cleared.
+enum TurnOffDiscogsConfirmation {
+    /// The alert; Turn off runs `onTurnOff`.
+    static func alert(
+        onTurnOff: @escaping @MainActor () -> Void
+    ) -> (MacAlertWords, [MacAlertButton]) {
+        (
+            MacAlertWords(
+                Text("Turn off Discogs?"),
+                message: Text("Your saved key will be cleared.")
+            ),
+            [
+                MacAlertButton(Text("Turn off"), action: onTurnOff),
+                MacAlertButton(Text("Cancel"), role: .cancel),
+            ]
         )
     }
 }

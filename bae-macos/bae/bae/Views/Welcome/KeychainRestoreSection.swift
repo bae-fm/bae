@@ -67,31 +67,42 @@ struct KeychainRestoreContainer: View {
             onRestore: onRestore,
             onDelete: { codes.askToDelete($0) }
         )
-        .alert(
-            SavedCodeDeletion.title,
-            isPresented: Binding(
-                get: { codes.pendingDelete != nil },
-                set: { if !$0 { codes.dismissDelete() } }
-            ),
-            presenting: codes.pendingDelete
+        .macAlert(
+            item: Binding(
+                get: { codes.pendingDelete },
+                set: { if $0 == nil { codes.dismissDelete() } }
+            )
         ) { pending in
-            Button(SavedCodeDeletion.confirm, role: .destructive) {
+            SavedCodeDeletion.alert {
                 // The person confirmed; the delete finishes even if the
                 // welcome closes meanwhile.
                 Task { await codes.delete(pending, from: setup) }
             }
-            Button(SavedCodeDeletion.cancel, role: .cancel) {}
-        } message: { _ in
-            Text(verbatim: SavedCodeDeletion.message)
         }
     }
 }
 
 /// What the confirmation to delete a saved restore code says.
 enum SavedCodeDeletion {
-    static var title: String { String(localized: "Delete this restore code?") }
-    static var confirm: String { String(localized: "Delete") }
-    static var cancel: String { String(localized: "Cancel") }
+    /// The alert; Delete runs `onDelete`.
+    static func alert(
+        onDelete: @escaping @MainActor () -> Void
+    ) -> (MacAlertWords, [MacAlertButton]) {
+        (
+            MacAlertWords(
+                Text("Delete this restore code?"),
+                message: Text(verbatim: message)
+            ),
+            [
+                MacAlertButton(
+                    Text("Delete"),
+                    role: .destructive,
+                    action: onDelete
+                ),
+                MacAlertButton(Text("Cancel"), role: .cancel),
+            ]
+        )
+    }
 
     /// That the code goes from iCloud Keychain on all the person's Apple
     /// devices and nothing else does.

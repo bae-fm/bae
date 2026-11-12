@@ -4903,7 +4903,15 @@ then does an app offer the detail, and a notice never shows it: a notice shows t
 category's line, or a title the app words for what failed with what to do under
 it, and its *Details* opens the causes one a line, led by the category's line
 when the notice didn't show it, with a button that copies them whole: in an
-alert on macOS and a dialog on Android. A
+alert on macOS and a dialog on Android. The Mac's alerts, these
+and every confirmation, are bae's own and not the system's: no app icon, an
+elevated face with 20 point corners hung 36 points below the window's top edge,
+the title in bold, the message small and secondary under it, and bae's buttons
+below. It sits over the frontmost window, or over the sheet open on it, and
+nothing below it can be reached while it is up, by pointer, keyboard or
+VoiceOver. The first button listed is the default, drawn in the
+accent unless it removes something, which draws red; Return presses it and
+Escape presses Cancel. A
 category whose line names the whole fault, with the counts, discs or folder it
 carries, shows the line alone, since its detail is the same sentence again in
 English.

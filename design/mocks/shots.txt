@@ -165,6 +165,7 @@ mac.album.save-as.format-menu
 mac.album.save-as.new-format-chosen
 mac.album.storage
 mac.album.storage.on-another-mac
+mac.album.storage.unpin
 mac.album.storage.uploading
 mac.errors.alert
 mac.errors.alert.own-titles
@@ -362,6 +363,7 @@ mac.settings.your-name.saved
 mac.storage.move-to-cloud
 mac.storage.release-menu
 mac.storage.release-menu.move-failed
+mac.storage.unpin-several
 mac.storage.window
 mac.storage.window.cloud-only
 mac.storage.window.file-selected

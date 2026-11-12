@@ -174,25 +174,20 @@ struct ImportReleaseHeader: View {
         .padding(.vertical, ThemeSpace.edge)
         .padding(.horizontal, ThemeSpace.section)
         .card()
-        .background {
-            ForEach(ImportDraftCommand.allCases) { command in
-                Color.clear
-                    .confirmationDialog(
-                        command.question,
-                        isPresented: Binding(
-                            get: { confirming == command },
-                            set: { if !$0 { confirming = nil } }
-                        ),
-                        titleVisibility: .visible
-                    ) {
-                        Button(command.title, role: .destructive) {
-                            command.run(with: sourceActions)
-                        }
-                        Button("Cancel", role: .cancel) {}
-                    } message: {
-                        Text(command.consequence)
-                    }
-            }
+        .macAlert(item: $confirming) { command in
+            (
+                MacAlertWords(
+                    Text(command.question),
+                    message: Text(command.consequence)
+                ),
+                [
+                    MacAlertButton(
+                        Text(command.title),
+                        role: .destructive
+                    ) { command.run(with: sourceActions) },
+                    MacAlertButton(Text("Cancel"), role: .cancel),
+                ]
+            )
         }
     }
 

@@ -17,6 +17,9 @@ struct StorageSettingsTab: View {
     @Environment(UiStore.self)
     private var uiStore
 
+    @State
+    private var asker = AlertAsker()
+
     var body: some View {
         StorageSettingsForm(
             storage: store.storage,
@@ -29,13 +32,15 @@ struct StorageSettingsTab: View {
                 Task {
                     guard
                         await StorageAlerts.confirms(
-                            StorageAlerts.deleteBeforeReset(size: size)
+                            StorageAlerts.deleteBeforeReset(size: size),
+                            asking: asker
                         )
                     else { return }
                     await store.deleteDataFromBeforeReset()
                 }
             }
         )
+        .presentsAlerts(of: asker)
         .task { await store.follow() }
     }
 
@@ -194,12 +199,13 @@ struct StorageSettingsForm: View {
     #Preview("Storage Settings, Deleting Data From Before A Reset") {
         storageSettingsPreview(.staging(.previewBeforeReset))
             .frame(width: 500, height: 820)
-            .task {
-                _ = await StorageAlerts.confirms(
-                    StorageAlerts.deleteBeforeReset(
-                        size: UInt64(960_000_000).fileSizeText
-                    )
+            .overlay(alignment: .top) {
+                let alert = StorageAlerts.deleteBeforeReset(
+                    size: UInt64(960_000_000).fileSizeText
                 )
+                MacAlertView(alert.0, buttons: alert.1)
+                    .elevatedFace()
+                    .padding(.top, ThemeSpace.page)
             }
     }
 #endif

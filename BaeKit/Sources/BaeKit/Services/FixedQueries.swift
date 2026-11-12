@@ -62,6 +62,29 @@
         }
     }
 
+    extension LibraryBrowseQuery {
+        /// A query whose every read fails with `error`, for previews and
+        /// tests of the screen that shows a list that could not be read.
+        public static func failing(
+            _ error: any Error & Sendable,
+            answers: UnansweredCount
+        ) -> LibraryBrowseQuery<Row> {
+            let requests = FixedRequests<[BridgeLibraryPageWindow]>(
+                answers: answers
+            )
+            return LibraryBrowseQuery(
+                setWindows: { requests.request($0) },
+                values: PulledValues(
+                    read: {
+                        _ = try await requests.take()
+                        throw error
+                    },
+                    cancel: { requests.close() }
+                )
+            )
+        }
+    }
+
     /// The requests a fixed query answers: the latest one not yet answered,
     /// handed to the one reader waiting for it. A request counts in `answers`
     /// from when it is made until its reader asks for the next one, or the

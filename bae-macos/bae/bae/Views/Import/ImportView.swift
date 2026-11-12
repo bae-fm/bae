@@ -97,22 +97,21 @@ struct ImportView: View {
                 candidateMutationTasks.removeAll()
             }
         }
-        .alert(
-            "Replace selected metadata?",
-            isPresented: Binding(
-                get: { candidateActionConfirmation != nil },
-                set: { if !$0 { candidateActionConfirmation = nil } }
-            ),
-            presenting: candidateActionConfirmation
-        ) { offer in
-            Button(
-                offer.action.label(count: offer.applicable),
-                role: .destructive
-            ) { performCandidateAction(offer) }
-            Button("Cancel", role: .cancel) {}
-        } message: { _ in
-            Text(
-                "This replaces metadata and cover choices for the selected folders. Source files and track layout are unchanged."
+        .macAlert(item: $candidateActionConfirmation) { offer in
+            (
+                MacAlertWords(
+                    Text("Replace selected metadata?"),
+                    message: Text(
+                        "This replaces metadata and cover choices for the selected folders. Source files and track layout are unchanged."
+                    )
+                ),
+                [
+                    MacAlertButton(
+                        Text(offer.action.label(count: offer.applicable)),
+                        role: .destructive
+                    ) { performCandidateAction(offer) },
+                    MacAlertButton(Text("Cancel"), role: .cancel),
+                ]
             )
         }
     }

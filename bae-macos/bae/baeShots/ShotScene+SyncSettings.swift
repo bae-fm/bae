@@ -194,3 +194,36 @@ private struct SyncSettingsWindow<Page: View>: View {
         )
     }
 }
+
+/// The Settings window on the Library pane, showing People and devices
+/// `subpage` for an admin with `invites` open, with `alert` laid over it.
+@MainActor
+func peopleSettingsWindow(
+    subpage: PeopleAndDevicesPage.Subpage,
+    invites: [BridgeInvite] = [],
+    alert: (MacAlertWords, [MacAlertButton])
+) -> some View {
+    let membership = MembershipStore.stub(
+        people: PreviewData.members(reaching: PreviewData.previewStorage),
+        selfIsAdmin: true,
+        invites: invites
+    )
+    return OverWindow.alert(
+        alert,
+        over: SyncSettingsWindow(
+            shown: .previewSynced,
+            pending: [],
+            undoneSetup: nil,
+            page: PeopleAndDevicesPage(onBack: {}, subpage: subpage)
+                .environment(
+                    PreviewData.previewSync(storage: PreviewData.previewStorage)
+                )
+                .environment(
+                    PreviewData.connectedConfigStore(
+                        storage: PreviewData.previewStorage
+                    )
+                )
+                .environment(membership)
+        )
+    )
+}

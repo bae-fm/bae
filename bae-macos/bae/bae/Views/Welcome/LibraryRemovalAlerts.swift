@@ -1,4 +1,3 @@
-import AppKit
 import BaeKit
 import SwiftUI
 
@@ -7,61 +6,56 @@ import SwiftUI
 @MainActor
 enum LibraryRemovalAlerts {
     /// Asks to end `library`, naming it. When the bridge counted changes this
-    /// Mac hasn't sent, a warning card leads the message.
+    /// Mac hasn't sent, a warning leads the message.
     static func confirmation(
         for library: BridgeLibrary,
         losing loss: RemovalLoss
-    ) -> NSAlert {
-        let alert = NSAlert()
-        alert.messageText = LibraryRemovalConfirmation.title(for: library)
-        let message = LibraryRemovalConfirmation.message(
-            for: library,
-            losing: loss
-        )
-        if LibraryRemovalConfirmation.warnsOfUnsent(loss) {
-            alert.informativeText = ""
-            alert.accessoryView = AlertAccessory.view(
-                VStack(alignment: .leading, spacing: 0) {
-                    Notice(
-                        title: String(localized: "Unsent changes will be lost"),
-                        advice: nil,
-                        error: nil,
-                        tone: .warning,
-                        look: .quiet
-                    )
-                    Text(verbatim: message).themeText(.body)
-                }
-            )
-        }
-        else {
-            alert.informativeText = message
-        }
+    ) -> (MacAlertWords, [MacAlertButton]) {
         let ending = LibraryRemovalConfirmation.Ending(of: library)
-        let action = alert.addButton(withTitle: ending.action)
-        // Removing loses nothing (the library stays in the cloud), so it is the
-        // plain default button; only a never-synced library's Delete is red.
-        action.hasDestructiveAction = ending == .delete
-        let cancel = alert.addButton(withTitle: String(localized: "Cancel"))
-        cancel.keyEquivalent = "\u{1b}"
-        return alert
+        return (
+            MacAlertWords(
+                Text(verbatim: LibraryRemovalConfirmation.title(for: library)),
+                message: Text(
+                    verbatim: LibraryRemovalConfirmation.message(
+                        for: library,
+                        losing: loss
+                    )
+                ),
+                warning: LibraryRemovalConfirmation.warnsOfUnsent(loss)
+                    ? String(localized: "Unsent changes will be lost") : nil
+            ),
+            [
+                // Removing loses nothing (the library stays in the cloud), so
+                // it is the plain default button; only a never-synced
+                // library's Delete is red.
+                MacAlertButton(
+                    Text(verbatim: ending.action),
+                    role: ending == .delete ? .destructive : .regular
+                ),
+                MacAlertButton(Text("Cancel"), role: .cancel),
+            ]
+        )
     }
 
     /// Says why the count or the removal of `failed.library` failed, with
     /// Retry first and Cancel; with OK alone when core says retrying can't
     /// get past it.
-    static func failure(_ failed: FailedRemoval) -> NSAlert {
-        let alert = NSAlert()
-        alert.messageText = String(
-            localized: "Could not remove \(failed.library.name)"
+    static func failure(_ failed: FailedRemoval) -> (
+        MacAlertWords, [MacAlertButton]
+    ) {
+        let words = MacAlertWords(
+            Text("Could not remove \(failed.library.name)"),
+            message: Text(verbatim: failed.error.line)
         )
-        alert.informativeText = failed.error.line
         guard failed.error.offersRetry else {
-            alert.addButton(withTitle: String(localized: "OK"))
-            return alert
+            return (words, [MacAlertButton(Text("OK"))])
         }
-        alert.addButton(withTitle: String(localized: "Retry"))
-        let cancel = alert.addButton(withTitle: String(localized: "Cancel"))
-        cancel.keyEquivalent = "\u{1b}"
-        return alert
+        return (
+            words,
+            [
+                MacAlertButton(Text("Retry")),
+                MacAlertButton(Text("Cancel"), role: .cancel),
+            ]
+        )
     }
 }

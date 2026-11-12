@@ -93,39 +93,57 @@ struct UnpinConfirmation: ViewModifier {
     var pending: PendingUnpin?
     let onAnswer: (PendingUnpin, UnpinAsk.Answer) -> Void
 
-    /// The suppression box, which SwiftUI writes whichever button closes the
-    /// alert; the Unpin button reads it and Cancel ignores it.
+    /// The suppression box, which the alert writes whichever button closes it;
+    /// the Unpin button reads it and Cancel ignores it.
     @State
     private var dontShowAgain = false
 
     func body(content: Content) -> some View {
         content
-            .alert(
-                Text(verbatim: pending?.alertTitle ?? ""),
-                isPresented: Binding(
-                    get: { pending != nil },
+            .macAlert(
+                item: Binding(
+                    get: { pending },
                     set: { presented in
-                        if !presented {
+                        if presented == nil {
                             pending = nil
                             dontShowAgain = false
                         }
                     }
-                ),
-                presenting: pending
+                )
             ) { pending in
-                Button("Unpin") {
-                    onAnswer(pending, .unpin(dontShowAgain: dontShowAgain))
-                }
-                Button("Cancel", role: .cancel) {
-                    onAnswer(pending, .cancel)
-                }
-            } message: { pending in
-                Text(verbatim: pending.alertMessage)
+                Self.alert(
+                    for: pending,
+                    dontShowAgain: $dontShowAgain,
+                    onAnswer: { onAnswer(pending, $0) }
+                )
             }
-            .dialogSuppressionToggle(
-                "Do not show this again",
-                isSuppressed: $dontShowAgain
-            )
+    }
+
+    /// The alert for `pending`. Unpin answers `.unpin` with the box as it
+    /// stands; Cancel answers `.cancel`.
+    static func alert(
+        for pending: PendingUnpin,
+        dontShowAgain: Binding<Bool>,
+        onAnswer: @escaping @MainActor (UnpinAsk.Answer) -> Void
+    ) -> (MacAlertWords, [MacAlertButton]) {
+        (
+            MacAlertWords(
+                Text(verbatim: pending.alertTitle),
+                message: Text(verbatim: pending.alertMessage),
+                suppression: MacAlertWords.Suppression(
+                    Text("Do not show this again"),
+                    isOn: dontShowAgain
+                )
+            ),
+            [
+                MacAlertButton(Text("Unpin")) {
+                    onAnswer(.unpin(dontShowAgain: dontShowAgain.wrappedValue))
+                },
+                MacAlertButton(Text("Cancel"), role: .cancel) {
+                    onAnswer(.cancel)
+                },
+            ]
+        )
     }
 }
 

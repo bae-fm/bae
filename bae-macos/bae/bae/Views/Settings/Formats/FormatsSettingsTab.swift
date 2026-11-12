@@ -210,13 +210,31 @@ private struct PresetRow: View {
                 }
                 .disabled(!canDelete)
             }
-            .confirmationDialog(
-                "Delete the \(preset.name) format?",
-                isPresented: $confirmingDelete
-            ) {
-                Button("Delete", role: .destructive, action: delete)
+            .macAlert(isPresented: $confirmingDelete) {
+                DeleteFormatConfirmation.alert(named: preset.name) { delete() }
             }
         }
+    }
+}
+
+/// The alert that asks before a format is deleted.
+enum DeleteFormatConfirmation {
+    /// The alert for the format called `name`; Delete runs `onDelete`.
+    static func alert(
+        named name: String,
+        onDelete: @escaping @MainActor () -> Void
+    ) -> (MacAlertWords, [MacAlertButton]) {
+        (
+            MacAlertWords(Text("Delete the \(name) format?")),
+            [
+                MacAlertButton(
+                    Text("Delete"),
+                    role: .destructive,
+                    action: onDelete
+                ),
+                MacAlertButton(Text("Cancel"), role: .cancel),
+            ]
+        )
     }
 }
 

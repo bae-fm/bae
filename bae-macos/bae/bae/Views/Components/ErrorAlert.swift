@@ -24,36 +24,41 @@ extension View {
 
     /// An alert titled `title` for whichever failure `error` holds, shaped like
     /// the shared one: core's line, the concrete fault under it, and "Copy
-    /// Details" for the whole chain. Dismissing it clears `error`.
+    /// details" for the whole chain. Dismissing it clears `error`.
     func errorAlert(
         _ title: LocalizedStringKey,
         error: Binding<DisplayError?>
     ) -> some View {
-        alert(
-            title,
-            isPresented: Binding(
-                get: { error.wrappedValue != nil },
-                set: { if !$0 { error.wrappedValue = nil } },
-            )
-        ) {
-            if let detail = error.wrappedValue?.detail {
-                Button("Copy details") {
+        macAlert(item: error) { error in
+            ErrorAlertContent.alert(title: Text(title), error: error)
+        }
+    }
+}
+
+/// What the alert for a failure says: core's line, the concrete fault under it
+/// when there is one, and OK with Copy details for the whole chain.
+enum ErrorAlertContent {
+    static func alert(
+        title: Text,
+        error: DisplayError
+    ) -> (MacAlertWords, [MacAlertButton]) {
+        var buttons = [MacAlertButton(Text("OK"))]
+        if let detail = error.detail {
+            buttons.append(
+                MacAlertButton(Text("Copy details")) {
                     SystemActions.copyToPasteboard(detail)
                 }
-            }
-            Button("OK") { error.wrappedValue = nil }
-        } message: {
-            if let error = error.wrappedValue {
-                if let fault = error.detailSummary {
-                    // Verbatim: both halves are already resolved — core's
-                    // localized line and its untranslated fault — so this is a
-                    // join, not prose for a translator.
-                    Text(verbatim: "\(error.line)\n\n\(fault)")
-                }
-                else {
-                    Text(error.line)
-                }
-            }
+            )
         }
+        // Verbatim: both halves are already resolved — core's localized line
+        // and its untranslated fault — so this is a join, not prose for a
+        // translator.
+        let message =
+            error.detailSummary.map { "\(error.line)\n\n\($0)" }
+            ?? error.line
+        return (
+            MacAlertWords(title, message: Text(verbatim: message)),
+            buttons
+        )
     }
 }

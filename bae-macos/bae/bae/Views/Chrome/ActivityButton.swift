@@ -23,6 +23,10 @@ struct ActivityButton: View {
 
     @State
     private var listShown = false
+    /// The details a problem in the panel opened; the alert shows from here,
+    /// since the panel's popover has closed by then.
+    @State
+    private var openedDetails: ErrorDetails?
     /// The problems the person took out of the panel, by kind, for as long
     /// as they stay listed.
     @State
@@ -87,17 +91,18 @@ struct ActivityButton: View {
                         \.showErrorDetails,
                         ShowErrorDetailsAction { details in
                             listShown = false
-                            // The alert runs modally, so it opens on the
-                            // main actor's next turn, after SwiftUI has
-                            // closed the popover.
+                            // The alert is a sheet, which opens on the main
+                            // actor's next turn, after SwiftUI has closed
+                            // the popover.
                             Task { @MainActor in
-                                ErrorDetailsAlert.show(details)
+                                openedDetails = details
                             }
                         }
                     )
                 }
             }
         }
+        .errorDetailsAlert($openedDetails)
         .onChange(of: problems.listed) { _, listed in
             dismissed.formIntersection(listed)
         }

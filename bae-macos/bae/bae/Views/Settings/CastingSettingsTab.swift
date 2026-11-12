@@ -67,15 +67,17 @@ struct CastingSettingsTab: View {
         // while casting is on, and follows the setting from there.
         .onAppear { cast.startDiscovery(.settingsPage) }
         .onDisappear { cast.stopDiscovery(.settingsPage) }
-        .alert(
-            "Turn off casting?",
-            isPresented: confirmingDisconnect,
-            presenting: pendingDisconnect
-        ) { _ in
-            Button("Turn off") { setEnabled(false) }
-            Button("Cancel", role: .cancel) {}
-        } message: { device in
-            Text("This will stop casting to \(device).")
+        .macAlert(item: $pendingDisconnect) { device in
+            (
+                MacAlertWords(
+                    Text("Turn off casting?"),
+                    message: Text("This will stop casting to \(device).")
+                ),
+                [
+                    MacAlertButton(Text("Turn off")) { setEnabled(false) },
+                    MacAlertButton(Text("Cancel"), role: .cancel),
+                ]
+            )
         }
     }
 
@@ -92,15 +94,6 @@ struct CastingSettingsTab: View {
                 case .apply(let enabled): setEnabled(enabled)
                 case .confirmDisconnect(let device): pendingDisconnect = device
                 }
-            }
-        )
-    }
-
-    private var confirmingDisconnect: Binding<Bool> {
-        Binding(
-            get: { pendingDisconnect != nil },
-            set: { presented in
-                if !presented { pendingDisconnect = nil }
             }
         )
     }

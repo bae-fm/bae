@@ -99,8 +99,7 @@ public struct Notice: View {
     private let detailsOpening: NoticeDetailsOpening
     private let onDismiss: (() -> Void)?
     #if canImport(AppKit)
-        @Environment(\.showErrorDetails)
-        private var showErrorDetails
+        private var showErrorDetails = ErrorDetailsOpener()
     #endif
 
     /// A notice showing the error's line; its Details, when the error has a
@@ -154,6 +153,15 @@ public struct Notice: View {
     }
 
     public var body: some View {
+        #if canImport(AppKit)
+            laidOut.errorDetailsAlert(showErrorDetails.presented)
+        #else
+            laidOut
+        #endif
+    }
+
+    @ViewBuilder
+    private var laidOut: some View {
         switch look {
         case .filled, .quiet:
             row

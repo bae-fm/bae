@@ -9,7 +9,7 @@ extension ShotScene {
     /// Mac's libraries or none, a library's details, the alerts of removing
     /// one, the screens a library opens or resets behind, and the code sheets.
     /// Not shot: the library menu and the Add library menu (system menus),
-    /// the reset confirmation (a SwiftUI alert over the screen), the scanner
+    /// the reset confirmation, the scanner
     /// (the camera), and Add this device, which isn't built.
     static let welcomeScenes: [ShotScene] = [
         welcomeWindow(
@@ -69,18 +69,16 @@ extension ShotScene {
         },
         overWelcome("mac.welcome.remove.failed") { _, window in
             OverWindow.alert(
-                {
-                    LibraryRemovalAlerts.failure(
-                        FailedRemoval(
-                            library: PreviewData.homeMusic,
-                            error: DisplayError(
-                                line:
-                                    "Could not reach the cloud. Check your connection and try again."
-                            ),
-                            retry: .ask
-                        )
+                LibraryRemovalAlerts.failure(
+                    FailedRemoval(
+                        library: PreviewData.homeMusic,
+                        error: DisplayError(
+                            line:
+                                "Could not reach the cloud. Check your connection and try again."
+                        ),
+                        retry: .ask
                     )
-                },
+                ),
                 over: window
             )
         },
@@ -434,39 +432,23 @@ extension ShotScene {
     ) -> ShotScene {
         overWelcome(id) { _, window in
             OverWindow.alert(
-                {
-                    LibraryRemovalAlerts.confirmation(
-                        for: library,
-                        losing: loss
-                    )
-                },
+                LibraryRemovalAlerts.confirmation(
+                    for: library,
+                    losing: loss
+                ),
                 over: window
             )
         }
     }
 
     /// The confirmation to delete the first saved restore code, as the
-    /// saved-codes section's alert words it (`SavedCodeDeletion`); the section
-    /// shows it with a SwiftUI `alert`, which AppKit lays out as this alert.
+    /// saved-codes section's alert words it (`SavedCodeDeletion`).
     private static func savedCodeDeletionAlert() -> ShotScene {
         overWelcome("mac.welcome.saved-code.delete", savedCodes: savedCodes) {
             _,
             window in
             OverWindow.alert(
-                {
-                    let alert = NSAlert()
-                    alert.messageText = SavedCodeDeletion.title
-                    alert.informativeText = SavedCodeDeletion.message
-                    let delete = alert.addButton(
-                        withTitle: SavedCodeDeletion.confirm
-                    )
-                    delete.hasDestructiveAction = true
-                    let cancel = alert.addButton(
-                        withTitle: SavedCodeDeletion.cancel
-                    )
-                    cancel.keyEquivalent = "\u{1b}"
-                    return alert
-                },
+                SavedCodeDeletion.alert {},
                 over: window
             )
         }

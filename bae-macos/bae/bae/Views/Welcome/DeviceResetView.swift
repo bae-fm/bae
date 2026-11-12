@@ -38,11 +38,8 @@ struct DeviceResetView: View {
         offeredNotice
             .padding()
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .alert("Reset from cloud?", isPresented: $confirming) {
-                Button("Reset", role: .destructive, action: onReset)
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text(localizedCoreString(bridgeRecoveryLines().resetWarning))
+            .macAlert(isPresented: $confirming) {
+                DeviceResetConfirmation.alert { onReset() }
             }
     }
 
@@ -113,13 +110,42 @@ struct DeviceResetView: View {
                 Button("Cancel", action: onCancel)
                     .buttonStyle(.bordered)
                     .keyboardShortcut(.cancelAction)
-                Button("Finish reset from cloud", role: .destructive, action: onReset)
-                    .buttonStyle(.bordered)
+                Button(
+                    "Finish reset from cloud",
+                    role: .destructive,
+                    action: onReset
+                )
+                .buttonStyle(.bordered)
             }
             Spacer()
         }
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+/// The alert that asks before this device resets from the cloud.
+enum DeviceResetConfirmation {
+    /// The alert; Reset runs `onReset`.
+    static func alert(
+        onReset: @escaping @MainActor () -> Void
+    ) -> (MacAlertWords, [MacAlertButton]) {
+        (
+            MacAlertWords(
+                Text("Reset from cloud?"),
+                message: Text(
+                    localizedCoreString(bridgeRecoveryLines().resetWarning)
+                )
+            ),
+            [
+                MacAlertButton(
+                    Text("Reset"),
+                    role: .destructive,
+                    action: onReset
+                ),
+                MacAlertButton(Text("Cancel"), role: .cancel),
+            ]
+        )
     }
 }
 

@@ -246,36 +246,10 @@ struct MacMainWindowContainer: View {
     /// `ignoresSafeArea` from sliding the bar under the canvas's fake chrome.
     #Preview("Main app") {
         let uiStore = UiStore()
-        let backing = LibraryView.previewGridBacking(uiStore: uiStore)
-        let library: Library = backing.library
-        let session: LibraryBrowseSession = backing.session
-        let libraryProjections = LibraryProjectionStore(library: library)
-        let importScene = PreviewData.importTabScene()
-        return MacMainWindowContainer()
-            .environment(library)
-            .environment(session)
-            .environment(libraryProjections)
-            .environment(uiStore)
-            .environment(importScene.store)
-            .environment(
-                \.previewPosition,
-                importScene.store.previewPosition.only
-            )
-            .environment(importScene.slot(uiStore: uiStore))
-            .environment(ImportSelection())
-            .environment(SettingsNavigation())
-            .environment(PreviewAudio.stub())
-            .environment(Cast.stub())
-            .environment(CastStart.stub())
-            .environment(CastStore())
-            .environment(SyncActivityStore.preview())
-            .environment(SubsonicStore())
-            .environment(\.libraryLoadError, nil)
-            .albumDetailPreviewEnvironment()
-            .mainWindowPreviewEnvironment()
-            .padding(.top, 1)
-            .frame(width: 1280, height: 800)
-            .windowBackground()
+        PreviewScenes.libraryWindow(
+            uiStore: uiStore,
+            backing: LibraryView.previewGridBacking(uiStore: uiStore)
+        )
     }
 
     /// The empty library's whole window (desktop story 3) — the same

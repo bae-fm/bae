@@ -40,8 +40,7 @@ struct AlbumDetailView: View {
     private var transferError: DisplayError?
     @State
     private var storageTask: Task<Void, Never>?
-    @State
-    private var showingDeleteConfirmation: Bool = false
+    /// The release the menu asked to delete, while its confirmation shows.
     @State
     private var releaseIdPendingDelete: String?
     /// The album the menu asked to delete, while its confirmation shows.
@@ -124,7 +123,6 @@ struct AlbumDetailView: View {
                     },
                     onDeleteRelease: {
                         releaseIdPendingDelete = selectedReleaseId
-                        showingDeleteConfirmation = true
                     },
                     onDeleteAlbum: {
                         albumIdPendingDelete = albumId
@@ -149,10 +147,8 @@ struct AlbumDetailView: View {
         .errorAlert("Transfer failed", error: $transferError)
         .errorAlert("Export failed", error: $exportError)
         .errorAlert("Delete failed", error: $deleteError)
-        .alert("Delete release", isPresented: $showingDeleteConfirmation) {
-            Button("Delete", role: .destructive) {
-                guard let releaseId = releaseIdPendingDelete else { return }
-                releaseIdPendingDelete = nil
+        .macAlert(item: $releaseIdPendingDelete) { releaseId in
+            DeleteReleaseConfirmation.alert {
                 let releaseEditor = releaseEditor
                 // Close the detail only once the delete succeeds: a failure keeps
                 // the release in view and surfaces the error, rather than closing
@@ -167,11 +163,6 @@ struct AlbumDetailView: View {
                     }
                 }
             }
-            Button("Cancel", role: .cancel) { releaseIdPendingDelete = nil }
-        } message: {
-            Text(
-                "This release will be permanently deleted from your devices and the cloud. Original files in your folders will not be touched."
-            )
         }
         .deleteAlbumConfirmation(albumId: $albumIdPendingDelete) { albumId in
             let releaseEditor = releaseEditor

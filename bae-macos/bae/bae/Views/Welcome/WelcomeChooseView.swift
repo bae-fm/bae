@@ -35,6 +35,9 @@ struct WelcomeChooseView: View {
     /// appear.
     @State
     private var listings = WelcomeListings()
+    /// The removal's confirmation and failure, which the flow waits on.
+    @State
+    private var asker = AlertAsker()
 
     private var discoveredLibraries: [BridgeLibrary] {
         listings.localLibraries.value ?? []
@@ -69,6 +72,7 @@ struct WelcomeChooseView: View {
             .scrollBounceBehavior(.basedOnSize)
         }
         .task { await listings.load(from: setup) }
+        .presentsAlerts(of: asker)
     }
 
     /// Read what removing `library` would lose, ask, and remove it. A failure
@@ -78,8 +82,9 @@ struct WelcomeChooseView: View {
             return await offerRetry()
         }
         guard
-            LibraryRemovalAlerts.confirmation(for: library, losing: loss)
-                .runModal() == .alertFirstButtonReturn
+            await asker.ask(
+                LibraryRemovalAlerts.confirmation(for: library, losing: loss)
+            ) == 0
         else { return }
         await listings.remove(
             closedLibrary: library,
@@ -99,11 +104,9 @@ struct WelcomeChooseView: View {
     /// When a removal failed, say so, and on Retry run again what failed.
     private func offerRetry() async {
         guard let failed = removals.failed else { return }
-        let retry = LibraryRemovalAlerts.failure(failed).runModal()
+        let retry = await asker.ask(LibraryRemovalAlerts.failure(failed))
         removals.dismissFailure()
-        guard failed.error.offersRetry, retry == .alertFirstButtonReturn else {
-            return
-        }
+        guard failed.error.offersRetry, retry == 0 else { return }
         switch failed.retry {
         case .ask:
             await askToRemove(failed.library)

@@ -114,6 +114,29 @@ extension SnapshotTestSupport {
         }
     }
 
+    /// Take the notices the window server sends about a sheet that opened or
+    /// closed, handling them and anything else it sends meanwhile in a pool of
+    /// their own, until none comes for a moment.
+    ///
+    /// Like the placement notice, each handled in the run loop is autoreleased
+    /// with the window it names into the pool the test runner holds for the
+    /// whole run, which Swift Testing never drains: a hosted window a sheet
+    /// was begun or ended on then outlived its test. A test that begins or
+    /// ends a sheet, or waits for something that does, calls this after.
+    @MainActor
+    static func takeSheetNotices() {
+        autoreleasepool {
+            while let notice = NSApp.nextEvent(
+                matching: .appKitDefined,
+                until: Date(timeIntervalSinceNow: 0.2),
+                inMode: .default,
+                dequeue: true
+            ) {
+                NSApp.sendEvent(notice)
+            }
+        }
+    }
+
     /// Take any sheet the test left on `window`, and then the window, off the
     /// screen.
     @MainActor

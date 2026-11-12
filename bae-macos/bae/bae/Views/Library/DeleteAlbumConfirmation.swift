@@ -1,3 +1,4 @@
+import BaeKit
 import SwiftUI
 
 /// The alert that asks before an album is deleted: what goes with it, what
@@ -10,23 +11,56 @@ struct DeleteAlbumConfirmation: ViewModifier {
     let onDelete: (String) -> Void
 
     func body(content: Content) -> some View {
-        content.alert(
-            "Delete album",
-            isPresented: Binding(
-                get: { albumId != nil },
-                set: { presented in
-                    if !presented { albumId = nil }
-                }
-            ),
-            presenting: albumId
-        ) { albumId in
-            Button("Delete", role: .destructive) { onDelete(albumId) }
-            Button("Cancel", role: .cancel) {}
-        } message: { _ in
-            Text(
-                "Every release of this album will be permanently deleted from your devices and the cloud. Original files in your folders will not be touched."
-            )
+        content.macAlert(item: $albumId) { albumId in
+            Self.alert { onDelete(albumId) }
         }
+    }
+
+    /// The alert; Delete runs `onDelete`.
+    static func alert(
+        onDelete: @escaping @MainActor () -> Void
+    ) -> (MacAlertWords, [MacAlertButton]) {
+        (
+            MacAlertWords(
+                Text("Delete album"),
+                message: Text(
+                    "Every release of this album will be permanently deleted from your devices and the cloud. Original files in your folders will not be touched."
+                )
+            ),
+            [
+                MacAlertButton(
+                    Text("Delete"),
+                    role: .destructive,
+                    action: onDelete
+                ),
+                MacAlertButton(Text("Cancel"), role: .cancel),
+            ]
+        )
+    }
+}
+
+/// The alert that asks before one release of an album is deleted.
+enum DeleteReleaseConfirmation {
+    /// The alert; Delete runs `onDelete`.
+    static func alert(
+        onDelete: @escaping @MainActor () -> Void
+    ) -> (MacAlertWords, [MacAlertButton]) {
+        (
+            MacAlertWords(
+                Text("Delete release"),
+                message: Text(
+                    "This release will be permanently deleted from your devices and the cloud. Original files in your folders will not be touched."
+                )
+            ),
+            [
+                MacAlertButton(
+                    Text("Delete"),
+                    role: .destructive,
+                    action: onDelete
+                ),
+                MacAlertButton(Text("Cancel"), role: .cancel),
+            ]
+        )
     }
 }
 

@@ -37,9 +37,16 @@ private struct PendingRecordRow: View {
     @State
     private var error: DisplayError?
     #if canImport(AppKit)
-        @Environment(\.showErrorDetails)
-        private var showErrorDetails
+        private var showErrorDetails = ErrorDetailsOpener()
     #endif
+
+    init(
+        record: BridgePendingRecord,
+        perform: ((BridgePendingRecord) async throws -> Void)?
+    ) {
+        self.record = record
+        self.perform = perform
+    }
 
     /// The action's label, when the person can act on this record here.
     private var actionTitle: String? {
@@ -71,6 +78,9 @@ private struct PendingRecordRow: View {
                 Notice(error: error)
             }
         }
+        #if canImport(AppKit)
+            .errorDetailsAlert(showErrorDetails.presented)
+        #endif
         .onDisappear { task?.cancel() }
     }
 
