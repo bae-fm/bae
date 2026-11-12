@@ -37,7 +37,7 @@ class ResetOfferedScreenTest {
         val why =
             ScreenFailure(
                 FailedStep.LIBRARY_OPEN,
-                DisplayError("This device must be reset before syncing.", "another copy of this device"),
+                DisplayError("This device must be reset before it can sync.", "another copy of this device"),
             )
         compose.setContent {
             TestTheme {
@@ -53,7 +53,7 @@ class ResetOfferedScreenTest {
             }
         }
 
-        compose.onNodeWithText("This device must be reset before syncing.").assertIsDisplayed()
+        compose.onNodeWithText("This device must be reset before it can sync.").assertIsDisplayed()
         compose.onNodeWithText(compose.activity.getString(R.string.reset_device)).assertIsDisplayed()
         compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
         compose.waitForIdle()
@@ -71,7 +71,7 @@ class ResetOfferedScreenTest {
         val why =
             ScreenFailure(
                 FailedStep.LIBRARY_OPEN,
-                DisplayError("This device must be reset before syncing.", "another copy of this device"),
+                DisplayError("This device must be reset before it can sync.", "another copy of this device"),
             )
         compose.setContent {
             TestTheme {

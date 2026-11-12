@@ -18,6 +18,7 @@ import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ButtonTone
+import fm.bae.app.ui.components.WordGapTransformation
 
 /** A code field is tall at least as three 24dp lines and the design's 28dp of padding, and grows to six lines. */
 private val CODE_FIELD_MIN_HEIGHT = 98.dp
@@ -50,6 +51,7 @@ fun PasteCodeDialog(
                 label = { Text(text.label) },
                 modifier = Modifier.fillMaxWidth().heightIn(min = CODE_FIELD_MIN_HEIGHT),
                 textStyle = ThemeText.mono.style,
+                visualTransformation = WordGapTransformation,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii, autoCorrectEnabled = false),
                 maxLines = CODE_FIELD_MAX_LINES,
             )
