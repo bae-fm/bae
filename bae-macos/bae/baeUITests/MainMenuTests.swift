@@ -53,7 +53,7 @@ final class MainMenuTests: XCTestCase {
             app.staticTexts["Your music, everywhere"]
                 .waitForExistence(timeout: 20)
         )
-        XCTAssertEqual(primaryWindow.frame.width, 900, accuracy: 2)
+        XCTAssertEqual(primaryWindow.frame.width, 690, accuracy: 2)
     }
 
     /// A main-window section of the empty library a test launches on: the

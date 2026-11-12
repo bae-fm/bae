@@ -41,7 +41,7 @@ enum MainWindow {
 
 /// Bootstrap is a fixed-size setup view inside the primary window.
 enum WelcomeWindow {
-    static let size = CGSize(width: 900, height: 600)
+    static let size = CGSize(width: 690, height: 600)
 }
 
 /// The main window's chrome around the shell: its size limits and the

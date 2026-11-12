@@ -9,7 +9,7 @@
     /// and the previews render one path and can't drift.
     @MainActor
     enum PreviewScenes {
-        /// The welcome window entered at `initialMode`, in its fixed 900x600
+        /// The welcome window entered at `initialMode`, in its fixed 690x600
         /// chrome, over `setup` and the `LibraryRemovals` fixtures. Every flow
         /// can go back to the chooser, which reads both lists from `setup`.
         static func welcome(
