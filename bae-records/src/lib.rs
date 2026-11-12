@@ -4,6 +4,7 @@
 //! edit call inside their own writes, and release storage, behind the
 //! `Records` owner.
 
+mod cache_limit;
 pub mod credits;
 pub mod identity;
 mod models;
@@ -19,6 +20,7 @@ mod upload_progress;
 #[cfg(any(test, feature = "test-utils"))]
 pub mod test_fixtures;
 
+pub use cache_limit::CacheLimit;
 pub use models::*;
 #[cfg(any(test, feature = "test-utils"))]
 pub use records::resolved_in_an_empty_library;

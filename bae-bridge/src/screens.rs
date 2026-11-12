@@ -1,6 +1,7 @@
 //! The only place a screen subscription is built. Every value a screen shows
-//! comes from a coven live query (core's typed wrappers over one) or from a
-//! `KeyedValueStream`, and reaches the app by pull: the app awaits each
+//! comes from a coven live query (core's typed wrappers over one), from
+//! coven's byte watch beside the catalog image cache's changes (what a
+//! device keeps), or from a `KeyedValueStream`, and reaches the app by pull: the app awaits each
 //! value's `next()`. Nothing here takes a channel or a closure loop.
 //!
 //! This file holds the pull every screen read answers through
@@ -292,6 +293,15 @@ pulled_read! {
         LiveValues<bae_subsonic::SubsonicView> => crate::types::BridgeSubsonicView,
     converted by crate::types::BridgeSubsonicView::from_core,
     built by subsonic
+}
+
+pulled_read! {
+    /// What this device keeps for the library: coven's byte measurements and
+    /// the catalog image cache's, now and after each change.
+    DeviceStorageSubscription:
+        LiveValues<bae_library::DeviceStorage> => crate::types::BridgeDeviceStorage,
+    converted by crate::types::BridgeDeviceStorage::from_core,
+    built by device_storage
 }
 
 pulled_read! {

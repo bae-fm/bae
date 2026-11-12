@@ -21,7 +21,7 @@ pub fn namespaces() -> Vec<Namespace> {
         Namespace::new(
             RELEASE_FILES_NAMESPACE,
             Provenance::UserProvided,
-            20 * 1024 * 1024 * 1024, // 20 GiB
+            crate::CacheLimit::DEFAULT.bytes(),
         ),
         Namespace::new(
             COVERS_NAMESPACE,

@@ -8,6 +8,15 @@ impl AppHandle {
     pub fn subscribe_config(&self) -> std::sync::Arc<crate::ConfigSubscription> {
         crate::screens::config(self.services.subscribe_config(), self.runtime.clone())
     }
+
+    /// What this device keeps for the open library, in bytes: the first
+    /// value at once, then one after each change.
+    pub fn subscribe_device_storage(&self) -> std::sync::Arc<crate::DeviceStorageSubscription> {
+        crate::screens::device_storage(
+            self.services.subscribe_device_storage(),
+            self.runtime.clone(),
+        )
+    }
 }
 
 // Every setter writes the preferences row, so each is an async call the host
@@ -71,6 +80,23 @@ forward! { async this => {
 
     fn set_library_full_width(enabled: bool) -> () {
         Ok(this.services.set_library_full_width(enabled).await?)
+    }
+
+    /// Remove everything this device caches for the library; pinned releases
+    /// stay.
+    fn clear_cache() -> () {
+        Ok(this.services.clear_cache().await?)
+    }
+
+    /// Keep up to `choice` of audio cached on this device, removing the least
+    /// recently played down to it.
+    fn set_cache_limit(choice: crate::types::BridgeCacheLimitChoice) -> () {
+        Ok(this.services.set_cache_limit(choice.into_core()).await?)
+    }
+
+    /// Delete the data resets kept on this device.
+    fn delete_data_from_before_reset() -> () {
+        Ok(this.services.delete_data_from_before_reset().await?)
     }
 
     /// Whether Unpin asks before removing a release's files from this device.
@@ -147,3 +173,7 @@ forward! { async this => {
 #[cfg(test)]
 #[path = "config_subscription_tests.rs"]
 mod config_subscription_tests;
+
+#[cfg(test)]
+#[path = "device_storage_tests.rs"]
+mod device_storage_tests;

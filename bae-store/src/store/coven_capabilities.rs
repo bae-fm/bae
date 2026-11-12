@@ -376,6 +376,18 @@ impl Store {
         self.reported(self.inner.handle.local_bytes().await).map_err(DbError::from)
     }
 
+    /// A measurement of what this device keeps for the store at once, then
+    /// a new one after each change to the cache's entries or a budget and
+    /// after each deletion of what resets kept.
+    pub fn subscribe_local_bytes(&self) -> coven::LocalBytesWatch {
+        self.inner.handle.subscribe_local_bytes()
+    }
+
+    /// Delete the installations resets kept on this device.
+    pub async fn delete_discarded_devices(&self) -> Result<(), DbError> {
+        self.reported(self.inner.handle.delete_discarded_devices().await).map_err(DbError::from)
+    }
+
     pub async fn files_pinned(
         &self,
         files: &[coven::FileId],

@@ -564,6 +564,10 @@ impl AppServices {
     delegate_async!(manager, change_cover => change_cover(release_id: &str, selection: bae_library::CoverSelection) -> Result<(), bae_library::LibraryError>);
     delegate_lib!(records, set_album_primary_release => set_album_primary_release(album_id: &str, primary_release_id: &str) -> ());
     delegate_async!(manager, unpin_releases => unpin_releases(release_ids: &[String]) -> Result<(), bae_library::LibraryError>);
+    delegate_async!(manager, clear_cache => clear_cache() -> Result<(), bae_library::LibraryError>);
+    delegate_async!(manager, set_cache_limit => set_cache_limit(limit: bae_records::CacheLimit) -> Result<(), bae_library::LibraryError>);
+    delegate_async!(manager, delete_data_from_before_reset => delete_data_from_before_reset() -> Result<(), bae_library::LibraryError>);
+    delegate_values!(subscribe_device_storage => subscribe_device_storage() -> bae_library::DeviceStorage);
     delegate_async!(manager, upload_releases => upload_releases(release_ids: &[String]) -> Result<bae_library::UploadReleasesOutcome, bae_library::LibraryError>);
     #[cfg(desktop)]
     delegate_async!(manager, make_releases_local => make_releases_local(release_ids: Vec<String>, folder: &std::path::Path) -> Result<(), bae_library::LibraryError>);

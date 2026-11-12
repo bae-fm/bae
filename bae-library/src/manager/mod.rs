@@ -39,6 +39,7 @@ mod artist;
 mod collections;
 mod config;
 mod coven_files;
+mod device_storage;
 #[cfg(desktop)]
 mod document;
 mod downloads;
@@ -73,6 +74,7 @@ mod release;
 mod release_edit;
 #[cfg(desktop)]
 mod release_metadata;
+pub use device_storage::{DeviceStorage, LiveDeviceStorage, StorageKind, StoragePart};
 pub use people::DeviceCutOff;
 #[cfg(desktop)]
 pub use release_edit::ReleaseEdit;

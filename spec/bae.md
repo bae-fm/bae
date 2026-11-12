@@ -2195,7 +2195,7 @@ pushes the covers out:
 
 | Kind | Budget |
 |---|---|
-| Audio and the folder's other files | 20 GiB |
+| Audio and the folder's other files | 20 GB, as Keep up to sets it (§4.7) |
 | Covers | 512 MiB |
 | Artist images | 256 MiB |
 | Avatars | 64 MiB |
@@ -2424,6 +2424,51 @@ stays in it, with its error, until it is cancelled. One that breaks on a bug fai
 the queue goes on to the next. A save keeps the format and save settings it was
 queued with, so editing them changes nothing already queued. Either reads files
 from wherever they are: the person's own path, the cache, or storage.
+
+
+### 4.7 What a device keeps
+
+Settings → Storage shows what this device keeps for the open library, in bytes
+on disk, as a total and a bar of parts; every other library on the device has
+its own. The parts, in this order, each shown while it holds bytes, Library
+always:
+
+- **Pinned**: releases kept whole to play offline, and the pins on the way to
+  being kept (the partial downloads a stopped pin keeps). Pinned releases don't
+  count toward the cache (§4.3).
+- **Cache**: tracks played from the cloud, covers and pictures, and on a
+  desktop the catalog images found while importing. They download again when
+  needed.
+- **Library**: the library's database, its settings and keys, and the copies
+  of files coven keeps until they are stored.
+- **From before the reset**: the installation a reset of this device kept
+  (§6.4), while one is here. Nothing uses it.
+
+Releases imported as local stay in their folders and are not counted.
+
+**Clear Cache** removes every unpinned file and chunk in every kind of file the
+library keeps, and the catalog images on a desktop. Pinned releases and pins on
+the way stay. It asks nothing, and is off while the cache is empty. The two
+stores are cleared one after the other; a failure of either is reported, what
+was cleared stays cleared since it was all cache, and clearing again finishes.
+
+**Keep up to** is how much audio and other release files the cache holds before
+the least recently played go: 1, 5, 10, 20 or 50 GB (decimal, as the byte
+formatters print them), 20 GB until chosen. It is coven's budget for release
+files on this device, in its own table; no choice is stored by bae. Choosing a
+lower limit removes the least recently played files down to it in the same
+write. A budget no choice names is an error, never shown as the default. A
+reset or a restore in place starts it at 20 GB again.
+
+**Delete data from before the reset** deletes the installations resets kept
+on this device, after asking; it is offered while one is here. The library
+isn't affected.
+
+On a Mac the pane is a box with the total and the bar over the parts' legend,
+then Cache (with Clear Cache and Keep up to), Pinned (with Ask before
+unpinning, Appendix C) and, while one is here, From before the reset. Android's
+Storage page, after Transfers in Settings, holds the same in a card and
+sections.
 
 **Edge cases.**
 
@@ -4750,7 +4795,9 @@ last saved of it.
 ### 9.5 Storage and sync
 
 Through `AppServices`: move releases to storage and make them local again,
-pin and unpin, cancel a transition, export and save; set up storage,
+pin and unpin, cancel a transition, export and save; read what this device
+keeps for the library, clear its cache, set how much audio it keeps and
+delete the data a reset kept (§4.7); set up storage,
 cancel a running setup and dismiss one that ended undone (§6.2),
 reconnect, pause, read the pending list and act on its records; list people
 and their devices, watch for a device of this person's that joins after the
@@ -5742,6 +5789,7 @@ The `Bridge*` types live in `bae-bridge/src/types/`, by area:
 | `editing.rs` | release detail and edits, artist credits, the mapping table, edit validation |
 | `pressing.rs` | pressing facts: area, media, labels, status, packaging, Discogs details |
 | `storage_inspector.rs` | the storage inspector's files and transfers |
+| `device_storage.rs` | what this device keeps: its parts, the cache limit and its choices |
 | `live_results.rs` | windows and sections of live lists |
 | `import/candidate.rs`, `import/grouping.rs` | watched folders, candidate files, CUE binding, import steps, grouped folders |
 | `import/identify.rs` | clues, lookups, the run's ledger, identify state |

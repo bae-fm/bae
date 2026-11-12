@@ -5,6 +5,7 @@ mod conversion;
 #[cfg(desktop)]
 mod cover;
 mod device_stop;
+mod device_storage;
 mod editing;
 mod events_and_transfers;
 #[cfg(desktop)]
@@ -30,6 +31,7 @@ pub use configuration::*;
 #[cfg(desktop)]
 pub use cover::*;
 pub use device_stop::*;
+pub use device_storage::*;
 pub use editing::*;
 pub use events_and_transfers::*;
 #[cfg(desktop)]

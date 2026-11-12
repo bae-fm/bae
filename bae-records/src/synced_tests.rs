@@ -94,7 +94,11 @@ fn library_declarations_match_the_store_audience_and_file_contract() {
     assert_eq!(
         namespaces,
         [
-            (RELEASE_FILES_NAMESPACE, &Provenance::UserProvided, 20 * 1024 * 1024 * 1024),
+            (
+                RELEASE_FILES_NAMESPACE,
+                &Provenance::UserProvided,
+                crate::CacheLimit::DEFAULT.bytes()
+            ),
             (COVERS_NAMESPACE, &Provenance::AppProvided, 512 * 1024 * 1024),
             (ARTIST_IMAGES_NAMESPACE, &Provenance::AppProvided, 256 * 1024 * 1024),
         ]

@@ -146,3 +146,35 @@ async fn required_missing_artwork_is_no_image() {
         "{error}"
     );
 }
+
+#[tokio::test]
+async fn the_cache_measures_its_files_clears_them_and_signals_each_change() {
+    let cache = RemoteImageCache::for_test(direct_http(), bae_diagnostics::Diagnostics::noop());
+    let mut changes = cache.watch();
+    assert_eq!(cache.bytes().await.unwrap(), 0);
+
+    cache.put_for_test("https://host/a", &[0x11; 400]).await;
+    assert!(changes.changed().await, "a write is a change");
+    let held = cache.bytes().await.unwrap();
+    assert!(held > 400, "the file and its header: {held}");
+
+    cache.clear().await.unwrap();
+    assert!(changes.changed().await, "a clear is a change");
+    assert_eq!(cache.bytes().await.unwrap(), 0);
+
+    cache.put_for_test("https://host/b", &[0x22; 100]).await;
+    assert!(cache.bytes().await.unwrap() > 100, "the cache takes writes after a clear");
+}
+
+#[tokio::test]
+async fn clearing_a_cache_that_was_never_written_is_fine() {
+    let directory = tempfile::TempDir::new().expect("a temp image-cache directory");
+    let cache = RemoteImageCache::in_dir(
+        direct_http(),
+        directory.path().join("not-made-yet"),
+        u64::MAX,
+        bae_diagnostics::Diagnostics::noop(),
+    );
+    assert_eq!(cache.bytes().await.unwrap(), 0);
+    cache.clear().await.unwrap();
+}

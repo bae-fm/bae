@@ -38,6 +38,9 @@ struct DiskImageCache {
     dir: std::path::PathBuf,
     budget: u64,
     access: Mutex<DiskImageAccess>,
+    /// Counts each change to the folder's files: a write, an eviction, a
+    /// clear.
+    changes: tokio::sync::watch::Sender<u64>,
 }
 
 /// The order this session read and wrote cache files in, which eviction
@@ -51,7 +54,45 @@ struct DiskImageAccess {
 
 impl DiskImageCache {
     fn new(dir: std::path::PathBuf, budget: u64) -> Self {
-        Self { dir, budget, access: Mutex::new(DiskImageAccess::default()) }
+        Self {
+            dir,
+            budget,
+            access: Mutex::new(DiskImageAccess::default()),
+            changes: tokio::sync::watch::channel(0).0,
+        }
+    }
+
+    fn changed(&self) {
+        self.changes.send_modify(|count| *count += 1);
+    }
+
+    /// The bytes of the files in the folder; none when it isn't there.
+    fn bytes(&self) -> std::io::Result<u64> {
+        match self.measure() {
+            Ok(entries) => Ok(entries.iter().map(|(_, _, size)| size).sum()),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(0),
+            Err(error) => Err(error),
+        }
+    }
+
+    /// Remove every file in the folder and start the access order over.
+    fn clear(&self) -> std::io::Result<()> {
+        let entries = match self.measure() {
+            Ok(entries) => entries,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+            Err(error) => return Err(error),
+        };
+        let mut failure = None;
+        for (path, _, _) in entries {
+            if let Err(error) = std::fs::remove_file(&path) {
+                if error.kind() != std::io::ErrorKind::NotFound {
+                    failure.get_or_insert(error);
+                }
+            }
+        }
+        self.with_access(|access| *access = DiskImageAccess::default());
+        self.changed();
+        failure.map_or(Ok(()), Err)
     }
 
     fn path_for(&self, url: &str) -> std::path::PathBuf {
@@ -103,6 +144,7 @@ impl DiskImageCache {
             return;
         }
         self.evict_to_budget();
+        self.changed();
     }
 
     fn write(&self, url: &str, entry: &DiskImageEntry) -> std::io::Result<()> {
@@ -197,6 +239,7 @@ impl DiskImageCache {
     fn discard(&self, path: &std::path::Path, reason: &str) -> Option<DiskImageEntry> {
         warn!("Discarding the cached image at {}: {reason}", path.display());
         self.remove(path);
+        self.changed();
         None
     }
 
@@ -355,10 +398,81 @@ impl RemoteImageCache {
         read_disk(&self.diagnostics, Arc::clone(&self.disk), url.to_string()).await
     }
 
+    /// The bytes the cache's files take on disk now.
+    pub async fn bytes(&self) -> std::io::Result<u64> {
+        measured_bytes(&self.diagnostics, Arc::clone(&self.disk)).await
+    }
+
+    /// Remove every file the cache holds. A file another write puts meanwhile
+    /// is a new entry.
+    pub async fn clear(&self) -> std::io::Result<()> {
+        let disk = Arc::clone(&self.disk);
+        self.diagnostics
+            .blocking("clear the remote image cache", move || disk.clear())
+            .await
+            .map_err(std::io::Error::other)?
+    }
+
+    /// A watch on the cache's files, for a reader that measures them after
+    /// each change.
+    pub fn watch(&self) -> RemoteImageWatch {
+        RemoteImageWatch {
+            disk: Arc::clone(&self.disk),
+            diagnostics: self.diagnostics.clone(),
+            changes: self.disk.changes.subscribe(),
+        }
+    }
+
+    /// Cache `bytes` as the image at `url`, for a test that needs the cache
+    /// to hold one.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn put_for_test(&self, url: &str, bytes: &[u8]) {
+        let image = RemoteImage { bytes: bytes.to_vec(), content_type: ContentType::Jpeg };
+        write_disk(
+            &self.diagnostics,
+            Arc::clone(&self.disk),
+            url.to_string(),
+            DiskImageEntry::Image(image),
+        )
+        .await
+        .expect("the cache writes the image");
+    }
+
     /// The image at `url`, which the caller needs: [`RemoteImageError::NoImage`]
     /// where its host serves none.
     pub async fn fetch_required(&self, url: &str) -> Result<RemoteImage, RemoteImageError> {
         self.fetch(url).await?.ok_or_else(|| RemoteImageError::NoImage { url: url.to_string() })
+    }
+}
+
+async fn measured_bytes(
+    diagnostics: &Diagnostics,
+    disk: Arc<DiskImageCache>,
+) -> std::io::Result<u64> {
+    diagnostics
+        .blocking("measure the remote image cache", move || disk.bytes())
+        .await
+        .map_err(std::io::Error::other)?
+}
+
+/// One subscriber's watch on the cache's files: it hears each write,
+/// eviction and clear, and measures the bytes the files take.
+pub struct RemoteImageWatch {
+    disk: Arc<DiskImageCache>,
+    diagnostics: Diagnostics,
+    changes: tokio::sync::watch::Receiver<u64>,
+}
+
+impl RemoteImageWatch {
+    /// Wait for the next change to the cache's files; `false` once the cache
+    /// is gone.
+    pub async fn changed(&mut self) -> bool {
+        self.changes.changed().await.is_ok()
+    }
+
+    /// The bytes the cache's files take on disk now.
+    pub async fn bytes(&self) -> std::io::Result<u64> {
+        measured_bytes(&self.diagnostics, Arc::clone(&self.disk)).await
     }
 }
 

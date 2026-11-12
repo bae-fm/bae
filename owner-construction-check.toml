@@ -275,6 +275,8 @@ task_types = [
     "LiveDetail",
     "LiveImportCandidate",
     "LiveValues",
+    "LiveDeviceStorage",
+    "CatalogImages",
     "WithSyncState",
     "CancellableLiveQuery",
     "AddedDeviceSubscription",
@@ -291,6 +293,7 @@ task_types = [
     "ComposerDetailSubscription",
     "ComposerDetailRowsSubscription",
     "ConfigSubscription",
+    "DeviceStorageSubscription",
     "DownloadBrowseSubscription",
     "DownloadCountsSubscription",
     "FolderScansSubscription",
@@ -327,6 +330,8 @@ task_types = [
     # One subscriber's watch on the Subsonic server, and on a server's status.
     "SubsonicWatch",
     "ServerWatch",
+    # One subscriber's watch on the catalog image cache's files.
+    "RemoteImageWatch",
     # One subscriber's watch on the outbox's transfers.
     "OutboxTransfersWatch",
     # One subscriber's watch on the Activity transfer lines' bars.
