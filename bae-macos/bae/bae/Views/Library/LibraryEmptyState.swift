@@ -23,18 +23,23 @@ struct LibraryEmptyState: View {
     var body: some View {
         switch (session.albumTotal, nothingCredited) {
         case (0, _), (_, nil):
-            ContentUnavailableView {
+            VStack(spacing: ThemeSpace.group) {
                 Text(title)
-            } description: {
+                    .themeText(.title)
                 Text("Import some music to get started")
-            } actions: {
+                    .themeText(.body)
+                    .foregroundStyle(.secondary)
                 HStack(spacing: ThemeSpace.related) {
                     Button("Import folder…") {
                         uiStore.setImportFolderPickerPresented(true)
                     }
                     AddDiscogsKeyButton()
                 }
+                .padding(.top, ThemeSpace.inline)
             }
+            .multilineTextAlignment(.center)
+            .padding(ThemeSpace.page)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         case (.some, .some(let nothingCredited)):
             ContentUnavailableView {
                 Text(nothingCredited)
