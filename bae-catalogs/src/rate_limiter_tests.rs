@@ -346,6 +346,19 @@ async fn a_refusal_holds_every_waiter_until_its_wait_passes() {
     }
 }
 
+/// A refusal that names a wait no one could mean holds for the longest hold,
+/// and does not overflow the limiter's clock.
+#[tokio::test(start_paused = true)]
+async fn a_refusal_naming_an_endless_wait_holds_the_longest_hold() {
+    let limiter = RateLimiter::counted(INTERVAL, WINDOW, clock());
+    let start = Instant::now();
+    let refused = limiter.wait(CallClass::REQUESTED).await;
+    tokio::time::sleep(Duration::from_secs(1)).await;
+    refused.answered(RateAnswer::Refused { wait: Some(Duration::from_secs(u64::MAX)) });
+    drop(limiter.wait(CallClass::REQUESTED).await);
+    assert_eq!(start.elapsed(), Duration::from_secs(1) + LONGEST_HOLD);
+}
+
 /// A refusal that names no wait holds until the window it counts over has
 /// passed: every request the provider counted has left it by then.
 #[tokio::test(start_paused = true)]

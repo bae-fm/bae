@@ -62,6 +62,12 @@ impl CallClass {
     }
 }
 
+/// The longest a refusal holds the limiter, whatever wait the provider
+/// named: the longest wait the retry loop honours, a minute. A provider asking
+/// for more is saying it is down for now; the first call after the minute is
+/// refused again and holds again.
+const LONGEST_HOLD: Duration = Duration::from_secs(60);
+
 /// What a provider's response said about its rate, read off by the client
 /// that knows the provider's headers.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -428,7 +434,7 @@ impl RateLimiter {
                     let wait = wait.unwrap_or_else(|| {
                         inner.ledger.as_ref().map_or(self.interval, Ledger::window)
                     });
-                    let until = now + wait;
+                    let until = now + wait.min(LONGEST_HOLD);
                     inner.held_until = Some(inner.held_until.map_or(until, |held| held.max(until)));
                     if let Some(ledger) = &mut inner.ledger {
                         ledger.forget_count();
