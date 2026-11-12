@@ -3794,6 +3794,38 @@
    "w": 412,
    "x": 540,
    "y": 1520
+  },
+  "android.settings.library.rename-waiting.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "Library rename: waiting to sync",
+   "w": 412,
+   "x": 3184,
+   "y": 1556
+  },
+  "android.settings.library.rename-done.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "Library rename: done",
+   "w": 412,
+   "x": 3676,
+   "y": 1556
+  },
+  "mac.settings.library.rename-waiting.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Library rename: waiting to sync",
+   "w": 690,
+   "x": 4168,
+   "y": 1556
+  },
+  "mac.settings.library.rename-done.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Library rename: done",
+   "w": 690,
+   "x": 4938,
+   "y": 1556
   }
  },
  "createdOnFiles": {
@@ -5353,6 +5385,10 @@
   "mac.settings.library.sync-problem.dc.html",
   "android.settings.library.renamed.dc.html",
   "mac.settings.library.renamed.dc.html",
+  "android.settings.library.rename-waiting.dc.html",
+  "android.settings.library.rename-done.dc.html",
+  "mac.settings.library.rename-waiting.dc.html",
+  "mac.settings.library.rename-done.dc.html",
   "mac.settings.sync-setup.choose-cloud.dc.html",
   "mac.parts.folder-picker.dc.html",
   "mac.parts.s3-form.dc.html",
