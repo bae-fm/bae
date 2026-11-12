@@ -26,13 +26,13 @@ private struct QueueRowSlot: Identifiable {
 /// section of reorderable rows. `itemAt` returns `nil` for an unloaded context
 /// row, which shows a placeholder and calls `loadRange`.
 struct QueueSection: View {
-    /// A row's inset from the lane's edges, and the gap either side of it.
+    /// A row's inset from the lane's edges, and the gap under it.
     private static let rowInset = ThemeSpace.related
     private static let rowGap = ThemeSpace.hairline
     /// Every row's height, declared rather than measured because the lazy stack
     /// only estimates unbuilt rows and `QueueDragCoordinator` divides by it.
     static let rowHeight =
-        QueueItemRow.artworkSize + 2 * (QueueItemRow.verticalInset + rowGap)
+        QueueItemRow.artworkSize + 2 * QueueItemRow.verticalInset + rowGap
 
     /// `nil` hides the header label, for when only one list is visible.
     let title: String?
@@ -117,7 +117,7 @@ struct QueueSection: View {
                         item.map { removingEntryIds.contains($0.id) } ?? false
                     queueRow(item, index: slot.displaySlot)
                         .padding(.horizontal, Self.rowInset)
-                        .padding(.vertical, Self.rowGap)
+                        .padding(.bottom, Self.rowGap)
                         // Loaded or placeholder, every row takes the pitch the
                         // coordinator's slot math assumes.
                         .frame(height: Self.rowHeight)

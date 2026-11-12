@@ -17,10 +17,6 @@ struct QueueItemRow: View {
     static let horizontalInset = ThemeSpace.related
     static let verticalInset = ThemeSpace.compact
 
-    /// The remove button's own hover, which fills its background.
-    @State
-    private var removeHovered = false
-
     var body: some View {
         HStack(spacing: ThemeSpace.group) {
             artWithHoverOverlay
@@ -52,26 +48,15 @@ struct QueueItemRow: View {
                 Button(action: { onRemove(item.id) }) {
                     Image(systemName: "xmark")
                         .themeIcon(.small)
-                        .foregroundStyle(
-                            removeHovered ? Theme.accent : .secondary
-                        )
+                        .foregroundStyle(.secondary)
                         // A larger click target than the glyph.
                         .frame(
                             width: ThemeSize.hitTarget,
                             height: ThemeSize.hitTarget
                         )
-                        .background(
-                            RoundedRectangle(cornerRadius: ThemeRadius.control)
-                                .fill(
-                                    removeHovered
-                                        ? Theme.accentStrong : Color.clear
-                                )
-                                .frame(width: 24, height: 24)
-                        )
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(PressableIconButtonStyle())
-                .onHover { removeHovered = $0 }
                 .help("Remove from queue")
                 .opacity(isHovered ? 1 : 0)
                 .allowsHitTesting(isHovered)

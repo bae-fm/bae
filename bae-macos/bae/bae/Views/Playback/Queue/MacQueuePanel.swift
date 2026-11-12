@@ -307,6 +307,10 @@ struct MacQueuePanel: View {
             .accessibilityLabel("Go to now playing")
         }
         .card(elevated: true)
+        .overlay {
+            RoundedRectangle(cornerRadius: ThemeRadius.card)
+                .strokeBorder(Theme.hairline, lineWidth: ThemeSpace.hairline)
+        }
         .padding(.horizontal, ThemeSpace.group)
         .padding(.bottom, ThemeSpace.compact)
     }

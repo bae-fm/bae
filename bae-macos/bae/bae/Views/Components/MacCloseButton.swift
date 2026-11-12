@@ -15,10 +15,7 @@ struct MacCloseButton: View {
                 .themeIcon(.medium)
                 .foregroundStyle(.secondary)
                 .frame(width: ThemeSize.hitTarget, height: ThemeSize.hitTarget)
-                .background(
-                    Theme.hover,
-                    in: RoundedRectangle(cornerRadius: ThemeRadius.control)
-                )
+                .background(Theme.hover, in: Circle())
         }
         .buttonStyle(.plain)
         .help("Close")
