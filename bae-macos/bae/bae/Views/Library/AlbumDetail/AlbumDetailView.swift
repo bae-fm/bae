@@ -108,7 +108,10 @@ struct AlbumDetailView: View {
                         presentReleaseEditor(release: selectedDetail)
                     },
                     onOpenStorage: {
-                        presentReleaseStorageSheet(selectedDetail)
+                        presentReleaseStorageSheet(
+                            selectedDetail,
+                            albumTitle: detail.album.title
+                        )
                     },
                     onExportRelease: {
                         exportRelease(releaseId: selectedReleaseId)
@@ -354,12 +357,25 @@ extension AlbumDetailView {
         }
     }
 
-    private func presentReleaseStorageSheet(_ detail: ReleaseDetail) {
+    private func presentReleaseStorageSheet(
+        _ detail: ReleaseDetail,
+        albumTitle: String
+    ) {
         uiStore.presentModal {
             ReleaseStorageSheet(
                 release: detail,
+                albumTitle: albumTitle,
+                asksBeforeUnpinning: configStore.config.askBeforeUnpinning,
                 onAction: { action in
                     performStorageAction(action, releaseId: detail.id)
+                },
+                onUnpinConfirmed: { dontShowAgain in
+                    unpinRelease(
+                        releaseId: detail.id,
+                        steps: UnpinAsk.steps(
+                            after: .unpin(dontShowAgain: dontShowAgain)
+                        )
+                    )
                 },
                 onCancelPin: { cancelPin(releaseId: detail.id) },
                 onExport: { exportRelease(releaseId: detail.id) },
@@ -379,7 +395,7 @@ extension AlbumDetailView {
         case .pin:
             pinRelease(releaseId: releaseId)
         case .unpin:
-            unpinRelease(releaseId: releaseId)
+            unpinRelease(releaseId: releaseId, steps: UnpinAsk.withoutAsking)
         case .upload:
             presentMoveToCloudConfirmSheet(releaseId: releaseId)
         case .detachAudio:
@@ -490,10 +506,16 @@ extension AlbumDetailView {
         }
     }
 
-    private func unpinRelease(releaseId: String) {
+    private func unpinRelease(releaseId: String, steps: [UnpinAsk.Step]) {
         let downloads = downloads
         runStorageTransition {
-            try await downloads.unpinReleases([releaseId])
+            try await UnpinAsk.run(
+                steps,
+                stopAsking: {
+                    try await downloads.setAskBeforeUnpinning(false)
+                },
+                unpin: { try await downloads.unpinReleases([releaseId]) }
+            )
         }
     }
 

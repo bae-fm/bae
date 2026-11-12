@@ -154740,6 +154740,1273 @@
           }
         }
       }
+    },
+    "Unpin “%@”?" : {
+      "comment" : "Alert asking before Unpin removes one release’s files from this Mac; %@ is the album’s title.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "إلغاء تثبيت «%@»؟"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Откачване на „%@“?"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Odepnout „%@“?"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frigør »%@«?"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unpin “%@”?"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "„%@“ loslösen?"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ξεκαρφίτσωμα του «%@»;"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Desfijar «%@»?"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Irrotetaanko ”%@”?"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Désépingler « %@ » ?"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לבטל את ההצמדה של ”%@“?"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Otkvačiti „%@”?"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feloldod a(z) „%@” rögzítését?"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rimuovere il fissaggio di «%@»?"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「%@」のピン留めを解除しますか？"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "‘%@’의 고정을 해제할까요?"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Løsne «%@»?"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "‘%@’ losmaken?"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Odpiąć „%@”?"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desafixar “%@”?"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desafixar “%@”?"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anulezi fixarea pentru „%@”?"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Odopnúť „%@“?"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lossa ”%@”?"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” sabitlemesi kaldırılsın mı?"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Відкріпити «%@»?"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "取消固定“%@”？"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "取消釘選「%@」？"
+          }
+        }
+      }
+    },
+    "Unpin %lld releases?" : {
+      "comment" : "Alert asking before Unpin removes several releases’ files from this Mac; %lld is how many.",
+      "localizations" : {
+        "ar" : {
+          "variations" : {
+            "plural" : {
+              "zero" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "إلغاء تثبيت %lld إصدار؟"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "إلغاء تثبيت إصدار واحد؟"
+                }
+              },
+              "two" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "إلغاء تثبيت إصدارين؟"
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "إلغاء تثبيت %lld إصدارات؟"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "إلغاء تثبيت %lld إصدارًا؟"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "إلغاء تثبيت %lld إصدار؟"
+                }
+              }
+            }
+          }
+        },
+        "bg" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Откачване на %lld издание?"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Откачване на %lld издания?"
+                }
+              }
+            }
+          }
+        },
+        "cs" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Odepnout %lld vydání?"
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Odepnout %lld vydání?"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Odepnout %lld vydání?"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Odepnout %lld vydání?"
+                }
+              }
+            }
+          }
+        },
+        "da" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Frigør %lld udgivelse?"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Frigør %lld udgivelser?"
+                }
+              }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Unpin %lld release?"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Unpin %lld releases?"
+                }
+              }
+            }
+          }
+        },
+        "de" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld Veröffentlichung loslösen?"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld Veröffentlichungen loslösen?"
+                }
+              }
+            }
+          }
+        },
+        "el" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Ξεκαρφίτσωμα %lld κυκλοφορίας;"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Ξεκαρφίτσωμα %lld κυκλοφοριών;"
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "¿Desfijar %lld edición?"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "¿Desfijar %lld ediciones?"
+                }
+              }
+            }
+          }
+        },
+        "fi" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Irrotetaanko %lld julkaisu?"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Irrotetaanko %lld julkaisua?"
+                }
+              }
+            }
+          }
+        },
+        "fr" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Désépingler %lld édition ?"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Désépingler %lld éditions ?"
+                }
+              }
+            }
+          }
+        },
+        "he" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "לבטל את ההצמדה של מהדורה אחת?"
+                }
+              },
+              "two" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "לבטל את ההצמדה של שתי מהדורות?"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "לבטל את ההצמדה של %lld מהדורות?"
+                }
+              }
+            }
+          }
+        },
+        "hr" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Otkvačiti %lld izdanje?"
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Otkvačiti %lld izdanja?"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Otkvačiti %lld izdanja?"
+                }
+              }
+            }
+          }
+        },
+        "hu" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Feloldod %lld kiadás rögzítését?"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Feloldod %lld kiadás rögzítését?"
+                }
+              }
+            }
+          }
+        },
+        "it" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Rimuovere il fissaggio di %lld pubblicazione?"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Rimuovere il fissaggio di %lld pubblicazioni?"
+                }
+              }
+            }
+          }
+        },
+        "ja" : {
+          "variations" : {
+            "plural" : {
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld件のリリースのピン留めを解除しますか？"
+                }
+              }
+            }
+          }
+        },
+        "ko" : {
+          "variations" : {
+            "plural" : {
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "릴리스 %lld개의 고정을 해제할까요?"
+                }
+              }
+            }
+          }
+        },
+        "nb" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Løsne %lld utgivelse?"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Løsne %lld utgivelser?"
+                }
+              }
+            }
+          }
+        },
+        "nl" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld release losmaken?"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld releases losmaken?"
+                }
+              }
+            }
+          }
+        },
+        "pl" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Odpiąć %lld wydanie?"
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Odpiąć %lld wydania?"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Odpiąć %lld wydań?"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Odpiąć %lld wydania?"
+                }
+              }
+            }
+          }
+        },
+        "pt-BR" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Desafixar %lld lançamento?"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Desafixar %lld lançamentos?"
+                }
+              }
+            }
+          }
+        },
+        "pt-PT" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Desafixar %lld edição?"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Desafixar %lld edições?"
+                }
+              }
+            }
+          }
+        },
+        "ro" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Anulezi fixarea pentru %lld ediție?"
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Anulezi fixarea pentru %lld ediții?"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Anulezi fixarea pentru %lld de ediții?"
+                }
+              }
+            }
+          }
+        },
+        "sk" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Odopnúť %lld vydanie?"
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Odopnúť %lld vydania?"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Odopnúť %lld vydania?"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Odopnúť %lld vydaní?"
+                }
+              }
+            }
+          }
+        },
+        "sv" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Lossa %lld utgåva?"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Lossa %lld utgåvor?"
+                }
+              }
+            }
+          }
+        },
+        "tr" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld yayının sabitlemesi kaldırılsın mı?"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld yayının sabitlemesi kaldırılsın mı?"
+                }
+              }
+            }
+          }
+        },
+        "uk" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Відкріпити %lld реліз?"
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Відкріпити %lld релізи?"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Відкріпити %lld релізів?"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Відкріпити %lld релізу?"
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans" : {
+          "variations" : {
+            "plural" : {
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "取消固定 %lld 个版本？"
+                }
+              }
+            }
+          }
+        },
+        "zh-Hant" : {
+          "variations" : {
+            "plural" : {
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "取消釘選 %lld 個發行？"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Its files will be removed from this Mac now. It stays in the cloud, and plays from there while you’re online." : {
+      "comment" : "Unpin alert message for one release.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ستُزال ملفاته من هذا الـ Mac الآن. يبقى في السحابة ويُشغَّل منها أثناء اتصالك بالإنترنت."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Файловете му ще бъдат премахнати от този Mac сега. Остава в облака и се възпроизвежда оттам, докато сте онлайн."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jeho soubory se z tohoto Macu hned odstraní. Zůstane v cloudu a dokud jste online, přehrává se odtud."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dens filer fjernes fra denne Mac nu. Den bliver i skyen og afspilles derfra, mens du er online."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Its files will be removed from this Mac now. It stays in the cloud, and plays from there while you’re online."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ihre Dateien werden jetzt von diesem Mac entfernt. Sie bleibt in der Cloud und wird von dort abgespielt, solange du online bist."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Τα αρχεία της θα αφαιρεθούν τώρα από αυτό το Mac. Παραμένει στο cloud και αναπαράγεται από εκεί όσο είστε online."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sus archivos se eliminarán de este Mac ahora mismo. Sigue en la nube y se reproduce desde ahí mientras tengas conexión."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sen tiedostot poistetaan tästä Macista nyt. Se pysyy pilvessä ja toistetaan sieltä, kun olet verkossa."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ses fichiers seront supprimés de ce Mac dès maintenant. Elle reste dans le cloud et est lue depuis celui-ci tant que vous êtes en ligne."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הקבצים שלה יוסרו מה‑Mac הזה עכשיו. היא נשארת בענן ומתנגנת משם כל עוד יש חיבור לאינטרנט."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Njegove datoteke bit će odmah uklonjene s ovog Maca. Ostaje u oblaku i reproducira se odatle dok ste na mreži."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fájljai azonnal törlődnek erről a Macről. A felhőben megmarad, és onnan játszható le, amíg online vagy."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I suoi file verranno rimossi subito da questo Mac. Resta nel cloud e viene riprodotta da lì finché sei online."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このリリースのファイルは、今すぐこの Mac から削除されます。クラウドには残り、オンラインの間はそこから再生されます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 릴리스의 파일이 지금 이 Mac에서 제거됩니다. 클라우드에는 그대로 남으며, 온라인일 때 클라우드에서 재생됩니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filene fjernes fra denne Macen nå. Utgivelsen blir værende i skyen og spilles av derfra mens du er på nett."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "De bestanden worden nu van deze Mac verwijderd. De release blijft in de cloud en wordt daar vandaan afgespeeld zolang je online bent."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jego pliki zostaną teraz usunięte z tego Maca. Pozostanie w chmurze i będzie odtwarzane stamtąd, gdy jesteś online."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Os arquivos dele serão removidos deste Mac agora. Ele continua na nuvem e é reproduzido de lá enquanto você estiver online."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Os ficheiros da edição serão removidos deste Mac agora. Continua na nuvem e é reproduzida a partir de lá enquanto estiver online."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fișierele ei vor fi eliminate acum de pe acest Mac. Rămâne în cloud și se redă de acolo cât timp ești online."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jeho súbory sa z tohto Macu hneď odstránia. Zostane v cloude a bude sa odtiaľ prehrávať, kým si online."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dess filer tas bort från den här Macen nu. Den ligger kvar i molnet och spelas upp därifrån medan du är online."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dosyaları şimdi bu Mac’ten kaldırılacak. Bulutta kalır ve çevrimiçi olduğunuzda oradan oynatılır."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Його файли буде одразу видалено з цього Mac. Він залишиться в хмарі й відтворюватиметься звідти, поки ви онлайн."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "它的文件将立即从这台 Mac 上移除。它会保留在云端，联网时从云端播放。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "它的檔案將立即從這部 Mac 移除。它會保留在雲端，連線時從雲端播放。"
+          }
+        }
+      }
+    },
+    "Their files will be removed from this Mac now. They stay in the cloud, and play from there while you’re online." : {
+      "comment" : "Unpin alert message for several releases.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ستُزال ملفاتها من هذا الـ Mac الآن. تبقى في السحابة وتُشغَّل منها أثناء اتصالك بالإنترنت."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Файловете им ще бъдат премахнати от този Mac сега. Те остават в облака и се възпроизвеждат оттам, докато сте онлайн."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jejich soubory se z tohoto Macu hned odstraní. Zůstanou v cloudu a dokud jste online, přehrávají se odtud."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deres filer fjernes fra denne Mac nu. De bliver i skyen og afspilles derfra, mens du er online."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Their files will be removed from this Mac now. They stay in the cloud, and play from there while you’re online."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ihre Dateien werden jetzt von diesem Mac entfernt. Sie bleiben in der Cloud und werden von dort abgespielt, solange du online bist."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Τα αρχεία τους θα αφαιρεθούν τώρα από αυτό το Mac. Παραμένουν στο cloud και αναπαράγονται από εκεί όσο είστε online."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sus archivos se eliminarán de este Mac ahora mismo. Siguen en la nube y se reproducen desde ahí mientras tengas conexión."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Niiden tiedostot poistetaan tästä Macista nyt. Ne pysyvät pilvessä ja toistetaan sieltä, kun olet verkossa."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leurs fichiers seront supprimés de ce Mac dès maintenant. Elles restent dans le cloud et sont lues depuis celui-ci tant que vous êtes en ligne."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הקבצים שלהן יוסרו מה‑Mac הזה עכשיו. הן נשארות בענן ומתנגנות משם כל עוד יש חיבור לאינטרנט."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Njihove datoteke bit će odmah uklonjene s ovog Maca. Ostaju u oblaku i reproduciraju se odatle dok ste na mreži."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fájljaik azonnal törlődnek erről a Macről. A felhőben megmaradnak, és onnan játszhatók le, amíg online vagy."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I loro file verranno rimossi subito da questo Mac. Restano nel cloud e vengono riprodotte da lì finché sei online."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "これらのリリースのファイルは、今すぐこの Mac から削除されます。クラウドには残り、オンラインの間はそこから再生されます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 릴리스들의 파일이 지금 이 Mac에서 제거됩니다. 클라우드에는 그대로 남으며, 온라인일 때 클라우드에서 재생됩니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filene fjernes fra denne Macen nå. Utgivelsene blir værende i skyen og spilles av derfra mens du er på nett."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "De bestanden worden nu van deze Mac verwijderd. De releases blijven in de cloud en worden daar vandaan afgespeeld zolang je online bent."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ich pliki zostaną teraz usunięte z tego Maca. Pozostaną w chmurze i będą odtwarzane stamtąd, gdy jesteś online."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Os arquivos deles serão removidos deste Mac agora. Eles continuam na nuvem e são reproduzidos de lá enquanto você estiver online."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Os ficheiros das edições serão removidos deste Mac agora. Continuam na nuvem e são reproduzidas a partir de lá enquanto estiver online."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fișierele lor vor fi eliminate acum de pe acest Mac. Rămân în cloud și se redau de acolo cât timp ești online."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ich súbory sa z tohto Macu hneď odstránia. Zostanú v cloude a budú sa odtiaľ prehrávať, kým si online."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deras filer tas bort från den här Macen nu. De ligger kvar i molnet och spelas upp därifrån medan du är online."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bunların dosyaları şimdi bu Mac’ten kaldırılacak. Bulutta kalırlar ve çevrimiçi olduğunuzda oradan oynatılırlar."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Їхні файли буде одразу видалено з цього Mac. Вони залишаться в хмарі й відтворюватимуться звідти, поки ви онлайн."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "它们的文件将立即从这台 Mac 上移除。它们会保留在云端，联网时从云端播放。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "它們的檔案將立即從這部 Mac 移除。它們會保留在雲端，連線時從雲端播放。"
+          }
+        }
+      }
+    },
+    "Don’t show this again" : {
+      "comment" : "Box on the Unpin alert: turns off Ask before unpinning.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "عدم إظهار هذا مرة أخرى"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Да не се показва отново"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Příště nezobrazovat"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vis ikke dette igen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Don’t show this again"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nicht mehr anzeigen"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Να μην εμφανιστεί ξανά"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No volver a mostrar esto"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Älä näytä tätä uudelleen"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ne plus afficher ce message"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אל תציג זאת שוב"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ne prikazuj ovo ponovno"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ne jelenjen meg újra"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Non mostrare più"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今後このメッセージを表示しない"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "다시 표시하지 않음"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ikke vis dette igjen"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Toon dit niet opnieuw"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nie pokazuj ponownie"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não mostrar isto novamente"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não mostrar novamente"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nu mai afișa acest mesaj"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Už nezobrazovať"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Visa inte detta igen"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bunu bir daha gösterme"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Більше не показувати"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "不再显示此提示"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "不再顯示此提示"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

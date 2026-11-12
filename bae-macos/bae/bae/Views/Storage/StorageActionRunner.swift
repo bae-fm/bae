@@ -17,7 +17,9 @@ import SwiftUI
 /// so it stashes the targets in `pendingMoveToCloud` and the view presents
 /// `MoveToCloudConfirmSheet`. Making
 /// a release local opens an `NSOpenPanel` for the destination folder. The other
-/// transitions run straight away.
+/// transitions run straight away. Unpin asks first while "Ask before
+/// unpinning" is on, so it stashes the targets in `pendingUnpin` and the view
+/// shows the alert (`unpinConfirmation`).
 ///
 /// Every action acts only on the targets the list still holds when it starts —
 /// after its sheet or panel, which the list can change under — so a release
@@ -38,6 +40,10 @@ final class StorageActionRunner {
     /// Releases awaiting the "Move to cloud" confirm sheet. Non-nil while
     /// the sheet is up; the view binds its presentation to this.
     var pendingMoveToCloud: [String]?
+
+    /// Releases awaiting the Unpin alert. Non-nil while it is up; the view
+    /// binds its presentation to this.
+    var pendingUnpin: PendingUnpin?
 
     init(
         releaseEditor: ReleaseEditor,
@@ -121,7 +127,8 @@ final class StorageActionRunner {
     /// defers to the confirm sheet; making local asks for a destination folder
     /// once and queues the whole batch on the download queue, each release in
     /// a folder of its own below it; pin enqueues the whole batch on the
-    /// download queue; unpin releases the whole batch's pins in one call.
+    /// download queue; unpin asks first while the setting says to, then releases
+    /// the whole batch's pins in one call.
     func run(_ action: BridgeReleaseStorageAction, releaseIds: [String]) {
         switch action {
         case .upload:
@@ -141,10 +148,44 @@ final class StorageActionRunner {
         case .unpin:
             let releaseIds = listed(releaseIds)
             guard !releaseIds.isEmpty else { return }
-            Task {
-                do { try await downloads.unpinReleases(releaseIds) }
-                catch { uiStore.showError(error) }
+            if UnpinAsk.asks(
+                askBeforeUnpinning: configStore.config.askBeforeUnpinning
+            ) {
+                pendingUnpin = PendingUnpin(
+                    releaseIds: releaseIds,
+                    title: releaseIds.count == 1
+                        ? storageManagerStore.row(of: releaseIds[0])?.album
+                            .title : nil
+                )
             }
+            else {
+                unpin(releaseIds, steps: UnpinAsk.withoutAsking)
+            }
+        }
+    }
+
+    /// How the Unpin alert closed: the releases it asked about unpin as the
+    /// answer says.
+    func answerUnpin(_ pending: PendingUnpin, _ answer: UnpinAsk.Answer) {
+        let releaseIds = listed(pending.releaseIds)
+        let steps = UnpinAsk.steps(after: answer)
+        guard !releaseIds.isEmpty, !steps.isEmpty else { return }
+        unpin(releaseIds, steps: steps)
+    }
+
+    private func unpin(_ releaseIds: [String], steps: [UnpinAsk.Step]) {
+        let downloads = downloads
+        Task {
+            do {
+                try await UnpinAsk.run(
+                    steps,
+                    stopAsking: {
+                        try await downloads.setAskBeforeUnpinning(false)
+                    },
+                    unpin: { try await downloads.unpinReleases(releaseIds) }
+                )
+            }
+            catch { uiStore.showError(error) }
         }
     }
 

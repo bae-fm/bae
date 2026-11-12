@@ -2251,6 +2251,17 @@ dropped counts none of its file. Its rate is what it has moved since it began ov
 keep them here ([coven §17.8](https://github.com/bae-fm/coven/blob/main/spec/coven.md#178-cache-and-pinning)); unpinning a selection is one write for
 all its releases, and one that can't unpin is named while the rest unpin.
 
+Unpin asks first while the device's `ask_before_unpinning` setting is on, in
+both apps and everywhere Unpin is offered: the Mac's Storage sheet for a
+release, the Storage Manager's row menu (one alert for the whole selection,
+naming the release when it is one and counting them when several), and the
+Android album page's download control. The alert says the files leave this
+device now and the release stays in the cloud and plays from there while online.
+Unpin in the alert unpins; with "Don't show this again" ticked it first turns
+the setting off, and if that write fails nothing unpins and the error reaches
+the person. Cancel changes nothing, ticked or not. With the setting off, Unpin
+unpins at once. The MCP tool's unpin never asks.
+
 Asking to pin several releases queues, in the order asked and in one write,
 each that can be: one already waiting or downloading, pinned, local, or
 deleted meanwhile is passed over, as the releases' storage rows say, and one whose

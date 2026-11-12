@@ -10,7 +10,13 @@ struct ReleaseStorageSheet: View {
     private var library
 
     let releaseId: String
+    /// The album's title, which Unpin's alert names the release by.
+    let albumTitle: String
+    /// Whether Unpin asks first (the person's "Ask before unpinning").
+    let asksBeforeUnpinning: Bool
     let onAction: (BridgeReleaseStorageAction) -> Void
+    /// Unpin, after the alert asked: `dontShowAgain` is its box.
+    let onUnpinConfirmed: (_ dontShowAgain: Bool) -> Void
     let onCancelPin: () -> Void
     let onExport: () -> Void
     let onSaveAs: () -> Void
@@ -47,18 +53,27 @@ struct ReleaseStorageSheet: View {
     private var files: [BridgeFile] = []
     @State
     private var error: DisplayError?
+    /// The release Unpin's alert is asking about, while it shows.
+    @State
+    private var pendingUnpin: PendingUnpin?
 
     /// The sheet for `release`, which its read then follows.
     init(
         release: ReleaseDetail,
+        albumTitle: String,
+        asksBeforeUnpinning: Bool,
         onAction: @escaping (BridgeReleaseStorageAction) -> Void,
+        onUnpinConfirmed: @escaping (Bool) -> Void,
         onCancelPin: @escaping () -> Void,
         onExport: @escaping () -> Void,
         onSaveAs: @escaping () -> Void,
         onDone: @escaping () -> Void
     ) {
         releaseId = release.id
+        self.albumTitle = albumTitle
+        self.asksBeforeUnpinning = asksBeforeUnpinning
         self.onAction = onAction
+        self.onUnpinConfirmed = onUnpinConfirmed
         self.onCancelPin = onCancelPin
         self.onExport = onExport
         self.onSaveAs = onSaveAs
@@ -84,7 +99,7 @@ struct ReleaseStorageSheet: View {
             else {
                 StorageStatusBand(
                     release: release,
-                    onAction: onAction,
+                    onAction: act,
                     onCancelPin: onCancelPin,
                     onExport: onExport,
                     onSaveAs: onSaveAs
@@ -95,6 +110,27 @@ struct ReleaseStorageSheet: View {
         }
         .onAppear { showRelease() }
         .onDisappear { releaseReader?.close() }
+        .unpinConfirmation(pending: $pendingUnpin) { _, answer in
+            if case .unpin(let dontShowAgain) = answer {
+                onUnpinConfirmed(dontShowAgain)
+            }
+        }
+    }
+
+    /// A storage action from the band: Unpin asks first while the setting
+    /// says to, the rest go straight on.
+    private func act(_ action: BridgeReleaseStorageAction) {
+        if action == .unpin,
+            UnpinAsk.asks(askBeforeUnpinning: asksBeforeUnpinning)
+        {
+            pendingUnpin = PendingUnpin(
+                releaseIds: [releaseId],
+                title: albumTitle
+            )
+        }
+        else {
+            onAction(action)
+        }
     }
 
     private func showRelease() {
@@ -235,7 +271,10 @@ struct ReleaseStorageSheet: View {
         )
         ReleaseStorageSheet(
             release: ReleaseDetail(bridge: release),
+            albumTitle: "Low Tide Hours",
+            asksBeforeUnpinning: true,
             onAction: { _ in },
+            onUnpinConfirmed: { _ in },
             onCancelPin: {},
             onExport: {},
             onSaveAs: {},

@@ -49,7 +49,10 @@ struct ReleaseStorageSheetTests {
         try await SnapshotTestSupport.withHostedWindow(
             ReleaseStorageSheet(
                 release: ReleaseDetail(bridge: resting),
+                albumTitle: "Low Tide Hours",
+                asksBeforeUnpinning: true,
                 onAction: { _ in },
+                onUnpinConfirmed: { _ in },
                 onCancelPin: {},
                 onExport: {},
                 onSaveAs: {},

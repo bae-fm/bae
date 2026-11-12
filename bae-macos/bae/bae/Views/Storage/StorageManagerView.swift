@@ -141,6 +141,14 @@ struct StorageManagerView: View {
                 .frame(width: 420)
             }
         }
+        .unpinConfirmation(
+            pending: Binding(
+                get: { runner?.pendingUnpin },
+                set: { runner?.pendingUnpin = $0 }
+            )
+        ) { pending, answer in
+            runner?.answerUnpin(pending, answer)
+        }
         .errorAlert(uiStore)
         .task {
             storageManagerStore.select(selection)
