@@ -2,9 +2,9 @@
 
 .bae-m-window { position: relative; display: flex; overflow: hidden; border-radius: 16px; background: var(--background); color: var(--text-primary); font: 400 13px var(--font-sans); box-shadow: inset 0 0 0 1px var(--hairline); }
 .bae-m-window-plain { flex-direction: column; }
-.bae-m-alert { width: 260px; margin-top: 36px; padding: 20px 16px 16px; border-radius: 20px; background: var(--mac-system-surface); box-shadow: 0 10px 30px var(--shadow); display: flex; flex-direction: column; gap: 10px; text-align: left; color: var(--text-primary); font: 400 13px var(--font-sans); }
+.bae-m-alert { width: 260px; margin-top: 36px; padding: 20px 16px 16px; border-radius: 20px; background: var(--elevated); box-shadow: 0 10px 30px var(--shadow); display: flex; flex-direction: column; gap: 10px; text-align: left; color: var(--text-primary); font: 400 13px var(--font-sans); }
 .bae-m-alert-title { font-weight: 700; }
-.bae-m-alert-message { font-size: 13px; line-height: 17px; color: var(--text-primary); }
+.bae-m-alert-message { font-size: 11px; line-height: 14px; color: var(--text-secondary); }
 .bae-m-alert-buttons { display: flex; flex-direction: row-reverse; gap: 8px; margin-top: 6px; }
 .bae-m-alert-buttons > :not(.sc-host-x), .bae-m-alert-buttons > .sc-host-x > * { flex: 1; min-width: 0; }
 .bae-m-alert-buttons:has(> :nth-child(3)) { flex-direction: column; }
@@ -142,10 +142,6 @@
 .bae-m-progress { display: flex; flex-direction: column; gap: var(--space-related); text-align: left; color: var(--text-primary); font: 400 13px var(--font-sans); }
 .bae-m-note { padding: 6px 4px 0; font: 400 11.5px var(--font-sans); line-height: 15px; color: var(--text-secondary); }
 .bae-m-pane-on .bae-chip { background: color-mix(in srgb, var(--on-fill) 18%, transparent); color: var(--on-fill); }
-.bae-m-alert-icon { display: flex; margin-bottom: 4px; }
-.bae-m-alert .bae-m-btn { height: 28px; border-radius: 999px; background: var(--mac-system-fill); color: var(--text-primary); }
-.bae-m-alert .bae-m-btn-primary { background: var(--mac-system-accent); color: #FFFFFF; }
-.bae-m-alert .bae-m-btn-destructive { background: color-mix(in srgb, var(--mac-system-red) 22%, transparent); color: var(--mac-system-red); }
 .bae-m-popupbutton-open { position: relative; display: inline-flex; }
 .bae-m-popupbutton-menu { position: absolute; left: -31px; z-index: 6; }
 .bae-m-box:has(.bae-m-popupbutton-open) { overflow: visible; }
