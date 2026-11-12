@@ -20,6 +20,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.OpenLibrary
@@ -37,6 +38,7 @@ import fm.bae.app.ui.components.ButtonTone
 import fm.bae.app.ui.components.DialogParts
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.S3KeyFields
+import fm.bae.app.ui.components.closerToAbove
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeInviteAccess
@@ -122,7 +124,7 @@ private fun InviteFormFields(
 ) {
     Column(
         modifier = Modifier.verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
+        verticalArrangement = Arrangement.spacedBy(ThemeSpace.section),
     ) {
         // Where the library is stored is a local read; its fields show once it lands.
         storage?.let { InviteAccessFields(it, input) }
@@ -260,7 +262,12 @@ private fun S3InviteFields(
             style = ThemeText.body.style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        AndroidButton(kind = ButtonKind.TEXT, alignTo = ButtonAlign.TEXT, onClick = { input.usesOwnKey = false }) {
+        AndroidButton(
+            kind = ButtonKind.TEXT,
+            alignTo = ButtonAlign.TEXT,
+            modifier = Modifier.closerToAbove(KEY_SWITCH_PULL),
+            onClick = { input.usesOwnKey = false },
+        ) {
             Text(stringResource(R.string.invite_s3_use_their_key))
         }
     } else {
@@ -272,8 +279,16 @@ private fun S3InviteFields(
             secretNote = stringResource(R.string.invite_s3_theirs_note),
             accessKeyIdModifier = Modifier.focusRequester(first),
         )
-        AndroidButton(kind = ButtonKind.TEXT, alignTo = ButtonAlign.FIELD, onClick = { input.usesOwnKey = true }) {
+        AndroidButton(
+            kind = ButtonKind.TEXT,
+            alignTo = ButtonAlign.FIELD,
+            modifier = Modifier.closerToAbove(KEY_SWITCH_PULL),
+            onClick = { input.usesOwnKey = true },
+        ) {
             Text(stringResource(R.string.invite_s3_use_my_key))
         }
     }
 }
+
+/** The button that swaps whose key the invite uses sits 8dp closer to what is above it than the form's gap. */
+private val KEY_SWITCH_PULL = 8.dp

@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import fm.bae.app.AppSessionHolder
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
@@ -67,8 +68,16 @@ import uniffi.bae_bridge.BridgeSyncTone
 
 private val logger = BaeLogger("bae.SyncScreen")
 
-/** The padding of a cause, a fix and the time of the last sync inside the block's card. */
-private val BLOCK_PADDING = PaddingValues(start = ThemeSpace.edge, end = ThemeSpace.edge, bottom = ThemeSpace.group)
+/** The padding of a cause inside the status card: the line under the status, then 10dp before what follows. */
+private val CAUSE_PADDING =
+    PaddingValues(start = ThemeSpace.edge, top = ThemeSpace.line, end = ThemeSpace.edge, bottom = 10.dp)
+
+/** The padding of the fix button, which the design sets 14dp above the card's foot. */
+private val FIX_PADDING =
+    PaddingValues(start = ThemeSpace.edge, top = ThemeSpace.line, end = ThemeSpace.edge, bottom = 14.dp)
+
+/** The padding of the time of the last sync, the card's last line. */
+private val LAST_SYNCED_PADDING = PaddingValues(start = ThemeSpace.edge, end = ThemeSpace.edge, bottom = 14.dp)
 
 /** How long ago the preview's last sync was. */
 private const val PREVIEW_LAST_SYNCED_SECONDS = 259_200L
@@ -444,24 +453,26 @@ internal fun SyncStatusBlock(
 
         is SyncLine.Read -> {
             val shown = line.shown
+            val fixLabel = shown.fix?.let { syncFixLabel(it) }
             AndroidCard {
                 AndroidRow(
                     title = stringResource(R.string.sync_status),
                     subtitle = syncStatusText(context, shown),
                     tone = shown.tone.statusTone(),
+                    followed = shown.cause != null || fixLabel != null || shown.lastSynced != null,
                 )
                 shown.cause?.let { cause ->
                     Text(
                         text = syncCauseText(context, cause),
                         style = ThemeText.body.style,
-                        modifier = Modifier.joinsTileAbove().padding(BLOCK_PADDING),
+                        modifier = Modifier.joinsTileAbove().padding(CAUSE_PADDING),
                     )
                 }
                 shown.fix?.let { fix ->
-                    syncFixLabel(fix)?.let { label ->
+                    fixLabel?.let { label ->
                         AndroidButton(
                             onClick = { onFix(fix) },
-                            modifier = Modifier.joinsTileAbove().padding(BLOCK_PADDING),
+                            modifier = Modifier.joinsTileAbove().padding(FIX_PADDING),
                         ) {
                             Text(label)
                         }
@@ -472,7 +483,7 @@ internal fun SyncStatusBlock(
                         text = stringResource(R.string.sync_last_synced, syncLastSyncedText(moment)),
                         style = ThemeText.body.style,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.joinsTileAbove().padding(BLOCK_PADDING),
+                        modifier = Modifier.joinsTileAbove().padding(LAST_SYNCED_PADDING),
                     )
                 }
             }

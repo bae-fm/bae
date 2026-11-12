@@ -29,11 +29,13 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidCard
+import fm.bae.app.ui.components.AndroidNote
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidSection
 import fm.bae.app.ui.components.AndroidSpinner
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.rememberCopyText
+import fm.bae.app.ui.components.withWordGap
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -184,14 +186,17 @@ internal fun RestoreCodeSectionContent(
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(ThemeSpace.group),
+        verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
     ) {
         AndroidSection(text = stringResource(R.string.restore_code_title))
         RestoreCodeBody(needsS3Key = needsS3Key, state = state, onShow = onShow, onHide = onHide, onPrint = onPrint)
     }
 }
 
-/** What the restore code shows: its caption and the code, a spinner while it is made, or why it couldn't be. */
+/**
+ * What the restore code shows: the code in its card, Show or Hide, Copy and Print under it, then the notes that say
+ * what it is for; a spinner while it is made, or why it couldn't be.
+ */
 @Composable
 internal fun RestoreCodeBody(
     needsS3Key: Boolean,
@@ -200,10 +205,7 @@ internal fun RestoreCodeBody(
     onHide: () -> Unit,
     onPrint: (String) -> Unit,
 ) {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(ThemeSpace.group),
-    ) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         when (state) {
             RestoreCodeState.Closed -> {
                 Unit
@@ -214,13 +216,13 @@ internal fun RestoreCodeBody(
             }
 
             is RestoreCodeState.Masked -> {
-                Caption(needsS3Key)
                 CodeBox(code = state.code, shown = false, onToggle = onShow, onPrint = onPrint)
+                Notes(needsS3Key)
             }
 
             is RestoreCodeState.Shown -> {
-                Caption(needsS3Key)
                 CodeBox(code = state.code, shown = true, onToggle = onHide, onPrint = onPrint)
+                Notes(needsS3Key)
             }
 
             is RestoreCodeState.Failed -> {
@@ -230,29 +232,22 @@ internal fun RestoreCodeBody(
     }
 }
 
+/** The notes under the buttons, each [ThemeSpace.related] below what is above it. */
 @Composable
-private fun Caption(needsS3Key: Boolean) {
-    // The caption's text lines up with the rows' text, as a section heading does.
-    Column(
-        modifier = Modifier.padding(horizontal = ThemeSpace.page - ThemeSpace.edge),
-        verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
-    ) {
-        Text(
-            text = stringResource(R.string.restore_code_explanation),
-            style = ThemeText.body.style,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+private fun Notes(needsS3Key: Boolean) {
+    AndroidNote(
+        text = stringResource(R.string.restore_code_explanation),
+        modifier = Modifier.padding(top = ThemeSpace.related),
+    )
+    if (needsS3Key) {
+        AndroidNote(
+            text = stringResource(R.string.restore_code_s3_key),
+            modifier = Modifier.padding(top = ThemeSpace.related),
         )
-        if (needsS3Key) {
-            Text(
-                text = stringResource(R.string.restore_code_s3_key),
-                style = ThemeText.body.style,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
     }
 }
 
-/** The code, masked or shown, with Show or Hide, Copy and Print under it. */
+/** The code, masked or shown, in its card, with Show or Hide, Copy and Print under it. */
 @Composable
 private fun CodeBox(
     code: String,
@@ -266,14 +261,15 @@ private fun CodeBox(
         if (shown) {
             SelectionContainer {
                 Text(
-                    text = code,
+                    text = code.withWordGap(),
                     style = ThemeText.mono.style,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(ThemeSpace.edge),
                 )
             }
         } else {
             Text(
-                text = maskedRestoreCode(code),
+                text = maskedRestoreCode(code).withWordGap(),
                 style = ThemeText.mono.style,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier =
@@ -283,7 +279,10 @@ private fun CodeBox(
             )
         }
     }
-    Row(horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
+    Row(
+        modifier = Modifier.padding(top = ThemeSpace.group),
+        horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
+    ) {
         AndroidButton(kind = ButtonKind.OUTLINED, onClick = onToggle) {
             Text(stringResource(if (shown) R.string.hide else R.string.restore_code_show))
         }

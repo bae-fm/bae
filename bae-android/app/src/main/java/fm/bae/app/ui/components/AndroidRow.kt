@@ -57,8 +57,9 @@ internal class RowSwitch(
  * [selected] tints the row for the one choice made; a [value] is the title's value
  * at the row's far end, in the secondary colour. The [subtitle] wraps, read whole, as Material's supporting text does;
  * [subtitleContent] draws the line itself where its words change as the row runs. A [nested] row is a
- * setting that belongs to the switch row above it: joined to it in one tile and set in. A row that
- * is not [enabled] shows dimmed and does nothing. A row with an [onClick] opens or changes something,
+ * setting that belongs to the switch row above it: joined to it in one tile and set in. A row that is
+ * [followed] by lines of its own tile (a status with its cause under it) has no minimum height and only 4dp
+ * below. A row that is not [enabled] shows dimmed and does nothing. A row with an [onClick] opens or changes something,
  * which [onClickLabel] names for screen readers. A row with a [switch] is a setting turned on or off:
  * the whole row toggles, its title names the switch, and the switch is drawn at the far end.
  */
@@ -77,6 +78,7 @@ internal fun AndroidRow(
     destructive: Boolean = false,
     selected: Boolean = false,
     nested: Boolean = false,
+    followed: Boolean = false,
     enabled: Boolean = true,
     onClick: (() -> Unit)? = null,
     onClickLabel: String? = null,
@@ -88,6 +90,7 @@ internal fun AndroidRow(
         modifier =
             modifier.cardRowSurface(
                 nested = nested,
+                followed = followed,
                 twoLines = subtitle != null || subtitleContent != null,
                 selected = selected,
                 enabled = enabled,
@@ -157,6 +160,7 @@ private fun Title(
 @Composable
 private fun Modifier.cardRowSurface(
     nested: Boolean,
+    followed: Boolean,
     twoLines: Boolean,
     selected: Boolean,
     enabled: Boolean,
@@ -167,7 +171,7 @@ private fun Modifier.cardRowSurface(
     val accent = MaterialTheme.colorScheme.primary
     val minHeight =
         when {
-            nested -> 0.dp
+            nested || followed -> 0.dp
             twoLines -> TWO_LINE_HEIGHT
             else -> ONE_LINE_HEIGHT
         }
@@ -203,7 +207,7 @@ private fun Modifier.cardRowSurface(
             start = if (nested) ThemeSpace.edge + ThemeSpace.section else ThemeSpace.edge,
             top = if (nested) 0.dp else ThemeSpace.group,
             end = ThemeSpace.edge,
-            bottom = ThemeSpace.group,
+            bottom = if (followed) ThemeSpace.inline else ThemeSpace.group,
         )
 }
 

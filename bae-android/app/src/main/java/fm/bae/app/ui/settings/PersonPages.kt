@@ -10,7 +10,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -23,10 +22,10 @@ import fm.bae.app.coreString
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidCard
 import fm.bae.app.ui.components.AndroidMoreMenu
+import fm.bae.app.ui.components.AndroidNote
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidSection
 import fm.bae.app.ui.components.ButtonKind
@@ -111,11 +110,7 @@ internal fun PersonPage(
         }
         (member.access as? BridgeMemberAccess.S3AccessKey)?.let { key ->
             item {
-                Text(
-                    text = LocalContext.current.coreString("core.access_key.id", mapOf("key" to key.accessKeyId)),
-                    style = ThemeText.detail.style,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                AndroidNote(LocalContext.current.coreString("core.access_key.id", mapOf("key" to key.accessKeyId)))
             }
         }
         item { AndroidSection(text = stringResource(R.string.people_devices)) }
