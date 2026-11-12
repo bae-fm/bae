@@ -15,7 +15,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 
-/** A [AndroidCard] holds for any content, including none: it hides the first row's top hairline without going below 0 high. */
+/** A [AndroidCard] holds for any content, including none: it measures 0 high with no rows, with no gap left over. */
 @RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
 class AndroidCardTest {

@@ -1,6 +1,5 @@
 package fm.bae.app.ui.components
 
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -19,7 +18,7 @@ internal fun AndroidDisclosure(
     open: Boolean,
     onToggle: () -> Unit,
     summary: String? = null,
-    content: @Composable ColumnScope.() -> Unit,
+    content: @Composable () -> Unit,
 ) {
     AndroidCard {
         AndroidRow(

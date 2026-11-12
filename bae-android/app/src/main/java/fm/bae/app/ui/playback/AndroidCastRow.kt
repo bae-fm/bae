@@ -35,7 +35,6 @@ import fm.bae.app.ui.components.AndroidSheet
 import fm.bae.app.ui.components.AndroidSpinner
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.MoreMenu
-import fm.bae.app.ui.components.cardRowDivider
 import uniffi.bae_bridge.BridgeCastReceiver
 import uniffi.bae_bridge.BridgeCastReceiverList
 import uniffi.bae_bridge.BridgeRendererKind
@@ -78,7 +77,6 @@ internal fun AndroidCastRow(
     Row(
         modifier =
             Modifier
-                .cardRowDivider()
                 .fillMaxWidth()
                 .then(
                     when (role) {
