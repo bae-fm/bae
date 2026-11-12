@@ -96,7 +96,6 @@
     <string name="gallery_loading_image">טוען את התמונה…</string>
     <string name="settings_library">ספרייה</string>
     <string name="library_name_row">שם</string>
-    <string name="restore_code_summary">משחזר את הספרייה שלך אם איבדת את כל המכשירים</string>
     <plurals name="people_count">
         <item quantity="one">אדם אחד</item>
         <item quantity="two">שני אנשים</item>

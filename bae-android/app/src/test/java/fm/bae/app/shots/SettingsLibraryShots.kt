@@ -58,5 +58,4 @@ private fun Library(
     onRename = {},
     onOpenSync = {},
     onOpenPeople = {},
-    onOpenRestoreCode = {},
 )

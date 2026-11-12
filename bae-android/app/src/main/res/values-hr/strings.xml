@@ -96,7 +96,6 @@
     <string name="gallery_loading_image">Učitavanje slike…</string>
     <string name="settings_library">Fonoteka</string>
     <string name="library_name_row">Naziv</string>
-    <string name="restore_code_summary">Vraća vašu fonoteku ako izgubite sve uređaje</string>
     <plurals name="people_count">
         <item quantity="one">%1$d osoba</item>
         <item quantity="few">%1$d osobe</item>

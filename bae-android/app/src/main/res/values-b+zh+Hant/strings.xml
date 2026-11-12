@@ -94,7 +94,6 @@
     <string name="gallery_loading_image">正在載入圖片…</string>
     <string name="settings_library">資料庫</string>
     <string name="library_name_row">名稱</string>
-    <string name="restore_code_summary">遺失所有裝置後，可用它找回你的資料庫</string>
     <plurals name="people_count">
         <item quantity="other">%1$d 人</item>
     </plurals>

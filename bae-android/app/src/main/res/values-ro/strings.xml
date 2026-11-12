@@ -101,7 +101,6 @@
     <string name="gallery_loading_image">Se încarcă imaginea…</string>
     <string name="settings_library">Bibliotecă</string>
     <string name="library_name_row">Nume</string>
-    <string name="restore_code_summary">Îți recuperează biblioteca dacă pierzi toate dispozitivele</string>
     <plurals name="people_count">
         <item quantity="one">%1$d persoană</item>
         <item quantity="few">%1$d persoane</item>

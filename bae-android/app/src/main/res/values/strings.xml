@@ -130,7 +130,6 @@
     <!-- Settings -->
     <string name="settings_library">Library</string>
     <string name="library_name_row">Name</string>
-    <string name="restore_code_summary">Gets your library back if you lose every device</string>
     <plurals name="people_count">
         <item quantity="one">%1$d person</item>
         <item quantity="other">%1$d people</item>

@@ -94,7 +94,6 @@
     <string name="gallery_loading_image">画像を読み込み中…</string>
     <string name="settings_library">ライブラリ</string>
     <string name="library_name_row">名前</string>
-    <string name="restore_code_summary">すべてのデバイスを失っても、ライブラリを取り戻せます</string>
     <plurals name="people_count">
         <item quantity="other">%1$d人</item>
     </plurals>

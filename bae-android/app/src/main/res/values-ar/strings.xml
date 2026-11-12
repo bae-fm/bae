@@ -99,7 +99,6 @@
     <string name="gallery_loading_image">جارٍ تحميل الصورة…</string>
     <string name="settings_library">المكتبة</string>
     <string name="library_name_row">الاسم</string>
-    <string name="restore_code_summary">يستعيد مكتبتك إذا فقدت كل أجهزتك</string>
     <plurals name="people_count">
         <item quantity="zero">%1$d أشخاص</item>
         <item quantity="one">شخص واحد</item>

@@ -95,7 +95,6 @@
     <string name="gallery_loading_image">Afbeelding laden…</string>
     <string name="settings_library">Bibliotheek</string>
     <string name="library_name_row">Naam</string>
-    <string name="restore_code_summary">Haalt je bibliotheek terug als je al je apparaten kwijtraakt</string>
     <plurals name="people_count">
         <item quantity="one">%1$d persoon</item>
         <item quantity="other">%1$d personen</item>

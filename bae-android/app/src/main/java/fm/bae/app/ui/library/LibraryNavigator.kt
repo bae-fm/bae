@@ -10,7 +10,6 @@ import fm.bae.app.ui.downloads.DownloadsScreen
 import fm.bae.app.ui.settings.CastingSettingsScreen
 import fm.bae.app.ui.settings.LibrarySettingsScreen
 import fm.bae.app.ui.settings.MembersScreen
-import fm.bae.app.ui.settings.RestoreCodeScreen
 import fm.bae.app.ui.settings.SettingsScreen
 import fm.bae.app.ui.settings.StorageSetupScreen
 import fm.bae.app.ui.settings.SyncScreen
@@ -51,9 +50,6 @@ internal sealed interface LibraryDestination {
 
     /** The state sync is in, the library's storage, and what sync waits on, each with its action. */
     data object Sync : Setting
-
-    /** The recovery code that restores the library. */
-    data object RestoreCode : Setting
 
     data object Settings : Setting
 
@@ -199,10 +195,6 @@ private fun SettingsDestinationScreen(
 
         LibraryDestination.Sync -> {
             SyncScreen(session = session, actions = actions, onBack = onBack, onPush = onPush)
-        }
-
-        LibraryDestination.RestoreCode -> {
-            RestoreCodeScreen(session = session, onBack = onBack)
         }
 
         LibraryDestination.Transfers -> {

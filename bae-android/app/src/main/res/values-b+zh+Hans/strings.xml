@@ -94,7 +94,6 @@
     <string name="gallery_loading_image">正在载入图片…</string>
     <string name="settings_library">库</string>
     <string name="library_name_row">名称</string>
-    <string name="restore_code_summary">丢失所有设备后，可用它找回你的库</string>
     <plurals name="people_count">
         <item quantity="other">%1$d 人</item>
     </plurals>

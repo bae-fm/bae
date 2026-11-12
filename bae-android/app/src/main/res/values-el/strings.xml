@@ -99,7 +99,6 @@
     <string name="gallery_loading_image">Φόρτωση της εικόνας…</string>
     <string name="settings_library">Βιβλιοθήκη</string>
     <string name="library_name_row">Όνομα</string>
-    <string name="restore_code_summary">Επαναφέρει τη βιβλιοθήκη σας αν χάσετε όλες τις συσκευές σας</string>
     <plurals name="people_count">
         <item quantity="one">%1$d άτομο</item>
         <item quantity="other">%1$d άτομα</item>

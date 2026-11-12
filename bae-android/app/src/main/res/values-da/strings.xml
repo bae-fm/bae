@@ -99,7 +99,6 @@
     <string name="gallery_loading_image">Indlæser billedet…</string>
     <string name="settings_library">Bibliotek</string>
     <string name="library_name_row">Navn</string>
-    <string name="restore_code_summary">Henter dit bibliotek tilbage, hvis du mister alle dine enheder</string>
     <plurals name="people_count">
         <item quantity="one">%1$d person</item>
         <item quantity="other">%1$d personer</item>

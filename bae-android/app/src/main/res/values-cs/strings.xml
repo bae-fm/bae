@@ -97,7 +97,6 @@
     <string name="gallery_loading_image">Načítání obrázku…</string>
     <string name="settings_library">Knihovna</string>
     <string name="library_name_row">Název</string>
-    <string name="restore_code_summary">Vrátí vaši knihovnu, když ztratíte všechna zařízení</string>
     <plurals name="people_count">
         <item quantity="one">%1$d osoba</item>
         <item quantity="few">%1$d osoby</item>

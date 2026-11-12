@@ -95,7 +95,6 @@
     <string name="gallery_loading_image">Görsel yükleniyor…</string>
     <string name="settings_library">Kitaplık</string>
     <string name="library_name_row">Ad</string>
-    <string name="restore_code_summary">Tüm cihazlarınızı kaybederseniz kitaplığınızı geri getirir</string>
     <plurals name="people_count">
         <item quantity="one">%1$d kişi</item>
         <item quantity="other">%1$d kişi</item>

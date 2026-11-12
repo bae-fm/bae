@@ -44,7 +44,7 @@ struct LibrarySettingsTab: View {
 
     /// The pages the Library pane opens.
     private enum Page: Hashable {
-        case sync, people, restoreCode
+        case sync, people
     }
 
     var body: some View {
@@ -79,9 +79,6 @@ struct LibrarySettingsTab: View {
                                 }
                             }
                         }
-                        NavigationLink(value: Page.restoreCode) {
-                            Text("Restore code")
-                        }
                     }
                 } footer: {
                     if !configStore.syncs, !setupRunning {
@@ -103,8 +100,6 @@ struct LibrarySettingsTab: View {
                     )
                 case .people:
                     PeopleAndDevicesDestination()
-                case .restoreCode:
-                    RestoreCodeSettingsPage(reveal: restoreCode)
                 }
             }
         }
@@ -284,21 +279,8 @@ private struct PeopleAndDevicesDestination: View {
     }
 }
 
-/// The Restore code page: the person's restore code, masked until shown.
-private struct RestoreCodeSettingsPage: View {
-    let reveal: RestoreCodeReveal
-
-    var body: some View {
-        Form {
-            LibraryRestoreCodeSection(reveal: reveal)
-        }
-        .formStyle(.grouped)
-        .navigationTitle("Restore code")
-    }
-}
-
-/// The restore code section as Library settings shows it, on the Sync page
-/// and on the Restore code page: printing names where the library is stored.
+/// The restore code section as Library settings shows it, on the Sync page:
+/// printing names where the library is stored.
 private struct LibraryRestoreCodeSection: View {
     let reveal: RestoreCodeReveal
 

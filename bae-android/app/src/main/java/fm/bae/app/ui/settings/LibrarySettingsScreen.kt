@@ -33,15 +33,13 @@ import fm.bae.app.ui.components.AndroidScreen
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.library.LibraryDestination
 import fm.bae.app.ui.rememberScreenScope
-import fm.bae.app.ui.storageLocationLabel
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeMemberRole
-import uniffi.bae_bridge.BridgeStorageLocation
 
 /**
- * The open library: its name, with Rename for an admin, and rows that show where its sync, its people and devices and
- * its restore code stand and open their pages. A library with no storage has the name and a Sync row that offers
- * setting sync up; people and the restore code live in the library's store, which only storage has.
+ * The open library: its name, with Rename for an admin, and rows that show where its sync and its people and devices
+ * stand and open their pages. A library with no storage has the name and a Sync row that offers
+ * setting sync up; people live in the library's store, which only storage has.
  */
 @Composable
 internal fun LibrarySettingsScreen(
@@ -69,7 +67,6 @@ internal fun LibrarySettingsScreen(
         onRename = { renaming = true },
         onOpenSync = { onPush(LibraryDestination.Sync) },
         onOpenPeople = { onPush(LibraryDestination.Members) },
-        onOpenRestoreCode = { onPush(LibraryDestination.RestoreCode) },
     ) {
         LibraryNameFailures(model = model)
     }
@@ -93,7 +90,6 @@ internal fun AndroidSettingsLibrary(
     onRename: () -> Unit,
     onOpenSync: () -> Unit,
     onOpenPeople: () -> Unit,
-    onOpenRestoreCode: () -> Unit,
     aboveRows: @Composable ColumnScope.() -> Unit = {},
 ) {
     AndroidScreen(
@@ -132,11 +128,6 @@ internal fun AndroidSettingsLibrary(
                         title = stringResource(R.string.members_title),
                         subtitle = peopleAndDevices,
                         onClick = onOpenPeople,
-                    )
-                    AndroidRow(
-                        title = stringResource(R.string.restore_code_title),
-                        subtitle = stringResource(R.string.restore_code_summary),
-                        onClick = onOpenRestoreCode,
                     )
                 }
             }
@@ -185,47 +176,4 @@ private fun peopleAndDevices(people: PeopleRead): String? {
     val peopleText = pluralStringResource(R.plurals.people_count, loaded.size, loaded.size)
     val devicesText = pluralStringResource(R.plurals.device_count, devices, devices)
     return "$peopleText · $devicesText"
-}
-
-/** The Restore code page: the person's recovery code, shown on request. */
-@Composable
-internal fun RestoreCodeScreen(
-    session: OpenLibrary,
-    onBack: () -> Unit,
-) {
-    val scope = rememberScreenScope()
-    val model = remember(session) { SettingsLibraryModel(session.appHandle, session.errors, scope) }
-    LaunchedEffect(model) { model.loadStorage() }
-    val location = (model.storage as? Storage.At)?.location
-    // The code is made once the library's storage is read, which prints on its page.
-    AndroidSettingsRestoreCode(
-        onBack = onBack,
-        section =
-            if (location == null) {
-                null
-            } else {
-                {
-                    RestoreCodeSection(
-                        needsS3Key = location is BridgeStorageLocation.S3,
-                        location = storageLocationLabel(location),
-                        generate = { session.appHandle.generateRestoreCode().code },
-                    )
-                }
-            },
-    )
-}
-
-/** The Restore code page: its bar, and the code's [section] once there is a library to make it for. */
-@Composable
-internal fun AndroidSettingsRestoreCode(
-    onBack: () -> Unit,
-    section: (@Composable () -> Unit)?,
-) {
-    AndroidScreen(
-        title = stringResource(R.string.restore_code_title),
-        onBack = onBack,
-        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
-    ) {
-        section?.let { Column(modifier = Modifier.padding(ThemeSpace.edge)) { it() } }
-    }
 }

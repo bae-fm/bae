@@ -95,7 +95,6 @@
     <string name="gallery_loading_image">Зареждане на изображението…</string>
     <string name="settings_library">Библиотека</string>
     <string name="library_name_row">Име</string>
-    <string name="restore_code_summary">Връща библиотеката ви, ако загубите всички устройства</string>
     <plurals name="people_count">
         <item quantity="one">%1$d човек</item>
         <item quantity="other">%1$d души</item>

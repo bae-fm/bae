@@ -97,7 +97,6 @@
     <string name="gallery_loading_image">Завантаження зображення…</string>
     <string name="settings_library">Бібліотека</string>
     <string name="library_name_row">Назва</string>
-    <string name="restore_code_summary">Повертає вашу бібліотеку, якщо ви втратите всі пристрої</string>
     <plurals name="people_count">
         <item quantity="one">%1$d людина</item>
         <item quantity="few">%1$d людини</item>

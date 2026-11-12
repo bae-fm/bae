@@ -103,7 +103,6 @@
     <string name="gallery_loading_image">Načítava sa obrázok…</string>
     <string name="settings_library">Knižnica</string>
     <string name="library_name_row">Názov</string>
-    <string name="restore_code_summary">Obnoví vašu knižnicu, ak stratíte všetky zariadenia</string>
     <plurals name="people_count">
         <item quantity="one">%1$d osoba</item>
         <item quantity="few">%1$d osoby</item>

@@ -97,7 +97,6 @@
     <string name="gallery_loading_image">Wczytywanie obrazu…</string>
     <string name="settings_library">Biblioteka</string>
     <string name="library_name_row">Nazwa</string>
-    <string name="restore_code_summary">Przywraca bibliotekę, jeśli utracisz wszystkie urządzenia</string>
     <plurals name="people_count">
         <item quantity="one">%1$d osoba</item>
         <item quantity="few">%1$d osoby</item>

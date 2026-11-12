@@ -99,7 +99,6 @@
     <string name="gallery_loading_image">Ladataan kuvaa…</string>
     <string name="settings_library">Kirjasto</string>
     <string name="library_name_row">Nimi</string>
-    <string name="restore_code_summary">Palauttaa kirjastosi, jos menetät kaikki laitteesi</string>
     <plurals name="people_count">
         <item quantity="one">%1$d henkilö</item>
         <item quantity="other">%1$d henkilöä</item>
