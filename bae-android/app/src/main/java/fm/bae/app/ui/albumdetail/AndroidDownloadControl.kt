@@ -143,7 +143,12 @@ internal fun AndroidDownloadControl(
         }
 
         BridgeReleaseDownloadStatus.Downloading -> {
-            DownloadProgress(progress, label = stringResource(R.string.pinning), modifier = Modifier.fillMaxWidth())
+            DownloadProgress(
+                progress,
+                label = stringResource(R.string.pinning),
+                modifier = Modifier.fillMaxWidth(),
+                stopDot = true,
+            )
             DownloadActionButton(stringResource(R.string.pin_cancel), Icons.Filled.Close, onCancel)
         }
 

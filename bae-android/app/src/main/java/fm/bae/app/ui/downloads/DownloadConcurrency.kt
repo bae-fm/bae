@@ -1,9 +1,6 @@
 package fm.bae.app.ui.downloads
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -14,7 +11,6 @@ import fm.bae.app.R
 import fm.bae.app.countText
 import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidSegmentedButtons
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -52,20 +48,14 @@ private fun DownloadConcurrencySelector(
     onSelect: (UInt) -> Unit,
 ) {
     val options = (1u..limit).toList()
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
-    ) {
-        Text(
-            text = stringResource(R.string.pins_at_once),
-            style = ThemeText.body.style,
-        )
-        val context = LocalContext.current
-        AndroidSegmentedButtons(
-            options = options.map { context.countText(it) },
-            selected = options.indexOf(value),
-            onSelect = { onSelect(options[it]) },
-        )
-    }
+    val context = LocalContext.current
+    AndroidSegmentedButtons(
+        options = options.map { context.countText(it) },
+        selected = options.indexOf(value),
+        onSelect = { onSelect(options[it]) },
+        modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
+        label = stringResource(R.string.pins_at_once),
+    )
 }
 
 @Preview(showBackground = true)
