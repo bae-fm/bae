@@ -82,7 +82,7 @@ struct ReleaseFilesView: View {
         } label: {
             content(name: name, size: size)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.accentPlain)
     }
 
     private func content(name: String, size: String) -> some View {

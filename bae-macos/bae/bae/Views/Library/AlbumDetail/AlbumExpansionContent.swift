@@ -254,7 +254,7 @@ struct ReleaseFactsLine: View {
                 .padding(.horizontal, -ThemeSpace.compact)
                 .padding(.vertical, -ThemeSpace.line)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.accentPlain)
             .background { OverlayTrigger(anchor: trigger) }
             .onHover { isHovering = $0 }
             .accessibilityIdentifier("release-facts")

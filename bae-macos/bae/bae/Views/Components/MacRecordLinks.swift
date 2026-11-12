@@ -25,7 +25,7 @@ private struct ReleaseRecordLink: View {
             Link(destination: url) {
                 name
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.accentPlain)
         }
         else {
             // An address that won't parse still names the catalog.

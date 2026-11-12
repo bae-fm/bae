@@ -32,7 +32,7 @@ struct IdentificationProgressView: View {
                 .themeText(.body)
                 .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.accentPlain)
             .help("Go to a candidate still being identified")
             Button("Cancel all", action: onCancelAll)
                 .controlSize(.small)
@@ -66,7 +66,7 @@ struct IdentificationProgressIndicator: View {
                 .foregroundStyle(.secondary)
                 .filterBarControl()
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.accentPlain)
         .help("Identifying")
         .macPopover(isPresented: $lineShown, arrowEdge: .bottom) {
             IdentificationProgressView(
@@ -179,7 +179,7 @@ struct FolderScanProgressIndicator: View {
                 .foregroundStyle(.secondary)
                 .filterBarControl()
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.accentPlain)
         .help(localizedCoreString("ui.import.scan.activity"))
         .macPopover(isPresented: $detailsShown, arrowEdge: .bottom) {
             VStack(alignment: .leading, spacing: ThemeSpace.related) {

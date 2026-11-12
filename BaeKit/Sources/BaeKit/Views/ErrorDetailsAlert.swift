@@ -113,7 +113,7 @@
                             .themeIcon(.small)
                             .foregroundStyle(text)
                     }
-                    .buttonStyle(.borderless)
+                    .buttonStyle(.accentBorderless)
                     .help("Copy details")
                     .focused($copyFocused)
                     .opacity(hover || copyFocused ? 1 : 0)

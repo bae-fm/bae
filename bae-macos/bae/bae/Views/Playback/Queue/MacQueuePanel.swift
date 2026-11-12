@@ -301,7 +301,7 @@ struct MacQueuePanel: View {
                         RoundedRectangle(cornerRadius: ThemeRadius.card)
                     )
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.accentPlain)
             .disabled(onGoToNowPlaying == nil)
             .help("Go to now playing")
             .accessibilityLabel("Go to now playing")

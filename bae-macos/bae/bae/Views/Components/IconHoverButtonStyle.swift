@@ -59,7 +59,7 @@ struct IconHoverButtonStyle: ButtonStyle {
                 Image(systemName: "gearshape")
             }
         }
-        .buttonStyle(IconHoverButtonStyle())
+        .buttonStyle(IconHoverButtonStyle().accentFocus())
         .themeIcon(.large)
         .padding(ThemeSpace.section)
         .background(Theme.background)

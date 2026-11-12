@@ -90,7 +90,7 @@ private struct StorageQueueControl<Progress: View>: View {
                 }
             }
             QueuePauseButton(queue: queue, paused: paused)
-                .buttonStyle(.borderless)
+                .buttonStyle(.accentBorderless)
         }
         // A narrow table keeps each queue's rate whole on one line; the
         // release count and total give way instead.

@@ -41,7 +41,7 @@ struct JoinNameView: View {
                 }
                 MacStepActions {
                     Button("Cancel", action: onCancel)
-                        .buttonStyle(.borderless)
+                        .buttonStyle(.accentBorderless)
                         .foregroundStyle(Theme.textPrimary)
                         .keyboardShortcut(.cancelAction)
                     Button("Join", action: onJoin)

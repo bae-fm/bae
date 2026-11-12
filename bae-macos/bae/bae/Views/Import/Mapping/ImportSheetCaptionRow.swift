@@ -132,7 +132,7 @@ struct ImportSheetCaptionRow: View {
                 .lineLimit(1)
                 .truncationMode(.middle)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.accentPlain)
         .layoutPriority(1)
         .onHover { hoveringName = $0 }
     }

@@ -175,7 +175,7 @@ struct ImagePlaceholderView: View {
                     }
                     .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.accentPlain)
             .help(
                 String(
                     localized: "Could not load the image. Click to try again."

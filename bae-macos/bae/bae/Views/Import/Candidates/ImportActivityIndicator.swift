@@ -21,7 +21,7 @@ struct ImportActivityIndicator: View {
                 .foregroundStyle(.secondary)
                 .filterBarControl()
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.accentPlain)
         .help(String(localized: "Importing\u{2026}"))
         .macPopover(isPresented: $detailsShown, arrowEdge: .bottom) {
             VStack(alignment: .trailing, spacing: ThemeSpace.related) {

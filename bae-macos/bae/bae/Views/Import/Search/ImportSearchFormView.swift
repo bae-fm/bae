@@ -115,6 +115,7 @@ struct ImportSearchFormView: View {
                 }
                 .labelsHidden()
                 .pickerStyle(.segmented)
+                .accentFocusRing(cornerRadius: .infinity)
                 .controlSize(.small)
                 .fixedSize()
 
@@ -205,6 +206,11 @@ struct ImportSearchFormView: View {
                 .textFieldStyle(.roundedBorder)
                 .controlSize(.small)
                 .focused($barcodeHasFocus)
+                .focusEffectDisabled()
+                .accentFocusRing(
+                    barcodeHasFocus,
+                    cornerRadius: ThemeRadius.chip
+                )
                 .onSubmit(submitSearch)
                 // Like the autocomplete fields: serve a pending request when
                 // the field shows, and each new one as it arrives.

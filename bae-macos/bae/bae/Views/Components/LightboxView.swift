@@ -253,7 +253,7 @@ extension LightboxView {
                             Text("Browse all images")
                         }
                     }
-                    .buttonStyle(.borderless)
+                    .buttonStyle(.accentBorderless)
                     .foregroundStyle(Theme.onFill)
                     .padding(.vertical, ThemeSpace.compact)
                     .padding(.horizontal, ThemeSpace.group)
@@ -291,7 +291,7 @@ extension LightboxView {
                     .foregroundStyle(Theme.onFillSecondary)
             }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.accentPlain)
     }
 
 }

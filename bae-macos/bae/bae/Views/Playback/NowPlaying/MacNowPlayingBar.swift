@@ -88,7 +88,7 @@ struct MacNowPlayingBar: View {
                         .shadow(color: Theme.shadow, radius: 8, y: 4)
                         .accessibilityLabel("Album art")
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.accentPlain)
             }
 
             VStack(alignment: .leading, spacing: ThemeSpace.line) {
@@ -98,7 +98,7 @@ struct MacNowPlayingBar: View {
                             .themeText(.rowTitle)
                             .lineLimit(1)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.accentPlain)
                 }
 
                 if let secondaryLine {
@@ -156,7 +156,7 @@ struct MacNowPlayingBar: View {
         } label: {
             toggleLabel("shuffle")
         }
-        .buttonStyle(IconHoverButtonStyle(isOn: active))
+        .buttonStyle(IconHoverButtonStyle(isOn: active).accentFocus())
         .disabled(!enabled)
         .opacity(enabled ? 1 : 0.4)
         .help(active ? "Turn off shuffle" : "Shuffle")
@@ -171,7 +171,7 @@ struct MacNowPlayingBar: View {
         } label: {
             toggleLabel(glyph)
         }
-        .buttonStyle(IconHoverButtonStyle(isOn: active))
+        .buttonStyle(IconHoverButtonStyle(isOn: active).accentFocus())
         .help(Self.repeatHelp(repeatMode))
         .accessibilityLabel("Repeat")
         .accessibilityValue(Self.repeatValue(repeatMode))
@@ -204,7 +204,7 @@ struct MacNowPlayingBar: View {
                 .frame(width: ThemeSize.hitTarget, height: ThemeSize.hitTarget)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(IconHoverButtonStyle())
+        .buttonStyle(IconHoverButtonStyle().accentFocus())
         .help(help)
         .accessibilityLabel(help)
     }
@@ -298,7 +298,7 @@ extension MacNowPlayingBar {
                 .frame(width: ThemeSize.hitTarget, height: ThemeSize.hitTarget)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(IconHoverButtonStyle(isOn: showQueue))
+        .buttonStyle(IconHoverButtonStyle(isOn: showQueue).accentFocus())
         .help("Queue")
         .accessibilityLabel("Queue")
         .background(
@@ -350,7 +350,7 @@ extension MacNowPlayingBar {
                 .frame(width: ThemeSize.hitTarget, height: ThemeSize.hitTarget)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(IconHoverButtonStyle())
+        .buttonStyle(IconHoverButtonStyle().accentFocus())
         .help(isMuted ? "Unmute" : "Mute")
         .accessibilityLabel(isMuted ? "Unmute" : "Mute")
     }

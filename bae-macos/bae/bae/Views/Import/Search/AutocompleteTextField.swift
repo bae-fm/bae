@@ -57,6 +57,46 @@ struct AutocompleteTextField: View {
     }
 }
 
+/// A bezeled text field that wears the board's focus ring in the accent the
+/// person chose while it is being edited: AppKit's own ring is drawn in the
+/// Mac's accent.
+private final class RingedTextField: FocusingTextField {
+    var ringColor: NSColor {
+        get { ring.color }
+        set {
+            ring.color = newValue
+            ring.update(in: self)
+        }
+    }
+
+    private let ring = AccentFocusRingLayer(cornerRadius: ThemeRadius.chip)
+
+    override func becomeFirstResponder() -> Bool {
+        let became = super.becomeFirstResponder()
+        if became {
+            ring.shown = true
+            ring.update(in: self)
+        }
+        return became
+    }
+
+    override func textDidEndEditing(_ notification: Notification) {
+        super.textDidEndEditing(notification)
+        ring.shown = false
+        ring.update(in: self)
+    }
+
+    override func layout() {
+        super.layout()
+        ring.update(in: self)
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        ring.update(in: self)
+    }
+}
+
 private struct InlineCompletionTextFieldNS: NSViewRepresentable {
     @Binding
     var text: String
@@ -66,15 +106,19 @@ private struct InlineCompletionTextFieldNS: NSViewRepresentable {
     var onSubmit: (() -> Void)?
     var onEditingEnded: (() -> Void)?
 
+    @Environment(\.accentChoice)
+    private var accent
+
     func makeNSView(context: Context) -> NSTextField {
-        let field = FocusingTextField()
+        let field = RingedTextField()
+        field.ringColor = accent.appKitColor
         field.focus = focus
         field.placeholderString = placeholder
         field.bezelStyle = .roundedBezel
         field.isBordered = true
         field.isBezeled = true
         field.drawsBackground = false
-        field.focusRingType = .default
+        field.focusRingType = .none
         field.delegate = context.coordinator
         field.target = context.coordinator
         field.action = #selector(Coordinator.submit(_:))
@@ -86,6 +130,7 @@ private struct InlineCompletionTextFieldNS: NSViewRepresentable {
 
     func updateNSView(_ field: NSTextField, context: Context) {
         context.coordinator.parent = self
+        (field as? RingedTextField)?.ringColor = accent.appKitColor
         if field.stringValue != text {
             field.stringValue = text
             context.coordinator.userTypedPrefix = text

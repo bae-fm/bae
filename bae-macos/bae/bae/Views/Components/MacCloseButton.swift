@@ -17,7 +17,7 @@ struct MacCloseButton: View {
                 .frame(width: ThemeSize.hitTarget, height: ThemeSize.hitTarget)
                 .background(Theme.hover, in: Circle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.accentPlain)
         .help("Close")
         .accessibilityLabel("Close")
     }

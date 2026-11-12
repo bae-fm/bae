@@ -53,7 +53,7 @@ struct ImportSearchResultRow: View {
                     .fill(.clear)
                     .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.accentPlain)
             .disabled(!isPickable)
 
             HStack(spacing: ThemeSpace.related) {

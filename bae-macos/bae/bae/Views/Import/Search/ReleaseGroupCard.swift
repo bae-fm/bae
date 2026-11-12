@@ -85,7 +85,7 @@ struct AlbumSourceLink: View {
                 .themeText(.chip)
                 .foregroundStyle(.secondary)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.accentPlain)
             .help(String(localized: "Open this album on \(name)"))
         }
         else {

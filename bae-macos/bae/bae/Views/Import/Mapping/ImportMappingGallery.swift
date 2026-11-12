@@ -82,7 +82,7 @@ struct ImportMappingGalleryTile: View {
             .frame(width: tileSize, alignment: .topLeading)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.accentPlain)
         .help(image.name)
         .accessibilityLabel(Text(verbatim: image.name))
         .onHover { hovering = $0 }

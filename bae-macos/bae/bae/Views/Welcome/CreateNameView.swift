@@ -51,7 +51,7 @@ struct CreateNameView: View {
                         form.cancel()
                         onCancel()
                     }
-                    .buttonStyle(.borderless)
+                    .buttonStyle(.accentBorderless)
                     .foregroundStyle(Theme.textPrimary)
                     .keyboardShortcut(.cancelAction)
                     Button("Create") { form.create() }

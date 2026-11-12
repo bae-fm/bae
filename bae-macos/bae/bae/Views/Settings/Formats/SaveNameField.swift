@@ -127,7 +127,7 @@ struct SaveNameField<Piece: SaveNamePiece>: View {
                 Button(value.label) {
                     handle.append(value)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.accentPlain)
                 .themeText(.detail)
                 .padding(.horizontal, ThemeSpace.compact)
                 .padding(.vertical, ThemeSpace.hairline)

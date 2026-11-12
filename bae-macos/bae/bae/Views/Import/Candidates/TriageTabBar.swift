@@ -54,7 +54,7 @@ struct TriageTabBar: View {
             )
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.accentPlain)
     }
 }
 

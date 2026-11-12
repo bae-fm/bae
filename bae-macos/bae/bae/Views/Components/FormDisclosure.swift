@@ -27,7 +27,7 @@ struct FormDisclosure<Label: View, Content: View>: View {
                 }
                 .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.accentPlain)
             .accessibilityAddTraits(.isHeader)
             if isExpanded {
                 Group { content }

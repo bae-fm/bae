@@ -292,7 +292,7 @@ struct ReleasePressingFieldsGrid: View {
                             Image(systemName: "xmark.circle.fill")
                                 .foregroundStyle(.tertiary)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.accentPlain)
                         .help(String(localized: "Remove \(named)"))
                         .accessibilityLabel(
                             String(localized: "Remove \(named)")
@@ -309,7 +309,7 @@ struct ReleasePressingFieldsGrid: View {
                             Image(systemName: "plus")
                                 .foregroundStyle(.secondary)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.accentPlain)
                         .help(String(localized: "Add label"))
                         .accessibilityLabel(String(localized: "Add label"))
                     }
@@ -347,7 +347,7 @@ struct ReleasePressingFieldsGrid: View {
                             Image(systemName: "xmark.circle.fill")
                                 .foregroundStyle(.tertiary)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.accentPlain)
                         .help(String(localized: "Remove \(row)"))
                         .accessibilityLabel(String(localized: "Remove \(row)"))
                     }
@@ -358,7 +358,7 @@ struct ReleasePressingFieldsGrid: View {
                             Image(systemName: "plus")
                                 .foregroundStyle(.secondary)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.accentPlain)
                         .help(String(localized: "Add barcode"))
                         .accessibilityLabel(String(localized: "Add barcode"))
                     }
@@ -581,7 +581,7 @@ struct ArtistAssignmentsField: View {
             }
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.accentPlain)
         .focusable()
         .macPopover(isPresented: $isPresented, arrowEdge: .bottom) {
             ArtistAssignmentsEditor(
@@ -649,7 +649,7 @@ private struct ArtistAssignmentsEditor: View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
             if let onUseAlbumArtists {
                 Button("Album artist", action: onUseAlbumArtists)
-                    .buttonStyle(.borderless)
+                    .buttonStyle(.accentBorderless)
             }
             ForEach(Array(assignments.enumerated()), id: \.offset) {
                 index,
@@ -672,7 +672,7 @@ private struct ArtistAssignmentsEditor: View {
                         } label: {
                             Image(systemName: "xmark")
                         }
-                        .buttonStyle(.borderless)
+                        .buttonStyle(.accentBorderless)
                         .accessibilityLabel(Text("Remove"))
                     }
                     if case .choose(let choices) = standing {
@@ -745,7 +745,7 @@ private struct ArtistAssignmentsEditor: View {
                 } label: {
                     ArtistSearchResultLabel(artist: choice)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.accentPlain)
             }
         }
         .padding(.leading, ThemeSpace.group)
@@ -778,7 +778,7 @@ struct ArtistSearchResultRow: View {
                 } label: {
                     ArtistSearchResultLabel(artist: result.artist)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.accentPlain)
                 // The artist's other printed names, under it: picking one
                 // credits the artist printed by that name.
                 ForEach(result.creditNames, id: \.credit.key) { name in
@@ -788,13 +788,13 @@ struct ArtistSearchResultRow: View {
                         Text(verbatim: name.credit.name)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.accentPlain)
                     .padding(.leading, ThemeSpace.group)
                 }
                 Button("View in library") {
                     onViewArtist(result.artist.artistId)
                 }
-                .buttonStyle(.borderless)
+                .buttonStyle(.accentBorderless)
                 .themeText(.detail)
             }
             .frame(maxWidth: .infinity, alignment: .leading)

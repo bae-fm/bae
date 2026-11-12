@@ -56,7 +56,7 @@ struct QueueItemRow: View {
                         )
                         .contentShape(Rectangle())
                 }
-                .buttonStyle(PressableIconButtonStyle())
+                .buttonStyle(PressableIconButtonStyle().accentFocus())
                 .help("Remove from queue")
                 .opacity(isHovered ? 1 : 0)
                 .allowsHitTesting(isHovered)
@@ -104,7 +104,7 @@ struct QueueItemRow: View {
                     .frame(width: Self.artworkSize, height: Self.artworkSize)
                     .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.accentPlain)
             .opacity(isHovered ? 1 : 0)
             .allowsHitTesting(isHovered)
         }

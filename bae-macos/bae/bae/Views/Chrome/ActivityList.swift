@@ -253,7 +253,7 @@ private struct TransferLine: View {
                             paused: queue.paused,
                             glyph: .medium
                         )
-                        .buttonStyle(BoxedIconButtonStyle(size: .small))
+                        .buttonStyle(BoxedIconButtonStyle(size: .small).accentFocus())
                     }
                 }
             }

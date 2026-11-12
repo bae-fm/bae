@@ -75,7 +75,7 @@ struct ThumbnailStrip<Item: Identifiable & Equatable, Content: View>: View {
                         .stroke(color, lineWidth: lineWidth)
                 )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.accentPlain)
     }
 }
 

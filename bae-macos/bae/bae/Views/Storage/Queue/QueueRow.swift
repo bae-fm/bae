@@ -45,7 +45,7 @@ struct QueueRow<Content: View, Below: View>: View {
                     Button(action: cancel.action) {
                         Image(systemName: "xmark.circle")
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.accentPlain)
                     .help(cancel.help)
                 }
             }

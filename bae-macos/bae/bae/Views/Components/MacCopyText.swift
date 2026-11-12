@@ -31,7 +31,7 @@ struct MacCopyText: View {
                 Image(systemName: "doc.on.doc")
                     .themeIcon(.small)
             }
-            .buttonStyle(IconHoverButtonStyle())
+            .buttonStyle(IconHoverButtonStyle().accentFocus())
             .focused($buttonFocused)
             .opacity(hover || buttonFocused ? 1 : 0)
             .accessibilityLabel(Text("Copy"))

@@ -99,7 +99,7 @@ public struct RestoreCodeSection: View {
             .accessibilityLabel(copied ? "Copied" : "Copy")
             .help(copied ? "Copied" : "Copy")
         }
-        .buttonStyle(.borderless)
+        .buttonStyle(.accentBorderless)
     }
 
     private var caption: some View {

@@ -19,7 +19,7 @@ struct MacInfoTip<Content: View>: View {
             Image(systemName: "info.circle")
                 .foregroundStyle(.secondary)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.accentPlain)
         .accessibilityLabel(Text(label))
         .macPopover(isPresented: $isShowing, arrowEdge: .bottom) {
             VStack(alignment: .leading, spacing: ThemeSpace.related) {

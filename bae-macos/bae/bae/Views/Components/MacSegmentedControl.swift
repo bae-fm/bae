@@ -41,6 +41,7 @@ struct MacSegmentedControl: View {
                     .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
+                .accentFocusRing(cornerRadius: .infinity)
                 .accessibilityAddTraits(isSelected ? .isSelected : [])
             }
         }

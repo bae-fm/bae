@@ -25,7 +25,7 @@ struct StorageFileDetails: View {
                         .themeIcon(.medium)
                         .foregroundStyle(.secondary)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.accentPlain)
                 .accessibilityLabel(Text("Close file details"))
                 .help(Text("Close file details"))
             }

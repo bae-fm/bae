@@ -108,14 +108,14 @@ struct DeviceResetView: View {
             }
             HStack(spacing: ThemeSpace.group) {
                 Button("Cancel", action: onCancel)
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.accentBordered)
                     .keyboardShortcut(.cancelAction)
                 Button(
                     "Finish reset from cloud",
                     role: .destructive,
                     action: onReset
                 )
-                .buttonStyle(.bordered)
+                .buttonStyle(.accentBordered)
             }
             Spacer()
         }

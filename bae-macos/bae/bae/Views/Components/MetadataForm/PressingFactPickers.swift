@@ -143,7 +143,7 @@ private struct MediumCountRow: View {
                 Image(systemName: "xmark.circle.fill")
                     .foregroundStyle(.tertiary)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.accentPlain)
             .help(String(localized: "Remove \(name)"))
             .accessibilityLabel(String(localized: "Remove \(name)"))
         }
@@ -230,7 +230,7 @@ struct DiscogsDetailsEditor: View {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundStyle(.tertiary)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.accentPlain)
                     .accessibilityLabel(String(localized: "Remove"))
                 }
             }

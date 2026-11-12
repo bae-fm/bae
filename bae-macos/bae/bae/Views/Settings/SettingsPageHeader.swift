@@ -15,7 +15,7 @@ struct SettingsPageHeader: View {
                 Image(systemName: "chevron.backward")
                     .themeIcon(.small)
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(.accentBordered)
             .buttonBorderShape(.circle)
             .controlSize(.small)
             .accessibilityLabel(Text(verbatim: backTitle))

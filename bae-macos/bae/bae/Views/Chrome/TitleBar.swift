@@ -71,7 +71,7 @@ struct TitleBar: View {
                         )
                         .contentShape(Rectangle())
                 }
-                .buttonStyle(IconHoverButtonStyle())
+                .buttonStyle(IconHoverButtonStyle().accentFocus())
                 .help("Settings")
             }
         }
@@ -176,7 +176,7 @@ private struct SectionSegmentedControl: View {
                 )
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.accentPlain)
         .animation(.easeInOut(duration: 0.15), value: active)
         .accessibilityAddTraits(
             active ? [.isButton, .isSelected] : .isButton

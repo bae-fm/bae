@@ -32,7 +32,7 @@ final class FieldFocus {
 /// A text field that serves its focus's request as soon as it is put in a
 /// window: SwiftUI installs a representable's field before the field has
 /// one.
-final class FocusingTextField: NSTextField {
+class FocusingTextField: NSTextField {
     var focus: FieldFocus? {
         didSet { focus?.attach(self) }
     }

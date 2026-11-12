@@ -28,7 +28,7 @@ struct SortCriterionPill<Criterion: SortCriterionRepresentable>: View {
                 .themeIcon(.small)
                 .foregroundStyle(.secondary)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.accentPlain)
             .accessibilityLabel(directionAction)
             .help(directionAction)
             if canRemove {
@@ -37,7 +37,7 @@ struct SortCriterionPill<Criterion: SortCriterionRepresentable>: View {
                         .themeIcon(.badge)
                         .foregroundStyle(.secondary)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.accentPlain)
                 .accessibilityLabel(Text("Remove sort criterion"))
                 .help("Remove sort criterion")
             }

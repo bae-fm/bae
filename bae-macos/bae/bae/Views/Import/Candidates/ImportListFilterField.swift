@@ -50,7 +50,7 @@ struct ImportListFilterField: View {
                         .foregroundStyle(.tertiary)
                         .filterBarControl()
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.accentPlain)
             }
         }
     }

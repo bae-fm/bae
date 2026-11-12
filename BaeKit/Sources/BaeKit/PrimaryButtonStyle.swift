@@ -12,5 +12,6 @@ public struct PrimaryButtonStyle: PrimitiveButtonStyle {
         Button(configuration)
             .buttonStyle(.borderedProminent)
             .tint(accent.buttonColor)
+            .accentFocusRing(cornerRadius: .infinity)
     }
 }

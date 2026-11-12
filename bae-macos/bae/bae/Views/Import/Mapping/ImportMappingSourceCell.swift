@@ -60,7 +60,7 @@ struct ImportMappingSourceCell: View {
             Button(action: open) {
                 nameLine(file).contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.accentPlain)
         }
         else {
             nameLine(file)
@@ -111,7 +111,7 @@ struct ImportMappingSourceCell: View {
                 )
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.accentPlain)
         .help(
             isPreviewing
                 ? localizedCoreString("ui.import.slots.stop")

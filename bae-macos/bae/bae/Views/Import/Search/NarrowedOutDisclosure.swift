@@ -22,7 +22,7 @@ struct NarrowedOutDisclosure: View {
             .foregroundStyle(.secondary)
             .contentShape(.rect)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.accentPlain)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 

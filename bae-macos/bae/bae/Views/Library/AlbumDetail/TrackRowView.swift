@@ -41,7 +41,7 @@ struct MacTrackRow: View {
                     )
                     .themeIcon(.medium)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.accentPlain)
                 .opacity(hover ? 1 : 0)
                 .allowsHitTesting(hover)
 

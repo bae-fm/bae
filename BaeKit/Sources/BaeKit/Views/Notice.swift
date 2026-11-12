@@ -325,7 +325,7 @@ extension Notice {
                 .padding(.horizontal, -ThemeSpace.related)
                 .padding(.vertical, -(ThemeSpace.compact))
         }
-        .buttonStyle(.borderless)
+        .buttonStyle(.accentBorderless)
         .help("Dismiss")
         .accessibilityLabel(Text("Dismiss"))
     }
@@ -407,7 +407,7 @@ extension Notice {
         #if canImport(AppKit)
             colouredButton(
                 Button("Details") { showErrorDetails(details) }
-                    .buttonStyle(.borderless),
+                    .buttonStyle(.accentBorderless),
                 borderless: true
             )
         #endif

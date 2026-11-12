@@ -120,7 +120,7 @@ public struct MacAccentPicker: View {
                 // The press target runs past the disc, up to its neighbours.
                 .contentShape(Circle().inset(by: -ThemeSpace.compact / 2))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.accentPlain)
         .accessibilityLabel(accent.title)
         .accessibilityAddTraits(chosen ? .isSelected : [])
         .help(accent.title)

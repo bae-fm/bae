@@ -66,7 +66,7 @@ struct ActivityButton: View {
                     )
                     .contentShape(Rectangle())
                 }
-                .buttonStyle(IconHoverButtonStyle())
+                .buttonStyle(IconHoverButtonStyle().accentFocus())
                 .help(localizedCoreString("core.activity.title"))
                 .accessibilityLabel(localizedCoreString("core.activity.title"))
                 .macPopover(isPresented: $listShown, arrowEdge: .bottom) {

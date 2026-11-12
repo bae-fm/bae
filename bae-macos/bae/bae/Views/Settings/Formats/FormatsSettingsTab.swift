@@ -197,7 +197,7 @@ private struct PresetRow: View {
                 SavePresetSummaryRow(preset: preset)
                     .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.accentPlain)
             MacMoreMenu {
                 MacMenuItem("Edit…", action: edit)
                 MacMenuItem("Delete…", disabled: !canDelete) {

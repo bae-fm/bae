@@ -327,7 +327,7 @@ extension CoverGalleryView {
             }
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.accentPlain)
         .help(item.label)
         .accessibilityLabel(item.label)
         .accessibilityAddTraits(
@@ -390,7 +390,7 @@ extension CoverGalleryView {
                     )
                     .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.accentPlain)
                 .accessibilityLabel(Text("View in lightbox"))
                 .help("View in lightbox")
                 .keyboardShortcut(.space, modifiers: [])
@@ -422,7 +422,7 @@ extension CoverGalleryView {
                     }
                     .accessibilityLabel(Text("Next image"))
                 }
-                .buttonStyle(.borderless)
+                .buttonStyle(.accentBorderless)
                 .disabled(!cursor.canCycle || isSaving)
             }
         }

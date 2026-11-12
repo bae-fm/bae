@@ -90,11 +90,11 @@
             Group {
                 if bordered {
                     Button(action: open) { label }
-                        .buttonStyle(SecondaryButtonStyle())
+                        .buttonStyle(SecondaryButtonStyle().accentFocus())
                 }
                 else {
                     Button(action: open) { label }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.accentPlain)
                 }
             }
             .background(MacMenuAnchorView(anchor: anchor))
@@ -184,7 +184,7 @@
                 .opacity(isEnabled ? 1 : 0.4)
                 .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.accentPlain)
             .background(MacMenuAnchorView(anchor: anchor))
             .tracksMenuAppearance($appearance)
             .accessibilityElement(children: .ignore)

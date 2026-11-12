@@ -63,7 +63,7 @@ struct DraftAlbumRow: View {
             } label: {
                 Text(verbatim: title).lineLimit(1)
             }
-            .buttonStyle(.borderless)
+            .buttonStyle(.accentBorderless)
         }
     }
 
@@ -74,7 +74,7 @@ struct DraftAlbumRow: View {
                     actions.pick(nil)
                     isPresented = false
                 }
-                .buttonStyle(.borderless)
+                .buttonStyle(.accentBorderless)
             }
             TextField("Search", text: $query)
                 .boxedTextField()
@@ -96,7 +96,7 @@ struct DraftAlbumRow: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.accentPlain)
             }
         }
         .task(id: query) { await search() }

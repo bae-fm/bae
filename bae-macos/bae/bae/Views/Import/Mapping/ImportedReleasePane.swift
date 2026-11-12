@@ -320,7 +320,7 @@ private struct ReadOnlyCandidateMappingTable: View {
                             ? "stop.fill" : "play.fill"
                     )
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.accentPlain)
             }
             Text(sourceName(source))
                 .themeText(.mono)

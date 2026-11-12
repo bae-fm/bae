@@ -99,6 +99,7 @@ struct StorageManagerView: View {
                     Text("Cloud").tag(BridgeStorageFilter.remote)
                 }
                 .pickerStyle(.segmented)
+                .accentFocusRing(cornerRadius: .infinity)
                 .labelsHidden()
             }
             ToolbarItem(placement: .primaryAction) {
@@ -110,6 +111,7 @@ struct StorageManagerView: View {
                 .foregroundStyle(
                     inspectorPresented ? Theme.accent : Color.secondary
                 )
+                .accentFocusRing(cornerRadius: .infinity)
             }
         }
         .onAppear {

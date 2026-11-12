@@ -90,7 +90,7 @@ private struct PendingRecordRow: View {
             #if canImport(AppKit)
                 if let details = ErrorDetails(error: reason) {
                     Button("Details") { showErrorDetails(details) }
-                        .buttonStyle(.borderless)
+                        .buttonStyle(.accentBorderless)
                 }
             #endif
             if let actionTitle {

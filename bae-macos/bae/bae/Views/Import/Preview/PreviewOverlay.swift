@@ -28,7 +28,7 @@ struct PreviewOverlay: View {
                                 .themeIcon(.medium)
                                 .foregroundStyle(.secondary)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.accentPlain)
                     }
                     HStack {
                         Button {
@@ -40,7 +40,7 @@ struct PreviewOverlay: View {
                             )
                             .themeIcon(.medium)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.accentPlain)
                         PreviewProgressView(
                             onSeek: { previewAudio.previewSeekByRatio($0) },
                         )

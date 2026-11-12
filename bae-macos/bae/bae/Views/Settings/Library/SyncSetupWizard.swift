@@ -160,7 +160,7 @@ struct SyncSetupWizard: View {
                                 chosen: provider == choice
                             )
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.accentPlain)
                         .accessibilityAddTraits(
                             provider == choice ? .isSelected : []
                         )

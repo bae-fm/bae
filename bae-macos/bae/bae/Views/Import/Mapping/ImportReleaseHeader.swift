@@ -171,7 +171,7 @@ struct ImportReleaseHeader: View {
                         Button("Unlink") {
                             sourceActions.unlink()
                         }
-                        .buttonStyle(.borderless)
+                        .buttonStyle(.accentBorderless)
                         .help(
                             "Stop treating the folder as this release. The metadata stays as it is."
                         )
@@ -211,11 +211,11 @@ struct ImportReleaseHeader: View {
                 Button("Automatic") {
                     sourceActions.identifyAutomatically()
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.accentBordered)
                 Button("Search") {
                     sourceActions.searchForRelease()
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.accentBordered)
                 candidateMenu
             }
             .disabled(isReading)

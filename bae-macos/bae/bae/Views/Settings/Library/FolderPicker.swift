@@ -89,7 +89,7 @@
                         Spacer()
                         if browser.canOpenParent {
                             Button("Up") { browser.openParent() }
-                                .buttonStyle(.borderless)
+                                .buttonStyle(.accentBorderless)
                                 .disabled(browser.isWorking)
                         }
                     }
@@ -151,7 +151,7 @@
                     } label: {
                         Image(systemName: "chevron.forward")
                     }
-                    .buttonStyle(.borderless)
+                    .buttonStyle(.accentBorderless)
                     .disabled(browser.isWorking)
                 }
             }

@@ -30,7 +30,7 @@ public struct PlayPauseControl: View {
                 .frame(width: targetSize, height: targetSize)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.accentPlain)
         .help(isPlaying ? "Pause" : "Play")
         .accessibilityLabel(isPlaying ? "Pause" : "Play")
     }

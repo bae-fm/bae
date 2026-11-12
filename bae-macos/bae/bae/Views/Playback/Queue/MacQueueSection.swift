@@ -48,7 +48,7 @@ struct MacQueueSection: View {
         Button(action: onClear) {
             Eyebrow("Clear")
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.accentPlain)
         .help(clearLabel)
         .accessibilityLabel(clearLabel)
     }
@@ -71,7 +71,7 @@ struct MacQueueSection: View {
                 )
                 .contentShape(Rectangle())
         }
-        .buttonStyle(PressableIconButtonStyle())
+        .buttonStyle(PressableIconButtonStyle().accentFocus())
         .help(shuffled ? "Turn off shuffle" : "Shuffle")
         .accessibilityLabel(shuffled ? "Turn off shuffle" : "Shuffle")
     }

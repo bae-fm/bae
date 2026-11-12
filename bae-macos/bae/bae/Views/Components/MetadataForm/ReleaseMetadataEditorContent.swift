@@ -86,7 +86,7 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
             .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.accentPlain)
         .disabled(onEditCover == nil)
         .accessibilityLabel(Text("Change cover"))
     }
@@ -231,7 +231,7 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
                 Image(systemName: "play.fill")
                     .themeIcon(.small)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.accentPlain)
             .foregroundStyle(.secondary)
             .opacity(onPlayTrack == nil ? 0 : 1)
             .allowsHitTesting(onPlayTrack != nil)

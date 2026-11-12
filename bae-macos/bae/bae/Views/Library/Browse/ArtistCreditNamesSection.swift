@@ -113,7 +113,7 @@ private struct ArtistCreditNameRow: View {
             Button(action: onRemove) {
                 Image(systemName: "xmark")
             }
-            .buttonStyle(.borderless)
+            .buttonStyle(.accentBorderless)
             .accessibilityLabel(Text("Remove"))
         }
         .frame(maxWidth: 320, alignment: .leading)

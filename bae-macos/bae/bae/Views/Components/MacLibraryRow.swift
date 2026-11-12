@@ -152,7 +152,7 @@ struct MacLibraryRowButton: View {
                 part: part
             )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.accentPlain)
         .disabled(loading)
         .onHover { hovering = $0 }
     }

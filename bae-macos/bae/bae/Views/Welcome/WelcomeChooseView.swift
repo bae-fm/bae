@@ -264,7 +264,7 @@ struct WelcomeChooseView: View {
                     Text("Enter code").frame(maxWidth: .infinity)
                 }
             }
-            .buttonStyle(SecondaryButtonStyle())
+            .buttonStyle(SecondaryButtonStyle().accentFocus())
             .disabled(isBusy)
         }
         .controlSize(.large)

@@ -121,7 +121,7 @@ struct ImportListGroupHeader: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.accentPlain)
         // Opaque, so a header floating over the rows below hides them.
         .background(Theme.surface)
         .macContextMenu {

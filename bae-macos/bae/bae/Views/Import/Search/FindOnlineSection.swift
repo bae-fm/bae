@@ -99,7 +99,7 @@ struct FindOnlineSectionHeader: View {
             )
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.accentPlain)
         .onHover { isHovered = $0 }
         .accessibilityLabel(
             section == .automatic

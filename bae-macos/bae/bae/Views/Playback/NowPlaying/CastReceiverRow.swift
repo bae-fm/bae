@@ -65,7 +65,7 @@ struct CastReceiverRow: View {
             Button(action: onCast) {
                 row.contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.accentPlain)
         }
     }
 
@@ -112,7 +112,7 @@ struct CastReceiverRow: View {
             case .picker:
                 if case .casting(let onDisconnect) = role {
                     Button("Disconnect", action: onDisconnect)
-                        .buttonStyle(.borderless)
+                        .buttonStyle(.accentBorderless)
                         .controlSize(.small)
                         .foregroundStyle(.primary)
                         .tint(.primary)

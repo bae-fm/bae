@@ -16,7 +16,7 @@ struct CatalogCandidateChip: View {
                 style: .outlined
             )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.accentPlain)
         .help("Look this catalog number up")
     }
 }

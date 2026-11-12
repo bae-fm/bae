@@ -229,7 +229,7 @@ struct LookupCellView: View {
                         .themeIcon(.small)
                         .foregroundStyle(Color.accentColor)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.accentPlain)
                 .help("Retry")
             }
         }

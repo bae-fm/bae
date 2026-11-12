@@ -123,7 +123,7 @@ struct MacIdentifierBand: View {
                 }
             }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.accentPlain)
         .help(
             lookup == nil
                 ? "Ask about this Disc ID again"
@@ -160,7 +160,7 @@ struct MacIdentifierBand: View {
                         }
                     }
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.accentPlain)
                 .help(
                     row.excluded
                         ? "Ask about this barcode again"
@@ -199,7 +199,7 @@ struct MacIdentifierBand: View {
                         }
                     }
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.accentPlain)
                 .help(
                     row.excluded
                         ? "Put this catalog number back in the run"
@@ -324,7 +324,7 @@ private struct CatalogCandidatesDisclosure: View {
                 in: RoundedRectangle(cornerRadius: ThemeRadius.chip)
             )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.accentPlain)
         .help("Catalog numbers found in the folder that no release confirms")
     }
 }

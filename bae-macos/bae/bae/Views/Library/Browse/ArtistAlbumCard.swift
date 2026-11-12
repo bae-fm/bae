@@ -27,7 +27,7 @@ struct ArtistAlbumCard: View {
                 )
             }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.accentPlain)
     }
 }
 

@@ -27,7 +27,7 @@ struct CandidateFolderLine: View {
                 Button(action: onNavigateToPlacement) {
                     StatusChip(verbatim: Self.label(for: tab), tone: .accent)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.accentPlain)
                 .fixedSize()
                 Image(systemName: "chevron.forward")
                     .themeIcon(.small)
@@ -42,7 +42,7 @@ struct CandidateFolderLine: View {
                     .themeIcon(.medium)
                     .foregroundStyle(.secondary)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.accentPlain)
             .help("Reveal in Finder")
             Text(folderName)
                 .themeText(.heading)

@@ -15,7 +15,7 @@ struct FindOnlineHeader: View {
                     Button(action: onBack) {
                         Label("Back", systemImage: "chevron.backward")
                     }
-                    .buttonStyle(.borderless)
+                    .buttonStyle(.accentBorderless)
                     .themeText(.body)
                 }
                 Spacer(minLength: ThemeSpace.group)

@@ -24,7 +24,7 @@ struct SearchManuallyButton: View {
                     RoundedRectangle(cornerRadius: ThemeRadius.control)
                 )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.accentPlain)
         .onHover { isHovered = $0 }
     }
 }

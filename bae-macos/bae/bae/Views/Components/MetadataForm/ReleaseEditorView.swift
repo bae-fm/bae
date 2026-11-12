@@ -109,9 +109,9 @@ struct ReleaseEditorView: View {
                     .themeText(.strong)
                     .foregroundStyle(.secondary)
                 Button("Automatic") { identifyAutomatically() }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.accentBordered)
                 Button("Search") { openSearch(.search) }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.accentBordered)
             }
             .disabled(session.isBusy)
             Spacer(minLength: ThemeSpace.group)

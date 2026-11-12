@@ -221,7 +221,7 @@ private struct BulkActionRow: View {
                 }
             }
         }
-        .buttonStyle(BulkActionRowButtonStyle())
+        .buttonStyle(BulkActionRowButtonStyle().accentFocus())
     }
 }
 

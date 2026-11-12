@@ -24,7 +24,7 @@ struct CastButton: View {
                 .frame(width: ThemeSize.hitTarget, height: ThemeSize.hitTarget)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(IconHoverButtonStyle(isOn: active))
+        .buttonStyle(IconHoverButtonStyle(isOn: active).accentFocus())
         .help(help(casting: castingName, connecting: connectingName))
         .accessibilityLabel("Cast")
         .macPopover(isPresented: $showPicker, arrowEdge: .top) {

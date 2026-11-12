@@ -93,7 +93,7 @@ struct BootstrapCodeView: View {
                         onBack()
                     }
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.accentBordered)
                 Button(primaryTitle) { form.submit() }
                     .buttonStyle(PrimaryButtonStyle())
                     .disabled(!form.canContinue)

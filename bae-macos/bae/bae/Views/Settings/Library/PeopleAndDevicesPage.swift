@@ -711,7 +711,7 @@ private struct PageLinkRow: View {
     var body: some View {
         if opens {
             Button(action: action) { row }
-                .buttonStyle(.plain)
+                .buttonStyle(.accentPlain)
         }
         else {
             row
@@ -876,7 +876,7 @@ private struct RefusedInviteRow: View {
             }
             Spacer()
             Button("Dismiss", action: onDismiss)
-                .buttonStyle(.borderless)
+                .buttonStyle(.accentBorderless)
         }
         .padding(.vertical, ThemeSpace.line)
     }
