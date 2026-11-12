@@ -354,9 +354,6 @@
     <string name="members_invite">Pozovi</string>
     <string name="invite_person_title">Pozovi osobu</string>
     <string name="invite_name">Ime</string>
-    <string name="invite_lifetime_hour">1 sat</string>
-    <string name="invite_lifetime_day">1 dan</string>
-    <string name="invite_lifetime_week">1 tjedan</string>
     <string name="members_add_device">Dodaj uređaj</string>
     <string name="add_device_title">Dodaj uređaj</string>
     <string name="add_device_added">Uređaj dodan: %1$s</string>
@@ -367,7 +364,6 @@
     <string name="invite_email_help_dropbox">Fonoteka se dijeli s ovim računom Dropbox kako bi se osoba mogla pridružiti.</string>
     <string name="invite_email_help_onedrive">Fonoteka se dijeli s ovim računom Microsoft kako bi se osoba mogla pridružiti.</string>
     <string name="invite_email_help_icloud">Fonoteka se dijeli s ovim računom Apple kako bi se osoba mogla pridružiti.</string>
-    <string name="invite_email">E-pošta</string>
     <string name="invite_create">Stvori pozivnicu</string>
     <string name="invite_title">Pozivnica</string>
     <string name="invite_cancel">Otkaži pozivnicu</string>
@@ -472,4 +468,8 @@
     <string name="onboarding_invite_ended_ask">Zamolite osobu %1$s za novu.</string>
     <string name="onboarding_ok">U redu</string>
     <string name="add_device_instructions">Skenirajte ili unesite kôd na novom uređaju.</string>
+    <string name="invite_s3_theirs_note">Njihov vlastiti ključ za bucket kako bi se mogli pridružiti.</string>
+    <string name="invite_s3_use_my_key">Koristi umjesto toga moj ključ</string>
+    <string name="invite_s3_mine">Koristit će vaš ključ. Da ih kasnije uklonite, izradite novi ključ za sebe i unesete ga na svakom svom uređaju.</string>
+    <string name="invite_s3_use_their_key">Koristi umjesto toga njihov vlastiti ključ</string>
 </resources>

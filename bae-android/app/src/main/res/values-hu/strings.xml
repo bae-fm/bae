@@ -344,9 +344,6 @@
     <string name="members_invite">Meghívás</string>
     <string name="invite_person_title">Személy meghívása</string>
     <string name="invite_name">Név</string>
-    <string name="invite_lifetime_hour">1 óra</string>
-    <string name="invite_lifetime_day">1 nap</string>
-    <string name="invite_lifetime_week">1 hét</string>
     <string name="members_add_device">Eszköz hozzáadása</string>
     <string name="add_device_title">Eszköz hozzáadása</string>
     <string name="add_device_added">%1$s hozzáadva</string>
@@ -357,7 +354,6 @@
     <string name="invite_email_help_dropbox">A könyvtár meg lesz osztva ezzel a Dropbox-fiókkal, hogy az illető csatlakozhasson.</string>
     <string name="invite_email_help_onedrive">A könyvtár meg lesz osztva ezzel a Microsoft-fiókkal, hogy az illető csatlakozhasson.</string>
     <string name="invite_email_help_icloud">A könyvtár meg lesz osztva ezzel a Apple-fiókkal, hogy az illető csatlakozhasson.</string>
-    <string name="invite_email">E-mail</string>
     <string name="invite_create">Meghívó létrehozása</string>
     <string name="invite_title">Meghívó</string>
     <string name="invite_cancel">Meghívó visszavonása</string>
@@ -461,4 +457,8 @@
     <string name="onboarding_invite_ended_ask">Kérj egy újat tőle: %1$s.</string>
     <string name="onboarding_ok">OK</string>
     <string name="add_device_instructions">Olvasd be vagy add meg a kódot az új eszközön.</string>
+    <string name="invite_s3_theirs_note">Saját kulcsuk a tárolóhoz, hogy csatlakozni tudjanak.</string>
+    <string name="invite_s3_use_my_key">Használd inkább az én kulcsomat</string>
+    <string name="invite_s3_mine">A te kulcsodat fogják használni. Ha később el akarod távolítani őket, új kulcsot készítesz magadnak, és megadod minden eszközödön.</string>
+    <string name="invite_s3_use_their_key">Használd inkább az ő saját kulcsukat</string>
 </resources>

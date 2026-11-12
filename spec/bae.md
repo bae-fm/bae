@@ -2909,13 +2909,20 @@ recorded itself there, is refused before anything changes ([coven
 and the code screen goes on with the call under way instead, a join first, as
 at launch.
 
-Dan joins. In People, Ana taps **Invite** and enters his Dropbox email and a
-role (no name: Dan types his own when he joins), then picks how long the invite lasts: 7 days or 30 days.
-Her laptop records the
+Dan joins. In People, Ana taps **Invite** and enters his Dropbox email, with a
+line saying the library is shared with that Dropbox account so he can join, and
+taps **Create invite**. The form asks for no name (Dan types his own when he
+joins), no role (everyone joins as a member) and no lifetime (an invite lasts a
+week). Her laptop records the
 invite in one write, offline too, and shows it at once, marked as sharing
 access: sync then checks it again and shares the store's folder with his
-account, and the invite's code shows once it has. On S3, Ana makes an access
-key for Dan instead of sharing with an account. When sync can't share it, or
+account, and the invite's code shows once it has. On S3 the form asks for an
+access key Ana made for Dan, or **Use my key instead**: Dan then uses the key
+this device connects with, which core hands to the invite without the app ever
+holding its secret, and the form says that to remove him later Ana makes a new
+key for herself and enters it on each of her devices; **Use their own key
+instead** goes back. A library on iCloud or OneDrive asks for his Apple Account
+or Microsoft account email in the same way. When sync can't share it, or
 the library refuses the invite (Ana is no longer an admin, say), the invite
 says why in its row and where its code would be, and **Cancel invite** ends
 it. A grant the provider refuses for good, for a reason only a person can

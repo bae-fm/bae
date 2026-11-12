@@ -344,9 +344,6 @@
     <string name="members_invite">Inviter</string>
     <string name="invite_person_title">Inviter en person</string>
     <string name="invite_name">Navn</string>
-    <string name="invite_lifetime_hour">1 time</string>
-    <string name="invite_lifetime_day">1 dag</string>
-    <string name="invite_lifetime_week">1 uge</string>
     <string name="members_add_device">Tilføj enhed</string>
     <string name="add_device_title">Tilføj en enhed</string>
     <string name="add_device_added">%1$s er tilføjet</string>
@@ -357,7 +354,6 @@
     <string name="invite_email_help_dropbox">Biblioteket deles med denne Dropbox-konto, så personen kan blive med.</string>
     <string name="invite_email_help_onedrive">Biblioteket deles med denne Microsoft-konto, så personen kan blive med.</string>
     <string name="invite_email_help_icloud">Biblioteket deles med denne Apple-konto, så personen kan blive med.</string>
-    <string name="invite_email">E-mail</string>
     <string name="invite_create">Opret invitation</string>
     <string name="invite_title">Invitation</string>
     <string name="invite_cancel">Annuller invitation</string>
@@ -461,4 +457,8 @@
     <string name="onboarding_invite_ended_ask">Bed %1$s om en ny.</string>
     <string name="onboarding_ok">OK</string>
     <string name="add_device_instructions">Scan eller indtast koden på den nye enhed.</string>
+    <string name="invite_s3_theirs_note">Deres egen nøgle til bucketen, så de kan være med.</string>
+    <string name="invite_s3_use_my_key">Brug min nøgle i stedet</string>
+    <string name="invite_s3_mine">De bruger din nøgle. For at fjerne dem senere opretter du en ny nøgle til dig selv og indtaster den på hver af dine enheder.</string>
+    <string name="invite_s3_use_their_key">Brug deres egen nøgle i stedet</string>
 </resources>

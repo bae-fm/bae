@@ -586,7 +586,7 @@ impl AppServices {
     delegate_lib!(membership, set_member_role => set_member_role(member: &coven::MemberId, role: coven::MemberRole) -> ());
     delegate_values!(subscribe_admin_changes => subscribe_admin_changes() -> Vec<bae_people::admin_change::AdminChange>);
     delegate_lib!(membership, acknowledge_admin_change => acknowledge_admin_change(operation: coven::OperationId) -> ());
-    delegate_lib!(membership, invite_person => invite_person(role: coven::MemberRole, access: coven::InviteAccess, lifetime: coven::InviteLifetime) -> coven::InviteId);
+    delegate_lib!(membership, invite_person => invite_person(access: coven::InviteAccess) -> coven::InviteId);
     /// This device's open invites, each with the pending record of its
     /// operation when coven holds one.
     pub fn subscribe_invites(

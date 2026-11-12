@@ -346,9 +346,6 @@
     <string name="members_invite">Einladen</string>
     <string name="invite_person_title">Person einladen</string>
     <string name="invite_name">Name</string>
-    <string name="invite_lifetime_hour">1 Stunde</string>
-    <string name="invite_lifetime_day">1 Tag</string>
-    <string name="invite_lifetime_week">1 Woche</string>
     <string name="members_add_device">Gerät hinzufügen</string>
     <string name="add_device_title">Gerät hinzufügen</string>
     <string name="add_device_added">%1$s hinzugefügt</string>
@@ -359,7 +356,6 @@
     <string name="invite_email_help_dropbox">Die Bibliothek wird mit diesem Dropbox-Konto geteilt, damit die Person beitreten kann.</string>
     <string name="invite_email_help_onedrive">Die Bibliothek wird mit diesem Microsoft-Konto geteilt, damit die Person beitreten kann.</string>
     <string name="invite_email_help_icloud">Die Bibliothek wird mit diesem Apple-Konto geteilt, damit die Person beitreten kann.</string>
-    <string name="invite_email">E-Mail</string>
     <string name="invite_create">Einladung erstellen</string>
     <string name="invite_title">Einladung</string>
     <string name="invite_cancel">Einladung zurückziehen</string>
@@ -463,4 +459,8 @@
     <string name="onboarding_invite_ended_ask">Bitte %1$s um eine neue.</string>
     <string name="onboarding_ok">OK</string>
     <string name="add_device_instructions">Scanne den Code oder gib ihn auf dem neuen Gerät ein.</string>
+    <string name="invite_s3_theirs_note">Der eigene Schlüssel der Person für den Bucket, damit sie beitreten kann.</string>
+    <string name="invite_s3_use_my_key">Stattdessen meinen Schlüssel verwenden</string>
+    <string name="invite_s3_mine">Die Person verwendet deinen Schlüssel. Um sie später zu entfernen, erstellst du einen neuen Schlüssel für dich und gibst ihn auf jedem deiner Geräte ein.</string>
+    <string name="invite_s3_use_their_key">Stattdessen den eigenen Schlüssel der Person verwenden</string>
 </resources>

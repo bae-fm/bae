@@ -6,8 +6,9 @@ import SwiftUI
 extension ShotScene {
     /// People and devices: the first page for an admin and for a member, a
     /// person's page, this person's devices, the sheet that renames this
-    /// person, the sheet that asks to approve a join request, and the sheet that
-    /// adds a device, with its code and once a device has joined.
+    /// person, the sheet that asks to approve a join request, the sheet that
+    /// adds a device, with its code and once a device has joined, and the
+    /// invite form for each storage.
     static let peopleScenes: [ShotScene] = [
         people("people-and-devices-admin", asAdmin: true, invites: [invited]),
         people(
@@ -83,6 +84,96 @@ extension ShotScene {
                         canRemove: true
                     ),
                     onDismiss: {}
+                )
+            )
+        },
+        ShotScene(
+            id: "people-and-devices-invite-dropbox",
+            size: CGSize(width: 440, height: 230)
+        ) {
+            ShotStage(
+                InvitePersonForm(
+                    storage: .dropbox,
+                    email: .constant(""),
+                    accessKeyId: .constant(""),
+                    secretAccessKey: .constant(""),
+                    usesOwnKey: .constant(false),
+                    error: nil,
+                    canCreate: false,
+                    onCreate: {},
+                    onCancel: {}
+                )
+            )
+        },
+        ShotScene(
+            id: "people-and-devices-invite-onedrive",
+            size: CGSize(width: 440, height: 230)
+        ) {
+            ShotStage(
+                InvitePersonForm(
+                    storage: .oneDrive,
+                    email: .constant(""),
+                    accessKeyId: .constant(""),
+                    secretAccessKey: .constant(""),
+                    usesOwnKey: .constant(false),
+                    error: nil,
+                    canCreate: false,
+                    onCreate: {},
+                    onCancel: {}
+                )
+            )
+        },
+        ShotScene(
+            id: "people-and-devices-invite-icloud",
+            size: CGSize(width: 440, height: 230)
+        ) {
+            ShotStage(
+                InvitePersonForm(
+                    storage: .iCloud,
+                    email: .constant(""),
+                    accessKeyId: .constant(""),
+                    secretAccessKey: .constant(""),
+                    usesOwnKey: .constant(false),
+                    error: nil,
+                    canCreate: false,
+                    onCreate: {},
+                    onCancel: {}
+                )
+            )
+        },
+        ShotScene(
+            id: "people-and-devices-invite-s3",
+            size: CGSize(width: 440, height: 260)
+        ) {
+            ShotStage(
+                InvitePersonForm(
+                    storage: .s3,
+                    email: .constant(""),
+                    accessKeyId: .constant(""),
+                    secretAccessKey: .constant(""),
+                    usesOwnKey: .constant(false),
+                    error: nil,
+                    canCreate: false,
+                    onCreate: {},
+                    onCancel: {}
+                )
+            )
+        },
+        ShotScene(
+            id: "people-and-devices-invite-s3-own-key",
+            size: CGSize(width: 440, height: 190)
+        ) {
+            ShotStage(
+                InvitePersonForm(
+                    storage: .s3,
+                    email: .constant(""),
+                    accessKeyId: .constant(""),
+                    secretAccessKey: .constant(""),
+                    usesOwnKey: .constant(true),
+                    error: nil,
+                    canCreate: false,
+                    onCreate: {},
+                    onCancel: {}
                 )
             )
         },

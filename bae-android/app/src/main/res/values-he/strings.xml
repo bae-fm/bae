@@ -354,9 +354,6 @@
     <string name="members_invite">הזמנה</string>
     <string name="invite_person_title">הזמנת אדם</string>
     <string name="invite_name">שם</string>
-    <string name="invite_lifetime_hour">שעה אחת</string>
-    <string name="invite_lifetime_day">יום אחד</string>
-    <string name="invite_lifetime_week">שבוע אחד</string>
     <string name="members_add_device">הוספת מכשיר</string>
     <string name="add_device_title">הוספת מכשיר</string>
     <string name="add_device_added">המכשיר %1$s נוסף</string>
@@ -367,7 +364,6 @@
     <string name="invite_email_help_dropbox">הספרייה משותפת עם חשבון Dropbox זה כדי שיוכלו להצטרף.</string>
     <string name="invite_email_help_onedrive">הספרייה משותפת עם חשבון Microsoft זה כדי שיוכלו להצטרף.</string>
     <string name="invite_email_help_icloud">הספרייה משותפת עם חשבון Apple זה כדי שיוכלו להצטרף.</string>
-    <string name="invite_email">אימייל</string>
     <string name="invite_create">יצירת הזמנה</string>
     <string name="invite_title">הזמנה</string>
     <string name="invite_cancel">ביטול ההזמנה</string>
@@ -472,4 +468,8 @@
     <string name="onboarding_invite_ended_ask">בקש מ-%1$s הזמנה חדשה.</string>
     <string name="onboarding_ok">אישור</string>
     <string name="add_device_instructions">סרוק או הזן את הקוד במכשיר החדש.</string>
+    <string name="invite_s3_theirs_note">המפתח שלהם לדלי, כדי שיוכלו להצטרף.</string>
+    <string name="invite_s3_use_my_key">השתמש במפתח שלי במקום</string>
+    <string name="invite_s3_mine">הם ישתמשו במפתח שלך. כדי להסיר אותם בהמשך, תיצור מפתח חדש לעצמך ותזין אותו בכל אחד מהמכשירים שלך.</string>
+    <string name="invite_s3_use_their_key">השתמש במפתח שלהם במקום</string>
 </resources>

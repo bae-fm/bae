@@ -20,8 +20,6 @@ import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeDropboxLocation
 import uniffi.bae_bridge.BridgeInviteAccess
-import uniffi.bae_bridge.BridgeInviteLifetime
-import uniffi.bae_bridge.BridgeMemberRole
 import uniffi.bae_bridge.BridgeStorageLocation
 
 /**
@@ -38,11 +36,7 @@ class InviteDialogTest {
     private class InvitingHandle : FakeAppHandle() {
         val asked = mutableListOf<BridgeInviteAccess>()
 
-        override suspend fun invitePerson(
-            role: BridgeMemberRole,
-            access: BridgeInviteAccess,
-            lifetime: BridgeInviteLifetime,
-        ): String {
+        override suspend fun invitePerson(access: BridgeInviteAccess): String {
             asked += access
             return "invite-1"
         }

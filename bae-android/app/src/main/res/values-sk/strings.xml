@@ -360,9 +360,6 @@
     <string name="members_invite">Pozvať</string>
     <string name="invite_person_title">Pozvať osobu</string>
     <string name="invite_name">Meno</string>
-    <string name="invite_lifetime_hour">1 hodina</string>
-    <string name="invite_lifetime_day">1 deň</string>
-    <string name="invite_lifetime_week">1 týždeň</string>
     <string name="members_add_device">Pridať zariadenie</string>
     <string name="add_device_title">Pridať zariadenie</string>
     <string name="add_device_added">Zariadenie pridané: %1$s</string>
@@ -373,7 +370,6 @@
     <string name="invite_email_help_dropbox">Knižnica sa zdieľa s týmto účtom Dropbox, aby sa k nej mohla osoba pripojiť.</string>
     <string name="invite_email_help_onedrive">Knižnica sa zdieľa s týmto účtom Microsoft, aby sa k nej mohla osoba pripojiť.</string>
     <string name="invite_email_help_icloud">Knižnica sa zdieľa s týmto účtom Apple, aby sa k nej mohla osoba pripojiť.</string>
-    <string name="invite_email">E-mail</string>
     <string name="invite_create">Vytvoriť pozvánku</string>
     <string name="invite_title">Pozvánka</string>
     <string name="invite_cancel">Zrušiť pozvánku</string>
@@ -479,4 +475,8 @@
     <string name="onboarding_invite_ended_ask">Požiadajte osobu %1$s o novú.</string>
     <string name="onboarding_ok">OK</string>
     <string name="add_device_instructions">Naskenujte alebo zadajte kód na novom zariadení.</string>
+    <string name="invite_s3_theirs_note">Ich vlastný kľúč k bucketu, aby sa mohli pripojiť.</string>
+    <string name="invite_s3_use_my_key">Použiť namiesto toho môj kľúč</string>
+    <string name="invite_s3_mine">Budú používať váš kľúč. Ak ich chcete neskôr odstrániť, vytvoríte si nový kľúč a zadáte ho na každom svojom zariadení.</string>
+    <string name="invite_s3_use_their_key">Použiť namiesto toho ich vlastný kľúč</string>
 </resources>

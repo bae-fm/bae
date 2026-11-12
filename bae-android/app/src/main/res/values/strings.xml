@@ -398,9 +398,6 @@
     <string name="members_invite">Invite</string>
     <string name="invite_person_title">Invite a person</string>
     <string name="invite_name">Name</string>
-    <string name="invite_lifetime_hour">1 hour</string>
-    <string name="invite_lifetime_day">1 day</string>
-    <string name="invite_lifetime_week">1 week</string>
     <string name="members_add_device">Add device</string>
     <string name="add_device_title">Add a device</string>
     <!-- Shown in place of the QR code once the person's new device has joined; the argument is that device's name -->
@@ -413,7 +410,6 @@
     <string name="invite_email_help_dropbox">The library is shared with this Dropbox account so they can join.</string>
     <string name="invite_email_help_onedrive">The library is shared with this Microsoft account so they can join.</string>
     <string name="invite_email_help_icloud">The library is shared with this Apple Account so they can join.</string>
-    <string name="invite_email">Email</string>
     <string name="invite_create">Create invite</string>
     <string name="invite_title">Invite</string>
     <!-- %1$s = the date and time the invite expires -->
@@ -521,4 +517,8 @@
     <string name="onboarding_invite_ended_ask">Ask %1$s for a new one.</string>
     <string name="onboarding_ok">OK</string>
     <string name="add_device_instructions">Scan or enter the code on the new device.</string>
+    <string name="invite_s3_theirs_note">Their own key to the bucket, so they can join.</string>
+    <string name="invite_s3_use_my_key">Use my key instead</string>
+    <string name="invite_s3_mine">They’ll use your key. To remove them later, you make a new key for yourself and enter it on each of your devices.</string>
+    <string name="invite_s3_use_their_key">Use their own key instead</string>
 </resources>

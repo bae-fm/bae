@@ -11,19 +11,24 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import fm.bae.app.R
 
-/** An S3 access key, as a restore and a storage setup both ask for it. */
+/**
+ * An S3 access key, as a restore, a storage setup and an invite all ask for it. [secretNote] is the line
+ * under the secret key's field.
+ */
 @Composable
 internal fun S3KeyFields(
     accessKeyId: String,
     secretAccessKey: String,
     onAccessKeyIdChange: (String) -> Unit,
     onSecretAccessKeyChange: (String) -> Unit,
+    secretNote: String? = null,
+    accessKeyIdModifier: Modifier = Modifier,
 ) {
     OutlinedTextField(
         value = accessKeyId,
         onValueChange = onAccessKeyIdChange,
         label = { Text(stringResource(R.string.s3_access_key_id)) },
-        modifier = Modifier.fillMaxWidth(),
+        modifier = accessKeyIdModifier.fillMaxWidth(),
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii, autoCorrectEnabled = false),
     )
@@ -31,6 +36,7 @@ internal fun S3KeyFields(
         value = secretAccessKey,
         onValueChange = onSecretAccessKeyChange,
         label = { Text(stringResource(R.string.s3_secret_access_key)) },
+        supportingText = secretNote?.let { note -> { Text(note) } },
         modifier = Modifier.fillMaxWidth(),
         singleLine = true,
         visualTransformation = PasswordVisualTransformation(),

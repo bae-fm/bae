@@ -352,9 +352,6 @@
     <string name="members_invite">Invită</string>
     <string name="invite_person_title">Invită o persoană</string>
     <string name="invite_name">Nume</string>
-    <string name="invite_lifetime_hour">1 oră</string>
-    <string name="invite_lifetime_day">1 zi</string>
-    <string name="invite_lifetime_week">1 săptămână</string>
     <string name="members_add_device">Adaugă dispozitiv</string>
     <string name="add_device_title">Adaugă un dispozitiv</string>
     <string name="add_device_added">Dispozitiv adăugat: %1$s</string>
@@ -365,7 +362,6 @@
     <string name="invite_email_help_dropbox">Biblioteca este partajată cu acest cont Dropbox pentru ca persoana să se poată alătura.</string>
     <string name="invite_email_help_onedrive">Biblioteca este partajată cu acest cont Microsoft pentru ca persoana să se poată alătura.</string>
     <string name="invite_email_help_icloud">Biblioteca este partajată cu acest cont Apple pentru ca persoana să se poată alătura.</string>
-    <string name="invite_email">E-mail</string>
     <string name="invite_create">Creează invitația</string>
     <string name="invite_title">Invitație</string>
     <string name="invite_cancel">Anulează invitația</string>
@@ -470,4 +466,8 @@
     <string name="onboarding_invite_ended_ask">Cere-i una nouă persoanei %1$s.</string>
     <string name="onboarding_ok">OK</string>
     <string name="add_device_instructions">Scanează sau introdu codul pe noul dispozitiv.</string>
+    <string name="invite_s3_theirs_note">Cheia lor proprie pentru bucket, ca să se poată alătura.</string>
+    <string name="invite_s3_use_my_key">Folosește în schimb cheia mea</string>
+    <string name="invite_s3_mine">Vor folosi cheia ta. Ca să-i elimini mai târziu, creezi o cheie nouă pentru tine și o introduci pe fiecare dintre dispozitivele tale.</string>
+    <string name="invite_s3_use_their_key">Folosește în schimb cheia lor proprie</string>
 </resources>

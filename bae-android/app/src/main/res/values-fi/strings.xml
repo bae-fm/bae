@@ -344,9 +344,6 @@
     <string name="members_invite">Kutsu</string>
     <string name="invite_person_title">Kutsu henkilö</string>
     <string name="invite_name">Nimi</string>
-    <string name="invite_lifetime_hour">1 tunti</string>
-    <string name="invite_lifetime_day">1 päivä</string>
-    <string name="invite_lifetime_week">1 viikko</string>
     <string name="members_add_device">Lisää laite</string>
     <string name="add_device_title">Lisää laite</string>
     <string name="add_device_added">%1$s lisätty</string>
@@ -357,7 +354,6 @@
     <string name="invite_email_help_dropbox">Kirjasto jaetaan tämän Dropbox-tilin kanssa, jotta henkilö voi liittyä.</string>
     <string name="invite_email_help_onedrive">Kirjasto jaetaan tämän Microsoft-tilin kanssa, jotta henkilö voi liittyä.</string>
     <string name="invite_email_help_icloud">Kirjasto jaetaan tämän Apple-tilin kanssa, jotta henkilö voi liittyä.</string>
-    <string name="invite_email">Sähköposti</string>
     <string name="invite_create">Luo kutsu</string>
     <string name="invite_title">Kutsu</string>
     <string name="invite_cancel">Peruuta kutsu</string>
@@ -461,4 +457,8 @@
     <string name="onboarding_invite_ended_ask">Pyydä uusi kutsu henkilöltä %1$s.</string>
     <string name="onboarding_ok">OK</string>
     <string name="add_device_instructions">Skannaa tai syötä koodi uudella laitteella.</string>
+    <string name="invite_s3_theirs_note">Heidän oma avaimensa säilöön, jotta he voivat liittyä.</string>
+    <string name="invite_s3_use_my_key">Käytä sen sijaan omaa avaintani</string>
+    <string name="invite_s3_mine">He käyttävät sinun avaintasi. Jos haluat poistaa heidät myöhemmin, luot itsellesi uuden avaimen ja syötät sen jokaisella laitteellasi.</string>
+    <string name="invite_s3_use_their_key">Käytä sen sijaan heidän omaa avaintaan</string>
 </resources>

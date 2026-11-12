@@ -338,9 +338,6 @@
     <string name="members_invite">招待</string>
     <string name="invite_person_title">メンバーを招待</string>
     <string name="invite_name">名前</string>
-    <string name="invite_lifetime_hour">1時間</string>
-    <string name="invite_lifetime_day">1日</string>
-    <string name="invite_lifetime_week">1週間</string>
     <string name="members_add_device">デバイスを追加</string>
     <string name="add_device_title">デバイスを追加</string>
     <string name="add_device_added">%1$s を追加しました</string>
@@ -351,7 +348,6 @@
     <string name="invite_email_help_dropbox">ライブラリはこのDropboxアカウントと共有され、参加できるようになります。</string>
     <string name="invite_email_help_onedrive">ライブラリはこのMicrosoftアカウントと共有され、参加できるようになります。</string>
     <string name="invite_email_help_icloud">ライブラリはこのAppleアカウントと共有され、参加できるようになります。</string>
-    <string name="invite_email">メールアドレス</string>
     <string name="invite_create">招待を作成</string>
     <string name="invite_title">招待</string>
     <string name="invite_cancel">招待を取り消す</string>
@@ -454,4 +450,8 @@
     <string name="onboarding_invite_ended_ask">%1$sさんに新しい招待を頼んでください。</string>
     <string name="onboarding_ok">OK</string>
     <string name="add_device_instructions">新しいデバイスでコードをスキャンするか入力してください。</string>
+    <string name="invite_s3_theirs_note">その人自身のバケット用キーです。これで参加できます。</string>
+    <string name="invite_s3_use_my_key">代わりに自分のキーを使う</string>
+    <string name="invite_s3_mine">相手にはあなたのキーを使ってもらいます。あとで削除するには、自分用の新しいキーを作成し、すべてのデバイスに入力します。</string>
+    <string name="invite_s3_use_their_key">代わりにその人自身のキーを使う</string>
 </resources>

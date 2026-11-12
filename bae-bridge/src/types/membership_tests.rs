@@ -58,3 +58,18 @@ fn a_refused_invite_crosses_with_its_address_and_a_string_for_its_refusal() {
     .into();
     assert_eq!(keys.len(), 5);
 }
+
+/// The invite's access crosses as coven's: an account, a key typed for the
+/// invited person, or the key this device holds, whose secret the app never
+/// handles.
+#[test]
+fn an_invite_access_crosses_as_covens() {
+    assert!(matches!(
+        BridgeInviteAccess::HeldS3AccessKey.into_core(),
+        coven::InviteAccess::HeldS3AccessKey
+    ));
+    assert!(matches!(
+        BridgeInviteAccess::ProviderAccount { email: "dan@example.com".into() }.into_core(),
+        coven::InviteAccess::ProviderAccount { email } if email == "dan@example.com"
+    ));
+}

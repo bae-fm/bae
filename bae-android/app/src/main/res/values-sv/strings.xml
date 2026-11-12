@@ -344,9 +344,6 @@
     <string name="members_invite">Bjud in</string>
     <string name="invite_person_title">Bjud in en person</string>
     <string name="invite_name">Namn</string>
-    <string name="invite_lifetime_hour">1 timme</string>
-    <string name="invite_lifetime_day">1 dag</string>
-    <string name="invite_lifetime_week">1 vecka</string>
     <string name="members_add_device">Lägg till enhet</string>
     <string name="add_device_title">Lägg till en enhet</string>
     <string name="add_device_added">%1$s har lagts till</string>
@@ -357,7 +354,6 @@
     <string name="invite_email_help_dropbox">Biblioteket delas med det här Dropbox-kontot så att personen kan gå med.</string>
     <string name="invite_email_help_onedrive">Biblioteket delas med det här Microsoft-kontot så att personen kan gå med.</string>
     <string name="invite_email_help_icloud">Biblioteket delas med det här Apple-kontot så att personen kan gå med.</string>
-    <string name="invite_email">E-post</string>
     <string name="invite_create">Skapa inbjudan</string>
     <string name="invite_title">Inbjudan</string>
     <string name="invite_cancel">Avbryt inbjudan</string>
@@ -461,4 +457,8 @@
     <string name="onboarding_invite_ended_ask">Be %1$s om en ny.</string>
     <string name="onboarding_ok">OK</string>
     <string name="add_device_instructions">Skanna eller ange koden på den nya enheten.</string>
+    <string name="invite_s3_theirs_note">Deras egen nyckel till bucketen, så att de kan gå med.</string>
+    <string name="invite_s3_use_my_key">Använd min nyckel i stället</string>
+    <string name="invite_s3_mine">De använder din nyckel. För att ta bort dem senare skapar du en ny nyckel åt dig själv och anger den på var och en av dina enheter.</string>
+    <string name="invite_s3_use_their_key">Använd deras egen nyckel i stället</string>
 </resources>

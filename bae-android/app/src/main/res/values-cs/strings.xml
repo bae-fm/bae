@@ -362,9 +362,6 @@
     <string name="members_invite">Pozvat</string>
     <string name="invite_person_title">Pozvat osobu</string>
     <string name="invite_name">Jméno</string>
-    <string name="invite_lifetime_hour">1 hodina</string>
-    <string name="invite_lifetime_day">1 den</string>
-    <string name="invite_lifetime_week">1 týden</string>
     <string name="members_add_device">Přidat zařízení</string>
     <string name="add_device_title">Přidat zařízení</string>
     <string name="add_device_added">Zařízení přidáno: %1$s</string>
@@ -375,7 +372,6 @@
     <string name="invite_email_help_dropbox">Knihovna se sdílí s tímto účtem Dropbox, aby se k ní mohl připojit dotyčný.</string>
     <string name="invite_email_help_onedrive">Knihovna se sdílí s tímto účtem Microsoft, aby se k ní mohl připojit dotyčný.</string>
     <string name="invite_email_help_icloud">Knihovna se sdílí s tímto účtem Apple, aby se k ní mohl připojit dotyčný.</string>
-    <string name="invite_email">E-mail</string>
     <string name="invite_create">Vytvořit pozvánku</string>
     <string name="invite_title">Pozvánka</string>
     <string name="invite_cancel">Zrušit pozvánku</string>
@@ -481,4 +477,8 @@
     <string name="onboarding_invite_ended_ask">Požádejte %1$s o novou.</string>
     <string name="onboarding_ok">OK</string>
     <string name="add_device_instructions">Naskenujte nebo zadejte kód na novém zařízení.</string>
+    <string name="invite_s3_theirs_note">Jejich vlastní klíč k bucketu, aby se mohli připojit.</string>
+    <string name="invite_s3_use_my_key">Použít místo toho můj klíč</string>
+    <string name="invite_s3_mine">Budou používat váš klíč. Chcete-li je později odebrat, vytvoříte pro sebe nový klíč a zadáte ho na každém svém zařízení.</string>
+    <string name="invite_s3_use_their_key">Použít místo toho jejich vlastní klíč</string>
 </resources>

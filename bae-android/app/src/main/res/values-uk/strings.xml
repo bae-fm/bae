@@ -362,9 +362,6 @@
     <string name="members_invite">Запросити</string>
     <string name="invite_person_title">Запросити людину</string>
     <string name="invite_name">Ім’я</string>
-    <string name="invite_lifetime_hour">1 година</string>
-    <string name="invite_lifetime_day">1 день</string>
-    <string name="invite_lifetime_week">1 тиждень</string>
     <string name="members_add_device">Додати пристрій</string>
     <string name="add_device_title">Додати пристрій</string>
     <string name="add_device_added">Пристрій додано: %1$s</string>
@@ -375,7 +372,6 @@
     <string name="invite_email_help_dropbox">Бібліотекою діляться з цим обліковим записом Dropbox, щоб людина могла приєднатися.</string>
     <string name="invite_email_help_onedrive">Бібліотекою діляться з цим обліковим записом Microsoft, щоб людина могла приєднатися.</string>
     <string name="invite_email_help_icloud">Бібліотекою діляться з цим обліковим записом Apple, щоб людина могла приєднатися.</string>
-    <string name="invite_email">Ел. пошта</string>
     <string name="invite_create">Створити запрошення</string>
     <string name="invite_title">Запрошення</string>
     <string name="invite_cancel">Скасувати запрошення</string>
@@ -481,4 +477,8 @@
     <string name="onboarding_invite_ended_ask">Попросіть користувача %1$s надіслати нове.</string>
     <string name="onboarding_ok">OK</string>
     <string name="add_device_instructions">Скануйте або введіть код на новому пристрої.</string>
+    <string name="invite_s3_theirs_note">Їхній власний ключ до бакета, щоб вони могли приєднатися.</string>
+    <string name="invite_s3_use_my_key">Використати натомість мій ключ</string>
+    <string name="invite_s3_mine">Вони використовуватимуть ваш ключ. Щоб згодом їх видалити, ви створюєте новий ключ для себе й вводите його на кожному своєму пристрої.</string>
+    <string name="invite_s3_use_their_key">Використати натомість їхній власний ключ</string>
 </resources>

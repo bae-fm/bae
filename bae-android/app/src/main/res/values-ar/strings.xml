@@ -378,9 +378,6 @@
     <string name="members_invite">دعوة</string>
     <string name="invite_person_title">دعوة شخص</string>
     <string name="invite_name">الاسم</string>
-    <string name="invite_lifetime_hour">ساعة واحدة</string>
-    <string name="invite_lifetime_day">يوم واحد</string>
-    <string name="invite_lifetime_week">أسبوع واحد</string>
     <string name="members_add_device">إضافة جهاز</string>
     <string name="add_device_title">إضافة جهاز</string>
     <string name="add_device_added">تمت إضافة %1$s</string>
@@ -391,7 +388,6 @@
     <string name="invite_email_help_dropbox">تتم مشاركة المكتبة مع حساب Dropbox هذا ليتمكن من الانضمام.</string>
     <string name="invite_email_help_onedrive">تتم مشاركة المكتبة مع حساب Microsoft هذا ليتمكن من الانضمام.</string>
     <string name="invite_email_help_icloud">تتم مشاركة المكتبة مع حساب Apple هذا ليتمكن من الانضمام.</string>
-    <string name="invite_email">البريد الإلكتروني</string>
     <string name="invite_create">إنشاء دعوة</string>
     <string name="invite_title">دعوة</string>
     <string name="invite_cancel">إلغاء الدعوة</string>
@@ -499,4 +495,8 @@
     <string name="onboarding_invite_ended_ask">اطلب من %1$s دعوة جديدة.</string>
     <string name="onboarding_ok">موافق</string>
     <string name="add_device_instructions">امسح الرمز أو أدخله على الجهاز الجديد.</string>
+    <string name="invite_s3_theirs_note">مفتاحهم الخاص للوصول إلى الحاوية، ليتمكنوا من الانضمام.</string>
+    <string name="invite_s3_use_my_key">استخدم مفتاحي بدلًا من ذلك</string>
+    <string name="invite_s3_mine">سيستخدمون مفتاحك. لإزالتهم لاحقًا، تنشئ مفتاحًا جديدًا لنفسك وتدخله على كل جهاز من أجهزتك.</string>
+    <string name="invite_s3_use_their_key">استخدم مفتاحهم الخاص بدلًا من ذلك</string>
 </resources>

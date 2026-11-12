@@ -346,9 +346,6 @@
     <string name="members_invite">Davet et</string>
     <string name="invite_person_title">Bir kişiyi davet et</string>
     <string name="invite_name">Ad</string>
-    <string name="invite_lifetime_hour">1 saat</string>
-    <string name="invite_lifetime_day">1 gün</string>
-    <string name="invite_lifetime_week">1 hafta</string>
     <string name="members_add_device">Cihaz ekle</string>
     <string name="add_device_title">Cihaz ekle</string>
     <string name="add_device_added">%1$s eklendi</string>
@@ -359,7 +356,6 @@
     <string name="invite_email_help_dropbox">Kitaplık, kişinin katılabilmesi için bu Dropbox hesabıyla paylaşılır.</string>
     <string name="invite_email_help_onedrive">Kitaplık, kişinin katılabilmesi için bu Microsoft hesabıyla paylaşılır.</string>
     <string name="invite_email_help_icloud">Kitaplık, kişinin katılabilmesi için bu Apple hesabıyla paylaşılır.</string>
-    <string name="invite_email">E-posta</string>
     <string name="invite_create">Davet oluştur</string>
     <string name="invite_title">Davet</string>
     <string name="invite_cancel">Daveti iptal et</string>
@@ -463,4 +459,8 @@
     <string name="onboarding_invite_ended_ask">Yeni bir davet için %1$s ile görüşün.</string>
     <string name="onboarding_ok">Tamam</string>
     <string name="add_device_instructions">Yeni cihazda kodu tarayın veya girin.</string>
+    <string name="invite_s3_theirs_note">Katılabilmeleri için kendi kova anahtarları.</string>
+    <string name="invite_s3_use_my_key">Bunun yerine anahtarımı kullan</string>
+    <string name="invite_s3_mine">Anahtarınızı kullanacaklar. Onları daha sonra kaldırmak için kendiniz için yeni bir anahtar oluşturur ve her cihazınıza girersiniz.</string>
+    <string name="invite_s3_use_their_key">Bunun yerine onların kendi anahtarını kullan</string>
 </resources>

@@ -346,9 +346,6 @@
     <string name="members_invite">Uitnodigen</string>
     <string name="invite_person_title">Iemand uitnodigen</string>
     <string name="invite_name">Naam</string>
-    <string name="invite_lifetime_hour">1 uur</string>
-    <string name="invite_lifetime_day">1 dag</string>
-    <string name="invite_lifetime_week">1 week</string>
     <string name="members_add_device">Apparaat toevoegen</string>
     <string name="add_device_title">Een apparaat toevoegen</string>
     <string name="add_device_added">%1$s toegevoegd</string>
@@ -359,7 +356,6 @@
     <string name="invite_email_help_dropbox">De bibliotheek wordt gedeeld met dit Dropbox-account zodat die persoon kan meedoen.</string>
     <string name="invite_email_help_onedrive">De bibliotheek wordt gedeeld met dit Microsoft-account zodat die persoon kan meedoen.</string>
     <string name="invite_email_help_icloud">De bibliotheek wordt gedeeld met dit Apple-account zodat die persoon kan meedoen.</string>
-    <string name="invite_email">E-mail</string>
     <string name="invite_create">Uitnodiging maken</string>
     <string name="invite_title">Uitnodiging</string>
     <string name="invite_cancel">Uitnodiging annuleren</string>
@@ -463,4 +459,8 @@
     <string name="onboarding_invite_ended_ask">Vraag %1$s om een nieuwe.</string>
     <string name="onboarding_ok">OK</string>
     <string name="add_device_instructions">Scan de code of voer hem in op het nieuwe apparaat.</string>
+    <string name="invite_s3_theirs_note">Hun eigen sleutel voor de bucket, zodat ze kunnen meedoen.</string>
+    <string name="invite_s3_use_my_key">Mijn eigen sleutel gebruiken</string>
+    <string name="invite_s3_mine">Ze gebruiken jouw sleutel. Om ze later te verwijderen maak je een nieuwe sleutel voor jezelf en voer je die in op elk van je apparaten.</string>
+    <string name="invite_s3_use_their_key">Hun eigen sleutel gebruiken</string>
 </resources>

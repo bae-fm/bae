@@ -338,9 +338,6 @@
     <string name="members_invite">邀請</string>
     <string name="invite_person_title">邀請成員</string>
     <string name="invite_name">姓名</string>
-    <string name="invite_lifetime_hour">1 小時</string>
-    <string name="invite_lifetime_day">1 天</string>
-    <string name="invite_lifetime_week">1 週</string>
     <string name="members_add_device">新增裝置</string>
     <string name="add_device_title">新增裝置</string>
     <string name="add_device_added">已新增%1$s</string>
@@ -351,7 +348,6 @@
     <string name="invite_email_help_dropbox">資料庫將與此 Dropbox 帳號共享，對方即可加入。</string>
     <string name="invite_email_help_onedrive">資料庫將與此 Microsoft 帳號共享，對方即可加入。</string>
     <string name="invite_email_help_icloud">資料庫將與此 Apple 帳號共享，對方即可加入。</string>
-    <string name="invite_email">電子郵件</string>
     <string name="invite_create">建立邀請</string>
     <string name="invite_title">邀請</string>
     <string name="invite_cancel">取消邀請</string>
@@ -454,4 +450,8 @@
     <string name="onboarding_invite_ended_ask">請向%1$s索取新的邀請。</string>
     <string name="onboarding_ok">好</string>
     <string name="add_device_instructions">在新裝置上掃描或輸入此代碼。</string>
+    <string name="invite_s3_theirs_note">對方自己的儲存貯體金鑰，以便加入。</string>
+    <string name="invite_s3_use_my_key">改用我的金鑰</string>
+    <string name="invite_s3_mine">對方將使用你的金鑰。之後若要移除對方，你需要為自己產生新的金鑰，並在你的每部裝置上輸入。</string>
+    <string name="invite_s3_use_their_key">改用對方自己的金鑰</string>
 </resources>

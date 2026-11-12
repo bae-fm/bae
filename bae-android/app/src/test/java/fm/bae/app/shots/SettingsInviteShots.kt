@@ -1,6 +1,7 @@
 package fm.bae.app.shots
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import fm.bae.app.ui.components.DialogParts
 import fm.bae.app.ui.settings.InviteAccessInput
 import fm.bae.app.ui.settings.cancelInviteParts
@@ -40,6 +41,18 @@ class SettingsInviteShots : BoardShot() {
                 InviteForm(
                     BridgeStorageLocation.S3("my-bucket", "us-east-1", "https://s3.home.lan", null),
                     InviteAccessInput(accessKeyId = "AKIAEXAMPLEKEY", secretAccessKey = "••••••••••••••••"),
+                )
+            }
+        }
+
+    /** The invite form for an S3 library, when the invited person uses this device's own key. */
+    @Test
+    fun androidSettingsInviteS3OwnKey() =
+        shot("android.settings.invite.s3-own-key") {
+            Invite {
+                InviteForm(
+                    BridgeStorageLocation.S3("my-bucket", "us-east-1", "https://s3.home.lan", null),
+                    InviteAccessInput().apply { usesOwnKey = true },
                 )
             }
         }

@@ -346,9 +346,6 @@
     <string name="members_invite">Покани</string>
     <string name="invite_person_title">Поканване на човек</string>
     <string name="invite_name">Име</string>
-    <string name="invite_lifetime_hour">1 час</string>
-    <string name="invite_lifetime_day">1 ден</string>
-    <string name="invite_lifetime_week">1 седмица</string>
     <string name="members_add_device">Добавяне на устройство</string>
     <string name="add_device_title">Добавяне на устройство</string>
     <string name="add_device_added">Добавено устройство: %1$s</string>
@@ -359,7 +356,6 @@
     <string name="invite_email_help_dropbox">Библиотеката се споделя с този акаунт в Dropbox, за да може човекът да се присъедини.</string>
     <string name="invite_email_help_onedrive">Библиотеката се споделя с този акаунт в Microsoft, за да може човекът да се присъедини.</string>
     <string name="invite_email_help_icloud">Библиотеката се споделя с този акаунт в Apple, за да може човекът да се присъедини.</string>
-    <string name="invite_email">Имейл</string>
     <string name="invite_create">Създаване на покана</string>
     <string name="invite_title">Покана</string>
     <string name="invite_cancel">Отмяна на поканата</string>
@@ -463,4 +459,8 @@
     <string name="onboarding_invite_ended_ask">Помолете %1$s за нова.</string>
     <string name="onboarding_ok">OK</string>
     <string name="add_device_instructions">Сканирайте или въведете кода на новото устройство.</string>
+    <string name="invite_s3_theirs_note">Собственият им ключ за bucket-а, за да могат да се присъединят.</string>
+    <string name="invite_s3_use_my_key">Използване на моя ключ вместо това</string>
+    <string name="invite_s3_mine">Ще използват вашия ключ. За да ги премахнете по-късно, създавате нов ключ за себе си и го въвеждате на всяко ваше устройство.</string>
+    <string name="invite_s3_use_their_key">Използване на техен собствен ключ вместо това</string>
 </resources>

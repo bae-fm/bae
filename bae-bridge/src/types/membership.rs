@@ -173,8 +173,16 @@ impl BridgeDeviceCutOff {
 }
 #[derive(Clone, uniffi::Enum)]
 pub enum BridgeInviteAccess {
-    ProviderAccount { email: String },
-    S3AccessKey { access_key_id: String, secret_access_key: String },
+    ProviderAccount {
+        email: String,
+    },
+    S3AccessKey {
+        access_key_id: String,
+        secret_access_key: String,
+    },
+    /// The S3 key this device connects with, which core reads from its own
+    /// custody, so the app never handles the secret.
+    HeldS3AccessKey,
 }
 impl BridgeInviteAccess {
     pub(crate) fn into_core(self) -> coven::InviteAccess {
@@ -186,18 +194,9 @@ impl BridgeInviteAccess {
                     secret_access_key: coven::SecretText::new(secret_access_key),
                 }
             }
+            Self::HeldS3AccessKey => coven::InviteAccess::HeldS3AccessKey,
         }
     }
-}
-/// How long an invite stays open after it is made.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeInviteLifetime {
-    Hour,
-    Day,
-    Week,
-}
-mirror_enum! { BridgeInviteLifetime = coven::InviteLifetime,
-    into_core: pub(crate) fn, variants: { Hour, Day, Week },
 }
 /// One of this device's open invites.
 #[derive(Clone, uniffi::Record)]

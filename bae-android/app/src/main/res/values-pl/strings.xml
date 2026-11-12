@@ -362,9 +362,6 @@
     <string name="members_invite">Zaproś</string>
     <string name="invite_person_title">Zaproś osobę</string>
     <string name="invite_name">Imię</string>
-    <string name="invite_lifetime_hour">1 godzina</string>
-    <string name="invite_lifetime_day">1 dzień</string>
-    <string name="invite_lifetime_week">1 tydzień</string>
     <string name="members_add_device">Dodaj urządzenie</string>
     <string name="add_device_title">Dodaj urządzenie</string>
     <string name="add_device_added">Dodano urządzenie %1$s</string>
@@ -375,7 +372,6 @@
     <string name="invite_email_help_dropbox">Biblioteka jest udostępniana temu kontu Dropbox, aby ta osoba mogła dołączyć.</string>
     <string name="invite_email_help_onedrive">Biblioteka jest udostępniana temu kontu Microsoft, aby ta osoba mogła dołączyć.</string>
     <string name="invite_email_help_icloud">Biblioteka jest udostępniana temu kontu Apple, aby ta osoba mogła dołączyć.</string>
-    <string name="invite_email">E-mail</string>
     <string name="invite_create">Utwórz zaproszenie</string>
     <string name="invite_title">Zaproszenie</string>
     <string name="invite_cancel">Anuluj zaproszenie</string>
@@ -481,4 +477,8 @@
     <string name="onboarding_invite_ended_ask">Poproś osobę %1$s o nowe.</string>
     <string name="onboarding_ok">OK</string>
     <string name="add_device_instructions">Zeskanuj lub wpisz kod na nowym urządzeniu.</string>
+    <string name="invite_s3_theirs_note">Ich własny klucz do zasobnika, aby mogli dołączyć.</string>
+    <string name="invite_s3_use_my_key">Użyj zamiast tego mojego klucza</string>
+    <string name="invite_s3_mine">Będą używać Twojego klucza. Aby ich później usunąć, tworzysz nowy klucz dla siebie i wpisujesz go na każdym ze swoich urządzeń.</string>
+    <string name="invite_s3_use_their_key">Użyj zamiast tego ich własnego klucza</string>
 </resources>

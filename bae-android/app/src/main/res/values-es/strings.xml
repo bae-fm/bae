@@ -352,9 +352,6 @@
     <string name="members_invite">Invitar</string>
     <string name="invite_person_title">Invitar a una persona</string>
     <string name="invite_name">Nombre</string>
-    <string name="invite_lifetime_hour">1 hora</string>
-    <string name="invite_lifetime_day">1 día</string>
-    <string name="invite_lifetime_week">1 semana</string>
     <string name="members_add_device">Añadir dispositivo</string>
     <string name="add_device_title">Añadir un dispositivo</string>
     <string name="add_device_added">Se ha añadido %1$s</string>
@@ -365,7 +362,6 @@
     <string name="invite_email_help_dropbox">La biblioteca se comparte con esta cuenta de Dropbox para que la persona pueda unirse.</string>
     <string name="invite_email_help_onedrive">La biblioteca se comparte con esta cuenta de Microsoft para que la persona pueda unirse.</string>
     <string name="invite_email_help_icloud">La biblioteca se comparte con esta cuenta de Apple para que la persona pueda unirse.</string>
-    <string name="invite_email">Correo electrónico</string>
     <string name="invite_create">Crear invitación</string>
     <string name="invite_title">Invitación</string>
     <string name="invite_cancel">Cancelar invitación</string>
@@ -470,4 +466,8 @@
     <string name="onboarding_invite_ended_ask">Pídele una nueva a %1$s.</string>
     <string name="onboarding_ok">Aceptar</string>
     <string name="add_device_instructions">Escanea o introduce el código en el nuevo dispositivo.</string>
+    <string name="invite_s3_theirs_note">Su propia clave del bucket, para que puedan unirse.</string>
+    <string name="invite_s3_use_my_key">Usar mi clave en su lugar</string>
+    <string name="invite_s3_mine">Usarán tu clave. Para quitarles el acceso más adelante, creas una clave nueva para ti y la introduces en cada uno de tus dispositivos.</string>
+    <string name="invite_s3_use_their_key">Usar su propia clave en su lugar</string>
 </resources>

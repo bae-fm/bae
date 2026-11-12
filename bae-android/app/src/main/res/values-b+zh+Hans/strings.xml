@@ -338,9 +338,6 @@
     <string name="members_invite">邀请</string>
     <string name="invite_person_title">邀请成员</string>
     <string name="invite_name">姓名</string>
-    <string name="invite_lifetime_hour">1 小时</string>
-    <string name="invite_lifetime_day">1 天</string>
-    <string name="invite_lifetime_week">1 周</string>
     <string name="members_add_device">添加设备</string>
     <string name="add_device_title">添加设备</string>
     <string name="add_device_added">已添加%1$s</string>
@@ -351,7 +348,6 @@
     <string name="invite_email_help_dropbox">资料库将与此 Dropbox 账户共享，对方即可加入。</string>
     <string name="invite_email_help_onedrive">资料库将与此 Microsoft 账户共享，对方即可加入。</string>
     <string name="invite_email_help_icloud">资料库将与此 Apple 账户共享，对方即可加入。</string>
-    <string name="invite_email">电子邮件</string>
     <string name="invite_create">创建邀请</string>
     <string name="invite_title">邀请</string>
     <string name="invite_cancel">取消邀请</string>
@@ -454,4 +450,8 @@
     <string name="onboarding_invite_ended_ask">请向%1$s索取新的邀请。</string>
     <string name="onboarding_ok">好</string>
     <string name="add_device_instructions">在新设备上扫描或输入此代码。</string>
+    <string name="invite_s3_theirs_note">对方自己的存储桶密钥，以便加入。</string>
+    <string name="invite_s3_use_my_key">改用我的密钥</string>
+    <string name="invite_s3_mine">对方将使用你的密钥。之后若要移除对方，你需要为自己生成新密钥，并在你的每台设备上输入。</string>
+    <string name="invite_s3_use_their_key">改用对方自己的密钥</string>
 </resources>
