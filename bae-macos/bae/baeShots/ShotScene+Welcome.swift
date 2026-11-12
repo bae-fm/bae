@@ -58,12 +58,9 @@ extension ShotScene {
                 )
             ) { reads.answered == 2 }
         },
-        ShotScene(
-            id: "mac.welcome.remove.failed",
-            size: CGSize(width: 340, height: 160)
-        ) {
-            ShotStage(
-                NSAlertShot {
+        overWelcome("mac.welcome.remove.failed") { _, window in
+            OverWindow.alert(
+                {
                     LibraryRemovalAlerts.failure(
                         FailedRemoval(
                             library: PreviewData.homeMusic,
@@ -74,7 +71,8 @@ extension ShotScene {
                             retry: .ask
                         )
                     )
-                }
+                },
+                over: window
             )
         },
         savedCodeDeletionAlert(),
@@ -201,34 +199,40 @@ extension ShotScene {
                 }
             )
         },
-        ShotScene(
-            id: "mac.welcome.add-code.entering",
-            size: CGSize(width: 400, height: 190)
-        ) {
-            ShotStage(
+        overWelcome("mac.welcome.add-code.entering", libraries: []) {
+            _,
+            window in
+            OverWindow.sheet(
                 EnterCodeSheet(form: enterCodeForm(), onCancel: {})
-                    .windowBackground()
+                    .frame(width: 400)
+                    .fixedSize(horizontal: false, vertical: true),
+                over: window
             )
         },
-        ShotScene(
-            id: "mac.welcome.add-code.half-typed",
-            size: CGSize(width: 400, height: 190)
-        ) {
+        overWelcome("mac.welcome.add-code.half-typed", libraries: []) {
+            _,
+            window in
             let form = enterCodeForm()
-            form.edit(code: PreviewData.restoreCode)
-            return ShotStage(
+            form.edit(code: String(PreviewData.restoreCode.prefix(25)))
+            return OverWindow.sheet(
                 EnterCodeSheet(form: form, onCancel: {})
-                    .windowBackground()
+                    .frame(width: 400)
+                    .fixedSize(horizontal: false, vertical: true),
+                over: window
             )
         },
-        ShotScene(
-            id: "mac.welcome.add-code.s3-key-needed",
-            size: CGSize(width: 440, height: 210)
-        ) {
+        overWelcome("mac.welcome.add-code.s3-key-needed", libraries: []) {
+            _,
+            window in
             let form = enterCodeForm(reading: .restore(metadata: s3Metadata))
             form.acceptCode(PreviewData.restoreCode)
             form.accessKey = "AKIA4EXAMPLE"
-            return ShotStage(RestoreS3KeySheet(form: form).windowBackground())
+            return OverWindow.sheet(
+                RestoreS3KeySheet(form: form)
+                    .frame(width: 440)
+                    .fixedSize(horizontal: false, vertical: true),
+                over: window
+            )
         },
         ShotScene(id: "mac.welcome.add-code.adding", size: WelcomeWindow.size) {
             ShotStage(
@@ -273,6 +277,41 @@ extension ShotScene {
                     setup: reads.setup
                 )
             ) { reads.answered == 2 }
+        }
+    }
+
+    /// The welcome window over `libraries`, with the dialog `laid` over it.
+    /// `laid` is given the window's reads, to count the ones the dialog makes
+    /// itself, and the window; `extraReads` is how many of those it makes.
+    private static func overWelcome<Dialog: View>(
+        _ id: String,
+        size: CGSize = WelcomeWindow.size,
+        libraries: [BridgeLibrary] = PreviewData.boardLibraries,
+        savedCodes: [BridgeSavedRestoreEntry] = [],
+        extraReads: Int = 0,
+        laid dialog: @escaping @MainActor (CountedReads, AnyView) -> Dialog
+    ) -> ShotScene {
+        ShotScene(id: id, size: size) {
+            let reads = CountedReads(
+                libraries: libraries,
+                savedCodes: savedCodes
+            )
+            // `PreviewScenes.welcome` at `size`: a board may draw the window
+            // taller than the app's, to fit a popover under its rows.
+            let window = MacWelcomeWindow(size: size) {
+                WelcomeView(
+                    onLibraryReady: { _, _ in },
+                    onOpenLibrary: { _ in },
+                    onFinishReplacement: { _, _ in },
+                    initialMode: .choose,
+                    canDeleteActiveLibrary: true
+                )
+            }
+            .environment(reads.setup)
+            .environment(PreviewData.welcomeRemovals())
+            return ShotStage(dialog(reads, AnyView(window))) {
+                reads.answered == 2 + extraReads
+            }
         }
     }
 
@@ -344,14 +383,15 @@ extension ShotScene {
         _ library: BridgeLibrary,
         losing loss: RemovalLoss = .counted(holdsUnsent: false)
     ) -> ShotScene {
-        ShotScene(id: id, size: CGSize(width: 340, height: 280)) {
-            ShotStage(
-                NSAlertShot {
+        overWelcome(id) { _, window in
+            OverWindow.alert(
+                {
                     LibraryRemovalAlerts.confirmation(
                         for: library,
                         losing: loss
                     )
-                }
+                },
+                over: window
             )
         }
     }
@@ -360,12 +400,11 @@ extension ShotScene {
     /// saved-codes section's alert words it (`SavedCodeDeletion`); the section
     /// shows it with a SwiftUI `alert`, which AppKit lays out as this alert.
     private static func savedCodeDeletionAlert() -> ShotScene {
-        ShotScene(
-            id: "mac.welcome.saved-code.delete",
-            size: CGSize(width: 340, height: 220)
-        ) {
-            ShotStage(
-                NSAlertShot {
+        overWelcome("mac.welcome.saved-code.delete", savedCodes: savedCodes) {
+            _,
+            window in
+            OverWindow.alert(
+                {
                     let alert = NSAlert()
                     alert.messageText = SavedCodeDeletion.title
                     alert.informativeText = SavedCodeDeletion.message(
@@ -380,25 +419,34 @@ extension ShotScene {
                     )
                     cancel.keyEquivalent = "\u{1b}"
                     return alert
-                }
+                },
+                over: window
             )
         }
     }
 
-    /// The details popover's content for Home music, once its status
-    /// is in.
+    /// The details popover for Home music over the welcome window, once its
+    /// status is in. The popover opens under Home music's row: the board
+    /// puts its right edge 21 points past the list's, which is 420 wide and
+    /// centred.
     private static func detailsScene(
         _ id: String,
         _ status: BridgeLibraryStanding
     ) -> ShotScene {
-        ShotScene(id: id, size: CGSize(width: 320, height: 380)) {
-            let reads = CountedReads()
-            return ShotStage(
+        overWelcome(
+            id,
+            size: CGSize(width: WelcomeWindow.size.width, height: 680),
+            extraReads: 1
+        ) { reads, window in
+            OverWindow.popover(
                 PreviewScenes.welcomeLibraryDetails(
                     PreviewData.homeMusic,
                     readStanding: reads.readStanding(status)
-                )
-            ) { reads.answered == 1 }
+                ),
+                top: 402,
+                trailing: (WelcomeWindow.size.width - 420) / 2 - 21,
+                over: window
+            )
         }
     }
 }
