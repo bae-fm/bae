@@ -173,7 +173,7 @@ struct PeopleAndDevicesPage: View {
                 let request = invite.requestToDecide
             {
                 JoinRequestSheet(
-                    title: request.info().name,
+                    name: request.info().name,
                     confirmation: request.info().confirmation,
                     busy: task != nil,
                     error: actionError,
@@ -905,11 +905,11 @@ private struct InviteRow: View {
     }
 }
 
-/// A join request: the person's name, and the number their device shows,
-/// which Approve is for when it matches. Closing it keeps the request; the
+/// A join request, titled with the name of who asks, and the number their
+/// device shows, which Approve is for when it matches. Closing it keeps the request; the
 /// invite's row opens it again.
 struct JoinRequestSheet: View {
-    let title: String
+    let name: String
     let confirmation: String
     let busy: Bool
     let error: DisplayError?
@@ -919,7 +919,7 @@ struct JoinRequestSheet: View {
 
     var body: some View {
         MacSheet(
-            verbatim: title,
+            "\(name) wants to join",
             message: "Make sure this code is showing:",
             width: 400
         ) {

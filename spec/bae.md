@@ -2947,7 +2947,7 @@ from the end of its last check, and when it doesn't, on coven's doubling waits
 (a provider's cooldown holds either). Every other state of a running join (opening,
 connecting, loading, registering, committing, an error) is the same step with the library's
 name as its headline, the progress line under it, and **Cancel** while it can cancel. When
-his request arrives, Ana's laptop shows a dialog with the name Dan typed, asks her to make sure this code is showing, and shows
+his request arrives, Ana's laptop shows a dialog titled "Dan wants to join", with the name Dan typed, asks her to make sure this code is showing, and shows
 the same number under it, with **Approve** and **Decline**. Ana compares it with
 Dan's screen, or asks him for his number, and approves if it matches. Every
 invite waits for her approval: someone who saw the code could use it before Dan,

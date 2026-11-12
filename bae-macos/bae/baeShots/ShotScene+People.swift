@@ -34,7 +34,7 @@ extension ShotScene {
         ) {
             ShotStage(
                 JoinRequestSheet(
-                    title: "Dan",
+                    name: "Dan",
                     confirmation: "412 778",
                     busy: false,
                     error: nil,
