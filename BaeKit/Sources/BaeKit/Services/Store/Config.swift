@@ -41,12 +41,14 @@ public struct Config: Equatable {
     /// has nothing to search and says so.
     public let hasSourceToSearch: Bool
     /// Whether the seek bar's leading label counts down the time remaining
-    /// instead of showing the time elapsed. A synced preference, so the bar
-    /// reads it here rather than keeping its own copy per device.
+    /// instead of showing the time elapsed. A per-device preference, a column
+    /// of this device's `preferences` row, so the bar reads it here rather
+    /// than keeping a copy of its own.
     public let showRemainingTime: Bool
     /// Whether the library page spans the window's full width instead of
-    /// centering its content in a width-capped column. A synced preference,
-    /// read here by the library page.
+    /// centering its content in a width-capped column. A per-device
+    /// preference, a column of this device's `preferences` row, read here by
+    /// the library page.
     public let libraryFullWidth: Bool
     /// Whether Unpin asks before removing a release's files from this device.
     public let askBeforeUnpinning: Bool

@@ -38,12 +38,14 @@ pub struct BridgeConfig {
     /// search and says so.
     pub has_source_to_search: bool,
     /// Whether the seek bar's leading label counts down the time remaining
-    /// instead of showing the time elapsed. A synced preference, not a
-    /// per-device one — the seek bar reads it and never stores a copy.
+    /// instead of showing the time elapsed. A per-device preference, a column
+    /// of this device's `preferences` row; the seek bar reads it and never
+    /// stores a copy.
     pub show_remaining_time: bool,
     /// Whether the library page spans the window's full width instead of
-    /// centering its content in a width-capped column. A synced preference;
-    /// the library page reads it and never stores a copy.
+    /// centering its content in a width-capped column. A per-device
+    /// preference, a column of this device's `preferences` row; the library
+    /// page reads it and never stores a copy.
     pub library_full_width: bool,
     /// Whether Unpin asks before removing a release's files from this
     /// device. Per device; Settings turns it back on after the dialog's

@@ -42,8 +42,9 @@ public final class Playback: Sendable, Observable {
     public let setSidePauseCountdown:
         @Sendable (_ countdown: BridgeSidePauseCountdown) async throws -> Void
     /// Whether the seek bar's leading label counts down the time remaining.
-    /// A synced preference, so the bar writes it here rather than to a local
-    /// store, and reads it back off the config mirror.
+    /// A per-device preference, a column of this device's `preferences` row,
+    /// so the bar writes it here rather than to a local store, and reads it
+    /// back off the config mirror.
     public let setShowRemainingTime:
         @Sendable (_ enabled: Bool) async throws -> Void
 
