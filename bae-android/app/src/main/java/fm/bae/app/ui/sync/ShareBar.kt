@@ -70,6 +70,9 @@ internal fun ShareBar(
 /** How long the moving bar's piece takes to cross the track. */
 private const val MOVING_MILLIS = 1500L
 
+/** How far across the track the moving piece rests before the bar first moves. */
+private const val MOVING_REST_PHASE = 0.3f
+
 /** The moving bar's piece, as a share of the track's width. */
 private const val MOVING_SHARE = 0.4f
 
@@ -87,7 +90,9 @@ internal class ShareBarView(
     private val following = FrameFollowing<Double>(this, ::show)
     private var fraction = 0f
     private val bounds = RectF()
-    private var phase = 0f
+
+    /** Where the moving piece is; before it first moves it sits part way, so a still frame shows it. */
+    private var phase = MOVING_REST_PHASE
     private val crossing =
         ValueAnimator.ofFloat(0f, 1f).apply {
             duration = MOVING_MILLIS
@@ -140,6 +145,7 @@ internal class ShareBarView(
     /** Shows a piece crossing the track, while a step counts nothing. */
     fun showMoving() {
         if (!crossing.isStarted) crossing.start()
+        invalidate()
     }
 
     override fun onDetachedFromWindow() {
