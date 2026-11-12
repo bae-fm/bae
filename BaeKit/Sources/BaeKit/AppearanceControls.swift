@@ -24,7 +24,7 @@ public struct AppearanceControls: View {
         }
 
         HStack(alignment: .center, spacing: ThemeSpace.group) {
-            VStack(alignment: .leading, spacing: ThemeSpace.line) {
+            VStack(alignment: .leading, spacing: ThemeSpace.inline) {
                 Text("Accent", tableName: "Appearance", bundle: .module)
                 Text(preferences.accent.title)
                     .themeText(.detail)
@@ -39,8 +39,8 @@ public struct AppearanceControls: View {
     }
 }
 
-/// The accent swatches at the end of the Accent row: a circle of each colour,
-/// the chosen one ticked.
+/// The accent swatches at the end of the Accent row: a disc of each colour,
+/// the chosen one ringed.
 public struct MacAccentPicker: View {
     let selected: AccentChoice
     let onSelect: (AccentChoice) -> Void
@@ -54,33 +54,47 @@ public struct MacAccentPicker: View {
     }
 
     public var body: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: ThemeSpace.related) {
             ForEach(AccentChoice.allCases, id: \.self) { accent in
-                Button {
-                    onSelect(accent)
-                } label: {
-                    Circle()
-                        .fill(accent.colors.fill)
-                        .frame(width: 22, height: 22)
-                        .overlay {
-                            Image(systemName: "checkmark")
-                                .themeIcon(.small)
-                                .foregroundStyle(accent.colors.onFill)
-                                .opacity(selected == accent ? 1 : 0)
-                        }
-                        .frame(
-                            minWidth: ThemeSize.hitTarget,
-                            minHeight: ThemeSize.hitTarget
-                        )
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(accent.title)
-                .accessibilityAddTraits(selected == accent ? .isSelected : [])
-                .help(accent.title)
+                swatch(accent)
             }
         }
     }
+
+    /// One accent's disc, ringed while it is the chosen one.
+    private func swatch(_ accent: AccentChoice) -> some View {
+        let chosen = selected == accent
+        return Button {
+            onSelect(accent)
+        } label: {
+            Circle()
+                .fill(accent.colors.fill)
+                .frame(width: Self.swatchSize, height: Self.swatchSize)
+                .overlay {
+                    if chosen {
+                        // A gap of the surface, then the ring.
+                        Circle()
+                            .stroke(Color.primary, lineWidth: Self.ringWidth)
+                            .frame(
+                                width: Self.swatchSize + 2 * Self.ringOffset,
+                                height: Self.swatchSize + 2 * Self.ringOffset
+                            )
+                    }
+                }
+                // The press target runs past the disc, up to its neighbours.
+                .contentShape(Circle().inset(by: -ThemeSpace.compact / 2))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(accent.title)
+        .accessibilityAddTraits(chosen ? .isSelected : [])
+        .help(accent.title)
+    }
+
+    private static let swatchSize: CGFloat = 18
+    private static let ringWidth: CGFloat = 1.5
+    /// From a disc's edge to the middle of its ring: the 2 pt gap and half the
+    /// ring's own width.
+    private static let ringOffset: CGFloat = 2 + ringWidth / 2
 }
 
 extension AppearanceMode {
