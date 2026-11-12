@@ -316,6 +316,7 @@ tracking = -0.3
 macos = 22
 ios = "title2"
 android = 22
+android_line = 28
 
 [text.heading]
 weight = "semibold"
@@ -328,24 +329,28 @@ weight = "medium"
 macos = 13
 ios = "body"
 android = 16
+android_line = 24
 
 [text.strong]
 weight = "semibold"
 macos = 13
 ios = "body"
 android = 14
+android_line = 20
 
 [text.body]
 weight = "regular"
 macos = 13
 ios = "body"
 android = 14
+android_line = 20
 
 [text.detail]
 weight = "regular"
 macos = 11.5
 ios = "caption"
 android = 12
+android_line = 16
 
 [text.fine]
 weight = "regular"
