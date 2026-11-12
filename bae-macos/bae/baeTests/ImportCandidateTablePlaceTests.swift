@@ -275,6 +275,102 @@ struct ImportCandidateTablePlaceTests {
 
 }
 
+extension ImportCandidateTablePlaceTests {
+    // MARK: Rows of two heights
+
+    /// A group header is a shorter row than a release's. The row on top is
+    /// found by position, a header on top pins itself, and the header of the
+    /// group whose last row is on top is still pinned, lifted with that row.
+    @MainActor
+    @Test("a header is pinned over its group until the group leaves")
+    func headerPinnedWhileItsGroupLeaves() async throws {
+        let source = MutableImportListPageSource(
+            items: Self.groupedItems(headersAt: [0, 20])
+        )
+        let store = ImportStore()
+        let uiStore = UiStore()
+        let slot = try await Self.loadedSlot(source, store, uiStore)
+        try await ImportListHosting.withList(
+            store: store,
+            slot: slot,
+            uiStore: uiStore,
+            size: Self.size
+        ) { table in
+            let coordinator = try Self.coordinator(of: table)
+            let clipView = try #require(table.enclosingScrollView?.contentView)
+            try await Wait.until {
+                table.rect(ofRow: 0).height
+                    == ImportCandidateTableLayout.headerRowHeight
+                    && table.rect(ofRow: 1).height
+                        == ImportCandidateTableLayout.rowHeight
+            }
+
+            // The second header is on top: found by position, not by
+            // dividing the offset by one height.
+            Self.scroll(table, toRow: 20)
+            try await Wait.until { slot.place?.position == 20 }
+            #expect(Self.topRow(of: table) == 20)
+            #expect(coordinator.pinnedHeader()?.position == 20)
+            #expect(!coordinator.pinnedStrip.isHidden)
+            #expect(
+                coordinator.pinnedStrip.frame.height
+                    == ImportCandidateTableLayout.headerRowHeight
+            )
+
+            // The first group's last row is part way off the top: its header
+            // is still the one pinned, and the group ends with the row.
+            clipView.scroll(
+                to: NSPoint(x: 0, y: table.rect(ofRow: 19).minY + 20)
+            )
+            table.enclosingScrollView?.reflectScrolledClipView(clipView)
+            #expect(Self.topRow(of: table) == 19)
+            let pinned = try #require(coordinator.pinnedHeader())
+            #expect(pinned.position == 0)
+            #expect(pinned.header != nil)
+            #expect(pinned.ends(below: 19) { coordinator.item(at: $0) })
+            #expect(!coordinator.pinnedStrip.isHidden)
+        }
+    }
+
+    /// A page landing above the rows in view can turn a release's row into a
+    /// header: the rows in view stay where they are on screen.
+    @MainActor
+    @Test("a row above the view changing height moves nothing in view")
+    func heightChangeAboveTheViewKeepsTheViewStill() async throws {
+        let source = MutableImportListPageSource(
+            items: (0..<80).map(Self.candidateItem)
+        )
+        let store = ImportStore()
+        let uiStore = UiStore()
+        let slot = try await Self.loadedSlot(source, store, uiStore)
+        try await ImportListHosting.withList(
+            store: store,
+            slot: slot,
+            uiStore: uiStore,
+            size: Self.size
+        ) { table in
+            let clipView = try #require(table.enclosingScrollView?.contentView)
+            Self.scroll(table, toRow: 30)
+            try await Wait.until { slot.place?.position == 30 }
+            let key = slot.list?.idAt(30)
+            let offset = table.rect(ofRow: 30).minY - clipView.bounds.minY
+
+            var items = (0..<80).map(Self.candidateItem)
+            items[5] = Self.headerItem(5)
+            await source.replaceItems(items)
+            try await Wait.until {
+                table.rect(ofRow: 5).height
+                    == ImportCandidateTableLayout.headerRowHeight
+            }
+
+            #expect(slot.list?.idAt(30) == key)
+            #expect(Self.topRow(of: table) == 30)
+            let moved = table.rect(ofRow: 30).minY - clipView.bounds.minY
+            #expect(abs(moved - offset) < 0.5)
+        }
+    }
+}
+
 // MARK: - Fixtures
 
 extension ImportCandidateTablePlaceTests {
@@ -337,9 +433,41 @@ extension ImportCandidateTablePlaceTests {
         candidateItem(index, folderName: "Release \(index)")
     }
 
+    /// A group's header at `index`.
+    private static func headerItem(_ index: Int) -> BridgeImportListItem {
+        PreviewData.groupHeaderItem(
+            key: BridgeFolderReleaseDecisionKey(
+                watchedFolderPath: Data("/library".utf8),
+                relativeFolder: Data("Group \(index)".utf8)
+            ),
+            name: "Group \(index)",
+            entryCount: 19
+        )
+    }
+
+    /// Ninety rows with a group header at each of `headersAt`, each row after
+    /// one listed under the last.
+    private static func groupedItems(
+        headersAt: [Int]
+    ) -> [BridgeImportListItem] {
+        (0..<90)
+            .map { index in
+                if headersAt.contains(index) {
+                    return headerItem(index)
+                }
+                let header = headersAt.last { $0 < index }
+                return candidateItem(
+                    index,
+                    folderName: "Release \(index)",
+                    headerPosition: header.map(UInt64.init)
+                )
+            }
+    }
+
     private static func candidateItem(
         _ index: Int,
-        folderName: String
+        folderName: String,
+        headerPosition: UInt64? = nil
     ) -> BridgeImportListItem {
         PreviewData.candidateItem(
             BridgeTriageRow(
@@ -364,7 +492,8 @@ extension ImportCandidateTablePlaceTests {
                 metadataProvenance: nil,
                 reading: .unidentified,
                 selected: false
-            )
+            ),
+            headerPosition: headerPosition
         )
     }
 

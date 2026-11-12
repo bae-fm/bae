@@ -46,6 +46,9 @@ final class ImportCandidateTableCoordinator: NSObject, NSTableViewDataSource,
     private var pendingPlace: ImportListPlace?
     /// Core's answer for where the pending place's row is now.
     private var placeTask: Task<Void, Never>?
+    /// The rows last told to the table as header rows, whose height is a
+    /// header's.
+    private var headerRows = IndexSet()
     /// Where the header of the group on top is pinned.
     let pinnedStrip = ImportListPinnedHeaderStrip()
 
@@ -187,7 +190,31 @@ final class ImportCandidateTableCoordinator: NSObject, NSTableViewDataSource,
             tableView.noteNumberOfRowsChanged()
         }
         redrawChangedRows(in: tableView)
+        noteHeights(in: tableView)
         pinnedStrip.forget()
+    }
+
+    /// Tell the table of the rows whose height changed: a header's row is
+    /// shorter than a release's, and a row's height is known only once its
+    /// page has landed, or after the page is let go. The row on top stays
+    /// where it is on screen as the heights above it change.
+    private func noteHeights(in tableView: ImportCandidateTableView) {
+        var headers = IndexSet()
+        for entry in list.loadedEntries {
+            if case .groupHeader = importStore.items[entry.id] {
+                headers.insert(entry.position)
+            }
+        }
+        let changed = headers.symmetricDifference(headerRows)
+        guard !changed.isEmpty else { return }
+        headerRows = headers
+        guard let clipView = scrollView?.contentView, let top = topRow else {
+            tableView.noteHeightOfRows(withIndexesChanged: changed)
+            return
+        }
+        let offset = tableView.rect(ofRow: top).minY - clipView.bounds.minY
+        tableView.noteHeightOfRows(withIndexesChanged: changed)
+        scroll(toY: tableView.rect(ofRow: top).minY - offset)
     }
 
     /// Draw again the rows the table has made cells for whose item is no
@@ -207,9 +234,6 @@ final class ImportCandidateTableCoordinator: NSObject, NSTableViewDataSource,
             }
         }
         guard !stale.isEmpty else { return }
-        // A header's row is shorter than a release's, and a row's height is
-        // known only once its page has landed.
-        tableView.noteHeightOfRows(withIndexesChanged: stale)
         tableView.reloadData(
             forRowIndexes: stale,
             columnIndexes: IndexSet(integer: 0)

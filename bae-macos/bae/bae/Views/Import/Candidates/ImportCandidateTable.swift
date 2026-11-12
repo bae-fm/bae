@@ -71,6 +71,9 @@ struct ImportCandidateTable: NSViewRepresentable {
         tableView.intercellSpacing = .zero
         tableView.rowHeight = ImportCandidateTableLayout.rowHeight
         tableView.usesAutomaticRowHeights = false
+        // The coordinator pins the header of the group on top itself; a
+        // floating group row would answer `row(at:)` for the row under it.
+        tableView.floatsGroupRows = false
         tableView.allowsMultipleSelection = true
         tableView.allowsEmptySelection = true
         tableView.allowsTypeSelect = true
