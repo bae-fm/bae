@@ -193,9 +193,18 @@ async fn follow(context: &Context, queue: &mut Queue, key: &crate::CandidateKey)
     let Some(held) = queue.held(key) else {
         return;
     };
-    let Some(candidate) = answerable_candidate(context, key).await else {
-        queue.withdraw(context, key).await;
-        return;
+    let candidate = match answerable_candidate(context, key).await {
+        Ok(Some(candidate)) => candidate,
+        Ok(None) => {
+            queue.withdraw(context, key).await;
+            return;
+        }
+        // What the candidate stands at is unknown, so the queue keeps it as
+        // it is and the failure is reported.
+        Err(error) => {
+            record(context, &format!("read {key} to follow it"), Err(error));
+            return;
+        }
     };
     if !held.running && CandidateFiles::of(&candidate) != held.identity {
         admit(context, queue, vec![candidate], held.admission).await;

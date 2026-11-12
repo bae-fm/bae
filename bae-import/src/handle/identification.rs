@@ -171,6 +171,17 @@ impl ImportServiceHandle {
         Ok(self.runtime.fail_identification(candidate_key, run, files, failure).await?)
     }
 
+    /// No run of `files` could start for `candidate_key`: the standing says
+    /// why, and the pane's Retry identifies it again.
+    pub(crate) async fn fail_identification_start(
+        &self,
+        candidate_key: &crate::CandidateKey,
+        files: &crate::CandidateFiles,
+        failure: crate::SaveFailure,
+    ) -> Result<(), crate::ImportError> {
+        Ok(self.runtime.fail_identification_start(candidate_key, files, failure).await?)
+    }
+
     /// `run`'s answer is disposed of with no write ever asked for it. An
     /// Import asked for while its pick was read goes with it: no pick is
     /// stored, so nothing imports.

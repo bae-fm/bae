@@ -207,6 +207,24 @@ impl CandidateRuntime {
         Ok(())
     }
 
+    /// No run of `files` could start, because what it starts from could not
+    /// be read; the standing says why, and identifying the candidate again
+    /// can start one. Bae's own failure, so it is logged as one.
+    pub(crate) async fn fail_identification_start(
+        &self,
+        key: &CandidateKey,
+        files: &CandidateFiles,
+        failure: SaveFailure,
+    ) -> Result<(), DbError> {
+        tracing::error!("identification: no run of {key} could start: {}", failure.error());
+        self.change_identification(
+            key,
+            IdentificationChange::StartFailed { files: files.clone(), failure },
+        )
+        .await?;
+        Ok(())
+    }
+
     /// Ask for the candidate to be imported once the answer being written
     /// stores the release it picks unattended, which is still being read.
     /// `false`, asking nothing, when no answer that picks unattended is held

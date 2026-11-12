@@ -391,3 +391,105 @@ async fn a_rescan_does_not_count_back_a_candidate_an_import_owns() {
     );
     assert_eq!(progress.last(), Some(&(0, 0)), "{progress:?}");
 }
+
+/// A found release whose stored answer cannot be looked up is recorded as a
+/// failed identification, not left unidentified without a word.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_found_release_whose_stored_answer_cannot_be_read_fails_its_identification() {
+    let fixture = Fixture::new("found-answer-unreadable").await;
+    fixture.set_identify_automatically(false).await;
+    let dir = fixture.disc_id_candidate("Album");
+    let key = crate::CandidateKey::folder(&dir);
+    fixture.scan(1).await;
+    let candidate =
+        answerable_candidate(&fixture.context, &key).await.unwrap().expect("the scan holds it");
+
+    fail_unchecked(
+        &fixture.context,
+        &candidate,
+        &crate::ImportError::Internal { detail: "the disk is unreadable".to_string() },
+    )
+    .await;
+
+    assert!(matches!(
+        fixture.identification_status(&key).await,
+        Some(crate::IdentificationStatus::FinalizationFailed { failure })
+            if failure.retryable() && failure.error().contains("the disk is unreadable")
+    ));
+}
+
+/// A run that cannot read what it starts from leaves the queue with the
+/// failure recorded as the candidate's identification, so its pane shows it
+/// and Retry identifies it again.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_run_that_cannot_read_its_start_fails_the_identification() {
+    let fixture = Fixture::new("run-start-unreadable").await;
+    fixture.set_identify_automatically(false).await;
+    let dir = fixture.disc_id_candidate("Album");
+    let key = crate::CandidateKey::folder(&dir);
+    fixture.scan(1).await;
+    crate::tables::import_state::tests::disown_the_draft(&fixture.db, &fixture.content_hash(&dir))
+        .await;
+
+    fixture.start_explicit_lookup(&dir);
+
+    fixture
+        .await_facts(|facts| {
+            facts.get(&key).is_some_and(|facts| {
+                matches!(
+                    &facts.identification,
+                    Some(crate::IdentificationStatus::FinalizationFailed { failure })
+                        if failure.retryable() && !failure.error().is_empty()
+                )
+            })
+        })
+        .await;
+}
+
+/// A read of the candidate that fails is an error for the queue to report,
+/// not a candidate that cannot be answered, which leaves it alone unheard.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_candidate_that_cannot_be_read_is_an_error_not_unanswerable() {
+    let fixture = Fixture::new("candidate-unreadable").await;
+    fixture.set_identify_automatically(false).await;
+    let dir = fixture.disc_id_candidate("Album");
+    let key = crate::CandidateKey::folder(&dir);
+    fixture.scan(1).await;
+    crate::tables::ImportTables::lose_scan_candidate_parts_for_test(fixture._temp.path()).await;
+
+    answerable_candidate(&fixture.context, &key)
+        .await
+        .expect_err("a candidate whose rows cannot be read is not just unanswerable");
+}
+
+/// With no catalog switched on there is nothing to ask: the identification
+/// fails, instead of leaving the queue with no answer and no word.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_candidate_with_no_catalog_to_ask_fails_its_identification() {
+    let fixture = Fixture::new("no-catalog-to-ask").await;
+    fixture.set_identify_automatically(false).await;
+    fixture
+        .parts
+        .edit_preferences(|prefs| {
+            prefs.identification.catalogs.musicbrainz = false;
+            prefs.identification.catalogs.discogs = false;
+        })
+        .await;
+    let dir = fixture.disc_id_candidate("Album");
+    let key = crate::CandidateKey::folder(&dir);
+    fixture.scan(1).await;
+
+    fixture.start_explicit_lookup(&dir);
+
+    fixture
+        .await_facts(|facts| {
+            facts.get(&key).is_some_and(|facts| {
+                matches!(
+                    &facts.identification,
+                    Some(crate::IdentificationStatus::FinalizationFailed { failure })
+                        if failure.error().contains("no catalog is switched on")
+                )
+            })
+        })
+        .await;
+}

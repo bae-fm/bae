@@ -341,14 +341,35 @@ impl Queue {
         ended
     }
 
-    /// Take every entry with this identity off the queue.
-    async fn retire(&mut self, context: &Context, identity: &CandidateFiles) {
+    /// Take every entry with this identity off the queue because a read its
+    /// run starts from failed, and record the failure as each one's
+    /// identification, so its pane shows it and Retry identifies it again.
+    async fn fail_start(
+        &mut self,
+        context: &Context,
+        identity: &CandidateFiles,
+        doing: &str,
+        error: &crate::ImportError,
+    ) {
         let Some(index) = self.index_of_identity(identity) else {
             return;
         };
         let job = self.jobs.remove(index).expect("the located job still exists");
-        for key in job.keys() {
-            withdraw(context, &key).await;
+        for (key, files) in job.marks() {
+            record(
+                context,
+                &format!("record that {key}'s run could not start"),
+                context
+                    .import
+                    .fail_identification_start(
+                        &key,
+                        &files,
+                        crate::SaveFailure::NotWritten {
+                            error: format!("could not {doing}: {error}"),
+                        },
+                    )
+                    .await,
+            );
         }
     }
 
@@ -594,11 +615,9 @@ async fn fill_slots(context: &Context, queue: &mut Queue) {
         let start = match candidate_run_start(context, &candidate).await {
             Ok(start) => start,
             Err(error) => {
-                warn!(
-                    "identification: cannot read what {key} runs from ({error}); \
-                     leaving its job unanswered"
-                );
-                queue.retire(context, &identity).await;
+                queue
+                    .fail_start(context, &identity, &format!("read what {key} runs from"), &error)
+                    .await;
                 continue;
             }
         };
@@ -618,18 +637,32 @@ async fn fill_slots(context: &Context, queue: &mut Queue) {
             .await
         {
             Ok(true) => {}
-            // No source to ask: no run will report, so the job cannot hold a slot.
+            // No source to ask: no run will report, so the job cannot hold a
+            // slot. Core refuses to switch every source off, so this is a
+            // library that no longer holds the rule: the failure is recorded.
             Ok(false) => {
-                warn!("identification: no source to ask about {key}; leaving its job unanswered");
-                queue.retire(context, &identity).await;
+                let error = crate::ImportError::Internal {
+                    detail: "no catalog is switched on to ask".to_string(),
+                };
+                queue
+                    .fail_start(
+                        context,
+                        &identity,
+                        &format!("find a source to ask about {key}"),
+                        &error,
+                    )
+                    .await;
                 continue;
             }
             Err(error) => {
-                warn!(
-                    "identification: cannot read the sources to ask about {key} ({error}); \
-                     leaving its job unanswered"
-                );
-                queue.retire(context, &identity).await;
+                queue
+                    .fail_start(
+                        context,
+                        &identity,
+                        &format!("read the sources to ask about {key}"),
+                        &error,
+                    )
+                    .await;
                 continue;
             }
         }

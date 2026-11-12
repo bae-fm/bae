@@ -121,6 +121,8 @@ pub(crate) enum IdentificationChange {
     AnswerEnded { run: IdentifyRunId },
     /// `run`'s answer for `files` could not be written.
     AnswerFailed { files: CandidateFiles, run: IdentifyRunId, failure: SaveFailure },
+    /// No run of `files` could start: what it starts from could not be read.
+    StartFailed { files: CandidateFiles, failure: SaveFailure },
     /// A person asked for the candidate to be imported once the answer being
     /// written stores the release it picks unattended.
     ImportAsked,
@@ -209,6 +211,27 @@ impl IdentificationChange {
                     Some(_) => unchanged(),
                 }
             }
+            // The candidate has no run to fail: it stands for `files`
+            // waiting, or not at all, or on an earlier failure. One running
+            // or being written keeps its own stage.
+            Self::StartFailed { files, failure } => {
+                let failed = Some(StoredIdentification {
+                    files: files.clone(),
+                    stage: IdentificationStage::Failed { failure: failure.clone() },
+                });
+                match stored {
+                    None
+                    | Some(StoredIdentification {
+                        stage: IdentificationStage::Failed { .. },
+                        ..
+                    }) => failed,
+                    Some(StoredIdentification {
+                        files: queued,
+                        stage: IdentificationStage::Queued { .. },
+                    }) if queued == files => failed,
+                    Some(_) => unchanged(),
+                }
+            }
             Self::ImportAsked => match stored {
                 Some(StoredIdentification {
                     files,
@@ -279,7 +302,8 @@ impl IdentificationMove {
 /// candidate again can land it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SaveFailure {
-    /// The answer was not written; another run may write it.
+    /// No answer was written, because its write failed or no run could
+    /// start; another run may write it.
     NotWritten { error: String },
     /// The release the answer picks could not be read into the folder's
     /// draft. Another run reaches the same answer and fails the same way.

@@ -13,8 +13,17 @@ pub(super) async fn admit_found(
 ) {
     let mut admitted = Vec::with_capacity(keys.len());
     for key in keys {
-        let Some(candidate) = answerable_candidate(context, &key).await else {
-            continue;
+        let candidate = match answerable_candidate(context, &key).await {
+            Ok(Some(candidate)) => candidate,
+            Ok(None) => continue,
+            Err(error) => {
+                super::queue::record(
+                    context,
+                    &format!("read {key} to admit it once found"),
+                    Err(error),
+                );
+                continue;
+            }
         };
         match context
             .tables
@@ -25,10 +34,7 @@ pub(super) async fn admit_found(
                 info!("identification: {key} was found with its files already answered");
             }
             Ok(false) => admitted.push(candidate),
-            Err(error) => warn!(
-                "identification: cannot read the stored state of {key} ({error}); leaving it \
-                 unidentified"
-            ),
+            Err(error) => fail_unchecked(context, &candidate, &error.into()).await,
         }
     }
     if !admitted.is_empty() {
@@ -36,19 +42,45 @@ pub(super) async fn admit_found(
     }
 }
 
+/// Record that no run of `candidate` could start because whether an answer is
+/// stored already could not be read: its identification failed, which its
+/// pane shows and Retry identifies again.
+async fn fail_unchecked(
+    context: &Context,
+    candidate: &FolderCandidate,
+    error: &crate::ImportError,
+) {
+    let key = candidate.key();
+    super::queue::record(
+        context,
+        &format!("record that {key} could not be checked for a stored answer"),
+        context
+            .import
+            .fail_identification_start(
+                &key,
+                &CandidateFiles::of(candidate),
+                crate::SaveFailure::NotWritten {
+                    error: format!("could not read whether an answer is stored: {error}"),
+                },
+            )
+            .await,
+    );
+}
+
 /// The candidate at `key` if an answer can still be stored for it: not set
 /// aside, imported, or claimed by an import. The same read the verdict write
-/// makes.
+/// makes. A read that fails is an error, not a candidate that cannot be
+/// answered; the queue has no caller to tell, so each of its callers reports
+/// it as a bug.
 pub(super) async fn answerable_candidate(
     context: &Context,
     key: &crate::CandidateKey,
-) -> Option<FolderCandidate> {
+) -> Result<Option<FolderCandidate>, crate::ImportError> {
     match context.import.answerable_candidate(key).await {
-        Ok(candidate) => candidate,
-        Err(error) => {
-            warn!("identification: cannot read candidate {key} ({error}); leaving it alone");
-            None
-        }
+        // A grouping the person's sources no longer allow is a candidate that
+        // cannot be answered, not a failed read.
+        Err(crate::ImportError::GroupingBlocked { .. }) => Ok(None),
+        answered => answered,
     }
 }
 

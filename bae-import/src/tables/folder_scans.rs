@@ -833,6 +833,21 @@ impl ImportTables {
         .await;
     }
 
+    /// Plant damage for a test: the table of the parts each scanned release
+    /// holds is gone from the library under `directory`, so every read of a
+    /// stored release fails.
+    pub(crate) async fn lose_scan_candidate_parts_for_test(directory: &Path) {
+        let directory = directory.to_path_buf();
+        bae_util::test_blocking::on_blocking_pool(move || {
+            bae_store::test_fixtures::planted_damage::plant_in_library_file(
+                &directory,
+                "scan_candidate_part",
+                "DROP TABLE scan_candidate_part;",
+            )
+        })
+        .await;
+    }
+
     /// Plant damage for a test: each file named `name` a sidecar in the
     /// library under `directory` holds is stored as the file named `as_name`
     /// beside it. A sidecar and a scanned release holding one file replace

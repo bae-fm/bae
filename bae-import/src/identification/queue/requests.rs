@@ -9,9 +9,18 @@ pub(super) async fn request(
     queue: &mut Queue,
     candidate_key: crate::CandidateKey,
 ) {
-    let Some(candidate) = answerable_candidate(context, &candidate_key).await else {
-        warn!("identification: cannot identify {candidate_key}: no answer can be stored for it");
-        return;
+    let candidate = match answerable_candidate(context, &candidate_key).await {
+        Ok(Some(candidate)) => candidate,
+        Ok(None) => {
+            warn!(
+                "identification: cannot identify {candidate_key}: no answer can be stored for it"
+            );
+            return;
+        }
+        Err(error) => {
+            record(context, &format!("read {candidate_key} to identify it"), Err(error));
+            return;
+        }
     };
     admit(context, queue, vec![candidate], Admission::Requested).await;
 }
