@@ -14,7 +14,10 @@ import uniffi.bae_bridge.BridgeRestoreCodeShare
 class SettingsPeopleShots : BoardShot() {
     /** People and devices as an admin sees it: Ana's own card, Ben, and Invite. */
     @Test
-    fun androidSettingsPeople() = shot("android.settings.people") { ScreenScene { PeoplePageScene(listOf(ana(), ben())) } }
+    fun androidSettingsPeople() =
+        shot("android.settings.people") {
+            ScreenScene { PeoplePageScene(listOf(ana(), ben()), invites = listOf(invitation("another@example.com", waitingCode))) }
+        }
 
     /** People and devices as a member sees it: Ben is an admin, and nothing opens or invites. */
     @Test
@@ -55,7 +58,8 @@ class SettingsPeopleShots : BoardShot() {
 
     /** Ana's own devices: this phone, her laptop, Add device, and her removed devices. */
     @Test
-    fun androidSettingsDevices() = shot("android.settings.devices") { ScreenScene { DevicesPageScene(ana()) } }
+    fun androidSettingsDevices() =
+        shot("android.settings.devices") { ScreenScene { DevicesPageScene(ana(formerDevices = removedDevices)) } }
 
     /** The removal of a device hasn't reached this device yet. */
     @Test

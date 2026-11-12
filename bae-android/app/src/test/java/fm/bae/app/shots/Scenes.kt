@@ -40,6 +40,7 @@ import uniffi.bae_bridge.BridgeSyncFix
 import uniffi.bae_bridge.BridgeSyncShown
 import uniffi.bae_bridge.BridgeSyncStatusWord
 import uniffi.bae_bridge.BridgeSyncTone
+import java.time.Duration
 import java.time.Instant
 
 // What the shots share: the surfaces a screen, a sheet and a dialog are drawn on, and the data
@@ -174,20 +175,24 @@ internal fun DialogSurface(content: @Composable () -> Unit) {
 
 internal const val TWO_HOURS_SECONDS = 7_200L
 
+/** How long ago the Sync boards say it last synced: two hours, or three days once signed out. */
+internal val twoHoursAgo: Duration = Duration.ofSeconds(TWO_HOURS_SECONDS)
+internal val threeDaysAgo: Duration = Duration.ofDays(3)
+
 internal fun syncShown(
     status: BridgeSyncStatusWord,
     statusKey: String,
     tone: BridgeSyncTone,
     cause: BridgeSyncCause? = null,
     fix: BridgeSyncFix? = null,
-    lastSynced: Boolean = false,
+    lastSyncedAgo: Duration? = null,
 ) = BridgeSyncShown(
     status = status,
     statusKey = statusKey,
     tone = tone,
     cause = cause,
     fix = fix,
-    lastSynced = if (lastSynced) Instant.now().minusSeconds(TWO_HOURS_SECONDS) else null,
+    lastSynced = lastSyncedAgo?.let { Instant.now().minus(it) },
 )
 
 internal val sceneDropbox =

@@ -12,10 +12,13 @@ import fm.bae.app.ui.settings.PendingSection
 import fm.bae.app.ui.settings.StorageSection
 import fm.bae.app.ui.settings.SyncStatusBlock
 import org.junit.Test
+import uniffi.bae_bridge.BridgeDropboxLocation
+import uniffi.bae_bridge.BridgeFolderLabel
 import uniffi.bae_bridge.BridgeMessage
 import uniffi.bae_bridge.BridgePendingAction
 import uniffi.bae_bridge.BridgePendingReason
 import uniffi.bae_bridge.BridgePendingRecord
+import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeSyncStatusWord
 import uniffi.bae_bridge.BridgeSyncTone
 
@@ -38,12 +41,12 @@ class SyncShots : BoardShot() {
                                         BridgeSyncStatusWord.WAITING_TO_SYNC,
                                         "core.sync.status.waiting_to_sync",
                                         BridgeSyncTone.NEUTRAL,
-                                        lastSynced = true,
+                                        lastSyncedAgo = twoHoursAgo,
                                     ),
                                 ),
                             onFix = {},
                         )
-                        StorageSection(sceneDropbox)
+                        StorageSection(accountDropbox)
                         PendingSection(records = pendingRecords, onAction = {})
                     }
                 }
@@ -78,3 +81,10 @@ class SyncShots : BoardShot() {
             ),
         )
 }
+
+private val accountDropbox =
+    BridgeStorageLocation.Dropbox(
+        location = BridgeDropboxLocation.AppFolder,
+        accountLabel = "name@example.com",
+        folderLabel = BridgeFolderLabel(name = "Music", webUrl = "https://www.dropbox.com/home/Music"),
+    )

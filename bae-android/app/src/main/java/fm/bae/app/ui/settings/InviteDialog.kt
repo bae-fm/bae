@@ -79,10 +79,14 @@ internal fun InviteDialog(
 }
 
 /** What the person typed for the invited person's access, as the storage asks for it. */
-private class InviteAccessInput {
-    var email by mutableStateOf("")
-    var accessKeyId by mutableStateOf("")
-    var secretAccessKey by mutableStateOf("")
+internal class InviteAccessInput(
+    email: String = "",
+    accessKeyId: String = "",
+    secretAccessKey: String = "",
+) {
+    var email by mutableStateOf(email)
+    var accessKeyId by mutableStateOf(accessKeyId)
+    var secretAccessKey by mutableStateOf(secretAccessKey)
 
     /** The access for [storage], or null while what it needs is incomplete. */
     fun access(storage: BridgeStorageLocation): BridgeInviteAccess? =
@@ -157,6 +161,7 @@ internal fun InviteFormDialog(
     )
 }
 
+/** The form's parts; [input] holds what has been typed, which a shot hands over already filled. */
 @Composable
 internal fun inviteFormParts(
     storage: BridgeStorageLocation?,
@@ -164,9 +169,9 @@ internal fun inviteFormParts(
     busy: Boolean,
     onCreate: (InviteForm) -> Unit,
     onDismiss: () -> Unit,
+    input: InviteAccessInput = remember { InviteAccessInput() },
 ): DialogParts {
     val fields = remember { InviteFields() }
-    val input = remember { InviteAccessInput() }
     return DialogParts(
         title = stringResource(R.string.members_invite),
         content = {

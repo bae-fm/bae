@@ -2,6 +2,7 @@ package fm.bae.app.shots
 
 import androidx.compose.runtime.Composable
 import fm.bae.app.ui.components.DialogParts
+import fm.bae.app.ui.settings.InviteAccessInput
 import fm.bae.app.ui.settings.cancelInviteParts
 import fm.bae.app.ui.settings.inviteCodeParts
 import fm.bae.app.ui.settings.inviteFormParts
@@ -16,20 +17,31 @@ import uniffi.bae_bridge.BridgeStorageLocation
 class SettingsInviteShots : BoardShot() {
     /** The invite form for a Dropbox library. */
     @Test
-    fun androidSettingsInviteDropbox() = shot("android.settings.invite.dropbox") { Invite { InviteForm(sceneDropbox) } }
+    fun androidSettingsInviteDropbox() =
+        shot("android.settings.invite.dropbox") { Invite { InviteForm(sceneDropbox, InviteAccessInput(email = "dan@example.com")) } }
 
     /** The invite form for a OneDrive library. */
     @Test
     fun androidSettingsInviteOnedrive() =
         shot("android.settings.invite.onedrive") {
-            Invite { InviteForm(BridgeStorageLocation.OneDrive("drive", "folder", "name@example.com", null)) }
+            Invite {
+                InviteForm(
+                    BridgeStorageLocation.OneDrive("drive", "folder", "name@example.com", null),
+                    InviteAccessInput(email = "dan@example.com"),
+                )
+            }
         }
 
     /** The invite form for an S3 library, which asks for the person's access key. */
     @Test
     fun androidSettingsInviteS3() =
         shot("android.settings.invite.s3") {
-            Invite { InviteForm(BridgeStorageLocation.S3("my-bucket", "us-east-1", "https://s3.home.lan", null)) }
+            Invite {
+                InviteForm(
+                    BridgeStorageLocation.S3("my-bucket", "us-east-1", "https://s3.home.lan", null),
+                    InviteAccessInput(accessKeyId = "AKIAEXAMPLEKEY", secretAccessKey = "••••••••••••••••"),
+                )
+            }
         }
 
     /** The invite's code, to scan or copy, while Dan hasn't asked yet. */
@@ -102,5 +114,7 @@ private fun Invite(
 ) = InPlaceDialogScene(behind = { PeoplePageScene(listOf(ana(), ben()), invites = invites) }, dialog = dialog)
 
 @Composable
-private fun InviteForm(storage: BridgeStorageLocation) =
-    inviteFormParts(storage = storage, error = null, busy = false, onCreate = {}, onDismiss = {})
+private fun InviteForm(
+    storage: BridgeStorageLocation,
+    input: InviteAccessInput,
+) = inviteFormParts(storage = storage, error = null, busy = false, onCreate = {}, onDismiss = {}, input = input)

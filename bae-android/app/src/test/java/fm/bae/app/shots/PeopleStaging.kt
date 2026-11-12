@@ -10,6 +10,8 @@ import fm.bae.app.ui.settings.MemberCallbacks
 import fm.bae.app.ui.settings.NothingFails
 import fm.bae.app.ui.settings.YouActions
 import uniffi.bae_bridge.BridgeActiveDevice
+import uniffi.bae_bridge.BridgeFormerDevice
+import uniffi.bae_bridge.BridgeFormerDeviceState
 import uniffi.bae_bridge.BridgeHistorySharing
 import uniffi.bae_bridge.BridgeInvite
 import uniffi.bae_bridge.BridgeInviteEntry
@@ -72,11 +74,19 @@ internal fun memberCallbacks() = MemberCallbacks({}, { _, _ -> }, { _, _ -> }, {
 internal fun danInvite(
     shown: BridgeInviteShown,
     held: BridgePendingWait? = null,
+) = invitation("dan@example.com", shown, held, DAN_ID)
+
+/** An open invite to [address]. */
+internal fun invitation(
+    address: String,
+    shown: BridgeInviteShown,
+    held: BridgePendingWait? = null,
+    member: String = "00000000-0000-4000-8000-000000000004",
 ) = BridgeInvite(
-    id = "invite-dan",
-    member = DAN_ID,
-    label = "dan@example.com",
-    access = BridgeMemberAccess.ProviderAccount("dan@example.com"),
+    id = "invite-$address",
+    member = member,
+    label = address,
+    access = BridgeMemberAccess.ProviderAccount(address),
     shown = shown,
     held = held,
 )
@@ -91,7 +101,15 @@ internal fun ana(
             BridgeActiveDevice(1uL, "Phone", isSelf = true, canRemove = false),
             BridgeActiveDevice(2uL, "Laptop", isSelf = false, canRemove = true),
         ),
-): BridgePerson = person(ANA_ID, name, role, isSelf = true, devices = devices, history = history)
+    formerDevices: List<BridgeFormerDevice> = emptyList(),
+): BridgePerson = person(ANA_ID, name, role, isSelf = true, devices = devices, history = history, formerDevices = formerDevices)
+
+/** The two devices Ana's Your devices page lists under Removed devices. */
+internal val removedDevices =
+    listOf(
+        BridgeFormerDevice(id = 3uL, name = "Old Phone", state = BridgeFormerDeviceState.REPLACED),
+        BridgeFormerDevice(id = 4uL, name = "Tablet", state = BridgeFormerDeviceState.REMOVED),
+    )
 
 /** Ben, who has one device, a tablet. */
 internal fun ben(role: BridgeMemberRole = BridgeMemberRole.MEMBER): BridgePerson =
@@ -110,11 +128,13 @@ private fun person(
     isSelf: Boolean,
     devices: List<BridgeActiveDevice>,
     history: BridgeHistorySharing = BridgeHistorySharing.PRIVATE,
+    formerDevices: List<BridgeFormerDevice> = emptyList(),
 ): BridgePerson {
     val member: BridgeMember =
         PreviewData.member(id = id, role = role, isSelf = isSelf).copy(
             access = BridgeMemberAccess.ProviderAccount("$name@example.com"),
             activeDevices = devices,
+            formerDevices = formerDevices,
         )
     val shown = PreviewData.person(member)
     return shown.copy(profile = shown.profile?.copy(name = name, historySharing = history))
