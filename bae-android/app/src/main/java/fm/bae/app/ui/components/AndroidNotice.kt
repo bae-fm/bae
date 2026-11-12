@@ -223,7 +223,7 @@ private fun CenteredNotice(
             Text(
                 text = title,
                 style = ThemeText.androidBodyLarge.style,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
             )
         }
