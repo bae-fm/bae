@@ -46,18 +46,18 @@ struct DiscogsKeySection: View {
             onSave: { saveToken() },
             onRecheck: { revalidate() },
         )
-        Group {
-            if !content.isBlank {
-                content
-            }
+        // The lifecycle hangs on the content: a settings box holds the section
+        // as rows, and a section with nothing to show has no row to hang it on.
+        if !content.isBlank {
+            content
+                .task {
+                    await seedDraftFromStoredKey()
+                    // Core does nothing unless the stored key is unvalidated.
+                    revalidate()
+                }
+                .onChange(of: draft) { wasRejected = false }
+                .onDisappear { saveTask?.cancel() }
         }
-        .task {
-            await seedDraftFromStoredKey()
-            // Core does nothing unless the stored key is unvalidated.
-            revalidate()
-        }
-        .onChange(of: draft) { wasRejected = false }
-        .onDisappear { saveTask?.cancel() }
     }
 
     /// Fills the draft with the stored key when one is configured.
@@ -334,7 +334,7 @@ private struct KeyTextField: NSViewRepresentable {
                     )
                 }
             }
-            .formStyle(.grouped)
+            .formStyle(.settings)
             .frame(width: 500, height: 320)
         }
     }

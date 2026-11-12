@@ -76,6 +76,12 @@ struct StorageSettingsForm: View {
     let onDeleteBeforeReset: (String) -> Void
 
     var body: some View {
+        SettingsPane(.storage) {
+            form
+        }
+    }
+
+    private var form: some View {
         Form {
             if let storage {
                 Section {
@@ -141,7 +147,7 @@ struct StorageSettingsForm: View {
                 }
             }
         }
-        .formStyle(.grouped)
+        .formStyle(.settings)
     }
 
     private var localReleasesNote: some View {
@@ -152,7 +158,7 @@ struct StorageSettingsForm: View {
         _ title: LocalizedStringKey,
         note: LocalizedStringKey
     ) -> some View {
-        VStack(alignment: .leading, spacing: ThemeSpace.line) {
+        VStack(alignment: .leading, spacing: ThemeSpace.inline) {
             Text(title)
             Text(note)
                 .themeText(.detail)

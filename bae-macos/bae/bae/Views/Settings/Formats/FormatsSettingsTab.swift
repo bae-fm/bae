@@ -21,12 +21,14 @@ struct FormatsSettingsTab: View {
     private var editingPreset: EditingPreset?
 
     var body: some View {
-        Form {
-            formatsSection
-            namesSection
-            extrasSection
+        SettingsPane(.formats) {
+            Form {
+                formatsSection
+                namesSection
+                extrasSection
+            }
+            .formStyle(.settings)
         }
-        .formStyle(.grouped)
         .sheet(item: $editingPreset) { editing in
             // The preset can be gone by the time the sheet renders — deleted
             // from the sheet itself, or replaced by a config round-trip.
@@ -143,6 +145,7 @@ struct FormatsSettingsTab: View {
             Text("Formats")
         } footer: {
             Button("Add format…", action: addPreset)
+                .themeText(.body)
                 .frame(maxWidth: .infinity, alignment: .trailing)
         }
     }
@@ -245,5 +248,6 @@ enum DeleteFormatConfirmation {
             .environment(Outputs.stub())
             .environment(UiStore())
             .frame(width: 500, height: 600)
+            .windowBackground()
     }
 #endif

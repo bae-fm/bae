@@ -17,48 +17,51 @@ struct ImportSettingsTab: View {
     private var confirmsTurningDiscogsOff = false
 
     var body: some View {
-        Form {
-            Section {
-                SettingToggleRow(
-                    title: "Identify automatically",
-                    note: "Looks up each new album as soon as it is added.",
-                    isOn: identifyAutomatically
-                )
-                ForEach(sourceSwitches.beforeKey, id: \.catalog) { setting in
-                    sourceToggle(setting)
-                }
-                if let discogs = sourceSwitches.discogs {
-                    DiscogsKeySection(isEnabled: isOn(discogs))
-                }
-                ForEach(sourceSwitches.afterKey, id: \.catalog) { setting in
-                    sourceToggle(setting)
-                }
-            } footer: {
-                Text(
-                    "Searching both MusicBrainz and Discogs helps bae recognise more of your albums automatically."
-                )
-                .themeText(.detail)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-
-            Section {
-                SettingToggleRow(
-                    title: "Import automatically when identified",
-                    note:
-                        "Adds the album to your library once bae is sure of the match.",
-                    isOn: importWhenIdentified
-                )
-                if configStore.syncs {
-                    LabeledContent("Import to") {
-                        MacImportDestination(destination: importDestination)
+        SettingsPane(.importing) {
+            Form {
+                Section {
+                    SettingToggleRow(
+                        title: "Identify automatically",
+                        note: "Looks up each new album as soon as it is added.",
+                        isOn: identifyAutomatically
+                    )
+                    ForEach(sourceSwitches.beforeKey, id: \.catalog) {
+                        setting in
+                        sourceToggle(setting)
                     }
-                    .padding(.leading, ThemeSpace.edge)
-                    .disabled(!configStore.config.importWhenIdentified)
+                    if let discogs = sourceSwitches.discogs {
+                        // The key belongs to the Discogs switch above it.
+                        DiscogsKeySection(isEnabled: isOn(discogs))
+                            .joiningRowAbove()
+                    }
+                    ForEach(sourceSwitches.afterKey, id: \.catalog) { setting in
+                        sourceToggle(setting)
+                    }
+                } footer: {
+                    Text(
+                        "Searching both MusicBrainz and Discogs helps bae recognise more of your albums automatically."
+                    )
+                }
+
+                Section {
+                    SettingToggleRow(
+                        title: "Import automatically when identified",
+                        note:
+                            "Adds the album to your library once bae is sure of the match.",
+                        isOn: importWhenIdentified
+                    )
+                    if configStore.syncs {
+                        // Where an import goes belongs to the switch above it.
+                        LabeledContent("Import to") {
+                            MacImportDestination(destination: importDestination)
+                        }
+                        .joiningRowAbove()
+                        .disabled(!configStore.config.importWhenIdentified)
+                    }
                 }
             }
+            .formStyle(.settings)
         }
-        .formStyle(.grouped)
         .macAlert(isPresented: $confirmsTurningDiscogsOff) {
             TurnOffDiscogsConfirmation.alert {
                 setSource(.discogs, enabled: false)
@@ -247,6 +250,7 @@ enum TurnOffDiscogsConfirmation {
             .environment(Importer.stub())
             .environment(UiStore())
             .frame(width: PreviewWindow.width, height: PreviewWindow.height)
+            .windowBackground()
     }
 
     #Preview("Import Settings, no Discogs key") {
@@ -261,5 +265,6 @@ enum TurnOffDiscogsConfirmation {
             .environment(Importer.stub())
             .environment(UiStore())
             .frame(width: PreviewWindow.width, height: PreviewWindow.height)
+            .windowBackground()
     }
 #endif

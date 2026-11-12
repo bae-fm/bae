@@ -1,30 +1,26 @@
 import BaeKit
 import SwiftUI
 
-/// The top of a settings page that is not the tab's first: the page before it,
-/// to go back to, and this page's title.
+/// The top of a settings page that is not the tab's first: a round button back
+/// to the page before it, named for it, and this page's title, in the place
+/// and type a pane's own title has.
 struct SettingsPageHeader: View {
     let title: String
     let backTitle: String
     let onBack: () -> Void
 
     var body: some View {
-        ZStack {
-            Text(verbatim: title)
-                .themeText(.heading)
-                .lineLimit(1)
-            HStack {
-                Button(action: onBack) {
-                    HStack(spacing: ThemeSpace.line) {
-                        Image(systemName: "chevron.backward")
-                        Text(verbatim: backTitle)
-                    }
-                }
-                .buttonStyle(.borderless)
-                Spacer()
+        SettingsPaneHeading {
+            Button(action: onBack) {
+                Image(systemName: "chevron.backward")
+                    .themeIcon(.small)
             }
+            .buttonStyle(.bordered)
+            .buttonBorderShape(.circle)
+            .controlSize(.small)
+            .accessibilityLabel(Text(verbatim: backTitle))
+            Text(verbatim: title)
         }
-        .padding(.horizontal)
-        .padding(.vertical, ThemeSpace.related)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

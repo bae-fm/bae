@@ -52,54 +52,50 @@ struct TransfersSettingsTab: View {
     private var uiStore
 
     var body: some View {
-        Form {
-            Section {
-                Toggle(
-                    "Pause uploads",
-                    isOn: pauseBinding(
-                        paused: outboxStore.uploadsPaused,
-                        set: sync.setSyncPaused,
-                        failure: "upload pause"
+        SettingsPane(.transfers) {
+            Form {
+                Section {
+                    Toggle(
+                        "Pause uploads",
+                        isOn: pauseBinding(
+                            paused: outboxStore.uploadsPaused,
+                            set: sync.setSyncPaused,
+                            failure: "upload pause"
+                        )
                     )
-                )
-                Toggle(
-                    "Pause downloads",
-                    isOn: pauseBinding(
-                        paused: downloadStore.downloadsPaused,
-                        set: downloads.setDownloadsPaused,
-                        failure: "download pause"
+                    Toggle(
+                        "Pause downloads",
+                        isOn: pauseBinding(
+                            paused: downloadStore.downloadsPaused,
+                            set: downloads.setDownloadsPaused,
+                            failure: "download pause"
+                        )
                     )
-                )
-            } footer: {
-                Text(
-                    "Paused files keep their place and continue when you resume. Changes to the library still sync."
-                )
-                .themeText(.detail)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
+                } footer: {
+                    Text(
+                        "Paused files keep their place and continue when you resume. Changes to the library still sync."
+                    )
+                }
 
-            Section {
-                control(
-                    label: "Uploads at once",
-                    value: configStore.config.maxConcurrentUploads,
-                    setValue: sync.setMaxConcurrentUploads
-                )
-                control(
-                    label: "Downloads at once",
-                    value: configStore.config.maxConcurrentDownloads,
-                    setValue: downloads.setMaxConcurrentDownloads
-                )
-            } footer: {
-                Text(
-                    "How many files upload to the cloud at once after an import, and how many download at once. Downloads are pinning and making local; they share this limit and Pause downloads."
-                )
-                .themeText(.detail)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                Section {
+                    control(
+                        label: "Uploads at once",
+                        value: configStore.config.maxConcurrentUploads,
+                        setValue: sync.setMaxConcurrentUploads
+                    )
+                    control(
+                        label: "Downloads at once",
+                        value: configStore.config.maxConcurrentDownloads,
+                        setValue: downloads.setMaxConcurrentDownloads
+                    )
+                } footer: {
+                    Text(
+                        "How many files upload to the cloud at once after an import, and how many download at once. Downloads are pinning and making local; they share this limit and Pause downloads."
+                    )
+                }
             }
+            .formStyle(.settings)
         }
-        .formStyle(.grouped)
     }
 
     /// A switch showing `paused` that asks for the pause it is turned to.
@@ -153,5 +149,6 @@ struct TransfersSettingsTab: View {
             .environment(Sync.stub())
             .environment(UiStore())
             .frame(width: 500, height: 420)
+            .windowBackground()
     }
 #endif

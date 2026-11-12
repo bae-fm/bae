@@ -22,47 +22,43 @@ struct CastingSettingsTab: View {
     private var pendingDisconnect: String?
 
     var body: some View {
-        Form {
-            Section {
-                Toggle("Enable casting", isOn: enabledBinding)
-            } footer: {
-                Text(
-                    "Scan for Cast, AirPlay, and UPnP receivers on your network."
-                )
-                .themeText(.detail)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            if configStore.config.castEnabled {
-                CastReceiversSection(
-                    receivers: castStore.receivers,
-                    connectingName: start.connecting?.name,
-                    onCast: { receiver in
-                        start.cast(to: receiver)
-                    },
-                    onDisconnect: cast.stopCasting
-                )
-            }
-            if CastTranscodeFormatPicker.isShown(for: configStore.config) {
+        SettingsPane(.casting) {
+            Form {
                 Section {
-                    CastTranscodeFormatPicker(
-                        configStore: configStore,
-                        setFormat: cast.setTranscodeFormat,
-                        showError: { @MainActor error in
-                            uiStore.showError(error)
-                        }
-                    )
+                    Toggle("Enable casting", isOn: enabledBinding)
                 } footer: {
                     Text(
-                        "For tracks a receiver cannot play as they are. WAV keeps full quality but can cut out on weak Wi‑Fi; MP3 holds up better."
+                        "Scan for Cast, AirPlay, and UPnP receivers on your network."
                     )
-                    .themeText(.detail)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                if configStore.config.castEnabled {
+                    CastReceiversSection(
+                        receivers: castStore.receivers,
+                        connectingName: start.connecting?.name,
+                        onCast: { receiver in
+                            start.cast(to: receiver)
+                        },
+                        onDisconnect: cast.stopCasting
+                    )
+                }
+                if CastTranscodeFormatPicker.isShown(for: configStore.config) {
+                    Section {
+                        CastTranscodeFormatPicker(
+                            configStore: configStore,
+                            setFormat: cast.setTranscodeFormat,
+                            showError: { @MainActor error in
+                                uiStore.showError(error)
+                            }
+                        )
+                    } footer: {
+                        Text(
+                            "For tracks a receiver cannot play as they are. WAV keeps full quality but can cut out on weak Wi‑Fi; MP3 holds up better."
+                        )
+                    }
                 }
             }
+            .formStyle(.settings)
         }
-        .formStyle(.grouped)
         // The page asks for as long as it is open: core browses for it only
         // while casting is on, and follows the setting from there.
         .onAppear { cast.startDiscovery(.settingsPage) }
@@ -156,5 +152,6 @@ private struct CastReceiversSection: View {
             )
             .environment(UiStore())
             .frame(width: 500, height: 300)
+            .windowBackground()
     }
 #endif

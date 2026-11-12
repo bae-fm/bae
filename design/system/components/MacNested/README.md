@@ -4,4 +4,4 @@ What belongs to the row above it and is more than one setting: Discogs' key fiel
 
 A single setting under a switch is a `nested` `MacRow`, not this.
 
-**In the code:** macOS: none yet; today the Discogs section of `ImportSettingsTab`.
+**In the code:** macOS: a row with `.joiningRowAbove()` in a `SettingsFormStyle` form; today the Discogs section of `ImportSettingsTab`.

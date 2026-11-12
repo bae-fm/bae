@@ -72,6 +72,25 @@ struct AutomationSettingsContent: View {
     private var isWorking: Bool { mutationTask != nil }
 
     var body: some View {
+        SettingsPane(.automation) {
+            form
+        }
+        .task(id: configStore.config.mcp) {
+            syncFromConfig(configStore.config.mcp)
+            do {
+                status = try await automation.getMcpServerStatus()
+            }
+            catch is CancellationError {
+                logger.debug("MCP status task cancelled")
+            }
+            catch {
+                showError(error)
+            }
+        }
+        .onDisappear { mutationTask?.cancel() }
+    }
+
+    private var form: some View {
         Form {
             Section {
                 Toggle(
@@ -120,20 +139,7 @@ struct AutomationSettingsContent: View {
                 .disabled(isWorking)
             }
         }
-        .formStyle(.grouped)
-        .task(id: configStore.config.mcp) {
-            syncFromConfig(configStore.config.mcp)
-            do {
-                status = try await automation.getMcpServerStatus()
-            }
-            catch is CancellationError {
-                logger.debug("MCP status task cancelled")
-            }
-            catch {
-                showError(error)
-            }
-        }
-        .onDisappear { mutationTask?.cancel() }
+        .formStyle(.settings)
     }
 
     @ViewBuilder

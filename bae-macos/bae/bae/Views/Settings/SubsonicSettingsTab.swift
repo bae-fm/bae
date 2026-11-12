@@ -54,6 +54,12 @@ struct SubsonicSettingsContent: View {
     private static let credentialFieldWidth: CGFloat = 180
 
     var body: some View {
+        SettingsPane(.subsonic) {
+            form
+        }
+    }
+
+    private var form: some View {
         Form {
             Section {
                 SettingToggleRow(
@@ -96,7 +102,7 @@ struct SubsonicSettingsContent: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .formStyle(.grouped)
+        .formStyle(.settings)
     }
 
     // MARK: Rows

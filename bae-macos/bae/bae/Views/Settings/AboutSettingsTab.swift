@@ -6,6 +6,12 @@ struct AboutSettingsTab: View {
     let onCheckForUpdates: () -> Void
 
     var body: some View {
+        SettingsPane(.about) {
+            content
+        }
+    }
+
+    private var content: some View {
         VStack(spacing: ThemeSpace.related) {
             Logo(size: 96, bob: false, glow: false)
             if let version = Bundle.main.infoDictionary?[
@@ -27,7 +33,7 @@ struct AboutSettingsTab: View {
             .disabled(!canCheckForUpdates)
         }
         .padding(.top, ThemeSpace.page + ThemeSpace.related)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .frame(maxWidth: .infinity, alignment: .top)
     }
 }
 
@@ -38,5 +44,6 @@ struct AboutSettingsTab: View {
             onCheckForUpdates: {},
         )
         .frame(width: 500, height: 300)
+        .windowBackground()
     }
 #endif

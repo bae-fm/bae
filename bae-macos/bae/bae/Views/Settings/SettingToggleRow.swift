@@ -29,7 +29,7 @@ struct SettingToggleRow<Help: View>: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: ThemeSpace.group) {
-            VStack(alignment: .leading, spacing: ThemeSpace.line) {
+            VStack(alignment: .leading, spacing: ThemeSpace.inline) {
                 HStack(spacing: ThemeSpace.inline) {
                     Text(title)
                     help
@@ -59,7 +59,7 @@ struct SettingToggleRow<Help: View>: View {
                 )
             }
         }
-        .formStyle(.grouped)
+        .formStyle(.settings)
         .frame(width: 500, height: 120)
     }
 #endif

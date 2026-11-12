@@ -6,4 +6,4 @@
 
 A row the person clicks reads as one button named by its words: one with `chevron`, `action` or `destructive` is, and `button` marks the rest, such as a Welcome library. A row that ends in controls of its own (a ⋯ menu) gives the button to its label alone.
 
-**In the code:** macOS: `LabeledContent` in a grouped `Form`; a row the person clicks is a `Button` or `NavigationLink` whose label is the row.
+**In the code:** macOS: `LabeledContent` in a `SettingsFormStyle` form, a `nested` row with `.joiningRowAbove()`; a row the person clicks is a `Button` or `NavigationLink` whose label is the row.

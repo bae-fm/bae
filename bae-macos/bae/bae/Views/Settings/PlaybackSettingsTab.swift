@@ -13,11 +13,9 @@ struct PlaybackSettingsTab: View {
     private var persistPlayback = false
 
     var body: some View {
-        Form {
-            Section {
-                // Resume automatically belongs to the pause: one row holds
-                // both, so no divider comes between them.
-                VStack(spacing: ThemeSpace.compact) {
+        SettingsPane(.playback) {
+            Form {
+                Section {
                     PauseBetweenSidesToggle(
                         configStore: configStore,
                         setEnabled: playback.setPauseBetweenSides,
@@ -25,6 +23,7 @@ struct PlaybackSettingsTab: View {
                             uiStore.showError(error)
                         }
                     )
+                    // Resume automatically belongs to the pause above it.
                     SidePauseCountdownPicker(
                         configStore: configStore,
                         setCountdown: playback.setSidePauseCountdown,
@@ -32,18 +31,16 @@ struct PlaybackSettingsTab: View {
                             uiStore.showError(error)
                         }
                     )
+                    .joiningRowAbove()
+                    Toggle("Restore on launch", isOn: $persistPlayback)
+                } footer: {
+                    Text(
+                        "Restores the last session’s track, position, queue and volume when the app opens."
+                    )
                 }
-                Toggle("Restore on launch", isOn: $persistPlayback)
-            } footer: {
-                Text(
-                    "Restores the last session’s track, position, queue and volume when the app opens."
-                )
-                .themeText(.detail)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .formStyle(.settings)
         }
-        .formStyle(.grouped)
     }
 }
 
@@ -60,5 +57,6 @@ struct PlaybackSettingsTab: View {
             )
             .environment(uiStore)
             .frame(width: 500, height: 300)
+            .windowBackground()
     }
 #endif

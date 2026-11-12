@@ -3,12 +3,14 @@ import SwiftUI
 
 struct AppearanceSettingsTab: View {
     var body: some View {
-        Form {
-            AppearanceControls()
+        SettingsPane(.appearance) {
+            Form {
+                Section {
+                    AppearanceControls()
+                }
+            }
+            .formStyle(.settings)
         }
-        .formStyle(.grouped)
-        .scrollContentBackground(.hidden)
-        .windowBackground()
     }
 }
 
@@ -16,6 +18,7 @@ struct AppearanceSettingsTab: View {
     #Preview("Appearance") {
         AppearanceSettingsTab()
             .frame(width: 500, height: 300)
+            .windowBackground()
             .appAppearance()
     }
 #endif

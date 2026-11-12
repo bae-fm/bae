@@ -89,6 +89,13 @@ struct LibrarySettingsTab: View {
                 }
             }
             .formStyle(.grouped)
+            // The pane's title over the first page; the pages inside it have
+            // their own.
+            .safeAreaInset(edge: .top, spacing: 0) {
+                SettingsPaneHeading { Text(SettingsTab.library.title) }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .windowBackground()
+            }
             .navigationDestination(for: Page.self) { page in
                 switch page {
                 case .sync:
