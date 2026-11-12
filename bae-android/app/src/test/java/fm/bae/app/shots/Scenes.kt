@@ -94,7 +94,8 @@ internal fun SystemLook(content: @Composable () -> Unit) {
 
 /**
  * A dialog's [parts] drawn in place, as its window would show them: over [behind], dimmed by the scrim, centred on
- * the phone, with title, message, content and buttons on the dialog's surface, 340 dp wide as the boards draw it.
+ * the phone, with title, message, content and buttons on the dialog's surface, 340 dp wide, 16 apart with the buttons 24 below
+ * the content, as the design system's dialog sets them.
  */
 @Composable
 internal fun InPlaceDialogScene(
@@ -114,11 +115,11 @@ internal fun InPlaceDialogScene(
             ) {
                 val parts = dialog()
                 DialogSurface {
-                    Column(modifier = Modifier.width(DIALOG_WIDTH), verticalArrangement = Arrangement.spacedBy(ThemeSpace.section)) {
+                    Column(modifier = Modifier.width(DIALOG_WIDTH), verticalArrangement = Arrangement.spacedBy(ThemeSpace.edge)) {
                         if (parts.title != null || parts.message != null) DialogHead(parts.title, parts.message)
                         parts.content?.invoke()
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier.fillMaxWidth().padding(top = ThemeSpace.related),
                             horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related, Alignment.End),
                         ) {
                             parts.dismissButton?.invoke()
