@@ -45,6 +45,7 @@ import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.CoverImage
 import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.color
+import fm.bae.app.ui.components.liftsSnackbar
 import fm.bae.fastvalues.LatestSource
 import uniffi.bae_bridge.BridgeRepeatMode
 
@@ -61,7 +62,11 @@ internal fun AndroidNowPlayingBar(
     progress: @Composable () -> Unit,
     castEnded: @Composable () -> Unit,
 ) {
-    Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 3.dp) {
+    Surface(
+        modifier = Modifier.liftsSnackbar(),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 3.dp,
+    ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             // A hairline along the top edge, so what scrolls above doesn't run
             // straight into the bar.

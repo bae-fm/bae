@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarDuration
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
@@ -40,8 +39,11 @@ import fm.bae.app.coreString
 import fm.bae.app.data.LocalImageStore
 import fm.bae.app.data.SessionMessage
 import fm.bae.app.ui.appearance.ThemeSpace
+import fm.bae.app.ui.components.AndroidSnackbarOverlay
 import fm.bae.app.ui.components.LaunchProblemBanner
+import fm.bae.app.ui.components.LocalSnackbarLift
 import fm.bae.app.ui.components.ScreenFailureNotice
+import fm.bae.app.ui.components.SnackbarLift
 import fm.bae.app.ui.library.LibraryScreen
 import fm.bae.app.ui.onboarding.OnboardingScreen
 import fm.bae.app.ui.onboarding.RestoreOver
@@ -85,6 +87,7 @@ fun ContentView(
     // One snackbar for the app, over every screen: an open library's messages
     // and, on any screen, a bug reported without crashing.
     val snackbarHostState = remember { SnackbarHostState() }
+    val snackbarLift = remember { SnackbarLift() }
     val somethingWentWrong = context.coreString("core.error.category.internal")
     LaunchedEffect(bugs, snackbarHostState) {
         bugs.reported.collect {
@@ -100,30 +103,27 @@ fun ContentView(
             listOfNotNull(oauthProvidersError?.let { signInSettingsProblem(context, it) })
         }
     BaeAppChrome {
-        Column(modifier = Modifier.fillMaxSize()) {
-            // An open library lists these in its Activity sheet.
-            if (screen !is AppScreen.LibraryOpen) LaunchProblemBanner(launchProblems)
-            Box(modifier = Modifier.weight(1f)) {
-                CompositionLocalProvider(LocalBugReports provides bugs) {
-                    AppScreenRouter(
-                        screen = screen,
-                        oauthProviders = oauthProviders,
-                        oauthProvidersError = oauthProvidersError,
-                        launchProblems = launchProblems,
-                        shortcutAction = shortcutAction,
-                        onShortcutHandled = onShortcutHandled,
-                        snackbarHostState = snackbarHostState,
-                        onScreen = { screen = it },
-                    )
+        CompositionLocalProvider(LocalSnackbarLift provides snackbarLift) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                // An open library lists these in its Activity sheet.
+                if (screen !is AppScreen.LibraryOpen) LaunchProblemBanner(launchProblems)
+                Box(modifier = Modifier.weight(1f)) {
+                    CompositionLocalProvider(LocalBugReports provides bugs) {
+                        AppScreenRouter(
+                            screen = screen,
+                            oauthProviders = oauthProviders,
+                            oauthProvidersError = oauthProvidersError,
+                            launchProblems = launchProblems,
+                            shortcutAction = shortcutAction,
+                            onShortcutHandled = onShortcutHandled,
+                            snackbarHostState = snackbarHostState,
+                            onScreen = { screen = it },
+                        )
+                    }
                 }
             }
         }
-        Box(modifier = Modifier.fillMaxSize()) {
-            SnackbarHost(
-                hostState = snackbarHostState,
-                modifier = Modifier.align(Alignment.BottomCenter),
-            )
-        }
+        AndroidSnackbarOverlay(state = snackbarHostState, lift = snackbarLift)
     }
 }
 

@@ -12,8 +12,6 @@ fun appearanceColorScheme(
 ): ColorScheme {
     val surfaces = preferences.tone.surfaces(dark)
     val semantics = semanticColors(dark)
-    val inverseSurfaces = preferences.tone.surfaces(!dark)
-    val inverseSemantics = semanticColors(!dark)
     val accentColors = preferences.accent.colors
     val accent = if (dark) accentColors.dark else accentColors.light
     val onFilled = if (dark) surfaces.background else semantics.onFill
@@ -47,9 +45,9 @@ fun appearanceColorScheme(
         surfaceTint = accent,
         outline = semantics.textSecondary,
         outlineVariant = semantics.hairline,
-        inverseSurface = inverseSurfaces.surface,
-        inverseOnSurface = inverseSemantics.textPrimary,
-        inversePrimary = if (dark) accentColors.light else accentColors.dark,
+        inverseSurface = semantics.textPrimary,
+        inverseOnSurface = surfaces.background,
+        inversePrimary = accentColors.fill,
         scrim = semantics.scrim,
         errorContainer = semantics.danger.copy(alpha = ThemeOpacity.tint).compositeOver(surfaces.surface),
         onErrorContainer = semantics.danger,
