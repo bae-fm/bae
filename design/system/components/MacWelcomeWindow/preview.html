@@ -1,7 +1,7 @@
 <!-- @dsCard group="macOS" height=300 -->
 <!doctype html>
 <html>
-<head><meta charset="utf-8"><title>MacWindow</title></head>
+<head><meta charset="utf-8"><title>MacWelcomeWindow</title></head>
 <body class="bae-preview bae-mac" style="padding: 0;">
 <div id="root" style="display: contents"></div>
 <script>
@@ -9,7 +9,7 @@
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, h(B.MacWindow, { height: 260 }, h('div', { style: { padding: '56px 24px 24px' } }, slot('The window’s content')))));
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, h(B.MacWelcomeWindow, { height: 260 }, h('div', { style: { padding: '56px 24px 24px' } }, slot('The window’s content')))));
 </script>
 </body>
 </html>

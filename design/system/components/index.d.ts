@@ -7,8 +7,8 @@ export interface MacSettingsWindowProps { pane: 'Appearance' | 'Library' | 'Play
 export declare function MacSettingsWindow(props: MacSettingsWindowProps): React.ReactElement;
 
 /** A plain macOS window with traffic lights and no sidebar (the welcome window). A MacAlert inside covers it. */
-export interface MacWindowProps { width?: number; height?: number; children?: React.ReactNode }
-export declare function MacWindow(props: MacWindowProps): React.ReactElement;
+export interface MacWelcomeWindowProps { width?: number; height?: number; children?: React.ReactNode }
+export declare function MacWelcomeWindow(props: MacWelcomeWindowProps): React.ReactElement;
 
 /** A window that walks through one step, centred: a headline, an optional line under it, then the step's content and its MacStepActions. */
 export interface MacStepProps { title: string; text?: string; children?: React.ReactNode }

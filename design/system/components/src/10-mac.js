@@ -2,7 +2,7 @@
 
   var PANES = ['Appearance', 'Library', 'Playback', 'Transfers', 'Storage', 'Import', 'Save as', 'Casting', 'Subsonic', 'Automation', 'About'];
 
-  function MacWindow(props) {
+  function MacWelcomeWindow(props) {
     return h('div', { className: 'bae-m-window bae-m-window-plain', style: { width: Number(props.width || 690), height: Number(props.height || 600) } },
       h('div', { className: 'bae-m-lights', 'aria-hidden': true }, h('span', null), h('span', null), h('span', null)),
       props.children);
