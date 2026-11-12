@@ -46,7 +46,7 @@ struct DeviceResetView: View {
                 )
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text(localizedCoreString("core.sync.reset_device.warning"))
+                Text(localizedCoreString(bridgeRecoveryLines().resetWarning))
             }
     }
 
