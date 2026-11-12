@@ -138,6 +138,6 @@
 .bae-m-sheet-footer { margin-top: var(--space-inline); display: flex; gap: var(--space-related); justify-content: flex-end; }
 .bae-m-sheet-footer-lead { margin-right: auto; display: flex; }
 
-.bae-a-progress { display: flex; flex-direction: column; gap: var(--space-related); color: var(--text-primary); font: 400 14px/20px var(--font-android); }
-.bae-m-progress { display: flex; flex-direction: column; gap: var(--space-related); color: var(--text-primary); font: 400 13px var(--font-sans); }
+.bae-a-progress { display: flex; flex-direction: column; gap: var(--space-related); text-align: left; color: var(--text-primary); font: 400 14px/20px var(--font-android); }
+.bae-m-progress { display: flex; flex-direction: column; gap: var(--space-related); text-align: left; color: var(--text-primary); font: 400 13px var(--font-sans); }
 .bae-m-note { padding: 6px 4px 0; font: 400 11.5px var(--font-sans); line-height: 15px; color: var(--text-secondary); }
