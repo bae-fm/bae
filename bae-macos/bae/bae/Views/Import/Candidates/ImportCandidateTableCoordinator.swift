@@ -207,6 +207,9 @@ final class ImportCandidateTableCoordinator: NSObject, NSTableViewDataSource,
             }
         }
         guard !stale.isEmpty else { return }
+        // A header's row is shorter than a release's, and a row's height is
+        // known only once its page has landed.
+        tableView.noteHeightOfRows(withIndexesChanged: stale)
         tableView.reloadData(
             forRowIndexes: stale,
             columnIndexes: IndexSet(integer: 0)
@@ -284,10 +287,13 @@ extension ImportCandidateTableCoordinator {
         list.idAt(row).flatMap { importStore.items[$0] }
     }
 
-    /// Every row one height: a group row would otherwise take the shorter
-    /// height the table gives its group rows.
-    func tableView(_: NSTableView, heightOfRow _: Int) -> CGFloat {
-        ImportCandidateTableLayout.rowHeight
+    /// A header is its own, shorter height; every other row is one height,
+    /// where the table would give a group row the shorter height itself.
+    func tableView(_: NSTableView, heightOfRow row: Int) -> CGFloat {
+        if case .groupHeader = item(at: row) {
+            return ImportCandidateTableLayout.headerRowHeight
+        }
+        return ImportCandidateTableLayout.rowHeight
     }
 
     /// A header's row is drawn as a group row. The table does not float it:
@@ -329,7 +335,6 @@ extension ImportCandidateTableCoordinator {
                 coverContent: item.triageRow.flatMap {
                     importStore.sidebarCover(for: $0)
                 },
-                gapAbove: row > 0,
                 actions: actions,
                 environment: environment
             )
@@ -591,19 +596,17 @@ extension ImportCandidateTableCoordinator {
 // MARK: - Pinned header
 
 extension ImportCandidateTableCoordinator {
-    /// The row under the table's top edge, not the header pinned over it:
-    /// every row is one height.
+    /// The row under the table's top edge, not the header pinned over it.
     fileprivate var topRow: Int? {
-        guard let clipView = scrollView?.contentView, rowCount > 0 else {
+        guard let tableView, let clipView = scrollView?.contentView,
+            rowCount > 0
+        else {
             return nil
         }
-        return min(
-            Int(
-                max(clipView.bounds.minY, 0)
-                    / ImportCandidateTableLayout.rowHeight
-            ),
-            rowCount - 1
+        let row = tableView.row(
+            at: NSPoint(x: 0, y: max(clipView.bounds.minY, 0))
         )
+        return row < 0 ? rowCount - 1 : min(row, rowCount - 1)
     }
 
     /// The header of the group the row on top is listed under, as the rows
@@ -633,7 +636,6 @@ extension ImportCandidateTableCoordinator {
             ImportListEntry(
                 item: header,
                 coverContent: nil,
-                gapAbove: false,
                 actions: actions,
                 environment: environment
             ),

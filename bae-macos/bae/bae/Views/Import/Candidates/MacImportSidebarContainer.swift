@@ -12,15 +12,11 @@ enum ImportListHierarchyLayout {
     /// The gap between the header's chevron and its name.
     static let headerSpacing = ThemeSpace.compact
     static let railWidth: CGFloat = 1
-    /// Where the rail runs, from the list edge: centred under the chevron.
-    static var railInset: CGFloat {
-        rowEdgePadding + (headerChevron.size - railWidth) / 2
-    }
+    /// Where the rail runs, from the list edge: under the chevron.
+    static let railInset: CGFloat = 16
     /// Where a member row's content starts, from the list edge: under the
     /// header's name.
-    static var memberContentInset: CGFloat {
-        rowEdgePadding + headerChevron.size + headerSpacing
-    }
+    static let memberContentInset: CGFloat = 30
     /// The leading padding a member row adds on top of its own edge padding
     /// so its content lands at `memberContentInset`.
     static var memberInset: CGFloat { memberContentInset - rowEdgePadding }

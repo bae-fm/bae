@@ -54,8 +54,7 @@ struct ImportListPinnedHeader: Equatable {
 }
 
 /// The strip over the top of the import list's rows that the pinned header
-/// draws in: the header's own row, drawn floating, without the gap above its
-/// group. The strip cuts the header off as it leaves with the last row of
+/// draws in: the header's own row. The strip cuts the header off as it leaves with the last row of
 /// its group.
 final class ImportListPinnedHeaderStrip: NSView {
     private let cell = ImportListEntryCell(
@@ -69,7 +68,6 @@ final class ImportListPinnedHeaderStrip: NSView {
         super.init(frame: .zero)
         clipsToBounds = true
         isHidden = true
-        cell.floating = true
         addSubview(cell)
     }
 
@@ -85,7 +83,7 @@ final class ImportListPinnedHeaderStrip: NSView {
         lift: CGFloat,
         in scrollView: NSScrollView
     ) {
-        let height = ImportCandidateTableLayout.rowHeight
+        let height = ImportCandidateTableLayout.headerRowHeight
         let rows = scrollView.contentView.frame
         frame = NSRect(
             x: rows.minX,

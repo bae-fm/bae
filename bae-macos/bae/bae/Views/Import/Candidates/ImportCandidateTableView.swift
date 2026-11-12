@@ -9,8 +9,16 @@ enum ImportCandidateTableLayout {
     /// cover and the padding around it.
     static let rowHeight =
         MacImportRow.coverPointSize + 2 * ThemeSpace.compact
-    /// The gap above a folder group, drawn inside its header's row.
-    static let headerGap = ThemeSpace.related
+    /// A folder group's header row: the gap above its group, the 13 pt name's
+    /// 16 pt line, and the gap below it.
+    static let headerPadding = EdgeInsets(
+        top: ThemeSpace.related,
+        leading: 0,
+        bottom: ThemeSpace.inline,
+        trailing: 0
+    )
+    static let headerRowHeight: CGFloat =
+        headerPadding.top + 16 + headerPadding.bottom
 }
 
 /// The import list's table. It keeps no selection of its own: what a person
@@ -53,8 +61,7 @@ final class ImportCandidateTableView: NSTableView {
 
 /// A folder group's header row.
 final class ImportListGroupRowView: NSTableRowView {
-    /// The header draws its own surface, inside its content and out of the
-    /// gap above it.
+    /// The header draws its own surface, inside its content.
     override func drawBackground(in dirtyRect: NSRect) {}
 }
 
@@ -63,15 +70,6 @@ final class ImportListGroupRowView: NSTableRowView {
 final class ImportListEntryCell: NSTableCellView {
     private var hosting: NSHostingView<ImportListEntryView>?
     private var entry: ImportListEntry?
-    /// Whether the row floats over the rows below: the group header pinned
-    /// over the top of the table while its group scrolls under it.
-    var floating = false {
-        didSet {
-            guard floating != oldValue else { return }
-            render()
-        }
-    }
-
     init(identifier: NSUserInterfaceItemIdentifier) {
         super.init(frame: .zero)
         self.identifier = identifier
@@ -92,10 +90,7 @@ final class ImportListEntryCell: NSTableCellView {
 
     private func render() {
         guard let entry else { return }
-        let root = ImportListEntryView(
-            entry: entry,
-            floating: floating
-        )
+        let root = ImportListEntryView(entry: entry)
         if let hosting {
             hosting.rootView = root
             return

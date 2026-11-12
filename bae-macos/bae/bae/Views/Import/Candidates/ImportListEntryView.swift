@@ -39,9 +39,6 @@ struct ImportListEntry {
     let item: BridgeImportListItem
     /// The cover a candidate's row draws; `nil` for any other row.
     let coverContent: ImageContent?
-    /// Whether a group header has the gap above its group drawn inside its
-    /// row: every header but one at the top of the list.
-    let gapAbove: Bool
     let actions: ImportListEntryActions
     let environment: ImportListRowEnvironment
 }
@@ -50,9 +47,6 @@ struct ImportListEntry {
 /// header, a candidate's row, or a broken folder's row.
 struct ImportListEntryView: View {
     let entry: ImportListEntry
-    /// Whether the row floats over the rows below; a floating header draws
-    /// without the gap above its group.
-    let floating: Bool
 
     var body: some View {
         content
@@ -74,14 +68,6 @@ struct ImportListEntryView: View {
                 expanded: expanded,
                 onSetExpanded: { actions.onSetGroupExpanded(group, $0) },
                 onCombine: { actions.onCombineFolder(group.key) }
-            )
-            // The gap above the group is the row's, out of the header's
-            // surface. Floating over the rows below, the header has no gap
-            // above it: it covers the whole row.
-            .padding(
-                .top,
-                entry.gapAbove && !floating
-                    ? ImportCandidateTableLayout.headerGap : 0
             )
         case .candidate(_, let row, let headerPosition):
             // Every tab's row, drawn the same: a Done row is the row it was
@@ -131,7 +117,8 @@ struct ImportListGroupHeader: View {
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, ImportListHierarchyLayout.rowEdgePadding)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(ImportCandidateTableLayout.headerPadding)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
