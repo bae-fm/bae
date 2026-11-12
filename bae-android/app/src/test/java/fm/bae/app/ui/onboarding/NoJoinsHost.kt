@@ -34,6 +34,7 @@ internal open class NoJoinsHost : EditionFakeBridgeHost() {
 
     override suspend fun createLibrary(
         name: String?,
+        creatorName: String,
         setup: BridgeLibrarySetup,
     ): OpenedLibrary = unfaked("createLibrary")
 
