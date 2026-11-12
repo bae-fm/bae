@@ -305,6 +305,7 @@
     <string name="onboarding_add_action">הוספה</string>
     <string name="onboarding_person_name">השם שלך</string>
     <string name="name_shown_to_everyone">כל מי שבספרייה רואה את השם הזה.</string>
+    <string name="name_save_failed">לא ניתן לשמור את השם.</string>
     <string name="onboarding_restoring_title">משחזרים את הספרייה שלך</string>
     <string name="onboarding_joining_library">מצטרפים אל %1$s</string>
     <string name="onboarding_invite_ended">ההזמנה הזו הסתיימה. היא נדחתה או בוטלה, פג תוקפה, או שהמכשיר שיצר אותה כבר לא בספרייה.</string>

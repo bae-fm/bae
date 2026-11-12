@@ -312,6 +312,7 @@
     <string name="onboarding_add_action">Dodaj</string>
     <string name="onboarding_person_name">Twoje imię</string>
     <string name="name_shown_to_everyone">Tę nazwę widzą wszyscy w bibliotece.</string>
+    <string name="name_save_failed">Nie udało się zapisać imienia.</string>
     <string name="onboarding_restoring_title">Przywracanie biblioteki</string>
     <string name="onboarding_joining_library">Dołączanie do: %1$s</string>
     <string name="onboarding_invite_ended">To zaproszenie się zakończyło. Zostało odrzucone lub anulowane, wygasło albo urządzenia, które je utworzyło, nie ma już w bibliotece.</string>

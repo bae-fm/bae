@@ -304,6 +304,7 @@
     <string name="onboarding_add_action">Adicionar</string>
     <string name="onboarding_person_name">Seu nome</string>
     <string name="name_shown_to_everyone">Todos na biblioteca veem este nome.</string>
+    <string name="name_save_failed">Não foi possível salvar o nome.</string>
     <string name="onboarding_restoring_title">Restaurando sua biblioteca</string>
     <string name="onboarding_joining_library">Entrando em %1$s</string>
     <string name="onboarding_invite_ended">Este convite terminou. Ele foi recusado ou cancelado, expirou, ou o dispositivo que o criou não está mais na biblioteca.</string>

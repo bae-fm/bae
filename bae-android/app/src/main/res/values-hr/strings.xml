@@ -305,6 +305,7 @@
     <string name="onboarding_add_action">Dodaj</string>
     <string name="onboarding_person_name">Vaše ime</string>
     <string name="name_shown_to_everyone">Svi u fonoteci vide ovo ime.</string>
+    <string name="name_save_failed">Nije moguće spremiti ime.</string>
     <string name="onboarding_restoring_title">Vraćanje fonoteke</string>
     <string name="onboarding_joining_library">Pridruživanje: %1$s</string>
     <string name="onboarding_invite_ended">Ova je pozivnica završila. Odbijena je ili otkazana, istekla je ili uređaj koji ju je izradio više nije u fonoteci.</string>

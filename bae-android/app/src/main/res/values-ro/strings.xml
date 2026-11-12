@@ -303,6 +303,7 @@
     <string name="onboarding_add_action">Adaugă</string>
     <string name="onboarding_person_name">Numele tău</string>
     <string name="name_shown_to_everyone">Toți cei din bibliotecă văd acest nume.</string>
+    <string name="name_save_failed">Numele nu a putut fi salvat.</string>
     <string name="onboarding_restoring_title">Se restaurează biblioteca</string>
     <string name="onboarding_joining_library">Te alături la %1$s</string>
     <string name="onboarding_invite_ended">Această invitație s-a încheiat. A fost refuzată sau anulată, a expirat sau dispozitivul care a creat-o nu mai este în bibliotecă.</string>

@@ -326,6 +326,7 @@
     <string name="onboarding_add_action">إضافة</string>
     <string name="onboarding_person_name">اسمك</string>
     <string name="name_shown_to_everyone">يرى هذا الاسم كل من في المكتبة.</string>
+    <string name="name_save_failed">تعذّر حفظ الاسم.</string>
     <string name="onboarding_restoring_title">جارٍ استعادة مكتبتك</string>
     <string name="onboarding_joining_library">جارٍ الانضمام إلى %1$s</string>
     <string name="onboarding_invite_ended">انتهت هذه الدعوة. رُفضت أو أُلغيت، أو انتهت صلاحيتها، أو لم يعد الجهاز الذي أنشأها في المكتبة.</string>

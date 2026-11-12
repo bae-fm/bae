@@ -37,7 +37,7 @@ class SettingsYouShots : BoardShot() {
     @Test
     fun androidSettingsYourNameSaveFailed() =
         shot("android.settings.your-name.save-failed") {
-            YourName(draft = "Annie", error = DisplayError("Couldn’t save the name. Try again."))
+            YourName(draft = "Annie", error = DisplayError("The library could not be written.", "profile write: no space left on device"))
         }
 
     /** The page after the name was saved. */

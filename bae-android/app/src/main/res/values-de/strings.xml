@@ -298,6 +298,7 @@
     <string name="onboarding_add_action">Hinzufügen</string>
     <string name="onboarding_person_name">Dein Name</string>
     <string name="name_shown_to_everyone">Alle in der Bibliothek sehen diesen Namen.</string>
+    <string name="name_save_failed">Der Name konnte nicht gespeichert werden.</string>
     <string name="onboarding_restoring_title">Deine Bibliothek wird wiederhergestellt</string>
     <string name="onboarding_joining_library">Beitritt zu %1$s</string>
     <string name="onboarding_invite_ended">Diese Einladung ist beendet. Sie wurde abgelehnt oder zurückgezogen, ist abgelaufen, oder das Gerät, das sie erstellt hat, ist nicht mehr in der Bibliothek.</string>

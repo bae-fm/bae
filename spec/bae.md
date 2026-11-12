@@ -2728,7 +2728,9 @@ editable by every member.
 **People and devices.** Settings keeps the library's people on a page of their
 own, with two sections. *You* holds the person's name, with *Change…*, which
 renames their profile in a sheet that says everyone in the library sees the name
-and keeps the name as typed when the rename fails; their role, which only an
+and keeps the name as typed when the rename fails, with a danger notice,
+"Could not save the name.", and *Details* for the cause, but no retry button,
+since *Save* is the retry; their role, which only an
 admin changes, and from another person's page; their listening history, *Off*,
 *Only me* or *Everyone* (§5.3), with a note, under the box on a Mac and in
 the dialog on Android: "Who sees what you play, or Off to keep no record.

@@ -298,6 +298,7 @@
     <string name="onboarding_add_action">Ekle</string>
     <string name="onboarding_person_name">Adınız</string>
     <string name="name_shown_to_everyone">Kitaplıktaki herkes bu adı görür.</string>
+    <string name="name_save_failed">Ad kaydedilemedi.</string>
     <string name="onboarding_restoring_title">Kitaplığınız geri yükleniyor</string>
     <string name="onboarding_joining_library">%1$s kitaplığına katılınıyor</string>
     <string name="onboarding_invite_ended">Bu davet sona erdi. Reddedildi veya iptal edildi, süresi doldu ya da daveti oluşturan cihaz artık kitaplıkta değil.</string>

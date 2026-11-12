@@ -346,6 +346,7 @@
     <string name="onboarding_add_action">Add</string>
     <string name="onboarding_person_name">Your name</string>
     <string name="name_shown_to_everyone">Everyone in the library sees this name.</string>
+    <string name="name_save_failed">Could not save the name.</string>
     <string name="onboarding_restoring_title">Restoring your library</string>
     <!-- %1$s = the library's name, from the invite -->
     <string name="onboarding_joining_library">Joining %1$s</string>

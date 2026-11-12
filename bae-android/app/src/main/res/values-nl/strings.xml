@@ -298,6 +298,7 @@
     <string name="onboarding_add_action">Toevoegen</string>
     <string name="onboarding_person_name">Je naam</string>
     <string name="name_shown_to_everyone">Iedereen in de bibliotheek ziet deze naam.</string>
+    <string name="name_save_failed">Kan de naam niet opslaan.</string>
     <string name="onboarding_restoring_title">Je bibliotheek wordt hersteld</string>
     <string name="onboarding_joining_library">Deelnemen aan %1$s</string>
     <string name="onboarding_invite_ended">Deze uitnodiging is beëindigd. Ze is geweigerd of ingetrokken, ze is verlopen, of het apparaat dat haar heeft gemaakt zit niet meer in de bibliotheek.</string>

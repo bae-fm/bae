@@ -296,6 +296,7 @@
     <string name="onboarding_add_action">Hozzáadás</string>
     <string name="onboarding_person_name">A neved</string>
     <string name="name_shown_to_everyone">A könyvtárban mindenki ezt a nevet látja.</string>
+    <string name="name_save_failed">Nem sikerült menteni a nevet.</string>
     <string name="onboarding_restoring_title">A könyvtárad visszaállítása folyamatban</string>
     <string name="onboarding_joining_library">Csatlakozás folyamatban: %1$s</string>
     <string name="onboarding_invite_ended">Ez a meghívó véget ért. Elutasították vagy visszavonták, lejárt, vagy az azt létrehozó eszköz már nincs a könyvtárban.</string>

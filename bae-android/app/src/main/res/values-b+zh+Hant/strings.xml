@@ -291,6 +291,7 @@
     <string name="onboarding_add_action">新增</string>
     <string name="onboarding_person_name">你的名字</string>
     <string name="name_shown_to_everyone">資料庫中的每個人都能看到這個名字。</string>
+    <string name="name_save_failed">無法儲存姓名。</string>
     <string name="onboarding_restoring_title">正在還原你的資料庫</string>
     <string name="onboarding_joining_library">正在加入 %1$s</string>
     <string name="onboarding_invite_ended">此邀請已結束：它已被拒絕或取消、已過期，或者建立它的裝置已不在資料庫中。</string>

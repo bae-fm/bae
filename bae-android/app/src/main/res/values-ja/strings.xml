@@ -291,6 +291,7 @@
     <string name="onboarding_add_action">追加</string>
     <string name="onboarding_person_name">あなたの名前</string>
     <string name="name_shown_to_everyone">この名前はライブラリの全員に表示されます。</string>
+    <string name="name_save_failed">名前を保存できませんでした。</string>
     <string name="onboarding_restoring_title">ライブラリを復元しています</string>
     <string name="onboarding_joining_library">%1$s に参加しています</string>
     <string name="onboarding_invite_ended">この招待は終了しました。拒否または取り消されたか、期限切れになったか、招待を作成したデバイスがもうライブラリにありません。</string>

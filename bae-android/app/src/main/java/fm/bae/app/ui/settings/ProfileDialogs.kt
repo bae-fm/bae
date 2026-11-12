@@ -162,7 +162,14 @@ internal fun renameProfileParts(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                error?.let { AndroidNotice(it, look = NoticeLook.QUIET) }
+                error?.let {
+                    AndroidNotice(
+                        title = stringResource(R.string.name_save_failed),
+                        advice = null,
+                        error = it,
+                        look = NoticeLook.QUIET,
+                    )
+                }
             }
         },
         confirmButton = {

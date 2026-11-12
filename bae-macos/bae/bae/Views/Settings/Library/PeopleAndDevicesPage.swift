@@ -763,7 +763,11 @@ private struct RenameProfileSheet: View {
                 }
                 .disabled(task != nil)
                 if let error {
-                    Notice(error: error)
+                    Notice(
+                        title: String(localized: "Could not save the name."),
+                        advice: nil,
+                        error: error
+                    )
                 }
             }
         } footer: {
