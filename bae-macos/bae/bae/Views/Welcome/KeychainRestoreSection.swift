@@ -81,8 +81,8 @@ struct KeychainRestoreContainer: View {
                 Task { await codes.delete(pending, from: setup) }
             }
             Button(SavedCodeDeletion.cancel, role: .cancel) {}
-        } message: { pending in
-            Text(verbatim: SavedCodeDeletion.message(for: pending))
+        } message: { _ in
+            Text(verbatim: SavedCodeDeletion.message)
         }
     }
 }
@@ -95,19 +95,11 @@ enum SavedCodeDeletion {
 
     /// That the code goes from iCloud Keychain on all the person's Apple
     /// devices and nothing else does.
-    static func message(for entry: SavedRestoreEntry) -> String {
-        switch entry {
-        case .readable(let saved):
-            String(
-                localized:
-                    "This removes the restore code for “\(saved.info.name)” from iCloud Keychain on all your Apple devices. It doesn’t delete the library, or anything on this Mac or in the cloud."
-            )
-        case .unreadable:
-            String(
-                localized:
-                    "This removes the restore code from iCloud Keychain on all your Apple devices. It doesn’t delete the library, or anything on this Mac or in the cloud."
-            )
-        }
+    static var message: String {
+        String(
+            localized:
+                "This removes the restore code from iCloud Keychain on all your Apple devices. It doesn’t delete the library, or anything on this Mac or in the cloud."
+        )
     }
 }
 

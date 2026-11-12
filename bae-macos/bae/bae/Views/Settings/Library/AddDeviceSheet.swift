@@ -86,7 +86,7 @@ struct AddDeviceSheet: View {
                 .accessibilityLabel("Your restore code")
 
             Text(
-                "On the new device, choose “Scan code” to scan this, or “Enter code” to type:"
+                "On the new device, scan this or type the code:"
             )
             .themeText(.detail)
             .foregroundStyle(.secondary)

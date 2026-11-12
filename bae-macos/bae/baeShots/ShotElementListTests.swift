@@ -91,7 +91,7 @@ struct ShotElementListTests {
                 "\(json)"
             )
         }
-        let title = try element("text", "Couldn’t remove “Home music”")
+        let title = try element("text", "Couldn’t remove Home music")
         let message = try element(
             "text",
             "Couldn’t reach the cloud. Check your connection and try again."

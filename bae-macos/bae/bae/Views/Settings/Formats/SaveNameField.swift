@@ -48,9 +48,9 @@ extension BridgeNamePatternError {
         case .empty:
             String(localized: "A name can’t be empty.")
         case .startsWithDot:
-            String(localized: "A name can’t start with “.”.")
+            String(localized: "A name can’t start with a dot.")
         case .forbiddenCharacter(let character):
-            String(localized: "A name can’t contain “\(character)”.")
+            String(localized: "A name can’t have \(character) in it.")
         }
     }
 }

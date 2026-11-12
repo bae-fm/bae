@@ -136,7 +136,7 @@ private struct AdminChangeRow: View {
     private var description: String {
         switch change.change {
         case .renameLibrary(let name):
-            String(localized: "Rename the library to “\(name)”")
+            String(localized: "Rename the library to \(name)")
         case .setRole(_, let person, let role):
             switch role {
             case .admin:

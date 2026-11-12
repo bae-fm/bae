@@ -67,7 +67,7 @@ struct PendingUnpin: Equatable {
     /// The alert's title: the release by name when it is one, else how many.
     var alertTitle: String {
         if let title, releaseIds.count == 1 {
-            return String(localized: "Unpin “\(title)”?")
+            return String(localized: "Unpin \(title)?")
         }
         return String(localized: "Unpin \(releaseIds.count) releases?")
     }

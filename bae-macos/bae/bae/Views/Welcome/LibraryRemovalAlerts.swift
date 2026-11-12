@@ -52,7 +52,7 @@ enum LibraryRemovalAlerts {
     static func failure(_ failed: FailedRemoval) -> NSAlert {
         let alert = NSAlert()
         alert.messageText = String(
-            localized: "Couldn’t remove “\(failed.library.name)”"
+            localized: "Couldn’t remove \(failed.library.name)"
         )
         alert.informativeText = failed.error.line
         guard failed.error.offersRetry else {

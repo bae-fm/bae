@@ -9,7 +9,7 @@
         let heading: LocalizedStringResource
         let empty: LocalizedStringResource
         /// The line when the name given is already taken, for that name.
-        let nameTaken: (String) -> LocalizedStringResource
+        let nameTaken: LocalizedStringResource
     }
 
     extension StorageFolderBrowser.Provider {
@@ -27,13 +27,11 @@
                         comment:
                             "Dropbox setup's folder list, when the person has no shared folder."
                     ),
-                    nameTaken: {
-                        LocalizedStringResource(
-                            "A folder named “\($0)” is already in your Dropbox. Choose another name.",
-                            comment:
-                                "Dropbox setup, under the new folder name field, when the person named a folder that is already at the top of their Dropbox; the argument is the name."
-                        )
-                    }
+                    nameTaken: LocalizedStringResource(
+                        "A folder with this name is already in your Dropbox. Choose another name.",
+                        comment:
+                            "Dropbox setup, under the new folder name field, when the person named a folder that is already at the top of their Dropbox."
+                    )
                 )
             case .oneDrive:
                 FolderPickerWords(
@@ -47,13 +45,11 @@
                         comment:
                             "OneDrive setup's folder list, when the folder shown holds no folders."
                     ),
-                    nameTaken: {
-                        LocalizedStringResource(
-                            "A folder named “\($0)” is already here. Choose another name.",
-                            comment:
-                                "OneDrive setup, under the new folder name field, when the person named a folder that is already in the folder shown; the argument is the name."
-                        )
-                    }
+                    nameTaken: LocalizedStringResource(
+                        "A folder with this name is already here. Choose another name.",
+                        comment:
+                            "OneDrive setup, under the new folder name field, when the person named a folder that is already in the folder shown."
+                    )
                 )
             }
         }
@@ -122,9 +118,9 @@
                     }
                 }
             }
-            if let name = browser.takenName {
+            if browser.takenName != nil {
                 Section {
-                    Text(words.nameTaken(name))
+                    Text(words.nameTaken)
                         .themeText(.body)
                         .foregroundStyle(Theme.danger)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -133,7 +129,7 @@
             if let taken = browser.notEmpty {
                 Section {
                     Text(
-                        "“\(taken.name)” isn’t empty. Choose an empty folder, or make a new one."
+                        "This folder isn’t empty. Choose an empty folder, or make a new one."
                     )
                     .themeText(.body)
                     .foregroundStyle(Theme.danger)

@@ -1,176 +1,176 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "Checking the folder “%@”…" : {
-      "comment" : "Dropbox or OneDrive setup, while bae checks the folder the person chose holds nothing else; %@ is the folder's name.",
+    "Checking the folder…" : {
+      "comment" : "Dropbox or OneDrive setup, while bae checks the folder the person chose holds nothing else.",
       "extractionState" : "manual",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "جارٍ التحقق من المجلد «%@»…"
+            "value" : "جارٍ التحقق من المجلد…"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Папката „%@“ се проверява…"
+            "value" : "Папката се проверява…"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kontroluje se složka „%@“…"
+            "value" : "Kontroluje se složka…"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tjekker mappen “%@”…"
+            "value" : "Tjekker mappen…"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ordner „%@“ wird geprüft …"
+            "value" : "Ordner wird geprüft …"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Έλεγχος του φακέλου «%@»…"
+            "value" : "Έλεγχος του φακέλου…"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Checking the folder “%@”…"
+            "value" : "Checking the folder…"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Comprobando la carpeta «%@»…"
+            "value" : "Comprobando la carpeta…"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tarkistetaan kansiota “%@”…"
+            "value" : "Tarkistetaan kansiota…"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vérification du dossier « %@ »…"
+            "value" : "Vérification du dossier…"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "בודק את התיקייה ״%@״…"
+            "value" : "בודק את התיקייה…"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Provjera mape „%@“…"
+            "value" : "Provjera mape…"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A(z) „%@” mappa ellenőrzése…"
+            "value" : "A mappa ellenőrzése…"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Controllo della cartella “%@”…"
+            "value" : "Controllo della cartella…"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "フォルダ「%@」を確認しています…"
+            "value" : "フォルダを確認しています…"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“%@” 폴더를 확인하는 중…"
+            "value" : "폴더를 확인하는 중…"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sjekker mappen «%@»…"
+            "value" : "Sjekker mappen…"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Map “%@” wordt gecontroleerd…"
+            "value" : "Map wordt gecontroleerd…"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sprawdzanie folderu „%@”…"
+            "value" : "Sprawdzanie folderu…"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Verificando a pasta “%@”…"
+            "value" : "Verificando a pasta…"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A verificar a pasta “%@”…"
+            "value" : "A verificar a pasta…"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Se verifică dosarul „%@”…"
+            "value" : "Se verifică dosarul…"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kontroluje sa priečinok „%@“…"
+            "value" : "Kontroluje sa priečinok…"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kontrollerar mappen ”%@”…"
+            "value" : "Kontrollerar mappen…"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“%@” klasörü denetleniyor…"
+            "value" : "Klasör denetleniyor…"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Перевірка папки «%@»…"
+            "value" : "Перевірка папки…"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "正在检查文件夹“%@”…"
+            "value" : "正在检查文件夹…"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "正在檢查資料夾「%@」…"
+            "value" : "正在檢查資料夾…"
           }
         }
       }
@@ -5160,7 +5160,7 @@
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "إذا فقدت جميع أجهزتك، فافتح bae على جهاز جديد واختر «مسح رمز» لمسح هذا الرمز، أو «إدخال رمز» لكتابته. يمكن لأي شخص يملك هذه الصفحة وصولًا إلى سحابتك أن يفتح مكتبتك، فاحتفظ بها في مكان خاص."
+            "value" : "إذا فقدت جميع أجهزتك، فافتح bae على جهاز جديد واختر مسح رمز لمسح هذا الرمز، أو إدخال رمز لكتابته. يمكن لأي شخص يملك هذه الصفحة وصولًا إلى سحابتك أن يفتح مكتبتك، فاحتفظ بها في مكان خاص."
           }
         },
         "bg" : {
@@ -5184,13 +5184,13 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Wenn du alle deine Geräte verlierst, öffne bae auf einem neuen Gerät und wähle „Code scannen“, um diesen Code zu scannen, oder „Code eingeben“, um ihn einzutippen. Jeder, der diese Seite und Zugriff auf deine Cloud hat, kann deine Bibliothek öffnen: Bewahre sie an einem privaten Ort auf."
+            "value" : "Wenn du alle deine Geräte verlierst, öffne bae auf einem neuen Gerät und wähle Code scannen, um diesen Code zu scannen, oder Code eingeben, um ihn einzutippen. Jeder, der diese Seite und Zugriff auf deine Cloud hat, kann deine Bibliothek öffnen: Bewahre sie an einem privaten Ort auf."
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Αν χάσετε όλες τις συσκευές σας, ανοίξτε το bae σε μια νέα συσκευή και επιλέξτε «Σάρωση κωδικού» για να σαρώσετε αυτό ή «Εισαγωγή κωδικού» για να πληκτρολογήσετε τον κωδικό. Όποιος έχει αυτή τη σελίδα και πρόσβαση στο cloud σας μπορεί να ανοίξει τη βιβλιοθήκη σας: φυλάξτε τη σε ιδιωτικό μέρος."
+            "value" : "Αν χάσετε όλες τις συσκευές σας, ανοίξτε το bae σε μια νέα συσκευή και επιλέξτε Σάρωση κωδικού για να σαρώσετε αυτό ή Εισαγωγή κωδικού για να πληκτρολογήσετε τον κωδικό. Όποιος έχει αυτή τη σελίδα και πρόσβαση στο cloud σας μπορεί να ανοίξει τη βιβλιοθήκη σας: φυλάξτε τη σε ιδιωτικό μέρος."
           }
         },
         "en" : {
@@ -5220,7 +5220,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "אם איבדת את כל המכשירים שלך, פתח את bae במכשיר חדש ובחר ב“סריקת קוד” כדי לסרוק את הקוד הזה, או ב“הזנת קוד” כדי להקליד אותו. כל מי שיש לו את הדף הזה וגישה לענן שלך יכול לפתוח את הספרייה שלך: שמור אותו במקום פרטי."
+            "value" : "אם איבדת את כל המכשירים שלך, פתח את bae במכשיר חדש ובחר בסריקת קוד כדי לסרוק את הקוד הזה, או בהזנת קוד כדי להקליד אותו. כל מי שיש לו את הדף הזה וגישה לענן שלך יכול לפתוח את הספרייה שלך: שמור אותו במקום פרטי."
           }
         },
         "hr" : {
@@ -5244,13 +5244,13 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "すべてのデバイスを失ったら、新しいデバイスで bae を開き、「コードをスキャン」を選んでこれをスキャンするか、「コードを入力」を選んでコードを入力してください。このページとクラウドへのアクセスがあれば誰でもライブラリを開けます。人目につかない場所に保管してください。"
+            "value" : "すべてのデバイスを失ったら、新しいデバイスで bae を開き、これをスキャンするか、コードを入力してください。このページとクラウドへのアクセスがあれば誰でもライブラリを開けます。人目につかない場所に保管してください。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "모든 기기를 잃어버렸다면, 새 기기에서 bae를 열고 ‘코드 스캔’을 선택해 이것을 스캔하거나 ‘코드 입력’을 선택해 코드를 입력하세요. 이 페이지와 클라우드 접근 권한이 있는 사람은 누구나 라이브러리를 열 수 있으니 안전한 곳에 보관하세요."
+            "value" : "모든 기기를 잃어버렸다면, 새 기기에서 bae를 열고 코드 스캔을 선택해 이것을 스캔하거나 코드 입력을 선택해 코드를 입력하세요. 이 페이지와 클라우드 접근 권한이 있는 사람은 누구나 라이브러리를 열 수 있으니 안전한 곳에 보관하세요."
           }
         },
         "nb" : {
@@ -5310,19 +5310,19 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Якщо ви втратите всі пристрої, відкрийте bae на новому пристрої та виберіть «Сканувати код», щоб відсканувати це, або «Ввести код», щоб ввести код. Будь-хто, у кого є ця сторінка й доступ до вашої хмари, може відкрити вашу бібліотеку: зберігайте її в приватному місці."
+            "value" : "Якщо ви втратите всі пристрої, відкрийте bae на новому пристрої та виберіть Сканувати код, щоб відсканувати це, або Ввести код, щоб ввести код. Будь-хто, у кого є ця сторінка й доступ до вашої хмари, може відкрити вашу бібліотеку: зберігайте її в приватному місці."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "如果你丢失了所有设备，请在新设备上打开 bae，选择“扫描代码”来扫描此码，或选择“输入代码”来输入代码。任何拿到此页面并能访问你云端的人都可以打开你的库，请妥善保管。"
+            "value" : "如果你丢失了所有设备，请在新设备上打开 bae，选择扫描代码来扫描此码，或选择输入代码来输入代码。任何拿到此页面并能访问你云端的人都可以打开你的库，请妥善保管。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "如果你遺失了所有裝置，請在新裝置上打開 bae，選擇「掃描代碼」來掃描此碼，或選擇「輸入代碼」來輸入代碼。任何拿到此頁面並能存取你雲端的人都可以打開你的資料庫，請妥善保管。"
+            "value" : "如果你遺失了所有裝置，請在新裝置上打開 bae，選擇掃描代碼來掃描此碼，或選擇輸入代碼來輸入代碼。任何拿到此頁面並能存取你雲端的人都可以打開你的資料庫，請妥善保管。"
           }
         }
       }
@@ -28296,348 +28296,348 @@
         }
       }
     },
-    "A name can’t contain “%@”." : {
+    "A name can’t have %@ in it." : {
       "comment" : "Save as settings: shown in place of the preview when typed text in a file or folder name pattern holds a character a name can't have; %@ is that character",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "لا يمكن أن يحتوي الاسم على ”%@“."
+            "value" : "لا يمكن أن يحتوي الاسم على %@."
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Името не може да съдържа „%@“."
+            "value" : "Името не може да съдържа %@."
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Název nemůže obsahovat „%@“."
+            "value" : "Název nemůže obsahovat %@."
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Et navn må ikke indeholde “%@”."
+            "value" : "Et navn må ikke indeholde %@."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A name can’t contain “%@”."
+            "value" : "A name can’t have %@ in it."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ein Name darf „%@“ nicht enthalten."
+            "value" : "Ein Name darf %@ nicht enthalten."
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Το όνομα δεν μπορεί να περιέχει «%@»."
+            "value" : "Το όνομα δεν μπορεί να περιέχει %@."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Un nombre no puede contener “%@”."
+            "value" : "Un nombre no puede contener %@."
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nimi ei voi sisältää merkkiä ”%@”."
+            "value" : "Nimi ei voi sisältää merkkiä %@."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Un nom ne peut pas contenir « %@ »."
+            "value" : "Un nom ne peut pas contenir %@."
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "שם לא יכול להכיל ”%@“."
+            "value" : "שם לא יכול להכיל %@."
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Naziv ne može sadržavati “%@”."
+            "value" : "Naziv ne može sadržavati %@."
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A név nem tartalmazhatja a(z) „%@” karaktert."
+            "value" : "A név nem tartalmazhatja a(z) %@ karaktert."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Un nome non può contenere “%@”."
+            "value" : "Un nome non può contenere %@."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "名前に“%@”を含めることはできません。"
+            "value" : "名前に%@を含めることはできません。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "이름에 “%@”을(를) 포함할 수 없습니다."
+            "value" : "이름에 %@을(를) 포함할 수 없습니다."
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Et navn kan ikke inneholde «%@»."
+            "value" : "Et navn kan ikke inneholde %@."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Een naam mag geen ‘%@’ bevatten."
+            "value" : "Een naam mag geen %@ bevatten."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nazwa nie może zawierać „%@”."
+            "value" : "Nazwa nie może zawierać %@."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "O nome não pode conter “%@”."
+            "value" : "O nome não pode conter %@."
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "O nome não pode conter “%@”."
+            "value" : "O nome não pode conter %@."
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Numele nu poate conține „%@”."
+            "value" : "Numele nu poate conține %@."
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Názov nemôže obsahovať „%@“."
+            "value" : "Názov nemôže obsahovať %@."
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ett namn får inte innehålla ”%@”."
+            "value" : "Ett namn får inte innehålla %@."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ad “%@” içeremez."
+            "value" : "Ad %@ içeremez."
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Назва не може містити «%@»."
+            "value" : "Назва не може містити %@."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "名称不能包含“%@”。"
+            "value" : "名称不能包含%@。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "名稱不能包含「%@」。"
+            "value" : "名稱不能包含%@。"
           }
         }
       }
     },
-    "A name can’t start with “.”." : {
+    "A name can’t start with a dot." : {
       "comment" : "Save as settings: shown in place of the preview when a file or folder name pattern starts with typed text that starts with a dot",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "لا يمكن أن يبدأ الاسم بالنقطة ”.“."
+            "value" : "لا يمكن أن يبدأ الاسم بنقطة."
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Името не може да започва с „.“."
+            "value" : "Името не може да започва с точка."
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Název nemůže začínat znakem „.“."
+            "value" : "Název nemůže začínat tečkou."
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Et navn må ikke starte med “.”."
+            "value" : "Et navn må ikke starte med et punktum."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A name can’t start with “.”."
+            "value" : "A name can’t start with a dot."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ein Name darf nicht mit „.“ beginnen."
+            "value" : "Ein Name darf nicht mit einem Punkt beginnen."
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Το όνομα δεν μπορεί να ξεκινά με «.»."
+            "value" : "Το όνομα δεν μπορεί να ξεκινά με τελεία."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Un nombre no puede empezar por “.”."
+            "value" : "Un nombre no puede empezar por un punto."
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nimi ei voi alkaa merkillä ”.”."
+            "value" : "Nimi ei voi alkaa pisteellä."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Un nom ne peut pas commencer par « . »."
+            "value" : "Un nom ne peut pas commencer par un point."
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "שם לא יכול להתחיל ב-”.“."
+            "value" : "שם לא יכול להתחיל בנקודה."
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Naziv ne može počinjati znakom “.”."
+            "value" : "Naziv ne može počinjati točkom."
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A név nem kezdődhet „.” karakterrel."
+            "value" : "A név nem kezdődhet ponttal."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Un nome non può iniziare con “.”."
+            "value" : "Un nome non può iniziare con un punto."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "名前を“.”で始めることはできません。"
+            "value" : "名前をピリオドで始めることはできません。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "이름은 “.”로 시작할 수 없습니다."
+            "value" : "이름은 마침표로 시작할 수 없습니다."
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Et navn kan ikke starte med «.»."
+            "value" : "Et navn kan ikke starte med punktum."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Een naam mag niet beginnen met ‘.’."
+            "value" : "Een naam mag niet beginnen met een punt."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nazwa nie może zaczynać się od „.”."
+            "value" : "Nazwa nie może zaczynać się od kropki."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "O nome não pode começar com “.”."
+            "value" : "O nome não pode começar com ponto."
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "O nome não pode começar por “.”."
+            "value" : "O nome não pode começar por ponto."
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Numele nu poate începe cu „.”."
+            "value" : "Numele nu poate începe cu un punct."
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Názov nemôže začínať znakom „.“."
+            "value" : "Názov nemôže začínať bodkou."
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ett namn får inte börja med ”.”."
+            "value" : "Ett namn får inte börja med en punkt."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ad “.” ile başlayamaz."
+            "value" : "Ad nokta ile başlayamaz."
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Назва не може починатися з «.»."
+            "value" : "Назва не може починатися з крапки."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "名称不能以“.”开头。"
+            "value" : "名称不能以句点开头。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "名稱不能以「.」開頭。"
+            "value" : "名稱不能以句號開頭。"
           }
         }
       }
@@ -35130,13 +35130,13 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "「再生元」をクリア"
+            "value" : "再生元をクリア"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "‘재생 위치’ 지우기"
+            "value" : "재생 위치 지우기"
           }
         },
         "nb" : {
@@ -35219,19 +35219,19 @@
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "مسح «التالي»"
+            "value" : "مسح التالي"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Изчистване на „Следва“"
+            "value" : "Изчистване на Следва"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vymazat „Další v pořadí“"
+            "value" : "Vymazat Další v pořadí"
           }
         },
         "da" : {
@@ -35249,7 +35249,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "„Als Nächstes“ leeren"
+            "value" : "Als Nächstes leeren"
           }
         },
         "el" : {
@@ -35261,7 +35261,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vaciar «A continuación»"
+            "value" : "Vaciar A continuación"
           }
         },
         "fi" : {
@@ -35273,19 +35273,19 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vider « À suivre »"
+            "value" : "Vider À suivre"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "נקה את “הבא בתור”"
+            "value" : "נקה את הבא בתור"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Očisti „Sljedeće na redu“"
+            "value" : "Očisti Sljedeće na redu"
           }
         },
         "hu" : {
@@ -35297,19 +35297,19 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cancella «A seguire»"
+            "value" : "Cancella A seguire"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "「次はこちら」をクリア"
+            "value" : "次はこちらをクリア"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "‘다음 재생’ 지우기"
+            "value" : "다음 재생 지우기"
           }
         },
         "nb" : {
@@ -35321,19 +35321,19 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "‘Volgende’ wissen"
+            "value" : "Volgende wissen"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Wyczyść „Następne w kolejce”"
+            "value" : "Wyczyść Następne w kolejce"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Limpar “A seguir”"
+            "value" : "Limpar A seguir"
           }
         },
         "pt-PT" : {
@@ -35363,25 +35363,25 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“Sıradaki” listesini temizle"
+            "value" : "Sıradaki listesini temizle"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Очистити „Далі в черзі“"
+            "value" : "Очистити Далі в черзі"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "清空“接下来”"
+            "value" : "清空接下来"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "清除「待播清單」"
+            "value" : "清除待播清單"
           }
         }
       }
@@ -42824,175 +42824,175 @@
         }
       }
     },
-    "Delete the “%@” format?" : {
+    "Delete this format?" : {
       "comment" : "Format delete confirmation title; %@ is the format name",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "هل تريد حذف الصيغة ”%@“؟"
+            "value" : "هل تريد حذف هذه الصيغة؟"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Да се изтрие ли форматът „%@“?"
+            "value" : "Да се изтрие ли този формат?"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Smazat formát „%@“?"
+            "value" : "Smazat tento formát?"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vil du slette formatet “%@”?"
+            "value" : "Vil du slette dette format?"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Delete the “%@” format?"
+            "value" : "Delete this format?"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Format „%@“ löschen?"
+            "value" : "Dieses Format löschen?"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Διαγραφή της μορφής «%@»;"
+            "value" : "Διαγραφή αυτής της μορφής;"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "¿Eliminar el formato “%@”?"
+            "value" : "¿Eliminar este formato?"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Poistetaanko muoto ”%@”?"
+            "value" : "Poistetaanko tämä muoto?"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Supprimer le format « %@ » ?"
+            "value" : "Supprimer ce format ?"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "למחוק את הפורמט ”%@“?"
+            "value" : "למחוק את הפורמט הזה?"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Izbrisati format “%@”?"
+            "value" : "Izbrisati ovaj format?"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Törlöd a(z) „%@” formátumot?"
+            "value" : "Törlöd ezt a formátumot?"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Eliminare il formato “%@”?"
+            "value" : "Eliminare questo formato?"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "フォーマット“%@”を削除しますか？"
+            "value" : "このフォーマットを削除しますか？"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“%@” 형식을 삭제하겠습니까?"
+            "value" : "이 형식을 삭제하겠습니까?"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Slette formatet «%@»?"
+            "value" : "Slette dette formatet?"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Formaat “%@” verwijderen?"
+            "value" : "Dit formaat verwijderen?"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Usunąć format „%@”?"
+            "value" : "Usunąć ten format?"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Excluir o formato “%@”?"
+            "value" : "Excluir este formato?"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Eliminar o formato «%@»?"
+            "value" : "Eliminar este formato?"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ștergi formatul „%@”?"
+            "value" : "Ștergi acest format?"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Odstrániť formát „%@“?"
+            "value" : "Odstrániť tento formát?"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Radera formatet ”%@”?"
+            "value" : "Radera det här formatet?"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“%@” biçimi silinsin mi?"
+            "value" : "Bu biçim silinsin mi?"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Видалити формат «%@»?"
+            "value" : "Видалити цей формат?"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "删除格式“%@”？"
+            "value" : "删除此格式？"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "刪除格式「%@」？"
+            "value" : "刪除此格式？"
           }
         }
       }
@@ -49781,7 +49781,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zu „Aktuelle Wiedergabe“"
+            "value" : "Zur aktuellen Wiedergabe"
           }
         },
         "el" : {
@@ -49954,7 +49954,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zu „Aktuelle Wiedergabe“"
+            "value" : "Zur aktuellen Wiedergabe"
           }
         },
         "el" : {
@@ -68310,175 +68310,175 @@
         }
       }
     },
-    "Remove “%@” from this Mac?" : {
+    "Remove %@ from this Mac?" : {
       "comment" : "Library removal: title of the alert that removes a library, naming it. %@ is the library's name",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "إزالة «%@» من هذا الـ Mac؟"
+            "value" : "إزالة %@ من هذا الـ Mac؟"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Премахване на „%@“ от този Mac?"
+            "value" : "Премахване на %@ от този Mac?"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Odebrat „%@“ z tohoto Macu?"
+            "value" : "Odebrat %@ z tohoto Macu?"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vil du fjerne “%@” fra denne Mac?"
+            "value" : "Vil du fjerne %@ fra denne Mac?"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "„%@“ von diesem Mac entfernen?"
+            "value" : "%@ von diesem Mac entfernen?"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Αφαίρεση της βιβλιοθήκης «%@» από αυτόν τον Mac;"
+            "value" : "Αφαίρεση της βιβλιοθήκης %@ από αυτόν τον Mac;"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Remove “%@” from this Mac?"
+            "value" : "Remove %@ from this Mac?"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "¿Quitar «%@» de este Mac?"
+            "value" : "¿Quitar %@ de este Mac?"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Poistetaanko ”%@” tältä Macilta?"
+            "value" : "Poistetaanko %@ tältä Macilta?"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Retirer « %@ » de ce Mac ?"
+            "value" : "Retirer %@ de ce Mac ?"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "להסיר את ”%@“ מה‑Mac הזה?"
+            "value" : "להסיר את %@ מה‑Mac הזה?"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ukloniti „%@” s ovog Maca?"
+            "value" : "Ukloniti %@ s ovog Maca?"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Eltávolítod a(z) „%@” könyvtárat erről a Mac gépről?"
+            "value" : "Eltávolítod a(z) %@ könyvtárat erről a Mac gépről?"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rimuovere «%@» da questo Mac?"
+            "value" : "Rimuovere %@ da questo Mac?"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "「%@」をこの Mac から削除しますか？"
+            "value" : "%@をこの Mac から削除しますか？"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "이 Mac에서 “%@”을(를) 제거할까요?"
+            "value" : "이 Mac에서 %@을(를) 제거할까요?"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fjerne «%@» fra denne Macen?"
+            "value" : "Fjerne %@ fra denne Macen?"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "‘%@’ van deze Mac verwijderen?"
+            "value" : "%@ van deze Mac verwijderen?"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Usunąć „%@” z tego Maca?"
+            "value" : "Usunąć %@ z tego Maca?"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Remover “%@” deste Mac?"
+            "value" : "Remover %@ deste Mac?"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Remover «%@» deste Mac?"
+            "value" : "Remover %@ deste Mac?"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Elimini „%@” de pe acest Mac?"
+            "value" : "Elimini %@ de pe acest Mac?"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Odstrániť „%@“ z tohto Macu?"
+            "value" : "Odstrániť %@ z tohto Macu?"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ta bort ”%@” från den här Mac-datorn?"
+            "value" : "Ta bort %@ från den här Mac-datorn?"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“%@” bu Mac’ten kaldırılsın mı?"
+            "value" : "%@ bu Mac’ten kaldırılsın mı?"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Вилучити «%@» з цього Mac?"
+            "value" : "Вилучити %@ з цього Mac?"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "从此 Mac 移除“%@”？"
+            "value" : "从此 Mac 移除%@？"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "要從這部 Mac 移除「%@」嗎？"
+            "value" : "要從這部 Mac 移除%@嗎？"
           }
         }
       }
@@ -85347,7 +85347,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "「設定 › 再生」でもう一度オンにできます。"
+            "value" : "設定 › 再生でもう一度オンにできます。"
           }
         },
         "ko" : {
@@ -85419,13 +85419,13 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "你可以在“设置 › 播放”中重新打开此选项。"
+            "value" : "你可以在设置 › 播放中重新打开此选项。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "你可以在「設定 › 播放」中重新開啟此選項。"
+            "value" : "你可以在設定 › 播放中重新開啟此選項。"
           }
         }
       }
@@ -94576,175 +94576,175 @@
         }
       }
     },
-    "Couldn’t remove “%@”" : {
+    "Couldn’t remove %@" : {
       "comment" : "Library removal: title of the alert when the count before it, or the removal, failed. %@ is the library's name",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "تعذّرت إزالة «%@»"
+            "value" : "تعذّرت إزالة %@"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Премахването на „%@“ не бе успешно"
+            "value" : "Премахването на %@ не бе успешно"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "„%@“ se nepodařilo odebrat"
+            "value" : "%@ se nepodařilo odebrat"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“%@” kunne ikke fjernes"
+            "value" : "%@ kunne ikke fjernes"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "„%@“ konnte nicht entfernt werden"
+            "value" : "%@ konnte nicht entfernt werden"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Δεν ήταν δυνατή η αφαίρεση της βιβλιοθήκης «%@»"
+            "value" : "Δεν ήταν δυνατή η αφαίρεση της βιβλιοθήκης %@"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn’t remove “%@”"
+            "value" : "Couldn’t remove %@"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No se pudo quitar «%@»"
+            "value" : "No se pudo quitar %@"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kirjastoa ”%@” ei voitu poistaa"
+            "value" : "Kirjastoa %@ ei voitu poistaa"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible de retirer « %@ »"
+            "value" : "Impossible de retirer %@"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "לא ניתן היה להסיר את ”%@“"
+            "value" : "לא ניתן היה להסיר את %@"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nije moguće ukloniti „%@”"
+            "value" : "Nije moguće ukloniti %@"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nem sikerült eltávolítani a(z) „%@” könyvtárat"
+            "value" : "Nem sikerült eltávolítani a(z) %@ könyvtárat"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossibile rimuovere «%@»"
+            "value" : "Impossibile rimuovere %@"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "「%@」を削除できませんでした"
+            "value" : "%@を削除できませんでした"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“%@”을(를) 제거할 수 없습니다"
+            "value" : "%@을(를) 제거할 수 없습니다"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kunne ikke fjerne «%@»"
+            "value" : "Kunne ikke fjerne %@"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kan ‘%@’ niet verwijderen"
+            "value" : "Kan %@ niet verwijderen"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nie udało się usunąć „%@”"
+            "value" : "Nie udało się usunąć %@"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Não foi possível remover “%@”"
+            "value" : "Não foi possível remover %@"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Não foi possível remover «%@»"
+            "value" : "Não foi possível remover %@"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nu s-a putut elimina „%@”"
+            "value" : "Nu s-a putut elimina %@"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "„%@“ sa nepodarilo odstrániť"
+            "value" : "%@ sa nepodarilo odstrániť"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Det gick inte att ta bort ”%@”"
+            "value" : "Det gick inte att ta bort %@"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“%@” kaldırılamadı"
+            "value" : "%@ kaldırılamadı"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Не вдалося вилучити «%@»"
+            "value" : "Не вдалося вилучити %@"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "无法移除“%@”"
+            "value" : "无法移除%@"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "無法移除「%@」"
+            "value" : "無法移除%@"
           }
         }
       }
@@ -112419,175 +112419,175 @@
         }
       }
     },
-    "On the new device, choose “Scan code” to scan this, or “Enter code” to type:" : {
+    "On the new device, scan this or type the code:" : {
       "comment" : "Add a device sheet: instructions between the QR code and the restore code. The quoted labels are the Scan code and Enter code choices on the new device's first screen.",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "على الجهاز الجديد، اختر «مسح رمز» لمسح هذا الرمز، أو «إدخال رمز» لكتابته:"
+            "value" : "على الجهاز الجديد، امسح هذا الرمز ضوئيًا أو اكتب الرمز:"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "На новото устройство изберете „Сканиране на код“, за да сканирате това, или „Въвеждане на код“, за да въведете:"
+            "value" : "На новото устройство сканирайте това или въведете кода:"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Na novém zařízení zvolte „Naskenovat kód“ pro naskenování tohoto kódu nebo „Zadat kód“ pro jeho opsání:"
+            "value" : "Na novém zařízení tento kód naskenujte, nebo ho opište:"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vælg »Scan en kode« på den nye enhed for at scanne dette, eller »Indtast en kode« for at skrive:"
+            "value" : "Scan dette på den nye enhed, eller skriv koden:"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Wähle auf dem neuen Gerät „Code scannen“, um dies zu scannen, oder „Code eingeben“, um Folgendes einzutippen:"
+            "value" : "Scanne dies auf dem neuen Gerät oder tippe den Code ein:"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Στη νέα συσκευή, επιλέξτε «Σάρωση κωδικού» για να σαρώσετε αυτό ή «Εισαγωγή κωδικού» για να πληκτρολογήσετε:"
+            "value" : "Στη νέα συσκευή, σαρώστε αυτό ή πληκτρολογήστε τον κωδικό:"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "On the new device, choose “Scan code” to scan this, or “Enter code” to type:"
+            "value" : "On the new device, scan this or type the code:"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "En el nuevo dispositivo, elige “Escanear un código” para escanear esto o “Introducir un código” para escribir:"
+            "value" : "En el nuevo dispositivo, escanea esto o escribe el código:"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Valitse uudella laitteella ”Skannaa koodi” skannataksesi tämän tai ”Syötä koodi” kirjoittaaksesi:"
+            "value" : "Skannaa tämä uudella laitteella tai kirjoita koodi:"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sur le nouvel appareil, choisissez « Scanner un code » pour scanner ceci ou « Saisir un code » pour saisir :"
+            "value" : "Sur le nouvel appareil, scannez ceci ou saisissez le code :"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "במכשיר החדש בחר ב“סריקת קוד” כדי לסרוק את זה, או ב“הזנת קוד” כדי להקליד:"
+            "value" : "במכשיר החדש סרוק את זה או הקלד את הקוד:"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Na novom uređaju odaberite „Skeniraj kod” za skeniranje ili „Unesi kod” za upis:"
+            "value" : "Na novom uređaju skenirajte ovo ili upišite kod:"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Az új eszközön válaszd a „Kód beolvasása” lehetőséget ennek beolvasásához, vagy a „Kód megadása” lehetőséget a beíráshoz:"
+            "value" : "Az új eszközön olvasd be ezt, vagy add meg a kódot:"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sul nuovo dispositivo, scegli “Scansiona un codice” per scansionare questo, o “Inserisci un codice” per digitare:"
+            "value" : "Sul nuovo dispositivo, scansiona questo o digita il codice:"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "新しいデバイスで「コードをスキャン」を選んでこれをスキャンするか、「コードを入力」を選んで次のコードを入力してください："
+            "value" : "新しいデバイスでこれをスキャンするか、次のコードを入力してください："
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "새 기기에서 ‘코드 스캔’을 선택해 이 코드를 스캔하거나, ‘코드 입력’을 선택해 다음을 입력하세요:"
+            "value" : "새 기기에서 이 코드를 스캔하거나 다음 코드를 입력하세요:"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Velg «Skann en kode» på den nye enheten for å skanne dette, eller «Skriv inn en kode» for å skrive inn:"
+            "value" : "Skann dette på den nye enheten, eller skriv inn koden:"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kies op het nieuwe apparaat ‘Code scannen’ om dit te scannen, of ‘Code invoeren’ om te typen:"
+            "value" : "Scan dit op het nieuwe apparaat, of typ de code:"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Na nowym urządzeniu wybierz „Zeskanuj kod”, żeby to zeskanować, albo „Wpisz kod”, żeby wpisać:"
+            "value" : "Na nowym urządzeniu zeskanuj to albo wpisz kod:"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No novo dispositivo, escolha “Ler um código” para ler isto ou “Digitar um código” para digitar:"
+            "value" : "No novo dispositivo, leia isto ou digite o código:"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No novo dispositivo, escolha «Ler um código» para ler isto ou «Introduzir um código» para escrever:"
+            "value" : "No novo dispositivo, leia isto ou introduza o código:"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pe noul dispozitiv, alege „Scanează un cod” ca să scanezi asta sau „Introdu un cod” ca să tastezi:"
+            "value" : "Pe noul dispozitiv, scanează asta sau tastează codul:"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Na novom zariadení vyberte „Naskenovať kód“ na naskenovanie tohto kódu alebo „Zadať kód“ na jeho prepísanie:"
+            "value" : "Na novom zariadení naskenujte toto alebo zadajte kód:"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Välj ”Skanna en kod” på den nya enheten för att skanna det här, eller ”Ange en kod” för att skriva:"
+            "value" : "Skanna det här på den nya enheten, eller skriv koden:"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Yeni cihazda “Kod tara” seçeneğiyle bunu tarayın ya da “Kod gir” seçeneğiyle şunu yazın:"
+            "value" : "Yeni cihazda bunu tarayın ya da kodu yazın:"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "На новому пристрої виберіть «Сканувати код», щоб відсканувати це, або «Ввести код», щоб ввести:"
+            "value" : "На новому пристрої відскануйте це або введіть код:"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "在新设备上选择“扫描代码”来扫描此代码，或选择“输入代码”来输入："
+            "value" : "在新设备上扫描此代码，或输入下面的代码："
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "在新裝置上選擇「掃描代碼」來掃描此代碼，或選擇「輸入代碼」來輸入："
+            "value" : "在新裝置上掃描此代碼，或輸入下面的代碼："
           }
         }
       }
@@ -113280,179 +113280,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "刪除此還原碼？"
-          }
-        }
-      }
-    },
-    "This removes the restore code for “%@” from iCloud Keychain on all your Apple devices. It doesn’t delete the library, or anything on this Mac or in the cloud." : {
-      "comment" : "Welcome screen: body of the alert confirming deletion of a saved restore code; %@ is the library's name",
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "يؤدي هذا إلى إزالة رمز الاستعادة الخاص بـ «%@» من سلسلة مفاتيح iCloud على جميع أجهزة Apple لديك. لا يحذف المكتبة، ولا أي شيء على جهاز Mac هذا أو في السحابة."
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Това премахва кода за възстановяване за „%@“ от Ключодържателя на iCloud на всички ваши устройства на Apple. Не изтрива библиотеката, нито нещо на този Mac или в облака."
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tímto odstraníte kód pro obnovení knihovny „%@“ z iCloud Klíčenky na všech svých zařízeních Apple. Knihovna ani nic na tomto Macu nebo v cloudu se nesmaže."
-          }
-        },
-        "da" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dette fjerner gendannelseskoden for »%@« fra iCloud-nøglering på alle dine Apple-enheder. Det sletter ikke biblioteket eller noget på denne Mac eller i skyen."
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dadurch wird der Wiederherstellungscode für „%@“ auf allen deinen Apple-Geräten aus dem iCloud-Schlüsselbund entfernt. Die Bibliothek wird nicht gelöscht, ebenso wenig etwas auf diesem Mac oder in der Cloud."
-          }
-        },
-        "el" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Έτσι αφαιρείται ο κωδικός επαναφοράς για «%@» από το Μπρελόκ iCloud σε όλες τις συσκευές Apple σας. Δεν διαγράφεται η βιβλιοθήκη ούτε τίποτα σε αυτό το Mac ή στο cloud."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "This removes the restore code for “%@” from iCloud Keychain on all your Apple devices. It doesn’t delete the library, or anything on this Mac or in the cloud."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Esto elimina el código de restauración de «%@» del llavero de iCloud en todos tus dispositivos Apple. No elimina la biblioteca ni nada de este Mac ni de la nube."
-          }
-        },
-        "fi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tämä poistaa kirjaston ”%@” palautuskoodin iCloud-avainnipusta kaikilla Apple-laitteillasi. Se ei poista kirjastoa eikä mitään tältä Macilta tai pilvestäsi."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cette action supprime le code de restauration de « %@ » du trousseau iCloud sur tous vos appareils Apple. Elle ne supprime ni la bibliothèque, ni quoi que ce soit sur ce Mac ou dans le cloud."
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "פעולה זו מסירה את קוד השחזור של ״%@״ ממחזיק המפתחות של iCloud בכל מכשירי Apple שלך. היא לא מוחקת את הספרייה, ולא שום דבר ב-Mac הזה או בענן."
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Time se kod za vraćanje za „%@” uklanja iz iCloud privjeska ključeva na svim vašim Apple uređajima. Ne briše se fonoteka ni išta na ovom Macu ili u oblaku."
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ez eltávolítja a(z) „%@” visszaállítási kódját az iCloud-kulcstartóból az összes Apple-eszközödön. Nem törli a könyvtárat, sem semmit ezen a Macen vagy a felhőben."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Il codice di ripristino di «%@» verrà rimosso dal portachiavi iCloud su tutti i tuoi dispositivi Apple. Non verrà eliminata la libreria, né nulla su questo Mac o nel cloud."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "「%@」の復元コードを、すべてのAppleデバイスのiCloudキーチェーンから削除します。ライブラリや、このMacおよびクラウド上のものは削除されません。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "모든 Apple 기기의 iCloud 키체인에서 “%@”의 복원 코드를 제거합니다. 라이브러리나 이 Mac 또는 클라우드에 있는 항목은 삭제되지 않습니다."
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dette fjerner gjenopprettingskoden for «%@» fra iCloud-nøkkelringen på alle Apple-enhetene dine. Det sletter ikke biblioteket eller noe på denne Macen eller i skyen."
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hiermee wordt de herstelcode voor ‘%@’ verwijderd uit de iCloud-sleutelhanger op al je Apple-apparaten. De bibliotheek wordt niet verwijderd, en ook niets op deze Mac of in de cloud."
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Spowoduje to usunięcie kodu przywracania dla „%@” z pęku kluczy iCloud na wszystkich Twoich urządzeniach Apple. Nie usuwa to biblioteki ani niczego na tym Macu ani w chmurze."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Isso remove o código de restauração de “%@” das Chaves do iCloud em todos os seus dispositivos Apple. Não exclui a biblioteca nem nada neste Mac ou na nuvem."
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Isto remove o código de restauração de “%@” do Porta-chaves iCloud em todos os seus dispositivos Apple. Não elimina a biblioteca nem nada neste Mac ou na nuvem."
-          }
-        },
-        "ro" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Astfel, codul de restaurare pentru „%@” este eliminat din brelocul iCloud de pe toate dispozitivele tale Apple. Biblioteca nu este ștearsă și nici nimic de pe acest Mac sau din cloud."
-          }
-        },
-        "sk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Týmto sa kód na obnovenie pre „%@“ odstráni z kľúčenky iCloud na všetkých tvojich zariadeniach Apple. Neodstráni sa knižnica ani nič na tomto Macu alebo v cloude."
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Detta tar bort återställningskoden för ”%@” från iCloud-nyckelringen på alla dina Apple-enheter. Biblioteket raderas inte, och inte heller något på den här Macen eller i molnet."
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bu işlem, “%@” için geri yükleme kodunu tüm Apple cihazlarınızdaki iCloud Anahtar Zinciri’nden kaldırır. Kitaplığı veya bu Mac’teki ya da buluttaki hiçbir şeyi silmez."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Це вилучить код відновлення для «%@» із В’язки ключів iCloud на всіх ваших пристроях Apple. Бібліотеку, а також усе на цьому Mac і у хмарі, не буде видалено."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "这会从你所有 Apple 设备上的 iCloud 钥匙串中移除“%@”的恢复码。不会删除该库，也不会删除这台 Mac 上或云端中的任何内容。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "這會從你所有 Apple 裝置上的 iCloud 鑰匙圈中移除「%@」的還原碼。不會刪除該資料庫，也不會刪除這部 Mac 上或雲端中的任何內容。"
           }
         }
       }
@@ -125843,168 +125670,168 @@
         }
       }
     },
-    "Rename the library to “%@”" : {
+    "Rename the library to %@" : {
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "إعادة تسمية المكتبة إلى “%@”"
+            "value" : "إعادة تسمية المكتبة إلى %@"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Преименуване на библиотеката на „%@“"
+            "value" : "Преименуване на библиотеката на %@"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Přejmenovat knihovnu na „%@“"
+            "value" : "Přejmenovat knihovnu na %@"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Omdøb biblioteket til “%@”"
+            "value" : "Omdøb biblioteket til %@"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bibliothek in „%@“ umbenennen"
+            "value" : "Bibliothek in %@ umbenennen"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Μετονομασία της βιβλιοθήκης σε «%@»"
+            "value" : "Μετονομασία της βιβλιοθήκης σε %@"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cambiar el nombre de la biblioteca a «%@»"
+            "value" : "Cambiar el nombre de la biblioteca a %@"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nimeä kirjasto uudelleen nimellä ”%@”"
+            "value" : "Nimeä kirjasto uudelleen nimellä %@"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Renommer la bibliothèque en « %@ »"
+            "value" : "Renommer la bibliothèque en %@"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "שינוי שם הספרייה ל-“%@”"
+            "value" : "שינוי שם הספרייה ל-%@"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Preimenuj fonoteku u „%@”"
+            "value" : "Preimenuj fonoteku u %@"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A könyvtár átnevezése erre: „%@”"
+            "value" : "A könyvtár átnevezése erre: %@"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rinomina la libreria in “%@”"
+            "value" : "Rinomina la libreria in %@"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ライブラリ名を「%@」に変更"
+            "value" : "ライブラリ名を%@に変更"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "라이브러리 이름을 “%@”(으)로 변경"
+            "value" : "라이브러리 이름을 %@(으)로 변경"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gi biblioteket navnet «%@»"
+            "value" : "Gi biblioteket navnet %@"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bibliotheek hernoemen naar ‘%@’"
+            "value" : "Bibliotheek hernoemen naar %@"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zmień nazwę biblioteki na „%@”"
+            "value" : "Zmień nazwę biblioteki na %@"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Renomear a biblioteca para “%@”"
+            "value" : "Renomear a biblioteca para %@"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mudar o nome da biblioteca para “%@”"
+            "value" : "Mudar o nome da biblioteca para %@"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Redenumește biblioteca în „%@”"
+            "value" : "Redenumește biblioteca în %@"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Premenovať knižnicu na „%@“"
+            "value" : "Premenovať knižnicu na %@"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Byt namn på biblioteket till ”%@”"
+            "value" : "Byt namn på biblioteket till %@"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kitaplığın adını “%@” olarak değiştir"
+            "value" : "Kitaplığın adını %@ olarak değiştir"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Перейменувати бібліотеку на «%@»"
+            "value" : "Перейменувати бібліотеку на %@"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "将资料库重命名为“%@”"
+            "value" : "将资料库重命名为%@"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "將資料庫重新命名為「%@」"
+            "value" : "將資料庫重新命名為%@"
           }
         }
       }
@@ -129030,170 +128857,170 @@
         }
       }
     },
-    "A folder named “%@” is already in your Dropbox. Choose another name." : {
-      "comment" : "Dropbox setup, under the new folder name field, when the person named a folder that is already at the top of their Dropbox; %@ is the name.",
+    "A folder with this name is already in your Dropbox. Choose another name." : {
+      "comment" : "Dropbox setup, under the new folder name field, when the person named a folder that is already at the top of their Dropbox.",
       "extractionState" : "manual",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "يوجد مجلد باسم «%@» في Dropbox بالفعل. اختر اسمًا آخر."
+            "value" : "يوجد مجلد بهذا الاسم في Dropbox بالفعل. اختر اسمًا آخر."
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Папка с име „%@“ вече има във вашия Dropbox. Изберете друго име."
+            "value" : "Папка с това име вече има във вашия Dropbox. Изберете друго име."
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Složka s názvem „%@“ už ve vašem Dropboxu je. Zvolte jiný název."
+            "value" : "Složka s tímto názvem už ve vašem Dropboxu je. Zvolte jiný název."
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Der er allerede en mappe med navnet “%@” i din Dropbox. Vælg et andet navn."
+            "value" : "Der er allerede en mappe med dette navn i din Dropbox. Vælg et andet navn."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "In deinem Dropbox gibt es bereits einen Ordner namens „%@“. Wähle einen anderen Namen."
+            "value" : "In deinem Dropbox gibt es bereits einen Ordner mit diesem Namen. Wähle einen anderen Namen."
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Υπάρχει ήδη φάκελος με το όνομα «%@» στο Dropbox σας. Επιλέξτε άλλο όνομα."
+            "value" : "Υπάρχει ήδη φάκελος με αυτό το όνομα στο Dropbox σας. Επιλέξτε άλλο όνομα."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ya hay una carpeta llamada «%@» en tu Dropbox. Elige otro nombre."
+            "value" : "Ya hay una carpeta con este nombre en tu Dropbox. Elige otro nombre."
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dropboxissasi on jo kansio nimeltä “%@”. Valitse toinen nimi."
+            "value" : "Dropboxissasi on jo kansio, jolla on tämä nimi. Valitse toinen nimi."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Un dossier nommé « %@ » existe déjà dans votre Dropbox. Choisissez un autre nom."
+            "value" : "Un dossier portant ce nom existe déjà dans votre Dropbox. Choisissez un autre nom."
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "כבר יש תיקייה בשם ״%@״ ב‑Dropbox שלך. בחר שם אחר."
+            "value" : "כבר יש תיקייה בשם הזה ב‑Dropbox שלך. בחר שם אחר."
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mapa naziva „%@“ već postoji u vašem Dropboxu. Odaberite drugi naziv."
+            "value" : "Mapa s ovim nazivom već postoji u vašem Dropboxu. Odaberite drugi naziv."
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A Dropboxodban már van „%@” nevű mappa. Válassz másik nevet."
+            "value" : "A Dropboxodban már van ilyen nevű mappa. Válassz másik nevet."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nel tuo Dropbox c’è già una cartella chiamata “%@”. Scegli un altro nome."
+            "value" : "Nel tuo Dropbox c’è già una cartella con questo nome. Scegli un altro nome."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "「%@」という名前のフォルダはすでに Dropbox にあります。別の名前を選んでください。"
+            "value" : "この名前のフォルダはすでに Dropbox にあります。別の名前を選んでください。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“%@”라는 폴더가 이미 Dropbox에 있습니다. 다른 이름을 선택하세요."
+            "value" : "이 이름의 폴더가 이미 Dropbox에 있습니다. 다른 이름을 선택하세요."
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Det finnes allerede en mappe som heter «%@» i Dropbox-en din. Velg et annet navn."
+            "value" : "Det finnes allerede en mappe med dette navnet i Dropbox-en din. Velg et annet navn."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Er staat al een map met de naam “%@” in je Dropbox. Kies een andere naam."
+            "value" : "Er staat al een map met deze naam in je Dropbox. Kies een andere naam."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Folder o nazwie „%@” już istnieje w Twoim Dropbox. Wybierz inną nazwę."
+            "value" : "Folder o tej nazwie już istnieje w Twoim Dropbox. Wybierz inną nazwę."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Já existe uma pasta chamada “%@” no seu Dropbox. Escolha outro nome."
+            "value" : "Já existe uma pasta com este nome no seu Dropbox. Escolha outro nome."
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Já existe uma pasta chamada “%@” no seu Dropbox. Escolha outro nome."
+            "value" : "Já existe uma pasta com este nome no seu Dropbox. Escolha outro nome."
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Există deja un dosar numit „%@” în Dropbox-ul tău. Alege alt nume."
+            "value" : "Există deja un dosar cu acest nume în Dropbox-ul tău. Alege alt nume."
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Priečinok s názvom „%@“ už vo vašom Dropboxe existuje. Zvoľte iný názov."
+            "value" : "Priečinok s týmto názvom už vo vašom Dropboxe existuje. Zvoľte iný názov."
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Det finns redan en mapp som heter ”%@” i din Dropbox. Välj ett annat namn."
+            "value" : "Det finns redan en mapp med det här namnet i din Dropbox. Välj ett annat namn."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dropbox’ınızda “%@” adlı bir klasör zaten var. Başka bir ad seçin."
+            "value" : "Dropbox’ınızda bu adla bir klasör zaten var. Başka bir ad seçin."
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "У вашому Dropbox уже є папка «%@». Виберіть іншу назву."
+            "value" : "У вашому Dropbox уже є папка з такою назвою. Виберіть іншу назву."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "你的 Dropbox 中已有名为“%@”的文件夹。请换一个名称。"
+            "value" : "你的 Dropbox 中已有同名文件夹。请换一个名称。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "你的 Dropbox 中已有名為「%@」的資料夾。請換一個名稱。"
+            "value" : "你的 Dropbox 中已有同名資料夾。請換一個名稱。"
           }
         }
       }
@@ -132145,348 +131972,348 @@
         }
       }
     },
-    "Making and sharing the folder “%@”…" : {
-      "comment" : "Dropbox setup, while bae makes the new shared folder the person named; %@ is its name.",
+    "Making and sharing the folder…" : {
+      "comment" : "Dropbox setup, while bae makes the new shared folder the person named.",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "جارٍ إنشاء المجلد «%@» ومشاركته…"
+            "value" : "جارٍ إنشاء المجلد ومشاركته…"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Папката „%@“ се създава и споделя…"
+            "value" : "Папката се създава и споделя…"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vytváří se a sdílí složka „%@“…"
+            "value" : "Vytváří se a sdílí složka…"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Opretter og deler mappen “%@”…"
+            "value" : "Opretter og deler mappen…"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ordner „%@“ wird erstellt und geteilt …"
+            "value" : "Ordner wird erstellt und geteilt …"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Δημιουργία και κοινοποίηση του φακέλου «%@»…"
+            "value" : "Δημιουργία και κοινοποίηση του φακέλου…"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Making and sharing the folder “%@”…"
+            "value" : "Making and sharing the folder…"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Creando y compartiendo la carpeta «%@»…"
+            "value" : "Creando y compartiendo la carpeta…"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Luodaan ja jaetaan kansio “%@”…"
+            "value" : "Luodaan ja jaetaan kansio…"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Création et partage du dossier « %@ »…"
+            "value" : "Création et partage du dossier…"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "יוצר ומשתף את התיקייה ״%@״…"
+            "value" : "יוצר ומשתף את התיקייה…"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Izrada i dijeljenje mape „%@“…"
+            "value" : "Izrada i dijeljenje mape…"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A(z) „%@” mappa létrehozása és megosztása…"
+            "value" : "A mappa létrehozása és megosztása…"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Creazione e condivisione della cartella “%@”…"
+            "value" : "Creazione e condivisione della cartella…"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "フォルダ「%@」を作成して共有しています…"
+            "value" : "フォルダを作成して共有しています…"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“%@” 폴더를 만들고 공유하는 중…"
+            "value" : "폴더를 만들고 공유하는 중…"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Oppretter og deler mappen «%@»…"
+            "value" : "Oppretter og deler mappen…"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Map “%@” wordt gemaakt en gedeeld…"
+            "value" : "Map wordt gemaakt en gedeeld…"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tworzenie i udostępnianie folderu „%@”…"
+            "value" : "Tworzenie i udostępnianie folderu…"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Criando e compartilhando a pasta “%@”…"
+            "value" : "Criando e compartilhando a pasta…"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A criar e a partilhar a pasta “%@”…"
+            "value" : "A criar e a partilhar a pasta…"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Se creează și se partajează dosarul „%@”…"
+            "value" : "Se creează și se partajează dosarul…"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vytvára a zdieľa sa priečinok „%@“…"
+            "value" : "Vytvára a zdieľa sa priečinok…"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Skapar och delar mappen ”%@”…"
+            "value" : "Skapar och delar mappen…"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“%@” klasörü oluşturuluyor ve paylaşılıyor…"
+            "value" : "Klasör oluşturuluyor ve paylaşılıyor…"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Створення та надання доступу до папки «%@»…"
+            "value" : "Створення та надання доступу до папки…"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "正在创建并共享文件夹“%@”…"
+            "value" : "正在创建并共享文件夹…"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "正在建立並分享資料夾「%@」…"
+            "value" : "正在建立並分享資料夾…"
           }
         }
       }
     },
-    "Making the folder “%@”…" : {
-      "comment" : "OneDrive setup, while bae makes the new folder the person named; %@ is its name.",
+    "Making the folder…" : {
+      "comment" : "OneDrive setup, while bae makes the new folder the person named.",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "جارٍ إنشاء المجلد «%@»…"
+            "value" : "جارٍ إنشاء المجلد…"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Папката „%@“ се създава…"
+            "value" : "Папката се създава…"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vytváří se složka „%@“…"
+            "value" : "Vytváří se složka…"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Opretter mappen “%@”…"
+            "value" : "Opretter mappen…"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ordner „%@“ wird erstellt …"
+            "value" : "Ordner wird erstellt …"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Δημιουργία του φακέλου «%@»…"
+            "value" : "Δημιουργία του φακέλου…"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Making the folder “%@”…"
+            "value" : "Making the folder…"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Creando la carpeta «%@»…"
+            "value" : "Creando la carpeta…"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Luodaan kansio “%@”…"
+            "value" : "Luodaan kansio…"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Création du dossier « %@ »…"
+            "value" : "Création du dossier…"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "יוצר את התיקייה ״%@״…"
+            "value" : "יוצר את התיקייה…"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Izrada mape „%@“…"
+            "value" : "Izrada mape…"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A(z) „%@” mappa létrehozása…"
+            "value" : "A mappa létrehozása…"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Creazione della cartella “%@”…"
+            "value" : "Creazione della cartella…"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "フォルダ「%@」を作成しています…"
+            "value" : "フォルダを作成しています…"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“%@” 폴더를 만드는 중…"
+            "value" : "폴더를 만드는 중…"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Oppretter mappen «%@»…"
+            "value" : "Oppretter mappen…"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Map “%@” wordt gemaakt…"
+            "value" : "Map wordt gemaakt…"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tworzenie folderu „%@”…"
+            "value" : "Tworzenie folderu…"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Criando a pasta “%@”…"
+            "value" : "Criando a pasta…"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A criar a pasta “%@”…"
+            "value" : "A criar a pasta…"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Se creează dosarul „%@”…"
+            "value" : "Se creează dosarul…"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vytvára sa priečinok „%@“…"
+            "value" : "Vytvára sa priečinok…"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Skapar mappen ”%@”…"
+            "value" : "Skapar mappen…"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“%@” klasörü oluşturuluyor…"
+            "value" : "Klasör oluşturuluyor…"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Створення папки «%@»…"
+            "value" : "Створення папки…"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "正在创建文件夹“%@”…"
+            "value" : "正在创建文件夹…"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "正在建立資料夾「%@」…"
+            "value" : "正在建立資料夾…"
           }
         }
       }
@@ -133493,175 +133320,175 @@
         }
       }
     },
-    "Delete “%@”?" : {
+    "Delete %@?" : {
       "comment" : "Library deletion: title of the alert that deletes a library that was never synced, naming it. %@ is the library's name",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "حذف «%@»؟"
+            "value" : "حذف %@؟"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Изтриване на „%@“?"
+            "value" : "Изтриване на %@?"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Smazat „%@“?"
+            "value" : "Smazat %@?"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vil du slette “%@”?"
+            "value" : "Vil du slette %@?"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "„%@“ löschen?"
+            "value" : "%@ löschen?"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Διαγραφή της βιβλιοθήκης «%@»;"
+            "value" : "Διαγραφή της βιβλιοθήκης %@;"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Delete “%@”?"
+            "value" : "Delete %@?"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "¿Eliminar «%@»?"
+            "value" : "¿Eliminar %@?"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Poistetaanko ”%@”?"
+            "value" : "Poistetaanko %@?"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Supprimer « %@ » ?"
+            "value" : "Supprimer %@ ?"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "למחוק את ”%@“?"
+            "value" : "למחוק את %@?"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Izbrisati „%@”?"
+            "value" : "Izbrisati %@?"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Törlöd a(z) „%@” könyvtárat?"
+            "value" : "Törlöd a(z) %@ könyvtárat?"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Eliminare «%@»?"
+            "value" : "Eliminare %@?"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "「%@」を削除しますか？"
+            "value" : "%@を削除しますか？"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“%@”을(를) 삭제할까요?"
+            "value" : "%@을(를) 삭제할까요?"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Slette «%@»?"
+            "value" : "Slette %@?"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "‘%@’ verwijderen?"
+            "value" : "%@ verwijderen?"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Usunąć „%@”?"
+            "value" : "Usunąć %@?"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Excluir “%@”?"
+            "value" : "Excluir %@?"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Eliminar «%@»?"
+            "value" : "Eliminar %@?"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ștergi „%@”?"
+            "value" : "Ștergi %@?"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Odstrániť „%@“?"
+            "value" : "Odstrániť %@?"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Radera ”%@”?"
+            "value" : "Radera %@?"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“%@” silinsin mi?"
+            "value" : "%@ silinsin mi?"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Видалити «%@»?"
+            "value" : "Видалити %@?"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "删除“%@”？"
+            "value" : "删除%@？"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "要刪除「%@」嗎？"
+            "value" : "要刪除%@嗎？"
           }
         }
       }
@@ -135227,350 +135054,350 @@
         }
       }
     },
-    "A folder named “%@” is already here. Choose another name." : {
-      "comment" : "OneDrive setup, under the new folder name field, when the person named a folder that is already in the folder shown; %@ is the name.",
+    "A folder with this name is already here. Choose another name." : {
+      "comment" : "OneDrive setup, under the new folder name field, when the person named a folder that is already in the folder shown.",
       "extractionState" : "manual",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "يوجد هنا مجلد باسم «%@» بالفعل. اختر اسمًا آخر."
+            "value" : "يوجد مجلد بهذا الاسم هنا بالفعل. اختر اسمًا آخر."
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Папка с име „%@“ вече има тук. Изберете друго име."
+            "value" : "Папка с това име вече има тук. Изберете друго име."
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Složka s názvem „%@“ tu už je. Zvolte jiný název."
+            "value" : "Složka s tímto názvem už tady je. Zvolte jiný název."
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Der er allerede en mappe med navnet “%@” her. Vælg et andet navn."
+            "value" : "Der er allerede en mappe med dette navn her. Vælg et andet navn."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hier gibt es bereits einen Ordner namens „%@“. Wähle einen anderen Namen."
+            "value" : "Hier gibt es bereits einen Ordner mit diesem Namen. Wähle einen anderen Namen."
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Υπάρχει ήδη φάκελος με το όνομα «%@» εδώ. Επιλέξτε άλλο όνομα."
+            "value" : "Υπάρχει ήδη φάκελος με αυτό το όνομα εδώ. Επιλέξτε άλλο όνομα."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A folder named “%@” is already here. Choose another name."
+            "value" : "A folder with this name is already here. Choose another name."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ya hay una carpeta llamada «%@» aquí. Elige otro nombre."
+            "value" : "Ya hay una carpeta con este nombre aquí. Elige otro nombre."
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Täällä on jo kansio nimeltä “%@”. Valitse toinen nimi."
+            "value" : "Täällä on jo kansio, jolla on tämä nimi. Valitse toinen nimi."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Un dossier nommé « %@ » existe déjà ici. Choisissez un autre nom."
+            "value" : "Un dossier portant ce nom existe déjà ici. Choisissez un autre nom."
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "כבר יש כאן תיקייה בשם ״%@״. בחר שם אחר."
+            "value" : "כבר יש כאן תיקייה בשם הזה. בחר שם אחר."
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ovdje već postoji mapa naziva „%@“. Odaberite drugi naziv."
+            "value" : "Mapa s ovim nazivom već postoji ovdje. Odaberite drugi naziv."
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Itt már van „%@” nevű mappa. Válassz másik nevet."
+            "value" : "Itt már van ilyen nevű mappa. Válassz másik nevet."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Qui c’è già una cartella chiamata “%@”. Scegli un altro nome."
+            "value" : "Qui c’è già una cartella con questo nome. Scegli un altro nome."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "「%@」という名前のフォルダはすでにここにあります。別の名前を選んでください。"
+            "value" : "ここにはすでにこの名前のフォルダがあります。別の名前を選んでください。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“%@”라는 폴더가 이미 여기에 있습니다. 다른 이름을 선택하세요."
+            "value" : "이 이름의 폴더가 이미 여기에 있습니다. 다른 이름을 선택하세요."
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Det finnes allerede en mappe som heter «%@» her. Velg et annet navn."
+            "value" : "Det finnes allerede en mappe med dette navnet her. Velg et annet navn."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Er staat hier al een map met de naam “%@”. Kies een andere naam."
+            "value" : "Er staat hier al een map met deze naam. Kies een andere naam."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Folder o nazwie „%@” już tu istnieje. Wybierz inną nazwę."
+            "value" : "Folder o tej nazwie już tu istnieje. Wybierz inną nazwę."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Já existe uma pasta chamada “%@” aqui. Escolha outro nome."
+            "value" : "Já existe uma pasta com este nome aqui. Escolha outro nome."
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Já existe uma pasta chamada “%@” aqui. Escolha outro nome."
+            "value" : "Já existe uma pasta com este nome aqui. Escolha outro nome."
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Există deja aici un dosar numit „%@”. Alege alt nume."
+            "value" : "Există deja un dosar cu acest nume aici. Alege alt nume."
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Priečinok s názvom „%@“ tu už existuje. Zvoľte iný názov."
+            "value" : "Priečinok s týmto názvom tu už existuje. Zvoľte iný názov."
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Det finns redan en mapp som heter ”%@” här. Välj ett annat namn."
+            "value" : "Det finns redan en mapp med samma namn här. Välj ett annat namn."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Burada “%@” adlı bir klasör zaten var. Başka bir ad seçin."
+            "value" : "Burada bu adla bir klasör zaten var. Başka bir ad seçin."
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Тут уже є папка «%@». Виберіть іншу назву."
+            "value" : "Тут уже є папка з такою назвою. Виберіть іншу назву."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "此处已有名为“%@”的文件夹。请换一个名称。"
+            "value" : "这里已有同名文件夹。请换一个名称。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "此處已有名為「%@」的資料夾。請換一個名稱。"
+            "value" : "這裡已有同名資料夾。請換一個名稱。"
           }
         }
       }
     },
-    "“%@” isn’t empty. Choose an empty folder, or make a new one." : {
+    "This folder isn’t empty. Choose an empty folder, or make a new one." : {
       "comment" : "Dropbox or OneDrive setup, under the folder list, when setup found the chosen folder holding other files; %@ is its name.",
       "extractionState" : "manual",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "«%@» ليس فارغًا. اختر مجلدًا فارغًا أو أنشئ مجلدًا جديدًا."
+            "value" : "هذا المجلد ليس فارغًا. اختر مجلدًا فارغًا أو أنشئ مجلدًا جديدًا."
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "„%@“ не е празна. Изберете празна папка или създайте нова."
+            "value" : "Тази папка не е празна. Изберете празна папка или създайте нова."
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "„%@“ není prázdná. Vyberte prázdnou složku nebo vytvořte novou."
+            "value" : "Tato složka není prázdná. Vyberte prázdnou složku nebo vytvořte novou."
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“%@” er ikke tom. Vælg en tom mappe, eller opret en ny."
+            "value" : "Denne mappe er ikke tom. Vælg en tom mappe, eller opret en ny."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "„%@“ ist nicht leer. Wähle einen leeren Ordner oder lege einen neuen an."
+            "value" : "Dieser Ordner ist nicht leer. Wähle einen leeren Ordner oder lege einen neuen an."
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ο φάκελος «%@» δεν είναι κενός. Επιλέξτε έναν κενό φάκελο ή δημιουργήστε νέο."
+            "value" : "Αυτός ο φάκελος δεν είναι κενός. Επιλέξτε έναν κενό φάκελο ή δημιουργήστε νέο."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“%@” isn’t empty. Choose an empty folder, or make a new one."
+            "value" : "This folder isn’t empty. Choose an empty folder, or make a new one."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "«%@» no está vacía. Elige una carpeta vacía o crea una nueva."
+            "value" : "Esta carpeta no está vacía. Elige una carpeta vacía o crea una nueva."
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“%@” ei ole tyhjä. Valitse tyhjä kansio tai luo uusi."
+            "value" : "Tämä kansio ei ole tyhjä. Valitse tyhjä kansio tai luo uusi."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "« %@ » n’est pas vide. Choisissez un dossier vide ou créez-en un nouveau."
+            "value" : "Ce dossier n’est pas vide. Choisissez un dossier vide ou créez-en un nouveau."
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "״%@״ אינה ריקה. בחר תיקייה ריקה או צור חדשה."
+            "value" : "התיקייה הזו אינה ריקה. בחר תיקייה ריקה או צור חדשה."
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mapa „%@“ nije prazna. Odaberite praznu mapu ili napravite novu."
+            "value" : "Ova mapa nije prazna. Odaberite praznu mapu ili napravite novu."
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A(z) „%@” nem üres. Válassz egy üres mappát, vagy hozz létre újat."
+            "value" : "Ez a mappa nem üres. Válassz egy üres mappát, vagy hozz létre újat."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“%@” non è vuota. Scegli una cartella vuota o creane una nuova."
+            "value" : "Questa cartella non è vuota. Scegli una cartella vuota o creane una nuova."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "「%@」は空ではありません。空のフォルダを選ぶか、新しく作成してください。"
+            "value" : "このフォルダは空ではありません。空のフォルダを選ぶか、新しく作成してください。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“%@” 폴더가 비어 있지 않습니다. 빈 폴더를 선택하거나 새로 만드세요."
+            "value" : "이 폴더는 비어 있지 않습니다. 빈 폴더를 선택하거나 새로 만드세요."
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "«%@» er ikke tom. Velg en tom mappe, eller lag en ny."
+            "value" : "Denne mappen er ikke tom. Velg en tom mappe, eller lag en ny."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“%@” is niet leeg. Kies een lege map of maak een nieuwe."
+            "value" : "Deze map is niet leeg. Kies een lege map of maak een nieuwe."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "„%@” nie jest pusty. Wybierz pusty katalog lub utwórz nowy."
+            "value" : "Ten katalog nie jest pusty. Wybierz pusty katalog lub utwórz nowy."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“%@” não está vazia. Escolha uma pasta vazia ou crie uma nova."
+            "value" : "Esta pasta não está vazia. Escolha uma pasta vazia ou crie uma nova."
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“%@” não está vazia. Escolha uma pasta vazia ou crie uma nova."
+            "value" : "Esta pasta não está vazia. Escolha uma pasta vazia ou crie uma nova."
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "„%@” nu este gol. Alege un dosar gol sau creează unul nou."
+            "value" : "Acest dosar nu este gol. Alege un dosar gol sau creează unul nou."
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Priečinok „%@“ nie je prázdny. Vyberte prázdny priečinok alebo vytvorte nový."
+            "value" : "Tento priečinok nie je prázdny. Vyberte prázdny priečinok alebo vytvorte nový."
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "”%@” är inte tom. Välj en tom mapp eller skapa en ny."
+            "value" : "Den här mappen är inte tom. Välj en tom mapp eller skapa en ny."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“%@” boş değil. Boş bir klasör seçin veya yeni bir klasör oluşturun."
+            "value" : "Bu klasör boş değil. Boş bir klasör seçin veya yeni bir klasör oluşturun."
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Папка «%@» не порожня. Виберіть порожню папку або створіть нову."
+            "value" : "Ця папка не порожня. Виберіть порожню папку або створіть нову."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“%@”不是空的。请选择一个空文件夹，或新建一个。"
+            "value" : "这个文件夹不是空的。请选择一个空文件夹，或新建一个。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "「%@」不是空的。請選擇一個空資料夾，或新增一個。"
+            "value" : "這個資料夾不是空的。請選擇一個空資料夾，或新增一個。"
           }
         }
       }
@@ -139576,7 +139403,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "打开“系统设置”…"
+            "value" : "打开系统设置…"
           }
         },
         "ar" : {
@@ -139624,7 +139451,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "打開「系統設定」…"
+            "value" : "打開系統設定…"
           }
         },
         "it" : {
@@ -144224,13 +144051,13 @@
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "عدد الملفات التي تُرفع إلى السحابة في آن واحد بعد الاستيراد، وعدد الملفات التي تُنزَّل في آن واحد. التنزيلات هي التثبيت وجعل الإصدار محليًا، وهي تتشارك هذا الحد وخيار «إيقاف التنزيلات مؤقتًا»."
+            "value" : "عدد الملفات التي تُرفع إلى السحابة في آن واحد بعد الاستيراد، وعدد الملفات التي تُنزَّل في آن واحد. التنزيلات هي التثبيت وجعل الإصدار محليًا، وهي تتشارك هذا الحد وخيار إيقاف التنزيلات مؤقتًا."
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Колко файла се качват едновременно в облака след импортиране и колко се изтеглят едновременно. Изтеглянията са закачането и превръщането в локално; те споделят това ограничение и „Пауза на изтеглянията“."
+            "value" : "Колко файла се качват едновременно в облака след импортиране и колко се изтеглят едновременно. Изтеглянията са закачането и превръщането в локално; те споделят това ограничение и Пауза на изтеглянията."
           }
         },
         "cs" : {
@@ -144248,7 +144075,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Wie viele Dateien nach einem Import gleichzeitig in die Cloud hochgeladen werden und wie viele gleichzeitig heruntergeladen werden. Downloads sind das Anheften und das Lokalmachen; sie teilen sich dieses Limit und „Downloads pausieren“."
+            "value" : "Wie viele Dateien nach einem Import gleichzeitig in die Cloud hochgeladen werden und wie viele gleichzeitig heruntergeladen werden. Downloads sind das Anheften und das Lokalmachen; sie teilen sich dieses Limit und Downloads pausieren."
           }
         },
         "el" : {
@@ -144278,7 +144105,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "כמה קבצים מועלים בו‑זמנית לענן לאחר ייבוא, וכמה מורדים בו‑זמנית. הורדות הן הצמדה והפיכה למקומי; הן חולקות את המגבלה הזו ואת ״השהיית הורדות״."
+            "value" : "כמה קבצים מועלים בו‑זמנית לענן לאחר ייבוא, וכמה מורדים בו‑זמנית. הורדות הן הצמדה והפיכה למקומי; הן חולקות את המגבלה הזו ואת השהיית הורדות."
           }
         },
         "hr" : {
@@ -144302,13 +144129,13 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "インポート後に一度にクラウドへアップロードするファイル数と、一度にダウンロードするファイル数。ダウンロードにはピン留めとローカル化が含まれ、この上限と「ダウンロードを一時停止」を共有します。"
+            "value" : "インポート後に一度にクラウドへアップロードするファイル数と、一度にダウンロードするファイル数。ダウンロードにはピン留めとローカル化が含まれ、この上限とダウンロードの一時停止を共有します。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "가져오기 후 한 번에 클라우드로 업로드할 파일 수와, 한 번에 다운로드할 파일 수입니다. 다운로드는 고정과 로컬 전환이며, 이 한도와 ‘다운로드 일시 정지’를 함께 사용합니다."
+            "value" : "가져오기 후 한 번에 클라우드로 업로드할 파일 수와, 한 번에 다운로드할 파일 수입니다. 다운로드는 고정과 로컬 전환이며, 이 한도와 다운로드 일시 정지를 함께 사용합니다."
           }
         },
         "nb" : {
@@ -144368,19 +144195,19 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Скільки файлів одночасно вивантажується до хмари після імпорту і скільки одночасно завантажується. Завантаження охоплюють закріплення й перетворення на локальне; вони ділять це обмеження та «Призупинити завантаження»."
+            "value" : "Скільки файлів одночасно вивантажується до хмари після імпорту і скільки одночасно завантажується. Завантаження охоплюють закріплення й перетворення на локальне; вони ділять це обмеження та Призупинити завантаження."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "导入后同时上传到云端的文件数，以及同时下载的文件数。下载包括固定和设为本地，共用此限制和“暂停下载”。"
+            "value" : "导入后同时上传到云端的文件数，以及同时下载的文件数。下载包括固定和设为本地，共用此限制和暂停下载。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "匯入後同時上傳至雲端的檔案數，以及同時下載的檔案數。下載包括釘選和設為本機，共用此限制和「暫停下載」。"
+            "value" : "匯入後同時上傳至雲端的檔案數，以及同時下載的檔案數。下載包括釘選和設為本機，共用此限制和暫停下載。"
           }
         }
       }
@@ -149580,175 +149407,175 @@
         }
       }
     },
-    "Another format is named “%@”." : {
+    "Another format already has this name." : {
       "comment" : "Format editor: shown under the Name field when another format has that name; %@ is the name",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "هناك صيغة أخرى باسم ”%@“."
+            "value" : "هناك صيغة أخرى تحمل هذا الاسم بالفعل."
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Друг формат се казва „%@“."
+            "value" : "Друг формат вече има това име."
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Jiný formát se jmenuje „%@“."
+            "value" : "Jiný formát už má tento název."
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Et andet format hedder “%@”."
+            "value" : "Et andet format har allerede dette navn."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Another format is named “%@”."
+            "value" : "Another format already has this name."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ein anderes Format heißt „%@“."
+            "value" : "Ein anderes Format hat schon diesen Namen."
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Άλλη μορφή ονομάζεται «%@»."
+            "value" : "Άλλη μορφή έχει ήδη αυτό το όνομα."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Otro formato se llama “%@”."
+            "value" : "Otro formato ya tiene este nombre."
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Toisen muodon nimi on ”%@”."
+            "value" : "Toisella muodolla on jo tämä nimi."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Un autre format s’appelle « %@ »."
+            "value" : "Un autre format porte déjà ce nom."
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "פורמט אחר נקרא ”%@“."
+            "value" : "לפורמט אחר יש כבר את השם הזה."
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Drugi format zove se “%@”."
+            "value" : "Drugi format već ima ovaj naziv."
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Egy másik formátum neve „%@”."
+            "value" : "Egy másik formátumnak már ez a neve."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Un altro formato si chiama “%@”."
+            "value" : "Un altro formato ha già questo nome."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "別のフォーマットが“%@”という名前です。"
+            "value" : "別のフォーマットがすでにこの名前を使っています。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "다른 형식의 이름이 “%@”입니다."
+            "value" : "다른 형식이 이미 이 이름을 사용하고 있습니다."
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Et annet format heter «%@»."
+            "value" : "Et annet format har allerede dette navnet."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Een ander formaat heet ‘%@’."
+            "value" : "Een ander formaat heeft deze naam al."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Inny format nazywa się „%@”."
+            "value" : "Inny format ma już tę nazwę."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Outro formato se chama “%@”."
+            "value" : "Outro formato já tem este nome."
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Outro formato chama-se “%@”."
+            "value" : "Outro formato já tem este nome."
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Alt format se numește „%@”."
+            "value" : "Alt format are deja acest nume."
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Iný formát sa volá „%@“."
+            "value" : "Iný formát už má tento názov."
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ett annat format heter ”%@”."
+            "value" : "Ett annat format har redan det här namnet."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Başka bir biçimin adı “%@”."
+            "value" : "Başka bir biçim zaten bu ada sahip."
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Інший формат уже називається «%@»."
+            "value" : "Інший формат уже має цю назву."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "另一个格式名为“%@”。"
+            "value" : "另一个格式已使用此名称。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "另一個格式名為「%@」。"
+            "value" : "另一個格式已使用此名稱。"
           }
         }
       }
@@ -156668,175 +156495,175 @@
         }
       }
     },
-    "Unpin “%@”?" : {
+    "Unpin %@?" : {
       "comment" : "Alert asking before Unpin removes one release’s files from this Mac; %@ is the album’s title.",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "إلغاء تثبيت «%@»؟"
+            "value" : "إلغاء تثبيت %@؟"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Откачване на „%@“?"
+            "value" : "Откачване на %@?"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Odepnout „%@“?"
+            "value" : "Odepnout %@?"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Frigør »%@«?"
+            "value" : "Frigør %@?"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Unpin “%@”?"
+            "value" : "Unpin %@?"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "„%@“ loslösen?"
+            "value" : "%@ loslösen?"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ξεκαρφίτσωμα του «%@»;"
+            "value" : "Ξεκαρφίτσωμα του %@;"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "¿Desfijar «%@»?"
+            "value" : "¿Desfijar %@?"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Irrotetaanko ”%@”?"
+            "value" : "Irrotetaanko %@?"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Désépingler « %@ » ?"
+            "value" : "Désépingler %@ ?"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "לבטל את ההצמדה של ”%@“?"
+            "value" : "לבטל את ההצמדה של %@?"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Otkvačiti „%@”?"
+            "value" : "Otkvačiti %@?"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Feloldod a(z) „%@” rögzítését?"
+            "value" : "Feloldod a(z) %@ rögzítését?"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rimuovere il fissaggio di «%@»?"
+            "value" : "Rimuovere il fissaggio di %@?"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "「%@」のピン留めを解除しますか？"
+            "value" : "%@のピン留めを解除しますか？"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "‘%@’의 고정을 해제할까요?"
+            "value" : "%@의 고정을 해제할까요?"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Løsne «%@»?"
+            "value" : "Løsne %@?"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "‘%@’ losmaken?"
+            "value" : "%@ losmaken?"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Odpiąć „%@”?"
+            "value" : "Odpiąć %@?"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Desafixar “%@”?"
+            "value" : "Desafixar %@?"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Desafixar “%@”?"
+            "value" : "Desafixar %@?"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Anulezi fixarea pentru „%@”?"
+            "value" : "Anulezi fixarea pentru %@?"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Odopnúť „%@“?"
+            "value" : "Odopnúť %@?"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lossa ”%@”?"
+            "value" : "Lossa %@?"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“%@” sabitlemesi kaldırılsın mı?"
+            "value" : "%@ sabitlemesi kaldırılsın mı?"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Відкріпити «%@»?"
+            "value" : "Відкріпити %@?"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "取消固定“%@”？"
+            "value" : "取消固定%@？"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "取消釘選「%@」？"
+            "value" : "取消釘選%@？"
           }
         }
       }

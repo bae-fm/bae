@@ -64,7 +64,7 @@ struct UnpinAskTests {
     @Test("the alert names a single release and counts several")
     func alertWording() {
         let one = PendingUnpin(releaseIds: ["a"], title: "Low Tide Hours")
-        #expect(one.alertTitle == "Unpin “Low Tide Hours”?")
+        #expect(one.alertTitle == "Unpin Low Tide Hours?")
         let several = PendingUnpin(releaseIds: ["a", "b", "c"], title: nil)
         #expect(several.alertTitle == "Unpin 3 releases?")
         #expect(one.alertMessage != several.alertMessage)

@@ -109,7 +109,7 @@ struct SavePresetEditor: View {
                         }
                     }
                 if nameTaken {
-                    Text("Another format is named “\(nameDraft)”.")
+                    Text("Another format already has this name.")
                         .themeText(.detail)
                         .foregroundStyle(Theme.danger)
                         .padding(.leading, ThemeSpace.fieldInset)

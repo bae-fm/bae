@@ -211,7 +211,7 @@ private struct PresetRow: View {
                 .disabled(!canDelete)
             }
             .confirmationDialog(
-                "Delete the “\(preset.name)” format?",
+                "Delete this format?",
                 isPresented: $confirmingDelete
             ) {
                 Button("Delete", role: .destructive, action: delete)

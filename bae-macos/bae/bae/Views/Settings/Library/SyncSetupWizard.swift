@@ -324,7 +324,7 @@ extension SetupStep where Leading == EmptyView {
         onConnected: @escaping (BridgeStorageSetup) -> Void,
         claim: @escaping (any Error) -> Bool = { _ in false },
         describe: @escaping (any Error) -> DisplayError? = { _ in nil },
-        folder: String? = nil,
+        checksFolder: Bool = false,
         @ViewBuilder fields: () -> Fields
     ) {
         self.init(
@@ -334,7 +334,7 @@ extension SetupStep where Leading == EmptyView {
             onConnected: onConnected,
             claim: claim,
             describe: describe,
-            folder: folder,
+            checksFolder: checksFolder,
             leading: { EmptyView() },
             fields: fields
         )
@@ -360,8 +360,8 @@ struct SetupStep<Fields: View, Leading: View>: View {
     /// The words a failed setup shows at the top, for the failures the step
     /// words itself; nil leaves core's.
     let describe: (any Error) -> DisplayError?
-    /// The folder the person chose, which the setup's check of it names.
-    let folder: String?
+    /// Whether the person chose a folder, which the setup's check of it speaks of.
+    let checksFolder: Bool
     /// What sits at the left of the footer, opposite the actions.
     let leading: Leading
     let fields: Fields
@@ -374,7 +374,7 @@ struct SetupStep<Fields: View, Leading: View>: View {
         onConnected: @escaping (BridgeStorageSetup) -> Void,
         claim: @escaping (any Error) -> Bool = { _ in false },
         describe: @escaping (any Error) -> DisplayError? = { _ in nil },
-        folder: String? = nil,
+        checksFolder: Bool = false,
         @ViewBuilder leading: () -> Leading,
         @ViewBuilder fields: () -> Fields
     ) {
@@ -384,7 +384,7 @@ struct SetupStep<Fields: View, Leading: View>: View {
         self.onConnected = onConnected
         self.claim = claim
         self.describe = describe
-        self.folder = folder
+        self.checksFolder = checksFolder
         self.leading = leading()
         self.fields = fields()
     }
@@ -417,7 +417,7 @@ struct SetupStep<Fields: View, Leading: View>: View {
     var body: some View {
         VStack(spacing: 0) {
             if run.isRunning {
-                StorageSetupRunLine(run: run, folder: folder)
+                StorageSetupRunLine(run: run, checksFolder: checksFolder)
                     .padding()
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Spacer(minLength: 0)

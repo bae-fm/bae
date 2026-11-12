@@ -61,8 +61,8 @@ enum LibraryRemovalConfirmation {
     static func title(for library: BridgeLibrary) -> String {
         switch Ending(of: library) {
         case .remove:
-            String(localized: "Remove “\(library.name)” from this Mac?")
-        case .delete: String(localized: "Delete “\(library.name)”?")
+            String(localized: "Remove \(library.name) from this Mac?")
+        case .delete: String(localized: "Delete \(library.name)?")
         }
     }
 

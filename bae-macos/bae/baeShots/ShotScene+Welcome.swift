@@ -407,9 +407,7 @@ extension ShotScene {
                 {
                     let alert = NSAlert()
                     alert.messageText = SavedCodeDeletion.title
-                    alert.informativeText = SavedCodeDeletion.message(
-                        for: SavedRestoreEntry(savedCodes[0])
-                    )
+                    alert.informativeText = SavedCodeDeletion.message
                     let delete = alert.addButton(
                         withTitle: SavedCodeDeletion.confirm
                     )

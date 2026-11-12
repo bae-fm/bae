@@ -96,7 +96,7 @@
                 leave: leave,
                 onConnected: onConnected,
                 claim: { browser.place($0) },
-                folder: browser.target?.name,
+                checksFolder: browser.target != nil,
                 leading: {
                     HStack(spacing: ThemeSpace.related) {
                         Button("New folder…") { browser.startNaming() }
@@ -157,17 +157,17 @@
                     comment:
                         "OneDrive setup, while bae lists the folders inside the one shown."
                 )
-            case (.makingFolder(let name), .dropbox):
+            case (.makingFolder, .dropbox):
                 LocalizedStringResource(
-                    "Making and sharing the folder “\(name)”…",
+                    "Making and sharing the folder…",
                     comment:
-                        "Dropbox setup, while bae makes the new shared folder the person named; the argument is its name."
+                        "Dropbox setup, while bae makes the new shared folder the person named."
                 )
-            case (.makingFolder(let name), .oneDrive):
+            case (.makingFolder, .oneDrive):
                 LocalizedStringResource(
-                    "Making the folder “\(name)”…",
+                    "Making the folder…",
                     comment:
-                        "OneDrive setup, while bae makes the new folder the person named; the argument is its name."
+                        "OneDrive setup, while bae makes the new folder the person named."
                 )
             }
         }
