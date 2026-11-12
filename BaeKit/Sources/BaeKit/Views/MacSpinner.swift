@@ -22,10 +22,20 @@ public struct MacSpinner: View {
         words = Text(key)
     }
 
+    /// The spinner, named by the words beside it when it has them.
+    @ViewBuilder
+    private var spinner: some View {
+        if let words {
+            ProgressView().controlSize(.small).accessibilityLabel(words)
+        }
+        else {
+            ProgressView().controlSize(.small)
+        }
+    }
+
     public var body: some View {
         HStack(spacing: ThemeSpace.related) {
-            ProgressView()
-                .controlSize(.small)
+            spinner
             if let words {
                 words
                     .themeText(.body)
