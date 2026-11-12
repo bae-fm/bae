@@ -139,7 +139,7 @@ const BOARD: &str = r##"<x-dc><helmet><style>body{margin:0;font:13px sans-serif}
 <div role="radio" aria-checked="true" aria-label="Dark" tabindex="0">x</div>
 <input type="text" aria-label="Name" placeholder="Library name" value="Odile">
 <input type="text" aria-label="Restore" placeholder="Restore code">
-<div role="textbox" aria-label="Code empty"><span class="bae-codetext-placeholder">Code empty</span></div>
+<div role="textbox" aria-label="Code empty"><span aria-hidden="true">Code empty</span></div>
 <div role="textbox" aria-label="Code typed">CVR1 ABCD</div>
 <select aria-label="Mode"><option>Never</option><option selected>Always</option></select>
 <div role="tab" aria-selected="true" tabindex="0">Library</div>

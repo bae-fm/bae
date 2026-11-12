@@ -179,16 +179,16 @@ struct Geometry {
     color: Option<String>,
     placeholder: Option<String>,
     /// What a text field holds, from the DOM: an input's value, or a
-    /// `role=textbox` element's text without its placeholder span.
+    /// `role=textbox` element's text without its `aria-hidden` descendants.
     field_value: Option<String>,
 }
 
 const GEOMETRY: &str = r#"function() {
-  // What a role=textbox element holds: its text without the placeholder span
-  // the design system's code field draws inside it.
+  // What a role=textbox element holds: its text without the descendants
+  // hidden from the accessibility tree (a placeholder drawn inside it).
   const typed = (field) => {
     const copy = field.cloneNode(true);
-    copy.querySelectorAll('.bae-codetext-placeholder').forEach((n) => n.remove());
+    copy.querySelectorAll('[aria-hidden="true"]').forEach((n) => n.remove());
     return copy.textContent;
   };
   const isText = this.nodeType === 3;
