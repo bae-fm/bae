@@ -114,7 +114,14 @@ internal fun PeopleHome(
     val me = people.firstOrNull { it.membership.isSelf }
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(ThemeSpace.edge),
+        // A section heading first on the page counts on a gap above it, so the page starts 8dp, not 16, from the bar.
+        contentPadding =
+            PaddingValues(
+                start = ThemeSpace.edge,
+                top = ThemeSpace.related,
+                end = ThemeSpace.edge,
+                bottom = ThemeSpace.edge,
+            ),
         verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
     ) {
         val shownChanges = adminChanges.at(AdminChangePlace.People)
