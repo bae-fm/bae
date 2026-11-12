@@ -68,11 +68,11 @@ struct ReleaseEditorSheet: View {
         CGSize(
             width: min(
                 host.width,
-                min(1_200, max(760, host.width - hostMargin))
+                min(1_100, max(760, host.width - hostMargin))
             ),
             height: min(
                 host.height,
-                min(860, max(600, host.height - hostMargin))
+                min(1_000, max(600, host.height - hostMargin))
             )
         )
     }
@@ -91,7 +91,8 @@ struct ReleaseEditorSheet: View {
             Button("Close") { onClose() }
                 .keyboardShortcut(.cancelAction)
         }
-        .padding()
+        .padding(.vertical, ThemeSpace.group + ThemeSpace.line)
+        .padding(.horizontal, ThemeSpace.edge)
     }
 }
 

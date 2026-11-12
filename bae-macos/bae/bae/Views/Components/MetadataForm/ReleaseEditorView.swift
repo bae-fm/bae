@@ -96,19 +96,21 @@ struct ReleaseEditorView: View {
             }
             .disabled(session.isBusy)
             Spacer(minLength: ThemeSpace.group)
-            Button("Cancel") {
-                searchSection = nil
-                session.cancelChanges()
+            HStack(spacing: ThemeSpace.related) {
+                Button("Cancel") {
+                    searchSection = nil
+                    session.cancelChanges()
+                }
+                .opacity(session.draft.changed ? 1 : 0)
+                .allowsHitTesting(session.draft.changed)
+                .disabled(session.isBusy)
+                Button("Save") {
+                    session.save(onSuccess: onSaved)
+                }
+                .buttonStyle(PrimaryButtonStyle())
+                .keyboardShortcut(.defaultAction)
+                .disabled(session.isBusy)
             }
-            .opacity(session.draft.changed ? 1 : 0)
-            .allowsHitTesting(session.draft.changed)
-            .disabled(session.isBusy)
-            Button("Save") {
-                session.save(onSuccess: onSaved)
-            }
-            .buttonStyle(PrimaryButtonStyle())
-            .keyboardShortcut(.defaultAction)
-            .disabled(session.isBusy)
         }
     }
 

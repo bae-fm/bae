@@ -33,19 +33,25 @@ struct ReleaseMetadataEditorContent: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.section) {
-            ReleaseMetadataHeader(
-                values: session.draft.edit,
-                writer: session.fieldWriter,
-                editingCommands: session.editingCommands,
-                artistSearch: library.artistSearch,
-                cover: { cover },
-                audioFacts: { sourceAudio }
-            )
-            DraftAlbumRow(
-                album: session.draft.album,
-                canEdit: true,
-                actions: session.albumActions(viewInLibrary: onViewAlbum)
-            )
+            VStack(alignment: .leading, spacing: ThemeSpace.section) {
+                ReleaseMetadataHeader(
+                    values: session.draft.edit,
+                    writer: session.fieldWriter,
+                    editingCommands: session.editingCommands,
+                    artistSearch: library.artistSearch,
+                    cover: { cover },
+                    audioFacts: { sourceAudio }
+                )
+                DraftAlbumRow(
+                    album: session.draft.album,
+                    canEdit: true,
+                    actions: session.albumActions(viewInLibrary: onViewAlbum)
+                )
+            }
+            .padding(.vertical, ThemeSpace.edge)
+            .padding(.horizontal, ThemeSpace.section)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .card()
             if !images.isEmpty, let onOpenImages {
                 MacImportImages(images: images, onOpen: onOpenImages)
             }
@@ -70,17 +76,6 @@ struct ReleaseMetadataEditorContent: View {
                 pointSize: ReleaseMetadataLayout.coverSize
             )
             .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
-            .overlay(alignment: .topTrailing) {
-                Image(systemName: "pencil")
-                    .themeIcon(.badge)
-                    .foregroundStyle(Theme.onFill)
-                    .padding(ThemeSpace.inline)
-                    .background(Theme.scrim)
-                    .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.chip))
-                    .padding(ThemeSpace.inline)
-                    .opacity(onEditCover == nil ? 0 : 1)
-                    .allowsHitTesting(false)
-            }
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -97,7 +92,6 @@ struct ReleaseMetadataEditorContent: View {
 
     private var trackTable: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
-            FormSectionHeader(title: String(localized: "Tracks"))
             ScrollView(.horizontal) {
                 VStack(spacing: 0) {
                     if session.trackSides.isEmpty {
@@ -134,18 +128,18 @@ struct ReleaseMetadataEditorContent: View {
     private func sideRows(_ side: ReleaseMetadataTrackSide, index: Int)
         -> some View
     {
+        if index == 0 {
+            headerRow
+        }
         if !side.headerText.isEmpty {
             sideHeader(side.headerText, index: index)
         }
         ForEach(Array(side.groups.enumerated()), id: \.element.id) {
-            groupIndex,
+            _,
             group in
             let captionSource = group.sharedSource
             if let source = captionSource {
                 sharedSourceCaption(source)
-            }
-            if index == 0 && groupIndex == 0 {
-                headerRow
             }
             ForEach(group.tracks) { item in
                 trackRow(

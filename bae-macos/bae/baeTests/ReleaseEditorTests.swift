@@ -11,7 +11,7 @@ struct ReleaseEditorTests {
         #expect(
             ReleaseEditorSheet.modalSize(
                 in: CGSize(width: 1_600, height: 1_000)
-            ) == CGSize(width: 1_200, height: 860)
+            ) == CGSize(width: 1_100, height: 920)
         )
         #expect(
             ReleaseEditorSheet.modalSize(
