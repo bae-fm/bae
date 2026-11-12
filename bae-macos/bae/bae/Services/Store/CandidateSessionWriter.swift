@@ -4,7 +4,7 @@ import Foundation
 /// Where a folder candidate's session writes go — the pane's moves and the
 /// typed-search form — so core stores them with the candidate and the next
 /// detail carries them back. The store holds
-/// one of these; the app hands it the importer, and previews and tests run
+/// one of these; the app hands it the importer, and shots and tests run
 /// with the inert one.
 struct CandidateSessionWriter: Sendable {
     let movePane: @Sendable (Data, BridgePaneMove) async throws -> Void

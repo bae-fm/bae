@@ -15,11 +15,11 @@ struct SyncStatusStoreTests {
         )
         let sync = SyncStatusStore()
 
-        sync.apply(status(.previewSynced))
+        sync.apply(status(.fixtureSynced))
         config.applyConfigSnapshot(bridgeConfig())
         #expect(sync.shown?.status == .synced)
 
-        sync.apply(status(.previewNotSynced))
+        sync.apply(status(.fixtureNotSynced))
         #expect(sync.shown?.status == .notSynced)
     }
 
@@ -32,7 +32,7 @@ struct SyncStatusStoreTests {
         #expect(sync.shown == nil)
         #expect(!sync.unreadable)
         #expect(sync.pending == nil)
-        sync.apply(status(.previewSynced))
+        sync.apply(status(.fixtureSynced))
         #expect(sync.shown?.status == .synced)
         #expect(sync.pending == [])
     }
@@ -43,7 +43,7 @@ struct SyncStatusStoreTests {
     @Test("a failed read withdraws the state until a read succeeds")
     func aFailedReadWithdrawsTheState() {
         let sync = SyncStatusStore()
-        sync.apply(status(.previewSynced))
+        sync.apply(status(.fixtureSynced))
 
         sync.fail(
             BridgeError.Diagnostic(
@@ -54,7 +54,7 @@ struct SyncStatusStoreTests {
         #expect(sync.shown == nil)
         #expect(sync.unreadable)
 
-        sync.apply(status(.previewSynced))
+        sync.apply(status(.fixtureSynced))
         #expect(sync.shown?.status == .synced)
         #expect(!sync.unreadable)
     }
@@ -82,7 +82,7 @@ struct SyncStatusStoreTests {
 
         sync.apply(
             BridgeSyncStatusSnapshot(
-                shown: .previewSynced,
+                shown: .fixtureSynced,
                 pending: [record],
                 setupRunning: false,
                 undoneSetup: nil

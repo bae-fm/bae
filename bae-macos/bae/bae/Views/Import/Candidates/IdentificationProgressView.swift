@@ -204,8 +204,3 @@ struct FolderScanProgressIndicator: View {
         }
     }
 }
-
-#if DEBUG
-    // MARK: - Previews
-
-#endif

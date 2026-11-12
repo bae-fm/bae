@@ -51,7 +51,7 @@ struct HostedAlbumGrid {
         )
         await list.loadInitial()
         if preloaded {
-            list.preloadForPreview(rows: albums)
+            list.preloadRows(rows: albums)
         }
         uiStore.selectAlbum(openAlbumId)
         let library = Library(getAlbumIndex: { _, albumId, _ in

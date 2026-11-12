@@ -2,16 +2,16 @@
     import BaeKit
     import Foundation
 
-    // Preview fixtures for the settings flows — the save-format presets and
+    // Fixtures for the settings flows — the save-format presets and
     // the filename pattern, plus the Library people (this device's person as
-    // admin plus one removable member), a `Sync` whose reads serve preview
+    // admin plus one removable member), a `Sync` whose reads serve shot
     // values, and a connected config store. Generic placeholder identities
     // throughout.
     extension PreviewData {
         // MARK: - Formats
 
         /// The file name pattern a new library starts with, for seeding
-        /// preview configs (mirrors bae-preferences' default).
+        /// shot configs (mirrors bae-preferences' default).
         static let exportFilenamePieces: [BridgeSaveFilenamePiece] = [
             .value(value: .trackNumber), .text(text: " "),
             .value(value: .title),
@@ -178,13 +178,13 @@
             return (["CVR1"] + groups).joined(separator: " ")
         }()
 
-        /// A `Sync` whose reads serve preview values, so the library-settings
-        /// previews never touch cloud storage. It reads the library's
+        /// A `Sync` whose reads serve shot values, so the library-settings
+        /// shots never touch cloud storage. It reads the library's
         /// location as `storage`.
         static func previewSync(storage: BridgeStorageLocation?) -> Sync {
             Sync(
                 followStorageSetup: {
-                    StorageSetupFollowing(host: BaeHost.preview())
+                    StorageSetupFollowing(host: BaeHost.inTemporaryFolder())
                 },
                 generateRestoreCode: {
                     BridgeRestoreCodeShare(
@@ -208,7 +208,7 @@
         }
 
         /// A `ConfigStore` whose library has its storage at `storage`, so
-        /// the Library settings preview shows the storage, its sync and the
+        /// the Library settings shot shows the storage, its sync and the
         /// people.
         @MainActor
         static func connectedConfigStore(

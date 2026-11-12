@@ -83,8 +83,3 @@ struct MacQueuePanelContainer: View {
         )
     }
 }
-
-#if DEBUG
-    // MARK: - Previews
-
-#endif

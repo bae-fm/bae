@@ -370,11 +370,6 @@ struct LookupReleaseLine: View {
     }
 }
 
-#if DEBUG
-    // MARK: - Previews
-
-#endif
-
 /// The caption naming the value after it.
 struct IdentifierLabel: View {
     let text: String

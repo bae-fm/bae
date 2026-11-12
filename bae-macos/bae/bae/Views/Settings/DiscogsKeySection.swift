@@ -344,8 +344,3 @@ private struct KeyTextField: NSViewRepresentable {
         }
     }
 }
-
-#if DEBUG
-    // MARK: - Previews
-
-#endif

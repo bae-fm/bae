@@ -2,7 +2,7 @@
     import BaeKit
     import SwiftUI
 
-    // Preview fixtures for the Storage Manager: its transfer/sync queue rows
+    // Fixtures for the Storage Manager: its transfer/sync queue rows
     // (downloads, exports, cloud-outbox uploads) and its release /
     // file table cells, plus a seeded `Library` + stores so the whole screen
     // renders offline. Generic placeholder names only.
@@ -19,7 +19,7 @@
 
         // MARK: - Download (pin) queue
 
-        /// The bytes the previews' downloads have moved: the download
+        /// The bytes the shots' downloads have moved: the download
         /// queue's active entry, and the storage rows' release pinning.
         static let downloadTransfers: [String: BridgeDownloadTransferProgress] =
             [
@@ -75,7 +75,7 @@
             ),
         ]
 
-        /// How far the previews' files being downloaded to be kept have
+        /// How far the shots' files being downloaded to be kept have
         /// got: the pinning release's audio, as its inspector shows it.
         static let pinFileTransfers: [String: Double] = [
             pinningFileId("rel-row-5-audio"): 0.42
@@ -86,7 +86,7 @@
             "pin-\(releaseFileId)"
         }
 
-        /// The previews' download bytes, leaving out every release
+        /// The shots' download bytes, leaving out every release
         /// `downloads` holds waiting or failed: one not running has moved
         /// nothing.
         @MainActor
@@ -163,7 +163,7 @@
             ),
         ]
 
-        /// The percent the preview's active save has reached.
+        /// The percent the shot's active save has reached.
         static let outputTransfers: [String: UInt8] = ["rel-row-1": 62]
 
         @MainActor
@@ -173,7 +173,7 @@
 
         // MARK: - Cloud outbox
 
-        /// A release with files in the previews' upload queue: what its row
+        /// A release with files in the shots' upload queue: what its row
         /// reads of its upload, and each of its files' uploads by file id.
         struct PreviewReleaseUpload {
             let releaseId: String
@@ -194,7 +194,7 @@
         }
 
         /// A release whose audio is being sent and whose cover waits its
-        /// turn. How far the audio has got is the preview's upload
+        /// turn. How far the audio has got is the shot's upload
         /// transfers.
         static let uploadingRelease = PreviewReleaseUpload(
             releaseId: "rel-row-1",
@@ -268,7 +268,7 @@
             }
         }
 
-        /// How far and how fast the preview's uploading release goes: of its
+        /// How far and how fast the shot's uploading release goes: of its
         /// 36.4 MB, the 12.4 MB of its audio sent; and the bytes the files
         /// being sent have moved together.
         static let uploadTransfers: [String: BridgeReleaseUploadTransfer] = [
@@ -281,7 +281,7 @@
             )
         ]
 
-        /// The bytes the preview's files being sent have moved together.
+        /// The bytes the shot's files being sent have moved together.
         static let uploadTotal = BridgeUploadTransfer(
             bar: BridgeUploadBar(
                 bytesDone: 22_400_000,
@@ -290,7 +290,7 @@
             throughputBps: 6_800_000
         )
 
-        /// How far the preview's file being sent has got: 12.4 MB of its
+        /// How far the shot's file being sent has got: 12.4 MB of its
         /// 34 MB.
         static let uploadFileTransfers: [String: Double] = [
             "upload-rel-row-1-audio": 12_400_000 / 34_000_000
@@ -342,7 +342,7 @@
         // MARK: - Whole-screen: seeded list + Library
 
         /// Dense rows spanning the names, media, storage states, file counts,
-        /// and sizes the whole-screen previews must keep readable.
+        /// and sizes the whole-screen shots must keep readable.
         static let storageRows: [BridgeStorageRow] = {
             let titles = [
                 "Album Title with an Intentionally Long Descriptive Subtitle",

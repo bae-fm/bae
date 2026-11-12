@@ -3,9 +3,9 @@
     import BaeKit
     import Foundation
 
-    /// Preview fixtures for the Import flow.
+    /// Fixtures for the Import flow.
     extension PreviewData {
-        /// The watched folder the import previews read from, as text.
+        /// The watched folder the import shots read from, as text.
         static let importRootPath = "/Music/Downloads"
 
         static let importWatchedFolder = BridgeWatchedFolder(

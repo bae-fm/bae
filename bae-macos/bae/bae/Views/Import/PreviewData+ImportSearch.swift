@@ -3,7 +3,7 @@
     import BaeKit
     import Foundation
 
-    /// Preview fixtures for the Find online pane: its identify verdicts, its
+    /// Fixtures for the Find online pane: its identify verdicts, its
     /// typed-search runs, and the signals behind both.
     extension PreviewData {
         // MARK: - Album cards

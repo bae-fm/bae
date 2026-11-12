@@ -79,7 +79,7 @@ public class PlaybackStore {
     }
 
     /// A store whose positions, held parts and storage waits the
-    /// subscription fills, or, for a preview, fixed ones.
+    /// subscription fills, or, for a shot, fixed ones.
     public init(
         trackPositions: LatestStream<BridgeTrackPosition> = .trackPositions(),
         trackBuffered: LatestStream<BridgeTrackBuffered> = .trackBuffered(),

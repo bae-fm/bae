@@ -227,10 +227,10 @@ struct MacFindOnline: View {
 }
 
 #if DEBUG
-    // MARK: - Previews
+    // MARK: - Shot staging
 
     extension MacFindOnline {
-        /// A pane with inert form bindings and callbacks, so a preview states
+        /// A pane with inert form bindings and callbacks, so a shot states
         /// only its situation.
         @MainActor
         static func preview(

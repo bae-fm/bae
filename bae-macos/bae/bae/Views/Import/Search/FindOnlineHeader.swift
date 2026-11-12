@@ -25,8 +25,3 @@ struct FindOnlineHeader: View {
         .frame(height: 42)
     }
 }
-
-#if DEBUG
-    // MARK: - Previews
-
-#endif

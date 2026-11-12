@@ -447,7 +447,7 @@ where Row.ID: Sendable {
 
     #if DEBUG
         /// Seed segments synchronously for shots and tests.
-        public func preloadForPreview(rows: [Row]) {
+        public func preloadRows(rows: [Row]) {
             segments = LoadedSegments(rows)
             totalCount = rows.count
             itemCount = pageSource.itemCount ?? rows.count

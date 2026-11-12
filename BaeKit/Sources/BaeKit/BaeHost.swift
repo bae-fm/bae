@@ -50,7 +50,7 @@ public enum BaeHost {
         /// person's keychain. Only the macOS app's screenshot scenes use it, and every
         /// debug macOS bridge has the in-memory keychain and the temporary
         /// directory (`build-macos.sh` adds `test-keyring`).
-        public static func preview() -> BridgeHost {
+        public static func inTemporaryFolder() -> BridgeHost {
             make {
                 try BridgeHost.withTestKeyring(
                     diagnostics: BaeDiagnostics.disabled(),

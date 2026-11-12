@@ -18,8 +18,3 @@ struct ImportSidebarList<Header: View, Content: View>: View {
         }
     }
 }
-
-#if DEBUG
-    // MARK: - Previews
-
-#endif

@@ -90,8 +90,3 @@ struct MacNowPlayingBarContainer: View {
         )
     }
 }
-
-#if DEBUG
-    // MARK: - Previews
-
-#endif

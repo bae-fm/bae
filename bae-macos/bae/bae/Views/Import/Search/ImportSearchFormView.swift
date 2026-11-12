@@ -222,8 +222,3 @@ struct ImportSearchFormView: View {
         }
     }
 }
-
-#if DEBUG
-    // MARK: - Previews
-
-#endif

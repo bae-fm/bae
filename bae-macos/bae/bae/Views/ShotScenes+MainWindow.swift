@@ -2,7 +2,7 @@
     import BaeKit
     import SwiftUI
 
-    extension PreviewScenes {
+    extension ShotScenes {
         /// The full main window against stub services over `backing`'s
         /// library, `needsAttention` as the Activity button shows it. The
         /// point of top padding keeps `ignoresSafeArea` from sliding the bar

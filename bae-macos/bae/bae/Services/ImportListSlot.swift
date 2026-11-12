@@ -286,7 +286,7 @@ final class ImportListSlot {
         ) -> ImportListSlot {
             let tab = uiStore.importCandidateTab
             let pages = ImportListPages(
-                source: ImportListPreviewPageSource(items: items),
+                source: FixedImportListPageSource(items: items),
                 setView: { _ in },
                 waitForView: { _ in },
                 setGroupFolded: { _, _ in },
@@ -315,10 +315,10 @@ final class ImportListSlot {
                 PreviewData.pendingFilterEntries()
             )
             let list = PaginatedList<BridgeImportListItem>(
-                pageSource: ImportListPreviewPageSource(items: items),
+                pageSource: FixedImportListPageSource(items: items),
                 onError: { _ in }
             )
-            list.preloadForPreview(rows: items)
+            list.preloadRows(rows: items)
             slot.list = list
             slot.pages = pages
             return slot

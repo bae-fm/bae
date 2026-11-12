@@ -214,8 +214,3 @@ struct ReleaseGroupSection: View {
         return loadingPick
     }
 }
-
-#if DEBUG
-    // MARK: - Previews
-
-#endif

@@ -255,7 +255,7 @@ extension View {
     private let mainWindowPreviewLogger = Logger.bae("MainWindowPreview")
 
     extension View {
-        /// The primary window's values for a preview of its content, which
+        /// The primary window's values for a shot of its content, which
         /// has no Settings window to open and no menu to search or select
         /// all from.
         func mainWindowPreviewEnvironment() -> some View {

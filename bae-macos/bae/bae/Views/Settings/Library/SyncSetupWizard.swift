@@ -481,7 +481,7 @@ struct SetupStep<Fields: View, Leading: View>: View {
 }
 
 #if DEBUG
-    // MARK: - Previews
+    // MARK: - Shot staging
 
     extension SyncSetupWizard {
         /// Where a shot stages the wizard's S3 setup.

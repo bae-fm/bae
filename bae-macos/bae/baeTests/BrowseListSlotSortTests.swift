@@ -23,7 +23,7 @@ struct BrowseListSlotSortTests {
             defaults: defaults,
             defaultsKey: Self.key,
             defaultCriteria: Self.defaultCriteria,
-            makePageSource: { _ in AlbumPreviewPageSource(albums: []) },
+            makePageSource: { _ in FixedAlbumPageSource(albums: []) },
             onError: { _ in }
         )
     }

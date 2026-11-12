@@ -311,7 +311,7 @@ internal fun maskedRestoreCode(grouped: String): String =
 private const val VISIBLE_GROUPS = 2
 private const val MASK = "••••"
 
-/** A restore code in groups of four, for the previews; never a library's. */
+/** A restore code in groups of four, for the shots; never a library's. */
 private const val PREVIEW_CODE =
     "CVR1 ABCD EFGH IJKL MNOP QRST UVWX YZ23 4567 ABCD EFGH IJKL MNOP QRST UVWX YZ23 4567 ABCD EFGH IJKL MNOP QRST"
 

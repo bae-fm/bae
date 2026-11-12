@@ -45,8 +45,3 @@ struct InvalidCandidateRow: View {
         }
     }
 }
-
-#if DEBUG
-    // MARK: - Previews
-
-#endif

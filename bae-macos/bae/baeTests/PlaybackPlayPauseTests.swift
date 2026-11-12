@@ -5,7 +5,7 @@ import Testing
 /// Pins the play/pause press mapping the deleted core `TogglePlayPause`
 /// dispatched on the slot: playing or loading pauses, paused resumes, stopped
 /// does nothing (no track to act on, and `resume` would tear down an active
-/// import preview). The caller computes the absolute command from the
+/// import shot). The caller computes the absolute command from the
 /// `NowPlaying` it renders.
 @Suite("Playback.playPause(for:)")
 struct PlaybackPlayPauseTests {

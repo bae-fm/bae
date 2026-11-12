@@ -261,7 +261,7 @@ internal val sceneSavedEntries =
 @Composable
 internal fun WelcomeSavedCodesScene() {
     WelcomeScene(
-        libraries = WelcomeLibrariesView(listed = true) { onAdd -> WelcomeLibrariesPreviewContent(onAdd) },
+        libraries = WelcomeLibrariesView(listed = true) { onAdd -> WelcomeLibrariesSceneContent(onAdd) },
         savedCodes = {
             SavedCodesContent(
                 list = SavedCodesList.Loaded(sceneSavedEntries),

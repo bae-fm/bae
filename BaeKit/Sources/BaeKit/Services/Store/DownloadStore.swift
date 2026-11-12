@@ -22,7 +22,7 @@ public class DownloadStore {
     /// subscription last said.
     public private(set) var downloadsPaused: Bool
 
-    /// A store whose streams the subscriptions fill, or, for a preview,
+    /// A store whose streams the subscriptions fill, or, for a shot,
     /// streams holding fixed values.
     public init(
         downloadsPaused: Bool = false,

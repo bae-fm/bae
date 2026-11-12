@@ -98,7 +98,7 @@ struct MacMainWindowContainer: View {
                 .zIndex(1)
             }
 
-            // Audio preview overlay
+            // Audio shot overlay
             if let preview = importStore.previewState.active {
                 PreviewOverlay(
                     name: preview.target.name,
@@ -192,7 +192,7 @@ struct MacMainWindowContainer: View {
             importFolderEntry.take(dropped: $0)
         }
         .sidePausePromptAlert(showError: { uiStore.showError($0) })
-        // An import-audio preview ends with the library session, not a tab.
+        // An import-audio shot ends with the library session, not a tab.
         .onDisappear { previewAudio.previewStop() }
     }
 

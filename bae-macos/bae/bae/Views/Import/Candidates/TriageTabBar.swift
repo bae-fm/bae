@@ -68,8 +68,3 @@ extension BridgeTriageTab {
         }
     }
 }
-
-#if DEBUG
-    // MARK: - Previews
-
-#endif

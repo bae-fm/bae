@@ -145,8 +145,3 @@ struct SearchView: View {
         )
     }
 }
-
-#if DEBUG
-    // MARK: - Previews
-
-#endif

@@ -90,7 +90,7 @@ struct SettingsWindowShot<Page: View>: View {
 
     init(
         tab: SettingsTab = .library,
-        shown: BridgeSyncShown = .previewSynced,
+        shown: BridgeSyncShown = .fixtureSynced,
         pending: [BridgePendingRecord] = [],
         undoneSetup: BridgeUndoneStorageSetup? = nil,
         page: Page

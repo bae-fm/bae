@@ -6,7 +6,7 @@ import os.log
 private let importStoreLogger = Logger.bae("ImportStore")
 
 /// Session state for the import flow. Mixed-writer: core drives the list, the
-/// per-candidate reads and preview state through value subscriptions, while
+/// per-candidate reads and shot state through value subscriptions, while
 /// views drive user-set fields (presentation, selected cover) via
 /// `mutateCandidate(forKey:_:)`. The single-writer rule applies per field, not
 /// per store.
@@ -162,7 +162,7 @@ class ImportStore {
 
     var previewState: BridgePreviewState = .idle
 
-    /// Where the import tab's preview is in its clip, while one is loaded,
+    /// Where the import tab's shot is in its clip, while one is loaded,
     /// for the native bar that reads it each display frame.
     @ObservationIgnored
     let previewPosition = LatestStream<BridgePreviewPosition>

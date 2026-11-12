@@ -2,7 +2,7 @@ import AppKit
 import BaeKit
 
 /// The stream a seek bar draws: the playing track's position over the
-/// parts of it whose bytes are here, or the preview's position.
+/// parts of it whose bytes are here, or the shot's position.
 enum SeekBarSource {
     case track(
         LatestSource<BridgeTrackPosition>,
@@ -97,7 +97,7 @@ final class SeekBarNSView: NSView {
     private var position: SeekPosition?
     /// The playing track's position, which a seek the person makes is held
     /// in front of until core applies it; `nil` while the bar draws a
-    /// preview or nothing, whose seeks are not held.
+    /// shot or nothing, whose seeks are not held.
     private var track: LatestSource<BridgeTrackPosition>?
     /// Set while the user drags the slider: the dropped position, shown until
     /// the drag ends. Nil means the leading label follows playback.

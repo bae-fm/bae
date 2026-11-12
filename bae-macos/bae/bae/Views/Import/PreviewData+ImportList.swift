@@ -2,7 +2,7 @@
     import BaeKit
     import Foundation
 
-    /// One import-tab preview: the store both halves of the tab read, and the
+    /// One import-tab shot: the store both halves of the tab read, and the
     /// list items each tab holds. A canvas asks for the slot its `UiStore`'s
     /// tab names, which is what a live list would have delivered.
     struct ImportPreviewFixture {
@@ -19,7 +19,7 @@
         }
     }
 
-    /// The list items and summaries the import previews are built from. Core
+    /// The list items and summaries the import shots are built from. Core
     /// computes the stable keys in production; these mirror the same shapes so
     /// a canvas addresses its rows the way the app does.
     extension PreviewData {

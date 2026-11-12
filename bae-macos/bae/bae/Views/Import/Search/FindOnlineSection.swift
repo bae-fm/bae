@@ -141,8 +141,3 @@ struct FindOnlineSectionGlyphView: View {
         )
     }
 }
-
-#if DEBUG
-    // MARK: - Previews
-
-#endif

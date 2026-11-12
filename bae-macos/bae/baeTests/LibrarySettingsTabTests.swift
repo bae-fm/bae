@@ -27,7 +27,7 @@ struct LibrarySettingsTabStorageReadTests {
         let renamed = PreviewData.previewDropboxStorage
         let fixture = LibrarySettingsTabPreviewFixture(storage: renamed)
         let configStore = fixture.configStore
-        // The preview's storage answers with the renamed folder, while the
+        // The shot's storage answers with the renamed folder, while the
         // store still holds what the library read as it opened.
         let tab = librarySettingsTabPreview(fixture)
         configStore.applyStorage(

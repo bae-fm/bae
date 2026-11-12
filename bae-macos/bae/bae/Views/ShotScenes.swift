@@ -6,7 +6,7 @@
     /// The named UI scenes captured for the cross-platform screenshot gallery.
     /// Each builder composes production views over `PreviewData` fixtures.
     @MainActor
-    enum PreviewScenes {
+    enum ShotScenes {
         /// The welcome window entered at `initialMode`, in its fixed 690x600
         /// chrome, over `setup` and the `LibraryRemovals` fixtures. Every flow
         /// can go back to the chooser, which reads both lists from `setup`.

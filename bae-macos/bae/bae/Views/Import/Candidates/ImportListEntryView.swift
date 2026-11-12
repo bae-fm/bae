@@ -24,9 +24,9 @@ struct ImportListEntryActions {
 /// inherits none of it; the table hands it this.
 struct ImportListRowEnvironment {
     let imageStore: ImageStore
-    /// `nil` in a preview or a test with no bridge behind it.
+    /// `nil` in a shot or a test with no bridge behind it.
     let importer: Importer?
-    /// `nil` in a preview or a test with no import list behind it.
+    /// `nil` in a shot or a test with no import list behind it.
     let importPercents: LatestStream<UInt32>?
     /// The upload streams a Done row's line reads while its release uploads.
     let outboxStore: OutboxStore

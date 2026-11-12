@@ -95,8 +95,3 @@ struct AlbumSourceLink: View {
         }
     }
 }
-
-#if DEBUG
-    // MARK: - Previews
-
-#endif

@@ -184,7 +184,7 @@ extension ShotScene {
             ShotStage(
                 OverWindow.alert(
                     DeviceResetConfirmation.alert {},
-                    over: PreviewScenes.deviceReset(
+                    over: ShotScenes.deviceReset(
                         error: LoadError(
                             .resetOffered,
                             PreviewData.resetRequiredError
@@ -210,7 +210,7 @@ extension ShotScene {
                             title: Text("Error"),
                             error: error
                         ),
-                    over: PreviewScenes.libraryWindow(
+                    over: ShotScenes.libraryWindow(
                         uiStore: uiStore,
                         backing: backing,
                         needsAttention: false,
@@ -243,7 +243,7 @@ extension ShotScene {
                         error: problem.error
                     )
                     .alert,
-                    over: PreviewScenes.libraryWindow(
+                    over: ShotScenes.libraryWindow(
                         uiStore: uiStore,
                         backing: backing,
                         playbackStore: boardPlayback(),
@@ -270,7 +270,7 @@ extension ShotScene {
             return ShotStage(
                 OverWindow.alert(
                     alert,
-                    over: PreviewScenes.libraryWindow(
+                    over: ShotScenes.libraryWindow(
                         uiStore: uiStore,
                         backing: backing,
                         playbackStore: boardPlayback(),

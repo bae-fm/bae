@@ -3,7 +3,7 @@
     import Foundation
     import SwiftUI
 
-    // Preview fixtures for the Welcome flow: a library with storage, one
+    // Fixtures for the Welcome flow: a library with storage, one
     // without, one that can't be read, one whose restore stopped partway, and
     // restore codes saved in iCloud Keychain for libraries not on this Mac,
     // one of them unreadable.
@@ -105,7 +105,7 @@
         )
 
         /// A `LibrarySetup` whose reads serve the fixtures above — the
-        /// populated welcome previews inject it, so no preview ever touches
+        /// populated welcome shots inject it, so no shot ever touches
         /// the real library directory or keychain.
         static func welcomeSetup() -> LibrarySetup {
             .stub(
@@ -114,7 +114,7 @@
             )
         }
 
-        /// Removals whose every attempt fails, for the welcome previews; with
+        /// Removals whose every attempt fails, for the welcome shots; with
         /// `step`, a removal started on them stays at that step and never
         /// ends.
         @MainActor
@@ -123,15 +123,18 @@
         ) -> LibraryRemovals {
             LibraryRemovals(
                 makeOpenProgress: {
-                    LibraryOpenProgress(host: BaeHost.preview())
+                    LibraryOpenProgress(host: BaeHost.inTemporaryFolder())
                 },
                 makeRemovalSteps: {
                     step.map {
-                        LibraryClosingSteps(host: BaeHost.preview(), at: $0)
-                    } ?? LibraryClosingSteps(host: BaeHost.preview())
+                        LibraryClosingSteps(
+                            host: BaeHost.inTemporaryFolder(),
+                            at: $0
+                        )
+                    } ?? LibraryClosingSteps(host: BaeHost.inTemporaryFolder())
                 },
                 makeFinishingSteps: {
-                    LibrarySetupSteps(host: BaeHost.preview())
+                    LibrarySetupSteps(host: BaeHost.inTemporaryFolder())
                 },
                 unsentOfClosed: { _, _ in throw StubError.notImplemented },
                 removeClosed: { _, _, _ in
@@ -147,7 +150,7 @@
         }
     }
 
-    extension PreviewScenes {
+    extension ShotScenes {
         /// The first screen's list of this Mac's libraries, one row for each
         /// state a library is in: one with a cloud home, one with none, which
         /// offers Delete in place of Remove, one that can't be read, and one
@@ -165,7 +168,7 @@
                     RunningRemoval(
                         libraryId: libraries[0].id,
                         steps: LibraryClosingSteps(
-                            host: BaeHost.preview(),
+                            host: BaeHost.inTemporaryFolder(),
                             at: $0
                         )
                     )

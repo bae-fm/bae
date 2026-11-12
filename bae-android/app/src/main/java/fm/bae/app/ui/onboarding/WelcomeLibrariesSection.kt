@@ -264,7 +264,7 @@ private val SPINNER_SLOT = 48.dp
  */
 @Composable
 internal fun WelcomeLibrariesScene() {
-    WelcomeScene(libraries = WelcomeLibrariesView(listed = true) { onAdd -> WelcomeLibrariesPreviewContent(onAdd) })
+    WelcomeScene(libraries = WelcomeLibrariesView(listed = true) { onAdd -> WelcomeLibrariesSceneContent(onAdd) })
 }
 
 /**
@@ -288,12 +288,12 @@ internal fun WelcomeRemovingScene() {
                     ).only,
         )
     WelcomeScene(
-        libraries = WelcomeLibrariesView(listed = true) { onAdd -> WelcomeLibrariesPreviewContent(onAdd, running) },
+        libraries = WelcomeLibrariesView(listed = true) { onAdd -> WelcomeLibrariesSceneContent(onAdd, running) },
     )
 }
 
 @Composable
-internal fun WelcomeLibrariesPreviewContent(
+internal fun WelcomeLibrariesSceneContent(
     onAdd: () -> Unit,
     running: RunningRemoval? = null,
 ) {

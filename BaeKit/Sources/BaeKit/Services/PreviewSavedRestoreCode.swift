@@ -22,7 +22,7 @@
             fixture
         }
 
-        /// Saved codes the previews on every platform list: two libraries
+        /// Saved codes the shots on every platform list: two libraries
         /// that share a name in different storage, and one in iCloud.
         public static let samples: [BridgeSavedRestoreCodeInfo] = [
             BridgeSavedRestoreCodeInfo(
@@ -61,7 +61,7 @@
             ),
         ]
 
-        /// What the saved-code list reads in previews: the sample codes,
+        /// What the saved-code list reads in shots: the sample codes,
         /// then an entry saved in a format bae can't read.
         public static var entries: [BridgeSavedRestoreEntry] {
             samples.map { .readable(code: PreviewSavedRestoreCode($0)) }

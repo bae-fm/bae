@@ -405,8 +405,3 @@ private struct TitleSearchChip<Trailing: View>: View {
         onCommit(albumText, artistText)
     }
 }
-
-#if DEBUG
-    // MARK: - Previews
-
-#endif

@@ -85,7 +85,7 @@ struct SyncStatusSubscriptionTests {
         #expect(store.shown == nil && !store.unreadable)
 
         let synced = BridgeSyncStatusSnapshot(
-            shown: .previewSynced,
+            shown: .fixtureSynced,
             pending: [],
             setupRunning: false,
             undoneSetup: nil
@@ -129,7 +129,7 @@ struct StorageSetupSubscriptionTests {
                         cause: nil,
                         fix: nil,
                         lastSynced: nil
-                    ) : .previewSynced,
+                    ) : .fixtureSynced,
                 pending: [],
                 setupRunning: running,
                 undoneSetup: nil

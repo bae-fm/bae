@@ -76,7 +76,7 @@
         }
     }
 
-    /// A queue preview: the store the queue pane reads, and the `Queue` whose
+    /// A queue shot: the store the queue pane reads, and the `Queue` whose
     /// commands and upcoming read answer out of an in-memory queue that pushes
     /// into that store. Built by `PreviewData.echoingQueue`.
     struct QueuePreviewFixture {
@@ -87,7 +87,7 @@
     /// The in-memory queue behind `PreviewData.echoingQueue`: holds the two
     /// lanes, applies each command the way core would, and pushes the result
     /// into the store as a fresh snapshot. A dependency fake — the views under
-    /// preview run their production code against it.
+    /// shot run their production code against it.
     @MainActor
     private final class PreviewQueueModel {
         private let store: PlaybackStore
@@ -226,7 +226,7 @@
                     track: BridgePlayingTrack(
                         trackId: entry.trackId,
                         // The queue entry carries only a clock label, not raw ms;
-                        // the preview now-playing bar just needs a plausible total.
+                        // the shot now-playing bar just needs a plausible total.
                         durationMs: 200_000
                     ),
                     display: entry.display
@@ -362,7 +362,7 @@
         ]
 
         /// A `PlaybackStore` preloaded with `queueEntries`: `manualCount` in the
-        /// manual lane, and a context of `context`'s kind. Used by previews that
+        /// manual lane, and a context of `context`'s kind. Used by shots that
         /// show the store's queue state but not the context's rows, which only
         /// `echoingQueue`'s upcoming read serves.
         @MainActor
@@ -397,9 +397,9 @@
 
         /// A store plus a `Queue` whose commands mutate an in-memory queue and
         /// re-apply a fresh snapshot, and whose upcoming read answers out of it
-        /// — the preview stand-in for core's queue subscriptions. Echo-driven view behavior (the
+        /// — the shot stand-in for core's queue subscriptions. Echo-driven view behavior (the
         /// post-reorder hold clearing, the removal unmount, the shuffle flip)
-        /// only works in a preview against this; against `Queue.stub()` the echo
+        /// only works in a shot against this; against `Queue.stub()` the echo
         /// never lands and a second drag starts from a stale display order.
         @MainActor
         static func echoingQueue(
@@ -470,7 +470,7 @@
 
         // MARK: - Search
 
-        /// Search results for the SearchView "With results" preview.
+        /// Search results for the SearchView "With results" shot.
         static let searchResults = SearchResults(
             bridge: BridgeSearchResults(
                 albums: [
@@ -563,7 +563,7 @@
     extension PreviewData {
         // MARK: - Cover sheet
 
-        /// Remote cover candidates (front + back) for the CoverSheetView preview.
+        /// Remote cover candidates (front + back) for the CoverSheetView shot.
         static let remoteCovers: [BridgeRemoteCover] = [
             remoteCover(
                 url: "https://example.com/cover1.jpg",

@@ -3,7 +3,7 @@
     import BaeKit
     import Foundation
 
-    /// Preview fixtures for the import candidate list and its rows.
+    /// Fixtures for the import candidate list and its rows.
     extension PreviewData {
         // MARK: - Triage sidebar
 
@@ -37,7 +37,7 @@
             )
         }
 
-        /// A preview candidate showing `identifyState`.
+        /// A shot candidate showing `identifyState`.
         static func importTabFolder(
             path: String,
             name: String,
@@ -600,7 +600,7 @@
             hasGroups: true
         )
 
-        /// A preview row's live state offering `actions`.
+        /// A shot row's live state offering `actions`.
         static func triageLive(
             _ actions: [BridgeCandidateAction],
             identifying: BridgeIdentifyingStep? = nil,
@@ -641,12 +641,12 @@
             )
         }
 
-        /// The failed folder check the pane states for a preview candidate.
+        /// The failed folder check the pane states for a shot candidate.
         static let importTabFolderChecks: [Data: BridgeFolderCheck] = [
             importTabNoTracklistCandidate.key: .sourceTracksUnknown
         ]
 
-        /// Where the pane places a preview candidate, from its list row.
+        /// Where the pane places a shot candidate, from its list row.
         static func panePlacement(
             of row: BridgeTriageRow
         ) -> BridgeCandidatePanePlacement {
@@ -669,7 +669,7 @@
             }
         }
 
-        /// How many entries each tab of the Import tab preview holds.
+        /// How many entries each tab of the Import tab shot holds.
         static let importTabCounts = (
             pending: UInt32(11),
             done: UInt32(1),

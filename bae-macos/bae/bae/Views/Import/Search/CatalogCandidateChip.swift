@@ -20,8 +20,3 @@ struct CatalogCandidateChip: View {
         .help("Look this catalog number up")
     }
 }
-
-#if DEBUG
-    // MARK: - Previews
-
-#endif

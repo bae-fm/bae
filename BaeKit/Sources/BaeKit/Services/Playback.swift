@@ -181,7 +181,7 @@ extension Playback {
     /// while playing or loading (the transport shows the pause glyph through
     /// a load), resume while paused, nothing while stopped — there is no
     /// track to act on, and `resume` would also tear down an active import
-    /// preview.
+    /// shot.
     public func playPause(for nowPlaying: NowPlaying) {
         switch nowPlaying {
         case .playing, .loading:

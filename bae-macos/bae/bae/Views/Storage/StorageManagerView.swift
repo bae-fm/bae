@@ -274,7 +274,7 @@ struct StorageManagerView: View {
         }
     }
 
-    /// The window most previews draw in.
+    /// The window most shots draw in.
     private enum PreviewWindow {
         static let width: CGFloat = 940
         static let height: CGFloat = 600

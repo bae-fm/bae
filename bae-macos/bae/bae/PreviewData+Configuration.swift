@@ -5,7 +5,7 @@
     extension PreviewData {
         // MARK: - Config and edit-metadata fixtures
 
-        /// A new preview ConfigStore for each preview scene.
+        /// A new shot ConfigStore for each shot scene.
         @MainActor
         static func configStore(
             storage: BridgeStorageLocation? = nil
@@ -13,7 +13,7 @@
             makeConfigStore(libraryFullWidth: false, storage: storage)
         }
 
-        /// A preview CastStore mid-session, so the casting settings preview shows
+        /// A shot CastStore mid-session, so the casting settings shot shows
         /// the state that asks before the feature is turned off.
         @MainActor
         static func castStore() -> CastStore {
@@ -33,7 +33,7 @@
         }
 
         /// Every metadata source and whether the library asks it, in core's
-        /// order. The ordinary library asks both; a preview that is about one
+        /// order. The ordinary library asks both; a shot that is about one
         /// source being off or unreachable names that source's state.
         ///
         /// `canChange` is derived the way core derives it, so a fixture cannot
@@ -60,14 +60,14 @@
             ]
         }
 
-        /// A preview ConfigStore with the given library-width, side-pause,
+        /// A shot ConfigStore with the given library-width, side-pause,
         /// casting, MCP server, identification, and Discogs settings — the
-        /// previews that vary them build their own;
+        /// shots that vary them build their own;
         /// everything else creates the default through `configStore()` above.
         /// A configured Discogs key is the ordinary library, so the token
-        /// stands validated unless a preview asks for the other case.
+        /// stands validated unless a shot asks for the other case.
         ///
-        /// The sources follow the token unless a preview names one: a library
+        /// The sources follow the token unless a shot names one: a library
         /// with no Discogs token cannot ask Discogs, which is what core would
         /// report, while `discogs` states the case of a reachable source the
         /// person has switched off.
@@ -146,7 +146,7 @@
             )
         }
 
-        /// A raw release edit for metadata-editor previews: the album and
+        /// A raw release edit for metadata-editor shots: the album and
         /// pressing fields plus `trackCount` tracks. Blank track artists
         /// exercise the album-artist inheritance path.
         static func editMetadataDraft(
@@ -310,7 +310,7 @@
             )
         }
 
-        /// The library an artist field's search reads in previews.
+        /// The library an artist field's search reads in shots.
         static func artistAssignmentsLibrary() -> Library {
             Library(artistSearch: { artistSearch() })
         }
@@ -451,7 +451,7 @@
         }
     }
 
-    /// One session's draft in a preview library, which each change edits.
+    /// One session's draft in a shot library, which each change edits.
     actor PreviewReleaseEditSession {
         private(set) var draft: BridgeReleaseEditDraft
 

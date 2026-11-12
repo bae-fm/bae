@@ -2,7 +2,7 @@
     import BaeKit
     import SwiftUI
 
-    // Preview fixtures for the library browse views: composer/artist/work
+    // Fixtures for the library browse views: composer/artist/work
     // summaries and details, a seeded composer list, and a
     // `LibraryBrowseSession` builder. Generic placeholder names only. Reuses
     // the base `PreviewData.albums` for anything that needs `BridgeAlbum`s.
@@ -22,7 +22,7 @@
             image: nil,
         )
 
-        /// A master list of composers for the browse-list previews.
+        /// A master list of composers for the browse-list shots.
         static let composerSummaries: [BridgeComposerSummary] = (0..<12)
             .map { (index: Int) -> BridgeComposerSummary in
                 let linkedReleaseCount = Int64(1 + index % 4)
@@ -114,7 +114,7 @@
                 ),
                 onError: { _ in },
             )
-            list.preloadForPreview(rows: rows)
+            list.preloadRows(rows: rows)
             return list
         }
 
@@ -244,7 +244,7 @@
         // MARK: - Session
 
         /// A `LibraryBrowseSession` over `Library.stub()` — the detail-pane
-        /// previews drive their content through `paneDetail`/`detail` props,
+        /// shots drive their content through `paneDetail`/`detail` props,
         /// so the session only supplies the selection state the panes read.
         @MainActor
         static func browseSession(uiStore: UiStore) -> LibraryBrowseSession {
@@ -262,7 +262,7 @@
                 ),
                 onError: { _ in },
             )
-            list.preloadForPreview(rows: composerSummaries)
+            list.preloadRows(rows: composerSummaries)
             return list
         }
     }

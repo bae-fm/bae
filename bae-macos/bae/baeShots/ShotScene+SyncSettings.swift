@@ -85,7 +85,7 @@ extension ShotScene {
             ShotStage(
                 syncSettingsWindow(
                     LibrarySettingsTabPreviewFixture(storage: nil),
-                    shown: .previewNotSynced,
+                    shown: .fixtureNotSynced,
                     undoneSetup: BridgeUndoneStorageSetup(
                         operation: 1,
                         error: BridgeError.Diagnostic(
@@ -104,7 +104,7 @@ extension ShotScene {
             ShotStage(
                 syncSettingsWindow(
                     LibrarySettingsTabPreviewFixture(storage: nil),
-                    shown: .previewSynced,
+                    shown: .fixtureSynced,
                     storageReadError: DisplayError(
                         line: "Could not read the cloud home.",
                         detail: "database error: no such record"
@@ -122,7 +122,7 @@ extension ShotScene {
                     LibrarySettingsTabPreviewFixture(
                         storage: PreviewData.previewDropboxStorage
                     ),
-                    shown: .previewSynced,
+                    shown: .fixtureSynced,
                     restoreCode: .shown(code: PreviewData.restoreCodeGrouped)
                 )
             )
@@ -175,7 +175,7 @@ func peopleSettingsWindow(
     return OverWindow.alert(
         alert,
         over: SettingsWindowShot(
-            shown: .previewSynced,
+            shown: .fixtureSynced,
             pending: [],
             undoneSetup: nil,
             page: PeopleAndDevicesPage(onBack: {}, subpage: subpage)

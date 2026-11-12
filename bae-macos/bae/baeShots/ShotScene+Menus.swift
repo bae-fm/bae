@@ -28,7 +28,7 @@ extension ShotScene {
                         }
                     }
                 }
-                MacMenuPreview(
+                MacMenuInPlace(
                     {
                         for name in ["FLAC", "WAV", "AIFF"] {
                             MacMenuItem(verbatim: name, checked: false) {}
@@ -47,7 +47,7 @@ extension ShotScene {
             .padding(.top, 60)
         },
         component("mac.library.album-menu", width: 260, height: 340) {
-            MacMenuPreview(
+            MacMenuInPlace(
                 {
                     MacMenuItem("Play") {}
                     MacMenuItem("Shuffle") {}
@@ -67,7 +67,7 @@ extension ShotScene {
             )
         },
         component("mac.component.popover.default", width: 300, height: 150) {
-            MacPopoverPreview(arrowSide: .top, arrowOffset: 150) {
+            MacPopoverInPlace(arrowSide: .top, arrowOffset: 150) {
                 VStack(alignment: .leading, spacing: ThemeSpace.compact) {
                     Text("Living Room")
                         .themeText(.strong)

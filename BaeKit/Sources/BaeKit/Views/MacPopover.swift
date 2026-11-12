@@ -122,9 +122,9 @@
 #endif
 
 #if canImport(AppKit)
-    /// A popover's face drawn in place, for captures and previews; the app's
+    /// A popover's face drawn in place, for captures and shots; the app's
     /// popovers draw it in a panel.
-    public struct MacPopoverPreview<Content: View>: View {
+    public struct MacPopoverInPlace<Content: View>: View {
         let arrowSide: Edge
         let arrowOffset: CGFloat
         let content: Content

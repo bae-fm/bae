@@ -3,14 +3,14 @@
     import SwiftUI
 
     // Canned `Library` + `LibraryBrowseSession` backings for the `LibraryView`
-    // previews (and the whole-window `MacMainWindowContainer` preview, which reuses
+    // shots (and the whole-window `MacMainWindowContainer` shot, which reuses
     // `previewGridBacking`). Each drives the production body through a real
-    // session over a canned-page library, so previews exercise the actual
+    // session over a canned-page library, so shots exercise the actual
     // empty-state, grid, and composer-detail branches rather than stand-ins.
     extension LibraryView {
         /// A `Library` whose album/composer counts and pages are all empty,
         /// driving the real `loadInitial()` → `totalCount == 0` path so the
-        /// previews below hit the actual empty-state branches in
+        /// shots below hit the actual empty-state branches in
         /// `albumContent`/`composerContent` rather than a hand-built stand-in.
         static func emptyLibrary() -> Library {
             Library(
@@ -21,7 +21,7 @@
         }
 
         /// `emptyLibrary` behind a real session — the backing for the empty
-        /// previews and the whole-window empty scene (desktop story 3), so
+        /// shots and the whole-window empty scene (desktop story 3), so
         /// they exercise the actual zero-count empty-state branches.
         @MainActor
         static func previewEmptyBacking(
@@ -41,7 +41,7 @@
         /// Enough synthesized albums for the grid to scroll well past the
         /// header's tracking zone, served through a canned-page `Library`
         /// behind a real session — the populated backing for whole-screen
-        /// previews. Scrolling drives the header collapse through the same
+        /// shots. Scrolling drives the header collapse through the same
         /// `HeaderCollapse` pipeline the app uses. Expanding an album shows
         /// the detail placeholder (no release details are seeded).
         @MainActor
@@ -79,7 +79,7 @@
 
         /// A canned composer library — a master list plus one composer's detail
         /// (works, releases, recordings) — behind a real session, so the
-        /// composer detail preview renders the restyled master list and detail
+        /// composer detail shot renders the restyled master list and detail
         /// pane through the production `LibraryView` body. Images are absent, so
         /// every slot shows the placeholder treatment.
         @MainActor

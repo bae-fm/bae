@@ -28,8 +28,3 @@ struct FindOnlineDiscogsBar: View {
         .padding(ThemeSpace.group)
     }
 }
-
-#if DEBUG
-    // MARK: - Previews
-
-#endif

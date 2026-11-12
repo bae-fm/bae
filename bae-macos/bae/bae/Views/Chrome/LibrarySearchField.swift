@@ -41,8 +41,3 @@ struct LibrarySearchField: View {
         .animation(.easeInOut(duration: 0.15), value: focused.wrappedValue)
     }
 }
-
-#if DEBUG
-    // MARK: - Previews
-
-#endif

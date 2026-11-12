@@ -5,7 +5,7 @@ extension View {
     /// environment `HeaderCollapse`, identified by `id` so the model can
     /// tell pane hand-offs apart. Apply directly to the `ScrollView` or
     /// `List` being observed. No-op when no `HeaderCollapse` is in the
-    /// environment (previews, contexts without a collapsing header).
+    /// environment (shots, contexts without a collapsing header).
     func reportsHeaderScroll(id: String) -> some View {
         modifier(HeaderScrollReporter(id: id))
     }

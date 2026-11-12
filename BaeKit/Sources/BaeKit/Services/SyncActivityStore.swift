@@ -57,7 +57,7 @@ public final class SyncActivityStore {
     }
 
     extension BridgeSyncActivity {
-        /// The activity `SyncActivityStore.preview` shows.
+        /// The activity `SyncActivityStore.shot` shows.
         public static func preview(needsAttention: Bool) -> BridgeSyncActivity {
             BridgeSyncActivity(
                 moving: true,

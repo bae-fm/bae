@@ -153,11 +153,13 @@ public final class LibrarySetup: Sendable, Observable {
                 unfinishedRestores: { [] },
                 makeBootstrap: {
                     LibraryBootstrap(
-                        host: BaeHost.preview(),
+                        host: BaeHost.inTemporaryFolder(),
                         deviceName: "Preview Device"
                     )
                 },
-                makeSetupSteps: { LibrarySetupSteps(host: BaeHost.preview()) }
+                makeSetupSteps: {
+                    LibrarySetupSteps(host: BaeHost.inTemporaryFolder())
+                }
             )
         }
     #endif

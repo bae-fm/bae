@@ -319,8 +319,3 @@ struct MacQueuePanel: View {
         ImageView(content: nowPlayingCover, pointSize: ThemeSize.barArtwork)
     }
 }
-
-#if DEBUG
-    // MARK: - Previews
-
-#endif

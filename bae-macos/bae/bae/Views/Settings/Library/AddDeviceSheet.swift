@@ -80,8 +80,3 @@ struct AddDeviceSheetContent: View {
         }
     }
 }
-
-#if DEBUG
-    // MARK: - Previews
-
-#endif

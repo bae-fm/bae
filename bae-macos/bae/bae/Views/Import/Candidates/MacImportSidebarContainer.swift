@@ -316,12 +316,6 @@ extension MacImportSidebarContainer {
     }
 }
 
-#if DEBUG
-
-    // MARK: - Previews
-
-#endif
-
 /// Decodes the covers of the rows the list has loaded as they land, so a page
 /// scrolled to is not a column of spinners. A view of its own so that the
 /// covers moving redraws this and not the list's chrome.

@@ -2,7 +2,7 @@
     import BaeKit
     import Foundation
 
-    /// A release a preview candidate is picked as: the values the previews
+    /// A release a shot candidate is picked as: the values the shots
     /// spread over the candidate's link, its row and its cover.
     struct PreviewPickedRelease {
         var releaseId: String
@@ -178,7 +178,7 @@
             )
         )
 
-        /// Editor seed for the confirming previews — the raw release edit the
+        /// Editor seed for the confirming shots — the raw release edit the
         /// prefetch's seed projects into.
         static let confirmEditValues = editMetadataDraft(trackCount: 9)
 

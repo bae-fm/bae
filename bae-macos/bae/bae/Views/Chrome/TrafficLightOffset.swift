@@ -96,8 +96,3 @@ private struct TrafficLightPositioner: NSViewRepresentable {
         }
     }
 }
-
-#if DEBUG
-    // MARK: - Previews
-
-#endif

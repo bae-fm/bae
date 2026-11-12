@@ -606,7 +606,7 @@ import Foundation
 
     /// An in-memory import list for shots and tests. Serves contiguous slices
     /// of a fixed item list and reports one fixed summary.
-    public struct ImportListPreviewPageSource: PageSource {
+    public struct FixedImportListPageSource: PageSource {
         public let items: [BridgeImportListItem]
 
         public init(items: [BridgeImportListItem]) {

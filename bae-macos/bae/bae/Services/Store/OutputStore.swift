@@ -12,7 +12,7 @@ final class OutputStore {
     /// The latest percent of each exporting release.
     nonisolated let percents: LatestStream<UInt8>
 
-    /// A store whose stream the subscription fills, or, for a preview, a
+    /// A store whose stream the subscription fills, or, for a shot, a
     /// stream holding fixed percents.
     init(percents: LatestStream<UInt8> = .exportPercents()) {
         self.percents = percents

@@ -113,8 +113,3 @@ struct MacWelcomeWindow<Content: View>: View {
             .windowBackground()
     }
 }
-
-#if DEBUG
-    // MARK: - Previews
-
-#endif

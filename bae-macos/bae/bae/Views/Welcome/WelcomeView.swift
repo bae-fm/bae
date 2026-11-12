@@ -169,8 +169,3 @@ struct WelcomeView: View {
         setup.bootstrapForm(entry: entry, onLibraryReady: onLibraryReady)
     }
 }
-
-#if DEBUG
-    // MARK: - Previews
-
-#endif

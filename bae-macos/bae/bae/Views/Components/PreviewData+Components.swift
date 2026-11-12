@@ -2,7 +2,7 @@
     import BaeKit
     import SwiftUI
 
-    // Fixtures for the component previews.
+    // Fixtures for the component shots.
     @MainActor
     extension PreviewData {
         /// A seek bar's track at `positionMs` of `durationMs`, as its stream
@@ -24,7 +24,7 @@
             .source(for: "preview-track")
         }
 
-        /// Where each preview queue entry is while it plays: a third of the
+        /// Where each shot queue entry is while it plays: a third of the
         /// way through, whichever plays.
         static func queuePositions() -> LatestStream<BridgeTrackPosition> {
             .trackPositions(
@@ -45,7 +45,7 @@
             )
         }
 
-        /// A preview clip at `positionMs` of `durationMs`, as its stream
+        /// A shot clip at `positionMs` of `durationMs`, as its stream
         /// would hold it.
         static func previewPosition(
             positionMs: UInt64,

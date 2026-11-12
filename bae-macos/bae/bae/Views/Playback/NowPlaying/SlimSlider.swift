@@ -85,8 +85,3 @@ struct SlimSlider: View {
         }
     }
 }
-
-#if DEBUG
-    // MARK: - Previews
-
-#endif

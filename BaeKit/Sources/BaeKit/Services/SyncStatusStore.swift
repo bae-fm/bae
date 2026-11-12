@@ -37,7 +37,7 @@ public final class SyncStatusStore {
 #if DEBUG
     extension BridgeSyncShown {
         /// A library in sync.
-        public static let previewSynced = BridgeSyncShown(
+        public static let fixtureSynced = BridgeSyncShown(
             status: .synced,
             statusKey: "core.sync.synced",
             tone: .success,
@@ -47,7 +47,7 @@ public final class SyncStatusStore {
         )
 
         /// A library with no storage set up.
-        public static let previewNotSynced = BridgeSyncShown(
+        public static let fixtureNotSynced = BridgeSyncShown(
             status: .notSynced,
             statusKey: "core.sync.status.not_synced",
             tone: .neutral,
@@ -57,7 +57,7 @@ public final class SyncStatusStore {
         )
 
         /// A library whose storage this device can't reach.
-        public static let previewOffline = BridgeSyncShown(
+        public static let fixtureOffline = BridgeSyncShown(
             status: .offline,
             statusKey: "core.sync.offline",
             tone: .warning,

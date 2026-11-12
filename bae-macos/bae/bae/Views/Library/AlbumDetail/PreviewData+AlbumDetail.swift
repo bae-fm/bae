@@ -2,14 +2,14 @@
     import BaeKit
     import SwiftUI
 
-    // Preview support for `AlbumDetailView` and `AlbumExpansionContent`.
-    // Answers the detail view's album read from the preview albums, injects
+    // Fixture support for `AlbumDetailView` and `AlbumExpansionContent`.
+    // Answers the detail view's album read from the shot albums, injects
     // the services the view tree pulls from the environment, and factors the
     // `AlbumExpansionContent` no-op-callback boilerplate shared by its
-    // previews into one builder.
+    // shots into one builder.
 
     extension PreviewData {
-        /// A library whose album detail read answers each id with the preview
+        /// A library whose album detail read answers each id with the shot
         /// album of that id, so `AlbumDetailView` runs its real read.
         static func albumDetailLibrary() -> Library {
             Library(
@@ -28,7 +28,7 @@
             )
         }
 
-        /// One preview album as its detail read returns it. Fails loud when
+        /// One shot album as its detail read returns it. Fails loud when
         /// the fixture id is unseeded.
         @MainActor
         static func albumDetail(albumId: String) -> AlbumDetail {
@@ -56,8 +56,8 @@
             return cursor
         }
 
-        /// Builds an `AlbumExpansionContent` over a preview album with no-op
-        /// callbacks — the shared body of `AlbumExpansionContent`'s previews.
+        /// Builds an `AlbumExpansionContent` over a shot album with no-op
+        /// callbacks — the shared body of `AlbumExpansionContent`'s shots.
         /// The cursor is a `Binding` so callers can pass a constant cursor or a
         /// live `@State`-backed one (for the release picker to cycle).
         @MainActor
@@ -97,7 +97,7 @@
 
         /// The expanded album detail for one seeded fixture album, sized to its
         /// natural width over the dark background — the shared body of
-        /// `AlbumExpansionContent`'s previews and the `album-detail` gallery
+        /// `AlbumExpansionContent`'s shots and the `album-detail` gallery
         /// scene. Builds the content over the album's primary release and a
         /// constant cursor.
         @MainActor
@@ -159,16 +159,16 @@
                 .environment(ImageStore.stub())
         }
 
-        /// The primary release's fat detail for a seeded preview album — tracks,
+        /// The primary release's fat detail for a seeded shot album — tracks,
         /// groups, and duration, drawn from the same seed the album-detail tree
-        /// reads. Used by the leaf previews that take a `ReleaseDetail` directly
+        /// reads. Used by the leaf shots that take a `ReleaseDetail` directly
         /// (track list, track row).
         @MainActor
         static func releaseDetail(albumId: String) -> ReleaseDetail {
             albumDetail(albumId: albumId).primaryRelease
         }
 
-        /// One `Track` for the `TrackRowView` previews. `displayArtist` non-nil
+        /// One `Track` for the `TrackRowView` shots. `displayArtist` non-nil
         /// exercises the compilation row (core sets it only for compilations).
         static func previewTrack(
             id: String = "t-preview",
@@ -238,7 +238,7 @@
         ]
 
         /// A `ReleaseDetail` in a chosen storage state, for the storage band and
-        /// storage-sheet previews: the storage status line, the pin flag, and the
+        /// storage-sheet shots: the storage status line, the pin flag, and the
         /// core-computed actions all vary by locality, so each state is its own
         /// fixture rather than a mutation of one.
         @MainActor
@@ -321,7 +321,7 @@
         /// environment so its real body — and the modal sheets it can present
         /// (images, the release editor, storage) — render without a
         /// missing-environment trap. Eight `.stub` domain services, a
-        /// `Library` whose album read answers from the preview albums, the
+        /// `Library` whose album read answers from the shot albums, the
         /// four the modals reach (`Importer`, `ImportStore`, `OutboxStore`,
         /// `ConfigStore`), and fresh `PlaybackStore`/`UiStore`. Nothing about
         /// the view is reconstructed.

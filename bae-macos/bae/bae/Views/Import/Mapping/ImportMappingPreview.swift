@@ -2,13 +2,13 @@
     import BaeKit
     import SwiftUI
 
-    /// The stores every import preview reads plus the app's window background,
+    /// The stores every import shot reads plus the app's window background,
     /// injected as one modifier: ImageStore + UiStore for the search pane and
     /// the lightbox, ImportSelection for the list and the pane a selection
     /// opens, Library for artist search, OutboxStore + ConfigStore for
     /// the commit bar, Importer for the Find online header's source
     /// checkboxes, the primary window's values the Import tab reads (Settings
-    /// for the metadata sources), and `windowBackground()` so the preview
+    /// for the metadata sources), and `windowBackground()` so the shot
     /// reproduces the shell the panes are transparent over.
     extension View {
         func importPreviewEnvironment() -> some View {
@@ -46,7 +46,7 @@
         }
     }
 
-    /// Preview builder for the mapping pane — fixes the callbacks and the
+    /// Scene builder for the mapping pane — fixes the callbacks and the
     /// stores, exposing only the candidate and the editor a permutation varies.
     enum ImportMappingPreview {
         @MainActor
@@ -100,7 +100,7 @@
         }
     }
 
-    /// Every control wired to nothing, so a preview renders the real rows
+    /// Every control wired to nothing, so a shot renders the real rows
     /// without a store behind them.
     func inertMappingActions() -> ImportMappingActions {
         ImportMappingActions(

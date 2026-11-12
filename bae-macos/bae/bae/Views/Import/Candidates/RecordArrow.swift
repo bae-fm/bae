@@ -32,9 +32,3 @@ extension BridgeTriageReading {
         }
     }
 }
-
-#if DEBUG
-
-    // MARK: - Previews
-
-#endif

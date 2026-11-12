@@ -122,7 +122,7 @@ func makeBridgeAlbumDetail(
 @MainActor
 func makeList(albums: [BridgeAlbum]) -> AlbumList {
     AlbumList(
-        pageSource: AlbumPreviewPageSource(albums: albums),
+        pageSource: FixedAlbumPageSource(albums: albums),
         onError: { _ in },
     )
 }

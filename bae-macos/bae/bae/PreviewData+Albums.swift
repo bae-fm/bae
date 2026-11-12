@@ -41,7 +41,7 @@
         }
 
         /// A two-part release's tracks plus the matching per-side groups, so the
-        /// preview renders real "Side A" / "Disc 2" headers.
+        /// shot renders real "Side A" / "Disc 2" headers.
         private static func twoSide(
             artist: String,
             isVinyl: Bool,
@@ -195,7 +195,7 @@
                 makeLocal: nil,
                 downloadStatus: nil,
                 // Every catalog on the first album's first pressing, so the
-                // expansion preview shows what a release a MusicBrainz pick
+                // expansion shot shows what a release a MusicBrainz pick
                 // linked all the way out reads like; the rest are the ordinary
                 // case of a library nobody has identified.
                 records: album.id == "a-01" ? releaseRecordsEveryCatalog : [],

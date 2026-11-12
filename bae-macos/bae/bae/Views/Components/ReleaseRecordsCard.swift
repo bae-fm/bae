@@ -14,9 +14,3 @@ struct ReleaseRecordsCard: View {
             .frame(width: Self.width, alignment: .leading)
     }
 }
-
-#if DEBUG
-
-    // MARK: - Previews
-
-#endif

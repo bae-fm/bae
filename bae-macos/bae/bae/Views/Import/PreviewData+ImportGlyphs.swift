@@ -2,7 +2,7 @@
     import BaeKit
     import Foundation
 
-    /// Preview fixtures for what a candidate row states about its release:
+    /// Fixtures for what a candidate row states about its release:
     /// whether its draft was read from a catalog record.
     extension PreviewData {
         private static func glyphCandidate(_ name: String) -> Candidate {

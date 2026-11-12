@@ -31,7 +31,7 @@ extension ShotScene {
             )
             slot.startLoad()
             return ShotStage(
-                PreviewScenes.libraryWindow(
+                ShotScenes.libraryWindow(
                     uiStore: uiStore,
                     backing: backing,
                     needsAttention: false,

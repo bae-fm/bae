@@ -17,8 +17,3 @@ struct FindOnlineEmptyZone<Content: View>: View {
         .frame(maxWidth: .infinity)
     }
 }
-
-#if DEBUG
-    // MARK: - Previews
-
-#endif

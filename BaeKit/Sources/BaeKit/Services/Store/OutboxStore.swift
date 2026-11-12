@@ -21,7 +21,7 @@ public class OutboxStore {
     /// The files being sent together while any is.
     public nonisolated let filesBeingSent: LatestStream<BridgeUploadTransfer>
 
-    /// A store whose streams the subscriptions fill, or, for a preview,
+    /// A store whose streams the subscriptions fill, or, for a shot,
     /// streams holding fixed values.
     public init(
         uploadsPaused: Bool,

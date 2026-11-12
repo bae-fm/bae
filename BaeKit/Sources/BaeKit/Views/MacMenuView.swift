@@ -237,8 +237,8 @@
 
 #if canImport(AppKit)
     /// A menu's face drawn in place, as it is when open, for captures and
-    /// previews; the app's menus draw it in a panel.
-    public struct MacMenuPreview: View {
+    /// shots; the app's menus draw it in a panel.
+    public struct MacMenuInPlace: View {
         let entries: [MacMenuEntry]
         let highlighted: Int?
         let isPopUp: Bool

@@ -290,7 +290,7 @@ extension ShotScene {
         },
     ]
 
-    /// The preview people with the other person named Ben, who has a tablet.
+    /// The shot people with the other person named Ben, who has a tablet.
     private static func peopleWithBen(role: BridgeMemberRole) -> [BridgePerson]
     {
         PreviewData.members(reaching: PreviewData.previewStorage)
@@ -385,7 +385,7 @@ extension ShotScene {
         held: nil
     )
 
-    /// The preview people's other person.
+    /// The shot people's other person.
     private static let otherMemberId = "4a1f2c3d-0000-4000-8000-000000000002"
 
     private static func people(
@@ -434,7 +434,7 @@ extension ShotScene {
         guard offline else { return SyncStatusStore() }
         return SyncStatusStore(
             snapshot: BridgeSyncStatusSnapshot(
-                shown: .previewOffline,
+                shown: .fixtureOffline,
                 pending: [],
                 setupRunning: false,
                 undoneSetup: nil

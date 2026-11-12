@@ -44,9 +44,3 @@ private struct ReleaseRecordLink: View {
         .fixedSize()
     }
 }
-
-#if DEBUG
-
-    // MARK: - Previews
-
-#endif

@@ -3,7 +3,7 @@
     import BaeKit
     import Foundation
 
-    /// Preview fixtures for the import mapping table and its candidate states.
+    /// Fixtures for the import mapping table and its candidate states.
     extension PreviewData {
         // MARK: - The mapping table
 
@@ -265,7 +265,7 @@
         /// carried with the release, the diagnostic logs collapsed to the one
         /// row their shared role makes of them, a damaged image, and one
         /// non-audio video. What
-        /// the Import-tab preview reads, so a change to any row kind shows up
+        /// the Import-tab shot reads, so a change to any row kind shows up
         /// in the canvas without hunting for the fixture that has it.
         static let everyRowKindMappingTable = BridgeMappingTable(
             images: mappingImages,
@@ -480,7 +480,7 @@
             cover: moreTracksReleaseDetail.defaultCover,
         )
 
-        /// The candidate the Import-tab preview selects: the settled release
+        /// The candidate the Import-tab shot selects: the settled release
         /// read off the CUE+FLAC folder it came from, with every row kind in
         /// its table. Keyed to `folderCandidates`' first, so the row the
         /// sidebar selects and the pane behind it are the same folder.

@@ -46,7 +46,7 @@ internal fun AndroidUploadLineContainer(
     AndroidUploadLine(LocalContext.current.coreString(bridgeUploadActivityKey(progress.activity)), missing)
 }
 
-/** The upload line from its [phase] words, so a preview draws it without a call into the bridge. */
+/** The upload line from its [phase] words, so a shot draws it without a call into the bridge. */
 @Composable
 internal fun AndroidUploadLine(
     phase: String,

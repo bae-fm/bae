@@ -44,7 +44,7 @@ struct MacNowPlayingBar: View {
     let onDropToQueue: ([String]) -> Void
     let onNavigateToAlbum: () -> Void
     let queueAddPublisher: AnyPublisher<Int, Never>
-    /// The Cast control from the container; an empty view in previews.
+    /// The Cast control from the container; an empty view in shots.
     let castControl: AnyView
 
     @State
@@ -368,7 +368,7 @@ extension MacNowPlayingBar {
 }
 
 #if DEBUG
-    // MARK: - Previews
+    // MARK: - Shot staging
 
     /// Preview host that holds the queue, volume, and mute state.
     struct NowPlayingBarPreview: View {

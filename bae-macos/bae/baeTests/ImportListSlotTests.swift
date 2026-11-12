@@ -158,7 +158,7 @@ struct ImportListSlotTests {
         let defaults = try #require(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
         let requests = RecordedImportView()
-        let source = ImportListPreviewPageSource(items: [])
+        let source = FixedImportListPageSource(items: [])
         func makeSlot() -> ImportListSlot {
             ImportListSlot(
                 importStore: ImportStore(),
@@ -222,7 +222,7 @@ struct ImportListSlotTests {
         uiStore.setImportCandidateTab(.done)
         uiStore.setImportCandidateFilterText("hidden")
         let target = candidateKey(61)
-        let pageSource = ImportListPreviewPageSource(
+        let pageSource = FixedImportListPageSource(
             items: (0..<80).map(candidateItem)
         )
         let slot = ImportListSlot(
@@ -265,7 +265,7 @@ struct ImportListSlotTests {
             selection: ImportSelection(),
             makeSource: { _ in
                 .stub(
-                    source: ImportListPreviewPageSource(
+                    source: FixedImportListPageSource(
                         items: (0..<80).map(candidateItem)
                     ),
                     locateCandidate: { _ in
@@ -305,7 +305,7 @@ struct ImportListSlotTests {
             uiStore: UiStore(),
             selection: selection,
             makeSource: { _ in
-                ImportListPreviewPageSource(
+                FixedImportListPageSource(
                     items: (0..<80).map(candidateItem)
                 )
                 .pages
@@ -336,7 +336,7 @@ struct ImportListSlotTests {
             watchedFolderPath: Data("/library".utf8),
             relativeFolder: Data("Box".utf8)
         )
-        let source = ImportListPreviewPageSource(items: [])
+        let source = FixedImportListPageSource(items: [])
         let slot = ImportListSlot(
             importStore: ImportStore(),
             uiStore: UiStore(),
@@ -385,7 +385,7 @@ struct ImportListSlotTests {
             selection: ImportSelection(),
             makeSource: { _ in
                 .stub(
-                    source: ImportListPreviewPageSource(
+                    source: FixedImportListPageSource(
                         items: (0..<3).map(candidateItem)
                     ),
                     waitForView: { view in await delivery.wait(for: view) }
@@ -411,7 +411,7 @@ struct ImportListSlotTests {
     func aChosenEntryNarrowsTheView() async throws {
         let requests = RecordedImportView()
         let uiStore = UiStore()
-        let source = ImportListPreviewPageSource(items: [])
+        let source = FixedImportListPageSource(items: [])
         let slot = ImportListSlot(
             importStore: ImportStore(),
             uiStore: uiStore,
@@ -446,7 +446,7 @@ final class CandidatePlacementNavigationTests: XCTestCase {
         uiStore.setImportCandidateFilterText("hidden")
         let targetKey = candidateKey(61)
         let items = (0..<80).map(candidateItem)
-        let pageSource = ImportListPreviewPageSource(items: items)
+        let pageSource = FixedImportListPageSource(items: items)
         let delivery = AppliedViewResolver()
         let slot = ImportListSlot(
             importStore: ImportStore(),

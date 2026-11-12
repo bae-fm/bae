@@ -323,9 +323,9 @@ private struct LibraryRestoreCodeSection: View {
 }
 
 #if DEBUG
-    // MARK: - Previews
+    // MARK: - Shot staging
 
-    /// The Library tab's preview stores over a library whose storage is
+    /// The Library tab's shot stores over a library whose storage is
     /// `storage`, or none: its configuration, and what the tab reads off the
     /// main thread, the library's name and its people, each answered a step
     /// after the tab first draws. The people reach the library as `storage`'s
@@ -351,7 +351,7 @@ private struct LibraryRestoreCodeSection: View {
     @MainActor
     func librarySettingsTabPreview(
         _ fixture: LibrarySettingsTabPreviewFixture,
-        shown: BridgeSyncShown = .previewSynced
+        shown: BridgeSyncShown = .fixtureSynced
     ) -> some View {
         LibrarySettingsTab(
             onResetDevice: {},

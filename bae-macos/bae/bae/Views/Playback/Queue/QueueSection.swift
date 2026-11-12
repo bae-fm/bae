@@ -463,11 +463,6 @@ extension QueueSection {
     }
 }
 
-#if DEBUG
-    // MARK: - Previews
-
-#endif
-
 /// Which queue lane a section renders.
 enum QueueLaneID {
     case manual

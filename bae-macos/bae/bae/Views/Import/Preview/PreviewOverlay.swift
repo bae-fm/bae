@@ -54,8 +54,3 @@ struct PreviewOverlay: View {
         )
     }
 }
-
-#if DEBUG
-    // MARK: - Previews
-
-#endif

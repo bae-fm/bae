@@ -217,7 +217,7 @@ targets:
         SWIFT_VERSION: "6.2"
         GENERATE_INFOPLIST_FILE: YES
   # Screenshot-capture bundle. Hosted in the app (like baeTests) so it can
-  # `@testable import bae` and reach the DEBUG PreviewScenes builders +
+  # `@testable import bae` and reach the DEBUG ShotScenes builders +
   # fixtures. Kept out of the `bae` scheme's test action — it runs only via its
   # own `baeShots` scheme, which the bae-shots tool drives with an output
   # directory; run without one it fails loud.

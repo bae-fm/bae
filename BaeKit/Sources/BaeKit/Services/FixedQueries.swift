@@ -303,7 +303,7 @@
 
     /// In-memory page source for album shots and tests. Expects rows to
     /// arrive pre-sorted; serves contiguous slices.
-    public struct AlbumPreviewPageSource: PageSource {
+    public struct FixedAlbumPageSource: PageSource {
         public let albums: [BridgeAlbum]
 
         public init(albums: [BridgeAlbum]) {
@@ -338,10 +338,10 @@
         /// list with no database, so it presents the order its author wrote.
         public static func preview(albums: [BridgeAlbum]) -> AlbumList {
             let list = AlbumList(
-                pageSource: AlbumPreviewPageSource(albums: albums),
+                pageSource: FixedAlbumPageSource(albums: albums),
                 onError: { _ in },
             )
-            list.preloadForPreview(rows: albums)
+            list.preloadRows(rows: albums)
             return list
         }
     }

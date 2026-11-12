@@ -207,11 +207,6 @@ private struct InlineCompletionTextFieldNS: NSViewRepresentable {
     }
 }
 
-#if DEBUG
-    // MARK: - Previews
-
-#endif
-
 extension String {
     /// Whether the string starts with `prefix`, ignoring case by the rules of
     /// `locale` (in Turkish "I" matches "ı" and "İ" matches "i"). An empty

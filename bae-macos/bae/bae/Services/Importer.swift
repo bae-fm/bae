@@ -14,7 +14,7 @@ private struct ImportOperations: Sendable {
     let applyCandidateExternalMetadata:
         @Sendable (Data, BridgePressingLink, BridgeCatalogApply?) async throws
             -> BridgePaneOutcome
-    /// `nil` where no bridge is behind the importer: a preview or a test.
+    /// `nil` where no bridge is behind the importer: a shot or a test.
     let catalogApply: @Sendable () -> CatalogApplySteps?
     let applyCandidateFileMetadata:
         @Sendable (Data) async throws -> BridgePaneOutcome
@@ -33,10 +33,10 @@ private struct ImportOperations: Sendable {
     let startCandidateSearch:
         @Sendable (Data, BridgeSearchQuery) async throws -> Void
     let retryCandidateSearch: @Sendable (Data) async throws -> Void
-    /// `nil` where no bridge is behind the importer: a preview or a test.
+    /// `nil` where no bridge is behind the importer: a shot or a test.
     let subscribeCandidateRuntime:
         @Sendable (Data) -> CandidateRuntimeSubscription?
-    /// `nil` where no bridge is behind the importer: a preview or a test
+    /// `nil` where no bridge is behind the importer: a shot or a test
     /// that reads no library membership.
     let subscribeLibraryStatuses: @Sendable () -> LibraryStatusSubscription?
     let editCandidateLookupChoices:
@@ -277,7 +277,7 @@ extension ImportOperations {
 }
 
 /// Import-flow operations: watched-folder management, scan, identify,
-/// candidate search, signal dismissal, file-tag preview, and commit.
+/// candidate search, signal dismissal, file-tag shot, and commit.
 final class Importer: Sendable, Observable {
     private let operations: ImportOperations
 

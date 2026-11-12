@@ -183,8 +183,3 @@ private struct SectionSegmentedControl: View {
         )
     }
 }
-
-#if DEBUG
-    // MARK: - Previews
-
-#endif

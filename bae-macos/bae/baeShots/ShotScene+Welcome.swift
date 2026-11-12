@@ -60,7 +60,7 @@ extension ShotScene {
                 onFinished: {}
             )
             return ShotStage(
-                PreviewScenes.welcome(
+                ShotScenes.welcome(
                     initialMode: .choose,
                     setup: reads.setup,
                     removals: removals
@@ -128,7 +128,7 @@ extension ShotScene {
         ShotScene(id: "mac.welcome.reset.offered", size: WelcomeWindow.size) {
             // The reset's own line: a device that must be reset has no error
             // from opening the library, as when Settings offers it.
-            ShotStage(PreviewScenes.deviceReset(error: nil))
+            ShotStage(ShotScenes.deviceReset(error: nil))
         },
         ShotScene(id: "mac.welcome.opening.resetting", size: WelcomeWindow.size)
         {
@@ -158,7 +158,7 @@ extension ShotScene {
         },
         ShotScene(id: "mac.welcome.reset.failed", size: WelcomeWindow.size) {
             ShotStage(
-                PreviewScenes.deviceReset(
+                ShotScenes.deviceReset(
                     error: LoadError(
                         .deviceReset,
                         PreviewData.displayErrorRetryable
@@ -181,7 +181,7 @@ extension ShotScene {
         },
         ShotScene(id: "mac.welcome.create.name", size: WelcomeWindow.size) {
             ShotStage(
-                PreviewScenes.welcome(
+                ShotScenes.welcome(
                     initialMode: .create,
                     setup: PreviewData.welcomeSetup()
                 )
@@ -326,7 +326,7 @@ extension ShotScene {
                 savedCodes: savedCodes
             )
             return ShotStage(
-                PreviewScenes.welcome(
+                ShotScenes.welcome(
                     initialMode: .choose,
                     setup: reads.setup,
                     loadError: loadError
@@ -351,7 +351,7 @@ extension ShotScene {
                 libraries: libraries,
                 savedCodes: savedCodes
             )
-            // `PreviewScenes.welcome` at `size`: a board may draw the window
+            // `ShotScenes.welcome` at `size`: a board may draw the window
             // taller than the app's, to fit a popover under its rows.
             let window = MacWelcomeWindow(size: size) {
                 WelcomeView(
@@ -384,7 +384,7 @@ extension ShotScene {
             },
             makeBootstrap: {
                 LibraryBootstrap(
-                    host: BaeHost.preview(),
+                    host: BaeHost.inTemporaryFolder(),
                     deviceName: "Preview Device"
                 )
             },
@@ -478,7 +478,7 @@ extension ShotScene {
             extraReads: 1
         ) { reads, window in
             OverWindow.popover(
-                PreviewScenes.welcomeLibraryDetails(
+                ShotScenes.welcomeLibraryDetails(
                     PreviewData.homeMusic,
                     readStanding: reads.readStanding(status)
                 ),
@@ -529,7 +529,7 @@ private final class CountedReads {
             unfinishedRestores: { [] },
             makeBootstrap: {
                 LibraryBootstrap(
-                    host: BaeHost.preview(),
+                    host: BaeHost.inTemporaryFolder(),
                     deviceName: "Preview Device"
                 )
             },

@@ -237,7 +237,7 @@ enum TurnOffDiscogsConfirmation {
 }
 
 #if DEBUG
-    /// The settings window the previews draw in.
+    /// The settings window the shots draw in.
     private enum PreviewWindow {
         static let width: CGFloat = 500
         static let height: CGFloat = 500
