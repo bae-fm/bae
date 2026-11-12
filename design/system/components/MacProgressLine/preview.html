@@ -1,0 +1,18 @@
+<!-- @dsCard group="macOS import" height=230 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>MacProgressLine</title></head>
+<body class="bae-preview bae-preview-mac" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, h('div', { style: { width: 320, font: '400 13px var(--font-sans)' } }, c))); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
+    W('With a count', h(B.MacProgressLine, { label: 'Identifying', value: 112 / 130, detail: '112 / 130' })),
+    W('No count', h(B.MacProgressLine, { label: 'Reading files…', value: 0.42 })),
+    W('No known length', h(B.MacProgressLine, { label: 'Importing…' })),
+    W('Upload', h(B.MacProgressLine, { label: 'Uploading', value: 0.15, activity: true })),
+    W('Long phase', h('div', { style: { width: 200 } }, h(B.MacProgressLine, { label: 'A phase named at such length that it has to yield to the bar', value: 0.6 })))));
+</script>
+</body>
+</html>

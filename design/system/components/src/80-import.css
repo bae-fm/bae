@@ -28,7 +28,12 @@
 .bae-m-irow-t { display: flex; align-items: center; gap: 4px; font: 500 13px var(--font-sans); min-width: 0; }
 .bae-m-irow-folder { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .bae-m-irow-sub { font: 400 11.5px var(--font-sans); color: var(--text-secondary); }
-.bae-m-irow-step { display: flex; flex-direction: column; gap: 3px; font: 400 11.5px var(--font-sans); color: var(--text-secondary); }
+.bae-m-irow-step { font: 400 11.5px var(--font-sans); }
+.bae-m-pline { display: flex; align-items: center; gap: var(--space-related); min-width: 0; color: var(--text-secondary); }
+.bae-m-pline-label { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bae-m-pline-bar.bae-progress-track { flex: 1 1 0; min-width: 48px; height: 4px; }
+.bae-m-pline-detail { flex: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.bae-progress-activity .bae-progress-fill { background: var(--activity); }
 .bae-m-ifl { display: flex; align-items: center; gap: 8px; }
 .bae-m-ipane { flex: 1; min-width: 0; height: 100%; overflow: hidden; display: flex; flex-direction: column; gap: var(--space-group); padding: 24px 24px 32px; box-sizing: border-box; font: 400 13px var(--font-sans); }
 .bae-m-isplit { display: flex; height: 100%; }
