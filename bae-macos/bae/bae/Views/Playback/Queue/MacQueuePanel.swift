@@ -218,7 +218,7 @@ struct MacQueuePanel: View {
             guard let sourceTitle = context.sourceTitle else {
                 return String(localized: "Playing from")
             }
-            return String(localized: "Playing from") + " · " + sourceTitle
+            return String(localized: "Playing from · \(sourceTitle)")
         case .tracks:
             return String(localized: "These tracks")
         case .library:

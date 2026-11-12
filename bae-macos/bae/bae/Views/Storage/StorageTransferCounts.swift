@@ -14,7 +14,7 @@ struct StorageTransferCounts: View {
                 index,
                 count in
                 if index > 0 {
-                    Text(verbatim: "\u{00B7}").foregroundStyle(.secondary)
+                    Text(verbatim: FactList.glyph).foregroundStyle(.secondary)
                 }
                 Text(count.label.localizedLine)
                     .fontWeight(count.stage == .moving ? .semibold : .regular)

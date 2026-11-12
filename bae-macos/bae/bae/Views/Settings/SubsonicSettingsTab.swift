@@ -303,7 +303,7 @@ struct SubsonicSettingsContent: View {
         guard let address = network.address else {
             return Text("\(name) · not connected")
         }
-        return Text(verbatim: "\(name) · \(address)")
+        return Text(verbatim: FactList.joined([name, address]))
     }
 
     // MARK: Saving

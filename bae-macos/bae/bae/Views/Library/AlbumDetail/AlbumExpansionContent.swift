@@ -59,7 +59,7 @@ struct AlbumExpansionContent: View {
                         Text(album.artistNames)
                             .foregroundStyle(.secondary)
                         if let year = album.year {
-                            Text(verbatim: "\u{00B7}")
+                            Text(verbatim: FactList.glyph)
                                 .foregroundStyle(.tertiary)
                             Text(String(year))
                                 .foregroundStyle(.tertiary)

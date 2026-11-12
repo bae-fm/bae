@@ -297,7 +297,7 @@ struct LookupReleasesPopover: View {
                             .themeText(.rowTitle)
                             .lineLimit(1)
                         if let artist = group.artist {
-                            Text(verbatim: "\u{00b7} \(artist)")
+                            Text(verbatim: "\(FactList.glyph) \(artist)")
                                 .themeText(.detail)
                                 .foregroundStyle(.tertiary)
                                 .lineLimit(1)

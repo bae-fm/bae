@@ -6,7 +6,7 @@ extension BridgeProviderSignOut {
             bridgeProviderSignOutKey(instruction: self)
         )
         if case .removeAppAccess(let provider) = self {
-            return "\(provider.displayName): \(line)"
+            return String(localized: "\(provider.displayName): \(line)")
         }
         return line
     }

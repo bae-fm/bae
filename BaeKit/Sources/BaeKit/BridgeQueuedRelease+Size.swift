@@ -11,7 +11,7 @@ extension BridgeQueuedRelease {
     /// plural) and its total size, e.g. "12 files · 350 MB".
     public var detailText: String {
         let files = String(localized: "\(fileCount) files")
-        return "\(files) · \(totalSizeText)"
+        return FactList.joined([files, totalSizeText])
     }
 
     /// A queue row's title: the release's album title, or core's line for a

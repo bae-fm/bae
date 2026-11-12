@@ -24,7 +24,10 @@ struct IdentificationProgressView: View {
                 MacProgressLine(
                     String(localized: "Identifying"),
                     progress: fraction,
-                    detail: "\(identified.formatted()) / \(total.formatted())"
+                    detail: String(
+                        localized:
+                            "\(identified.formatted()) of \(total.formatted())"
+                    )
                 )
                 .themeText(.body)
                 .contentShape(Rectangle())

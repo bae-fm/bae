@@ -14,10 +14,7 @@ public enum PressingText {
 
     /// The parts, worded and joined with the catalog's list separator.
     public static func line(_ terms: [BridgeFactTerm]) -> String {
-        terms.map(\.text)
-            .joined(
-                separator: localizedCoreString("core.audio.list_separator")
-            )
+        FactList.joined(terms.map(\.text))
     }
 
     /// A country's name in the current locale, from its ISO 3166-1 code.
@@ -75,15 +72,25 @@ extension BridgeReleaseName {
         case .named(let name):
             name
         case .described(let year, let media):
-            ([year.map { String($0) }] + [PressingText.line(media)])
-                .compactMap { $0 }
-                .filter { !$0.isEmpty }
-                .joined(separator: " ")
+            Self.described(
+                year: year.map { String($0) },
+                media: PressingText.line(media)
+            )
         case .numbered(let number):
             String.localizedStringWithFormat(
                 localizedCoreString("core.release.numbered"),
                 Int(number)
             )
+        }
+    }
+
+    /// The year and the media, in the order the locale writes them; either
+    /// alone when the other is missing.
+    private static func described(year: String?, media: String) -> String {
+        switch (year, media.isEmpty) {
+        case (let year?, false): String(localized: "\(year) \(media)")
+        case (let year?, true): year
+        case (nil, _): media
         }
     }
 }

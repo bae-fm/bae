@@ -81,8 +81,15 @@
                     .frame(maxWidth: .infinity, alignment: .leading)
                 if browser.nests {
                     HStack {
-                        Text(browser.pathNames.joined(separator: " › "))
-                            .themeText(.body)
+                        Text(
+                            browser.pathNames.dropFirst()
+                                .reduce(
+                                    browser.pathNames.first ?? ""
+                                ) { path, name in
+                                    String(localized: "\(path) › \(name)")
+                                }
+                        )
+                        .themeText(.body)
                         Spacer()
                         if browser.canOpenParent {
                             Button("Up") { browser.openParent() }

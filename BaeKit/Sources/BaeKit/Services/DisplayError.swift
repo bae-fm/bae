@@ -93,7 +93,7 @@ public struct DisplayError: Equatable, Sendable {
     /// line without discarding the opaque diagnostic offered by "Copy details".
     public func addingContext(_ context: String) -> DisplayError {
         DisplayError(
-            line: "\(context): \(line)",
+            line: String(localized: "\(context): \(line)"),
             detail: detail,
             offersRetry: offersRetry
         )

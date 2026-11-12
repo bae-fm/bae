@@ -61,9 +61,7 @@ struct ReleaseGroupCard: View {
     }
 
     private var attribution: String {
-        [group.artist, group.label]
-            .compactMap { $0 }
-            .joined(separator: " \u{00b7} ")
+        FactList.joined([group.artist, group.label])
     }
 }
 

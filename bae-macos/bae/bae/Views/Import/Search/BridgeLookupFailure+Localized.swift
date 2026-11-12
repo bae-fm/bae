@@ -21,25 +21,25 @@ extension BridgeIdentifyFailure {
     var badgeLine: String {
         switch self {
         case .discId(let failure):
-            return String(localized: "Disc ID") + ": " + failure.badgeLine
+            return Self.line(String(localized: "Disc ID"), failure)
         case .barcode(let source, let failure):
-            return String(localized: "Barcode") + " \u{00b7} "
-                + bridgeCatalogName(catalog: source) + ": "
-                + failure.badgeLine
+            return Self.line(String(localized: "Barcode"), source, failure)
         case .catalog(let source, let failure):
-            return String(localized: "Catalog number") + " \u{00b7} "
-                + bridgeCatalogName(catalog: source) + ": "
-                + failure.badgeLine
+            return Self.line(
+                String(localized: "Catalog number"),
+                source,
+                failure
+            )
         case .search(let source, let failure):
-            return String(localized: "Title") + " \u{00b7} "
-                + bridgeCatalogName(catalog: source) + ": "
-                + failure.badgeLine
+            return Self.line(String(localized: "Title"), source, failure)
         case .isrc(let failure):
-            return String(localized: "ISRC") + ": " + failure.badgeLine
+            return Self.line(String(localized: "ISRC"), failure)
         case .pressing(let source, let failure):
-            return String(localized: "Same pressing") + " \u{00b7} "
-                + bridgeCatalogName(catalog: source) + ": "
-                + failure.badgeLine
+            return Self.line(
+                String(localized: "Same pressing"),
+                source,
+                failure
+            )
         case .releaseDetails(let failure):
             return String(
                 localized:
@@ -52,5 +52,24 @@ extension BridgeIdentifyFailure {
                     "Failed to load the cover from \(catalog): \(failure.badgeLine)"
             )
         }
+    }
+
+    /// "Step: reason" for a step with one possible answerer.
+    private static func line(_ step: String, _ failure: BridgeLookupFailure)
+        -> String
+    {
+        String(localized: "\(step): \(failure.badgeLine)")
+    }
+
+    /// "Step · Provider: reason" for a step several providers answer.
+    private static func line(
+        _ step: String,
+        _ source: BridgeCatalog,
+        _ failure: BridgeLookupFailure
+    ) -> String {
+        String(
+            localized:
+                "\(FactList.joined([step, bridgeCatalogName(catalog: source)])): \(failure.badgeLine)"
+        )
     }
 }

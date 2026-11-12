@@ -72,8 +72,7 @@ struct ImportReleaseSummary {
     }
 
     private static func factsLine(_ facts: [String?]) -> String {
-        facts.compactMap { $0?.isEmpty == false ? $0 : nil }
-            .joined(separator: " \u{00b7} ")
+        FactList.joined(facts)
     }
 
 }

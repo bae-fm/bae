@@ -268,7 +268,7 @@ struct ImportSearchResultRow: View {
                 at,
                 source in
                 if at > 0 {
-                    Text(verbatim: "\u{00b7}")
+                    Text(verbatim: FactList.glyph)
                         .themeText(.detail)
                         .foregroundStyle(.quaternary)
                 }

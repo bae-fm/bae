@@ -18,7 +18,7 @@ struct StorageFooter: View {
         HStack(spacing: ThemeSpace.group) {
             Text("\(list.totalCount) releases")
             if let totalSize {
-                Text(verbatim: "\u{00B7}")
+                Text(verbatim: FactList.glyph)
                 Text(
                     "Total: \(ByteCountFormatter.string(fromByteCount: Int64(totalSize), countStyle: .file))"
                 )
