@@ -1,6 +1,6 @@
 use super::*;
 use crate::queue::tests::*;
-use crate::tables::{ContextFill, ReleaseStart};
+use crate::tables::{ContextFill, ReleaseStart, TracksStart};
 use crate::ContextSource;
 
 /// Clearing the context lane drops its rows, its history, and its label
@@ -417,7 +417,10 @@ async fn play_tracks_plays_the_list_in_order_from_the_start_index() {
     let mut f = fixture(&[("r1", &["a1", "a2", "a3"]), ("r2", &["b1", "b2"])]).await;
     let list = f.ids(&["b2", "a1", "b1", "a1", "a3"]);
 
-    assert_eq!(f.play_fill(ContextFill::Tracks { track_ids: list, start: 3 }).await, "a1");
+    assert_eq!(
+        f.play_fill(ContextFill::Tracks { track_ids: list, start: TracksStart::Index(3) }).await,
+        "a1"
+    );
 
     let value = f.value().await;
     assert_eq!(value.context.unwrap().source, ContextSource::Tracks);
@@ -436,7 +439,11 @@ async fn play_tracks_leaves_out_a_track_the_library_lacks() {
     let mut list = f.ids(&["a1", "a2", "a3"]);
     list.insert(1, missing.clone());
 
-    let filled = f.queue.play(ContextFill::Tracks { track_ids: list, start: 2 }).await.unwrap();
+    let filled = f
+        .queue
+        .play(ContextFill::Tracks { track_ids: list, start: TracksStart::Index(2) })
+        .await
+        .unwrap();
 
     let crate::tables::ContextFilled::Playing { current, left_out, .. } = filled else {
         panic!("the list plays: {filled:?}");
@@ -447,6 +454,58 @@ async fn play_tracks_leaves_out_a_track_the_library_lacks() {
     assert_eq!(f.upcoming().await, names(&["a3"]));
 }
 
+/// A shuffled list plays every track the library holds in a new order, names
+/// the ones it lacks, and turns shuffle on.
+#[tokio::test]
+async fn play_tracks_shuffled_plays_the_held_tracks_and_turns_shuffle_on() {
+    let mut f = fixture(&[("r1", &["a1", "a2", "a3", "a4", "a5", "a6"])]).await;
+    let missing = "6f9a1c2e-0b3d-4e5f-8a7b-9c0d1e2f3a4b".to_string();
+    let mut list = f.ids(&["a1", "a2", "a3", "a4", "a5", "a6"]);
+    list.insert(2, missing.clone());
+
+    let filled =
+        f.queue.play(ContextFill::Tracks { track_ids: list, start: TracksStart::Shuffled }).await;
+
+    let crate::tables::ContextFilled::Playing { track_count, left_out, .. } = filled.unwrap()
+    else {
+        panic!("the list plays");
+    };
+    assert_eq!(track_count, 6);
+    assert_eq!(left_out, crate::tables::LeftOut::Tracks(vec![missing]));
+    let value = f.value().await;
+    assert!(value.shuffled);
+    assert_eq!(value.context.unwrap().source, ContextSource::Tracks);
+    let mut played = f.context_order().await;
+    played.sort();
+    assert_eq!(played, names(&["a1", "a2", "a3", "a4", "a5", "a6"]));
+}
+
+/// A shuffled list that is empty, or holds no track the library has, plays
+/// nothing and leaves the queue as it was.
+#[tokio::test]
+async fn play_tracks_shuffled_without_a_held_track_leaves_the_queue() {
+    let mut f = release(&["t1", "t2"]).await;
+    f.play_from("t1").await;
+    let before = f.shown().await;
+
+    let empty = f
+        .queue
+        .play(ContextFill::Tracks { track_ids: Vec::new(), start: TracksStart::Shuffled })
+        .await;
+    assert_eq!(empty.unwrap(), crate::tables::ContextFilled::NoTracks);
+    let none_held = f
+        .queue
+        .play(ContextFill::Tracks {
+            track_ids: vec!["6f9a1c2e-0b3d-4e5f-8a7b-9c0d1e2f3a4b".to_string()],
+            start: TracksStart::Shuffled,
+        })
+        .await;
+    assert_eq!(none_held.unwrap(), crate::tables::ContextFilled::NoTracks);
+
+    assert_eq!(f.shown().await, before);
+    assert_eq!(f.current(), "t1");
+}
+
 /// A start the list doesn't have, a start track the library doesn't hold, and
 /// an empty list each play nothing and leave the queue as it was.
 #[tokio::test]
@@ -455,18 +514,23 @@ async fn play_tracks_without_a_start_track_leaves_the_queue() {
     f.play_from("t1").await;
     let before = f.shown().await;
 
-    let past_the_end =
-        f.queue.play(ContextFill::Tracks { track_ids: f.ids(&["t1", "t2"]), start: 2 }).await;
+    let past_the_end = f
+        .queue
+        .play(ContextFill::Tracks { track_ids: f.ids(&["t1", "t2"]), start: TracksStart::Index(2) })
+        .await;
     assert_eq!(past_the_end.unwrap(), crate::tables::ContextFilled::StartMissing);
     let not_held = f
         .queue
         .play(ContextFill::Tracks {
             track_ids: vec![f.id("t2"), "6f9a1c2e-0b3d-4e5f-8a7b-9c0d1e2f3a4b".to_string()],
-            start: 1,
+            start: TracksStart::Index(1),
         })
         .await;
     assert_eq!(not_held.unwrap(), crate::tables::ContextFilled::StartMissing);
-    let empty = f.queue.play(ContextFill::Tracks { track_ids: Vec::new(), start: 0 }).await;
+    let empty = f
+        .queue
+        .play(ContextFill::Tracks { track_ids: Vec::new(), start: TracksStart::Index(0) })
+        .await;
     assert_eq!(empty.unwrap(), crate::tables::ContextFilled::NoTracks);
 
     assert_eq!(f.shown().await, before);

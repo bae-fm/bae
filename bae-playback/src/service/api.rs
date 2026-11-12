@@ -106,13 +106,13 @@ pub(crate) enum PlaybackCommand {
         release_ids: Vec<String>,
         reply: PlayReply,
     },
-    /// Play tracks in the order given as one context, from the one at
-    /// `start_index`. Tracks the library does not hold are left out and named
-    /// in the answer; a start index past the list or naming such a track plays
-    /// nothing.
+    /// Play tracks as one context, in the order given from the one at an
+    /// index, or shuffled. Tracks the library does not hold are left out and
+    /// named in the answer; a start index past the list or naming such a track
+    /// plays nothing, and so does a shuffled list holding none.
     PlayTracks {
         track_ids: Vec<String>,
-        start_index: usize,
+        start: TracksStart,
         reply: PlayReply,
     },
     /// Play the whole library in a new shuffle; an empty library plays nothing.
@@ -424,15 +424,13 @@ impl PlaybackHandle {
     pub async fn play_releases(&self, release_ids: Vec<String>) -> Result<PlayOutcome, PlayError> {
         self.play_answered(|reply| PlaybackCommand::PlayReleases { release_ids, reply }).await
     }
-    /// Play `track_ids` in that order from the one at `start_index`, and say
-    /// what it did.
+    /// Play `track_ids` from `start`, and say what it did.
     pub async fn play_tracks(
         &self,
         track_ids: Vec<String>,
-        start_index: usize,
+        start: TracksStart,
     ) -> Result<PlayOutcome, PlayError> {
-        self.play_answered(|reply| PlaybackCommand::PlayTracks { track_ids, start_index, reply })
-            .await
+        self.play_answered(|reply| PlaybackCommand::PlayTracks { track_ids, start, reply }).await
     }
     /// Play the whole library in a new shuffle, and say what it did.
     pub async fn play_library_shuffled(&self) -> Result<PlayOutcome, PlayError> {

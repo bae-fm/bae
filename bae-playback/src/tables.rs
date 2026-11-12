@@ -30,7 +30,7 @@ pub use queue::fail_queue_writes_for_test;
 pub use queue::lose_up_next_for_test;
 pub(super) use queue::SCHEMA as QUEUE_SCHEMA;
 pub use queue::{settle_playback_queue, ManualPlace, PlaybackQueueTables};
-pub use queue_fill::{ContextFill, ContextFilled, LeftOut, ReleaseStart};
+pub use queue_fill::{ContextFill, ContextFilled, LeftOut, ReleaseStart, TracksStart};
 pub use queue_reads::queue_value;
 pub use queue_reads::subscribe_queue_addition;
 #[cfg(any(test, feature = "test-utils"))]

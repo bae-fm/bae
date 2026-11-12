@@ -60,6 +60,8 @@ impl AppServices {
             }
         };
         let track_ids = entries.into_iter().map(|entry| entry.track_id).collect();
-        Ok(self.playback_play_tracks(track_ids, start_index).await?)
+        Ok(self
+            .playback_play_tracks(track_ids, bae_playback::tables::TracksStart::Index(start_index))
+            .await?)
     }
 }

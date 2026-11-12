@@ -25,7 +25,7 @@ async fn play(db: &Store, start: ReleaseStart) -> crate::QueueEntry {
 /// playing.
 async fn play_tracks(db: &Store, tracks: &[String], start: usize) -> crate::QueueEntry {
     match PlaybackQueueTables::new(db.clone())
-        .fill(ContextFill::Tracks { track_ids: tracks.to_vec(), start })
+        .fill(ContextFill::Tracks { track_ids: tracks.to_vec(), start: TracksStart::Index(start) })
         .await
         .unwrap()
     {
@@ -119,7 +119,10 @@ async fn deleting_a_queued_track_takes_its_rows() {
 async fn deleting_a_track_queued_twice_takes_every_entry() {
     let (db, _tmp, tracks) = single_track_releases_db(2).await;
     let filled = PlaybackQueueTables::new(db.clone())
-        .fill(ContextFill::Tracks { track_ids: [&tracks[..], &tracks[..]].concat(), start: 0 })
+        .fill(ContextFill::Tracks {
+            track_ids: [&tracks[..], &tracks[..]].concat(),
+            start: TracksStart::Index(0),
+        })
         .await
         .unwrap();
     assert!(matches!(filled, ContextFilled::Playing { track_count: 4, .. }));
@@ -179,7 +182,7 @@ async fn the_lane_s_last_track_deleted_clears_the_context() {
     delete_release_of(&db, &tracks[0]).await;
 
     assert!(queue_value(&db).await.unwrap().context.is_none());
-    assert_eq!(context_head(&db).await, (None, None, None, None));
+    assert_eq!(context_head(&db).await, (None, None, Some(false), None));
 }
 
 /// A play of several releases stores that it plays several, not which: its
@@ -224,7 +227,7 @@ async fn the_lane_s_tracks_deleted_together_clear_the_context() {
 
     delete_release(&test_records(&db), RELEASE_A).await;
 
-    assert_eq!(context_head(&db).await, (None, None, None, None));
+    assert_eq!(context_head(&db).await, (None, None, Some(false), None));
 }
 
 /// Removing the lane's last row takes what it played from with it; removing
@@ -243,7 +246,7 @@ async fn removing_the_lane_s_last_row_clears_the_context() {
     );
 
     tables.remove(playing.id).await.unwrap().expect("the lane holds it");
-    assert_eq!(context_head(&db).await, (None, None, None, None));
+    assert_eq!(context_head(&db).await, (None, None, Some(false), None));
 }
 
 /// No trigger runs on the context lane's rows: a play takes out and puts in

@@ -220,7 +220,7 @@ forward! { async this => {
 
     /// Play `track_ids` in that order, from the one at `start_index`.
     fn play_tracks(track_ids: Vec<String>, start_index: u32) -> crate::types::BridgePlayOutcome {
-        let played = this.services.playback_play_tracks(track_ids, start_index as usize).await?;
+        let played = this.services.playback_play_tracks(track_ids, bae_playback::tables::TracksStart::Index(start_index as usize)).await?;
         Ok(crate::types::BridgePlayOutcome::from_core(played))
     }
 

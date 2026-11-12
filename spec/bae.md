@@ -4110,7 +4110,7 @@ removable, reorderable and skipped to on its own.
 | Command | Effect |
 |---|---|
 | Play a release, from a track or shuffled | Up next is cleared; the release is what's playing from |
-| Play a list of tracks, from one of them | Up next is cleared; the list is what's playing from |
+| Play a list of tracks, from one of them or shuffled | Up next is cleared; the list is what's playing from |
 | Play next / add to queue | tracks go to the front or end of Up next |
 | Remove, reorder, skip to | acts on one entry, within its own part |
 | Clear up next | empties Up next only |

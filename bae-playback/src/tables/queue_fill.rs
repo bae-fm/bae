@@ -18,9 +18,9 @@ pub enum ContextFill {
     /// from the first track. A release with no tracks is left out, of the lane
     /// and of the source the queue names; a release named twice plays twice.
     Releases(Vec<String>),
-    /// Tracks in the order given, from the one at index `start`. A track the
+    /// Tracks in the order given, from where `start` says. A track the
     /// library does not hold is left out; a track named twice plays twice.
-    Tracks { track_ids: Vec<String>, start: usize },
+    Tracks { track_ids: Vec<String>, start: TracksStart },
     /// Every library track, shuffled.
     LibraryShuffled,
 }
@@ -30,6 +30,15 @@ pub enum ContextFill {
 pub enum ReleaseStart {
     First,
     Track(String),
+    Shuffled,
+}
+
+/// Where a list of tracks starts playing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TracksStart {
+    /// The entry at this index of the list as sent.
+    Index(usize),
+    /// Wherever a shuffle of the list puts first.
     Shuffled,
 }
 
@@ -205,16 +214,32 @@ pub(super) fn fill_on(
             if track_ids.is_empty() {
                 return Ok(ContextFilled::NoTracks);
             }
-            let Some(start_track) = track_ids.get(start) else {
-                return Ok(ContextFilled::StartMissing);
-            };
-            let start_held: bool = sql.query_row(
-                "SELECT EXISTS (SELECT 1 FROM tracks WHERE id = ?)",
-                [start_track],
-                |row| row.get(0),
-            )?;
-            if !start_held {
-                return Ok(ContextFilled::StartMissing);
+            match start {
+                TracksStart::Index(index) => {
+                    let Some(start_track) = track_ids.get(index) else {
+                        return Ok(ContextFilled::StartMissing);
+                    };
+                    let start_held: bool = sql.query_row(
+                        "SELECT EXISTS (SELECT 1 FROM tracks WHERE id = ?)",
+                        [start_track],
+                        |row| row.get(0),
+                    )?;
+                    if !start_held {
+                        return Ok(ContextFilled::StartMissing);
+                    }
+                }
+                TracksStart::Shuffled => {
+                    let any_held: bool = sql.query_row(
+                        "SELECT EXISTS (SELECT 1 FROM json_each(?1) j \
+                         JOIN tracks t ON t.id = j.value)",
+                        [serde_json::to_string(&track_ids)
+                            .expect("serializing a Vec<String> to JSON cannot fail")],
+                        |row| row.get(0),
+                    )?;
+                    if !any_held {
+                        return Ok(ContextFilled::NoTracks);
+                    }
+                }
             }
             let track_ids = serde_json::to_string(&track_ids)
                 .expect("serializing a Vec<String> to JSON cannot fail");
@@ -227,12 +252,18 @@ pub(super) fn fill_on(
             )?;
             // The start entry's place among the entries the library holds,
             // which are the lane's rows in the list's order.
-            let cursor: i64 = sql.query_row(
-                "SELECT count(*) FROM json_each(?1) j JOIN tracks t ON t.id = j.value \
-                 WHERE j.key <= ?2",
-                params![&track_ids, start as i64],
-                |row| row.get(0),
-            )?;
+            let (whole_shuffled, cursor) = match start {
+                TracksStart::Shuffled => (true, FillCursor::First),
+                TracksStart::Index(index) => {
+                    let position: i64 = sql.query_row(
+                        "SELECT count(*) FROM json_each(?1) j JOIN tracks t ON t.id = j.value \
+                         WHERE j.key <= ?2",
+                        params![&track_ids, index as i64],
+                        |row| row.get(0),
+                    )?;
+                    (false, FillCursor::Position(position))
+                }
+            };
             (
                 ContextSource::Tracks,
                 FillSource {
@@ -240,8 +271,8 @@ pub(super) fn fill_on(
                     source_order: "j.key",
                     source: Some(track_ids),
                 },
-                false,
-                FillCursor::Position(cursor),
+                whole_shuffled,
+                cursor,
                 LeftOut::tracks(left_out),
             )
         }

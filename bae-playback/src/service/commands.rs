@@ -42,8 +42,8 @@ impl PlaybackService {
                     self.play_filled("PlayReleases", fill, PlaybackStartSource::Releases).await;
                 answer_play(reply, played);
             }
-            PlaybackCommand::PlayTracks { track_ids, start_index, reply } => {
-                let fill = ContextFill::Tracks { track_ids, start: start_index };
+            PlaybackCommand::PlayTracks { track_ids, start, reply } => {
+                let fill = ContextFill::Tracks { track_ids, start };
                 let played =
                     self.play_filled("PlayTracks", fill, PlaybackStartSource::Tracks).await;
                 answer_play(reply, played);

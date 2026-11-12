@@ -39,7 +39,7 @@ use crate::preview_player::PreviewPlayer;
 use crate::progress::emit_progress;
 use crate::progress::{PlaybackProgress, PlaybackProgressHandle};
 use crate::tables::{
-    ContextFill, ContextFilled, LeftOut, ManualPlace, PlaybackResumeRow, ReleaseStart,
+    ContextFill, ContextFilled, LeftOut, ManualPlace, PlaybackResumeRow, ReleaseStart, TracksStart,
 };
 use bae_audio::DecodeError;
 use bae_diagnostics::{
