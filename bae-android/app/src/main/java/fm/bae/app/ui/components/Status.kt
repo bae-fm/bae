@@ -17,7 +17,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.Error
+import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
@@ -100,7 +100,7 @@ private fun StatusTone.icon(outline: Boolean): ImageVector? =
     when (this) {
         StatusTone.INFO -> if (outline) Icons.Outlined.Info else Icons.Filled.Info
         StatusTone.SUCCESS -> if (outline) Icons.Outlined.CheckCircle else Icons.Filled.CheckCircle
-        StatusTone.WARNING, StatusTone.DANGER -> if (outline) Icons.Outlined.Error else Icons.Filled.Error
+        StatusTone.WARNING, StatusTone.DANGER -> if (outline) Icons.Outlined.ErrorOutline else Icons.Filled.Error
         StatusTone.NEUTRAL, StatusTone.ACCENT, StatusTone.ACTIVITY -> null
     }
 
