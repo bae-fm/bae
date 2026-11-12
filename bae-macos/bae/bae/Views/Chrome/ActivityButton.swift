@@ -70,7 +70,7 @@ struct ActivityButton: View {
                 .help(localizedCoreString("core.activity.title"))
                 .accessibilityLabel(localizedCoreString("core.activity.title"))
                 .popover(isPresented: $listShown, arrowEdge: .bottom) {
-                    Form {
+                    ActivityPanel {
                         ActivityList(
                             problems: problems,
                             app: app,
@@ -84,9 +84,6 @@ struct ActivityButton: View {
                             onOpenSubsonicSettings: openSubsonicSettings
                         )
                     }
-                    .formStyle(.grouped)
-                    .frame(width: 360)
-                    .frame(maxHeight: 480)
                     .environment(
                         \.showErrorDetails,
                         ShowErrorDetailsAction { details in
@@ -227,3 +224,36 @@ private struct ActivityGlyph: View {
         }
     }
 #endif
+
+/// The popover's body: the list inset as the boards draw it (4 above, 14 at
+/// the sides and below), scrolling once it is taller than the popover allows.
+private struct ActivityPanel<Content: View>: View {
+    @ViewBuilder
+    let content: Content
+
+    private static var width: CGFloat { 360 }
+    private static var maxHeight: CGFloat { 480 }
+    private static var inset: CGFloat { 14 }
+
+    /// The list's height, which the popover takes up to `maxHeight`.
+    @State
+    private var contentHeight: CGFloat?
+
+    var body: some View {
+        ScrollView {
+            content
+                .padding(.top, ThemeSpace.inline)
+                .padding(.horizontal, Self.inset)
+                .padding(.bottom, Self.inset)
+                .frame(width: Self.width)
+                .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) {
+                    contentHeight = $0
+                }
+        }
+        .scrollBounceBehavior(.basedOnSize)
+        .frame(
+            width: Self.width,
+            height: contentHeight.map { min($0, Self.maxHeight) }
+        )
+    }
+}

@@ -179,7 +179,7 @@ public struct Notice: View {
             if tone.symbol != nil {
                 RowItem {
                     StatusGlyph(tone, outline: true)
-                        .themeIcon(.medium)
+                        .font(Self.glyphFont)
                         .accessibilityHidden(true)
                 } content: {
                     titleLine
@@ -191,6 +191,15 @@ public struct Notice: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .notice(tone, look: look)
+    }
+
+    /// The glyph is 1.19 times the notice's text, which the boards draw it at.
+    private static var glyphFont: Font {
+        #if canImport(AppKit)
+            .system(size: ThemeText.body.macOSSize * 1.19, weight: .semibold)
+        #else
+            ThemeIcon.medium.font
+        #endif
     }
 
     /// The words, wrapping, with the buttons at the right on the title's line,
@@ -311,6 +320,10 @@ extension Notice {
                 .foregroundStyle(.tertiary)
                 .frame(width: ThemeSize.hitTarget, height: ThemeSize.hitTarget)
                 .contentShape(Rectangle())
+                // The box reaches past the row's inset and the title's line,
+                // so the glyph sits at the inset and the row stays one line.
+                .padding(.horizontal, -ThemeSpace.related)
+                .padding(.vertical, -(ThemeSpace.compact))
         }
         .buttonStyle(.borderless)
         .help("Dismiss")

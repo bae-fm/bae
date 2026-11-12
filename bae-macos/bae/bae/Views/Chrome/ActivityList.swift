@@ -4,8 +4,9 @@ import SwiftUI
 /// What bae needs the person for and what it is moving, as the Activity
 /// panel lists it: each problem not dismissed first, a quiet row with an ×
 /// whose click opens its details, then the transfer lines with a button to the
-/// Storage Manager under them, or that everything is up to date. Its
-/// sections go inside the caller's grouped form.
+/// Storage Manager under them, or that everything is up to date. Each
+/// section is a titled box on the surface colour, as the settings panes draw
+/// theirs.
 struct ActivityList: View {
     let problems: ActivityProblems
     /// The app's own problems, which `problems` lists by kind.
@@ -29,58 +30,55 @@ struct ActivityList: View {
     var body: some View {
         let activity = store.activity
         let showsTransfers = activity.map(Self.showsTransfers) ?? false
-        if problems.needsAttention {
-            Section(localizedCoreString("core.activity.attention")) {
-                ForEach(problems.shown, id: \.self) { id in
-                    problem(id)
-                        .listRowInsets(Self.rowInsets)
+        VStack(alignment: .leading, spacing: 0) {
+            if problems.needsAttention {
+                SettingsTitledBox(
+                    title: Text(localizedCoreString("core.activity.attention"))
+                ) {
+                    ForEach(problems.shown, id: \.self) { id in
+                        problem(id)
+                            .settingsRowInset(0)
+                    }
+                    if let activity, !activity.attention.isEmpty {
+                        PendingRecordsView(
+                            records: activity.attention,
+                            perform: nil
+                        )
+                        Button(
+                            localizedCoreString("core.activity.open_settings"),
+                            action: onOpenSettings
+                        )
+                    }
                 }
-                if let activity, !activity.attention.isEmpty {
-                    PendingRecordsView(
-                        records: activity.attention,
-                        perform: nil
-                    )
-                    .listRowInsets(Self.rowInsets)
-                    Button(
-                        localizedCoreString("core.activity.open_settings"),
-                        action: onOpenSettings
-                    )
-                    .listRowInsets(Self.rowInsets)
-                }
+                .padding(.top, Self.sectionGap)
             }
-        }
-        if let activity, showsTransfers {
-            Section {
-                TransferRows(activity: activity)
-                    .listRowInsets(Self.rowInsets)
-            } header: {
-                Text("Transfers")
-            } footer: {
+            if let activity, showsTransfers {
+                SettingsTitledBox(title: Text("Transfers")) {
+                    TransferRows(activity: activity)
+                        .settingsRowInset(0)
+                }
+                .padding(.top, Self.sectionGap)
                 if activity.hasTransferLine {
                     Button(
                         String(localized: "Open storage manager"),
                         action: onOpenStorageManager
                     )
                     .controlSize(.small)
+                    .padding(.top, Self.sectionGap)
                 }
             }
-        }
-        if !problems.needsAttention, !showsTransfers {
-            Section {
-                Text(localizedCoreString("core.activity.idle"))
-                    .foregroundStyle(.secondary)
-                    .listRowInsets(Self.rowInsets)
+            if !problems.needsAttention, !showsTransfers {
+                SettingsTitledBox(title: nil) {
+                    Text(localizedCoreString("core.activity.idle"))
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.top, Self.sectionGap)
             }
         }
     }
 
-    /// The board's row inset: every row of a box starts and ends this far in.
-    private static let rowInsets = EdgeInsets(
-        top: 0,
-        leading: ThemeSpace.group,
-        bottom: 0,
-        trailing: ThemeSpace.group
-    )
+    /// The space above each section and above the button under the last.
+    private static let sectionGap = SettingsTitledBox<EmptyView>.sectionGap
 
     private static func showsTransfers(_ activity: BridgeSyncActivity) -> Bool {
         activity.syncing || activity.hasTransferLine
@@ -240,21 +238,23 @@ private struct TransferLine: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
-            HStack(
-                alignment: .firstTextBaseline,
-                spacing: ThemeSpace.related
-            ) {
+            HStack(alignment: .center, spacing: ThemeSpace.related) {
                 Text(title)
                 Spacer(minLength: 0)
-                if let count {
-                    Text(count)
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
-                }
-                if let queue {
-                    QueuePauseButton(queue: queue.kind, paused: queue.paused)
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
+                HStack(spacing: ThemeSpace.compact) {
+                    if let count {
+                        Text(count)
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                    }
+                    if let queue {
+                        QueuePauseButton(
+                            queue: queue.kind,
+                            paused: queue.paused,
+                            glyph: .medium
+                        )
+                        .buttonStyle(BoxedIconButtonStyle(size: .small))
+                    }
                 }
             }
             if let bar {

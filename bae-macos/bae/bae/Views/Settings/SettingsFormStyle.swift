@@ -106,6 +106,36 @@ struct SettingsBox<Content: View>: View {
     }
 }
 
+/// A box's title: secondary text, so it reads apart from the rows under it.
+extension View {
+    func settingsSectionTitle() -> some View {
+        themeText(.strong)
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, ThemeSpace.inline)
+            .padding(.bottom, ThemeSpace.compact)
+    }
+}
+
+/// A `SettingsBox` under its title, for a section that is not part of a form:
+/// a popover's.
+struct SettingsTitledBox<Content: View>: View {
+    let title: Text?
+    @ViewBuilder
+    let content: Content
+
+    /// The space between a section and the one above.
+    static var sectionGap: CGFloat { RowMetrics.sectionGap }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if let title {
+                title.settingsSectionTitle()
+            }
+            SettingsBox { content }
+        }
+    }
+}
+
 /// One section: its heading, its rows in a box, and its footer.
 private struct SettingsFormSection: View {
     let section: SectionConfiguration
@@ -113,10 +143,7 @@ private struct SettingsFormSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             if !section.header.isEmpty {
-                section.header
-                    .themeText(.strong)
-                    .padding(.horizontal, ThemeSpace.inline)
-                    .padding(.bottom, ThemeSpace.compact)
+                section.header.settingsSectionTitle()
             }
             SettingsFormBox(rows: section.content)
             if !section.footer.isEmpty {

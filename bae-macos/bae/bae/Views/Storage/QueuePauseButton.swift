@@ -15,6 +15,8 @@ enum StorageQueueKind {
 struct QueuePauseButton: View {
     let queue: StorageQueueKind
     let paused: Bool
+    /// The glyph's size.
+    var glyph: ThemeIcon = .chip
     @Environment(Sync.self)
     private var sync
     @Environment(Downloads.self)
@@ -27,7 +29,7 @@ struct QueuePauseButton: View {
     var body: some View {
         Button(action: setPaused) {
             Image(systemName: paused ? "play.fill" : "pause.fill")
-                .themeIcon(.chip)
+                .themeIcon(glyph)
         }
         .accessibilityLabel(pauseLabel)
         .help(pauseLabel)
