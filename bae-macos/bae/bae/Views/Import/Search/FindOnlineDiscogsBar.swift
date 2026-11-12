@@ -25,8 +25,7 @@ struct FindOnlineDiscogsBar: View {
             action: ErrorAction("Open settings", perform: onOpenSettings),
             onDismiss: onDismiss
         )
-        .padding(.horizontal, ThemeSpace.edge)
-        .padding(.vertical, ThemeSpace.related)
+        .padding(ThemeSpace.group)
     }
 }
 

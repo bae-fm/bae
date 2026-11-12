@@ -160,24 +160,18 @@ struct FindOnlineAutomaticSection: View {
                 // Right under the offered rows, above the ones agreement set
                 // aside: the answer for a person who cannot tell them apart.
                 linkSharedAlbum
-                    .padding(.leading, ReleaseGroupSection.rowTextInset)
+                    .padding(.leading, ThemeSpace.group)
                 narrowedOut
                 ForEach(missingSourceNotes, id: \.search) { note in
                     MissingSourceNote(text: note.text)
                 }
                 keepOwnDraft
-                    .padding(.leading, ReleaseGroupSection.rowTextInset)
+                    .padding(.leading, ThemeSpace.group)
             }
         case .nothingFound:
             FindOnlineEmptyZone {
-                if let needsYou = state.needsYou {
-                    Text(verbatim: needsYou.sentence)
-                        .multilineTextAlignment(.center)
-                }
-                else {
-                    Text("No results")
-                        .foregroundStyle(.secondary)
-                }
+                Text("No results")
+                    .foregroundStyle(.secondary)
                 SearchManuallyButton(action: onSearchManually)
                 keepOwnDraft
             }
@@ -240,11 +234,12 @@ struct FindOnlineAutomaticSection: View {
     }
 
     /// The sentence heading a page whose folder waits on the person, where
-    /// the page lists what was found; an empty page says it in its middle.
+    /// the page lists what was found or found nothing.
     private var headerSentence: String? {
         switch area {
-        case .groups, .awaitingCatalog: state.needsYou?.sentence
-        case .identifying, .nothingFound, .failureLines, .notStarted,
+        case .groups, .awaitingCatalog, .nothingFound:
+            state.needsYou?.sentence
+        case .identifying, .failureLines, .notStarted,
             .queued, .noSignals, .error:
             nil
         }
@@ -319,7 +314,7 @@ private struct PaneAnswerAction: View {
     let action: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: ThemeSpace.hairline) {
+        VStack(alignment: .leading, spacing: ThemeSpace.line) {
             Button(title, action: action)
                 .controlSize(.small)
             Text(subtitle)

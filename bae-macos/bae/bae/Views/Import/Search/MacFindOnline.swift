@@ -161,7 +161,6 @@ struct MacFindOnline: View {
                 onOpenSettings: onOpenSettings,
                 onDismiss: onDismissDiscogsBar
             )
-            Divider()
         }
     }
 

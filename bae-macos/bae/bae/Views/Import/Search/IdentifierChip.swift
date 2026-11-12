@@ -96,12 +96,10 @@ struct ProviderCapsule: View {
                 .fixedSize()
             LookupCellView(lookup: lookup, onRetry: onRetry)
         }
-        .padding(.horizontal, ThemeSpace.compact)
-        .padding(.vertical, ThemeSpace.line)
-        .background(
-            StatusTone.neutral.fill,
-            in: RoundedRectangle(cornerRadius: ThemeRadius.chip)
-        )
+        .padding(.leading, ThemeSpace.compact)
+        .padding(.trailing, ThemeSpace.inline)
+        .padding(.vertical, ThemeSpace.hairline)
+        .background(StatusTone.neutral.fill, in: Capsule())
     }
 }
 

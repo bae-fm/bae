@@ -95,7 +95,7 @@ struct FindOnlineSearchResults: View {
         }
         .themeText(.detail)
         .foregroundStyle(.secondary)
-        .padding(.leading, ReleaseGroupSection.rowTextInset)
+        .padding(.leading, ThemeSpace.group)
     }
 
     /// A source that did not answer, with why on hover and its Retry.

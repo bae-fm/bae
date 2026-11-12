@@ -82,7 +82,7 @@ struct FindOnlineSectionHeader: View {
         // The open section's header is not a control: clicking it changes
         // nothing, and it stays fully drawn rather than dimming as disabled.
         Button(action: { if !isOpen { onOpen() } }) {
-            HStack(spacing: ThemeSpace.related) {
+            HStack(spacing: ThemeSpace.compact) {
                 Image(systemName: isOpen ? "chevron.down" : "chevron.forward")
                     .themeIcon(.small)
                     .foregroundStyle(dimmed ? .quaternary : .tertiary)
