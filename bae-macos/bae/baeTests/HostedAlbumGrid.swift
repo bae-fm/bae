@@ -113,6 +113,12 @@ struct HostedAlbumGrid {
         let offset: CGPoint
     }
 
+    /// The grid's geometry together with a value the test reads beside it.
+    private struct Standing<Reading: Equatable>: Equatable {
+        let geometry: Geometry
+        let reading: Reading
+    }
+
     private func geometry() -> Geometry {
         host.layoutSubtreeIfNeeded()
         return Geometry(
@@ -125,12 +131,24 @@ struct HostedAlbumGrid {
     /// and scroll position have stopped moving, asking again if coming to
     /// rest asked for more pages. An animation still running is not waited
     /// for: its caller waits for its end first.
-    func settle() async throws {
+    ///
+    /// `reading` is a value the test takes from the grid that the frames do
+    /// not show, such as where a view reports itself to be: it must stand
+    /// still across the idle too.
+    func settle<Reading: Equatable>(
+        reading: @MainActor () -> Reading
+    ) async throws {
         while true {
             try await Wait.until { answers.value == 0 }
-            try await Wait.untilSteady { geometry() }
+            try await Wait.untilSteady {
+                Standing(geometry: geometry(), reading: reading())
+            }
             if answers.value == 0 { return }
         }
+    }
+
+    func settle() async throws {
+        try await settle { 0 }
     }
 
     /// Return once the grid is scrolled away from its top.
