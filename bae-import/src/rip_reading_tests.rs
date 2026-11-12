@@ -5,6 +5,11 @@ use super::*;
 use crate::cue_sheet::{CdRipper, CueIndex, CueTrack, CueTrackMode};
 use crate::tests::fixture;
 
+/// `artifacts` read, every document readable.
+fn read_ok(artifacts: RipArtifacts<'_>) -> RipReading {
+    read(artifacts).expect("the artifacts read")
+}
+
 fn track(number: u32, start_cue_frames: u64) -> CueTrack {
     CueTrack {
         number,
@@ -48,7 +53,7 @@ fn lossless(sample_rate_hz: i64, bits: i64, channels: i64) -> AudioFormat {
 /// Read one sheet over one file of `format`, with AccurateRip `reports`
 /// beside them.
 fn read_folder(sheet: &CueSheet, format: &AudioFormat, reports: &[(&Path, &str)]) -> RipReading {
-    read(RipArtifacts {
+    read_ok(RipArtifacts {
         documents: reports
             .iter()
             .map(|(path, file)| RipDocument {
@@ -139,7 +144,7 @@ fn a_rip_log_proves_a_cd_and_is_the_disc_id() {
     let log = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/logs/test_album.log");
     let sheet = sheet(None);
     let format = lossless(96_000, 24, 2);
-    let reading = read(RipArtifacts {
+    let reading = read_ok(RipArtifacts {
         documents: vec![RipDocument {
             path: &log,
             file: Some("Album.log"),
@@ -207,7 +212,7 @@ fn a_folder_with_a_log_per_disc_computes_every_disc_id() {
     let sheet = sheet(None);
     let format = lossless(44_100, 16, 2);
     let sheet_paths: Vec<_> = logs.iter().map(|(log, _)| log.with_file_name("Album.cue")).collect();
-    let reading = read(RipArtifacts {
+    let reading = read_ok(RipArtifacts {
         documents: logs
             .iter()
             .map(|(path, file)| RipDocument { path, file: Some(file), kind: DocumentKind::RipLog })
@@ -254,7 +259,7 @@ fn every_sheet_without_a_log_is_hashed_and_one_disc_is_kept_once() {
         path,
         file: Some(file),
     };
-    let reading = read(RipArtifacts {
+    let reading = read_ok(RipArtifacts {
         documents: Vec::new(),
         sheets: vec![
             rip_sheet(&one, Path::new("/folder/Disc 1/Album.cue"), "Disc 1/Album.cue"),
@@ -278,7 +283,7 @@ fn every_sheet_without_a_log_is_hashed_and_one_disc_is_kept_once() {
 fn audio_off_a_cds_rate_with_no_sheet_is_absent() {
     let format = lossless(96_000, 24, 2);
     let reading =
-        read(RipArtifacts { documents: Vec::new(), sheets: Vec::new(), audio: vec![&format] });
+        read_ok(RipArtifacts { documents: Vec::new(), sheets: Vec::new(), audio: vec![&format] });
     assert_eq!(reading.origin.not_cd_rate, Some(96_000));
     assert_eq!(reading.disc_id, DiscIdReading::Absent);
 }
@@ -304,6 +309,7 @@ fn a_log_carves_its_disc_and_names_the_file_it_was_read_off() {
     .unwrap();
 
     let disc_id = read_rip_artifacts(&categorized)
+        .unwrap()
         .disc_id
         .computed()
         .try_into()
@@ -332,6 +338,7 @@ fn test_compute_discid_routes_cue_ape() {
     let audio_path = folder.join("Test Album.ape");
     let opens_before = bae_audio::test_reads::probes(&audio_path);
     let computed = read_rip_artifacts(&categorized)
+        .unwrap()
         .disc_id
         .computed()
         .try_into()
@@ -348,4 +355,27 @@ fn test_compute_discid_routes_cue_ape() {
         "the sheet it was carved from rides with it, got {:?}",
         computed.source_file
     );
+}
+
+/// A log that cannot be read is evidence nobody has seen, not a log that
+/// states no disc: the reading fails, as one that cannot be hashed does not.
+#[test]
+fn a_rip_log_that_cannot_be_read_fails_the_reading() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let missing = tmp.path().join("Album.log");
+    let artifacts = |path| RipArtifacts {
+        documents: vec![RipDocument { path, file: Some("Album.log"), kind: DocumentKind::RipLog }],
+        sheets: Vec::new(),
+        audio: Vec::new(),
+    };
+
+    let error = read(artifacts(&missing)).expect_err("a log that is not there is not read");
+    assert!(
+        matches!(error, ImportError::DocumentRead { ref file, .. } if file.ends_with("Album.log")),
+        "{error:?}"
+    );
+
+    std::fs::write(&missing, "not a rip log at all\n").unwrap();
+    let reading = read(artifacts(&missing)).expect("bytes that read but state nothing do not fail");
+    assert_eq!(reading.disc_id, DiscIdReading::Absent);
 }

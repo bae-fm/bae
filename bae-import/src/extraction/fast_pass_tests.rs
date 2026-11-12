@@ -88,7 +88,7 @@ fn test_categorized_yields_discid_and_track_count() {
         &crate::folder_scanner::StoredCandidateEdits::none(),
     )
     .unwrap();
-    let disc_id = crate::rip_reading::read_rip_artifacts(&categorized).disc_id.computed();
+    let disc_id = crate::rip_reading::read_rip_artifacts(&categorized).unwrap().disc_id.computed();
     let track_count = categorized.track_count();
 
     assert_eq!(disc_id.len(), 1, "LOG fixture should produce a Disc ID");
@@ -369,4 +369,33 @@ fn unnumbered_files_give_no_titles() {
 /// The first FLAC test track's bytes.
 fn fixture_flac() -> Vec<u8> {
     read_fixture(&flac_dir().join("01 Test Track 1.flac"))
+}
+
+/// A text file that cannot be read fails the pass: its lines would be clues
+/// the pass never saw.
+#[test]
+fn a_text_file_that_cannot_be_read_fails_the_pass() {
+    let tmp = TempDir::new().unwrap();
+    let dir = tmp.path();
+    for name in ["01 Test Track 1.flac", "02 Test Track 2.flac"] {
+        fs::copy(Path::new("tests/fixtures/flac").join(name), dir.join(name)).unwrap();
+    }
+    fs::write(dir.join("notes.txt"), "Catalog LBL-1001\n").unwrap();
+    let categorized = crate::folder_scanner::collect_release_candidate_files_with_scope(
+        dir,
+        crate::ReleaseFileScope::Recursive,
+        &crate::folder_scanner::StoredCandidateEdits::none(),
+    )
+    .unwrap();
+    let folders = [dir.to_path_buf()];
+    gather_non_ocr_sources(&folders, &categorized).expect("the notes read while they are there");
+
+    fs::remove_file(dir.join("notes.txt")).unwrap();
+    let error = gather_non_ocr_sources(&folders, &categorized)
+        .err()
+        .expect("a text file that left the folder fails the pass");
+    assert!(
+        matches!(error, crate::ImportError::DocumentRead { ref file, .. } if file.ends_with("notes.txt")),
+        "{error:?}"
+    );
 }

@@ -301,7 +301,7 @@ fn cue_alac_disc_id_is_stable() {
     )
     .expect("scan album dir");
     let track_count = categorized.track_count();
-    let disc_id = read_rip_artifacts(&categorized).disc_id.computed();
+    let disc_id = read_rip_artifacts(&categorized).unwrap().disc_id.computed();
 
     assert_eq!(track_count, 3, "three tracks in the CUE sheet");
     let [computed]: [bae_identify::signals::ComputedDiscId; 1] =

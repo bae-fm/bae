@@ -10,7 +10,7 @@ use bae_records::DocumentKind;
 use bae_types::barcode::Barcode;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
-use tracing::{debug, warn};
+use tracing::debug;
 
 /// Maximum size read from a single `.txt` file.
 const MAX_TEXT_FILE_BYTES: u64 = 100 * 1024;
@@ -74,8 +74,10 @@ fn cue_barcodes(categorized: &CategorizedFiles) -> Vec<SourcedValue> {
         .collect()
 }
 
-/// Read every non-OCR source. Blocking. A missing text input is skipped;
-/// invalid audio timing aborts, since every later track layout needs it.
+/// Read every non-OCR source. Blocking. A file that cannot be read aborts,
+/// as invalid audio timing does: a pass that skipped it would state its
+/// clues without the evidence that file held. Bytes that read but state
+/// nothing (tags that do not parse, text with no names) add nothing.
 pub(super) fn gather_non_ocr_sources(
     folders: &[PathBuf],
     categorized: &CategorizedFiles,
@@ -106,7 +108,7 @@ pub(super) fn gather_non_ocr_sources(
     // Rip evidence, disc ID, CUE barcodes and the audio facts all come off
     // one scan.
     pass.audio = crate::probe::audio_facts(categorized)?;
-    let rip = read_rip_artifacts(categorized);
+    let rip = read_rip_artifacts(categorized)?;
     pass.origin = rip.origin;
     pass.disc_id = rip.disc_id.into_signal();
     pass.cue_barcodes = cue_barcodes(categorized);
@@ -130,61 +132,54 @@ pub(super) fn gather_non_ocr_sources(
 
     // The audio's own tags: their album, artists and label feed the pool, and
     // their ISRCs are looked up. A file whose tags do not parse states nothing;
-    // a reading that cannot be had is skipped like any other unreadable text.
+    // a file that cannot be read fails the pass.
     let audio_files: Vec<_> = categorized.audio().cloned().collect();
-    match crate::file_tag_snapshot::read_delivered_file_tags(
+    let files = crate::file_tag_snapshot::read_delivered_file_tags(
         &audio_files,
         &crate::file_tag_reader::LoftyFileTagReader,
-    ) {
-        Ok(files) => {
-            // Each file's ISRCs, as `isrc::code` reads its tag, in the files'
-            // order; a value that reads as no code adds nothing.
-            pass.isrcs = files
-                .iter()
-                .flat_map(|file| &file.delivery.isrcs)
-                .filter_map(|isrc| bae_catalogs::isrc::code(isrc))
-                .collect();
-            pass.track_titles = track_titles(categorized, &files);
-            // A file a ripper made reading a disc outweighs a tag, which can
-            // be copied.
-            if pass.origin.source.is_none() {
-                pass.origin.source = download_proof(&files, categorized).map(AudioSource::Download);
-            }
-            let mut seen = HashSet::new();
-            for file in &files {
-                let tagged = file.fact.tags.stated();
-                for value in tagged
-                    .album_title
-                    .iter()
-                    .chain(&tagged.album_artists)
-                    .chain(&tagged.track_artists)
-                    .chain(&file.delivery.labels)
-                {
-                    if seen.insert(value.clone()) {
-                        pass.lines.push(SourcedLine::new(
-                            Source::FileTag {
-                                file_id: file.fact.observation.relative_path.clone(),
-                            },
-                            value.clone(),
-                        ));
-                    }
-                }
+    )?;
+    // Each file's ISRCs, as `isrc::code` reads its tag, in the files'
+    // order; a value that reads as no code adds nothing.
+    pass.isrcs = files
+        .iter()
+        .flat_map(|file| &file.delivery.isrcs)
+        .filter_map(|isrc| bae_catalogs::isrc::code(isrc))
+        .collect();
+    pass.track_titles = track_titles(categorized, &files);
+    // A file a ripper made reading a disc outweighs a tag, which can
+    // be copied.
+    if pass.origin.source.is_none() {
+        pass.origin.source = download_proof(&files, categorized).map(AudioSource::Download);
+    }
+    let mut seen = HashSet::new();
+    for file in &files {
+        let tagged = file.fact.tags.stated();
+        for value in tagged
+            .album_title
+            .iter()
+            .chain(&tagged.album_artists)
+            .chain(&tagged.track_artists)
+            .chain(&file.delivery.labels)
+        {
+            if seen.insert(value.clone()) {
+                pass.lines.push(SourcedLine::new(
+                    Source::FileTag { file_id: file.fact.observation.relative_path.clone() },
+                    value.clone(),
+                ));
             }
         }
-        Err(error) => warn!("the audio's tags could not be read, so they say nothing: {error}"),
     }
 
     // Text files feed the pool one line at a time.
     for path in text_file_paths(categorized) {
-        if let Some(text) = read_capped_text(&path) {
-            for line in text.lines() {
-                let trimmed = line.trim();
-                if !trimmed.is_empty() {
-                    pass.lines.push(SourcedLine::new(
-                        Source::TextFile { path: path.clone() },
-                        trimmed.to_string(),
-                    ));
-                }
+        let text = read_capped_text(&path)?;
+        for line in text.lines() {
+            let trimmed = line.trim();
+            if !trimmed.is_empty() {
+                pass.lines.push(SourcedLine::new(
+                    Source::TextFile { path: path.clone() },
+                    trimmed.to_string(),
+                ));
             }
         }
     }
@@ -286,28 +281,18 @@ fn text_file_paths(categorized: &CategorizedFiles) -> Vec<PathBuf> {
     categorized.documents_of(DocumentKind::Text).map(|f| f.version.path.clone()).collect()
 }
 
-/// Read a text file, capped and decoded whatever its encoding; `None` only on
-/// an I/O error, which is logged.
-fn read_capped_text(path: &Path) -> Option<String> {
-    use std::io::{ErrorKind, Read};
+/// Read a text file, capped and decoded whatever its encoding. A file that
+/// cannot be opened or read, one that left the folder after the scan
+/// included, is an error.
+fn read_capped_text(path: &Path) -> Result<String, crate::ImportError> {
+    use std::io::Read;
 
-    let f = match std::fs::File::open(path) {
-        Ok(f) => f,
-        Err(e) if e.kind() == ErrorKind::NotFound => {
-            debug!("candidate_text: file vanished after scan: {}", path.display());
-            return None;
-        }
-        Err(e) => {
-            warn!("candidate_text: open failed for {}: {e}", path.display());
-            return None;
-        }
-    };
+    let unread =
+        |error| crate::ImportError::DocumentRead { file: path.display().to_string(), error };
+    let file = std::fs::File::open(path).map_err(unread)?;
     let mut buf = Vec::new();
-    if let Err(e) = f.take(MAX_TEXT_FILE_BYTES).read_to_end(&mut buf) {
-        warn!("candidate_text: read failed for {}: {e}", path.display());
-        return None;
-    }
-    Some(bae_util::text_encoding::decode_text(&buf).text)
+    file.take(MAX_TEXT_FILE_BYTES).read_to_end(&mut buf).map_err(unread)?;
+    Ok(bae_util::text_encoding::decode_text(&buf).text)
 }
 
 /// What proves the audio a download, from its tags: a store's own marker on a

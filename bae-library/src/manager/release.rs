@@ -64,6 +64,7 @@ impl LibraryManager {
                 ReleaseIdentityError::NotFound { release_id } => {
                     LibraryError::release_missing(&release_id, super::ReleaseWork::Edit)
                 }
+                ReleaseIdentityError::Unreadable(error) => LibraryError::from(error),
                 ReleaseIdentityError::Panicked(failed) => LibraryError::from(failed),
             })?
             .read_audio()

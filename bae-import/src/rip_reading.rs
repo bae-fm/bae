@@ -5,6 +5,7 @@
 
 use crate::cue_sheet::CueSheet;
 use crate::discid::{calculate_mb_discid_from_cue, discid_from_log_text, SheetAudioDuration};
+use crate::ImportError;
 use bae_catalogs::rip::rate_ruling_out_cd;
 use bae_catalogs::{AudioOrigin, AudioSource, CdProof};
 use bae_identify::signals::{ComputedDiscId, DiscIdSignal};
@@ -14,15 +15,12 @@ use std::path::Path;
 use tracing::{debug, trace, warn};
 
 /// A document's text, decoded whatever its encoding (an EAC log is UTF-16).
-/// `None` for a file that cannot be read, which is logged.
-fn read_document(path: &Path) -> Option<String> {
-    match bae_util::text_encoding::read_text_file(path) {
-        Ok(read) => Some(read.text),
-        Err(e) => {
-            warn!("rip document {:?} could not be read: {}", path, e);
-            None
-        }
-    }
+/// A file that cannot be read is an error, not a document that states
+/// nothing: the evidence it holds is unknown.
+fn read_document(path: &Path) -> Result<String, ImportError> {
+    bae_util::text_encoding::read_text_file(path)
+        .map(|read| read.text)
+        .map_err(|error| ImportError::DocumentRead { file: path.display().to_string(), error })
 }
 
 /// Whether a document is an AccurateRip report that found the disc: a line
@@ -124,17 +122,15 @@ struct RipArtifacts<'a> {
 /// CD out and nothing proves one — every sheet but one beside a log that
 /// read, which describes the disc that log already hashed. A folder holding
 /// one rip per disc yields one disc ID per disc; one hashed twice is kept
-/// once. Failures along the way log at `debug!` so the chain shows up in
-/// traces.
-fn read(artifacts: RipArtifacts<'_>) -> RipReading {
+/// once. A document that cannot be read fails the reading; one that reads but
+/// states no disc is passed over, logged.
+fn read(artifacts: RipArtifacts<'_>) -> Result<RipReading, ImportError> {
     let not_cd_rate = rate_ruling_out_cd(artifacts.audio.iter().copied());
     let mut discs: Vec<ComputedDiscId> = Vec::new();
     let mut read_logs: Vec<&RipDocument<'_>> = Vec::new();
     let mut report = None;
     for document in &artifacts.documents {
-        let Some(text) = read_document(document.path) else {
-            continue;
-        };
+        let text = read_document(document.path)?;
         if document.kind == DocumentKind::RipLog {
             trace!("Reading LOG file: {:?}", document.path);
             match discid_from_log_text(&text) {
@@ -178,7 +174,7 @@ fn read(artifacts: RipArtifacts<'_>) -> RipReading {
             debug!("not hashing a track sheet whose audio no CD holds");
             DiscIdReading::NotCdAudio
         };
-        return RipReading { origin, disc_id };
+        return Ok(RipReading { origin, disc_id });
     }
     for sheet in &artifacts.sheets {
         if read_logs.iter().any(|log| log.path.parent() == sheet.path.parent()) {
@@ -191,7 +187,7 @@ fn read(artifacts: RipArtifacts<'_>) -> RipReading {
     }
     let disc_id =
         if discs.is_empty() { DiscIdReading::Absent } else { DiscIdReading::Computed(discs) };
-    RipReading { origin, disc_id }
+    Ok(RipReading { origin, disc_id })
 }
 
 /// Add a disc ID read off `file`, unless another file already hashed to it.
@@ -230,7 +226,9 @@ fn discid_from_cue_audio(
 /// the person took out of the tracklist describes a disc this folder is no
 /// longer presenting. A folder whose sheet is unbound can still identify
 /// itself from its log. Each disc and proof names the file it was read off.
-pub fn read_rip_artifacts(categorized: &crate::folder_scanner::CategorizedFiles) -> RipReading {
+pub fn read_rip_artifacts(
+    categorized: &crate::folder_scanner::CategorizedFiles,
+) -> Result<RipReading, ImportError> {
     read_categorized(categorized, |file| Some(&file.relative_path))
 }
 
@@ -239,7 +237,7 @@ pub fn read_rip_artifacts(categorized: &crate::folder_scanner::CategorizedFiles)
 /// release's signals name none of its files.
 pub(crate) fn read_library_rip_artifacts(
     categorized: &crate::folder_scanner::CategorizedFiles,
-) -> RipReading {
+) -> Result<RipReading, ImportError> {
     read_categorized(categorized, |_| None)
 }
 
@@ -248,7 +246,7 @@ pub(crate) fn read_library_rip_artifacts(
 fn read_categorized(
     categorized: &crate::folder_scanner::CategorizedFiles,
     named: fn(&crate::folder_scanner::ScannedFile) -> Option<&str>,
-) -> RipReading {
+) -> Result<RipReading, ImportError> {
     // Logs first: a log's table of contents is the Disc ID as well as the
     // proof, which a report is not.
     let rip_documents = |kind| {

@@ -25,7 +25,26 @@ pub enum ReleaseIdentityError {
     Database(#[from] DbError),
     #[error("release '{release_id}' not found")]
     NotFound { release_id: String },
+    /// A rip file of the release could not be read.
+    #[error(transparent)]
+    Unreadable(#[from] crate::ImportError),
     /// Reading the rip files panicked, reported as the bug it is.
+    #[error(transparent)]
+    Panicked(#[from] TaskFailed),
+}
+
+/// Why a library release's artwork could not be gathered for the OCR pass.
+#[derive(Debug, thiserror::Error)]
+pub enum ReleaseArtworkError {
+    #[error(transparent)]
+    Database(#[from] DbError),
+    #[error("the release's cover could not be read: {0}")]
+    CoverRead(coven::FileReadError),
+    #[error("the release's cover could not be staged to be read: {0}")]
+    CoverStaging(std::io::Error),
+    #[error("the release's image file {path} could not be checked: {error}")]
+    Image { path: PathBuf, error: std::io::Error },
+    /// Staging the cover panicked, reported as the bug it is.
     #[error(transparent)]
     Panicked(#[from] TaskFailed),
 }
@@ -51,7 +70,8 @@ impl ReleaseIdentity {
 /// reading the files is reported to `diagnostics`.
 ///
 /// A cloud-only release with no local copy has no files to read, so its
-/// reading proves nothing and computes no disc ID.
+/// reading proves nothing and computes no disc ID. A file that is there and
+/// cannot be read fails the reading.
 pub async fn resolve_release_identity(
     records: &Records,
     diagnostics: &Diagnostics,
@@ -76,9 +96,12 @@ pub async fn resolve_release_identity(
                 .filter_map(|file| file.source_audio.as_ref())
                 .map(|audio| audio.format.clone())
                 .collect();
-            (crate::rip_reading::read_library_rip_artifacts(&categorized), formats)
+            Ok::<_, crate::ImportError>((
+                crate::rip_reading::read_library_rip_artifacts(&categorized)?,
+                formats,
+            ))
         })
-        .await?;
+        .await??;
     let audio =
         bae_identify::signals::AudioFacts::of(tracks.len() as u32, track_lengths_ms, &formats);
 
@@ -130,6 +153,7 @@ fn local_file(
 /// The artwork the re-identify OCR pass reads: the release's cover, plus every
 /// release-attached image file that resolves to a path on this device. A
 /// cloud-only image has no local copy and is skipped — OCR can't run on it.
+/// A cover or image that is there and cannot be read fails the gathering.
 ///
 /// The cover's bytes live in coven's store, which exposes no path bae may
 /// compute, so they are read out and staged into a temp dir. That dir's guard
@@ -141,52 +165,25 @@ pub(crate) async fn resolve_release_artwork_paths(
     records: &Records,
     diagnostics: &Diagnostics,
     release_id: &str,
-) -> Result<(Vec<PathBuf>, Option<tempfile::TempDir>), DbError> {
+) -> Result<(Vec<PathBuf>, Option<tempfile::TempDir>), ReleaseArtworkError> {
     let files = records.get_files_with_originals_for_release(release_id).await?;
     let mut paths: Vec<PathBuf> = Vec::new();
 
-    // The cover is one of several OCR inputs (the image files below are the
-    // others), so a read/staging failure skips just the cover, logged, rather than
-    // failing the whole resolve.
-    let cover_staging = match records.library_image_file(release_id, &LibraryImageType::Cover).await
+    let cover_staging = match records
+        .library_image_file(release_id, &LibraryImageType::Cover)
+        .await?
     {
-        Ok(Some(file)) => match store.read_file(&file).await {
-            Ok(bytes) => {
-                let staging_release = release_id.to_string();
-                match diagnostics
-                    .blocking("stage a cover for reading", move || {
-                        stage_cover_for_ocr(&staging_release, &bytes)
-                    })
-                    .await
-                {
-                    Ok(Some((dir, cover_path))) => {
-                        paths.push(cover_path);
-                        Some(dir)
-                    }
-                    Ok(None) => None,
-                    // A staging that panicked skips the cover, as one
-                    // that failed does, reported as the bug it is.
-                    Err(failed) => {
-                        debug!("{failed}; reading the release without its cover");
-                        None
-                    }
-                }
-            }
-            Err(e) => {
-                warn!(
-                    "artwork OCR: reading cover for release {release_id} failed: {e}; skipping cover"
-                );
-                None
-            }
-        },
-        Ok(None) => {
-            debug!("artwork OCR: release {release_id} has no cover file; skipping cover staging");
-            None
+        Some(file) => {
+            let bytes = store.read_file(&file).await.map_err(ReleaseArtworkError::CoverRead)?;
+            let (dir, cover_path) = diagnostics
+                .blocking("stage a cover for reading", move || stage_cover_for_ocr(&bytes))
+                .await?
+                .map_err(ReleaseArtworkError::CoverStaging)?;
+            paths.push(cover_path);
+            Some(dir)
         }
-        Err(e) => {
-            warn!(
-                "artwork OCR: reading cover for release {release_id} failed: {e}; skipping cover"
-            );
+        None => {
+            debug!("artwork OCR: release {release_id} has no cover file; skipping cover staging");
             None
         }
     };
@@ -205,12 +202,7 @@ pub(crate) async fn resolve_release_artwork_paths(
                     file.id,
                     p.display()
                 ),
-                Err(error) => warn!(
-                    "artwork OCR: registered image file {} at {} could not be checked: {error}; \
-                     skipping image",
-                    file.id,
-                    p.display()
-                ),
+                Err(error) => return Err(ReleaseArtworkError::Image { path: p, error }),
             }
         }
     }
@@ -219,22 +211,12 @@ pub(crate) async fn resolve_release_artwork_paths(
 }
 
 /// Write cover bytes to a temp file the OCR reader can open, returning the
-/// temp-dir guard and the file's path. An IO failure skips the cover, logged,
-/// rather than failing the whole resolve. Blocking; run it off the runtime.
-fn stage_cover_for_ocr(release_id: &str, bytes: &[u8]) -> Option<(tempfile::TempDir, PathBuf)> {
-    let dir = match tempfile::tempdir() {
-        Ok(dir) => dir,
-        Err(e) => {
-            warn!("artwork OCR: cover staging dir for release {release_id} failed: {e}; skipping cover");
-            return None;
-        }
-    };
+/// temp-dir guard and the file's path. Blocking; run it off the runtime.
+fn stage_cover_for_ocr(bytes: &[u8]) -> std::io::Result<(tempfile::TempDir, PathBuf)> {
+    let dir = tempfile::tempdir()?;
     let cover_path = dir.path().join("cover");
-    if let Err(e) = std::fs::write(&cover_path, bytes) {
-        warn!("artwork OCR: staging cover for release {release_id} failed: {e}; skipping cover");
-        return None;
-    }
-    Some((dir, cover_path))
+    std::fs::write(&cover_path, bytes)?;
+    Ok((dir, cover_path))
 }
 
 #[cfg(test)]

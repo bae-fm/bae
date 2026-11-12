@@ -134,7 +134,7 @@ pub(crate) fn read_audio(
         .ok_or_else(|| ImportError::Internal {
             detail: "a candidate with no audio has nothing to read a release against".to_string(),
         })?;
-    Ok(crate::rip_reading::read_rip_artifacts(files).read_audio(lengths))
+    Ok(crate::rip_reading::read_rip_artifacts(files)?.read_audio(lengths))
 }
 
 /// The candidate's effective audio rows in mapping order, reduced to the

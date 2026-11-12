@@ -416,7 +416,7 @@ async fn extract(
     }
 }
 
-/// The fast pass, or why it panicked or the folder's timing does not read.
+/// The fast pass, or why it panicked or the folder's files do not read.
 async fn run_fast_pass_blocking<F>(
     diagnostics: &bae_diagnostics::Diagnostics,
     task: F,
@@ -429,8 +429,8 @@ where
         .await
         .map_err(|failed| failed.to_string())?;
     pass.map_err(|error| {
-        error!("signals: folder timing is invalid: {error}; aborting extraction");
-        format!("folder timing is invalid: {error}")
+        error!("signals: the folder cannot be read: {error}; aborting extraction");
+        error.to_string()
     })
 }
 

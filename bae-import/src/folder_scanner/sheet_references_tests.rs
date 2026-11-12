@@ -32,7 +32,7 @@ fn single_file_cue_uses_the_unique_same_stem_audio_when_its_reference_is_missing
     );
     assert_eq!(files.bound_sheets()[0].audio_files[0].1.file_name, "cd.flac");
     assert!(
-        crate::rip_reading::read_rip_artifacts(&files).disc_id.computed().len() == 1,
+        crate::rip_reading::read_rip_artifacts(&files).unwrap().disc_id.computed().len() == 1,
         "the automatically bound sheet and audio yield a disc ID",
     );
 }
@@ -363,6 +363,7 @@ fn multi_file_cue_resolves_each_reference_by_unique_stem() {
     );
     assert!(
         crate::rip_reading::read_rip_artifacts(files)
+            .unwrap()
             .disc_id
             .computed()
             .iter()

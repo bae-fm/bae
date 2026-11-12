@@ -57,8 +57,9 @@ pub enum ImportError {
     #[error("{detail}")]
     UnusableFile { detail: String },
 
-    /// A document of the folder the person opened to read could not be read:
-    /// it left the folder, or the disk refused it.
+    /// A document of the folder could not be read, to show the person or to
+    /// read what it says about the release: it left the folder, or the disk
+    /// refused it.
     #[cfg(desktop)]
     #[error("{file} could not be read: {error}")]
     DocumentRead { file: String, error: std::io::Error },

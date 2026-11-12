@@ -1101,6 +1101,10 @@ of:
   title. A file whose tags don't parse states none of these, and the other
   files' tags still count.
 
+A file that can't be read at all, such as a rip log, a text file or an audio
+file's tags on a drive that fails, is not a file that states nothing: the
+run fails with the read's error, and identifying again reads it anew.
+
 Identification reads the audio's tags from the files on every run, so the
 scan's stored reading keeps none of the ISRCs, labels, copyright lines or
 store markers: nothing else uses them.
