@@ -19,9 +19,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.dp
+import fm.bae.app.currentLocale
+import fm.bae.app.spokenListText
 import fm.bae.app.ui.appearance.AccentChoice
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
@@ -136,7 +139,8 @@ internal fun AndroidStorageUsage(
 /** The bar, one rounded piece per kind in proportion to its share; a thin kind still shows. */
 @Composable
 private fun UsageBar(segments: List<StorageUsageSegment>) {
-    val description = segments.joinToString(", ") { "${it.label} ${it.size}" }
+    val description =
+        spokenListText(segments.map { "${it.label} ${it.size}" }, LocalContext.current.currentLocale())
     Row(
         modifier = Modifier.fillMaxWidth().height(BAR_HEIGHT).clearAndSetSemantics { contentDescription = description },
         horizontalArrangement = Arrangement.spacedBy(BAR_GAP),

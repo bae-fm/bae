@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.viewinterop.AndroidView
 import fm.bae.app.coreString
+import fm.bae.app.factsLine
 import fm.bae.app.formatFileSize
 import fm.bae.app.requireDisplayableByteCount
 import fm.bae.app.ui.BaeTheme
@@ -101,7 +102,7 @@ internal class DownloadProgressView(
                         ),
                     )
                 }.orEmpty()
-                .let { counts -> label?.let { led -> if (counts.isEmpty()) led else "$led · $counts" } ?: counts }
+                .let { counts -> context.factsLine(listOf(label, counts)) }
         if (bytes.text.toString() != text) bytes.text = text
     }
 }

@@ -47,8 +47,8 @@ fun Context.coreString(
 ): String = MessageFormat(coreString(key), currentLocale()).format(args)
 
 /** Core's count parts, such as "2 uploading" and "3 queued", each localized and
- *  joined with " · ". Core decides which parts appear and in what order. */
-fun Context.countLabelsText(parts: List<BridgeCountLabel>): String = parts.joinToString(" · ") { coreString(it) }
+ *  joined with the catalog's list separator. Core decides which parts appear and in what order. */
+fun Context.countLabelsText(parts: List<BridgeCountLabel>): String = factsLine(parts.map { coreString(it) })
 
 /** The configuration's primary locale, for number / duration / byte formatting. */
 fun Context.currentLocale(): Locale = resources.configuration.locales[0]

@@ -23,6 +23,7 @@ import androidx.compose.ui.res.stringResource
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.data.SyncLine
+import fm.bae.app.factSeparator
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidCard
 import fm.bae.app.ui.components.AndroidRow
@@ -169,5 +170,5 @@ private fun peopleAndDevices(people: PeopleRead): String? {
     val devices = loaded.sumOf { it.membership.activeDevices.size }
     val peopleText = pluralStringResource(R.plurals.people_count, loaded.size, loaded.size)
     val devicesText = pluralStringResource(R.plurals.device_count, devices, devices)
-    return "$peopleText · $devicesText"
+    return "$peopleText${LocalContext.current.factSeparator()}$devicesText"
 }

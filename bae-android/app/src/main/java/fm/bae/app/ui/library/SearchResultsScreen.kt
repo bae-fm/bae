@@ -27,6 +27,7 @@ import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
 import fm.bae.app.displayError
 import fm.bae.app.durationClockLabel
+import fm.bae.app.factsLine
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeSpace
@@ -132,7 +133,7 @@ private fun SearchResultsList(
             items(results.albums, key = { "album:${it.id}" }) { album ->
                 AndroidLibraryRow(
                     title = album.title,
-                    subtitle = album.year?.let { "${album.artistName} · $it" } ?: album.artistName,
+                    subtitle = context.factsLine(listOf(album.artistName, album.year?.toString())),
                     art = album.cover,
                     onClick = { onSelectAlbum(album.id) },
                 )
@@ -186,7 +187,7 @@ private fun LazyListScope.trackResults(
     items(tracks, key = { "track:${it.id}" }) { track ->
         AndroidLibraryRow(
             title = track.title,
-            subtitle = "${track.artistName}, ${track.albumTitle}",
+            subtitle = LocalContext.current.factsLine(listOf(track.artistName, track.albumTitle)),
             trailing = LocalContext.current.durationClockLabel(track.durationClock),
             noArt = true,
             onClick = { onSelectAlbum(track.albumId) },

@@ -36,6 +36,7 @@ import fm.bae.app.countLabelsText
 import fm.bae.app.data.DownloadPageStore
 import fm.bae.app.data.DownloadStore
 import fm.bae.app.data.LiveValue
+import fm.bae.app.factSeparator
 import fm.bae.app.queueWaitText
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
@@ -212,7 +213,7 @@ internal fun AndroidDownloadsBar(
     }
 }
 
-/** The queue's counts, then what holds it back, joined with " · ". */
+/** The queue's counts, then what holds it back, joined with the catalog's fact separator. */
 private fun queueSummaryText(
     context: Context,
     counts: BridgeDownloadCounts,
@@ -220,7 +221,7 @@ private fun queueSummaryText(
     listOfNotNull(
         context.countLabelsText(bridgePinSummaryParts(counts.total)).ifEmpty { null },
         counts.wait?.let(context::queueWaitText),
-    ).joinToString(" · ")
+    ).joinToString(context.factSeparator())
 
 /** The queue's summary, then its [count] entries in the order queued, each drawn once [row] has read it. */
 @Composable

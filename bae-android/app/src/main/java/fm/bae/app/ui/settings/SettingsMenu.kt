@@ -15,6 +15,7 @@ import androidx.compose.ui.res.stringResource
 import fm.bae.app.R
 import fm.bae.app.RestorePlaybackPref
 import fm.bae.app.data.LiveValue
+import fm.bae.app.factSeparator
 import fm.bae.app.formatFileSize
 import fm.bae.app.requireDisplayableByteCount
 import fm.bae.app.ui.appearance.LocalAppearanceStore
@@ -110,6 +111,7 @@ internal fun rememberSettingsSummaries(
 ): SettingsSummaries {
     val context = LocalContext.current
     val resources = LocalResources.current
+    val separator = context.factSeparator()
     val appearance by LocalAppearanceStore.current.preferences.collectAsState()
     val restoresOnLaunch = remember(context) { RestorePlaybackPref.load(context) }
     val appearanceWords = listOf(appearance.mode.label, appearance.tone.label, appearance.accent.label)
@@ -120,16 +122,16 @@ internal fun rememberSettingsSummaries(
         )
     val pins = config.maxConcurrentDownloads.toInt()
     return SettingsSummaries(
-        appearance = appearanceWords.joinToString(SUMMARY_SEPARATOR) { resources.getString(it) },
+        appearance = appearanceWords.joinToString(separator) { resources.getString(it) },
         library =
             listOfNotNull((libraryName as? LibraryNameRead.Named)?.name, sync.text)
-                .joinToString(SUMMARY_SEPARATOR)
+                .joinToString(separator)
                 .ifEmpty { null },
         playback =
             if (playbackWords.isEmpty()) {
                 resources.getString(R.string.settings_summary_off)
             } else {
-                playbackWords.joinToString(SUMMARY_SEPARATOR) { resources.getString(it) }
+                playbackWords.joinToString(separator) { resources.getString(it) }
             },
         transfers = resources.getQuantityString(R.plurals.transfers_pins_summary, pins, pins),
         storage = storageSummary(deviceStorage, context),
@@ -153,8 +155,6 @@ internal fun storageSummary(
 
 @StringRes
 private fun onOff(on: Boolean): Int = if (on) R.string.settings_summary_on else R.string.settings_summary_off
-
-private const val SUMMARY_SEPARATOR = " · "
 
 /** The version of bae installed, read from the package rather than BuildConfig so it reflects what is installed. */
 @Composable
