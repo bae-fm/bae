@@ -3,6 +3,7 @@
 pub(crate) mod android;
 pub(crate) mod mac;
 
+use crate::declared::Declared;
 use crate::names::{Name, Platform, Prefix};
 use crate::shots::Shot;
 use std::path::{Path, PathBuf};
@@ -104,6 +105,30 @@ pub(crate) fn selected(
         return Err(CaptureError::NothingSelected(platform));
     }
     Ok(selected)
+}
+
+/// Why a shot is left out of a run given no `--windows`.
+pub(crate) const NEEDS_WINDOW: &str = "not taken here (needs a window)";
+
+/// The shots of `platform` that `prefixes` select, split into those this run
+/// takes and those it leaves out because they are shown in a window and the
+/// run was not given `--windows`.
+pub(crate) struct Taken {
+    pub(crate) names: Vec<Name>,
+    pub(crate) not_taken: Vec<Name>,
+}
+
+pub(crate) fn taken(
+    declared: &[Declared],
+    platform: Platform,
+    prefixes: &[Prefix],
+    windows: bool,
+) -> Result<Taken, CaptureError> {
+    let all: Vec<Name> = declared.iter().map(|d| d.name.clone()).collect();
+    let (names, not_taken) = selected(&all, platform, prefixes)?
+        .into_iter()
+        .partition(|name| windows || !declared.iter().any(|d| &d.name == name && d.needs_window));
+    Ok(Taken { names, not_taken })
 }
 
 const EXTENSIONS: [&str; 2] = ["png", "json"];

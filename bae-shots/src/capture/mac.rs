@@ -2,7 +2,8 @@
 //! `baeShots` test bundle, which draws each scene and writes
 //! `<board>@macos.{png,json}` into the output directory.
 
-use super::{check_complete, clear, selected, CaptureError, Step};
+use super::{check_complete, clear, taken, CaptureError, Step, NEEDS_WINDOW};
+use crate::declared::Declared;
 use crate::names::{Name, Platform, Prefix};
 use std::path::Path;
 
@@ -10,16 +11,23 @@ const XCODE_DIRECTORY: &str = "bae-macos/bae";
 const FFMPEG_LIBRARIES: &str = "bae-ffmpeg/dist/lib";
 
 /// Takes the shots `prefixes` select (all when empty) into `out`, an absolute
-/// path.
+/// path. Without `windows`, a shot shown in its window is left out, said on
+/// stderr, and returned.
 pub(crate) fn capture(
     root: &Path,
-    declared: &[Name],
+    declared: &[Declared],
     prefixes: &[Prefix],
     windows: bool,
     out: &Path,
-) -> Result<(), CaptureError> {
-    let wanted = selected(declared, Platform::Mac, prefixes)?;
+) -> Result<Vec<Name>, CaptureError> {
+    let taken = taken(declared, Platform::Mac, prefixes, windows)?;
+    for name in &taken.not_taken {
+        eprintln!("bae-shots: {name}: {NEEDS_WINDOW}");
+    }
     clear(out, Platform::Mac)?;
+    if taken.names.is_empty() {
+        return Ok(taken.not_taken);
+    }
 
     let xcode = root.join(XCODE_DIRECTORY);
     for step in [
@@ -40,11 +48,7 @@ pub(crate) fn capture(
         &xcode,
         &trees,
         out,
-        &prefixes
-            .iter()
-            .filter(|p| p.platform() == Platform::Mac)
-            .map(|p| p.as_str().to_string())
-            .collect::<Vec<_>>(),
+        &harness_prefixes(prefixes, &taken.names),
         windows,
         ffmpeg.is_dir().then_some(ffmpeg.as_path()),
         std::env::var("DYLD_LIBRARY_PATH").ok().as_deref(),
@@ -52,8 +56,20 @@ pub(crate) fn capture(
     step.run()?;
 
     let declared_here: Vec<Name> =
-        declared.iter().filter(|n| n.platform() == Platform::Mac).cloned().collect();
-    check_complete(out, Platform::Mac, &wanted, &declared_here)
+        declared.iter().map(|d| d.name.clone()).filter(|n| n.platform() == Platform::Mac).collect();
+    check_complete(out, Platform::Mac, &taken.names, &declared_here)?;
+    Ok(taken.not_taken)
+}
+
+/// The prefixes the harness is given: the Mac ones that start a shot this run
+/// takes. The harness fails on a prefix that starts none of the scenes it
+/// renders, and without `--windows` it renders no window scene.
+fn harness_prefixes(prefixes: &[Prefix], taken: &[Name]) -> Vec<String> {
+    prefixes
+        .iter()
+        .filter(|p| p.platform() == Platform::Mac && taken.iter().any(|n| p.matches(n)))
+        .map(|p| p.as_str().to_string())
+        .collect()
 }
 
 /// The `xcodebuild … test` of the `baeShots` scheme. Xcode forwards a

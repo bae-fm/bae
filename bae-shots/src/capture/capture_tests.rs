@@ -163,3 +163,64 @@ fn a_shot_whose_files_disagree_fails() {
     assert_eq!(problems.len(), 1, "{problems:?}");
     assert!(problems[0].starts_with("inconsistent: mac.welcome.a: its picture is 100x100"));
 }
+
+fn declared(texts: &[(&str, bool)]) -> Vec<Declared> {
+    texts
+        .iter()
+        .map(|(t, needs_window)| Declared {
+            name: Name::parse(t).unwrap(),
+            file: PathBuf::from("Scenes.swift"),
+            needs_window: *needs_window,
+        })
+        .collect()
+}
+
+#[test]
+fn a_window_shot_is_not_taken_without_windows_and_taken_with_them() {
+    let all = declared(&[("mac.welcome.a", false), ("mac.settings.toolbar", true)]);
+    let without = taken(&all, Platform::Mac, &[], false).unwrap();
+    assert_eq!(without.names, names(&["mac.welcome.a"]));
+    assert_eq!(without.not_taken, names(&["mac.settings.toolbar"]));
+    let with = taken(&all, Platform::Mac, &[], true).unwrap();
+    assert_eq!(with.names, names(&["mac.welcome.a", "mac.settings.toolbar"]));
+    assert!(with.not_taken.is_empty());
+}
+
+#[test]
+fn a_selection_of_only_window_shots_is_all_not_taken_without_windows() {
+    let all = declared(&[("mac.welcome.a", false), ("mac.settings.toolbar", true)]);
+    let chosen = taken(&all, Platform::Mac, &[prefix("mac.settings.")], false).unwrap();
+    assert!(chosen.names.is_empty());
+    assert_eq!(chosen.not_taken, names(&["mac.settings.toolbar"]));
+}
+
+#[test]
+fn the_completeness_check_passes_without_a_window_shot_when_it_was_not_taken() {
+    let out = tempfile::tempdir().unwrap();
+    write_shot(out.path(), "mac.welcome.a");
+    let all = declared(&[("mac.welcome.a", false), ("mac.settings.toolbar", true)]);
+    let chosen = taken(&all, Platform::Mac, &[], false).unwrap();
+    let declared: Vec<Name> = all.iter().map(|d| d.name.clone()).collect();
+    check_complete(out.path(), Platform::Mac, &chosen.names, &declared).unwrap();
+}
+
+#[test]
+fn the_completeness_check_reports_a_window_shot_missing_when_windows_were_given() {
+    let out = tempfile::tempdir().unwrap();
+    write_shot(out.path(), "mac.welcome.a");
+    let all = declared(&[("mac.welcome.a", false), ("mac.settings.toolbar", true)]);
+    let chosen = taken(&all, Platform::Mac, &[], true).unwrap();
+    let declared: Vec<Name> = all.iter().map(|d| d.name.clone()).collect();
+    let CaptureError::Incomplete(problems) =
+        check_complete(out.path(), Platform::Mac, &chosen.names, &declared).unwrap_err()
+    else {
+        panic!("not incomplete");
+    };
+    assert_eq!(
+        problems,
+        [
+            "missing: mac.settings.toolbar@macos.json was not written",
+            "missing: mac.settings.toolbar@macos.png was not written",
+        ]
+    );
+}

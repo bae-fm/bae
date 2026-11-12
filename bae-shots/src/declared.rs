@@ -16,19 +16,26 @@ pub(crate) enum DeclaredError {
     Name(PathBuf, NameError),
     #[error("cannot read {0}: {1}")]
     Read(PathBuf, std::io::Error),
+    #[error(
+        "{0}: a scene shown in its window is written `ShotScene(id: \"<board name>\", …, frame: .window(…)) {{ … }}` so the tool can tell it needs the window"
+    )]
+    WindowScene(PathBuf),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Declared {
     pub(crate) name: Name,
     pub(crate) file: PathBuf,
+    /// The scene is shown in its window, which takes the focus, so only a run
+    /// given `--windows` takes it. Declared in Swift by `frame: .window(…)`.
+    pub(crate) needs_window: bool,
 }
 
 /// Every shot both harnesses declare, in name order, each once.
 pub(crate) fn read(root: &Path) -> Result<Vec<Declared>, DeclaredError> {
     let mut all = Vec::new();
     for (directory, extension, find) in [
-        (KOTLIN_DIRECTORY, "kt", kotlin as fn(&str) -> Vec<String>),
+        (KOTLIN_DIRECTORY, "kt", kotlin as fn(&str) -> Vec<(String, bool)>),
         (SWIFT_DIRECTORY, "swift", swift),
     ] {
         let directory = root.join(directory);
@@ -46,9 +53,16 @@ pub(crate) fn read(root: &Path) -> Result<Vec<Declared>, DeclaredError> {
             }
             let source =
                 std::fs::read_to_string(&path).map_err(|e| DeclaredError::Read(path.clone(), e))?;
-            for text in find(&source) {
+            let source = if extension == "swift" { without_line_comments(&source) } else { source };
+            let found = find(&source);
+            if extension == "swift"
+                && window_frames(&source) != found.iter().filter(|f| f.1).count()
+            {
+                return Err(DeclaredError::WindowScene(path));
+            }
+            for (text, needs_window) in found {
                 let name = Name::parse(&text).map_err(|e| DeclaredError::Name(path.clone(), e))?;
-                all.push(Declared { name, file: path.clone() });
+                all.push(Declared { name, file: path.clone(), needs_window });
             }
         }
     }
@@ -58,15 +72,34 @@ pub(crate) fn read(root: &Path) -> Result<Vec<Declared>, DeclaredError> {
 }
 
 /// The first string argument of each `shot(` and `component(` call.
-fn kotlin(source: &str) -> Vec<String> {
+fn kotlin(source: &str) -> Vec<(String, bool)> {
     let call = Regex::new(r#"\b(?:shot|component)\(\s*"([^"]*)""#).unwrap();
-    call.captures_iter(source).map(|c| c[1].to_string()).collect()
+    call.captures_iter(source).map(|c| (c[1].to_string(), false)).collect()
 }
 
-/// Each string literal that begins like a Mac board name.
-fn swift(source: &str) -> Vec<String> {
+/// Each string literal that begins like a Mac board name, with whether it is
+/// the id of a `ShotScene(…)` call whose arguments give `frame: .window(`.
+fn swift(source: &str) -> Vec<(String, bool)> {
     let literal = Regex::new(r#""(mac\.[^"\s]*)""#).unwrap();
-    literal.captures_iter(source).map(|c| c[1].to_string()).collect()
+    let in_window = Regex::new(r#"ShotScene\(\s*id:\s*"(mac\.[^"\s]*)"[^{}]*?\)\s*\{"#).unwrap();
+    let windowed: Vec<&str> = in_window
+        .captures_iter(source)
+        .filter(|c| c[0].contains("frame: .window("))
+        .map(|c| c.get(1).unwrap().as_str())
+        .collect();
+    literal.captures_iter(source).map(|c| (c[1].to_string(), windowed.contains(&&c[1]))).collect()
+}
+
+/// The source without its whole-line comments, which may describe a scene's
+/// form in the very words the readers look for.
+fn without_line_comments(source: &str) -> String {
+    source.lines().filter(|l| !l.trim_start().starts_with("//")).collect::<Vec<_>>().join("\n")
+}
+
+/// How many times the source writes `frame: .window(`, each of which the
+/// reading above must have tied to a scene id.
+fn window_frames(source: &str) -> usize {
+    source.matches("frame: .window(").count()
 }
 
 #[cfg(test)]

@@ -73,6 +73,7 @@ fn a_run_passes_without_findings_or_problems() {
         skipped: Vec::new(),
         problems: Vec::new(),
         lists: Lists::default(),
+        not_taken: Vec::new(),
     };
     assert!(outcome.passed());
     outcome.problems.push(Problem { name: "x".into(), declared: false, sentence: "s".into() });
@@ -107,6 +108,7 @@ fn a_pair_with_a_finding_fails_the_run() {
         skipped: Vec::new(),
         problems: Vec::new(),
         lists: Lists::default(),
+        not_taken: Vec::new(),
     };
     assert!(!outcome.passed());
 }

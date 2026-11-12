@@ -2,7 +2,11 @@ use super::*;
 use std::path::PathBuf;
 
 fn declared(name: &str) -> Declared {
-    Declared { name: Name::parse(name).unwrap(), file: PathBuf::from("Shots.kt") }
+    Declared {
+        name: Name::parse(name).unwrap(),
+        file: PathBuf::from("Shots.kt"),
+        needs_window: false,
+    }
 }
 
 fn write(root: &Path, path: &str, text: &str) {

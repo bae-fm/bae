@@ -61,6 +61,14 @@ struct ShotStage {
 /// What a shot takes in: the scene's view alone, or the window it is shown
 /// in, title bar and toolbar included, for a scene whose toolbar is part of
 /// what it shows.
+///
+/// A window takes the focus, so only a run given `--windows` takes the shot.
+/// bae-shots reads which scenes those are from the source, so a scene shown
+/// in its window is written with the id as a string literal of its board
+/// name and `frame: .window(title: …)` among the arguments of its
+/// `ShotScene(` call; a window frame the tool cannot tie to such an id
+/// fails its reading. A run
+/// without `--windows` reports these shots as not taken, never as missing.
 enum ShotFrame {
     case content
     case window(title: String)

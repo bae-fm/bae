@@ -83,6 +83,7 @@ fn outcome(dir: &Path, words: &str) -> Outcome {
             to_update: Vec::new(),
             to_delete: vec!["mac.welcome.gone".to_string()],
         },
+        not_taken: vec![Name::parse("mac.settings.toolbar").unwrap()],
     }
 }
 
@@ -148,4 +149,21 @@ fn the_summary_has_counts_the_failures_and_the_lists() {
     assert!(text.contains("- shot 'mac.welcome.gone' has no board: x is missing"));
     assert!(text.contains("### Boards with no shot (to build)\n\n- `mac.welcome.todo`"));
     assert!(!text.contains("<img"));
+}
+
+#[test]
+fn the_page_and_the_summary_name_the_shots_not_taken_and_why() {
+    let dir = tempfile::tempdir().unwrap();
+    let outcome = outcome(dir.path(), "Set up");
+    let html = page(&outcome, &header());
+    assert!(html.contains("mac.settings.toolbar"), "{html}");
+    assert!(html.contains(crate::capture::NEEDS_WINDOW));
+    let text = summary(&outcome, &header());
+    assert!(
+        text.contains(
+            "### Not taken here\n\n- `mac.settings.toolbar`: not taken here (needs a window)"
+        ),
+        "{text}"
+    );
+    assert!(!text.contains("1 failing"), "a shot not taken is not a failure: {text}");
 }

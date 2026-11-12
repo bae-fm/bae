@@ -112,12 +112,13 @@ fn capture(
     out_for: impl Fn(Platform) -> PathBuf,
 ) -> Result<(), String> {
     let declared = declared::read(root).map_err(|e| e.to_string())?;
-    let names: Vec<Name> = declared.into_iter().map(|d| d.name).collect();
+    let names: Vec<Name> = declared.iter().map(|d| d.name.clone()).collect();
     for platform in selection.platforms() {
         let out = std::path::absolute(out_for(platform)).map_err(|e| e.to_string())?;
         match platform {
             Platform::Mac => {
-                capture::mac::capture(root, &names, &selection.prefixes, selection.windows, &out)
+                capture::mac::capture(root, &declared, &selection.prefixes, selection.windows, &out)
+                    .map(drop)
             }
             Platform::Android => capture::android::capture(root, &names, &selection.prefixes, &out),
         }
@@ -126,18 +127,18 @@ fn capture(
     Ok(())
 }
 
-/// The declared shots the selection takes, on every platform it names.
-fn selected(root: &Path, selection: &Selection) -> Result<Vec<Name>, String> {
-    let declared: Vec<Name> =
-        declared::read(root).map_err(|e| e.to_string())?.into_iter().map(|d| d.name).collect();
-    let mut names = Vec::new();
+/// The declared shots the selection takes on every platform it names, and
+/// those it leaves out because they need a window the run was not given.
+fn selected(root: &Path, selection: &Selection) -> Result<capture::Taken, String> {
+    let declared = declared::read(root).map_err(|e| e.to_string())?;
+    let mut all = capture::Taken { names: Vec::new(), not_taken: Vec::new() };
     for platform in selection.platforms() {
-        names.extend(
-            capture::selected(&declared, platform, &selection.prefixes)
-                .map_err(|e| e.to_string())?,
-        );
+        let taken = capture::taken(&declared, platform, &selection.prefixes, selection.windows)
+            .map_err(|e| e.to_string())?;
+        all.names.extend(taken.names);
+        all.not_taken.extend(taken.not_taken);
     }
-    Ok(names)
+    Ok(all)
 }
 
 /// The commit at the checkout's head.
@@ -200,11 +201,12 @@ fn run(action: Action) -> Result<bool, String> {
         }
         Action::Run(selection) => {
             capture(&root, &selection, |p| root.join("shots").join(p.word()))?;
-            let names = selected(&root, &selection)?;
+            let taken = selected(&root, &selection)?;
             let declared = declared::read(&root).map_err(|e| e.to_string())?;
             let outcome = verify::verify(&verify::Verification {
                 root: &root,
-                names: &names,
+                names: &taken.names,
+                not_taken: &taken.not_taken,
                 declared: &declared,
                 shots_for: &|p| root.join("shots").join(p.word()),
                 out: &root.join("shots"),
@@ -226,6 +228,7 @@ fn run(action: Action) -> Result<bool, String> {
             let outcome = verify::verify(&verify::Verification {
                 root: &root,
                 names: &names,
+                not_taken: &[],
                 declared: &declared,
                 shots_for: &|_| shots.clone(),
                 out: &out,

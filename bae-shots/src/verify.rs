@@ -18,6 +18,8 @@ pub(crate) struct Verification<'a> {
     pub(crate) root: &'a Path,
     /// The shots to check.
     pub(crate) names: &'a [Name],
+    /// Declared shots this run left out because they need a window.
+    pub(crate) not_taken: &'a [Name],
     /// Every shot the harnesses declare.
     pub(crate) declared: &'a [Declared],
     /// Where each platform's captured files are.
@@ -61,6 +63,9 @@ pub(crate) struct Outcome {
     pub(crate) skipped: Vec<Skipped>,
     pub(crate) problems: Vec<Problem>,
     pub(crate) lists: Lists,
+    /// Declared shots the run was not given the means to take (they need a
+    /// window); neither checked nor failing.
+    pub(crate) not_taken: Vec<Name>,
 }
 
 impl Outcome {
@@ -186,6 +191,7 @@ pub(crate) fn verify(job: &Verification) -> Result<Outcome, String> {
         skipped,
         problems,
         lists,
+        not_taken: job.not_taken.to_vec(),
     })
 }
 
@@ -221,6 +227,9 @@ pub(crate) fn print(outcome: &Outcome) {
         for warning in &pair.warnings {
             eprintln!("{}: confirmed with the warning: {warning}", pair.name);
         }
+    }
+    for name in &outcome.not_taken {
+        eprintln!("{name}: {}", crate::capture::NEEDS_WINDOW);
     }
     for (title, list) in [
         ("Boards with no shot (to build)", &outcome.lists.to_build),

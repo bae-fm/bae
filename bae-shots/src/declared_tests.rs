@@ -16,7 +16,8 @@ fn kotlin_reads_the_first_argument_of_shot_and_component() {
         protected fun shot(board: String, content: @Composable () -> Unit) {}
         // "android.welcome.not-a-call"
     "#;
-    assert_eq!(kotlin(source), ["android.welcome.libraries", "android.component.row.title"]);
+    let names: Vec<String> = kotlin(source).into_iter().map(|(n, _)| n).collect();
+    assert_eq!(names, ["android.welcome.libraries", "android.component.row.title"]);
 }
 
 #[test]
@@ -27,7 +28,36 @@ fn swift_reads_string_literals_of_board_form() {
         ShotScene(id: "appearance", size: size)
         let key = "macOS.version"
     "#;
-    assert_eq!(swift(source), ["mac.welcome.libraries.none", "mac.welcome.create-name"]);
+    let names: Vec<String> = swift(source).into_iter().map(|(n, _)| n).collect();
+    assert_eq!(names, ["mac.welcome.libraries.none", "mac.welcome.create-name"]);
+}
+
+#[test]
+fn swift_marks_the_scenes_framed_in_a_window() {
+    let source = r#"
+        ShotScene(id: "mac.welcome.create-name", size: WelcomeWindow.size) {
+            ShotStage(Text("a"))
+        },
+        ShotScene(
+            id: "mac.settings.toolbar",
+            size: CGSize(width: 600, height: 400),
+            frame: .window(title: "Settings")
+        ) {
+            ShotStage(Text("b"))
+        },
+        welcomeWindow("mac.welcome.libraries.none", libraries: []),
+        ShotScene(id: "mac.welcome.after", size: size) { ShotStage(Text("c")) },
+    "#;
+    assert_eq!(
+        swift(source),
+        [
+            ("mac.welcome.create-name".to_string(), false),
+            ("mac.settings.toolbar".to_string(), true),
+            ("mac.welcome.libraries.none".to_string(), false),
+            ("mac.welcome.after".to_string(), false),
+        ]
+    );
+    assert_eq!(window_frames(source), 1);
 }
 
 fn write(root: &Path, path: &str, text: &str) {
@@ -63,6 +93,39 @@ fn read_joins_both_harnesses_and_leaves_the_tests_out() {
     let names: Vec<String> =
         read(root.path()).unwrap().iter().map(|d| d.name.to_string()).collect();
     assert_eq!(names, ["mac.welcome.create-name", "android.welcome.libraries"]);
+}
+
+#[test]
+fn read_carries_the_window_marker_and_refuses_a_frame_it_cannot_tie_to_an_id() {
+    let root = tempfile::tempdir().unwrap();
+    write(root.path(), &format!("{KOTLIN_DIRECTORY}/WelcomeShots.kt"), "");
+    write(
+        root.path(),
+        &format!("{SWIFT_DIRECTORY}/ShotScene+Settings.swift"),
+        r#"ShotScene(id: "mac.settings.toolbar", size: size, frame: .window(title: "S")) { x }
+           ShotScene(id: "mac.settings.plain", size: size) { y }"#,
+    );
+    let read_all = read(root.path()).unwrap();
+    let flags: Vec<(String, bool)> =
+        read_all.iter().map(|d| (d.name.to_string(), d.needs_window)).collect();
+    assert_eq!(
+        flags,
+        [("mac.settings.plain".to_string(), false), ("mac.settings.toolbar".to_string(), true)]
+    );
+
+    write(
+        root.path(),
+        &format!("{SWIFT_DIRECTORY}/ShotScene.swift"),
+        "/// A scene is written `ShotScene(id: \"mac.x\", frame: .window(title: t))`.\n// frame: .window(\n",
+    );
+    assert_eq!(read(root.path()).unwrap().len(), 2);
+
+    write(
+        root.path(),
+        &format!("{SWIFT_DIRECTORY}/ShotScene+Other.swift"),
+        r#"ShotScene(id: id, size: size, frame: .window(title: "S")) { x }"#,
+    );
+    assert!(matches!(read(root.path()), Err(DeclaredError::WindowScene(_))));
 }
 
 #[test]

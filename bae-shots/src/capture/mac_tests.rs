@@ -72,3 +72,12 @@ fn ffmpeg_goes_first_on_the_loader_path_of_xcodebuild() {
     let joined = step(&[], false, Some("/ff"), Some("/other"));
     assert_eq!(env(&joined, "DYLD_LIBRARY_PATH").as_deref(), Some("/ff:/other"));
 }
+
+#[test]
+fn the_harness_is_given_only_prefixes_that_start_a_shot_it_takes() {
+    let prefixes =
+        [Prefix::parse("mac.settings.").unwrap(), Prefix::parse("mac.welcome.").unwrap()];
+    let taken = [Name::parse("mac.welcome.a").unwrap()];
+    assert_eq!(harness_prefixes(&prefixes, &taken), ["mac.welcome."]);
+    assert!(harness_prefixes(&[], &taken).is_empty());
+}

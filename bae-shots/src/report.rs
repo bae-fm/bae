@@ -290,6 +290,18 @@ pub(crate) fn page(outcome: &Outcome, header: &Header) -> String {
         html.push_str("</ul>");
     }
     html.push_str("</section>");
+    if !outcome.not_taken.is_empty() {
+        html.push_str("<section><h2>Not taken here</h2><ul>");
+        for name in &outcome.not_taken {
+            put!(
+                html,
+                "<li><code>{}</code>: {}</li>",
+                esc(&name.to_string()),
+                crate::capture::NEEDS_WINDOW
+            );
+        }
+        html.push_str("</ul></section>");
+    }
     html.push_str(&list_section("Boards with no shot (to build)", &outcome.lists.to_build));
     html.push_str(&list_section(
         "Shots whose board changed since confirmed (to update)",
@@ -332,6 +344,13 @@ pub(crate) fn summary(outcome: &Outcome, header: &Header) -> String {
             for finding in &pair.findings {
                 putln!(text, "- `{}`{note}: {}", pair.name, finding.sentence());
             }
+        }
+        text.push('\n');
+    }
+    if !outcome.not_taken.is_empty() {
+        text.push_str("### Not taken here\n\n");
+        for name in &outcome.not_taken {
+            putln!(text, "- `{name}`: {}", crate::capture::NEEDS_WINDOW);
         }
         text.push('\n');
     }
