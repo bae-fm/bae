@@ -37,7 +37,7 @@ pub(crate) enum BoardError {
     Runtime { board: String, errors: Vec<String> },
 }
 
-fn protocol(error: impl std::fmt::Display) -> BoardError {
+pub(crate) fn protocol(error: impl std::fmt::Display) -> BoardError {
     BoardError::Protocol(error.to_string())
 }
 
@@ -82,8 +82,9 @@ async fn expired(
     Ok(())
 }
 
-/// What the page reports about being ready: `ready` or the first thing missing.
-const READY: &str = r#"(() => {
+/// What a canvas board reports about being ready: `ready` or the first thing
+/// missing.
+pub(crate) const BOARD_READY: &str = r#"(() => {
   if (!document.querySelector('#dc-root')) return 'no #dc-root';
   if (document.fonts.status !== 'loaded') return 'fonts ' + document.fonts.status;
   return 'ready';
@@ -98,6 +99,25 @@ pub(crate) async fn render(
     frame: Frame,
     scale: f64,
 ) -> Result<Rendered, BoardError> {
+    load(page, board, url, frame, scale, BOARD_READY).await?;
+    let png = page
+        .screenshot(ScreenshotParams::builder().format(CaptureScreenshotFormat::Png).build())
+        .await
+        .map_err(protocol)?;
+    Ok(Rendered { png })
+}
+
+/// Loads `url` in a frame of `frame` points at `scale` pixels per point, in
+/// dark mode, and returns once `ready` (an expression that answers `ready` or
+/// what is missing) says the page is drawn and its virtual time has run out.
+pub(crate) async fn load(
+    page: &Page,
+    board: &str,
+    url: &str,
+    frame: Frame,
+    scale: f64,
+    ready_expression: &str,
+) -> Result<(), BoardError> {
     page.execute(SetDeviceMetricsOverrideParams::new(
         i64::from(frame.w),
         i64::from(frame.h),
@@ -125,7 +145,7 @@ pub(crate) async fn render(
     let mut ready = false;
     for _ in 0..=EXTRA_LOOKS {
         state = page
-            .evaluate(READY)
+            .evaluate(ready_expression)
             .await
             .map_err(protocol)?
             .into_value::<String>()
@@ -158,11 +178,7 @@ pub(crate) async fn render(
     if !ready {
         return Err(BoardError::NotReady { board: board.to_string(), looks: EXTRA_LOOKS, state });
     }
-    let png = page
-        .screenshot(ScreenshotParams::builder().format(CaptureScreenshotFormat::Png).build())
-        .await
-        .map_err(protocol)?;
-    Ok(Rendered { png })
+    Ok(())
 }
 
 #[cfg(test)]

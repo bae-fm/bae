@@ -68,6 +68,15 @@ impl Role {
         }
     }
 
+    /// The role of a node: its Chrome role, except that a button that opens a
+    /// menu or list is a pop-up.
+    fn for_node(node: &Raw) -> Self {
+        match Self::of(&node.chrome_role) {
+            Self::Button if node.has_popup => Self::Popup,
+            role => role,
+        }
+    }
+
     /// Roles whose name is their words, which the text inside them repeats.
     fn is_control(self) -> bool {
         !matches!(self, Self::Text | Self::Image | Self::Other)
@@ -119,6 +128,8 @@ pub(crate) struct Element {
 #[derive(Debug, Clone, Default, PartialEq)]
 pub(crate) struct Raw {
     pub(crate) id: String,
+    /// The DOM node the accessibility node describes.
+    pub(crate) backend: Option<i64>,
     pub(crate) parent: Option<String>,
     pub(crate) children: Vec<String>,
     pub(crate) ignored: bool,
@@ -130,6 +141,8 @@ pub(crate) struct Raw {
     pub(crate) selected: Option<bool>,
     pub(crate) disabled: bool,
     pub(crate) focused: bool,
+    /// The control opens a menu or list (`aria-haspopup`).
+    pub(crate) has_popup: bool,
     pub(crate) bounds: Option<Bounds>,
     pub(crate) text: Option<TextStyle>,
     pub(crate) placeholder: Option<String>,
@@ -155,7 +168,7 @@ pub(crate) fn build(raw: &[Raw]) -> Result<Vec<Element>, ReadError> {
     // (node, index of the nearest kept ancestor, a named control above it)
     let mut pending = vec![(first, None, false)];
     while let Some((node, parent, folded)) = pending.pop() {
-        let role = Role::of(&node.chrome_role);
+        let role = Role::for_node(node);
         let label = nonempty(node.name.as_deref()).filter(|_| role != Role::Other);
         let kept = !node.ignored && !STRUCTURE.contains(&node.chrome_role.as_str());
         let inside_control = folded;
@@ -291,6 +304,7 @@ fn raw(node: &AxNode) -> Raw {
     };
     Raw {
         id: node.node_id.inner().clone(),
+        backend: node.backend_dom_node_id.map(|b| *b.inner()),
         parent: node.parent_id.as_ref().map(|p| p.inner().clone()),
         children: node.child_ids.iter().flatten().map(|c: &AxNodeId| c.inner().clone()).collect(),
         ignored: node.ignored,
@@ -301,12 +315,55 @@ fn raw(node: &AxNode) -> Raw {
         selected: property(AxPropertyName::Selected).flatten().map(|s| s == "true"),
         disabled: property(AxPropertyName::Disabled).flatten().is_some_and(|d| d == "true"),
         focused: property(AxPropertyName::Focused).flatten().is_some_and(|f| f == "true"),
+        has_popup: property(AxPropertyName::HasPopup).flatten().is_some_and(|p| p != "false"),
         ..Raw::default()
     }
 }
 
 /// The page's elements in reading order.
 pub(crate) async fn elements(page: &Page) -> Result<Vec<Element>, ReadError> {
+    build(&gather(page).await?)
+}
+
+/// The elements under the DOM node `backend`, in reading order, with boxes
+/// measured from `origin`, the node's top-left corner.
+pub(crate) async fn elements_in(
+    page: &Page,
+    backend: i64,
+    origin: (f64, f64),
+) -> Result<Vec<Element>, ReadError> {
+    let raw = gather(page).await?;
+    let mut inside = subtree(&raw, backend)?;
+    for node in &mut inside {
+        if let Some(bounds) = &mut node.bounds {
+            bounds.x -= origin.0;
+            bounds.y -= origin.1;
+        }
+    }
+    build(&inside)
+}
+
+/// The node describing DOM node `backend` and everything under it, the node
+/// first.
+fn subtree(raw: &[Raw], backend: i64) -> Result<Vec<Raw>, ReadError> {
+    let by_id: HashMap<&str, &Raw> = raw.iter().map(|n| (n.id.as_str(), n)).collect();
+    let root = raw
+        .iter()
+        .find(|n| n.backend == Some(backend))
+        .ok_or_else(|| ReadError::NoNode(format!("DOM node {backend}")))?;
+    let mut found = Vec::new();
+    let mut pending = vec![root];
+    while let Some(node) = pending.pop() {
+        found.push(node.clone());
+        for child in node.children.iter().rev() {
+            pending
+                .push(by_id.get(child.as_str()).ok_or_else(|| ReadError::NoNode(child.clone()))?);
+        }
+    }
+    Ok(found)
+}
+
+async fn gather(page: &Page) -> Result<Vec<Raw>, ReadError> {
     page.execute(EnableParams::default()).await.map_err(protocol)?;
     let tree = page.execute(GetFullAxTreeParams::default()).await.map_err(protocol)?;
     let mut nodes = Vec::new();
@@ -347,7 +404,7 @@ pub(crate) async fn elements(page: &Page) -> Result<Vec<Element>, ReadError> {
         }
         nodes.push(raw);
     }
-    build(&nodes)
+    Ok(nodes)
 }
 
 #[cfg(test)]

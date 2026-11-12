@@ -14,6 +14,8 @@ fn tree() -> tempfile::TempDir {
     write(r, BUNDLE_CSS, "css");
     write(r, BUNDLE_JS, "js");
     write(r, "design/mocks/mac.a.b.dc.html", "<x-dc>board</x-dc>");
+    write(r, "bae-shots/canvas/react.production.min.js", "react");
+    write(r, "design/system/components/MacRow/preview.html", "<head></head><script>row</script>");
     write(r, "secret.txt", "secret");
     root
 }
@@ -30,11 +32,27 @@ async fn get(server: &Server, path: &str) -> String {
 fn routes_cover_the_staged_tree() {
     let root = tree();
     let r = root.path();
-    assert_eq!(route(r, "/support.js"), Some(runtime::copy_path(r)));
-    assert_eq!(route(r, "/storage/support.js"), Some(runtime::copy_path(r)));
-    assert_eq!(route(r, "/ds/bae/tokens.css"), Some(r.join(TOKENS)));
-    assert_eq!(route(r, "/storage/ds/bae/components/bundle.js"), Some(r.join(BUNDLE_JS)));
-    assert_eq!(route(r, "/mac.a.b.dc.html?x=1"), Some(r.join("design/mocks/mac.a.b.dc.html")));
+    assert_eq!(route(r, "/support.js"), Some(Route::File(runtime::copy_path(r))));
+    assert_eq!(route(r, "/storage/support.js"), Some(Route::File(runtime::copy_path(r))));
+    assert_eq!(route(r, "/ds/bae/tokens.css"), Some(Route::File(r.join(TOKENS))));
+    assert_eq!(
+        route(r, "/storage/ds/bae/components/bundle.js"),
+        Some(Route::File(r.join(BUNDLE_JS)))
+    );
+    assert_eq!(
+        route(r, "/mac.a.b.dc.html?x=1"),
+        Some(Route::File(r.join("design/mocks/mac.a.b.dc.html")))
+    );
+    assert_eq!(route(r, "/react.js"), Some(Route::File(r.join(preview::REACT))));
+    assert_eq!(
+        route(r, "/components/MacRow.html"),
+        Some(Route::Preview {
+            component: "MacRow".to_string(),
+            file: r.join("design/system/components/MacRow/preview.html")
+        })
+    );
+    assert_eq!(route(r, "/components/Nothing.html"), None);
+    assert_eq!(route(r, "/components/../x.html"), None);
     assert_eq!(route(r, "/nothing.dc.html"), None);
     assert_eq!(route(r, "/"), None);
 }
@@ -56,6 +74,9 @@ async fn serves_files_and_refuses_the_rest() {
         assert!(board.ends_with("<x-dc>board</x-dc>"), "{board}");
         assert!(get(server, "/support.js").await.ends_with("runtime"));
         assert!(get(server, "/missing.html").await.starts_with("HTTP/1.1 404"));
+        let preview = get(server, "/components/MacRow.html").await;
+        assert!(preview.contains("<script src=\"/react.js\"></script>"), "{preview}");
+        assert!(preview.ends_with("<script>row</script>"), "{preview}");
         assert!(server.board_url("mac.a.b").ends_with("/mac.a.b.dc.html"));
     })
     .await

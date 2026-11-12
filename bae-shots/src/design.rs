@@ -2,6 +2,7 @@
 //! board's frame, and the hash of everything a board's picture depends on.
 
 use crate::capture::{CaptureError, Step};
+use crate::render::preview::{REACT, REACT_DOM};
 use regex::Regex;
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
@@ -11,6 +12,7 @@ use std::path::{Path, PathBuf};
 pub(crate) const MOCKS: &str = "design/mocks";
 pub(crate) const TOKENS: &str = "design/system/tokens.css";
 pub(crate) const BUNDLE_CSS: &str = "design/system/components/bundle.css";
+pub(crate) const COMPONENTS: &str = "design/system/components";
 pub(crate) const BUNDLE_JS: &str = "design/system/components/bundle.js";
 
 #[derive(Debug, thiserror::Error)]
@@ -117,6 +119,24 @@ pub(crate) fn board_hash(
         feed(&mut hasher, built, &read(&root.join(built))?);
     }
     feed(&mut hasher, "runtime", runtime_sha256.as_bytes());
+    feed(&mut hasher, "browser", browser_version.as_bytes());
+    Ok(hasher.finalize().iter().map(|b| format!("{b:02x}")).collect())
+}
+
+/// What a component state's picture depends on: the component's preview page,
+/// the built token sheet, style sheet and script, the copies of React and the
+/// browser.
+pub(crate) fn preview_hash(
+    root: &Path,
+    component: &str,
+    browser_version: &str,
+) -> Result<String, DesignError> {
+    let mut hasher = Sha256::new();
+    let preview = root.join(COMPONENTS).join(component).join("preview.html");
+    feed(&mut hasher, &format!("preview {component}"), &read(&preview)?);
+    for file in [TOKENS, BUNDLE_CSS, BUNDLE_JS, REACT, REACT_DOM] {
+        feed(&mut hasher, file, &read(&root.join(file))?);
+    }
     feed(&mut hasher, "browser", browser_version.as_bytes());
     Ok(hasher.finalize().iter().map(|b| format!("{b:02x}")).collect())
 }

@@ -91,6 +91,16 @@ fn ignored_nodes_are_left_out_and_their_children_attach_to_the_next_kept_ancesto
 }
 
 #[test]
+fn a_button_that_opens_a_menu_is_a_popup() {
+    let mut menu = named(node("2", "button", &[]), "Never");
+    menu.has_popup = true;
+    let raw = [node("1", "list", &["2", "3"]), menu, named(node("3", "button", &[]), "Set up")];
+    let elements = build(&raw).unwrap();
+    assert_eq!(elements[1].role, Role::Popup);
+    assert_eq!(elements[2].role, Role::Button);
+}
+
+#[test]
 fn an_unnamed_container_is_structure_without_a_label() {
     let raw = [
         named(node("1", "group", &["2"]), "ignored name"),
@@ -132,6 +142,7 @@ const BOARD: &str = r##"<x-dc><helmet><style>body{margin:0;font:13px sans-serif}
 <p>Words   with
    <span>spans</span> mixed</p>
 <button disabled>Off</button>
+<button aria-haspopup="menu">Never</button>
 </x-dc>"##;
 
 async fn read_fixture() -> Vec<Element> {
@@ -167,6 +178,7 @@ async fn a_board_reads_as_the_shots_do() {
         "the button's text is its name only"
     );
     assert!(!find(&elements, Role::Button, "Off").enabled);
+    find(&elements, Role::Popup, "Never");
 
     assert_eq!(find(&elements, Role::Toggle, "Sync").value.as_deref(), Some("on"));
     assert_eq!(find(&elements, Role::Toggle, "Offline").value.as_deref(), Some("off"));

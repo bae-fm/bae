@@ -3,11 +3,13 @@
 //! board cannot be loaded from `file:`.
 //!
 //! The served tree: `design/mocks/**` at `/`, the runtime copy at `/support.js`
-//! and `/storage/support.js`, and the built token sheet, style sheet and script
-//! at `/ds/bae/…` and `/storage/ds/bae/…`.
+//! and `/storage/support.js`, the built token sheet, style sheet and script
+//! at `/ds/bae/…` and `/storage/ds/bae/…`, React at `/react.js` and
+//! `/react-dom.js`, and each component's preview page at
+//! `/components/<Name>.html`.
 
-use crate::design::{BUNDLE_CSS, BUNDLE_JS, MOCKS, TOKENS};
-use crate::render::runtime;
+use crate::design::{BUNDLE_CSS, BUNDLE_JS, COMPONENTS, MOCKS, TOKENS};
+use crate::render::{preview, runtime};
 use futures::stream::FuturesUnordered;
 use futures::StreamExt;
 use std::net::SocketAddr;
@@ -15,16 +17,43 @@ use std::path::{Component, Path, PathBuf};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 
-/// The file a URL path is served from, if it names one.
-fn route(root: &Path, url_path: &str) -> Option<PathBuf> {
+/// What a URL path is served from.
+#[derive(Debug, PartialEq, Eq)]
+enum Route {
+    File(PathBuf),
+    /// A component's `preview.html`, with the design system loaded ahead of
+    /// its script.
+    Preview {
+        component: String,
+        file: PathBuf,
+    },
+}
+
+/// The component named by `/components/<Name>.html`.
+fn preview_component(path: &str) -> Option<&str> {
+    let name = path.strip_prefix("/components/")?.strip_suffix(".html")?;
+    (!name.is_empty() && name.chars().all(|c| c.is_ascii_alphanumeric())).then_some(name)
+}
+
+/// What a URL path is served from, if it names something.
+fn route(root: &Path, url_path: &str) -> Option<Route> {
     let path = url_path.split(['?', '#']).next()?;
     let path = path.strip_prefix("/storage").filter(|p| p.starts_with('/')).unwrap_or(path);
-    match path {
-        "/support.js" => return Some(runtime::copy_path(root)),
-        "/ds/bae/tokens.css" => return Some(root.join(TOKENS)),
-        "/ds/bae/components/bundle.css" => return Some(root.join(BUNDLE_CSS)),
-        "/ds/bae/components/bundle.js" => return Some(root.join(BUNDLE_JS)),
-        _ => {}
+    let file = match path {
+        "/support.js" => Some(runtime::copy_path(root)),
+        "/react.js" => Some(root.join(preview::REACT)),
+        "/react-dom.js" => Some(root.join(preview::REACT_DOM)),
+        "/ds/bae/tokens.css" => Some(root.join(TOKENS)),
+        "/ds/bae/components/bundle.css" => Some(root.join(BUNDLE_CSS)),
+        "/ds/bae/components/bundle.js" => Some(root.join(BUNDLE_JS)),
+        _ => None,
+    };
+    if let Some(file) = file {
+        return Some(Route::File(file));
+    }
+    if let Some(component) = preview_component(path) {
+        let file = root.join(COMPONENTS).join(component).join("preview.html");
+        return file.is_file().then(|| Route::Preview { component: component.to_string(), file });
     }
     let relative = Path::new(path.strip_prefix('/')?);
     if relative.as_os_str().is_empty()
@@ -33,7 +62,7 @@ fn route(root: &Path, url_path: &str) -> Option<PathBuf> {
         return None;
     }
     let file = root.join(MOCKS).join(relative);
-    file.is_file().then_some(file)
+    file.is_file().then_some(Route::File(file))
 }
 
 fn content_type(file: &Path) -> &'static str {
@@ -64,7 +93,14 @@ async fn respond(root: &Path, mut stream: TcpStream) -> std::io::Result<()> {
     let (method, target) = (line.next().unwrap_or(""), line.next().unwrap_or(""));
     let found = if method == "GET" || method == "HEAD" {
         match route(root, target) {
-            Some(file) => tokio::fs::read(&file).await.ok().map(|b| (content_type(&file), b)),
+            Some(Route::File(file)) => {
+                tokio::fs::read(&file).await.ok().map(|b| (content_type(&file), b))
+            }
+            Some(Route::Preview { component, file }) => tokio::fs::read_to_string(&file)
+                .await
+                .ok()
+                .and_then(|html| preview::assemble(&component, &html).ok())
+                .map(|html| ("text/html; charset=utf-8", html.into_bytes())),
             None => None,
         }
     } else {
@@ -90,6 +126,11 @@ pub(crate) struct Server {
 }
 
 impl Server {
+    /// The URL of the preview page of `component`.
+    pub(crate) fn preview_url(&self, component: &str) -> String {
+        format!("http://{}/components/{component}.html", self.address)
+    }
+
     /// The URL of the board `name`.
     pub(crate) fn board_url(&self, name: &str) -> String {
         format!("http://{}/{name}.dc.html", self.address)
