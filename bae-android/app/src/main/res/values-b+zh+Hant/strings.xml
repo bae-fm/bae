@@ -367,7 +367,7 @@
     <string name="settings_history_off">關閉</string>
     <string name="settings_history_private">僅自己</string>
     <string name="settings_history_household">所有人</string>
-    <string name="settings_history_note">誰能看到你播放的內容，選擇「關閉」則不保留紀錄。變更對之後的播放生效；之前的播放維持原本的可見範圍。</string>
+    <string name="settings_history_note">誰能看到你播放的內容，選擇關閉則不保留紀錄。變更對之後的播放生效；之前的播放維持原本的可見範圍。</string>
     <string name="settings_stored_in">儲存於</string>
     <string name="storage_location_account">%1$s：%2$s</string>
     <string name="storage_location_bucket">%1$s：%2$s（%3$s）</string>

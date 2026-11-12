@@ -360,7 +360,7 @@ extension PeopleAndDevicesPage {
         } footer: {
             if store.selfProfile != nil {
                 Text(
-                    "Who sees what you play, or “Off” to keep no record. Applies to new plays; earlier plays keep who could see them."
+                    "Who sees what you play, or Off to keep no record. Applies to new plays; earlier plays keep who could see them."
                 )
             }
         }

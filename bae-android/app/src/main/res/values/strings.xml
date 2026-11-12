@@ -146,7 +146,7 @@
     <string name="settings_resume_never">Never</string>
     <string name="settings_resume_after">After %1$s</string>
     <string name="settings_restore_on_launch">Restore on launch</string>
-    <string name="settings_restore_on_launch_help">Restores the last session’s track, position, queue, and volume when the app opens.</string>
+    <string name="settings_restore_on_launch_help">Restores the last session’s track, position, queue and volume when the app opens.</string>
     <string name="settings_playback">Playback</string>
     <string name="settings_about">About</string>
     <string name="settings_version">Version</string>
@@ -431,7 +431,7 @@
     <string name="settings_history_off">Off</string>
     <string name="settings_history_private">Only me</string>
     <string name="settings_history_household">Everyone</string>
-    <string name="settings_history_note">Who sees what you play, or “Off” to keep no record. A change applies to plays from now on; earlier plays keep who could see them.</string>
+    <string name="settings_history_note">Who sees what you play, or Off to keep no record. A change applies to plays from now on; earlier plays keep who could see them.</string>
     <string name="settings_stored_in">Stored in</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>

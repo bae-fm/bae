@@ -12,8 +12,8 @@ catalog (bae-bridge/loc/catalog.toml):
   - English: a word that starts a sentence, a quotation, a bracket, a plural
     branch or a step of a "Settings › Playback" path may be capitalized; past
     that, a capitalized word must be a name (NAMES), an acronym or a word
-    written with a capital inside it ("iCloud", "MusicBrainz"), a button
-    named by its icon's name ("Press Play"), or start another of the app's
+    written with a capital inside it ("iCloud", "MusicBrainz"), a control
+    named by its label ("Press Play", "or Off"), or start another of the app's
     commands named in the sentence ("shown by Add device…"). The menu bar's
     own strings are left out.
   - The menu bar: each item and menu title the menu builders in
@@ -63,9 +63,10 @@ NAMES = {
 NAME_PHRASES = ("System Settings", "iCloud Keychain", "Apple Account", "Disc ID")
 PHRASE_ONLY = {"Settings", "System", "Account", "Keychain", "Disc"}
 
-# Buttons a string names whose label is an icon, so no catalog value holds
-# their name: "Press Play to continue".
-NAMED_CONTROLS = {"Play"}
+# Controls a string names by their label: a button whose label is an icon, so
+# no catalog value holds its name ("Press Play to continue"), and the setting
+# choice "Off" ("Who sees what you play, or Off to keep no record").
+NAMED_CONTROLS = {"Play", "Off"}
 
 # Labels whose translations name a queue section by its heading, which keeps
 # its capital there ("Ryd Næste": clear the section "Næste").

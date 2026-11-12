@@ -68447,7 +68447,7 @@
       },
       "comment" : "Menu bar Playback menu: restore the last session when bae opens"
     },
-    "Restores the last session’s track, position, queue, and volume when the app opens." : {
+    "Restores the last session’s track, position, queue and volume when the app opens." : {
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -68476,7 +68476,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Restores the last session’s track, position, queue, and volume when the app opens."
+            "value" : "Restores the last session’s track, position, queue and volume when the app opens."
           }
         },
         "de" : {
@@ -94816,12 +94816,12 @@
         }
       }
     },
-    "Who sees what you play, or “Off” to keep no record. Applies to new plays; earlier plays keep who could see them." : {
+    "Who sees what you play, or Off to keep no record. Applies to new plays; earlier plays keep who could see them." : {
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "من يرى ما تشغّله، أو «إيقاف» لعدم الاحتفاظ بأي سجل. ينطبق على التشغيلات الجديدة؛ وتحتفظ التشغيلات السابقة بمن كان يمكنه رؤيتها."
+            "value" : "من يرى ما تشغّله، أو إيقاف لعدم الاحتفاظ بأي سجل. ينطبق على التشغيلات الجديدة؛ وتحتفظ التشغيلات السابقة بمن كان يمكنه رؤيتها."
           }
         },
         "bg" : {
@@ -94899,7 +94899,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "再生した内容を誰に見せるか。履歴を残さない場合は「オフ」を選びます。今後の再生に適用され、これまでの再生は当時の公開範囲のままです。"
+            "value" : "再生した内容を誰に見せるか。履歴を残さない場合はオフを選びます。今後の再生に適用され、これまでの再生は当時の公開範囲のままです。"
           }
         },
         "ko" : {
@@ -94971,13 +94971,13 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "谁能看到你播放的内容，选择“关闭”则不保留记录。对之后的播放生效；之前的播放保持原来的可见范围。"
+            "value" : "谁能看到你播放的内容，选择关闭则不保留记录。对之后的播放生效；之前的播放保持原来的可见范围。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "誰能看到你播放的內容，選擇「關閉」則不保留紀錄。對之後的播放生效；之前的播放維持原本的可見範圍。"
+            "value" : "誰能看到你播放的內容，選擇關閉則不保留紀錄。對之後的播放生效；之前的播放維持原本的可見範圍。"
           }
         }
       }
