@@ -38,33 +38,6 @@
             return (library, session)
         }
 
-        /// `previewEmptyBacking` for a library whose database is locked by
-        /// another process: the album read fails in a way asking again can
-        /// get past, so the albums pane shows the notice for a list that could
-        /// not be read, with Retry.
-        @MainActor
-        static func previewUnreadableBacking(
-            uiStore: UiStore
-        ) -> (library: Library, session: LibraryBrowseSession) {
-            let library = Library(
-                albumBrowse: { _, _ in
-                    .failing(
-                        BridgeError.Diagnostic(
-                            category: .databaseBusy,
-                            detail: "database is locked"
-                        ),
-                        answers: UnansweredCount()
-                    )
-                }
-            )
-            let session = LibraryBrowseSession(
-                library: library,
-                uiStore: uiStore
-            )
-            session.start()
-            return (library, session)
-        }
-
         /// Enough synthesized albums for the grid to scroll well past the
         /// header's tracking zone, served through a canned-page `Library`
         /// behind a real session — the populated backing for whole-screen

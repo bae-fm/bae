@@ -555,3 +555,20 @@ private final class CountedReads {
         answered += 1
     }
 }
+
+// Libraries only the boards show.
+extension PreviewData {
+    /// The libraries the welcome boards show: Home music, stored in the
+    /// person's Dropbox, and Odile's records, which never synced.
+    static let boardLibraries: [BridgeLibrary] = [homeMusic, odilesRecords]
+
+    /// A library with no cloud home, which offers Delete in place of
+    /// Remove.
+    static let odilesRecords = BridgeLibrary(
+        id: "lib-odiles-records",
+        name: "Odile’s records",
+        path: "/Users/preview/Music/bae/Odile’s records",
+        state: .openable(storage: nil),
+        isActive: false
+    )
+}

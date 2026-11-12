@@ -272,14 +272,6 @@ struct MacProgress<Bar: View>: View {
     }
 }
 
-extension MacProgress where Bar == ProgressTrackBar {
-    /// A step whose bar fills to `fraction`: 0...1 for a determinate fill,
-    /// nil for the marching pill.
-    init(title: String, fraction: Double?) {
-        self.init(title: title, bar: ProgressTrackBar(progress: fraction))
-    }
-}
-
 /// Follows the step streams of a library's open and of setup calls, and draws
 /// the step as `MacProgress` does, but natively: the step's name and its bar
 /// are set straight from the stream once per display frame, so a moving

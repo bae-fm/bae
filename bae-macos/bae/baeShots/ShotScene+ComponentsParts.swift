@@ -386,3 +386,11 @@ extension ShotScene {
         },
     ]
 }
+
+extension MacProgress where Bar == ProgressTrackBar {
+    /// A step whose bar fills to `fraction`: 0...1 for a determinate fill,
+    /// nil for the marching pill.
+    init(title: String, fraction: Double?) {
+        self.init(title: title, bar: ProgressTrackBar(progress: fraction))
+    }
+}
