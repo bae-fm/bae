@@ -67,6 +67,8 @@ fn library_declarations_match_the_store_audience_and_file_contract() {
         let keys: &[&str] = match table.name() {
             "artist_credits" => &["artist_id", "name_key"],
             "audio_segment_scrub_points" => &["audio_format_segment_id"],
+            // A track's medium is named with its release, so the key includes both.
+            "release_mediums" => &["id", "release_id"],
             _ => &["id"],
         };
         assert_eq!(table.get_key_columns(), keys);
