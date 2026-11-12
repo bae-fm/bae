@@ -685,7 +685,7 @@ fn cover() -> RemoteCover {
                 max_edge: 250,
             }],
         ),
-        label: bae_catalogs::catalog::LookupCatalog::MusicBrainz.cover_source_label().to_string(),
+        label: bae_catalogs::remote_image::CoverLabel::Lead { release_group: false },
         source: Catalog::MusicBrainz,
         standing: bae_catalogs::remote_image::CoverStanding::Stated,
     }
@@ -715,7 +715,7 @@ fn a_merged_card_prefers_the_musicbrainz_cover() {
                 max_edge: 150,
             }],
         ),
-        label: bae_catalogs::catalog::LookupCatalog::Discogs.cover_source_label().to_string(),
+        label: bae_catalogs::remote_image::CoverLabel::Lead { release_group: false },
         source: Catalog::Discogs,
         standing: bae_catalogs::remote_image::CoverStanding::Stated,
     });

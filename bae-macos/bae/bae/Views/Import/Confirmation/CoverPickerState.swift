@@ -15,7 +15,7 @@ final class CoverPickerState {
     init(initialCovers: [BridgeRemoteCover] = []) {
         remoteItems = .loading(
             initialCovers.map {
-                CoverItem(coverChoice: $0.coverChoice, label: $0.label)
+                CoverItem(coverChoice: $0.coverChoice, label: $0.labelText)
             }
         )
     }

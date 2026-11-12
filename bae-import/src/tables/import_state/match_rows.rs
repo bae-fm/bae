@@ -8,6 +8,7 @@ pub(super) const SQL: &str = include_str!("match_rows.sql");
 use super::verdict_rows::Owner;
 use super::*;
 use crate::tables::album_link_rows::AlbumLinkRow;
+use crate::tables::cover_labels;
 use bae_catalogs::album_links::AlbumLinks;
 use bae_catalogs::catalog::{Catalog, LookupCatalog};
 use bae_catalogs::records::MetadataRef;
@@ -165,6 +166,7 @@ pub(super) fn store_match(
         MatchOwner::Verdict(_) => (None, None),
     };
     let cover = result.cover_art.as_ref();
+    let cover_label = cover.map(|cover| cover_labels::label_json(&cover.label)).transpose()?;
     let (tracks_kind, tracks_count) = match &result.source_tracks {
         None => (None, None),
         Some(SourceTracks::Nothing) => (Some("nothing"), None),
@@ -235,7 +237,7 @@ pub(super) fn store_match(
             facts.discogs_details,
             media_kind,
             cover.map(|cover| cover.image.url.as_str()),
-            cover.map(|cover| cover.label.as_str()),
+            cover_label,
             cover.map(|cover| cover.source.as_str()),
             cover.map(|cover| cover.standing.as_str()),
             result.source_group_id,
@@ -629,7 +631,7 @@ pub(super) fn read_match_row(row: &Row<'_>) -> Result<MatchColumns, DbError> {
         // The copies are child rows; [`match_of`] adds them.
         (Some(url), Some(source)) => Some(RemoteCover {
             image: RemoteImageSet::original(url),
-            label: row.get("cover_label")?,
+            label: cover_labels::label_of(&row.get::<_, String>("cover_label")?)?,
             source: catalog_of(&source)?,
             standing: standing_of(&row.get::<_, String>("cover_standing")?)?,
         }),

@@ -636,7 +636,10 @@ async fn gallery_includes_cloud_only_image_files_with_no_local_path() {
         .iter()
         .find(|g| g.id == image.id)
         .expect("image file surfaced in gallery");
-    assert_eq!(item.label, "back.jpg");
+    assert_eq!(
+        item.label,
+        bae_views::album_detail::GalleryLabel::File { name: "back.jpg".to_string() }
+    );
     assert!(
         matches!(item.source, bae_records::GallerySource::ReleaseFile { .. }),
         "a release-file image is read by file id, not as the cover"

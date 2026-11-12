@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
     -- The lead cover's original; its downscaled copies are in
     -- import_candidate_match_cover_copy.
     cover_url           TEXT,
+    -- The cover's label as JSON (a `CoverLabel`).
     cover_label         TEXT,
     cover_source        TEXT CHECK (cover_source IS NULL OR cover_source IN ('musicbrainz', 'discogs')),
     -- 'stated': the record's catalog says the image exists. 'unstated': an

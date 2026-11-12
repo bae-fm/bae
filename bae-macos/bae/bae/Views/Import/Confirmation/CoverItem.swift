@@ -98,7 +98,7 @@ enum RemoteCoverItems: Equatable {
         case .linked(let covers):
             self = .linked(
                 covers.map {
-                    CoverItem(coverChoice: $0.coverChoice, label: $0.label)
+                    CoverItem(coverChoice: $0.coverChoice, label: $0.labelText)
                 }
             )
         }

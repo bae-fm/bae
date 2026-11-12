@@ -16,8 +16,8 @@ pub use cache::{RemoteImage, RemoteImageCache, RemoteImageWatch};
 #[cfg(desktop)]
 pub use covers::{musicbrainz_album_cover, musicbrainz_release_cover, push_unique_cover};
 pub use covers::{
-    offered_covers, preferred_cover, CoverStanding, DownscaledCopy, RemoteCover, RemoteImageSet,
-    ARCHIVE,
+    offered_covers, preferred_cover, CoverImageType, CoverLabel, CoverStanding, DownscaledCopy,
+    RemoteCover, RemoteImageSet, ARCHIVE,
 };
 
 /// Why a catalog's image or an archive gallery could not be read.

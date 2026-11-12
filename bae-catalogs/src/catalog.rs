@@ -86,6 +86,17 @@ impl Catalog {
         }
     }
 
+    /// The name of the service a cover image from this catalog came from.
+    /// MusicBrainz covers are served by its sister project, the Cover Art
+    /// Archive, so the name differs from [`Self::display_name`]. A proper
+    /// noun, the same in every language.
+    pub fn cover_source_name(&self) -> &'static str {
+        match self {
+            Self::MusicBrainz => "Cover Art Archive",
+            other => other.display_name(),
+        }
+    }
+
     /// The page this catalog publishes for one release, built from the key the
     /// record holds.
     pub fn release_url(&self, key: &str) -> String {
@@ -196,17 +207,6 @@ impl LookupCatalog {
     /// The catalog's own name.
     pub fn display_name(self) -> &'static str {
         self.catalog().display_name()
-    }
-
-    /// The name of the service a cover image came from. MusicBrainz release
-    /// covers are served by its sister project, the Cover Art Archive, so the
-    /// cover label differs from [`Self::display_name`]. Only the catalogs that
-    /// answer questions return artwork, so only they have one.
-    pub fn cover_source_label(self) -> &'static str {
-        match self {
-            Self::MusicBrainz => "Cover Art Archive",
-            Self::Discogs => "Discogs",
-        }
     }
 }
 

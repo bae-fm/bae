@@ -2,8 +2,8 @@
 
 use super::fetch::send_artwork_request;
 use super::{
-    push_unique_cover, CoverStanding, DownscaledCopy, RemoteCover, RemoteImageError,
-    RemoteImageSet, ARCHIVE,
+    push_unique_cover, CoverImageType, CoverLabel, CoverStanding, DownscaledCopy, RemoteCover,
+    RemoteImageError, RemoteImageSet, ARCHIVE,
 };
 use crate::catalog::Catalog;
 use bae_util::http::Http;
@@ -19,7 +19,7 @@ struct ArchiveGallery {
 struct ArchiveImage {
     image: String,
     thumbnails: HashMap<String, String>,
-    types: Vec<String>,
+    types: Vec<CoverImageType>,
     comment: String,
     front: bool,
 }
@@ -70,20 +70,16 @@ fn parse_gallery(bytes: &[u8]) -> Result<Vec<RemoteCover>, RemoteImageError> {
         if copies.is_empty() {
             tracing::debug!(url = %image.image, "Archive image lists no downscaled copies; every slot reads its original");
         }
-        let mut label = format!("Cover Art Archive · {}", index + 1);
-        if !image.types.is_empty() {
-            label.push_str(" · ");
-            label.push_str(&image.types.join(", "));
-        }
-        if !image.comment.is_empty() {
-            label.push_str(" · ");
-            label.push_str(&image.comment);
-        }
         push_unique_cover(
             &mut covers,
             RemoteCover {
                 image: RemoteImageSet::with_copies(image.image, copies),
-                label,
+                label: CoverLabel::Gallery {
+                    reference: None,
+                    position: index as u32 + 1,
+                    types: image.types,
+                    comment: image.comment,
+                },
                 source: Catalog::MusicBrainz,
                 // The archive's own listing of what it holds.
                 standing: CoverStanding::Stated,

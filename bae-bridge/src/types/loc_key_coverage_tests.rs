@@ -22,6 +22,11 @@ const DIRECT_KEYS: &[&str] = &[
     "core.queue.pinning",
     "core.queue.waiting",
     "core.queue.pinned",
+    // A release gallery's cover slot, and the parts of a cover picker label
+    // the surface composes (the image types are `bridge_cover_image_type_key`).
+    "core.gallery.cover",
+    "core.cover.label.separator",
+    "core.cover.label.release_group",
     // The count line under an artist's or composer's name.
     "core.library.album_count",
     "core.library.work_count",
@@ -163,6 +168,29 @@ fn produced_keys() -> Vec<String> {
         keys.extend(bridge_audio_channels_key(channels));
     }
     assert!(bridge_audio_channels_key(6).is_none());
+
+    // bridge_cover_image_type_key — every variant carries a key.
+    for image_type in [
+        BridgeCoverImageType::Front,
+        BridgeCoverImageType::Back,
+        BridgeCoverImageType::Booklet,
+        BridgeCoverImageType::Medium,
+        BridgeCoverImageType::Obi,
+        BridgeCoverImageType::Spine,
+        BridgeCoverImageType::Track,
+        BridgeCoverImageType::Liner,
+        BridgeCoverImageType::Sticker,
+        BridgeCoverImageType::Poster,
+        BridgeCoverImageType::Watermark,
+        BridgeCoverImageType::Raw,
+        BridgeCoverImageType::Matrix,
+        BridgeCoverImageType::Top,
+        BridgeCoverImageType::Bottom,
+        BridgeCoverImageType::Tray,
+        BridgeCoverImageType::Other,
+    ] {
+        keys.push(bridge_cover_image_type_key(image_type));
+    }
 
     // bridge_cloud_provider_label_key — None (local-only) and S3 carry keys.
     for p in [None, Some(BridgeCloudProvider::S3)] {

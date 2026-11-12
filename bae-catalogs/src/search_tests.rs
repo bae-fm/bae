@@ -274,7 +274,7 @@ fn discogs_search_result_carries_remote_cover_pair() {
                     max_edge: 150,
                 }],
             ),
-            label: LookupCatalog::Discogs.cover_source_label().to_string(),
+            label: crate::remote_image::CoverLabel::Lead { release_group: false },
             source: Catalog::Discogs,
             standing: crate::remote_image::CoverStanding::Stated,
         })

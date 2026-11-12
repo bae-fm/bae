@@ -4,9 +4,9 @@
 )]
 
 use super::*;
-use crate::catalog::{Catalog, LookupCatalog};
+use crate::catalog::Catalog;
 use crate::discogs::documents::parse_discogs_master_covers;
-use crate::remote_image::{DownscaledCopy, RemoteImageSet};
+use crate::remote_image::{CoverLabel, DownscaledCopy, RemoteImageSet};
 use std::io::{Read, Write};
 use std::net::TcpListener;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -79,7 +79,7 @@ fn search_result_remote_cover_uses_thumb_as_cover_when_cover_image_is_absent() {
         cover.image,
         RemoteImageSet::original("https://discogs.example/thumb.jpg".to_string())
     );
-    assert_eq!(cover.label, LookupCatalog::Discogs.cover_source_label());
+    assert_eq!(cover.label, CoverLabel::Lead { release_group: false });
     assert_eq!(cover.source, Catalog::Discogs);
 }
 
@@ -93,7 +93,7 @@ fn search_result_remote_cover_reads_the_cover_everywhere_when_thumb_is_absent() 
         cover.image,
         RemoteImageSet::original("https://discogs.example/full.jpg".to_string())
     );
-    assert_eq!(cover.label, LookupCatalog::Discogs.cover_source_label());
+    assert_eq!(cover.label, CoverLabel::Lead { release_group: false });
     assert_eq!(cover.source, Catalog::Discogs);
 }
 
@@ -151,7 +151,15 @@ fn release_images_keep_order_and_normalize_missing_urls() {
         release.covers[1].image,
         RemoteImageSet::original("https://images.example/back.jpg".to_string())
     );
-    assert!(release.covers[0].label.contains("[r123]"));
+    assert_eq!(
+        release.covers[0].label,
+        CoverLabel::Gallery {
+            reference: Some("r123".to_string()),
+            position: 1,
+            types: Vec::new(),
+            comment: String::new(),
+        }
+    );
 }
 
 #[test]
@@ -167,7 +175,15 @@ fn master_images_keep_secondary_artwork() {
     )
     .expect("master images parse");
     assert_eq!(covers.len(), 2);
-    assert!(covers[1].label.contains("[m456]"));
+    assert_eq!(
+        covers[1].label,
+        CoverLabel::Gallery {
+            reference: Some("m456".to_string()),
+            position: 2,
+            types: Vec::new(),
+            comment: String::new(),
+        }
+    );
     assert_eq!(covers[1].image.url, "https://images.example/booklet.jpg");
 }
 

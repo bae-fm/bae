@@ -14,14 +14,14 @@ fn cover_art_archive_addresses_are_derived_from_the_entity_id() {
     let front = format!("{base}/release/rel-1/front");
     assert_eq!(release.image.downscaled, copies(&front));
     assert_eq!(release.image.url, front);
-    assert_eq!(release.label, "Cover Art Archive");
+    assert_eq!(release.label, CoverLabel::Lead { release_group: false });
     assert_eq!(release.source, Catalog::MusicBrainz);
 
     let group = RemoteCover::musicbrainz_release_group("rg-1");
     let front = format!("{base}/release-group/rg-1/front");
     assert_eq!(group.image.downscaled, copies(&front));
     assert_eq!(group.image.url, front);
-    assert_eq!(group.label, "Cover Art Archive (Album)");
+    assert_eq!(group.label, CoverLabel::Lead { release_group: true });
 }
 
 #[test]
@@ -55,21 +55,18 @@ fn an_image_served_at_one_size_is_read_there_for_every_slot() {
 
 #[test]
 fn push_unique_cover_dedupes_by_url() {
-    let cover = |thumbnail: &str, label: &str| RemoteCover {
+    let cover = |thumbnail: &str, release_group: bool| RemoteCover {
         image: RemoteImageSet::with_copies(
             "https://caa.example/cover.jpg".to_string(),
             vec![DownscaledCopy { url: thumbnail.to_string(), max_edge: 250 }],
         ),
-        label: label.to_string(),
+        label: CoverLabel::Lead { release_group },
         source: Catalog::MusicBrainz,
         standing: CoverStanding::Stated,
     };
-    let mut covers = vec![cover("https://caa.example/thumb-a.jpg", "Cover Art Archive")];
+    let mut covers = vec![cover("https://caa.example/thumb-a.jpg", false)];
 
-    push_unique_cover(
-        &mut covers,
-        cover("https://caa.example/thumb-b.jpg", "Cover Art Archive (Album)"),
-    );
+    push_unique_cover(&mut covers, cover("https://caa.example/thumb-b.jpg", true));
 
     assert_eq!(covers.len(), 1);
     assert_eq!(covers[0].image.downscaled[0].url, "https://caa.example/thumb-a.jpg");

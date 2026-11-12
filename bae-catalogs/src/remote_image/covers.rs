@@ -2,7 +2,7 @@
 //! copies live, whether a catalog stated it is there, and which of them a
 //! surface offers.
 
-use crate::catalog::{Catalog, LookupCatalog};
+use crate::catalog::Catalog;
 
 /// Where the Cover Art Archive serves images from. Every path under it is fixed
 /// by the entity's MusicBrainz id, so an image's address is knowable without
@@ -29,9 +29,56 @@ pub const ARCHIVE: &str = "https://coverartarchive.org";
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct RemoteCover {
     pub image: RemoteImageSet,
-    pub label: String,
+    pub label: CoverLabel,
     pub source: Catalog,
     pub standing: CoverStanding,
+}
+
+/// What a catalog offers a cover as, left for each surface to word in its
+/// own language: core sends no prose about a cover.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum CoverLabel {
+    /// The catalog's lead image of one entity: a Discogs search result's
+    /// image, a MusicBrainz release's front image, or (`release_group`) the
+    /// front image of the release group the album belongs to.
+    Lead { release_group: bool },
+    /// One image of the catalog's own gallery of an entity, numbered from 1
+    /// in the order the catalog lists them.
+    Gallery {
+        /// How the catalog refers to the entity the gallery belongs to: a
+        /// Discogs release `r123` or master `m456`. `None` for the Cover Art
+        /// Archive, which a cover's `source` MusicBrainz already names.
+        reference: Option<String>,
+        position: u32,
+        types: Vec<CoverImageType>,
+        comment: String,
+    },
+}
+
+/// What a Cover Art Archive image shows, by the archive's own vocabulary.
+/// A name the archive adds later reads as `Other` until bae lists it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum CoverImageType {
+    Front,
+    Back,
+    Booklet,
+    Medium,
+    Obi,
+    Spine,
+    Track,
+    Liner,
+    Sticker,
+    Poster,
+    Watermark,
+    #[serde(rename = "Raw/Unedited")]
+    Raw,
+    #[serde(rename = "Matrix/Runout")]
+    Matrix,
+    Top,
+    Bottom,
+    Tray,
+    #[serde(other)]
+    Other,
 }
 
 /// Whether a catalog stated a cover is there.
@@ -151,7 +198,7 @@ impl RemoteCover {
     /// pressing's own cover, if the archive holds one. Unstated: only the
     /// release's document says whether it does ([`musicbrainz_release_cover`]).
     pub fn musicbrainz_release(release_id: &str) -> Self {
-        Self::cover_art_archive("release", release_id, |label| label.to_string())
+        Self::cover_art_archive("release", release_id, CoverLabel::Lead { release_group: false })
     }
 
     /// The archive's address for a MusicBrainz release group's front image —
@@ -159,12 +206,14 @@ impl RemoteCover {
     /// group's and may not be this pressing's. Unstated: no document says
     /// whether the archive holds one.
     pub fn musicbrainz_release_group(release_group_id: &str) -> Self {
-        Self::cover_art_archive("release-group", release_group_id, |label| {
-            format!("{label} (Album)")
-        })
+        Self::cover_art_archive(
+            "release-group",
+            release_group_id,
+            CoverLabel::Lead { release_group: true },
+        )
     }
 
-    fn cover_art_archive(entity: &str, id: &str, label: impl FnOnce(&str) -> String) -> Self {
+    fn cover_art_archive(entity: &str, id: &str, label: CoverLabel) -> Self {
         let front = format!("{ARCHIVE}/{entity}/{id}/front");
         let downscaled = ARCHIVE_COPY_EDGES
             .iter()
@@ -172,7 +221,7 @@ impl RemoteCover {
             .collect();
         Self {
             image: RemoteImageSet::with_copies(front, downscaled),
-            label: label(LookupCatalog::MusicBrainz.cover_source_label()),
+            label,
             source: Catalog::MusicBrainz,
             standing: CoverStanding::Unstated,
         }

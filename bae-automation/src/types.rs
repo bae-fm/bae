@@ -435,9 +435,48 @@ pub struct AutomationLibraryAlbumMatch {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct AutomationRemoteCover {
     pub image: AutomationRemoteImageSet,
-    pub label: String,
+    pub label: AutomationCoverLabel,
     pub source: AutomationCatalog,
     pub standing: AutomationCoverStanding,
+}
+
+/// What a catalog offers a cover as.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case", tag = "kind")]
+pub enum AutomationCoverLabel {
+    /// The catalog's lead image of one entity, or (`release_group`) the front
+    /// image of the release group the album belongs to.
+    Lead { release_group: bool },
+    /// One image of the catalog's own gallery of an entity, numbered from 1.
+    Gallery {
+        reference: Option<String>,
+        position: u32,
+        types: Vec<AutomationCoverImageType>,
+        comment: String,
+    },
+}
+
+/// What an image shows, by the Cover Art Archive's vocabulary.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum AutomationCoverImageType {
+    Front,
+    Back,
+    Booklet,
+    Medium,
+    Obi,
+    Spine,
+    Track,
+    Liner,
+    Sticker,
+    Poster,
+    Watermark,
+    Raw,
+    Matrix,
+    Top,
+    Bottom,
+    Tray,
+    Other,
 }
 
 /// Whether a catalog stated the cover is there, or it is an address nothing

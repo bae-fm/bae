@@ -287,9 +287,16 @@ pub struct GalleryItem {
     /// List identity only — `"cover"`, else the release-file id. The id used to
     /// *fetch* lives in `source`.
     pub id: String,
-    /// `"Cover"`, or the file's original filename.
-    pub label: String,
+    pub label: GalleryLabel,
     pub source: GallerySource,
+}
+
+/// What a gallery slot is called. The surface words the cover; a file is
+/// called by its original filename.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum GalleryLabel {
+    Cover,
+    File { name: String },
 }
 
 #[cfg(test)]

@@ -24,6 +24,7 @@ import uniffi.bae_bridge.BridgeFactTerm
 import uniffi.bae_bridge.BridgeFormerDevice
 import uniffi.bae_bridge.BridgeFormerDeviceState
 import uniffi.bae_bridge.BridgeGalleryItem
+import uniffi.bae_bridge.BridgeGalleryLabel
 import uniffi.bae_bridge.BridgeGallerySource
 import uniffi.bae_bridge.BridgeHistorySharing
 import uniffi.bae_bridge.BridgeImageRef
@@ -398,7 +399,7 @@ object PreviewData {
 
     fun galleryItem(
         id: String = "cover",
-        label: String = "Cover",
+        label: BridgeGalleryLabel = BridgeGalleryLabel.Cover,
         source: BridgeGallerySource = BridgeGallerySource.Cover(imageRef()),
     ): BridgeGalleryItem = BridgeGalleryItem(id = id, label = label, source = source)
 

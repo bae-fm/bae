@@ -385,10 +385,34 @@ mirror_struct! {
     from_core: pub(crate) fn,
     fields: {
         image: (AutomationRemoteImageSet),
-        label,
+        label: (AutomationCoverLabel),
         source: (into),
         standing: (AutomationCoverStanding),
     },
+}
+
+mirror_enum! {
+    AutomationCoverLabel = bae_catalogs::remote_image::CoverLabel,
+    from_core: pub(crate) fn,
+    variants: {
+        Lead { release_group },
+        Gallery { reference, position, types: (each AutomationCoverImageType), comment },
+    },
+}
+
+mirror_enum! {
+    AutomationCoverImageType = bae_catalogs::remote_image::CoverImageType,
+    from_core: pub(crate) fn,
+    variants: {
+        Front, Back, Booklet, Medium, Obi, Spine, Track, Liner, Sticker, Poster, Watermark, Raw,
+        Matrix, Top, Bottom, Tray, Other,
+    },
+}
+
+mirror_enum! {
+    AutomationGalleryLabel = bae_views::album_detail::GalleryLabel,
+    from_core: pub(crate) fn,
+    variants: { Cover, File { name } },
 }
 
 mirror_enum! {
@@ -693,7 +717,7 @@ mirror_enum! {
 mirror_struct! {
     AutomationGalleryItem = GalleryItem,
     from_core: pub(crate) fn,
-    fields: { id, label, source: (AutomationGallerySource) },
+    fields: { id, label: (AutomationGalleryLabel), source: (AutomationGallerySource) },
 }
 
 impl AutomationLibrarySearchResults {

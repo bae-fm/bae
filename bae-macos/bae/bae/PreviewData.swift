@@ -568,19 +568,24 @@
             remoteCover(
                 url: "https://example.com/cover1.jpg",
                 downscaledUrl: "https://example.com/cover1-250.jpg",
-                label: "Front"
+                label: .lead(releaseGroup: false)
             ),
             remoteCover(
                 url: "https://example.com/cover2.jpg",
                 downscaledUrl: "https://example.com/cover2-250.jpg",
-                label: "Back"
+                label: .gallery(
+                    reference: nil,
+                    position: 2,
+                    types: [.back],
+                    comment: ""
+                )
             ),
         ]
 
         private static func remoteCover(
             url: String,
             downscaledUrl: String,
-            label: String
+            label: BridgeCoverLabel
         ) -> BridgeRemoteCover {
             let image = BridgeRemoteImageSet(
                 url: url,
@@ -598,6 +603,7 @@
                     ),
                     image: .remote(image: image)
                 ),
+                sourceName: "Cover Art Archive",
                 label: label
             )
         }

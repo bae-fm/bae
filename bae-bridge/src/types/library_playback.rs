@@ -1,4 +1,7 @@
-use super::{BridgeMediaCount, BridgePressingFacts, BridgeReleaseName, BridgeReleasePlayability};
+use super::{
+    BridgeCoverLabel, BridgeGalleryLabel, BridgeMediaCount, BridgePressingFacts, BridgeReleaseName,
+    BridgeReleasePlayability,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeDiscogsTokenStatus {
@@ -855,8 +858,7 @@ pub struct BridgeGalleryItem {
     /// Stable list/ForEach identity only: `"cover"` for the cover slot, else the
     /// release-file id. The fetch id lives in `source`.
     pub id: String,
-    /// Display label: "Cover" or the file's original filename.
-    pub label: String,
+    pub label: BridgeGalleryLabel,
     /// Which byte source to read this slot from.
     pub source: BridgeGallerySource,
 }
@@ -892,7 +894,10 @@ pub fn bridge_next_repeat_mode(mode: BridgeRepeatMode) -> BridgeRepeatMode {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeRemoteCover {
     pub cover_choice: BridgeCoverChoice,
-    pub label: String,
+    /// The service that serves the image ("Cover Art Archive", "Discogs"), a
+    /// proper noun.
+    pub source_name: String,
+    pub label: BridgeCoverLabel,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]

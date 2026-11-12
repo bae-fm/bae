@@ -5,6 +5,7 @@
 //! runs them through the store for everything else.
 
 mod album_link_rows;
+mod cover_labels;
 mod downscaled_copies;
 mod folder_scans;
 mod import_list;

@@ -1,5 +1,6 @@
 package fm.bae.app.ui.albumdetail
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.os.Build
 import android.view.WindowManager
@@ -59,6 +60,7 @@ import androidx.compose.ui.window.DialogWindowProvider
 import androidx.core.view.WindowCompat
 import fm.bae.app.BaeLogger
 import fm.bae.app.R
+import fm.bae.app.coreString
 import fm.bae.app.countText
 import fm.bae.app.data.DecodeSize
 import fm.bae.app.data.ImageContent
@@ -72,6 +74,7 @@ import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeGalleryItem
+import uniffi.bae_bridge.BridgeGalleryLabel
 
 private const val FULL_RES_SCALE_THRESHOLD = 1.01f
 private const val DISMISS_THRESHOLD_DP = 150f
@@ -185,8 +188,15 @@ private fun GalleryPage(
 ) {
     val content =
         remember(releaseId, item.id) { ImageContent.ReleaseImage(releaseId, item.source) }
-    GalleryImage(content = content, label = item.label)
+    GalleryImage(content = content, label = LocalContext.current.galleryLabelText(item.label))
 }
+
+/** A gallery slot's name: the cover in the app's language, a file by its filename. */
+private fun Context.galleryLabelText(label: BridgeGalleryLabel): String =
+    when (label) {
+        BridgeGalleryLabel.Cover -> coreString("core.gallery.cover")
+        is BridgeGalleryLabel.File -> label.name
+    }
 
 /** Close button, inset out of the status bar and any display cutout. */
 @Composable
@@ -227,8 +237,10 @@ private fun BoxScope.GalleryCaption(
                 ).padding(ThemeSpace.edge),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        // Core always sets a non-empty label.
-        Text(text = items[currentPage].label, color = BaeTheme.colors.onFill)
+        Text(
+            text = LocalContext.current.galleryLabelText(items[currentPage].label),
+            color = BaeTheme.colors.onFill,
+        )
         if (items.size > 1) {
             Text(
                 text =

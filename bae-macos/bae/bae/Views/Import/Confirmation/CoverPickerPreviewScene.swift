@@ -9,15 +9,34 @@
         private static let remoteItems = [
             remote(
                 "Front",
-                label: "Cover Art Archive · Front",
+                label: .gallery(
+                    reference: nil,
+                    position: 1,
+                    types: [.front],
+                    comment: ""
+                ),
                 source: .musicBrainz
             ),
             remote(
                 "Booklet",
-                label: "Cover Art Archive · Booklet",
+                label: .gallery(
+                    reference: nil,
+                    position: 2,
+                    types: [.booklet],
+                    comment: ""
+                ),
                 source: .musicBrainz
             ),
-            remote("Discogs", label: "Discogs · [r123] · 1", source: .discogs),
+            remote(
+                "Discogs",
+                label: .gallery(
+                    reference: "r123",
+                    position: 1,
+                    types: [],
+                    comment: ""
+                ),
+                source: .discogs
+            ),
         ]
         private static let releaseItems = [
             local("Front scan", filename: "Artwork/01 - Front cover.png"),
@@ -113,14 +132,14 @@
 
         private static func remote(
             _ image: String,
-            label: String,
+            label: BridgeCoverLabel,
             source: BridgeCatalog
         ) -> CoverItem {
             let image = BridgeRemoteImageSet(
                 url: PreviewData.previewArtPath(image),
                 downscaled: []
             )
-            return CoverItem(
+            let cover = BridgeRemoteCover(
                 coverChoice: BridgeCoverChoice(
                     selection: .remoteCover(
                         selection: BridgeRemoteCoverSelection(
@@ -130,7 +149,13 @@
                     ),
                     image: .remote(image: image)
                 ),
+                sourceName: source == .discogs
+                    ? "Discogs" : "Cover Art Archive",
                 label: label
+            )
+            return CoverItem(
+                coverChoice: cover.coverChoice,
+                label: cover.labelText
             )
         }
 

@@ -57,7 +57,8 @@ impl BridgeRemoteCover {
                 image,
                 source,
             }),
-            label,
+            source_name: source.cover_source_name().to_string(),
+            label: BridgeCoverLabel::from_core(label),
         }
     }
 }

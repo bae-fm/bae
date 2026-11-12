@@ -7,7 +7,7 @@ use crate::discogs::models::{
     DiscogsArtist, DiscogsMaster, DiscogsRelease, DiscogsRoleArtist, DiscogsTrack,
 };
 use crate::discogs::remote_cover_from_urls;
-use crate::remote_image::RemoteCover;
+use crate::remote_image::{CoverLabel, RemoteCover};
 use serde::Deserialize;
 use tracing::warn;
 
@@ -109,7 +109,12 @@ fn image_covers(images: Option<Vec<Image>>, entity: &str, id: u64) -> Vec<Remote
         if let Some(mut cover) =
             remote_cover_from_urls(image.uri.as_deref(), image.uri150.as_deref(), entity, id)
         {
-            cover.label = format!("Discogs · [{entity}{id}] · {}", index + 1);
+            cover.label = CoverLabel::Gallery {
+                reference: Some(format!("{entity}{id}")),
+                position: index as u32 + 1,
+                types: Vec::new(),
+                comment: String::new(),
+            };
             crate::remote_image::push_unique_cover(&mut covers, cover);
         }
     }

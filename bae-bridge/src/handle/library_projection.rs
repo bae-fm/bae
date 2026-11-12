@@ -47,7 +47,11 @@ impl BridgeFile {
 mirror_struct! {
     BridgeGalleryItem = bae_views::album_detail::GalleryItem,
     from_core: pub(super) fn,
-    fields: { id, label, source: (crate::types::BridgeGallerySource) },
+    fields: {
+        id,
+        label: (crate::types::BridgeGalleryLabel),
+        source: (crate::types::BridgeGallerySource),
+    },
 }
 
 impl BridgeTrack {

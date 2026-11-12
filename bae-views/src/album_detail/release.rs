@@ -234,7 +234,7 @@ impl ReleaseDetail {
         if let Some(cover_ref) = &ctx.cover {
             gallery.push(GalleryItem {
                 id: "cover".to_string(),
-                label: "Cover".to_string(),
+                label: GalleryLabel::Cover,
                 source: GallerySource::Cover(cover_ref.clone()),
             });
         }
@@ -245,7 +245,7 @@ impl ReleaseDetail {
         for f in &image_files {
             gallery.push(GalleryItem {
                 id: f.id.clone(),
-                label: f.original_filename.clone(),
+                label: GalleryLabel::File { name: f.original_filename.clone() },
                 source: GallerySource::ReleaseFile { file_id: f.id.clone() },
             });
         }

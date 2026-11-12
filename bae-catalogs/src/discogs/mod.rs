@@ -3,8 +3,8 @@ pub mod documents;
 pub mod formats;
 mod markup;
 pub mod models;
-use crate::catalog::{Catalog, LookupCatalog};
-use crate::remote_image::{CoverStanding, DownscaledCopy, RemoteCover, RemoteImageSet};
+use crate::catalog::Catalog;
+use crate::remote_image::{CoverLabel, CoverStanding, DownscaledCopy, RemoteCover, RemoteImageSet};
 pub use client::DiscogsClient;
 pub use models::*;
 use std::fmt::Display;
@@ -68,7 +68,7 @@ where
 
     Some(RemoteCover {
         image,
-        label: LookupCatalog::Discogs.cover_source_label().to_string(),
+        label: CoverLabel::Lead { release_group: false },
         source: Catalog::Discogs,
         // Discogs lists the images a record has; one it lists is there.
         standing: CoverStanding::Stated,

@@ -408,7 +408,8 @@ extension LibraryArtworkBrowserTests {
                 ),
                 image: .remote(image: image)
             ),
-            label: name
+            sourceName: source == .discogs ? "Discogs" : "Cover Art Archive",
+            label: .lead(releaseGroup: false)
         )
     }
 }

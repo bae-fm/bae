@@ -354,7 +354,7 @@ async fn the_scan_stores_the_folders_own_cover() {
         image: bae_catalogs::remote_image::RemoteImageSet::original(
             "https://example.invalid/full.jpg".to_string(),
         ),
-        label: "Cover".to_string(),
+        label: bae_catalogs::remote_image::CoverLabel::Lead { release_group: false },
         source: Catalog::MusicBrainz,
         standing: bae_catalogs::remote_image::CoverStanding::Stated,
     });

@@ -4,6 +4,7 @@ mod configuration;
 mod conversion;
 #[cfg(desktop)]
 mod cover;
+mod cover_label;
 mod device_stop;
 mod device_storage;
 mod editing;
@@ -30,6 +31,7 @@ pub use admin_change::*;
 pub use configuration::*;
 #[cfg(desktop)]
 pub use cover::*;
+pub use cover_label::*;
 pub use device_stop::*;
 pub use device_storage::*;
 pub use editing::*;

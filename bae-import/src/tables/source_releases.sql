@@ -176,6 +176,7 @@ CREATE TABLE IF NOT EXISTS source_release_cover (
     position      INTEGER NOT NULL CHECK (position >= 0),
     -- The original; its downscaled copies are in source_release_cover_copy.
     url           TEXT NOT NULL,
+    -- The cover's label as JSON (a `CoverLabel`).
     label         TEXT NOT NULL,
     source        TEXT NOT NULL CHECK (source IN ('musicbrainz', 'discogs')),
     -- Whether a catalog says the image exists, or it is an address nothing

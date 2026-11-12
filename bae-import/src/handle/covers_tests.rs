@@ -107,7 +107,7 @@ async fn a_release_stored_again_offers_what_it_holds_now() {
         image: bae_catalogs::remote_image::RemoteImageSet::original(
             "https://images.example/back.jpg".to_string(),
         ),
-        label: "Back".to_string(),
+        label: bae_catalogs::remote_image::CoverLabel::Lead { release_group: false },
         source: bae_catalogs::catalog::Catalog::MusicBrainz,
         standing: bae_catalogs::remote_image::CoverStanding::Stated,
     });

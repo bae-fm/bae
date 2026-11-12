@@ -1728,7 +1728,12 @@ the candidate is linked to, the picker offers that pressing's covers: every
 claimed release's own images, then their albums', read from the stored
 releases as they stand, so a later fetch that stored more shows it. The
 first is the draft's cover when the release is applied, until the person
-picks another. Saving the cover picked, in the import's picker or a library
+picks another. Core names each image by pieces, and each app words them in its
+language: the service that serves it (the Cover Art Archive, Discogs), the
+album's front image as the album's, a gallery entry's number and what it shows
+(front, back, booklet and the archive's other types) and the archive's comment,
+joined by the language's separator. A release's gallery names its cover Cover and
+an image file by its filename. Saving the cover picked, in the import's picker or a library
 release's, can download it from its catalog or read it from the release's
 storage, so the picker says it is saving the cover while it does. A draft read from the tags, typed in or cleared, or a
 candidate linked to an album or unlinked, is offered no catalog's covers. A catalog's cover is fetched with the draft, before the

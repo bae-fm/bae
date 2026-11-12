@@ -66,7 +66,15 @@ fn archive_gallery_keeps_all_image_types_and_front_first() {
                 .to_vec(),
         }
     );
-    assert!(covers[1].label.contains("Back · liner notes"));
+    assert_eq!(
+        covers[1].label,
+        CoverLabel::Gallery {
+            reference: None,
+            position: 2,
+            types: vec![CoverImageType::Back],
+            comment: "liner notes".to_string(),
+        }
+    );
     assert!(covers[2].image.downscaled.is_empty());
 }
 

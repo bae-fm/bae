@@ -140,8 +140,15 @@ pub struct AutomationAudioFormat {
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationGalleryItem {
     pub id: String,
-    pub label: String,
+    pub label: AutomationGalleryLabel,
     pub source: AutomationGallerySource,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case", tag = "kind")]
+pub enum AutomationGalleryLabel {
+    Cover,
+    File { name: String },
 }
 
 #[derive(Debug, Clone, Serialize)]

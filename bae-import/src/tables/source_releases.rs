@@ -298,7 +298,7 @@ pub(super) fn replace_source_release_on(
                     scope,
                     position as i64,
                     cover.image.url,
-                    cover.label,
+                    super::cover_labels::label_json(&cover.label)?,
                     cover.source.as_str(),
                     cover.standing.as_str(),
                 ],
@@ -586,7 +586,7 @@ fn load_source_release_rows_on<S: coven::SqlRead>(
                 url,
                 super::downscaled_copies::copies_of(&copies_json)?,
             ),
-            label,
+            label: super::cover_labels::label_of(&label)?,
             source: catalog_column(&source)?,
             standing: CoverStanding::from_column(&standing)
                 .ok_or_else(|| DbError::unreadable("source_release_cover.standing", &standing))?,
