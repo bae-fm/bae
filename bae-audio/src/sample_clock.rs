@@ -31,6 +31,15 @@ pub(crate) unsafe fn stream_origin(stream: *const ffmpeg_sys_next::AVStream) -> 
     }
 }
 
+/// A timestamp so far from the stream's start that the samples between them
+/// are not an `i64`: a crafted or damaged file, not audio.
+#[derive(Debug, thiserror::Error)]
+#[error("timestamp {timestamp} is too far from the stream's start {origin} to place a sample")]
+pub(crate) struct UnplaceableTimestamp {
+    timestamp: i64,
+    origin: i64,
+}
+
 impl SampleClock {
     pub(crate) fn new(
         time_base: ffmpeg_sys_next::AVRational,
@@ -56,10 +65,11 @@ impl SampleClock {
     }
 
     /// The sample a timestamp falls on.
-    pub(crate) fn sample_at(&self, timestamp: i64) -> i64 {
-        unsafe {
-            ffmpeg_sys_next::av_rescale_q(timestamp - self.origin, self.time_base, self.samples())
-        }
+    pub(crate) fn sample_at(&self, timestamp: i64) -> Result<i64, UnplaceableTimestamp> {
+        let since_origin = timestamp
+            .checked_sub(self.origin)
+            .ok_or(UnplaceableTimestamp { timestamp, origin: self.origin })?;
+        Ok(unsafe { ffmpeg_sys_next::av_rescale_q(since_origin, self.time_base, self.samples()) })
     }
 
     /// The samples a span of `duration` timestamps holds.

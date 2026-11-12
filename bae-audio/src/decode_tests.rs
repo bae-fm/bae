@@ -29,16 +29,16 @@ fn rational(num: c_int, den: c_int) -> ffmpeg_sys_next::AVRational {
 fn a_sample_clock_counts_samples_from_the_streams_start() {
     // A time base of one sample: timestamps count samples.
     let samples = SampleClock::new(rational(1, 44_100), 44_100, 0);
-    assert_eq!(samples.sample_at(1000), 1000);
+    assert_eq!(samples.sample_at(1000).unwrap(), 1000);
     assert_eq!(samples.timestamp_of(1000), 1000);
     // A millisecond time base: 500 ms is 22,050 samples, and back.
     let millis = SampleClock::new(rational(1, 1000), 44_100, 0);
-    assert_eq!(millis.sample_at(500), 22_050);
+    assert_eq!(millis.sample_at(500).unwrap(), 22_050);
     assert_eq!(millis.timestamp_of(22_050), 500);
     // An MP3's: 1/14,112,000 s, its first sample after a 1,105-sample delay.
     let mp3 = SampleClock::new(rational(1, 14_112_000), 44_100, 1_105 * 320);
-    assert_eq!(mp3.sample_at(1_105 * 320), 0);
-    assert_eq!(mp3.sample_at(0), -1_105);
+    assert_eq!(mp3.sample_at(1_105 * 320).unwrap(), 0);
+    assert_eq!(mp3.sample_at(0).unwrap(), -1_105);
     assert_eq!(mp3.timestamp_of(4_000), (1_105 + 4_000) * 320);
     assert_eq!(mp3.timestamp_of(-1_105), 0);
 }
@@ -49,13 +49,13 @@ fn frame_sample_bounds_tracks_position_across_pts_gaps() {
 
     // A valid pts places the frame and advances the tracked position to its end.
     let mut tracked = None;
-    assert_eq!(frame_sample_bounds(1000, 100, &clock, &mut tracked), Some((1000, 1100)));
+    assert_eq!(frame_sample_bounds(1000, 100, &clock, &mut tracked), Ok(Some((1000, 1100))));
     assert_eq!(tracked, Some(1100));
 
     // A frame with no pts continues from the tracked position.
     assert_eq!(
         frame_sample_bounds(ffmpeg_sys_next::AV_NOPTS_VALUE, 200, &clock, &mut tracked),
-        Some((1100, 1300))
+        Ok(Some((1100, 1300)))
     );
     assert_eq!(tracked, Some(1300));
 
@@ -64,14 +64,33 @@ fn frame_sample_bounds_tracks_position_across_pts_gaps() {
     let mut untracked = None;
     assert_eq!(
         frame_sample_bounds(ffmpeg_sys_next::AV_NOPTS_VALUE, 50, &clock, &mut untracked),
-        None
+        Ok(None)
     );
     assert_eq!(untracked, None);
 
     // A frame before the stream's first sample (an encoder delay the decoder
     // kept) is placed before it.
     let mut before = None;
-    assert_eq!(frame_sample_bounds(-312, 960, &clock, &mut before), Some((-312, 648)));
+    assert_eq!(frame_sample_bounds(-312, 960, &clock, &mut before), Ok(Some((-312, 648))));
+}
+
+/// Timestamps near the ends of the `i64` range fail the decode instead of
+/// wrapping to a wrong sample number.
+#[test]
+fn timestamps_that_overflow_the_sample_count_are_refused() {
+    let clock = SampleClock::new(rational(1, 44_100), 44_100, i64::MAX - 10);
+    assert!(clock.sample_at(i64::MIN + 1).is_err());
+    let mut tracked = None;
+    assert!(frame_sample_bounds(-1_000, 10, &clock, &mut tracked).is_err());
+
+    let clock = SampleClock::new(rational(1, 44_100), 44_100, 0);
+    let mut tracked = None;
+    assert!(frame_sample_bounds(i64::MAX - 5, 10, &clock, &mut tracked).is_err());
+
+    // A frame stretching from near `i64::MIN` has no countable lead-in to
+    // trim, and a window start past the sample count is no sample.
+    assert!(frame_output_window(Some((i64::MIN + 1, i64::MAX)), 10, 2, Some(5), None).is_err());
+    assert!(frame_output_window(Some((0, 100)), 10, 2, Some(u64::MAX), None).is_err());
 }
 
 #[test]
@@ -191,7 +210,7 @@ fn frame_output_window_trims_at_boundaries() {
 
     for row in rows {
         let got = frame_output_window(row.bounds, row.output_len, row.channels, row.start, row.end);
-        assert_eq!(got, row.expected, "{}", row.name);
+        assert_eq!(got, Ok(row.expected), "{}", row.name);
     }
 }
 

@@ -229,13 +229,20 @@ impl HeaderIndex {
         Self { timestamps, duration }
     }
 
-    /// The index on the stream's sample count, by `sample_clock`.
+    /// The index on the stream's sample count, by `sample_clock`. An entry
+    /// that falls before sample 0 or is too far from the stream's start to
+    /// place is no seek point, and is left out.
     fn on_samples(&self, sample_clock: &SampleClock) -> super::HeaderSeekIndex {
         super::HeaderSeekIndex {
             entries: self
                 .timestamps
                 .iter()
-                .filter_map(|&timestamp| u64::try_from(sample_clock.sample_at(timestamp)).ok())
+                .filter_map(|&timestamp| {
+                    sample_clock
+                        .sample_at(timestamp)
+                        .ok()
+                        .and_then(|sample| u64::try_from(sample).ok())
+                })
                 .collect(),
             length: self
                 .duration

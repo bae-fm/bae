@@ -17,65 +17,85 @@ pub(super) enum FrameOutputWindow {
 /// The samples `[start, end)` a frame of `num_samples` holds: from its
 /// timestamp when it has one, else following the frame before. `None` when
 /// neither places it -- a frame the decoder gives no timestamp before any
-/// frame that had one.
+/// frame that had one. A frame whose samples are not an `i64` is an error.
 pub(super) fn frame_sample_bounds(
     pts: i64,
     num_samples: usize,
     sample_clock: &SampleClock,
     tracked_sample_pos: &mut Option<i64>,
-) -> Option<(i64, i64)> {
+) -> Result<Option<(i64, i64)>, String> {
     let frame_start = if pts != ffmpeg_sys_next::AV_NOPTS_VALUE {
-        Some(sample_clock.sample_at(pts))
+        Some(sample_clock.sample_at(pts).map_err(|error| error.to_string())?)
     } else {
         *tracked_sample_pos
     };
-    let bounds = frame_start.map(|start| (start, start + num_samples as i64));
+    let bounds = frame_start
+        .map(|start| {
+            i64::try_from(num_samples)
+                .ok()
+                .and_then(|len| start.checked_add(len))
+                .map(|end| (start, end))
+                .ok_or_else(|| format!("a frame at sample {start} overflows the sample count"))
+        })
+        .transpose()?;
     *tracked_sample_pos = bounds.map(|(_, end)| end);
-    bounds
+    Ok(bounds)
 }
 
 /// Which of a frame's converted samples fall in `[start_sample,
 /// end_sample)`. A frame whose samples are unknown (`bounds` `None`) is put
-/// out whole.
+/// out whole. A window whose offsets do not fit the frame's counts is an
+/// error.
 pub(super) fn frame_output_window(
     bounds: Option<(i64, i64)>,
     output_len: usize,
     channels: usize,
     start_sample: Option<u64>,
     end_sample: Option<u64>,
-) -> FrameOutputWindow {
+) -> Result<FrameOutputWindow, String> {
+    // The interleaved length of the `samples` between two sample numbers.
+    let interleaved = |from: i64, to: i64| -> Result<usize, String> {
+        to.checked_sub(from)
+            .and_then(|samples| usize::try_from(samples).ok())
+            .and_then(|samples| samples.checked_mul(channels))
+            .ok_or_else(|| format!("samples {from} to {to} overflow the frame's counts"))
+    };
+    let sample_number = |sample: u64| {
+        i64::try_from(sample)
+            .map_err(|error| format!("sample {sample} exceeds the sample count: {error}"))
+    };
     let mut skip_start = 0;
     let mut take_end = output_len;
 
     if let (Some(start), Some((frame_start, frame_end))) = (start_sample, bounds) {
-        let start = start as i64;
+        let start = sample_number(start)?;
         if frame_end <= start {
-            return FrameOutputWindow::Skip;
+            return Ok(FrameOutputWindow::Skip);
         }
         if frame_start < start {
-            skip_start = ((start - frame_start) as usize * channels).min(output_len);
+            skip_start = interleaved(frame_start, start)?.min(output_len);
         }
     }
 
     let mut reached_end = false;
     if let (Some(end), Some((frame_start, frame_end))) = (end_sample, bounds) {
-        let end = end as i64;
+        let end = sample_number(end)?;
         if frame_start >= end {
-            return FrameOutputWindow::Stop;
+            return Ok(FrameOutputWindow::Stop);
         }
         if frame_end > end {
-            take_end = ((end - frame_start) as usize * channels).min(output_len);
+            take_end = interleaved(frame_start, end)?.min(output_len);
             reached_end = true;
         }
     }
 
-    if skip_start < take_end {
+    Ok(if skip_start < take_end {
         FrameOutputWindow::Emit { skip_start, take_end, reached_end }
     } else if reached_end {
         FrameOutputWindow::Stop
     } else {
         FrameOutputWindow::Skip
-    }
+    })
 }
 
 /// The output stage of the shared decode loop: converts each decoded frame to
@@ -269,7 +289,10 @@ pub(super) unsafe fn run_decode_loop(
         }
         out.on_packet(crate::DecodedPacket {
             byte: u64::try_from(packet_position).ok(),
-            sample: (packet_pts != AV_NOPTS_VALUE).then(|| sample_clock.sample_at(packet_pts)),
+            sample: (packet_pts != AV_NOPTS_VALUE)
+                .then(|| sample_clock.sample_at(packet_pts))
+                .transpose()
+                .map_err(|error| error.to_string())?,
             size: u64::try_from(packet_size).expect("a packet's size is never negative"),
         });
 
@@ -281,10 +304,10 @@ pub(super) unsafe fn run_decode_loop(
             let num_samples = (*res.frame).nb_samples as usize;
             let pts = (*res.frame).pts;
             let bounds =
-                frame_sample_bounds(pts, num_samples, sample_clock, &mut tracked_sample_pos);
+                frame_sample_bounds(pts, num_samples, sample_clock, &mut tracked_sample_pos)?;
 
             let converted_len = out.convert(res.swr_ctx, res.frame, channels)?;
-            match frame_output_window(bounds, converted_len, channels, start_sample, stop_sample) {
+            match frame_output_window(bounds, converted_len, channels, start_sample, stop_sample)? {
                 FrameOutputWindow::Skip => {}
                 FrameOutputWindow::Stop => {
                     reached_stop = true;
@@ -437,7 +460,16 @@ pub(super) unsafe fn decode_packed_s64_packets_to_sink(
 
         let num_samples = (*packet).size as usize / bytes_per_frame;
         let pts = (*packet).pts;
-        let bounds = frame_sample_bounds(pts, num_samples, &sample_clock, &mut tracked_sample_pos);
+        let bounds =
+            match frame_sample_bounds(pts, num_samples, &sample_clock, &mut tracked_sample_pos) {
+                Ok(bounds) => bounds,
+                Err(e) => {
+                    av_packet_unref(packet);
+                    av_packet_free(&mut (packet as *mut _));
+                    swr_free(&mut swr_ctx);
+                    return Err(e);
+                }
+            };
 
         let input = (*packet).data as *const u8;
         let packet_samples =
@@ -451,13 +483,22 @@ pub(super) unsafe fn decode_packed_s64_packets_to_sink(
                 }
             };
 
-        match frame_output_window(
+        let window = match frame_output_window(
             bounds,
             packet_samples.len(),
             channels_usize,
             start_sample,
             end_sample,
         ) {
+            Ok(window) => window,
+            Err(e) => {
+                av_packet_unref(packet);
+                av_packet_free(&mut (packet as *mut _));
+                swr_free(&mut swr_ctx);
+                return Err(e);
+            }
+        };
+        match window {
             FrameOutputWindow::Skip => {}
             FrameOutputWindow::Stop => {
                 av_packet_unref(packet);
