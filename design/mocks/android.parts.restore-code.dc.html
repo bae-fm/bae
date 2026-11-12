@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Android part: restore code</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bae/tokens.css">
+<link rel="stylesheet" href="ds/bae/components/bundle.css">
+<script src="ds/bae/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:var(--background)}
+</style>
+</helmet>
+<div style="font-family: var(--font-android)"><x-import component-from-global-scope="Bae.AndroidSection" title="Restore code"></x-import><x-import component-from-global-scope="Bae.AndroidCard"><div style="padding: 16px; font: 15px/26px 'Roboto Mono', ui-monospace, Menlo, monospace; word-spacing: 4px; color: var(--text-secondary); overflow-wrap: anywhere">CVR1 UJZD •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• 3MNB</div></x-import><div style="display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 16px 0"><x-import component-from-global-scope="Bae.AndroidButton" kind="outlined">Show code</x-import><x-import component-from-global-scope="Bae.AndroidButton" kind="outlined">Copy</x-import><x-import component-from-global-scope="Bae.AndroidButton" kind="outlined">Print</x-import></div><x-import component-from-global-scope="Bae.AndroidNote">Print this code or save it in a password manager. It gets you back into your library if you lose all your devices. A phone you set up from this one gets it too.</x-import><sc-if value="{{s3}}" hint-placeholder-val="{{ false }}"><x-import component-from-global-scope="Bae.AndroidNote">You’ll also need your S3 access key and secret.</x-import></sc-if></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"s3":{"editor":"boolean","default":false},"$preview":{"width":412,"height":260}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const p = this.props || {};
+    return { s3: p.s3 === true || p.s3 === 'true' };
+  }
+}
+</script>
+</body>
+</html>

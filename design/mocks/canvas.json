@@ -3802,6 +3802,14 @@
    "w": 412,
    "x": 8250,
    "y": 11672
+  },
+  "android.parts.restore-code.dc.html": {
+   "h": 260,
+   "page": "shared",
+   "title": "Restore code",
+   "w": 412,
+   "x": 540,
+   "y": 1520
   }
  },
  "createdOnFiles": {
