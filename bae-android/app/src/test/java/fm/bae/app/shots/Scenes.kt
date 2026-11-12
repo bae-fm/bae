@@ -60,7 +60,7 @@ internal fun SheetScene(
     if (behind == null) {
         ShotTheme {
             Surface(color = BottomSheetDefaults.ContainerColor) {
-                AndroidSheetBody(title, content)
+                SheetWithHandle(title, content)
             }
         }
     } else {
@@ -76,11 +76,24 @@ internal fun SheetScene(
                         shape = BottomSheetDefaults.ExpandedShape,
                         color = BottomSheetDefaults.ContainerColor,
                     ) {
-                        AndroidSheetBody(title, content)
+                        SheetWithHandle(title, content)
                     }
                 }
             }
         }
+    }
+}
+
+/** The sheet's body under the drag handle Material's modal sheet draws above it. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SheetWithHandle(
+    title: String?,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        BottomSheetDefaults.DragHandle()
+        Column(modifier = Modifier.fillMaxWidth()) { AndroidSheetBody(title, content) }
     }
 }
 
