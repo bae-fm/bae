@@ -72,7 +72,10 @@
     <string name="search_section_tracks">רצועות</string>
     <string name="work_detail_load_failed">לא ניתן לטעון את היצירה הזו.</string>
     <string name="work_detail_not_found">פרטי היצירה לא נמצאו</string>
-    <string name="composer_detail_load_failed">לא ניתן לטעון את המלחין הזה.</string>
+    <string name="composer_detail_load_failed">לא ניתן לטעון את המלחין הזה</string>
+    <string name="library_read_failed">לא ניתן לקרוא את הספרייה שלך</string>
+    <string name="albums_append_failed">לא ניתן היה לקרוא אלבומים נוספים.</string>
+    <string name="artist_also_credited_as">מופיע גם בשם</string>
     <string name="composer_detail_not_found">פרטי המלחין לא נמצאו</string>
     <string name="search_section_recordings">הקלטות</string>
     <string name="search_section_credits">קרדיטים</string>
@@ -382,8 +385,8 @@
     <string name="settings_history_household">כולם</string>
     <string name="settings_history_note">מי רואה מה אתם מנגנים, או כבוי כדי לא לשמור שום רישום. שינוי חל על השמעות מעכשיו והלאה; השמעות קודמות שומרות על מי שיכול היה לראות אותן.</string>
     <string name="settings_stored_in">מאוחסן ב</string>
-    <string name="storage_location_account">%1$s: %2$s</string>
-    <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
+    <string name="storage_location_account">%1$s · %2$s</string>
+    <string name="storage_location_bucket">%1$s · %2$s (%3$s)</string>
     <string name="onboarding_s3_key_scanned">מפתח הגישה שלך ל-S3 הגיע עם הקוד שנסרק.</string>
     <string name="voice_play_not_found">לא נמצא %1$s בספרייה שלך.</string>
     <string name="onboarding_saved_codes_title">שמורים במכשיר הזה</string>

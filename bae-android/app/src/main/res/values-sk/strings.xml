@@ -78,7 +78,10 @@
     <string name="search_section_tracks">Skladby</string>
     <string name="work_detail_load_failed">Toto dielo sa nepodarilo načítať.</string>
     <string name="work_detail_not_found">Podrobnosti o diele sa nenašli</string>
-    <string name="composer_detail_load_failed">Tohto skladateľa sa nepodarilo načítať.</string>
+    <string name="composer_detail_load_failed">Tohto skladateľa sa nepodarilo načítať</string>
+    <string name="library_read_failed">Knižnicu sa nepodarilo prečítať</string>
+    <string name="albums_append_failed">Ďalšie albumy sa nepodarilo prečítať.</string>
+    <string name="artist_also_credited_as">Uvádzaný aj ako</string>
     <string name="composer_detail_not_found">Podrobnosti o skladateľovi sa nenašli</string>
     <string name="search_section_recordings">Nahrávky</string>
     <string name="search_section_credits">Podieľali sa</string>
@@ -388,8 +391,8 @@
     <string name="settings_history_household">Všetci</string>
     <string name="settings_history_note">Kto vidí, čo počúvate, alebo Vypnuté, aby sa nič neukladalo. Zmena platí pre prehrania odteraz; staršie prehrania si ponechajú, kto ich mohol vidieť.</string>
     <string name="settings_stored_in">Uložené v</string>
-    <string name="storage_location_account">%1$s: %2$s</string>
-    <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
+    <string name="storage_location_account">%1$s · %2$s</string>
+    <string name="storage_location_bucket">%1$s · %2$s (%3$s)</string>
     <string name="onboarding_s3_key_scanned">Tvoj prístupový kľúč S3 prišiel spolu s naskenovaným kódom.</string>
     <string name="voice_play_not_found">%1$s sa vo vašej knižnici nenašlo.</string>
     <string name="onboarding_saved_codes_title">Uložené v tomto zariadení</string>

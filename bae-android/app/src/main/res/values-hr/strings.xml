@@ -72,7 +72,10 @@
     <string name="search_section_tracks">Pjesme</string>
     <string name="work_detail_load_failed">Nije moguće učitati ovo djelo.</string>
     <string name="work_detail_not_found">Detalji djela nisu pronađeni</string>
-    <string name="composer_detail_load_failed">Nije moguće učitati ovog skladatelja.</string>
+    <string name="composer_detail_load_failed">Nije moguće učitati ovog skladatelja</string>
+    <string name="library_read_failed">Nije moguće pročitati vašu fonoteku</string>
+    <string name="albums_append_failed">Nije moguće pročitati više albuma.</string>
+    <string name="artist_also_credited_as">Navodi se i kao</string>
     <string name="composer_detail_not_found">Detalji skladatelja nisu pronađeni</string>
     <string name="search_section_recordings">Snimke</string>
     <string name="search_section_credits">Zasluge</string>
@@ -382,8 +385,8 @@
     <string name="settings_history_household">Svi</string>
     <string name="settings_history_note">Tko vidi što slušate, ili Isključeno da se ništa ne bilježi. Promjena vrijedi za slušanja od sada; ranija slušanja zadržavaju tko ih je mogao vidjeti.</string>
     <string name="settings_stored_in">Pohranjeno u</string>
-    <string name="storage_location_account">%1$s: %2$s</string>
-    <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
+    <string name="storage_location_account">%1$s · %2$s</string>
+    <string name="storage_location_bucket">%1$s · %2$s (%3$s)</string>
     <string name="onboarding_s3_key_scanned">Vaš pristupni ključ za S3 stigao je uz skenirani kôd.</string>
     <string name="voice_play_not_found">%1$s nije pronađeno u vašoj fonoteci.</string>
     <string name="onboarding_saved_codes_title">Spremljeno na ovom uređaju</string>

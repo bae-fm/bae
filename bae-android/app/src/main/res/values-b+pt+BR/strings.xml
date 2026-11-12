@@ -72,7 +72,10 @@
     <string name="search_section_tracks">Faixas</string>
     <string name="work_detail_load_failed">Não foi possível carregar esta obra.</string>
     <string name="work_detail_not_found">Detalhes da obra não encontrados</string>
-    <string name="composer_detail_load_failed">Não foi possível carregar este compositor.</string>
+    <string name="composer_detail_load_failed">Não foi possível carregar este compositor</string>
+    <string name="library_read_failed">Não foi possível ler sua biblioteca</string>
+    <string name="albums_append_failed">Não foi possível ler mais álbuns.</string>
+    <string name="artist_also_credited_as">Também creditado como</string>
     <string name="composer_detail_not_found">Detalhes do compositor não encontrados</string>
     <string name="search_section_recordings">Gravações</string>
     <string name="search_section_credits">Créditos</string>
@@ -380,8 +383,8 @@
     <string name="settings_history_household">Todos</string>
     <string name="settings_history_note">Quem vê o que você toca, ou Desativado para não guardar nenhum registro. Uma alteração vale para as reproduções a partir de agora; as anteriores mantêm quem podia vê-las.</string>
     <string name="settings_stored_in">Armazenado em</string>
-    <string name="storage_location_account">%1$s: %2$s</string>
-    <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
+    <string name="storage_location_account">%1$s · %2$s</string>
+    <string name="storage_location_bucket">%1$s · %2$s (%3$s)</string>
     <string name="onboarding_s3_key_scanned">Sua chave de acesso do S3 veio com o código escaneado.</string>
     <string name="voice_play_not_found">Não foi possível encontrar %1$s na sua biblioteca.</string>
     <string name="onboarding_saved_codes_title">Salvos neste dispositivo</string>

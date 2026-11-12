@@ -76,7 +76,10 @@
     <string name="search_section_tracks">Κομμάτια</string>
     <string name="work_detail_load_failed">Δεν ήταν δυνατή η φόρτωση αυτού του έργου.</string>
     <string name="work_detail_not_found">Δεν βρέθηκαν λεπτομέρειες έργου</string>
-    <string name="composer_detail_load_failed">Δεν ήταν δυνατή η φόρτωση αυτού του συνθέτη.</string>
+    <string name="composer_detail_load_failed">Δεν ήταν δυνατή η φόρτωση αυτού του συνθέτη</string>
+    <string name="library_read_failed">Δεν ήταν δυνατή η ανάγνωση της βιβλιοθήκης σας</string>
+    <string name="albums_append_failed">Δεν ήταν δυνατή η ανάγνωση περισσότερων άλμπουμ.</string>
+    <string name="artist_also_credited_as">Αναφέρεται επίσης ως</string>
     <string name="composer_detail_not_found">Δεν βρέθηκαν λεπτομέρειες συνθέτη</string>
     <string name="search_section_recordings">Ηχογραφήσεις</string>
     <string name="search_section_credits">Συντελεστές</string>
@@ -372,8 +375,8 @@
     <string name="settings_history_household">Όλοι</string>
     <string name="settings_history_note">Ποιος βλέπει τι ακούτε, ή Ανενεργό για να μην κρατείται καταγραφή. Μια αλλαγή ισχύει για τις αναπαραγωγές από εδώ και πέρα· οι προηγούμενες διατηρούν όσους μπορούσαν να τις δουν.</string>
     <string name="settings_stored_in">Αποθηκεύεται σε</string>
-    <string name="storage_location_account">%1$s: %2$s</string>
-    <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
+    <string name="storage_location_account">%1$s · %2$s</string>
+    <string name="storage_location_bucket">%1$s · %2$s (%3$s)</string>
     <string name="onboarding_s3_key_scanned">Το κλειδί πρόσβασης S3 ήρθε μαζί με τον σαρωμένο κωδικό.</string>
     <string name="voice_play_not_found">Δεν βρέθηκε το %1$s στη βιβλιοθήκη σας.</string>
     <string name="onboarding_saved_codes_title">Αποθηκευμένοι σε αυτή τη συσκευή</string>

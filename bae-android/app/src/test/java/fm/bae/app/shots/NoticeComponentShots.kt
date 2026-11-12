@@ -146,7 +146,11 @@ class NoticeComponentShots : BoardShot() {
     @Test
     fun androidComponentErrorBannerDefault() =
         component("android.component.error-banner.default", wide = true) {
-            AndroidErrorBanner(error = DisplayError("Could not read more albums."), onRetry = {})
+            AndroidErrorBanner(
+                title = "Could not read more albums.",
+                error = DisplayError("Could not read more albums."),
+                onRetry = {},
+            )
         }
 
     @Test

@@ -72,7 +72,10 @@
     <string name="search_section_tracks">トラック</string>
     <string name="work_detail_load_failed">この作品を読み込めませんでした。</string>
     <string name="work_detail_not_found">作品の詳細が見つかりません</string>
-    <string name="composer_detail_load_failed">この作曲者を読み込めませんでした。</string>
+    <string name="composer_detail_load_failed">この作曲者を読み込めませんでした</string>
+    <string name="library_read_failed">ライブラリを読み取れませんでした</string>
+    <string name="albums_append_failed">ほかのアルバムを読み取れませんでした。</string>
+    <string name="artist_also_credited_as">別名義</string>
     <string name="composer_detail_not_found">作曲者の詳細が見つかりません</string>
     <string name="search_section_recordings">録音</string>
     <string name="search_section_credits">クレジット</string>
@@ -366,8 +369,8 @@
     <string name="settings_history_household">全員</string>
     <string name="settings_history_note">再生した内容を誰に見せるか。履歴を残さない場合はオフを選びます。変更は今後の再生に適用され、これまでの再生は当時の公開範囲のままです。</string>
     <string name="settings_stored_in">保存先</string>
-    <string name="storage_location_account">%1$s：%2$s</string>
-    <string name="storage_location_bucket">%1$s：%2$s（%3$s）</string>
+    <string name="storage_location_account">%1$s · %2$s</string>
+    <string name="storage_location_bucket">%1$s · %2$s（%3$s）</string>
     <string name="onboarding_s3_key_scanned">S3 のアクセスキーは読み取ったコードと一緒に届きました。</string>
     <string name="voice_play_not_found">ライブラリに%1$sが見つかりませんでした。</string>
     <string name="onboarding_saved_codes_title">このデバイスに保存済み</string>

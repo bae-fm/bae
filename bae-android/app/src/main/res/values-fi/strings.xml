@@ -76,7 +76,10 @@
     <string name="search_section_tracks">Raidat</string>
     <string name="work_detail_load_failed">Tätä teosta ei voitu ladata.</string>
     <string name="work_detail_not_found">Teoksen tietoja ei löytynyt</string>
-    <string name="composer_detail_load_failed">Tätä säveltäjää ei voitu ladata.</string>
+    <string name="composer_detail_load_failed">Tätä säveltäjää ei voitu ladata</string>
+    <string name="library_read_failed">Kirjastoasi ei voitu lukea</string>
+    <string name="albums_append_failed">Lisää albumeita ei voitu lukea.</string>
+    <string name="artist_also_credited_as">Mainitaan myös nimellä</string>
     <string name="composer_detail_not_found">Säveltäjän tietoja ei löytynyt</string>
     <string name="search_section_recordings">Äänitteet</string>
     <string name="search_section_credits">Tekijät</string>
@@ -372,8 +375,8 @@
     <string name="settings_history_household">Kaikki</string>
     <string name="settings_history_note">Kuka näkee, mitä kuuntelet, tai Pois, jos mitään ei tallenneta. Muutos koskee toistoja tästä eteenpäin; aiemmat toistot säilyttävät sen, ketkä ne näkivät.</string>
     <string name="settings_stored_in">Tallennettu</string>
-    <string name="storage_location_account">%1$s: %2$s</string>
-    <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
+    <string name="storage_location_account">%1$s · %2$s</string>
+    <string name="storage_location_bucket">%1$s · %2$s (%3$s)</string>
     <string name="onboarding_s3_key_scanned">S3-käyttöavaimesi tuli skannatun koodin mukana.</string>
     <string name="voice_play_not_found">%1$s ei löytynyt kirjastostasi.</string>
     <string name="onboarding_saved_codes_title">Tallennettu tähän laitteeseen</string>

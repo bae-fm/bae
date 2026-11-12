@@ -72,7 +72,10 @@
     <string name="search_section_tracks">Ścieżki</string>
     <string name="work_detail_load_failed">Nie udało się wczytać tego dzieła.</string>
     <string name="work_detail_not_found">Nie znaleziono szczegółów dzieła</string>
-    <string name="composer_detail_load_failed">Nie udało się wczytać tego kompozytora.</string>
+    <string name="composer_detail_load_failed">Nie udało się wczytać tego kompozytora</string>
+    <string name="library_read_failed">Nie udało się odczytać biblioteki</string>
+    <string name="albums_append_failed">Nie udało się odczytać kolejnych albumów.</string>
+    <string name="artist_also_credited_as">Występuje też jako</string>
     <string name="composer_detail_not_found">Nie znaleziono szczegółów kompozytora</string>
     <string name="search_section_recordings">Nagrania</string>
     <string name="search_section_credits">Twórcy</string>
@@ -390,8 +393,8 @@
     <string name="settings_history_household">Wszyscy</string>
     <string name="settings_history_note">Kto widzi, czego słuchasz, albo Wyłączone, aby nic nie zapisywać. Zmiana dotyczy odtworzeń od teraz; wcześniejsze zachowują to, kto mógł je zobaczyć.</string>
     <string name="settings_stored_in">Przechowywane w</string>
-    <string name="storage_location_account">%1$s: %2$s</string>
-    <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
+    <string name="storage_location_account">%1$s · %2$s</string>
+    <string name="storage_location_bucket">%1$s · %2$s (%3$s)</string>
     <string name="onboarding_s3_key_scanned">Twój klucz dostępu S3 przyszedł razem z zeskanowanym kodem.</string>
     <string name="voice_play_not_found">Nie znaleziono %1$s w Twojej bibliotece.</string>
     <string name="onboarding_saved_codes_title">Zapisane na tym urządzeniu</string>

@@ -72,7 +72,10 @@
     <string name="search_section_tracks">Песни</string>
     <string name="work_detail_load_failed">Това произведение не можа да бъде заредено.</string>
     <string name="work_detail_not_found">Данните за произведението не са намерени</string>
-    <string name="composer_detail_load_failed">Този композитор не можа да бъде зареден.</string>
+    <string name="composer_detail_load_failed">Този композитор не можа да бъде зареден</string>
+    <string name="library_read_failed">Библиотеката не можа да бъде прочетена</string>
+    <string name="albums_append_failed">Още албуми не можаха да бъдат прочетени.</string>
+    <string name="artist_also_credited_as">Също кредитиран като</string>
     <string name="composer_detail_not_found">Данните за композитора не са намерени</string>
     <string name="search_section_recordings">Записи</string>
     <string name="search_section_credits">Кредити</string>
@@ -374,8 +377,8 @@
     <string name="settings_history_household">Всички</string>
     <string name="settings_history_note">Кой вижда какво слушате, или Изкл., за да не се пази запис. Промяната важи за изпълненията оттук нататък; по-старите запазват кой е можел да ги вижда.</string>
     <string name="settings_stored_in">Съхранява се в</string>
-    <string name="storage_location_account">%1$s: %2$s</string>
-    <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
+    <string name="storage_location_account">%1$s · %2$s</string>
+    <string name="storage_location_bucket">%1$s · %2$s (%3$s)</string>
     <string name="onboarding_s3_key_scanned">Ключът ви за достъп до S3 дойде заедно със сканирания код.</string>
     <string name="voice_play_not_found">%1$s не е намерено във вашата библиотека.</string>
     <string name="onboarding_saved_codes_title">Запазени на това устройство</string>

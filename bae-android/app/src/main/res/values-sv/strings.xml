@@ -76,7 +76,10 @@
     <string name="search_section_tracks">Spår</string>
     <string name="work_detail_load_failed">Det här verket kunde inte läsas in.</string>
     <string name="work_detail_not_found">Verkdetaljer hittades inte</string>
-    <string name="composer_detail_load_failed">Den här kompositören kunde inte läsas in.</string>
+    <string name="composer_detail_load_failed">Den här kompositören kunde inte läsas in</string>
+    <string name="library_read_failed">Det gick inte att läsa ditt bibliotek</string>
+    <string name="albums_append_failed">Det gick inte att läsa fler album.</string>
+    <string name="artist_also_credited_as">Även krediterad som</string>
     <string name="composer_detail_not_found">Kompositörsdetaljer hittades inte</string>
     <string name="search_section_recordings">Inspelningar</string>
     <string name="search_section_credits">Medverkande</string>
@@ -372,8 +375,8 @@
     <string name="settings_history_household">Alla</string>
     <string name="settings_history_note">Vem som ser vad du spelar, eller Av för att inte spara något. En ändring gäller uppspelningar från och med nu; tidigare uppspelningar behåller vem som kunde se dem.</string>
     <string name="settings_stored_in">Lagras i</string>
-    <string name="storage_location_account">%1$s: %2$s</string>
-    <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
+    <string name="storage_location_account">%1$s · %2$s</string>
+    <string name="storage_location_bucket">%1$s · %2$s (%3$s)</string>
     <string name="onboarding_s3_key_scanned">Din S3-åtkomstnyckel följde med den skannade koden.</string>
     <string name="voice_play_not_found">Hittade inte %1$s i ditt bibliotek.</string>
     <string name="onboarding_saved_codes_title">Sparade på den här enheten</string>

@@ -76,7 +76,10 @@
     <string name="search_section_tracks">Spor</string>
     <string name="work_detail_load_failed">Dette verket kunne ikke lastes inn.</string>
     <string name="work_detail_not_found">Fant ikke detaljer om verket</string>
-    <string name="composer_detail_load_failed">Denne komponisten kunne ikke lastes inn.</string>
+    <string name="composer_detail_load_failed">Denne komponisten kunne ikke lastes inn</string>
+    <string name="library_read_failed">Kunne ikke lese biblioteket ditt</string>
+    <string name="albums_append_failed">Kunne ikke lese flere album.</string>
+    <string name="artist_also_credited_as">Også kreditert som</string>
     <string name="composer_detail_not_found">Fant ikke detaljer om komponisten</string>
     <string name="search_section_recordings">Innspillinger</string>
     <string name="search_section_credits">Medvirkende</string>
@@ -372,8 +375,8 @@
     <string name="settings_history_household">Alle</string>
     <string name="settings_history_note">Hvem som ser hva du spiller av, eller Av for å ikke lagre noe. En endring gjelder avspillinger fra nå av; tidligere avspillinger beholder hvem som kunne se dem.</string>
     <string name="settings_stored_in">Lagret i</string>
-    <string name="storage_location_account">%1$s: %2$s</string>
-    <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
+    <string name="storage_location_account">%1$s · %2$s</string>
+    <string name="storage_location_bucket">%1$s · %2$s (%3$s)</string>
     <string name="onboarding_s3_key_scanned">S3-tilgangsnøkkelen din fulgte med den skannede koden.</string>
     <string name="voice_play_not_found">Fant ikke %1$s i biblioteket ditt.</string>
     <string name="onboarding_saved_codes_title">Lagret på denne enheten</string>

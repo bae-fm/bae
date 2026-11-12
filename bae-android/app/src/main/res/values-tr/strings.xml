@@ -72,7 +72,10 @@
     <string name="search_section_tracks">Parçalar</string>
     <string name="work_detail_load_failed">Bu eser yüklenemedi.</string>
     <string name="work_detail_not_found">Eser ayrıntısı bulunamadı</string>
-    <string name="composer_detail_load_failed">Bu besteci yüklenemedi.</string>
+    <string name="composer_detail_load_failed">Bu besteci yüklenemedi</string>
+    <string name="library_read_failed">Kitaplığınız okunamadı</string>
+    <string name="albums_append_failed">Daha fazla albüm okunamadı.</string>
+    <string name="artist_also_credited_as">Diğer adıyla</string>
     <string name="composer_detail_not_found">Besteci ayrıntısı bulunamadı</string>
     <string name="search_section_recordings">Kayıtlar</string>
     <string name="search_section_credits">Katkılar</string>
@@ -374,8 +377,8 @@
     <string name="settings_history_household">Herkes</string>
     <string name="settings_history_note">Çaldıklarınızı kimin gördüğü ya da hiçbir kayıt tutulmaması için Kapalı. Bir değişiklik bundan sonraki çalmalar için geçerlidir; önceki çalmalar onları kimin görebildiğini korur.</string>
     <string name="settings_stored_in">Depolandığı yer</string>
-    <string name="storage_location_account">%1$s: %2$s</string>
-    <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
+    <string name="storage_location_account">%1$s · %2$s</string>
+    <string name="storage_location_bucket">%1$s · %2$s (%3$s)</string>
     <string name="onboarding_s3_key_scanned">S3 erişim anahtarınız taranan kodla birlikte geldi.</string>
     <string name="voice_play_not_found">Kitaplığınızda %1$s bulunamadı.</string>
     <string name="onboarding_saved_codes_title">Bu cihazda kayıtlı</string>

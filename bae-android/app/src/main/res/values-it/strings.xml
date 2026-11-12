@@ -72,7 +72,10 @@
     <string name="search_section_tracks">Brani</string>
     <string name="work_detail_load_failed">Impossibile caricare questa opera.</string>
     <string name="work_detail_not_found">Dettaglio opera non trovato</string>
-    <string name="composer_detail_load_failed">Impossibile caricare questo compositore.</string>
+    <string name="composer_detail_load_failed">Impossibile caricare questo compositore</string>
+    <string name="library_read_failed">Impossibile leggere la tua libreria</string>
+    <string name="albums_append_failed">Impossibile leggere altri album.</string>
+    <string name="artist_also_credited_as">Accreditato anche come</string>
     <string name="composer_detail_not_found">Dettaglio compositore non trovato</string>
     <string name="search_section_recordings">Registrazioni</string>
     <string name="search_section_credits">Crediti</string>
@@ -380,8 +383,8 @@
     <string name="settings_history_household">Tutti</string>
     <string name="settings_history_note">Chi vede cosa ascolti, oppure Disattivato per non conservare alcuna cronologia. Una modifica vale per gli ascolti da ora in poi; quelli precedenti mantengono chi poteva vederli.</string>
     <string name="settings_stored_in">Archiviato in</string>
-    <string name="storage_location_account">%1$s: %2$s</string>
-    <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
+    <string name="storage_location_account">%1$s · %2$s</string>
+    <string name="storage_location_bucket">%1$s · %2$s (%3$s)</string>
     <string name="onboarding_s3_key_scanned">La tua chiave di accesso S3 è arrivata con il codice scansionato.</string>
     <string name="voice_play_not_found">Impossibile trovare %1$s nella tua libreria.</string>
     <string name="onboarding_saved_codes_title">Salvati su questo dispositivo</string>

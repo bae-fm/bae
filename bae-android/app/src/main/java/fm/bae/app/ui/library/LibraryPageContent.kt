@@ -21,7 +21,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import fm.bae.app.OpenLibrary
+import fm.bae.app.R
 import fm.bae.app.data.WindowedBrowserPageStore
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
@@ -79,6 +81,8 @@ internal fun LibraryPageContent(
             pageError != null && page.rows.isEmpty() -> {
                 ListPlaceholder {
                     AndroidNotice(
+                        title = stringResource(R.string.library_read_failed),
+                        advice = null,
                         error = pageError.error,
                         look = NoticeLook.CENTERED,
                         action = pageError.error.retryAction(onClick = pageError.onRetry),
@@ -95,6 +99,7 @@ internal fun LibraryPageContent(
                 ListPlaceholder {
                     Text(
                         text = emptyMessage,
+                        style = ThemeText.body.style,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }

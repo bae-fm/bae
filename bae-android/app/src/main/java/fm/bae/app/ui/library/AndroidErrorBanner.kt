@@ -13,12 +13,15 @@ import fm.bae.app.ui.components.retryAction
 
 @Composable
 internal fun AndroidErrorBanner(
+    title: String,
     error: DisplayError,
     onRetry: (() -> Unit)? = null,
 ) {
     AndroidNotice(
+        title = title,
+        advice = null,
         error = error,
-        modifier = Modifier.padding(horizontal = ThemeSpace.edge),
+        modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
         action = onRetry?.let { error.retryAction(onClick = it) },
         look = NoticeLook.QUIET,
     )
@@ -29,6 +32,7 @@ internal fun AndroidErrorBanner(
 private fun AndroidErrorBannerPreview() {
     PreviewTheme {
         AndroidErrorBanner(
+            title = "Could not read more albums.",
             error = DisplayError("Couldn't reach the library.", "database error: disk I/O error"),
             onRetry = {},
         )
@@ -39,6 +43,9 @@ private fun AndroidErrorBannerPreview() {
 @Composable
 private fun AndroidErrorBannerNoRetryPreview() {
     PreviewTheme {
-        AndroidErrorBanner(error = DisplayError("Couldn't reach the library."))
+        AndroidErrorBanner(
+            title = "Could not read more albums.",
+            error = DisplayError("Couldn't reach the library."),
+        )
     }
 }

@@ -72,7 +72,10 @@
     <string name="search_section_tracks">Pistes</string>
     <string name="work_detail_load_failed">Impossible de charger cette œuvre.</string>
     <string name="work_detail_not_found">Détails de l’œuvre introuvables</string>
-    <string name="composer_detail_load_failed">Impossible de charger ce compositeur.</string>
+    <string name="composer_detail_load_failed">Impossible de charger ce compositeur</string>
+    <string name="library_read_failed">Impossible de lire votre bibliothèque</string>
+    <string name="albums_append_failed">Impossible de lire d’autres albums.</string>
+    <string name="artist_also_credited_as">Aussi crédité sous</string>
     <string name="composer_detail_not_found">Détails du compositeur introuvables</string>
     <string name="search_section_recordings">Enregistrements</string>
     <string name="search_section_credits">Crédits</string>
@@ -380,8 +383,8 @@
     <string name="settings_history_household">Tout le monde</string>
     <string name="settings_history_note">Qui voit ce que vous écoutez, ou Désactivé pour ne rien enregistrer. Un changement s’applique aux lectures à partir de maintenant ; les lectures précédentes gardent ceux qui pouvaient les voir.</string>
     <string name="settings_stored_in">Stocké dans</string>
-    <string name="storage_location_account">%1$s : %2$s</string>
-    <string name="storage_location_bucket">%1$s : %2$s (%3$s)</string>
+    <string name="storage_location_account">%1$s · %2$s</string>
+    <string name="storage_location_bucket">%1$s · %2$s (%3$s)</string>
     <string name="onboarding_s3_key_scanned">Votre clé d’accès S3 est arrivée avec le code scanné.</string>
     <string name="voice_play_not_found">%1$s est introuvable dans votre bibliothèque.</string>
     <string name="onboarding_saved_codes_title">Enregistrés sur cet appareil</string>

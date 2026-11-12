@@ -72,7 +72,10 @@
     <string name="search_section_tracks">曲目</string>
     <string name="work_detail_load_failed">無法載入此作品。</string>
     <string name="work_detail_not_found">找不到作品詳細資料</string>
-    <string name="composer_detail_load_failed">無法載入此作曲者。</string>
+    <string name="composer_detail_load_failed">無法載入此作曲者</string>
+    <string name="library_read_failed">無法讀取你的資料庫</string>
+    <string name="albums_append_failed">無法讀取更多專輯。</string>
+    <string name="artist_also_credited_as">其他署名</string>
     <string name="composer_detail_not_found">找不到作曲者詳細資料</string>
     <string name="search_section_recordings">錄音</string>
     <string name="search_section_credits">製作名單</string>
@@ -366,8 +369,8 @@
     <string name="settings_history_household">所有人</string>
     <string name="settings_history_note">誰能看到你播放的內容，選擇關閉則不保留紀錄。變更對之後的播放生效；之前的播放維持原本的可見範圍。</string>
     <string name="settings_stored_in">儲存於</string>
-    <string name="storage_location_account">%1$s：%2$s</string>
-    <string name="storage_location_bucket">%1$s：%2$s（%3$s）</string>
+    <string name="storage_location_account">%1$s · %2$s</string>
+    <string name="storage_location_bucket">%1$s · %2$s（%3$s）</string>
     <string name="onboarding_s3_key_scanned">你的 S3 存取金鑰已隨掃描的代碼一併傳來。</string>
     <string name="voice_play_not_found">在你的資料庫中找不到%1$s。</string>
     <string name="onboarding_saved_codes_title">儲存在此裝置上</string>

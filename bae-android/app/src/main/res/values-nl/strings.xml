@@ -72,7 +72,10 @@
     <string name="search_section_tracks">Nummers</string>
     <string name="work_detail_load_failed">Kan dit werk niet laden.</string>
     <string name="work_detail_not_found">Werkdetails niet gevonden</string>
-    <string name="composer_detail_load_failed">Kan deze componist niet laden.</string>
+    <string name="composer_detail_load_failed">Kan deze componist niet laden</string>
+    <string name="library_read_failed">Je bibliotheek kon niet worden gelezen</string>
+    <string name="albums_append_failed">Kan niet meer albums lezen.</string>
+    <string name="artist_also_credited_as">Ook vermeld als</string>
     <string name="composer_detail_not_found">Componistdetails niet gevonden</string>
     <string name="search_section_recordings">Opnamen</string>
     <string name="search_section_credits">Credits</string>
@@ -374,8 +377,8 @@
     <string name="settings_history_household">Iedereen</string>
     <string name="settings_history_note">Wie ziet wat je afspeelt, of Uit om niets te bewaren. Een wijziging geldt voor afspeelbeurten vanaf nu; eerdere blijven zichtbaar voor wie ze kon zien.</string>
     <string name="settings_stored_in">Opgeslagen in</string>
-    <string name="storage_location_account">%1$s: %2$s</string>
-    <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
+    <string name="storage_location_account">%1$s · %2$s</string>
+    <string name="storage_location_bucket">%1$s · %2$s (%3$s)</string>
     <string name="onboarding_s3_key_scanned">Je S3-toegangssleutel kwam mee met de gescande code.</string>
     <string name="voice_play_not_found">%1$s is niet gevonden in je bibliotheek.</string>
     <string name="onboarding_saved_codes_title">Bewaard op dit apparaat</string>

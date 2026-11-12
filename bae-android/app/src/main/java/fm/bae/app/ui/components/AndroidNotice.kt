@@ -198,8 +198,8 @@ private fun ErrorNoticeContent(
 }
 
 /**
- * A view that failed whole: in the middle of the space it's given, the title, then Details and
- * the action in one row.
+ * A view that failed whole: in the middle of the space it's given, the title in secondary text,
+ * then Details and the action in one row.
  */
 @Composable
 private fun CenteredNotice(

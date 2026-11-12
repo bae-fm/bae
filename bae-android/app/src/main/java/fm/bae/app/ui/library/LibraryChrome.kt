@@ -35,7 +35,11 @@ import fm.bae.app.ui.appearance.ThemeSpace
 @Composable
 internal fun AndroidErrorBannerContainer(page: AlbumPageStore) {
     val appendError = (if (page.rows.isNotEmpty()) page.error else null) ?: return
-    AndroidErrorBanner(error = appendError.error, onRetry = appendError.onRetry)
+    AndroidErrorBanner(
+        title = stringResource(R.string.albums_append_failed),
+        error = appendError.error,
+        onRetry = appendError.onRetry,
+    )
 }
 
 @Composable

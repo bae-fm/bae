@@ -72,7 +72,10 @@
     <string name="search_section_tracks">Tracks</string>
     <string name="work_detail_load_failed">Dieses Werk konnte nicht geladen werden.</string>
     <string name="work_detail_not_found">Werkdetails nicht gefunden</string>
-    <string name="composer_detail_load_failed">Dieser Komponist konnte nicht geladen werden.</string>
+    <string name="composer_detail_load_failed">Dieser Komponist konnte nicht geladen werden</string>
+    <string name="library_read_failed">Deine Mediathek konnte nicht gelesen werden</string>
+    <string name="albums_append_failed">Weitere Alben konnten nicht gelesen werden.</string>
+    <string name="artist_also_credited_as">Auch genannt als</string>
     <string name="composer_detail_not_found">Komponistendetails nicht gefunden</string>
     <string name="search_section_recordings">Aufnahmen</string>
     <string name="search_section_credits">Credits</string>
@@ -374,8 +377,8 @@
     <string name="settings_history_household">Alle</string>
     <string name="settings_history_note">Wer sieht, was du abspielst, oder Aus, um nichts aufzuzeichnen. Eine Änderung gilt für Wiedergaben ab jetzt; frühere Wiedergaben behalten, wer sie sehen konnte.</string>
     <string name="settings_stored_in">Gespeichert in</string>
-    <string name="storage_location_account">%1$s: %2$s</string>
-    <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
+    <string name="storage_location_account">%1$s · %2$s</string>
+    <string name="storage_location_bucket">%1$s · %2$s (%3$s)</string>
     <string name="onboarding_s3_key_scanned">Dein S3-Zugriffsschlüssel kam mit dem gescannten Code.</string>
     <string name="voice_play_not_found">%1$s wurde in deiner Mediathek nicht gefunden.</string>
     <string name="onboarding_saved_codes_title">Auf diesem Gerät gespeichert</string>

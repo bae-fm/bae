@@ -23,6 +23,7 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.data.ComposerDetailRowsPageStore
+import fm.bae.app.displayError
 import fm.bae.app.metadataText
 import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeSpace
@@ -38,6 +39,7 @@ import uniffi.bae_bridge.BridgeComposerDetail
 import uniffi.bae_bridge.BridgeComposerDetailItem
 import uniffi.bae_bridge.BridgeComposerDetailRow
 import uniffi.bae_bridge.BridgeComposerHeading
+import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeWorkDetail
 
 @Composable
@@ -74,10 +76,7 @@ internal fun ComposerDetailScreen(
         val error = loadError
         when {
             error != null && loaded == null -> {
-                ErrorText(
-                    message = error,
-                    modifier = Modifier.padding(ThemeSpace.page),
-                )
+                ComposerLoadFailure(error, query.error, session.libraryQueries.composer::retry)
             }
 
             // The detail is a local read; nothing shows until it lands.
@@ -99,6 +98,27 @@ internal fun ComposerDetailScreen(
             }
         }
     }
+}
+
+/** A composer page that did not load: the centred notice when core failed, else the plain line. */
+@Composable
+private fun ComposerLoadFailure(
+    title: String,
+    failure: BridgeException?,
+    onRetry: () -> Unit,
+) {
+    if (failure == null) {
+        ErrorText(message = title, modifier = Modifier.padding(ThemeSpace.page))
+        return
+    }
+    val shown = LocalContext.current.displayError(failure)
+    AndroidNotice(
+        title = title,
+        advice = null,
+        error = shown,
+        look = NoticeLook.CENTERED,
+        action = shown.retryAction(onClick = onRetry),
+    )
 }
 
 /**
@@ -239,10 +259,7 @@ internal fun WorkDetailScreen(
         val error = loadError
         when {
             error != null && loaded == null -> {
-                ErrorText(
-                    message = error,
-                    modifier = Modifier.padding(ThemeSpace.page),
-                )
+                ComposerLoadFailure(error, query.error, session.libraryQueries.composer::retry)
             }
 
             // The detail is a local read; nothing shows until it lands.
