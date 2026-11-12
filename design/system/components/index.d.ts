@@ -259,7 +259,7 @@ export declare function MacProgressLine(props: { label: string; value?: number |
 /** Every catalog that describes a release, as a wrapped row of links (`records`: catalog names, comma-separated). */
 export declare function MacRecordLinks(props: { records: string }): React.ReactElement;
 /** A row's ⋯ / ⋮ button with the row's actions in its menu; `open` draws the menu, `items` its entries ("-" for a line). */
-export interface MoreMenuProps { open?: boolean; items?: string; highlighted?: string }
+export interface MoreMenuProps { open?: boolean; items?: string; highlighted?: string; off?: boolean }
 export declare function MacMoreMenu(props: MoreMenuProps): React.ReactElement;
 export declare function AndroidMoreMenu(props: MoreMenuProps): React.ReactElement;
 /** The close control of a docked pane and of an open album. */

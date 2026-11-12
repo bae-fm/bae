@@ -74,9 +74,9 @@
       return t === '-' ? h(MacMenuItem, { key: i, divider: true }) : h(MacMenuItem, { key: i, highlighted: t === props.highlighted }, t);
     }))));
   }
-  // The same on Android: the row's ⋮, its menu under it when `open`.
+  // The same on Android: the row's ⋮, its menu under it when `open`; `off` dims it while none of its actions can run.
   function AndroidMoreMenu(props) {
-    var btn = h(AndroidIconButton, { icon: 'more', label: 'More', menu: true });
+    var btn = h(AndroidIconButton, { icon: 'more', label: 'More', off: props.off, menu: true });
     if (!props.open) return btn;
     return h('span', { className: 'bae-a-moremenu' }, btn, h(AndroidMenu, { top: 44, right: 0 }, list(props.items).map(function (t, i) {
       return t === '-' ? h(AndroidMenuItem, { key: i, divider: true }) : h(AndroidMenuItem, { key: i, pressed: t === props.highlighted }, t);

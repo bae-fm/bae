@@ -110,3 +110,4 @@
 .bae-progress-android::after { content: ''; position: absolute; right: 0; top: 0; width: 4px; height: 4px; border-radius: 2px; background: var(--accent); }
 .bae-progress-android .bae-progress-fill { border-radius: 2px; box-shadow: 4px 0 0 var(--bae-gap-bg); z-index: 1; }
 .bae-progress-android .bae-progress-moving { box-shadow: 4px 0 0 var(--bae-gap-bg), -4px 0 0 var(--bae-gap-bg); }
+.bae-a-iconbtn-off { opacity: 0.38; }

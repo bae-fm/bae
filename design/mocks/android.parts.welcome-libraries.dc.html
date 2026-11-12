@@ -20,7 +20,7 @@ body{margin:0;background:var(--background)}
 <div style="font-family: var(--font-android)"><x-import component-from-global-scope="Bae.AndroidSection" title="Your libraries"></x-import><x-import component-from-global-scope="Bae.AndroidCard">
   <sc-if value="{{resting}}" hint-placeholder-val="{{ true }}"><x-import component-from-global-scope="Bae.AndroidRow" title="Home music"><x-import component-from-global-scope="Bae.AndroidMoreMenu"></x-import></x-import></sc-if>
   <sc-if value="{{removing}}" hint-placeholder-val="{{ false }}"><x-import component-from-global-scope="Bae.AndroidRow" title="Home music" subtitle="Leaving the library…"><div style="width: 48px; height: 48px; display: flex; align-items: center; justify-content: center"><x-import component-from-global-scope="Bae.AndroidSpinner"></x-import></div></x-import></sc-if>
-  <x-import component-from-global-scope="Bae.AndroidRow" title="Odile’s records"><x-import component-from-global-scope="Bae.AndroidMoreMenu"></x-import></x-import>
+  <x-import component-from-global-scope="Bae.AndroidRow" title="Odile’s records"><x-import component-from-global-scope="Bae.AndroidMoreMenu" off="{{removing}}"></x-import></x-import>
   <x-import component-from-global-scope="Bae.AndroidRow" title="Add library" action="{{yes}}" leading-icon="add"></x-import>
 </x-import></div>
 </x-dc>
