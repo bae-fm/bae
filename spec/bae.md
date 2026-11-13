@@ -2072,6 +2072,12 @@ sets it. While the file is on one device only, the version also names that
 device, so it moves again when the file is stored, and an app that couldn't
 read the image asks for it again.
 
+Opening a library that has storage starts sync before the app can ask for
+anything, so coven's storage is connecting from the first screen: a cover that
+is not on this device waits for the connection and then shows, instead of
+failing as a library with no storage does. Starting sync does not wait for the
+network, so a library opened offline still opens.
+
 ### 4.2 Local and uploaded releases
 
 A release is *local*, or *uploaded* so other devices can play it.

@@ -490,7 +490,7 @@ async fn starting_work_after_close_is_refused_to_the_caller() {
     let (test, _temp) = setup_test_manager().await;
     let manager = test.library.manager();
     manager.close().await.unwrap();
-    let error = manager.start_sync_at_startup().expect_err("a closed library starts no work");
+    let error = manager.start_sync_at_startup().await.expect_err("a closed library starts no work");
     assert!(matches!(error, LibraryError::Closed("startup sync attachment")), "got {error:?}");
     assert!(matches!(manager.start(), Err(LibraryError::Closed(_))));
 }

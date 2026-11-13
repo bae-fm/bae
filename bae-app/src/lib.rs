@@ -566,8 +566,20 @@ where
             .stage(&library_id, "start library observation", || library_manager.start())
             .map_err(|e| BootstrapError::Internal(e.to_string()))?;
 
-        let startup_sync_manager =
-            if connects && !locked { Some(library_manager.clone()) } else { None };
+        // Sync starts before the frontend owner exists, so no read that needs
+        // storage can come first: coven's storage is connecting from here, and
+        // a cover the first screen asks for waits for the connection instead
+        // of failing as a library with no storage does. Starting never waits
+        // on the network, and its failures flow through the sync-status
+        // subscription installed above. A later reconnect uses the direct
+        // awaited attachment path.
+        if connects && !locked {
+            timing
+                .stage(&library_id, "start sync", || {
+                    runtime.block_on(library_manager.start_sync_at_startup())
+                })
+                .map_err(|e| BootstrapError::Internal(e.to_string()))?;
+        }
 
         // A fixture states what its watched folders hold, and nothing on disk
         // backs it, so reading them would replace it with what is there.
@@ -630,9 +642,9 @@ where
                 .map_err(|error| BootstrapError::Database(error.to_string()))?;
         }
 
-        Ok((app_services, advance_active_pointer, startup_sync_manager))
+        Ok((app_services, advance_active_pointer))
     })();
-    let (app_services, advance_active_pointer, startup_sync_manager) = match started {
+    let (app_services, advance_active_pointer) = match started {
         Ok(started) => started,
         Err(error) => {
             if let Err(closing) = runtime.block_on(opened.close()) {
@@ -659,18 +671,6 @@ where
                 app_dir.save_active_library(store_id)
             })
             .map_err(|e| BootstrapError::Config(e.to_string()))?;
-    }
-
-    // Local services and the frontend owner are fully initialized before provider
-    // attachment begins. The task runs on the runtime retained by that owner, and
-    // failures flow through the sync-status subscription installed above. A later
-    // reconnect still uses the direct awaited attachment path.
-    if let Some(manager) = startup_sync_manager {
-        timing
-            .stage(&library_id, "schedule startup sync attachment", || {
-                manager.start_sync_at_startup()
-            })
-            .map_err(|e| BootstrapError::Internal(e.to_string()))?;
     }
 
     timing.complete(&library_id);

@@ -45,6 +45,49 @@ fn a_cover_reaches_another_device_with_its_stored_file() {
     });
 }
 
+/// A cover asked for as the library opens, before storage has connected,
+/// waits for the connection and then returns its bytes. Starting sync at
+/// startup returns once storage is connecting, so no read that needs storage
+/// meets a library with none: before it, the same read fails at once.
+#[test]
+fn a_cover_asked_for_at_launch_waits_for_storage_and_then_reads() {
+    crate::test_libraries::run_two_device_test(async |devices| {
+        let manager = devices.a().manager();
+        let album = create_test_album();
+        let release = create_test_release(&album.id);
+        manager.records.insert_album(&album).await.unwrap();
+        insert_release(manager, &release).await;
+        devices.converge("SELECT id FROM releases").await;
+        store_test_cover(manager, &release.id, b"the cover").await;
+        devices.converge("SELECT c.id, c.file FROM covers AS c").await;
+
+        // The second device opens again as at launch: its sync is not started
+        // and its storage is out of reach, with the cover not on this device.
+        let b = devices.b();
+        b.stop_sync().await;
+        b.storage().set_online(false);
+        assert!(
+            b.manager().read_cover_image_bytes(&release.id).await.is_err(),
+            "with sync not started, storage is released and the read fails at once"
+        );
+
+        b.manager().start_sync_at_startup().await.unwrap();
+        let mut read = std::pin::pin!(b.manager().read_cover_image_bytes(&release.id));
+        assert!(
+            tokio::time::timeout(std::time::Duration::from_millis(300), &mut read).await.is_err(),
+            "the read waits while storage connects"
+        );
+        b.storage().set_online(true);
+        drop(b.manager().retry_now().await.unwrap());
+        let bytes = tokio::time::timeout(std::time::Duration::from_secs(30), read)
+            .await
+            .expect("the read ends once storage connects")
+            .unwrap()
+            .expect("the cover's bytes");
+        assert_eq!(bytes, b"the cover");
+    });
+}
+
 /// When a schema raise falls between a cover's write and the end of its
 /// upload, the write and the raise's marker go out in one slot, then the
 /// raise, then the write completing the upload. A device still on the old

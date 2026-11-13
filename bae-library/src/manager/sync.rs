@@ -199,19 +199,26 @@ impl LibraryManager {
         Ok(())
     }
 
-    /// Start sync for a returning user without withholding local library
-    /// services. [`Self::start`] must already have installed the status,
-    /// pending subscriptions so the connection's first events
-    /// have consumers.
-    /// The task runs on the runtime retained by the app and is supervised like
+    /// Start sync for a returning user, returning once it has started: from
+    /// then on coven's storage is connecting, so a read that needs storage, such as
+    /// a cover the first screen asks for, waits for the connection instead of
+    /// failing as a library with no storage does. Starting never waits on the
+    /// network, so local library services are not withheld. [`Self::start`] must
+    /// already have installed the status and pending subscriptions so the
+    /// connection's first events have consumers.
+    /// The start runs on the runtime retained by the app and is supervised like
     /// the manager's other background workers.
-    pub fn start_sync_at_startup(&self) -> Result<(), LibraryError> {
+    pub async fn start_sync_at_startup(&self) -> Result<(), LibraryError> {
         let manager = self.clone();
         let failed_start = self.clone();
+        let (started, started_rx) = tokio::sync::oneshot::channel();
         self.spawn_supervised_task(
             "startup sync attachment",
             async move {
                 manager.attach_and_start_sync_at_startup().await;
+                if started.send(()).is_err() {
+                    tracing::debug!("nothing waited for the startup sync attachment");
+                }
             },
             // A start that panicked started no loop, like one that failed:
             // the status line says why and offers Reconnect.
@@ -227,7 +234,13 @@ impl LibraryManager {
                     tracing::warn!(%error, "could not record the failed sync start");
                 }
             },
-        )
+        )?;
+        // The sender drops unsent when the start panicked or the library
+        // closed first; either way nothing more waits on it.
+        if started_rx.await.is_err() {
+            tracing::debug!("the startup sync attachment ended without finishing");
+        }
+        Ok(())
     }
 
     /// Start sync at startup, tolerating a failure.
