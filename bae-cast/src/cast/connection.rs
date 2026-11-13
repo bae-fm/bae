@@ -57,13 +57,13 @@ pub(crate) type Handler = Box<dyn FnMut(Inbound) -> Result<(), String> + Send>;
 /// Called once, by whichever side set the end, as it is set.
 pub(crate) type OnEnd = Box<dyn Fn(&End) + Send + Sync>;
 
-enum Job {
+enum WriterJob {
     Frame(Vec<u8>),
     /// Everything before it is written; then the stream is shut down.
     Shutdown,
 }
 
-struct Shared {
+struct ConnectionShared {
     end: OnceLock<End>,
     on_end: OnEnd,
     /// Cancelled when the end is set: the reader stops.
@@ -77,7 +77,7 @@ struct Shared {
     writer_done: CancellationToken,
 }
 
-impl Shared {
+impl ConnectionShared {
     fn set_end(&self, end: End) {
         if self.end.set(end).is_err() {
             return;
@@ -99,8 +99,8 @@ impl Shared {
 /// A live Cast connection. Dropping it aborts both tasks, which closes the
 /// socket, and never blocks.
 pub(crate) struct CastConnection {
-    shared: Arc<Shared>,
-    jobs: mpsc::UnboundedSender<Job>,
+    shared: Arc<ConnectionShared>,
+    jobs: mpsc::UnboundedSender<WriterJob>,
     tasks: [ReportedTask; 2],
 }
 
@@ -144,7 +144,7 @@ impl CastConnection {
     where
         S: AsyncRead + AsyncWrite + Send + 'static,
     {
-        let shared = Arc::new(Shared {
+        let shared = Arc::new(ConnectionShared {
             end: OnceLock::new(),
             on_end,
             stop_reader: CancellationToken::new(),
@@ -188,7 +188,7 @@ impl CastConnection {
         }
         let bytes =
             encode_frame(&frame).map_err(|e| RendererError::Command(CauseChain(&e).to_string()))?;
-        self.jobs.send(Job::Frame(bytes)).map_err(|_unsent| {
+        self.jobs.send(WriterJob::Frame(bytes)).map_err(|_unsent| {
             ended_error(self.shared.end.get().unwrap_or(&End::Lost("the writer is gone".into())))
         })
     }
@@ -204,17 +204,18 @@ impl CastConnection {
         for frame in farewells {
             match encode_frame(&frame) {
                 Ok(bytes) => {
-                    let _queued = self.jobs.send(Job::Frame(bytes));
+                    let _queued = self.jobs.send(WriterJob::Frame(bytes));
                 }
                 Err(error) => warn!("a closing frame was not sent: {error}"),
             }
         }
-        let _queued = self.jobs.send(Job::Shutdown);
+        let _queued = self.jobs.send(WriterJob::Shutdown);
         self.shared.set_end(End::Closed);
         self.shared.writer_done.cancelled().await;
     }
 
     /// Wait until both tasks have ended.
+    #[cfg(test)]
     pub(crate) async fn tasks_done(&self) {
         self.shared.reader_done.cancelled().await;
         self.shared.writer_done.cancelled().await;
@@ -226,6 +227,7 @@ impl CastConnection {
     }
 
     /// Wait for the end.
+    #[cfg(test)]
     pub(crate) async fn ended(&self) -> End {
         self.shared.ended.cancelled().await;
         self.shared.end.get().expect("ended is cancelled only after the end is set").clone()
@@ -248,7 +250,9 @@ pub(crate) fn ended_error(end: &End) -> RendererError {
     }
 }
 
-fn panic_ends(shared: &Arc<Shared>) -> impl FnOnce(bae_util::task_failure::Bug) + Send + 'static {
+fn panic_ends(
+    shared: &Arc<ConnectionShared>,
+) -> impl FnOnce(bae_util::task_failure::Bug) + Send + 'static {
     let shared = shared.clone();
     move |bug| shared.lose(bug.to_string())
 }
@@ -276,8 +280,8 @@ impl KeepAlive {
 async fn read_loop<R: AsyncRead + Unpin>(
     read_half: R,
     mut handler: Handler,
-    jobs: mpsc::UnboundedSender<Job>,
-    shared: Arc<Shared>,
+    jobs: mpsc::UnboundedSender<WriterJob>,
+    shared: Arc<ConnectionShared>,
 ) {
     let _done = shared.reader_done.clone().drop_guard();
     let mut frames = FrameReader::new(read_half);
@@ -285,7 +289,7 @@ async fn read_loop<R: AsyncRead + Unpin>(
     let queue = |request: Request<'_>| {
         let bytes = encode_frame(&request.into_frame("sender-0", "receiver-0"))
             .expect("a heartbeat fits a frame");
-        jobs.send(Job::Frame(bytes)).is_ok()
+        jobs.send(WriterJob::Frame(bytes)).is_ok()
     };
     loop {
         let frame = tokio::select! {
@@ -364,8 +368,8 @@ fn wire_failure(error: &WireError) -> String {
 
 async fn write_loop<W: AsyncWrite + Unpin>(
     mut write_half: W,
-    mut queue: mpsc::UnboundedReceiver<Job>,
-    shared: Arc<Shared>,
+    mut queue: mpsc::UnboundedReceiver<WriterJob>,
+    shared: Arc<ConnectionShared>,
 ) {
     let _done = shared.writer_done.clone().drop_guard();
     loop {
@@ -376,7 +380,7 @@ async fn write_loop<W: AsyncWrite + Unpin>(
         };
         let Some(job) = job else { return };
         let written = match job {
-            Job::Frame(bytes) => tokio::time::timeout(WRITE_TIMEOUT, async {
+            WriterJob::Frame(bytes) => tokio::time::timeout(WRITE_TIMEOUT, async {
                 write_half.write_all(&bytes).await?;
                 write_half.flush().await
             })
@@ -385,7 +389,7 @@ async fn write_loop<W: AsyncWrite + Unpin>(
                 "the receiver didn't take a write within the time allowed".to_string()
             })
             .and_then(|written| written.map_err(|e| format!("writing failed: {e}"))),
-            Job::Shutdown => {
+            WriterJob::Shutdown => {
                 // The end is already Closed, so a failure here changes nothing.
                 match tokio::time::timeout(WRITE_TIMEOUT, write_half.shutdown()).await {
                     Ok(Ok(())) => {}

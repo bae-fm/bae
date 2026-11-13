@@ -223,6 +223,21 @@ non_owner_types = [
     "ServerState",
     # The hold on one image path, kept in the test image host's map.
     "HeldPath",
+    # What a Cast client holds for the requests it waits on and for the
+    # receiver's last word, behind the client's own lock, and what each
+    # request waits with.
+    "ClientState",
+    "WaitingRequest",
+    # What the Cast connection's reader and writer share: the one end, the
+    # stop signals and the end callback, held by both tasks and the connection.
+    "ConnectionShared",
+    # What a Cast connection's writer is told to do.
+    "WriterJob",
+    # What the Cast client gets from a receiver's launch.
+    "Answered",
+    # What a Cast client waits on a request with, and the app it launched.
+    "RequestKind",
+    "App",
     # What a play-on command carries to start remote playback.
     "RemoteConnect",
     "AirPlayConnect",
@@ -938,11 +953,21 @@ OpenCalls = "LibrarySessions"
     "RaopStream::spawn",
     "RaopStreamControl::new",
 ]
+"bae-cast/src/cast/channel.rs" = ["CastChannel::new"]
+"bae-cast/src/cast/client.rs" = [
+    "CastClient::connect",
+    "CastClient::launch",
+]
+"bae-cast/src/cast/connection.rs" = [
+    "CastConnection::open",
+    "CastConnection::start",
+]
 "bae-cast/src/cast/discovery.rs" = ["CastBrowse::start"]
 "bae-cast/src/dlna/discovery.rs" = ["DlnaSearch::start"]
 "bae-cast/src/lib.rs" = [
     "EphemeralServer::start",
     "CastController::ensure_server",
+    "CastController::start_fetch_renderer",
 ]
 "bae-cast/src/renderer/discovery.rs" = [
     "RendererDiscovery::builtin",

@@ -34,7 +34,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Duration;
 
 use bae_app::AppServices;
-use bae_diagnostics::{lock_or_crash, Diagnostics, ReportedTask};
+use bae_diagnostics::{lock_or_crash, Diagnostics, ReportedTask, Unfinished};
 use bae_playback::airplay_output::AirPlaySink;
 use bae_playback::renderer::{
     CoverUrlProvider, MediaUrlProvider, RendererChannel, RendererFlavor, RendererMediaSource,
@@ -52,7 +52,7 @@ use airplay::airplay2::TimingProtocol;
 use airplay::capabilities::{Dialect, RaopEncryption};
 use airplay::sink::{Ap2Sink, RaopSink};
 use airplay::{AirPlayCapabilities, UnreadableSetting};
-use cast::RustCastChannel;
+use cast::{CastChannel, CastClient};
 use dlna::DlnaChannel;
 use renderer::{
     RendererConnection, RendererDevice, RendererDiscovery, RendererServiceType, ReportedRenderer,
@@ -730,14 +730,26 @@ impl CastController {
         {
             RendererConnection::Cast { addr, port } => {
                 let (addr, port) = (*addr, *port);
-                let channel = self
-                    .diagnostics
-                    .blocking("connect to the Cast device", move || {
-                        RustCastChannel::connect(addr, port)
-                    })
-                    .await
-                    .map_err(CastError::Internal)?
-                    .map_err(|e| CastError::Connect(e.to_string()))?;
+                // The connect runs to its end on the runtime even when this cast
+                // is called off meanwhile; its client is then dropped, which
+                // closes it.
+                let (diagnostics, runtime) = (self.diagnostics.clone(), self.runtime.clone());
+                let connecting = self.diagnostics.spawn_ending(
+                    &self.runtime,
+                    "connect to the Cast device",
+                    async move { CastClient::connect(addr, port, &diagnostics, &runtime).await },
+                    |ended| ended,
+                );
+                let client = match connecting.outcome().await {
+                    Ok(Ok(Ok(client))) => client,
+                    Ok(Ok(Err(error))) => return Err(CastError::Connect(error.to_string())),
+                    Ok(Err(bug)) | Err(Unfinished::Panicked(bug)) => {
+                        return Err(CastError::Internal(TaskFailed::Panicked(bug)));
+                    }
+                    Err(stopped) => return Err(CastError::Connect(stopped.to_string())),
+                };
+                let channel =
+                    CastChannel::new(client, self.runtime.clone(), self.diagnostics.clone());
                 (Box::new(channel), RendererFlavor::Cast)
             }
             RendererConnection::Dlna { av_transport_url, rendering_control_url, .. } => {

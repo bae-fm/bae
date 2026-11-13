@@ -250,10 +250,6 @@ pub(crate) struct MediaStatusEntry {
     /// Seconds into the media. Anything but a number is not a position.
     #[serde(default, deserialize_with = "number_or_none")]
     pub(crate) current_time: Option<f64>,
-    /// How fast the position moves while playing. Anything but a number is no
-    /// rate.
-    #[serde(default, deserialize_with = "number_or_none")]
-    pub(crate) playback_rate: Option<f64>,
     /// The media, which the receiver sends only when it changed.
     #[serde(default)]
     pub(crate) media: Option<MediaInfo>,

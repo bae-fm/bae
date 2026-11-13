@@ -332,7 +332,6 @@ fn a_media_status_without_media_has_none_and_one_with_media_has_its_duration() {
     ]));
     assert_eq!(entries[0].media, Some(MediaInfo { duration: Some(215.5) }));
     assert_eq!(entries[0].current_time, Some(12.5));
-    assert_eq!(entries[0].playback_rate, Some(1.0));
     assert_eq!(entries[1].media, None, "the receiver sends media only when it changed");
 }
 
@@ -347,14 +346,14 @@ fn a_null_or_missing_duration_is_no_duration() {
 }
 
 #[test]
-fn a_current_time_or_rate_that_is_not_a_number_is_not_a_position() {
+fn a_current_time_that_is_not_a_number_is_not_a_position() {
     let entries = media_entries(json!([
-        {"mediaSessionId": 1, "playerState": "PLAYING", "currentTime": "soon", "playbackRate": null},
-        {"mediaSessionId": 1, "playerState": "PLAYING", "currentTime": {"s": 1}, "playbackRate": "fast"},
+        {"mediaSessionId": 1, "playerState": "PLAYING", "currentTime": "soon"},
+        {"mediaSessionId": 1, "playerState": "PLAYING", "currentTime": {"s": 1}},
         {"mediaSessionId": 1, "playerState": "PLAYING"},
     ]));
     for entry in entries {
-        assert_eq!((entry.current_time, entry.playback_rate), (None, None));
+        assert_eq!(entry.current_time, None);
     }
 }
 

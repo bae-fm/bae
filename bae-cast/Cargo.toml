@@ -38,21 +38,16 @@ rand = { workspace = true }
 # The LAN IP the receiver reaches this device at (the ephemeral server binds
 # 0.0.0.0, but the URL must name a routable address).
 local-ip-address = { workspace = true }
-# Google Cast sender (src/cast/): the CASTV2 protocol over TLS to Chromecast/Nest
-# devices, and mDNS service discovery of them and of AirPlay receivers.
-# `thread_safe` makes rust_cast's `CastDevice` Send so the session can own it on
-# its own OS thread. Builds on every platform; the receiver fetches audio itself
-# over HTTP.
-rust_cast = { workspace = true, features = ["thread_safe"] }
-# bae's own Cast client (src/cast/wire.rs, messages.rs): the CastMessage
-# protobuf frame, derived with no code generation step, and the JSON payloads.
+# bae's own Cast client (src/cast/): the CastMessage protobuf frame, derived
+# with no code generation step, the JSON payloads, and the TLS to a receiver
+# (rustls with the aws-lc-rs provider named explicitly, over tokio). The
+# receiver fetches audio itself over HTTP.
 prost = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
-# The TLS to a receiver (src/cast/connection.rs): rustls with the aws-lc-rs
-# provider named explicitly, over tokio.
 rustls = { workspace = true }
 tokio-rustls = { workspace = true }
+# mDNS service discovery of Cast devices and of AirPlay receivers.
 mdns-sd = { workspace = true }
 # UPnP/DLNA control point (src/dlna/): parses device-description and SOAP
 # response XML. Read-only DOM, pure Rust (builds on every platform). Outgoing
@@ -102,6 +97,11 @@ coven = { workspace = true }
 [dev-dependencies]
 # The async tests of bae's Cast client.
 tokio = { workspace = true, features = ["macros", "rt", "test-util"] }
+# The releases and fixtures the end-to-end cast imports.
+bae-import = { workspace = true, features = ["test-utils"] }
+bae-catalogs = { workspace = true, features = ["test-utils"] }
+# The hang guard bounding the cast tests' waits.
+bae-util = { workspace = true, features = ["test-utils"] }
 # The self-signed certificate the fake receiver serves TLS with.
 rcgen = { workspace = true }
 # The deterministic id source the sessions' tests use.

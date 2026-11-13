@@ -625,3 +625,66 @@ fn dropping_the_controller_ends_it_and_its_tasks() {
         .expect("no task keeps the dropped controller alive");
     });
 }
+
+/// The first LOAD the receiver is sent after `fake` last returned from this.
+async fn next_load(fake: &mut cast::fake_receiver::FakeReceiver) -> serde_json::Value {
+    loop {
+        let received = fake.next_received().await;
+        if received.kind() == "LOAD" {
+            return received.payload;
+        }
+    }
+}
+
+/// A cast to a Chromecast plays the queue through bae's Cast client: the
+/// first track is loaded with its stream URL, and when the receiver says the
+/// track finished, the next track is loaded.
+#[test]
+fn a_cast_loads_the_queue_into_the_receiver_and_follows_it_to_the_next_track() {
+    let runtime = bae_library::test_libraries::multi_thread_runtime();
+    let (library, imported) = runtime
+        .block_on(bae_library::test_libraries::imported_release_setup(
+            bae_catalogs::test_releases::discogs_test_release(
+                "cast-queue",
+                "Album Title",
+                &[("Track One", "0:10"), ("Track Two", "0:10")],
+            ),
+            "cast-queue",
+            "cast-queue-import".to_string(),
+            |dir| {
+                bae_import::test_fixtures::write_tagged_flac(dir, "01 Track One.flac", "Track One");
+                bae_import::test_fixtures::write_tagged_flac(dir, "02 Track Two.flac", "Track Two");
+            },
+        ))
+        .expect("import the release that is cast");
+    let services = runtime
+        .block_on(bae_app::test_services::start_services(&library))
+        .expect("the test library's services start");
+    let controller = CastController::start_serving_on(
+        services.clone(),
+        runtime.handle().clone(),
+        RendererDiscovery::reported(),
+        ServingNetwork::Loopback,
+        ids(),
+        Diagnostics::noop(),
+    );
+    set_casting(&runtime, &controller, &services, true);
+    start_discovery(&runtime, &controller);
+    let (mut fake, port) = runtime.block_on(cast::fake_receiver::FakeReceiver::serve_tls(true));
+    controller.renderer_found(reported_cast_service("Kitchen", "cast-1", port));
+
+    runtime.block_on(controller.cast_to("cast-1")).expect("the receiver launches its app");
+    runtime
+        .block_on(services.playback_play_release(imported.release_id.clone(), None, false))
+        .expect("the release plays");
+
+    let first = runtime.block_on(next_load(&mut fake));
+    let first_url = first["media"]["contentId"].as_str().expect("a stream URL");
+    assert!(first_url.contains("/rest/stream?"), "{first_url}");
+    assert!(first_url.contains(&bae_subsonic::song_id(&imported.track_ids[0])), "{first_url}");
+
+    fake.finish_track();
+    let second = runtime.block_on(next_load(&mut fake));
+    let second_url = second["media"]["contentId"].as_str().expect("a stream URL");
+    assert!(second_url.contains(&bae_subsonic::song_id(&imported.track_ids[1])), "{second_url}");
+}

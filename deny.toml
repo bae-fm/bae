@@ -75,11 +75,10 @@ multiple-versions = "warn"
 # client trusting native roots fails there: the AWS SDK's own client panicked with
 # "TrustStore configured to enable native roots but no valid root certificates
 # parsed!" and an S3 restore failed. The verifier reads the OS's certificate files
-# on Linux. rust_cast links rustls-native-certs for its verified connect, which bae
-# never calls (Cast devices are self-signed; bae connects without host verification).
+# on Linux. Only rustls-platform-verifier may link rustls-native-certs.
 deny = [
     { crate = "aws-smithy-http-client", reason = "S3 runs over coven's reqwest client; this client reads native roots, which openssl-probe doesn't find on Android" },
-    { crate = "rustls-native-certs", wrappers = ["rustls-platform-verifier", "rust_cast"], reason = "openssl-probe finds no native root list on Android; trust comes from rustls-platform-verifier" },
+    { crate = "rustls-native-certs", wrappers = ["rustls-platform-verifier"], reason = "openssl-probe finds no native root list on Android; trust comes from rustls-platform-verifier" },
     { crate = "webpki-roots", reason = "a bundled root list is not the platform's trust; use rustls-platform-verifier" },
     { crate = "webpki-root-certs", wrappers = ["rustls-platform-verifier"], reason = "a bundled root list is not the platform's trust; use rustls-platform-verifier" },
 ]

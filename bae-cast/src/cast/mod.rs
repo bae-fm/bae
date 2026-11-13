@@ -3,35 +3,22 @@
 //! bae plays to Chromecast/Nest devices as one flavor of remote renderer (see
 //! [`bae_playback::renderer`]). This module holds only what's Cast-specific: mDNS
 //! discovery of devices ([`discovery`]) and the CASTV2 control channel
-//! ([`channel::RustCastChannel`]) that implements the shared
+//! ([`channel::CastChannel`], over bae's own Cast client in [`client`]) that implements the shared
 //! [`bae_playback::renderer::RendererChannel`]. The session, media, status, and format
 //! types it drives are the shared renderer ones — the receiver fetches audio over
 //! HTTP itself, exactly like a UPnP renderer.
 
 pub(crate) mod channel;
-pub(crate) mod discovery;
-// Test-only until the Cast renderer moves onto this client (the commit that
-// drops RustCastChannel).
-#[cfg(test)]
 mod client;
-// Test-only until the Cast renderer moves onto this client (the commit that
-// drops RustCastChannel).
-#[cfg(test)]
 mod connection;
-// Test-only until the Cast renderer moves onto this client (the commit that
-// drops RustCastChannel).
+pub(crate) mod discovery;
 #[cfg(test)]
-mod fake_receiver;
-// Test-only until the Cast renderer moves onto this client (the commit that
-// drops RustCastChannel).
-#[cfg(test)]
+pub(crate) mod fake_receiver;
 mod messages;
-// Test-only until the Cast renderer moves onto this client (the commit that
-// drops RustCastChannel).
-#[cfg(test)]
 mod wire;
 
-pub(crate) use channel::RustCastChannel;
+pub(crate) use channel::CastChannel;
+pub(crate) use client::CastClient;
 pub(crate) use discovery::CastDiscovery;
 
 #[cfg(test)]

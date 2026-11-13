@@ -4388,7 +4388,8 @@ Switching to a receiver keeps the queue and sends the current track at its
 current position. Ending the session returns to this device, paused where it
 was, at the volume and mute last set: there is one volume, whatever plays.
 However a session on a Chromecast or UPnP receiver ends, the receiver is told
-to stop once, unless the link to it is already lost.
+to stop once, unless the link to it is already lost, and bae then closes the
+cast's connections to a Chromecast.
 It runs from silent to full, and a level asked for past either is held to it
 where it is set, so this device, the receiver, the stored row and every screen
 hold the same level. A volume slider moves this device and the receiver as it
@@ -4409,6 +4410,20 @@ doesn't play — is converted on the way: to MP3 at 320 kbps, or to WAV at its
 stored depth, as the person chose. A UPnP renderer is never counted on to play
 WAV or Opus, stored or converted, so it gets MP3. (DLNA's required audio format is uncompressed PCM sent as
 `audio/L16`, not a WAV file; bae doesn't serve L16.)
+
+bae talks to a Chromecast with a Cast client of its own. It answers the
+receiver's keep-alive as it comes, and it pings a receiver that has sent
+nothing for five seconds. A receiver that stays silent ten seconds after that
+ping is lost, and the session ends as when the link drops. bae waits at most
+ten seconds to connect to a Chromecast and start its media app.
+
+A Chromecast's media app ending ends the session the same way. It can be
+stopped from another device, replaced by another app, or have another sender
+load its own media into it. Another sender's pause or play is followed, and
+the session goes on.
+
+A load or command the receiver refuses, or doesn't answer within ten seconds,
+is reported and the session goes on.
 
 **AirPlay** receivers of both generations play. A receiver that demands a PIN,
 an AirPlay 2 receiver that doesn't take the password-less transient pairing

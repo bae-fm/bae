@@ -17,7 +17,7 @@ use std::collections::HashMap;
 use std::net::IpAddr;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use bae_diagnostics::{lock_or_crash, Diagnostics};
 use bae_playback::renderer::{ReceiverStatus, RendererError, RendererMedia, RendererPlayerState};
@@ -60,30 +60,23 @@ pub(crate) struct MediaSessionView {
     pub(crate) state: RendererPlayerState,
     /// Seconds into the media, when the receiver stated a number.
     pub(crate) current_time: Option<f64>,
-    /// How fast the position moves while playing, when the receiver stated a
-    /// number.
-    pub(crate) playback_rate: Option<f64>,
-    /// When the status that stated these arrived.
-    pub(crate) arrived_at: Instant,
     /// Seconds, from the last status that carried the media.
     pub(crate) duration: Option<f64>,
 }
 
 impl MediaSessionView {
-    fn from_entry(entry: &MediaStatusEntry, previous_duration: Option<f64>, now: Instant) -> Self {
+    fn from_entry(entry: &MediaStatusEntry, previous_duration: Option<f64>) -> Self {
         Self {
             id: entry.media_session_id,
             state: entry.renderer_state(),
             current_time: entry.current_time,
-            playback_rate: entry.playback_rate,
-            arrived_at: now,
             // The receiver sends `media` only when it changed.
             duration: entry.media.as_ref().map_or(previous_duration, |media| media.duration),
         }
     }
 }
 
-enum Kind {
+enum RequestKind {
     Launch,
     Load,
     Other,
@@ -94,27 +87,27 @@ enum Answered {
     Done,
 }
 
-struct Waiting {
-    kind: Kind,
+struct WaitingRequest {
+    kind: RequestKind,
     reply: oneshot::Sender<Result<Answered, RendererError>>,
 }
 
 /// Everything the client holds. Written by the reader (and by a command
 /// adding or removing its own waiting request), under a lock held only for a
 /// change, never across an await.
-struct State {
+struct ClientState {
     app: Option<App>,
     volume: Option<f64>,
     media: Option<MediaSessionView>,
     /// The session before the one now loaded: the receiver may still say
     /// that it was interrupted, after it has answered the load.
     previous_media_id: Option<i32>,
-    waiting: HashMap<u32, Waiting>,
+    waiting: HashMap<u32, WaitingRequest>,
 }
 
 const TOOK_OVER: &str = "another sender took over the receiver";
 
-impl State {
+impl ClientState {
     fn new() -> Self {
         Self {
             app: None,
@@ -137,7 +130,7 @@ impl State {
 
     /// Take in one message from the receiver. `Err` is the reason the
     /// connection is lost.
-    fn take(&mut self, inbound: Inbound, now: Instant) -> Result<(), String> {
+    fn take(&mut self, inbound: Inbound) -> Result<(), String> {
         match inbound {
             Inbound::Close { source_id } => Err(format!("{source_id} closed its connection")),
             Inbound::ReceiverStatus { request_id, status } => {
@@ -151,7 +144,7 @@ impl State {
                 }
                 let launching = matches!(
                     self.waiting.get(&request_id),
-                    Some(Waiting { kind: Kind::Launch, .. })
+                    Some(WaitingRequest { kind: RequestKind::Launch, .. })
                 );
                 if !launching {
                     self.complete(request_id, Ok(Answered::Done));
@@ -194,7 +187,7 @@ impl State {
             }
             Inbound::Refused(refusal) => {
                 let error = match self.waiting.get(&refusal.request_id) {
-                    Some(Waiting { kind: Kind::Launch, .. }) => {
+                    Some(WaitingRequest { kind: RequestKind::Launch, .. }) => {
                         RendererError::Launch(refusal.describe())
                     }
                     _ => RendererError::Command(refusal.describe()),
@@ -203,7 +196,7 @@ impl State {
                 Ok(())
             }
             Inbound::MediaStatus { request_id, entries } => {
-                self.take_media_status(request_id, &entries, now)
+                self.take_media_status(request_id, &entries)
             }
             // The connection answers these itself and drops these.
             Inbound::Ping | Inbound::Pong | Inbound::Ignored { .. } => Ok(()),
@@ -214,10 +207,11 @@ impl State {
         &mut self,
         request_id: u32,
         entries: &[MediaStatusEntry],
-        now: Instant,
     ) -> Result<(), String> {
-        let answers_a_load =
-            matches!(self.waiting.get(&request_id), Some(Waiting { kind: Kind::Load, .. }));
+        let answers_a_load = matches!(
+            self.waiting.get(&request_id),
+            Some(WaitingRequest { kind: RequestKind::Load, .. })
+        );
         if answers_a_load {
             let Some(entry) = entries.first() else {
                 self.complete(
@@ -229,19 +223,18 @@ impl State {
                 return Ok(());
             };
             self.previous_media_id = self.media.take().map(|media| media.id);
-            self.media = Some(MediaSessionView::from_entry(entry, None, now));
+            self.media = Some(MediaSessionView::from_entry(entry, None));
             self.complete(request_id, Ok(Answered::Done));
             return Ok(());
         }
-        let load_pending = self.waiting.values().any(|w| matches!(w.kind, Kind::Load));
+        let load_pending = self.waiting.values().any(|w| matches!(w.kind, RequestKind::Load));
         for entry in entries {
-            self.follow(entry, load_pending, now)?;
+            self.follow(entry, load_pending)?;
         }
         if entries.is_empty() {
             if let Some(media) = &mut self.media {
                 media.state = RendererPlayerState::Idle;
                 media.current_time = None;
-                media.arrived_at = now;
             }
         }
         self.complete(request_id, Ok(Answered::Done));
@@ -249,12 +242,7 @@ impl State {
     }
 
     /// Follow one entry of a status nobody's load answers.
-    fn follow(
-        &mut self,
-        entry: &MediaStatusEntry,
-        load_pending: bool,
-        now: Instant,
-    ) -> Result<(), String> {
+    fn follow(&mut self, entry: &MediaStatusEntry, load_pending: bool) -> Result<(), String> {
         if Some(entry.media_session_id) == self.previous_media_id {
             return Ok(());
         }
@@ -274,7 +262,7 @@ impl State {
         if interrupted {
             return if load_pending { Ok(()) } else { Err(TOOK_OVER.to_string()) };
         }
-        *media = MediaSessionView::from_entry(entry, media.duration, now);
+        *media = MediaSessionView::from_entry(entry, media.duration);
         Ok(())
     }
 }
@@ -283,7 +271,7 @@ impl State {
 /// load tracks into it.
 pub(crate) struct CastClient {
     connection: CastConnection,
-    state: Arc<Mutex<State>>,
+    state: Arc<Mutex<ClientState>>,
     diagnostics: Diagnostics,
     next_request_id: AtomicU32,
     deadlines: Deadlines,
@@ -306,6 +294,7 @@ impl CastClient {
     }
 
     /// Run a client over `stream`, which is already connected.
+    #[cfg(test)]
     pub(crate) async fn connect_over<S>(
         stream: S,
         diagnostics: &Diagnostics,
@@ -322,7 +311,7 @@ impl CastClient {
 
     async fn launch(
         connection: CastConnection,
-        state: Arc<Mutex<State>>,
+        state: Arc<Mutex<ClientState>>,
         diagnostics: &Diagnostics,
         deadlines: Deadlines,
     ) -> Result<Self, RendererError> {
@@ -335,7 +324,7 @@ impl CastClient {
         };
         client.connection.send(Request::Connect, SENDER_ID, RECEIVER_ID)?;
         let launched = client
-            .ask(Kind::Launch, deadlines.launch, RECEIVER_ID, |request_id| Request::Launch {
+            .ask(RequestKind::Launch, deadlines.launch, RECEIVER_ID, |request_id| Request::Launch {
                 request_id,
                 app_id: MEDIA_RECEIVER_APP,
             })
@@ -351,7 +340,7 @@ impl CastClient {
         Ok(client)
     }
 
-    fn state(&self) -> std::sync::MutexGuard<'_, State> {
+    fn state(&self) -> std::sync::MutexGuard<'_, ClientState> {
         lock_or_crash(&self.diagnostics, "the cast client's state", &self.state)
     }
 
@@ -360,14 +349,14 @@ impl CastClient {
     /// `Command` and leaves the waiting table.
     async fn ask<'a>(
         &self,
-        kind: Kind,
+        kind: RequestKind,
         deadline: Duration,
         destination: &str,
         request: impl FnOnce(u32) -> Request<'a>,
     ) -> Result<Answered, RendererError> {
         let request_id = self.next_request_id.fetch_add(1, Ordering::Relaxed);
         let (reply, answer) = oneshot::channel();
-        self.state().waiting.insert(request_id, Waiting { kind, reply });
+        self.state().waiting.insert(request_id, WaitingRequest { kind, reply });
         // The end is set before the waiting table is failed, so a request
         // added after that check is failed by the end that follows it.
         if let Some(end) = self.connection.end() {
@@ -412,7 +401,7 @@ impl CastClient {
     /// Load `media` and start it. The answer names bae's media session.
     pub(crate) async fn load(&self, media: &RendererMedia) -> Result<(), RendererError> {
         let app = self.app()?;
-        self.ask(Kind::Load, self.deadlines.command, &app.transport_id, |request_id| {
+        self.ask(RequestKind::Load, self.deadlines.command, &app.transport_id, |request_id| {
             Request::Load { request_id, session_id: &app.session_id, media }
         })
         .await
@@ -445,16 +434,32 @@ impl CastClient {
         request: impl FnOnce(u32) -> Request<'a>,
     ) -> Result<(), RendererError> {
         let app = self.app()?;
-        self.ask(Kind::Other, self.deadlines.command, &app.transport_id, request).await.map(|_| ())
+        self.ask(RequestKind::Other, self.deadlines.command, &app.transport_id, request)
+            .await
+            .map(|_| ())
     }
 
     /// Set the receiver's volume.
     pub(crate) async fn set_volume(&self, level: Volume) -> Result<(), RendererError> {
-        self.ask(Kind::Other, self.deadlines.command, RECEIVER_ID, |request_id| {
+        self.ask(RequestKind::Other, self.deadlines.command, RECEIVER_ID, |request_id| {
             Request::SetVolume { request_id, level: level.get() }
         })
         .await
         .map(|_| ())
+    }
+
+    /// Ask the receiver for its status and for its media status, each waiting
+    /// for its answer, then what it last said about bae's media and its
+    /// volume. The media status is asked for only when bae has media loaded.
+    pub(crate) async fn poll(&self) -> Result<ReceiverStatus, RendererError> {
+        self.ask(RequestKind::Other, self.deadlines.command, RECEIVER_ID, |request_id| {
+            Request::ReceiverStatus { request_id }
+        })
+        .await?;
+        if self.media_session_id().is_ok() {
+            self.media_command(|request_id| Request::MediaStatus { request_id }).await?;
+        }
+        Ok(self.status())
     }
 
     /// What the receiver last said about bae's media and its volume.
@@ -470,15 +475,18 @@ impl CastClient {
     }
 
     /// bae's media session as the receiver last described it.
+    #[cfg(test)]
     pub(crate) fn media_session(&self) -> Option<MediaSessionView> {
         self.state().media.clone()
     }
 
+    #[cfg(test)]
     pub(crate) fn end(&self) -> Option<&End> {
         self.connection.end()
     }
 
     /// Wait for the connection's end.
+    #[cfg(test)]
     pub(crate) async fn ended(&self) -> End {
         self.connection.ended().await
     }
@@ -489,11 +497,14 @@ impl CastClient {
         self.state().waiting.len()
     }
 
-    /// End the session in order: stop the media and wait for the answer, then
+    /// End the session in order: stop the media, if the receiver says it is
+    /// not idle, and wait for the answer, then
     /// close the connections to the app and the receiver, then the socket.
     /// Nothing is reported as lost.
     pub(crate) async fn close(&self) {
-        if self.media_session_id().is_ok() {
+        let playing =
+            self.state().media.as_ref().is_some_and(|m| m.state != RendererPlayerState::Idle);
+        if playing {
             if let Err(error) = self.stop().await {
                 debug!("cast media stop before closing failed: {error}");
             }
@@ -509,15 +520,15 @@ impl CastClient {
 
 /// The state of a new session and the two callbacks that feed the connection's
 /// messages and its end into it.
-fn session(diagnostics: &Diagnostics) -> (Arc<Mutex<State>>, Handler, OnEnd) {
-    let state = Arc::new(Mutex::new(State::new()));
+fn session(diagnostics: &Diagnostics) -> (Arc<Mutex<ClientState>>, Handler, OnEnd) {
+    let state = Arc::new(Mutex::new(ClientState::new()));
     let for_messages = state.clone();
     let for_end = state.clone();
     let diagnostics_for_messages = diagnostics.clone();
     let diagnostics_for_end = diagnostics.clone();
     let handler: Handler = Box::new(move |inbound| {
         lock_or_crash(&diagnostics_for_messages, "the cast client's state", &for_messages)
-            .take(inbound, Instant::now())
+            .take(inbound)
     });
     let on_end: OnEnd = Box::new(move |end| {
         let waiting = std::mem::take(

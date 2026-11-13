@@ -1,226 +1,79 @@
-//! The CASTV2 wire to one connected Cast device.
+//! The CASTV2 control channel to one connected Cast device.
 //!
-//! [`RustCastChannel`] is the Cast implementation of the shared
-//! [`RendererChannel`] the session drives: connect once, then
-//! LOAD/PLAY/PAUSE/SEEK/volume/STOP and read status, over the `rust_cast` CASTV2
-//! protocol.
+//! [`CastChannel`] is the Cast implementation of the shared
+//! [`RendererChannel`] the session drives, over bae's own Cast client
+//! ([`CastClient`]). The session calls it from a thread of its own, so each
+//! command waits for the receiver's answer on the app runtime without
+//! blocking it.
 
-use std::net::IpAddr;
+use std::sync::Arc;
 use std::time::Duration;
 
-use tracing::debug;
+use bae_diagnostics::Diagnostics;
+use bae_playback::renderer::{ReceiverStatus, RendererChannel, RendererError, RendererMedia};
+use tokio::runtime::Handle;
 
-use bae_playback::renderer::{
-    ReceiverStatus, RendererChannel, RendererError, RendererMedia, RendererPlayerState,
-};
-use bae_util::error_text::CauseChain;
-
+use super::client::CastClient;
 use crate::LONGEST_RECEIVER_TIME;
 
-/// The one real Cast [`RendererChannel`], over `rust_cast`. Owned and driven
-/// entirely on the session's thread — `rust_cast`'s channel calls block on the
-/// socket, so this is never shared across threads.
-///
-/// Heartbeat handling is best-effort: each `poll_status` sends a PONG to keep the
-/// receiver's liveness check satisfied. The live protocol path is not
-/// exercisable without a physical device; the session's logic is tested against a
-/// fake channel instead.
-pub(crate) struct RustCastChannel {
-    device: rust_cast::CastDevice<'static>,
-    /// The launched media receiver's virtual-connection transport id — the
-    /// destination every media command addresses.
-    transport_id: String,
-    session_id: String,
-    /// The media session id the last LOAD established; every play/pause/seek/stop
-    /// addresses it. `None` before the first successful LOAD.
-    media_session_id: Option<i32>,
+/// The Cast [`RendererChannel`]. Driven from the session's std thread, which
+/// is never one of the runtime's.
+pub(crate) struct CastChannel {
+    /// Shared with the task that closes the cast's connections when the
+    /// channel is dropped.
+    client: Arc<CastClient>,
+    runtime: Handle,
+    diagnostics: Diagnostics,
 }
 
-/// The default media receiver application id (Google's built-in player).
-const MEDIA_RECEIVER_APP: rust_cast::channels::receiver::CastDeviceApp =
-    rust_cast::channels::receiver::CastDeviceApp::DefaultMediaReceiver;
-
-const RECEIVER_ID: &str = "receiver-0";
-
-impl RustCastChannel {
-    /// Connect to the device at `host:port`, open the virtual connection, and
-    /// launch the media receiver so it is ready for a LOAD. Blocks on the
-    /// network; the caller runs it off the async runtime.
-    pub(crate) fn connect(host: IpAddr, port: u16) -> Result<Self, RendererError> {
-        // Cast devices present self-signed certificates, so host verification is
-        // skipped — the connection is LAN-local and authenticated by the media
-        // URL's own credential, not TLS identity.
-        let device =
-            rust_cast::CastDevice::connect_without_host_verification(host.to_string(), port)
-                .map_err(|e| RendererError::Connection(CauseChain(&e).to_string()))?;
-
-        device
-            .connection
-            .connect(RECEIVER_ID.to_string())
-            .map_err(|e| RendererError::Connection(CauseChain(&e).to_string()))?;
-
-        let app = device
-            .receiver
-            .launch_app(&MEDIA_RECEIVER_APP)
-            .map_err(|e| RendererError::Launch(CauseChain(&e).to_string()))?;
-
-        // Open a virtual connection to the launched app's transport so media
-        // commands reach it.
-        device
-            .connection
-            .connect(app.transport_id.clone())
-            .map_err(|e| RendererError::Connection(CauseChain(&e).to_string()))?;
-
-        Ok(Self {
-            device,
-            transport_id: app.transport_id,
-            session_id: app.session_id,
-            media_session_id: None,
-        })
-    }
-
-    fn require_media_session(&self) -> Result<i32, RendererError> {
-        self.media_session_id.ok_or_else(|| {
-            RendererError::Command("no media loaded on the receiver yet".to_string())
-        })
+impl CastChannel {
+    pub(crate) fn new(client: CastClient, runtime: Handle, diagnostics: Diagnostics) -> Self {
+        Self { client: Arc::new(client), runtime, diagnostics }
     }
 }
 
-impl RendererChannel for RustCastChannel {
+impl Drop for CastChannel {
+    /// Close the cast's connections in order on the runtime. Dropping may
+    /// happen on a runtime thread, where nothing may block, and nothing
+    /// waits for the close: it runs to its end.
+    fn drop(&mut self) {
+        let client = self.client.clone();
+        drop(self.diagnostics.spawn_reported(
+            &self.runtime,
+            "close the Cast connections",
+            async move { client.close().await },
+            |_| {},
+        ));
+    }
+}
+
+impl RendererChannel for CastChannel {
     fn load(&mut self, media: &RendererMedia) -> Result<(), RendererError> {
-        use rust_cast::channels::media::{
-            Image, Media, Metadata, MusicTrackMediaMetadata, StreamType,
-        };
-
-        let metadata = Metadata::MusicTrack(MusicTrackMediaMetadata {
-            album_name: Some(media.album.clone()),
-            title: Some(media.title.clone()),
-            album_artist: Some(media.artist.clone()),
-            artist: Some(media.artist.clone()),
-            composer: None,
-            track_number: None,
-            disc_number: None,
-            images: media.cover_url.iter().map(|url| Image::new(url.clone())).collect(),
-            release_date: None,
-        });
-
-        let request = Media {
-            content_id: media.url.clone(),
-            stream_type: StreamType::Buffered,
-            content_type: media.content_type.clone(),
-            metadata: Some(metadata),
-            duration: media.duration.map(|d| d.as_secs_f32()),
-        };
-
-        let status = self
-            .device
-            .media
-            .load(self.transport_id.clone(), self.session_id.clone(), &request)
-            .map_err(|e| RendererError::Command(CauseChain(&e).to_string()))?;
-
-        self.media_session_id = status.entries.first().map(|entry| entry.media_session_id);
-        Ok(())
+        self.runtime.block_on(self.client.load(media))
     }
 
     fn play(&mut self) -> Result<(), RendererError> {
-        let media_session_id = self.require_media_session()?;
-        self.device
-            .media
-            .play(self.transport_id.clone(), media_session_id)
-            .map(|_| ())
-            .map_err(|e| RendererError::Command(CauseChain(&e).to_string()))
+        self.runtime.block_on(self.client.play())
     }
 
     fn pause(&mut self) -> Result<(), RendererError> {
-        let media_session_id = self.require_media_session()?;
-        self.device
-            .media
-            .pause(self.transport_id.clone(), media_session_id)
-            .map(|_| ())
-            .map_err(|e| RendererError::Command(CauseChain(&e).to_string()))
+        self.runtime.block_on(self.client.pause())
     }
 
     fn seek(&mut self, position: Duration) -> Result<(), RendererError> {
-        let media_session_id = self.require_media_session()?;
-        self.device
-            .media
-            .seek(self.transport_id.clone(), media_session_id, Some(position.as_secs_f32()), None)
-            .map(|_| ())
-            .map_err(|e| RendererError::Command(CauseChain(&e).to_string()))
+        self.runtime.block_on(self.client.seek(position))
     }
 
     fn set_volume(&mut self, level: bae_playback::Volume) -> Result<(), RendererError> {
-        self.device
-            .receiver
-            .set_volume(level.get())
-            .map(|_| ())
-            .map_err(|e| RendererError::Command(CauseChain(&e).to_string()))
+        self.runtime.block_on(self.client.set_volume(level))
     }
 
     fn stop(&mut self) -> Result<(), RendererError> {
-        let media_session_id = self.require_media_session()?;
-        self.device
-            .media
-            .stop(self.transport_id.clone(), media_session_id)
-            .map(|_| ())
-            .map_err(|e| RendererError::Command(CauseChain(&e).to_string()))
+        self.runtime.block_on(self.client.stop())
     }
 
     fn poll_status(&mut self) -> Result<ReceiverStatus, RendererError> {
-        // Keep the receiver's sender-liveness check satisfied. rust_cast's
-        // blocking status read does not answer the device's PINGs, so send an
-        // unsolicited PONG each cycle. A pong failure is not terminal here (the
-        // status read below surfaces a real disconnect) — log it and continue.
-        if let Err(error) = self.device.heartbeat.pong() {
-            debug!("cast heartbeat pong failed: {error}");
-        }
-
-        let receiver_status = self
-            .device
-            .receiver
-            .get_status()
-            .map_err(|e| RendererError::Connection(CauseChain(&e).to_string()))?;
-        // The receiver's level, carried as-is (`None` when omitted) rather than
-        // invented.
-        let volume = receiver_status.volume.level;
-
-        let Some(media_session_id) = self.media_session_id else {
-            // Nothing loaded yet: the receiver is idle, volume is all we have.
-            return Ok(ReceiverStatus {
-                player_state: RendererPlayerState::Idle,
-                position: None,
-                duration: None,
-                volume,
-            });
-        };
-
-        let media_status = self
-            .device
-            .media
-            .get_status(self.transport_id.clone(), Some(media_session_id))
-            .map_err(|e| RendererError::Connection(CauseChain(&e).to_string()))?;
-
-        let Some(entry) = media_status.entries.first() else {
-            // The media session is gone (the receiver dropped the media) but the
-            // connection survives: report idle rather than ending the session.
-            return Ok(ReceiverStatus {
-                player_state: RendererPlayerState::Idle,
-                position: None,
-                duration: None,
-                volume,
-            });
-        };
-
-        Ok(ReceiverStatus {
-            player_state: player_state_from(entry),
-            position: entry.current_time.and_then(|time| receiver_time(f64::from(time))),
-            duration: entry
-                .media
-                .as_ref()
-                .and_then(|m| m.duration)
-                .and_then(|time| receiver_time(f64::from(time))),
-            volume,
-        })
+        self.runtime.block_on(self.client.poll())
     }
 }
 
@@ -228,20 +81,4 @@ impl RendererChannel for RustCastChannel {
 /// negative and no longer than [`LONGEST_RECEIVER_TIME`].
 pub(super) fn receiver_time(seconds: f64) -> Option<Duration> {
     Duration::try_from_secs_f64(seconds).ok().filter(|time| *time <= LONGEST_RECEIVER_TIME)
-}
-
-/// Map a receiver media-status entry to our player state. An IDLE entry whose
-/// reason is FINISHED is the natural-end signal; every other IDLE reason
-/// (loading, cancelled, interrupted, error) is a plain idle.
-fn player_state_from(entry: &rust_cast::channels::media::StatusEntry) -> RendererPlayerState {
-    use rust_cast::channels::media::{IdleReason, PlayerState};
-    match entry.player_state {
-        PlayerState::Playing => RendererPlayerState::Playing,
-        PlayerState::Paused => RendererPlayerState::Paused,
-        PlayerState::Buffering => RendererPlayerState::Buffering,
-        PlayerState::Idle => match entry.idle_reason {
-            Some(IdleReason::Finished) => RendererPlayerState::Finished,
-            _ => RendererPlayerState::Idle,
-        },
-    }
 }
