@@ -4,7 +4,8 @@
 .bae-m-window-plain { flex-direction: column; }
 .bae-m-alert { width: 260px; margin-top: 36px; padding: 20px 16px 16px; border-radius: 20px; background: var(--elevated); box-shadow: 0 10px 30px var(--shadow); display: flex; flex-direction: column; gap: 10px; text-align: left; color: var(--text-primary); font: 400 13px var(--font-sans); }
 .bae-m-alert-title { font-weight: 700; }
-.bae-m-alert-message { font-size: 11px; line-height: 14px; color: var(--text-secondary); }
+.bae-m-alert-icon { display: flex; margin-bottom: 2px; }
+.bae-m-alert-message { font-size: 13px; line-height: 16px; color: var(--text-primary); }
 .bae-m-alert-buttons { display: flex; flex-direction: row-reverse; gap: 8px; margin-top: 6px; }
 .bae-m-alert-buttons > :not(.sc-host-x), .bae-m-alert-buttons > .sc-host-x > * { flex: 1; min-width: 0; }
 .bae-m-alert-buttons:has(> :nth-child(3)) { flex-direction: column; }
