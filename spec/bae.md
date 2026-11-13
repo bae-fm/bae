@@ -187,7 +187,8 @@ queue, its files and its cover (§4.2), and is refused for a release the library
 doesn't hold. Deleting an album deletes every release
 it holds in one write, and is refused for an album holding none. An album
 whose last release goes, by a delete or by moving to another album, is deleted
-in the same write, with its credits and ratings; so is a work no track performs
+in the same write, with its credits and ratings (a release another device adds to
+that album meanwhile goes with it, as a cascade does, and no device keeps it); so is a work no track performs
 any more (§2.4) and an artist nothing credits any more (§2.3), each with what
 hangs on it. The write reads what it may empty before it changes anything and
 deletes those that nothing references at its end, so a save that takes a credit

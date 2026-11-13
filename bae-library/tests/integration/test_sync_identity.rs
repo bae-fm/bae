@@ -470,11 +470,12 @@ fn an_artist_merge_and_a_concurrent_credit_of_the_merged_artist_both_land() {
     });
 }
 
-/// Device A deletes an album's only release while device B, apart, adds a
-/// release to that album. B's release survives on both devices, in the album
-/// it was added to.
+/// Device A deletes an album's only release, which deletes the album, while
+/// device B, apart, adds a release to that album. The release belongs to an
+/// album that is gone, so it is taken out on both devices (its album's
+/// releases go with it, as a cascade does), and no device lists the album.
 #[test]
-fn removing_an_albums_last_release_never_takes_a_concurrent_release_with_it() {
+fn a_release_added_to_an_album_deleted_apart_goes_with_the_album_on_both_devices() {
     run_two_device_test(async |devices| {
         let (_, album_id, release_id) =
             remote_album_by(devices.a(), catalog_artist(Some(MB_ARTIST), None), "Album").await;
@@ -485,9 +486,14 @@ fn removing_an_albums_last_release_never_takes_a_concurrent_release_with_it() {
         let added = remote_release_in(devices.b(), &album_id).await;
         devices.resume().await;
 
-        releases_on_both(devices, &[&added]).await;
+        devices
+            .settle("no release or album on either device", async |_, database| {
+                texts(database, "SELECT id FROM releases").await.is_empty()
+                    && texts(database, "SELECT id FROM albums").await.is_empty()
+            })
+            .await;
         for db in [devices.a().store(), devices.b().store()] {
-            assert_eq!(listed_albums(db).await, vec![album_id.clone()]);
+            assert!(listed_albums(db).await.is_empty(), "{added} must not keep {album_id} listed");
         }
         assert_nothing_held(devices).await;
     });
