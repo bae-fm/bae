@@ -101,6 +101,8 @@ struct TrackRowView: View {
     let onAddNext: (String) -> Void
     let onAddToQueue: (String) -> Void
     let onExportTrack: (String) -> Void
+    /// The playlists the track's menu can add it to.
+    var playlists = TrackPlaylistChoices.none
 
     @State
     private var isHovered = false
@@ -160,6 +162,11 @@ struct TrackRowView: View {
             MacMenuItem("Play next") { onAddNext(track.id) }
             MacMenuItem("Add to queue") { onAddToQueue(track.id) }
             MacMenuDivider()
+            AddToPlaylistMenu(
+                listing: playlists.listing,
+                onAdd: { playlists.onAdd(track.id, $0) },
+                onNewPlaylist: { playlists.onNewPlaylist(track.id) }
+            )
             MacMenuItem("Save as…") { onExportTrack(track.id) }
         }
         .draggable(track.id)

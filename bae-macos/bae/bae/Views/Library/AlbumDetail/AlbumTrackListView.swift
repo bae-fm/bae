@@ -14,6 +14,7 @@ struct AlbumTrackListView: View {
     let onAddNext: (String) -> Void
     let onAddToQueue: (String) -> Void
     let onExportTrack: (String) -> Void
+    var playlists = TrackPlaylistChoices.none
 
     @ScaledMetric(relativeTo: .body)
     private var rowHeight: CGFloat = 40
@@ -99,6 +100,7 @@ struct AlbumTrackListView: View {
                     onAddNext: onAddNext,
                     onAddToQueue: onAddToQueue,
                     onExportTrack: onExportTrack,
+                    playlists: playlists
                 )
                 .id(track.id)
                 .frame(height: height)

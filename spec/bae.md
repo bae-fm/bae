@@ -2753,6 +2753,11 @@ blank library or profile name. On macOS the Playlists heading's *New
 playlist…* button opens the sheet for it, and the playlist made opens in the
 view.
 
+On macOS a track's menu offers *Add to playlist* when the person can make
+playlists: a submenu of their own playlists by name, which adds the track to the
+end of the one chosen, then *New playlist…*, which opens the sheet holding the
+track.
+
 Ben's phone and laptop each add a track to his party playlist while offline.
 Both take the next position, 7. When they sync, both entries stay; equal
 positions order by position id, so every device shows the same order. A

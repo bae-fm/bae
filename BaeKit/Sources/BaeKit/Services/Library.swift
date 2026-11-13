@@ -82,6 +82,10 @@ public final class Library: Sendable, Observable {
         @Sendable (
             _ name: String, _ sharing: BridgeSharing, _ trackIds: [String]
         ) async throws -> String
+    /// Add a track to the end of a playlist of this device's person.
+    public let appendPlaylistEntry:
+        @Sendable (_ playlistId: String, _ trackId: String) async throws
+            -> Void
 
     public init(
         albumBrowse:
@@ -168,7 +172,12 @@ public final class Library: Sendable, Observable {
         },
         createPlaylist:
             @escaping @Sendable (String, BridgeSharing, [String]) async throws
-            -> String = { _, _, _ in throw StubError.notImplemented }
+            -> String = { _, _, _ in throw StubError.notImplemented },
+        appendPlaylistEntry:
+            @escaping @Sendable (String, String) async throws -> Void = {
+                _,
+                _ in throw StubError.notImplemented
+            }
     ) {
         self.albumBrowse = albumBrowse
         self.getAlbumIndex = getAlbumIndex
@@ -192,6 +201,7 @@ public final class Library: Sendable, Observable {
         self.resolveToTrackIds = resolveToTrackIds
         self.setLibraryFullWidth = setLibraryFullWidth
         self.createPlaylist = createPlaylist
+        self.appendPlaylistEntry = appendPlaylistEntry
     }
 
     #if DEBUG
@@ -261,7 +271,8 @@ extension Library {
                 setLibraryFullWidth: {
                     try await handle.setLibraryFullWidth(enabled: $0)
                 },
-                createPlaylist: Self.createPlaylist(handle)
+                createPlaylist: Self.createPlaylist(handle),
+                appendPlaylistEntry: Self.appendPlaylistEntry(handle)
             )
         }
 
@@ -310,6 +321,18 @@ extension Library {
             _ handle: any AppHandleProtocol
         ) -> @Sendable () -> DetailQuery<BridgePlaylistDetail> {
             { DetailQuery(handle.subscribePlaylistDetail()) }
+        }
+
+        /// Add a track to a playlist through `handle`.
+        private static func appendPlaylistEntry(
+            _ handle: any AppHandleProtocol
+        ) -> @Sendable (String, String) async throws -> Void {
+            {
+                _ = try await handle.appendPlaylistEntry(
+                    playlist: $0,
+                    track: $1
+                )
+            }
         }
 
         /// Make a playlist through `handle`.

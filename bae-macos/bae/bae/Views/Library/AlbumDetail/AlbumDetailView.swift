@@ -31,6 +31,9 @@ struct AlbumDetailView: View {
     var playbackStore
     @Environment(UiStore.self)
     var uiStore
+    // Absent in a window that hosts the detail without the library's reads.
+    @Environment(LibraryProjectionStore.self)
+    var libraryProjections: LibraryProjectionStore?
     @Environment(SettingsNavigation.self)
     var settingsNavigation
     @Environment(\.openSettingsWindow)
@@ -129,6 +132,7 @@ struct AlbumDetailView: View {
                     onExportTrack: { trackId in
                         exportTrack(trackId: trackId)
                     },
+                    playlists: trackPlaylistChoices
                 )
             }
             else {

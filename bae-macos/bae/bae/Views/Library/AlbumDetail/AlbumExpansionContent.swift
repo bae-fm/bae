@@ -34,6 +34,7 @@ struct AlbumExpansionContent: View {
     let onDeleteRelease: () -> Void
     let onDeleteAlbum: () -> Void
     let onExportTrack: (String) -> Void
+    var playlists = TrackPlaylistChoices.none
 
     /// The album cover's side.
     private static let coverSize: CGFloat = 340
@@ -98,6 +99,7 @@ struct AlbumExpansionContent: View {
                         onAddNext: onAddNext,
                         onAddToQueue: onAddToQueue,
                         onExportTrack: onExportTrack,
+                        playlists: playlists
                     )
                     .padding(.top, ThemeSpace.edge)
                 }
