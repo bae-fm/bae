@@ -34,7 +34,7 @@ use bae_catalogs::source_release::{
     SourceWorkEvent, TracklistEntry, UnfetchedDocument, UnfetchedReason,
 };
 use bae_types::pressing::{Medium, Pressing, ReleaseLabel, StatedFormat, StatedMedia};
-use tracklist::{insert_entry, load_mediums, Numbering};
+use tracklist::{insert_entry, insert_release_role, load_mediums, load_release_roles, Numbering};
 
 mod tracklist;
 
@@ -231,7 +231,7 @@ pub(super) fn replace_source_release_on(
                 )?;
             }
         }
-        CatalogFacts::Discogs { media, release_roles } => {
+        CatalogFacts::Discogs { media } => {
             let formats: &[StatedFormat] = match media {
                 StatedMedia::Formats(formats) => formats,
                 StatedMedia::Undescribed => &[],
@@ -253,26 +253,10 @@ pub(super) fn replace_source_release_on(
                     ],
                 )?;
             }
-            for role in release_roles {
-                sql.execute(
-                    "INSERT INTO source_release_role \
-                         (catalog, release_id, position, name, sort_name, \
-                          musicbrainz_artist_id, discogs_artist_id, credited_as, role) \
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    params![
-                        catalog,
-                        key,
-                        role.position,
-                        role.artist.name,
-                        role.artist.sort_name,
-                        role.artist.musicbrainz_artist_id,
-                        role.artist.discogs_artist_id,
-                        role.artist.credited_as,
-                        role.role,
-                    ],
-                )?;
-            }
         }
+    }
+    for role in &release.release_roles {
+        insert_release_role(sql, catalog, key, role)?;
     }
     for record in &release.other_records {
         let (kind, album_key) = match record {
@@ -538,23 +522,6 @@ fn load_source_release_rows_on<S: coven::SqlRead>(
                     StatedMedia::Formats(formats)
                 }
             },
-            release_roles: sql.query(
-                "SELECT position, name, sort_name, musicbrainz_artist_id, discogs_artist_id, role, \
-                        credited_as \
-                 FROM source_release_role WHERE catalog = ? AND release_id = ? \
-                 ORDER BY position",
-                params![catalog, key],
-                |row| {
-                    Ok(RoleCredit {
-                        position: row.get(0)?,
-                        artist: bae_catalogs::credits::ArtistCredit {
-                            credited_as: row.get(6)?,
-                            ..artist_at(row, 1)?
-                        },
-                        role: row.get(5)?,
-                    })
-                },
-            )?,
         },
     };
     // The record rows keep no order: they read in the order surfaces list
@@ -659,6 +626,7 @@ fn load_source_release_rows_on<S: coven::SqlRead>(
         archive_release,
         archive_groups,
         mediums,
+        release_roles: load_release_roles(sql, catalog, key)?,
         catalog: catalog_facts,
         notes,
         unfetched,

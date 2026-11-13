@@ -220,14 +220,14 @@ impl RecordsFixture {
         self
     }
 
-    /// The role credit `id` naming `artist` on `release`, as `source`
-    /// printed it.
+    /// The role credit `id` naming `artist` on `release` in `role`, as `source`
+    /// stated it.
     pub fn release_role(
         mut self,
         id: &str,
         release: &str,
         artist: &str,
-        (source, credit): (Catalog, &str),
+        (source, role): (Catalog, CreditedAs),
     ) -> Self {
         let position =
             self.rows.release_artist_roles.iter().filter(|role| role.release_id == release).count();
@@ -236,7 +236,7 @@ impl RecordsFixture {
             artist,
             position as i32,
             source,
-            Some(credit.to_string()),
+            role,
             None,
             id.to_string(),
             self.at,
@@ -244,14 +244,14 @@ impl RecordsFixture {
         self
     }
 
-    /// The role credit `id` naming `artist` on `track`, as `source` printed
-    /// it.
+    /// The role credit `id` naming `artist` on `track` in `role`, as `source`
+    /// stated it.
     pub fn track_role(
         mut self,
         id: &str,
         track: &str,
         artist: &str,
-        (source, credit): (Catalog, &str),
+        (source, role): (Catalog, CreditedAs),
     ) -> Self {
         let position =
             self.rows.track_artist_roles.iter().filter(|role| role.track_id == track).count();
@@ -260,7 +260,7 @@ impl RecordsFixture {
             artist,
             position as i32,
             source,
-            Some(credit.to_string()),
+            role,
             None,
             id.to_string(),
             self.at,

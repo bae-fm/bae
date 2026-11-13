@@ -3,7 +3,9 @@ use crate::musicbrainz_mapper::tests::{
     credit, discogs_artist_document, make_mb_track, make_response, map, own_credits, work,
 };
 use crate::musicbrainz_mapper::*;
-use bae_types::credit_role::{CreditRole, CreditRoleKind, CreditedAs, RoleQualifier};
+use bae_types::credit_role::{
+    CreditRole, CreditRoleKind, CreditedAs, QualifierKind, RoleQualifier,
+};
 
 #[test]
 fn nested_recording_work_imports_composer_work_graph() {
@@ -461,7 +463,7 @@ fn work_composer_relation_without_artist_payload_is_logged_and_skipped() {
     );
     assert!(values.works.works[0].credits.is_empty());
     assert!(
-        logs.contains("work artist relation without artist payload"),
+        logs.contains("artist relation without artist payload"),
         "expected a skip warning, got: {logs}"
     );
 }
@@ -510,7 +512,7 @@ fn work_referenced_by_two_tracks_logs_skip_once() {
     assert!(values.tracks.iter().all(|track| track.works == ["mb-work-a"]));
     // The skip line is logged exactly once, not once per referencing track.
     assert_eq!(
-        logs.matches("work artist relation without artist payload").count(),
+        logs.matches("artist relation without artist payload").count(),
         1,
         "expected the work's skip to log once per release, got: {logs}"
     );
@@ -798,4 +800,107 @@ fn one_artist_in_two_roles_is_two_credits() {
         roles,
         [CreditedAs::of(CreditRoleKind::Composer), CreditedAs::of(CreditRoleKind::Lyricist)]
     );
+}
+
+fn fixture_release(document: &str) -> crate::musicbrainz::MbReleaseResponse {
+    serde_json::from_str(document).expect("the fixture is a MusicBrainz release")
+}
+
+fn roles_of(entry: &TracklistEntry) -> Vec<(&str, &CreditedAs)> {
+    entry.roles.iter().map(|role| (role.artist.name.as_str(), &role.role)).collect()
+}
+
+fn performer(part: &str) -> CreditedAs {
+    CreditedAs { role: CreditRole::Performer(Some(part.to_string())), qualifiers: vec![] }
+}
+
+/// A track keeps every artist relation its recording states, in the relation's
+/// order: producers, engineers and performers as well as writers.
+#[test]
+fn a_track_keeps_every_credit_its_recording_states() {
+    let response =
+        fixture_release(include_str!("../../test-fixtures/musicbrainz-recording-credits.json"));
+    let mediums = mediums(&response);
+    let first = roles_of(&mediums[0].entries[0]);
+
+    assert_eq!(
+        first[0],
+        (
+            "Artist Name 2",
+            &CreditedAs {
+                role: CreditRole::Kind(CreditRoleKind::Engineer),
+                qualifiers: vec![RoleQualifier::Kind(QualifierKind::Assistant)]
+            }
+        )
+    );
+    assert_eq!(first[1], ("Artist Name 3", &performer("guitar")));
+    // A relation naming two instruments is a credit for each; the printed
+    // name of an instrument is the one kept.
+    assert_eq!(first[2], ("Artist Name 4", &performer("drums")));
+    assert_eq!(first[3], ("Artist Name 4", &performer("percussion")));
+    // The same artist stated again in the same role is one credit.
+    let percussion = first
+        .iter()
+        .filter(|(name, role)| *name == "Artist Name 4" && **role == performer("percussion"));
+    assert_eq!(percussion.count(), 1);
+    for part in ["keyboard", "synthesizer"] {
+        assert!(first.contains(&("Artist Name 5", &performer(part))), "{part}");
+    }
+    assert!(first.contains(&("Artist Name 6", &performer("bass guitar"))));
+    assert_eq!(
+        first.iter().filter(|(_, role)| **role == CreditedAs::of(CreditRoleKind::Producer)).count(),
+        8
+    );
+    // A recording engineer is the catalog's own words; a `vocal` relation
+    // naming no voice is "vocals".
+    assert!(first.contains(&(
+        "Artist Name 7",
+        &CreditedAs {
+            role: CreditRole::Stated("recording engineer".to_string()),
+            qualifiers: vec![]
+        }
+    )));
+    assert!(first.contains(&("Artist Name 9", &performer("vocals"))));
+    // The credit stays on the row it was stated on.
+    assert!(roles_of(&mediums[0].entries[2]).is_empty());
+}
+
+/// A release keeps the artist relations it states for itself: each is a
+/// credit of the release, not of a track.
+#[test]
+fn a_release_keeps_every_credit_it_states_for_itself() {
+    let response =
+        fixture_release(include_str!("../../test-fixtures/musicbrainz-release-credits.json"));
+    let roles = release_roles(&response);
+
+    assert_eq!(roles.len(), 36);
+    assert_eq!(roles[0].artist.name, "Artist Name 2");
+    assert_eq!(
+        roles[0].role,
+        CreditedAs { role: CreditRole::Stated("art direction".to_string()), qualifiers: vec![] }
+    );
+    let artwork = roles
+        .iter()
+        .find(|role| {
+            role.artist.name == "Artist Name 3"
+                && role.role.role == CreditRole::Stated("artwork".to_string())
+        })
+        .expect("the artwork credit");
+    assert_eq!(artwork.role.qualifiers, [RoleQualifier::Stated("cover art".to_string())]);
+    let mastering: Vec<_> = roles
+        .iter()
+        .filter(|role| role.role.role == CreditRole::Kind(CreditRoleKind::Mastering))
+        .map(|role| (role.artist.name.as_str(), role.role.qualifiers.len()))
+        .collect();
+    assert_eq!(
+        mastering,
+        [("Artist Name 8", 1), ("Artist Name 8", 0), ("Artist Name 9", 1), ("Artist Name 10", 0)]
+    );
+    let printed = roles
+        .iter()
+        .find(|role| role.artist.name == "Artist Name 23")
+        .expect("the credit that prints another name");
+    assert_eq!(printed.artist.credited_as.as_deref(), Some("Printed Name 1"));
+    // Positions are the order the relations were stated in.
+    assert!(roles.iter().enumerate().all(|(index, role)| role.position == index as i32));
 }

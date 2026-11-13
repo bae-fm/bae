@@ -7,6 +7,7 @@
 //! left off an array shows up as an orphan catalog key.
 
 use super::*;
+use bae_types::credit_role::{CreditRoleKind, QualifierKind};
 
 /// `core.*` keys the UI names directly rather than through a `bridge_*_key`
 /// function.
@@ -27,6 +28,9 @@ const DIRECT_KEYS: &[&str] = &[
     "core.gallery.cover",
     "core.cover.label.separator",
     "core.cover.label.release_group",
+    // A credit's role with its qualifiers: the UI joins the qualifiers and
+    // words the role through it.
+    "core.credit.qualified",
     // The count line under an artist's, composer's or playlist's name.
     "core.library.album_count",
     "core.library.work_count",
@@ -208,6 +212,17 @@ fn produced_keys() -> Vec<String> {
     }
     assert!(bridge_credit_join_key(BridgeCreditJoin::Unrecognized { text: " / ".to_string() })
         .is_none());
+
+    // credit_role_key and credit_qualifier_key — every role and
+    // qualifier bae names carries a key; a performer of no named part is
+    // worded as the performer role.
+    for kind in CreditRoleKind::ALL {
+        keys.push(credit_role_key(*kind));
+    }
+    keys.push(PERFORMER_KEY.to_string());
+    for kind in QualifierKind::ALL {
+        keys.push(credit_qualifier_key(*kind));
+    }
 
     // bridge_cloud_provider_label_key — None (local-only) and S3 carry keys.
     for p in [None, Some(BridgeCloudProvider::S3)] {

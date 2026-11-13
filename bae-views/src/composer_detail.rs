@@ -238,7 +238,8 @@ pub(crate) fn composer_detail_rows_query(order: &ListOrder, seek: &Seek) -> Stri
                 rar.artist_id AS release_role_artist_id,
                 rar.position AS release_role_position,
                 rar.source AS release_role_source,
-                rar.source_credit AS release_role_source_credit,
+                rar.role AS release_role_role, rar.role_words AS release_role_role_words,
+                rar.qualifiers AS release_role_qualifiers,
                 release_credit.name_key AS release_role_credit_key,
                 release_credit.name AS release_role_credit_name,
                 rar.created_at AS release_role_created_at,
@@ -247,7 +248,8 @@ pub(crate) fn composer_detail_rows_query(order: &ListOrder, seek: &Seek) -> Stri
                 tar.artist_id AS track_role_artist_id,
                 tar.position AS track_role_position,
                 tar.source AS track_role_source,
-                tar.source_credit AS track_role_source_credit,
+                tar.role AS track_role_role, tar.role_words AS track_role_role_words,
+                tar.qualifiers AS track_role_qualifiers,
                 track_credit.name_key AS track_role_credit_key,
                 track_credit.name AS track_role_credit_name,
                 tar.created_at AS track_role_created_at,
@@ -306,6 +308,20 @@ pub(crate) fn composer_detail_rows_on(
     })?)
 }
 
+/// The role a row's `{prefix}_role`, `{prefix}_role_words` and
+/// `{prefix}_qualifiers` columns hold.
+fn credited_as_column(
+    row: &Row<'_>,
+    prefix: &str,
+) -> rusqlite::Result<bae_types::credit_role::CreditedAs> {
+    let role: String = row.get(format!("{prefix}_role").as_str())?;
+    let words: Option<String> = row.get(format!("{prefix}_role_words").as_str())?;
+    let qualifiers: String = row.get(format!("{prefix}_qualifiers").as_str())?;
+    bae_types::credit_role::CreditedAs::from_columns(&role, words, &qualifiers).map_err(|error| {
+        column_conversion_error(row, format!("{prefix}_role").as_str(), error.to_string())
+    })
+}
+
 /// A row of a composer's page, read by its part of the page: the works
 /// (0), the release credits (1) or the track credits (2).
 fn row_to_composer_detail_row(row: &Row<'_>) -> rusqlite::Result<DbComposerDetailRow> {
@@ -322,7 +338,7 @@ fn row_to_composer_detail_row(row: &Row<'_>) -> rusqlite::Result<DbComposerDetai
                 artist_id: row.get("release_role_artist_id")?,
                 position: row.get("release_role_position")?,
                 source: parsed_column(row, "release_role_source")?,
-                source_credit: row.get("release_role_source_credit")?,
+                role: credited_as_column(row, "release_role")?,
                 credit: credit_name_column(
                     row,
                     "release_role_credit_key",
@@ -339,7 +355,7 @@ fn row_to_composer_detail_row(row: &Row<'_>) -> rusqlite::Result<DbComposerDetai
                 artist_id: row.get("track_role_artist_id")?,
                 position: row.get("track_role_position")?,
                 source: parsed_column(row, "track_role_source")?,
-                source_credit: row.get("track_role_source_credit")?,
+                role: credited_as_column(row, "track_role")?,
                 credit: credit_name_column(row, "track_role_credit_key", "track_role_credit_name")?,
                 created_at: rfc3339_column(row, "track_role_created_at")?,
             },

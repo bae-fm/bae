@@ -47,6 +47,8 @@ pub struct SourceRelease {
     /// album, in the order the album covers were read from them.
     pub archive_groups: Vec<String>,
     pub mediums: Vec<SourceMedium>,
+    /// The credits the release states for itself rather than for one track.
+    pub release_roles: Vec<RoleCredit>,
     pub catalog: CatalogFacts,
     /// What the release's own document writes about which pressing it is, in
     /// free text and in its order: see
@@ -129,9 +131,6 @@ pub enum CatalogFacts {
         /// What the release's format entries say it is made of, entry by
         /// entry with each entry's quantity.
         media: StatedMedia,
-        /// The composer credits the release states for itself rather than for
-        /// one track.
-        release_roles: Vec<RoleCredit>,
     },
 }
 
@@ -177,7 +176,8 @@ pub struct TracklistEntry {
     pub duration_ms: Option<u64>,
     /// Display credits in the catalog's order.
     pub credits: Vec<DisplayCredit>,
-    /// Composer credits, at their positions among the row's relations.
+    /// Credits in a role, at their positions among the row's relations or
+    /// credits.
     pub roles: Vec<RoleCredit>,
     /// The works a MusicBrainz recording performs, at their positions among
     /// its relations.
@@ -246,12 +246,12 @@ pub(crate) fn stated_credits(credits: &[DisplayCredit]) -> Vec<crate::credits::S
     stated
 }
 
-/// One composer credit and the words its catalog credits it with.
+/// One credit of an artist in a role, and what the artist did.
 #[derive(Debug, Clone, PartialEq)]
 pub struct RoleCredit {
     pub position: i32,
     pub artist: ArtistCredit,
-    pub role: Option<String>,
+    pub role: bae_types::credit_role::CreditedAs,
 }
 
 /// One work a recording performs, at its position among the recording's
@@ -299,9 +299,7 @@ impl SourceRelease {
                 links: Vec::new(),
                 album_links: crate::album_links::AlbumLinks::Read(Vec::new()),
             },
-            LookupCatalog::Discogs => {
-                CatalogFacts::Discogs { media: StatedMedia::Undescribed, release_roles: Vec::new() }
-            }
+            LookupCatalog::Discogs => CatalogFacts::Discogs { media: StatedMedia::Undescribed },
         };
         Self {
             release,
@@ -320,6 +318,7 @@ impl SourceRelease {
             archive_release: None,
             archive_groups: Vec::new(),
             mediums: Vec::new(),
+            release_roles: Vec::new(),
             catalog,
             notes: Vec::new(),
             unfetched: Vec::new(),

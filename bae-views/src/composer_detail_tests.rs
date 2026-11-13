@@ -10,6 +10,7 @@ use bae_records::test_fixtures::library::RecordsFixture;
 use bae_records::test_fixtures::test_records;
 use bae_store::test_fixtures::live_query::first_page;
 use bae_store::test_fixtures::temp_db;
+use bae_types::credit_role::{CreditRoleKind, CreditedAs};
 
 const COMPOSER: &str = "1c2f7a4e-0b1d-4c3e-8f5a-6b7c8d9e0a01";
 const OTHER_COMPOSER: &str = "1c2f7a4e-0b1d-4c3e-8f5a-6b7c8d9e0a02";
@@ -43,8 +44,8 @@ const TRACK_ONE: &str = "5a6b1e8c-4f5b-4a7c-8d9e-0f1a2b3c4e02";
 /// of the first, none linked by a work. Titles mix case, which the page's
 /// order weighs after the letters.
 async fn write_page(db: &Store) {
-    let written_by = (Catalog::Discogs, "Written-By");
-    let composer = (Catalog::MusicBrainz, "composer");
+    let written_by = (Catalog::Discogs, CreditedAs::of(CreditRoleKind::Writer));
+    let composer = (Catalog::MusicBrainz, CreditedAs::of(CreditRoleKind::Composer));
     RecordsFixture::new()
         .artist(COMPOSER, "Composer Name")
         .artist(OTHER_COMPOSER, "Composer Name Other")
@@ -70,10 +71,10 @@ async fn write_page(db: &Store) {
         .release(ALBUM_FIRST, RELEASE_FIRST)
         .release(ALBUM_SECOND, RELEASE_SECOND)
         .tracks(RELEASE_FIRST, &[(TRACK_ZERO, "Track Title Zero"), (TRACK_ONE, "Track Title One")])
-        .release_role(CREDIT_ON_SECOND, RELEASE_SECOND, COMPOSER, written_by)
-        .release_role(CREDIT_ON_FIRST, RELEASE_FIRST, COMPOSER, written_by)
-        .track_role(CREDIT_ON_TRACK_ONE, TRACK_ONE, COMPOSER, composer)
-        .track_role(CREDIT_ON_TRACK_ZERO, TRACK_ZERO, COMPOSER, composer)
+        .release_role(CREDIT_ON_SECOND, RELEASE_SECOND, COMPOSER, written_by.clone())
+        .release_role(CREDIT_ON_FIRST, RELEASE_FIRST, COMPOSER, written_by.clone())
+        .track_role(CREDIT_ON_TRACK_ONE, TRACK_ONE, COMPOSER, composer.clone())
+        .track_role(CREDIT_ON_TRACK_ZERO, TRACK_ZERO, COMPOSER, composer.clone())
         .write(&test_records(db))
         .await;
 }
@@ -244,12 +245,12 @@ fn the_page_keeps_its_order_as_titles_and_credits_change() {
 
         // An edit applying a catalog that names the same credits and links
         // track one to the composer's lone work.
-        let written_by = (Catalog::Discogs, "Written-By");
-        let composer = (Catalog::MusicBrainz, "composer");
+        let written_by = (Catalog::Discogs, CreditedAs::of(CreditRoleKind::Writer));
+        let composer = (Catalog::MusicBrainz, CreditedAs::of(CreditRoleKind::Composer));
         let links = RecordsFixture::new()
-            .release_role(CREDIT_ON_FIRST, RELEASE_FIRST, COMPOSER, written_by)
-            .track_role(CREDIT_ON_TRACK_ONE, TRACK_ONE, COMPOSER, composer)
-            .track_role(CREDIT_ON_TRACK_ZERO, TRACK_ZERO, COMPOSER, composer)
+            .release_role(CREDIT_ON_FIRST, RELEASE_FIRST, COMPOSER, written_by.clone())
+            .track_role(CREDIT_ON_TRACK_ONE, TRACK_ONE, COMPOSER, composer.clone())
+            .track_role(CREDIT_ON_TRACK_ZERO, TRACK_ZERO, COMPOSER, composer.clone())
             .performs(TRACK_ONE, DELTA_SOLO)
             .rows();
         records.apply_release_links_for_test(RELEASE_FIRST, links).await.unwrap();
@@ -384,7 +385,7 @@ async fn the_page_refreshes_read_one_work_or_one_credit() {
 async fn credits_on_albums_sharing_a_title_stay_by_album() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
     write_page(&db).await;
-    let written_by = (Catalog::Discogs, "Written-By");
+    let written_by = (Catalog::Discogs, CreditedAs::of(CreditRoleKind::Writer));
     RecordsFixture::new()
         .album("3e4f9c6a-2d3f-4e5a-8b7c-8d9e0f1a2c03", "Album First", None, &[])
         .release("3e4f9c6a-2d3f-4e5a-8b7c-8d9e0f1a2c03", "4f5a0d7b-3e4a-4f6b-9c8d-9e0f1a2b3d03")
@@ -393,13 +394,13 @@ async fn credits_on_albums_sharing_a_title_stay_by_album() {
             "6b7c2f9d-5a6c-4b8d-9e0f-1a2b3c4d5f05",
             "4f5a0d7b-3e4a-4f6b-9c8d-9e0f1a2b3d03",
             COMPOSER,
-            written_by,
+            written_by.clone(),
         )
         .release_role(
             "6b7c2f9d-5a6c-4b8d-9e0f-1a2b3c4d5f06",
             "4f5a0d7b-3e4a-4f6b-9c8d-9e0f1a2b3d04",
             COMPOSER,
-            written_by,
+            written_by.clone(),
         )
         .write(&test_records(&db))
         .await;

@@ -1,6 +1,7 @@
 -- The composer list (§2.4) counts three things for each artist it shows: the
 -- works it is credited on, the releases a track of which performs one of them,
--- and its catalog role credits that none of its works link. Each is a view,
+-- and its catalog role credits in a writing role that none of its works link.
+-- Each is a view,
 -- kept in a table of its own by the triggers below; the list's counts follow
 -- those tables.
 
@@ -21,12 +22,14 @@ JOIN work_artists wa ON wa.work_id = tw.work_id
 JOIN artist_shown_as shown ON shown.artist_id = wa.artist_id
 WHERE wa.role IN (SELECT role FROM writing_credit_roles);
 
--- Each catalog role credit no work of its artist links, with the artist it
--- shows as and the release it is on: a release's credit when no track of the
--- release performs a work that artist is credited on, a track's when the track
+-- Each catalog role credit, in any role, that no work its artist wrote links,
+-- with the artist it shows as, the release it is on and whether its role is a
+-- writing one: a release's credit when no track of the release performs a work
+-- that artist is credited on in a writing role, a track's when the track
 -- performs none.
 CREATE VIEW IF NOT EXISTS unlinked_composer_credits AS
-SELECT rar.id AS credit_id, credited.shown_artist_id AS artist_id, rar.release_id
+SELECT rar.id AS credit_id, credited.shown_artist_id AS artist_id, rar.release_id,
+       rar.role IN (SELECT role FROM writing_credit_roles) AS writing
 FROM release_artist_roles rar
 JOIN artist_shown_as credited ON credited.artist_id = rar.artist_id
 WHERE NOT EXISTS (
@@ -39,7 +42,8 @@ WHERE NOT EXISTS (
           = credited.shown_artist_id
 )
 UNION ALL
-SELECT tar.id, credited.shown_artist_id, t.release_id
+SELECT tar.id, credited.shown_artist_id, t.release_id,
+       tar.role IN (SELECT role FROM writing_credit_roles)
 FROM track_artist_roles tar
 JOIN artist_shown_as credited ON credited.artist_id = tar.artist_id
 JOIN tracks t ON t.id = tar.track_id
@@ -70,11 +74,13 @@ CREATE TABLE IF NOT EXISTS composer_release (
 
 CREATE INDEX IF NOT EXISTS idx_composer_release_release ON composer_release (release_id);
 
--- The rows of `unlinked_composer_credits`.
+-- The rows of `unlinked_composer_credits`. A composer's page lists every one;
+-- the composer list counts the writing ones.
 CREATE TABLE IF NOT EXISTS composer_unlinked_credit (
     credit_id TEXT PRIMARY KEY,
     artist_id TEXT NOT NULL,
-    release_id TEXT NOT NULL
+    release_id TEXT NOT NULL,
+    writing INTEGER NOT NULL CHECK (writing IN (0, 1))
 ) STRICT;
 
 CREATE INDEX IF NOT EXISTS idx_composer_unlinked_credit_artist ON composer_unlinked_credit (artist_id);
@@ -137,6 +143,7 @@ BEGIN
 END;
 
 CREATE TRIGGER IF NOT EXISTS composer_unlinked_credit_added AFTER INSERT ON composer_unlinked_credit
+WHEN NEW.writing = 1
 BEGIN
     INSERT INTO composer_listing (artist_id, name, name_sort_key, work_count, linked_release_count, unlinked_credit_count)
     VALUES (NEW.artist_id, (SELECT name FROM artists WHERE id = NEW.artist_id), (SELECT bae_name_key(name, (SELECT language FROM name_sort)) FROM artists WHERE id = NEW.artist_id), 0, 0, 1)
@@ -144,6 +151,7 @@ BEGIN
 END;
 
 CREATE TRIGGER IF NOT EXISTS composer_unlinked_credit_removed AFTER DELETE ON composer_unlinked_credit
+WHEN OLD.writing = 1
 BEGIN
     UPDATE composer_listing SET unlinked_credit_count = unlinked_credit_count - 1 WHERE artist_id = OLD.artist_id;
     DELETE FROM composer_listing WHERE artist_id = OLD.artist_id
@@ -168,8 +176,8 @@ BEGIN
     DELETE FROM composer_unlinked_credit WHERE release_id = NEW.release_id
         AND (credit_id, artist_id) NOT IN (
             SELECT credit_id, artist_id FROM unlinked_composer_credits WHERE release_id = NEW.release_id);
-    INSERT OR IGNORE INTO composer_unlinked_credit (credit_id, artist_id, release_id)
-    SELECT credit_id, artist_id, release_id FROM unlinked_composer_credits WHERE release_id = NEW.release_id;
+    INSERT OR IGNORE INTO composer_unlinked_credit (credit_id, artist_id, release_id, writing)
+    SELECT credit_id, artist_id, release_id, writing FROM unlinked_composer_credits WHERE release_id = NEW.release_id;
 END;
 
 CREATE VIEW IF NOT EXISTS composer_work_refresh AS SELECT NULL AS work_id WHERE 0;
@@ -255,8 +263,8 @@ END;
 -- write of the credit itself doesn't change: only its own row follows.
 CREATE TRIGGER IF NOT EXISTS release_role_added AFTER INSERT ON release_artist_roles
 BEGIN
-    INSERT INTO composer_unlinked_credit (credit_id, artist_id, release_id)
-    SELECT credit_id, artist_id, release_id FROM unlinked_composer_credits WHERE credit_id = NEW.id;
+    INSERT INTO composer_unlinked_credit (credit_id, artist_id, release_id, writing)
+    SELECT credit_id, artist_id, release_id, writing FROM unlinked_composer_credits WHERE credit_id = NEW.id;
 END;
 
 CREATE TRIGGER IF NOT EXISTS release_role_removed AFTER DELETE ON release_artist_roles
@@ -266,8 +274,8 @@ END;
 
 CREATE TRIGGER IF NOT EXISTS track_role_added AFTER INSERT ON track_artist_roles
 BEGIN
-    INSERT INTO composer_unlinked_credit (credit_id, artist_id, release_id)
-    SELECT credit_id, artist_id, release_id FROM unlinked_composer_credits WHERE credit_id = NEW.id;
+    INSERT INTO composer_unlinked_credit (credit_id, artist_id, release_id, writing)
+    SELECT credit_id, artist_id, release_id, writing FROM unlinked_composer_credits WHERE credit_id = NEW.id;
 END;
 
 CREATE TRIGGER IF NOT EXISTS track_role_removed AFTER DELETE ON track_artist_roles

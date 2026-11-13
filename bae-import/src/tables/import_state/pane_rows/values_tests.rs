@@ -24,13 +24,20 @@ async fn preparation_round_trips_a_drafts_roles_and_works() {
     draft.tracks[0].roles = vec![bae_catalogs::credits::CreditedRole {
         artist: credit("Role Artist", Some("role-artist")),
         source: bae_catalogs::catalog::Catalog::Discogs,
-        role: Some("Written-By".to_string()),
+        role: bae_types::credit_role::CreditedAs::of(
+            bae_types::credit_role::CreditRoleKind::Writer,
+        ),
     }];
     draft.tracks[0].works = vec!["mb-work-child".to_string()];
     draft.release_roles = vec![bae_catalogs::credits::CreditedRole {
         artist: credit("Release Composer", None),
         source: bae_catalogs::catalog::Catalog::Discogs,
-        role: None,
+        role: bae_types::credit_role::CreditedAs {
+            role: bae_types::credit_role::CreditRole::Performer(Some("bass guitar".to_string())),
+            qualifiers: vec![bae_types::credit_role::RoleQualifier::Kind(
+                bae_types::credit_role::QualifierKind::Guest,
+            )],
+        },
     }];
     draft.works = bae_catalogs::works::WorkGraph {
         works: vec![

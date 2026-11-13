@@ -199,7 +199,7 @@ CREATE TABLE IF NOT EXISTS work_artists (
     source TEXT NOT NULL,
     -- What the artist did on the work: a `bae_types::credit_role::CreditRoleKind`
     -- key, or 'stated' for a role in the catalog's own words (`role_words`).
-    role TEXT NOT NULL CHECK (role IN ('writer', 'composer', 'lyricist', 'librettist', 'translator', 'reviser', 'scriptwriter', 'reconstructor', 'arranger', 'stated')),
+    role TEXT NOT NULL CHECK (role IN ('writer', 'composer', 'lyricist', 'librettist', 'translator', 'reviser', 'scriptwriter', 'reconstructor', 'arranger', 'producer', 'engineer', 'mixer', 'mastering', 'performer', 'stated')),
     role_words TEXT CHECK (role_words IS NULL OR role_words <> ''),
     -- The role's qualifiers, a JSON list (`bae_types::credit_role::RoleQualifier`).
     qualifiers TEXT NOT NULL CHECK (json_valid(qualifiers) AND json_type(qualifiers) = 'array'),
@@ -207,7 +207,7 @@ CREATE TABLE IF NOT EXISTS work_artists (
     -- prints; NULL prints the artist's own.
     credit_key TEXT,
     created_at TEXT NOT NULL,
-    CHECK ((role = 'stated') = (role_words IS NOT NULL)),
+    CHECK (CASE role WHEN 'stated' THEN role_words IS NOT NULL WHEN 'performer' THEN 1 ELSE role_words IS NULL END),
     FOREIGN KEY (work_id) REFERENCES works (id) ON DELETE CASCADE,
     FOREIGN KEY (artist_id) REFERENCES artists (id) ON DELETE CASCADE,
     FOREIGN KEY (artist_id, credit_key) REFERENCES artist_credits (artist_id, name_key),
@@ -496,18 +496,25 @@ CREATE INDEX IF NOT EXISTS idx_release_files_file ON release_files (file);
 CREATE INDEX IF NOT EXISTS idx_release_files_release_kind
     ON release_files (release_id, content_type, original_filename COLLATE natural_order, id);
 
--- Who is credited on a release, and in what role, as the catalog stated it.
+-- Who is credited on a release, and in what role.
 CREATE TABLE IF NOT EXISTS release_artist_roles (
     id TEXT PRIMARY KEY,
     release_id TEXT NOT NULL,
     artist_id TEXT NOT NULL,
     position INTEGER NOT NULL,
     source TEXT NOT NULL,
-    source_credit TEXT,
+    -- What the artist did: a `bae_types::credit_role::CreditRoleKind` key,
+    -- 'performer' (its part, if the catalog names one, in `role_words`), or
+    -- 'stated' for the catalog's own words (`role_words`), with the role's
+    -- qualifiers as a JSON list.
+    role TEXT NOT NULL CHECK (role IN ('writer', 'composer', 'lyricist', 'librettist', 'translator', 'reviser', 'scriptwriter', 'reconstructor', 'arranger', 'producer', 'engineer', 'mixer', 'mastering', 'performer', 'stated')),
+    role_words TEXT CHECK (role_words IS NULL OR role_words <> ''),
+    qualifiers TEXT NOT NULL CHECK (json_valid(qualifiers) AND json_type(qualifiers) = 'array'),
     -- One of the artist's other printed names (`artist_credits`) this credit
     -- prints; NULL prints the artist's own.
     credit_key TEXT,
     created_at TEXT NOT NULL,
+    CHECK (CASE role WHEN 'stated' THEN role_words IS NOT NULL WHEN 'performer' THEN 1 ELSE role_words IS NULL END),
     FOREIGN KEY (release_id) REFERENCES releases (id) ON DELETE CASCADE,
     FOREIGN KEY (artist_id) REFERENCES artists (id) ON DELETE CASCADE,
     FOREIGN KEY (artist_id, credit_key) REFERENCES artist_credits (artist_id, name_key),
@@ -615,18 +622,25 @@ CREATE INDEX IF NOT EXISTS idx_track_artists_track_id ON track_artists (track_id
 
 CREATE INDEX IF NOT EXISTS idx_track_artists_artist_id ON track_artists (artist_id);
 
--- Who is credited on a track, and in what role, as the catalog stated it.
+-- Who is credited on a track, and in what role.
 CREATE TABLE IF NOT EXISTS track_artist_roles (
     id TEXT PRIMARY KEY,
     track_id TEXT NOT NULL,
     artist_id TEXT NOT NULL,
     position INTEGER NOT NULL,
     source TEXT NOT NULL,
-    source_credit TEXT,
+    -- What the artist did: a `bae_types::credit_role::CreditRoleKind` key,
+    -- 'performer' (its part, if the catalog names one, in `role_words`), or
+    -- 'stated' for the catalog's own words (`role_words`), with the role's
+    -- qualifiers as a JSON list.
+    role TEXT NOT NULL CHECK (role IN ('writer', 'composer', 'lyricist', 'librettist', 'translator', 'reviser', 'scriptwriter', 'reconstructor', 'arranger', 'producer', 'engineer', 'mixer', 'mastering', 'performer', 'stated')),
+    role_words TEXT CHECK (role_words IS NULL OR role_words <> ''),
+    qualifiers TEXT NOT NULL CHECK (json_valid(qualifiers) AND json_type(qualifiers) = 'array'),
     -- One of the artist's other printed names (`artist_credits`) this credit
     -- prints; NULL prints the artist's own.
     credit_key TEXT,
     created_at TEXT NOT NULL,
+    CHECK (CASE role WHEN 'stated' THEN role_words IS NOT NULL WHEN 'performer' THEN 1 ELSE role_words IS NULL END),
     FOREIGN KEY (track_id) REFERENCES tracks (id) ON DELETE CASCADE,
     FOREIGN KEY (artist_id) REFERENCES artists (id) ON DELETE CASCADE,
     FOREIGN KEY (artist_id, credit_key) REFERENCES artist_credits (artist_id, name_key),

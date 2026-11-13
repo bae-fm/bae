@@ -52,14 +52,13 @@ fn release(catalog: LookupCatalog, mediums: Vec<SourceMedium>) -> SourceRelease 
         archive_release: None,
         archive_groups: Vec::new(),
         mediums,
+        release_roles: Vec::new(),
         catalog: match catalog {
             LookupCatalog::MusicBrainz => CatalogFacts::MusicBrainz {
                 links: Vec::new(),
                 album_links: crate::album_links::AlbumLinks::NotAsked,
             },
-            LookupCatalog::Discogs => {
-                CatalogFacts::Discogs { media: StatedMedia::Undescribed, release_roles: Vec::new() }
-            }
+            LookupCatalog::Discogs => CatalogFacts::Discogs { media: StatedMedia::Undescribed },
         },
         notes: Vec::new(),
         unfetched: Vec::new(),

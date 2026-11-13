@@ -4,22 +4,12 @@ use crate::discogs::{DiscogsArtist, DiscogsRelease, DiscogsRoleArtist, DiscogsTr
 use crate::medium_coverage::MediumCoverage;
 use crate::release_values::{position_number, ReleaseValues, TrackCredits, TrackValues};
 use crate::source_release::{
-    CatalogFacts, DisplayCredit, EntryKind, RoleCredit, SourceMedium, SourceRelease, TracklistEntry,
+    DisplayCredit, EntryKind, RoleCredit, SourceMedium, SourceRelease, TracklistEntry,
 };
 use crate::CatalogError;
 use bae_types::pressing::{Medium, Pressing, PressingFacts, ReleaseArea, StatedMedia};
 use std::collections::HashSet;
 use tracing::{debug, warn};
-
-fn discogs_role_is_composer(role: &str) -> bool {
-    let lowered =
-        role.chars().filter(|c| *c != '[' && *c != ']').collect::<String>().to_ascii_lowercase();
-    let compact = lowered.replace(['-', '_'], " ");
-    compact.contains("composed by")
-        || compact.contains("written by")
-        || compact.contains("music by")
-        || compact.contains("composer")
-}
 
 /// The credit of a Discogs artist: the display name doubles as its own
 /// sort name, and the Discogs artist id (when present) is what dedups the pool.
@@ -130,35 +120,37 @@ pub(crate) fn area(release_id: &str, name: &str) -> Option<ReleaseArea> {
 }
 
 /// The credits a Discogs release states for itself rather than for tracks.
-/// A credit that names tracks is those tracks' ([`mediums`]). Positions come
-/// from source order, so the positions keep holes where one was scoped.
+/// A credit that names tracks is those tracks' ([`mediums`]).
 pub(crate) fn release_roles(release: &DiscogsRelease) -> Vec<RoleCredit> {
-    let Some(extraartists) = release.extraartists.as_ref() else {
-        return Vec::new();
-    };
-    extraartists
-        .iter()
-        .enumerate()
-        .filter_map(|(position, credit)| {
-            if credit.tracks.is_some() {
-                None
-            } else if discogs_role_is_composer(&credit.role) {
-                Some(RoleCredit {
-                    position: position as i32,
-                    artist: discogs_role_artist_ref(credit),
-                    role: Some(credit.role.clone()),
-                })
-            } else {
-                debug!(
-                    discogs_release_id = %release.id,
-                    artist_name = %credit.name,
-                    role = %credit.role,
-                    "Skipping Discogs release-level extraartist with non-composer role"
-                );
-                None
-            }
-        })
-        .collect()
+    let unscoped: Vec<&DiscogsRoleArtist> =
+        release.extraartists.iter().flatten().filter(|credit| credit.tracks.is_none()).collect();
+    role_credits(&release.id, unscoped)
+}
+
+/// One credit for each role of each of `credits`' role strings, numbered in
+/// the order they are stated. A role string that lists no role states no
+/// credit and is logged.
+fn role_credits<'a>(
+    release_id: &str,
+    credits: impl IntoIterator<Item = &'a DiscogsRoleArtist>,
+) -> Vec<RoleCredit> {
+    let mut roles = Vec::new();
+    for credit in credits {
+        let artist = discogs_role_artist_ref(credit);
+        let stated = bae_types::credit_role::discogs::credits(&credit.role);
+        if stated.is_empty() {
+            warn!(
+                discogs_release_id = release_id,
+                artist_name = %credit.name,
+                role = %credit.role,
+                "a Discogs credit's role string lists no role"
+            );
+        }
+        for role in stated {
+            roles.push(RoleCredit { position: roles.len() as i32, artist: artist.clone(), role });
+        }
+    }
+    roles
 }
 
 /// A Discogs release's mediums as bae keeps them: the tracklist split into the
@@ -198,40 +190,7 @@ fn tracklist_entries(release_id: &str, rows: &[DiscogsTrack]) -> Vec<TracklistEn
 }
 
 fn tracklist_entry(release_id: &str, row: &DiscogsTrack, kind: EntryKind) -> TracklistEntry {
-    let roles = match row.extraartists.as_ref() {
-        Some(extraartists) => extraartists
-            .iter()
-            .enumerate()
-            .filter_map(|(position, credit)| {
-                if discogs_role_is_composer(&credit.role) {
-                    Some(RoleCredit {
-                        position: position as i32,
-                        artist: discogs_role_artist_ref(credit),
-                        role: Some(credit.role.clone()),
-                    })
-                } else {
-                    debug!(
-                        discogs_release_id = %release_id,
-                        discogs_track_position = %row.position,
-                        track_title = %row.title,
-                        artist_name = %credit.name,
-                        role = %credit.role,
-                        "Skipping Discogs track-level extraartist with non-composer role"
-                    );
-                    None
-                }
-            })
-            .collect(),
-        None => {
-            debug!(
-                discogs_release_id = %release_id,
-                discogs_track_position = %row.position,
-                track_title = %row.title,
-                "Discogs track has no extraartists field; skipping per-track role credits"
-            );
-            Vec::new()
-        }
-    };
+    let roles = role_credits(release_id, row.extraartists.iter().flatten());
     TracklistEntry {
         kind,
         // Discogs prints an unstated position as the empty string.
@@ -286,19 +245,15 @@ pub(crate) fn values(
     let metadata = release.metadata.clone();
     metadata.album.require_artists(Catalog::Discogs, release_id)?;
 
-    let release_roles = match &release.catalog {
-        CatalogFacts::Discogs { release_roles, .. } => release_roles
-            .iter()
-            .map(|role| CreditedRole {
-                artist: role.artist.clone(),
-                source: Catalog::Discogs,
-                role: role.role.clone(),
-            })
-            .collect(),
-        CatalogFacts::MusicBrainz { .. } => {
-            unreachable!("a Discogs reading is asked only of a Discogs release")
-        }
-    };
+    let release_roles = release
+        .release_roles
+        .iter()
+        .map(|role| CreditedRole {
+            artist: role.artist.clone(),
+            source: Catalog::Discogs,
+            role: role.role.clone(),
+        })
+        .collect();
 
     Ok(ReleaseValues {
         album_title: metadata.album.title,

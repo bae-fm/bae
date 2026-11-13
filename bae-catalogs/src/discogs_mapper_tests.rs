@@ -2,7 +2,10 @@ use super::*;
 use crate::catalog::LookupCatalog;
 use crate::discogs::models::{DiscogsArtist, DiscogsRoleArtist, DiscogsTrack};
 use crate::records::LookupRef;
-use crate::source_release::SourceRelease;
+use crate::source_release::{CatalogFacts, SourceRelease};
+use bae_types::credit_role::{
+    CreditRole, CreditRoleKind, CreditedAs, QualifierKind, RoleQualifier,
+};
 
 /// A lone Discogs release document as bae keeps it: its own facts and
 /// tracklist, no other document behind it.
@@ -16,10 +19,8 @@ fn stored(release: &DiscogsRelease) -> SourceRelease {
         archive_release: None,
         archive_groups: Vec::new(),
         mediums: mediums(release, &pressing(release).1),
-        catalog: CatalogFacts::Discogs {
-            media: pressing(release).1,
-            release_roles: release_roles(release),
-        },
+        release_roles: release_roles(release),
+        catalog: CatalogFacts::Discogs { media: pressing(release).1 },
         notes: crate::search::discogs_release_notes(release),
         unfetched: Vec::new(),
     }
@@ -50,11 +51,6 @@ fn map_for_audio(
     audio_durations_ms: &[u64],
 ) -> Result<ReleaseValues, CatalogError> {
     map_with(release, Some(audio_durations_ms))
-}
-
-/// Whether any of `roles` credits the Discogs artist `id`.
-fn credits_role_to(roles: &[CreditedRole], id: &str) -> bool {
-    roles.iter().any(|role| role.artist.discogs_artist_id.as_deref() == Some(id))
 }
 
 /// A tracklist's rows as a stored medium holds them.
@@ -193,24 +189,65 @@ fn extraartist_roles_import_as_role_credits_not_works_or_display_artists() {
     assert!(values.works.parts.is_empty());
     assert!(values.tracks[0].works.is_empty());
 
-    let composer = Some("discogs-composer-a");
-    assert!(values.release_roles.iter().any(|role| {
-        role.artist.discogs_artist_id.as_deref() == composer
-            && role.role.as_deref() == Some("Composed By")
-    }));
-    assert!(values.tracks[0].roles.iter().any(|role| {
-        role.artist.discogs_artist_id.as_deref() == composer
-            && role.role.as_deref() == Some("Written-By")
-    }));
-    for producer_or_engineer in ["discogs-producer-a", "discogs-engineer-a"] {
-        assert!(!credits_role_to(&values.release_roles, producer_or_engineer));
-        assert!(!credits_role_to(&values.tracks[0].roles, producer_or_engineer));
-    }
+    let roles = |roles: &[CreditedRole]| -> Vec<(Option<String>, CreditedAs)> {
+        roles
+            .iter()
+            .map(|role| (role.artist.discogs_artist_id.clone(), role.role.clone()))
+            .collect()
+    };
+    assert_eq!(
+        roles(&values.release_roles),
+        [
+            (Some("discogs-composer-a".to_string()), CreditedAs::of(CreditRoleKind::Composer)),
+            (Some("discogs-producer-a".to_string()), CreditedAs::of(CreditRoleKind::Producer)),
+        ]
+    );
+    assert_eq!(
+        roles(&values.tracks[0].roles),
+        [
+            (Some("discogs-composer-a".to_string()), CreditedAs::of(CreditRoleKind::Writer)),
+            (Some("discogs-engineer-a".to_string()), CreditedAs::of(CreditRoleKind::Engineer)),
+        ]
+    );
     assert!(values
         .album_credits
         .iter()
-        .all(|credit| credit.credit.discogs_artist_id.as_deref() != composer));
+        .all(|credit| credit.credit.discogs_artist_id.as_deref() != Some("discogs-composer-a")));
     assert_eq!(values.tracks[0].credits, TrackCredits::AlbumArtists);
+}
+
+/// A role string listing several roles is a credit for each, and a credit
+/// repeated on a collapsed track reaches it once.
+#[test]
+fn a_role_string_of_several_roles_is_a_credit_for_each() {
+    let mut release = make_release(vec![make_track("1", "Track Title 1")]);
+    release.extraartists = Some(vec![DiscogsRoleArtist {
+        id: Some("discogs-player-a".to_string()),
+        name: "Player Name A".to_string(),
+        role: "Guitar, Vocals, Engineer [Assistant]".to_string(),
+        credited_name: None,
+        tracks: None,
+    }]);
+
+    let values = map(&release).unwrap();
+
+    assert_eq!(
+        values.release_roles.iter().map(|role| role.role.clone()).collect::<Vec<_>>(),
+        [
+            CreditedAs {
+                role: CreditRole::Performer(Some("Guitar".to_string())),
+                qualifiers: vec![]
+            },
+            CreditedAs {
+                role: CreditRole::Performer(Some("Vocals".to_string())),
+                qualifiers: vec![]
+            },
+            CreditedAs {
+                role: CreditRole::Kind(CreditRoleKind::Engineer),
+                qualifiers: vec![RoleQualifier::Kind(QualifierKind::Assistant)]
+            },
+        ]
+    );
 }
 
 #[test]
@@ -440,27 +477,6 @@ fn process_tracklist_filters_index_entries() {
     let result = process_tracklist(&rows, None);
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].title, "Real Track");
-}
-
-#[test]
-fn discogs_role_is_composer_matches_composing_roles() {
-    // Bracket-wrapped and case/separator variants all normalize before the
-    // substring check; non-composing roles never match.
-    for role in [
-        "Composed By",
-        "Written-By",
-        "Written By",
-        "Music By",
-        "Composer",
-        "[Composed By]",
-        "[Written-By]",
-        "composed_by",
-    ] {
-        assert!(discogs_role_is_composer(role), "expected {role:?} to be a composer role");
-    }
-    for role in ["Producer", "Engineer", "Vocals", "Remix", ""] {
-        assert!(!discogs_role_is_composer(role), "expected {role:?} not to be a composer role");
-    }
 }
 
 /// A role credit is its artist by the artist's own name, printing the name

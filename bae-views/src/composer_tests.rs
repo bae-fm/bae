@@ -13,6 +13,7 @@ use bae_records::test_fixtures::live_query::*;
 use bae_records::test_fixtures::*;
 use bae_store::test_fixtures::live_query::*;
 use bae_store::test_fixtures::*;
+use bae_types::credit_role::{CreditRole, CreditRoleKind, CreditedAs};
 use bae_util::test_channels::HANG_GUARD;
 use std::collections::BTreeSet;
 
@@ -281,13 +282,13 @@ async fn composer_list_counts_a_role_credit_until_a_work_links_it() {
                 track_role,
                 LISTED_TRACK_ONE,
                 LISTED_CREDITED,
-                (Catalog::MusicBrainz, "composer"),
+                (Catalog::MusicBrainz, CreditedAs::of(CreditRoleKind::Composer)),
             )
             .release_role(
                 release_role,
                 LISTED_RELEASE_ONE,
                 LISTED_CREDITED,
-                (Catalog::Discogs, "Written-By"),
+                (Catalog::Discogs, CreditedAs::of(CreditRoleKind::Writer)),
             )
     };
     listed_releases()
@@ -354,6 +355,78 @@ async fn composer_list_counts_a_role_credit_until_a_work_links_it() {
     // work stays.
     delete_release(&records, LISTED_RELEASE_ONE).await;
     assert_eq!(listed_composers(&db).await, vec![(LISTED_CREDITED.to_string(), 1, 0, 0)]);
+}
+
+/// A catalog credit in a role other than a writing one makes no composer: an
+/// artist who produced and played on a release and wrote nothing is not on the
+/// list, and once the artist is credited in a writing role the list counts
+/// that credit alone while the page lists every one.
+#[tokio::test]
+async fn composer_list_counts_writing_role_credits_and_the_page_lists_every_role() {
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
+    let records = test_records(&db);
+    let producer = "4b2f3f0e-5a8c-4a6e-b4a7-0f5c4d2f9a11";
+    let guitar = "9c1d7e62-0b3a-4e55-8a1e-6f7d2c3b8a22";
+    let writer = "e5a30c18-7d44-4c19-9b0f-1d2e3f4a5b33";
+    let mixer = CreditedAs::of(CreditRoleKind::Mixer);
+    let credits = |writing: bool| {
+        let mut library = listed_releases()
+            .artist(LISTED_CREDITED, "Composer Name Credited")
+            .release_role(
+                producer,
+                LISTED_RELEASE_ONE,
+                LISTED_CREDITED,
+                (Catalog::MusicBrainz, CreditedAs::of(CreditRoleKind::Producer)),
+            )
+            .track_role(
+                guitar,
+                LISTED_TRACK_ONE,
+                LISTED_CREDITED,
+                (
+                    Catalog::MusicBrainz,
+                    CreditedAs {
+                        role: CreditRole::Performer(Some("guitar".to_string())),
+                        qualifiers: vec![],
+                    },
+                ),
+            )
+            .track_role(
+                "0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c44",
+                LISTED_TRACK_TWO,
+                LISTED_CREDITED,
+                (Catalog::Discogs, mixer.clone()),
+            );
+        if writing {
+            library = library.track_role(
+                writer,
+                LISTED_TRACK_ONE,
+                LISTED_CREDITED,
+                (Catalog::Discogs, CreditedAs::of(CreditRoleKind::Writer)),
+            );
+        }
+        library
+    };
+    credits(false).write(&records).await;
+    assert_eq!(listed_composers(&db).await, vec![]);
+
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
+    credits(true).write(&test_records(&db)).await;
+    assert_eq!(listed_composers(&db).await, vec![(LISTED_CREDITED.to_string(), 0, 0, 1)]);
+    let shown = crate::LibraryViews::new(db.clone())
+        .get_composer_detail_rows(LISTED_CREDITED, 0, 10)
+        .await
+        .unwrap()
+        .into_iter()
+        .map(|row| match row.item {
+            DbComposerDetailItem::ReleaseCredit(credit) => credit.role.role,
+            DbComposerDetailItem::TrackCredit(credit) => credit.role.role,
+            DbComposerDetailItem::Work { .. } => panic!("the artist is credited on no work"),
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(shown.len(), 4, "{shown:?}");
+    assert!(shown.contains(&CreditedAs::of(CreditRoleKind::Producer)));
+    assert!(shown.contains(&mixer));
+    assert!(shown.contains(&CreditedAs::of(CreditRoleKind::Writer)));
 }
 
 #[tokio::test]

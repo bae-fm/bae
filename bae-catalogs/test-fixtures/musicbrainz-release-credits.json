@@ -1,0 +1,1210 @@
+{
+ "id": "8ecfafd1-89a8-423a-968f-3fff47f0b0f9",
+ "title": "Release Title",
+ "date": "1990",
+ "country": "XW",
+ "status": "Official",
+ "artist-credit": [
+  {
+   "name": "Artist Name 1",
+   "artist": {
+    "id": "056e4f3e-d505-4dad-8ec1-d04f521cbb56",
+    "name": "Artist Name 1",
+    "sort-name": "Artist Name 1"
+   },
+   "joinphrase": ""
+  }
+ ],
+ "release-group": {
+  "id": "aa997ea0-2936-40bd-884d-3af8a0e064dc",
+  "first-release-date": "1990"
+ },
+ "cover-art-archive": {
+  "front": false,
+  "darkened": false,
+  "artwork": false,
+  "count": 0
+ },
+ "relations": [
+  {
+   "type": "art direction",
+   "target-type": "artist",
+   "direction": "backward",
+   "attributes": [],
+   "attribute-ids": {},
+   "attribute-values": {},
+   "target-credit": "",
+   "artist": {
+    "id": "122a2714-24f8-4046-a532-64064b5076d2",
+    "name": "Artist Name 2",
+    "sort-name": "Artist Name 2"
+   }
+  },
+  {
+   "type": "art direction",
+   "target-type": "artist",
+   "direction": "backward",
+   "attributes": [],
+   "attribute-ids": {},
+   "attribute-values": {},
+   "target-credit": "",
+   "artist": {
+    "id": "7eb2b6d6-4868-4be9-b0ac-328653252ecb",
+    "name": "Artist Name 3",
+    "sort-name": "Artist Name 3"
+   }
+  },
+  {
+   "type": "art direction",
+   "target-type": "artist",
+   "direction": "backward",
+   "attributes": [],
+   "attribute-ids": {},
+   "attribute-values": {},
+   "target-credit": "",
+   "artist": {
+    "id": "299cc500-56da-4f82-9018-731985c38985",
+    "name": "Artist Name 4",
+    "sort-name": "Artist Name 4"
+   }
+  },
+  {
+   "type": "art direction",
+   "target-type": "artist",
+   "direction": "backward",
+   "attributes": [],
+   "attribute-ids": {},
+   "attribute-values": {},
+   "target-credit": "",
+   "artist": {
+    "id": "194398b7-1f5c-4fb9-8818-62d0ff27a749",
+    "name": "Artist Name 5",
+    "sort-name": "Artist Name 5"
+   }
+  },
+  {
+   "type": "art direction",
+   "target-type": "artist",
+   "direction": "backward",
+   "attributes": [],
+   "attribute-ids": {},
+   "attribute-values": {},
+   "target-credit": "",
+   "artist": {
+    "id": "83886397-adf2-431a-b841-dc4af744a6cc",
+    "name": "Artist Name 6",
+    "sort-name": "Artist Name 6"
+   }
+  },
+  {
+   "type": "artwork",
+   "target-type": "artist",
+   "direction": "backward",
+   "attributes": [
+    "task"
+   ],
+   "attribute-ids": {
+    "task": "39867b3b-0f1e-40d5-b602-4f3936b7f486"
+   },
+   "attribute-values": {
+    "task": "cover art"
+   },
+   "target-credit": "",
+   "artist": {
+    "id": "7eb2b6d6-4868-4be9-b0ac-328653252ecb",
+    "name": "Artist Name 3",
+    "sort-name": "Artist Name 3"
+   }
+  },
+  {
+   "type": "artwork",
+   "target-type": "artist",
+   "direction": "backward",
+   "attributes": [
+    "task"
+   ],
+   "attribute-ids": {
+    "task": "39867b3b-0f1e-40d5-b602-4f3936b7f486"
+   },
+   "attribute-values": {
+    "task": "cover art"
+   },
+   "target-credit": "",
+   "artist": {
+    "id": "194398b7-1f5c-4fb9-8818-62d0ff27a749",
+    "name": "Artist Name 5",
+    "sort-name": "Artist Name 5"
+   }
+  },
+  {
+   "type": "audio",
+   "target-type": "artist",
+   "direction": "backward",
+   "attributes": [],
+   "attribute-ids": {},
+   "attribute-values": {},
+   "target-credit": "",
+   "artist": {
+    "id": "862e1520-f639-4337-af43-33a2903ffe26",
+    "name": "Artist Name 7",
+    "sort-name": "Artist Name 7"
+   }
+  },
+  {
+   "type": "illustration",
+   "target-type": "artist",
+   "direction": "backward",
+   "attributes": [],
+   "attribute-ids": {},
+   "attribute-values": {},
+   "target-credit": "",
+   "artist": {
+    "id": "7eb2b6d6-4868-4be9-b0ac-328653252ecb",
+    "name": "Artist Name 3",
+    "sort-name": "Artist Name 3"
+   }
+  },
+  {
+   "type": "mastering",
+   "target-type": "artist",
+   "direction": "backward",
+   "attributes": [
+    "additional"
+   ],
+   "attribute-ids": {
+    "additional": "0a5341f8-3b1d-4f99-a0c6-26b7f4e42c7f"
+   },
+   "attribute-values": {},
+   "target-credit": "",
+   "artist": {
+    "id": "1efd49f6-6249-490b-b86f-84673cd1b7ed",
+    "name": "Artist Name 8",
+    "sort-name": "Artist Name 8"
+   }
+  },
+  {
+   "type": "mastering",
+   "target-type": "artist",
+   "direction": "backward",
+   "attributes": [],
+   "attribute-ids": {},
+   "attribute-values": {},
+   "target-credit": "",
+   "artist": {
+    "id": "1efd49f6-6249-490b-b86f-84673cd1b7ed",
+    "name": "Artist Name 8",
+    "sort-name": "Artist Name 8"
+   }
+  },
+  {
+   "type": "mastering",
+   "target-type": "artist",
+   "direction": "backward",
+   "attributes": [
+    "additional"
+   ],
+   "attribute-ids": {
+    "additional": "0a5341f8-3b1d-4f99-a0c6-26b7f4e42c7f"
+   },
+   "attribute-values": {},
+   "target-credit": "",
+   "artist": {
+    "id": "fc0eb93f-d38b-4788-b22f-87c9eb38e0fc",
+    "name": "Artist Name 9",
+    "sort-name": "Artist Name 9"
+   }
+  },
+  {
+   "type": "mastering",
+   "target-type": "artist",
+   "direction": "backward",
+   "attributes": [],
+   "attribute-ids": {},
+   "attribute-values": {},
+   "target-credit": "",
+   "artist": {
+    "id": "874ce122-ca6f-45cb-a7b8-c798cf02b718",
+    "name": "Artist Name 10",
+    "sort-name": "Artist Name 10"
+   }
+  },
+  {
+   "type": "mix",
+   "target-type": "artist",
+   "direction": "backward",
+   "attributes": [
+    "assistant"
+   ],
+   "attribute-ids": {
+    "assistant": "8c4196b1-7053-4b16-921a-f22b2898ed44"
+   },
+   "attribute-values": {},
+   "target-credit": "",
+   "artist": {
+    "id": "6345121c-30a1-4fb3-bd17-e314ace781d6",
+    "name": "Artist Name 11",
+    "sort-name": "Artist Name 11"
+   }
+  },
+  {
+   "type": "mix",
+   "target-type": "artist",
+   "direction": "backward",
+   "attributes": [],
+   "attribute-ids": {},
+   "attribute-values": {},
+   "target-credit": "",
+   "artist": {
+    "id": "1fc3b7b8-58a3-431f-88cd-31ad1ac05b8d",
+    "name": "Artist Name 12",
+    "sort-name": "Artist Name 12"
+   }
+  },
+  {
+   "type": "mix",
+   "target-type": "artist",
+   "direction": "backward",
+   "attributes": [
+    "assistant"
+   ],
+   "attribute-ids": {
+    "assistant": "8c4196b1-7053-4b16-921a-f22b2898ed44"
+   },
+   "attribute-values": {},
+   "target-credit": "",
+   "artist": {
+    "id": "2414c964-15c2-4a55-a214-03356a0a40ab",
+    "name": "Artist Name 13",
+    "sort-name": "Artist Name 13"
+   }
+  },
+  {
+   "type": "producer",
+   "target-type": "artist",
+   "direction": "backward",
+   "attributes": [],
+   "attribute-ids": {},
+   "attribute-values": {},
+   "target-credit": "",
+   "artist": {
+    "id": "122a2714-24f8-4046-a532-64064b5076d2",
+    "name": "Artist Name 2",
+    "sort-name": "Artist Name 2"
+   }
+  },
+  {
+   "type": "producer",
+   "target-type": "artist",
+   "direction": "backward",
+   "attributes": [],
+   "attribute-ids": {},
+   "attribute-values": {},
+   "target-credit": "",
+   "artist": {
+    "id": "83886397-adf2-431a-b841-dc4af744a6cc",
+    "name": "Artist Name 6",
+    "sort-name": "Artist Name 6"
+   }
+  },
+  {
+   "type": "recording",
+   "target-type": "artist",
+   "direction": "backward",
+   "attributes": [
+    "assistant"
+   ],
+   "attribute-ids": {
+    "assistant": "8c4196b1-7053-4b16-921a-f22b2898ed44"
+   },
+   "attribute-values": {},
+   "target-credit": "",
+   "artist": {
+    "id": "be70f836-6ac0-45cb-9f93-6a7fb6d10b88",
+    "name": "Artist Name 14",
+    "sort-name": "Artist Name 14"
+   }
+  },
+  {
+   "type": "recording",
+   "target-type": "artist",
+   "direction": "backward",
+   "attributes": [
+    "assistant"
+   ],
+   "attribute-ids": {
+    "assistant": "8c4196b1-7053-4b16-921a-f22b2898ed44"
+   },
+   "attribute-values": {},
+   "target-credit": "",
+   "artist": {
+    "id": "8a542f7c-7284-4e68-bca3-1a571212b7c9",
+    "name": "Artist Name 15",
+    "sort-name": "Artist Name 15"
+   }
+  },
+  {
+   "type": "recording",
+   "target-type": "artist",
+   "direction": "backward",
+   "attributes": [
+    "assistant"
+   ],
+   "attribute-ids": {
+    "assistant": "8c4196b1-7053-4b16-921a-f22b2898ed44"
+   },
+   "attribute-values": {},
+   "target-credit": "",
+   "artist": {
+    "id": "e1195b8a-6fe4-4adf-8d03-140addf93eeb",
+    "name": "Artist Name 16",
+    "sort-name": "Artist Name 16"
+   }
+  },
+  {
+   "type": "recording",
+   "target-type": "artist",
+   "direction": "backward",
+   "attributes": [
+    "additional"
+   ],
+   "attribute-ids": {
+    "additional": "0a5341f8-3b1d-4f99-a0c6-26b7f4e42c7f"
+   },
+   "attribute-values": {},
+   "target-credit": "",
+   "artist": {
+    "id": "14807a59-432c-462c-8535-a84b3f540602",
+    "name": "Artist Name 17",
+    "sort-name": "Artist Name 17"
+   }
+  },
+  {
+   "type": "recording",
+   "target-type": "artist",
+   "direction": "backward",
+   "attributes": [],
+   "attribute-ids": {},
+   "attribute-values": {},
+   "target-credit": "",
+   "artist": {
+    "id": "6345121c-30a1-4fb3-bd17-e314ace781d6",
+    "name": "Artist Name 11",
+    "sort-name": "Artist Name 11"
+   }
+  },
+  {
+   "type": "recording",
+   "target-type": "artist",
+   "direction": "backward",
+   "attributes": [],
+   "attribute-ids": {},
+   "attribute-values": {},
+   "target-credit": "",
+   "artist": {
+    "id": "1fc3b7b8-58a3-431f-88cd-31ad1ac05b8d",
+    "name": "Artist Name 12",
+    "sort-name": "Artist Name 12"
+   }
+  },
+  {
+   "type": "recording",
+   "target-type": "artist",
+   "direction": "backward",
+   "attributes": [
+    "additional"
+   ],
+   "attribute-ids": {
+    "additional": "0a5341f8-3b1d-4f99-a0c6-26b7f4e42c7f"
+   },
+   "attribute-values": {},
+   "target-credit": "",
+   "artist": {
+    "id": "5750f133-b4d9-4715-bb85-4ba419ab41cb",
+    "name": "Artist Name 18",
+    "sort-name": "Artist Name 18"
+   }
+  },
+  {
+   "type": "recording",
+   "target-type": "artist",
+   "direction": "backward",
+   "attributes": [
+    "assistant"
+   ],
+   "attribute-ids": {
+    "assistant": "8c4196b1-7053-4b16-921a-f22b2898ed44"
+   },
+   "attribute-values": {},
+   "target-credit": "",
+   "artist": {
+    "id": "1afd462d-a5a3-45d1-998a-760220c00376",
+    "name": "Artist Name 19",
+    "sort-name": "Artist Name 19"
+   }
+  },
+  {
+   "type": "recording",
+   "target-type": "artist",
+   "direction": "backward",
+   "attributes": [],
+   "attribute-ids": {},
+   "attribute-values": {},
+   "target-credit": "",
+   "artist": {
+    "id": "fc0eb93f-d38b-4788-b22f-87c9eb38e0fc",
+    "name": "Artist Name 9",
+    "sort-name": "Artist Name 9"
+   }
+  },
+  {
+   "type": "recording",
+   "target-type": "artist",
+   "direction": "backward",
+   "attributes": [
+    "assistant"
+   ],
+   "attribute-ids": {
+    "assistant": "8c4196b1-7053-4b16-921a-f22b2898ed44"
+   },
+   "attribute-values": {},
+   "target-credit": "",
+   "artist": {
+    "id": "214aed5b-ead7-4291-8afb-8453c9989385",
+    "name": "Artist Name 20",
+    "sort-name": "Artist Name 20"
+   }
+  },
+  {
+   "type": "recording",
+   "target-type": "artist",
+   "direction": "backward",
+   "attributes": [
+    "assistant"
+   ],
+   "attribute-ids": {
+    "assistant": "8c4196b1-7053-4b16-921a-f22b2898ed44"
+   },
+   "attribute-values": {},
+   "target-credit": "",
+   "artist": {
+    "id": "614c4fc0-7167-4800-928a-7353110a5fc2",
+    "name": "Artist Name 21",
+    "sort-name": "Artist Name 21"
+   }
+  },
+  {
+   "type": "recording",
+   "target-type": "artist",
+   "direction": "backward",
+   "attributes": [
+    "assistant"
+   ],
+   "attribute-ids": {
+    "assistant": "8c4196b1-7053-4b16-921a-f22b2898ed44"
+   },
+   "attribute-values": {},
+   "target-credit": "",
+   "artist": {
+    "id": "90e30da1-e6e8-4e61-99fe-929d05b3849a",
+    "name": "Artist Name 22",
+    "sort-name": "Artist Name 22"
+   }
+  },
+  {
+   "type": "recording",
+   "target-type": "artist",
+   "direction": "backward",
+   "attributes": [
+    "assistant"
+   ],
+   "attribute-ids": {
+    "assistant": "8c4196b1-7053-4b16-921a-f22b2898ed44"
+   },
+   "attribute-values": {},
+   "target-credit": "Printed Name 1",
+   "artist": {
+    "id": "d883c745-7ef1-49ba-ab90-8e66a7074bb4",
+    "name": "Artist Name 23",
+    "sort-name": "Artist Name 23"
+   }
+  },
+  {
+   "type": "recording",
+   "target-type": "artist",
+   "direction": "backward",
+   "attributes": [
+    "assistant"
+   ],
+   "attribute-ids": {
+    "assistant": "8c4196b1-7053-4b16-921a-f22b2898ed44"
+   },
+   "attribute-values": {},
+   "target-credit": "",
+   "artist": {
+    "id": "0a8e77b9-c923-42f6-9fcc-2d14ad4e94c8",
+    "name": "Artist Name 24",
+    "sort-name": "Artist Name 24"
+   }
+  },
+  {
+   "type": "recording",
+   "target-type": "artist",
+   "direction": "backward",
+   "attributes": [
+    "assistant"
+   ],
+   "attribute-ids": {
+    "assistant": "8c4196b1-7053-4b16-921a-f22b2898ed44"
+   },
+   "attribute-values": {},
+   "target-credit": "",
+   "artist": {
+    "id": "7b40baa6-6fc1-4b6d-aaca-6ae1b3065b41",
+    "name": "Artist Name 25",
+    "sort-name": "Artist Name 25"
+   }
+  },
+  {
+   "type": "recording",
+   "target-type": "artist",
+   "direction": "backward",
+   "attributes": [
+    "assistant"
+   ],
+   "attribute-ids": {
+    "assistant": "8c4196b1-7053-4b16-921a-f22b2898ed44"
+   },
+   "attribute-values": {},
+   "target-credit": "",
+   "artist": {
+    "id": "a5dcc6a8-c937-4131-8291-08eca51e4cbb",
+    "name": "Artist Name 26",
+    "sort-name": "Artist Name 26"
+   }
+  },
+  {
+   "type": "recording",
+   "target-type": "artist",
+   "direction": "backward",
+   "attributes": [
+    "assistant"
+   ],
+   "attribute-ids": {
+    "assistant": "8c4196b1-7053-4b16-921a-f22b2898ed44"
+   },
+   "attribute-values": {},
+   "target-credit": "",
+   "artist": {
+    "id": "2414c964-15c2-4a55-a214-03356a0a40ab",
+    "name": "Artist Name 13",
+    "sort-name": "Artist Name 13"
+   }
+  },
+  {
+   "type": "recording",
+   "target-type": "artist",
+   "direction": "backward",
+   "attributes": [
+    "assistant"
+   ],
+   "attribute-ids": {
+    "assistant": "8c4196b1-7053-4b16-921a-f22b2898ed44"
+   },
+   "attribute-values": {},
+   "target-credit": "Printed Name 2",
+   "artist": {
+    "id": "95fa3aee-2834-4a5e-a8c2-603f3c994ac8",
+    "name": "Artist Name 27",
+    "sort-name": "Artist Name 27"
+   }
+  }
+ ],
+ "media": [
+  {
+   "format": "CD",
+   "tracks": [
+    {
+     "position": 1,
+     "number": "1",
+     "title": "Track Title 1",
+     "length": 275386,
+     "artist-credit": [
+      {
+       "name": "Artist Name 1",
+       "artist": {
+        "id": "056e4f3e-d505-4dad-8ec1-d04f521cbb56",
+        "name": "Artist Name 1",
+        "sort-name": "Artist Name 1"
+       },
+       "joinphrase": ""
+      }
+     ],
+     "recording": {
+      "id": "0c871a4a-efdf-47f8-98c2-cc277f806d2f",
+      "title": "Track Title 1",
+      "artist-credit": [
+       {
+        "name": "Artist Name 1",
+        "artist": {
+         "id": "056e4f3e-d505-4dad-8ec1-d04f521cbb56",
+         "name": "Artist Name 1",
+         "sort-name": "Artist Name 1"
+        },
+        "joinphrase": " feat. "
+       },
+       {
+        "name": "Artist Name 28",
+        "artist": {
+         "id": "c6d571dd-c0ae-4ac8-9500-780b1b9b25e5",
+         "name": "Artist Name 28",
+         "sort-name": "Artist Name 28"
+        },
+        "joinphrase": ""
+       }
+      ],
+      "relations": [
+       {
+        "type": "instrument",
+        "target-type": "artist",
+        "direction": "backward",
+        "attributes": [
+         "keyboard"
+        ],
+        "attribute-ids": {
+         "keyboard": "95b0c3d2-9606-4ef5-a019-9b7437f3adda"
+        },
+        "attribute-values": {},
+        "attribute-credits": {},
+        "target-credit": "",
+        "artist": {
+         "id": "134f7e09-7170-4055-b81d-638a3f045c08",
+         "name": "Artist Name 29",
+         "sort-name": "Artist Name 29"
+        }
+       },
+       {
+        "type": "instrument",
+        "target-type": "artist",
+        "direction": "backward",
+        "attributes": [
+         "synthesizer"
+        ],
+        "attribute-ids": {
+         "synthesizer": "4a29230c-5ab5-4eff-ac59-4a253f3561a0"
+        },
+        "attribute-values": {},
+        "attribute-credits": {},
+        "target-credit": "",
+        "artist": {
+         "id": "056e4f3e-d505-4dad-8ec1-d04f521cbb56",
+         "name": "Artist Name 1",
+         "sort-name": "Artist Name 1"
+        }
+       },
+       {
+        "type": "instrument",
+        "target-type": "artist",
+        "direction": "backward",
+        "attributes": [
+         "bass guitar"
+        ],
+        "attribute-ids": {
+         "bass guitar": "17f9f065-2312-4a24-8309-6f6dd63e2e33"
+        },
+        "attribute-values": {},
+        "attribute-credits": {},
+        "target-credit": "",
+        "artist": {
+         "id": "aa82f6eb-ded9-4c0b-951d-2e638ca25c76",
+         "name": "Artist Name 30",
+         "sort-name": "Artist Name 30"
+        }
+       },
+       {
+        "type": "instrument",
+        "target-type": "artist",
+        "direction": "backward",
+        "attributes": [
+         "keyboard"
+        ],
+        "attribute-ids": {
+         "keyboard": "95b0c3d2-9606-4ef5-a019-9b7437f3adda"
+        },
+        "attribute-values": {},
+        "attribute-credits": {},
+        "target-credit": "",
+        "artist": {
+         "id": "9c306413-56b6-4ff6-982a-7e4b87d01340",
+         "name": "Artist Name 31",
+         "sort-name": "Artist Name 31"
+        }
+       },
+       {
+        "type": "instrument",
+        "target-type": "artist",
+        "direction": "backward",
+        "attributes": [
+         "guitar"
+        ],
+        "attribute-ids": {
+         "guitar": "63021302-86cd-4aee-80df-2270d54f4978"
+        },
+        "attribute-values": {},
+        "attribute-credits": {},
+        "target-credit": "",
+        "artist": {
+         "id": "035610f3-b143-4caf-85ca-8eb7efdae170",
+         "name": "Artist Name 32",
+         "sort-name": "Artist Name 32"
+        }
+       },
+       {
+        "type": "instrument",
+        "target-type": "artist",
+        "direction": "backward",
+        "attributes": [
+         "pedal steel guitar"
+        ],
+        "attribute-ids": {
+         "pedal steel guitar": "4a10b219-65ac-4b6c-950d-acc8461266c7"
+        },
+        "attribute-values": {},
+        "attribute-credits": {},
+        "target-credit": "",
+        "artist": {
+         "id": "fa61d2ca-bade-4674-8f62-0f093a95d47b",
+         "name": "Artist Name 33",
+         "sort-name": "Artist Name 33"
+        }
+       },
+       {
+        "type": "instrument",
+        "target-type": "artist",
+        "direction": "backward",
+        "attributes": [
+         "percussion"
+        ],
+        "attribute-ids": {
+         "percussion": "8e9abdf1-0afc-4544-b201-c6fa768d01f4"
+        },
+        "attribute-values": {},
+        "attribute-credits": {},
+        "target-credit": "",
+        "artist": {
+         "id": "8748441f-6d87-44fc-84f4-577bbe5da5a1",
+         "name": "Artist Name 34",
+         "sort-name": "Artist Name 34"
+        }
+       },
+       {
+        "type": "instrument",
+        "target-type": "artist",
+        "direction": "backward",
+        "attributes": [
+         "drums (drum set)"
+        ],
+        "attribute-ids": {
+         "drums (drum set)": "12092505-6ee1-46af-a15a-b5b468b6b155"
+        },
+        "attribute-values": {},
+        "attribute-credits": {},
+        "target-credit": "",
+        "artist": {
+         "id": "0c7c672d-626d-4337-ac2c-9a06fbec476f",
+         "name": "Artist Name 35",
+         "sort-name": "Artist Name 35"
+        }
+       },
+       {
+        "type": "instrument",
+        "target-type": "artist",
+        "direction": "backward",
+        "attributes": [
+         "guitar"
+        ],
+        "attribute-ids": {
+         "guitar": "63021302-86cd-4aee-80df-2270d54f4978"
+        },
+        "attribute-values": {},
+        "attribute-credits": {},
+        "target-credit": "",
+        "artist": {
+         "id": "c6d571dd-c0ae-4ac8-9500-780b1b9b25e5",
+         "name": "Artist Name 28",
+         "sort-name": "Artist Name 28"
+        }
+       },
+       {
+        "type": "producer",
+        "target-type": "artist",
+        "direction": "backward",
+        "attributes": [],
+        "attribute-ids": {},
+        "attribute-values": {},
+        "target-credit": "",
+        "artist": {
+         "id": "122a2714-24f8-4046-a532-64064b5076d2",
+         "name": "Artist Name 2",
+         "sort-name": "Artist Name 2"
+        }
+       },
+       {
+        "type": "producer",
+        "target-type": "artist",
+        "direction": "backward",
+        "attributes": [],
+        "attribute-ids": {},
+        "attribute-values": {},
+        "target-credit": "",
+        "artist": {
+         "id": "83886397-adf2-431a-b841-dc4af744a6cc",
+         "name": "Artist Name 6",
+         "sort-name": "Artist Name 6"
+        }
+       },
+       {
+        "type": "vocal",
+        "target-type": "artist",
+        "direction": "backward",
+        "attributes": [],
+        "attribute-ids": {},
+        "attribute-values": {},
+        "target-credit": "",
+        "artist": {
+         "id": "056e4f3e-d505-4dad-8ec1-d04f521cbb56",
+         "name": "Artist Name 1",
+         "sort-name": "Artist Name 1"
+        }
+       },
+       {
+        "type": "performance",
+        "target-type": "work",
+        "direction": "forward",
+        "attributes": [],
+        "attribute-ids": {},
+        "attribute-values": {},
+        "target-credit": "",
+        "work": {
+         "id": "d0f702f5-2aaa-4a89-ad31-e28114c251ac",
+         "title": "Work Title 1",
+         "type": "Song",
+         "relations": [
+          {
+           "type": "vocal arranger",
+           "target-type": "artist",
+           "direction": "backward",
+           "attributes": [
+            "lead vocals"
+           ],
+           "attribute-ids": {
+            "lead vocals": "8e2a3255-87c2-4809-a174-98cb3704f1a5"
+           },
+           "attribute-values": {},
+           "attribute-credits": {},
+           "target-credit": "",
+           "artist": {
+            "id": "056e4f3e-d505-4dad-8ec1-d04f521cbb56",
+            "name": "Artist Name 1",
+            "sort-name": "Artist Name 1"
+           }
+          },
+          {
+           "type": "writer",
+           "target-type": "artist",
+           "direction": "backward",
+           "attributes": [],
+           "attribute-ids": {},
+           "attribute-values": {},
+           "target-credit": "",
+           "artist": {
+            "id": "122a2714-24f8-4046-a532-64064b5076d2",
+            "name": "Artist Name 2",
+            "sort-name": "Artist Name 2"
+           }
+          },
+          {
+           "type": "writer",
+           "target-type": "artist",
+           "direction": "backward",
+           "attributes": [],
+           "attribute-ids": {},
+           "attribute-values": {},
+           "target-credit": "",
+           "artist": {
+            "id": "83886397-adf2-431a-b841-dc4af744a6cc",
+            "name": "Artist Name 6",
+            "sort-name": "Artist Name 6"
+           }
+          },
+          {
+           "type": "writer",
+           "target-type": "artist",
+           "direction": "backward",
+           "attributes": [],
+           "attribute-ids": {},
+           "attribute-values": {},
+           "target-credit": "",
+           "artist": {
+            "id": "035610f3-b143-4caf-85ca-8eb7efdae170",
+            "name": "Artist Name 32",
+            "sort-name": "Artist Name 32"
+           }
+          },
+          {
+           "type": "writer",
+           "target-type": "artist",
+           "direction": "backward",
+           "attributes": [],
+           "attribute-ids": {},
+           "attribute-values": {},
+           "target-credit": "",
+           "artist": {
+            "id": "c6d571dd-c0ae-4ac8-9500-780b1b9b25e5",
+            "name": "Artist Name 28",
+            "sort-name": "Artist Name 28"
+           }
+          }
+         ]
+        }
+       }
+      ]
+     }
+    },
+    {
+     "position": 2,
+     "number": "2",
+     "title": "Track Title 2",
+     "length": 322146,
+     "artist-credit": [
+      {
+       "name": "Artist Name 1",
+       "artist": {
+        "id": "056e4f3e-d505-4dad-8ec1-d04f521cbb56",
+        "name": "Artist Name 1",
+        "sort-name": "Artist Name 1"
+       },
+       "joinphrase": ""
+      }
+     ],
+     "recording": {
+      "id": "294a1b4d-ebc0-4b03-be25-6171d382cb58",
+      "title": "Track Title 2",
+      "artist-credit": [
+       {
+        "name": "Artist Name 1",
+        "artist": {
+         "id": "056e4f3e-d505-4dad-8ec1-d04f521cbb56",
+         "name": "Artist Name 1",
+         "sort-name": "Artist Name 1"
+        },
+        "joinphrase": ""
+       }
+      ],
+      "relations": [
+       {
+        "type": "instrument",
+        "target-type": "artist",
+        "direction": "backward",
+        "attributes": [
+         "keyboard"
+        ],
+        "attribute-ids": {
+         "keyboard": "95b0c3d2-9606-4ef5-a019-9b7437f3adda"
+        },
+        "attribute-values": {},
+        "attribute-credits": {},
+        "target-credit": "",
+        "artist": {
+         "id": "134f7e09-7170-4055-b81d-638a3f045c08",
+         "name": "Artist Name 29",
+         "sort-name": "Artist Name 29"
+        }
+       },
+       {
+        "type": "instrument",
+        "target-type": "artist",
+        "direction": "backward",
+        "attributes": [
+         "synthesizer"
+        ],
+        "attribute-ids": {
+         "synthesizer": "4a29230c-5ab5-4eff-ac59-4a253f3561a0"
+        },
+        "attribute-values": {},
+        "attribute-credits": {},
+        "target-credit": "",
+        "artist": {
+         "id": "056e4f3e-d505-4dad-8ec1-d04f521cbb56",
+         "name": "Artist Name 1",
+         "sort-name": "Artist Name 1"
+        }
+       },
+       {
+        "type": "instrument",
+        "target-type": "artist",
+        "direction": "backward",
+        "attributes": [
+         "bass guitar"
+        ],
+        "attribute-ids": {
+         "bass guitar": "17f9f065-2312-4a24-8309-6f6dd63e2e33"
+        },
+        "attribute-values": {},
+        "attribute-credits": {},
+        "target-credit": "",
+        "artist": {
+         "id": "aa82f6eb-ded9-4c0b-951d-2e638ca25c76",
+         "name": "Artist Name 30",
+         "sort-name": "Artist Name 30"
+        }
+       },
+       {
+        "type": "instrument",
+        "target-type": "artist",
+        "direction": "backward",
+        "attributes": [
+         "guitar"
+        ],
+        "attribute-ids": {
+         "guitar": "63021302-86cd-4aee-80df-2270d54f4978"
+        },
+        "attribute-values": {},
+        "attribute-credits": {},
+        "target-credit": "",
+        "artist": {
+         "id": "035610f3-b143-4caf-85ca-8eb7efdae170",
+         "name": "Artist Name 32",
+         "sort-name": "Artist Name 32"
+        }
+       },
+       {
+        "type": "instrument",
+        "target-type": "artist",
+        "direction": "backward",
+        "attributes": [
+         "pedal steel guitar"
+        ],
+        "attribute-ids": {
+         "pedal steel guitar": "4a10b219-65ac-4b6c-950d-acc8461266c7"
+        },
+        "attribute-values": {},
+        "attribute-credits": {},
+        "target-credit": "",
+        "artist": {
+         "id": "fa61d2ca-bade-4674-8f62-0f093a95d47b",
+         "name": "Artist Name 33",
+         "sort-name": "Artist Name 33"
+        }
+       },
+       {
+        "type": "instrument",
+        "target-type": "artist",
+        "direction": "backward",
+        "attributes": [
+         "drums (drum set)"
+        ],
+        "attribute-ids": {
+         "drums (drum set)": "12092505-6ee1-46af-a15a-b5b468b6b155"
+        },
+        "attribute-values": {},
+        "attribute-credits": {},
+        "target-credit": "",
+        "artist": {
+         "id": "0c7c672d-626d-4337-ac2c-9a06fbec476f",
+         "name": "Artist Name 35",
+         "sort-name": "Artist Name 35"
+        }
+       },
+       {
+        "type": "producer",
+        "target-type": "artist",
+        "direction": "backward",
+        "attributes": [],
+        "attribute-ids": {},
+        "attribute-values": {},
+        "target-credit": "",
+        "artist": {
+         "id": "122a2714-24f8-4046-a532-64064b5076d2",
+         "name": "Artist Name 2",
+         "sort-name": "Artist Name 2"
+        }
+       },
+       {
+        "type": "producer",
+        "target-type": "artist",
+        "direction": "backward",
+        "attributes": [],
+        "attribute-ids": {},
+        "attribute-values": {},
+        "target-credit": "",
+        "artist": {
+         "id": "83886397-adf2-431a-b841-dc4af744a6cc",
+         "name": "Artist Name 6",
+         "sort-name": "Artist Name 6"
+        }
+       },
+       {
+        "type": "vocal",
+        "target-type": "artist",
+        "direction": "backward",
+        "attributes": [],
+        "attribute-ids": {},
+        "attribute-values": {},
+        "target-credit": "",
+        "artist": {
+         "id": "056e4f3e-d505-4dad-8ec1-d04f521cbb56",
+         "name": "Artist Name 1",
+         "sort-name": "Artist Name 1"
+        }
+       },
+       {
+        "type": "performance",
+        "target-type": "work",
+        "direction": "forward",
+        "attributes": [],
+        "attribute-ids": {},
+        "attribute-values": {},
+        "target-credit": "",
+        "work": {
+         "id": "44c7d502-c408-4c09-8c28-65de55f7a6ae",
+         "title": "Work Title 2",
+         "type": "Song",
+         "relations": [
+          {
+           "type": "writer",
+           "target-type": "artist",
+           "direction": "backward",
+           "attributes": [],
+           "attribute-ids": {},
+           "attribute-values": {},
+           "target-credit": "",
+           "artist": {
+            "id": "122a2714-24f8-4046-a532-64064b5076d2",
+            "name": "Artist Name 2",
+            "sort-name": "Artist Name 2"
+           }
+          },
+          {
+           "type": "writer",
+           "target-type": "artist",
+           "direction": "backward",
+           "attributes": [],
+           "attribute-ids": {},
+           "attribute-values": {},
+           "target-credit": "",
+           "artist": {
+            "id": "83886397-adf2-431a-b841-dc4af744a6cc",
+            "name": "Artist Name 6",
+            "sort-name": "Artist Name 6"
+           }
+          }
+         ]
+        }
+       }
+      ]
+     }
+    }
+   ]
+  }
+ ]
+}

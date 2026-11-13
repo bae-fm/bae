@@ -3,6 +3,7 @@ use crate::{CandidateTrack, RawPressingEdit, RawTrackEdit};
 use bae_catalogs::credits::{ArtistCredit, CreditedRole};
 use bae_catalogs::works::{GraphWork, WorkGraph, WorkPart};
 use bae_records::ExistingArtist;
+use bae_types::credit_role::{CreditRoleKind, CreditedAs};
 
 fn clock() -> coven::FixedClock {
     coven::FixedClock::new(
@@ -156,12 +157,12 @@ fn roles_and_works_are_written_from_the_draft() {
     draft.release_roles = vec![CreditedRole {
         artist: credit("Release Composer"),
         source: Catalog::Discogs,
-        role: Some("Written-By".to_string()),
+        role: CreditedAs::of(CreditRoleKind::Writer),
     }];
     draft.tracks[0].roles = vec![CreditedRole {
         artist: credit("Track Composer"),
         source: Catalog::MusicBrainz,
-        role: Some("composer".to_string()),
+        role: CreditedAs::of(CreditRoleKind::Composer),
     }];
     draft.tracks[0].works = vec!["mb-movement-1".to_string()];
     draft.tracks[1].works = vec!["mb-movement-2".to_string()];

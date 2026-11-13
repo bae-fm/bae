@@ -46,13 +46,23 @@ async fn role_and_work_credits_link_the_names_they_print() {
             "9b72bbbf-621e-41ca-8930-1623b643a20d",
             RELEASE_A,
             ARTIST_COMPOSER,
-            (bae_catalogs::catalog::Catalog::Discogs, "Composed By"),
+            (
+                bae_catalogs::catalog::Catalog::Discogs,
+                bae_types::credit_role::CreditedAs::of(
+                    bae_types::credit_role::CreditRoleKind::Composer,
+                ),
+            ),
         )
         .track_role(
             TRACK_ROLE_A,
             TRACK_A,
             ARTIST_COMPOSER,
-            (bae_catalogs::catalog::Catalog::Discogs, "Written-By"),
+            (
+                bae_catalogs::catalog::Catalog::Discogs,
+                bae_types::credit_role::CreditedAs::of(
+                    bae_types::credit_role::CreditRoleKind::Writer,
+                ),
+            ),
         )
         .edit(|rows| {
             rows.work_artists[0].credit = Some(printed.clone());

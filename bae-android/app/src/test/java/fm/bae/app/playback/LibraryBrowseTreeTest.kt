@@ -22,14 +22,15 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
-import uniffi.bae_bridge.BridgeCatalog
 import uniffi.bae_bridge.BridgeComposerDetailItem
 import uniffi.bae_bridge.BridgeComposerDetailRow
 import uniffi.bae_bridge.BridgeComposerHeading
+import uniffi.bae_bridge.BridgeCreditRole
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeLiveQueryCause
 import uniffi.bae_bridge.BridgeReleaseRoleSummary
+import uniffi.bae_bridge.BridgeTermLabel
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
@@ -112,7 +113,12 @@ class LibraryBrowseTreeTest {
                         2L,
                         BridgeComposerHeading.CREDITS,
                         BridgeComposerDetailItem.ReleaseCredit(
-                            BridgeReleaseRoleSummary("rel-1", "album-credited", "Album Title", BridgeCatalog.DISCOGS, "Written-By"),
+                            BridgeReleaseRoleSummary(
+                                "rel-1",
+                                "album-credited",
+                                "Album Title",
+                                BridgeCreditRole(BridgeTermLabel.Verbatim("Written-By"), emptyList()),
+                            ),
                         ),
                     ),
                 )

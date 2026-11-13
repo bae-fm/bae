@@ -7,6 +7,7 @@ use bae_catalogs::credits::{ArtistCredit, CreditedRole, SourceCredit};
 use bae_catalogs::release_values::TrackValues;
 use bae_catalogs::test_releases::{mb_credit, mb_release_values, mb_vinyl_release};
 use bae_catalogs::works::{GraphWork, WorkGraph, WorkPart};
+use bae_types::credit_role::{CreditRoleKind, CreditedAs};
 
 /// A credit to `name`, with the ids given.
 fn artist(name: &str, musicbrainz: Option<&str>, discogs: Option<&str>) -> ArtistCredit {
@@ -28,8 +29,8 @@ fn composed(artist: ArtistCredit) -> bae_catalogs::works::WorkCredit {
 }
 
 /// `artist` credited by `source` in `role`.
-fn role(artist: ArtistCredit, source: Catalog, role: &str) -> CreditedRole {
-    CreditedRole { artist, source, role: Some(role.to_string()) }
+fn role(artist: ArtistCredit, source: Catalog, role: CreditRoleKind) -> CreditedRole {
+    CreditedRole { artist, source, role: CreditedAs::of(role) }
 }
 
 /// Track `number` of one CD, credited as `credits`, in `roles`, performing
@@ -96,19 +97,19 @@ async fn one_artist_credited_in_roles_on_the_release_and_a_track_commits_once() 
         vec![track(
             1,
             TrackCredits::AlbumArtists,
-            vec![role(composer.clone(), Catalog::Discogs, "Written-By")],
+            vec![role(composer.clone(), Catalog::Discogs, CreditRoleKind::Writer)],
             &[],
         )],
     );
-    values.release_roles = vec![role(composer, Catalog::Discogs, "Composed By")];
+    values.release_roles = vec![role(composer, Catalog::Discogs, CreditRoleKind::Composer)];
 
     let rows = committed_rows(values);
 
     let committed = library_artists(&rows).await;
     let release_role = &rows.release_artist_roles[0];
     let track_role = &rows.track_artist_roles[0];
-    assert_eq!(release_role.source_credit.as_deref(), Some("Composed By"));
-    assert_eq!(track_role.source_credit.as_deref(), Some("Written-By"));
+    assert_eq!(release_role.role, CreditedAs::of(CreditRoleKind::Composer));
+    assert_eq!(track_role.role, CreditedAs::of(CreditRoleKind::Writer));
     let composer = committed[&release_role.artist_id].clone();
     assert_eq!(committed[&track_role.artist_id], composer);
     assert_ne!(album_artist(&rows, &committed), composer);
@@ -132,14 +133,18 @@ fn role_and_work_credits_link_the_names_their_catalogs_printed() {
             vec![role(
                 printed("Composer Name", "Composer Printed"),
                 Catalog::Discogs,
-                "Written-By",
+                CreditRoleKind::Writer,
             )],
             &["mb-work-a"],
         )],
     );
     values.release_roles = vec![
-        role(printed("Composer Name", "Composer Printed"), Catalog::Discogs, "Composed By"),
-        role(artist("Plain Name", None, None), Catalog::Discogs, "Composed By"),
+        role(
+            printed("Composer Name", "Composer Printed"),
+            Catalog::Discogs,
+            CreditRoleKind::Composer,
+        ),
+        role(artist("Plain Name", None, None), Catalog::Discogs, CreditRoleKind::Composer),
     ];
     values.works = WorkGraph {
         works: vec![GraphWork {
@@ -193,7 +198,7 @@ async fn an_id_less_role_credit_commits_as_the_album_artist_of_its_name() {
             vec![track(1, TrackCredits::AlbumArtists, Vec::new(), &[])],
         );
         values.release_roles =
-            vec![role(artist(printed, None, None), Catalog::Discogs, "Composed By")];
+            vec![role(artist(printed, None, None), Catalog::Discogs, CreditRoleKind::Composer)];
 
         let rows = committed_rows(values);
 
@@ -216,8 +221,8 @@ async fn id_less_role_credits_of_one_name_commit_as_one_artist() {
         vec![track(1, TrackCredits::AlbumArtists, Vec::new(), &[])],
     );
     values.release_roles = vec![
-        role(shared.clone(), Catalog::Discogs, "Composed By"),
-        role(shared, Catalog::Discogs, "Written-By"),
+        role(shared.clone(), Catalog::Discogs, CreditRoleKind::Composer),
+        role(shared, Catalog::Discogs, CreditRoleKind::Writer),
     ];
 
     let rows = committed_rows(values);
@@ -282,7 +287,7 @@ fn a_known_musicbrainz_id_keeps_a_same_name_artist_without_one_apart() {
             vec![role(
                 artist("Artist Name A", Some("composer-artist-a"), None),
                 Catalog::MusicBrainz,
-                "composer",
+                CreditRoleKind::Composer,
             )],
             &[],
         )],
@@ -333,7 +338,7 @@ async fn two_musicbrainz_ids_of_one_name_commit_as_two_artists() {
             vec![role(
                 artist("Artist Name A", Some("artist-2"), None),
                 Catalog::MusicBrainz,
-                "composer",
+                CreditRoleKind::Composer,
             )],
             &[],
         )],

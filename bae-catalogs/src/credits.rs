@@ -71,10 +71,10 @@ impl SourceCredit {
 }
 
 /// One artist a source credits in a role: who, which catalog said so, and
-/// the words it credits the role with.
+/// what the artist did.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CreditedRole {
     pub artist: ArtistCredit,
     pub source: Catalog,
-    pub role: Option<String>,
+    pub role: bae_types::credit_role::CreditedAs,
 }

@@ -16,7 +16,15 @@ fn the_writing_roles_are_the_first_eight() {
             "reconstructor"
         ]
     );
-    assert!(!CreditRoleKind::Arranger.is_writing());
+    for kind in [
+        CreditRoleKind::Arranger,
+        CreditRoleKind::Producer,
+        CreditRoleKind::Engineer,
+        CreditRoleKind::Mixer,
+        CreditRoleKind::Mastering,
+    ] {
+        assert!(!kind.is_writing(), "{kind:?}");
+    }
 }
 
 #[test]
@@ -54,6 +62,23 @@ fn a_credit_is_what_its_columns_hold() {
         CreditedAs::from_columns(columns.role, columns.role_words, &columns.qualifiers).unwrap(),
         stated
     );
+}
+
+#[test]
+fn a_performer_holds_its_part_in_the_words_column() {
+    for part in [Some("bass guitar".to_string()), None] {
+        let performer = CreditedAs {
+            role: CreditRole::Performer(part.clone()),
+            qualifiers: vec![RoleQualifier::Kind(QualifierKind::Guest)],
+        };
+        let columns = performer.columns();
+        assert_eq!((columns.role, columns.role_words.clone()), ("performer", part));
+        assert_eq!(
+            CreditedAs::from_columns(columns.role, columns.role_words, &columns.qualifiers)
+                .unwrap(),
+            performer
+        );
+    }
 }
 
 #[test]

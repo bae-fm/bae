@@ -1,5 +1,4 @@
--- Who the source credits on a draft track in a role, as it stated the role
--- (composers), in its order.
+-- Who the source credits on a draft track in a role, in its order.
 CREATE TABLE IF NOT EXISTS import_candidate_track_role (
     content_hash          TEXT NOT NULL,
     track_id              TEXT NOT NULL,
@@ -12,14 +11,21 @@ CREATE TABLE IF NOT EXISTS import_candidate_track_role (
     -- artist's own.
     credited_as           TEXT CHECK (credited_as IS NULL OR credited_as <> ''),
     source                TEXT NOT NULL CHECK (source IN ('musicbrainz', 'discogs')),
-    role                  TEXT,
+    -- What the artist did: a `bae_types::credit_role::CreditRoleKind` key,
+    -- 'performer' (its part, if the catalog names one, in `role_words`), or
+    -- 'stated' for the catalog's own words (`role_words`), with the role's
+    -- qualifiers as a JSON list.
+    role                  TEXT NOT NULL CHECK (role IN ('writer', 'composer', 'lyricist', 'librettist', 'translator', 'reviser', 'scriptwriter', 'reconstructor', 'arranger', 'producer', 'engineer', 'mixer', 'mastering', 'performer', 'stated')),
+    role_words            TEXT CHECK (role_words IS NULL OR role_words <> ''),
+    qualifiers            TEXT NOT NULL CHECK (json_valid(qualifiers) AND json_type(qualifiers) = 'array'),
+    CHECK (CASE role WHEN 'stated' THEN role_words IS NOT NULL WHEN 'performer' THEN 1 ELSE role_words IS NULL END),
     PRIMARY KEY (content_hash, track_id, position),
     FOREIGN KEY (content_hash, track_id)
         REFERENCES import_candidate_track (content_hash, track_id) ON DELETE CASCADE
 ) STRICT;
 
 -- Who the source credits in a role on the release itself rather than on one
--- track (Discogs's release-level composers), in its order.
+-- track, in its order.
 CREATE TABLE IF NOT EXISTS import_candidate_release_role (
     content_hash          TEXT NOT NULL,
     position              INTEGER NOT NULL CHECK (position >= 0),
@@ -31,7 +37,14 @@ CREATE TABLE IF NOT EXISTS import_candidate_release_role (
     -- artist's own.
     credited_as           TEXT CHECK (credited_as IS NULL OR credited_as <> ''),
     source                TEXT NOT NULL CHECK (source IN ('musicbrainz', 'discogs')),
-    role                  TEXT,
+    -- What the artist did: a `bae_types::credit_role::CreditRoleKind` key,
+    -- 'performer' (its part, if the catalog names one, in `role_words`), or
+    -- 'stated' for the catalog's own words (`role_words`), with the role's
+    -- qualifiers as a JSON list.
+    role                  TEXT NOT NULL CHECK (role IN ('writer', 'composer', 'lyricist', 'librettist', 'translator', 'reviser', 'scriptwriter', 'reconstructor', 'arranger', 'producer', 'engineer', 'mixer', 'mastering', 'performer', 'stated')),
+    role_words            TEXT CHECK (role_words IS NULL OR role_words <> ''),
+    qualifiers            TEXT NOT NULL CHECK (json_valid(qualifiers) AND json_type(qualifiers) = 'array'),
+    CHECK (CASE role WHEN 'stated' THEN role_words IS NOT NULL WHEN 'performer' THEN 1 ELSE role_words IS NULL END),
     PRIMARY KEY (content_hash, position),
     FOREIGN KEY (content_hash) REFERENCES import_candidate_edit (content_hash) ON DELETE CASCADE
 ) STRICT;
@@ -62,13 +75,14 @@ CREATE TABLE IF NOT EXISTS import_candidate_work_credit (
     -- The name the catalog prints for the artist where it is another than the
     -- artist's own.
     credited_as           TEXT CHECK (credited_as IS NULL OR credited_as <> ''),
-    -- What the artist did: a `bae_types::credit_role::CreditRoleKind` key, or
+    -- What the artist did: a `bae_types::credit_role::CreditRoleKind` key,
+    -- 'performer' (its part, if the catalog names one, in `role_words`), or
     -- 'stated' for the catalog's own words (`role_words`), with the role's
     -- qualifiers as a JSON list.
-    role                  TEXT NOT NULL CHECK (role IN ('writer', 'composer', 'lyricist', 'librettist', 'translator', 'reviser', 'scriptwriter', 'reconstructor', 'arranger', 'stated')),
+    role                  TEXT NOT NULL CHECK (role IN ('writer', 'composer', 'lyricist', 'librettist', 'translator', 'reviser', 'scriptwriter', 'reconstructor', 'arranger', 'producer', 'engineer', 'mixer', 'mastering', 'performer', 'stated')),
     role_words            TEXT CHECK (role_words IS NULL OR role_words <> ''),
     qualifiers            TEXT NOT NULL CHECK (json_valid(qualifiers) AND json_type(qualifiers) = 'array'),
-    CHECK ((role = 'stated') = (role_words IS NOT NULL)),
+    CHECK (CASE role WHEN 'stated' THEN role_words IS NOT NULL WHEN 'performer' THEN 1 ELSE role_words IS NULL END),
     PRIMARY KEY (content_hash, musicbrainz_work_id, position),
     FOREIGN KEY (content_hash, musicbrainz_work_id)
         REFERENCES import_candidate_work (content_hash, musicbrainz_work_id) ON DELETE CASCADE

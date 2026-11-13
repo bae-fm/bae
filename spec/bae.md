@@ -339,8 +339,8 @@ Artists credit albums, releases, tracks and works:
 |---|---|---|
 | An album's artists | `album_artists` | who the album is by, in credit order |
 | A track's artists | `track_artists` | who the track is by, in credit order; a track with none is by the album's artists |
-| A release's roles | `release_artist_roles` | who did what on the release, as the catalog stated it |
-| A track's roles | `track_artist_roles` | who did what on the track, as the catalog stated it |
+| A release's roles | `release_artist_roles` | who did what on the release: one of bae's roles (Appendix H) or the catalog's own words, with their qualifiers |
+| A track's roles | `track_artist_roles` | who did what on the track, in the same terms |
 | A work's artists | `work_artists` | who is credited on the work, and in what role: one of bae's roles (Appendix H) or the catalog's own words, with their qualifiers |
 
 An artist row holds a name, a sort name, and the artist's MusicBrainz and
@@ -543,19 +543,21 @@ with no release does (§2.1). A release's detail names the works each of its
 tracks performs, in the track's order, each with its composers.
 
 **The composer list** shows every artist credited on a work in a writing role
-(Appendix H), and every artist
-holding a catalog role credit that none of their works links: a release's
-credit is linked when a track of the release performs one of their works, a
-track's when the track performs one. A merged artist's works and credits count
-under the artist it shows as. Each row counts the artist's works, the releases
-a track of which performs one of them, and the unlinked credits; the list sorts
-by name, works or releases, ties going by name, then id. Under its name a
+(Appendix H), and every artist holding a catalog role credit in a writing role
+that none of the works they wrote links: a release's credit is linked when a
+track of the release performs a work they wrote, a track's when the track
+performs one. An artist who produced, engineered or performed and wrote
+nothing is not on the list. A merged artist's works and credits count under
+the artist it shows as. Each row counts the artist's works, the releases a
+track of which performs one of them, and the unlinked writing credits; the
+list sorts by name, works or releases, ties going by name, then id. Under its name a
 composer's row, its page and its search result say how many works it is
 credited on ("1 work", "3 works"), in core's words for each language.
 
-**An artist's composer page** lists its works, then its unlinked release
-credits, then its unlinked track credits, each part opened by a heading:
-*Works*, *Credits*, *Recordings*. A credited work is listed under every work
+**An artist's composer page** lists its works, then its release credits and
+its track credits in every role that none of the works it wrote links, each
+part opened by a heading: *Works*, *Credits*, *Recordings*. A credit's row
+shows its role in the viewer's language, with its qualifiers in parentheses. A credited work is listed under every work
 the library holds that it is part of, each of those heading its group whether
 the artist is credited on it or not, with its parts indented below it; a
 credited work part of none heads a group of its own, and a work is listed once
@@ -1406,11 +1408,16 @@ sub-tracks are part of it. An item that names no row is skipped, and a credit
 none of whose items names a row is dropped, each with a warning naming the
 release. A collapsed index takes the credit once however many of its
 sub-tracks the credit names, and a credit on tracks of a medium the folder
-doesn't hold reaches no track. A MusicBrainz work's artist relations are all
-read, in the relation's order: each is a credit in the role its type and
-attributes state (Appendix H), printing the name the relation credits as one
-of the artist's other names (§2.3). One artist in two roles is two credits,
-and a role stated twice for an artist is one.
+doesn't hold reaches no track. Every artist relation MusicBrainz states is
+read, in the relation's order: a work's is the work's credit, a recording's
+the track's, a release's the release's. Each is a credit in the role its type
+and attributes state (Appendix H), printing the name the relation credits as
+one of the artist's other names (§2.3); a relation naming several instruments
+is one credit per instrument. One artist in two roles is two credits, and an
+artist stated twice in the same role on a work, a track or a release is one.
+A Discogs credit's role string is read role by role: it splits at the commas
+outside brackets, each part is a credit, and a bracket qualifies its role.
+Every role is kept.
 
 **Which of its mediums the folder holds.** A release is read against the
 folder's audio once, and the run's documents, a pick, the draft it writes, the
@@ -1561,8 +1568,8 @@ A *draft* is the metadata an import will write, as plain values: the album
 fields, the pressing facts, the album's artists, the mediums the audio is on,
 and one track per audio unit with its title, artists, place (medium, side and
 number), and the length its source lists for it. It also holds what the source credits beyond the editable fields: each
-track's composers and other roles, the works it performs and the works those
-nest among, and the composers the source credits on the release as a whole. An *audio unit* is
+track's credits in every role, the works it performs and the works those
+nest among, and the credits the source states on the release as a whole. An *audio unit* is
 what one track plays: a whole file, or one slice a bound CUE sheet carves out of
 an image. Units add up: a disc image with two loose bonus tracks offers
 thirteen. The draft's labels and barcodes are kept as the form holds them,
@@ -5654,12 +5661,12 @@ All sync.
 | `release_media` | a release's media: each carrier with its count, at its position in the list (§2.1) |
 | `covers` | release's cover, keyed by the release: the coven file it references (`file`), with an index by it, and its type |
 | `release_files` | file of a release: name (its path in the release, each byte of it that isn't UTF-8 escaped, §3.1), type, the role the scan gave it (audio, and only audio, stating audio facts) and, for a document and only a document, its kind, the audio facts the scan read, and the coven file it references (`file`, required), whose record holds its size and where it is, with an index by it; with an index of each release's files in `natural_order` of their names, id breaking a tie, the order every list of a release's files shows, read from the index; and by content type, name and id breaking a tie, another order a release's file table sorts by, read from its index forward or backward. Its order by size sorts the release's files by their coven files' sizes |
-| `release_artist_roles` | credit on a release, as the catalog stated it, with the other name it prints (none: the artist's own) |
+| `release_artist_roles` | credit on a release, with the role it holds (a key of bae's list, `performer` with its instrument or voice, or `stated` with the catalog's words) and its qualifiers, and the other name it prints (none: the artist's own) |
 | `release_records` | catalog record of a release: pressing or album, key, album key; its URL is made from these as it is read; with an index of each release's records in the order surfaces list catalogs, which the release reads them in |
 | `release_mediums` | a release's medium: its position, carrier and number of sides (§2.2) |
 | `tracks` | track: title, place (its medium, side and number, all required), length (required: the import measures every track's audio), playing order |
 | `track_artists` | track's own credit, one per place in its list, from position 0, as an album's |
-| `track_artist_roles` | credit on a track, as the catalog stated it, with the other name it prints (none: the artist's own) |
+| `track_artist_roles` | credit on a track, with its role, qualifiers and printed name as a release's |
 | `track_works` | work a track performs, in order |
 | `audio_formats` | track's format, pregap, loudness and peak |
 | `audio_format_segments` | span of a file a track reads: pregap or main, samples and bytes; one main and at most one pregap per format, each kept to one by a unique index |
@@ -5777,7 +5784,7 @@ Keyed by the candidate's content hash.
 | `import_candidate_state`, `import_candidate_folder` | the candidate, its revisions, and where it was found, with an index on the candidates a file decision was made for, whose decisions a scan reads before it walks, and one on the folders they were found in, whose candidates a watched folder's removal forgets by the range of folders below it |
 | `import_candidate_edit`, `import_candidate_edit_label`, `import_candidate_edit_barcode`, `import_candidate_album_artist_assignment`, `import_candidate_track`, `import_candidate_track_artist_assignment` | the draft's editable fields, its label and barcode rows as typed (a label row with the catalog ids its applied release gave it), each track's place and listed length (§3.6). No row: a folder this device did not import holds its files' blank draft and the folder's own cover; an imported one holds no draft, which the import deleted with its source, cover and link (§3.7) |
 | `import_candidate_medium` | the draft's mediums |
-| `import_candidate_track_role`, `import_candidate_release_role`, `import_candidate_work`, `import_candidate_work_credit`, `import_candidate_work_part`, `import_candidate_track_work` | the draft's roles and works, as values, each credit with the name its catalog printed |
+| `import_candidate_track_role`, `import_candidate_release_role`, `import_candidate_work`, `import_candidate_work_credit`, `import_candidate_work_part`, `import_candidate_track_work` | the draft's roles and works, as values, each credit with its role, qualifiers and the name its catalog printed |
 | `import_candidate_sheet_disc`, `import_candidate_sheet_reference` | the person's CUE decisions |
 | `import_candidate_cover`, `import_candidate_cover_copy` | the chosen cover, a catalog's with the bytes it served on the same row, so a catalog's cover is never stored without them and no other cover holds any; reading a candidate whose cover names a file or embedded artwork its scan did not store fails as a damaged row; the pane and the list row read a stored cover the same way and draw the same image; for embedded artwork a row carries the source file's version and names the artwork by candidate and file, never its bytes, which the slot fetches when it draws |
 | `import_candidate_album_pick` | the library album the person picked for it to join |
@@ -5842,7 +5849,7 @@ write commits, so the release and the row naming it land in either order.
 |---|---|
 | `source_release` | one catalog release a row names, as fetched, and every fact an import reads from it but two it reads derived (§3.4): its album's year and its media counts |
 | `source_release_label`, `source_release_barcode` | its labels, each with its catalog number and the label's catalog ids, and its barcodes, in order |
-| `source_release_album_artist`, `source_release_role`, `source_release_entry_credit`, `source_release_entry_role` | its credits, each with the name its catalog printed |
+| `source_release_album_artist`, `source_release_role`, `source_release_entry_credit`, `source_release_entry_role` | its credits, each with its role, qualifiers and the name its catalog printed |
 | `source_release_medium`, `source_release_medium_disc`, `source_release_entry`, `source_release_format` | its mediums, each with its carrier where stated and the Disc IDs registered against it, their tracklists, and its format entries |
 | `source_release_work`, `source_release_work_credit` | its MusicBrainz works, each credit with its role and the name MusicBrainz printed |
 | `source_release_link`, `source_release_album_link`, `source_release_record`, `release_group_album_link` | what it says it is on other catalogs |
@@ -6234,16 +6241,29 @@ bae's roles or the catalog's own words, with the qualifiers the catalog states
 beside it, in the order it states them. The roles bae names are a closed list,
 keyed as stored: the *writing* roles writer, composer, lyricist, librettist,
 translator, reviser, scriptwriter and reconstructor (MusicBrainz's `writer`
-family, which make an artist a composer of a work), and arranger. A qualifier
-bae names is additional, associate or co-credit. Every other role, and every
-qualifier bae has no name for, is kept as the catalog wrote it. MusicBrainz's
+family, which make an artist a composer of a work), and arranger, producer,
+engineer, mixer and mastering; and *performer*, which holds the instrument or
+voice the catalog names (none for a bare performer). A qualifier bae names is
+additional, assistant, associate, co-credit, executive, guest, solo,
+pre-mastering or remastering. Every other role, and every qualifier bae has no
+name for, is kept as the catalog wrote it. bae words the roles and qualifiers
+it names in the viewer's language, a role followed by its qualifiers in
+parentheses; the catalog's own words, an instrument or voice among them, are
+shown as written. MusicBrainz's
 `vocal arranger` is an arranger qualified by the vocals it arranged for
 (`vocals` where it names none), an `instrument arranger` by its instruments,
 and a `task` by its free text. A MusicBrainz relation that names an artist
 without crediting work on the thing (a dedication, a commission, a premiere,
 being named after the artist, a previous attribution) is not a credit.
-Each relationship type page MusicBrainz publishes is reproduced name for name
-with its reverse link phrase, which words a role bae has no name for.
+A MusicBrainz `instrument` or `vocal` relation is a performer of each
+instrument or voice it names, as the credit prints it (`vocals` for a `vocal`
+relation naming none). Each relationship type page MusicBrainz publishes is
+reproduced name for name with its reverse link phrase, which words a role bae
+has no name for. A Discogs role name is read through a table: Written-By,
+Composed By, Lyrics By and the like are the writing roles, Producer,
+Engineer, Mixed By and Mastered By their roles, and the instrument and vocal
+roles performers of that part; the table holds the roles of Discogs's list
+named here, and any other Discogs role is kept as Discogs wrote it.
 
 **Audio codecs.** Lossless, stating a bit depth: FLAC, APE, ALAC, PCM, WavPack,
 DSD. Lossy, stating a bitrate: MP3, AAC, Opus, Vorbis.

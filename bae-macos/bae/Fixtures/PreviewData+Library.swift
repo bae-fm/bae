@@ -79,8 +79,7 @@ extension PreviewData {
                     releaseId: "release-credit-0",
                     albumId: "album-credit-0",
                     albumTitle: "Album Title",
-                    source: .musicBrainz,
-                    sourceCredit: "Arranger",
+                    role: .word("Arranger")
                 )
             )
         ),
@@ -96,8 +95,7 @@ extension PreviewData {
                     albumTitle: "Album Title",
                     artistId: "artist-0",
                     artistName: "Artist Name",
-                    source: .musicBrainz,
-                    sourceCredit: "Orchestrator",
+                    role: .word("Orchestrator")
                 )
             )
         ),

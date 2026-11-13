@@ -213,10 +213,10 @@ CREATE TABLE IF NOT EXISTS source_release_archive_group (
         REFERENCES source_release (catalog, release_id) ON DELETE CASCADE
 ) STRICT;
 
--- The composer credits a Discogs release states for itself rather than for
--- one track, at their positions among its credits.
+-- The credits a release states for itself rather than for one track, at
+-- their positions among its credits.
 CREATE TABLE IF NOT EXISTS source_release_role (
-    catalog               TEXT NOT NULL CHECK (catalog = 'discogs'),
+    catalog               TEXT NOT NULL,
     release_id            TEXT NOT NULL,
     position              INTEGER NOT NULL CHECK (position >= 0),
     name                  TEXT NOT NULL,
@@ -226,7 +226,14 @@ CREATE TABLE IF NOT EXISTS source_release_role (
     -- The name the catalog prints for the artist where it is another than the
     -- artist's own.
     credited_as           TEXT CHECK (credited_as IS NULL OR credited_as <> ''),
-    role                  TEXT,
+    -- What the artist did: a `bae_types::credit_role::CreditRoleKind` key,
+    -- 'performer' (its part, if the catalog names one, in `role_words`), or
+    -- 'stated' for the catalog's own words (`role_words`), with the role's
+    -- qualifiers as a JSON list.
+    role                  TEXT NOT NULL CHECK (role IN ('writer', 'composer', 'lyricist', 'librettist', 'translator', 'reviser', 'scriptwriter', 'reconstructor', 'arranger', 'producer', 'engineer', 'mixer', 'mastering', 'performer', 'stated')),
+    role_words            TEXT CHECK (role_words IS NULL OR role_words <> ''),
+    qualifiers            TEXT NOT NULL CHECK (json_valid(qualifiers) AND json_type(qualifiers) = 'array'),
+    CHECK (CASE role WHEN 'stated' THEN role_words IS NOT NULL WHEN 'performer' THEN 1 ELSE role_words IS NULL END),
     PRIMARY KEY (catalog, release_id, position),
     FOREIGN KEY (catalog, release_id)
         REFERENCES source_release (catalog, release_id) ON DELETE CASCADE

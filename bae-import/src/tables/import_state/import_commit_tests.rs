@@ -14,6 +14,9 @@ use bae_records::test_fixtures::{
     TRACK_WORK_A, WORK_A,
 };
 use bae_store::test_fixtures::temp_db;
+use bae_types::credit_role::{
+    CreditRole, CreditRoleKind, CreditedAs, QualifierKind, RoleQualifier,
+};
 use bae_util::content_type::ContentType;
 use bae_util::test_channels::HANG_GUARD;
 
@@ -315,7 +318,10 @@ async fn finalize_import_persists_composer_work_and_role_rows() {
         &composer.id,
         0,
         bae_catalogs::catalog::Catalog::Discogs,
-        Some("Conducted By".to_string()),
+        CreditedAs {
+            role: CreditRole::Stated("conductor".to_string()),
+            qualifiers: vec![RoleQualifier::Kind(QualifierKind::Assistant)],
+        },
         None,
         RELEASE_ROLE_A.to_string(),
         now,
@@ -325,7 +331,7 @@ async fn finalize_import_persists_composer_work_and_role_rows() {
         &composer.id,
         0,
         bae_catalogs::catalog::Catalog::MusicBrainz,
-        Some("arranger".to_string()),
+        CreditedAs::of(CreditRoleKind::Arranger),
         None,
         TRACK_ROLE_A.to_string(),
         now,

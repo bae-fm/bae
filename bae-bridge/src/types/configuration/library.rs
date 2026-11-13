@@ -67,8 +67,7 @@ pub struct BridgeReleaseRoleSummary {
     pub release_id: String,
     pub album_id: String,
     pub album_title: String,
-    pub source: BridgeCatalog,
-    pub source_credit: Option<String>,
+    pub role: crate::types::BridgeCreditRole,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
@@ -80,8 +79,7 @@ pub struct BridgeTrackRoleSummary {
     pub album_title: String,
     pub artist_id: String,
     pub artist_name: String,
-    pub source: BridgeCatalog,
-    pub source_credit: Option<String>,
+    pub role: crate::types::BridgeCreditRole,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]

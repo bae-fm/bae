@@ -7,7 +7,7 @@ use tracing::info;
 use crate::types::BridgeServerStatus;
 use crate::types::{
     BridgeAlbum, BridgeAlbumDetail, BridgeAlbumSearchResult, BridgeArtistDetail,
-    BridgeArtistSortCriterion, BridgeArtistSummary, BridgeCatalog, BridgeComposerDetail,
+    BridgeArtistSortCriterion, BridgeArtistSummary, BridgeComposerDetail,
     BridgeComposerSortCriterion, BridgeComposerSummary, BridgeError, BridgeFile, BridgeGalleryItem,
     BridgeGallerySource, BridgePreviewTarget, BridgeRelease, BridgeReleaseRoleSummary,
     BridgeReleaseSummary, BridgeRepeatMode, BridgeSaveSyncConfig, BridgeSearchResults,

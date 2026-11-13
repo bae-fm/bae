@@ -165,7 +165,8 @@ pub struct DbReleaseArtistRole {
     pub artist_id: String,
     pub position: i32,
     pub source: Catalog,
-    pub source_credit: Option<String>,
+    /// What the artist did.
+    pub role: bae_types::credit_role::CreditedAs,
     /// The other printed name of the artist's this credit prints, as
     /// [`DbAlbumArtist::credit`] is.
     pub credit: Option<crate::credits::CreditName>,
@@ -179,7 +180,8 @@ pub struct DbTrackArtistRole {
     pub artist_id: String,
     pub position: i32,
     pub source: Catalog,
-    pub source_credit: Option<String>,
+    /// What the artist did.
+    pub role: bae_types::credit_role::CreditedAs,
     /// The other printed name of the artist's this credit prints, as
     /// [`DbAlbumArtist::credit`] is.
     pub credit: Option<crate::credits::CreditName>,
@@ -779,7 +781,7 @@ impl DbReleaseArtistRole {
         artist_id: &str,
         position: i32,
         source: Catalog,
-        source_credit: Option<String>,
+        role: bae_types::credit_role::CreditedAs,
         credit: Option<crate::credits::CreditName>,
         id: String,
         now: DateTime<Utc>,
@@ -790,7 +792,7 @@ impl DbReleaseArtistRole {
             artist_id: artist_id.to_string(),
             position,
             source,
-            source_credit,
+            role,
             credit,
             created_at: now,
         }
@@ -803,7 +805,7 @@ impl DbTrackArtistRole {
         artist_id: &str,
         position: i32,
         source: Catalog,
-        source_credit: Option<String>,
+        role: bae_types::credit_role::CreditedAs,
         credit: Option<crate::credits::CreditName>,
         id: String,
         now: DateTime<Utc>,
@@ -814,7 +816,7 @@ impl DbTrackArtistRole {
             artist_id: artist_id.to_string(),
             position,
             source,
-            source_credit,
+            role,
             credit,
             created_at: now,
         }

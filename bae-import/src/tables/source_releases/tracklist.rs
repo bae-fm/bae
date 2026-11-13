@@ -64,11 +64,13 @@ pub(super) fn insert_entry(
         )?;
     }
     for role in &entry.roles {
+        let columns = role.role.columns();
         sql.execute(
             "INSERT INTO source_release_entry_role \
                  (catalog, release_id, entry, position, name, sort_name, \
-                  musicbrainz_artist_id, discogs_artist_id, credited_as, role) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                  musicbrainz_artist_id, discogs_artist_id, credited_as, role, role_words, \
+                  qualifiers) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             params![
                 catalog,
                 key,
@@ -79,7 +81,9 @@ pub(super) fn insert_entry(
                 role.artist.musicbrainz_artist_id,
                 role.artist.discogs_artist_id,
                 role.artist.credited_as,
-                role.role,
+                columns.role,
+                columns.role_words,
+                columns.qualifiers,
             ],
         )?;
     }
@@ -238,7 +242,81 @@ struct StoredCredit {
 struct StoredRole {
     position: i32,
     artist: StoredArtist,
-    role: Option<String>,
+    role: String,
+    role_words: Option<String>,
+    qualifiers: String,
+}
+
+/// The credit a stored role's columns hold.
+fn credited_as(
+    role: &str,
+    role_words: Option<String>,
+    qualifiers: &str,
+) -> Result<bae_types::credit_role::CreditedAs, DbError> {
+    bae_types::credit_role::CreditedAs::from_columns(role, role_words, qualifiers)
+        .map_err(|error| DbError::unreadable("a stored role", error))
+}
+
+/// Write the credit `role` the release states for itself.
+pub(super) fn insert_release_role(
+    sql: &CovenWrite<'_>,
+    catalog: &str,
+    key: &str,
+    role: &RoleCredit,
+) -> Result<(), DbError> {
+    let columns = role.role.columns();
+    sql.execute(
+        "INSERT INTO source_release_role \
+             (catalog, release_id, position, name, sort_name, musicbrainz_artist_id, \
+              discogs_artist_id, credited_as, role, role_words, qualifiers) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        params![
+            catalog,
+            key,
+            role.position,
+            role.artist.name,
+            role.artist.sort_name,
+            role.artist.musicbrainz_artist_id,
+            role.artist.discogs_artist_id,
+            role.artist.credited_as,
+            columns.role,
+            columns.role_words,
+            columns.qualifiers,
+        ],
+    )?;
+    Ok(())
+}
+
+/// The credits the release states for itself, in their order.
+pub(super) fn load_release_roles<S: coven::SqlRead>(
+    sql: &S,
+    catalog: &str,
+    key: &str,
+) -> Result<Vec<RoleCredit>, DbError> {
+    sql.query(
+        "SELECT position, name, sort_name, musicbrainz_artist_id, discogs_artist_id, credited_as, \
+                role, role_words, qualifiers \
+         FROM source_release_role WHERE catalog = ? AND release_id = ? \
+         ORDER BY position",
+        params![catalog, key],
+        |row| {
+            Ok((
+                row.get::<_, i32>(0)?,
+                bae_catalogs::credits::ArtistCredit {
+                    credited_as: row.get(5)?,
+                    ..super::artist_at(row, 1)?
+                },
+                row.get::<_, String>(6)?,
+                row.get::<_, Option<String>>(7)?,
+                row.get::<_, String>(8)?,
+            ))
+        },
+    )?
+    .into_iter()
+    .map(|(position, artist, role, role_words, qualifiers)| {
+        Ok(RoleCredit { position, artist, role: credited_as(&role, role_words, &qualifiers)? })
+    })
+    .collect()
 }
 
 /// A stored artist's columns under `alias`, as a JSON object.
@@ -311,7 +389,8 @@ pub(super) fn load_mediums<S: coven::SqlRead>(
                        AND credit.entry = entry.entry) AS credits, \
                     (SELECT json_group_array(json_object( \
                          'position', role.position, 'artist', json({role_artist}), \
-                         'role', role.role) ORDER BY role.position) \
+                         'role', role.role, 'role_words', role.role_words, \
+                         'qualifiers', role.qualifiers) ORDER BY role.position) \
                      FROM source_release_entry_role AS role \
                      WHERE role.catalog = entry.catalog AND role.release_id = entry.release_id \
                        AND role.entry = entry.entry) AS roles \
@@ -360,12 +439,14 @@ pub(super) fn load_mediums<S: coven::SqlRead>(
             .collect();
         let roles = stored_list::<StoredRole>(&roles, "entry roles")?
             .into_iter()
-            .map(|role| RoleCredit {
-                position: role.position,
-                artist: role.artist.artist(),
-                role: role.role,
+            .map(|role| {
+                Ok(RoleCredit {
+                    position: role.position,
+                    artist: role.artist.artist(),
+                    role: credited_as(&role.role, role.role_words, &role.qualifiers)?,
+                })
             })
-            .collect();
+            .collect::<Result<_, DbError>>()?;
         entries.push(EntryRow {
             medium,
             parent,
@@ -553,12 +634,7 @@ fn load_works<S: coven::SqlRead>(
             .map(|event| match event {
                 StoredEvent::Credit(credit) => Ok(SourceWorkEvent::Credit {
                     artist: credit.artist.artist(),
-                    role: bae_types::credit_role::CreditedAs::from_columns(
-                        &credit.role,
-                        credit.role_words,
-                        &credit.qualifiers,
-                    )
-                    .map_err(|error| DbError::unreadable("a stored work credit's role", error))?,
+                    role: credited_as(&credit.role, credit.role_words, &credit.qualifiers)?,
                 }),
                 StoredEvent::Part(node) => {
                     let part_index = *index_of.get(&node).ok_or_else(|| {

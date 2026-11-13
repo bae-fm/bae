@@ -137,7 +137,7 @@ struct ComposerDetailPane: View {
                 case .releaseCredit(let credit):
                     MacLibraryRow(
                         title: credit.albumTitle,
-                        subtitle: credit.sourceCredit,
+                        subtitle: credit.role.text,
                         bleed: true,
                         credit: true
                     )

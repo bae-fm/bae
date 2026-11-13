@@ -482,8 +482,8 @@ impl BridgeReleaseRoleSummary {
         let bae_views::DbReleaseRoleSummary { role, album } = s;
         let bae_records::DbReleaseArtistRole {
             release_id,
-            source,
-            source_credit,
+            role,
+            source: _,
             credit: _,
             id: _,
             artist_id: _,
@@ -501,8 +501,7 @@ impl BridgeReleaseRoleSummary {
             release_id,
             album_id,
             album_title,
-            source: BridgeCatalog::from_core(source),
-            source_credit,
+            role: crate::types::BridgeCreditRole::from_core(role),
         }
     }
 }
@@ -513,8 +512,8 @@ impl BridgeTrackRoleSummary {
         let bae_records::DbTrackArtistRole {
             track_id,
             artist_id,
-            source,
-            source_credit,
+            role,
+            source: _,
             credit: _,
             id: _,
             position: _,
@@ -553,8 +552,7 @@ impl BridgeTrackRoleSummary {
             album_title,
             artist_id,
             artist_name,
-            source: BridgeCatalog::from_core(source),
-            source_credit,
+            role: crate::types::BridgeCreditRole::from_core(role),
         }
     }
 }

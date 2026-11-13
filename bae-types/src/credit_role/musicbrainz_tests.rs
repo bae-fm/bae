@@ -11,35 +11,52 @@ fn recorded(page: &str) -> Vec<(&str, &str)> {
 }
 
 #[test]
-fn the_artist_work_table_is_musicbrainzs_own_list() {
-    assert_eq!(
-        ARTIST_WORK.iter().map(|(name, phrase, _)| (*name, *phrase)).collect::<Vec<_>>(),
-        recorded(include_str!("../../test-fixtures/credit-vocabulary/musicbrainz-artist-work.txt"))
-    );
+fn each_table_is_musicbrainzs_own_list() {
+    for (table, page) in [
+        (
+            ARTIST_WORK,
+            include_str!("../../test-fixtures/credit-vocabulary/musicbrainz-artist-work.txt"),
+        ),
+        (
+            ARTIST_RECORDING,
+            include_str!("../../test-fixtures/credit-vocabulary/musicbrainz-artist-recording.txt"),
+        ),
+        (
+            ARTIST_RELEASE,
+            include_str!("../../test-fixtures/credit-vocabulary/musicbrainz-artist-release.txt"),
+        ),
+    ] {
+        assert_eq!(
+            table.iter().map(|(name, phrase, _)| (*name, *phrase)).collect::<Vec<_>>(),
+            recorded(page)
+        );
+    }
 }
 
-fn read(relation_type: &str, names: &[&str], credits: &[(&str, &str)]) -> WorkReading {
-    read_valued(relation_type, names, credits, &[])
+fn read(relation_type: &str, names: &[&str], credits: &[(&str, &str)]) -> Reading {
+    read_valued(Subject::Work, relation_type, names, credits, &[])
 }
 
 fn read_valued(
+    subject: Subject,
     relation_type: &str,
     names: &[&str],
     credits: &[(&str, &str)],
     values: &[(&str, &str)],
-) -> WorkReading {
+) -> Reading {
     let names: Vec<String> = names.iter().map(|name| name.to_string()).collect();
     let map = |pairs: &[(&str, &str)]| {
         pairs.iter().map(|(key, value)| (key.to_string(), value.to_string())).collect()
     };
-    work_credit(
+    super::credits(
+        subject,
         relation_type,
         Attributes { names: &names, credits: &map(credits), values: &map(values) },
     )
 }
 
-fn credit(role: CreditRole, qualifiers: Vec<RoleQualifier>) -> WorkReading {
-    WorkReading::Credit(CreditedAs { role, qualifiers })
+fn credit(role: CreditRole, qualifiers: Vec<RoleQualifier>) -> Reading {
+    Reading::Credits(vec![CreditedAs { role, qualifiers }])
 }
 
 #[test]
@@ -114,7 +131,7 @@ fn a_role_bae_has_no_name_for_is_stated_in_the_phrase() {
 #[test]
 fn a_task_is_a_qualifier_in_its_own_words() {
     assert_eq!(
-        read_valued("choreographer", &["task"], &[], &[("task", "fight scenes")]),
+        read_valued(Subject::Work, "choreographer", &["task"], &[], &[("task", "fight scenes")]),
         credit(
             CreditRole::Stated("choreographer".to_string()),
             vec![RoleQualifier::Stated("fight scenes".to_string())]
@@ -132,7 +149,7 @@ fn a_type_naming_an_artist_without_crediting_work_is_not_a_credit() {
         "named after artist",
         "named after work",
     ] {
-        assert_eq!(read(relation, &[], &[]), WorkReading::NotACredit, "{relation}");
+        assert_eq!(read(relation, &[], &[]), Reading::NotACredit, "{relation}");
     }
 }
 
@@ -140,7 +157,7 @@ fn a_type_naming_an_artist_without_crediting_work_is_not_a_credit() {
 fn a_type_the_page_does_not_list_is_credited_in_its_own_name() {
     assert_eq!(
         read("conjurer", &[], &[]),
-        WorkReading::Unlisted(CreditedAs {
+        Reading::Unlisted(CreditedAs {
             role: CreditRole::Stated("conjurer".to_string()),
             qualifiers: vec![]
         })
@@ -158,4 +175,125 @@ fn a_phrase_reads_as_words_without_its_placeholders() {
     assert_eq!(phrase_words("{instrument:%|instruments} technician"), "instruments technician");
     assert_eq!(phrase_words("DJ-mixer {medium}"), "DJ-mixer");
     assert_eq!(phrase_words("phonographic copyright (℗) by"), "phonographic copyright (℗) by");
+}
+
+#[test]
+fn a_recording_and_a_release_state_the_roles_bae_names_beyond_writing() {
+    for (relation, kind) in [
+        ("producer", CreditRoleKind::Producer),
+        ("engineer", CreditRoleKind::Engineer),
+        ("mix", CreditRoleKind::Mixer),
+        ("mastering", CreditRoleKind::Mastering),
+        ("arranger", CreditRoleKind::Arranger),
+    ] {
+        for subject in [Subject::Recording, Subject::Release] {
+            assert_eq!(
+                read_valued(subject, relation, &[], &[], &[]),
+                credit(CreditRole::Kind(kind), vec![]),
+                "{relation}"
+            );
+        }
+    }
+    assert_eq!(
+        read_valued(Subject::Recording, "engineer", &["assistant"], &[], &[]),
+        credit(
+            CreditRole::Kind(CreditRoleKind::Engineer),
+            vec![RoleQualifier::Kind(QualifierKind::Assistant)]
+        )
+    );
+    assert_eq!(
+        read_valued(Subject::Release, "mastering", &["additional", "re"], &[], &[]),
+        credit(
+            CreditRole::Kind(CreditRoleKind::Mastering),
+            vec![
+                RoleQualifier::Kind(QualifierKind::Additional),
+                RoleQualifier::Kind(QualifierKind::Re)
+            ]
+        )
+    );
+}
+
+#[test]
+fn a_recording_engineer_is_stated_in_the_phrase() {
+    assert_eq!(
+        read_valued(Subject::Recording, "recording", &["assistant"], &[], &[]),
+        credit(
+            CreditRole::Stated("recording engineer".to_string()),
+            vec![RoleQualifier::Kind(QualifierKind::Assistant)]
+        )
+    );
+    assert_eq!(
+        read_valued(Subject::Release, "mix-DJ", &[], &[], &[]),
+        credit(CreditRole::Stated("DJ-mixer".to_string()), vec![])
+    );
+    assert_eq!(
+        read_valued(Subject::Recording, "performing orchestra", &[], &[], &[]),
+        credit(CreditRole::Stated("orchestra".to_string()), vec![])
+    );
+}
+
+fn performer(part: Option<&str>, qualifiers: Vec<RoleQualifier>) -> CreditedAs {
+    CreditedAs { role: CreditRole::Performer(part.map(str::to_string)), qualifiers }
+}
+
+#[test]
+fn an_instrument_relation_is_a_performer_for_each_instrument_it_names() {
+    assert_eq!(
+        read_valued(Subject::Recording, "instrument", &["keyboard", "synthesizer"], &[], &[]),
+        Reading::Credits(vec![
+            performer(Some("keyboard"), vec![]),
+            performer(Some("synthesizer"), vec![])
+        ])
+    );
+    assert_eq!(
+        read_valued(
+            Subject::Recording,
+            "instrument",
+            &["additional", "drums (drum set)", "guest"],
+            &[("drums (drum set)", "drums")],
+            &[]
+        ),
+        Reading::Credits(vec![performer(
+            Some("drums"),
+            vec![
+                RoleQualifier::Kind(QualifierKind::Additional),
+                RoleQualifier::Kind(QualifierKind::Guest)
+            ]
+        )])
+    );
+    assert_eq!(
+        read_valued(Subject::Release, "instrument", &[], &[], &[]),
+        Reading::Credits(vec![performer(None, vec![])])
+    );
+}
+
+#[test]
+fn a_vocal_relation_is_a_performer_for_each_voice_and_vocals_for_none() {
+    assert_eq!(
+        read_valued(Subject::Recording, "vocal", &["lead vocals", "solo"], &[], &[]),
+        Reading::Credits(vec![performer(
+            Some("lead vocals"),
+            vec![RoleQualifier::Kind(QualifierKind::Solo)]
+        )])
+    );
+    assert_eq!(
+        read_valued(Subject::Recording, "vocal", &[], &[], &[]),
+        Reading::Credits(vec![performer(Some("vocals"), vec![])])
+    );
+}
+
+#[test]
+fn a_performer_relation_names_no_instrument() {
+    assert_eq!(
+        read_valued(Subject::Recording, "performer", &["guest"], &[], &[]),
+        Reading::Credits(vec![performer(None, vec![RoleQualifier::Kind(QualifierKind::Guest)])])
+    );
+}
+
+#[test]
+fn a_sample_credit_is_no_credit_of_the_recording() {
+    assert_eq!(
+        read_valued(Subject::Recording, "samples from artist", &[], &[], &[]),
+        Reading::NotACredit
+    );
 }

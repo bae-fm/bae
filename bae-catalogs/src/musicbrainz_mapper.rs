@@ -28,6 +28,7 @@ use std::num::NonZeroU8;
 use tracing::{debug, warn};
 
 mod credits;
+use bae_types::credit_role::musicbrainz::Subject;
 pub(crate) use credits::artist_credits;
 use credits::*;
 
@@ -220,36 +221,13 @@ fn tracklist_entry(track: &MbTrack, reported: &mut HashSet<String>) -> Tracklist
                     work: source_work(work, reported),
                 });
             } else if relation.target_type.as_deref() == Some("artist") {
-                if mb_relation_is_composer(relation) {
-                    let Some(artist_ref) = relation.artist.as_ref() else {
-                        warn!(
-                            track_title = ?title,
-                            relation_type = ?relation.relation_type,
-                            "Skipping MusicBrainz recording artist relation without artist payload"
-                        );
-                        continue;
-                    };
-                    let Some(artist) = mb_relation_artist(relation, artist_ref) else {
-                        warn!(
-                            track_title = ?title,
-                            musicbrainz_artist_id = ?artist_ref.id,
-                            "Skipping MusicBrainz recording artist relation with unresolved artist"
-                        );
-                        continue;
-                    };
-                    roles.push(RoleCredit {
-                        position: relation_pos as i32,
-                        artist,
-                        role: relation.relation_type.clone(),
-                    });
-                } else {
-                    debug!(
-                        track_title = ?title,
-                        relation_type = ?relation.relation_type,
-                        target_type = ?relation.target_type,
-                        target_credit = ?relation.target_credit,
-                        "Skipping MusicBrainz recording artist relation with non-composer relation type"
-                    );
+                for (artist, role) in artist_relation_credits(
+                    Subject::Recording,
+                    title.as_deref().unwrap_or_default(),
+                    relation,
+                    true,
+                ) {
+                    push_role(&mut roles, artist, role);
                 }
             }
         }
@@ -264,6 +242,22 @@ fn tracklist_entry(track: &MbTrack, reported: &mut HashSet<String>) -> Tracklist
         works,
         children: Vec::new(),
     }
+}
+
+/// The credits a MusicBrainz release states for itself rather than for one
+/// track: its artist relations, in relation order.
+pub(crate) fn release_roles(response: &MbReleaseResponse) -> Vec<RoleCredit> {
+    let mut roles = Vec::new();
+    for relation in &response.relations {
+        if relation.target_type.as_deref() == Some("artist") {
+            for (artist, role) in
+                artist_relation_credits(Subject::Release, &response.id, relation, true)
+            {
+                push_role(&mut roles, artist, role);
+            }
+        }
+    }
+    roles
 }
 
 /// What the covered mediums of a release say the audio's tracks are: their
@@ -331,7 +325,15 @@ pub(crate) fn values(
         album_year: metadata.album.year,
         pressing: metadata.pressing,
         mediums,
-        release_roles: Vec::new(),
+        release_roles: release
+            .release_roles
+            .iter()
+            .map(|role| CreditedRole {
+                artist: role.artist.clone(),
+                source: Catalog::MusicBrainz,
+                role: role.role.clone(),
+            })
+            .collect(),
         works: works.finish(),
         tracks,
     })

@@ -10,6 +10,7 @@
 //! names, name for name, with a test comparing the table against the captured
 //! page under `test-fixtures/credit-vocabulary/`.
 
+pub mod discogs;
 pub mod musicbrainz;
 
 use crate::pressing::vocabulary;
@@ -27,13 +28,27 @@ vocabulary! {
         Scriptwriter => "scriptwriter",
         Reconstructor => "reconstructor",
         Arranger => "arranger",
+        Producer => "producer",
+        Engineer => "engineer",
+        Mixer => "mixer",
+        Mastering => "mastering",
     }
 }
 
 impl CreditRoleKind {
     /// Whether the role is one of the writing roles.
     pub fn is_writing(self) -> bool {
-        !matches!(self, Self::Arranger)
+        matches!(
+            self,
+            Self::Writer
+                | Self::Composer
+                | Self::Lyricist
+                | Self::Librettist
+                | Self::Translator
+                | Self::Reviser
+                | Self::Scriptwriter
+                | Self::Reconstructor
+        )
     }
 
     /// Every writing role, in declaration order.
@@ -52,8 +67,14 @@ vocabulary! {
     /// A modifier a catalog states beside a role, which bae names.
     pub enum QualifierKind {
         Additional => "additional",
+        Assistant => "assistant",
         Associate => "associate",
         Co => "co",
+        Executive => "executive",
+        Guest => "guest",
+        Solo => "solo",
+        Pre => "pre",
+        Re => "re",
     }
 }
 
@@ -62,6 +83,9 @@ vocabulary! {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum CreditRole {
     Kind(CreditRoleKind),
+    /// A performer, with the instrument or voice the catalog names; `None`
+    /// where it names none.
+    Performer(Option<String>),
     Stated(String),
 }
 
@@ -83,12 +107,17 @@ pub struct CreditedAs {
 /// The key a stored role column holds for a role in the catalog's words.
 pub const STATED_ROLE_KEY: &str = "stated";
 
+/// The key a stored role column holds for a performer; its words are the
+/// instrument or voice, if the catalog names one.
+pub const PERFORMER_ROLE_KEY: &str = "performer";
+
 /// A [`CreditedAs`] as the three columns of a credit's row hold it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CreditColumns {
     /// A [`CreditRoleKind`] key, or [`STATED_ROLE_KEY`].
     pub role: &'static str,
-    /// The catalog's words, for a stated role and only for one.
+    /// The catalog's words, for a stated role, and for a performer the
+    /// instrument or voice it names.
     pub role_words: Option<String>,
     /// The qualifiers as a JSON array.
     pub qualifiers: String,
@@ -117,6 +146,7 @@ impl CreditedAs {
     pub fn columns(&self) -> CreditColumns {
         let (role, role_words) = match &self.role {
             CreditRole::Kind(kind) => (kind.key(), None),
+            CreditRole::Performer(part) => (PERFORMER_ROLE_KEY, part.clone()),
             CreditRole::Stated(words) => (STATED_ROLE_KEY, Some(words.clone())),
         };
         CreditColumns {
@@ -136,6 +166,7 @@ impl CreditedAs {
         let role = match (role, role_words) {
             (STATED_ROLE_KEY, Some(words)) => CreditRole::Stated(words),
             (STATED_ROLE_KEY, None) => return Err(CreditColumnsError::StatedWithoutWords),
+            (PERFORMER_ROLE_KEY, part) => CreditRole::Performer(part),
             (key, None) => CreditRole::Kind(
                 CreditRoleKind::from_key(key)
                     .ok_or_else(|| CreditColumnsError::UnknownRole(key.to_string()))?,

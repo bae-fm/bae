@@ -65,11 +65,12 @@ pub(super) fn insert_draft_values(
         )?;
     }
     for (position, role) in draft.release_roles.iter().enumerate() {
+        let columns = role.role.columns();
         sql.execute(
             "INSERT INTO import_candidate_release_role \
              (content_hash, position, name, sort_name, musicbrainz_artist_id, \
-              discogs_artist_id, credited_as, source, role) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+              discogs_artist_id, credited_as, source, role, role_words, qualifiers) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             params![
                 content_hash,
                 position as i64,
@@ -79,7 +80,9 @@ pub(super) fn insert_draft_values(
                 role.artist.discogs_artist_id,
                 role.artist.credited_as,
                 role.source.as_str(),
-                role.role,
+                columns.role,
+                columns.role_words,
+                columns.qualifiers,
             ],
         )?;
     }
@@ -95,11 +98,12 @@ pub(super) fn insert_track_values(
     track: &CandidateTrack,
 ) -> Result<(), DbError> {
     for (position, role) in track.roles.iter().enumerate() {
+        let columns = role.role.columns();
         sql.execute(
             "INSERT INTO import_candidate_track_role \
              (content_hash, track_id, position, name, sort_name, musicbrainz_artist_id, \
-              discogs_artist_id, credited_as, source, role) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+              discogs_artist_id, credited_as, source, role, role_words, qualifiers) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             params![
                 content_hash,
                 track.edit.id,
@@ -110,7 +114,9 @@ pub(super) fn insert_track_values(
                 role.artist.discogs_artist_id,
                 role.artist.credited_as,
                 role.source.as_str(),
-                role.role,
+                columns.role,
+                columns.role_words,
+                columns.qualifiers,
             ],
         )?;
     }
@@ -155,7 +161,8 @@ pub(super) const RELEASE_ROLES_JSON: &str = "(SELECT json_group_array(json_objec
          'musicbrainz_artist_id', role.musicbrainz_artist_id, \
          'discogs_artist_id', role.discogs_artist_id, \
          'credited_as', role.credited_as, 'source', role.source, \
-         'role', role.role) ORDER BY role.position) \
+         'role', role.role, 'role_words', role.role_words, \
+         'qualifiers', role.qualifiers) ORDER BY role.position) \
      FROM import_candidate_release_role AS role WHERE role.content_hash = edit.content_hash)";
 
 /// The roles the source credits on the draft track `track`, as a JSON array
@@ -165,7 +172,8 @@ pub(super) const TRACK_ROLES_JSON: &str = "(SELECT json_group_array(json_object(
          'musicbrainz_artist_id', role.musicbrainz_artist_id, \
          'discogs_artist_id', role.discogs_artist_id, \
          'credited_as', role.credited_as, 'source', role.source, \
-         'role', role.role) ORDER BY role.position) \
+         'role', role.role, 'role_words', role.role_words, \
+         'qualifiers', role.qualifiers) ORDER BY role.position) \
      FROM import_candidate_track_role AS role \
      WHERE role.content_hash = track.content_hash AND role.track_id = track.track_id)";
 
@@ -263,7 +271,9 @@ pub(super) struct StoredRole {
     discogs_artist_id: Option<String>,
     credited_as: Option<String>,
     source: String,
-    role: Option<String>,
+    role: String,
+    role_words: Option<String>,
+    qualifiers: String,
 }
 
 /// The credited roles a roles column holds.
@@ -282,7 +292,8 @@ pub(super) fn roles_of(roles: Vec<StoredRole>) -> Result<Vec<CreditedRole>, DbEr
                 source: Catalog::from_str(&stored.source).map_err(|_unknown| {
                     DbError::unreadable("a draft role's stored source", &stored.source)
                 })?,
-                role: stored.role,
+                role: CreditedAs::from_columns(&stored.role, stored.role_words, &stored.qualifiers)
+                    .map_err(|error| DbError::unreadable("a draft role's stored role", error))?,
             })
         })
         .collect()

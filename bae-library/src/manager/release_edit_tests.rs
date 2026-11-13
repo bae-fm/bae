@@ -304,7 +304,9 @@ async fn a_reidentify_leaves_none_of_the_previous_source_s_roles_or_works() {
                 artist_id: composer.id.clone(),
                 position: 0,
                 source: bae_catalogs::catalog::Catalog::MusicBrainz,
-                source_credit: Some("composer".to_string()),
+                role: bae_types::credit_role::CreditedAs::of(
+                    bae_types::credit_role::CreditRoleKind::Composer,
+                ),
                 credit: None,
                 created_at: Utc::now(),
             }],

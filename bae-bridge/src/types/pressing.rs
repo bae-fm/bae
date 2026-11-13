@@ -521,11 +521,11 @@ pub enum BridgeTermLabel {
     Verbatim { text: String },
 }
 
-fn localized(key: &str) -> BridgeTermLabel {
+pub(super) fn localized(key: &str) -> BridgeTermLabel {
     BridgeTermLabel::Localized { key: key.to_string() }
 }
 
-fn verbatim(text: &str) -> BridgeTermLabel {
+pub(super) fn verbatim(text: &str) -> BridgeTermLabel {
     BridgeTermLabel::Verbatim { text: text.to_string() }
 }
 
