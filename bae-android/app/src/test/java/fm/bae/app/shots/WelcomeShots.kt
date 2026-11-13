@@ -22,6 +22,8 @@ import fm.bae.app.ui.onboarding.JoinStart
 import fm.bae.app.ui.onboarding.LibraryDetailsRows
 import fm.bae.app.ui.onboarding.OnboardingProgress
 import fm.bae.app.ui.onboarding.OnboardingStep
+import fm.bae.app.ui.onboarding.PairingEndedStep
+import fm.bae.app.ui.onboarding.PairingWaitingStep
 import fm.bae.app.ui.onboarding.StandingRead
 import fm.bae.app.ui.onboarding.WelcomeActions
 import fm.bae.app.ui.onboarding.WelcomeLibrariesScene
@@ -192,6 +194,20 @@ class WelcomeShots : BoardShot() {
                     onBack = {},
                 )
             }
+        }
+
+    /** This device waiting to be added from another of the person's devices: the number to check, and the line it waits on. */
+    @Test
+    fun androidWelcomeAddThisDeviceWaiting() =
+        shot("android.welcome.add-this-device.waiting") {
+            ScreenScene { PairingWaitingStep(confirmation = "412 778", onBack = {}) }
+        }
+
+    /** A pairing that ended without adding this device: the step that says so and what to do. */
+    @Test
+    fun androidWelcomeAddThisDeviceEnded() =
+        shot("android.welcome.add-this-device.ended") {
+            ScreenScene { PairingEndedStep(onBack = {}) }
         }
 
     /** A join that ended without letting this device in: the step that says so and whom to ask. */

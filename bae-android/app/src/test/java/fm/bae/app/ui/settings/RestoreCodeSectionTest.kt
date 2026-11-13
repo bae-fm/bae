@@ -23,9 +23,9 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
+import uniffi.bae_bridge.BridgeAddDevice
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
-import uniffi.bae_bridge.BridgeRestoreCodeShare
 
 @RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
@@ -190,9 +190,11 @@ class RestoreCodeSectionTest {
         compose.setContent {
             TestTheme {
                 AddDeviceDialogContent(
-                    share = BridgeRestoreCodeShare(code = CODE, qrText = CODE),
-                    added = null,
+                    adding = BridgeAddDevice(id = "pairing", code = CODE, qrText = CODE),
+                    face = AddDeviceFace.Code,
                     error = null,
+                    onApprove = {},
+                    onDecline = {},
                     onDismiss = {},
                 )
             }

@@ -94,8 +94,16 @@ impl BridgeCodeMetadata {
 
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeCodeInfo {
-    Restore { metadata: BridgeCodeMetadata },
-    Invite { invite: BridgeInviteInfo },
+    Restore {
+        metadata: BridgeCodeMetadata,
+    },
+    Invite {
+        invite: BridgeInviteInfo,
+    },
+    /// The code another of the person's own devices shows to add this one.
+    Pairing {
+        metadata: BridgeCodeMetadata,
+    },
 }
 /// What an invite tells before connecting: the library's name as the invite
 /// carried it, and the name of the admin who made it.
@@ -119,6 +127,9 @@ impl BridgeInviteInfo {
 #[uniffi::export]
 pub fn decode_code_info(code: String) -> Result<BridgeCodeInfo, BridgeError> {
     Ok(match bae_library::sync::decode_code_info(&code).map_err(BridgeError::config)? {
+        coven::CodeInfo::Pairing(pairing) => {
+            BridgeCodeInfo::Pairing { metadata: BridgeCodeMetadata::from_core(pairing.metadata) }
+        }
         coven::CodeInfo::Restore(metadata) => {
             BridgeCodeInfo::Restore { metadata: BridgeCodeMetadata::from_core(metadata) }
         }

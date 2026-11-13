@@ -410,7 +410,6 @@ fn produced_keys() -> Vec<String> {
         BridgeStorageFailure::AccountIdUnavailable,
         BridgeStorageFailure::InvitationMismatch,
         BridgeStorageFailure::SessionMismatch,
-        BridgeStorageFailure::SessionIdentityUnknown,
         BridgeStorageFailure::SessionExpired,
         BridgeStorageFailure::InvalidPart,
         BridgeStorageFailure::SingleRequestTooLarge { size: 200, limit: 100 },
@@ -427,7 +426,6 @@ fn produced_keys() -> Vec<String> {
     for reason in [
         PendingReasonKind::Missing,
         PendingReasonKind::Waits,
-        PendingReasonKind::WaitsForRaise,
         PendingReasonKind::KeyUnavailable,
         PendingReasonKind::UpdateRequired,
         PendingReasonKind::NoStorage,
@@ -672,6 +670,8 @@ fn pending_subject_messages() -> Vec<BridgeMessage> {
         O::RevokeAccess,
         O::ReplaceMemberKeys,
         O::StorageSetup,
+        O::SetUpStorage,
+        O::Pairing,
     ];
     [
         S::ReleaseFile { file_name: "01 Track.flac".into(), album_title: "Album Title".into() },

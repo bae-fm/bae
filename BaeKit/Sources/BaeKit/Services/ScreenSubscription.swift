@@ -170,7 +170,7 @@ extension SyncActivitySubscription: PulledSubscription {}
 extension MembersSubscription: PulledSubscription {}
 extension InvitesSubscription: PulledSubscription {}
 extension AdminChangesSubscription: PulledSubscription {}
-extension AddedDeviceSubscription: PulledSubscription {}
+extension AddDeviceStatusSubscription: PulledSubscription {}
 extension ProfilesSubscription: PulledSubscription {}
 extension PlaylistsSubscription: PulledSubscription {}
 extension PlaylistDetailSubscription: PulledSubscription {}

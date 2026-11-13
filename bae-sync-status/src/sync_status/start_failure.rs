@@ -155,7 +155,6 @@ impl FailureColumns {
             F::InvitationMismatch => "invitation_mismatch",
             F::SessionMismatch => "session_mismatch",
             F::SessionExpired => "session_expired",
-            F::SessionIdentityUnknown => "session_identity_unknown",
             F::InvalidPart => "invalid_part",
             F::SingleRequestTooLarge { size, limit } => {
                 columns.sizes(size, limit)?;
@@ -257,7 +256,6 @@ impl StoredColumns {
             "invitation_mismatch" => F::InvitationMismatch,
             "session_mismatch" => F::SessionMismatch,
             "session_expired" => F::SessionExpired,
-            "session_identity_unknown" => F::SessionIdentityUnknown,
             "invalid_part" => F::InvalidPart,
             "single_request_too_large" => {
                 let (size, limit) = self.sizes()?;

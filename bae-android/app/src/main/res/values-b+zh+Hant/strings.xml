@@ -475,4 +475,13 @@
     <string name="invite_scan_instruction">在對方的裝置上掃描或輸入此代碼。</string>
     <string name="invite_cancel_message">%1$s 將無法使用此邀請。</string>
     <string name="qr_code">QR 碼</string>
+    <string name="add_device_request_match">如果它的螢幕上顯示此代碼，請新增：</string>
+    <string name="add_device_adding">正在新增%1$s…</string>
+    <string name="pair_check_title">請確認你的另一部裝置顯示的是此代碼</string>
+    <string name="pair_check_text">然後在那部裝置上新增這部裝置。</string>
+    <string name="pair_waiting">正在等待你的另一部裝置…</string>
+    <string name="pair_ended_title">此代碼已失效</string>
+    <string name="pair_ended_text">請在另一部裝置上開啟「新增裝置」，取得新代碼。</string>
+    <string name="add_device_expired">此代碼已失效。請關閉此視窗，再次選擇「新增裝置」以取得新代碼。</string>
+    <string name="add_device_refused">新裝置的請求遭到拒絕，因此未新增。請使用新代碼重試。</string>
 </resources>

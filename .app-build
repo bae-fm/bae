@@ -24,6 +24,10 @@ step mac macos-sort-language-tests ./bae-macos/test.sh --run-only SortLanguageTe
 step mac macos-folder-picker-notice-tests ./bae-macos/test.sh --run-only FolderPickerNoticeTests
 step android android-library-browse-tree-tests ./bae-android/gradle.sh :app:testFullDebugUnitTest --tests *LibraryBrowseTreeTest
 step android android-credit-role-tests ./bae-android/gradle.sh :app:testFullDebugUnitTest --tests *CreditRoleTextTest
+step mac macos-add-device-tests ./bae-macos/test.sh --run-only AddDeviceSheetTests
+step mac macos-bootstrap-code-form-tests ./bae-macos/test.sh --run-only BootstrapCodeFormTests
+step android android-add-device-tests ./bae-android/gradle.sh :app:testFullDebugUnitTest --tests *AddDeviceDialogTest
+step android android-onboarding-flow-tests ./bae-android/gradle.sh :app:testFullDebugUnitTest --tests *OnboardingFlowTest
 step android android-sort-language-tests ./bae-android/gradle.sh :app:testFullDebugUnitTest --tests *SortLanguageTest
 step mac macos-screen-subscription-tests ./bae-macos/test.sh --run-only ScreenSubscriptionTests
 step android android-screen-subscription-tests ./bae-android/gradle.sh :screensubscription:testFullDebugUnitTest --tests *ScreenSubscriptionTest
@@ -56,6 +60,10 @@ limit android-playlist-tests 10m
 limit android-welcome-libraries-tests 10m
 limit macos-credit-role-tests 10m
 limit macos-credit-row-tests 10m
+limit macos-add-device-tests 10m
+limit macos-bootstrap-code-form-tests 10m
+limit android-add-device-tests 10m
+limit android-onboarding-flow-tests 10m
 limit macos-sort-language-tests 10m
 limit macos-folder-picker-notice-tests 10m
 limit android-library-browse-tree-tests 10m

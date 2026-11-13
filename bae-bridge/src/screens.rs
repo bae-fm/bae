@@ -391,15 +391,16 @@ pulled_read! {
 }
 
 pulled_read! {
-    /// This person's device that joined after Add Device made its code; none
-    /// until one does.
-    AddedDeviceSubscription:
-        LiveValues<Option<bae_people::membership::ActiveDevice>>
-            => Option<crate::types::BridgeActiveDevice>,
-    converted by |device: Option<bae_people::membership::ActiveDevice>| {
-        device.map(crate::types::BridgeActiveDevice::from_core)
+    /// Where the pairing Add Device's sheet started is: waiting for a
+    /// request, approved or ended. It reports nothing once the pairing is
+    /// forgotten.
+    AddDeviceStatusSubscription:
+        LiveValues<Option<coven::AddDeviceStatus>> => crate::handle::BridgeAddDeviceStatus,
+    converted by |status: Option<coven::AddDeviceStatus>| {
+        status.map(crate::handle::BridgeAddDeviceStatus::from_core)
     },
-    built by added_device
+    when present,
+    built by add_device_status
 }
 
 pulled_read! {

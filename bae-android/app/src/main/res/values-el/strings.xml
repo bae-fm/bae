@@ -482,4 +482,13 @@
     <string name="invite_scan_instruction">Σαρώστε ή εισαγάγετε τον κωδικό στη συσκευή τους.</string>
     <string name="invite_cancel_message">Η πρόσκληση δεν θα μπορεί να χρησιμοποιηθεί από %1$s.</string>
     <string name="qr_code">Κωδικός QR</string>
+    <string name="add_device_request_match">Προσθέστε την αν η οθόνη της εμφανίζει αυτόν τον κωδικό:</string>
+    <string name="add_device_adding">Προσθήκη της συσκευής %1$s…</string>
+    <string name="pair_check_title">Ελέγξτε ότι η άλλη σας συσκευή εμφανίζει αυτόν τον κωδικό</string>
+    <string name="pair_check_text">Έπειτα προσθέστε αυτή τη συσκευή από εκεί.</string>
+    <string name="pair_waiting">Αναμονή για την άλλη σας συσκευή…</string>
+    <string name="pair_ended_title">Αυτός ο κωδικός έχει λήξει</string>
+    <string name="pair_ended_text">Ανοίξτε την Προσθήκη συσκευής στην άλλη σας συσκευή για νέο κωδικό.</string>
+    <string name="add_device_expired">Αυτός ο κωδικός έχει λήξει. Κλείστε αυτό και επιλέξτε ξανά Προσθήκη συσκευής για νέο κωδικό.</string>
+    <string name="add_device_refused">Το αίτημα της νέας συσκευής απορρίφθηκε, οπότε δεν προστέθηκε. Δοκιμάστε ξανά με νέο κωδικό.</string>
 </resources>

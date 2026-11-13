@@ -203,7 +203,7 @@ fn an_invite_is_for_a_new_person_and_lasts_the_lifetime_chosen() {
                 panic!("one open invite: {open:?}");
             };
             let lasts = std::time::Duration::from_secs(days * 24 * 60 * 60);
-            assert_eq!(invite.kind, coven::InviteKind::NewPerson);
+            assert_eq!(invite.admits, coven::InviteAdmits::NewPerson);
             assert!(invite.expires_at >= before + lasts, "{:?}", invite.expires_at);
             assert!(
                 invite.expires_at <= before + lasts + std::time::Duration::from_secs(60),
@@ -391,7 +391,7 @@ impl Household {
 
     /// An invite giving S3 storage's `key`, or the Dropbox guest's account,
     /// once the owner's sync has granted its access and fixed its code.
-    pub(super) async fn invite(&self, target: coven::InviteTarget, key: &str) -> Invited {
+    pub(super) async fn invite(&self, key: &str) -> Invited {
         use coven::Storage;
         let access = match self.storage.config().provider() {
             coven::CloudProvider::S3 => coven::InviteAccess::S3AccessKey {
@@ -401,7 +401,7 @@ impl Household {
             _ => coven::InviteAccess::ProviderAccount { email: GUEST_ACCOUNT.into() },
         };
         let (id, member, _operation) = Box::pin(self.owner.create_invite(
-            target,
+            coven::MemberRole::Member,
             access,
             coven::InviteLifetime::SevenDays,
             "Ana".into(),
@@ -524,10 +524,6 @@ pub(super) struct Invited {
     pub(super) member: coven::MemberId,
 }
 
-pub(super) fn new_member() -> coven::InviteTarget {
-    coven::InviteTarget::NewMember { role: coven::MemberRole::Member }
-}
-
 /// Make a circle named `name` on `owner`, syncing until its entry lands.
 async fn landed_circle(owner: &coven::CovenHandle, name: &str) -> coven::CircleId {
     let (circle, operation) = Box::pin(owner.circles().create(name)).await.unwrap();
@@ -589,7 +585,7 @@ async fn a_profile_takes_the_private_circle_already_made_for_it() {
 fn joining_writes_the_invites_name_and_cannot_edit_another_person() {
     on_app_runtime(async {
         let household = Household::new().await;
-        let invite = household.invite(new_member(), "guest-key").await;
+        let invite = household.invite("guest-key").await;
         let guest_dir = tempfile::tempdir().unwrap();
         let guest = installation_in(&guest_dir);
         let control = bae_library::JoinControl::new();
@@ -633,7 +629,7 @@ fn joining_writes_the_invites_name_and_cannot_edit_another_person() {
 fn a_stopped_join_resumes_and_writes_the_profile() {
     on_app_runtime(async {
         let household = Household::new().await;
-        let invite = household.invite(new_member(), "guest-key").await;
+        let invite = household.invite("guest-key").await;
         let guest_dir = tempfile::tempdir().unwrap();
         let guest = installation_in(&guest_dir);
         let control = bae_library::JoinControl::new();
@@ -666,8 +662,8 @@ fn a_stopped_join_resumes_and_writes_the_profile() {
             panic!("one join under way");
         };
         assert_eq!(
-            (join.store_name.as_str(), join.inviter.as_str(), join.kind),
-            ("Household", "Ana", coven::InviteKind::NewPerson)
+            (join.store_name.as_str(), join.inviter.as_str(), join.admits),
+            ("Household", "Ana", coven::InviteAdmits::NewPerson)
         );
         let resuming = bae_library::resume_join(
             || household.device(&guest),
@@ -698,7 +694,7 @@ fn a_stopped_join_resumes_and_writes_the_profile() {
 fn a_restore_onto_a_device_whose_join_waits_leaves_the_join() {
     on_app_runtime(async {
         let household = Household::new().await;
-        let invite = household.invite(new_member(), "guest-key").await;
+        let invite = household.invite("guest-key").await;
         let guest_dir = tempfile::tempdir().unwrap();
         let guest = installation_in(&guest_dir);
         let control = bae_library::JoinControl::new();
@@ -779,7 +775,7 @@ async fn stopped_dropbox_join(
     guest: &coven::Coven,
     control: &bae_library::JoinControl,
 ) -> (String, coven::InviteInfo) {
-    let invite = household.invite(new_member(), "").await;
+    let invite = household.invite("").await;
     let (waiting, mut waits) = tokio::sync::watch::channel(false);
     let joining = bae_library::join_with_invite(
         sign_in.configure(household.device(guest)),
@@ -922,7 +918,7 @@ fn an_ended_dropbox_invite_ends_before_any_sign_in() {
     on_app_runtime(async {
         let sign_in = DropboxSignIn::start().await;
         let household = Household::on_dropbox(&sign_in).await;
-        let invite = household.invite(new_member(), "").await;
+        let invite = household.invite("").await;
         let ended = ended_clock(&invite.code);
         let guest_dir = tempfile::tempdir().unwrap();
         let guest = installation_in(&guest_dir);

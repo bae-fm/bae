@@ -46,17 +46,20 @@ fn main() {
         .with_writer(std::io::stderr)
         .init();
     let started = Instant::now();
-    let ran = bench_library::run("Sync bench", tracks, async |library, _clock, _ids| {
-        eprintln!("created the library and set its storage up in {:?}", started.elapsed());
-        let uploading = Instant::now();
-        tokio::time::timeout(Duration::from_secs(seconds), bench_library::uploaded(library))
-            .await
-            .map_err(|elapsed| {
-                format!("the sync loop had not uploaded every write: {elapsed} after {seconds}s")
-            })??;
-        eprintln!("uploaded {tracks} tracks in {:?}", uploading.elapsed());
-        Ok(())
-    });
+    let ran =
+        bench_library::run("Sync bench", tracks, async |library, _clock, _ids, _credentials| {
+            eprintln!("created the library and set its storage up in {:?}", started.elapsed());
+            let uploading = Instant::now();
+            tokio::time::timeout(Duration::from_secs(seconds), bench_library::uploaded(library))
+                .await
+                .map_err(|elapsed| {
+                    format!(
+                        "the sync loop had not uploaded every write: {elapsed} after {seconds}s"
+                    )
+                })??;
+            eprintln!("uploaded {tracks} tracks in {:?}", uploading.elapsed());
+            Ok(())
+        });
     if let Err(error) = ran {
         eprintln!("{error}");
         std::process::exit(1);

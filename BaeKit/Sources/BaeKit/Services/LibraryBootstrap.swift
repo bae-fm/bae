@@ -145,6 +145,24 @@ public final class LibraryBootstrap {
         }
     }
 
+    /// Add this device from a pairing code another of the person's devices
+    /// shows. `credentials` are the S3 key typed for a code that carries
+    /// none. Cancelling the task drops the call, which ends the pairing;
+    /// `cancel()` does too.
+    public func pair(code: String, credentials: BridgeS3Credentials?)
+        async throws -> BridgeBootstrapResult
+    {
+        try await runJoin { setup, control in
+            try await self.host.joinWithPairing(
+                code: code,
+                credentials: credentials,
+                deviceName: self.deviceName,
+                setup: setup,
+                control: control
+            )
+        }
+    }
+
     /// Continue a join this device has under way, as `join` does.
     public func resume(_ join: BridgeUnfinishedJoin) async throws
         -> BridgeBootstrapResult

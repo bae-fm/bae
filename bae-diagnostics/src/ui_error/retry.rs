@@ -139,7 +139,6 @@ fn storage_retry_can_help(failure: coven::StorageFailure) -> bool {
         | F::InviteeIsStoreOwner
         | F::InvitationMismatch
         | F::SessionMismatch
-        | F::SessionIdentityUnknown
         | F::InvalidPart
         | F::SingleRequestTooLarge { .. }
         | F::CopyTooLarge { .. }

@@ -231,6 +231,30 @@ extension ShotScene {
                 }
             )
         },
+        ShotScene(
+            id: "mac.welcome.add-this-device.waiting",
+            size: WelcomeWindow.size
+        ) {
+            ShotStage(
+                MacWelcomeWindow {
+                    PairingWaitingView(
+                        status: .waitingForApproval(confirmation: "412 778"),
+                        steps: nil,
+                        onCancel: {}
+                    )
+                }
+            )
+        },
+        ShotScene(
+            id: "mac.welcome.add-this-device.ended",
+            size: WelcomeWindow.size
+        ) {
+            ShotStage(
+                MacWelcomeWindow {
+                    PairingEndedView(onOK: {})
+                }
+            )
+        },
         ShotScene(id: "mac.welcome.join.ended", size: WelcomeWindow.size) {
             ShotStage(
                 MacWelcomeWindow {

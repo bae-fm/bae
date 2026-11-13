@@ -4,7 +4,7 @@ fn invite(id: &str, operation: i64) -> coven::Invite {
     coven::Invite {
         id: coven::InviteId(id.parse().unwrap()),
         member: coven::MemberId("00000000-0000-4000-8000-000000000009".parse().unwrap()),
-        kind: coven::InviteKind::NewPerson,
+        admits: coven::InviteAdmits::NewPerson,
         access: coven::MemberAccess::ProviderAccount("dan@example.com".into()),
         expires_at: std::time::UNIX_EPOCH,
         operation: coven::OperationId(operation),

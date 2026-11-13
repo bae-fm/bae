@@ -491,4 +491,13 @@
     <string name="invite_scan_instruction">Escanea o introduce el código en su dispositivo.</string>
     <string name="invite_cancel_message">%1$s no podrá usar esta invitación.</string>
     <string name="qr_code">Código QR</string>
+    <string name="add_device_request_match">Añádelo si su pantalla muestra este código:</string>
+    <string name="add_device_adding">Añadiendo %1$s…</string>
+    <string name="pair_check_title">Comprueba que tu otro dispositivo muestra este código</string>
+    <string name="pair_check_text">Después, añade este dispositivo desde allí.</string>
+    <string name="pair_waiting">Esperando a tu otro dispositivo…</string>
+    <string name="pair_ended_title">Este código ha caducado</string>
+    <string name="pair_ended_text">Abre Añadir dispositivo en tu otro dispositivo para obtener uno nuevo.</string>
+    <string name="add_device_expired">Este código ha caducado. Cierra esto y elige Añadir dispositivo de nuevo para obtener uno nuevo.</string>
+    <string name="add_device_refused">Se rechazó la solicitud del dispositivo nuevo, así que no se añadió. Inténtalo de nuevo con un código nuevo.</string>
 </resources>

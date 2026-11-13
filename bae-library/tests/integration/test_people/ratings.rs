@@ -44,7 +44,7 @@ fn a_removed_person_s_rating_still_names_them() {
         )
         .await;
 
-        let invite = household.invite(new_member(), "guest-key").await;
+        let invite = household.invite("guest-key").await;
         let guest_dir = tempfile::tempdir().unwrap();
         let guest = installation_in(&guest_dir);
         let control = bae_library::JoinControl::new();

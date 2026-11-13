@@ -25,29 +25,87 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidDialog
+import fm.bae.app.ui.components.AndroidMatchCode
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidScanCode
 import fm.bae.app.ui.components.AndroidSpinner
 import fm.bae.app.ui.components.ButtonKind
+import fm.bae.app.ui.components.ButtonTone
 import fm.bae.app.ui.components.DialogParts
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.rememberScreenScope
 import fm.bae.screensubscription.ScreenSubscription
 import fm.bae.screensubscription.pulled
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.AppHandleInterface
-import uniffi.bae_bridge.BridgeActiveDevice
+import uniffi.bae_bridge.BridgeAddDevice
+import uniffi.bae_bridge.BridgeAddDeviceEnd
+import uniffi.bae_bridge.BridgeAddDeviceStatus
 import uniffi.bae_bridge.BridgeException
-import uniffi.bae_bridge.BridgeRestoreCodeShare
 
 private val logger = BaeLogger("bae.AddDeviceDialog")
 
+/** What Add device shows of a pairing's status, as plain values. */
+internal sealed interface AddDeviceFace {
+    /** The code to scan or type: no request has come. */
+    data object Code : AddDeviceFace
+
+    /** A new device asks to be added, showing [confirmation]. */
+    data class Request(
+        val deviceName: String,
+        val confirmation: String,
+    ) : AddDeviceFace
+
+    /** The approved device is on its way in. */
+    data class Adding(
+        val name: String,
+    ) : AddDeviceFace
+
+    /** The device is in. */
+    data class Added(
+        val name: String,
+    ) : AddDeviceFace
+
+    /** The person declined the request: the dialog closes. */
+    data object Declined : AddDeviceFace
+
+    /** The code's time passed with no device added: the dialog says so. */
+    data object Expired : AddDeviceFace
+
+    /** coven refused the request, so no device was added: the dialog says so. */
+    data object Refused : AddDeviceFace
+}
+
+internal fun BridgeAddDeviceStatus.face(): AddDeviceFace =
+    when (this) {
+        is BridgeAddDeviceStatus.Waiting -> {
+            request?.info()?.let { AddDeviceFace.Request(it.deviceName, it.confirmation) } ?: AddDeviceFace.Code
+        }
+
+        is BridgeAddDeviceStatus.Approved -> {
+            AddDeviceFace.Adding(deviceName)
+        }
+
+        is BridgeAddDeviceStatus.Ended -> {
+            when (val end = this.end) {
+                is BridgeAddDeviceEnd.Added -> AddDeviceFace.Added(end.name)
+                BridgeAddDeviceEnd.Declined -> AddDeviceFace.Declined
+                BridgeAddDeviceEnd.Expired -> AddDeviceFace.Expired
+                BridgeAddDeviceEnd.Refused -> AddDeviceFace.Refused
+            }
+        }
+    }
+
 /**
- * Adds another of this person's devices: their restore code, generated on
- * demand, as a QR the new device scans and as text to type there instead.
- * While it shows the code, it runs the watch that came with it, and once a new
- * device joins it says so in place of the code.
+ * Adds another of this person's devices: a pairing, started on demand, whose
+ * code shows as a QR the new device scans and as text to type there instead.
+ * While it shows the code, it follows the pairing's status: a new device's
+ * request replaces the code with the number to compare, and once the device
+ * is in the dialog says so. Closing it ends the pairing.
  */
 @Composable
 internal fun AddDeviceDialog(
@@ -56,8 +114,8 @@ internal fun AddDeviceDialog(
 ) {
     val context = LocalContext.current
     val scope = rememberScreenScope()
-    var share by remember { mutableStateOf<BridgeRestoreCodeShare?>(null) }
-    var added by remember { mutableStateOf<BridgeActiveDevice?>(null) }
+    var adding by remember { mutableStateOf<BridgeAddDevice?>(null) }
+    var status by remember { mutableStateOf<BridgeAddDeviceStatus?>(null) }
     var error by remember { mutableStateOf<DisplayError?>(null) }
 
     // A cancellation shows nothing: the dialog stays on its spinner or code.
@@ -71,93 +129,134 @@ internal fun AddDeviceDialog(
     }
 
     LaunchedEffect(Unit) {
-        val adding =
+        val started =
             try {
                 appHandle.addDevice()
             } catch (e: CancellationException) {
                 throw e
             } catch (e: BridgeException) {
-                logger.error("Failed to generate the add-device code", e)
+                logger.error("Failed to start the pairing", e)
                 show(e)
                 return@LaunchedEffect
             }
-        share = adding.share
-        // The watch came with the code: it finds the device that joins from it.
-        val watch =
+        adding = started
+        val following =
             ScreenSubscription(
-                appHandle.subscribeAddedDevice(adding.watch).let { pulled(it::next, it::cancel) },
+                appHandle.followAddDevice(started.id).let { pulled(it::next, it::cancel) },
                 scope,
-                onValue = { device -> added = device },
-                onError = { error ->
-                    logger.error("Watching for the added device failed", error)
-                    show(error)
+                onValue = { value -> status = value },
+                onError = { failure ->
+                    logger.error("Following the pairing failed", failure)
+                    show(failure)
                 },
             )
         try {
             awaitCancellation()
         } finally {
-            watch.stop()
+            following.stop()
+            // The dialog closed: the pairing ends, whatever its status.
+            withContext(NonCancellable) {
+                try {
+                    appHandle.endAddDevice(started.id)
+                } catch (e: BridgeException) {
+                    logger.error("Ending the pairing failed", e)
+                }
+            }
         }
     }
 
-    AddDeviceDialogContent(share = share, added = added, error = error, onDismiss = onDismiss)
+    val face = status?.face() ?: AddDeviceFace.Code
+    val request = (status as? BridgeAddDeviceStatus.Waiting)?.request
+
+    fun decide(decision: suspend () -> Unit) {
+        error = null
+        scope.launch {
+            try {
+                decision()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: BridgeException) {
+                logger.error("Deciding on the request failed", e)
+                show(e)
+            }
+        }
+    }
+    LaunchedEffect(face) { if (face == AddDeviceFace.Declined) onDismiss() }
+
+    AddDeviceDialogContent(
+        adding = adding,
+        face = face,
+        error = error,
+        onApprove = { request?.let { decide { appHandle.approveAddDevice(it) } } },
+        onDecline = { request?.let { decide { appHandle.declineAddDevice(it) } } },
+        onDismiss = onDismiss,
+    )
 }
 
 /**
- * The dialog body: the device that joined, [added], once one has; until then
- * the code in [share] to scan or type, a spinner while it generates, and any
- * [error].
+ * The dialog body, by where the pairing is: a new device's request, to add
+ * when its screen shows the number; the name of the device that was added;
+ * or until then the code in [adding] to scan or type, a spinner while it
+ * starts, and any [error].
  */
 @Composable
 internal fun AddDeviceDialogContent(
-    share: BridgeRestoreCodeShare?,
-    added: BridgeActiveDevice?,
+    adding: BridgeAddDevice?,
+    face: AddDeviceFace,
     error: DisplayError?,
+    onApprove: () -> Unit,
+    onDecline: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     AndroidDialog(
         onDismissRequest = onDismiss,
-        parts = addDeviceParts(share = share, added = added, error = error, onDismiss = onDismiss),
+        parts =
+            addDeviceParts(
+                adding = adding,
+                face = face,
+                error = error,
+                onApprove = onApprove,
+                onDecline = onDecline,
+                onDismiss = onDismiss,
+            ),
     )
 }
 
 @Composable
 internal fun addDeviceParts(
-    share: BridgeRestoreCodeShare?,
-    added: BridgeActiveDevice?,
+    adding: BridgeAddDevice?,
+    face: AddDeviceFace,
     error: DisplayError?,
+    onApprove: () -> Unit,
+    onDecline: () -> Unit,
     onDismiss: () -> Unit,
 ): DialogParts =
+    if (face is AddDeviceFace.Request) {
+        addDeviceRequestParts(face, error, onApprove, onDecline)
+    } else {
+        DialogParts(
+            title = stringResource(R.string.add_device_title),
+            content = { AddDeviceBody(adding = adding, face = face, error = error) },
+            confirmButton = {
+                AndroidButton(kind = ButtonKind.TEXT, onClick = onDismiss) { Text(stringResource(R.string.done)) }
+            },
+        )
+    }
+
+/** A new device's request: Decline in the text colour, Add the one coloured button. */
+@Composable
+private fun addDeviceRequestParts(
+    request: AddDeviceFace.Request,
+    error: DisplayError?,
+    onApprove: () -> Unit,
+    onDecline: () -> Unit,
+): DialogParts =
     DialogParts(
-        title = stringResource(R.string.add_device_title),
+        title = stringResource(R.string.join_request_title, request.deviceName),
+        message = stringResource(R.string.add_device_request_match),
         content = {
-            Column(
-                modifier = Modifier.verticalScroll(rememberScrollState()),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                when {
-                    added != null -> {
-                        Text(
-                            text = stringResource(R.string.add_device_added, added.name),
-                            style = ThemeText.body.style,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                    }
-
-                    share != null -> {
-                        // Copy and Share hand out the restore code; the QR code also holds
-                        // this device's S3 key, which a device that scans it then doesn't ask for.
-                        AndroidScanCode(
-                            instruction = stringResource(R.string.add_device_instructions),
-                            qr = share.qrText,
-                            code = share.code,
-                        )
-                    }
-
-                    error == null -> {
-                        AndroidSpinner(text = stringResource(R.string.add_device_making_code))
-                    }
-                }
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                AndroidMatchCode(request.confirmation, dialog = true)
                 error?.let {
                     Spacer(modifier = Modifier.height(ThemeSpace.related))
                     AndroidNotice(it, look = NoticeLook.QUIET)
@@ -165,6 +264,67 @@ internal fun addDeviceParts(
             }
         },
         confirmButton = {
-            AndroidButton(kind = ButtonKind.TEXT, onClick = onDismiss) { Text(stringResource(R.string.done)) }
+            AndroidButton(kind = ButtonKind.TEXT, onClick = onApprove) {
+                Text(stringResource(R.string.onboarding_add_action))
+            }
+        },
+        dismissButton = {
+            AndroidButton(kind = ButtonKind.TEXT, tone = ButtonTone.NEUTRAL, onClick = onDecline) {
+                Text(stringResource(R.string.join_request_decline))
+            }
         },
     )
+
+/** The sheet's body when no request is showing: the code, a line saying where the pairing ended, or a spinner. */
+@Composable
+private fun AddDeviceBody(
+    adding: BridgeAddDevice?,
+    face: AddDeviceFace,
+    error: DisplayError?,
+) {
+    Column(
+        modifier = Modifier.verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        when {
+            face is AddDeviceFace.Added -> {
+                BodyLine(stringResource(R.string.add_device_added, face.name))
+            }
+
+            face is AddDeviceFace.Expired -> {
+                BodyLine(stringResource(R.string.add_device_expired))
+            }
+
+            face is AddDeviceFace.Refused -> {
+                BodyLine(stringResource(R.string.add_device_refused))
+            }
+
+            face is AddDeviceFace.Adding -> {
+                AndroidSpinner(text = stringResource(R.string.add_device_adding, face.name))
+            }
+
+            adding != null -> {
+                // Copy and Share hand out the code to type; the QR code holds the key
+                // on S3, so a device that scans it asks for none.
+                AndroidScanCode(
+                    instruction = stringResource(R.string.add_device_instructions),
+                    qr = adding.qrText,
+                    code = adding.code,
+                )
+            }
+
+            error == null -> {
+                AndroidSpinner(text = stringResource(R.string.add_device_making_code))
+            }
+        }
+        error?.let {
+            Spacer(modifier = Modifier.height(ThemeSpace.related))
+            AndroidNotice(it, look = NoticeLook.QUIET)
+        }
+    }
+}
+
+@Composable
+private fun BodyLine(text: String) {
+    Text(text = text, style = ThemeText.body.style, color = MaterialTheme.colorScheme.onSurface)
+}

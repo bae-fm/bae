@@ -179,7 +179,7 @@ private struct AttemptDetailsSection: View {
             switch attempt {
             case .restoreSaved:
                 EmptyView()
-            case .restore(_, let metadata):
+            case .restore(_, let metadata), .pair(_, let metadata):
                 LabeledContent(
                     "Stored in",
                     value: metadata.location.accountLine

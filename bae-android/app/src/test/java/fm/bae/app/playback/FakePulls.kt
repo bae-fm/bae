@@ -1,8 +1,8 @@
 package fm.bae.app.playback
 
 import kotlinx.coroutines.channels.Channel
-import uniffi.bae_bridge.AddedDeviceSubscription
-import uniffi.bae_bridge.BridgeActiveDevice
+import uniffi.bae_bridge.AddDeviceStatusSubscription
+import uniffi.bae_bridge.BridgeAddDeviceStatus
 import uniffi.bae_bridge.BridgeDownloadCounts
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeQueueSnapshot
@@ -64,11 +64,11 @@ internal class FakeRequestedProfileSubscription : RequestedProfileSubscription(N
     override fun close() = pulls.cancel()
 }
 
-/** The added device a test hands the app. */
-internal class FakeAddedDeviceSubscription : AddedDeviceSubscription(NoHandle) {
-    val pulls = PullChannel<BridgeActiveDevice?>()
+/** The pairing statuses a test hands the app. */
+internal class FakeAddDeviceStatusSubscription : AddDeviceStatusSubscription(NoHandle) {
+    val pulls = PullChannel<BridgeAddDeviceStatus>()
 
-    override suspend fun next(): BridgeActiveDevice? = pulls.next()
+    override suspend fun next(): BridgeAddDeviceStatus = pulls.next()
 
     override suspend fun cancel() = pulls.cancel()
 

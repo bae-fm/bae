@@ -482,4 +482,13 @@
     <string name="invite_scan_instruction">Skannaa tai syötä koodi heidän laitteellaan.</string>
     <string name="invite_cancel_message">%1$s ei voi enää käyttää tätä kutsua.</string>
     <string name="qr_code">QR-koodi</string>
+    <string name="add_device_request_match">Lisää se, jos sen näytöllä on tämä koodi:</string>
+    <string name="add_device_adding">Lisätään laitetta %1$s…</string>
+    <string name="pair_check_title">Tarkista, että toisella laitteellasi näkyy tämä koodi</string>
+    <string name="pair_check_text">Lisää sitten tämä laite siellä.</string>
+    <string name="pair_waiting">Odotetaan toista laitettasi…</string>
+    <string name="pair_ended_title">Tämä koodi on vanhentunut</string>
+    <string name="pair_ended_text">Avaa toisella laitteellasi Lisää laite saadaksesi uuden koodin.</string>
+    <string name="add_device_expired">Tämä koodi on vanhentunut. Sulje tämä ja valitse Lisää laite uudelleen saadaksesi uuden koodin.</string>
+    <string name="add_device_refused">Uuden laitteen pyyntö hylättiin, joten laitetta ei lisätty. Yritä uudelleen uudella koodilla.</string>
 </resources>

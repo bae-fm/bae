@@ -105,7 +105,7 @@ fn requester_name(
     };
     match &request.joiner {
         coven::Joiner::NewPerson { name } => Ok(Some(name.clone())),
-        coven::Joiner::Recovery => match profiles.get(&request.member) {
+        coven::Joiner::MemberKeys => match profiles.get(&request.member) {
             Some(name) => Ok(Some(name.clone())),
             None => Err(bae_store::DbError::unreadable(
                 "people.name of a recovering member",

@@ -1,7 +1,7 @@
 //! A join once it finds its approval: the library is this device's, open
 //! however its first load went (§5.6).
 
-use super::test_people::{installation_in, new_member, on_app_runtime, Household};
+use super::test_people::{installation_in, on_app_runtime, Household};
 
 /// The diagnostics these tests' bootstrap calls report to: none.
 static NO_DIAGNOSTICS: std::sync::LazyLock<bae_diagnostics::Diagnostics> =
@@ -24,7 +24,7 @@ pub(super) fn loaded(joined: bae_library::JoinedLibrary) -> coven::CovenHandle {
 fn an_approved_join_whose_load_is_refused_opens_the_library() {
     on_app_runtime(async {
         let household = Household::new().await;
-        let invite = household.invite(new_member(), "guest-key").await;
+        let invite = household.invite("guest-key").await;
         let guest_dir = tempfile::tempdir().unwrap();
         let guest = installation_in(&guest_dir);
         let control = bae_library::JoinControl::new();
@@ -79,7 +79,7 @@ fn an_approved_join_whose_load_is_refused_opens_the_library() {
 fn a_join_whose_load_is_refused_asks_for_the_profile_on_the_next_open() {
     on_app_runtime(async {
         let household = Household::new().await;
-        let invite = household.invite(new_member(), "guest-key").await;
+        let invite = household.invite("guest-key").await;
         let guest_dir = tempfile::tempdir().unwrap();
         let guest = installation_in(&guest_dir);
         let control = bae_library::JoinControl::new();

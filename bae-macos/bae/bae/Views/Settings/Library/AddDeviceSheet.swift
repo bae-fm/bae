@@ -1,75 +1,169 @@
 import BaeKit
 import SwiftUI
+import os.log
 
-/// Adds another of this person's devices: the QR code the new device scans,
-/// and the person's restore code to type there instead. `result` is nil while
-/// the presenter generates them. While it shows the code, it runs the watch
-/// that came with it, and once a new device joins it says so in place of the
-/// code.
+private let logger = Logger.bae("AddDeviceSheet")
+
+/// Adds another of this person's devices: the QR code the new device scans
+/// and the code to type there instead. `result` is nil while the presenter
+/// starts the pairing. While it shows the code, it follows the pairing's
+/// status: a new device's request replaces the code with the number to
+/// compare, and once the device is in the sheet says so. Closing it ends the
+/// pairing.
 struct AddDeviceSheet: View {
     @Environment(MembershipStore.self)
     private var store
+    @Environment(Sync.self)
+    private var sync
     @Binding
     var result: Result<BridgeAddDevice, Error>?
     let onDismiss: () -> Void
+    @State
+    private var task: Task<Void, Never>?
+    @State
+    private var error: DisplayError?
 
     var body: some View {
         AddDeviceSheetContent(
             result: result,
-            addedDevice: store.addedDevice,
+            face: store.addDeviceStatus?.face ?? .code,
+            busy: task != nil,
+            error: error,
+            onApprove: { decide(sync.addDevice.approve) },
+            onDecline: { decide(sync.addDevice.decline) },
             onDismiss: onDismiss
         )
-        .task(id: watch.map(ObjectIdentifier.init)) {
-            guard let watch else { return }
-            await store.watchForAddedDevice(watch)
+        .task(id: adding?.id) {
+            guard let adding else { return }
+            await store.followAddDevice(adding.id)
+        }
+        .onChange(of: store.addDeviceStatus?.face) { _, face in
+            if face == .declined { onDismiss() }
+        }
+        .onDisappear { end() }
+    }
+
+    /// The pairing the code shown belongs to.
+    private var adding: BridgeAddDevice? {
+        guard case .success(let adding) = result else { return nil }
+        return adding
+    }
+
+    /// Approve or decline the request the status shows.
+    private func decide(
+        _ decision:
+            @escaping @Sendable (BridgeAddDeviceRequest) async throws -> Void
+    ) {
+        guard case .waiting(let request?) = store.addDeviceStatus else {
+            return
+        }
+        error = nil
+        task = Task {
+            defer { task = nil }
+            do { try await decision(request) }
+            catch {
+                logger.error(
+                    "Add device decision failed: \(String(reflecting: error))"
+                )
+                self.error = DisplayError(error)
+            }
         }
     }
 
-    /// The watch for the device that joins from the code shown.
-    private var watch: BridgeAddedDeviceWatch? {
-        guard case .success(let adding) = result else { return nil }
-        return adding.watch
+    /// The sheet closed: end the pairing, whatever its status.
+    private func end() {
+        guard let adding else { return }
+        let end = sync.addDevice.end
+        Task {
+            do { try await end(adding.id) }
+            catch {
+                logger.error(
+                    "Ending the pairing failed: \(String(reflecting: error))"
+                )
+            }
+        }
     }
 }
 
-/// The sheet's face: the device that joined, `addedDevice`, once one has;
-/// until then the code to scan or type, a spinner while it generates, or why
-/// it couldn't.
+/// The sheet's face, by where the pairing is: a new device's request, to
+/// add when its screen shows the number; the name of the device that was
+/// added; or until then the code to scan or type, a spinner while it starts,
+/// or why it couldn't.
 struct AddDeviceSheetContent: View {
     let result: Result<BridgeAddDevice, Error>?
-    let addedDevice: BridgeActiveDevice?
+    let face: AddDeviceFace
+    let busy: Bool
+    let error: DisplayError?
+    let onApprove: () -> Void
+    let onDecline: () -> Void
     let onDismiss: () -> Void
 
     var body: some View {
-        MacSheet("Add a device", width: 440) {
-            content
-        } footer: {
-            MacSheetFooter {
-                Button("Done", action: onDismiss)
-                    .buttonStyle(PrimaryButtonStyle())
-                    .keyboardShortcut(.defaultAction)
+        if case .request(let deviceName, let confirmation) = face {
+            MacSheet(
+                "\(deviceName) wants to join",
+                message: "Add it if its screen shows this code:",
+                width: 440
+            ) {
+                VStack(alignment: .leading, spacing: ThemeSpace.group) {
+                    MacMatchCode(code: confirmation, dialog: true)
+                    if let error {
+                        Notice(error: error)
+                    }
+                }
+            } footer: {
+                MacSheetFooter {
+                    Button("Decline", action: onDecline)
+                        .disabled(busy)
+                    Button("Add", action: onApprove)
+                        .buttonStyle(PrimaryButtonStyle())
+                        .keyboardShortcut(.defaultAction)
+                        .disabled(busy)
+                }
+            }
+        }
+        else {
+            MacSheet("Add a device", width: 440) {
+                content
+            } footer: {
+                MacSheetFooter {
+                    Button("Done", action: onDismiss)
+                        .buttonStyle(PrimaryButtonStyle())
+                        .keyboardShortcut(.defaultAction)
+                }
             }
         }
     }
 
     @ViewBuilder
     private var content: some View {
-        if let device = addedDevice {
-            Text("\(device.name) added")
+        switch face {
+        case .added(let name):
+            Text("\(name) added")
                 .themeText(.body)
-        }
-        else {
+        case .adding(let name):
+            MacSpinner("Adding \(name)…")
+        case .expired:
+            Text(
+                "This code has ended. Close this and choose Add device again for a new one."
+            )
+            .themeText(.body)
+        case .refused:
+            Text(
+                "The new device’s request was refused, so it was not added. Try again with a new code."
+            )
+            .themeText(.body)
+        case .code, .request, .declined:
             switch result {
             case nil:
                 MacSpinner("Making a code for your new device…")
             case .success(let adding):
-                // Copy and Share hand out the restore code; the QR code also
-                // holds this device's S3 key, which a device that scans it
-                // then doesn't ask for.
+                // Copy and Share hand out the code to type; the QR code holds
+                // the key on S3, so a device that scans it asks for none.
                 MacScanCode(
                     instruction: "Scan or enter the code on the new device.",
-                    qr: adding.share.qrText,
-                    code: adding.share.code
+                    qr: adding.qrText,
+                    code: adding.code
                 )
             case .failure(let error):
                 // The presenter only records failures that have a line.

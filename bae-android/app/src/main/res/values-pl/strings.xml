@@ -502,4 +502,13 @@
     <string name="invite_scan_instruction">Zeskanuj lub wpisz kod na ich urządzeniu.</string>
     <string name="invite_cancel_message">To zaproszenie nie będzie działać dla: %1$s.</string>
     <string name="qr_code">Kod QR</string>
+    <string name="add_device_request_match">Dodaj je, jeśli na jego ekranie widać ten kod:</string>
+    <string name="add_device_adding">Dodawanie urządzenia %1$s…</string>
+    <string name="pair_check_title">Sprawdź, czy na drugim urządzeniu widać ten kod</string>
+    <string name="pair_check_text">Następnie dodaj to urządzenie na tamtym.</string>
+    <string name="pair_waiting">Czekanie na drugie urządzenie…</string>
+    <string name="pair_ended_title">Ten kod wygasł</string>
+    <string name="pair_ended_text">Otwórz Dodaj urządzenie na drugim urządzeniu, aby dostać nowy.</string>
+    <string name="add_device_expired">Ten kod wygasł. Zamknij to okno i ponownie wybierz Dodaj urządzenie, aby dostać nowy.</string>
+    <string name="add_device_refused">Prośba nowego urządzenia została odrzucona, więc nie zostało dodane. Spróbuj ponownie z nowym kodem.</string>
 </resources>

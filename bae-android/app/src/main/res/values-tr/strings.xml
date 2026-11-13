@@ -484,4 +484,13 @@
     <string name="invite_scan_instruction">Kodu onların cihazında tarayın veya girin.</string>
     <string name="invite_cancel_message">%1$s bu daveti kullanamayacak.</string>
     <string name="qr_code">QR kodu</string>
+    <string name="add_device_request_match">Ekranında bu kod görünüyorsa ekleyin:</string>
+    <string name="add_device_adding">%1$s ekleniyor…</string>
+    <string name="pair_check_title">Diğer cihazınızda bu kodun göründüğünden emin olun</string>
+    <string name="pair_check_text">Ardından bu cihazı oradan ekleyin.</string>
+    <string name="pair_waiting">Diğer cihazınız bekleniyor…</string>
+    <string name="pair_ended_title">Bu kodun süresi doldu</string>
+    <string name="pair_ended_text">Yeni kod için diğer cihazınızda Cihaz ekle’yi açın.</string>
+    <string name="add_device_expired">Bu kodun süresi doldu. Bunu kapatın ve yeni kod için Cihaz ekle’yi yeniden seçin.</string>
+    <string name="add_device_refused">Yeni cihazın isteği reddedildi, bu yüzden eklenmedi. Yeni bir kodla yeniden deneyin.</string>
 </resources>

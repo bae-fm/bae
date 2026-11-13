@@ -1,16 +1,16 @@
 package fm.bae.app.shots
 
+import fm.bae.app.ui.settings.AddDeviceFace
 import fm.bae.app.ui.settings.addDeviceParts
 import fm.bae.app.ui.settings.cutOffRetryParts
-import fm.bae.app.ui.settings.joinRequestParts
 import org.junit.Test
 import uniffi.bae_bridge.BridgeActiveDevice
+import uniffi.bae_bridge.BridgeAddDevice
 import uniffi.bae_bridge.BridgeAdminChangeState
 import uniffi.bae_bridge.BridgeDeviceCutOff
 import uniffi.bae_bridge.BridgeInviteShown
 import uniffi.bae_bridge.BridgeMemberRole
 import uniffi.bae_bridge.BridgeRefusedInvite
-import uniffi.bae_bridge.BridgeRestoreCodeShare
 import uniffi.bae_bridge.BridgeSharingRefusal
 
 /** The shots of the ready android.settings.people*, person*, devices* and add-device* boards: the pages of People and devices. */
@@ -120,7 +120,14 @@ class SettingsPeopleShots : BoardShot() {
     fun androidSettingsAddDevice() =
         shot("android.settings.add-device") {
             InPlaceDialogScene(behind = { DevicesPageScene(ana()) }) {
-                addDeviceParts(share = restoreCodeShare, added = null, error = null, onDismiss = {})
+                addDeviceParts(
+                    adding = addingDevice,
+                    face = AddDeviceFace.Code,
+                    error = null,
+                    onApprove = {},
+                    onDecline = {},
+                    onDismiss = {},
+                )
             }
         }
 
@@ -130,7 +137,14 @@ class SettingsPeopleShots : BoardShot() {
         shot("android.settings.add-device.added") {
             val tablet = BridgeActiveDevice(6uL, "Tablet", isSelf = false, canRemove = true)
             InPlaceDialogScene(behind = { DevicesPageScene(ana(devices = ana().membership.activeDevices + tablet)) }) {
-                addDeviceParts(share = null, added = tablet, error = null, onDismiss = {})
+                addDeviceParts(
+                    adding = null,
+                    face = AddDeviceFace.Added("Tablet"),
+                    error = null,
+                    onApprove = {},
+                    onDecline = {},
+                    onDismiss = {},
+                )
             }
         }
 
@@ -139,13 +153,21 @@ class SettingsPeopleShots : BoardShot() {
     fun androidSettingsAddDeviceRequest() =
         shot("android.settings.add-device.request") {
             InPlaceDialogScene(behind = { DevicesPageScene(ana()) }) {
-                joinRequestParts(name = "Tablet", confirmation = "412 778", onApprove = {}, onDecline = {})
+                addDeviceParts(
+                    adding = null,
+                    face = AddDeviceFace.Request("Tablet", "412 778"),
+                    error = null,
+                    onApprove = {},
+                    onDecline = {},
+                    onDismiss = {},
+                )
             }
         }
 }
 
-private val restoreCodeShare =
-    BridgeRestoreCodeShare(
-        code = "CVR1 ABCD EFGH IJKL MNOP QRST UVWX YZ23 4567 ABCD EFGH IJKL MNOP QRST UVWX YZ23 4567",
-        qrText = "CVR1-ABCDEFGHIJKLMNOPQRSTUVWXYZ234567ABCDEFGHIJKLMNOPQRSTUVWXYZ234567",
+private val addingDevice =
+    BridgeAddDevice(
+        id = "6f1f0ab0-0000-4000-8000-000000000001",
+        code = "CVP1 ABCD EFGH IJKL MNOP QRST UVWX YZ23 4567 ABCD EFGH IJKL MNOP QRST UVWX YZ23 4567",
+        qrText = "CVP1-ABCDEFGHIJKLMNOPQRSTUVWXYZ234567ABCDEFGHIJKLMNOPQRSTUVWXYZ234567",
     )

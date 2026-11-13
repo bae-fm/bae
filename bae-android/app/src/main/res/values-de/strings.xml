@@ -484,4 +484,13 @@
     <string name="invite_scan_instruction">Scanne den Code oder gib ihn auf dem Gerät der Person ein.</string>
     <string name="invite_cancel_message">%1$s kann diese Einladung dann nicht mehr verwenden.</string>
     <string name="qr_code">QR-Code</string>
+    <string name="add_device_request_match">Füge es hinzu, wenn sein Bildschirm diesen Code zeigt:</string>
+    <string name="add_device_adding">%1$s wird hinzugefügt …</string>
+    <string name="pair_check_title">Prüfe, ob dein anderes Gerät diesen Code zeigt</string>
+    <string name="pair_check_text">Füge dieses Gerät dann dort hinzu.</string>
+    <string name="pair_waiting">Warte auf dein anderes Gerät …</string>
+    <string name="pair_ended_title">Dieser Code ist abgelaufen</string>
+    <string name="pair_ended_text">Öffne auf deinem anderen Gerät „Gerät hinzufügen“, um einen neuen zu erhalten.</string>
+    <string name="add_device_expired">Dieser Code ist abgelaufen. Schließe dieses Fenster und wähle erneut „Gerät hinzufügen“, um einen neuen zu erhalten.</string>
+    <string name="add_device_refused">Die Anfrage des neuen Geräts wurde abgelehnt, daher wurde es nicht hinzugefügt. Versuche es mit einem neuen Code erneut.</string>
 </resources>

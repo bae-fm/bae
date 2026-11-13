@@ -6,23 +6,19 @@ import Testing
 @testable import bae
 
 /// `AddDeviceSheet` takes its `result` as a `@Binding` because the presenter
-/// generates the code off-main *after* the sheet is already up: the
+/// starts the pairing off-main *after* the sheet is already up: the
 /// sheet must re-render when that write lands rather than show the loading
-/// snapshot it opened with. Once it shows the code it runs the watch that
-/// came with it, and says so in place of the code once a new device joins.
+/// snapshot it opened with. Once it shows the code it follows the pairing's
+/// status, and says so in place of the code once a new device is added.
 /// These drive the real sheet and check its view tree when either lands:
-/// the loading spinner gives way to the code, which gives way to the joined
+/// the loading spinner gives way to the code, which gives way to the added
 /// device. What each says is the add-device shots'.
 @Suite("AddDeviceSheet binding")
 struct AddDeviceSheetTests {
     private static let adding = BridgeAddDevice(
-        share: BridgeRestoreCodeShare(
-            code: "PAIR-1234-5678",
-            qrText: "PAIR-1234-5678",
-        ),
-        watch: BridgeAddedDeviceWatch(
-            noHandle: BridgeAddedDeviceWatch.NoHandle()
-        )
+        id: "6f1f0ab0-0000-4000-8000-000000000001",
+        code: "PAIR 1234 5678",
+        qrText: "PAIR-1234-5678"
     )
 
     @MainActor
@@ -32,7 +28,8 @@ struct AddDeviceSheetTests {
         let size = NSSize(width: 400, height: 480)
         try await SnapshotTestSupport.withHostedWindow(
             AddDeviceHarness(holder: holder)
-                .environment(MembershipStore(handle: AddedDeviceHandle())),
+                .environment(MembershipStore(handle: PairingHandle()))
+                .environment(Sync()),
             size: size
         ) { _, host in
             // Loading state (binding is nil).
@@ -49,37 +46,44 @@ struct AddDeviceSheetTests {
     }
 
     @MainActor
-    @Test("the sheet replaces the code once the person's new device joins")
-    func sheetSaysWhenTheNewDeviceJoins() async throws {
+    @Test("the sheet replaces the code once the person's new device is added")
+    func sheetSaysWhenTheNewDeviceIsAdded() async throws {
         let holder = AddDeviceResultHolder()
         holder.result = .success(Self.adding)
-        let handle = AddedDeviceHandle()
+        let handle = PairingHandle()
         let store = MembershipStore(handle: handle)
         let size = NSSize(width: 400, height: 480)
         try await SnapshotTestSupport.withHostedWindow(
-            AddDeviceHarness(holder: holder).environment(store),
+            AddDeviceHarness(holder: holder).environment(store)
+                .environment(Sync()),
             size: size
         ) { _, host in
-            try await Wait.until { handle.devices != nil }
-            // The sheet runs the watch that came with its code.
-            #expect(handle.watch === Self.adding.watch)
-            let devices = try #require(handle.devices)
-            // The live read's first value: no device has joined yet.
-            devices.deliver(nil)
+            try await Wait.until { handle.statuses != nil }
+            // The sheet follows the pairing its code came with.
+            #expect(handle.pairing == Self.adding.id)
+            let statuses = try #require(handle.statuses)
+            statuses.deliver(.waiting(request: nil))
             try await SnapshotTestSupport.settle(host)
+            #expect(store.addDeviceStatus?.face == .code)
 
-            devices.deliver(
-                BridgeActiveDevice(
-                    id: 7,
-                    name: "New Phone",
-                    isSelf: false,
-                    canRemove: true
-                )
-            )
-            try await Wait.until { store.addedDevice?.name == "New Phone" }
+            statuses.deliver(.ended(end: .added(name: "New Phone")))
+            try await Wait.until {
+                store.addDeviceStatus?.face == .added(name: "New Phone")
+            }
         }
-        // Closing the sheet ends the watch.
+        // Closing the sheet ends the subscription.
         try await Wait.until { handle.cancelled }
+    }
+
+    @Test("a declined pairing closes the sheet; the others say what happened")
+    func faceOfAnEndWithoutDevice() {
+        #expect(BridgeAddDeviceStatus.ended(end: .declined).face == .declined)
+        #expect(BridgeAddDeviceStatus.ended(end: .expired).face == .expired)
+        #expect(BridgeAddDeviceStatus.ended(end: .refused).face == .refused)
+        #expect(
+            BridgeAddDeviceStatus.approved(deviceName: "Tablet").face
+                == .adding(name: "Tablet")
+        )
     }
 
     /// How many views of `kind` the hosted sheet holds.
@@ -109,13 +113,13 @@ private struct AddDeviceHarness: View {
     }
 }
 
-/// A handle-less `AppHandle` that keeps the added-device watch and the
+/// A handle-less `AppHandle` that keeps the pairing followed and the
 /// subscription it handed out, so a test delivers what the live read would,
-/// and says when the watch ends.
-private final class AddedDeviceHandle: AppHandle, @unchecked Sendable {
-    private(set) var watch: BridgeAddedDeviceWatch?
-    private(set) var devices: AddedDevices?
-    var cancelled: Bool { devices?.cancelled ?? false }
+/// and says when the subscription ends.
+private final class PairingHandle: AppHandle, @unchecked Sendable {
+    private(set) var pairing: String?
+    private(set) var statuses: PairingStatuses?
+    var cancelled: Bool { statuses?.cancelled ?? false }
 
     init() {
         super.init(noHandle: AppHandle.NoHandle())
@@ -125,56 +129,58 @@ private final class AddedDeviceHandle: AppHandle, @unchecked Sendable {
         preconditionFailure("a fake handle has no core object")
     }
 
-    override func subscribeAddedDevice(
-        watch: BridgeAddedDeviceWatch
-    ) -> AddedDeviceSubscription {
-        self.watch = watch
-        let devices = AddedDevices()
-        self.devices = devices
+    override func followAddDevice(
+        pairing: String
+    ) throws -> AddDeviceStatusSubscription {
+        self.pairing = pairing
+        let statuses = PairingStatuses()
+        self.statuses = statuses
         Wait.happened()
-        return devices
+        return statuses
     }
 }
 
-/// The added device a test hands the sheet, one value per pull, which says
-/// whether it was cancelled.
-private final class AddedDevices: AddedDeviceSubscription, @unchecked Sendable {
+/// The pairing statuses a test hands the sheet, one value per pull, which
+/// says whether it was cancelled.
+private final class PairingStatuses: AddDeviceStatusSubscription,
+    @unchecked Sendable
+{
     private let lock = NSLock()
-    private var waiting: [BridgeActiveDevice?] = []
-    private var puller: CheckedContinuation<BridgeActiveDevice?, any Error>?
+    private var waiting: [BridgeAddDeviceStatus] = []
+    private var puller: CheckedContinuation<BridgeAddDeviceStatus, any Error>?
     private var wasCancelled = false
 
     var cancelled: Bool { lock.withLock { wasCancelled } }
 
     init() {
-        super.init(noHandle: AddedDeviceSubscription.NoHandle())
+        super.init(noHandle: AddDeviceStatusSubscription.NoHandle())
     }
 
     required init(unsafeFromHandle handle: UInt64) {
         preconditionFailure("a fake subscription has no core object")
     }
 
-    func deliver(_ device: BridgeActiveDevice?) {
+    func deliver(_ status: BridgeAddDeviceStatus) {
         let puller = lock.withLock {
             let puller = self.puller
             self.puller = nil
-            if puller == nil { waiting.append(device) }
+            if puller == nil { waiting.append(status) }
             return puller
         }
-        puller?.resume(returning: device)
+        puller?.resume(returning: status)
     }
 
-    override func next() async throws -> BridgeActiveDevice? {
+    override func next() async throws -> BridgeAddDeviceStatus {
         try await withCheckedThrowingContinuation { continuation in
-            let ready: BridgeActiveDevice?? = lock.withLock {
+            let ready: BridgeAddDeviceStatus? = lock.withLock {
                 if waiting.isEmpty {
                     puller = continuation
-                    return .none
+                    return nil
                 }
-                return .some(waiting.removeFirst())
+                return waiting.removeFirst()
             }
-            if case .some(let device) = ready {
-                continuation.resume(returning: device)
+            if let status = ready {
+                continuation.resume(returning: status)
             }
         }
     }

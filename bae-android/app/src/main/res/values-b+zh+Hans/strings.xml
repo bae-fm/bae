@@ -475,4 +475,13 @@
     <string name="invite_scan_instruction">在对方的设备上扫描或输入此代码。</string>
     <string name="invite_cancel_message">%1$s 将无法使用此邀请。</string>
     <string name="qr_code">二维码</string>
+    <string name="add_device_request_match">如果它的屏幕上显示此代码，请添加：</string>
+    <string name="add_device_adding">正在添加%1$s…</string>
+    <string name="pair_check_title">请确认你的另一台设备显示的是此代码</string>
+    <string name="pair_check_text">然后在那台设备上添加这台设备。</string>
+    <string name="pair_waiting">正在等待你的另一台设备…</string>
+    <string name="pair_ended_title">此代码已失效</string>
+    <string name="pair_ended_text">请在另一台设备上打开“添加设备”，获取新代码。</string>
+    <string name="add_device_expired">此代码已失效。请关闭此窗口，再次选择“添加设备”以获取新代码。</string>
+    <string name="add_device_refused">新设备的请求被拒绝，因此未添加。请使用新代码重试。</string>
 </resources>

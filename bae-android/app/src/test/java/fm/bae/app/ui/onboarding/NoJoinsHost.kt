@@ -79,6 +79,14 @@ internal open class NoJoinsHost : EditionFakeBridgeHost() {
         control: BridgeJoinControl,
     ): BridgeBootstrapResult = unfaked("joinWithInvite")
 
+    override suspend fun joinWithPairing(
+        code: String,
+        credentials: BridgeS3Credentials?,
+        deviceName: String,
+        setup: BridgeLibrarySetup,
+        control: BridgeJoinControl,
+    ): BridgeBootstrapResult = unfaked("joinWithPairing")
+
     override fun prepareDeviceReset(
         libraryId: String,
         deviceName: String,

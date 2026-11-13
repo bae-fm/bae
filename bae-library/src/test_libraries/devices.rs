@@ -131,6 +131,38 @@ where
     });
 }
 
+impl DeviceLibrary {
+    /// Another of the person's devices, paired with `code`, a pairing code
+    /// the first device showed, as the app pairs one, and syncing. It
+    /// returns once the first device approved the request; `None` when the
+    /// pairing ended first.
+    pub async fn pair(
+        &self,
+        code: &str,
+        credentials: Option<coven::S3Credentials>,
+        name: &str,
+    ) -> Option<TestDevice> {
+        let dir = TempDir::new().unwrap();
+        let app = AppDir::at(dir.path()).unwrap();
+        let installation = coven::Coven::in_memory(app.coven_app_dir());
+        let storage = Arc::new(self.storage.for_device());
+        let code = crate::sync::restore_code::entered(code);
+        let handle = stores::pair_store(
+            crate::SCHEMA,
+            &installation,
+            &self.sources,
+            storage.clone(),
+            &code,
+            credentials,
+            name,
+        )
+        .await?;
+        let device = device(dir, app, handle, installation, storage, self.sources.clone()).await;
+        device.store().start_sync().await.unwrap();
+        Some(device)
+    }
+}
+
 impl TwoDevices {
     pub fn a(&self) -> &TestDevice {
         &self.library.first

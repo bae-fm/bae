@@ -8,7 +8,7 @@ fn an_invite_carries_its_key_id_as_its_label() {
         invite: coven::Invite {
             id: coven::InviteId("00000000-0000-4000-8000-000000000001".parse().unwrap()),
             member: coven::MemberId("00000000-0000-4000-8000-000000000002".parse().unwrap()),
-            kind: coven::InviteKind::NewPerson,
+            admits: coven::InviteAdmits::NewPerson,
             access: coven::MemberAccess::S3AccessKey { access_key_id: "dan-key".into() },
             expires_at: std::time::UNIX_EPOCH,
             operation: coven::OperationId(1),

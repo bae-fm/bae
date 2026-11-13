@@ -78,13 +78,15 @@ pub(crate) fn member_row(
         row.get::<_, Option<String>>(first + 5)?,
         row.get::<_, Option<String>>(first + 6)?,
     ) {
-        (Some(account), None) => coven::MemberAccess::ProviderAccount(account),
-        (None, Some(access_key_id)) => coven::MemberAccess::S3AccessKey { access_key_id },
-        _ => {
+        (Some(account), None) => Some(coven::MemberAccess::ProviderAccount(account)),
+        (None, Some(access_key_id)) => Some(coven::MemberAccess::S3AccessKey { access_key_id }),
+        // The store's creator, until Set up storage records theirs (coven §10.3).
+        (None, None) => None,
+        (Some(_), Some(_)) => {
             return Err(column_conversion_error(
                 row,
                 first + 5,
-                "a member's access holds both or neither of an account and an S3 key id",
+                "a member's access holds both an account and an S3 key id",
             ))
         }
     };

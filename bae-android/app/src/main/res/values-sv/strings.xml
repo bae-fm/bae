@@ -482,4 +482,13 @@
     <string name="invite_scan_instruction">Skanna eller ange koden på deras enhet.</string>
     <string name="invite_cancel_message">%1$s kan inte använda den här inbjudan.</string>
     <string name="qr_code">QR-kod</string>
+    <string name="add_device_request_match">Lägg till den om dess skärm visar den här koden:</string>
+    <string name="add_device_adding">Lägger till %1$s…</string>
+    <string name="pair_check_title">Kontrollera att din andra enhet visar den här koden</string>
+    <string name="pair_check_text">Lägg sedan till den här enheten därifrån.</string>
+    <string name="pair_waiting">Väntar på din andra enhet…</string>
+    <string name="pair_ended_title">Den här koden har gått ut</string>
+    <string name="pair_ended_text">Öppna Lägg till enhet på din andra enhet för att få en ny.</string>
+    <string name="add_device_expired">Den här koden har gått ut. Stäng detta och välj Lägg till enhet igen för att få en ny.</string>
+    <string name="add_device_refused">Den nya enhetens begäran avvisades, så den lades inte till. Försök igen med en ny kod.</string>
 </resources>

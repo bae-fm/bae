@@ -2914,7 +2914,7 @@ editable by every member.
 | Operation | Who | What bae does |
 |---|---|---|
 | Add a person | an admin, by invite ([coven §13.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#132-adding-a-person-invites)) | the new person's device writes their `people` row as it joins |
-| Add a device | the person, from the new device, with their restore code ([coven §13.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#131-a-persons-new-device-the-restore-code)) | nothing beyond coven |
+| Add a device | the person, by pairing: one of their devices shows a pairing code, the new device sends a request with it, and the person approves it after checking a number both show ([coven §13.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#132-adding-a-person-invites)) | nothing beyond coven |
 | Remove a device | the person, for their own; an admin, for anyone's | nothing beyond coven; the person tells this device when they have cut a lost device off at the provider (below) |
 | Remove a person | an admin | their circle goes, with its rows |
 | Rename the library | an admin | every device shows the new name (§5.1) |
@@ -3331,35 +3331,52 @@ Google Play services has no Block Store and keeps no saved codes, so its first
 screen lists none.
 
 **The S3 key.** On S3 a restore code doesn't reach the bucket alone: the device
-also needs Carol's S3 access key. The QR code one of her own devices shows is
-her restore code with that key inside it, so scanning it is enough
+also needs Carol's S3 access key. No restore code holds it, whether typed or
+scanned: the new device asks for the key
 ([coven §13.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#131-a-persons-new-device-the-restore-code)).
-The code to type holds no key, and asks for it separately.
 
-**Where the code shows.** The code is coven's *restore code*, which the apps and
-this spec name it.
-Carol adds a device from **Add device…** (on Android, **Add…**) on Your devices, under People and devices,
-shown only for a library with storage. Its sheet tells her to scan or enter the
+**Adding a device by pairing.** Carol adds a device from **Add device…** (on Android, **Add…**) on Your devices, under People and devices,
+shown only for a library with storage. Pressing it starts a pairing, coven's *pairing code*, which lasts 30
+minutes on her device's clock. Its sheet tells her to scan or enter the
 code on the new device, over the QR code, with **Copy code** and **Share**
 (**Share…** on a Mac), which hand out the code to type; the code's text is not
-shown beside the QR code. On S3 the QR code carries her key and the code to
-type does not, so the new device asks for the key only when she types the code.
-Every QR code bae shows (this one, an invite's, the printed restore code) is
-drawn at the size its module count needs at the measured minimum module size
-(3.43 points on a Mac, the same number in dp on Android), so a phone camera can
-read it: a code that carries a key is larger than a short pairing code, and no
-screen picks a size of its own. While it shows the code it watches
-her devices, as People's list of them does: once a device of hers joins that
-wasn't among them when the sheet made the code, the sheet says that device's
-name was added in place of the code, and **Done** closes it. Her devices are
-read before the code is made, so a device that restores from it is never
-counted among them, whenever this device learns that it joined. While the
-sheet watches, Carol's device syncs every 5 seconds instead of every 30, so it
-says the new device was added within seconds of it joining. A quiet sync is two
-requests to the storage, about 24 a minute, only while the sheet is open
+shown beside the QR code. On S3 the QR code carries the key her device
+connects with and the code to type does not, so the new device asks for the key
+only when she types the code. Every QR code bae shows (this one, an invite's,
+the printed restore code) is drawn at the size its module count needs at the
+measured minimum module size (3.43 points on a Mac, the same number in dp on
+Android), so a phone camera can read it, and no screen picks a size of its own.
+
+The new device's welcome takes the pairing code like any other code, scanned or
+typed, and sends a request that carries the name the device gave itself. Its
+screen says to check that the other device shows the number it shows, then to
+add it there, over that six-digit number with "Waiting for your other device…"
+under it; it checks every 5 seconds while that screen shows, has no countdown
+and no way to check now, and, since its request may be sent, no Cancel. Leaving
+the screen ends the pairing and removes the new device's copy. When the
+pairing ends without adding the device, whether Carol declined, the 30 minutes
+passed or her sheet closed, a step says "This code has ended" and to open Add
+device on her other device for a new one, with **OK** back to the first screen;
+a code already ended when it is entered ends the same way, before any sign-in.
+
+While her sheet shows the code it follows the pairing. A request replaces the
+code with the sheet "<name> wants to join" under "Add it if its screen shows
+this code:", over the number the new device shows. **Decline** and **Add** (on
+Android, **Decline** in the text colour and **Add** the one coloured button)
+answer it. Once she adds it, the sheet says "Adding <name>…" until the device
+is in, then says that device's name was added in place of the code, and **Done**
+closes it. A pairing she declines closes the sheet. One that expires says "This code has
+ended" and to choose Add device again for a new one, and one coven refuses
+because the request failed a check says the request was refused and the device
+was not added, each in the sheet with **Done**. Closing the sheet, however it
+closes, ends the pairing. While the sheet follows it, Carol's
+device syncs every 5 seconds instead of every 30, so the request reaches her
+within seconds of being sent. A quiet sync is two requests to the storage,
+about 24 a minute, only while the sheet is open
 ([coven §6.7](https://github.com/bae-fm/coven/blob/main/spec/coven.md#67-waiting-and-retrying)).
-Settings keeps
-the code on the Sync page alone, in a **Restore code**
+
+The restore code is shown on the Sync page alone: Settings keeps
+the code there, in a **Restore code**
 section, for the day she loses every device; the Library page has no row for
 it. It is
 made when Settings opens, one local read of her keys that the section names

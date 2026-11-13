@@ -358,9 +358,9 @@ pub enum BridgeBootstrapResult {
         error: BridgeError,
     },
     SavedCodeRemoved,
-    /// The invite ended without letting this device in: declined or
-    /// cancelled, expired, or the device that made it gone for good, which
-    /// the joining device can't tell apart.
+    /// The invite or pairing ended without letting this device in: declined
+    /// or cancelled, expired, or the device that made it gone for good,
+    /// which the joining device can't tell apart.
     Declined,
     /// A cancel came after the join's request may have been sent. The join
     /// stays under way; `unfinished_joins` lists it to resume.
@@ -393,6 +393,18 @@ impl BridgeBootstrapResult {
                     ),
                 })
             }
+            Ok(None) => Ok(Self::Declined),
+            Err(error) => Self::failure(error, host),
+        }
+    }
+    /// A pairing's outcome: the library, or the pairing ended without
+    /// letting this device in.
+    pub(crate) fn paired(
+        result: Result<Option<coven::CovenHandle>, bae_library::RestoreFromCodeError>,
+        host: Arc<crate::BridgeHost>,
+    ) -> Result<Self, BridgeError> {
+        match result {
+            Ok(Some(handle)) => Ok(Self::opened(handle, host)),
             Ok(None) => Ok(Self::Declined),
             Err(error) => Self::failure(error, host),
         }

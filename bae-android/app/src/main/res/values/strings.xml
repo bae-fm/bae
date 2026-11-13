@@ -544,4 +544,13 @@
     <string name="invite_scan_instruction">Scan or enter the code on their device.</string>
     <string name="invite_cancel_message">%1$s will not be able to use this invite.</string>
     <string name="qr_code">QR code</string>
+    <string name="add_device_request_match">Add it if its screen shows this code:</string>
+    <string name="add_device_adding">Adding %1$s…</string>
+    <string name="pair_check_title">Check that your other device shows this code</string>
+    <string name="pair_check_text">Then add this device there.</string>
+    <string name="pair_waiting">Waiting for your other device…</string>
+    <string name="pair_ended_title">This code has ended</string>
+    <string name="pair_ended_text">Open Add device on your other device for a new one.</string>
+    <string name="add_device_expired">This code has ended. Close this and choose Add device again for a new one.</string>
+    <string name="add_device_refused">The new device’s request was refused, so it was not added. Try again with a new code.</string>
 </resources>

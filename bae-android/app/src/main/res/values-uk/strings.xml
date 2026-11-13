@@ -502,4 +502,13 @@
     <string name="invite_scan_instruction">Скануйте або введіть код на їхньому пристрої.</string>
     <string name="invite_cancel_message">%1$s не зможе скористатися цим запрошенням.</string>
     <string name="qr_code">QR-код</string>
+    <string name="add_device_request_match">Додайте його, якщо на його екрані показано цей код:</string>
+    <string name="add_device_adding">Додавання пристрою %1$s…</string>
+    <string name="pair_check_title">Переконайтеся, що на вашому іншому пристрої показано цей код</string>
+    <string name="pair_check_text">Потім додайте цей пристрій звідти.</string>
+    <string name="pair_waiting">Очікування вашого іншого пристрою…</string>
+    <string name="pair_ended_title">Термін дії цього коду минув</string>
+    <string name="pair_ended_text">Щоб отримати новий, відкрийте «Додати пристрій» на іншому пристрої.</string>
+    <string name="add_device_expired">Термін дії цього коду минув. Закрийте це вікно й знову виберіть «Додати пристрій», щоб отримати новий.</string>
+    <string name="add_device_refused">Запит нового пристрою відхилено, тож його не додано. Спробуйте ще раз із новим кодом.</string>
 </resources>

@@ -482,3 +482,14 @@ fn a_database_failure_holding_a_bug_shows_as_one() {
         UiErrorCategory::DatabaseDamaged
     );
 }
+
+/// A join signed in with another account than the one its invite shared the
+/// folder with is the person's to fix by signing in with the invited one.
+#[test]
+fn a_join_signed_in_as_the_wrong_account_asks_for_credentials() {
+    let wrong = coven::BootstrapError::WrongAccount {
+        invited: "dan@example.com".into(),
+        signed_in: "ana@example.com".into(),
+    };
+    assert_eq!(bootstrap_category(&wrong), UiErrorCategory::Credentials);
+}

@@ -42,24 +42,22 @@ public final class MembershipStore {
     public private(set) var adminChanges: [BridgeAdminChange] = []
     /// The last failed read; cleared by the next successful one.
     public private(set) var error: DisplayError?
-    /// This person's device that `watchForAddedDevice` found, nil until one
-    /// joins.
-    public private(set) var addedDevice: BridgeActiveDevice?
+    /// Where the pairing `followAddDevice` follows is, nil until it reports.
+    public private(set) var addDeviceStatus: BridgeAddDeviceStatus?
 
     /// Starts the membership subscription, returning what keeps it running.
     private let subscribeMembers: @MainActor (MembershipStore) -> AnyObject
     /// Starts the profile, requested profile, admin change and invite
     /// subscriptions a screen shows, returning what keeps each running.
     private let subscribeShown: @MainActor (MembershipStore) -> [AnyObject]
-    /// Starts the pull of this person's device that a watch finds, handing
-    /// each value to the closure; the subscription runs while what it
-    /// returns is held.
-    private let subscribeAddedDevice:
+    /// Starts the pull of a pairing's status, handing each value to the
+    /// closure; the subscription runs while what it returns is held.
+    private let followAddDeviceStatus:
         @MainActor (
-            BridgeAddedDeviceWatch,
-            @escaping @MainActor (BridgeActiveDevice?) -> Void,
+            String,
+            @escaping @MainActor (BridgeAddDeviceStatus) -> Void,
             @escaping @MainActor (any Error) -> Void
-        ) -> AnyObject
+        ) throws -> AnyObject
     /// Asks this device to sync every few seconds, returning what ends the
     /// request.
     private let holdFrequentSync: @MainActor () -> () -> Void
@@ -118,9 +116,9 @@ public final class MembershipStore {
                 async let own = handle.ownPerson()
                 return PeopleRead(people: try await people, own: try await own)
             },
-            subscribeAddedDevice: { watch, apply, fail in
+            followAddDeviceStatus: { pairing, apply, fail in
                 ScreenSubscription(
-                    handle.subscribeAddedDevice(watch: watch),
+                    try handle.followAddDevice(pairing: pairing),
                     onValue: apply,
                     onError: fail
                 )
@@ -136,25 +134,25 @@ public final class MembershipStore {
         subscribeMembers: @escaping @MainActor (MembershipStore) -> AnyObject,
         subscribeShown: @escaping @MainActor (MembershipStore) -> [AnyObject],
         readPeople: @escaping @Sendable () async throws -> PeopleRead,
-        subscribeAddedDevice:
+        followAddDeviceStatus:
             @escaping @MainActor (
-                BridgeAddedDeviceWatch,
-                @escaping @MainActor (BridgeActiveDevice?) -> Void,
+                String,
+                @escaping @MainActor (BridgeAddDeviceStatus) -> Void,
                 @escaping @MainActor (any Error) -> Void
-            ) -> AnyObject,
+            ) throws -> AnyObject,
         holdFrequentSync: @escaping @MainActor () -> () -> Void
     ) {
         self.holdFrequentSync = holdFrequentSync
         self.subscribeMembers = subscribeMembers
         self.subscribeShown = subscribeShown
         readPeopleOperation = readPeople
-        self.subscribeAddedDevice = subscribeAddedDevice
+        self.followAddDeviceStatus = followAddDeviceStatus
     }
 
     #if DEBUG
         /// A store showing `invites` and `refusedInvites` from the start and `people` once its
-        /// read of them answers, with no subscriptions; watching for an added
-        /// device finds `addedDevice`.
+        /// read of them answers, with no subscriptions; following a pairing
+        /// finds `addDeviceStatus`.
         public static func stub(
             people: [BridgePerson],
             selfIsAdmin: Bool,
@@ -162,7 +160,7 @@ public final class MembershipStore {
             refusedInvites: [BridgeRefusedInvite] = [],
             requestedProfile: BridgeRequestedProfile? = nil,
             adminChanges: [BridgeAdminChange] = [],
-            addedDevice: BridgeActiveDevice? = nil
+            addDeviceStatus: BridgeAddDeviceStatus? = nil
         ) -> MembershipStore {
             let store = MembershipStore(
                 subscribeMembers: { _ in NSObject() },
@@ -175,8 +173,8 @@ public final class MembershipStore {
                         own: people.first { $0.membership.isSelf }
                     )
                 },
-                subscribeAddedDevice: { _, apply, _ in
-                    apply(addedDevice)
+                followAddDeviceStatus: { _, apply, _ in
+                    if let addDeviceStatus { apply(addDeviceStatus) }
                     return NSObject()
                 },
                 holdFrequentSync: { {} }
@@ -225,16 +223,22 @@ public final class MembershipStore {
         if shownSubscriptions != nil { readPeople() }
     }
 
-    /// Watch for this person's device that `watch` finds, until the calling
-    /// task is cancelled: Add Device's sheet runs it while it shows the code
-    /// `watch` came with.
-    public func watchForAddedDevice(_ watch: BridgeAddedDeviceWatch) async {
-        addedDevice = nil
-        let pulls = subscribeAddedDevice(
-            watch,
-            { [weak self] device in self?.addedDevice = device },
-            { [weak self] error in self?.fail(error) }
-        )
+    /// Follow the pairing `pairing` until the calling task is cancelled: Add
+    /// Device's sheet runs it while it shows the pairing's code.
+    public func followAddDevice(_ pairing: String) async {
+        addDeviceStatus = nil
+        let pulls: AnyObject
+        do {
+            pulls = try followAddDeviceStatus(
+                pairing,
+                { [weak self] status in self?.addDeviceStatus = status },
+                { [weak self] error in self?.fail(error) }
+            )
+        }
+        catch {
+            fail(error)
+            return
+        }
         // Held until the task is cancelled, which ends the stream's wait.
         let (cancelled, holding) = AsyncStream.makeStream(of: Never.self)
         for await _ in cancelled {}
@@ -297,6 +301,44 @@ extension BridgeInviteEntry {
         }
         else {
             nil
+        }
+    }
+}
+
+/// What Add Device's sheet shows of a pairing's status, as plain values.
+public enum AddDeviceFace: Equatable, Sendable {
+    /// The code to scan or type: no request has come.
+    case code
+    /// A new device asks to be added, showing `confirmation`.
+    case request(deviceName: String, confirmation: String)
+    /// The approved device is on its way in.
+    case adding(name: String)
+    /// The device is in.
+    case added(name: String)
+    /// The person declined the request: the sheet closes.
+    case declined
+    /// The code's time passed with no device added: the sheet says so.
+    case expired
+    /// coven refused the request, so no device was added: the sheet says so.
+    case refused
+}
+
+extension BridgeAddDeviceStatus {
+    /// What the sheet shows for this status.
+    public var face: AddDeviceFace {
+        switch self {
+        case .waiting(let request?):
+            let info = request.info()
+            return .request(
+                deviceName: info.deviceName,
+                confirmation: info.confirmation
+            )
+        case .waiting(nil): return .code
+        case .approved(let name): return .adding(name: name)
+        case .ended(.added(let name)): return .added(name: name)
+        case .ended(.declined): return .declined
+        case .ended(.expired): return .expired
+        case .ended(.refused): return .refused
         }
     }
 }

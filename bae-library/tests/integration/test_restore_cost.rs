@@ -178,7 +178,7 @@ async fn restore_cost(library: Library) {
         pass(&handle, &clock).await;
     }
     eprintln!("built the library in {:?} (floor {floor})", building.elapsed());
-    let code = handle.restore_code_for_transfer().await.unwrap();
+    let code = handle.restore_code().await.unwrap();
     drop(opened);
     handle.close().await.unwrap();
     let mut faults = coven::Faults::none();
@@ -197,7 +197,10 @@ async fn restore_cost(library: Library) {
         )
         .storage_connector(Arc::new(storage.for_device())),
         &code,
-        None,
+        Some(coven::S3Credentials {
+            access_key_id: "key".into(),
+            secret_access_key: SecretText::new("secret".into()),
+        }),
         "Ana's phone",
         |_| {},
         &cancel,

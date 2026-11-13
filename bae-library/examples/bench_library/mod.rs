@@ -172,6 +172,7 @@ pub(crate) fn run(
         &coven::CovenHandle,
         &coven::ClockRef,
         &coven::IdSourceRef,
+        &coven::S3Credentials,
     ) -> Result<(), String>,
 ) -> Result<(), String> {
     let storage = BenchStorage::from_environment()?;
@@ -183,7 +184,9 @@ pub(crate) fn run(
     let ran = std::panic::catch_unwind(AssertUnwindSafe(|| {
         runtime.block_on(async {
             let library = BenchLibrary::create(&composition, &storage, name, tracks).await?;
-            let ran = body(&library.handle, &composition.clock, &composition.ids).await;
+            let ran =
+                body(&library.handle, &composition.clock, &composition.ids, &storage.credentials)
+                    .await;
             match (ran, library.close().await) {
                 (Ok(()), closed) => closed,
                 (Err(error), Ok(())) => Err(error),

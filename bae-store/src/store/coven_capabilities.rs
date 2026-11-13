@@ -447,10 +447,6 @@ impl Store {
         self.reported(self.inner.handle.restore_code().await)
     }
 
-    pub async fn restore_code_for_transfer(&self) -> Result<String, coven::SyncError> {
-        self.reported(self.inner.handle.restore_code_for_transfer().await)
-    }
-
     /// Invite a new person: the write journals the invite, offline too,
     /// and a pass grants its access and fixes its code (§5.6). Re-inviting
     /// creates a fresh identity; the removed person's rows retain their
@@ -464,13 +460,48 @@ impl Store {
         lifetime: coven::InviteLifetime,
         inviter: String,
     ) -> Result<coven::InviteId, coven::SyncError> {
-        let (invite, _member, _operation) = self.reported(
-            self.inner
-                .handle
-                .create_invite(coven::InviteTarget::NewMember { role }, access, lifetime, inviter)
-                .await,
-        )?;
+        let (invite, _member, _operation) =
+            self.reported(self.inner.handle.create_invite(role, access, lifetime, inviter).await)?;
         Ok(invite)
+    }
+
+    /// Start a pairing to add another of this person's devices: its id and
+    /// the codes to show. On S3 the QR code carries the key this device
+    /// connects with and the shared code carries none (coven §13.2).
+    pub async fn add_device(&self) -> Result<coven::AddDevice, coven::SyncError> {
+        self.reported(self.inner.handle.add_device().await)
+    }
+
+    /// Where the pairing is, live: waiting, with the checked request once
+    /// one has come, approved, or ended; none once it is forgotten.
+    pub fn follow_add_device(
+        &self,
+        pairing: coven::AddDeviceId,
+    ) -> coven::LiveQuery<Option<coven::AddDeviceStatus>, coven::CovenError> {
+        self.inner.handle.follow_add_device(pairing)
+    }
+
+    pub async fn approve_add_device(
+        &self,
+        request: &coven::AddDeviceRequest,
+    ) -> Result<(), coven::SyncError> {
+        self.reported(self.inner.handle.approve_add_device(request).await)
+    }
+
+    pub async fn decline_add_device(
+        &self,
+        request: &coven::AddDeviceRequest,
+    ) -> Result<(), coven::SyncError> {
+        self.reported(self.inner.handle.decline_add_device(request).await)
+    }
+
+    /// The screen showing the pairing's code closed: end the pairing and
+    /// forget it.
+    pub async fn end_add_device(
+        &self,
+        pairing: coven::AddDeviceId,
+    ) -> Result<(), coven::SyncError> {
+        self.reported(self.inner.handle.end_add_device(pairing).await)
     }
 
     pub async fn decline_join_request(

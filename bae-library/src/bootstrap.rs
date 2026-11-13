@@ -287,13 +287,57 @@ pub async fn join_with_invite(
     let joined = Box::pin(coven::join_with_invite(
         loading_builder(builder),
         code,
-        coven::Joiner::NewPerson { name: joiner.into_string() },
+        Some(joiner.into_string()),
         device_name,
         on_status,
         &control.join,
     ))
     .await;
     admitted(joined, diagnostics)
+}
+
+/// Add this device to the person's own library from a pairing code another of
+/// their devices shows. The call returns once that device approves the
+/// request, with the library open. `None` ends it with no library: the
+/// pairing ended first (declined, closed, lost or expired), as the code's end
+/// by `clock` does before any sign-in, since coven sends no first request
+/// after it. `s3_credentials` are the key the person typed, for a code that
+/// carries none; the QR code carries the key. Cancelling through `control`,
+/// dropping the call or failing it removes this device's copy, whether or not
+/// the request was sent: approval binds nothing until the device registers
+/// (§13.2).
+pub async fn join_with_pairing(
+    mut builder: coven::CovenBuilder,
+    code: &str,
+    s3_credentials: Option<coven::S3Credentials>,
+    device_name: &str,
+    clock: coven::ClockRef,
+    on_status: impl Fn(coven::BootstrapStatus),
+    control: &JoinControl,
+    diagnostics: &bae_diagnostics::Diagnostics,
+) -> Result<Option<coven::CovenHandle>, RestoreFromCodeError> {
+    let code = &crate::sync::restore_code::entered(code);
+    let pairing = pairing_info(code)?;
+    if clock.now() >= pairing.expires_at {
+        return Ok(None);
+    }
+    auth::authenticate(
+        &mut builder,
+        pairing.metadata.oauth_access,
+        &control.sign_in.subscribe(),
+        diagnostics,
+    )
+    .await?;
+    Box::pin(coven::join_with_pairing(
+        loading_builder(builder),
+        code,
+        s3_credentials,
+        device_name,
+        on_status,
+        &control.join,
+    ))
+    .await
+    .map_err(|error| reported_restore_error(diagnostics, error))
 }
 
 /// The joins this device has under way, each as its saved invite reads.
@@ -388,6 +432,27 @@ fn invite_info(code: &str) -> Result<coven::InviteInfo, RestoreFromCodeError> {
                 actual: coven::CodeKind::Restore,
             })))
         }
+        Ok(coven::CodeInfo::Pairing(_)) => {
+            Err(restore_error(coven::BootstrapError::Code(coven::CodeError::WrongKind {
+                expected: coven::CodeKind::Invite,
+                actual: coven::CodeKind::Pairing,
+            })))
+        }
+        Err(error) => Err(restore_error(coven::BootstrapError::Code(error))),
+    }
+}
+
+fn pairing_info(code: &str) -> Result<coven::PairingInfo, RestoreFromCodeError> {
+    let wrong = |actual| {
+        restore_error(coven::BootstrapError::Code(coven::CodeError::WrongKind {
+            expected: coven::CodeKind::Pairing,
+            actual,
+        }))
+    };
+    match coven::decode_code_info(code) {
+        Ok(coven::CodeInfo::Pairing(pairing)) => Ok(pairing),
+        Ok(coven::CodeInfo::Restore(_)) => Err(wrong(coven::CodeKind::Restore)),
+        Ok(coven::CodeInfo::Invite(_)) => Err(wrong(coven::CodeKind::Invite)),
         Err(error) => Err(restore_error(coven::BootstrapError::Code(error))),
     }
 }
@@ -479,6 +544,12 @@ pub async fn restore_replacing_device(
             return Err(refused(coven::CodeError::WrongKind {
                 expected: coven::CodeKind::Restore,
                 actual: coven::CodeKind::Invite,
+            }))
+        }
+        coven::CodeInfo::Pairing(_) => {
+            return Err(refused(coven::CodeError::WrongKind {
+                expected: coven::CodeKind::Restore,
+                actual: coven::CodeKind::Pairing,
             }))
         }
     };

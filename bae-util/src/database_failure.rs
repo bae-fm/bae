@@ -44,7 +44,8 @@ fn coven_database_failure(error: &coven::DbError) -> DatabaseFailure {
         // (coven's store errors reach it as bae-store's `Sqlite`); one that
         // stays inside coven's error refuses here.
         E::Sqlite(_) => Refused,
-        E::DamagedDatabase => Damaged,
+        // A synced row with no merge record: the database is damaged.
+        E::DamagedDatabase | E::UnrecordedRow { .. } => Damaged,
         // Coven's own work the call waits on, which ends by itself.
         E::ClaimPending
         | E::ProviderRequestRunning
@@ -115,6 +116,10 @@ fn coven_database_failure(error: &coven::DbError) -> DatabaseFailure {
         | E::ClockOutOfRange
         | E::InputBudgetExceeded { .. }
         | E::TooLarge { .. }
+        | E::TotalTooLarge { .. }
+        | E::NotRegistered
+        | E::MigrationReadsAcross { .. }
+        | E::RebuildHeader { .. }
         | E::ReferenceAudience { .. }
         | E::DeletedCircle(_)
         | E::NotInCircle(_)

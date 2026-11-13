@@ -500,4 +500,13 @@
     <string name="invite_scan_instruction">Naskenujte alebo zadajte kód na ich zariadení.</string>
     <string name="invite_cancel_message">%1$s nebude môcť použiť túto pozvánku.</string>
     <string name="qr_code">QR kód</string>
+    <string name="add_device_request_match">Pridajte ho, ak jeho obrazovka ukazuje tento kód:</string>
+    <string name="add_device_adding">Pridáva sa %1$s…</string>
+    <string name="pair_check_title">Skontrolujte, či vaše druhé zariadenie ukazuje tento kód</string>
+    <string name="pair_check_text">Potom tam toto zariadenie pridajte.</string>
+    <string name="pair_waiting">Čaká sa na vaše druhé zariadenie…</string>
+    <string name="pair_ended_title">Platnosť tohto kódu skončila</string>
+    <string name="pair_ended_text">Na druhom zariadení otvorte Pridať zariadenie a získajte nový kód.</string>
+    <string name="add_device_expired">Platnosť tohto kódu skončila. Zavrite toto okno a znova zvoľte Pridať zariadenie pre nový kód.</string>
+    <string name="add_device_refused">Žiadosť nového zariadenia bola zamietnutá, takže nebolo pridané. Skúste to znova s novým kódom.</string>
 </resources>

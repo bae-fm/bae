@@ -44,6 +44,7 @@ import fm.bae.app.ui.components.QRScannerScreen
 import fm.bae.app.ui.rememberScreenScope
 import uniffi.bae_bridge.BootstrapCancellation
 import uniffi.bae_bridge.BridgeBootstrapResult
+import uniffi.bae_bridge.BridgeBootstrapStatus
 
 internal val actionWidth = 220.dp
 
@@ -148,7 +149,7 @@ internal class WelcomeLibrariesView(
 @Composable
 private fun RestoreStep(
     flow: OnboardingFlow,
-    step: OnboardingStep.Restore,
+    step: OnboardingStep.OwnCode,
     requestScan: () -> Unit,
     libraries: WelcomeLibrariesView?,
 ) {
@@ -165,14 +166,14 @@ private fun RestoreStep(
             text = RestoreText.of(step.entry),
             keys = remember { S3KeyInput() },
             error = flow.error,
-            onRestore = { flow.restore(step, it) },
+            onRestore = { flow.add(step, it) },
             onBack = { flow.back(step) },
         )
     } else {
         RestoreForm(
             step = step,
             error = flow.error,
-            onRestore = { flow.restore(step, it) },
+            onRestore = { flow.add(step, it) },
             onBack = { flow.back(step) },
         )
     }
@@ -208,9 +209,14 @@ internal fun OnboardingSteps(
             }
         }
 
-        is OnboardingStep.Restore -> {
+        is OnboardingStep.OwnCode -> {
             BackHandler { flow.back(step) }
             RestoreStep(flow, step, requestScan, libraries)
+        }
+
+        is OnboardingStep.PairingEnded -> {
+            BackHandler { flow.back(step) }
+            PairingEndedStep(onBack = { flow.back(step) })
         }
 
         is OnboardingStep.JoinName -> {
@@ -315,6 +321,7 @@ private fun runningTitle(from: OnboardingStep.Attempt): String? =
     when (from) {
         is OnboardingStep.Invite -> null
         is OnboardingStep.JoinName -> null
+        is OnboardingStep.Pair -> null
         is OnboardingStep.Restore -> RestoreText.of(from.entry).running?.let { stringResource(it) }
         is OnboardingStep.RestoreSaved -> RestoreText.RESTORE.running?.let { stringResource(it) }
         is OnboardingStep.FinishRestore -> RestoreText.RESTORE.running?.let { stringResource(it) }
@@ -335,6 +342,11 @@ internal fun OnboardingProgress(
     val invite = (step.from as? OnboardingStep.Invite)?.invite
     if (invite != null) {
         JoinProgress(step = step, invite = invite, onCancel = onCancel, onBack = onBack)
+        return
+    }
+    val status = step.state?.status
+    if (step.from is OnboardingStep.Pair && status is BridgeBootstrapStatus.WaitingForApproval) {
+        PairingWaitingStep(confirmation = status.confirmation, onBack = onBack)
         return
     }
     val title = runningTitle(step.from)

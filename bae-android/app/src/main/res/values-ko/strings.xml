@@ -475,4 +475,13 @@
     <string name="invite_scan_instruction">상대방의 기기에서 코드를 스캔하거나 입력하세요.</string>
     <string name="invite_cancel_message">이 초대는 %1$s에서 사용할 수 없게 됩니다.</string>
     <string name="qr_code">QR 코드</string>
+    <string name="add_device_request_match">화면에 이 코드가 표시되어 있다면 추가하세요:</string>
+    <string name="add_device_adding">%1$s 추가 중…</string>
+    <string name="pair_check_title">다른 기기에 이 코드가 표시되어 있는지 확인하세요</string>
+    <string name="pair_check_text">그런 다음 그 기기에서 이 기기를 추가하세요.</string>
+    <string name="pair_waiting">다른 기기를 기다리는 중…</string>
+    <string name="pair_ended_title">이 코드가 만료되었습니다</string>
+    <string name="pair_ended_text">새 코드를 받으려면 다른 기기에서 기기 추가를 여세요.</string>
+    <string name="add_device_expired">이 코드가 만료되었습니다. 이 창을 닫고 기기 추가를 다시 선택해 새 코드를 받으세요.</string>
+    <string name="add_device_refused">새 기기의 요청이 거부되어 추가되지 않았습니다. 새 코드로 다시 시도하세요.</string>
 </resources>

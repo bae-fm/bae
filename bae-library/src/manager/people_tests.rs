@@ -1,4 +1,4 @@
-//! People and devices: the Add Device watch, the admin changes a device asks
+//! People and devices: Add Device's pairing, the admin changes a device asks
 //! for, invites, a profile request, and the membership read without a provider.
 
 use super::DeviceCutOff;
@@ -9,62 +9,99 @@ use bae_people::admin_change::{AdminChange, AdminChangeKind, AdminChangeState};
 use bae_people::membership::ActiveDevice;
 use bae_people::people::{RequestedProfile, RequestedProfileState};
 
-/// The person's phone restores from the code Add Device shows while the
-/// watch on the library's first device is open: that device's next sync pass
-/// applies the phone's registration, and the watch reports the phone.
+/// The first device's status of a pairing, once the new device's request has
+/// come: waiting for the person's decision, with the name the new device gave
+/// itself.
+async fn request_that_comes(
+    first: &TestDevice,
+    pairing: coven::AddDeviceId,
+) -> coven::AddDeviceRequest {
+    let mut status = first.manager().follow_add_device(pairing);
+    let status = crate::followed::value_matching(&mut status, |status| {
+        matches!(status, Some(coven::AddDeviceStatus::Waiting { request: Some(_) }))
+    })
+    .await;
+    let Some(coven::AddDeviceStatus::Waiting { request: Some(request) }) = status else {
+        unreachable!("the status matched a waiting request")
+    };
+    request
+}
+
+/// The person's phone pairs with the QR code Add Device shows, which carries
+/// the library's S3 key. Its request reaches the first device while the
+/// status is followed, which syncs often; approving it lets the phone in, and
+/// the status ends as the phone added.
 #[test]
-fn the_watch_reports_the_first_device_that_joins_while_it_is_open() {
+fn an_approved_request_adds_the_device_that_scanned_the_qr_code() {
     run_library_test(async |library| {
         let first = library.first();
         let adding = first.manager().add_device().await.unwrap();
-        let mut watch = first.manager().subscribe_added_device(adding.watch);
-        assert_eq!(watch.next().await.expect("the watch stays open").unwrap(), None);
-        let phone = library.restore(&adding.share.code, "Phone").await;
+        let (phone, ()) = tokio::join!(library.pair(&adding.qr_text, None, "Phone"), async {
+            let request = request_that_comes(first, adding.id).await;
+            assert_eq!(request.device_name, "Phone");
+            first.manager().approve_add_device(&request).await.unwrap();
+        });
+        let phone = phone.expect("the approved request lets the phone in");
         let phone_device = this_device(&phone).await;
+        let mut status = first.manager().follow_add_device(adding.id);
+        let ended = crate::followed::value_matching(&mut status, |status| {
+            matches!(status, Some(coven::AddDeviceStatus::Ended(_)))
+        })
+        .await;
         first
             .wait_until("the first device applies the phone's registration", || {
                 has_member_device(first, &phone_device.id)
             })
             .await;
-        let added = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
-            loop {
-                let value = watch.next().await.expect("the watch stays open");
-                if let Some(device) = value.unwrap() {
-                    break device;
-                }
-            }
-        })
-        .await
-        .expect("the watch reports the phone");
         phone.close().await;
-        assert_eq!((added.id, added.name), (phone_device.id, phone_device.name));
+        let Some(coven::AddDeviceStatus::Ended(coven::AddDeviceEnd::Added { device, name })) =
+            ended
+        else {
+            panic!("the pairing ended as the phone added: {ended:?}");
+        };
+        assert_eq!((device, name), (phone_device.id, phone_device.name));
+        first.manager().end_add_device(adding.id).await.unwrap();
     });
 }
 
-/// While the sheet watches, this device syncs every 5 seconds instead of
-/// every 30: with no other request for a pass, the watch reports the phone
-/// well before an idle pass 30 seconds after the library's last one would.
+/// The code to type, in groups of four, carries no key: the person types it
+/// on the phone with the library's S3 key, and the request goes the same way.
 #[test]
-fn the_watch_syncs_often_while_it_is_open() {
+fn the_code_to_type_pairs_with_the_s3_key_typed_beside_it() {
     run_library_test(async |library| {
         let first = library.first();
         let adding = first.manager().add_device().await.unwrap();
-        let mut watch = first.manager().subscribe_added_device(adding.watch);
-        assert_eq!(watch.next().await.expect("the watch stays open").unwrap(), None);
-        let phone = library.restore(&adding.share.code, "Phone").await;
-        let added = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
-            loop {
-                let value = watch.next().await.expect("the watch stays open");
-                if let Some(device) = value.unwrap() {
-                    break device;
-                }
+        assert_ne!(adding.code, adding.qr_text, "the QR code carries a key the typed one does not");
+        let (phone, ()) = tokio::join!(
+            library.pair(&adding.code, Some(bae_store::test_devices::owner_credentials()), "Phone"),
+            async {
+                let request = request_that_comes(first, adding.id).await;
+                first.manager().approve_add_device(&request).await.unwrap();
             }
-        })
-        .await
-        .expect("an idle pass reports the phone");
-        let phone_device = this_device(&phone).await;
+        );
+        let phone = phone.expect("the approved request lets the phone in");
         phone.close().await;
-        assert_eq!(added.id, phone_device.id);
+    });
+}
+
+/// Declining the request ends the pairing without the phone: the phone's call
+/// returns none, and the status ends as declined.
+#[test]
+fn a_declined_request_ends_the_pairing_without_the_device() {
+    run_library_test(async |library| {
+        let first = library.first();
+        let adding = first.manager().add_device().await.unwrap();
+        let (phone, ()) = tokio::join!(library.pair(&adding.qr_text, None, "Phone"), async {
+            let request = request_that_comes(first, adding.id).await;
+            first.manager().decline_add_device(&request).await.unwrap();
+        });
+        assert!(phone.is_none(), "a declined request lets no device in");
+        let mut status = first.manager().follow_add_device(adding.id);
+        crate::followed::value_matching(&mut status, |status| {
+            matches!(status, Some(coven::AddDeviceStatus::Ended(coven::AddDeviceEnd::Declined)))
+        })
+        .await;
+        first.manager().end_add_device(adding.id).await.unwrap();
     });
 }
 
@@ -92,31 +129,6 @@ async fn this_device(device: &TestDevice) -> ActiveDevice {
         .flat_map(|member| member.active_devices)
         .find(|device| device.is_self)
         .expect("the device is registered")
-}
-
-/// The watch's first look can come late: its subscription starts on the
-/// library's runtime after the sheet has shown the code, and starts again
-/// whenever the app subscribes again. A phone that restored from the code
-/// the sheet showed, and that this device applied before that first look,
-/// still joined after the code was shown, and is reported.
-#[test]
-fn the_watch_reports_a_device_that_joined_before_its_first_look() {
-    run_library_test(async |library| {
-        let first = library.first();
-        let adding = first.manager().add_device().await.unwrap();
-        let phone = library.restore(&adding.share.code, "Phone").await;
-        let phone_device = this_device(&phone).await;
-        first
-            .wait_until("the first device applies the phone's registration", || {
-                has_member_device(first, &phone_device.id)
-            })
-            .await;
-        let mut watch = first.manager().subscribe_added_device(adding.watch);
-        let added = watch.next().await.expect("the watch stays open").unwrap();
-        phone.close().await;
-        let added = added.expect("the phone was added");
-        assert_eq!((added.id, added.name), (phone_device.id, phone_device.name));
-    });
 }
 
 /// Robin renames the library on her laptop while it is offline. The rename
@@ -310,9 +322,9 @@ fn an_invite_is_listed_until_it_is_cancelled() {
             listed
                 .iter()
                 .filter_map(bae_views::InviteEntry::open)
-                .map(|listed| (listed.invite.id, listed.invite.kind))
+                .map(|listed| (listed.invite.id, listed.invite.admits))
                 .collect::<Vec<_>>(),
-            vec![(invite, coven::InviteKind::NewPerson)]
+            vec![(invite, coven::InviteAdmits::NewPerson)]
         );
         let granted = crate::followed::value_matching(&mut invites, |invites| {
             invites.iter().any(|listed| {

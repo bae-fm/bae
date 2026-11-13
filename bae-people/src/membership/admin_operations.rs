@@ -341,7 +341,7 @@ impl Membership {
 
     /// Approve an invite's request: the write journals the approval,
     /// which a pass binds, and records it to show by the name the person
-    /// typed, which their request carries; a recovery's request carries
+    /// typed, which their request carries; a member's new-keys request carries
     /// none, and the row reads their profile (§5.6).
     pub async fn approve_join_request(
         &self,
@@ -349,7 +349,7 @@ impl Membership {
     ) -> Result<(), coven::SyncError> {
         let name = match &request.joiner {
             coven::Joiner::NewPerson { name } => Some(name.clone()),
-            coven::Joiner::Recovery => None,
+            coven::Joiner::MemberKeys => None,
         };
         let request = request.clone();
         self.admin_change(AdminTarget::Approval(request.member, name), move |sql| {

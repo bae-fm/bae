@@ -51,7 +51,6 @@ pub fn storage_category(failure: coven::StorageFailure) -> C {
         | F::InvitationMismatch
         | F::SessionMismatch
         | F::SessionExpired
-        | F::SessionIdentityUnknown
         | F::InvalidPart
         | F::SingleRequestTooLarge { .. }
         | F::CopyTooLarge { .. }
@@ -181,9 +180,6 @@ pub fn sync_category(error: &coven::SyncError) -> C {
         E::SecureStorage(error) => key_category(error),
         E::Database(error) => database_category(error),
         E::NoStorage => C::Config,
-        // A replacement of this member's S3 key by another key is under way:
-        // entering that key again finishes it.
-        E::ReplacementPending { .. } => C::Credentials,
         // A code that can't be used here, such as one for another library:
         // the person's state, as a refused code is in a bootstrap.
         E::Code(_) => C::Config,
@@ -321,6 +317,7 @@ pub fn bootstrap_category(error: &coven::BootstrapError) -> C {
         | E::NoUnfinishedJoin(_)
         | E::NoUnfinishedRestore(_)
         | E::NoUnfinishedReplacement(_)
+        | E::NoUnfinishedInstallation(_)
         | E::JoinRequestSent
         | E::Directory(coven::BootstrapDirectoryError::Lock(
             coven::StoreLockError::BootstrapPending(_),
@@ -348,6 +345,9 @@ pub fn bootstrap_category(error: &coven::BootstrapError) -> C {
         E::Sync(coven::SyncError::MemberKeysReplaced { .. }) => C::MemberKeysReplaced,
         E::Sync(error) => sync_category(error),
         E::OAuth(_) => C::Credentials,
+        // The sign-in is not the account the invite shared the folder with:
+        // the person signs in with the invited account.
+        E::WrongAccount { .. } => C::Credentials,
         // A join cancelled before sending whose undo of its provider
         // acceptance failed: the undo's failure is the one to act on, and
         // the join stays for another cancel.

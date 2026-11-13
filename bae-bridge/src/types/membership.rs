@@ -88,7 +88,8 @@ pub struct BridgeMember {
     pub id: String,
     pub keys: BridgeMemberPublicKeys,
     pub role: BridgeMemberRole,
-    pub access: BridgeMemberAccess,
+    /// None for the library's creator until Set up storage records theirs.
+    pub access: Option<BridgeMemberAccess>,
     pub is_self: bool,
     pub can_remove: bool,
     pub active_devices: Vec<BridgeActiveDevice>,
@@ -110,7 +111,7 @@ impl BridgeMember {
             id: id.0.to_string(),
             keys: BridgeMemberPublicKeys::from_core(keys),
             role: BridgeMemberRole::from_core(role),
-            access: BridgeMemberAccess::from_core(access),
+            access: access.map(BridgeMemberAccess::from_core),
             is_self,
             can_remove,
             active_devices: active_devices.into_iter().map(BridgeActiveDevice::from_core).collect(),

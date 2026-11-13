@@ -16,6 +16,10 @@ public enum BootstrapAttempt {
     case join(code: String, invite: BridgeInviteInfo)
     /// A join this device has under way, continued after bae restarted.
     case resume(BridgeUnfinishedJoin, invite: BridgeInviteInfo)
+    /// Adding this device from a pairing code another of the person's
+    /// devices shows. The QR code carries an S3 key; the code to type does
+    /// not, as `metadata` says.
+    case pair(code: String, metadata: BridgeCodeMetadata)
 
     /// Whether this restore needs the person's S3 key typed in: an S3 library
     /// whose key isn't saved beside the code and isn't in the code.
@@ -26,7 +30,7 @@ public enum BootstrapAttempt {
                 return !saved.info.hasS3Credentials
             }
             return false
-        case .restore(_, let metadata):
+        case .restore(_, let metadata), .pair(_, let metadata):
             return metadata.provider == .s3 && !metadata.carriesS3Key
         case .join, .resume:
             return false
@@ -37,7 +41,17 @@ public enum BootstrapAttempt {
     public var invite: BridgeInviteInfo? {
         switch self {
         case .join(_, let invite), .resume(_, let invite): invite
-        case .restoreSaved, .restore: nil
+        case .restoreSaved, .restore, .pair: nil
+        }
+    }
+
+    /// Whether this attempt runs on a join's control: a join or a pairing,
+    /// which Cancel stops through core and which checks often while its
+    /// waiting screen shows.
+    var usesJoinControl: Bool {
+        switch self {
+        case .join, .resume, .pair: true
+        case .restoreSaved, .restore: false
         }
     }
 }
@@ -110,6 +124,9 @@ public final class BootstrapCodeForm {
     /// The invite of a join that ended without letting this device in, until
     /// the person acknowledges it.
     public private(set) var ended: BridgeInviteInfo?
+    /// Whether a pairing ended without letting this device in, until the
+    /// person acknowledges it.
+    public private(set) var pairingEnded = false
     /// The running attempt, which reports its progress.
     private var bootstrap: LibraryBootstrap?
     public private(set) var isRunning = false
@@ -191,6 +208,12 @@ public final class BootstrapCodeForm {
         return switch (info, entry) {
         case (.restore(let metadata), _):
             .restore(code: code, metadata: metadata)
+        // Restoring over this device's copy takes no pairing; core says so.
+        case (.pairing(let metadata), .restoreOver),
+            (.pairing(let metadata), .finishRestore):
+            .restore(code: code, metadata: metadata)
+        case (.pairing(let metadata), _):
+            .pair(code: code, metadata: metadata)
         // Restoring over this device's copy takes no invite; core says so.
         case (.invite(let invite), .restoreOver),
             (.invite(let invite), .finishRestore):
@@ -338,6 +361,13 @@ public final class BootstrapCodeForm {
         bootstrap.setWaitingScreenShown(waitingScreenShown)
         self.bootstrap = bootstrap
         let invite = attempt?.invite
+        let pairing: Bool
+        if case .pair = attempt {
+            pairing = true
+        }
+        else {
+            pairing = false
+        }
         error = nil
         isRunning = true
         task = Task {
@@ -349,7 +379,7 @@ public final class BootstrapCodeForm {
                 let result = try await work(bootstrap)
                 // A result that holds an open store is delivered even after a
                 // cancel raced it, so the store is opened rather than leaked.
-                deliver(result, invite: invite)
+                deliver(result, invite: invite, pairing: pairing)
             }
             catch is CancellationError {
                 logger.debug("bootstrap cancelled")
@@ -361,39 +391,10 @@ public final class BootstrapCodeForm {
         }
     }
 
-    /// Run `attempt` on `bootstrap`: a restore from a saved or entered code,
-    /// over this device's copy when the entry says so, or a join.
-    private func run(
-        _ attempt: BootstrapAttempt,
-        on bootstrap: LibraryBootstrap,
-        credentials: BridgeS3Credentials?
-    ) async throws -> BridgeBootstrapResult {
-        switch (attempt, entry) {
-        case (.restoreSaved(let saved), _):
-            try await bootstrap.restore(
-                saved: saved.code,
-                credentials: credentials
-            )
-        case (.restore(let code, _), .restoreOver(let libraryId)),
-            (.restore(let code, _), .finishRestore(let libraryId)):
-            try await bootstrap.restoreReplacing(
-                libraryId: libraryId,
-                code: code,
-                credentials: credentials
-            )
-        case (.restore(let code, _), _):
-            try await bootstrap.restore(code: code, credentials: credentials)
-        case (.join(let code, _), _):
-            try await bootstrap.join(code: code, name: trimmedJoinName)
-        case (.resume(let join, _), _):
-            try await bootstrap.resume(join)
-        }
-    }
-
     /// Stop the running attempt while `cancellable`; its screen stays as it
     /// was.
     public func cancel() {
-        if attempt?.invite != nil {
+        if attempt?.usesJoinControl == true {
             bootstrap?.cancel()
         }
         else {
@@ -472,6 +473,7 @@ extension BootstrapCodeForm {
     /// screen is the first one again, with no code in it.
     public func acknowledgeEnd() {
         ended = nil
+        pairingEnded = false
         codeInput = ""
         clearReading()
     }
@@ -488,6 +490,37 @@ extension BootstrapCodeForm {
 // MARK: - Results
 
 extension BootstrapCodeForm {
+    /// Run `attempt` on `bootstrap`: a restore from a saved or entered code,
+    /// over this device's copy when the entry says so, or a join.
+    private func run(
+        _ attempt: BootstrapAttempt,
+        on bootstrap: LibraryBootstrap,
+        credentials: BridgeS3Credentials?
+    ) async throws -> BridgeBootstrapResult {
+        switch (attempt, entry) {
+        case (.restoreSaved(let saved), _):
+            try await bootstrap.restore(
+                saved: saved.code,
+                credentials: credentials
+            )
+        case (.restore(let code, _), .restoreOver(let libraryId)),
+            (.restore(let code, _), .finishRestore(let libraryId)):
+            try await bootstrap.restoreReplacing(
+                libraryId: libraryId,
+                code: code,
+                credentials: credentials
+            )
+        case (.restore(let code, _), _):
+            try await bootstrap.restore(code: code, credentials: credentials)
+        case (.pair(let code, _), _):
+            try await bootstrap.pair(code: code, credentials: credentials)
+        case (.join(let code, _), _):
+            try await bootstrap.join(code: code, name: trimmedJoinName)
+        case (.resume(let join, _), _):
+            try await bootstrap.resume(join)
+        }
+    }
+
     /// Continue the call this device has under way: a join after a cancel
     /// came as its request was sent, or the join or restore that kept this
     /// call from starting on the same library. A join goes first, as at
@@ -507,14 +540,16 @@ extension BootstrapCodeForm {
                     self.bootstrap = bootstrap
                     deliver(
                         try await bootstrap.resume(join),
-                        invite: join.info()
+                        invite: join.info(),
+                        pairing: false
                     )
                 }
                 else if let restore = try await restores().first {
                     self.bootstrap = bootstrap
                     deliver(
                         try await bootstrap.resumeRestore(restore),
-                        invite: nil
+                        invite: nil,
+                        pairing: false
                     )
                 }
             }
@@ -530,11 +565,12 @@ extension BootstrapCodeForm {
         }
     }
 
-    /// Show what the attempt came to. `invite` is the join's, which ends
-    /// without a library only a join does.
+    /// Show what the attempt came to. `invite` is the join's, and `pairing`
+    /// says the attempt was a pairing: only those end without a library.
     private func deliver(
         _ result: BridgeBootstrapResult,
-        invite: BridgeInviteInfo?
+        invite: BridgeInviteInfo?,
+        pairing: Bool
     ) {
         switch result {
         case .opened(let library):
@@ -542,10 +578,17 @@ extension BootstrapCodeForm {
         case .published(let library, let warning):
             onLibraryReady(library, warning)
         case .declined:
-            guard let invite else {
-                preconditionFailure("only a join ends without letting it in")
+            if pairing {
+                pairingEnded = true
             }
-            ended = invite
+            else if let invite {
+                ended = invite
+            }
+            else {
+                preconditionFailure(
+                    "only a join or a pairing ends without letting it in"
+                )
+            }
         case .joinRequestSent, .callUnderWay:
             // After the running attempt's task has ended.
             Task { resumeUnfinished() }

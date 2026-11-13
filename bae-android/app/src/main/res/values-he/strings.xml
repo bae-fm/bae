@@ -493,4 +493,13 @@
     <string name="invite_scan_instruction">סרוק או הזן את הקוד במכשיר שלהם.</string>
     <string name="invite_cancel_message">ההזמנה הזו לא תהיה שמישה עבור %1$s.</string>
     <string name="qr_code">קוד QR</string>
+    <string name="add_device_request_match">הוסף אותו אם במסך שלו מוצג הקוד הזה:</string>
+    <string name="add_device_adding">מוסיף את %1$s…</string>
+    <string name="pair_check_title">ודא שהמכשיר השני שלך מציג את הקוד הזה</string>
+    <string name="pair_check_text">לאחר מכן הוסף את המכשיר הזה משם.</string>
+    <string name="pair_waiting">ממתין למכשיר השני שלך…</string>
+    <string name="pair_ended_title">תוקף הקוד הזה הסתיים</string>
+    <string name="pair_ended_text">פתח את ״הוספת מכשיר״ במכשיר השני שלך כדי לקבל קוד חדש.</string>
+    <string name="add_device_expired">תוקף הקוד הזה הסתיים. סגור את החלון ובחר שוב ״הוספת מכשיר״ כדי לקבל קוד חדש.</string>
+    <string name="add_device_refused">הבקשה של המכשיר החדש נדחתה, ולכן הוא לא נוסף. נסה שוב עם קוד חדש.</string>
 </resources>

@@ -54,7 +54,6 @@ async fn every_class_a_start_fails_in_reads_back_as_written() {
         F::InvitationMismatch,
         F::SessionMismatch,
         F::SessionExpired,
-        F::SessionIdentityUnknown,
         F::InvalidPart,
         F::SingleRequestTooLarge { size: 6 << 30, limit: 5 << 30 },
         F::CopyTooLarge { size: 6 << 30, limit: 5 << 30 },

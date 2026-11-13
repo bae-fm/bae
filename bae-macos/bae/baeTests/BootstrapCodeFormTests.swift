@@ -20,6 +20,10 @@ private final class RestoreRecordingHost: BridgeHost, @unchecked Sendable {
     private let recordJoin: AsyncStream<JoinCall>.Continuation
     let resumedJoins: AsyncStream<ObjectIdentifier>
     private let recordResumedJoin: AsyncStream<ObjectIdentifier>.Continuation
+    let pairedCodes: AsyncStream<PairCall>
+    private let recordPair: AsyncStream<PairCall>.Continuation
+    /// What a pairing answers, in place of ending as cancelled.
+    var pairAnswer: BridgeBootstrapResult?
     let finished: AsyncStream<FinishedReplacement>
     private let recordFinish: AsyncStream<FinishedReplacement>.Continuation
     let resumedRestores: AsyncStream<ObjectIdentifier>
@@ -35,6 +39,7 @@ private final class RestoreRecordingHost: BridgeHost, @unchecked Sendable {
         (resumedJoins, recordResumedJoin) = AsyncStream.makeStream(
             of: ObjectIdentifier.self
         )
+        (pairedCodes, recordPair) = AsyncStream.makeStream(of: PairCall.self)
         (finished, recordFinish) = AsyncStream.makeStream(
             of: FinishedReplacement.self
         )
@@ -72,6 +77,20 @@ private final class RestoreRecordingHost: BridgeHost, @unchecked Sendable {
         throw CancellationError()
     }
 
+    override func joinWithPairing(
+        code: String,
+        credentials: BridgeS3Credentials?,
+        deviceName _: String,
+        setup _: BridgeLibrarySetup,
+        control _: BridgeJoinControl
+    ) async throws -> BridgeBootstrapResult {
+        recordPair.yield(
+            PairCall(code: code, accessKeyId: credentials?.accessKeyId)
+        )
+        if let pairAnswer { return pairAnswer }
+        throw CancellationError()
+    }
+
     override func resumeJoin(
         join: BridgeUnfinishedJoin,
         setup _: BridgeLibrarySetup,
@@ -106,6 +125,12 @@ private final class RestoreRecordingHost: BridgeHost, @unchecked Sendable {
 private struct JoinCall: Equatable, Sendable {
     let code: String
     let name: String
+}
+
+/// The code and S3 access key a pairing was given.
+private struct PairCall: Equatable, Sendable {
+    let code: String
+    let accessKeyId: String?
 }
 
 /// The library and call a finishing of a replacement was given.
@@ -151,6 +176,12 @@ struct BootstrapCodeFormTests {
             inviter: "Mara Quill"
         )
     )
+
+    /// A pairing code for an S3 library, whose QR code holds the S3 key and
+    /// whose code to type does not.
+    private static func pairingCode(carriesS3Key: Bool) -> BridgeCodeInfo {
+        .pairing(metadata: metadata(carriesS3Key: carriesS3Key))
+    }
 
     private func form(
         reading info: BridgeCodeInfo,
@@ -449,5 +480,54 @@ extension BootstrapCodeFormTests {
         try await Wait.until { form.ended != nil }
 
         #expect(form.ended?.libraryName == "Low Tide Hours")
+    }
+}
+
+/// A pairing code, which adds this device from another of the person's own, is
+/// read as a restore code is.
+extension BootstrapCodeFormTests {
+    @Test("a scanned pairing code asks the other device at once")
+    func scannedPairingCodeStartsThePairing() async {
+        let form = form(reading: Self.pairingCode(carriesS3Key: true))
+
+        form.acceptCode(Self.code)
+
+        #expect(form.isRunning)
+        var calls = host.pairedCodes.makeAsyncIterator()
+        #expect(
+            await calls.next() == PairCall(code: Self.code, accessKeyId: nil)
+        )
+    }
+
+    @Test("a pairing code to type waits for the S3 key, then pairs with it")
+    func typedPairingCodeWaitsForTheKey() async {
+        let form = form(reading: Self.pairingCode(carriesS3Key: false))
+        form.acceptCode(Self.code)
+
+        #expect(!form.isRunning)
+        #expect(form.attempt?.needsS3Key == true)
+        #expect(!form.ready)
+
+        form.accessKey = "key"
+        form.secretKey = "secret"
+        #expect(form.ready)
+        form.start()
+        var calls = host.pairedCodes.makeAsyncIterator()
+        #expect(
+            await calls.next() == PairCall(code: Self.code, accessKeyId: "key")
+        )
+    }
+
+    @Test("a pairing that ended without this device says so until acknowledged")
+    func aPairingThatEndedSaysSo() async throws {
+        host.pairAnswer = .declined
+        let form = form(reading: Self.pairingCode(carriesS3Key: true))
+
+        form.acceptCode(Self.code)
+        try await Wait.until { form.pairingEnded }
+        #expect(form.ended == nil)
+
+        form.acknowledgeEnd()
+        #expect(!form.pairingEnded)
     }
 }

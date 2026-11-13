@@ -298,6 +298,44 @@ impl BridgeHost {
             .await
     }
 
+    /// Add this device to the person's own library from a pairing code
+    /// another of their devices shows. The call returns once that device
+    /// approves; `Declined` says the pairing ended first. `credentials` are
+    /// the S3 key the person typed for a code that carries none (the QR code
+    /// carries it). Dropping the call or cancelling through `control` ends
+    /// the pairing and removes this device's copy; the waiting screen sets
+    /// `control.set_screen_shown` so the pairing checks every 5 seconds.
+    pub async fn join_with_pairing(
+        self: Arc<Self>,
+        code: String,
+        credentials: Option<BridgeS3Credentials>,
+        device_name: String,
+        setup: Arc<crate::BridgeLibrarySetup>,
+        control: Arc<BridgeJoinControl>,
+    ) -> Result<BridgeBootstrapResult, BridgeError> {
+        let steps = crate::screens::SetupFeed::new(Some(setup.clone())).steps();
+        self.operations
+            .clone()
+            .run("BridgeHost.join_with_pairing", move || async move {
+                let paired = bae_library::join_with_pairing(
+                    self.library_builder(),
+                    &code,
+                    credentials.map(BridgeS3Credentials::into_core),
+                    &device_name,
+                    self.clock.clone(),
+                    |status| {
+                        let cancellable = bae_library::join_cancellable(&status);
+                        steps.bootstrap(status, cancellable)
+                    },
+                    &control.control,
+                    &self.diagnostics,
+                )
+                .await;
+                BridgeBootstrapResult::paired(paired, self)
+            })
+            .await
+    }
+
     /// The joins this device has under way, to resume after bae restarts.
     pub async fn unfinished_joins(
         self: Arc<Self>,

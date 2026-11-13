@@ -78,7 +78,7 @@ internal class RestoreText(
  */
 @Composable
 internal fun RestoreForm(
-    step: OnboardingStep.Restore,
+    step: OnboardingStep.OwnCode,
     error: DisplayError?,
     onRestore: (BridgeS3Credentials?) -> Unit,
     onBack: () -> Unit,

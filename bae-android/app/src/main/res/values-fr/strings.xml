@@ -491,4 +491,13 @@
     <string name="invite_scan_instruction">Scannez ou saisissez le code sur leur appareil.</string>
     <string name="invite_cancel_message">%1$s ne pourra pas utiliser cette invitation.</string>
     <string name="qr_code">Code QR</string>
+    <string name="add_device_request_match">Ajoutez-le si son écran affiche ce code :</string>
+    <string name="add_device_adding">Ajout de %1$s…</string>
+    <string name="pair_check_title">Vérifiez que votre autre appareil affiche ce code</string>
+    <string name="pair_check_text">Ajoutez ensuite cet appareil depuis celui-ci.</string>
+    <string name="pair_waiting">En attente de votre autre appareil…</string>
+    <string name="pair_ended_title">Ce code a expiré</string>
+    <string name="pair_ended_text">Ouvrez Ajouter un appareil sur votre autre appareil pour en obtenir un nouveau.</string>
+    <string name="add_device_expired">Ce code a expiré. Fermez cette fenêtre et choisissez de nouveau Ajouter un appareil pour en obtenir un nouveau.</string>
+    <string name="add_device_refused">La demande du nouvel appareil a été refusée, il n’a donc pas été ajouté. Réessayez avec un nouveau code.</string>
 </resources>

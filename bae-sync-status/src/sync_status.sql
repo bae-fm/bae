@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS sync_start_failure (
         'protocol', 'invalid_path', 'invalid_range', 'not_store_owner',
         'invitee_is_store_owner', 'account_id_unavailable',
         'invitation_mismatch', 'session_mismatch', 'session_expired',
-        'session_identity_unknown', 'invalid_part', 'single_request_too_large',
+        'invalid_part', 'single_request_too_large',
         'copy_too_large', 'encoding', 'file', 'member_keys_missing'
     )),
     -- For a sign-in that lacks access: the access it must have.

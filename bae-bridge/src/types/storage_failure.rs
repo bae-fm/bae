@@ -32,7 +32,6 @@ pub enum BridgeStorageFailure {
     AccountIdUnavailable,
     InvitationMismatch,
     SessionMismatch,
-    SessionIdentityUnknown,
     SessionExpired,
     InvalidPart,
     SingleRequestTooLarge {
@@ -130,7 +129,6 @@ InviteeIsStoreOwner,
 AccountIdUnavailable,
 InvitationMismatch,
 SessionMismatch,
-SessionIdentityUnknown,
 SessionExpired,
 InvalidPart,
 SingleRequestTooLarge {
@@ -186,9 +184,6 @@ pub(crate) fn storage_failure_key(failure: BridgeStorageFailure) -> &'static str
         BridgeStorageFailure::AccountIdUnavailable => "core.error.storage.account_id_unavailable",
         BridgeStorageFailure::InvitationMismatch => "core.error.storage.invitation_mismatch",
         BridgeStorageFailure::SessionMismatch => "core.error.storage.session_mismatch",
-        BridgeStorageFailure::SessionIdentityUnknown => {
-            "core.error.storage.session_identity_unknown"
-        }
         BridgeStorageFailure::SessionExpired => "core.error.storage.session_expired",
         BridgeStorageFailure::InvalidPart => "core.error.storage.invalid_request",
         BridgeStorageFailure::SingleRequestTooLarge { .. } => {

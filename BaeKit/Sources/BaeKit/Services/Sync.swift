@@ -18,9 +18,9 @@ public final class Sync: Sendable, Observable {
     public let dismissUndoneStorageSetup: @Sendable (Int64) async throws -> Void
     public let generateRestoreCode:
         @Sendable () async throws -> BridgeRestoreCodeShare
-    /// Add Device's code, with the watch for the person's device that joins
-    /// from it.
-    public let addDevice: @Sendable () async throws -> BridgeAddDevice
+    /// Add Device's pairing calls; its status is followed through
+    /// `MembershipStore.followAddDevice`.
+    public let addDevice: AddDeviceCalls
     public let removeMember: @Sendable (String) async throws -> Void
     public let removeDevice:
         @Sendable (UInt64) async throws -> BridgeDeviceRemoval
@@ -87,9 +87,7 @@ public final class Sync: Sendable, Observable {
             @escaping @Sendable () async throws -> BridgeRestoreCodeShare = {
                 throw StubError.notImplemented
             },
-        addDevice: @escaping @Sendable () async throws -> BridgeAddDevice = {
-            throw StubError.notImplemented
-        },
+        addDevice: AddDeviceCalls = AddDeviceCalls(),
         removeMember: @escaping @Sendable (String) async throws -> Void = { _ in
             throw StubError.notImplemented
         },
@@ -215,7 +213,7 @@ public final class Sync: Sendable, Observable {
                 try await handle.dismissUndoneStorageSetup(operation: $0)
             },
             generateRestoreCode: { try await handle.generateRestoreCode() },
-            addDevice: { try await handle.addDevice() },
+            addDevice: AddDeviceCalls(handle: handle),
             removeMember: { try await handle.removeMember(member: $0) },
             removeDevice: { try await handle.removeDevice(device: $0) },
             confirmDeviceCutOff: {

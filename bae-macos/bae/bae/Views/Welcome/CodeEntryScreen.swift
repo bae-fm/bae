@@ -5,9 +5,9 @@ import SwiftUI
 /// code, and the S3 key a restore needs, are sheets over the first screen
 /// (`background`); an invite's code goes on to the step that asks the
 /// person's name, in the window; a running restore takes the whole window,
-/// with Cancel, and a running join takes it with its wait for approval. A join
-/// that ends without letting this device in takes it with one step that says
-/// so. A restore or join that stops, or a code that doesn't read, brings the sheet back with why.
+/// with Cancel, and a running join takes it with its wait for approval, as a
+/// running pairing does with the number to check. A join or pairing that ends
+/// without letting this device in takes it with one step that says so. A restore or join that stops, or a code that doesn't read, brings the sheet back with why.
 /// Cancel on the sheet, or leaving the scanner, closes the screen.
 struct CodeEntryScreen<Background: View>: View {
     @State
@@ -37,6 +37,11 @@ struct CodeEntryScreen<Background: View>: View {
         Group {
             if form.isRunning {
                 running
+            }
+            else if form.pairingEnded {
+                PairingEndedView {
+                    form.acknowledgeEnd()
+                }
             }
             else if let invite = form.ended {
                 JoinEndedView(inviter: invite.inviter) {
@@ -86,6 +91,17 @@ struct CodeEntryScreen<Background: View>: View {
                 steps: form.steps,
                 error: form.error,
                 cancellable: form.cancellable,
+                onCancel: form.cancel
+            )
+            .onAppear { form.setWaitingScreenShown(true) }
+            .onDisappear { form.setWaitingScreenShown(false) }
+        }
+        else if case .pair = form.attempt {
+            // While the pairing's step shows, it checks for the other
+            // device's approval every few seconds.
+            PairingWaitingView(
+                status: form.status,
+                steps: form.steps,
                 onCancel: form.cancel
             )
             .onAppear { form.setWaitingScreenShown(true) }

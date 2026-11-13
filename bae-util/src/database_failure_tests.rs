@@ -16,6 +16,18 @@ fn coven_failures_keep_what_the_database_met() {
     assert_eq!(store.database_failure(), DatabaseFailure::Damaged);
 }
 
+/// A write before the device is registered is refused, a sum that passes
+/// u64 and a migration reading across audiences break a rule, and a synced row
+/// with no merge record is damage.
+#[test]
+fn the_refusals_coven_added_are_classed() {
+    assert_eq!(coven::DbError::NotRegistered.database_failure(), DatabaseFailure::Refused);
+    let sum = coven::DbError::TotalTooLarge { field: "sizes", total: u64::MAX, addend: 1 };
+    assert_eq!(sum.database_failure(), DatabaseFailure::Refused);
+    let unrecorded = coven::DbError::UnrecordedRow { table: "albums".into() };
+    assert_eq!(unrecorded.database_failure(), DatabaseFailure::Damaged);
+}
+
 /// A handle that takes no calls until reopened refuses, unless damage is
 /// what stopped it.
 #[test]

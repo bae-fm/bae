@@ -491,4 +491,13 @@
     <string name="invite_scan_instruction">Scanează sau introdu codul pe dispozitivul lor.</string>
     <string name="invite_cancel_message">%1$s nu va putea folosi această invitație.</string>
     <string name="qr_code">Cod QR</string>
+    <string name="add_device_request_match">Adaugă-l dacă ecranul lui arată acest cod:</string>
+    <string name="add_device_adding">Se adaugă %1$s…</string>
+    <string name="pair_check_title">Verifică dacă celălalt dispozitiv al tău arată acest cod</string>
+    <string name="pair_check_text">Apoi adaugă de acolo acest dispozitiv.</string>
+    <string name="pair_waiting">Se așteaptă celălalt dispozitiv…</string>
+    <string name="pair_ended_title">Acest cod a expirat</string>
+    <string name="pair_ended_text">Deschide Adaugă dispozitiv pe celălalt dispozitiv pentru unul nou.</string>
+    <string name="add_device_expired">Acest cod a expirat. Închide această fereastră și alege din nou Adaugă dispozitiv pentru unul nou.</string>
+    <string name="add_device_refused">Cererea noului dispozitiv a fost refuzată, deci nu a fost adăugat. Încearcă din nou cu un cod nou.</string>
 </resources>

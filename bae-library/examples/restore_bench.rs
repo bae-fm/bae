@@ -4,8 +4,8 @@
 //! The bench creates its own library on the S3 storage the runner's
 //! environment names (`bench_library`), holding a release of `--tracks`
 //! tracks, and waits until the sync loop has uploaded them. Each run then
-//! restores the code the library's Add Device QR code carries
-//! (`restore_code_for_transfer`) into a new temporary app directory with an
+//! restores the library's restore code with its S3 key
+//! (`restore_code`) into a new temporary app directory with an
 //! in-memory keychain, and removes the new device through the library again,
 //! timing that too. At the end, also when a step fails, the library's bucket
 //! is emptied.
@@ -52,14 +52,15 @@ fn main() {
         )
         .with_writer(std::io::stderr)
         .init();
-    let ran = bench_library::run("Restore bench", tracks, async |library, clock, ids| {
-        bench_library::uploaded(library).await?;
-        let code = library
-            .restore_code_for_transfer()
-            .await
-            .map_err(|error| format!("restore_code_for_transfer failed: {error}"))?;
-        restore_runs(library, clock, ids, &code, runs, downloads).await
-    });
+    let ran =
+        bench_library::run("Restore bench", tracks, async |library, clock, ids, credentials| {
+            bench_library::uploaded(library).await?;
+            let code = library
+                .restore_code()
+                .await
+                .map_err(|error| format!("restore_code failed: {error}"))?;
+            restore_runs(library, clock, ids, &code, credentials, runs, downloads).await
+        });
     if let Err(error) = ran {
         eprintln!("{error}");
         std::process::exit(1);
@@ -82,6 +83,7 @@ async fn restore_runs(
     clock: &coven::ClockRef,
     ids: &coven::IdSourceRef,
     code: &str,
+    credentials: &coven::S3Credentials,
     runs: usize,
     downloads: Option<std::num::NonZeroUsize>,
 ) -> Result<(), String> {
@@ -105,7 +107,7 @@ async fn restore_runs(
                     .max_concurrent_uploads(crate_default_uploads())
                     .max_concurrent_downloads(downloads),
                 code,
-                None,
+                Some(credentials.clone()),
                 &device_name,
                 on_status,
                 &cancel,
@@ -115,7 +117,7 @@ async fn restore_runs(
             None => bae_library::restore_from_code(
                 builder,
                 code,
-                None,
+                Some(credentials.clone()),
                 &device_name,
                 on_status,
                 &cancel,

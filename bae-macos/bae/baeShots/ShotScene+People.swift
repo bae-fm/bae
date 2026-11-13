@@ -67,17 +67,36 @@ extension ShotScene {
                 AddDeviceSheetContent(
                     result: .success(
                         BridgeAddDevice(
-                            share: BridgeRestoreCodeShare(
-                                code:
-                                    "CVR1 ABCD EFGH IJKL MNOP QRST UVWX YZ23 4567",
-                                qrText: "CVR1-ABCDEFGHIJKLMNOPQRSTUVWXYZ234567",
-                            ),
-                            watch: BridgeAddedDeviceWatch(
-                                noHandle: BridgeAddedDeviceWatch.NoHandle()
-                            )
+                            id: "6f1f0ab0-0000-4000-8000-000000000001",
+                            code:
+                                "CVP1 ABCD EFGH IJKL MNOP QRST UVWX YZ23 4567",
+                            qrText: "CVP1-ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
                         )
                     ),
-                    addedDevice: nil,
+                    face: .code,
+                    busy: false,
+                    error: nil,
+                    onApprove: {},
+                    onDecline: {},
+                    onDismiss: {}
+                )
+            )
+        },
+        ShotScene(
+            id: "mac.settings.add-device.request",
+            size: CGSize(width: 440, height: 220)
+        ) {
+            ShotStage(
+                AddDeviceSheetContent(
+                    result: nil,
+                    face: .request(
+                        deviceName: "Tablet",
+                        confirmation: "412 778"
+                    ),
+                    busy: false,
+                    error: nil,
+                    onApprove: {},
+                    onDecline: {},
                     onDismiss: {}
                 )
             )
@@ -89,12 +108,11 @@ extension ShotScene {
             ShotStage(
                 AddDeviceSheetContent(
                     result: nil,
-                    addedDevice: BridgeActiveDevice(
-                        id: 7,
-                        name: "Tablet",
-                        isSelf: false,
-                        canRemove: true
-                    ),
+                    face: .added(name: "Tablet"),
+                    busy: false,
+                    error: nil,
+                    onApprove: {},
+                    onDecline: {},
                     onDismiss: {}
                 )
             )

@@ -2,7 +2,7 @@ package fm.bae.app.playback
 
 import fm.bae.app.BridgeFixtures
 import kotlinx.coroutines.CompletableDeferred
-import uniffi.bae_bridge.AddedDeviceSubscription
+import uniffi.bae_bridge.AddDeviceStatusSubscription
 import uniffi.bae_bridge.AdminChangesSubscription
 import uniffi.bae_bridge.AlbumBrowseSubscription
 import uniffi.bae_bridge.AlbumDetailSubscription
@@ -12,7 +12,7 @@ import uniffi.bae_bridge.ArtistBrowseSubscription
 import uniffi.bae_bridge.ArtistDetailSubscription
 import uniffi.bae_bridge.ArtistSearchSubscription
 import uniffi.bae_bridge.BridgeAddDevice
-import uniffi.bae_bridge.BridgeAddedDeviceWatch
+import uniffi.bae_bridge.BridgeAddDeviceRequest
 import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeArtistSortCriterion
@@ -613,6 +613,18 @@ internal open class FakeAppHandle(
 
     override fun subscribeArtistDetail(): ArtistDetailSubscription = unfaked("subscribeArtistDetail")
 
+    override suspend fun approveAddDevice(request: BridgeAddDeviceRequest) {
+        unfaked("approveAddDevice")
+    }
+
+    override suspend fun declineAddDevice(request: BridgeAddDeviceRequest) {
+        unfaked("declineAddDevice")
+    }
+
+    override suspend fun endAddDevice(pairing: String) {
+        unfaked("endAddDevice")
+    }
+
     override suspend fun approveJoinRequest(request: BridgeJoinRequest) {
         unfaked("approveJoinRequest")
     }
@@ -674,7 +686,7 @@ internal open class FakeAppHandle(
 
     override fun subscribeMembers(): MembersSubscription = unfaked("subscribeMembers")
 
-    override fun subscribeAddedDevice(watch: BridgeAddedDeviceWatch): AddedDeviceSubscription = unfaked("subscribeAddedDevice")
+    override fun followAddDevice(pairing: String): AddDeviceStatusSubscription = unfaked("followAddDevice")
 
     override suspend fun appendPlaylistEntry(
         playlist: String,

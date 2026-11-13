@@ -484,4 +484,13 @@
     <string name="invite_scan_instruction">Сканирайте или въведете кода на тяхното устройство.</string>
     <string name="invite_cancel_message">%1$s няма да може да използва тази покана.</string>
     <string name="qr_code">QR код</string>
+    <string name="add_device_request_match">Добавете го, ако екранът му показва този код:</string>
+    <string name="add_device_adding">Добавяне на %1$s…</string>
+    <string name="pair_check_title">Проверете дали другото ви устройство показва този код</string>
+    <string name="pair_check_text">След това добавете това устройство оттам.</string>
+    <string name="pair_waiting">Изчакване на другото ви устройство…</string>
+    <string name="pair_ended_title">Този код е изтекъл</string>
+    <string name="pair_ended_text">Отворете „Добавяне на устройство“ на другото си устройство за нов код.</string>
+    <string name="add_device_expired">Този код е изтекъл. Затворете това и изберете отново „Добавяне на устройство“ за нов код.</string>
+    <string name="add_device_refused">Заявката на новото устройство беше отказана, затова то не е добавено. Опитайте отново с нов код.</string>
 </resources>

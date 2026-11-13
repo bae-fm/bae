@@ -520,4 +520,13 @@
     <string name="invite_scan_instruction">امسح الرمز أو أدخله على جهازهم.</string>
     <string name="invite_cancel_message">لن يتمكن %1$s من استخدام هذه الدعوة.</string>
     <string name="qr_code">رمز QR</string>
+    <string name="add_device_request_match">أضفه إذا كانت شاشته تعرض هذا الرمز:</string>
+    <string name="add_device_adding">جارٍ إضافة %1$s…</string>
+    <string name="pair_check_title">تأكد من أن جهازك الآخر يعرض هذا الرمز</string>
+    <string name="pair_check_text">ثم أضف هذا الجهاز من هناك.</string>
+    <string name="pair_waiting">في انتظار جهازك الآخر…</string>
+    <string name="pair_ended_title">انتهت صلاحية هذا الرمز</string>
+    <string name="pair_ended_text">افتح «إضافة جهاز» على جهازك الآخر للحصول على رمز جديد.</string>
+    <string name="add_device_expired">انتهت صلاحية هذا الرمز. أغلق هذه النافذة واختر «إضافة جهاز» مرة أخرى للحصول على رمز جديد.</string>
+    <string name="add_device_refused">تم رفض طلب الجهاز الجديد، لذلك لم تتم إضافته. حاول مرة أخرى برمز جديد.</string>
 </resources>

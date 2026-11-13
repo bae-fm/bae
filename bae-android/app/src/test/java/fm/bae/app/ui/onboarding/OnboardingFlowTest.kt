@@ -62,6 +62,8 @@ class OnboardingFlowTest {
         var joinAnswer: BridgeBootstrapResult? = null
         val joined = mutableListOf<Pair<String, String>>()
         val resumedJoins = mutableListOf<BridgeUnfinishedJoin>()
+        var pairAnswer: BridgeBootstrapResult? = null
+        val paired = mutableListOf<Pair<String, BridgeS3Credentials?>>()
 
         override suspend fun unfinishedJoins(): List<BridgeUnfinishedJoin> = joinsUnderWay
 
@@ -74,6 +76,18 @@ class OnboardingFlowTest {
         ): BridgeBootstrapResult {
             joined += code to name
             joinAnswer?.let { return it }
+            awaitCancellation()
+        }
+
+        override suspend fun joinWithPairing(
+            code: String,
+            credentials: BridgeS3Credentials?,
+            deviceName: String,
+            setup: BridgeLibrarySetup,
+            control: BridgeJoinControl,
+        ): BridgeBootstrapResult {
+            paired += code to credentials
+            pairAnswer?.let { return it }
             awaitCancellation()
         }
 
@@ -185,6 +199,64 @@ class OnboardingFlowTest {
     }
 
     private val enterCode = OnboardingStep.EnterCode(CodeEntry.NewDevice)
+
+    /** A pairing code for an S3 library, whose QR code holds the S3 key and whose code to type does not. */
+    private fun pairingCode(carriesS3Key: Boolean) =
+        BridgeCodeInfo.Pairing(
+            (restoreCode(carriesS3Key) as BridgeCodeInfo.Restore).metadata,
+        )
+
+    /** A scanned pairing code, which holds the S3 key, asks the other device to add this one at once. */
+    @Test
+    fun aScannedPairingCodeAsksTheOtherDeviceAtOnce() {
+        val info = pairingCode(carriesS3Key = true)
+        val flow = newFlow()
+
+        flow.advance(enterCode, CODE, info, CodeSource.SCANNED)
+        shadowOf(Looper.getMainLooper()).idle()
+
+        val running = flow.step as OnboardingStep.Running
+        assertEquals(OnboardingStep.Pair(CODE, info.metadata, CodeEntry.NewDevice), running.from)
+        assertEquals(listOf<Pair<String, BridgeS3Credentials?>>(CODE to null), host.paired)
+        assertEquals(emptyList<String>(), host.restoredCodes)
+    }
+
+    /** The code to type holds no S3 key: it waits for the key, and a typed code shows what it read first. */
+    @Test
+    fun aTypedPairingCodeWaitsForTheKeyAndForThePerson() {
+        val keyless = pairingCode(carriesS3Key = false)
+        val flow = newFlow()
+        flow.advance(enterCode, CODE, keyless, CodeSource.SCANNED)
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(OnboardingStep.Pair(CODE, keyless.metadata, CodeEntry.NewDevice), flow.step)
+
+        val keyed = pairingCode(carriesS3Key = true)
+        flow.advance(enterCode, CODE, keyed, CodeSource.TYPED)
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(OnboardingStep.Pair(CODE, keyed.metadata, CodeEntry.NewDevice), flow.step)
+        assertEquals(emptyList<Pair<String, BridgeS3Credentials?>>(), host.paired)
+
+        val read = flow.step as OnboardingStep.Pair
+        val credentials = BridgeS3Credentials("key", "secret")
+        flow.add(read, credentials)
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(listOf<Pair<String, BridgeS3Credentials?>>(CODE to credentials), host.paired)
+    }
+
+    /** A pairing the other device declined or let expire ends on its own step, which goes back to the code screen. */
+    @Test
+    fun aPairingThatEndedWithNoDeviceSaysSo() {
+        host.pairAnswer = BridgeBootstrapResult.Declined
+        val flow = newFlow()
+
+        flow.advance(enterCode, CODE, pairingCode(carriesS3Key = true), CodeSource.SCANNED)
+        shadowOf(Looper.getMainLooper()).idle()
+
+        val ended = flow.step as OnboardingStep.PairingEnded
+        assertEquals(OnboardingStep.PairingEnded(CodeEntry.NewDevice), ended)
+        flow.back(ended)
+        assertEquals(enterCode, flow.step)
+    }
 
     @Test
     fun aScannedRestoreCodeAddsThisDeviceAtOnce() {

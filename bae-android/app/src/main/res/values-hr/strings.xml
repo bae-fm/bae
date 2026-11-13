@@ -493,4 +493,13 @@
     <string name="invite_scan_instruction">Skenirajte ili unesite kôd na njihovu uređaju.</string>
     <string name="invite_cancel_message">%1$s neće moći upotrijebiti ovu pozivnicu.</string>
     <string name="qr_code">QR kôd</string>
+    <string name="add_device_request_match">Dodajte ga ako njegov zaslon prikazuje ovaj kôd:</string>
+    <string name="add_device_adding">Dodavanje uređaja %1$s…</string>
+    <string name="pair_check_title">Provjerite prikazuje li vaš drugi uređaj ovaj kôd</string>
+    <string name="pair_check_text">Zatim dodajte ovaj uređaj s njega.</string>
+    <string name="pair_waiting">Čekanje na vaš drugi uređaj…</string>
+    <string name="pair_ended_title">Ovaj je kôd istekao</string>
+    <string name="pair_ended_text">Na drugom uređaju otvorite Dodaj uređaj za novi kôd.</string>
+    <string name="add_device_expired">Ovaj je kôd istekao. Zatvorite ovo i ponovno odaberite Dodaj uređaj za novi kôd.</string>
+    <string name="add_device_refused">Zahtjev novog uređaja odbijen je pa uređaj nije dodan. Pokušajte ponovno s novim kôdom.</string>
 </resources>

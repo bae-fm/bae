@@ -39,14 +39,13 @@ impl LibraryManager {
         self.people.subscribe_profiles(bae_views::sort_language_on)
     }
 
-    /// This person's restore code, and for the QR code the one that holds, on
-    /// S3, the key this device holds, for their own new device.
+    /// This person's restore code, for the QR code and to type, for their own
+    /// new device.
     pub async fn generate_restore_code(
         &self,
     ) -> Result<crate::sync::restore_code::RestoreCodeShare, LibraryError> {
         let code = self.store.generate_restore_code().await?;
-        let qr_text = self.store.restore_code_for_transfer().await?;
-        Ok(crate::sync::restore_code::RestoreCodeShare::new(code, qr_text))
+        Ok(crate::sync::restore_code::RestoreCodeShare::new(code.clone(), code))
     }
 
     pub fn subscribe_members(
@@ -55,31 +54,49 @@ impl LibraryManager {
         self.membership.subscribe_members()
     }
 
-    /// Add Device's sheet: this person's restore code to show, and the watch
-    /// for their device that joins from it. The person's devices are read
-    /// before the code is made, so a device restored from this code is never
-    /// among them.
+    /// Start a pairing for Add Device's sheet: its id and the codes to show,
+    /// the code to type grouped in fours.
     pub async fn add_device(&self) -> Result<crate::sync::membership::AddingDevice, LibraryError> {
-        let watch =
-            crate::sync::membership::AddedDeviceWatch::new(&self.membership.members().await?);
-        let share = self.generate_restore_code().await?;
-        Ok(crate::sync::membership::AddingDevice { share, watch })
+        let added = self.store.add_device().await?;
+        Ok(crate::sync::membership::AddingDevice {
+            id: added.id,
+            code: crate::sync::restore_code::grouped(&added.shared_code),
+            qr_text: added.qr_code,
+        })
     }
 
-    /// This person's device that `watch` finds: none until one joins. Add
-    /// Device's sheet subscribes while it shows the code. While the
-    /// subscription lives, this device syncs every 5 seconds instead of every
-    /// 30, so the sheet hears of the new device soon after it registers.
-    pub fn subscribe_added_device(
+    /// Where the pairing `pairing` is, until Add Device's sheet closes. While
+    /// the status is followed, this device syncs every 5 seconds instead of
+    /// every 30, so the sheet hears of the new device's request soon after it
+    /// is sent.
+    pub fn follow_add_device(
         &self,
-        watch: crate::sync::membership::AddedDeviceWatch,
-    ) -> coven::LiveQuery<Option<bae_people::membership::ActiveDevice>, bae_store::DbError> {
+        pairing: coven::AddDeviceId,
+    ) -> coven::LiveQuery<Option<coven::AddDeviceStatus>, coven::CovenError> {
         let sync_often = self.store.sync_often(crate::bootstrap::WAITING_SCREEN_CHECK_INTERVAL);
-        self.subscribe_members().process(move |membership| {
+        self.store.follow_add_device(pairing).process(move |status| {
             // The subscription owns the request; dropping it ends the request.
             let _sync_often = &sync_often;
-            Ok(watch.added(&membership))
+            Ok(status)
         })
+    }
+
+    pub async fn approve_add_device(
+        &self,
+        request: &coven::AddDeviceRequest,
+    ) -> Result<(), LibraryError> {
+        Ok(self.store.approve_add_device(request).await?)
+    }
+
+    pub async fn decline_add_device(
+        &self,
+        request: &coven::AddDeviceRequest,
+    ) -> Result<(), LibraryError> {
+        Ok(self.store.decline_add_device(request).await?)
+    }
+
+    pub async fn end_add_device(&self, pairing: coven::AddDeviceId) -> Result<(), LibraryError> {
+        Ok(self.store.end_add_device(pairing).await?)
     }
 
     /// A request for this device to sync every 5 seconds instead of every 30,

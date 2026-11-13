@@ -42,8 +42,9 @@ private val logger = BaeLogger(TAG)
 /**
  * What the person enters a code for: a new device, or a restore over this
  * device's copy of a library ([RestoreOver]). On a new device the code decides:
- * the person's own restore code adds this device to their library, and an
- * invite joins someone's. A restore over this device's copy takes no invite.
+ * the person's own restore code or pairing code adds this device to their
+ * library, and an invite joins someone's. A restore over this device's copy
+ * takes no invite and no pairing code.
  */
 internal sealed interface CodeEntry {
     /** A new device, on the welcome screen. */
@@ -78,20 +79,47 @@ internal sealed interface OnboardingStep {
     sealed interface EnteredCode : Attempt
 
     /**
-     * The person's own restore code, read; S3 asks for its access key before
-     * restoring unless the code holds it, as one from the person's own device
-     * does.
+     * A code of the person's own, read, that adds this device to their library:
+     * their restore code or a pairing code. S3 asks for its access key before
+     * going on unless the code holds it, as a QR code from the person's own
+     * device does.
      */
-    data class Restore(
-        val code: String,
-        val metadata: BridgeCodeMetadata,
-        override val entry: CodeEntry,
-    ) : EnteredCode,
+    sealed interface OwnCode :
+        EnteredCode,
         OnboardingStep {
-        /** Whether restoring needs the S3 access key typed in: an S3 code that doesn't hold it. */
+        val code: String
+        val metadata: BridgeCodeMetadata
+
+        /** Whether going on needs the S3 access key typed in: an S3 code that doesn't hold it. */
         val needsS3Key: Boolean
             get() = metadata.provider == BridgeCloudProvider.S3 && !metadata.carriesS3Key
     }
+
+    /** The person's own restore code, read. */
+    data class Restore(
+        override val code: String,
+        override val metadata: BridgeCodeMetadata,
+        override val entry: CodeEntry,
+    ) : OwnCode
+
+    /**
+     * A pairing code another of the person's devices shows, read. This device
+     * asks it to add this one and waits for its approval.
+     */
+    data class Pair(
+        override val code: String,
+        override val metadata: BridgeCodeMetadata,
+        override val entry: CodeEntry,
+    ) : OwnCode
+
+    /**
+     * A pairing that ended without letting this device in, whether it was
+     * declined, expired or closed on the other device: one step that says so
+     * and what to do. OK, and Back, return to the code screen.
+     */
+    data class PairingEnded(
+        val entry: CodeEntry,
+    ) : OnboardingStep
 
     /**
      * A restore code coven saved on this phone, chosen in the welcome's list.
@@ -203,9 +231,10 @@ internal sealed interface JoinStart {
 
 /**
  * What a code read for [entry] asks of the person: the person's own restore
- * code restores; an invite asks their name, then joins the library it names. A restore over this
- * device's copy takes no invite: the code goes to the restore, and core says
- * so.
+ * code restores, and their pairing code asks the device that shows it to add
+ * this one; an invite asks their name, then joins the library it names. A
+ * restore over this device's copy takes no invite and no pairing code: the
+ * code goes to the restore, and core says so.
  */
 internal fun codeReadStep(
     code: String,
@@ -215,6 +244,18 @@ internal fun codeReadStep(
     when (info) {
         is BridgeCodeInfo.Restore -> {
             OnboardingStep.Restore(code, info.metadata, entry)
+        }
+
+        is BridgeCodeInfo.Pairing -> {
+            when (entry) {
+                is RestoreOver -> {
+                    OnboardingStep.Restore(code, info.metadata, entry)
+                }
+
+                CodeEntry.NewDevice -> {
+                    OnboardingStep.Pair(code, info.metadata, entry)
+                }
+            }
         }
 
         is BridgeCodeInfo.Invite -> {
@@ -386,6 +427,7 @@ internal class OnboardingFlow(
         val metadata =
             when (info) {
                 is BridgeCodeInfo.Restore -> info.metadata
+                is BridgeCodeInfo.Pairing -> info.metadata
                 is BridgeCodeInfo.Invite -> info.invite.metadata
             }
         if (signInUnavailable(metadata.oauthAccess)) return
@@ -402,8 +444,8 @@ internal class OnboardingFlow(
                 join(read)
             }
 
-            is OnboardingStep.Restore -> {
-                if (source == CodeSource.SCANNED && !read.needsS3Key) restore(read, credentials = null) else step = read
+            is OnboardingStep.OwnCode -> {
+                if (source == CodeSource.SCANNED && !read.needsS3Key) add(read, credentials = null) else step = read
             }
         }
     }
@@ -469,6 +511,39 @@ internal class OnboardingFlow(
     fun back(from: OnboardingStep.JoinEnded) {
         error = null
         step = OnboardingStep.EnterCode(from.entry)
+    }
+
+    /** Back to the code screen from an ended pairing. */
+    fun back(from: OnboardingStep.PairingEnded) {
+        error = null
+        step = OnboardingStep.EnterCode(from.entry)
+    }
+
+    /**
+     * Add this device with [from], the person's restore code, or their pairing
+     * code, which asks the device that shows it to add this one. Leaving the
+     * screen of a pairing drops the call, which ends the pairing and removes
+     * this device's copy.
+     */
+    fun add(
+        from: OnboardingStep.OwnCode,
+        credentials: BridgeS3Credentials?,
+    ) {
+        when (from) {
+            is OnboardingStep.Restore -> {
+                restore(from, credentials)
+            }
+
+            is OnboardingStep.Pair -> {
+                val control = core.joins.newControl()
+                // A new control checks on coven's doubling waits until told the screen shows.
+                if (waitingScreenShown) control.setScreenShown(true)
+                joining = control
+                run(from, control::cancel) { setup ->
+                    core.host.joinWithPairing(from.code, credentials, deviceName(context), setup, control)
+                }
+            }
+        }
     }
 
     fun restore(
@@ -577,8 +652,12 @@ internal class OnboardingFlow(
                 following.cancel()
                 when (result) {
                     BridgeBootstrapResult.Declined -> {
-                        val join = from as? OnboardingStep.Invite ?: error("only a join ends without letting it in")
-                        step = OnboardingStep.JoinEnded(join.invite, join.entry)
+                        step =
+                            when (from) {
+                                is OnboardingStep.Invite -> OnboardingStep.JoinEnded(from.invite, from.entry)
+                                is OnboardingStep.Pair -> OnboardingStep.PairingEnded(from.entry)
+                                else -> error("only a join or a pairing ends without letting it in")
+                            }
                     }
 
                     // The cancel came as the request was sent: the join goes on.
@@ -632,6 +711,10 @@ internal class OnboardingFlow(
 private fun OnboardingStep.Attempt.formStep(): OnboardingStep =
     when (this) {
         is OnboardingStep.Restore -> {
+            this
+        }
+
+        is OnboardingStep.Pair -> {
             this
         }
 

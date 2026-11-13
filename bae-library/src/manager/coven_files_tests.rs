@@ -76,6 +76,7 @@ fn a_cover_whose_row_arrives_before_its_file_moves_its_version_when_the_file_lan
             "index works by title",
             bae_records::test_fixtures::WORKS_BY_TITLE,
             coven::OldWrites::Drop,
+            crate::SCHEMA.synced_tables(),
         ));
         devices.a_mut().reopen_with(raised.clone()).await;
         devices.a().storage().set_online(true);

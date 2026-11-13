@@ -18,7 +18,7 @@ pub fn test_builder(installation: &coven::Coven) -> coven::CovenBuilder {
 }
 
 /// The S3 key the library's storage is reached with on every device.
-fn owner_credentials() -> coven::S3Credentials {
+pub fn owner_credentials() -> coven::S3Credentials {
     coven::S3Credentials {
         access_key_id: "owner-key".into(),
         secret_access_key: coven::SecretText::new("owner-secret".into()),
@@ -70,6 +70,26 @@ pub async fn restore_store(
         crate::configure_store(sources.builder(installation), schema).storage_connector(storage);
     let (_sender, cancel) = tokio::sync::watch::channel(false);
     coven::restore_from_code(builder, code, Some(owner_credentials()), name, |_| {}, &cancel)
+        .await
+        .unwrap()
+}
+
+/// Pair another of the person's devices into `installation` with `code`, a
+/// pairing code the first device showed, on `schema` over `storage`, with
+/// `credentials` when the code carries no key. It returns once the showing
+/// device has approved the request, or `None` when the pairing ended first.
+pub async fn pair_store(
+    schema: crate::Schema,
+    installation: &coven::Coven,
+    sources: &crate::TestSources,
+    storage: Arc<coven::MemoryStorage>,
+    code: &str,
+    credentials: Option<coven::S3Credentials>,
+    name: &str,
+) -> Option<coven::CovenHandle> {
+    let builder =
+        crate::configure_store(sources.builder(installation), schema).storage_connector(storage);
+    coven::join_with_pairing(builder, code, credentials, name, |_| {}, &coven::JoinControl::new())
         .await
         .unwrap()
 }

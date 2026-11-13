@@ -61,8 +61,9 @@ pub struct MembershipMember {
     pub keys: coven::MemberPublicKeys,
     pub role: coven::MemberRole,
     /// How they reach storage: on S3 the id of their key, which the person
-    /// deletes in the provider's console when they remove the member.
-    pub access: coven::MemberAccess,
+    /// deletes in the provider's console when they remove the member. None
+    /// for the library's creator until Set up storage records theirs.
+    pub access: Option<coven::MemberAccess>,
     pub is_self: bool,
     pub can_remove: bool,
     pub active_devices: Vec<ActiveDevice>,

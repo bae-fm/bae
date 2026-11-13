@@ -475,4 +475,13 @@
     <string name="invite_scan_instruction">相手のデバイスでコードをスキャンするか入力してください。</string>
     <string name="invite_cancel_message">%1$sはこの招待を使えなくなります。</string>
     <string name="qr_code">QRコード</string>
+    <string name="add_device_request_match">画面にこのコードが表示されている場合は追加してください：</string>
+    <string name="add_device_adding">%1$sを追加しています…</string>
+    <string name="pair_check_title">もう一方のデバイスにこのコードが表示されていることを確認してください</string>
+    <string name="pair_check_text">そのあと、そちらからこのデバイスを追加してください。</string>
+    <string name="pair_waiting">もう一方のデバイスを待っています…</string>
+    <string name="pair_ended_title">このコードは期限切れです</string>
+    <string name="pair_ended_text">新しいコードは、もう一方のデバイスで「デバイスを追加」を開くと表示されます。</string>
+    <string name="add_device_expired">このコードは期限切れです。これを閉じて、もう一度「デバイスを追加」を選び、新しいコードを取得してください。</string>
+    <string name="add_device_refused">新しいデバイスのリクエストが拒否されたため、追加されませんでした。新しいコードでもう一度お試しください。</string>
 </resources>

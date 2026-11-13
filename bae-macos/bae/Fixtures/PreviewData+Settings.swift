@@ -162,17 +162,13 @@ extension PreviewData {
                     qrText: restoreCode,
                 )
             },
-            addDevice: {
+            addDevice: AddDeviceCalls(start: {
                 BridgeAddDevice(
-                    share: BridgeRestoreCodeShare(
-                        code: restoreCodeGrouped,
-                        qrText: restoreCode,
-                    ),
-                    watch: BridgeAddedDeviceWatch(
-                        noHandle: BridgeAddedDeviceWatch.NoHandle()
-                    )
+                    id: "6f1f0ab0-0000-4000-8000-000000000001",
+                    code: restoreCodeGrouped,
+                    qrText: restoreCode
                 )
-            },
+            }),
             storageLocation: { storage }
         )
     }

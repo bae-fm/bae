@@ -1,12 +1,9 @@
 //! The restore code a person's own device shows to add their new device.
 //!
-//! On S3 the QR code's code holds the key this device holds, inside the code
-//! (coven §13.1): the person controls both devices, so the new one restores
-//! without asking for the key. The code to type or copy holds no key.
+//! No restore code holds an S3 key (coven §13.1): the new device asks for it.
 
 /// What this device shows for its person's restore code: the code to type or
-/// copy, and the code for the QR, which holds this device's S3 key when it
-/// has one.
+/// copy, and the code for the QR.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RestoreCodeShare {
     pub code: String,

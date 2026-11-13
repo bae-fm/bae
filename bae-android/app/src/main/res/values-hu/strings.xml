@@ -482,4 +482,13 @@
     <string name="invite_scan_instruction">Olvasd be vagy add meg a kódot az ő eszközükön.</string>
     <string name="invite_cancel_message">%1$s nem tudja majd használni ezt a meghívót.</string>
     <string name="qr_code">QR-kód</string>
+    <string name="add_device_request_match">Add hozzá, ha a képernyőjén ez a kód látszik:</string>
+    <string name="add_device_adding">%1$s hozzáadása…</string>
+    <string name="pair_check_title">Ellenőrizd, hogy a másik eszközödön ez a kód látszik</string>
+    <string name="pair_check_text">Ezután add hozzá onnan ezt az eszközt.</string>
+    <string name="pair_waiting">Várakozás a másik eszközödre…</string>
+    <string name="pair_ended_title">Ez a kód lejárt</string>
+    <string name="pair_ended_text">Nyisd meg a másik eszközödön az Eszköz hozzáadása lehetőséget egy újért.</string>
+    <string name="add_device_expired">Ez a kód lejárt. Zárd be ezt, és válaszd újra az Eszköz hozzáadása lehetőséget egy újért.</string>
+    <string name="add_device_refused">Az új eszköz kérését elutasították, ezért nem lett hozzáadva. Próbáld újra új kóddal.</string>
 </resources>

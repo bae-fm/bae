@@ -43,17 +43,6 @@ impl BridgeJoinRequest {
         }
     }
 }
-/// The person's devices before Add Device made its code; a subscription
-/// reports the first of theirs that joins after.
-#[derive(uniffi::Object)]
-pub struct BridgeAddedDeviceWatch {
-    watch: bae_library::sync::membership::AddedDeviceWatch,
-}
-impl BridgeAddedDeviceWatch {
-    pub(crate) fn new(watch: bae_library::sync::membership::AddedDeviceWatch) -> Self {
-        Self { watch }
-    }
-}
 /// This device's request to sync every 5 seconds, held while an invite's
 /// screen shows. The screen releases it as it goes.
 #[derive(uniffi::Object)]
@@ -67,17 +56,88 @@ impl BridgeInviteScreenHold {
         self.guard.lock().unwrap_or_else(std::sync::PoisonError::into_inner).take();
     }
 }
-/// What Add Device's sheet shows, and the watch it runs while it does.
+/// What Add Device's sheet shows of the pairing it started: its id, which
+/// names it in every later call, the code to type or copy, and the code for
+/// the QR, which on S3 holds this device's key.
 #[derive(Clone, uniffi::Record)]
 pub struct BridgeAddDevice {
-    pub share: BridgeRestoreCodeShare,
-    pub watch: Arc<BridgeAddedDeviceWatch>,
+    pub id: String,
+    pub code: String,
+    pub qr_text: String,
 }
 impl BridgeAddDevice {
     fn from_core(value: bae_library::sync::membership::AddingDevice) -> Self {
-        Self {
-            share: BridgeRestoreCodeShare::from_core(value.share),
-            watch: Arc::new(BridgeAddedDeviceWatch::new(value.watch)),
+        Self { id: value.id.0.to_string(), code: value.code, qr_text: value.qr_text }
+    }
+}
+/// Retains the checked request of a new device to be added; callers cannot
+/// manufacture its authorization.
+#[derive(uniffi::Object)]
+pub struct BridgeAddDeviceRequest {
+    request: coven::AddDeviceRequest,
+}
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeAddDeviceRequestInfo {
+    /// The name the new device gave itself.
+    pub device_name: String,
+    /// The six digits the new device shows, as coven writes them (`041 778`).
+    pub confirmation: String,
+}
+#[uniffi::export]
+impl BridgeAddDeviceRequest {
+    pub fn info(&self) -> BridgeAddDeviceRequestInfo {
+        BridgeAddDeviceRequestInfo {
+            device_name: self.request.device_name.clone(),
+            confirmation: self.request.confirmation.to_string(),
+        }
+    }
+}
+/// Where a pairing is. Add Device's sheet offers approving and declining
+/// only for a waiting request.
+#[derive(Clone, uniffi::Enum)]
+pub enum BridgeAddDeviceStatus {
+    /// Waiting for a request, then for the person's decision on it.
+    Waiting {
+        request: Option<Arc<BridgeAddDeviceRequest>>,
+    },
+    /// The person approved the named device's request; it is on its way in.
+    Approved {
+        device_name: String,
+    },
+    Ended {
+        end: BridgeAddDeviceEnd,
+    },
+}
+/// How a pairing ended.
+#[derive(Debug, Clone, PartialEq, uniffi::Enum)]
+pub enum BridgeAddDeviceEnd {
+    /// The new device is in, under `name`.
+    Added {
+        name: String,
+    },
+    Declined,
+    /// The request failed one of coven's checks.
+    Refused,
+    /// The code's 30 minutes passed.
+    Expired,
+}
+impl BridgeAddDeviceStatus {
+    pub(crate) fn from_core(value: coven::AddDeviceStatus) -> Self {
+        match value {
+            coven::AddDeviceStatus::Waiting { request } => Self::Waiting {
+                request: request.map(|request| Arc::new(BridgeAddDeviceRequest { request })),
+            },
+            coven::AddDeviceStatus::Approved { request } => {
+                Self::Approved { device_name: request.device_name }
+            }
+            coven::AddDeviceStatus::Ended(end) => Self::Ended {
+                end: match end {
+                    coven::AddDeviceEnd::Added { name, .. } => BridgeAddDeviceEnd::Added { name },
+                    coven::AddDeviceEnd::Declined => BridgeAddDeviceEnd::Declined,
+                    coven::AddDeviceEnd::Refused => BridgeAddDeviceEnd::Refused,
+                    coven::AddDeviceEnd::Expired => BridgeAddDeviceEnd::Expired,
+                },
+            },
         }
     }
 }
@@ -87,17 +147,20 @@ impl AppHandle {
     pub fn subscribe_members(&self) -> Arc<crate::MembersSubscription> {
         crate::screens::members(self.services.subscribe_members(), self.runtime.clone())
     }
-    /// This person's device that `watch` finds: none until one joins after
-    /// Add Device made its code. Add Device's sheet pulls it while it shows
-    /// the code.
-    pub fn subscribe_added_device(
+    /// The pairing `pairing` started, now and after each change, until its
+    /// subscription is cancelled. While it lives this device syncs every 5
+    /// seconds, so the sheet hears of a new device's request soon after it
+    /// is sent. The sheet that showed the code ends the pairing when it
+    /// closes (`end_add_device`).
+    pub fn follow_add_device(
         &self,
-        watch: Arc<BridgeAddedDeviceWatch>,
-    ) -> Arc<crate::AddedDeviceSubscription> {
-        crate::screens::added_device(
-            self.services.subscribe_added_device(watch.watch.clone()),
+        pairing: String,
+    ) -> Result<Arc<crate::AddDeviceStatusSubscription>, BridgeError> {
+        let pairing = coven::AddDeviceId(pairing.parse().map_err(BridgeError::config)?);
+        Ok(crate::screens::add_device_status(
+            self.services.follow_add_device(pairing),
             self.runtime.clone(),
-        )
+        ))
     }
     /// Asks this device to sync every 5 seconds until the returned hold is
     /// released: an invite's screen holds it while it shows.
@@ -131,5 +194,8 @@ forward! {async this => {
     fn dismiss_refused_invite(operation:i64)->() {Ok(this.services.dismiss_refused_invite(coven::OperationId(operation)).await?)}
     fn approve_join_request(request:Arc<BridgeJoinRequest>)->() {Ok(this.services.approve_join_request(&request.request).await?)}
     fn decline_join_request(request:Arc<BridgeJoinRequest>)->() {Ok(this.services.decline_join_request(&request.request).await?)}
+    fn approve_add_device(request:Arc<BridgeAddDeviceRequest>)->() {Ok(this.services.approve_add_device(&request.request).await?)}
+    fn decline_add_device(request:Arc<BridgeAddDeviceRequest>)->() {Ok(this.services.decline_add_device(&request.request).await?)}
+    fn end_add_device(pairing:String)->() {Ok(this.services.end_add_device(coven::AddDeviceId(pairing.parse().map_err(BridgeError::config)?)).await?)}
     fn cancel_invite(invite:String)->() {Ok(this.services.cancel_invite(&coven::InviteId(invite.parse().map_err(BridgeError::config)?)).await?)}
 } }

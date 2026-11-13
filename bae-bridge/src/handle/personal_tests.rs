@@ -38,20 +38,15 @@ fn profiles_ratings_playlists_and_history_use_the_same_store() {
     let app = started.handle().clone();
     app.runtime.block_on(async {
         let share = app.clone().generate_restore_code().await.unwrap();
-        // The QR's code holds the S3 key; the code to type holds none.
-        let crate::BridgeCodeInfo::Restore { metadata: scanned } =
-            crate::decode_code_info(share.qr_text).unwrap()
-        else {
-            panic!("the QR's code is a restore code");
-        };
-        assert!(scanned.carries_s3_key);
+        // The QR's code and the code to type are the same, and neither holds
+        // the S3 key.
+        assert_eq!(crate::code_as_entered(share.code.clone()), share.qr_text);
         let crate::BridgeCodeInfo::Restore { metadata } =
             crate::decode_code_info(share.code).unwrap()
         else {
             panic!("a restore code must not become a named invitation");
         };
         assert!(!metadata.carries_s3_key);
-        assert_eq!(scanned.library_id, metadata.library_id);
         assert_eq!(metadata.library_id, app.subscribe_config().next().await.unwrap().library_id);
         assert_eq!(metadata.provider, BridgeCloudProvider::S3);
         assert_eq!(
@@ -59,6 +54,28 @@ fn profiles_ratings_playlists_and_history_use_the_same_store() {
             app.clone().storage_location().await.unwrap(),
             "a typed code shows where its library is stored before connecting"
         );
+
+        // Add device starts a pairing: its typed code holds no key, its QR
+        // code holds this device's, and its status waits for a request.
+        let added = app.clone().add_device().await.unwrap();
+        let crate::BridgeCodeInfo::Pairing { metadata: typed } =
+            crate::decode_code_info(added.code.clone()).unwrap()
+        else {
+            panic!("the code Add device shows is a pairing code");
+        };
+        assert!(!typed.carries_s3_key);
+        let crate::BridgeCodeInfo::Pairing { metadata: scanned } =
+            crate::decode_code_info(added.qr_text.clone()).unwrap()
+        else {
+            panic!("the QR code Add device shows is a pairing code");
+        };
+        assert!(scanned.carries_s3_key);
+        let status = app.follow_add_device(added.id.clone()).unwrap();
+        assert!(matches!(
+            status.next().await.unwrap(),
+            BridgeAddDeviceStatus::Waiting { request: None }
+        ));
+        app.clone().end_add_device(added.id).await.unwrap();
 
         // Asking again for the profile the person has, by its name, is done.
         app.clone().create_profile("Robin".into()).await.unwrap();

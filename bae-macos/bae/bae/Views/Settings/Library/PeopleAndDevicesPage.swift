@@ -252,7 +252,7 @@ struct PeopleAndDevicesPage: View {
                     "They lose access to the library. Their private history and private playlists are deleted; what they shared stays."
                 )
                 message =
-                    if let forgetLine = member.access.forgetLine {
+                    if let forgetLine = member.access?.forgetLine {
                         loses + Text(verbatim: "\n\n\(forgetLine)")
                     }
                     else {
@@ -483,7 +483,7 @@ extension PeopleAndDevicesPage {
             .disabled(task != nil)
             // Every member of a library reaches it the same way, so every
             // person has this line, or none does.
-            if let keyLine = member.access.keyLine {
+            if let keyLine = member.access?.keyLine {
                 Text(verbatim: keyLine)
                     .themeText(.detail)
                     .foregroundStyle(.secondary)
@@ -623,7 +623,7 @@ extension PeopleAndDevicesPage {
     /// Closing the sheet cancels this task, and with it the Rust call.
     private func generateAddDeviceShare() async {
         do {
-            addDeviceShare = .success(try await sync.addDevice())
+            addDeviceShare = .success(try await sync.addDevice.start())
         }
         catch is CancellationError {
             logger.debug("add-device code generation cancelled")

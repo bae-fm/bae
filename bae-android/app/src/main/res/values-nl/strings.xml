@@ -484,4 +484,13 @@
     <string name="invite_scan_instruction">Scan de code of voer hem in op hun apparaat.</string>
     <string name="invite_cancel_message">%1$s kan deze uitnodiging niet meer gebruiken.</string>
     <string name="qr_code">QR-code</string>
+    <string name="add_device_request_match">Voeg het toe als het scherm deze code toont:</string>
+    <string name="add_device_adding">%1$s wordt toegevoegd…</string>
+    <string name="pair_check_title">Controleer of je andere apparaat deze code toont</string>
+    <string name="pair_check_text">Voeg dit apparaat daarna daar toe.</string>
+    <string name="pair_waiting">Wachten op je andere apparaat…</string>
+    <string name="pair_ended_title">Deze code is verlopen</string>
+    <string name="pair_ended_text">Open Apparaat toevoegen op je andere apparaat voor een nieuwe.</string>
+    <string name="add_device_expired">Deze code is verlopen. Sluit dit en kies opnieuw Apparaat toevoegen voor een nieuwe.</string>
+    <string name="add_device_refused">Het verzoek van het nieuwe apparaat is geweigerd, dus het is niet toegevoegd. Probeer het opnieuw met een nieuwe code.</string>
 </resources>

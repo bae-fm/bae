@@ -294,7 +294,7 @@ task_types = [
     "CatalogImages",
     "WithSyncState",
     "CancellableLiveQuery",
-    "AddedDeviceSubscription",
+    "AddDeviceStatusSubscription",
     "AdminChangesSubscription",
     "AlbumBrowseSubscription",
     "AlbumDetailSubscription",
@@ -610,6 +610,7 @@ OpenCalls = "LibrarySessions"
     "BridgeHost::restore_replacing_device",
     "BridgeHost::restore_from_saved_code",
     "BridgeHost::join_with_invite",
+    "BridgeHost::join_with_pairing",
     "BridgeHost::resume_join",
     "BridgeHost::resume_replacement",
     "BridgeHost::resume_restore",
@@ -769,7 +770,7 @@ OpenCalls = "LibrarySessions"
     "on_device_runtime",
 ]
 # One person's devices of a test library, syncing over shared memory storage:
-# it creates the first device and restores more from its code, and hands the
+# it creates the first device and restores or pairs more from its codes, and hands the
 # test, the final owner of what it built, each device and the manager and
 # store it runs. It is test-utils code, which the library's integration tests
 # compile, so the checker reads it as production code.
@@ -786,6 +787,7 @@ OpenCalls = "LibrarySessions"
     "TwoDevices::b_mut",
     "DeviceLibrary::first",
     "DeviceLibrary::restore",
+    "DeviceLibrary::pair",
     "DeviceLibrary::new",
     "RunningLibrary::new",
     "TwoDevices::new",
@@ -1076,6 +1078,7 @@ OpenCalls = "LibrarySessions"
     "JoinControl::new",
     "create_library",
     "join_with_invite",
+    "join_with_pairing",
     "resume_join",
 ]
 "bae-library/src/manager/service.rs" = [
