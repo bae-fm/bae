@@ -13,7 +13,7 @@
         props.identifying ? h('span', { className: 'bae-m-isb-ind', title: 'Identifying' }, h('svg', { width: 14, height: 14, viewBox: '0 0 16 16' }, h('circle', { cx: 8, cy: 8, r: 6, fill: 'none', stroke: 'var(--hairline-strong)', strokeWidth: 2 }), h('circle', { cx: 8, cy: 8, r: 6, fill: 'none', stroke: 'var(--accent)', strokeWidth: 2, strokeDasharray: (Number(props.identifying) * 37.7) + ' 37.7', transform: 'rotate(-90 8 8)' }))) : null,
         props.importing ? h('span', { className: 'bae-m-isb-ind bae-muted', title: 'Importing…' }, h(Sym, { name: 'saveAs', size: 14 })) : null,
         props.scanning ? h('span', { className: 'bae-m-isb-ind', title: 'Scanning folders' }, h(MacSpinner, { size: 12 })) : null,
-        h('span', { className: 'bae-m-isb-ind bae-muted', title: 'Sorting, Filtering and Watched Folders' }, h(Glyph, { set: 'mac', name: 'ellipsis', size: 15 }), props.filtered ? h('span', { className: 'bae-m-isb-dot' }) : null)),
+        h('span', { className: 'bae-m-isb-ind bae-muted', title: 'Sorting, filtering and watched folders' }, h(Glyph, { set: 'mac', name: 'ellipsis', size: 15 }), props.filtered ? h('span', { className: 'bae-m-isb-dot' }) : null)),
       h('div', { className: 'bae-divider' }),
       props.empty ? h('div', { className: 'bae-m-isb-empty' }, h('div', { className: 'bae-m-cu-title' }, props.empty)) : h('div', { className: 'bae-m-isb-list' }, props.children));
   }
@@ -58,7 +58,7 @@
         h('span', { className: 'bae-strong bae-muted' }, 'Identify'), h(MacButton, null, 'Automatic'), h(MacButton, null, 'Search'), props.editor ? null : h(MacButton, null, '⋯'),
         h('span', { style: { flex: 1 } }),
         props.cloud ? h(MacImportDestination, { to: props.to }) : null,
-        props.editor ? [props.changed ? h(MacButton, { key: 'c' }, 'Cancel') : null, h(MacButton, { key: 's', kind: 'primary' }, 'Save')] : props.blank ? null : h(MacButton, { kind: 'primary' }, props.retry ? 'Retry Import' : 'Import')),
+        props.editor ? [props.changed ? h(MacButton, { key: 'c' }, 'Cancel') : null, h(MacButton, { key: 's', kind: 'primary' }, 'Save')] : props.blank ? null : h(MacButton, { kind: 'primary' }, props.retry ? 'Retry import' : 'Import')),
       props.check ? h(MacNotice, { tone: 'warning', title: props.check }) : null,
       h('div', { className: 'bae-m-idraft-head' },
         props.cover ? h(Artwork, { title: props.cover, size: 132, radius: 6 }) : h('div', { className: 'bae-m-idraft-well' }, h('div', { className: 'bae-strong' }, 'Add artwork'), h('div', { className: 'bae-muted', style: { fontSize: 11.5 } }, 'Drag an image here, or click to choose')),
@@ -160,7 +160,7 @@
     return h('div', { className: 'bae-m-bulk' }, h('div', { className: 'bae-m-card', style: { width: 440, padding: 24, display: 'flex', flexDirection: 'column', gap: 12 } },
       h('div', { style: { font: '700 22px var(--font-sans)' } }, n + ' selected'), h('div', { className: 'bae-muted' }, 'Each action applies only to eligible selected folders.'),
       h('div', { className: 'bae-m-bulklist' },
-        grp('Import', [row('saveAs', 'Import', props.ready || 3, true, props.cloud ? h(MacImportDestination, { to: props.to }) : null), row('xcircle', 'Cancel import of selected', 0), row('grid', 'Combine as One Release', 0, true), row('grid', 'Keep as Separate Releases', 0)]),
+        grp('Import', [row('saveAs', 'Import', props.ready || 3, true, props.cloud ? h(MacImportDestination, { to: props.to }) : null), row('xcircle', 'Cancel import of selected', 0), row('grid', 'Combine as one release', 0, true), row('grid', 'Keep as separate releases', 0)]),
         grp('Metadata', [row('refresh', 'Identify selected', n), row('xcircle', 'Stop identifying selected', 0), row('refresh', 'Retry failed identification', 1), row('edit', 'Reset to file metadata', n), row('trash', 'Clear metadata', n)]),
         grp(null, [row('xcircle', 'Skip selected', n), row('left', 'Restore to Pending', 0)]),
         grp(null, [row('folder', 'Reveal in Finder', n)]))),
