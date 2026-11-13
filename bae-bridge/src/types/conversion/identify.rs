@@ -268,7 +268,7 @@ impl BridgeReleaseGroup {
         BridgeReleaseGroup {
             id,
             title,
-            artist,
+            artist: artist.map(BridgeCreditLine::from_core),
             label,
             cover_art: cover_art.map(BridgeRemoteCover::from_core),
             sources: sources.into_iter().map(BridgeReleaseGroupSource::from_core).collect(),

@@ -220,13 +220,13 @@ pub fn bridge_artists_standing(
     bae_import::artists_standing(&assignments, &resolutions).map(BridgeArtistsStanding::from_core)
 }
 
-/// The line a credit list prints: each credit's printed name, then its join
-/// (", " where it states none), the last credit's join never printed.
+/// The line a credit list prints: each credit's printed name, with its join,
+/// the last credit's join never kept.
 #[cfg(desktop)]
 #[uniffi::export]
-pub fn bridge_credit_line(credits: Vec<BridgeCredited>) -> String {
+pub fn bridge_credit_line(credits: Vec<BridgeCredited>) -> BridgeCreditLine {
     let credits: Vec<_> = credits.into_iter().map(BridgeCredited::into_core).collect();
-    bae_import::credited_line(&credits)
+    BridgeCreditLine::from_core(bae_import::credited_line(&credits))
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]

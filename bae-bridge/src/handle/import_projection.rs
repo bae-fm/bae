@@ -391,7 +391,7 @@ mirror_struct! {
     from_core: fn,
     fields: {
         album_title,
-        album_artists,
+        album_artists: (crate::types::BridgeCreditLine),
     },
 }
 

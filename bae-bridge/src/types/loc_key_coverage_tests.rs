@@ -195,6 +195,20 @@ fn produced_keys() -> Vec<String> {
         keys.push(bridge_cover_image_type_key(image_type));
     }
 
+    // bridge_credit_join_key — every recognized join carries a key; a written
+    // join names none.
+    for join in [
+        BridgeCreditJoin::Featuring,
+        BridgeCreditJoin::Ampersand,
+        BridgeCreditJoin::And,
+        BridgeCreditJoin::With,
+        BridgeCreditJoin::Versus,
+    ] {
+        keys.extend(bridge_credit_join_key(join));
+    }
+    assert!(bridge_credit_join_key(BridgeCreditJoin::Unrecognized { text: " / ".to_string() })
+        .is_none());
+
     // bridge_cloud_provider_label_key — None (local-only) and S3 carry keys.
     for p in [None, Some(BridgeCloudProvider::S3)] {
         keys.extend(bridge_cloud_provider_label_key(p));

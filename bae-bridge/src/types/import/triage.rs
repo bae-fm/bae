@@ -111,14 +111,14 @@ pub fn bridge_audio_damage_key(damage: BridgeAudioDamage) -> String {
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeSkippedTags {
     pub album_title: String,
-    pub artist: Option<String>,
+    pub artist: Option<BridgeCreditLine>,
 }
 
 mirror_struct! {
     #[cfg(desktop)]
     BridgeSkippedTags = bae_import::folder_scanner::SkippedTags,
     from_core: pub(crate) fn,
-    fields: { album_title, artist },
+    fields: { album_title, artist: (opt BridgeCreditLine) },
 }
 
 /// A folder that looks like a release but failed validation, listed under
@@ -536,8 +536,8 @@ pub fn bridge_folder_check_key(folder_check: &BridgeFolderCheck) -> String {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeTriageMetadataSummary {
     pub album_title: String,
-    /// The draft's album credits, printed as one line.
-    pub album_artists: String,
+    /// The draft's album credits.
+    pub album_artists: BridgeCreditLine,
 }
 
 /// Where a candidate's draft was read from.

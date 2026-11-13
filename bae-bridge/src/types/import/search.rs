@@ -88,7 +88,7 @@ pub struct BridgeReleaseGroup {
     /// release's id when no source named a group).
     pub id: String,
     pub title: String,
-    pub artist: Option<String>,
+    pub artist: Option<BridgeCreditLine>,
     /// The label the card names beside the artist, where the album's pressings
     /// state one.
     pub label: Option<String>,

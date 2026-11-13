@@ -60,7 +60,7 @@ impl BridgeTrack {
             id,
             title,
             duration_ms,
-            artist_names,
+            artist_line,
             display_artist,
             position_text,
             // Structured position drives core-side grouping (`track_groups`); the
@@ -72,8 +72,8 @@ impl BridgeTrack {
             title,
             duration_clock: crate::types::BridgeDurationClock::of_length(duration_ms),
             duration_ms,
-            artist_names,
-            display_artist,
+            artist_line: crate::types::BridgeCreditLine::from_core(artist_line),
+            display_artist: display_artist.map(crate::types::BridgeCreditLine::from_core),
             position_text,
         }
     }
@@ -183,7 +183,7 @@ mirror_struct! {
         id,
         title,
         year,
-        artist_name,
+        artist_line: (crate::types::BridgeCreditLine),
         cover: (opt crate::types::BridgeImageRef),
     },
 }
@@ -197,7 +197,7 @@ impl BridgeTrackSearchResult {
             release_id,
             album_id,
             album_title,
-            artist_name,
+            artist_line,
             cover,
         } = t;
         BridgeTrackSearchResult {
@@ -207,7 +207,7 @@ impl BridgeTrackSearchResult {
             release_id,
             album_id,
             album_title,
-            artist_name,
+            artist_line: crate::types::BridgeCreditLine::from_core(artist_line),
             cover: cover.map(crate::types::BridgeImageRef::from_core),
         }
     }
@@ -302,10 +302,10 @@ impl BridgeAlbumDetail {
     pub(crate) fn from_core(detail: bae_views::album_detail::AlbumDetail) -> Self {
         let bae_views::album_detail::AlbumDetail {
             album,
-            // The credits' names arrive joined in `artist_names`; no surface
+            // The credits' names arrive as the `artist_line`; no surface
             // links them from the album detail.
             artists: _,
-            artist_names,
+            artist_line,
             releases,
             primary_release_id,
             cover,
@@ -321,14 +321,14 @@ impl BridgeAlbumDetail {
             created_at: _,
         } = album;
         // Reassemble the album's slim summary from the detail's DbAlbum plus the
-        // detail-level artist_names/primary_release_id/cover, then reuse
+        // detail-level artist_line/primary_release_id/cover, then reuse
         // BridgeAlbum::from_core so the BridgeAlbum projection lives in one place.
         let album = BridgeAlbum::from_core(bae_views::album_detail::AlbumSummary {
             id,
             title,
             year,
             is_compilation,
-            artist_names,
+            artist_line,
             release_ids,
             primary_release_id,
             cover,
@@ -348,7 +348,7 @@ mirror_struct! {
         title,
         year,
         is_compilation,
-        artist_names,
+        artist_line: (crate::types::BridgeCreditLine),
         release_ids,
         primary_release_id,
         cover: (opt crate::types::BridgeImageRef),
@@ -360,7 +360,7 @@ mirror_struct! {
     from_core: pub(crate) fn,
     fields: {
         album: (BridgeAlbum),
-        credited_with,
+        credited_with: (opt crate::types::BridgeCreditLine),
     },
 }
 

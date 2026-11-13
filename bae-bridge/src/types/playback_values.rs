@@ -1,4 +1,4 @@
-use super::{BridgeCastReceiver, BridgeImageRef, BridgeRepeatMode};
+use super::{BridgeCastReceiver, BridgeCreditLine, BridgeImageRef, BridgeRepeatMode};
 
 /// One local file range to audition, by sample bounds only: an import
 /// candidate has no byte seek positions yet.
@@ -53,7 +53,7 @@ pub struct BridgePlayingTrack {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeTrackDisplay {
     pub title: String,
-    pub artist_names: String,
+    pub artist_line: BridgeCreditLine,
     pub album_id: String,
     /// The release the track is on, which may be any of its album's releases.
     pub release_id: String,
@@ -80,7 +80,7 @@ mirror_struct! {
     from_core: pub(crate) fn,
     fields: {
         title,
-        artist_names,
+        artist_line: (BridgeCreditLine),
         album_id,
         release_id,
         album_title,

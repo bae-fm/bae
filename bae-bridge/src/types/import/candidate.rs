@@ -271,7 +271,7 @@ pub fn bridge_import_phase_key(phase: BridgeImportPhase) -> String {
 pub struct BridgeAlbumChoice {
     pub album_id: String,
     pub title: String,
-    pub artist_name: String,
+    pub artist_line: BridgeCreditLine,
     pub year: Option<i32>,
 }
 
@@ -281,7 +281,7 @@ impl BridgeAlbumChoice {
         Self {
             album_id: album.id,
             title: album.title,
-            artist_name: album.artist_name,
+            artist_line: BridgeCreditLine::from_core(album.artist_line),
             year: album.year,
         }
     }

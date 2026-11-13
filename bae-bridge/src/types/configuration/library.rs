@@ -14,7 +14,7 @@ pub struct BridgeAlbumSearchResult {
     pub id: String,
     pub title: String,
     pub year: Option<i32>,
-    pub artist_name: String,
+    pub artist_line: BridgeCreditLine,
     /// Reference to the album's cover (the primary release's cover), or `None`.
     /// The UI fetches the bytes by id and caches under `(id, version)`.
     pub cover: Option<BridgeImageRef>,
@@ -32,7 +32,7 @@ pub struct BridgeTrackSearchResult {
     pub release_id: String,
     pub album_id: String,
     pub album_title: String,
-    pub artist_name: String,
+    pub artist_line: BridgeCreditLine,
     /// The cover of the track's own release, or `None`. Same fetch/caching
     /// contract as [`BridgeAlbumSearchResult::cover`].
     pub cover: Option<BridgeImageRef>,

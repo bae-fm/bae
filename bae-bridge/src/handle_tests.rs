@@ -19,7 +19,7 @@ fn track_detail(
         id: "track-1".to_string(),
         title: "Track".to_string(),
         duration_ms,
-        artist_names: "Artist".to_string(),
+        artist_line: bae_types::credits::CreditLine::of_name("Artist"),
         display_artist: None,
         position_text: "1".to_string(),
         position,
@@ -81,7 +81,7 @@ fn track_search_result(duration_ms: u64) -> bae_views::album_detail::TrackSearch
         release_id: "release-1".to_string(),
         album_id: "album-1".to_string(),
         album_title: "Album".to_string(),
-        artist_name: "Artist".to_string(),
+        artist_line: bae_types::credits::CreditLine::of_name("Artist"),
         cover: None,
     }
 }
@@ -100,7 +100,7 @@ fn queue_item(duration_ms: u64) -> bae_playback::QueueItem {
         track_id: "track-1".to_string(),
         display: bae_playback::TrackDisplay {
             title: "Track".to_string(),
-            artist_names: "Artist".to_string(),
+            artist_line: bae_types::credits::CreditLine::of_name("Artist"),
             album_id: "album-1".to_string(),
             release_id: "release-1".to_string(),
             album_title: "Album".to_string(),

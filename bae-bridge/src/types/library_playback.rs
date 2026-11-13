@@ -1,6 +1,6 @@
 use super::{
-    BridgeCoverLabel, BridgeGalleryLabel, BridgeMediaCount, BridgePressingFacts, BridgeReleaseName,
-    BridgeReleasePlayability,
+    BridgeCoverLabel, BridgeCreditLine, BridgeGalleryLabel, BridgeMediaCount, BridgePressingFacts,
+    BridgeReleaseName, BridgeReleasePlayability,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
@@ -255,9 +255,9 @@ pub struct BridgeAlbum {
     pub title: String,
     pub year: Option<i32>,
     pub is_compilation: bool,
-    /// The album's credit line for display: each credit's printed name, then
-    /// the join its source prints after it (", " where it states none)
-    pub artist_names: String,
+    /// The album's credit line: each credit's printed name, with the join its
+    /// source prints after it. The apps word it in the viewer's language.
+    pub artist_line: BridgeCreditLine,
     /// All release IDs for this album, in album order
     pub release_ids: Vec<String>,
     /// The album's primary release, its lowest-ordered one: it provides the
@@ -278,7 +278,7 @@ pub struct BridgeAlbumAppearance {
     /// Grouped by artist: the album's credits other than the artist whose
     /// group lists it, printed as a line; `None` when that artist is its only
     /// credit, or when the grid is flat.
-    pub credited_with: Option<String>,
+    pub credited_with: Option<BridgeCreditLine>,
 }
 
 /// Where a release's files are: on the one device holding its originals, or
@@ -516,15 +516,15 @@ pub struct BridgeTrack {
     /// conversion so a track row reads a field instead of an FFI call; the UI
     /// formats the fields for its locale.
     pub duration_clock: BridgeDurationClock,
-    /// Effective credit line for display, joined as for `BridgeAlbum` (the track's own
+    /// Effective credit line for display, as for `BridgeAlbum` (the track's own
     /// artists when it has per-track artist rows, otherwise the album
     /// artists). Always populated.
-    pub artist_names: String,
+    pub artist_line: BridgeCreditLine,
     /// The artist to show on the track row, or `None` for none. Core sets it
     /// only for a compilation, where the album header names no single artist;
     /// on a single-artist album the row would only repeat the header. The UI
     /// renders it when present rather than deciding for itself.
-    pub display_artist: Option<String>,
+    pub display_artist: Option<BridgeCreditLine>,
     /// Core-rendered position string: "A1"/"3"/"5", or the stable prefix
     /// when the source has no track number.
     pub position_text: String,
