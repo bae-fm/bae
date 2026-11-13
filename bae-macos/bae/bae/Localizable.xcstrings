@@ -102956,338 +102956,338 @@
         }
       }
     },
-    "%@: %@" : {
-      "comment" : "A storage provider and the account a library is in, such as Dropbox: ana@example.com",
+    "%@ · %@" : {
+      "comment" : "A storage provider and the account a library is in, such as Dropbox · ana@example.com",
       "extractionState" : "manual",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@: %@"
+            "value" : "%@ · %@"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@: %@"
+            "value" : "%@ · %@"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@: %@"
+            "value" : "%@ · %@"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@: %@"
+            "value" : "%@ · %@"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@: %@"
+            "value" : "%@ · %@"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@: %@"
+            "value" : "%@ · %@"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@: %@"
+            "value" : "%@ · %@"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@: %@"
+            "value" : "%@ · %@"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ : %@"
+            "value" : "%@ · %@"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@: %@"
+            "value" : "%@ · %@"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@: %@"
+            "value" : "%@ · %@"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@: %@"
+            "value" : "%@ · %@"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@: %@"
+            "value" : "%@ · %@"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@：%@"
+            "value" : "%@ · %@"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@: %@"
+            "value" : "%@ · %@"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@: %@"
+            "value" : "%@ · %@"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@: %@"
+            "value" : "%@ · %@"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@: %@"
+            "value" : "%@ · %@"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@: %@"
+            "value" : "%@ · %@"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@: %@"
+            "value" : "%@ · %@"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@: %@"
+            "value" : "%@ · %@"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@: %@"
+            "value" : "%@ · %@"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@: %@"
+            "value" : "%@ · %@"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@: %@"
+            "value" : "%@ · %@"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@: %@"
+            "value" : "%@ · %@"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@：%@"
+            "value" : "%@ · %@"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@：%@"
+            "value" : "%@ · %@"
           }
         }
       }
     },
-    "%@: %@ (%@)" : {
+    "%@ · %@ (%@)" : {
       "comment" : "An S3 library's provider, bucket, and endpoint (or region, for Amazon S3)",
       "extractionState" : "manual",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@: %@ (%@)"
+            "value" : "%@ · %@ (%@)"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@: %@ (%@)"
+            "value" : "%@ · %@ (%@)"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@: %@ (%@)"
+            "value" : "%@ · %@ (%@)"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@: %@ (%@)"
+            "value" : "%@ · %@ (%@)"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@: %@ (%@)"
+            "value" : "%@ · %@ (%@)"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@: %@ (%@)"
+            "value" : "%@ · %@ (%@)"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@: %@ (%@)"
+            "value" : "%@ · %@ (%@)"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@: %@ (%@)"
+            "value" : "%@ · %@ (%@)"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ : %@ (%@)"
+            "value" : "%@ · %@ (%@)"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@: %@ (%@)"
+            "value" : "%@ · %@ (%@)"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@: %@ (%@)"
+            "value" : "%@ · %@ (%@)"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@: %@ (%@)"
+            "value" : "%@ · %@ (%@)"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@: %@ (%@)"
+            "value" : "%@ · %@ (%@)"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@：%@（%@）"
+            "value" : "%@ · %@（%@）"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@: %@ (%@)"
+            "value" : "%@ · %@ (%@)"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@: %@ (%@)"
+            "value" : "%@ · %@ (%@)"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@: %@ (%@)"
+            "value" : "%@ · %@ (%@)"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@: %@ (%@)"
+            "value" : "%@ · %@ (%@)"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@: %@ (%@)"
+            "value" : "%@ · %@ (%@)"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@: %@ (%@)"
+            "value" : "%@ · %@ (%@)"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@: %@ (%@)"
+            "value" : "%@ · %@ (%@)"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@: %@ (%@)"
+            "value" : "%@ · %@ (%@)"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@: %@ (%@)"
+            "value" : "%@ · %@ (%@)"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@: %@ (%@)"
+            "value" : "%@ · %@ (%@)"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@: %@ (%@)"
+            "value" : "%@ · %@ (%@)"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@：%@（%@）"
+            "value" : "%@ · %@（%@）"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@：%@（%@）"
+            "value" : "%@ · %@（%@）"
           }
         }
       }

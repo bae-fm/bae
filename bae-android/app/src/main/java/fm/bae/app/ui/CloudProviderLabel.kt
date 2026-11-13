@@ -19,7 +19,7 @@ internal fun cloudProviderLabel(provider: BridgeCloudProvider): String =
 
 /**
  * The provider with the account or bucket a library is in, as restore and
- * library rows show it: "Dropbox: ana@example.com", "S3-compatible: bucket
+ * library rows show it: "Dropbox · ana@example.com", "S3-compatible · bucket
  * (endpoint)", "iCloud". The endpoint is the one the person entered; Amazon S3
  * has none, so its region names the place instead. A Dropbox or OneDrive
  * location coven hasn't set up has no account yet.

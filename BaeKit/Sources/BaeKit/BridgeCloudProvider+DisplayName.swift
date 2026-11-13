@@ -54,7 +54,7 @@ public func localizedCloudProviderName(provider: BridgeCloudProvider?) -> String
 
 extension BridgeStorageLocation {
     /// The provider with the account or bucket a library is in, as restore
-    /// rows and library rows show it: "Dropbox: ana@example.com", "S3-compatible:
+    /// rows and library rows show it: "Dropbox · ana@example.com", "S3-compatible ·
     /// bucket (endpoint)", "iCloud". The endpoint is the one the person entered;
     /// Amazon S3 has none, so its region names the place instead. A Dropbox or
     /// OneDrive location coven hasn't set up has no account yet.
@@ -62,13 +62,13 @@ extension BridgeStorageLocation {
         switch self {
         case .dropbox(_, let account?, _), .oneDrive(_, _, let account?, _):
             String(
-                localized: "\(displayName): \(account)",
+                localized: "\(displayName) · \(account)",
                 comment:
-                    "A storage provider and the account a library is in, such as Dropbox: ana@example.com"
+                    "A storage provider and the account a library is in, such as Dropbox · ana@example.com"
             )
         case .s3(let bucket, let region, let endpoint, _):
             String(
-                localized: "\(displayName): \(bucket) (\(endpoint ?? region))",
+                localized: "\(displayName) · \(bucket) (\(endpoint ?? region))",
                 comment:
                     "An S3 library's provider, bucket, and endpoint (or region, for Amazon S3)"
             )
