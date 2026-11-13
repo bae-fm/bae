@@ -885,7 +885,10 @@ async fn cancelling_a_pin_removes_what_it_downloaded() {
             manager.pin_release_files_with_progress(&release_id, entry, |_| {}).await
         }
     });
-    stalled.await.unwrap();
+    tokio::time::timeout(bae_util::test_channels::HANG_GUARD, stalled)
+        .await
+        .expect("the pin reached its held body")
+        .unwrap();
     wait_for_partial_download(manager).await;
 
     manager.cancel_download(&release_id).await.unwrap();
@@ -898,7 +901,11 @@ async fn cancelling_a_pin_removes_what_it_downloaded() {
     if resume.send(()).is_err() {
         // The cancel reached the body first and dropped it.
     }
-    pin.await.unwrap().expect_err("the cancel ended the download the pin waited on");
+    tokio::time::timeout(bae_util::test_channels::HANG_GUARD, pin)
+        .await
+        .expect("the cancel ended the pin")
+        .unwrap()
+        .expect_err("the cancel ended the download the pin waited on");
     let local = manager.store.local_bytes().await.unwrap();
     let audio = local
         .namespaces
@@ -934,7 +941,10 @@ async fn resuming_a_paused_pin_fetches_only_the_rest() {
     home.hold_body_at(stored.clone(), 2 * 1024 * 1024, observed, resumed).await;
     manager.start().unwrap();
     manager.enqueue_pins(vec![release_id.clone()]).await.unwrap();
-    stalled.await.unwrap();
+    tokio::time::timeout(bae_util::test_channels::HANG_GUARD, stalled)
+        .await
+        .expect("the pin reached its held body")
+        .unwrap();
     wait_for_partial_download(manager).await;
 
     manager.set_downloads_paused(true).await.unwrap();
