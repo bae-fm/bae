@@ -3858,6 +3858,22 @@
    "w": 412,
    "x": 786,
    "y": 15556
+  },
+  "mac.album.record-sides.dc.html": {
+   "h": 1160,
+   "page": "home",
+   "title": "macOS: Album: a record’s sides",
+   "w": 1200,
+   "x": 0,
+   "y": 21244
+  },
+  "android.album.record-sides.dc.html": {
+   "h": 916,
+   "page": "home",
+   "title": "Album: a record’s sides",
+   "w": 412,
+   "x": 1296,
+   "y": 21244
   }
  },
  "createdOnFiles": {
@@ -5850,7 +5866,9 @@
   "android.settings.person.s3.dc.html",
   "android.parts.restore-code.dc.html",
   "mac.welcome.libraries.unreadable.dc.html",
-  "android.welcome.libraries.unreadable.dc.html"
+  "android.welcome.libraries.unreadable.dc.html",
+  "mac.album.record-sides.dc.html",
+  "android.album.record-sides.dc.html"
  ],
  "pages": [
   {
