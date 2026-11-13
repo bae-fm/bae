@@ -86,9 +86,9 @@ fn profiles_ratings_playlists_and_history_use_the_same_store() {
             .create_playlist("Evening".into(), BridgeSharing::Private, Vec::new())
             .await
             .unwrap();
-        let made = app.clone().playlists().await.unwrap();
-        assert_eq!(made[0].id, playlist_id);
-        assert_eq!(made[0].audience, BridgeAudience::Circle { id: profile.private_circle.clone() });
+        let stored = people.playlists().await.unwrap();
+        assert_eq!(stored[0].id.to_string(), playlist_id);
+        assert_eq!(stored[0].audience, coven::Audience::Circle(made.private_circle));
         assert_eq!(
             app.clone().play_playlist(playlist_id.clone(), None).await.unwrap(),
             BridgePlayOutcome::NothingToPlay
@@ -119,11 +119,11 @@ fn profiles_ratings_playlists_and_history_use_the_same_store() {
             .set_playlist_sharing(playlist_id.clone(), BridgeSharing::Household)
             .await
             .unwrap();
-        let playlists = app.clone().playlists().await.unwrap();
+        let playlists = people.playlists().await.unwrap();
         assert_eq!(playlists[0].name, "Gathering");
-        assert_eq!(playlists[0].audience, BridgeAudience::Store);
+        assert_eq!(playlists[0].audience, coven::Audience::Store);
         app.clone().delete_playlist(playlist_id).await.unwrap();
-        assert!(app.clone().playlists().await.unwrap().is_empty());
+        assert!(people.playlists().await.unwrap().is_empty());
         let members = app.clone().get_members().await.unwrap();
         assert!(members.self_is_admin);
         let device = &members.members[0].active_devices[0];

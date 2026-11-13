@@ -26,6 +26,8 @@ bae-diagnostics = { workspace = true }
 # The transfer queues' entries and the storage transition each release is
 # in, as the detail views, the Storage Manager and the activity read them.
 bae-transfers = { workspace = true }
+# Playlists and who made them.
+bae-people = { workspace = true }
 # The pressing values and storage actions the screens show.
 bae-types = { workspace = true }
 # Content types and the duration and size labels the screens show.
@@ -36,6 +38,8 @@ rusqlite = { workspace = true }
 # The id sets a live read binds as one JSON list.
 serde_json = { workspace = true }
 tokio = { workspace = true, features = ["sync"] }
+# Playlist ids.
+uuid = { workspace = true }
 
 [dev-dependencies]
 # Test databases with bae's schema, the rows db's fixtures seed them with,
@@ -56,7 +60,6 @@ tempfile = { workspace = true }
 # The key naming the kept seeds the window-cost measurement reuses.
 sha2 = { workspace = true }
 tokio = { workspace = true, features = ["full", "test-util"] }
-uuid = { workspace = true }
 
 [features]
 default = []

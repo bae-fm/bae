@@ -32,6 +32,7 @@ pub mod composer_detail;
 mod invites;
 pub use invites::{InviteEntry, OpenInvite, RefusedInvite};
 mod models;
+pub mod playlists;
 pub mod release;
 #[cfg(desktop)]
 mod release_files;

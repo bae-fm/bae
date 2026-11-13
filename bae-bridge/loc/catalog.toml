@@ -13961,6 +13961,40 @@ da = "{count, plural, one {# album} other {# album}}"
 nb = "{count, plural, one {# album} other {# album}}"
 fi = "{count, plural, one {# albumi} other {# albumia}}"
 
+[messages."core.library.track_count"]
+comment = "A playlist's line under its name in the Playlists view and on its page: how many tracks it holds."
+args = { count = "Int" }
+value = "{count, plural, one {# track} other {# tracks}}"
+
+[messages."core.library.track_count".translations]
+es = "{count, plural, one {# pista} many {# de pistas} other {# pistas}}"
+fr = "{count, plural, one {# piste} many {# de pistes} other {# pistes}}"
+de = "{count, plural, one {# Titel} other {# Titel}}"
+"pt-BR" = "{count, plural, one {# faixa} many {# de faixas} other {# faixas}}"
+ja = "{count, plural, other {#曲}}"
+ko = "{count, plural, other {트랙 #개}}"
+"zh-Hans" = "{count, plural, other {# 首曲目}}"
+ar = "{count, plural, zero {# مقطع} one {مقطع واحد} two {مقطعان} few {# مقاطع} many {# مقطعًا} other {# مقطع}}"
+he = "{count, plural, one {רצועה אחת} two {שתי רצועות} other {# רצועות}}"
+uk = "{count, plural, one {# трек} few {# треки} many {# треків} other {# трека}}"
+bg = "{count, plural, one {# песен} other {# песни}}"
+pl = "{count, plural, one {# utwór} few {# utwory} many {# utworów} other {# utworu}}"
+cs = "{count, plural, one {# skladba} few {# skladby} many {# skladby} other {# skladeb}}"
+hr = "{count, plural, one {# pjesma} few {# pjesme} other {# pjesama}}"
+"zh-Hant" = "{count, plural, other {# 首曲目}}"
+it = "{count, plural, one {# brano} many {# di brani} other {# brani}}"
+tr = "{count, plural, one {# parça} other {# parça}}"
+nl = "{count, plural, one {# nummer} other {# nummers}}"
+sk = "{count, plural, one {# skladba} few {# skladby} many {# skladby} other {# skladieb}}"
+hu = "{count, plural, one {# szám} other {# szám}}"
+ro = "{count, plural, one {# piesă} few {# piese} other {# de piese}}"
+el = "{count, plural, one {# κομμάτι} other {# κομμάτια}}"
+"pt-PT" = "{count, plural, one {# faixa} other {# faixas}}"
+sv = "{count, plural, one {# spår} other {# spår}}"
+da = "{count, plural, one {# nummer} other {# numre}}"
+nb = "{count, plural, one {# spor} other {# spor}}"
+fi = "{count, plural, one {# raita} other {# raitaa}}"
+
 [messages."core.sync.synced"]
 value = "Synced"
 

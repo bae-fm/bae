@@ -66,6 +66,15 @@ pub enum Sharing {
 }
 
 impl Sharing {
+    /// Who a stored audience lets see a playlist: the store is the household,
+    /// a circle is the person alone.
+    pub fn of_audience(audience: coven::Audience) -> Self {
+        match audience {
+            coven::Audience::Store => Self::Household,
+            coven::Audience::Circle(_) => Self::Private,
+        }
+    }
+
     pub fn audience(self, circle: coven::CircleId) -> coven::Audience {
         match self {
             Self::Private => coven::Audience::Circle(circle),

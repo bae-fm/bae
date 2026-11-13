@@ -40,6 +40,12 @@ impl AppServices {
         live_reads::subscribe_work_detail(&self.inner.manager, &self.inner.views)
     }
 
+    /// The playlist page's playlist as it changes; see
+    /// [`live_reads::subscribe_playlist_detail`].
+    pub fn subscribe_playlist_detail(&self) -> LiveDetail<bae_views::playlists::PlaylistDetail> {
+        live_reads::subscribe_playlist_detail(&self.inner.manager, &self.inner.views)
+    }
+
     /// The folder that failed validation the import pane looks into, as it
     /// changes; another folder is a new key on the same read.
     #[cfg(desktop)]

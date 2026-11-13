@@ -71,6 +71,10 @@ fn each_pull_answers_at_once_and_the_profiles_follow_a_new_one() {
         |profiles: &Vec<crate::types::BridgePersonProfile>| profiles.len() == 1,
     );
     pull_until(&handle, || Box::pin(requested.clone().next()), Option::is_none);
+    // With a profile the person can make a playlist, and holds none yet.
+    let playlists = handle.subscribe_playlists();
+    let listing = pull_until(&handle, || Box::pin(playlists.clone().next()), |l| l.can_create);
+    assert!(listing.listed.is_empty() && listing.add_targets.is_empty());
 
     handle.runtime.block_on(name.clone().cancel()).unwrap();
     assert!(matches!(

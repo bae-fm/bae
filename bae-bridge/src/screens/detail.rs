@@ -101,6 +101,10 @@ impl DetailValue for crate::types::BridgeComposerDetail {
     type Core = bae_views::album_detail::ComposerDetail;
 }
 
+impl DetailValue for crate::types::BridgePlaylistDetail {
+    type Core = bae_views::playlists::PlaylistDetail;
+}
+
 impl DetailValue for crate::types::BridgeWorkDetail {
     type Core = bae_views::album_detail::WorkDetail;
 }
@@ -153,6 +157,13 @@ detail_subscription! {
     built by album_detail,
     snapshot: BridgeAlbumDetailSnapshot,
     value: crate::types::BridgeAlbumDetail,
+}
+
+detail_subscription! {
+    object: PlaylistDetailSubscription,
+    built by playlist_detail,
+    snapshot: BridgePlaylistDetailSnapshot,
+    value: crate::types::BridgePlaylistDetail,
 }
 
 detail_subscription! {

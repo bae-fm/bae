@@ -308,6 +308,8 @@ task_types = [
     "MembersSubscription",
     "PlaybackTimelineSubscription",
     "PlaybackValuesSubscription",
+    "PlaylistDetailSubscription",
+    "PlaylistsSubscription",
     "ProfilesSubscription",
     "QueueAdditionsSubscription",
     "QueueSubscription",

@@ -413,6 +413,14 @@ pulled_read! {
 }
 
 pulled_read! {
+    /// Every playlist this device holds.
+    PlaylistsSubscription:
+        LiveValues<bae_views::playlists::PlaylistListing> => crate::types::BridgePlaylistListing,
+    converted by crate::types::BridgePlaylistListing::from_core,
+    built by playlists
+}
+
+pulled_read! {
     /// The profile this person asked for, until it is written: none before
     /// they ask and once it is.
     RequestedProfileSubscription:

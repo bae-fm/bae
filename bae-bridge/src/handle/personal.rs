@@ -14,11 +14,9 @@ forward! { async this => {
         let start = start_position_id.map(|id| id.parse().map_err(BridgeError::config)).transpose()?;
         Ok(BridgePlayOutcome::from_core(this.services.play_playlist(playlist_id.parse().map_err(BridgeError::config)?, start).await?))
     }
-    fn playlists() -> Vec<BridgePlaylist> { Ok(this.services.playlists().await?.into_iter().map(BridgePlaylist::from_core).collect()) }
     fn rename_playlist(id: String, name: String) -> () { Ok(this.services.rename_playlist(id.parse().map_err(BridgeError::config)?,&name).await?) }
     fn set_playlist_sharing(id: String, sharing: BridgeSharing) -> () { Ok(this.services.set_playlist_sharing(id.parse().map_err(BridgeError::config)?,sharing.into_core()).await?) }
     fn delete_playlist(id: String) -> () { Ok(this.services.delete_playlist(id.parse().map_err(BridgeError::config)?).await?) }
-    fn playlist_entries(id: String) -> Vec<BridgePlaylistEntry> { Ok(this.services.playlist_entries(id.parse().map_err(BridgeError::config)?).await?.into_iter().map(BridgePlaylistEntry::from_core).collect()) }
     fn append_playlist_entry(playlist: String, track: String) -> String { Ok(this.services.append_playlist_entry(playlist.parse().map_err(BridgeError::config)?,track).await?.to_string()) }
     fn remove_playlist_entry(playlist: String, position: String) -> () { Ok(this.services.remove_playlist_entry(playlist.parse().map_err(BridgeError::config)?,position.parse().map_err(BridgeError::config)?).await?) }
     fn reorder_playlist(playlist: String, order: Vec<String>) -> () { Ok(this.services.reorder_playlist(playlist.parse().map_err(BridgeError::config)?,order.into_iter().map(|id| id.parse().map_err(BridgeError::config)).collect::<Result<_,_>>()?).await?) }
@@ -37,6 +35,11 @@ impl AppHandle {
     /// Every person's profile, now and after each change.
     pub fn subscribe_profiles(&self) -> std::sync::Arc<crate::ProfilesSubscription> {
         crate::screens::profiles(self.services.subscribe_profiles(), self.runtime.clone())
+    }
+
+    /// Every playlist this device holds, now and after each change.
+    pub fn subscribe_playlists(&self) -> std::sync::Arc<crate::PlaylistsSubscription> {
+        crate::screens::playlists(self.services.subscribe_playlists(), self.runtime.clone())
     }
 
     /// The profile this person asked for, until it is written, now and

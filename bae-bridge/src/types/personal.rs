@@ -44,20 +44,6 @@ mirror_enum! { BridgeRatingTarget = bae_people::collections::RatingTarget,
     variants: { Album(id), Track(id) },
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeAudience {
-    Store,
-    Circle { id: String },
-}
-impl BridgeAudience {
-    fn from_core(value: coven::Audience) -> Self {
-        match value {
-            coven::Audience::Store => Self::Store,
-            coven::Audience::Circle(id) => Self::Circle { id: id.0.to_string() },
-        }
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgePersonProfile {
     pub id: String,
@@ -142,34 +128,166 @@ impl BridgeRating {
     }
 }
 
+/// Who made a playlist.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct BridgePlaylist {
-    pub id: String,
+pub struct BridgePlaylistOwner {
     pub person: String,
     pub name: String,
-    pub audience: BridgeAudience,
+    /// The version of the person's avatar, which an app caches the image
+    /// `AppHandle::avatar` reads under; `None` without an avatar.
+    pub avatar_version: Option<String>,
 }
-impl BridgePlaylist {
-    pub(crate) fn from_core(value: bae_people::collections::Playlist) -> Self {
-        let bae_people::collections::Playlist { id, person, name, audience } = value;
-        Self {
-            id: id.to_string(),
-            person: person.0.to_string(),
-            name,
-            audience: BridgeAudience::from_core(audience),
+
+/// The picture a playlist is drawn with.
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgePlaylistCover {
+    /// One cover filling the picture; `None` draws the missing-art tile.
+    Single { cover: Option<BridgeImageRef> },
+    /// The covers of four different releases, first to fourth, drawn as a 2×2
+    /// square; a release with no cover is `None` in its place.
+    Grid { covers: Vec<Option<BridgeImageRef>> },
+}
+impl BridgePlaylistCover {
+    fn from_core(value: bae_views::playlists::PlaylistCover) -> Self {
+        match value {
+            bae_views::playlists::PlaylistCover::Single(cover) => {
+                Self::Single { cover: cover.map(BridgeImageRef::from_core) }
+            }
+            bae_views::playlists::PlaylistCover::Grid(covers) => Self::Grid {
+                covers: covers
+                    .into_iter()
+                    .map(|cover| cover.map(BridgeImageRef::from_core))
+                    .collect(),
+            },
         }
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct BridgePlaylistEntry {
+/// A playlist as the Playlists view and the Add to playlist menu list it.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgePlaylistSummary {
+    pub id: String,
+    pub name: String,
+    pub sharing: BridgeSharing,
+    pub owner: BridgePlaylistOwner,
+    /// Whether this device's person made it.
+    pub yours: bool,
+    pub track_count: BridgeCountLabel,
+    /// The entries' total playing time as the words it reads in; `None` when
+    /// they report no length.
+    pub total_duration: Option<BridgeDurationUnits>,
+    pub cover: BridgePlaylistCover,
+}
+impl BridgePlaylistSummary {
+    fn from_core(value: bae_views::playlists::PlaylistSummary) -> Self {
+        let bae_views::playlists::PlaylistSummary {
+            id,
+            name,
+            sharing,
+            owner,
+            yours,
+            track_count,
+            total_duration_ms,
+            cover,
+        } = value;
+        Self {
+            id: id.to_string(),
+            name,
+            sharing: BridgeSharing::from_core(sharing),
+            owner: BridgePlaylistOwner {
+                person: owner.person.0.to_string(),
+                name: owner.name,
+                avatar_version: owner.avatar_version,
+            },
+            yours,
+            track_count: BridgeCountLabel::from_core(track_count),
+            total_duration: bae_util::duration::DurationUnits::from_millis(total_duration_ms)
+                .map(BridgeDurationUnits::from_core),
+            cover: BridgePlaylistCover::from_core(cover),
+        }
+    }
+}
+
+/// The playlists this device holds, now and after each change.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgePlaylistListing {
+    /// Every playlist this device holds, the person's own and the household
+    /// ones others made, by name.
+    pub listed: Vec<BridgePlaylistSummary>,
+    /// The person's own playlists, by name: where Add to playlist can put a
+    /// track.
+    pub add_targets: Vec<BridgePlaylistSummary>,
+    /// Whether the person has a profile, which making a playlist needs.
+    pub can_create: bool,
+}
+impl BridgePlaylistListing {
+    pub(crate) fn from_core(value: bae_views::playlists::PlaylistListing) -> Self {
+        let bae_views::playlists::PlaylistListing { listed, add_targets, can_create } = value;
+        Self {
+            listed: listed.into_iter().map(BridgePlaylistSummary::from_core).collect(),
+            add_targets: add_targets.into_iter().map(BridgePlaylistSummary::from_core).collect(),
+            can_create,
+        }
+    }
+}
+
+/// One entry of a playlist's page.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgePlaylistEntryRow {
+    /// The entry's own id, which tells a track apart where the playlist holds
+    /// it twice.
     pub position_id: String,
     pub track_id: String,
+    pub title: String,
+    /// The track's credit line: its own credits, else its album's.
+    pub artist_names: String,
+    pub album_id: String,
+    pub album_title: String,
+    pub release_id: String,
+    pub duration_clock: BridgeDurationClock,
+    /// The cover of the release the track is on; `None` when it has none.
+    pub cover: Option<BridgeImageRef>,
 }
-impl BridgePlaylistEntry {
-    pub(crate) fn from_core(value: bae_people::collections::PlaylistEntry) -> Self {
-        let bae_people::collections::PlaylistEntry { position_id, track_id } = value;
-        Self { position_id: position_id.to_string(), track_id }
+impl BridgePlaylistEntryRow {
+    fn from_core(value: bae_views::playlists::PlaylistEntryRow) -> Self {
+        let bae_views::playlists::PlaylistEntryRow {
+            position_id,
+            track_id,
+            title,
+            artist_names,
+            album_id,
+            album_title,
+            release_id,
+            duration_ms,
+            cover,
+        } = value;
+        Self {
+            position_id: position_id.to_string(),
+            track_id,
+            title,
+            artist_names,
+            album_id,
+            album_title,
+            release_id,
+            duration_clock: BridgeDurationClock::of_length(duration_ms),
+            cover: cover.map(BridgeImageRef::from_core),
+        }
+    }
+}
+
+/// A playlist's page: the playlist and its entries in order.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgePlaylistDetail {
+    pub summary: BridgePlaylistSummary,
+    pub entries: Vec<BridgePlaylistEntryRow>,
+}
+impl BridgePlaylistDetail {
+    pub(crate) fn from_core(value: bae_views::playlists::PlaylistDetail) -> Self {
+        let bae_views::playlists::PlaylistDetail { summary, entries } = value;
+        Self {
+            summary: BridgePlaylistSummary::from_core(summary),
+            entries: entries.into_iter().map(BridgePlaylistEntryRow::from_core).collect(),
+        }
     }
 }
 

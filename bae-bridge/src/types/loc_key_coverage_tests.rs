@@ -27,9 +27,10 @@ const DIRECT_KEYS: &[&str] = &[
     "core.gallery.cover",
     "core.cover.label.separator",
     "core.cover.label.release_group",
-    // The count line under an artist's or composer's name.
+    // The count line under an artist's, composer's or playlist's name.
     "core.library.album_count",
     "core.library.work_count",
+    "core.library.track_count",
     // A queue row whose release the library no longer holds.
     "core.queue.release_missing",
     "core.download.bytes_progress",

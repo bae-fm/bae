@@ -1,7 +1,5 @@
 use super::*;
-use bae_people::collections::{
-    CollectionError, Playlist, PlaylistEntry, Rating, RatingTarget, Stars,
-};
+use bae_people::collections::{CollectionError, Rating, RatingTarget, Stars};
 use bae_people::people::Sharing;
 
 impl AppServices {
@@ -11,17 +9,21 @@ impl AppServices {
     delegate_async!(manager, set_avatar => set_avatar(bytes: Option<Vec<u8>>) -> Result<(), bae_library::people::AvatarError>);
     delegate_async!(people, avatar => avatar(person: coven::MemberId) -> Result<Option<Vec<u8>>, bae_people::people::ProfileError>);
     delegate_values!(subscribe_profiles => subscribe_profiles() -> Vec<bae_people::people::PersonProfile>);
+    /// Every playlist this device holds, now and after each change.
+    pub fn subscribe_playlists(
+        &self,
+    ) -> bae_store::live_query::LiveValues<bae_views::playlists::PlaylistListing> {
+        self.inner.manager.values_until_closed(self.inner.views.subscribe_playlists())
+    }
     delegate_values!(subscribe_requested_profile => subscribe_requested_profile() -> Option<bae_people::people::RequestedProfile>);
     delegate_lib!(people, people => people() -> Vec<bae_people::people::Person>);
     delegate_lib!(people, own_person => own_person() -> Option<bae_people::people::Person>);
     delegate_async!(people, set_rating => set_rating(target: RatingTarget, stars: Option<Stars>) -> Result<(), CollectionError>);
     delegate_async!(people, ratings => ratings() -> Result<Vec<Rating>, bae_store::DbError>);
     delegate_async!(manager, create_playlist => create_playlist(name: &str, sharing: Sharing, tracks: Vec<String>) -> Result<uuid::Uuid, CollectionError>);
-    delegate_async!(people, playlists => playlists() -> Result<Vec<Playlist>, bae_store::DbError>);
     delegate_async!(people, rename_playlist => rename_playlist(id: uuid::Uuid, name: &str) -> Result<(), CollectionError>);
     delegate_async!(people, set_playlist_sharing => set_playlist_sharing(id: uuid::Uuid, sharing: Sharing) -> Result<(), CollectionError>);
     delegate_async!(people, delete_playlist => delete_playlist(id: uuid::Uuid) -> Result<(), CollectionError>);
-    delegate_async!(people, playlist_entries => playlist_entries(id: uuid::Uuid) -> Result<Vec<PlaylistEntry>, bae_store::DbError>);
     delegate_async!(manager, append_playlist_entry => append_playlist_entry(playlist: uuid::Uuid, track: String) -> Result<uuid::Uuid, CollectionError>);
     delegate_async!(people, remove_playlist_entry => remove_playlist_entry(playlist: uuid::Uuid, position: uuid::Uuid) -> Result<(), CollectionError>);
     delegate_async!(people, reorder_playlist => reorder_playlist(playlist: uuid::Uuid, order: Vec<uuid::Uuid>) -> Result<(), CollectionError>);
@@ -46,7 +48,8 @@ impl AppServices {
         id: uuid::Uuid,
         start: Option<uuid::Uuid>,
     ) -> Result<bae_playback::PlayOutcome, PlayPlaylistError> {
-        let entries = self.playlist_entries(id).await.map_err(PlayPlaylistError::Entries)?;
+        let entries =
+            self.inner.people.playlist_entries(id).await.map_err(PlayPlaylistError::Entries)?;
         let start_index = match start {
             None => 0,
             Some(position) => {

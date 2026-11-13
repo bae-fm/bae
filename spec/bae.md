@@ -2654,6 +2654,17 @@ of its tracks in its order (§7.1), from the entry picked, or from the first;
 one with no entries plays nothing, and a picked entry the playlist no longer
 holds plays nothing.
 
+The Playlists list shows every playlist the person can see, by name: their
+own and the household ones others made, never another person's private ones
+(those are not on this device). Each shows its track count, its length, its
+owner, who sees it, and a picture. The picture is the covers of the first four
+different releases its entries are on, as a 2×2 square; a playlist on fewer
+than four releases shows its first entry's cover, and one with no entries
+shows the missing-art tile. A playlist's page shows its owner, count, length
+and who sees it, then its tracks in order, each with its credit line (§2.3),
+album and release cover. The Add to playlist menu offers only the person's own
+playlists, and a playlist can be made only once the person has a profile.
+
 Ben's phone and laptop each add a track to his party playlist while offline.
 Both take the next position, 7. When they sync, both entries stay; equal
 positions order by position id, so every device shows the same order. A
@@ -4723,7 +4734,8 @@ Reads come two ways:
 - **Live subscriptions** deliver a value, then a new one each time the rows it
   read change. The album grid, the artist and composer lists, a composer's
   page, a search, an editor's artist search, the import list, sync status,
-  uploads, downloads and the queue are all live. A read that fails is delivered as a value and the
+  uploads, downloads, the queue, the playlists and a playlist's page are all
+  live. A read that fails is delivered as a value and the
   subscription goes on, but one that fails because the store closed, or
   because the library can no longer read or write it, is delivered once and
   ends the subscription. A subscription that shows a window of a long list is
@@ -5948,6 +5960,7 @@ The `Bridge*` types live in `bae-bridge/src/types/`, by area:
 | `import/search.rs` | catalog search results, pressings and album cards |
 | `import/triage.rs` | candidate rows, states, badges, selection, matched pressings |
 | `cover.rs` | catalog cover galleries |
+| `personal.rs` | profiles, ratings and playlists |
 
 The `import` and `cover` types, and the conversions in `conversion/`, exist
 only in desktop builds.

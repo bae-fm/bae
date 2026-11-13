@@ -66,6 +66,15 @@ pub fn subscribe_composer_detail(
     )
 }
 
+/// The playlist page's playlist as it changes; another playlist is a new id
+/// on the same read, and the value is none once the playlist is gone.
+pub fn subscribe_playlist_detail(
+    library: &LibraryManager,
+    library_views: &LibraryViews,
+) -> bae_library::LiveDetail<bae_views::playlists::PlaylistDetail> {
+    detail_read(library, library_views.subscribe_playlist_detail(None), |detail| detail)
+}
+
 /// The work detail view's work as it changes; another work is a new id
 /// on the same read.
 pub fn subscribe_work_detail(

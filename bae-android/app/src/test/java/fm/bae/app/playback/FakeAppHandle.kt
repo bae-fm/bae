@@ -44,8 +44,6 @@ import uniffi.bae_bridge.BridgeMembership
 import uniffi.bae_bridge.BridgeOutboxFeeds
 import uniffi.bae_bridge.BridgePerson
 import uniffi.bae_bridge.BridgePlayOutcome
-import uniffi.bae_bridge.BridgePlaylist
-import uniffi.bae_bridge.BridgePlaylistEntry
 import uniffi.bae_bridge.BridgePreviewTarget
 import uniffi.bae_bridge.BridgeRating
 import uniffi.bae_bridge.BridgeRatingTarget
@@ -88,6 +86,8 @@ import uniffi.bae_bridge.LibrarySearchSubscription
 import uniffi.bae_bridge.MembersSubscription
 import uniffi.bae_bridge.PlaybackTimelineSubscription
 import uniffi.bae_bridge.PlaybackValuesSubscription
+import uniffi.bae_bridge.PlaylistDetailSubscription
+import uniffi.bae_bridge.PlaylistsSubscription
 import uniffi.bae_bridge.ProfilesSubscription
 import uniffi.bae_bridge.QueueAdditionsSubscription
 import uniffi.bae_bridge.QueueSubscription
@@ -697,10 +697,6 @@ internal open class FakeAppHandle(
         startPositionId: String?,
     ): BridgePlayOutcome = unfaked("playPlaylist")
 
-    override suspend fun playlistEntries(id: String): List<BridgePlaylistEntry> = unfaked("playlistEntries")
-
-    override suspend fun playlists(): List<BridgePlaylist> = unfaked("playlists")
-
     override suspend fun ratings(): List<BridgeRating> = unfaked("ratings")
 
     override suspend fun removePlaylistEntry(
@@ -751,6 +747,10 @@ internal open class FakeAppHandle(
     }
 
     override fun subscribeLibraryName(): LibraryNameSubscription = unfaked("subscribeLibraryName")
+
+    override fun subscribePlaylistDetail(): PlaylistDetailSubscription = unfaked("subscribePlaylistDetail")
+
+    override fun subscribePlaylists(): PlaylistsSubscription = unfaked("subscribePlaylists")
 
     override fun subscribeProfiles(): ProfilesSubscription = unfaked("subscribeProfiles")
 

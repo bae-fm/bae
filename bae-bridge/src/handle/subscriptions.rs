@@ -108,6 +108,13 @@ impl AppHandle {
     }
 
     /// The artist detail view's read, showing nothing until `set_id`.
+    pub fn subscribe_playlist_detail(&self) -> Arc<crate::PlaylistDetailSubscription> {
+        crate::screens::playlist_detail(
+            self.services.subscribe_playlist_detail(),
+            self.runtime.clone(),
+        )
+    }
+
     pub fn subscribe_artist_detail(&self) -> Arc<crate::ArtistDetailSubscription> {
         crate::screens::artist_detail(self.services.subscribe_artist_detail(), self.runtime.clone())
     }
