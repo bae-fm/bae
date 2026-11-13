@@ -23,6 +23,13 @@
         }
     }
 
+    /// The two remote commands that set the state asked for, as opposed to
+    /// toggling it.
+    public enum RemotePlayPause: Sendable {
+        case play
+        case pause
+    }
+
     extension MediaControlService {
         // MARK: - Session lifecycle
 
@@ -56,14 +63,12 @@
             registerTransportCommands(
                 center: MPRemoteCommandCenter.shared(),
                 actions: TransportActions(
-                    play: command(
-                        preview: { $0.previewTogglePause() },
-                        library: { $0.resume() }
-                    ),
-                    pause: command(
-                        preview: { $0.previewTogglePause() },
-                        library: { $0.pause() }
-                    ),
+                    play: { [weak self] in
+                        self?.perform(.play) ?? .noActionableNowPlayingItem
+                    },
+                    pause: { [weak self] in
+                        self?.perform(.pause) ?? .noActionableNowPlayingItem
+                    },
                     toggle: { [weak self] in
                         self?.handleToggleCommand()
                             ?? .noActionableNowPlayingItem
@@ -101,6 +106,19 @@
             }
             self.activeSession = nil
             clearNowPlaying()
+        }
+
+        /// What a remote Play or Pause does: set the preview's state while a
+        /// preview owns Now Playing, else resume or pause the library. Public
+        /// because the system's handler cannot be fired from a test; the
+        /// handler is this call.
+        public func perform(_ command: RemotePlayPause)
+            -> MPRemoteCommandHandlerStatus
+        {
+            handlePlaybackCommand(
+                preview: { $0.previewSetPaused(command == .pause) },
+                library: { command == .play ? $0.resume() : $0.pause() }
+            )
         }
 
         private func handlePlaybackCommand(

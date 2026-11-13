@@ -687,6 +687,7 @@ impl AppServices {
     delegate_sync!(playback, playback_preview_play => preview_play(target: bae_track_audio::PreviewTarget) -> ());
     delegate_sync!(playback, playback_preview_stop => preview_stop() -> ());
     delegate_sync!(playback, playback_preview_toggle_pause => preview_toggle_pause() -> ());
+    delegate_sync!(playback, playback_preview_set_paused => preview_set_paused(paused: bool) -> ());
     delegate_sync!(playback, playback_preview_seek_by_ratio => preview_seek_by_ratio(ratio: f64) -> ());
     /// Set how the queue repeats, sent at this call; the future answers once it is set or why it is not.
     pub fn playback_set_repeat_mode(

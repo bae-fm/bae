@@ -4948,7 +4948,9 @@ together.
 The playback handle drives one queue on its own thread: play a release,
 several releases or the library shuffled; pause, resume, stop; next, previous,
 seek; volume and mute; queue edits; repeat and shuffle; play on a receiver or
-stop; preview a file before import. What playback is doing is one
+stop; preview a file before import, where Pause and Play are each their own
+command and a preview already so stays so, so a pause from the lock screen or
+a media key never starts a paused preview. What playback is doing is one
 device-local row, `playback_now`, which playback writes as each value
 changes, before it tells anyone else of the change: the playing track and its
 phase, volume, mute, where playback is going (a receiver by its id, name,

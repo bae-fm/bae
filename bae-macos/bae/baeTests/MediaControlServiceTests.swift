@@ -275,6 +275,57 @@ struct MediaControlServiceTests {
     }
 }
 
+extension MediaControlServiceTests {
+    /// The system's handler cannot be fired from a test; it is a call to
+    /// `perform`, which this exercises.
+    @Test(
+        "a remote Pause or Play sets a preview's state, and pauses or resumes the library"
+    )
+    func remotePauseAndPlaySetTheStateAsked() {
+        let infoCenter = MPNowPlayingInfoCenter.default()
+        infoCenter.nowPlayingInfo = nil
+        defer { infoCenter.nowPlayingInfo = nil }
+        let calls = RemoteCalls()
+        let playbackStore = PlaybackStore()
+        let playback = Playback(
+            pause: { calls.add("pause") },
+            resume: { calls.add("resume") }
+        )
+        let previewAudio = PreviewAudio(
+            previewSetPaused: { calls.add("setPaused(\($0))") }
+        )
+        let service = MediaControlService(now: TestClock().now)
+        service.activate(
+            playback: playback,
+            previewAudio: previewAudio,
+            playbackStore: playbackStore
+        )
+        defer { service.deactivate(playbackStore: playbackStore) }
+
+        service.applyValues(
+            previewValues(durationMs: 120_000, isPlaying: false),
+            appHandle: fakeAppHandle
+        )
+        _ = service.perform(.pause)
+        _ = service.perform(.pause)
+        _ = service.perform(.play)
+        #expect(
+            calls.all == [
+                "setPaused(true)", "setPaused(true)", "setPaused(false)",
+            ],
+            "a Pause on a paused preview asks for paused again, never a toggle"
+        )
+
+        service.applyValues(
+            libraryValues(playingState(trackId: "track-1")),
+            appHandle: fakeAppHandle
+        )
+        _ = service.perform(.pause)
+        _ = service.perform(.play)
+        #expect(calls.all.suffix(2) == ["pause", "resume"])
+    }
+}
+
 /// A clock that moves only when a test moves it, so the elapsed time Now
 /// Playing is given can be compared exactly.
 private final class TestClock: @unchecked Sendable {
@@ -408,4 +459,16 @@ private func playbackValues(
         mediaControl: mediaControl,
         failure: nil
     )
+}
+
+/// The calls a test's transport closures received, in order.
+private final class RemoteCalls: @unchecked Sendable {
+    private let lock = NSLock()
+    private var calls: [String] = []
+
+    func add(_ call: String) {
+        lock.withLock { calls.append(call) }
+    }
+
+    var all: [String] { lock.withLock { calls } }
 }

@@ -373,34 +373,48 @@ impl PreviewPlayer {
 
     /// Toggle pause/resume on the active preview.
     pub(crate) fn toggle_pause(&mut self) {
+        let Some(preview_output) = &self.audio_output else {
+            return;
+        };
+        match preview_output.get_state() {
+            AudioState::Playing => self.set_paused(true),
+            AudioState::Paused => self.set_paused(false),
+            _ => {}
+        }
+    }
+
+    /// Pause the active preview, or play it on: a preview already in the
+    /// state asked for stays as it is, so a pause never starts a paused
+    /// preview.
+    pub(crate) fn set_paused(&self, paused: bool) {
         let Some(active) = self.active.as_ref() else {
             return;
         };
         let target = active.source.target.clone();
-        let dur_ms = active.source.duration.as_millis() as u64;
+        let duration_ms = active.source.duration.as_millis() as u64;
 
         let Some(preview_output) = &self.audio_output else {
             return;
         };
 
-        match preview_output.get_state() {
-            AudioState::Playing => {
+        match (preview_output.get_state(), paused) {
+            (AudioState::Playing, true) => {
                 preview_output.set_state(AudioState::Paused);
                 emit_progress(
                     &self.progress_tx,
                     PlaybackProgress::PreviewStateChanged(PreviewState::Paused {
                         target,
-                        duration_ms: dur_ms,
+                        duration_ms,
                     }),
                 );
             }
-            AudioState::Paused => {
+            (AudioState::Paused, false) => {
                 preview_output.set_state(AudioState::Playing);
                 emit_progress(
                     &self.progress_tx,
                     PlaybackProgress::PreviewStateChanged(PreviewState::Playing {
                         target,
-                        duration_ms: dur_ms,
+                        duration_ms,
                     }),
                 );
             }

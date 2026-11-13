@@ -12,6 +12,9 @@ import Foundation
             @Sendable (_ target: BridgePreviewTarget) throws -> Void
         public let previewStop: @Sendable () -> Void
         public let previewTogglePause: @Sendable () -> Void
+        /// Pause the preview (`true`) or play it on (`false`); one already so
+        /// stays so.
+        public let previewSetPaused: @Sendable (_ paused: Bool) -> Void
         public let previewSeekByRatio: @Sendable (_ ratio: Double) -> Void
 
         public init(
@@ -21,11 +24,13 @@ import Foundation
                 },
             previewStop: @escaping @Sendable () -> Void = {},
             previewTogglePause: @escaping @Sendable () -> Void = {},
+            previewSetPaused: @escaping @Sendable (Bool) -> Void = { _ in },
             previewSeekByRatio: @escaping @Sendable (Double) -> Void = { _ in }
         ) {
             self.previewPlay = previewPlay
             self.previewStop = previewStop
             self.previewTogglePause = previewTogglePause
+            self.previewSetPaused = previewSetPaused
             self.previewSeekByRatio = previewSeekByRatio
         }
 
@@ -34,6 +39,7 @@ import Foundation
                 previewPlay: { try handle.previewPlay(target: $0) },
                 previewStop: { handle.previewStop() },
                 previewTogglePause: { handle.previewTogglePause() },
+                previewSetPaused: { handle.previewSetPaused(paused: $0) },
                 previewSeekByRatio: { handle.previewSeekByRatio(ratio: $0) }
             )
         }

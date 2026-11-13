@@ -193,6 +193,46 @@ async fn preview_seek_is_relative_to_the_requested_sample_window() {
     assert_eq!(player.stop(), AfterPreview::LeaveMain);
 }
 
+/// Pausing a paused preview leaves it paused, and playing one that plays
+/// leaves it playing; a toggle would have flipped each. Sabotage: route
+/// `set_paused` through `toggle_pause`, and the second pause starts it.
+#[tokio::test]
+async fn a_preview_asked_to_pause_twice_stays_paused() {
+    let fixture_dir = bae_audio::test_fixtures::cue_flac_dir();
+    let path = fixture_dir.join("Test Album.flac");
+    let probe = bae_audio::probe_audio_from_path(&path).expect("probe fixture");
+    let sample_rate = u64::from(probe.sample_rate.get());
+    let target = PreviewTarget::sample_range(path, 10 * sample_rate, Some(11 * sample_rate));
+    let (progress_tx, mut progress_rx) = tokio_mpsc::unbounded_channel();
+    let (command_tx, _command_rx) = OwnCommands::channel();
+    let mut player = PreviewPlayer::new(
+        tokio::runtime::Handle::current(),
+        progress_tx,
+        command_tx,
+        50,
+        bae_diagnostics::Diagnostics::noop(),
+    );
+    let (captured, _capture_rx) = tokio_mpsc::unbounded_channel();
+    let device = ManualCaptureDevice::new(captured, AudioClock::new());
+    assert!(player.play(target, &device).await.started());
+    let state = |player: &PreviewPlayer| player.audio_output.as_ref().unwrap().get_state();
+    assert_eq!(state(&player), AudioState::Playing);
+    while progress_rx.try_recv().is_ok() {}
+
+    player.set_paused(false);
+    assert_eq!(state(&player), AudioState::Playing, "playing a playing preview changes nothing");
+    assert!(progress_rx.try_recv().is_err(), "and says nothing");
+
+    player.set_paused(true);
+    assert_eq!(state(&player), AudioState::Paused);
+    player.set_paused(true);
+    assert_eq!(state(&player), AudioState::Paused, "a second pause does not start it");
+
+    player.set_paused(false);
+    assert_eq!(state(&player), AudioState::Playing);
+    assert_eq!(player.stop(), AfterPreview::LeaveMain);
+}
+
 /// A capture output whose streams report, once `report` is set, that their
 /// device stopped playing them — what a cpal stream reports when the default
 /// device changes on Windows or its device is unplugged.

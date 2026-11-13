@@ -209,6 +209,9 @@ pub(crate) enum PlaybackCommand {
     PreviewStop,
     /// Toggle pause/resume on the active preview.
     PreviewTogglePause,
+    /// Pause the active preview (`true`) or play it on (`false`); a preview
+    /// already so stays so.
+    PreviewSetPaused(bool),
     /// Seek by slider ratio (0.0–1.0) within the active preview.
     PreviewSeekByRatio(f64),
     /// The preview file finished playing naturally.
@@ -745,6 +748,10 @@ impl PlaybackHandle {
     /// Toggle pause/resume on the active preview.
     pub fn preview_toggle_pause(&self) {
         self.dispatch(PlaybackCommand::PreviewTogglePause);
+    }
+    /// Pause the active preview, or play it on; a preview already so stays so.
+    pub fn preview_set_paused(&self, paused: bool) {
+        self.dispatch(PlaybackCommand::PreviewSetPaused(paused));
     }
     /// Seek by slider ratio (0.0–1.0) within the active preview.
     pub fn preview_seek_by_ratio(&self, ratio: f64) {

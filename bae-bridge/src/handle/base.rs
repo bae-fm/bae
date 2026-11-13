@@ -292,6 +292,11 @@ forward! { sync this => {
         this.services.playback_preview_toggle_pause();
     }
 
+    /// Pause the active preview, or play it on; a preview already so stays so.
+    fn preview_set_paused(paused: bool) {
+        this.services.playback_preview_set_paused(paused);
+    }
+
     fn preview_seek_by_ratio(ratio: f64) {
         this.services.playback_preview_seek_by_ratio(ratio);
     }

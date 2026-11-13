@@ -262,6 +262,9 @@ impl PlaybackService {
             PlaybackCommand::PreviewTogglePause => {
                 self.preview_toggle_pause();
             }
+            PlaybackCommand::PreviewSetPaused(paused) => {
+                self.preview.set_paused(paused);
+            }
             PlaybackCommand::PreviewSeekByRatio(ratio) => {
                 self.preview.seek_by_ratio(ratio, self.audio_device.as_ref()).await;
             }

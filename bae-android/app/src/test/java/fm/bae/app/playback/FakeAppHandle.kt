@@ -379,6 +379,10 @@ internal open class FakeAppHandle(
         unfaked("previewSeekByRatio")
     }
 
+    override fun previewSetPaused(paused: Boolean) {
+        unfaked("previewSetPaused")
+    }
+
     override fun previewStop() {
         unfaked("previewStop")
     }
