@@ -99,6 +99,24 @@ class ScreenSubscriptionTest {
         }
 
     @Test
+    fun aPullAnsweringTheRuntimeIsShuttingDownEndsTheSubscriptionWithoutAnError() =
+        runTest(main) {
+            val source = Pulls<String>()
+            val values = mutableListOf<String>()
+            val errors = mutableListOf<BridgeException>()
+            ScreenSubscription(source, screenScope(), values::add, errors::add)
+
+            source.deliver("first")
+            source.fail(BridgeException.ShuttingDown())
+            source.deliver("second")
+            runCurrent()
+
+            assertEquals(listOf("first"), values)
+            assertTrue("a shutting-down pull is not an error", errors.isEmpty())
+            assertEquals("no pull after the shutting-down one", 2, source.pullCount)
+        }
+
+    @Test
     fun stopCancelsTheSourceAndNoValueFollows() =
         runTest(main) {
             val source = Pulls<String>()

@@ -153,6 +153,28 @@ async fn a_panicking_operation_fails_as_internal() {
     owned.shutdown_background();
 }
 
+/// An operation the runtime drops as it shuts down fails as `ShuttingDown`,
+/// a case of its own, so a reader of a stream ends on it by type.
+#[tokio::test]
+async fn an_operation_dropped_by_a_shutting_down_runtime_fails_as_shutting_down() {
+    let owned = owned_runtime();
+    let operations = OperationRuntime::new(owned.handle().clone(), Diagnostics::noop());
+    let (started_tx, started_rx) = oneshot::channel();
+
+    let caller = tokio::spawn(operations.run("test operation", move || async move {
+        started_tx.send(()).expect("test receives task start");
+        pending::<Result<(), BridgeError>>().await
+    }));
+    started_rx.await.expect("owned task starts");
+    owned.shutdown_background();
+
+    let result = tokio::time::timeout(HANG_GUARD, caller)
+        .await
+        .expect("the dropped operation answers")
+        .expect("the caller task runs to its end");
+    assert!(matches!(result, Err(BridgeError::ShuttingDown)), "{result:?}");
+}
+
 /// A lifecycle operation that panics after its caller left runs on, and its
 /// panic is reported once, by the panic hook, naming the operation.
 #[tokio::test]

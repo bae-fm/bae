@@ -561,11 +561,12 @@ fn produced_keys() -> Vec<String> {
     // the per-part key functions above, whose loops already pushed the keys.
     for e in [
         BridgeError::Cancelled,
+        BridgeError::ShuttingDown,
         BridgeError::NotFound { entity: BridgeEntityKind::Library, id: "a".to_string() },
         BridgeError::internal(""),
     ] {
         let expected: Option<String> = match &e {
-            BridgeError::Cancelled => None,
+            BridgeError::Cancelled | BridgeError::ShuttingDown => None,
             BridgeError::NotFound { entity, .. } => Some(bridge_entity_not_found_key(*entity)),
             BridgeError::Diagnostic { category, .. } => {
                 Some(bridge_error_category_key(category.clone()))

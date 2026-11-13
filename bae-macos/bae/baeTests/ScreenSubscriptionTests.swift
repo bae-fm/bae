@@ -28,6 +28,12 @@ private final class QueuedReads: PulledSubscription, @unchecked Sendable {
         queue(.failure(ReadFailed()))
     }
 
+    /// Queue that the runtime is shutting down, as the bridge answers a
+    /// pull it dropped at the process's end.
+    func failShuttingDown() {
+        queue(.failure(BridgeError.ShuttingDown))
+    }
+
     func next() async throws -> Int {
         try await withCheckedThrowingContinuation { continuation in
             let ready: Result<Int, any Error>? = lock.recording {
@@ -125,6 +131,31 @@ struct ScreenSubscriptionTests {
 
         try await Wait.until { handed.values == [1, 2] }
         #expect(handed.errors == 1)
+
+        subscription.stop()
+        try await Wait.until { source.cancels >= 1 }
+    }
+
+    @MainActor
+    @Test("a pull that answers the runtime is shutting down ends the reader")
+    func shuttingDownEndsTheReader() async throws {
+        let source = QueuedReads()
+        let handed = Handed()
+        let subscription = ScreenSubscription(
+            source,
+            onValue: { handed.values.append($0) },
+            onError: { _ in handed.errors += 1 }
+        )
+        source.answer(1)
+        source.failShuttingDown()
+        source.answer(2)
+
+        try await Wait.until { source.pulls >= 2 }
+        for _ in 0..<50 { await Task.yield() }
+
+        #expect(handed.values == [1])
+        #expect(handed.errors == 0)
+        #expect(source.pulls == 2)
 
         subscription.stop()
         try await Wait.until { source.cancels >= 1 }

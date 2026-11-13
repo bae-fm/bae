@@ -6064,8 +6064,10 @@ only in desktop builds.
 
 ### G.1 Error categories
 
-A `BridgeError` is `Cancelled` (show nothing), `NotFound` (a library), or
-`Diagnostic` with one of these categories and a detail:
+A `BridgeError` is `Cancelled` (show nothing), `ShuttingDown` (the runtime the
+call ran on is ending with the process: show nothing, and a reader of a
+subscription or stream stops pulling), `NotFound` (a library), or `Diagnostic`
+with one of these categories and a detail:
 
 | Category | The person |
 |---|---|

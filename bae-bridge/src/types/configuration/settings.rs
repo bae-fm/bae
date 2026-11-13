@@ -311,6 +311,11 @@ pub enum BridgeError {
     /// The user cancelled — the UI shows nothing.
     #[error("cancelled")]
     Cancelled,
+    /// The runtime the call ran on is shutting down and dropped it before it
+    /// finished: the process is ending. Nothing to show, and nothing a retry
+    /// reaches; a reader of a stream ends on it.
+    #[error("runtime shutting down")]
+    ShuttingDown,
     /// A specific entity was missing. User-facing and keyed; the UI localizes it.
     #[error("not found: {entity:?} {id}")]
     NotFound { entity: BridgeEntityKind, id: String },
@@ -363,7 +368,10 @@ impl BridgeError {
     /// runtime shut down under it — once `reported` has gone to diagnostics
     /// as the bug a panic is.
     pub(crate) fn unfinished(reported: bae_util::task_failure::TaskFailed) -> Self {
-        Self::internal(reported)
+        match reported {
+            bae_util::task_failure::TaskFailed::Shutdown(_) => Self::ShuttingDown,
+            panicked @ bae_util::task_failure::TaskFailed::Panicked(_) => Self::internal(panicked),
+        }
     }
 }
 
@@ -537,7 +545,7 @@ impl DatabaseFault for bae_library::LibraryError {
 #[uniffi::export]
 pub fn bridge_error_line_key(error: &BridgeError) -> Option<String> {
     match error {
-        BridgeError::Cancelled => None,
+        BridgeError::Cancelled | BridgeError::ShuttingDown => None,
         BridgeError::NotFound { entity, .. } => Some(bridge_entity_not_found_key(*entity)),
         BridgeError::Diagnostic { category, .. } => {
             Some(bridge_error_category_key(category.clone()))
@@ -553,7 +561,7 @@ pub fn bridge_error_line_key(error: &BridgeError) -> Option<String> {
 #[uniffi::export]
 pub fn bridge_error_shown_detail(error: &BridgeError) -> Option<String> {
     match error {
-        BridgeError::Cancelled | BridgeError::NotFound { .. } => None,
+        BridgeError::Cancelled | BridgeError::ShuttingDown | BridgeError::NotFound { .. } => None,
         BridgeError::Diagnostic { category, detail } => {
             category.detail_adds_to_line().then(|| detail.clone())
         }
@@ -567,7 +575,7 @@ pub fn bridge_error_shown_detail(error: &BridgeError) -> Option<String> {
 #[uniffi::export]
 pub fn bridge_error_retry_can_help(error: &BridgeError) -> bool {
     match error {
-        BridgeError::Cancelled | BridgeError::NotFound { .. } => false,
+        BridgeError::Cancelled | BridgeError::ShuttingDown | BridgeError::NotFound { .. } => false,
         BridgeError::Diagnostic { category, .. } => category.clone().into_core().retry_can_help(),
     }
 }
@@ -580,7 +588,7 @@ pub fn bridge_error_retry_can_help(error: &BridgeError) -> bool {
 #[uniffi::export]
 pub fn bridge_error_reset_from_cloud_replaces(error: &BridgeError) -> bool {
     match error {
-        BridgeError::Cancelled | BridgeError::NotFound { .. } => false,
+        BridgeError::Cancelled | BridgeError::ShuttingDown | BridgeError::NotFound { .. } => false,
         BridgeError::Diagnostic { category, .. } => {
             category.clone().into_core().reset_from_cloud_replaces()
         }

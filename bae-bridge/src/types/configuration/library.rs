@@ -650,9 +650,9 @@ impl BridgeSyncCause {
                 BridgeError::Diagnostic { category, .. } => {
                     plain(&bridge_error_category_key(category))
                 }
-                BridgeError::Cancelled | BridgeError::NotFound { .. } => {
-                    plain("core.sync.cause.went_wrong")
-                }
+                BridgeError::Cancelled
+                | BridgeError::ShuttingDown
+                | BridgeError::NotFound { .. } => plain("core.sync.cause.went_wrong"),
             },
         };
         Self::Message { message, resumes_at }

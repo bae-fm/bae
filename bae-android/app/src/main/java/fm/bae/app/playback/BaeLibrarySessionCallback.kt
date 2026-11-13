@@ -284,7 +284,7 @@ internal class BaeLibrarySessionCallback(
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 private fun browseErrorCode(error: BridgeException): Int =
     when (error) {
-        is BridgeException.Cancelled -> {
+        is BridgeException.Cancelled, is BridgeException.ShuttingDown -> {
             SessionError.INFO_CANCELLED
         }
 
