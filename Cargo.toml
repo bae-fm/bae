@@ -170,7 +170,7 @@ tempfile = "3.8"
 tokio = "1.0"
 tokio-rustls = "0.26"
 tokio-stream = "0.1"
-tokio-util = "0.7"
+tokio-util = { version = "0.7", features = ["rt"] }
 toml = "1.1.8"
 tower = "0.5"
 tracing-android = "0.2"

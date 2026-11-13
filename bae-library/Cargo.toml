@@ -48,7 +48,7 @@ uuid = { workspace = true, features = ["v4", "v5"] }
 chrono = { workspace = true, features = ["serde"] }
 hex = { workspace = true }
 async-trait = { workspace = true }
-tokio-util = { workspace = true, features = ["io", "rt"] }
+tokio-util = { workspace = true, features = ["io"] }
 rand = { workspace = true }
 tracing = { workspace = true }
 # The app directory's files are staged in a temporary file before an atomic
