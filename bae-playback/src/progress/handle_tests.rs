@@ -10,6 +10,18 @@ async fn started() -> (
     bae_store::Store,
     tempfile::TempDir,
 ) {
+    started_reporting(bae_diagnostics::Diagnostics::noop()).await
+}
+
+/// [`started`], reporting to `diagnostics`.
+async fn started_reporting(
+    diagnostics: bae_diagnostics::Diagnostics,
+) -> (
+    PlaybackProgressHandle,
+    tokio_mpsc::UnboundedSender<PlaybackProgress>,
+    bae_store::Store,
+    tempfile::TempDir,
+) {
     let tmp = tempfile::TempDir::new().unwrap();
     let db =
         bae_store::Store::new_test(crate::TEST_SCHEMA, tmp.path(), Arc::new(coven::SystemClock))
@@ -22,7 +34,7 @@ async fn started() -> (
         Arc::new(crate::ManualPlaybackClock::new(chrono::Utc::now())),
         crate::tables::PlaybackNowRow::new(db.clone()),
         crate::tables::PlaybackTimelineRow::new(db.clone()),
-        bae_diagnostics::Diagnostics::noop(),
+        diagnostics,
     );
     (handle, progress_tx, db, tmp)
 }
@@ -136,6 +148,53 @@ async fn a_new_line_is_in_the_timeline_row_before_its_event_is_forwarded() {
         }),
         "the tick along the line left the line as told"
     );
+}
+
+/// A write of what playback is doing that fails reaches the subscribers as
+/// a playback error after the event it could not write, rather than only
+/// being logged.
+#[tokio::test]
+async fn a_failed_write_of_what_playback_is_doing_is_a_playback_error() {
+    let (handle, progress_tx, _db, tmp) = started().await;
+    let mut events = handle.subscribe_all();
+    crate::tables::lose_playback_level_for_test(tmp.path());
+
+    progress_tx.send(PlaybackProgress::VolumeChanged { volume: 0.5 }).unwrap();
+
+    assert!(matches!(next_event(&mut events).await, PlaybackProgress::VolumeChanged { .. }));
+    match next_event(&mut events).await {
+        PlaybackProgress::PlaybackError { reason } => assert!(
+            matches!(
+                reason,
+                crate::PlaybackErrorReason::Diagnostic {
+                    failure: crate::PlaybackDiagnostic::Internal,
+                    ..
+                }
+            ),
+            "{reason:?}"
+        ),
+        other => panic!("expected a playback error, got {other:?}"),
+    }
+}
+
+/// A write of what playback is doing that fails is a fault in bae, not in
+/// anything the person did: it reaches the crash reporter, as the failed
+/// write of the timeline does.
+#[tokio::test]
+async fn a_failed_write_of_what_playback_is_doing_is_reported() {
+    let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
+    let diagnostics = bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
+    let (handle, progress_tx, _db, tmp) = started_reporting(diagnostics).await;
+    let mut events = handle.subscribe_all();
+    crate::tables::lose_playback_level_for_test(tmp.path());
+
+    progress_tx.send(PlaybackProgress::VolumeChanged { volume: 0.5 }).unwrap();
+    next_event(&mut events).await;
+    next_event(&mut events).await;
+
+    let operations: Vec<String> =
+        bugs.reports().into_iter().map(|(operation, _)| operation).collect();
+    assert_eq!(operations, ["write what playback is doing", "write why playback failed"]);
 }
 
 /// The next event the fan-out forwards, which it writes and folds into

@@ -79,8 +79,12 @@ impl PlaybackProgressHandle {
     /// into `row`, folds the event into the positions and, read at `clock`'s
     /// now, the timeline, writing a timeline that changed into
     /// `timeline_row`, then forwards it to every live subscriber. A panic
-    /// folding one event, or a failed write, is reported through
-    /// `diagnostics`, and the fan-out forwards that event and serves the next.
+    /// folding one event, or a failed write of the timeline, is reported
+    /// through `diagnostics`, and the fan-out forwards that event and serves
+    /// the next. A failed write of `row` is a playback failure: it is reported
+    /// through `diagnostics`, written to the row as the failure when that
+    /// works, and forwarded as a `PlaybackError` after the event it could not
+    /// write, which halts the service as any playback error does.
     pub fn new(
         mut progress_rx: tokio_mpsc::UnboundedReceiver<PlaybackProgress>,
         runtime_handle: tokio::runtime::Handle,
@@ -102,6 +106,7 @@ impl PlaybackProgressHandle {
             loop {
                 match progress_rx.recv().await {
                     Some(progress) => {
+                        let mut write_failure = None;
                         let folded = caught_sync("fold a playback event", || {
                             let change = values.apply(&progress);
                             publish_change(&positions_tx, |positions| {
@@ -119,6 +124,23 @@ impl PlaybackProgressHandle {
                                         );
                                         diagnostics
                                             .report_failure("write what playback is doing", &e);
+                                        // The change is told below, then this failure: the
+                                        // row holds it for the screens when it can. Playback
+                                        // halts on hearing it, so the row, the audio and the
+                                        // screens agree.
+                                        let reason = crate::PlaybackErrorReason::internal(format!(
+                                            "write what playback is doing: {e}"
+                                        ));
+                                        if let Err(e) = row
+                                            .apply(&super::PlaybackChange::Failed(reason.clone()))
+                                            .await
+                                        {
+                                            error!("couldn't write why playback failed: {e}");
+                                            diagnostics
+                                                .report_failure("write why playback failed", &e);
+                                        }
+                                        write_failure =
+                                            Some(PlaybackProgress::PlaybackError { reason });
                                     }
                                 }
                                 if let Some(timeline) = timeline {
@@ -136,6 +158,9 @@ impl PlaybackProgressHandle {
                         }
                         let mut subs = subscriptions_clone.lock().unwrap();
                         subs.retain(|tx| tx.send(progress.clone()).is_ok());
+                        if let Some(failure) = write_failure {
+                            subs.retain(|tx| tx.send(failure.clone()).is_ok());
+                        }
                     }
                     None => {
                         info!("Playback progress channel closed, exiting");

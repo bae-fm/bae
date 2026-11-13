@@ -4903,6 +4903,11 @@ queue's repeat mode, a value after each change; while the row names a track
 the library no longer holds, until playback moves off it, no value is sent.
 A failure shows once wherever the person is: a value reading a failure whose
 number was shown shows nothing.
+A write of that row that fails is a playback failure too, an internal one: it
+is reported to the crash reporter, written to the row as the failure when that
+write works, and told to the app after the change it could not write. Playback
+halts on it as on any playback failure, so the row, the audio and the screens
+agree instead of the failure being only logged.
 Each time tracks go into Up next, the write that puts them in counts the
 addition on the queue's row, with how many tracks it put in; starting
 playback with the library zeroes the count, so no earlier addition is
