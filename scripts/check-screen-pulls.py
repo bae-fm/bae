@@ -17,7 +17,10 @@ each is refused:
 - An app reading a subscription other than through its helper. Each app pulls
   through one helper file (`APPS`); any other `.next(` member call in the
   app's own code is refused, apart from the receivers `OTHER_NEXT_CALLS` lists
-  with what they are, none of which is a subscription.
+  with what they are, none of which is a subscription. In Swift a
+  `for await … in <subscription>` pulls through the AsyncSequence's iterator,
+  so any `for await` outside the helper is refused the same way, apart from
+  the sequences `OTHER_FOR_AWAITS` lists.
 
 Code is read as tokens: a name in a comment or a string is not a use.
 """
@@ -105,6 +108,24 @@ OTHER_NEXT_CALLS: dict[tuple[str, str], str] = {
     ("BaeKit/Sources/BaeKit/Services/MediaControlService.swift", "actions"): (
         "the media keys' next-track command"
     ),
+}
+
+# `for await` loops in Swift app code whose sequence is not a subscription, by
+# file and the sequence's first name, with what the sequence is.
+OTHER_FOR_AWAITS: dict[tuple[str, str], str] = {
+    ("BaeKit/Sources/BaeKit/Services/DeviceStorageStore.swift", "cancelled"): (
+        "a stream that never yields, which holds the task until it is cancelled"
+    ),
+    ("BaeKit/Sources/BaeKit/Services/MembershipStore.swift", "cancelled"): (
+        "a stream that never yields, which holds the task until it is cancelled"
+    ),
+    ("bae-macos/bae/bae/Services/LibraryNameStore.swift", "cancelled"): (
+        "a stream that never yields, which holds the task until it is cancelled"
+    ),
+    (
+        "bae-macos/bae/bae/Views/Settings/Library/SyncStatusBlock.swift",
+        "NotificationCenter",
+    ): "the system's notifications, awaited for one",
 }
 
 
@@ -268,6 +289,26 @@ def next_calls(tokens: list[Token]) -> list[tuple[int, str]]:
     return found
 
 
+def for_awaits(tokens: list[Token]) -> list[tuple[int, str]]:
+    """Each `for await` loop, with the first name of the sequence it reads."""
+    found = []
+    for index, token in enumerate(tokens):
+        if token.text != "for" or token.kind != "id":
+            continue
+        cursor = index + 1
+        if tokens[cursor].text == "try":
+            cursor += 1
+        if tokens[cursor].text != "await":
+            continue
+        while cursor < len(tokens) and not (
+            tokens[cursor].kind == "id" and tokens[cursor].text == "in"
+        ):
+            cursor += 1
+        if cursor + 1 < len(tokens):
+            found.append((token.line, tokens[cursor + 1].text))
+    return found
+
+
 def check_apps(root: Path) -> list[str]:
     violations = []
     for app in APPS:
@@ -288,6 +329,15 @@ def check_apps(root: Path) -> list[str]:
                     f"{relative}:{line}: pulls {receiver}.next() itself; "
                     f"a screen reads through {app.helper or 'its helper'}"
                 )
+            if app.language != "swift":
+                continue
+            for line, receiver in for_awaits(tokens):
+                if (relative, receiver) in OTHER_FOR_AWAITS:
+                    continue
+                violations.append(
+                    f"{relative}:{line}: iterates {receiver} with for await "
+                    f"itself; a screen reads through {app.helper}"
+                )
         if app.helper is not None:
             if not (root / app.helper).is_file():
                 violations.append(f"{app.helper}: the helper is missing")
@@ -305,6 +355,15 @@ def check_apps(root: Path) -> list[str]:
             violations.append(
                 f"{relative}: makes no {receiver}.next() call; the list names "
                 "what the app no longer has"
+            )
+    for (relative, receiver) in sorted(OTHER_FOR_AWAITS):
+        path = root / relative
+        if not path.is_file() or receiver not in {
+            read for _, read in for_awaits(tokenize(path.read_text(), "swift"))
+        }:
+            violations.append(
+                f"{relative}: has no for await over {receiver}; the list "
+                "names what the app no longer has"
             )
     return violations
 

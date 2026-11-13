@@ -31,15 +31,28 @@ BRIDGE_HANDLE = f"{CHECK.BRIDGE_ROOT}/handle/fixture_screen.rs"
 
 
 class ScreenPullTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.callback_files = [
+            relative
+            for relative, tokens in CHECK.bridge_files(ROOT)
+            if CHECK.callback_interfaces(tokens)
+        ]
+
     def copied_tree(self, destination: Path) -> None:
-        """The bridge's sources and every app tree the check reads."""
-        roots = [CHECK.BRIDGE_ROOT]
-        for app in CHECK.APPS:
-            roots.extend(app.roots)
-        for root in roots:
-            source = ROOT / root
-            if source.is_dir():
-                shutil.copytree(source, destination / root, dirs_exist_ok=True)
+        """Only the files every case needs: the bridge files that declare the
+        listed callback interfaces, each app's helper, and each file the
+        check's lists name. A case adds its own fixture file to these."""
+        needed = {
+            *self.callback_files,
+            *(app.helper for app in CHECK.APPS if app.helper),
+            *(relative for relative, _ in CHECK.OTHER_NEXT_CALLS),
+            *(relative for relative, _ in CHECK.OTHER_FOR_AWAITS),
+        }
+        for relative in needed:
+            target = destination / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(ROOT / relative, target)
 
     def write(self, root: Path, relative: str, text: str) -> None:
         path = root / relative
@@ -178,6 +191,46 @@ class ScreenPullTests(unittest.TestCase):
                     f"{SWIFT_VIEW}:5: pulls subscription.next() itself; a "
                     f"screen reads through {SWIFT_HELPER}"
                 ],
+            )
+
+    def test_a_swift_screen_iterating_a_subscription_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.copied_tree(root)
+            self.write(
+                root,
+                SWIFT_VIEW,
+                "import BaeKit\n"
+                "\n"
+                "func follow(_ subscription: QueueSequence) async throws {\n"
+                "    // for await x in subscription {} in a comment is no pull\n"
+                "    for try await value in subscription {\n"
+                "        use(value)\n"
+                "    }\n"
+                "}\n",
+            )
+            self.assertEqual(
+                CHECK.check(root),
+                [
+                    f"{SWIFT_VIEW}:5: iterates subscription with for await "
+                    f"itself; a screen reads through {SWIFT_HELPER}"
+                ],
+            )
+
+    def test_a_listed_sequence_the_app_dropped_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.copied_tree(root)
+            ((relative, receiver), *_) = CHECK.OTHER_FOR_AWAITS
+            path = root / relative
+            path.write_text(
+                path.read_text().replace(f"in {receiver}", "in other")
+            )
+            violations = CHECK.check(root)
+            self.assertIn(
+                f"{relative}: has no for await over {receiver}; the list "
+                "names what the app no longer has",
+                violations,
             )
 
     def test_a_kotlin_screen_pulling_itself_fails(self) -> None:
