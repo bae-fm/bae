@@ -73,8 +73,9 @@ struct PlaylistDetailPane: View {
                 .foregroundStyle(.secondary)
             }
             Spacer(minLength: ThemeSpace.related)
-            Button("Play") { playback.playPlaylist(summary.id, nil) }
+            Button("Play") { playback.playPlaylist(summary.id, nil, false) }
                 .buttonStyle(PrimaryButtonStyle())
+            Button("Shuffle") { playback.playPlaylist(summary.id, nil, true) }
         }
     }
 
@@ -90,7 +91,8 @@ struct PlaylistDetailPane: View {
                     play: {
                         playback.playPlaylist(
                             detail.summary.id,
-                            entry.positionId
+                            entry.positionId,
+                            false
                         )
                     }
                 )

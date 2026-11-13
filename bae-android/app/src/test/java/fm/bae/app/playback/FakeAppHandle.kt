@@ -702,6 +702,7 @@ internal open class FakeAppHandle(
     override suspend fun playPlaylist(
         playlistId: String,
         startPositionId: String?,
+        shuffle: Boolean,
     ): BridgePlayOutcome = unfaked("playPlaylist")
 
     override suspend fun removePlaylistEntry(

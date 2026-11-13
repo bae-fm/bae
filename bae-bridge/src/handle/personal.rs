@@ -9,9 +9,9 @@ forward! { async this => {
     fn avatar(person: String) -> Option<Vec<u8>> { Ok(this.services.avatar(crate::from_app::member(&person)?).await?) }
     fn set_rating(target: BridgeRatingTarget, stars: Option<BridgeStars>) -> () { Ok(this.services.set_rating(target.into_core(), stars.map(BridgeStars::into_core)).await?) }
     fn create_playlist(name: String, sharing: BridgeSharing, track_ids: Vec<String>) -> String { Ok(this.services.create_playlist(&name,sharing.into_core(),track_ids).await?.to_string()) }
-    fn play_playlist(playlist_id: String, start_position_id: Option<String>) -> BridgePlayOutcome {
+    fn play_playlist(playlist_id: String, start_position_id: Option<String>, shuffle: bool) -> BridgePlayOutcome {
         let start = start_position_id.map(|id| id.parse().map_err(BridgeError::config)).transpose()?;
-        Ok(BridgePlayOutcome::from_core(this.services.play_playlist(playlist_id.parse().map_err(BridgeError::config)?, start).await?))
+        Ok(BridgePlayOutcome::from_core(this.services.play_playlist(playlist_id.parse().map_err(BridgeError::config)?, start, shuffle).await?))
     }
     fn rename_playlist(id: String, name: String) -> () { Ok(this.services.rename_playlist(id.parse().map_err(BridgeError::config)?,&name).await?) }
     fn set_playlist_sharing(id: String, sharing: BridgeSharing) -> () { Ok(this.services.set_playlist_sharing(id.parse().map_err(BridgeError::config)?,sharing.into_core()).await?) }

@@ -97,7 +97,11 @@ fn profiles_ratings_playlists_and_history_use_the_same_store() {
         assert_eq!(stored[0].id.to_string(), playlist_id);
         assert_eq!(stored[0].sharing, bae_people::people::Sharing::Private);
         assert_eq!(
-            app.clone().play_playlist(playlist_id.clone(), None).await.unwrap(),
+            app.clone().play_playlist(playlist_id.clone(), None, false).await.unwrap(),
+            BridgePlayOutcome::NothingToPlay
+        );
+        assert_eq!(
+            app.clone().play_playlist(playlist_id.clone(), None, true).await.unwrap(),
             BridgePlayOutcome::NothingToPlay
         );
         let track = bae_util::test_ids::test_uuid("playlist-track");
@@ -115,7 +119,22 @@ fn profiles_ratings_playlists_and_history_use_the_same_store() {
             .unwrap();
         assert_eq!(
             app.clone()
-                .play_playlist(held.clone(), Some(bae_util::test_ids::test_uuid("gone-position")))
+                .play_playlist(
+                    held.clone(),
+                    Some(bae_util::test_ids::test_uuid("gone-position")),
+                    false
+                )
+                .await
+                .unwrap(),
+            BridgePlayOutcome::StartMissing
+        );
+        assert_eq!(
+            app.clone()
+                .play_playlist(
+                    held.clone(),
+                    Some(bae_util::test_ids::test_uuid("gone-position")),
+                    true
+                )
                 .await
                 .unwrap(),
             BridgePlayOutcome::StartMissing

@@ -39,13 +39,15 @@ pub enum PlayPlaylistError {
 
 impl AppServices {
     /// Play a playlist's tracks as a list in the playlist's order, from the
-    /// entry `start` names or from the first. An entry the playlist no longer
-    /// holds as `start` plays nothing and answers start missing; a playlist
-    /// without entries answers nothing to play.
+    /// entry `start` names or from the first, or shuffled when `shuffle`. An
+    /// entry the playlist no longer holds as `start` plays nothing and
+    /// answers start missing; a playlist without entries answers nothing to
+    /// play.
     pub async fn play_playlist(
         &self,
         id: uuid::Uuid,
         start: Option<uuid::Uuid>,
+        shuffle: bool,
     ) -> Result<bae_playback::PlayOutcome, PlayPlaylistError> {
         let entries =
             self.inner.people.playlist_entries(id).await.map_err(PlayPlaylistError::Entries)?;
@@ -59,8 +61,11 @@ impl AppServices {
             }
         };
         let track_ids = entries.into_iter().map(|entry| entry.track_id).collect();
-        Ok(self
-            .playback_play_tracks(track_ids, bae_playback::tables::TracksStart::Index(start_index))
-            .await?)
+        let start = if shuffle {
+            bae_playback::tables::TracksStart::Shuffled
+        } else {
+            bae_playback::tables::TracksStart::Index(start_index)
+        };
+        Ok(self.playback_play_tracks(track_ids, start).await?)
     }
 }

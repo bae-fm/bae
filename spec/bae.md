@@ -2732,9 +2732,10 @@ without its leading and trailing spaces, and a blank one is refused; core
 answers whether a typed name is blank, so a Create button disables on the same
 rule. A playlist made from a track holds that track from its first write, and
 one made with a track the library lacks is not made. A playlist plays as a list
-of its tracks in its order (§7.1), from the entry picked, or from the first;
-one with no entries plays nothing, and a picked entry the playlist no longer
-holds plays nothing.
+of its tracks in its order (§7.1), from the entry picked, from the first, or
+shuffled; one with no entries plays nothing, and a picked entry the playlist
+no longer holds plays nothing, shuffled or not. On macOS a playlist's page has
+Play and Shuffle.
 
 The Playlists list shows every playlist the person can see, by name: their
 own and the household ones others made, never another person's private ones

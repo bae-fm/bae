@@ -35,11 +35,13 @@ public final class Playback: Sendable, Observable {
     /// any release without tracks, and the line says how many.
     public let playReleases: @Sendable (_ releaseIds: [String]) -> Void
     /// Play a playlist's tracks in its order, from the entry `startPositionId`
-    /// names or from the first. What the play did shows on the app's error
+    /// names or from the first, or shuffled. What the play did shows on the app's error
     /// surface when it has a line: the playlist holds nothing, or the entry
     /// to start from is gone.
     public let playPlaylist:
-        @Sendable (_ playlistId: String, _ startPositionId: String?) -> Void
+        @Sendable (
+            _ playlistId: String, _ startPositionId: String?, _ shuffle: Bool
+        ) -> Void
     /// Play the whole library in a freshly seeded shuffle. An empty library
     /// plays nothing, and the line says so.
     public let playLibraryShuffled: @Sendable () -> Void
@@ -73,7 +75,8 @@ public final class Playback: Sendable, Observable {
             _ in
         },
         playReleases: @escaping @Sendable ([String]) -> Void = { _ in },
-        playPlaylist: @escaping @Sendable (String, String?) -> Void = {
+        playPlaylist: @escaping @Sendable (String, String?, Bool) -> Void = {
+            _,
             _,
             _ in
         },
@@ -146,11 +149,12 @@ public final class Playback: Sendable, Observable {
                     try await handle.playReleases(releaseIds: releaseIds)
                 }
             },
-            playPlaylist: { playlistId, startPositionId in
+            playPlaylist: { playlistId, startPositionId, shuffle in
                 Self.answer(show) {
                     try await handle.playPlaylist(
                         playlistId: playlistId,
-                        startPositionId: startPositionId
+                        startPositionId: startPositionId,
+                        shuffle: shuffle
                     )
                 }
             },
