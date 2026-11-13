@@ -26,6 +26,7 @@ pub(super) use now::SCHEMA as NOW_SCHEMA;
 pub use now::{playback_level, PlaybackNowRow};
 #[cfg(any(test, feature = "test-utils"))]
 pub use queue::fail_queue_writes_for_test;
+#[cfg(any(test, feature = "test-utils"))]
 pub use queue::lose_up_next_for_test;
 pub(super) use queue::SCHEMA as QUEUE_SCHEMA;
 pub use queue::{settle_playback_queue, ManualPlace, PlaybackQueueTables, ShuffleChange};
