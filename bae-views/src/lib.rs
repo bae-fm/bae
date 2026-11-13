@@ -32,8 +32,8 @@ pub mod composer_detail;
 mod invites;
 pub use invites::{InviteEntry, OpenInvite, RefusedInvite};
 mod models;
-pub mod playlists;
 mod name_sort;
+pub mod playlists;
 pub use name_sort::SortLanguageError;
 pub mod release;
 #[cfg(desktop)]
