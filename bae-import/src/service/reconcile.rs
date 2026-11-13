@@ -74,9 +74,8 @@ impl ImportService {
                 // this release's album credits are not written.
                 album_artists.clear();
             }
-            // A new album for a release group is the group's album on every
-            // device, so two devices importing into one group while apart
-            // write one album.
+            // A release group is one album: a new album for one takes the id
+            // derived from the group.
             None => {
                 if let Some(group_album_id) = bae_records::identity::album_id_for_records(&records)
                 {

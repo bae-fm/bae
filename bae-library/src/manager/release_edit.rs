@@ -13,8 +13,8 @@
 //! apply read.
 //!
 //! A save checks, in its one write, the release against what its session
-//! opened on: one the library no longer holds as it did — another session saved it, MCP wrote
-//! its fields, another device's edit synced in — is refused
+//! opened on: one the library no longer holds as it did — another session saved
+//! it, MCP wrote its fields, or a synced edit arrived — is refused
 //! ([`LibraryError::ReleaseEditStale`]) and writes nothing, so no session
 //! overwrites values its editor never showed. The editor opens again to see
 //! the release as it is now.

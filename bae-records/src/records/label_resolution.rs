@@ -29,8 +29,8 @@
 //! catalog ids; the library label keeps its own id. A new label a catalog
 //! names takes the id [`crate::identity::label_id`] derives from that
 //! catalog entry, from the ids it holds once the write has decided every
-//! label (`catalog_match`), so every device that meets it writes one row;
-//! one known only by name keeps the fresh id it was made with.
+//! label (`catalog_match`): one catalog entry is one row; one known only by
+//! name keeps the fresh id it was made with.
 
 use super::catalog_match::*;
 use super::*;
@@ -425,8 +425,7 @@ fn name_instead(rows: &mut [(Option<String>, Option<&str>)], from: &str, to: &st
 }
 
 /// Make the release `release_id`'s label rows exactly `rows`, in order,
-/// touching only the rows that differ: a row is a place in the list, so
-/// another device's edit of another place merges with this one.
+/// touching only the rows that differ: a row is a place in the list.
 fn replace_release_label_rows(
     tx: &CovenWrite<'_>,
     release_id: &str,

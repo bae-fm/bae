@@ -1,13 +1,12 @@
 //! The ids of rows whose identity is a fact, not an event.
 //!
-//! coven merges two devices' rows that share `(table, id)`. A row that names a
-//! catalog entity (an artist, a work, a release group's album) or a relation
-//! between rows (an album or track credit, a release's record in one catalog) must
-//! therefore get the same id on every device that writes the same fact, or the
-//! devices end up with duplicates and with pulls that collide on the table's
-//! natural `UNIQUE` key. Each id here is a name-based UUID over a text key that
-//! spells the fact, so it stays an opaque UUID to everything that stores or
-//! shows it. These tables are declared `RowIdentity::SharedKey` in
+//! A row that names a catalog entity (an artist, a work, a release group's
+//! album) or a relation between rows (an album or track credit, a release's
+//! record in one catalog) is the fact it states: one catalog id is one row, one
+//! place in a list is one row, and the table's natural `UNIQUE` key is that
+//! fact. Each id here is a name-based UUID over a text key that spells the
+//! fact, so it stays an opaque UUID to everything that stores or shows it.
+//! These tables are declared `RowIdentity::SharedKey` in
 //! `synced::synced_tables`.
 
 use bae_catalogs::catalog::Catalog;
@@ -21,8 +20,7 @@ fn id_for(key: &str) -> String {
 }
 
 /// The artist a catalog names, preferring MusicBrainz. `None` for an artist
-/// known only by name: nothing identifies it across devices, so it gets an
-/// independent id.
+/// known only by name: no catalog id names it, so it gets an independent id.
 pub fn artist_id(
     musicbrainz_artist_id: Option<&str>,
     discogs_artist_id: Option<&str>,
@@ -35,8 +33,7 @@ pub fn artist_id(
 }
 
 /// The label a catalog names, preferring MusicBrainz. `None` for a label
-/// known only by name: nothing identifies it across devices, so it gets an
-/// independent id.
+/// known only by name: no catalog id names it, so it gets an independent id.
 pub fn label_id(
     musicbrainz_label_id: Option<&str>,
     discogs_label_id: Option<&str>,
@@ -64,7 +61,7 @@ pub fn album_id_for_records(records: &[ReleaseRecord]) -> Option<String> {
 }
 
 /// The credit at `position` of an album's credit list. Which artist it names
-/// is a cell of the row, so two devices writing that place write one row.
+/// is a cell of the row: one place in the list is one row.
 pub fn album_artist_id(album_id: &str, position: u32) -> String {
     id_for(&format!("album artist {album_id} {position}"))
 }

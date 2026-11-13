@@ -13,12 +13,7 @@
 //! (`versions.sql`). Each holds values a list sorts, filters or counts by that
 //! come from several library tables, each kept in a device-local table so an
 //! index serves it. Local triggers write them in the same write as the rows
-//! they come from, on this device or applied from another, so they always
-//! match those rows. Coven applies another device's write with foreign keys
-//! checked only at its end, so a row can arrive before a row it references: a
-//! trigger counts only rows whose references are there, and the referenced
-//! row's own trigger, when it arrives, counts the rows that were waiting for
-//! it.
+//! they come from, so they always match those rows.
 
 mod activity_bytes;
 pub mod album;

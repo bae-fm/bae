@@ -2,8 +2,8 @@
 //! when a credit prints one, what the artist page lists and edits, and what
 //! the artist picker offers under each artist.
 //!
-//! A credit name is keyed by its artist and its folded name, so two devices
-//! meeting one printed name write one row. A link names it by that key; a
+//! A credit name is keyed by its artist and its folded name: one printed name
+//! of an artist is one row. A link names it by that key; a
 //! name the person removes or renames is first unlinked or relinked in the
 //! same write, so no link names a key its artist no longer holds.
 

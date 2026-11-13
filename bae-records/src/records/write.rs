@@ -165,8 +165,7 @@ pub fn insert_release_row(
 }
 
 /// Make the release `release_id`'s barcodes exactly `barcodes`, in order,
-/// touching only the rows that differ: a row is a place in the list, so
-/// another device's edit of another place merges with this one.
+/// touching only the rows that differ: a row is a place in the list.
 pub(super) fn replace_release_barcodes(
     conn: &CovenWrite<'_>,
     release_id: &str,
@@ -210,8 +209,7 @@ pub(super) fn replace_release_barcodes(
 }
 
 /// Make the release `release_id`'s media exactly `media`, in order, touching
-/// only the rows that differ: a row is a place in the list, so another
-/// device's edit of another place merges with this one.
+/// only the rows that differ: a row is a place in the list.
 pub(super) fn replace_release_media(
     conn: &CovenWrite<'_>,
     release_id: &str,
@@ -644,9 +642,8 @@ pub fn upsert_library_image_row(
 
 /// Write `records` as `release_id`'s records, replacing any it had, and set the
 /// catalog its draft was read from. Shared by an import's commit, a records
-/// change (`set_records_atomic`) and the test seam `insert_release_records`. Each row's id is its `(release, catalog)`, so a
-/// device that writes the same record set another device wrote writes the same
-/// rows.
+/// change (`set_records_atomic`) and the test seam `insert_release_records`. Each row's id is its
+/// `(release, catalog)`: one catalog's record of a release is one row.
 #[cfg(any(test, feature = "test-utils", desktop))]
 pub fn write_release_records(
     conn: &CovenWrite<'_>,

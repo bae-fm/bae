@@ -672,8 +672,8 @@ fn assignments_json_sql(table: &str, belongs: &str) -> String {
 }
 
 impl StoredAssignment {
-    /// The draft's credit. A picked artist's credit name another device
-    /// removed since prints the artist's own name.
+    /// The draft's credit. A picked artist's credit name that was removed
+    /// since prints the artist's own name.
     fn credited(self) -> Result<Credited, DbError> {
         let artist = match self.kind.as_str() {
             "picked" => ArtistAssignment::Picked {

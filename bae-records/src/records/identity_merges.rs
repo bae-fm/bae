@@ -2,9 +2,8 @@
 //! finding one catalog id on several: the survivor takes the absorbed one's
 //! catalog ids, and the absorbed one stays, recorded as merged into the
 //! survivor (`artist_merges`, `label_merges`). Neither row is deleted and no
-//! credit or release label is rewritten: both are shared with devices that
-//! may be naming the absorbed one while apart, and every read shows the
-//! survivor.
+//! credit or release label is rewritten: credits and release labels may name
+//! the absorbed one, and every read shows the survivor.
 
 use super::*;
 

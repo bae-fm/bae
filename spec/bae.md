@@ -144,8 +144,7 @@ media are a list of carriers, each with how many of it there are (two CDs, one
 vinyl record). Its labels are a list of library labels (§2.3), each with the
 catalog number it gives the pressing; a place may state a catalog number
 alone. Its labels, its barcodes and its media are each kept one row per place
-in the list, so two devices editing different places of one release's list at
-once keep both edits. A saved
+in the list. A saved
 CUE sheet's `CATALOG` line states the barcode when every one names the same
 product, and none otherwise.
 
@@ -177,8 +176,7 @@ An album's *primary* release is the one whose cover it shows and that opens
 and plays by default. It is not a stored pointer: each release holds a place in
 its album's order (`releases.album_order`), and the primary is the release
 first in that order, ties broken by release id. So every album with a release
-has exactly one primary on every device, and two devices that each made a
-different release primary agree on one after they sync. A release joining an
+has exactly one primary. A release joining an
 album goes after the album's others, so an album's first release stays its
 primary. "Set as primary release" moves a release before the album's others,
 and is refused for a release of another album. Moving or deleting a release
@@ -401,8 +399,8 @@ The other names a credit prints for it, a MusicBrainz credit name or a
 Discogs name variation (`anv`) that is not the artist's own (the spaces
 around either aside), on an album or track credit, a role credit (a release's
 or a track's) or a work's artist, are the
-artist's `artist_credits`, keyed by the artist and the folded name, so two
-devices meeting one printed name write one row. A credit links one of them,
+artist's `artist_credits`, keyed by the artist and the folded name: one
+printed name of an artist is one row. A credit links one of them,
 or none to print the artist's own name; it is never text. Importing decides
 it once the artist is: a printed name that folds to the artist's own links
 none, any other links that name, added if new. A merged artist's credit
@@ -424,12 +422,11 @@ two artists, since one id is one artist (below). bae has no merge action yet:
 merging artists a person names is for the main app, designed later.
 
 Merging records that one artist was absorbed into the other; both rows stay, so
-a credit another device gave the absorbed artist still resolves. Every read
-shows the survivor. A chain of merges shows its last artist, and a loop, left by
-two devices merging a pair in opposite directions, shows the artist with the
-smallest id. The artist each artist shows as is kept on the device
+a credit naming the absorbed artist still resolves. Every read shows the
+survivor. A chain of merges shows its last artist, and a loop shows the artist
+with the smallest id. The artist each artist shows as is kept on the device
 (`artist_shown_as`), written in the same write as the artist or the merge that
-decides it, whichever device made that write. No write deletes a merge; an
+decides it. No write deletes a merge; an
 artist a merge names stays while the merge does, and any other artist is
 deleted by the write that leaves nothing crediting it (§2.1), with its other
 printed names and its picture.
@@ -462,9 +459,9 @@ name.
   artist Y, and the library holds X and Y as separate artists. The credit
   names X, and Y keeps its own ids; nobody is asked (rule 1).
 - **One id, two artists.** The library holds a credit's id on two artists,
-  as when two devices apart each gave it to a different artist of that name.
-  The two are one artist, so the next write naming that id merges them into
-  the smaller id (rule 1) and goes on; nobody is asked.
+  each under a different name. One id is one artist, so the next write naming
+  that id merges them into the smaller id (rule 1) and goes on; nobody is
+  asked.
 - **A contradicting id.** A credit whose Discogs id names an artist holding
   a different MusicBrainz id goes by its MusicBrainz id alone: the artist
   holding that id, or a new one. A credit whose MusicBrainz id names an
@@ -614,11 +611,11 @@ editing a release changes those values (§3.8).
 
 ### 2.6 The same fact gets the same id
 
-Ana and Ben import while apart, each on a laptop with no network. Both
-imports name the artist *Artist Name*, known to MusicBrainz. When the laptops
-next sync, the library must hold one artist, not two.
+Ana imports two releases by *Artist Name*, known to MusicBrainz, one after the
+other. The library must hold one artist, not two: one MusicBrainz artist id is
+one row.
 
-So the same fact gets the same id on every device. Artists, works and albums
+So the same fact gets the same id. Artists, works and albums
 take their ids from their catalog ids: each is a name-based UUID over a text
 key that spells the fact.
 
@@ -642,14 +639,14 @@ made by the device's clock, so one write's new rows sit together in the
 store's indexes. Anyone who can read the row can read when it was made, as its
 `created_at` already says.
 
-coven merges two devices' rows that share a table and key, so two devices
-stating one fact write one row
-([coven §9.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#92-keys-and-unique-values)).
+A row's id is its table's key
+([coven §9.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#92-keys-and-unique-values)),
+so one fact is one row.
 
 **Edge cases.**
 
-- **An artist or a label known only by name** has nothing that identifies it
-  across devices, so it gets a fresh id. If a later write gives it a catalog
+- **An artist or a label known only by name** has no catalog id to take an id
+  from, so it gets a fresh id. If a later write gives it a catalog
   id, it keeps the id it has; row ids are never rewritten.
 - **A new artist or label given another id within its write.** A new artist
   or label takes its id from the catalog ids it holds once the write that
@@ -664,16 +661,11 @@ stating one fact write one row
   MusicBrainz group of an album already in the library joins that album
   (§3.7); where the two records name two library albums, the one the draft
   was read from decides.
-- **Two devices editing one credit list.** A credit row is a place in the
-  list, so two devices writing the same place write one row, and the artist it
-  names merges like any other cell. One device shortening a list while another
-  lengthens it can leave a gap in the positions; readers order by position, so
-  a gap changes nothing shown.
-- **A credit name removed while another device links it.** Removing an
-  artist's other name unlinks every credit linking it in the same write. A
-  credit another device linked to it meanwhile names a row that is gone, and
-  coven takes that credit out (recorded as lost, back once relinked), so no
-  device shows a credit printing a name its artist no longer holds.
+- **A credit list.** A credit row is a place in the list: one place is one
+  row, and the artist it names is a cell of it.
+- **A credit name removed.** Removing an artist's other name unlinks every
+  credit linking it in the same write, so no credit prints a name its artist no
+  longer holds.
 
 ### 2.7 A release's identity
 
@@ -708,7 +700,7 @@ records no failed import: the folder is Done. Two imports of the same files aske
 for before either lands both run, and the one that comes second finds the hash
 taken, as it reads what to import or as it writes: it fails with the same
 words and writes nothing. The release imported
-first stands. Deleting the release, here or on another device, deletes the
+first stands. Deleting the release deletes the
 record with it, and the folder is back in Found as a folder whose tags bae
 never read: an imported folder holds no draft (§3.7), so it holds its files'
 blank draft and its own cover, and its row shows its folder's name (a release
@@ -1993,7 +1985,7 @@ Every editor opens a session of its own, so the editor sheet and the import
 pane open on the same release, or MCP's re-identify while either is open,
 never share an apply or a pick. A save's one write first checks the release
 against what its session opened on: if the library no longer holds it so — another
-session saved it, MCP wrote its fields, another device's edit arrived, or an
+session saved it, MCP wrote its fields, or an
 artist it credits was renamed — the save is refused, writes nothing, and the
 editor says the release changed after it opened; *Cancel* opens it again as
 it is now. Only the cover, which is written at once, never makes a session
@@ -2250,7 +2242,7 @@ count bae keeps per release in the transaction that changes a pin, so each
 view's own query follows a pin as it lands. coven lists a pin only once its
 whole copy is kept. Whether a release is uploaded is kept the same way, from
 coven's `coven_files`, in the transaction that records a file, switches it to
-storage or deletes it, on this device or as another device's write applies.
+storage or deletes it.
 How many of a release's files
 wait in the upload queue, and the place of the first, are counts bae keeps
 the same way from
@@ -2742,10 +2734,8 @@ person's own page lists all of theirs, and another person's page lists the
 plays they share with *Everyone*. No view lists the household's plays
 together.
 
-Each play is its own row, with a fresh id. A play count kept in one cell would
-lose plays: two devices adding to it at once merge cell by cell, and the later
-write wins
-([coven §8](https://github.com/bae-fm/coven/blob/main/spec/coven.md#8-merging)).
+Each play is its own row, with a fresh id, so a play count is the number of
+rows, never a cell holding a number.
 
 **Changing the history setting** applies to new plays only. The setting is *Off*,
 *Only me* (private) or *Everyone* (household). A play takes its audience from
@@ -2810,9 +2800,7 @@ playlists: a submenu of their own playlists by name, which adds the track to the
 end of the one chosen, then *New playlist…*, which opens the sheet holding the
 track.
 
-Ben's phone and laptop each add a track to his party playlist while offline.
-Both take the next position, 7. When they sync, both entries stay; equal
-positions order by position id, so every device shows the same order. A
+Ben adds a track to his party playlist: it takes the next position, 7. A
 reorder names every entry it read, and is refused if an entry arrived or went
 in between, so it never drops an entry it didn't see.
 
@@ -4303,8 +4291,7 @@ before a row the screen hasn't read yet stays where it was.
 
 A track deleted from the library leaves every place it sits in the queue. A
 deleted track that is playing stops, and playback goes on with what's next;
-one loaded to play next is let go. This holds whichever device deleted it:
-another device's deletion reaches this device's player when it syncs here.
+one loaded to play next is let go. This holds however the track was deleted.
 
 ### 7.2 Repeat, shuffle, previous
 
@@ -5686,9 +5673,7 @@ they are edited one at a time: a release's labels, barcodes and media are
 rows. A list that is only ever set whole and read whole is one JSON value in
 one column: a release's Discogs details, a draft's media, a failed verdict's
 lookup failures, a queued save's preset. coven merges a synced row cell by
-cell, so a synced JSON list is one cell: two devices that change it at once
-keep one device's whole list, never a mix of both. Their editors set the
-whole list at once, so there are no finer edits to merge.
+cell, so a synced JSON list is one cell, set whole by its editor.
 
 bae gives coven the collation `natural_order`, which coven registers on every
 connection to a library: it orders text the way a person reads folder names
@@ -5778,11 +5763,10 @@ What the library lists, bae-views' part, kept by its triggers:
 | `album_search_entry`, `track_search_entry`, `work_search_entry`, `artist_search_entry`, `artist_credit_search_entry` | searched row, keyed by its own key: the integer its search row is found by |
 
 Local triggers write every table of bae-views' part in the same write as the
-library rows they come from, on this device or applied from another, so they
-always match those rows. A release's storage row follows coven's records of its
-files, the pins `coven_pins` lists as kept and coven's upload queue the same
-way, in the transaction that changes one of them, whether this device's own
-write, another device's applied, or coven's as a file is pinned, downloads,
+library rows they come from, so they always match those rows. A release's
+storage row follows coven's records of its files, the pins `coven_pins` lists
+as kept and coven's upload queue the same way, in the transaction that changes
+one of them, whether bae's own write or coven's as a file is pinned, downloads,
 uploads or is unpinned, and its listing row copies what it sorts by in that
 write. Coven applies a write's rows parents first, so a row is never there before a
 row it references and no trigger waits for one. An

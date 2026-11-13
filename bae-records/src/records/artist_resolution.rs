@@ -10,8 +10,8 @@
 //!    id is the artist holding that id, as the write so far leaves the
 //!    library: a library artist followed through any merge, or a new artist
 //!    an earlier credit of the same write makes. One id is one artist:
-//!    several library artists holding it, as two devices apart can leave
-//!    them, are merged in the write, into the smallest id. Where the credit's
+//!    several library artists holding it are merged in the write, into the
+//!    smallest id. Where the credit's
 //!    two ids disagree — they name two different library artists, or the
 //!    artist one names holds another id of the other catalog — the
 //!    MusicBrainz id decides: the Discogs id is dropped from the credit and

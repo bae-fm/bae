@@ -8,8 +8,7 @@
 -- lists and the place of the first (NULL with none); and `move_failed`, 1
 -- while coven's `coven_moves` lists a file of it in a failed move. One row per release,
 -- written by the triggers below in the write that changes its files, their
--- coven records, pins or queue: this device's own, another device's applied,
--- or coven's.
+-- coven records, pins or queue: bae's own or coven's.
 CREATE TABLE IF NOT EXISTS release_storage (
     release_id TEXT PRIMARY KEY REFERENCES releases (id) ON DELETE CASCADE,
     file_count INTEGER NOT NULL,
@@ -98,8 +97,7 @@ END;
 -- A release file's coven file being recorded, switched to its stored bytes
 -- or deleted refreshes its release: whether the release is stored follows
 -- its files' records, which coven changes with no change to a row of bae's,
--- in this device's write completing an upload and as another device's write
--- applies. A record no release file names moves nothing.
+-- in the write completing an upload. A record no release file names moves nothing.
 CREATE TRIGGER IF NOT EXISTS release_storage_coven_file_added AFTER INSERT ON coven_files
 BEGIN
     INSERT INTO release_storage_refresh (release_id)
@@ -119,8 +117,8 @@ BEGIN
 END;
 
 -- A release file's pin moves its release's pinned count, in the transaction
--- that changes the pin: this device's own write, another device's applied,
--- or coven's own as a file is pinned or unpinned. A pin is listed
+-- that changes the pin: bae's own write, or coven's own as a file is pinned
+-- or unpinned. A pin is listed
 -- only once the whole file is on this device. A file no release file names
 -- moves nothing.
 CREATE TRIGGER IF NOT EXISTS release_storage_file_pinned AFTER INSERT ON coven_pins

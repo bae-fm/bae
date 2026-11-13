@@ -7,12 +7,11 @@
 //!
 //! A credit carrying a catalog id is the row holding that id: a library row
 //! followed through any merge, or a new row an earlier credit of the same
-//! write makes. One id is one row: several library rows holding it, as two
-//! devices apart can leave them, are one, the smallest id, which the write
-//! merges the others into. Where the credit's two ids disagree — they name
-//! two rows that are not one, or the row one names holds another id of the
-//! other catalog — the MusicBrainz id decides: the Discogs id is dropped
-//! from the credit and given to nothing. Where they name a new row of the
+//! write makes. One id is one row: several library rows holding it are one, the
+//! smallest id, which the write merges the others into. Where the credit's two
+//! ids disagree — they name two rows that are not one, or the row one names
+//! holds another id of the other catalog — the MusicBrainz id decides: the
+//! Discogs id is dropped from the credit and given to nothing. Where they name a new row of the
 //! write's and another row, and no id either holds contradicts the credit or
 //! the other, the new one is the other.
 //!

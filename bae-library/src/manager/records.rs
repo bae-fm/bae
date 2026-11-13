@@ -114,8 +114,7 @@ impl LibraryManager {
         }
 
         // No merge candidate. A release alone in its album moves to its group's
-        // own album, the one every device files this group under, so two
-        // devices identifying one group while apart land in one album.
+        // own album: one release group is one album.
         let beside =
             self.records.album_beside_release(current_album_id, release_id, new_records).await?;
         let group_album_id = bae_records::identity::album_id_for_records(new_records);

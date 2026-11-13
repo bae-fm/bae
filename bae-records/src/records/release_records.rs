@@ -291,7 +291,7 @@ pub fn album_records_name_on(
 /// naming the same release group or master, on
 /// `idx_release_records_catalog_album`), records of `:excluding` releases
 /// aside; among those, the record's own group album first, then the oldest
-/// (ties by id), so every device reads the same one.
+/// (ties by id), so the answer is one album.
 const ALBUM_NAMED_BY_RECORD: &str = "SELECT a.id FROM ( \
          SELECT r.album_id, 0 AS match_rank FROM release_records rr \
          JOIN releases r ON r.id = rr.release_id \

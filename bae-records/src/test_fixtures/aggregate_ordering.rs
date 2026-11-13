@@ -47,9 +47,8 @@ pub async fn aggregate_db(schema: bae_store::Schema) -> (bae_store::Store, tempf
 }
 
 /// Plant `RELEASE_A` at `RELEASE_B`'s place in their album's order, in the
-/// library stored under `directory`: the tie two devices leave when each
-/// adds a release to one album while apart. No write on one device leaves
-/// it, as each puts its release after the album's others. `RELEASE_B` was
+/// library stored under `directory`: a tie in the album's order, which no
+/// write leaves, as each puts its release after the album's others. `RELEASE_B` was
 /// written first, so only a read that breaks the tie by id lists
 /// `RELEASE_A` before it.
 fn plant_release_at_a_shared_place(directory: &std::path::Path) {

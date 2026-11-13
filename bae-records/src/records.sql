@@ -24,7 +24,7 @@ CREATE INDEX IF NOT EXISTS idx_artists_mb_id ON artists (musicbrainz_artist_id);
 
 -- An artist's other printed names: a name a credit prints for it that is not
 -- its own (`artists.name`). A row is keyed by the artist and the folded name,
--- so two devices meeting one printed name write one row.
+-- so one printed name of an artist is one row.
 CREATE TABLE IF NOT EXISTS artist_credits (
     artist_id TEXT NOT NULL,
     name_key TEXT NOT NULL,
@@ -35,8 +35,8 @@ CREATE TABLE IF NOT EXISTS artist_credits (
 ) STRICT;
 
 -- Two library artists the user confirmed are one: `id` was absorbed into
--- `into_artist_id`. Both rows stay so credits another device gave the absorbed
--- artist still resolve; reads go through `artist_shown_as`.
+-- `into_artist_id`. Both rows stay so credits naming the absorbed artist still
+-- resolve; reads go through `artist_shown_as`.
 CREATE TABLE IF NOT EXISTS artist_merges (
     id TEXT PRIMARY KEY,
     into_artist_id TEXT NOT NULL,
@@ -311,8 +311,8 @@ CREATE INDEX IF NOT EXISTS idx_labels_musicbrainz_id ON labels (musicbrainz_labe
 CREATE INDEX IF NOT EXISTS idx_labels_discogs_id ON labels (discogs_label_id);
 
 -- Two library labels the person confirmed are one: `id` was absorbed into
--- `into_label_id`. Both rows stay so a release another device gave the
--- absorbed label still names it; reads go through `merged_label_survivors`.
+-- `into_label_id`. Both rows stay so a release naming the absorbed label still
+-- resolves; reads go through `merged_label_survivors`.
 CREATE TABLE IF NOT EXISTS label_merges (
     id TEXT PRIMARY KEY,
     into_label_id TEXT NOT NULL,
@@ -348,8 +348,7 @@ SELECT label_id, survivor_id FROM resolved WHERE label_id <> survivor_id;
 
 -- Every label a pressing is on, in its source's order, each naming a library
 -- label, the catalog number that label gives the pressing, or both. The id
--- derives from (release, position), so two devices that write one release's
--- labels write the same rows.
+-- derives from (release, position): one place in a release's labels is one row.
 CREATE TABLE IF NOT EXISTS release_labels (
     id TEXT PRIMARY KEY,
     release_id TEXT NOT NULL,
@@ -366,8 +365,8 @@ CREATE TABLE IF NOT EXISTS release_labels (
 CREATE INDEX IF NOT EXISTS idx_release_labels_label ON release_labels (label_id);
 
 -- Every barcode a pressing is printed with, in its source's order. The id
--- derives from (release, position), so two devices that write one release's
--- barcodes write the same rows.
+-- derives from (release, position): one place in a release's barcodes is one
+-- row.
 CREATE TABLE IF NOT EXISTS release_barcodes (
     id TEXT PRIMARY KEY,
     release_id TEXT NOT NULL,
@@ -380,8 +379,7 @@ CREATE TABLE IF NOT EXISTS release_barcodes (
 
 -- The carriers a pressing is made of, each with how many of it there are, in
 -- the record's order: two CDs, one vinyl record. The id derives from
--- (release, position), so two devices that write one release's media write
--- the same rows.
+-- (release, position): one place in a release's media is one row.
 CREATE TABLE IF NOT EXISTS release_media (
     id TEXT PRIMARY KEY,
     release_id TEXT NOT NULL,
@@ -688,7 +686,7 @@ CREATE TABLE IF NOT EXISTS audio_formats (
     id TEXT PRIMARY KEY,
     track_id TEXT NOT NULL UNIQUE,
     content_type TEXT NOT NULL,
-    -- Sample counts: never negative, whichever device wrote the row.
+    -- Sample counts: never negative.
     pregap_samples INTEGER CHECK (pregap_samples >= 0),
     generated_pregap_samples INTEGER CHECK (generated_pregap_samples >= 0),
     -- A rate and a channel count above zero; a bit depth only for lossless
@@ -717,7 +715,7 @@ CREATE TABLE IF NOT EXISTS audio_format_segments (
     segment_index INTEGER NOT NULL,
     role TEXT NOT NULL CHECK (role IN ('audio_pregap', 'main')),
     file_id TEXT NOT NULL,
-    -- Positions within the file: never negative, whichever device wrote the row.
+    -- Positions within the file: never negative.
     start_sample INTEGER NOT NULL CHECK (start_sample >= 0),
     end_sample INTEGER CHECK (end_sample >= 0),
     start_byte INTEGER CHECK (start_byte >= 0),
@@ -732,8 +730,7 @@ CREATE INDEX IF NOT EXISTS idx_audio_format_segments_format_id ON audio_format_s
 
 -- A track's audio has one body, the span from its INDEX 01 on, and at most
 -- one pregap before it, which can lie in the file before the body's (§2.2).
--- Each format's segments are written with the format, in one write, so no
--- merge judges two devices' claims on one of these.
+-- Each format's segments are written with the format, in one write.
 CREATE UNIQUE INDEX IF NOT EXISTS idx_audio_format_segments_one_main
     ON audio_format_segments (audio_format_id) WHERE role = 'main';
 CREATE UNIQUE INDEX IF NOT EXISTS idx_audio_format_segments_one_pregap

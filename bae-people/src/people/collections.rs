@@ -141,7 +141,7 @@ impl People {
         .await
     }
 
-    /// A stale reorder cannot silently drop entries received from another device.
+    /// A stale reorder cannot silently drop entries added since it read the list.
     pub async fn reorder_playlist(
         &self,
         playlist: uuid::Uuid,
