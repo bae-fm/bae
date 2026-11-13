@@ -32,7 +32,7 @@
 .bae-m-item { display: flex; align-items: flex-start; gap: var(--space-related); }
 .bae-m-item-lead { flex: none; width: var(--size-lead); height: 1lh; display: flex; align-items: center; justify-content: center; }
 .bae-m-item-body { flex: 1; min-width: 0; }
-.bae-m-item-trail { flex: none; display: flex; align-items: center; gap: var(--space-related); }
+.bae-m-item-trail { flex: none; display: flex; align-items: center; gap: var(--space-related); color: var(--text-secondary); }
 .bae-m-box-empty { min-height: 108px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); }
 
 .bae-m-row { display: flex; align-items: center; gap: var(--space-group); min-height: var(--size-row); padding: 10px var(--space-group); box-sizing: border-box; color: var(--text-primary); font: 400 13px var(--font-sans); }
