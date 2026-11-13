@@ -202,7 +202,7 @@ export interface NoticeProps { tone?: StatusTone; title?: string; subtitle?: str
 /** A tone's glyph in the tone's colour, a filled circle with its mark; `set: 'mac'` draws the macOS stand-in. Neutral, accent and activity draw nothing. */
 /** Material's disclosure row: its own card, expand_more or expand_less at the end; the AndroidRows it shows join the card. */
 export declare function AndroidDisclosure(props: { label: string; summary?: string; open?: boolean; children?: React.ReactNode }): React.ReactElement;
-export declare function StatusGlyph(props: { tone: StatusTone; set?: 'mac'; outline?: boolean; muted?: boolean; inline?: boolean; size?: number; className?: string }): React.ReactElement | null;
+export declare function StatusGlyph(props: { tone: StatusTone; set?: 'mac'; muted?: boolean; inline?: boolean; size?: number; className?: string }): React.ReactElement | null;
 
 /** A cover or picture. Boards give each title its own stand-in colors; `missing` is a plain tile. */
 export interface ArtworkProps { title?: string; seed?: string; size?: number; radius?: number; round?: boolean; missing?: boolean; shadow?: 'tile' | 'bar'; ring?: boolean; /** The picture's name, for one that is itself what a screen shows (a gallery's image). Without it the picture is decorative, as beside its title. */ label?: string; children?: React.ReactNode }

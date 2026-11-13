@@ -74,7 +74,7 @@
 
   // An ⓘ after a row's name, for what the name can't say in a word: what Discogs is, say. Clicking it opens a popover with `text` (a board draws the open popover with MacPopover, since a box crops what spills out of it).
   function MacInfoTip(props) {
-    return h('button', { type: 'button', className: 'bae-m-infotip', 'aria-label': props.label || 'More info' }, h(StatusGlyph, { tone: 'info', set: 'mac', outline: true, muted: true, size: 13 }));
+    return h('button', { type: 'button', className: 'bae-m-infotip', 'aria-label': props.label || 'More info' }, h(StatusGlyph, { tone: 'info', set: 'mac', muted: true, size: 13 }));
   }
 
   // A port number: a field five digits wide that takes digits only, its label hidden (the row says Port). `state`: normal, focused, error, off. What's wrong with it goes on the row's second line, not under the field.

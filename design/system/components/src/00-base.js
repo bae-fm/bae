@@ -72,7 +72,8 @@
   var SYMBOL = { back: 'arrow_back', edit: 'edit', chevron: 'chevron_right', expand: 'expand_more', more: 'more_vert', search: 'search', add: 'add', refresh: 'refresh', copy: 'content_copy',
     play: 'play_arrow', pause: 'pause', previous: 'skip_previous', next: 'skip_next', cast: 'cast', queue: 'list', repeat: 'repeat', nowplaying: 'volume_up', down: 'keyboard_arrow_down',
     warning: 'error', download: 'download', downloaded: 'download_done', pin: 'keep', unpin: 'keep_off', close: 'close', retry: 'refresh', remove: 'delete', drag: 'drag_handle', shuffle: 'shuffle', check: 'check', speakerbox: 'speaker', tv: 'tv' };
-  var SYMBOL_FILLED = { play: 1, pause: 1, previous: 1, next: 1, warning: 1, error: 1, info: 1, check_circle: 1 };
+  // Status symbols (warning, error, info, check_circle) are never filled: every status glyph is the outline.
+  var SYMBOL_FILLED = { play: 1, pause: 1, previous: 1, next: 1 };
   // SVG text alone doesn't make WebKit fetch a web font, so ask for the icon font once up front.
   if (typeof document !== 'undefined' && document.fonts && document.fonts.load) document.fonts.load("24px 'Material Symbols Rounded'", 'more_vert');
   function MSymbol(props) {
