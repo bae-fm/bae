@@ -3773,13 +3773,9 @@ offers nothing.
   device's copy, which stays as it was until the load is complete and only
   then is replaced
   ([coven §13.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#131-a-persons-new-device-the-restore-code)).
-  The copy put in place keeps this device's settings: core reads the
-  `preferences` row and its save presets from this device's copy first, and
-  coven writes them into the loaded copy in the same swap, so the new copy
-  has them from its first open or doesn't take the old one's place at all.
-  The load itself runs at a new library's transfer limits. A reset, the clean
-  slate, starts at a new library's settings instead, since a bad setting may
-  be part of what it clears. A restore that fails, such as with a code the replaced keys made or with
+  The copy put in place starts at a new library's settings, as a reset's does
+  (Appendix C): nothing carries the settings of the copy it replaces.
+  The load itself runs at a new library's transfer limits. A restore that fails, such as with a code the replaced keys made or with
   storage out of reach, leaves the library on this device: the code screen
   shows why, a code the replaced keys made saying the current restore code
   restores the library, and the person can restore again, and going back opens the
@@ -4663,7 +4659,7 @@ library is registered there by id.
 | `restore_from_code`, `restore_from_saved_code` | opens a library on a new device from a restore code, typed or scanned, or saved in iCloud Keychain or the phone's Block Store (§5.6) |
 | `saved_restore_codes` | lists the restore codes coven saved in iCloud Keychain, or in this device's Block Store on Android, for libraries not already on this device, each with its library's saved name, its location and the provider sign-in restoring it needs; an entry coven can't restore from is listed with its library id and why, for deleting only; a device with no Block Store lists none |
 | `forget_saved_restore_code` | deletes a saved restore code, readable or not, and the S3 key beside it from iCloud Keychain on all the person's Apple devices, or from this device's Block Store; no library, storage or device's copy changes, and an absent code succeeds (§5.6); the apps ask first, and the question names the library of a readable code and says nothing of one for an unreadable code |
-| `restore_replacing_device` | after another of the person's devices replaced their keys, checks the code restores this library, then restores it under a new device id beside this device's copy, keeping this device's settings, which a restore failing before its record leaves as it was; called again, finishes a restore that stopped after its record (§6.4) |
+| `restore_replacing_device` | after another of the person's devices replaced their keys, checks the code restores this library, then restores it under a new device id beside this device's copy, at a new library's settings; a restore failing before its record leaves this device's copy as it was; called again, finishes a restore that stopped after its record (§6.4) |
 | `resume_replacement` | finishes this device's reset or restore of a library that stopped after its record, from what coven kept: no code, and no sign-in unless the provider refuses the kept one; told which call the listing names, so a restore's finishing can be cancelled and a reset's can't (§6.4) |
 | `join_with_invite` | joins a library from an invite as the person named in the call, whose name the request carries; coven keeps it with the library for its open to ask for their profile under (§5.4); once approved, returns the library open even when its first load failed, with that failure (§5.6) |
 | `unfinished_joins`, `resume_join` | list the joins this device has under way, and continue one after bae restarts, without the code, signing in only when coven has no sign-in it can use (§5.6) |

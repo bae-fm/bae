@@ -12,8 +12,8 @@ use super::{
     SavePreset, SidePauseCountdown, SubsonicConfig, SubsonicNetwork,
 };
 use bae_store::{DbError, Store};
-use coven::{BulkSqlContext, CovenWrite, SqlRead};
-use rusqlite::{params, Params, Row};
+use coven::{CovenWrite, SqlRead};
+use rusqlite::{params, Row};
 use std::num::NonZeroU32;
 
 /// The preferences' part of the library's schema.
@@ -62,14 +62,6 @@ impl PreferencesRow {
             })
             .await?
     }
-}
-
-/// Write `carried`, the preferences of the copy a restore replaces, over the
-/// new copy's own, in the restore's step on that copy: what the restore puts
-/// in place keeps this device's settings.
-pub fn carry_preferences(sql: &BulkSqlContext<'_>, carried: &Preferences) -> rusqlite::Result<()> {
-    let stored = preferences_on(sql)?;
-    write_preferences_on(sql, &stored, carried)
 }
 
 fn preferences_on(sql: &impl SqlRead) -> rusqlite::Result<Preferences> {
@@ -200,7 +192,7 @@ fn bit_depth_column(bit_depth: SaveBitDepth) -> &'static str {
 /// presets whole when any of them changed, and the filename pattern whole
 /// when it changed.
 fn write_preferences_on(
-    sql: &impl Execute,
+    sql: &CovenWrite<'_>,
     stored: &Preferences,
     edited: &Preferences,
 ) -> rusqlite::Result<()> {
@@ -320,24 +312,6 @@ fn write_preferences_on(
     Ok(())
 }
 
-/// A statement in either of coven's writes the preferences are written in:
-/// an ordinary write, and a bulk write on a new copy before it swaps in.
-trait Execute {
-    fn execute<P: Params>(&self, sql: &str, params: P) -> rusqlite::Result<usize>;
-}
-
-impl Execute for CovenWrite<'_> {
-    fn execute<P: Params>(&self, sql: &str, params: P) -> rusqlite::Result<usize> {
-        CovenWrite::execute(self, sql, params)
-    }
-}
-
-impl Execute for BulkSqlContext<'_> {
-    fn execute<P: Params>(&self, sql: &str, params: P) -> rusqlite::Result<usize> {
-        BulkSqlContext::execute(self, sql, params)
-    }
-}
-
 /// A value a name pattern holds, and the table its pattern's pieces are
 /// rows of.
 trait PatternValue: Copy {
@@ -429,7 +403,7 @@ fn pattern_on<Value: PatternValue>(sql: &impl SqlRead) -> rusqlite::Result<NameP
 /// Replace the stored pattern of `Value`'s table with `pattern`, piece by
 /// piece.
 fn write_pattern<Value: PatternValue>(
-    sql: &impl Execute,
+    sql: &CovenWrite<'_>,
     pattern: &NamePattern<Value>,
 ) -> rusqlite::Result<()> {
     sql.execute(&format!("DELETE FROM {}", Value::TABLE), [])?;

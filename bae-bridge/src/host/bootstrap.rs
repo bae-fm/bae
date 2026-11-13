@@ -163,7 +163,7 @@ impl BridgeHost {
                 move || async move {
                     self.closed(store).await?;
                     match bae_library::restore_replacing_device(
-                        || self.library_builder(),
+                        self.library_builder(),
                         store,
                         &code,
                         credentials.map(BridgeS3Credentials::into_core),
@@ -171,7 +171,6 @@ impl BridgeHost {
                         |status| steps.bootstrap(status, true),
                         report,
                         &cancel,
-                        self.clock.clone(),
                         &self.diagnostics,
                     )
                     .await

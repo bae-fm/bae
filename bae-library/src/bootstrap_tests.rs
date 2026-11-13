@@ -332,7 +332,7 @@ async fn a_failed_restore_over_this_devices_copy_leaves_it_to_open_or_retry() {
         let cancel = cancel.clone();
         async move {
             restore_replacing_device(
-                builder,
+                builder(),
                 store,
                 &code,
                 Some(owner_key()),
@@ -340,7 +340,6 @@ async fn a_failed_restore_over_this_devices_copy_leaves_it_to_open_or_retry() {
                 |_| {},
                 |_| {},
                 &cancel,
-                std::sync::Arc::new(coven::SystemClock),
                 &bae_diagnostics::Diagnostics::noop(),
             )
             .await
@@ -401,7 +400,7 @@ async fn restoring_with_the_current_code_leaves_the_restored_copy() {
     let (_sender, cancel) = watch::channel(false);
 
     let restored = restore_replacing_device(
-        builder,
+        builder(),
         replaced.store,
         &replaced.current_code,
         Some(owner_key()),
@@ -409,7 +408,6 @@ async fn restoring_with_the_current_code_leaves_the_restored_copy() {
         |_| {},
         |_| {},
         &cancel,
-        std::sync::Arc::new(coven::SystemClock),
         &bae_diagnostics::Diagnostics::noop(),
     )
     .await
@@ -498,7 +496,7 @@ async fn a_restore_stopped_after_its_record_is_listed_and_finished_by_restoring_
         let code = replaced.current_code.clone();
         async move {
             restore_replacing_device(
-                builder,
+                builder(),
                 store,
                 &code,
                 Some(owner_key()),
@@ -506,7 +504,6 @@ async fn a_restore_stopped_after_its_record_is_listed_and_finished_by_restoring_
                 |_| {},
                 |_| {},
                 &cancel,
-                std::sync::Arc::new(coven::SystemClock),
                 &bae_diagnostics::Diagnostics::noop(),
             )
             .await
@@ -581,7 +578,7 @@ async fn a_restore_stopped_after_its_record_finishes_without_the_code() {
     stop_once_recorded(
         &installation,
         restore_replacing_device(
-            builder,
+            builder(),
             store,
             &replaced.current_code,
             Some(owner_key()),
@@ -589,7 +586,6 @@ async fn a_restore_stopped_after_its_record_finishes_without_the_code() {
             |_| {},
             |_| {},
             &cancel,
-            std::sync::Arc::new(coven::SystemClock),
             &bae_diagnostics::Diagnostics::noop(),
         ),
     )
@@ -714,7 +710,7 @@ async fn removing_a_library_whose_restore_stopped_after_its_record_deletes_both_
     stop_once_recorded(
         &installation,
         restore_replacing_device(
-            builder,
+            builder(),
             store,
             &replaced.current_code,
             Some(owner_key()),
@@ -722,7 +718,6 @@ async fn removing_a_library_whose_restore_stopped_after_its_record_deletes_both_
             |_| {},
             |_| {},
             &cancel,
-            std::sync::Arc::new(coven::SystemClock),
             &bae_diagnostics::Diagnostics::noop(),
         ),
     )

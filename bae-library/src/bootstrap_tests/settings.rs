@@ -30,12 +30,11 @@ async fn settings(handle: &coven::CovenHandle) -> bae_preferences::Preferences {
     bae_preferences::preferences(&database).await.unwrap()
 }
 
-/// Restoring over this device's copy keeps this device's settings: the copy
-/// put in its place holds the replaced copy's preferences and save presets.
-/// It reads the library's history under the transfer limits a library starts
-/// at, since the settings go into the new copy only once it has loaded.
+/// Restoring over this device's copy starts it at a new library's settings,
+/// as a reset does: nothing carries the replaced copy's preferences or save
+/// presets. The load runs under the transfer limits a library starts at.
 #[tokio::test]
-async fn a_restore_over_this_devices_copy_keeps_its_settings() {
+async fn a_restore_over_this_devices_copy_starts_at_a_new_librarys_settings() {
     let temp = tempfile::TempDir::new().unwrap();
     let app_dir = AppDir::at(temp.path()).unwrap();
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
@@ -46,18 +45,10 @@ async fn a_restore_over_this_devices_copy_keeps_its_settings() {
             .storage_connector(std::sync::Arc::new(storage.for_device()))
     };
     change_settings(builder(), replaced.store).await;
-    let before = {
-        let handle =
-            configure_store(builder(), crate::SCHEMA).open(replaced.store, |_| ()).await.unwrap();
-        let before = settings(&handle).await;
-        handle.close().await.unwrap();
-        before
-    };
-    assert_ne!(before, bae_preferences::Preferences::default());
     let (_sender, cancel) = watch::channel(false);
 
     let restored = restore_replacing_device(
-        builder,
+        builder(),
         replaced.store,
         &replaced.current_code,
         Some(owner_key()),
@@ -65,14 +56,13 @@ async fn a_restore_over_this_devices_copy_keeps_its_settings() {
         |_| {},
         |_| {},
         &cancel,
-        std::sync::Arc::new(coven::SystemClock),
         &bae_diagnostics::Diagnostics::noop(),
     )
     .await
     .unwrap();
     assert_ne!(restored.device_id(), replaced.device);
     assert_eq!(restored.transfer_limits(), bae_app_dir::default_transfer_limits());
-    assert_eq!(settings(&restored).await, before);
+    assert_eq!(settings(&restored).await, bae_preferences::Preferences::default());
     restored.close().await.unwrap();
 }
 
