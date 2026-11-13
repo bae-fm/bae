@@ -731,3 +731,107 @@ async fn measure_loudness_accepts_complete_audio_with_an_invalid_terminal_packet
     .await
     .expect("complete audio with an invalid terminal packet passes the decode check");
 }
+
+/// Every track of a seektable-less FLAC image gets scrub points from the
+/// import's own decode, a later track's too. Import records the byte each CUE
+/// track starts at, so that decode begins on the frame holding the track's
+/// first sample (a byte jump), never on a sample seek, which would hand the
+/// scrub points no frame to date from.
+#[tokio::test]
+async fn a_seektable_less_cue_image_gets_scrub_points_for_every_track() {
+    use crate::types::{CueAnalyzedAudioFile, CueFlacAnalysis};
+
+    bae_audio::init();
+    let sample_rate = 44_100u32;
+    let mut state = 0x2545_f491_u32;
+    let samples: Vec<i32> = (0..sample_rate * 2 * 40)
+        .map(|_| {
+            state ^= state << 13;
+            state ^= state >> 17;
+            state ^= state << 5;
+            (state as i32 >> 16) << 16
+        })
+        .collect();
+    let bytes = bae_audio::encode_i32(
+        bae_audio::EncodeFormat::Flac { bits_per_sample: 16 },
+        &samples,
+        sample_rate,
+        2,
+    )
+    .expect("encode the image");
+    let dir = tempfile::tempdir().unwrap();
+    let image = dir.path().canonicalize().unwrap().join("image.flac");
+    std::fs::write(&image, &bytes).unwrap();
+    let cue_path = dir.path().join("image.cue");
+    std::fs::write(
+        &cue_path,
+        "FILE \"image.flac\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n  \
+         TRACK 02 AUDIO\n    INDEX 01 00:15:00\n  TRACK 03 AUDIO\n    INDEX 01 00:30:00\n",
+    )
+    .unwrap();
+    let cue_pair = Arc::new(CueFlacAnalysis {
+        cue_sheet: crate::cue_sheet::parse_cue_sheet(&cue_path).expect("parse the sheet"),
+        audio_files: vec![CueAnalyzedAudioFile {
+            file_reference: "image.flac".to_string(),
+            path: image.clone(),
+            probe: bae_audio::probe_audio_from_path(&image).expect("probe the image"),
+        }],
+    });
+    let tracks: Vec<TrackFile> = (0..3u32)
+        .map(|index| TrackFile {
+            db_track: bae_records::DbTrack {
+                duration_ms: 10_000,
+                ..bae_records::DbTrack::new_test(
+                    "release-id",
+                    &format!("track-{index}"),
+                    "Track Title",
+                    index + 1,
+                )
+            },
+            audio: crate::TrackAudio::CueBacked {
+                cue_pair: Arc::clone(&cue_pair),
+                cue_index: index as usize,
+            },
+        })
+        .collect();
+    let file_ids = HashMap::from([(image.clone(), "image".to_string())]);
+    let built = crate::service::build_audio_formats(
+        &tracks,
+        &file_ids,
+        &coven::FixedClock::new(std::time::SystemTime::UNIX_EPOCH),
+        &coven::SequentialIds::new(),
+    )
+    .expect("build the audio formats");
+
+    let mut audio_formats = built.audio_formats.clone();
+    let event_tx = crate::ImportEventBus::new(crate::CandidateRuntime::for_test().await);
+    let result = measure(
+        &event_tx,
+        &mut audio_formats,
+        &built.audio_segments,
+        &file_ids,
+        &HashMap::from([(image, bytes.len() as u64)]),
+        &tracks,
+    )
+    .await;
+
+    assert_eq!(built.audio_segments.len(), 3);
+    for segment in &built.audio_segments {
+        let stored = result
+            .scrub_points
+            .iter()
+            .find(|stored| stored.audio_segment_id == segment.id)
+            .unwrap_or_else(|| {
+                panic!("no scrub points for the segment at {}", segment.start_sample)
+            });
+        let first = stored.points.first().expect("a stored row has points");
+        assert!(
+            first.sample <= segment.start_sample,
+            "the first point is the frame the segment starts in: {first:?} for {}",
+            segment.start_sample
+        );
+        if let Some(start_byte) = segment.start_byte {
+            assert_eq!(first.byte, start_byte, "the decode began at the recorded start byte");
+        }
+    }
+}

@@ -4307,8 +4307,8 @@ in an MP3 it starts at the file's first frame, since an MP3 track is a whole
 file (a CUE sheet over lossy audio is not bound); in any other it seeks to its
 first sample, the recorded byte fetched ahead.
 The scan read every disc image, so import can always read where each of its
-tracks starts; an image where it can't is reported as a bug, and its tracks
-seek to their first sample with the whole file read ahead.
+tracks starts; an image where it can't fails the import, so no track is
+stored without its start byte.
 A seek inside a track
 is left to FFmpeg, which seeks through the file's own index where it has one:
 a FLAC's seektable, APE's, an MP4's sample table. A FLAC with scrub points
