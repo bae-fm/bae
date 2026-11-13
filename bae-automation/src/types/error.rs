@@ -169,6 +169,9 @@ impl From<bae_diagnostics::UiError> for AutomationError {
             | UiErrorCategory::Renderer
             | UiErrorCategory::AirPlayUnsupported
             | UiErrorCategory::AirPlayUnreadableSettings
+            | UiErrorCategory::AirPlayHomeOnly
+            | UiErrorCategory::AirPlayAdminsOnly
+            | UiErrorCategory::AirPlayOwnerOnly
             | UiErrorCategory::ReplacementUnfinished(_)
             | UiErrorCategory::RestoreRegistered
             | UiErrorCategory::MemberKeysReplaced

@@ -133,9 +133,15 @@ pub enum UiErrorCategory {
     /// The device playback was sent to (Cast, DLNA) refused a command — a load,
     /// a play, a seek — while the link to it stayed up.
     Renderer,
-    /// An AirPlay receiver can't be driven: it demands a PIN, a pairing the
-    /// sender doesn't do, or audio encryption the sender doesn't implement.
+    /// An AirPlay receiver can't be driven: it asks for a PIN or a password, or
+    /// offers audio encryption the sender doesn't implement.
     AirPlayUnsupported,
+    /// An AirPlay receiver plays only from people in its home.
+    AirPlayHomeOnly,
+    /// An AirPlay receiver plays only from its home's admins.
+    AirPlayAdminsOnly,
+    /// An AirPlay receiver plays only from the account it is set up with.
+    AirPlayOwnerOnly,
     /// An AirPlay receiver advertises a setting bae can't read, so how to
     /// connect to it can't be decided.
     AirPlayUnreadableSettings,

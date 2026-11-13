@@ -103,6 +103,9 @@ impl FailureColumns {
             | K::Renderer
             | K::AirPlayUnsupported
             | K::AirPlayUnreadableSettings
+            | K::AirPlayHomeOnly
+            | K::AirPlayAdminsOnly
+            | K::AirPlayOwnerOnly
             | K::ReplacementUnfinished
             | K::RestoreRegistered
             | K::MemberKeysReplaced

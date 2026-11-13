@@ -6,7 +6,8 @@
 //! records carry a `features`/`ft` bitmask and, for RAOP, the encryption types
 //! the receiver offers; [`AirPlayCapabilities`] parses them into the two things
 //! the sender needs to decide before it connects: which [`Dialect`] to speak,
-//! and — for that dialect — how to pair and encrypt.
+//! how to pair and encrypt for that dialect, and who the receiver plays from
+//! ([`ReceiverAccess`]).
 //!
 //! The dialect is chosen from the announced bits, never probed on the wire: a
 //! receiver that advertises the AirPlay 2 unified-media-control or
@@ -26,33 +27,73 @@ use crate::renderer::discovery::RendererServiceType;
 mod feature_bits {
     /// AirPlay 2 unified media control — one of the two AirPlay 2 markers.
     pub(super) const SUPPORTS_UNIFIED_MEDIA_CONTROL: u64 = 1 << 38;
-    /// CoreUtils pairing and encryption — the other AirPlay 2 marker, and the bit
-    /// that says the receiver accepts the password-less *transient* pair-setup the
-    /// sender uses.
+    /// CoreUtils pairing and encryption — the other AirPlay 2 marker.
     pub(super) const SUPPORTS_COREUTILS_PAIRING_AND_ENCRYPTION: u64 = 1 << 48;
 }
 
-/// The status flags carried in the `flags`/`sf` value. These gate whether a
-/// receiver can be driven without a user PIN.
+/// The status flags carried in the `flags`/`sf` value, which say how a receiver
+/// wants to be paired (names from OwnTone's table of the openairplay flags).
 mod status_flags {
-    /// A user PIN is required before pairing (`0x8`).
+    /// A PIN is required on every connection (`0x8`).
     pub(super) const PIN_REQUIRED: u64 = 0x8;
     /// The receiver is password-protected (`0x80`).
     pub(super) const PASSWORD: u64 = 0x80;
-    /// Legacy (PIN) pairing is mandatory (`0x200`).
-    pub(super) const LEGACY_PAIRING: u64 = 0x200;
+    /// A one-time pairing is required before the receiver plays (`0x200`).
+    pub(super) const ONE_TIME_PAIRING: u64 = 0x200;
 }
 
-/// Which AirPlay dialect a receiver speaks, chosen from its announced features.
+/// Which AirPlay dialect a receiver speaks, chosen from its announced features,
+/// with what that dialect has to do before audio flows.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Dialect {
     /// Legacy RAOP (`_raop._tcp`): RTSP + ALAC/PCM over RTP, RSA-AES or
     /// unencrypted. `encryption` is what the receiver's `et` offers that the
     /// sender implements, in the receiver's order.
-    Raop { encryption: Vec<RaopEncryption> },
+    Raop { encryption: Vec<RaopEncryption>, auth: RaopAuth },
     /// AirPlay 2 (`_airplay._tcp` with an AirPlay 2 feature bit): HomeKit
-    /// transient pairing, ChaCha20-Poly1305 packet encryption.
-    AirPlay2,
+    /// pairing as `pairing` says, ChaCha20-Poly1305 packet encryption.
+    AirPlay2 { pairing: Ap2Pairing },
+}
+
+/// How an AirPlay 2 receiver wants to be paired, from its status flags and `pw`,
+/// decided in OwnTone's order: one-time pairing first, then a PIN on every
+/// connection, then a password, else the password-less transient pairing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Ap2Pairing {
+    /// Neither a PIN nor a password: transient pair-setup.
+    Transient,
+    /// `0x200`: a PIN pairing the first time, kept for the next casts.
+    PinOnce,
+    /// `0x8`: a PIN on every connection.
+    PinEveryCast,
+    /// `0x80` or `pw=true`: the receiver's password.
+    Password,
+}
+
+/// What a RAOP receiver asks for before ANNOUNCE, from its status flags and
+/// `pw`. The two are independent facts: a receiver can ask for both (pyatv
+/// verifies the device, then sends the password on ANNOUNCE).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RaopAuth {
+    /// `0x8` or `0x200`: the device must be paired with a PIN and verified at
+    /// every connection (AirPlay 1 device verification).
+    pub device_verification: bool,
+    /// `pw=true` or `0x80`: ANNOUNCE needs the receiver's password.
+    pub password: bool,
+}
+
+/// Who a receiver plays from, from the `acl` and `act` of its AirPlay
+/// advertisement. Ordered from the loosest to the strictest.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum ReceiverAccess {
+    /// Anyone on the network.
+    Anyone,
+    /// `acl=1`: only people in the receiver's home.
+    HomeMembers,
+    /// `acl=2`: only its home's admins.
+    Admins,
+    /// `act=2`: only the account the receiver is set up with.
+    Owner,
 }
 
 /// The audio encryption a RAOP receiver requires, from its `et` (encryption
@@ -68,20 +109,15 @@ pub enum RaopEncryption {
 }
 
 /// Everything a sender decides about a receiver before connecting: the dialect
-/// with its parameters, and whether it can be driven without a user PIN.
+/// with its parameters, and who the receiver plays from.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AirPlayCapabilities {
     pub dialect: Dialect,
     /// The raw 64-bit features value, kept for the AirPlay 2 stream setup (which
     /// echoes specific bits back to the receiver).
     pub features: u64,
-    /// True when the receiver demands a user PIN or password we do not implement
-    /// (persistent pairing). The sender surfaces a clear error rather than
-    /// attempting a flow it can't complete.
-    pub requires_pin: bool,
-    /// True when the receiver accepts the password-less transient pair-setup
-    /// (AirPlay 2 only; always false for RAOP).
-    pub supports_transient_pairing: bool,
+    /// Who the receiver plays from.
+    pub access: ReceiverAccess,
 }
 
 /// A TXT value bae reads to decide how to connect that the receiver left out
@@ -91,7 +127,7 @@ pub struct AirPlayCapabilities {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UnreadableSetting {
     /// The TXT key, as the receiver spelled it (`features`, `ft`, `flags`,
-    /// `sf`, `et`).
+    /// `sf`, `et`, `acl`).
     pub key: String,
     /// The text it carried, or `None` when it was left out.
     pub raw: Option<String>,
@@ -146,31 +182,61 @@ impl AirPlayCapabilities {
 
         let password = txt.get("pw").is_some_and(|v| v.eq_ignore_ascii_case("true"))
             || flags & status_flags::PASSWORD != 0;
-        let requires_pin =
-            password || flags & (status_flags::PIN_REQUIRED | status_flags::LEGACY_PAIRING) != 0;
+        let access = if service_type == RendererServiceType::AirPlay {
+            access_from_txt(txt)?
+        } else {
+            ReceiverAccess::Anyone
+        };
 
         Ok(if is_airplay2 {
-            AirPlayCapabilities {
-                dialect: Dialect::AirPlay2,
-                features,
-                requires_pin,
-                supports_transient_pairing: features
-                    & feature_bits::SUPPORTS_COREUTILS_PAIRING_AND_ENCRYPTION
-                    != 0,
-            }
+            let pairing = if flags & status_flags::ONE_TIME_PAIRING != 0 {
+                Ap2Pairing::PinOnce
+            } else if flags & status_flags::PIN_REQUIRED != 0 {
+                Ap2Pairing::PinEveryCast
+            } else if password {
+                Ap2Pairing::Password
+            } else {
+                Ap2Pairing::Transient
+            };
+            AirPlayCapabilities { dialect: Dialect::AirPlay2 { pairing }, features, access }
         } else {
             let encryption = match txt.get("et") {
                 Some(raw) => parse_encryption(raw).ok_or_else(|| unreadable("et", raw))?,
                 None => vec![RaopEncryption::None],
             };
-            AirPlayCapabilities {
-                dialect: Dialect::Raop { encryption },
-                features,
-                requires_pin,
-                supports_transient_pairing: false,
-            }
+            let auth = RaopAuth {
+                device_verification: flags
+                    & (status_flags::PIN_REQUIRED | status_flags::ONE_TIME_PAIRING)
+                    != 0,
+                password,
+            };
+            AirPlayCapabilities { dialect: Dialect::Raop { encryption, auth }, features, access }
         })
     }
+}
+
+/// Who the AirPlay advertisement says the receiver plays from. `acl` absent or
+/// `0` is anyone, `1` the home's members, `2` its admins (airplay2-receiver
+/// `ap2-receiver.py`); another `acl` is unreadable, since how to connect is never
+/// guessed. `act=2` is the owner's account (pyatv); no source names another
+/// `act`, so another value limits nothing and is logged. The stricter of the two
+/// holds.
+fn access_from_txt(txt: &HashMap<String, String>) -> Result<ReceiverAccess, UnreadableSetting> {
+    let by_acl = match txt.get("acl").map(String::as_str) {
+        None | Some("0") => ReceiverAccess::Anyone,
+        Some("1") => ReceiverAccess::HomeMembers,
+        Some("2") => ReceiverAccess::Admins,
+        Some(raw) => return Err(unreadable("acl", raw)),
+    };
+    let by_act = match txt.get("act").map(String::as_str) {
+        Some("2") => ReceiverAccess::Owner,
+        Some(raw) => {
+            debug!("airplay: the receiver advertises act={raw}, which no source says limits who it plays from");
+            ReceiverAccess::Anyone
+        }
+        None => ReceiverAccess::Anyone,
+    };
+    Ok(by_acl.max(by_act))
 }
 
 /// The value of the first of a field's two spellings that is present, with the

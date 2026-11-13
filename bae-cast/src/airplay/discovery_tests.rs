@@ -1,4 +1,5 @@
 use super::*;
+use crate::airplay::capabilities::ReceiverAccess;
 use crate::test_support::{txt, v4};
 
 /// A features string with bit 48 (CoreUtils pairing/encryption) set — the
@@ -22,7 +23,7 @@ fn airplay2_service_maps_to_device() {
     assert_eq!(device.name, "Kitchen");
     assert_eq!(device.addr, v4(10, 0, 0, 4));
     assert_eq!(device.port, 7000);
-    assert_eq!(device.capabilities.as_ref().unwrap().dialect, Dialect::AirPlay2);
+    assert!(matches!(device.capabilities.as_ref().unwrap().dialect, Dialect::AirPlay2 { .. }));
 }
 
 /// A RAOP instance name `MAC@Name` yields the MAC as the id and the suffix as
@@ -96,7 +97,7 @@ fn same_receiver_on_both_services_prefers_airplay2() {
 
     let snap = snapshot(&table);
     assert_eq!(snap.len(), 1, "one entry per receiver");
-    assert_eq!(snap[0].capabilities.as_ref().unwrap().dialect, Dialect::AirPlay2);
+    assert!(matches!(snap[0].capabilities.as_ref().unwrap().dialect, Dialect::AirPlay2 { .. }));
     assert_eq!(snap[0].port, 7000);
 }
 
@@ -125,7 +126,7 @@ fn colon_deviceid_and_raop_name_prefix_are_one_receiver() {
 
     let snap = dedupe_by_id([&raop, &airplay].into_iter());
     assert_eq!(snap.len(), 1, "one entry per receiver");
-    assert_eq!(snap[0].capabilities.as_ref().unwrap().dialect, Dialect::AirPlay2);
+    assert!(matches!(snap[0].capabilities.as_ref().unwrap().dialect, Dialect::AirPlay2 { .. }));
 }
 
 /// A receiver whose AirPlay advertisement bae can't read shows as one it
@@ -205,5 +206,39 @@ fn airplay_service_without_a_model_has_none() {
         )
         .unwrap();
         assert_eq!(device.model, None);
+    }
+}
+
+/// `acl` and `act` are on a receiver's AirPlay advertisement only. An AirPlay 1
+/// receiver chosen at its RAOP advertisement still plays only from who its
+/// AirPlay advertisement says, whichever of the two arrived first.
+#[test]
+fn an_airplay_advertisements_access_holds_for_its_raop_twin() {
+    let raop = map_device(
+        AirPlayService::Raop,
+        "AABBCCDDEEFF@Den",
+        5000,
+        [v4(10, 0, 0, 7)].into_iter(),
+        &txt(&[("et", "0,1")]),
+    )
+    .unwrap();
+    // No AirPlay 2 bit: an AirPlay 1 receiver advertising on both services.
+    let airplay = map_device(
+        AirPlayService::AirPlay,
+        "Den",
+        7000,
+        [v4(10, 0, 0, 7)].into_iter(),
+        &txt(&[("deviceid", "AABBCCDDEEFF"), ("features", "0x39f7"), ("acl", "1")]),
+    )
+    .unwrap();
+
+    for devices in [[&raop, &airplay], [&airplay, &raop]] {
+        let snap = dedupe_by_id(devices.into_iter());
+        assert_eq!(snap.len(), 1, "one entry per receiver");
+        assert_eq!(
+            snap[0].capabilities.as_ref().unwrap().access,
+            ReceiverAccess::HomeMembers,
+            "the receiver keeps the restriction its AirPlay advertisement states"
+        );
     }
 }

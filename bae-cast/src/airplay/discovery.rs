@@ -260,21 +260,23 @@ fn snapshot(table: &DeviceTable) -> Vec<AirPlayDevice> {
 /// receiver is seen on both service types — the same receiver reached the better
 /// way, not two picker rows. An advertisement bae can't read wins over a
 /// readable one: without it bae can't tell which dialect the receiver speaks
-/// best, so the receiver shows as one it can't connect to. Shared with the
+/// best, so the receiver shows as one it can't connect to. Whichever is chosen,
+/// the receiver keeps the strictest access its advertisements state. Shared with the
 /// reported-discovery path, which merges services the host's browser found the
 /// same way.
 pub(crate) fn dedupe_by_id<'a>(
     devices: impl Iterator<Item = &'a AirPlayDevice>,
 ) -> Vec<AirPlayDevice> {
+    let devices: Vec<&AirPlayDevice> = devices.collect();
     let mut by_id: HashMap<&str, &AirPlayDevice> = HashMap::new();
-    for device in devices {
+    for &device in &devices {
         by_id
             .entry(&device.id)
             .and_modify(|existing| {
                 let replaces = match (&device.capabilities, &existing.capabilities) {
                     (Err(_), Ok(_)) => true,
                     (Ok(new), Ok(old)) => {
-                        new.dialect == Dialect::AirPlay2
+                        matches!(new.dialect, Dialect::AirPlay2 { .. })
                             && matches!(old.dialect, Dialect::Raop { .. })
                     }
                     (Ok(_), Err(_)) | (Err(_), Err(_)) => false,
@@ -285,7 +287,27 @@ pub(crate) fn dedupe_by_id<'a>(
             })
             .or_insert(device);
     }
-    by_id.into_values().cloned().collect()
+    by_id
+        .into_values()
+        .map(|chosen| {
+            let mut chosen = chosen.clone();
+            // `acl` and `act` are stated on the AirPlay advertisement only, so
+            // the receiver keeps the strictest access any advertisement of it
+            // states, whichever one is chosen.
+            if let Ok(capabilities) = &mut chosen.capabilities {
+                let strictest = devices
+                    .iter()
+                    .filter(|other| other.id == chosen.id)
+                    .filter_map(|other| other.capabilities.as_ref().ok())
+                    .map(|other| other.access)
+                    .max();
+                if let Some(strictest) = strictest {
+                    capabilities.access = strictest;
+                }
+            }
+            chosen
+        })
+        .collect()
 }
 
 /// Map a resolved mDNS service to an [`AirPlayDevice`]. The `ResolvedService`

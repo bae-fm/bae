@@ -454,27 +454,60 @@ fn an_unreadable_airplay_advertisement_is_refused() {
     assert!(error.to_string().contains("\"garbage\""));
 }
 
-/// An AirPlay 2 receiver that doesn't take the password-less transient
-/// pairing — the only AirPlay 2 pairing bae does — is refused before any
-/// connection is attempted, rather than tried with a pairing it rejects.
+/// An AirPlay 2 receiver that advertises no status flags pairs with the
+/// password-less transient pairing whatever its other feature bits, so it is
+/// not refused before any connection is attempted.
 #[test]
-fn an_airplay2_receiver_without_transient_pairing_is_refused() {
+fn an_airplay2_receiver_without_bit_48_and_without_flags_is_not_refused() {
     // Unified media control (bit 38) without CoreUtils pairing (bit 48).
     let capabilities = AirPlayCapabilities::from_txt(
         RendererServiceType::AirPlay,
         &std::collections::HashMap::from([("features".to_string(), "0x0,0x40".to_string())]),
     );
-    let Err(error) = build_airplay_sink(
+    let sink = build_airplay_sink(
         &ids(),
         &Diagnostics::noop(),
         "10.0.0.7".parse().unwrap(),
         7000,
         &capabilities,
-    ) else {
-        panic!("a receiver without transient pairing builds no sink");
-    };
-    assert!(matches!(error, CastError::AirPlayPairingUnsupported), "{error:?}");
-    assert_eq!(error.to_string(), "this AirPlay receiver needs a pairing bae doesn't do");
+    );
+    assert!(sink.is_ok(), "{:?}", sink.err());
+}
+
+/// A receiver whose AirPlay advertisement says it plays only from people in its
+/// home, its home's admins, or its owner is refused by its own reason before
+/// bae connects anywhere.
+#[test]
+fn a_restricted_receiver_is_refused_without_connecting() {
+    let (runtime, controller, services, _tmp) = test_controller(RendererDiscovery::reported());
+    set_casting(&runtime, &controller, &services, true);
+    start_discovery(&runtime, &controller);
+    // A port that refuses connections: a cast that connected would fail with
+    // `Connect`, not with its access refusal.
+    let port = refusing_loopback_port();
+    for (id, restriction, expected) in [
+        ("AA01", ("acl", "1"), "this AirPlay receiver plays only from people in its home"),
+        ("AA02", ("acl", "2"), "this AirPlay receiver plays only from its home's admins"),
+        (
+            "AA03",
+            ("act", "2"),
+            "this AirPlay receiver plays only from the account it is set up with",
+        ),
+    ] {
+        controller.renderer_found(ReportedRenderer {
+            service_type: RendererServiceType::AirPlay,
+            instance_name: id.to_string(),
+            addr: "127.0.0.1".to_string(),
+            port,
+            txt: [("deviceid", id), ("features", "0x0,0x10000"), restriction]
+                .into_iter()
+                .map(|(k, v)| (k.to_string(), v.to_string()))
+                .collect(),
+        });
+        let error =
+            runtime.block_on(controller.cast_to(id)).expect_err("a restricted receiver is refused");
+        assert_eq!(error.to_string(), expected);
+    }
 }
 
 /// A raw serve carries `format=raw`; an MP3 conversion carries

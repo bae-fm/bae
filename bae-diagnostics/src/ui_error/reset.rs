@@ -57,6 +57,9 @@ impl UiErrorCategory {
             | Self::Renderer
             | Self::AirPlayUnsupported
             | Self::AirPlayUnreadableSettings
+            | Self::AirPlayHomeOnly
+            | Self::AirPlayAdminsOnly
+            | Self::AirPlayOwnerOnly
             | Self::S3VersioningUnsupported(..)
             | Self::StorageLocationChangeUnsupported
             | Self::Keyring

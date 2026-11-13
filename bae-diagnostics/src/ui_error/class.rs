@@ -49,6 +49,9 @@ pub enum UiErrorClass {
     StoreOwnerAccount,
     Renderer,
     AirPlayUnsupported,
+    AirPlayHomeOnly,
+    AirPlayAdminsOnly,
+    AirPlayOwnerOnly,
     AirPlayUnreadableSettings,
     ReplacementUnfinished,
     RestoreRegistered,
@@ -62,7 +65,7 @@ pub enum UiErrorClass {
 
 impl UiErrorClass {
     /// Every class, each once.
-    const ALL: [Self; 51] = [
+    const ALL: [Self; 54] = [
         Self::Database,
         Self::DatabaseBusy,
         Self::DatabaseDamaged,
@@ -105,6 +108,9 @@ impl UiErrorClass {
         Self::StoreOwnerAccount,
         Self::Renderer,
         Self::AirPlayUnsupported,
+        Self::AirPlayHomeOnly,
+        Self::AirPlayAdminsOnly,
+        Self::AirPlayOwnerOnly,
         Self::AirPlayUnreadableSettings,
         Self::ReplacementUnfinished,
         Self::RestoreRegistered,
@@ -161,6 +167,9 @@ impl UiErrorClass {
             Self::StoreOwnerAccount => "store_owner_account",
             Self::Renderer => "renderer",
             Self::AirPlayUnsupported => "airplay_unsupported",
+            Self::AirPlayHomeOnly => "airplay_home_only",
+            Self::AirPlayAdminsOnly => "airplay_admins_only",
+            Self::AirPlayOwnerOnly => "airplay_owner_only",
             Self::AirPlayUnreadableSettings => "airplay_unreadable_settings",
             Self::ReplacementUnfinished => "replacement_unfinished",
             Self::RestoreRegistered => "restore_registered",
@@ -252,6 +261,9 @@ impl UiErrorClass {
             | Self::SavedRestoreCodesFull
             | Self::SavedRestoreCodeTooLarge
             | Self::StoreOwnerAccount
+            | Self::AirPlayHomeOnly
+            | Self::AirPlayAdminsOnly
+            | Self::AirPlayOwnerOnly
             | Self::ReplacementUnfinished
             | Self::RestoreRegistered
             | Self::MemberKeysReplaced
@@ -309,6 +321,9 @@ impl UiErrorCategory {
             Self::StoreOwnerAccount => K::StoreOwnerAccount,
             Self::Renderer => K::Renderer,
             Self::AirPlayUnsupported => K::AirPlayUnsupported,
+            Self::AirPlayHomeOnly => K::AirPlayHomeOnly,
+            Self::AirPlayAdminsOnly => K::AirPlayAdminsOnly,
+            Self::AirPlayOwnerOnly => K::AirPlayOwnerOnly,
             Self::AirPlayUnreadableSettings => K::AirPlayUnreadableSettings,
             Self::ReplacementUnfinished(_) => K::ReplacementUnfinished,
             Self::RestoreRegistered => K::RestoreRegistered,
@@ -360,6 +375,9 @@ impl UiErrorCategory {
             K::StoreOwnerAccount => Self::StoreOwnerAccount,
             K::Renderer => Self::Renderer,
             K::AirPlayUnsupported => Self::AirPlayUnsupported,
+            K::AirPlayHomeOnly => Self::AirPlayHomeOnly,
+            K::AirPlayAdminsOnly => Self::AirPlayAdminsOnly,
+            K::AirPlayOwnerOnly => Self::AirPlayOwnerOnly,
             K::AirPlayUnreadableSettings => Self::AirPlayUnreadableSettings,
             K::RestoreRegistered => Self::RestoreRegistered,
             K::MemberKeysReplaced => Self::MemberKeysReplaced,

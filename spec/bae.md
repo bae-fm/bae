@@ -4578,10 +4578,14 @@ history the moment the receiver's position reaches the threshold, not at the
 next status. A receiver that states no speed bae can read keeps its position
 where it was until its next status.
 
-**AirPlay** receivers of both generations play. A receiver that demands a PIN,
-an AirPlay 2 receiver that doesn't take the password-less transient pairing
-(the only AirPlay 2 pairing bae does), or one that offers only an encryption
-bae doesn't implement, is refused with that reason before bae connects.
+**AirPlay** receivers of both generations play. An AirPlay 2 receiver that asks
+for no PIN or password pairs with the password-less transient pairing. A
+receiver that asks for a PIN (on every connection or once), a password, or
+AirPlay 1 device verification, or one that offers only an encryption bae doesn't
+implement, is refused with that reason before bae connects. So is a receiver
+whose AirPlay advertisement says it plays only from people in its home, only
+from its home's admins, or only from its owner's account; an AirPlay 1 receiver
+takes that from its AirPlay advertisement too.
 
 bae sends audio ahead of what the receiver plays by the delay the receiver
 reports when the connection is set up, or two seconds when it reports none.
@@ -4600,7 +4604,7 @@ How to connect is read from what the receiver advertises, never guessed. An
 AirPlay advertisement must state its features; a RAOP one without them states
 none, and a receiver without status flags sets none, as older receivers do; a
 RAOP receiver that states no encryption types takes an unencrypted stream. A
-receiver whose features, status flags or encryption types can't be read, or
+receiver whose features, status flags, `acl` or encryption types can't be read, or
 whose AirPlay advertisement states no features, shows as one bae can't connect
 to because it advertises settings bae can't read, even when its other
 advertisement reads; the log names the setting and the text it carried.
@@ -6262,7 +6266,7 @@ with one of these categories and a detail:
 | `SavedRestoreCodesFull`, `SavedRestoreCodeTooLarge` | on Android, learns the library's restore code couldn't be saved on the phone: Block Store already keeps as many entries as Android gives an app, or the code doesn't fit in one ([coven §13.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#131-a-persons-new-device-the-restore-code)) |
 | `Membership` | retries the membership step, with the advice it carries |
 | `InviteJoining` | leaves the invite: cancelling it came after the inviting device began letting its person in, or after the invite ended (§5.6) |
-| `AirPlayUnsupported`, `AirPlayUnreadableSettings` | uses another receiver |
+| `AirPlayUnsupported`, `AirPlayHomeOnly`, `AirPlayAdminsOnly`, `AirPlayOwnerOnly`, `AirPlayUnreadableSettings` | uses another receiver |
 | `Renderer` | reads what the device playback was sent to said when it refused a command |
 | `ReplacementUnfinished` | finishes the reset or the restore of this device's copy that stopped partway: the one the category names, never the other (§6.4) |
 | `RestoreRegistered` | finishes the restore: it was cancelled after this device was added to the library, so it can't be taken back (§6.4) |

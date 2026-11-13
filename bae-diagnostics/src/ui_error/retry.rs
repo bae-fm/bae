@@ -86,6 +86,9 @@ impl UiErrorCategory {
             | Self::Renderer
             | Self::AirPlayUnsupported
             | Self::AirPlayUnreadableSettings
+            | Self::AirPlayHomeOnly
+            | Self::AirPlayAdminsOnly
+            | Self::AirPlayOwnerOnly
             // The storage location or bucket as it is, and the keychain or
             // Block Store as this build and phone have them.
             | Self::S3VersioningUnsupported(_)

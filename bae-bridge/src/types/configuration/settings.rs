@@ -264,9 +264,15 @@ pub enum BridgeErrorCategory {
     GroupingBlocked {
         reason: BridgeGroupingBlock,
     },
-    /// An AirPlay receiver can't be driven — it demands a PIN, or offers only
-    /// audio encryption the sender doesn't implement.
+    /// An AirPlay receiver can't be driven — it asks for a PIN or a password,
+    /// or offers only audio encryption the sender doesn't implement.
     AirPlayUnsupported,
+    /// An AirPlay receiver plays only from people in its home.
+    AirPlayHomeOnly,
+    /// An AirPlay receiver plays only from its home's admins.
+    AirPlayAdminsOnly,
+    /// An AirPlay receiver plays only from the account it is set up with.
+    AirPlayOwnerOnly,
     /// An AirPlay receiver advertises a setting bae can't read (a features or
     /// status-flags value that isn't hex, or no features value at all), so
     /// how to connect to it can't be decided.
@@ -479,6 +485,9 @@ pub fn bridge_error_category_key(category: BridgeErrorCategory) -> String {
             }
         },
         BridgeErrorCategory::AirPlayUnsupported => "core.error.category.airplay_unsupported",
+        BridgeErrorCategory::AirPlayHomeOnly => "core.error.category.airplay_home_only",
+        BridgeErrorCategory::AirPlayAdminsOnly => "core.error.category.airplay_admins_only",
+        BridgeErrorCategory::AirPlayOwnerOnly => "core.error.category.airplay_owner_only",
         BridgeErrorCategory::AirPlayUnreadableSettings => {
             "core.error.category.airplay_unreadable_settings"
         }
@@ -722,6 +731,9 @@ mirror_enum! {
         StoreOwnerAccount,
         Renderer,
         AirPlayUnsupported,
+        AirPlayHomeOnly,
+        AirPlayAdminsOnly,
+        AirPlayOwnerOnly,
         AirPlayUnreadableSettings,
         ReplacementUnfinished(by: (BridgeReplacedBy)),
         RestoreRegistered,

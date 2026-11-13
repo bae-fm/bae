@@ -49,7 +49,7 @@ use tokio_util::sync::CancellationToken;
 use tracing::{debug, warn};
 
 use airplay::airplay2::TimingProtocol;
-use airplay::capabilities::{Dialect, RaopEncryption};
+use airplay::capabilities::{Ap2Pairing, Dialect, RaopAuth, RaopEncryption, ReceiverAccess};
 use airplay::sink::{Ap2Sink, RaopSink};
 use airplay::{AirPlayCapabilities, UnreadableSetting};
 use cast::{CastChannel, CastClient};
@@ -59,11 +59,12 @@ use renderer::{
 };
 
 /// Build the push-audio sink for an AirPlay receiver, or a kind-specific error
-/// when it can't be driven: one advertising a setting bae can't read, a
-/// PIN-gated receiver, an AirPlay 2 receiver that doesn't take transient
-/// pairing (the only AirPlay 2 pairing the sender does), or one offering only
-/// encryption the sender can't provide. RAOP receivers pick unencrypted when
-/// offered, else RSA-AES.
+/// when it can't be driven: one advertising a setting bae can't read, one that
+/// plays only from people in its home, its home's admins or its owner, one that
+/// asks for a PIN, a password or device verification, or one offering only
+/// encryption the sender can't provide. An AirPlay 2 receiver that asks for
+/// nothing pairs transiently, whatever its feature bits. RAOP receivers pick
+/// unencrypted when offered, else RSA-AES.
 fn build_airplay_sink(
     ids: &coven::IdSourceRef,
     diagnostics: &Diagnostics,
@@ -74,14 +75,14 @@ fn build_airplay_sink(
     let capabilities = capabilities
         .as_ref()
         .map_err(|unreadable| CastError::AirPlayUnreadableSettings(unreadable.clone()))?;
-    if capabilities.requires_pin {
-        return Err(CastError::AirPlayPinRequired);
+    match capabilities.access {
+        ReceiverAccess::Anyone => {}
+        ReceiverAccess::HomeMembers => return Err(CastError::AirPlayHomeOnly),
+        ReceiverAccess::Admins => return Err(CastError::AirPlayAdminsOnly),
+        ReceiverAccess::Owner => return Err(CastError::AirPlayOwnerOnly),
     }
     match &capabilities.dialect {
-        Dialect::AirPlay2 if !capabilities.supports_transient_pairing => {
-            Err(CastError::AirPlayPairingUnsupported)
-        }
-        Dialect::AirPlay2 => Ok(Box::new(Ap2Sink::new(
+        Dialect::AirPlay2 { pairing: Ap2Pairing::Transient } => Ok(Box::new(Ap2Sink::new(
             addr,
             port,
             // The receiver's features decide whether it requires PTP or accepts NTP.
@@ -89,7 +90,17 @@ fn build_airplay_sink(
             ids.clone(),
             diagnostics.clone(),
         ))),
-        Dialect::Raop { encryption: offered } => {
+        Dialect::AirPlay2 { pairing: Ap2Pairing::PinOnce }
+        | Dialect::AirPlay2 { pairing: Ap2Pairing::PinEveryCast }
+        | Dialect::AirPlay2 { pairing: Ap2Pairing::Password }
+        | Dialect::Raop { auth: RaopAuth { device_verification: true, .. }, .. }
+        | Dialect::Raop { auth: RaopAuth { password: true, .. }, .. } => {
+            Err(CastError::AirPlayPinRequired)
+        }
+        Dialect::Raop {
+            encryption: offered,
+            auth: RaopAuth { device_verification: false, password: false },
+        } => {
             let encryption = if offered.contains(&RaopEncryption::None) {
                 RaopEncryption::None
             } else if offered.contains(&RaopEncryption::RsaAes) {
@@ -125,13 +136,19 @@ pub enum CastError {
     /// The ephemeral serving couldn't be started (bind / no LAN address).
     #[error("couldn't start serving audio to the Cast device: {0}")]
     Serving(String),
-    /// The AirPlay receiver demands a user PIN, which the sender doesn't support.
+    /// The AirPlay receiver asks for a PIN, a password or device verification,
+    /// which the sender doesn't do.
     #[error("this AirPlay receiver needs a PIN, which isn't supported")]
     AirPlayPinRequired,
-    /// The AirPlay 2 receiver doesn't take transient pairing, the only AirPlay
-    /// 2 pairing the sender does.
-    #[error("this AirPlay receiver needs a pairing bae doesn't do")]
-    AirPlayPairingUnsupported,
+    /// The AirPlay receiver plays only from people in its home.
+    #[error("this AirPlay receiver plays only from people in its home")]
+    AirPlayHomeOnly,
+    /// The AirPlay receiver plays only from its home's admins.
+    #[error("this AirPlay receiver plays only from its home's admins")]
+    AirPlayAdminsOnly,
+    /// The AirPlay receiver plays only from the account it is set up with.
+    #[error("this AirPlay receiver plays only from the account it is set up with")]
+    AirPlayOwnerOnly,
     /// The RAOP receiver only offers audio encryption the sender can't provide.
     #[error("this AirPlay receiver requires an encryption the sender can't provide")]
     AirPlayEncryptionUnsupported,
@@ -154,15 +171,17 @@ pub enum CastError {
 
 impl CastError {
     /// The class a surface words this failure in. An AirPlay receiver the
-    /// sender can't drive, or whose settings can't be read, has its own line;
+    /// sender can't drive, that plays only from some people, or whose settings
+    /// can't be read, has its own line;
     /// a setting that couldn't be read is the library's database; anything
     /// else is a fault the person can only report.
     pub fn category(&self) -> bae_diagnostics::UiErrorCategory {
         use bae_diagnostics::UiErrorCategory as C;
         match self {
-            Self::AirPlayPinRequired
-            | Self::AirPlayPairingUnsupported
-            | Self::AirPlayEncryptionUnsupported => C::AirPlayUnsupported,
+            Self::AirPlayPinRequired | Self::AirPlayEncryptionUnsupported => C::AirPlayUnsupported,
+            Self::AirPlayHomeOnly => C::AirPlayHomeOnly,
+            Self::AirPlayAdminsOnly => C::AirPlayAdminsOnly,
+            Self::AirPlayOwnerOnly => C::AirPlayOwnerOnly,
             Self::AirPlayUnreadableSettings(_) => C::AirPlayUnreadableSettings,
             Self::Setting(error) => bae_diagnostics::database_category(error),
             Self::Disabled
