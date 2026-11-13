@@ -116,6 +116,14 @@ pub enum ImportError {
     #[error("this device already imported these files, as release {release_id}")]
     FilesAlreadyImported { release_id: String },
 
+    /// The album the import files its release under was deleted after the
+    /// import was prepared, such as when a later write emptied it of its last
+    /// release. Nothing was written; the person picks another album, or New
+    /// album.
+    #[cfg(desktop)]
+    #[error("the album this import files under was deleted: pick another album or New album")]
+    AlbumGone { album_id: String },
+
     /// A cancel reached an import that is already writing its release, which
     /// is one transaction and completes.
     #[cfg(desktop)]
@@ -417,6 +425,7 @@ impl From<crate::tables::ImportCommitError> for ImportError {
             E::Refused(R::FilesAlreadyImported { release_id }) => {
                 Self::FilesAlreadyImported { release_id }
             }
+            E::Refused(R::AlbumGone { album_id }) => Self::AlbumGone { album_id },
             E::Refused(R::CandidateMoved(moved)) => Self::CandidateMoved(moved),
             E::Database(error) => Self::Database(error),
             E::Rollback { operation, rollback } => {
@@ -623,6 +632,8 @@ impl ImportError {
             Self::CandidateBeingIdentified => C::CandidateBeingIdentified,
             #[cfg(desktop)]
             Self::FilesAlreadyImported { .. } => C::FilesAlreadyImported,
+            #[cfg(desktop)]
+            Self::AlbumGone { .. } => C::AlbumGone,
             #[cfg(desktop)]
             Self::MetadataTrackCount { folder_tracks, release_tracks } => C::MetadataTrackCount {
                 folder_tracks: *folder_tracks,

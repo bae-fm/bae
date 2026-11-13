@@ -20,6 +20,7 @@ fn every_failure_class_reads_back_as_itself() {
         C::CandidateImportInProgress,
         C::CandidateBeingIdentified,
         C::FilesAlreadyImported,
+        C::AlbumGone,
         C::MetadataTrackCount { folder_tracks: 12, release_tracks: 10 },
         C::TiedMediums { mediums: vec![2, 4] },
         C::ReleaseChangedSinceOpened,

@@ -30,6 +30,7 @@ fn a_detail_shows_only_when_it_says_more_than_the_line() {
     // "This device already imported these files, so they are not imported
     // again."
     assert!(!UiErrorClass::FilesAlreadyImported.detail_adds_to_line());
+    assert!(!UiErrorClass::AlbumGone.detail_adds_to_line());
     // "dns error: no such host" under "Couldn't reach storage. Check your
     // connection and try again."
     assert!(UiErrorClass::Network.detail_adds_to_line());

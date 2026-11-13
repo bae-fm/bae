@@ -20,6 +20,7 @@ pub enum UiErrorClass {
     CandidateImportInProgress,
     CandidateBeingIdentified,
     FilesAlreadyImported,
+    AlbumGone,
     MetadataTrackCount,
     TiedMediums,
     ReleaseChangedSinceOpened,
@@ -60,7 +61,7 @@ pub enum UiErrorClass {
 
 impl UiErrorClass {
     /// Every class, each once.
-    const ALL: [Self; 49] = [
+    const ALL: [Self; 50] = [
         Self::Database,
         Self::DatabaseBusy,
         Self::DatabaseDamaged,
@@ -74,6 +75,7 @@ impl UiErrorClass {
         Self::CandidateImportInProgress,
         Self::CandidateBeingIdentified,
         Self::FilesAlreadyImported,
+        Self::AlbumGone,
         Self::MetadataTrackCount,
         Self::TiedMediums,
         Self::ReleaseChangedSinceOpened,
@@ -128,6 +130,7 @@ impl UiErrorClass {
             Self::CandidateImportInProgress => "candidate_import_in_progress",
             Self::CandidateBeingIdentified => "candidate_being_identified",
             Self::FilesAlreadyImported => "files_already_imported",
+            Self::AlbumGone => "album_gone",
             Self::MetadataTrackCount => "metadata_track_count",
             Self::TiedMediums => "tied_mediums",
             Self::ReleaseChangedSinceOpened => "release_changed_since_opened",
@@ -233,6 +236,7 @@ impl UiErrorClass {
             | Self::CandidateImportInProgress
             | Self::CandidateBeingIdentified
             | Self::FilesAlreadyImported
+            | Self::AlbumGone
             | Self::MetadataTrackCount
             | Self::TiedMediums
             | Self::ReleaseChangedSinceOpened
@@ -271,6 +275,7 @@ impl UiErrorCategory {
             Self::CandidateImportInProgress => K::CandidateImportInProgress,
             Self::CandidateBeingIdentified => K::CandidateBeingIdentified,
             Self::FilesAlreadyImported => K::FilesAlreadyImported,
+            Self::AlbumGone => K::AlbumGone,
             Self::MetadataTrackCount { .. } => K::MetadataTrackCount,
             Self::TiedMediums { .. } => K::TiedMediums,
             Self::ReleaseChangedSinceOpened => K::ReleaseChangedSinceOpened,
@@ -328,6 +333,7 @@ impl UiErrorCategory {
             K::CandidateImportInProgress => Self::CandidateImportInProgress,
             K::CandidateBeingIdentified => Self::CandidateBeingIdentified,
             K::FilesAlreadyImported => Self::FilesAlreadyImported,
+            K::AlbumGone => Self::AlbumGone,
             K::ReleaseChangedSinceOpened => Self::ReleaseChangedSinceOpened,
             K::ChangedMeanwhile => Self::ChangedMeanwhile,
             K::WatchedFolderOverlap => Self::WatchedFolderOverlap,

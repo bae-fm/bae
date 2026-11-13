@@ -1814,7 +1814,10 @@ Ana clicks Import. bae:
    this device's record of the folder's hash it read (§2.7); its tracks, files, segments, scrub points, credits, roles, works, records,
    cover, and the new artists' pictures. Each track row is made once its audio is bound, with the
    length that audio measures, so no track is ever stored without one. A track
-   left untitled takes its file's name. Each credit, role
+   left untitled takes its file's name. An existing album is checked in that
+   same write: one deleted since the import was prepared, because a later
+   write took its last release (§2.1), fails the import as `AlbumGone`, which
+   writes nothing and tells the person to pick another album or New album. Each credit, role
    and composer is its own artist credit until that transaction decides which
    library artist it is (§2.3), so two credits naming one artist write one.
    Each label is its own statement until the same transaction decides which
@@ -6187,6 +6190,7 @@ with one of these categories and a detail:
 | `WatchedFolderOverlap` | watches another folder: the one they asked for holds, or lies in, a watched folder, and the detail names both |
 | `CandidateImportInProgress`, `CandidateBeingIdentified` | waits |
 | `FilesAlreadyImported` | finds the release this device already imported from these files; they aren't imported again |
+| `AlbumGone` | picks another album or New album: the album the import files under was deleted after the import was prepared, and nothing was written |
 | `MetadataTrackCount` | picks another release: it lists another number of tracks |
 | `TiedMediums` | picks another release or uses the file metadata: several of its discs fit the folder alike, and the line names them |
 | `ReleaseChangedSinceOpened` | cancels to see the release as it is now: it changed after the editor opened it (§3.8) |
@@ -6216,7 +6220,7 @@ with one of these categories and a detail:
 
 These show their line alone, without the detail (§9.7): `SyncUpdateRequired`,
 `DeviceRemoved`, `CandidateImportInProgress`, `CandidateBeingIdentified`,
-`FilesAlreadyImported`, `MetadataTrackCount`, `TiedMediums`,
+`FilesAlreadyImported`, `AlbumGone`, `MetadataTrackCount`, `TiedMediums`,
 `ReleaseChangedSinceOpened`, `ChangedMeanwhile`, `InvalidEdit`,
 `StorageLocationChangeUnsupported`, `KeychainEntitlementMissing`,
 `SavedRestoreCodesFull`, `SavedRestoreCodeTooLarge`, `StoreOwnerAccount`,

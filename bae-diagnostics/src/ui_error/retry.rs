@@ -70,6 +70,7 @@ impl UiErrorCategory {
             | Self::ImportData
             | Self::CandidateImportInProgress
             | Self::FilesAlreadyImported
+            | Self::AlbumGone
             | Self::MetadataTrackCount { .. }
             | Self::TiedMediums { .. }
             | Self::ReleaseChangedSinceOpened

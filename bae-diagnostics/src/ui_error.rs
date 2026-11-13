@@ -42,6 +42,9 @@ pub enum UiErrorCategory {
     CandidateBeingIdentified,
     /// This device already imported a release from the candidate's files.
     FilesAlreadyImported,
+    /// The album an import files its release under was deleted after the
+    /// import was prepared; the person picks another album, or New album.
+    AlbumGone,
     /// The release read for the candidate lists another number of tracks than
     /// its folder holds; the line names both counts.
     MetadataTrackCount {

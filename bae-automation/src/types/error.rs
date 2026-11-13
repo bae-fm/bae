@@ -134,6 +134,7 @@ impl From<bae_diagnostics::UiError> for AutomationError {
             | UiErrorCategory::CandidateImportInProgress
             | UiErrorCategory::CandidateBeingIdentified
             | UiErrorCategory::FilesAlreadyImported
+            | UiErrorCategory::AlbumGone
             | UiErrorCategory::MetadataTrackCount { .. }
             | UiErrorCategory::TiedMediums { .. }
             | UiErrorCategory::ReleaseChangedSinceOpened

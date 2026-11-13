@@ -261,6 +261,50 @@ async fn finalize_refuses_metadata_that_changed_after_queue_admission() {
     assert!(records.find_release_by_id("release-never-written").await.unwrap().is_none());
 }
 
+/// An import prepared against an existing album that a later write emptied
+/// and deleted fails plainly, as the album being gone, and writes nothing.
+#[tokio::test]
+async fn finalize_refuses_an_album_deleted_since_the_import_was_prepared() {
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
+    let records = bae_records::test_fixtures::test_records(&db);
+    bae_records::test_fixtures::seed_artist_album_release(&db).await;
+    let guard = claimed_candidate_guard(&db).await;
+
+    // The album's only release leaves, and the album with it.
+    bae_records::test_fixtures::delete_release(&records, RELEASE_A).await;
+    assert!(records.find_album_by_id(ALBUM_A).await.unwrap().is_none());
+
+    let release = DbRelease::new_test(ALBUM_A, "release-never-written");
+    let error = ImportTables::new(db.clone())
+        .finalize_import_atomic(
+            &coven::UuidIds,
+            guard,
+            None,
+            &release,
+            &[],
+            crate::tables::ImportRows::default(),
+            Vec::new(),
+            None,
+            crate::tables::NewArtistImages::default(),
+        )
+        .await
+        .expect_err("the commit checks the album it files under inside its own write");
+
+    assert!(
+        matches!(
+            &error,
+            bae_store::WriteError::Refused(ImportCommitRefusal::AlbumGone { album_id })
+                if album_id == ALBUM_A
+        ),
+        "{error:?}"
+    );
+    assert!(records.find_release_by_id("release-never-written").await.unwrap().is_none());
+    assert!(matches!(
+        crate::ImportError::from(error),
+        crate::ImportError::AlbumGone { album_id } if album_id == ALBUM_A
+    ));
+}
+
 #[tokio::test]
 async fn finalize_import_persists_composer_work_and_role_rows() {
     let (db, tmp) = temp_db(crate::TEST_SCHEMA).await;

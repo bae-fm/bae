@@ -80,6 +80,7 @@ impl FailureColumns {
             | K::CandidateImportInProgress
             | K::CandidateBeingIdentified
             | K::FilesAlreadyImported
+            | K::AlbumGone
             | K::MetadataTrackCount
             | K::TiedMediums
             | K::ReleaseChangedSinceOpened

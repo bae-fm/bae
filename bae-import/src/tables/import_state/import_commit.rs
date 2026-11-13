@@ -39,6 +39,13 @@ pub enum ImportCommitRefusal {
     /// The candidate is not the one the import was prepared from.
     #[error(transparent)]
     CandidateMoved(#[from] crate::service::CandidateMoved),
+    /// The existing album the release files under was deleted after the
+    /// import was prepared, since a later write took its last release. The
+    /// person picks another album, or New album.
+    #[error(
+        "the album {album_id} this import files under was deleted; pick another album or New album"
+    )]
+    AlbumGone { album_id: String },
 }
 
 /// Why an import's commit did not land.
@@ -69,6 +76,22 @@ fn require_import_commit_guard(
             let current = load_committing_candidate(sql, candidate_key, expectation)?;
             Ok(expectation.verify(candidate_key, source, current.as_ref())?)
         }
+    }
+}
+
+/// Refuse the import unless the existing album its release files under is
+/// still in the library. Read inside the commit's own write, so no write
+/// that deletes the album can land between this read and the release's rows.
+fn require_album_on(sql: &CovenWrite<'_>, album_id: &str) -> Result<(), ImportCommitError> {
+    let held: bool = sql
+        .query_row("SELECT EXISTS (SELECT 1 FROM albums WHERE id = ?)", [album_id], |row| {
+            row.get(0)
+        })
+        .map_err(DbError::from)?;
+    if held {
+        Ok(())
+    } else {
+        Err(WriteError::Refused(ImportCommitRefusal::AlbumGone { album_id: album_id.to_string() }))
     }
 }
 
@@ -339,6 +362,11 @@ impl ImportTables {
                         .collect::<Result<Vec<coven::FileId>, _>>()?;
                     let tx = &sql;
                     require_import_commit_guard(tx, &guard)?;
+                    // A new album is written below; an existing one must
+                    // still be there.
+                    if album.is_none() {
+                        require_album_on(tx, &release.album_id)?;
+                    }
                     end_import_attempt_of_commit(tx, &guard)?;
 
                     // Every credit is decided here, against the library as it

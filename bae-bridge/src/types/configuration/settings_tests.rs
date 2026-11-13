@@ -138,6 +138,7 @@ fn expected_local_and_draft_failures_keep_their_presentation() {
             ImportError::FilesAlreadyImported { release_id: "release-1".into() },
             BridgeErrorCategory::FilesAlreadyImported,
         ),
+        (ImportError::AlbumGone { album_id: "album-1".into() }, BridgeErrorCategory::AlbumGone),
         (
             ImportError::from(bae_import::DiscogsKeyError::Keyring(coven::KeyError::StoreClosed)),
             BridgeErrorCategory::Config,
