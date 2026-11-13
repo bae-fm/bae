@@ -121,10 +121,7 @@ impl Records {
     pub async fn insert_release(&self, release: &DbRelease) -> Result<(), IdentityWriteError> {
         let release = release.clone();
         let labels = LabelParts::new(&*self.ids, self.store.now_utc(), &release.pressing.labels);
-        artist_resolution::write_resolving_identities(&self.store, move |sql| {
-            insert_release_row(&sql, &release, &label_write(&labels))
-        })
-        .await
+        self.store.write(move |sql| insert_release_row(&sql, &release, &label_write(&labels))).await
     }
 
     /// [`Self::insert_release`], answering how many rows the write changed,
@@ -136,15 +133,16 @@ impl Records {
     ) -> Result<i64, IdentityWriteError> {
         let release = release.clone();
         let labels = LabelParts::new(&*self.ids, self.store.now_utc(), &release.pressing.labels);
-        artist_resolution::write_resolving_identities(&self.store, move |sql| {
-            let changes = |sql: &CovenWrite<'_>| {
-                sql.query_row("SELECT total_changes()", [], |row| row.get::<_, i64>(0))
-            };
-            let before = changes(&sql)?;
-            insert_release_row(&sql, &release, &label_write(&labels))?;
-            Ok(changes(&sql)? - before)
-        })
-        .await
+        self.store
+            .write(move |sql| {
+                let changes = |sql: &CovenWrite<'_>| {
+                    sql.query_row("SELECT total_changes()", [], |row| row.get::<_, i64>(0))
+                };
+                let before = changes(&sql)?;
+                insert_release_row(&sql, &release, &label_write(&labels))?;
+                Ok(changes(&sql)? - before)
+            })
+            .await
     }
 
     /// Test-only: insert an album with its credits, a release, its mediums,
@@ -169,26 +167,27 @@ impl Records {
             track_artists.to_vec(),
         );
         let labels = LabelParts::new(&*self.ids, self.store.now_utc(), &release.pressing.labels);
-        artist_resolution::write_resolving_identities(&self.store, move |sql| {
-            let tx = &sql;
+        self.store
+            .write(move |sql| {
+                let tx = &sql;
 
-            insert_album_row(tx, &album)?;
-            for credit in &album_artists {
-                insert_album_artist_row(tx, credit)?;
-            }
-            insert_release_row(tx, &release, &label_write(&labels))?;
-            for medium in &mediums {
-                insert_release_medium_row(tx, medium)?;
-            }
-            for track in &tracks {
-                insert_track_row(tx, track)?;
-            }
-            for ta in &track_artists {
-                insert_track_artist_row(tx, ta)?;
-            }
-            Ok(())
-        })
-        .await?;
+                insert_album_row(tx, &album)?;
+                for credit in &album_artists {
+                    insert_album_artist_row(tx, credit)?;
+                }
+                insert_release_row(tx, &release, &label_write(&labels))?;
+                for medium in &mediums {
+                    insert_release_medium_row(tx, medium)?;
+                }
+                for track in &tracks {
+                    insert_track_row(tx, track)?;
+                }
+                for ta in &track_artists {
+                    insert_track_artist_row(tx, ta)?;
+                }
+                Ok::<(), IdentityWriteError>(())
+            })
+            .await?;
         Ok(())
     }
 
@@ -202,22 +201,23 @@ impl Records {
         let (release, mediums, tracks, track_artists) =
             (release.clone(), mediums.to_vec(), tracks.to_vec(), track_artists.to_vec());
         let labels = LabelParts::new(&*self.ids, self.store.now_utc(), &release.pressing.labels);
-        artist_resolution::write_resolving_identities(&self.store, move |sql| {
-            let tx = &sql;
+        self.store
+            .write(move |sql| {
+                let tx = &sql;
 
-            insert_release_row(tx, &release, &label_write(&labels))?;
-            for medium in &mediums {
-                insert_release_medium_row(tx, medium)?;
-            }
-            for track in &tracks {
-                insert_track_row(tx, track)?;
-            }
-            for ta in &track_artists {
-                insert_track_artist_row(tx, ta)?;
-            }
-            Ok(())
-        })
-        .await?;
+                insert_release_row(tx, &release, &label_write(&labels))?;
+                for medium in &mediums {
+                    insert_release_medium_row(tx, medium)?;
+                }
+                for track in &tracks {
+                    insert_track_row(tx, track)?;
+                }
+                for ta in &track_artists {
+                    insert_track_artist_row(tx, ta)?;
+                }
+                Ok::<(), IdentityWriteError>(())
+            })
+            .await?;
         Ok(())
     }
 
@@ -230,18 +230,19 @@ impl Records {
         let labels =
             LabelParts::new(&*self.ids, self.store.now_utc(), &metadata.release.pressing.labels);
         let now = self.store.now_utc().to_rfc3339();
-        artist_resolution::write_resolving_identities(&self.store, move |sql| {
-            let emptiable = Emptiable::of_releases(&sql, &[metadata.release.id.as_str()])?;
-            write_release_metadata_on(
-                &sql,
-                &metadata,
-                AlbumFields::Written,
-                &now,
-                &label_write(&labels),
-            )?;
-            Ok(emptiable.remove_emptied(&sql)?)
-        })
-        .await
+        self.store
+            .write(move |sql| {
+                let emptiable = Emptiable::of_releases(&sql, &[metadata.release.id.as_str()])?;
+                write_release_metadata_on(
+                    &sql,
+                    &metadata,
+                    AlbumFields::Written,
+                    &now,
+                    &label_write(&labels),
+                )?;
+                Ok(emptiable.remove_emptied(&sql)?)
+            })
+            .await
     }
 
     /// Follow `DbTrack.release_id` → `DbRelease`. FK navigation — the row must
@@ -289,22 +290,23 @@ impl Records {
                 .push(coven::prepare_user_file(&original, |_| ()).await.map_err(DbError::from)?);
             rows.push(file);
         }
-        artist_resolution::write_resolving_identities(&self.store, move |sql| {
-            let mut staged = Vec::with_capacity(rows.len());
-            for (file, original) in rows.iter().zip(prepared) {
-                let id = sql
-                    .put_user_file(
-                        crate::synced::RELEASE_FILES_NAMESPACE,
-                        original,
-                        coven::Place::DeviceOnly,
-                    )
-                    .map_err(DbError::from)?;
-                insert_release_file_row(&sql, file, id)?;
-                staged.push(id);
-            }
-            Ok(staged)
-        })
-        .await
+        self.store
+            .write(move |sql| {
+                let mut staged = Vec::with_capacity(rows.len());
+                for (file, original) in rows.iter().zip(prepared) {
+                    let id = sql
+                        .put_user_file(
+                            crate::synced::RELEASE_FILES_NAMESPACE,
+                            original,
+                            coven::Place::DeviceOnly,
+                        )
+                        .map_err(DbError::from)?;
+                    insert_release_file_row(&sql, file, id)?;
+                    staged.push(id);
+                }
+                Ok(staged)
+            })
+            .await
     }
 
     /// The release's files in their order, each with the path of the original

@@ -269,7 +269,7 @@ async fn check_barcodes(devices: &bae_store::test_devices::TwoStores) {
 /// Make `RELEASE`'s labels `labels` on `db`, as an edit writes them.
 async fn set_labels(db: &bae_store::Store, labels: Vec<bae_types::pressing::ReleaseLabel>) {
     let parts = crate::LabelParts::new(&coven::UuidIds, db.now_utc(), &labels);
-    crate::records::artist_resolution::write_resolving_identities(db, move |conn| {
+    db.write(move |conn| {
         crate::records::label_resolution::write_release_labels_on(
             &conn,
             RELEASE,

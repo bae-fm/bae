@@ -63,10 +63,9 @@ pub async fn add_label(
 /// Write `RELEASE`'s labels as an edit would.
 pub async fn write(store: &Store, labels: Vec<ReleaseLabel>) -> Result<(), IdentityWriteError> {
     let parts = LabelParts::new(&coven::UuidIds, store.now_utc(), &labels);
-    crate::records::artist_resolution::write_resolving_identities(store, move |sql| {
-        write_release_labels_on(&sql, RELEASE, &labels, &label_write(&parts))
-    })
-    .await
+    store
+        .write(move |sql| write_release_labels_on(&sql, RELEASE, &labels, &label_write(&parts)))
+        .await
 }
 
 /// The label each of `RELEASE`'s label rows names, as stored, with its number.

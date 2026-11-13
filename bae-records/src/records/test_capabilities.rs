@@ -157,10 +157,7 @@ impl Records {
         rows: crate::test_fixtures::library::LibraryRows,
     ) -> Result<(), IdentityWriteError> {
         let labels = rows.label_parts(&*self.ids, self.store.now_utc());
-        super::artist_resolution::write_resolving_identities(&self.store, move |sql| {
-            rows.write_on(&sql, &labels)
-        })
-        .await
+        self.store.write(move |sql| rows.write_on(&sql, &labels)).await
     }
 
     /// Save `release_id`'s metadata as a person's edit of it does: the

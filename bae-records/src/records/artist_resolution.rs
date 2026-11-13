@@ -57,31 +57,6 @@ impl From<IdentityRefusal> for IdentityWriteError {
     }
 }
 
-/// A write that resolves artist credits: [`Store::call_sql`], with an
-/// [`IdentityWriteError`] the closure fails with handed back as itself.
-pub async fn write_resolving_identities<R>(
-    store: &Store,
-    f: impl for<'ctx> FnOnce(CovenWrite<'ctx>) -> Result<R, IdentityWriteError> + Send + 'static,
-) -> Result<R, IdentityWriteError>
-where
-    R: Send + 'static,
-{
-    store.write(f).await
-}
-
-/// A read that resolves artist credits: [`Store::read`], with an
-/// [`IdentityWriteError`] the closure fails with handed back as itself.
-#[cfg(desktop)]
-pub async fn read_resolving_identities<R>(
-    store: &Store,
-    f: impl for<'ctx> FnOnce(SqlReadContext<'ctx>) -> Result<R, IdentityWriteError> + Send + 'static,
-) -> Result<R, IdentityWriteError>
-where
-    R: Send + 'static,
-{
-    store.read_coven(f).await
-}
-
 impl Records {
     /// Resolve `credits` and write the rows the resolution inserts and fills
     /// in, in one transaction: the artist step of an import or edit, without
@@ -92,12 +67,13 @@ impl Records {
         credits: &[DbArtist],
     ) -> Result<Vec<String>, IdentityWriteError> {
         let credits = credits.to_vec();
-        write_resolving_identities(&self.store, move |sql| {
-            let resolved = ArtistCredits { credits: &credits, picked: &[] }.resolve_on(&sql)?;
-            resolved.write_on(&sql)?;
-            Ok(resolved.ids)
-        })
-        .await
+        self.store
+            .write(move |sql| {
+                let resolved = ArtistCredits { credits: &credits, picked: &[] }.resolve_on(&sql)?;
+                resolved.write_on(&sql)?;
+                Ok(resolved.ids)
+            })
+            .await
     }
 
     /// What the library holds for each of `credits` as it stands now.

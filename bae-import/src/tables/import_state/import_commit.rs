@@ -500,11 +500,11 @@ impl ImportTables {
         bae_records::IdentityWriteError,
     > {
         let (credits, picked) = (credits.to_vec(), picked.to_vec());
-        bae_records::records::artist_resolution::read_resolving_identities(
-            &self.store,
-            move |sql| ArtistCredits { credits: &credits, picked: &picked }.resolve_on(&sql),
-        )
-        .await
+        self.store
+            .read_coven(move |sql| {
+                ArtistCredits { credits: &credits, picked: &picked }.resolve_on(&sql)
+            })
+            .await
     }
 }
 
