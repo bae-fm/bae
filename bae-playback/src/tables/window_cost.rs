@@ -9,11 +9,12 @@ pub use super::queue::fill_context_lane_on;
 /// What the playback queue's upcoming windows cost to read.
 pub async fn measure_playback_queue(store: &Store, n: u64) {
     // The context lane's upcoming windows are read by offset alone: the
-    // offset steps over the lane's positions before any track is read.
+    // offset steps over the lane's places before any track is read.
     let lane = format!(
         "SELECT e.entry, {columns} \
-         FROM (SELECT 'c' || entry AS entry, track_id, position FROM playback_context \
-               WHERE position > -1 ORDER BY position LIMIT ?1 OFFSET ?2) e \
+         FROM (SELECT 'c' || entry AS entry, track_id, ordered AS position \
+               FROM playback_context \
+               WHERE ordered > -1 ORDER BY ordered LIMIT ?1 OFFSET ?2) e \
          JOIN tracks t ON t.id = e.track_id \
          {joins} \
          ORDER BY e.position",

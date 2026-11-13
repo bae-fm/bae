@@ -100,9 +100,9 @@ async fn test_get_all_track_ids_returns_library_in_base_order() {
     );
 }
 
-/// A library play's lane holds every library track; unshuffled, the tracks
-/// after the playing one are in the library's own order — by release, then
-/// position — the order a release plays its own tracks in.
+/// A library play's lane holds every library track; unshuffled, the whole
+/// lane is in the library's own order — by release, then position — the order
+/// a release plays its own tracks in.
 #[tokio::test]
 async fn test_library_play_unshuffles_into_the_library_order() {
     let (test, _temp_dir) = setup_test_manager().await;
@@ -127,10 +127,7 @@ async fn test_library_play_unshuffles_into_the_library_order() {
 
     tables.fill(bae_playback::tables::ContextFill::LibraryShuffled).await.unwrap();
     tables.set_shuffle(false).await.unwrap();
-    let lane = tables.context_order().await.unwrap();
-    let playing = lane[0].clone();
-    let rest: Vec<&str> = library_order.iter().copied().filter(|t| *t != playing).collect();
-    assert_eq!(lane[1..], rest[..]);
+    assert_eq!(tables.context_order().await.unwrap(), library_order);
 }
 
 // ── Queue windowing tests ───────────────────────────────────────────

@@ -106,13 +106,13 @@ enum FillCursor {
 impl FillCursor {
     /// The lane when shuffled: the row played first leads it and the rest
     /// follow in random order, so a shuffled play of one track still starts
-    /// with it. SQL over a lane row's `track_id` and `unshuffled`, true for
+    /// with it. SQL over a lane row's `track_id` and `ordered`, true for
     /// the row that leads, with the value it binds as `:lead`.
     fn lead(&self) -> Option<(&'static str, &dyn rusqlite::ToSql)> {
         match self {
             FillCursor::First => None,
             FillCursor::Track(track_id) => Some(("track_id = :lead", track_id)),
-            FillCursor::Position(position) => Some(("unshuffled = :lead", position)),
+            FillCursor::Position(position) => Some(("ordered = :lead", position)),
         }
     }
 }
@@ -308,17 +308,14 @@ pub(super) fn fill_on(
     }
     sql.execute("DELETE FROM playback_context", [])?;
     let play_order = match (shuffled, &lead) {
-        (false, _) => "unshuffled".to_string(),
+        (false, _) => "ordered".to_string(),
         (true, None) => "random()".to_string(),
         (true, Some((leads, _))) => format!("({leads}) DESC, random()"),
     };
     // The lane's entries are numbered on from the next free entry number, in
-    // play order, and inserted in that order: the table and its position
-    // index then grow at their end, and only the track index takes its rows
-    // out of order. An index a library-sized fill writes out of order rereads
-    // and rewrites pages past the page cache for most of its rows; at bae's
-    // page cache size the track index costs a fill less than the position
-    // index would.
+    // play order, and inserted in that order: the table, its shuffled index
+    // and its track index then grow at their end. A lane not shuffled reads in
+    // the order it was numbered in, so its two orders agree.
     let base = queue_row_on(sql)?.next_entry;
     let mut bound: Vec<(&str, &dyn rusqlite::ToSql)> = vec![(":base", &base)];
     if let Some(source) = &rows.source {
@@ -329,39 +326,55 @@ pub(super) fn fill_on(
     }
     let track_count = sql.execute(
         &format!(
-            "INSERT INTO playback_context (entry, position, track_id, unshuffled) \
-             SELECT :base + position - 1, position, track_id, unshuffled FROM ( \
-                 SELECT track_id, unshuffled, \
-                        row_number() OVER (ORDER BY {play_order}) AS position \
+            "INSERT INTO playback_context (entry, ordered, shuffled, track_id) \
+             SELECT :base + shuffled - 1, ordered, shuffled, track_id FROM ( \
+                 SELECT track_id, ordered, \
+                        row_number() OVER (ORDER BY {play_order}) AS shuffled \
                  FROM (SELECT t.id AS track_id, \
-                              row_number() OVER (ORDER BY {source_order}) AS unshuffled \
+                              row_number() OVER (ORDER BY {source_order}) AS ordered \
                        FROM {from})) \
-             ORDER BY position",
+             ORDER BY shuffled",
             source_order = rows.source_order,
             from = rows.from,
         ),
         bound.as_slice(),
     )?;
-    let cursor: i64 = match start {
-        _ if lead.is_some() => 1,
-        FillCursor::First => 1,
-        FillCursor::Track(track_id) => sql.query_row(
-            "SELECT position FROM playback_context WHERE track_id = ?",
-            [track_id],
-            |row| row.get(0),
-        )?,
-        FillCursor::Position(position) => position,
+    // The row played first: a shuffled lane's first row, else the start's.
+    let (ordered_cursor, shuffled_cursor): (i64, i64) = if shuffled {
+        let ordered =
+            sql.query_row("SELECT ordered FROM playback_context WHERE shuffled = 1", [], |row| {
+                row.get(0)
+            })?;
+        (ordered, 1)
+    } else {
+        let ordered = match start {
+            FillCursor::First => 1,
+            FillCursor::Track(track_id) => sql.query_row(
+                "SELECT ordered FROM playback_context WHERE track_id = ?",
+                [track_id],
+                |row| row.get(0),
+            )?,
+            FillCursor::Position(position) => position,
+        };
+        (ordered, ordered)
     };
     let (source_kind, source_release_id) = source.to_columns();
     sql.execute(
         "UPDATE playback_queue \
-         SET source_kind = ?, source_release_id = ?, shuffled = ?, cursor = ?, next_entry = ?, \
-             context_version = context_version + 1",
-        params![source_kind, source_release_id, shuffled, cursor, base + track_count as i64],
+         SET source_kind = ?, source_release_id = ?, shuffled = ?, ordered_cursor = ?, \
+             shuffled_cursor = ?, next_entry = ?, context_version = context_version + 1",
+        params![
+            source_kind,
+            source_release_id,
+            shuffled,
+            ordered_cursor,
+            shuffled_cursor,
+            base + track_count as i64
+        ],
     )?;
     let (current, _) = sql.query_row(
-        "SELECT entry, track_id, position FROM playback_context WHERE position = ?",
-        [cursor],
+        "SELECT entry, track_id, shuffled AS position FROM playback_context WHERE shuffled = ?",
+        [shuffled_cursor],
         context_from_row,
     )?;
     Ok(ContextFilled::Playing { current, track_count, left_out })

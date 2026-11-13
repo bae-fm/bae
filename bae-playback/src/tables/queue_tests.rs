@@ -53,14 +53,15 @@ async fn the_schema_refuses_a_half_written_context_and_a_negative_position() {
     assert!(rejects(&db, "UPDATE playback_queue SET source_kind = 'library'").await);
     assert!(rejects(&db, "UPDATE playback_queue SET source_kind = 'library', shuffled = 1").await);
     assert!(
-        rejects(&db, "UPDATE playback_queue SET source_kind = 'release', shuffled = 0, cursor = 1")
+        rejects(&db, "UPDATE playback_queue SET source_kind = 'release', shuffled = 0, ordered_cursor = 1, shuffled_cursor = 1")
             .await
     );
     assert!(
         rejects(
             &db,
             "UPDATE playback_queue \
-             SET source_kind = 'releases', source_release_id = 'release', shuffled = 0, cursor = 1"
+             SET source_kind = 'releases', source_release_id = 'release', shuffled = 0, \
+                 ordered_cursor = 1, shuffled_cursor = 1"
         )
         .await
     );
@@ -163,13 +164,43 @@ async fn deleting_the_playing_track_keeps_the_lane_s_place() {
 async fn context_head(db: &Store) -> (Option<String>, Option<String>, Option<bool>, Option<i64>) {
     db.read(|sql| {
         Ok(sql.query_row(
-            "SELECT source_kind, source_release_id, shuffled, cursor FROM playback_queue",
+            "SELECT source_kind, source_release_id, shuffled, ordered_cursor \
+             FROM playback_queue",
             [],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
         )?)
     })
     .await
     .unwrap()
+}
+
+/// Every row of the context lane with its two places, by entry.
+async fn lane_rows(db: &Store) -> Vec<(i64, i64, i64)> {
+    db.read(|sql| {
+        Ok(sql.query(
+            "SELECT entry, ordered, shuffled FROM playback_context ORDER BY entry",
+            [],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+        )?)
+    })
+    .await
+    .unwrap()
+}
+
+/// Turning shuffle off changes the mode and nothing in the lane: the lane
+/// reads in its `ordered` places again.
+#[tokio::test]
+async fn shuffle_off_writes_nothing_to_the_lane() {
+    let (db, _tmp, tracks) = release_db(6).await;
+    let tables = PlaybackQueueTables::new(db.clone());
+    play(&db, ReleaseStart::First).await;
+    tables.set_shuffle(true).await.unwrap();
+    let shuffled = lane_rows(&db).await;
+
+    tables.set_shuffle(false).await.unwrap();
+
+    assert_eq!(lane_rows(&db).await, shuffled);
+    assert_eq!(tables.context_order().await.unwrap(), tracks, "the lane reads in order again");
 }
 
 /// The context lane's last row leaving takes what it played from with it.
@@ -356,34 +387,45 @@ async fn plan(db: &Store, sql: &str, args: Vec<rusqlite::types::Value>) -> Strin
     .unwrap()
 }
 
-/// The queue's reads walk the lane's position index from the playing track
-/// rather than scanning the lane, and a deleted track's rows are found by its
+/// The queue's reads walk the index of the order the lane reads in from the
+/// playing track rather than scanning the lane, and a deleted track's rows are found by its
 /// id.
 #[tokio::test]
 async fn the_queue_reads_are_planned_on_the_indexes() {
     let (db, _tmp, _tracks) = release_db(3).await;
     let int = |value: i64| rusqlite::types::Value::Integer(value);
-    let window = plan(
-        &db,
-        "SELECT e.entry, t.id FROM (SELECT 'c' || entry AS entry, track_id, position \
-         FROM playback_context WHERE position > ? ORDER BY position LIMIT 100 OFFSET 10000) e \
-         JOIN tracks t ON t.id = e.track_id ORDER BY e.position",
-        vec![int(1)],
-    )
-    .await;
-    assert!(
-        window.contains(
-            "SEARCH playback_context USING INDEX sqlite_autoindex_playback_context_1 (position>?)"
-        ) && window.contains("INDEX sqlite_autoindex_tracks_1 (id=?)")
-            && !window.contains("TEMP B-TREE"),
-        "{window}"
-    );
-    let count =
-        plan(&db, "SELECT count(*) FROM playback_context WHERE position > ?", vec![int(1)]).await;
-    assert!(
-        count.contains("USING COVERING INDEX sqlite_autoindex_playback_context_1 (position>?)"),
-        "{count}"
-    );
+    for (column, index) in [("ordered", 1), ("shuffled", 2)] {
+        let window = plan(
+            &db,
+            &format!(
+                "SELECT e.entry, t.id FROM (SELECT 'c' || entry AS entry, track_id, {column} \
+                 AS position FROM playback_context WHERE {column} > ? ORDER BY {column} \
+                 LIMIT 100 OFFSET 10000) e \
+                 JOIN tracks t ON t.id = e.track_id ORDER BY e.position"
+            ),
+            vec![int(1)],
+        )
+        .await;
+        assert!(
+            window.contains(&format!(
+                "SEARCH playback_context USING INDEX sqlite_autoindex_playback_context_{index} ({column}>?)"
+            )) && window.contains("INDEX sqlite_autoindex_tracks_1 (id=?)")
+                && !window.contains("TEMP B-TREE"),
+            "{window}"
+        );
+        let count = plan(
+            &db,
+            &format!("SELECT count(*) FROM playback_context WHERE {column} > ?"),
+            vec![int(1)],
+        )
+        .await;
+        assert!(
+            count.contains(&format!(
+                "USING COVERING INDEX sqlite_autoindex_playback_context_{index} ({column}>?)"
+            )),
+            "{count}"
+        );
+    }
     let text = |value: &str| rusqlite::types::Value::Text(value.to_string());
     for (table, index) in [
         ("playback_context", "playback_context_track"),
@@ -497,26 +539,26 @@ mod playback_queue_bench {
     const RUNS: usize = 5;
 
     /// The rows a library play (`ContextFill::LibraryShuffled`) fills the lane
-    /// with: each track, its place in play order and in the source's order.
-    const LIBRARY_ROWS: &str = "SELECT track_id, unshuffled, \
-                row_number() OVER (ORDER BY random()) AS position \
+    /// with: each track, its place in the source's order and in play order.
+    const LIBRARY_ROWS: &str = "SELECT track_id, ordered, \
+                row_number() OVER (ORDER BY random()) AS shuffled \
          FROM (SELECT t.id AS track_id, \
-                      row_number() OVER (ORDER BY t.release_id, t.position, t.id) AS unshuffled \
+                      row_number() OVER (ORDER BY t.release_id, t.position, t.id) AS ordered \
                FROM tracks t)";
 
     /// The statement a library play fills the lane with, into `{table}`: the
-    /// entries numbered and inserted in play order, so the table and its position
-    /// index grow at their end and only the track index takes its rows out of
-    /// order.
-    const LIBRARY_FILL: &str = "INSERT INTO {table} (entry, position, track_id, unshuffled) \
-         SELECT position, position, track_id, unshuffled FROM ({rows}) ORDER BY position";
+    /// entries numbered and inserted in play order, so the table and its
+    /// shuffled index grow at their end and the ordered index and the track
+    /// index take their rows out of order.
+    const LIBRARY_FILL: &str = "INSERT INTO {table} (entry, ordered, shuffled, track_id) \
+         SELECT shuffled, ordered, shuffled, track_id FROM ({rows}) ORDER BY shuffled";
 
     /// The same rows numbered and inserted in track order instead, so the table
-    /// and its track index grow at their end and the position index takes its
-    /// rows out of order.
+    /// and its track index grow at their end and the two place indexes take
+    /// their rows out of order.
     const LIBRARY_FILL_IN_TRACK_ORDER: &str =
-        "INSERT INTO {table} (entry, position, track_id, unshuffled) \
-         SELECT row_number() OVER (ORDER BY track_id), position, track_id, unshuffled \
+        "INSERT INTO {table} (entry, ordered, shuffled, track_id) \
+         SELECT row_number() OVER (ORDER BY track_id), ordered, shuffled, track_id \
          FROM ({rows}) ORDER BY track_id";
 
     /// `fill` with its rows and table named.
@@ -526,8 +568,8 @@ mod playback_queue_bench {
 
     /// `playback_context`'s columns without its `track_id` index.
     const UNINDEXED_LANE: &str = "CREATE TABLE bench_unindexed_lane \
-         (entry INTEGER PRIMARY KEY, position INTEGER NOT NULL UNIQUE, track_id TEXT NOT NULL, \
-          unshuffled INTEGER NOT NULL) STRICT;";
+         (entry INTEGER PRIMARY KEY, ordered INTEGER NOT NULL UNIQUE, \
+          shuffled INTEGER NOT NULL UNIQUE, track_id TEXT NOT NULL) STRICT;";
 
     fn report(label: &str, mut times: Vec<f64>) {
         times.sort_by(f64::total_cmp);
@@ -774,7 +816,7 @@ mod playback_queue_bench {
         );
         PlaybackQueueTables::new(db.clone()).fill(ContextFill::LibraryShuffled).await.unwrap();
         let copy_lane = format!(
-            "{UNINDEXED_LANE} INSERT INTO bench_unindexed_lane SELECT entry, position, track_id, unshuffled FROM playback_context;"
+            "{UNINDEXED_LANE} INSERT INTO bench_unindexed_lane SELECT entry, ordered, shuffled, track_id FROM playback_context;"
         );
         let empty_lane = "DELETE FROM playback_context";
         let empty_unindexed = "DELETE FROM bench_unindexed_lane";

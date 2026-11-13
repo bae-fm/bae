@@ -118,8 +118,8 @@ async fn test_play_release_shuffled_keeps_all_tracks() {
     assert!(f.value().await.shuffled);
 }
 
-/// Unshuffling after a repeat wrap puts every upcoming row back in the order
-/// the lane had when shuffle turned on.
+/// Unshuffling after a repeat wrap puts the whole lane back in the order it
+/// had when shuffle turned on, the playing track staying the playing one.
 #[tokio::test]
 async fn test_unshuffle_after_a_repeat_wrap_lands_in_the_stamped_order() {
     let mut f = release(&["t1", "t2", "t3", "t4", "t5"]).await;
@@ -133,18 +133,11 @@ async fn test_unshuffle_after_a_repeat_wrap_lands_in_the_stamped_order() {
 
     f.queue.set_shuffle(false).await.unwrap();
 
+    let ordered = names(&["t1", "t2", "t3", "t4", "t5"]);
     let wrapped_current = f.current();
-    let expected: Vec<String> = names(&["t1", "t2", "t3", "t4", "t5"])
-        .into_iter()
-        .filter(|t| *t != wrapped_current)
-        .collect();
-    let upcoming = f.upcoming().await;
-    let behind = f.context_order().await.len() - upcoming.len() - 1;
-    assert_eq!(
-        upcoming,
-        expected[behind..].to_vec(),
-        "every row after the wrap's playing one sits in the stamped order"
-    );
+    let at = ordered.iter().position(|t| *t == wrapped_current).unwrap();
+    assert_eq!(f.context_order().await, ordered);
+    assert_eq!(f.upcoming().await, ordered[at + 1..].to_vec());
 }
 
 /// A `Library` play holds every library track, shuffled, and its source is
@@ -164,12 +157,11 @@ async fn test_library_play_holds_all_tracks_in_library_order() {
     // The library's order is by release, then position.
     let mut releases = [("r1", vec!["a1", "a2"]), ("r2", vec!["b1", "b2", "b3"])];
     releases.sort_by_key(|(release, _)| f.id(release));
-    let library_order: Vec<String> = releases
-        .iter()
-        .flat_map(|(_, tracks)| tracks.iter().map(|t| t.to_string()))
-        .filter(|t| *t != first)
-        .collect();
-    assert_eq!(f.upcoming().await, library_order);
+    let library_order: Vec<String> =
+        releases.iter().flat_map(|(_, tracks)| tracks.iter().map(|t| t.to_string())).collect();
+    let at = library_order.iter().position(|t| *t == first).unwrap();
+    assert_eq!(f.context_order().await, library_order);
+    assert_eq!(f.upcoming().await, library_order[at + 1..].to_vec());
 }
 
 /// Turning shuffle on is surgery on the upcoming tail alone: the current row
@@ -280,8 +272,8 @@ async fn test_set_shuffle_off_restores_source_order_from_current() {
     assert_eq!(f.full_order().await, names(&["t3", "t4", "t5"]));
 }
 
-/// A shuffled play shuffles the whole lane; unshuffling it lands on source
-/// order after the track that is playing.
+/// A shuffled play shuffles the whole lane; unshuffling it puts the lane in
+/// source order with the track that is playing still the playing one.
 #[tokio::test]
 async fn test_shuffled_play_then_unshuffle_yields_source_order() {
     let mut f = release(&["t1", "t2", "t3", "t4", "t5"]).await;
@@ -290,9 +282,56 @@ async fn test_shuffled_play_then_unshuffle_yields_source_order() {
     f.queue.set_shuffle(false).await.unwrap();
 
     assert_eq!(f.current(), played_first, "the playing track keeps playing");
-    let expected: Vec<String> =
-        names(&["t1", "t2", "t3", "t4", "t5"]).into_iter().filter(|t| *t != played_first).collect();
-    assert_eq!(f.upcoming().await, expected, "source order resumes");
+    let source = names(&["t1", "t2", "t3", "t4", "t5"]);
+    let at = source.iter().position(|t| *t == played_first).unwrap();
+    assert_eq!(f.context_order().await, source, "source order resumes");
+    assert_eq!(f.upcoming().await, source[at + 1..].to_vec());
+}
+
+/// Tracks played while shuffled are not history once shuffle is off: the whole
+/// lane is back in its order, and what follows the playing track in that
+/// order is upcoming, played or not. Run several times, since a shuffle that
+/// happens to play the rows in order would hide the bug.
+#[tokio::test]
+async fn test_shuffle_off_returns_the_whole_lane_to_its_order() {
+    let source = names(&["t1", "t2", "t3", "t4", "t5", "t6"]);
+    for _ in 0..8 {
+        let mut f = release(&["t1", "t2", "t3", "t4", "t5", "t6"]).await;
+        f.play_from("t1").await;
+        f.queue.set_shuffle(true).await.unwrap();
+        for _ in 0..3 {
+            f.next().await;
+        }
+        let playing = f.current();
+        let at = source.iter().position(|t| *t == playing).unwrap();
+
+        f.queue.set_shuffle(false).await.unwrap();
+
+        assert_eq!(f.current(), playing, "the playing track stays the playing one");
+        assert_eq!(f.context_order().await, source);
+        assert_eq!(f.upcoming().await, source[at + 1..].to_vec());
+        assert_eq!(f.previous(1_000).await, at.checked_sub(1).map(|before| source[before].clone()));
+    }
+}
+
+/// A reorder made while shuffled is kept when shuffle turns off: the row sits
+/// where it was put, among the rows that were before and after it.
+#[tokio::test]
+async fn test_a_reorder_made_while_shuffled_is_kept_after_unshuffling() {
+    let mut f = release(&["t1", "t2", "t3", "t4", "t5"]).await;
+    f.play_from("t1").await;
+    f.queue.set_shuffle(true).await.unwrap();
+    let (t5, t2) = (f.entry("t5").await, f.entry("t2").await);
+    f.queue.reorder(t5, Some(t2)).await.unwrap();
+    let before_t2 = f.upcoming().await;
+    let t5_at = before_t2.iter().position(|t| t == "t5").unwrap();
+    let t2_at = before_t2.iter().position(|t| t == "t2").unwrap();
+    assert_eq!(t5_at + 1, t2_at, "the shuffled lane shows t5 just before t2");
+
+    f.queue.set_shuffle(false).await.unwrap();
+
+    assert_eq!(f.current(), "t1");
+    assert_eq!(f.upcoming().await, names(&["t5", "t2", "t3", "t4"]));
 }
 
 /// A release named twice in a multi-release play plays twice: each of its
@@ -381,17 +420,8 @@ async fn test_a_play_starts_shuffled_when_the_mode_is_on() {
     assert!(f.value().await.shuffled);
 
     f.queue.set_shuffle(false).await.unwrap();
-    assert_eq!(
-        f.full_order().await,
-        names(&["t5"])
-            .into_iter()
-            .chain({
-                let mut rest = names(&names_in_order);
-                rest.retain(|name| name != "t5");
-                rest
-            })
-            .collect::<Vec<_>>()
-    );
+    assert_eq!(f.context_order().await, names(&names_in_order));
+    assert_eq!(f.full_order().await, names(&["t5", "t6", "t7", "t8"]));
 }
 
 /// The mode outlives the lane: clearing what is playing from leaves shuffle

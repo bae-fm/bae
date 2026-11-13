@@ -4267,10 +4267,16 @@ button steps off, then everything, then the track. Commands set a mode; they
 never toggle, so a repeated command lands in the same place.
 
 **Shuffle** rearranges only what's still to come in what's playing from. The
-current track and those before it don't move. Turning shuffle off puts the
-rows back in the order they had when it turned on, keeping any removals and
-reorders made meanwhile. Repeating a shuffled list shuffles it afresh for each
-pass.
+current track and those before it don't move. Every row of what's playing from
+has two places, one in its own order and one in the shuffled order, and the
+mode says which the list reads in. Turning shuffle on gives the rows after the
+current track new places in the shuffled order; turning it off changes only the
+mode, so the whole list reads in its own order again with the current track
+still current. Tracks played while shuffled that come after the current track
+in that order are to come again. A row taken out while shuffled is gone from
+both orders, and a row moved while shuffled is moved in both: it sits just
+before the row it was put before, in the shuffled order and in its own.
+Repeating a shuffled list shuffles it afresh for each pass.
 
 Like repeat, shuffle is a mode of its own: with nothing playing, turning it on
 or off records it, and the next play starts that way. While it is on, a play
@@ -5750,9 +5756,9 @@ membership's (`membership.sql`).
 
 | Table | Holds |
 |---|---|
-| `playback_queue` | the one row of this device's queue: repeat, what's playing from (its kind, and the release when it plays one), whether shuffle is on, which of its rows is playing, the number the next entry of either part gets, never given twice, and each part's version, the count of writes that changed it, which the screens holding a moved row wait for (§7.1) |
+| `playback_queue` | the one row of this device's queue: repeat, what's playing from (its kind, and the release when it plays one), whether shuffle is on, which of its rows is playing (its place in each of the two orders), the number the next entry of either part gets, never given twice, and each part's version, the count of writes that changed it, which the screens holding a moved row wait for (§7.1) |
 | `playback_manual` | Up next entry, in order: the track it plays |
-| `playback_context` | entry of what's playing from, in play order: its track and its place before shuffle |
+| `playback_context` | entry of what's playing from: its track, its place in the list's own order and its place in the shuffled order |
 | `playback_state` | the one row of what this device was playing (§7.8) |
 | `playback_now` | the one row of what this device's playback is doing: track and phase, pause prompt, volume, mute, receiver and its kind, preview, last failure and the count of failures (§9.4) |
 | `playback_timeline` | the one row of where this device's playback is, for the surfaces that move the position on themselves: the playing track's line and the preview's, each a position and whether it moves on, and the count of seeks applied (§9.4) |

@@ -7,18 +7,21 @@ CREATE TABLE IF NOT EXISTS playback_queue (
     -- ever share one, so an id a screen still holds never names a later row.
     next_entry INTEGER NOT NULL,
     -- Whether shuffle is on: a mode of its own, kept with nothing playing as
-    -- repeat is. A play starts shuffled while it is on, and the lane's
-    -- upcoming order is shuffled exactly while it is.
+    -- repeat is. A play starts shuffled while it is on, and the lane reads in
+    -- its shuffled order exactly while it is.
     shuffled          INTEGER NOT NULL CHECK (shuffled IN (0, 1)),
     -- What the context lane plays from (one release, several, a list of
     -- tracks, or the library) and the position of its track playing or last
-    -- played: the lane's upcoming tracks are the ones after it. NULL
-    -- together exactly while the lane is empty. Which releases several were,
+    -- played: the lane's upcoming tracks are the ones after it in the order it
+    -- reads in. NULL together exactly while the lane is empty. Which releases several were,
     -- or which tracks a list named, is the lane's tracks.
     source_kind       TEXT CHECK (source_kind IN ('release', 'releases', 'tracks', 'library')),
     -- The release the lane plays, set exactly when it plays one.
     source_release_id TEXT,
-    cursor            INTEGER,
+    -- The playing row's place in each of the lane's two orders, so the lane
+    -- keeps its playing track whichever order it reads in.
+    ordered_cursor    INTEGER,
+    shuffled_cursor   INTEGER,
     -- How many times tracks went into Up Next since playback started with
     -- the library, and how many tracks the last of those put in, NULL before
     -- the first. The write that adds the tracks counts them here, so a
@@ -34,7 +37,8 @@ CREATE TABLE IF NOT EXISTS playback_queue (
     -- the move, and its rows know when to read again.
     manual_version  INTEGER NOT NULL CHECK (manual_version >= 0),
     context_version INTEGER NOT NULL CHECK (context_version >= 0),
-    CHECK ((source_kind IS NULL) = (cursor IS NULL)),
+    CHECK ((source_kind IS NULL) = (ordered_cursor IS NULL)),
+    CHECK ((ordered_cursor IS NULL) = (shuffled_cursor IS NULL)),
     CHECK ((source_kind IS 'release') = (source_release_id IS NOT NULL)),
     CHECK ((additions = 0) = (added_tracks IS NULL))
 ) STRICT;
@@ -54,23 +58,24 @@ CREATE TABLE IF NOT EXISTS playback_manual (
 -- A deleted track's entries are found by its id.
 CREATE INDEX IF NOT EXISTS playback_manual_track ON playback_manual(track_id);
 
--- The context lane a play fills, in position order. Each row is an entry of
--- its own, as in Up Next, so a track named twice is two rows. A play numbers
--- its entries in track order and puts them in in that order, so the table and
--- its track index grow at their end and only the position index takes rows
--- out of order. Positions are only an order, with gaps where rows left. No
--- trigger runs on its rows: a play takes out and puts in up to the whole
--- library's, so a trigger would run once for each, and SQLite empties a table
--- with a trigger row by row. Each write that leaves the lane empty clears
--- what it played from itself. Never synced.
+-- The context lane a play fills, in the order it reads in. Each row is an
+-- entry of its own, as in Up Next, so a track named twice is two rows. A play
+-- numbers its entries in play order and puts them in in that order. Places are
+-- only an order, with gaps where rows left. No trigger runs on its rows: a
+-- play takes out and puts in up to the whole library's, so a trigger would run
+-- once for each, and SQLite empties a table with a trigger row by row. Each
+-- write that leaves the lane empty clears what it played from itself. Never
+-- synced.
 CREATE TABLE IF NOT EXISTS playback_context (
-    entry      INTEGER PRIMARY KEY,
-    position   INTEGER NOT NULL UNIQUE,
-    track_id   TEXT NOT NULL,
-    -- The row's position in the order unshuffling puts the lane back in: its
-    -- order when shuffle turned on, or the source's order for a shuffled play.
-    -- Read only while the lane is shuffled.
-    unshuffled INTEGER NOT NULL
+    entry    INTEGER PRIMARY KEY,
+    -- The row's place in the lane's own order: the source's order, as
+    -- reordering has made it. The lane reads in it while shuffle is off.
+    ordered  INTEGER NOT NULL UNIQUE,
+    -- The row's place in the shuffled order. The lane reads in it while
+    -- shuffle is on. Turning shuffle on writes it, and turning it off leaves
+    -- it: nothing reads it while shuffle is off.
+    shuffled INTEGER NOT NULL UNIQUE,
+    track_id TEXT NOT NULL
 ) STRICT;
 -- A deleted track's rows are found by its id.
 CREATE INDEX IF NOT EXISTS playback_context_track ON playback_context(track_id);
@@ -89,7 +94,8 @@ BEGIN
     DELETE FROM playback_context WHERE track_id = OLD.id;
     -- The lane's last track deleted takes what it played from with it.
     UPDATE playback_queue
-    SET source_kind = NULL, source_release_id = NULL, cursor = NULL
+    SET source_kind = NULL, source_release_id = NULL, ordered_cursor = NULL,
+        shuffled_cursor = NULL
     WHERE source_kind IS NOT NULL AND NOT EXISTS (SELECT 1 FROM playback_context);
 END;
 

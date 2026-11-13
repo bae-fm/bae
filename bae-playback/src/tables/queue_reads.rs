@@ -3,7 +3,7 @@
 //! the context lane's upcoming tracks with their length, and the last
 //! addition to Up Next.
 
-use super::queue::repeat_from_row;
+use super::queue::{context_order_column, repeat_from_row};
 use super::track_display::{track_display_columns, track_queue_meta_from_row, TRACK_DISPLAY_JOINS};
 use super::*;
 use crate::{ContextSource, QueueItem, RepeatMode};
@@ -115,7 +115,8 @@ fn queue_head_on(sql: &SqlReadContext<'_>) -> Result<QueueHead, DbError> {
     type Head = (RepeatMode, bool, Option<String>, Option<String>, Option<i64>, i64, i64);
     let (repeat, shuffled, source_kind, source_release_id, cursor, manual_version, context_version): Head =
         sql.query_row(
-            "SELECT repeat, shuffled, source_kind, source_release_id, cursor, \
+            "SELECT repeat, shuffled, source_kind, source_release_id, \
+                    CASE shuffled WHEN 1 THEN shuffled_cursor ELSE ordered_cursor END, \
                     manual_version, context_version \
              FROM playback_queue",
             [],
@@ -178,9 +179,12 @@ fn queue_value_on(sql: &SqlReadContext<'_>) -> Result<crate::ResolvedQueueSnapsh
     let (context, has_upcoming, has_previous) = match head.context {
         None => (None, false, false),
         Some((source, cursor)) => {
+            let column = context_order_column(head.shuffled);
             let (has_upcoming, has_previous): (bool, bool) = sql.query_row(
-                "SELECT EXISTS (SELECT 1 FROM playback_context WHERE position > ?1), \
-                        EXISTS (SELECT 1 FROM playback_context WHERE position < ?1)",
+                &format!(
+                    "SELECT EXISTS (SELECT 1 FROM playback_context WHERE {column} > ?1), \
+                            EXISTS (SELECT 1 FROM playback_context WHERE {column} < ?1)"
+                ),
                 [cursor],
                 |row| Ok((row.get(0)?, row.get(1)?)),
             )?;
@@ -221,8 +225,12 @@ fn queue_upcoming_on(
                 None => Vec::new(),
                 Some((_, cursor)) => queue_items_on(
                     sql,
-                    "SELECT 'c' || entry AS entry, track_id, position FROM playback_context \
-                     WHERE position > ?1 ORDER BY position LIMIT ?2 OFFSET ?3",
+                    &format!(
+                        "SELECT 'c' || entry AS entry, track_id, {column} AS position \
+                         FROM playback_context \
+                         WHERE {column} > ?1 ORDER BY {column} LIMIT ?2 OFFSET ?3",
+                        column = context_order_column(head.shuffled)
+                    ),
                     params![
                         cursor,
                         i64::try_from(window.limit).unwrap_or(i64::MAX),
@@ -237,16 +245,24 @@ fn queue_upcoming_on(
         context_version: head.context_version,
         upcoming_total: match head.context {
             None => 0,
-            Some((_, cursor)) => upcoming_total_on(sql, cursor)?,
+            Some((_, cursor)) => upcoming_total_on(sql, head.shuffled, cursor)?,
         },
         windows,
     })
 }
 
-/// How many of the context lane's tracks come after its playing one.
-fn upcoming_total_on(sql: &SqlReadContext<'_>, cursor: i64) -> Result<u64, DbError> {
+/// How many of the context lane's tracks come after its playing one in the
+/// order it reads in.
+fn upcoming_total_on(
+    sql: &SqlReadContext<'_>,
+    shuffled: bool,
+    cursor: i64,
+) -> Result<u64, DbError> {
     let total: i64 = sql.query_row(
-        "SELECT count(*) FROM playback_context WHERE position > ?",
+        &format!(
+            "SELECT count(*) FROM playback_context WHERE {} > ?",
+            context_order_column(shuffled)
+        ),
         [cursor],
         |row| row.get(0),
     )?;
