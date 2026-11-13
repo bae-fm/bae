@@ -48,10 +48,10 @@
   var MacScanCode = ScanCode('bae-m');
   var AndroidScanCode = ScanCode('bae-a');
 
-  // A bar's track and fill. `value` is 0 to 1, or null for a wait of no known length, a moving bar; `android` draws Material's bar, with a gap before its end dot. `className` is for the caller's layout.
+  // A bar's track and fill. `value` is 0 to 1, or null for a wait of no known length, a moving bar; `android` draws Material's bar, with a gap before its end dot. `label` names it for a screen reader (what it measures: "Pinning", "Finding libraries"): VoiceOver and TalkBack read a bar by its name, so every bar has one. `className` is for the caller's layout.
   function ProgressBar(props) {
     var known = props.value != null;
-    return h('div', { className: cx('bae-progress-track', props.android && 'bae-progress-android', props.className), role: 'progressbar', 'aria-valuenow': known ? Math.round(props.value * 100) : undefined },
+    return h('div', { className: cx('bae-progress-track', props.android && 'bae-progress-android', props.className), role: 'progressbar', 'aria-label': props.label, 'aria-valuenow': known ? Math.round(props.value * 100) : undefined },
       h('div', { className: cx('bae-progress-fill', !known && 'bae-progress-moving'), style: known ? { width: (props.value * 100) + '%' } : null }));
   }
   function StatusChip(props) {

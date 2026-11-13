@@ -190,7 +190,7 @@
       return row(key, h('div', { className: 'bae-m-actline bae-m-actline-xfer' },
         h('div', { className: 'bae-m-actxfer' }, h('span', null, label), h('span', { className: 'bae-m-actxfer-end' }, count ? h('span', { className: 'bae-muted bae-num' }, count) : null,
           held != null ? h(MacIconButton, { icon: held ? 'play' : 'pause', size: 13, small: true, boxed: true, label: held ? 'Resume' : 'Pause' }) : null)),
-        h(ProgressBar, { value: progress == null ? null : Number(progress), className: 'bae-m-actxfer-bar' })));
+        h(ProgressBar, { value: progress == null ? null : Number(progress), className: 'bae-m-actxfer-bar', label: label })));
     };
     var out = [];
     var problems = kids(props.children).map(function (p, i) { return row('c' + i, p); }).concat([
@@ -250,7 +250,7 @@
       return h('div', { key: key, className: cx('bae-a-actxfer', tap && 'bae-a-act-tap') },
         h('div', { className: 'bae-a-actxfer-line' }, h('span', null, label), h('span', { className: 'bae-a-actxfer-end' }, count ? h('span', { className: 'bae-muted' }, count) : null,
           held != null ? h(AndroidIconButton, { icon: held ? 'play' : 'pause', size: 18, tonal: true, label: held ? 'Resume' : 'Pause' }) : null)),
-        h(ProgressBar, { android: true, value: progress == null ? null : Number(progress) }));
+        h(ProgressBar, { android: true, value: progress == null ? null : Number(progress), label: label }));
     };
     return h('div', { className: 'bae-a-act' },
       h('div', { className: 'bae-a-act-title' }, 'Activity'),

@@ -25,7 +25,7 @@
     var value = props.value == null || props.value === '' ? NaN : Number(props.value);
     return h('div', { className: 'bae-m-pline' },
       h('span', { className: 'bae-m-pline-label' }, props.label),
-      h(ProgressBar, { value: isNaN(value) ? null : value, className: cx('bae-m-pline-bar', props.activity && 'bae-progress-activity') }),
+      h(ProgressBar, { value: isNaN(value) ? null : value, className: cx('bae-m-pline-bar', props.activity && 'bae-progress-activity'), label: props.label }),
       props.detail ? h('span', { className: 'bae-m-pline-detail' }, props.detail) : null);
   }
   // One candidate: cover, title over artist (or the folder's name), the state line, the trailing badge or wait mark.

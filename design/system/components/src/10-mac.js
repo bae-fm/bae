@@ -240,6 +240,7 @@
       h('div', { className: 'bae-m-sheet-footer-lead' }, list[0]), list.slice(1));
   }
 
+  // A labelled bar: `label` shows above it and names it; `name` names a bar whose words sit elsewhere, without showing them.
   function Progress(prefix) {
     return function (props) {
       // A board passes value as text ("0.45"), so a number in any form is a known amount; no value is a wait of no known length, a moving bar.
@@ -247,7 +248,7 @@
       var known = !isNaN(value);
       return h('div', { className: prefix + '-progress' },
         props.label ? h('div', null, props.label) : null,
-        h(ProgressBar, { value: known ? value : null, android: prefix === 'bae-a' }));
+        h(ProgressBar, { value: known ? value : null, android: prefix === 'bae-a', label: props.label || props.name }));
     };
   }
   // macOS draws its indeterminate spinner as eight spokes fading round the wheel, turning a spoke at a time; Android draws Material's ring with an arc.
