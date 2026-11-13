@@ -68,6 +68,7 @@ check actionlint .github/workflows/**,.github/actions/** env SHELLCHECK_OPTS=--s
 test ui-projection-boundary-test scripts/ui-projection-boundary.py,scripts/ui_view_sources.py,scripts/source_tokens.py,scripts/tests/ui-projection-boundary-test.py python3 scripts/tests/ui-projection-boundary-test.py
 test coven-builder-boundary-test scripts/coven-builder-boundary.py,scripts/tests/coven-builder-boundary-test.py python3 scripts/tests/coven-builder-boundary-test.py
 test keyed-value-stream-boundary-test scripts/keyed-value-stream-boundary.py,scripts/tests/keyed-value-stream-boundary-test.py python3 scripts/tests/keyed-value-stream-boundary-test.py
+test uniffi-boundary-test scripts/check-uniffi-runtime-boundary.py,scripts/tests/check-uniffi-runtime-boundary-test.py python3 scripts/tests/check-uniffi-runtime-boundary-test.py
 test screen-pulls-test scripts/check-screen-pulls.py,scripts/source_tokens.py,scripts/tests/check-screen-pulls-test.py python3 scripts/tests/check-screen-pulls-test.py
 test no-ide-previews-test scripts/check-no-previews.py,scripts/source_tokens.py,scripts/tests/check-no-previews-test.py python3 scripts/tests/check-no-previews-test.py
 test loc-words-test scripts/loc-words.py,scripts/tests/loc-words-test.py python3 scripts/tests/loc-words-test.py

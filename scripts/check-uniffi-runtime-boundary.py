@@ -9,18 +9,29 @@ import sys
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def reject_text(path: str, needle: str, violations: list[str], message: str) -> None:
-    if needle in (ROOT / path).read_text():
-        violations.append(message)
+def reject_flush_on_worker_thread(root: Path, violations: list[str]) -> None:
+    """The Avalonia diagnostics flush is an async bridge export, which runs on
+    the bridge's runtime: a `Task.Run(...)` around it puts it on a second
+    worker thread for nothing."""
+    path = root / "bae-avalonia" / "BaeLogger.cs"
+    masked = mask_non_code(path.read_text())
+    for found in re.finditer(r"\bTask\s*\.\s*Run\s*\(", masked):
+        opening = found.end() - 1
+        closing = matching_bracket(masked, opening, "(", ")")
+        if re.search(r"\bFlushDiagnostics\b", masked[opening:closing]):
+            violations.append(
+                "Avalonia diagnostics flush duplicates the bridge runtime dispatch"
+            )
+            return
 
 
-def reject_detached_async_bridge_calls(violations: list[str]) -> None:
+def reject_detached_async_bridge_calls(root: Path, violations: list[str]) -> None:
     pattern = re.compile(r"Task\.detached(?:\([^)]*\))?\s*\{")
     swift_roots = ("BaeKit", "bae-macos", "bae-ios")
     for path in sorted(
         swift_path
-        for root in swift_roots
-        for swift_path in (ROOT / root).rglob("*.swift")
+        for base in swift_roots
+        for swift_path in (root / base).rglob("*.swift")
         if ".build" not in swift_path.parts and "BaeBridge" not in swift_path.parts
     ):
         source = path.read_text()
@@ -31,7 +42,7 @@ def reject_detached_async_bridge_calls(violations: list[str]) -> None:
                 closing = matching_brace(masked, opening)
             except ValueError:
                 violations.append(
-                    f"{path.relative_to(ROOT)} has an unreadable Task.detached body"
+                    f"{path.relative_to(root)} has an unreadable Task.detached body"
                 )
                 continue
             body = re.sub(
@@ -42,7 +53,7 @@ def reject_detached_async_bridge_calls(violations: list[str]) -> None:
             if re.search(r"\bawait\b", body):
                 line = source.count("\n", 0, found.start()) + 1
                 violations.append(
-                    f"{path.relative_to(ROOT)}:{line} wraps an async bridge call in Task.detached"
+                    f"{path.relative_to(root)}:{line} wraps an async bridge call in Task.detached"
                 )
 
 
@@ -59,13 +70,15 @@ def lower_camel(name: str) -> str:
 
 
 def reject_android_async_worker_wrappers(
-    async_exports: set[str], violations: list[str]
+    root: Path, async_exports: set[str], violations: list[str]
 ) -> None:
+    if not async_exports:
+        return
     pattern = re.compile(r"withContext\s*\([^)]*\)\s*\{")
     method_pattern = re.compile(
         r"\b(" + "|".join(map(re.escape, sorted(async_exports))) + r")\s*\("
     )
-    android_root = ROOT / "bae-android" / "app" / "src" / "main"
+    android_root = root / "bae-android" / "app" / "src" / "main"
     for path in sorted(android_root.rglob("*.kt")):
         source = path.read_text()
         masked = mask_non_code(source)
@@ -75,14 +88,14 @@ def reject_android_async_worker_wrappers(
                 closing = matching_brace(masked, opening)
             except ValueError:
                 violations.append(
-                    f"{path.relative_to(ROOT)} has an unreadable withContext body"
+                    f"{path.relative_to(root)} has an unreadable withContext body"
                 )
                 continue
             wrapped = method_pattern.search(masked[opening + 1 : closing])
             if wrapped:
                 line = source.count("\n", 0, found.start()) + 1
                 violations.append(
-                    f"{path.relative_to(ROOT)}:{line} wraps async {wrapped.group(1)} "
+                    f"{path.relative_to(root)}:{line} wraps async {wrapped.group(1)} "
                     "in withContext"
                 )
 
@@ -148,21 +161,26 @@ def mask_non_code(source: str) -> str:
     return "".join(chars)
 
 
-def matching_brace(masked: str, opening: int) -> int:
+def matching_bracket(masked: str, opening: int, open_char: str, close_char: str) -> int:
     depth = 0
     for index in range(opening, len(masked)):
-        if masked[index] == "{":
+        if masked[index] == open_char:
             depth += 1
-        elif masked[index] == "}":
+        elif masked[index] == close_char:
             depth -= 1
             if depth == 0:
                 return index
-    raise ValueError(f"unclosed brace at byte {opening}")
+    raise ValueError(f"unclosed {open_char} at byte {opening}")
+
+
+def matching_brace(masked: str, opening: int) -> int:
+    return matching_bracket(masked, opening, "{", "}")
 
 
 def exported_methods(path: Path) -> list[tuple[str, bool, str]]:
-    source = path.read_text()
-    masked = mask_non_code(source)
+    """Each exported method's name, whether it is async, and its body with
+    comments and strings masked."""
+    masked = mask_non_code(path.read_text())
     methods: list[tuple[str, bool, str]] = []
     attribute = re.compile(r"#\s*\[\s*uniffi::export\b")
     method = re.compile(r"\bpub\s+(?:\([^)]*\)\s+)?(async\s+)?fn\s+(\w+)\b")
@@ -178,7 +196,6 @@ def exported_methods(path: Path) -> list[tuple[str, bool, str]]:
         impl_start = attribute_end + 1 + impl_match.start()
         opening = masked.find("{", impl_start)
         closing = matching_brace(masked, opening)
-        impl_source = source[opening + 1 : closing]
         impl_masked = masked[opening + 1 : closing]
         for found in method.finditer(impl_masked):
             body_opening = impl_masked.find("{", found.end())
@@ -187,37 +204,44 @@ def exported_methods(path: Path) -> list[tuple[str, bool, str]]:
                 (
                     found.group(2),
                     found.group(1) is not None,
-                    impl_source[body_opening + 1 : body_closing],
+                    impl_masked[body_opening + 1 : body_closing],
                 )
             )
     return methods
 
 
-def main() -> int:
-    violations = []
+SPAWN_CALL = re.compile(r"\bspawn\s*\(")
+OPERATION_RUNTIME_SPAWN = re.compile(r"\boperation_runtime\s*::\s*spawn\b")
+RUN_EXPORTED = re.compile(r"\brun_exported\b")
+
+
+def check(root: Path) -> tuple[list[str], int, int]:
+    """The violations, and the counts of async and task-producing exports."""
+    violations: list[str] = []
     async_count = 0
     spawned_count = 0
     async_exports = set()
-    for path in sorted((ROOT / "bae-bridge" / "src").rglob("*.rs")):
+    for path in sorted((root / "bae-bridge" / "src").rglob("*.rs")):
         for name, is_async, body in exported_methods(path):
+            relative = path.relative_to(root)
             if is_async:
                 async_count += 1
                 async_exports.add(lower_camel(name))
-            if is_async and not OWNED_RUNTIME_CALL.search(body) and "run_exported" not in body:
-                violations.append(f"{path.relative_to(ROOT)}::{name}")
-            if ".spawn(" in body or "spawn(" in body:
+                if not OWNED_RUNTIME_CALL.search(body) and not RUN_EXPORTED.search(body):
+                    violations.append(f"{relative}::{name}")
+            if SPAWN_CALL.search(body):
                 spawned_count += 1
-                if "operation_runtime::spawn" not in body:
-                    violations.append(f"{path.relative_to(ROOT)}::{name} constructs a task before scheduling")
+                if not OPERATION_RUNTIME_SPAWN.search(body):
+                    violations.append(f"{relative}::{name} constructs a task before scheduling")
 
-    reject_text(
-        "bae-avalonia/BaeLogger.cs",
-        "Task.Run(() => NativeBae.FlushDiagnostics(Handle))",
-        violations,
-        "Avalonia diagnostics flush duplicates the bridge runtime dispatch",
-    )
-    reject_detached_async_bridge_calls(violations)
-    reject_android_async_worker_wrappers(async_exports, violations)
+    reject_flush_on_worker_thread(root, violations)
+    reject_detached_async_bridge_calls(root, violations)
+    reject_android_async_worker_wrappers(root, async_exports, violations)
+    return violations, async_count, spawned_count
+
+
+def main() -> int:
+    violations, async_count, spawned_count = check(ROOT)
     if violations:
         print("UniFFI runtime boundary violations:", file=sys.stderr)
         for violation in violations:
