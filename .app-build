@@ -8,8 +8,6 @@ step mac macos-tests-run ./bae-macos/test.sh --run-only
 step mac macos-tests-all ./bae-macos/test.sh
 step mac macos-track-tests ./bae-macos/test.sh --run-only TrackTests
 step mac macos-detail-tests ./bae-macos/test.sh --run-only ReleaseDetailTests
-step mac macos-projection-tests ./bae-macos/test.sh --run-only LibraryProjectionStoreDetailTests
-step mac macos-projection-tests ./bae-macos/test.sh --run-only LibraryProjectionStoreDetailTests UiStoreNewPlaylistSheetTests
 step mac macos-projection-tests ./bae-macos/test.sh --run-only LibraryProjectionStoreDetailTests UiStoreNewPlaylistSheetTests AddToPlaylistMenuTests
 step android android-bridge ./bae-bridge/build-android.sh --abi arm64-v8a
 step android android ./bae-android/compile-all.sh
@@ -17,7 +15,6 @@ step android android-tests ./bae-android/test-unit.sh
 step android android-album-detail-tests ./bae-android/gradle.sh :app:testFullDebugUnitTest --tests *AlbumDetailPlaceholderTest
 step android android-element-list-tests ./bae-android/gradle.sh :app:testFullDebugUnitTest --tests *ElementListTest
 step android android-playback-service-tests ./bae-android/gradle.sh :app:testFullDebugUnitTest --tests *PlaybackServiceTest
-step android android-playlist-tests ./bae-android/gradle.sh :app:testFullDebugUnitTest --tests *PlaylistListingStoreTest --tests *NewPlaylistDialogTest --tests *LibraryHeaderTest
 step android android-playlist-tests ./bae-android/gradle.sh :app:testFullDebugUnitTest --tests *PlaylistListingStoreTest --tests *NewPlaylistDialogTest --tests *LibraryHeaderTest --tests *PlaylistScreenTest
 step android android-welcome-libraries-tests ./bae-android/gradle.sh :app:testFullDebugUnitTest --tests *WelcomeLibrariesTest
 step mac macos-welcome-library-row-tests ./bae-macos/test.sh --run-only WelcomeLibraryRowTests
