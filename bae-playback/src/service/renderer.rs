@@ -19,8 +19,8 @@ use std::time::Duration;
 
 use super::*;
 use crate::renderer::{
-    CastReceiver, ReceiverStatus, RendererMedia, RendererMediaSource, RendererPlayerState,
-    RendererSession, RendererSessionEvent,
+    CastReceiver, ReceiverStatus, RendererLink, RendererMedia, RendererMediaSource,
+    RendererPlayerState, RendererSession, RendererSessionEvent, SessionId,
 };
 use crate::RemotePlayback;
 
@@ -75,6 +75,15 @@ impl Renderer {
     pub(super) fn forget_remote_status(&mut self) {
         if let Self::Remote(remote) = self {
             remote.last_status = None;
+        }
+    }
+
+    /// The id of the live remote session, if there is one.
+    #[cfg(test)]
+    pub(super) fn live_session(&self) -> Option<SessionId> {
+        match self {
+            Self::Remote(remote) => Some(remote.session_id),
+            Self::Local | Self::AirPlay(_) => None,
         }
     }
 
@@ -216,6 +225,8 @@ impl std::fmt::Debug for AirPlayConnect {
 pub(super) struct RemoteRenderer {
     device: CastReceiver,
     session: RendererSession,
+    /// The session's id: events of any other session are stale.
+    session_id: SessionId,
     media_source: RendererMediaSource,
     /// The last status the device gave, and when it arrived: its position is
     /// worked out from it between statuses. `None` before the first status of
@@ -270,22 +281,22 @@ impl RemoteRenderer {
 }
 
 /// Everything a `PlayOn` command carries to start remote playback: the connected
-/// channel (built off the service thread by bae-cast), the device, and where
+/// link (built off the service thread by bae-cast), the device, and where
 /// that device reaches this library's media. A manual `Debug` keeps
 /// `PlaybackCommand`'s derive working without the un-`Debug` channel/closures.
 pub(crate) struct RemoteConnect {
-    channel: Box<dyn crate::renderer::RendererChannel>,
+    link: RendererLink,
     device: CastReceiver,
     media_source: RendererMediaSource,
 }
 
 impl RemoteConnect {
     pub(super) fn new(
-        channel: Box<dyn crate::renderer::RendererChannel>,
+        link: RendererLink,
         device: CastReceiver,
         media_source: RendererMediaSource,
     ) -> Self {
-        Self { channel, device, media_source }
+        Self { link, device, media_source }
     }
 }
 
@@ -323,7 +334,7 @@ impl PlaybackService {
     /// local pipeline down (keeping the queue), start the session, and reissue the
     /// current track to the device at its position.
     pub(super) async fn handle_play_on(&mut self, connect: RemoteConnect) {
-        let RemoteConnect { channel, device, media_source } = connect;
+        let RemoteConnect { link, device, media_source } = connect;
 
         let current = self.current_track_position();
         // Carry the current play/pause intent to the device.
@@ -335,10 +346,13 @@ impl PlaybackService {
         // queue and its cursor are untouched.
         self.teardown_local_playback();
 
+        let session_id = SessionId(self.remote_sessions_started);
+        self.remote_sessions_started += 1;
         let session = match RendererSession::start(
             &self.diagnostics,
-            channel,
+            link,
             self.clock.clone(),
+            session_id,
             event_callback(self.command_tx.clone()),
         ) {
             Ok(session) => session,
@@ -356,6 +370,7 @@ impl PlaybackService {
         self.renderer = Renderer::Remote(RemoteRenderer {
             device: device.clone(),
             session,
+            session_id,
             media_source,
             last_status: None,
             next_display_tick: None,
@@ -405,24 +420,28 @@ impl PlaybackService {
         }
     }
 
-    /// Apply one session event. Ignored when playing locally (a stale event
-    /// from a session that already ended). A status reconciles the position
+    /// Apply one session event. Ignored when playing locally or when it is from
+    /// a session other than the live one (a stale event from a session that
+    /// already ended). A status reconciles the position
     /// feed and the slot phase to the device; a refused command is reported to
     /// the person; the session's end — the link lost — resumes local playback
     /// and says why.
     pub(super) async fn handle_remote_event(&mut self, event: RendererSessionEvent) {
-        if !self.renderer.is_remote() {
+        let Renderer::Remote(remote) = &self.renderer else {
+            return;
+        };
+        if event.session() != remote.session_id {
             return;
         }
         match event {
-            RendererSessionEvent::Status { status, observed_at } => {
+            RendererSessionEvent::Status { status, observed_at, .. } => {
                 self.apply_remote_status(status, observed_at).await
             }
-            RendererSessionEvent::CommandFailed(error) => self.fail_playback(
+            RendererSessionEvent::CommandFailed { error, .. } => self.fail_playback(
                 PlaybackOperation::Renderer,
                 crate::PlaybackErrorReason::renderer(error),
             ),
-            RendererSessionEvent::Ended(error) => {
+            RendererSessionEvent::Ended { error, .. } => {
                 self.end_remote_and_resume_local(RemoteEnd::Lost(error.to_string())).await;
             }
         }

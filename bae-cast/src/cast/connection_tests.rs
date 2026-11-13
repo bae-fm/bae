@@ -104,7 +104,7 @@ fn harness() -> Harness {
 
 fn status_request(connection: &CastConnection, request_id: u32) {
     connection
-        .send(Request::ReceiverStatus { request_id }, "sender-0", "receiver-0")
+        .send(Request::SetVolume { request_id, level: 0.5 }, "sender-0", "receiver-0")
         .expect("the connection is up");
 }
 
@@ -124,7 +124,7 @@ async fn a_ping_arriving_while_a_request_waits_gets_its_pong_at_once() {
     let mut h = harness();
     status_request(&h.connection, 1);
     let request = h.fake.next_received().await;
-    assert_eq!((request.namespace.as_str(), request.kind()), (NAMESPACE_RECEIVER, "GET_STATUS"));
+    assert_eq!((request.namespace.as_str(), request.kind()), (NAMESPACE_RECEIVER, "SET_VOLUME"));
 
     h.fake.ping();
     let pong = h.fake.next_received().await;
@@ -403,7 +403,7 @@ async fn a_connection_over_tls_to_a_self_signed_receiver_carries_messages_both_w
     let connection = opened.expect("the receiver's self-signed certificate is accepted");
 
     status_request(&connection, 3);
-    assert_eq!(fake.next_received().await.kind(), "GET_STATUS");
+    assert_eq!(fake.next_received().await.kind(), "SET_VOLUME");
     fake.send_json(NAMESPACE_RECEIVER, receiver_status(3));
     let answer = tokio::time::timeout(HANG_GUARD, messages.recv()).await.unwrap().unwrap();
     assert!(matches!(answer, Inbound::ReceiverStatus { request_id: 3, .. }));

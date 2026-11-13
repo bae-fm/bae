@@ -13,7 +13,6 @@ use crate::audio_output::{
     PlayerOutput,
 };
 use crate::renderer::channel::{FakeChannel, FakeChannelState};
-use crate::renderer::RendererFlavor;
 use tempfile::TempDir;
 
 pub(super) struct TestAudioStream;
@@ -309,6 +308,7 @@ pub(super) fn playback_service_and_commands_over(
         buffered_listening: Vec::new(),
         audible_completion: None,
         load_generation_counter: 0,
+        remote_sessions_started: 0,
         preloaded_next: None,
         volume: OutputVolume::new(),
         preview,
@@ -682,20 +682,6 @@ pub(super) fn test_device() -> crate::renderer::CastReceiver {
     }
 }
 
-pub(super) fn remote_connect(channel: FakeChannel) -> RemoteConnect {
-    RemoteConnect::new(
-        Box::new(channel),
-        test_device(),
-        crate::renderer::RendererMediaSource::new(
-            test_stream_provider(),
-            Arc::new(|cover| {
-                format!("http://renderer.local/cover?id={}&v={}", cover.id, cover.version)
-            }),
-            RendererFlavor::Cast,
-        ),
-    )
-}
-
 /// The arrange every remote test shares: a service over one release of `tracks`,
 /// that release playing from its first track, and the session handed to a fake
 /// device by `handle_play_on`, from `position` in the first track's stream.
@@ -735,7 +721,7 @@ pub(super) async fn remote_fixture_from(
 
     let channel = FakeChannel::new();
     let state = channel.state.clone();
-    service.handle_play_on(remote_connect(channel)).await;
+    service.handle_play_on(super::remote_session_tests::remote_connect(channel)).await;
     (home, service, state, rx)
 }
 

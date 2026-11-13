@@ -128,6 +128,9 @@ mod queue_commands_tests;
 #[cfg(test)]
 mod remote_position_tests;
 
+#[cfg(test)]
+mod remote_session_tests;
+
 mod runtime;
 
 struct TrackDecoder {
@@ -511,6 +514,9 @@ pub struct PlaybackService {
     /// Numbers each decoder load so a `TrackReady` from an abandoned load can be
     /// told from the live one.
     load_generation_counter: u64,
+    /// How many remote-renderer sessions have started, which numbers the next
+    /// one so events of a dropped session are told from the live one's.
+    remote_sessions_started: u64,
     /// Preloaded next track state, either staged into the current gapless source
     /// or held for a stream rebuild.
     preloaded_next: Option<PreloadedNext>,

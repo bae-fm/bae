@@ -1,8 +1,8 @@
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 
 use bae_playback::renderer::{
-    ReceiverStatus, RendererChannel, RendererError, RendererFlavor, RendererMedia,
-    RendererMediaSource, RendererPlayerState,
+    PolledRenderer, ReceiverStatus, RendererChannel, RendererError, RendererFlavor, RendererLink,
+    RendererMedia, RendererMediaSource, RendererPlayerState,
 };
 use bae_playback::{AudioError, AudioOutput, AudioOutputDevice, PlaybackClock, PlaybackSleep};
 
@@ -218,7 +218,9 @@ impl RendererChannel for FakeReceiver {
         self.stops.fetch_add(1, Ordering::SeqCst);
         Ok(())
     }
+}
 
+impl PolledRenderer for FakeReceiver {
     fn poll_status(&mut self) -> Result<ReceiverStatus, RendererError> {
         let player_state = if self.finished.load(Ordering::SeqCst) {
             RendererPlayerState::Finished
@@ -257,7 +259,10 @@ async fn a_service_that_ends_while_casting_tells_the_receiver_to_stop() {
             let stops = Arc::new(AtomicU32::new(0));
             let finished = Arc::new(AtomicBool::new(false));
             fixture.playback_handle.play_on(
-                Box::new(FakeReceiver { stops: stops.clone(), finished: finished.clone() }),
+                RendererLink::Polled(Box::new(FakeReceiver {
+                    stops: stops.clone(),
+                    finished: finished.clone(),
+                })),
                 bae_playback::renderer::CastReceiver {
                     id: "receiver".to_string(),
                     name: "Receiver".to_string(),

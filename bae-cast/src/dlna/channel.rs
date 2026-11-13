@@ -18,7 +18,8 @@ use std::time::Duration;
 use tracing::{debug, warn};
 
 use bae_playback::renderer::{
-    ReceiverStatus, RendererChannel, RendererError, RendererMedia, RendererPlayerState,
+    PolledRenderer, ReceiverStatus, RendererChannel, RendererError, RendererMedia,
+    RendererPlayerState,
 };
 use bae_util::error_text::CauseChain;
 
@@ -222,7 +223,9 @@ impl RendererChannel for DlnaChannel {
         self.playback.stopped_by_us = true;
         self.post(&self.av_transport_url.clone(), soap::stop()).map(|_| ())
     }
+}
 
+impl PolledRenderer for DlnaChannel {
     fn poll_status(&mut self) -> Result<ReceiverStatus, RendererError> {
         // Transport state is required (a connection failure ends the session);
         // position is best-effort (a renderer that faults GetPositionInfo still

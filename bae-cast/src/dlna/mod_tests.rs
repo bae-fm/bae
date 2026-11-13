@@ -482,7 +482,9 @@ fn transport_state_without_element_is_other() {
 
 use std::sync::{Arc, Mutex};
 
-use bae_playback::renderer::{RendererChannel, RendererError, RendererMedia, RendererPlayerState};
+use bae_playback::renderer::{
+    PolledRenderer, RendererChannel, RendererError, RendererMedia, RendererPlayerState,
+};
 
 use super::channel::DlnaChannel;
 

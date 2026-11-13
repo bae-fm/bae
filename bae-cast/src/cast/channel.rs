@@ -4,19 +4,22 @@
 //! [`RendererChannel`] the session drives, over bae's own Cast client
 //! ([`CastClient`]). The session calls it from a thread of its own, so each
 //! command waits for the receiver's answer on the app runtime without
-//! blocking it.
+//! blocking it. A Cast receiver says its status as it changes, so the channel
+//! is a [`PushedRenderer`]: the client reports to the session's sink.
 
 use std::sync::Arc;
 use std::time::Duration;
 
 use bae_diagnostics::Diagnostics;
-use bae_playback::renderer::{ReceiverStatus, RendererChannel, RendererError, RendererMedia};
+use bae_playback::renderer::{
+    PushedRenderer, RendererChannel, RendererError, RendererMedia, StatusSink,
+};
 use tokio::runtime::Handle;
 
 use super::client::CastClient;
 use crate::LONGEST_RECEIVER_TIME;
 
-/// The Cast [`RendererChannel`]. Driven from the session's std thread, which
+/// The Cast [`RendererChannel`] and [`PushedRenderer`]. Driven from the session's std thread, which
 /// is never one of the runtime's.
 pub(crate) struct CastChannel {
     /// Shared with the task that closes the cast's connections when the
@@ -71,9 +74,11 @@ impl RendererChannel for CastChannel {
     fn stop(&mut self) -> Result<(), RendererError> {
         self.runtime.block_on(self.client.stop())
     }
+}
 
-    fn poll_status(&mut self) -> Result<ReceiverStatus, RendererError> {
-        self.runtime.block_on(self.client.poll())
+impl PushedRenderer for CastChannel {
+    fn report_to(&mut self, sink: StatusSink) {
+        self.client.report_to(sink);
     }
 }
 

@@ -280,6 +280,7 @@ impl PlaybackThread {
             buffered_listening: Vec::new(),
             audible_completion: None,
             load_generation_counter: 0,
+            remote_sessions_started: 0,
             preloaded_next: None,
             volume: OutputVolume::new(),
             preview: PreviewPlayer::new(

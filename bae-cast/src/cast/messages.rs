@@ -29,9 +29,6 @@ pub(crate) enum Request<'a> {
     Close,
     Ping,
     Pong,
-    ReceiverStatus {
-        request_id: u32,
-    },
     Launch {
         request_id: u32,
         app_id: &'a str,
@@ -39,9 +36,6 @@ pub(crate) enum Request<'a> {
     SetVolume {
         request_id: u32,
         level: f32,
-    },
-    MediaStatus {
-        request_id: u32,
     },
     Load {
         request_id: u32,
@@ -72,11 +66,8 @@ impl Request<'_> {
         match self {
             Request::Connect | Request::Close => NAMESPACE_CONNECTION,
             Request::Ping | Request::Pong => NAMESPACE_HEARTBEAT,
-            Request::ReceiverStatus { .. } | Request::Launch { .. } | Request::SetVolume { .. } => {
-                NAMESPACE_RECEIVER
-            }
-            Request::MediaStatus { .. }
-            | Request::Load { .. }
+            Request::Launch { .. } | Request::SetVolume { .. } => NAMESPACE_RECEIVER,
+            Request::Load { .. }
             | Request::Play { .. }
             | Request::Pause { .. }
             | Request::Seek { .. }
@@ -90,17 +81,11 @@ impl Request<'_> {
             Request::Close => json!({"type": "CLOSE"}),
             Request::Ping => json!({"type": "PING"}),
             Request::Pong => json!({"type": "PONG"}),
-            Request::ReceiverStatus { request_id } => {
-                json!({"type": "GET_STATUS", "requestId": request_id})
-            }
             Request::Launch { request_id, app_id } => {
                 json!({"type": "LAUNCH", "requestId": request_id, "appId": app_id})
             }
             Request::SetVolume { request_id, level } => {
                 json!({"type": "SET_VOLUME", "requestId": request_id, "volume": {"level": level}})
-            }
-            Request::MediaStatus { request_id } => {
-                json!({"type": "GET_STATUS", "requestId": request_id})
             }
             Request::Load { request_id, session_id, media } => json!({
                 "type": "LOAD",

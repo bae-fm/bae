@@ -6,6 +6,7 @@ use super::super::messages::{
     NAMESPACE_CONNECTION, NAMESPACE_HEARTBEAT, NAMESPACE_MEDIA, NAMESPACE_RECEIVER,
 };
 use super::*;
+use bae_playback::renderer::{RendererSessionEvent, SessionId};
 
 const SHORT: Deadlines =
     Deadlines { launch: Duration::from_secs(10), command: Duration::from_secs(10) };
@@ -469,4 +470,172 @@ async fn the_status_carries_the_rate_the_receiver_stated_when_it_can_be_used() {
         heard_everything(&mut fake).await;
         assert_eq!(client.status().rate, rate, "{stated}");
     }
+}
+
+/// What playback hears of a client through the sink it hands over: its events,
+/// and the clock that stamps them.
+struct Listener {
+    heard: tokio::sync::mpsc::UnboundedReceiver<RendererSessionEvent>,
+    clock: Arc<bae_playback::ManualPlaybackClock>,
+    sink: StatusSink,
+}
+
+fn listener() -> Listener {
+    let (events, heard) = tokio::sync::mpsc::unbounded_channel();
+    let clock = Arc::new(bae_playback::ManualPlaybackClock::new(chrono::DateTime::UNIX_EPOCH));
+    let sink = StatusSink::new(
+        SessionId(4),
+        clock.clone(),
+        Arc::new(move |event| {
+            drop(events.send(event));
+        }),
+    );
+    Listener { heard, clock, sink }
+}
+
+impl Listener {
+    async fn next(&mut self) -> RendererSessionEvent {
+        tokio::time::timeout(HANG_GUARD, self.heard.recv())
+            .await
+            .expect("an event in time")
+            .expect("the client holds the sink")
+    }
+
+    /// The events heard so far, without waiting.
+    fn so_far(&mut self) -> Vec<RendererSessionEvent> {
+        let mut events = Vec::new();
+        while let Ok(event) = self.heard.try_recv() {
+            events.push(event);
+        }
+        events
+    }
+}
+
+fn status_of(event: RendererSessionEvent) -> (ReceiverStatus, chrono::DateTime<chrono::Utc>) {
+    match event {
+        RendererSessionEvent::Status { session, status, observed_at } => {
+            assert_eq!(session, SessionId(4));
+            (status, observed_at)
+        }
+        other => panic!("not a status: {other:?}"),
+    }
+}
+
+#[tokio::test]
+async fn a_client_says_the_status_it_holds_once_when_it_is_asked_to_report() {
+    let (client, mut fake) = client_over_a_fake_receiver().await;
+    client.load(&media()).await.unwrap();
+    heard_everything(&mut fake).await;
+    let mut listener = listener();
+
+    client.report_to(listener.sink.clone());
+
+    let (status, _) = status_of(listener.next().await);
+    assert_eq!(status.player_state, RendererPlayerState::Playing);
+    assert_eq!(status.duration, Some(Duration::from_millis(215_500)));
+    assert!(listener.so_far().is_empty(), "one report, not one for each thing it holds");
+}
+
+#[tokio::test]
+async fn a_pause_the_device_makes_is_said_as_it_happens_and_stamped_by_the_clock() {
+    let (client, fake) = client_over_a_fake_receiver().await;
+    client.load(&media()).await.unwrap();
+    let mut listener = listener();
+    client.report_to(listener.sink.clone());
+    listener.next().await;
+
+    listener.clock.advance(Duration::from_secs(9));
+    fake.another_sender_pauses();
+    let (paused, observed_at) = status_of(listener.next().await);
+
+    assert_eq!(paused.player_state, RendererPlayerState::Paused);
+    assert_eq!(observed_at, chrono::DateTime::UNIX_EPOCH + chrono::Duration::seconds(9));
+    fake.finish_track();
+    let (finished, _) = status_of(listener.next().await);
+    assert_eq!(finished.player_state, RendererPlayerState::Finished);
+}
+
+#[tokio::test]
+async fn a_volume_the_receiver_states_is_said() {
+    let (client, _fake) = client_over_a_fake_receiver().await;
+    let mut listener = listener();
+    client.report_to(listener.sink.clone());
+    listener.next().await;
+
+    client.set_volume(Volume::new(0.5).unwrap()).await.unwrap();
+
+    let (status, _) = status_of(listener.next().await);
+    assert_eq!(status.volume, Some(0.5));
+}
+
+#[tokio::test]
+async fn what_changes_nothing_of_bae_is_not_said() {
+    let (client, mut fake) = client_over_a_fake_receiver().await;
+    client.load(&media()).await.unwrap();
+    let mut listener = listener();
+    client.report_to(listener.sink.clone());
+    listener.next().await;
+
+    fake.ping();
+    fake.send_json(NAMESPACE_MEDIA, json!({"type": "SOMETHING_NEW", "requestId": 0}));
+    heard_everything(&mut fake).await;
+
+    assert!(listener.so_far().is_empty(), "nothing of bae's media or volume changed");
+}
+
+#[tokio::test]
+async fn a_lost_connection_is_said_once_and_not_again_by_a_failing_command() {
+    let (client, fake) = client_over_a_fake_receiver().await;
+    client.load(&media()).await.unwrap();
+    let mut listener = listener();
+    client.report_to(listener.sink.clone());
+    listener.next().await;
+
+    fake.drop_connection();
+    let lost = listener.next().await;
+    ended(&client).await;
+    let failed = client.pause().await.expect_err("the connection is gone");
+
+    assert!(
+        matches!(
+            &lost,
+            RendererSessionEvent::Ended {
+                session: SessionId(4),
+                error: RendererError::Connection(_)
+            }
+        ),
+        "{lost:?}"
+    );
+    assert!(matches!(failed, RendererError::Connection(_)));
+    assert!(listener.so_far().is_empty(), "the loss is said once");
+}
+
+#[tokio::test]
+async fn closing_the_client_says_nothing_is_lost() {
+    let (client, _fake) = client_over_a_fake_receiver().await;
+    client.load(&media()).await.unwrap();
+    let mut listener = listener();
+    client.report_to(listener.sink.clone());
+    listener.next().await;
+
+    client.close().await;
+    ended(&client).await;
+
+    assert!(
+        listener.so_far().is_empty(),
+        "nothing reaches playback once the client is closed, not even the stop's answer"
+    );
+}
+
+#[tokio::test]
+async fn a_client_already_lost_says_so_when_it_is_asked_to_report() {
+    let (client, fake) = client_over_a_fake_receiver().await;
+    fake.drop_connection();
+    ended(&client).await;
+    let mut listener = listener();
+
+    client.report_to(listener.sink.clone());
+
+    assert!(matches!(listener.next().await, RendererSessionEvent::Ended { .. }));
+    assert!(listener.so_far().is_empty());
 }

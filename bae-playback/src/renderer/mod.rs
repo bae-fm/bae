@@ -22,13 +22,14 @@ pub mod receiver;
 pub mod session;
 
 pub use channel::{
-    ReceiverStatus, RendererChannel, RendererError, RendererMedia, RendererPlayerState,
+    PolledRenderer, PushedRenderer, ReceiverStatus, RendererChannel, RendererError, RendererLink,
+    RendererMedia, RendererPlayerState,
 };
 pub use format::{RendererFlavor, RendererStreamFormat, TRANSCODE_BITRATE_KBPS};
 pub use media_source::{CoverUrlProvider, MediaUrlProvider, RendererMediaSource, ServedTrack};
 pub use picker::{CastPicker, CastReceiverList};
 pub use receiver::{CastReceiver, RendererKind};
-pub use session::{EventCallback, RendererSession, RendererSessionEvent};
+pub use session::{EventCallback, RendererSession, RendererSessionEvent, SessionId, StatusSink};
 
 #[cfg(test)]
 #[path = "mod_tests.rs"]

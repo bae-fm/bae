@@ -38,11 +38,6 @@ async fn each_request_round_trips_through_the_codec_as_the_json_the_receiver_exp
         (Request::Ping, NAMESPACE_HEARTBEAT, json!({"type": "PING"})),
         (Request::Pong, NAMESPACE_HEARTBEAT, json!({"type": "PONG"})),
         (
-            Request::ReceiverStatus { request_id: 1 },
-            NAMESPACE_RECEIVER,
-            json!({"type": "GET_STATUS", "requestId": 1}),
-        ),
-        (
             Request::Launch { request_id: 2, app_id: "CC1AD845" },
             NAMESPACE_RECEIVER,
             json!({"type": "LAUNCH", "requestId": 2, "appId": "CC1AD845"}),
@@ -51,11 +46,6 @@ async fn each_request_round_trips_through_the_codec_as_the_json_the_receiver_exp
             Request::SetVolume { request_id: 3, level: 0.5 },
             NAMESPACE_RECEIVER,
             json!({"type": "SET_VOLUME", "requestId": 3, "volume": {"level": 0.5}}),
-        ),
-        (
-            Request::MediaStatus { request_id: 4 },
-            NAMESPACE_MEDIA,
-            json!({"type": "GET_STATUS", "requestId": 4}),
         ),
         (
             Request::Load { request_id: 5, session_id: "session-1", media: &media },

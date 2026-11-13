@@ -3,7 +3,9 @@
 //! A *remote renderer* is a device that fetches a track's audio over HTTP itself
 //! and is driven by transport commands — a Cast receiver or a UPnP MediaRenderer.
 //! [`RendererChannel`] is the protocol-agnostic seam the session drives: connect
-//! once, then LOAD/PLAY/PAUSE/SEEK/volume/STOP and read status. The two real
+//! once, then LOAD/PLAY/PAUSE/SEEK/volume/STOP. Status comes by one of two
+//! [`RendererLink`]s: asked for ([`PolledRenderer`]) or said by the renderer
+//! as it changes ([`PushedRenderer`]). The two real
 //! implementations — Cast over CASTV2 and UPnP over SOAP, both in bae-cast —
 //! differ only in their wire; the session, poll loop, and everything above them
 //! are shared. Tests supply a fake implementation.
@@ -15,6 +17,8 @@
 //! beside `Renderer::Remote` as its own variant, not as a third channel here.
 
 use std::time::Duration;
+
+use super::session::StatusSink;
 
 /// The media a LOAD hands the renderer: the URL it fetches over HTTP and the
 /// metadata it shows on-screen. Both a Cast LOAD and a UPnP `SetAVTransportURI`
@@ -53,7 +57,7 @@ pub enum RendererPlayerState {
     Paused,
 }
 
-/// A snapshot of the renderer's state from one `poll_status`.
+/// A snapshot of the renderer's state, as polled or as it said it.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ReceiverStatus {
     pub player_state: RendererPlayerState,
@@ -115,10 +119,10 @@ pub enum RendererError {
     Panicked(bae_util::task_failure::Bug),
 }
 
-/// The operations the session performs against a connected renderer. Each call
+/// The commands the session performs against a connected renderer. Each call
 /// blocks on the wire, so the session drives it from its own thread. A
 /// [`RendererError::Connection`] from any call is terminal (the session ends);
-/// tests fake this to record commands and hand back canned statuses.
+/// tests fake this to record commands.
 pub trait RendererChannel: Send {
     /// Load `media` on the renderer and start it playing.
     fn load(&mut self, media: &RendererMedia) -> Result<(), RendererError>;
@@ -129,8 +133,27 @@ pub trait RendererChannel: Send {
     fn set_volume(&mut self, level: crate::Volume) -> Result<(), RendererError>;
     /// Stop playback on the renderer (the loaded media is unloaded).
     fn stop(&mut self) -> Result<(), RendererError>;
+}
+
+/// A renderer that is asked for its status: the session calls
+/// [`poll_status`](Self::poll_status) every half second between commands.
+pub trait PolledRenderer: RendererChannel {
     /// Read the renderer's current status.
     fn poll_status(&mut self) -> Result<ReceiverStatus, RendererError>;
+}
+
+/// A renderer that says its status as it changes: the session hands it a
+/// [`StatusSink`] once, at the start, and never asks.
+pub trait PushedRenderer: RendererChannel {
+    /// Say the renderer's status through `sink` from now on: its current one
+    /// now, each change as it happens, and the loss of its link.
+    fn report_to(&mut self, sink: StatusSink);
+}
+
+/// How the session hears a connected renderer's status.
+pub enum RendererLink {
+    Polled(Box<dyn PolledRenderer>),
+    Pushed(Box<dyn PushedRenderer>),
 }
 
 /// A scriptable fake channel, shared by every test that needs one: it records
@@ -158,6 +181,10 @@ pub(crate) struct FakeChannelState {
     /// Woken by every command and poll the channel takes, for
     /// [`wait_for_state`].
     pub(crate) changed: std::sync::Arc<std::sync::Condvar>,
+    /// How many times the session polled a polled link.
+    pub(crate) polls: u32,
+    /// The sink a pushed session handed over by `report_to`.
+    pub(crate) sink: Option<StatusSink>,
 }
 
 /// Block until `predicate` holds of the channel's state, which every command
@@ -253,11 +280,39 @@ impl RendererChannel for FakeChannel {
         }
         Ok(())
     }
+}
+
+#[cfg(test)]
+impl PolledRenderer for FakeChannel {
     fn poll_status(&mut self) -> Result<ReceiverStatus, RendererError> {
         let mut state = self.state.lock().unwrap();
+        state.polls += 1;
+        state.changed.notify_all();
         if let Some(scripted) = state.poll_script.pop_front() {
             return scripted;
         }
         Ok(state.default_status.unwrap_or_else(|| fake_status(RendererPlayerState::Playing)))
+    }
+}
+
+#[cfg(test)]
+impl PushedRenderer for FakeChannel {
+    fn report_to(&mut self, sink: StatusSink) {
+        let mut state = self.state.lock().unwrap();
+        state.sink = Some(sink);
+        state.changed.notify_all();
+    }
+}
+
+#[cfg(test)]
+impl FakeChannel {
+    /// A polled link over this channel.
+    pub(crate) fn polled(&self) -> RendererLink {
+        RendererLink::Polled(Box::new(self.clone()))
+    }
+
+    /// A pushed link over this channel.
+    pub(crate) fn pushed(&self) -> RendererLink {
+        RendererLink::Pushed(Box::new(self.clone()))
     }
 }

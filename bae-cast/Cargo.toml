@@ -102,6 +102,8 @@ bae-import = { workspace = true, features = ["test-utils"] }
 bae-catalogs = { workspace = true, features = ["test-utils"] }
 # The hang guard bounding the cast tests' waits.
 bae-util = { workspace = true, features = ["test-utils"] }
+# The instants the sink's clock stamps a status with.
+chrono = { workspace = true }
 # The self-signed certificate the fake receiver serves TLS with.
 rcgen = { workspace = true }
 # The deterministic id source the sessions' tests use.

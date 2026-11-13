@@ -4,8 +4,8 @@
 //! a request it returns the messages the receiver sends back, as the study of
 //! other Cast senders' tests records them: LAUNCH is answered by
 //! LAUNCH_STATUS `USER_ALLOWED` then RECEIVER_STATUS; LOAD, PLAY, PAUSE, SEEK
-//! and STOP by a MEDIA_STATUS carrying the request id; SET_VOLUME and
-//! GET_STATUS by RECEIVER_STATUS.
+//! and STOP by a MEDIA_STATUS carrying the request id; SET_VOLUME by
+//! RECEIVER_STATUS. A GET_STATUS gets no answer: bae never sends one.
 
 use std::collections::HashMap;
 
@@ -195,10 +195,6 @@ impl Model {
             };
         }
         match (namespace, kind.as_str()) {
-            (NAMESPACE_RECEIVER, "GET_STATUS") => {
-                let payload = self.receiver_status(request_id);
-                vec![self.say(NAMESPACE_RECEIVER, payload, "sender-0")]
-            }
             (NAMESPACE_RECEIVER, "LAUNCH") => vec![
                 self.reply(Reply::LaunchStatus("USER_ALLOWED"), request_id),
                 self.reply(Reply::ReceiverStatusWithApp, request_id),
@@ -236,7 +232,6 @@ impl Model {
                 self.idle_reason = Some("CANCELLED");
                 self.media_answer(request_id, false)
             }
-            (NAMESPACE_MEDIA, "GET_STATUS") => self.media_answer(request_id, false),
             _ => vec![],
         }
     }

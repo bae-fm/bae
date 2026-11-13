@@ -488,15 +488,15 @@ impl PlaybackHandle {
         self.dispatch(PlaybackCommand::SetMuted(muted));
     }
     /// Switch playback to a remote renderer over the already connected
-    /// `channel`, serving each track's media through `media_source`.
+    /// `link`, serving each track's media through `media_source`.
     pub fn play_on(
         &self,
-        channel: Box<dyn crate::renderer::RendererChannel>,
+        link: crate::renderer::RendererLink,
         device: crate::renderer::CastReceiver,
         media_source: crate::renderer::RendererMediaSource,
     ) {
         self.dispatch(PlaybackCommand::PlayOn(Box::new(RemoteConnect::new(
-            channel,
+            link,
             device,
             media_source,
         ))));

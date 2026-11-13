@@ -36,7 +36,10 @@ async fn on_a_manual_clock() -> (
 
 async fn hear(service: &mut PlaybackService, status: ReceiverStatus) {
     let observed_at = service.clock.now();
-    service.handle_remote_event(RendererSessionEvent::Status { status, observed_at }).await;
+    let session = super::remote_session_tests::live_session(service);
+    service
+        .handle_remote_event(RendererSessionEvent::Status { session, status, observed_at })
+        .await;
 }
 
 /// The position updates `rx` holds, in track time.

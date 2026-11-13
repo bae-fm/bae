@@ -356,5 +356,9 @@ async fn a_listening_that_cannot_be_recorded_ships_a_history_failure() {
 
 /// A status event for `service` as if it arrived now, on its clock.
 fn status_event(service: &PlaybackService, status: ReceiverStatus) -> RendererSessionEvent {
-    RendererSessionEvent::Status { status, observed_at: service.clock.now() }
+    RendererSessionEvent::Status {
+        session: super::remote_session_tests::live_session(service),
+        status,
+        observed_at: service.clock.now(),
+    }
 }

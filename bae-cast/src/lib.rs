@@ -4,7 +4,7 @@
 //!
 //! The cast *session* lives in bae-library's playback service (cast is a renderer
 //! behind the one queue), which drives a device only through the interfaces it
-//! defines: a Cast or UPnP device as a `RendererChannel`, an AirPlay receiver as
+//! defines: a Cast or UPnP device as a `RendererLink`, an AirPlay receiver as
 //! an `AirPlaySink`. This crate owns everything behind them: the Google Cast
 //! (`cast`), UPnP (`dlna`) and AirPlay (`airplay`) wires, discovering
 //! devices ([`renderer`]), serving audio over HTTP with a per-session
@@ -37,7 +37,7 @@ use bae_app::AppServices;
 use bae_diagnostics::{lock_or_crash, Diagnostics, ReportedTask, Unfinished};
 use bae_playback::airplay_output::AirPlaySink;
 use bae_playback::renderer::{
-    CoverUrlProvider, MediaUrlProvider, RendererChannel, RendererFlavor, RendererMediaSource,
+    CoverUrlProvider, MediaUrlProvider, RendererFlavor, RendererLink, RendererMediaSource,
     RendererStreamFormat, TRANSCODE_BITRATE_KBPS,
 };
 use bae_playback::{PlaybackProgress, RemotePlayback};
@@ -726,8 +726,7 @@ impl CastController {
         device: RendererDevice,
         number: u64,
     ) -> Result<(), CastError> {
-        let (channel, flavor): (Box<dyn RendererChannel>, RendererFlavor) = match &device.connection
-        {
+        let (link, flavor): (RendererLink, RendererFlavor) = match &device.connection {
             RendererConnection::Cast { addr, port } => {
                 let (addr, port) = (*addr, *port);
                 // The connect runs to its end on the runtime even when this cast
@@ -750,13 +749,13 @@ impl CastController {
                 };
                 let channel =
                     CastChannel::new(client, self.runtime.clone(), self.diagnostics.clone());
-                (Box::new(channel), RendererFlavor::Cast)
+                (RendererLink::Pushed(Box::new(channel)), RendererFlavor::Cast)
             }
             RendererConnection::Dlna { av_transport_url, rendering_control_url, .. } => {
                 let channel =
                     DlnaChannel::connect(av_transport_url.clone(), rendering_control_url.clone())
                         .map_err(|e| CastError::Connect(e.to_string()))?;
-                (Box::new(channel), RendererFlavor::Dlna)
+                (RendererLink::Polled(Box::new(channel)), RendererFlavor::Dlna)
             }
             // AirPlay is handled in `cast_to` before it reaches here — it has no
             // fetch-a-URL channel.
@@ -779,7 +778,7 @@ impl CastController {
 
         self.hand_over(number, || {
             self.services.playback_play_on(
-                channel,
+                link,
                 device.receiver(),
                 RendererMediaSource::new(stream_provider, cover_provider, flavor),
             );

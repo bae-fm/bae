@@ -2,6 +2,7 @@ use super::*;
 use crate::audio_output::{audio_event_channel, AudioError};
 use crate::renderer::channel::FakeChannel;
 use crate::renderer::{ReceiverStatus, RendererFlavor, RendererPlayerState, RendererSessionEvent};
+use crate::service::remote_session_tests::{live_session, remote_connect};
 use crate::service::tests::*;
 use crate::RemotePlayback;
 use bae_audio::track_stream::create_track_stream_pair;
@@ -137,9 +138,12 @@ async fn a_lost_link_returns_to_local_and_says_why() {
     while rx.try_recv().is_ok() {}
 
     service
-        .handle_remote_event(RendererSessionEvent::Ended(
-            crate::renderer::RendererError::Connection("receiver closed the session".to_string()),
-        ))
+        .handle_remote_event(RendererSessionEvent::Ended {
+            session: live_session(&service),
+            error: crate::renderer::RendererError::Connection(
+                "receiver closed the session".to_string(),
+            ),
+        })
         .await;
 
     assert!(!service.renderer.is_remote(), "the renderer returns to Local");
@@ -167,9 +171,12 @@ async fn a_refused_command_is_reported_and_the_device_kept() {
     while rx.try_recv().is_ok() {}
 
     service
-        .handle_remote_event(RendererSessionEvent::CommandFailed(
-            crate::renderer::RendererError::Command("LOAD failed: unsupported media".to_string()),
-        ))
+        .handle_remote_event(RendererSessionEvent::CommandFailed {
+            session: live_session(&service),
+            error: crate::renderer::RendererError::Command(
+                "LOAD failed: unsupported media".to_string(),
+            ),
+        })
         .await;
 
     assert!(service.renderer.is_remote(), "the session stays on the device");
@@ -470,7 +477,7 @@ async fn served_whole_file_then_window(
     let state = channel.state.clone();
     service
         .handle_play_on(RemoteConnect::new(
-            Box::new(channel),
+            channel.polled(),
             test_device(),
             crate::renderer::RendererMediaSource::new(
                 Arc::new(|track_id: &str, format| {
@@ -934,9 +941,12 @@ async fn a_refused_command_ships_a_renderer_failure() {
     service.diagnostics = diagnostics.clone();
 
     service
-        .handle_remote_event(RendererSessionEvent::CommandFailed(
-            crate::renderer::RendererError::Command("LOAD failed: unsupported media".to_string()),
-        ))
+        .handle_remote_event(RendererSessionEvent::CommandFailed {
+            session: live_session(&service),
+            error: crate::renderer::RendererError::Command(
+                "LOAD failed: unsupported media".to_string(),
+            ),
+        })
         .await;
 
     diagnostics.flush().await.expect("flush succeeds");
@@ -945,5 +955,9 @@ async fn a_refused_command_ships_a_renderer_failure() {
 
 /// A status event for `service` as if it arrived now, on its clock.
 fn status_event(service: &PlaybackService, status: ReceiverStatus) -> RendererSessionEvent {
-    RendererSessionEvent::Status { status, observed_at: service.clock.now() }
+    RendererSessionEvent::Status {
+        session: live_session(service),
+        status,
+        observed_at: service.clock.now(),
+    }
 }

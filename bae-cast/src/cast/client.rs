@@ -20,7 +20,9 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use bae_diagnostics::{lock_or_crash, Diagnostics};
-use bae_playback::renderer::{ReceiverStatus, RendererError, RendererMedia, RendererPlayerState};
+use bae_playback::renderer::{
+    ReceiverStatus, RendererError, RendererMedia, RendererPlayerState, StatusSink,
+};
 use bae_playback::Volume;
 use tokio::sync::oneshot;
 use tracing::{debug, warn};
@@ -98,7 +100,9 @@ struct WaitingRequest {
 
 /// Everything the client holds. Written by the reader (and by a command
 /// adding or removing its own waiting request), under a lock held only for a
-/// change, never across an await.
+/// change, never across an await. The sink playback hands over is told of each
+/// change under that lock, so what it hears is in the order the receiver said
+/// it; telling it only queues an event.
 struct ClientState {
     app: Option<App>,
     volume: Option<f64>,
@@ -107,6 +111,9 @@ struct ClientState {
     /// that it was interrupted, after it has answered the load.
     previous_media_id: Option<i32>,
     waiting: HashMap<u32, WaitingRequest>,
+    /// Where playback hears the receiver's status, once it has asked to.
+    /// Taken when the loss is said, so a loss is said once.
+    sink: Option<StatusSink>,
 }
 
 const TOOK_OVER: &str = "another sender took over the receiver";
@@ -119,6 +126,26 @@ impl ClientState {
             media: None,
             previous_media_id: None,
             waiting: HashMap::new(),
+            sink: None,
+        }
+    }
+
+    /// What the receiver last said about bae's media and its volume.
+    fn status(&self) -> ReceiverStatus {
+        let media = self.media.as_ref();
+        ReceiverStatus {
+            player_state: media.map_or(RendererPlayerState::Idle, |media| media.state),
+            position: media.and_then(|media| media.current_time).and_then(receiver_time),
+            duration: media.and_then(|media| media.duration).and_then(receiver_time),
+            volume: self.volume.map(|level| level as f32),
+            rate: media.and_then(|media| media.playback_rate),
+        }
+    }
+
+    /// Say the status now held to playback, if it is listening.
+    fn report(&self) {
+        if let Some(sink) = &self.sink {
+            sink.report(self.status());
         }
     }
 
@@ -132,15 +159,18 @@ impl ClientState {
         }
     }
 
-    /// Take in one message from the receiver. `Err` is the reason the
+    /// Take in one message from the receiver. `Ok` says whether it changed
+    /// what bae's media or the receiver's volume is. `Err` is the reason the
     /// connection is lost.
-    fn take(&mut self, inbound: Inbound) -> Result<(), String> {
+    fn take(&mut self, inbound: Inbound) -> Result<bool, String> {
         match inbound {
             Inbound::Close { source_id } => Err(format!("{source_id} closed its connection")),
             Inbound::ReceiverStatus { request_id, status } => {
-                if let Some(level) = status.volume.and_then(|volume| volume.level) {
+                let volume_stated = status.volume.and_then(|volume| volume.level);
+                if let Some(level) = volume_stated {
                     self.volume = Some(level);
                 }
+                let moved = volume_stated.is_some();
                 if let Some(app) = &self.app {
                     if !status.applications.iter().any(|a| a.session_id == app.session_id) {
                         return Err("the receiver's media app ended".to_string());
@@ -152,7 +182,7 @@ impl ClientState {
                 );
                 if !launching {
                     self.complete(request_id, Ok(Answered::Done));
-                    return Ok(());
+                    return Ok(moved);
                 }
                 let launched =
                     status.applications.iter().find(|a| a.app_id == MEDIA_RECEIVER_APP).and_then(
@@ -175,11 +205,11 @@ impl ClientState {
                         )),
                     ),
                 }
-                Ok(())
+                Ok(moved)
             }
             Inbound::LaunchStatus { request_id, status } => {
                 debug!(request_id, ?status, "cast launch status");
-                Ok(())
+                Ok(false)
             }
             Inbound::LaunchError { request_id, reason, extended_error } => {
                 let mut text = reason.unwrap_or_else(|| "no reason given".to_string());
@@ -187,7 +217,7 @@ impl ClientState {
                     text.push_str(&format!(" ({extended})"));
                 }
                 self.complete(request_id, Err(RendererError::Launch(text)));
-                Ok(())
+                Ok(false)
             }
             Inbound::Refused(refusal) => {
                 let error = match self.waiting.get(&refusal.request_id) {
@@ -197,13 +227,13 @@ impl ClientState {
                     _ => RendererError::Command(refusal.describe()),
                 };
                 self.complete(refusal.request_id, Err(error));
-                Ok(())
+                Ok(false)
             }
             Inbound::MediaStatus { request_id, entries } => {
                 self.take_media_status(request_id, &entries)
             }
             // The connection answers these itself and drops these.
-            Inbound::Ping | Inbound::Pong | Inbound::Ignored { .. } => Ok(()),
+            Inbound::Ping | Inbound::Pong | Inbound::Ignored { .. } => Ok(false),
         }
     }
 
@@ -211,7 +241,7 @@ impl ClientState {
         &mut self,
         request_id: u32,
         entries: &[MediaStatusEntry],
-    ) -> Result<(), String> {
+    ) -> Result<bool, String> {
         let answers_a_load = matches!(
             self.waiting.get(&request_id),
             Some(WaitingRequest { kind: RequestKind::Load, .. })
@@ -224,50 +254,53 @@ impl ClientState {
                         "the receiver's answer to the load lists no media".to_string(),
                     )),
                 );
-                return Ok(());
+                return Ok(false);
             };
             self.previous_media_id = self.media.take().map(|media| media.id);
             self.media = Some(MediaSessionView::from_entry(entry, None));
             self.complete(request_id, Ok(Answered::Done));
-            return Ok(());
+            return Ok(true);
         }
         let load_pending = self.waiting.values().any(|w| matches!(w.kind, RequestKind::Load));
+        let mut moved = false;
         for entry in entries {
-            self.follow(entry, load_pending)?;
+            moved |= self.follow(entry, load_pending)?;
         }
         if entries.is_empty() {
             if let Some(media) = &mut self.media {
                 media.state = RendererPlayerState::Idle;
                 media.current_time = None;
+                moved = true;
             }
         }
         self.complete(request_id, Ok(Answered::Done));
-        Ok(())
+        Ok(moved)
     }
 
-    /// Follow one entry of a status nobody's load answers.
-    fn follow(&mut self, entry: &MediaStatusEntry, load_pending: bool) -> Result<(), String> {
+    /// Follow one entry of a status nobody's load answers. `Ok` says whether
+    /// it changed bae's media.
+    fn follow(&mut self, entry: &MediaStatusEntry, load_pending: bool) -> Result<bool, String> {
         if Some(entry.media_session_id) == self.previous_media_id {
-            return Ok(());
+            return Ok(false);
         }
         let Some(media) = &mut self.media else {
             debug!(
                 session = entry.media_session_id,
                 "cast media status while bae has no media loaded"
             );
-            return Ok(());
+            return Ok(false);
         };
         if media.id != entry.media_session_id {
             // While a load waits, its answer settles which session is bae's.
-            return if load_pending { Ok(()) } else { Err(TOOK_OVER.to_string()) };
+            return if load_pending { Ok(false) } else { Err(TOOK_OVER.to_string()) };
         }
         let interrupted = entry.player_state == PlayerState::Idle
             && entry.idle_reason == Some(IdleReason::Interrupted);
         if interrupted {
-            return if load_pending { Ok(()) } else { Err(TOOK_OVER.to_string()) };
+            return if load_pending { Ok(false) } else { Err(TOOK_OVER.to_string()) };
         }
         *media = MediaSessionView::from_entry(entry, media.duration);
-        Ok(())
+        Ok(true)
     }
 }
 
@@ -452,31 +485,23 @@ impl CastClient {
         .map(|_| ())
     }
 
-    /// Ask the receiver for its status and for its media status, each waiting
-    /// for its answer, then what it last said about bae's media and its
-    /// volume. The media status is asked for only when bae has media loaded.
-    pub(crate) async fn poll(&self) -> Result<ReceiverStatus, RendererError> {
-        self.ask(RequestKind::Other, self.deadlines.command, RECEIVER_ID, |request_id| {
-            Request::ReceiverStatus { request_id }
-        })
-        .await?;
-        if self.media_session_id().is_ok() {
-            self.media_command(|request_id| Request::MediaStatus { request_id }).await?;
+    /// Say the receiver's status to `sink` from now on: what it holds now,
+    /// each change as the receiver says it, and the loss of the connection. A
+    /// connection already lost is said at once.
+    pub(crate) fn report_to(&self, sink: StatusSink) {
+        let mut state = self.state();
+        if let Some(End::Lost(reason)) = self.connection.end() {
+            sink.lost(RendererError::Connection(reason.clone()));
+            return;
         }
-        Ok(self.status())
+        state.sink = Some(sink);
+        state.report();
     }
 
     /// What the receiver last said about bae's media and its volume.
+    #[cfg(test)]
     pub(crate) fn status(&self) -> ReceiverStatus {
-        let state = self.state();
-        let media = state.media.as_ref();
-        ReceiverStatus {
-            player_state: media.map_or(RendererPlayerState::Idle, |media| media.state),
-            position: media.and_then(|media| media.current_time).and_then(receiver_time),
-            duration: media.and_then(|media| media.duration).and_then(receiver_time),
-            volume: state.volume.map(|level| level as f32),
-            rate: media.and_then(|media| media.playback_rate),
-        }
+        self.state().status()
     }
 
     /// bae's media session as the receiver last described it.
@@ -507,6 +532,9 @@ impl CastClient {
     /// close the connections to the app and the receiver, then the socket.
     /// Nothing is reported as lost.
     pub(crate) async fn close(&self) {
+        // Playback has ended the session: nothing is said to it from here on,
+        // not even the answer to the stop below.
+        self.state().sink = None;
         let playing =
             self.state().media.as_ref().is_some_and(|m| m.state != RendererPlayerState::Idle);
         if playing {
@@ -550,15 +578,24 @@ fn session(diagnostics: &Diagnostics) -> (Arc<Mutex<ClientState>>, Handler, OnEn
     let diagnostics_for_messages = diagnostics.clone();
     let diagnostics_for_end = diagnostics.clone();
     let handler: Handler = Box::new(move |inbound| {
-        lock_or_crash(&diagnostics_for_messages, "the cast client's state", &for_messages)
-            .take(inbound)
+        let mut state =
+            lock_or_crash(&diagnostics_for_messages, "the cast client's state", &for_messages);
+        if state.take(inbound)? {
+            state.report();
+        }
+        Ok(())
     });
     let on_end: OnEnd = Box::new(move |end| {
-        let waiting = std::mem::take(
-            &mut lock_or_crash(&diagnostics_for_end, "the cast client's state", &for_end).waiting,
-        );
+        let (waiting, sink) = {
+            let mut state =
+                lock_or_crash(&diagnostics_for_end, "the cast client's state", &for_end);
+            (std::mem::take(&mut state.waiting), state.sink.take())
+        };
         if let End::Lost(reason) = end {
             warn!("cast connection lost: {reason}");
+            if let Some(sink) = sink {
+                sink.lost(RendererError::Connection(reason.clone()));
+            }
         }
         for (_, waiting) in waiting {
             let _gone = waiting.reply.send(Err(ended_error(end)));

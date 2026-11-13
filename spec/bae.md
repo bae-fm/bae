@@ -4499,6 +4499,10 @@ the session goes on.
 A load or command the receiver refuses, or doesn't answer within ten seconds,
 is reported and the session goes on.
 
+A Chromecast tells bae of each change as it happens: a pause from its buttons
+or another device, a track's end. bae doesn't ask it for its status after
+connecting. A UPnP renderer is asked twice a second.
+
 On a Chromecast or UPnP receiver, the position shown moves on from the last
 status the receiver gave, at the speed it stated, and a play counts toward
 history the moment the receiver's position reaches the threshold, not at the
@@ -5461,9 +5465,10 @@ bindings export none of their symbols.
 bae-cast stands between bae-playback, which holds the renderer session, and
 bae-subsonic, which serves the audio, because neither may depend on the other.
 Nothing in bae-library or bae-playback depends on a server crate. bae-playback
-holds no device protocol: playback drives a fetching receiver through a command channel and an
-AirPlay receiver through a sink it hands decoded audio to, and bae-cast connects
-each device and hands playback the channel or sink.
+holds no device protocol: playback drives a fetching receiver through a command
+channel and hears its status as the receiver sends it (Cast) or asks for it
+(UPnP), and drives an AirPlay receiver through a sink it hands decoded audio to,
+and bae-cast connects each device and hands playback the channel or sink.
 
 ### 11.2 Conventions
 

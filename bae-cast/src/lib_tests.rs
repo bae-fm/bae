@@ -627,20 +627,35 @@ fn dropping_the_controller_ends_it_and_its_tasks() {
 }
 
 /// The first LOAD the receiver is sent after `fake` last returned from this.
-async fn next_load(fake: &mut cast::fake_receiver::FakeReceiver) -> serde_json::Value {
+/// The type of every message it read on the way is added to `seen`.
+async fn next_load(
+    fake: &mut cast::fake_receiver::FakeReceiver,
+    seen: &mut Vec<String>,
+) -> serde_json::Value {
     loop {
         let received = fake.next_received().await;
+        seen.push(received.kind().to_string());
         if received.kind() == "LOAD" {
             return received.payload;
         }
     }
 }
 
-/// A cast to a Chromecast plays the queue through bae's Cast client: the
-/// first track is loaded with its stream URL, and when the receiver says the
-/// track finished, the next track is loaded.
-#[test]
-fn a_cast_loads_the_queue_into_the_receiver_and_follows_it_to_the_next_track() {
+/// A two-track release cast to a fake Chromecast, playing its first track: the
+/// runtime, the services, the receiver and the messages it was sent up to the
+/// first track's LOAD.
+struct CastToFake {
+    runtime: tokio::runtime::Runtime,
+    services: AppServices,
+    fake: cast::fake_receiver::FakeReceiver,
+    seen: Vec<String>,
+    track_ids: Vec<String>,
+    first_load: serde_json::Value,
+    _controller: Arc<CastController>,
+    _library: bae_library::test_libraries::TestLibrary,
+}
+
+fn cast_a_release_to_a_fake_chromecast() -> CastToFake {
     let runtime = bae_library::test_libraries::multi_thread_runtime();
     let (library, imported) = runtime
         .block_on(bae_library::test_libraries::imported_release_setup(
@@ -677,14 +692,64 @@ fn a_cast_loads_the_queue_into_the_receiver_and_follows_it_to_the_next_track() {
     runtime
         .block_on(services.playback_play_release(imported.release_id.clone(), None, false))
         .expect("the release plays");
+    let mut seen = Vec::new();
+    let first_load = runtime.block_on(next_load(&mut fake, &mut seen));
+    CastToFake {
+        runtime,
+        services,
+        fake,
+        seen,
+        track_ids: imported.track_ids,
+        first_load,
+        _controller: controller,
+        _library: library,
+    }
+}
 
-    let first = runtime.block_on(next_load(&mut fake));
-    let first_url = first["media"]["contentId"].as_str().expect("a stream URL");
+/// A cast to a Chromecast plays the queue through bae's Cast client: the
+/// first track is loaded with its stream URL, and when the receiver says the
+/// track finished, the next track is loaded. The receiver is never asked for
+/// its status: it says it.
+#[test]
+fn a_cast_loads_the_queue_into_the_receiver_and_follows_it_to_the_next_track() {
+    let mut cast = cast_a_release_to_a_fake_chromecast();
+    let first_url = cast.first_load["media"]["contentId"].as_str().expect("a stream URL");
     assert!(first_url.contains("/rest/stream?"), "{first_url}");
-    assert!(first_url.contains(&bae_subsonic::song_id(&imported.track_ids[0])), "{first_url}");
+    assert!(first_url.contains(&bae_subsonic::song_id(&cast.track_ids[0])), "{first_url}");
 
-    fake.finish_track();
-    let second = runtime.block_on(next_load(&mut fake));
+    cast.fake.finish_track();
+    let second = cast.runtime.block_on(next_load(&mut cast.fake, &mut cast.seen));
     let second_url = second["media"]["contentId"].as_str().expect("a stream URL");
-    assert!(second_url.contains(&bae_subsonic::song_id(&imported.track_ids[1])), "{second_url}");
+    assert!(second_url.contains(&bae_subsonic::song_id(&cast.track_ids[1])), "{second_url}");
+    assert!(
+        !cast.seen.iter().any(|kind| kind == "GET_STATUS"),
+        "the receiver was asked for its status: {:?}",
+        cast.seen
+    );
+}
+
+/// A pause from the Chromecast's own buttons, or another sender's, reaches
+/// playback without bae asking: the queue shows Paused.
+#[test]
+fn a_pause_from_the_chromecast_shows_as_paused() {
+    let mut cast = cast_a_release_to_a_fake_chromecast();
+    let mut progress = cast.services.subscribe_playback_progress();
+
+    cast.fake.another_sender_pauses();
+    let paused = cast.runtime.block_on(bae_util::test_channels::next_matching(
+        &mut progress,
+        HANG_GUARD,
+        |event| match event {
+            PlaybackProgress::StateChanged {
+                state: bae_playback::PlaybackState::Paused { .. },
+            } => Some(()),
+            _ => None,
+        },
+    ));
+
+    assert!(paused.is_some(), "playback never showed the pause the device made");
+    while let Some(received) = cast.fake.try_received() {
+        cast.seen.push(received.kind().to_string());
+    }
+    assert!(!cast.seen.iter().any(|kind| kind == "GET_STATUS"), "{:?}", cast.seen);
 }
