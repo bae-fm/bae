@@ -491,4 +491,9 @@
     <string name="pair_ended_text">Åpne Legg til enhet på den andre enheten din for å få en ny.</string>
     <string name="add_device_expired">Denne koden er utløpt. Lukk dette og velg Legg til enhet på nytt for å få en ny.</string>
     <string name="add_device_refused">Forespørselen fra den nye enheten ble avvist, så den ble ikke lagt til. Prøv igjen med en ny kode.</string>
+    <string name="onboarding_unreadable_join_title">Uferdig tilkobling som ikke kan leses</string>
+    <string name="onboarding_unreadable_join_discard">Forkast…</string>
+    <string name="onboarding_discard_join_title">Forkaste den uferdige tilkoblingen?</string>
+    <string name="onboarding_discard_join_message">Den ble ikke ferdig, og denne telefonen kan ikke lese det den lagret. Når du forkaster den, fjernes den fra denne telefonen. Biblioteket i skyen berøres ikke.</string>
+    <string name="onboarding_discard_join_confirm">Forkast</string>
 </resources>

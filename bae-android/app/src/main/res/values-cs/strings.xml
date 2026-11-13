@@ -511,4 +511,9 @@
     <string name="pair_ended_text">Na druhém zařízení otevřete Přidat zařízení a získejte nový kód.</string>
     <string name="add_device_expired">Platnost tohoto kódu skončila. Zavřete toto okno a znovu zvolte Přidat zařízení pro nový kód.</string>
     <string name="add_device_refused">Žádost nového zařízení byla odmítnuta, takže nebylo přidáno. Zkuste to znovu s novým kódem.</string>
+    <string name="onboarding_unreadable_join_title">Nedokončené připojení, které nelze přečíst</string>
+    <string name="onboarding_unreadable_join_discard">Zahodit…</string>
+    <string name="onboarding_discard_join_title">Zahodit nedokončené připojení?</string>
+    <string name="onboarding_discard_join_message">Nebylo dokončeno a tento telefon nemůže přečíst, co uložilo. Zahozením se odebere z tohoto telefonu. Knihovna v cloudu zůstane nedotčená.</string>
+    <string name="onboarding_discard_join_confirm">Zahodit</string>
 </resources>

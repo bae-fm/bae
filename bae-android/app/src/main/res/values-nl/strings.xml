@@ -493,4 +493,9 @@
     <string name="pair_ended_text">Open Apparaat toevoegen op je andere apparaat voor een nieuwe.</string>
     <string name="add_device_expired">Deze code is verlopen. Sluit dit en kies opnieuw Apparaat toevoegen voor een nieuwe.</string>
     <string name="add_device_refused">Het verzoek van het nieuwe apparaat is geweigerd, dus het is niet toegevoegd. Probeer het opnieuw met een nieuwe code.</string>
+    <string name="onboarding_unreadable_join_title">Onvoltooide deelname die niet gelezen kan worden</string>
+    <string name="onboarding_unreadable_join_discard">Weggooien…</string>
+    <string name="onboarding_discard_join_title">De onvoltooide deelname weggooien?</string>
+    <string name="onboarding_discard_join_message">Hij is niet voltooid en deze telefoon kan niet lezen wat hij heeft opgeslagen. Weggooien verwijdert hem van deze telefoon. De bibliotheek in de cloud blijft ongemoeid.</string>
+    <string name="onboarding_discard_join_confirm">Weggooien</string>
 </resources>

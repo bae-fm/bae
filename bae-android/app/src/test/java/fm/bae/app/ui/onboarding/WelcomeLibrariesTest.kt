@@ -441,6 +441,76 @@ class WelcomeLibrariesTest {
         compose.onNodeWithText("Provider").assertExists()
     }
 
+    /** An unfinished join this phone can't read is a row with its library's id under a fixed title, and Discard… hands that id on. */
+    @Test
+    fun anUnreadableJoinShowsItsIdAndOffersToDiscardIt() {
+        val fake = FakeLibraries(listOf(synced))
+        val discarding = mutableListOf<String>()
+        compose.setContent {
+            TestTheme {
+                WelcomeLibrariesContent(
+                    list = WelcomeLibrariesList.Loaded(fake.libraries),
+                    running = null,
+                    callbacks =
+                        WelcomeLibrariesCallbacks(
+                            onOpen = {},
+                            onDetails = {},
+                            onRemove = {},
+                            onAdd = {},
+                            onDiscardInstallation = { discarding += it },
+                        ),
+                    unreadableInstallation = "3b9e07d4-51a2",
+                )
+            }
+        }
+
+        compose.onNodeWithText("Unfinished join that cannot be read").assertIsDisplayed()
+        compose.onNodeWithText("3b9e07d4-51a2").assertIsDisplayed()
+        compose.onNodeWithText("Discard…").performClick()
+
+        assertEquals(listOf("3b9e07d4-51a2"), discarding)
+    }
+
+    /** A phone with no library still lists the unreadable join, so it can be discarded. */
+    @Test
+    fun anUnreadableJoinShowsWithNoLibrary() {
+        compose.setContent {
+            TestTheme {
+                WelcomeLibrariesContent(
+                    list = WelcomeLibrariesList.Loaded(emptyList()),
+                    running = null,
+                    callbacks = WelcomeLibrariesCallbacks(onOpen = {}, onDetails = {}, onRemove = {}, onAdd = {}),
+                    unreadableInstallation = "3b9e07d4-51a2",
+                )
+            }
+        }
+
+        compose.onNodeWithText("Unfinished join that cannot be read").assertIsDisplayed()
+        compose.onNodeWithText("Add library").assertIsDisplayed()
+    }
+
+    /** The confirmation says the library in the cloud is untouched; Discard confirms and Cancel leaves it. */
+    @Test
+    fun theDiscardConfirmationSaysWhatItRemovesAndAsksBeforeDeleting() {
+        val answers = mutableListOf<String>()
+        compose.setContent {
+            TestTheme {
+                DiscardInstallationDialog(onConfirm = { answers += "discard" }, onDismiss = { answers += "cancel" })
+            }
+        }
+
+        compose.onNodeWithText("Discard the unfinished join?").assertIsDisplayed()
+        compose
+            .onNodeWithText(
+                "It did not finish, and this phone cannot read what it saved. Discarding removes it from this phone. " +
+                    "The library in the cloud is not touched.",
+            ).assertIsDisplayed()
+        compose.onNodeWithText("Cancel").performClick()
+        compose.onNodeWithText("Discard").performClick()
+
+        assertEquals(listOf("cancel", "discard"), answers)
+    }
+
     @Test
     fun tappingALibraryOpensIt() {
         val fake = FakeLibraries(listOf(synced))

@@ -493,4 +493,9 @@
     <string name="pair_ended_text">Öffne auf deinem anderen Gerät „Gerät hinzufügen“, um einen neuen zu erhalten.</string>
     <string name="add_device_expired">Dieser Code ist abgelaufen. Schließe dieses Fenster und wähle erneut „Gerät hinzufügen“, um einen neuen zu erhalten.</string>
     <string name="add_device_refused">Die Anfrage des neuen Geräts wurde abgelehnt, daher wurde es nicht hinzugefügt. Versuche es mit einem neuen Code erneut.</string>
+    <string name="onboarding_unreadable_join_title">Unfertiges Beitreten, das nicht gelesen werden kann</string>
+    <string name="onboarding_unreadable_join_discard">Verwerfen …</string>
+    <string name="onboarding_discard_join_title">Das unfertige Beitreten verwerfen?</string>
+    <string name="onboarding_discard_join_message">Es wurde nicht abgeschlossen, und dieses Telefon kann nicht lesen, was es gespeichert hat. Beim Verwerfen wird es von diesem Telefon entfernt. Die Mediathek in der Cloud bleibt unberührt.</string>
+    <string name="onboarding_discard_join_confirm">Verwerfen</string>
 </resources>

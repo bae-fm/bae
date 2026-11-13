@@ -500,4 +500,9 @@
     <string name="pair_ended_text">Ouvrez Ajouter un appareil sur votre autre appareil pour en obtenir un nouveau.</string>
     <string name="add_device_expired">Ce code a expiré. Fermez cette fenêtre et choisissez de nouveau Ajouter un appareil pour en obtenir un nouveau.</string>
     <string name="add_device_refused">La demande du nouvel appareil a été refusée, il n’a donc pas été ajouté. Réessayez avec un nouveau code.</string>
+    <string name="onboarding_unreadable_join_title">Adhésion inachevée illisible</string>
+    <string name="onboarding_unreadable_join_discard">Abandonner…</string>
+    <string name="onboarding_discard_join_title">Abandonner l’adhésion inachevée ?</string>
+    <string name="onboarding_discard_join_message">Elle n’a pas abouti et ce téléphone ne peut pas lire ce qu’elle a enregistré. L’abandonner la retire de ce téléphone. La bibliothèque dans le cloud n’est pas touchée.</string>
+    <string name="onboarding_discard_join_confirm">Abandonner</string>
 </resources>

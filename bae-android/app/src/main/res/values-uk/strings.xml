@@ -511,4 +511,9 @@
     <string name="pair_ended_text">Щоб отримати новий, відкрийте «Додати пристрій» на іншому пристрої.</string>
     <string name="add_device_expired">Термін дії цього коду минув. Закрийте це вікно й знову виберіть «Додати пристрій», щоб отримати новий.</string>
     <string name="add_device_refused">Запит нового пристрою відхилено, тож його не додано. Спробуйте ще раз із новим кодом.</string>
+    <string name="onboarding_unreadable_join_title">Незавершене приєднання, яке неможливо прочитати</string>
+    <string name="onboarding_unreadable_join_discard">Відхилити…</string>
+    <string name="onboarding_discard_join_title">Відхилити незавершене приєднання?</string>
+    <string name="onboarding_discard_join_message">Воно не завершилося, і цей телефон не може прочитати те, що воно зберегло. Відхилення прибирає його з цього телефона. Бібліотеку в хмарі не буде змінено.</string>
+    <string name="onboarding_discard_join_confirm">Відхилити</string>
 </resources>

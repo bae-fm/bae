@@ -491,4 +491,9 @@
     <string name="pair_ended_text">Nyisd meg a másik eszközödön az Eszköz hozzáadása lehetőséget egy újért.</string>
     <string name="add_device_expired">Ez a kód lejárt. Zárd be ezt, és válaszd újra az Eszköz hozzáadása lehetőséget egy újért.</string>
     <string name="add_device_refused">Az új eszköz kérését elutasították, ezért nem lett hozzáadva. Próbáld újra új kóddal.</string>
+    <string name="onboarding_unreadable_join_title">Nem olvasható befejezetlen csatlakozás</string>
+    <string name="onboarding_unreadable_join_discard">Eldobás…</string>
+    <string name="onboarding_discard_join_title">Eldobod a befejezetlen csatlakozást?</string>
+    <string name="onboarding_discard_join_message">Nem fejeződött be, és ez a telefon nem tudja elolvasni, amit elmentett. Az eldobás eltávolítja erről a telefonról. A felhőben lévő könyvtárhoz nem nyúl hozzá.</string>
+    <string name="onboarding_discard_join_confirm">Eldobás</string>
 </resources>

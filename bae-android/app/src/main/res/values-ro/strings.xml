@@ -500,4 +500,9 @@
     <string name="pair_ended_text">Deschide Adaugă dispozitiv pe celălalt dispozitiv pentru unul nou.</string>
     <string name="add_device_expired">Acest cod a expirat. Închide această fereastră și alege din nou Adaugă dispozitiv pentru unul nou.</string>
     <string name="add_device_refused">Cererea noului dispozitiv a fost refuzată, deci nu a fost adăugat. Încearcă din nou cu un cod nou.</string>
+    <string name="onboarding_unreadable_join_title">Alăturare neterminată care nu poate fi citită</string>
+    <string name="onboarding_unreadable_join_discard">Renunță…</string>
+    <string name="onboarding_discard_join_title">Renunți la alăturarea neterminată?</string>
+    <string name="onboarding_discard_join_message">Nu s-a terminat, iar acest telefon nu poate citi ce a salvat. Renunțarea o elimină de pe acest telefon. Biblioteca din cloud nu este atinsă.</string>
+    <string name="onboarding_discard_join_confirm">Renunță</string>
 </resources>

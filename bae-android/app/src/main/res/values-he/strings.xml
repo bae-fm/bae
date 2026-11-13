@@ -502,4 +502,9 @@
     <string name="pair_ended_text">פתח את ״הוספת מכשיר״ במכשיר השני שלך כדי לקבל קוד חדש.</string>
     <string name="add_device_expired">תוקף הקוד הזה הסתיים. סגור את החלון ובחר שוב ״הוספת מכשיר״ כדי לקבל קוד חדש.</string>
     <string name="add_device_refused">הבקשה של המכשיר החדש נדחתה, ולכן הוא לא נוסף. נסה שוב עם קוד חדש.</string>
+    <string name="onboarding_unreadable_join_title">הצטרפות שלא הסתיימה ואי אפשר לקרוא אותה</string>
+    <string name="onboarding_unreadable_join_discard">השלך…</string>
+    <string name="onboarding_discard_join_title">להשליך את ההצטרפות שלא הסתיימה?</string>
+    <string name="onboarding_discard_join_message">היא לא הסתיימה, והטלפון הזה לא יכול לקרוא את מה שהיא שמרה. ההשלכה מסירה אותה מהטלפון הזה. הספרייה בענן לא נפגעת.</string>
+    <string name="onboarding_discard_join_confirm">השלך</string>
 </resources>

@@ -491,4 +491,9 @@
     <string name="pair_ended_text">Öppna Lägg till enhet på din andra enhet för att få en ny.</string>
     <string name="add_device_expired">Den här koden har gått ut. Stäng detta och välj Lägg till enhet igen för att få en ny.</string>
     <string name="add_device_refused">Den nya enhetens begäran avvisades, så den lades inte till. Försök igen med en ny kod.</string>
+    <string name="onboarding_unreadable_join_title">Ofullständig anslutning som inte går att läsa</string>
+    <string name="onboarding_unreadable_join_discard">Kassera…</string>
+    <string name="onboarding_discard_join_title">Kassera den ofullständiga anslutningen?</string>
+    <string name="onboarding_discard_join_message">Den slutfördes inte, och den här telefonen kan inte läsa det den sparade. När du kasserar den tas den bort från den här telefonen. Biblioteket i molnet berörs inte.</string>
+    <string name="onboarding_discard_join_confirm">Kassera</string>
 </resources>

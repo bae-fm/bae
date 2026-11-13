@@ -65,7 +65,21 @@ class OnboardingFlowTest {
         var pairAnswer: BridgeBootstrapResult? = null
         val paired = mutableListOf<Pair<String, BridgeS3Credentials?>>()
 
-        override suspend fun unfinishedJoins(): List<BridgeUnfinishedJoin> = joinsUnderWay
+        /** What listing the joins under way fails with, until a discard clears it. */
+        var joinsFailure: BridgeException? = null
+        var discardFailure: BridgeException? = null
+        val discarded = mutableListOf<String>()
+
+        override suspend fun unfinishedJoins(): List<BridgeUnfinishedJoin> {
+            joinsFailure?.let { throw it }
+            return joinsUnderWay
+        }
+
+        override suspend fun discardUnfinishedInstallation(libraryId: String) {
+            discarded += libraryId
+            discardFailure?.let { throw it }
+            joinsFailure = null
+        }
 
         override suspend fun joinWithInvite(
             code: String,
@@ -199,6 +213,72 @@ class OnboardingFlowTest {
     }
 
     private val enterCode = OnboardingStep.EnterCode(CodeEntry.NewDevice)
+
+    private fun unreadableInstallation(libraryId: String) =
+        BridgeException.Diagnostic(
+            BridgeErrorCategory.UnfinishedInstallationUnreadable(libraryId),
+            "invalid store settings",
+        )
+
+    /** A listing of joins that fails on an installation this phone can't read offers to discard it, with no error line. */
+    @Test
+    fun aListingThatFailsOnAnUnreadableInstallationOffersToDiscardIt() {
+        host.joinsFailure = unreadableInstallation("lib-9")
+
+        val flow = newFlow()
+
+        assertEquals("lib-9", flow.unreadable.libraryId)
+        assertNull(flow.error)
+        assertEquals(enterCode, flow.step)
+    }
+
+    /** Any other failure of the listing is still an error line, and offers nothing to discard. */
+    @Test
+    fun anotherListingFailureStaysAnError() {
+        host.joinsFailure = BridgeException.Diagnostic(BridgeErrorCategory.Network, "unreachable")
+
+        val flow = newFlow()
+
+        assertNull(flow.unreadable.libraryId)
+        assertEquals(DisplayError("failed", "unreachable"), flow.error)
+    }
+
+    /** Discarding asks first; Cancel deletes nothing, and Discard deletes the installation and lists again. */
+    @Test
+    fun discardingAsksFirstThenDeletesAndListsAgain() {
+        host.joinsFailure = unreadableInstallation("lib-9")
+        val flow = newFlow()
+
+        flow.unreadable.ask("lib-9")
+        assertEquals("lib-9", flow.unreadable.asking)
+        flow.unreadable.dismiss()
+        assertNull(flow.unreadable.asking)
+        assertEquals(emptyList<String>(), host.discarded)
+        assertEquals("lib-9", flow.unreadable.libraryId)
+
+        flow.unreadable.ask("lib-9")
+        flow.unreadable.discard("lib-9")
+        shadowOf(Looper.getMainLooper()).idle()
+
+        assertEquals(listOf("lib-9"), host.discarded)
+        assertNull(flow.unreadable.asking)
+        assertNull(flow.unreadable.libraryId)
+        assertNull(flow.error)
+    }
+
+    /** A discard that fails says so and keeps the row, so it can be tried again. */
+    @Test
+    fun aDiscardThatFailsSaysSoAndKeepsTheRow() {
+        host.joinsFailure = unreadableInstallation("lib-9")
+        val flow = newFlow()
+        host.discardFailure = BridgeException.Diagnostic(BridgeErrorCategory.Config, "no unfinished installation")
+
+        flow.unreadable.discard("lib-9")
+        shadowOf(Looper.getMainLooper()).idle()
+
+        assertEquals(DisplayError("failed", "no unfinished installation"), flow.error)
+        assertEquals("lib-9", flow.unreadable.libraryId)
+    }
 
     /** A pairing code for an S3 library, whose QR code holds the S3 key and whose code to type does not. */
     private fun pairingCode(carriesS3Key: Boolean) =

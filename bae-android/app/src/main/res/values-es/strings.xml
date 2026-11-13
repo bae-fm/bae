@@ -500,4 +500,9 @@
     <string name="pair_ended_text">Abre Añadir dispositivo en tu otro dispositivo para obtener uno nuevo.</string>
     <string name="add_device_expired">Este código ha caducado. Cierra esto y elige Añadir dispositivo de nuevo para obtener uno nuevo.</string>
     <string name="add_device_refused">Se rechazó la solicitud del dispositivo nuevo, así que no se añadió. Inténtalo de nuevo con un código nuevo.</string>
+    <string name="onboarding_unreadable_join_title">Unión sin terminar que no se puede leer</string>
+    <string name="onboarding_unreadable_join_discard">Descartar…</string>
+    <string name="onboarding_discard_join_title">¿Descartar la unión sin terminar?</string>
+    <string name="onboarding_discard_join_message">No terminó y este teléfono no puede leer lo que guardó. Al descartarla, se quita de este teléfono. La biblioteca en la nube no se toca.</string>
+    <string name="onboarding_discard_join_confirm">Descartar</string>
 </resources>

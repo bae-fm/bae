@@ -30,6 +30,10 @@ internal open class NoJoinsHost : EditionFakeBridgeHost() {
 
     override suspend fun unfinishedRestores(): List<BridgeUnfinishedRestore> = emptyList()
 
+    override suspend fun discardUnfinishedInstallation(libraryId: String) {
+        unfaked("discardUnfinishedInstallation")
+    }
+
     override suspend fun savedRestoreCodes(): List<BridgeSavedRestoreEntry> = emptyList()
 
     override suspend fun createLibrary(

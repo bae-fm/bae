@@ -511,4 +511,9 @@
     <string name="pair_ended_text">Otwórz Dodaj urządzenie na drugim urządzeniu, aby dostać nowy.</string>
     <string name="add_device_expired">Ten kod wygasł. Zamknij to okno i ponownie wybierz Dodaj urządzenie, aby dostać nowy.</string>
     <string name="add_device_refused">Prośba nowego urządzenia została odrzucona, więc nie zostało dodane. Spróbuj ponownie z nowym kodem.</string>
+    <string name="onboarding_unreadable_join_title">Niedokończone dołączanie, którego nie można odczytać</string>
+    <string name="onboarding_unreadable_join_discard">Odrzuć…</string>
+    <string name="onboarding_discard_join_title">Odrzucić niedokończone dołączanie?</string>
+    <string name="onboarding_discard_join_message">Nie zostało dokończone, a ten telefon nie może odczytać tego, co zapisało. Odrzucenie usuwa je z tego telefonu. Biblioteka w chmurze pozostaje nietknięta.</string>
+    <string name="onboarding_discard_join_confirm">Odrzuć</string>
 </resources>

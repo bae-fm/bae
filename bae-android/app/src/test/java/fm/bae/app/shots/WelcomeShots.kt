@@ -26,6 +26,7 @@ import fm.bae.app.ui.onboarding.PairingEndedStep
 import fm.bae.app.ui.onboarding.PairingWaitingStep
 import fm.bae.app.ui.onboarding.StandingRead
 import fm.bae.app.ui.onboarding.WelcomeActions
+import fm.bae.app.ui.onboarding.WelcomeDamagedJoinScene
 import fm.bae.app.ui.onboarding.WelcomeLibrariesScene
 import fm.bae.app.ui.onboarding.WelcomeRemovingScene
 import fm.bae.app.ui.onboarding.WelcomeSavedCodesScene
@@ -63,6 +64,10 @@ class WelcomeShots : BoardShot() {
     /** The welcome on a phone that holds two libraries, one of them never synced. */
     @Test
     fun androidWelcomeLibraries() = shot("android.welcome.libraries") { ScreenScene { WelcomeLibrariesScene() } }
+
+    /** The welcome with an unfinished join this phone can't read among the libraries, offering Discard…. */
+    @Test
+    fun androidWelcomeLibrariesDamagedJoin() = shot("android.welcome.libraries.damaged-join") { ScreenScene { WelcomeDamagedJoinScene() } }
 
     /** The welcome with restore codes saved for libraries that aren't on the phone, each row ending in its ⋮ menu. */
     @Test

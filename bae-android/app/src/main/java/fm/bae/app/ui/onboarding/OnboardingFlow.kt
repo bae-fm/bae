@@ -23,6 +23,7 @@ import uniffi.bae_bridge.BridgeBootstrapStep
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeCodeInfo
 import uniffi.bae_bridge.BridgeCodeMetadata
+import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeHostInterface
 import uniffi.bae_bridge.BridgeInviteInfo
@@ -318,6 +319,18 @@ internal class OnboardingFlow(
         private set
     var error by mutableStateOf<DisplayError?>(null)
 
+    /** The unfinished join or restore this phone can't read, which listing what is under way failed on. */
+    val unreadable =
+        UnreadableInstallation(
+            scope,
+            core.host,
+            onFailed = { error = core.errorDisplay(it) },
+            listAgain = {
+                error = null
+                resumeUnfinished()
+            },
+        )
+
     /**
      * The restore codes saved on this phone, which the welcome lists; null for
      * a restore over this device's copy, which takes the person's current code.
@@ -382,7 +395,12 @@ internal class OnboardingFlow(
                 throw e
             } catch (e: BridgeException) {
                 logger.error("listing what is under way failed", e)
-                error = core.errorDisplay(e)
+                val category = (e as? BridgeException.Diagnostic)?.category
+                if (category is BridgeErrorCategory.UnfinishedInstallationUnreadable) {
+                    unreadable.found(category.libraryId)
+                } else {
+                    error = core.errorDisplay(e)
+                }
             }
         }
     }

@@ -491,4 +491,9 @@
     <string name="pair_ended_text">Åbn Tilføj enhed på din anden enhed for at få en ny.</string>
     <string name="add_device_expired">Denne kode er udløbet. Luk dette, og vælg Tilføj enhed igen for at få en ny.</string>
     <string name="add_device_refused">Den nye enheds anmodning blev afvist, så den blev ikke tilføjet. Prøv igen med en ny kode.</string>
+    <string name="onboarding_unreadable_join_title">Ufuldstændig tilslutning, der ikke kan læses</string>
+    <string name="onboarding_unreadable_join_discard">Kassér…</string>
+    <string name="onboarding_discard_join_title">Vil du kassere den ufuldstændige tilslutning?</string>
+    <string name="onboarding_discard_join_message">Den blev ikke gennemført, og denne telefon kan ikke læse det, den gemte. Når du kasserer den, fjernes den fra denne telefon. Biblioteket i skyen berøres ikke.</string>
+    <string name="onboarding_discard_join_confirm">Kassér</string>
 </resources>

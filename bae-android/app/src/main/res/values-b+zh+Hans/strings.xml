@@ -484,4 +484,9 @@
     <string name="pair_ended_text">请在另一台设备上打开“添加设备”，获取新代码。</string>
     <string name="add_device_expired">此代码已失效。请关闭此窗口，再次选择“添加设备”以获取新代码。</string>
     <string name="add_device_refused">新设备的请求被拒绝，因此未添加。请使用新代码重试。</string>
+    <string name="onboarding_unreadable_join_title">无法读取的未完成加入</string>
+    <string name="onboarding_unreadable_join_discard">丢弃…</string>
+    <string name="onboarding_discard_join_title">要丢弃未完成的加入吗？</string>
+    <string name="onboarding_discard_join_message">加入未完成，且这部手机无法读取它保存的内容。丢弃后会将其从这部手机上移除。云端的音乐库不受影响。</string>
+    <string name="onboarding_discard_join_confirm">丢弃</string>
 </resources>

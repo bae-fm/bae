@@ -553,4 +553,9 @@
     <string name="pair_ended_text">Open Add device on your other device for a new one.</string>
     <string name="add_device_expired">This code has ended. Close this and choose Add device again for a new one.</string>
     <string name="add_device_refused">The new device’s request was refused, so it was not added. Try again with a new code.</string>
+    <string name="onboarding_unreadable_join_title">Unfinished join that cannot be read</string>
+    <string name="onboarding_unreadable_join_discard">Discard…</string>
+    <string name="onboarding_discard_join_title">Discard the unfinished join?</string>
+    <string name="onboarding_discard_join_message">It did not finish, and this phone cannot read what it saved. Discarding removes it from this phone. The library in the cloud is not touched.</string>
+    <string name="onboarding_discard_join_confirm">Discard</string>
 </resources>

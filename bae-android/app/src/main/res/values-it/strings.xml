@@ -500,4 +500,9 @@
     <string name="pair_ended_text">Apri Aggiungi dispositivo sull’altro dispositivo per ottenerne uno nuovo.</string>
     <string name="add_device_expired">Questo codice è scaduto. Chiudi questa finestra e scegli di nuovo Aggiungi dispositivo per ottenerne uno nuovo.</string>
     <string name="add_device_refused">La richiesta del nuovo dispositivo è stata rifiutata, quindi non è stato aggiunto. Riprova con un nuovo codice.</string>
+    <string name="onboarding_unreadable_join_title">Adesione non completata che non può essere letta</string>
+    <string name="onboarding_unreadable_join_discard">Scarta…</string>
+    <string name="onboarding_discard_join_title">Scartare l’adesione non completata?</string>
+    <string name="onboarding_discard_join_message">Non è stata completata e questo telefono non riesce a leggere ciò che ha salvato. Scartarla la rimuove da questo telefono. La libreria nel cloud non viene toccata.</string>
+    <string name="onboarding_discard_join_confirm">Scarta</string>
 </resources>

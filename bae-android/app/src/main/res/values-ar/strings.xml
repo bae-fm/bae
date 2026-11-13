@@ -529,4 +529,9 @@
     <string name="pair_ended_text">افتح «إضافة جهاز» على جهازك الآخر للحصول على رمز جديد.</string>
     <string name="add_device_expired">انتهت صلاحية هذا الرمز. أغلق هذه النافذة واختر «إضافة جهاز» مرة أخرى للحصول على رمز جديد.</string>
     <string name="add_device_refused">تم رفض طلب الجهاز الجديد، لذلك لم تتم إضافته. حاول مرة أخرى برمز جديد.</string>
+    <string name="onboarding_unreadable_join_title">انضمام غير مكتمل تتعذّر قراءته</string>
+    <string name="onboarding_unreadable_join_discard">تجاهل…</string>
+    <string name="onboarding_discard_join_title">هل تريد تجاهل الانضمام غير المكتمل؟</string>
+    <string name="onboarding_discard_join_message">لم يكتمل، ولا يستطيع هذا الهاتف قراءة ما حفظه. يؤدي التجاهل إلى إزالته من هذا الهاتف. لا تتأثر المكتبة في السحابة.</string>
+    <string name="onboarding_discard_join_confirm">تجاهل</string>
 </resources>

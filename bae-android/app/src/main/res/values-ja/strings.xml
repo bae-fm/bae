@@ -484,4 +484,9 @@
     <string name="pair_ended_text">新しいコードは、もう一方のデバイスで「デバイスを追加」を開くと表示されます。</string>
     <string name="add_device_expired">このコードは期限切れです。これを閉じて、もう一度「デバイスを追加」を選び、新しいコードを取得してください。</string>
     <string name="add_device_refused">新しいデバイスのリクエストが拒否されたため、追加されませんでした。新しいコードでもう一度お試しください。</string>
+    <string name="onboarding_unreadable_join_title">読み取れない未完了の参加</string>
+    <string name="onboarding_unreadable_join_discard">破棄…</string>
+    <string name="onboarding_discard_join_title">未完了の参加を破棄しますか？</string>
+    <string name="onboarding_discard_join_message">参加は完了しておらず、この携帯電話は保存された内容を読み取れません。破棄すると、この携帯電話から削除されます。クラウド上のライブラリには影響しません。</string>
+    <string name="onboarding_discard_join_confirm">破棄</string>
 </resources>

@@ -500,4 +500,9 @@
     <string name="pair_ended_text">Abra Adicionar dispositivo no seu outro dispositivo para obter um novo.</string>
     <string name="add_device_expired">Este código expirou. Feche isto e escolha Adicionar dispositivo de novo para obter um novo.</string>
     <string name="add_device_refused">O pedido do novo dispositivo foi recusado, então ele não foi adicionado. Tente de novo com um código novo.</string>
+    <string name="onboarding_unreadable_join_title">Entrada não concluída que não pode ser lida</string>
+    <string name="onboarding_unreadable_join_discard">Descartar…</string>
+    <string name="onboarding_discard_join_title">Descartar a entrada não concluída?</string>
+    <string name="onboarding_discard_join_message">Ela não foi concluída, e este celular não consegue ler o que ela salvou. Descartá-la a remove deste celular. A biblioteca na nuvem não é afetada.</string>
+    <string name="onboarding_discard_join_confirm">Descartar</string>
 </resources>

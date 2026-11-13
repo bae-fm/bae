@@ -493,4 +493,9 @@
     <string name="pair_ended_text">Отворете „Добавяне на устройство“ на другото си устройство за нов код.</string>
     <string name="add_device_expired">Този код е изтекъл. Затворете това и изберете отново „Добавяне на устройство“ за нов код.</string>
     <string name="add_device_refused">Заявката на новото устройство беше отказана, затова то не е добавено. Опитайте отново с нов код.</string>
+    <string name="onboarding_unreadable_join_title">Незавършено присъединяване, което не може да бъде прочетено</string>
+    <string name="onboarding_unreadable_join_discard">Отхвърляне…</string>
+    <string name="onboarding_discard_join_title">Да се отхвърли ли незавършеното присъединяване?</string>
+    <string name="onboarding_discard_join_message">То не завърши и този телефон не може да прочете това, което е запазило. Отхвърлянето го премахва от този телефон. Библиотеката в облака не се засяга.</string>
+    <string name="onboarding_discard_join_confirm">Отхвърляне</string>
 </resources>

@@ -25,6 +25,7 @@ import fm.bae.app.title
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidCard
 import fm.bae.app.ui.components.AndroidMoreMenu
 import fm.bae.app.ui.components.AndroidNotice
@@ -32,6 +33,7 @@ import fm.bae.app.ui.components.AndroidProgress
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidSection
 import fm.bae.app.ui.components.AndroidSpinner
+import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.OpenProgressLine
 import fm.bae.app.ui.components.RemoveLibraryDialog
 import fm.bae.app.ui.settings.isUnopenableListing
@@ -54,6 +56,7 @@ internal class WelcomeLibrariesCallbacks(
     val onDetails: (BridgeLibrary) -> Unit,
     val onRemove: (BridgeLibrary) -> Unit,
     val onAdd: () -> Unit,
+    val onDiscardInstallation: (String) -> Unit = {},
 )
 
 /**
@@ -61,13 +64,17 @@ internal class WelcomeLibrariesCallbacks(
  * shows. Tapping a library opens it; its ⋮ menu shows its details in a sheet
  * or removes it, Remove, or Delete for one that was never synced, asking first.
  * The list ends in Add library. Nothing shows while the list loads or when the
- * device holds no library.
+ * device holds no library and no [unreadableInstallation], an unfinished join
+ * or restore this phone can't read, which [onDiscardInstallation] asks to
+ * discard.
  */
 @Composable
 internal fun WelcomeLibrariesSection(
     libraries: WelcomeLibraries,
     onOpen: (BridgeLibrary) -> Unit,
     onAdd: () -> Unit,
+    unreadableInstallation: String? = null,
+    onDiscardInstallation: (String) -> Unit = {},
 ) {
     LaunchedEffect(libraries) { libraries.load() }
     WelcomeLibrariesContent(
@@ -79,7 +86,9 @@ internal fun WelcomeLibrariesSection(
                 onDetails = libraries::showDetails,
                 onRemove = libraries::askToRemove,
                 onAdd = onAdd,
+                onDiscardInstallation = onDiscardInstallation,
             ),
+        unreadableInstallation = unreadableInstallation,
     )
     libraries.failed?.let { failure ->
         RemovalFailedDialog(
@@ -110,6 +119,7 @@ internal fun WelcomeLibrariesContent(
     list: WelcomeLibrariesList,
     running: RunningRemoval?,
     callbacks: WelcomeLibrariesCallbacks,
+    unreadableInstallation: String? = null,
 ) {
     val column =
         Modifier
@@ -128,7 +138,7 @@ internal fun WelcomeLibrariesContent(
         }
 
         is WelcomeLibrariesList.Loaded -> {
-            if (list.libraries.isEmpty()) return
+            if (list.libraries.isEmpty() && unreadableInstallation == null) return
             Column(modifier = column, verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
                 AndroidSection(stringResource(R.string.onboarding_libraries_title))
                 AndroidCard {
@@ -138,6 +148,13 @@ internal fun WelcomeLibrariesContent(
                             busy = running != null,
                             running = running?.takeIf { it.libraryId == library.id },
                             callbacks = callbacks,
+                        )
+                    }
+                    unreadableInstallation?.let {
+                        UnreadableInstallationRow(
+                            it,
+                            busy = running != null,
+                            onDiscard = callbacks.onDiscardInstallation,
                         )
                     }
                     AndroidRow(
@@ -185,6 +202,28 @@ private fun WelcomeLibraryRow(
             },
     ) {
         LibraryMenu(library, busy, callbacks)
+    }
+}
+
+/**
+ * An unfinished join or restore this phone can't read: its library's id under
+ * the name of what it is, with Discard… to delete it. It can't open or resume,
+ * so nothing else is offered.
+ */
+@Composable
+private fun UnreadableInstallationRow(
+    libraryId: String,
+    busy: Boolean,
+    onDiscard: (String) -> Unit,
+) {
+    AndroidRow(
+        title = stringResource(R.string.onboarding_unreadable_join_title),
+        subtitle = libraryId,
+        enabled = !busy,
+    ) {
+        AndroidButton(kind = ButtonKind.TEXT, enabled = !busy, onClick = { onDiscard(libraryId) }) {
+            Text(stringResource(R.string.onboarding_unreadable_join_discard))
+        }
     }
 }
 
@@ -294,10 +333,28 @@ internal fun WelcomeRemovingScene() {
     )
 }
 
+/** The library whose unfinished join the damaged-join screenshot scenes show as unreadable. */
+internal const val SCENE_UNREADABLE_JOIN = "3b9e07d4-51a2-4c8f-b6e3-0f2d9a7c4e81"
+
+/**
+ * The same welcome with an unfinished join this phone can't read after the
+ * libraries, for the `welcome-libraries-damaged-join` screenshot scenes.
+ */
+@Composable
+internal fun WelcomeDamagedJoinScene() {
+    WelcomeScene(
+        libraries =
+            WelcomeLibrariesView(listed = true) { onAdd ->
+                WelcomeLibrariesSceneContent(onAdd, unreadableInstallation = SCENE_UNREADABLE_JOIN)
+            },
+    )
+}
+
 @Composable
 internal fun WelcomeLibrariesSceneContent(
     onAdd: () -> Unit,
     running: RunningRemoval? = null,
+    unreadableInstallation: String? = null,
 ) {
     val dropbox =
         BridgeLibraryState.Openable(
@@ -324,5 +381,6 @@ internal fun WelcomeLibrariesSceneContent(
                 onRemove = {},
                 onAdd = onAdd,
             ),
+        unreadableInstallation = unreadableInstallation,
     )
 }

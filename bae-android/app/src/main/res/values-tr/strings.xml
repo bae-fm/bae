@@ -493,4 +493,9 @@
     <string name="pair_ended_text">Yeni kod için diğer cihazınızda Cihaz ekle’yi açın.</string>
     <string name="add_device_expired">Bu kodun süresi doldu. Bunu kapatın ve yeni kod için Cihaz ekle’yi yeniden seçin.</string>
     <string name="add_device_refused">Yeni cihazın isteği reddedildi, bu yüzden eklenmedi. Yeni bir kodla yeniden deneyin.</string>
+    <string name="onboarding_unreadable_join_title">Okunamayan tamamlanmamış katılma</string>
+    <string name="onboarding_unreadable_join_discard">Sil…</string>
+    <string name="onboarding_discard_join_title">Tamamlanmamış katılma silinsin mi?</string>
+    <string name="onboarding_discard_join_message">Tamamlanmadı ve bu telefon kaydettiğini okuyamıyor. Silmek, onu bu telefondan kaldırır. Buluttaki kitaplığa dokunulmaz.</string>
+    <string name="onboarding_discard_join_confirm">Sil</string>
 </resources>

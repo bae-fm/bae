@@ -502,4 +502,9 @@
     <string name="pair_ended_text">Na drugom uređaju otvorite Dodaj uređaj za novi kôd.</string>
     <string name="add_device_expired">Ovaj je kôd istekao. Zatvorite ovo i ponovno odaberite Dodaj uređaj za novi kôd.</string>
     <string name="add_device_refused">Zahtjev novog uređaja odbijen je pa uređaj nije dodan. Pokušajte ponovno s novim kôdom.</string>
+    <string name="onboarding_unreadable_join_title">Nedovršeno pridruživanje koje se ne može pročitati</string>
+    <string name="onboarding_unreadable_join_discard">Odbaci…</string>
+    <string name="onboarding_discard_join_title">Odbaciti nedovršeno pridruživanje?</string>
+    <string name="onboarding_discard_join_message">Nije dovršeno, a ovaj telefon ne može pročitati što je spremilo. Odbacivanjem se uklanja s ovog telefona. Fonoteka u oblaku ostaje netaknuta.</string>
+    <string name="onboarding_discard_join_confirm">Odbaci</string>
 </resources>

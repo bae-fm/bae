@@ -491,4 +491,9 @@
     <string name="pair_ended_text">Avaa toisella laitteellasi Lisää laite saadaksesi uuden koodin.</string>
     <string name="add_device_expired">Tämä koodi on vanhentunut. Sulje tämä ja valitse Lisää laite uudelleen saadaksesi uuden koodin.</string>
     <string name="add_device_refused">Uuden laitteen pyyntö hylättiin, joten laitetta ei lisätty. Yritä uudelleen uudella koodilla.</string>
+    <string name="onboarding_unreadable_join_title">Keskeneräinen liittyminen, jota ei voi lukea</string>
+    <string name="onboarding_unreadable_join_discard">Hylkää…</string>
+    <string name="onboarding_discard_join_title">Hylätäänkö keskeneräinen liittyminen?</string>
+    <string name="onboarding_discard_join_message">Se ei valmistunut, eikä tämä puhelin pysty lukemaan sen tallentamaa. Hylkääminen poistaa sen tästä puhelimesta. Pilvessä olevaan kirjastoon ei kosketa.</string>
+    <string name="onboarding_discard_join_confirm">Hylkää</string>
 </resources>

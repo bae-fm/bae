@@ -122,13 +122,7 @@ internal fun OnboardingScreen(
         }
     OnboardingSteps(
         flow,
-        libraries =
-            libraries?.let { model ->
-                val listed = (model.list as? WelcomeLibrariesList.Loaded)?.libraries?.isNotEmpty() == true
-                WelcomeLibrariesView(listed = listed) { onAdd ->
-                    WelcomeLibrariesSection(model, onOpen = { actions?.onOpen?.invoke(it) }, onAdd = onAdd)
-                }
-            },
+        libraries = libraries?.let { welcomeLibrariesView(it, flow) { library -> actions?.onOpen?.invoke(library) } },
     )
 }
 

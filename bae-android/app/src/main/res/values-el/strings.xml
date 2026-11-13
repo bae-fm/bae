@@ -491,4 +491,9 @@
     <string name="pair_ended_text">Ανοίξτε την Προσθήκη συσκευής στην άλλη σας συσκευή για νέο κωδικό.</string>
     <string name="add_device_expired">Αυτός ο κωδικός έχει λήξει. Κλείστε αυτό και επιλέξτε ξανά Προσθήκη συσκευής για νέο κωδικό.</string>
     <string name="add_device_refused">Το αίτημα της νέας συσκευής απορρίφθηκε, οπότε δεν προστέθηκε. Δοκιμάστε ξανά με νέο κωδικό.</string>
+    <string name="onboarding_unreadable_join_title">Ημιτελής συμμετοχή που δεν μπορεί να διαβαστεί</string>
+    <string name="onboarding_unreadable_join_discard">Απόρριψη…</string>
+    <string name="onboarding_discard_join_title">Να απορριφθεί η ημιτελής συμμετοχή;</string>
+    <string name="onboarding_discard_join_message">Δεν ολοκληρώθηκε και αυτό το τηλέφωνο δεν μπορεί να διαβάσει όσα αποθήκευσε. Η απόρριψη την αφαιρεί από αυτό το τηλέφωνο. Η βιβλιοθήκη στο cloud δεν επηρεάζεται.</string>
+    <string name="onboarding_discard_join_confirm">Απόρριψη</string>
 </resources>
