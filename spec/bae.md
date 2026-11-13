@@ -204,7 +204,7 @@ credits at every write of them, an import's or an edit's, so it never outlives
 an edit of the artists.
 
 **The album grid** shows every album holding a release, newest first unless
-the person sorts it by title (ignoring ASCII case), artist (§2.3), year or date
+the person sorts it by title, artist (§2.3), year or date
 added, either way; an album of unknown year sorts after every year ascending
 and before them descending, and albums the sort ties go by id. Grouped by
 artist, the grid lists an album under each artist its credits show, once per
@@ -217,6 +217,22 @@ album's credits show, sorted by name or album count, ties going by name and
 then id. Under its name an artist's row, its page and its search result say how
 many albums credit it ("1 album", "3 albums"), in core's words for each
 language.
+
+**Names order in the device's language.** Every list that sorts by a name
+(album titles and artists in the grid, the artist list, the Storage manager's
+album and artist columns) orders them as a reader of the device's language
+expects, by Unicode collation with that language's tailoring: in Swedish å, ä
+and ö come after z, in Spanish ñ after n, in Russian "я" and "Я" sit together,
+and in the root order accented letters sort with their base letter. Names
+that differ only in case have different places, lowercase first. The device
+holds its language in one local row, set by the app at launch and when its
+language changes, and a collation key of every listed name written in that
+language beside the name; lists order by the keys. A change of language, or
+of the collation data the keys were written with, rewrites every key and
+advances the lists' versions in one write, so a list is in one order or the
+other and never between them. The keys are device-local and are not synced;
+every reader of the library file on the device (the app, MCP and Subsonic)
+sees the one order.
 
 **Browsing.** The library shows one view at a time: albums, artists or
 composers. The view's name heads the page, and its menu switches views. At the
@@ -5532,13 +5548,14 @@ What the library lists, bae-views' part, kept by its triggers:
 | `composer_unlinked_credit` | catalog role credit none of its artist's works links (§2.4), keyed by the credit: the artist it shows as and its release |
 | `composer_listing` | artist the composer list shows (§2.4): its name and its counts of works, releases and unlinked credits, with an index for each of the list's sorts |
 | `composer_detail_row` | row of a composer's page (§2.4): a credited work under a work it is part of, a work heading a group, or an unlinked credit under its release, with what the page sorts it by, the heading work's title or the release's album title, album and place, and an index of the page's order |
-| `album_listing` | album the grid shows (§2.1), keyed by the album: its title, year and date added, and its credits' sort names and ids in credit order, with an index for each of the grid's sorts |
-| `album_artist_link` | album the grid shows and artist its credits show: the album's title, year and date added from its `album_listing` row, with an index for each sort of an artist's albums in the grid grouped by artist |
-| `artist_listing` | artist the artist list shows (§2.1): its name, its sort name (else name) and how many shown albums credit it, with an index for each of the list's sorts and the grid's grouping |
-| `release_listing` | release, keyed by the release: what the Storage manager (§4.2) sorts and filters it by — its album's title and credit keys, its media, when it was added, and from its `release_storage` row its files' count and size, whether they are uploaded and how many are pinned and queued — with an index for each sort, alone and under the uploaded filter; whether the download queue holds it waiting or downloading, and whether it holds it failed; whether a move of it failed; and where it sorts by storage, worked out from those: a failed download or move, uploading, pinning (a download in the queue), local, pinned, in storage only |
+| `album_listing` | album the grid shows (§2.1), keyed by the album: its title's sort key, year and date added, and its credits' sort names' sort key and ids in credit order, with an index for each of the grid's sorts |
+| `album_artist_link` | album the grid shows and artist its credits show: the album's title key, year and date added from its `album_listing` row, with an index for each sort of an artist's albums in the grid grouped by artist |
+| `artist_listing` | artist the artist list shows (§2.1): its name, the sort keys of its name and of its sort name (else name) and how many shown albums credit it, with an index for each of the list's sorts and the grid's grouping |
+| `release_listing` | release, keyed by the release: what the Storage manager (§4.2) sorts and filters it by — its album's title key and credit key, its media, when it was added, and from its `release_storage` row its files' count and size, whether they are uploaded and how many are pinned and queued — with an index for each sort, alone and under the uploaded filter; whether the download queue holds it waiting or downloading, and whether it holds it failed; whether a move of it failed; and where it sorts by storage, worked out from those: a failed download or move, uploading, pinning (a download in the queue), local, pinned, in storage only |
 | `release_listing_totals` | uploaded or not: how many releases are, and their files' total size |
 | `upload_batch` | release with files queued to upload since none had any, which the Activity panel's Uploading line counts; whether it is done is read from its `release_storage` row |
 | `upload_batch_number` | one row: how many upload batches have begun, the number of the one `upload_batch` holds, advanced as its first release joins, by which the Uploading line's bar tells a new batch from the one whose bytes it held (§6.4) |
+| `name_sort` | one row: the language this device orders names in (`und`, the root order, until the app sets one) and the version of the collation data every stored name key was written with (§2.1) |
 | `library_list_versions` | table a library list sorts or narrows by (`album_listing`, `album_artist_link`, `artist_listing`, `artist_image` for the artists' pictures the album grid's sections carry, `composer_listing`, `composer_detail_row`, `release_listing`, and `library_search` for what library search finds of albums, which the Storage manager's search narrows by): how many writes have inserted, deleted or reordered its rows, or for `library_search` changed an album's title, an artist's name or other printed name, an album's credits or the artist a credit shows as, advanced by its triggers in each such write, so a read knows whether its last read's rows still sit where they did (§9.2) |
 | `album_search`, `track_search`, `work_search`, `artist_search`, `artist_credit_search` | album title, track title, work title, artist name and sort name, or other printed name, lowercased, in an FTS5 trigram index library search (§2.3) matches against, beside the searched row's key and, for a track or a work, its title to order by |
 | `album_search_entry`, `track_search_entry`, `work_search_entry`, `artist_search_entry`, `artist_credit_search_entry` | searched row, keyed by its own key: the integer its search row is found by |

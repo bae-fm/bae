@@ -38,6 +38,9 @@ uuid = { workspace = true, features = ["v7"] }
 lru = { workspace = true }
 # Natural, case-insensitive name order (src/natural_order.rs).
 natord = { workspace = true }
+# The sort keys names are ordered by, in the viewer's language (src/name_key.rs).
+icu_collator = { workspace = true }
+icu_locale_core = { workspace = true }
 sha2 = { workspace = true }
 hex = { workspace = true }
 # Image downscaling at store time (src/stored_image.rs) runs on every

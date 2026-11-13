@@ -876,6 +876,9 @@ OpenCalls = "LibrarySessions"
 # their scope.
 "bae-types/src/text_match/label.rs" = ["TAILS"]
 "bae-types/src/text_match/title.rs" = ["TRAILING_BRACKET"]
+# Collators built on first use for each language and kept for the process: the
+# process is their scope.
+"bae-util/src/name_key.rs" = ["COLLATORS"]
 
 # An owner's constructor, clone or inner struct builds the owner, and the
 # parts it holds that nothing else shares; a static holds what the process
@@ -1553,6 +1556,7 @@ tables = [
     "artist_credit_search_entry",
     "artist_credit_search",
     "library_list_versions",
+    "name_sort",
 ]
 
 # coreaudio-rs is `coreaudio` in source.

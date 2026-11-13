@@ -135,6 +135,10 @@ keyring-core = "1.0.1"
 libc = "0.2"
 libsqlite3-sys = "0.39.0"
 local-ip-address = "0.6"
+# Pinned exactly: a sort key it writes is valid only for the collation data it
+# wrote it with (`bae_util::name_key::DATA_VERSION`).
+icu_collator = "=2.4.0"
+icu_locale_core = "=2.4.0"
 lofty = "0.25"
 lru = "0.18.2"
 md5 = { package = "md-5", version = "0.10" }

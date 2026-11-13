@@ -63,11 +63,11 @@ BEGIN
     UPDATE library_list_versions SET version = version + 1 WHERE source = 'album_listing';
 END;
 
-CREATE TRIGGER IF NOT EXISTS album_listing_order_moved AFTER UPDATE OF title, year, created_at, credit_sort_names, credit_artist_ids ON album_listing
-WHEN OLD.title IS NOT NEW.title
+CREATE TRIGGER IF NOT EXISTS album_listing_order_moved AFTER UPDATE OF title_sort_key, year, created_at, credit_sort_key, credit_artist_ids ON album_listing
+WHEN OLD.title_sort_key IS NOT NEW.title_sort_key
   OR OLD.year IS NOT NEW.year
   OR OLD.created_at IS NOT NEW.created_at
-  OR OLD.credit_sort_names IS NOT NEW.credit_sort_names
+  OR OLD.credit_sort_key IS NOT NEW.credit_sort_key
   OR OLD.credit_artist_ids IS NOT NEW.credit_artist_ids
 BEGIN
     UPDATE library_list_versions SET version = version + 1 WHERE source = 'album_listing';
@@ -83,8 +83,8 @@ BEGIN
     UPDATE library_list_versions SET version = version + 1 WHERE source = 'album_artist_link';
 END;
 
-CREATE TRIGGER IF NOT EXISTS album_artist_link_order_moved AFTER UPDATE OF title, year, created_at ON album_artist_link
-WHEN OLD.title IS NOT NEW.title
+CREATE TRIGGER IF NOT EXISTS album_artist_link_order_moved AFTER UPDATE OF title_sort_key, year, created_at ON album_artist_link
+WHEN OLD.title_sort_key IS NOT NEW.title_sort_key
   OR OLD.year IS NOT NEW.year
   OR OLD.created_at IS NOT NEW.created_at
 BEGIN
@@ -101,9 +101,10 @@ BEGIN
     UPDATE library_list_versions SET version = version + 1 WHERE source = 'artist_listing';
 END;
 
-CREATE TRIGGER IF NOT EXISTS artist_listing_order_moved AFTER UPDATE OF name, sort_key, album_count ON artist_listing
+CREATE TRIGGER IF NOT EXISTS artist_listing_order_moved AFTER UPDATE OF name, name_sort_key, sort_name_sort_key, album_count ON artist_listing
 WHEN OLD.name IS NOT NEW.name
-  OR OLD.sort_key IS NOT NEW.sort_key
+  OR OLD.name_sort_key IS NOT NEW.name_sort_key
+  OR OLD.sort_name_sort_key IS NOT NEW.sort_name_sort_key
   OR OLD.album_count IS NOT NEW.album_count
 BEGIN
     UPDATE library_list_versions SET version = version + 1 WHERE source = 'artist_listing';
@@ -156,9 +157,9 @@ BEGIN
     UPDATE library_list_versions SET version = version + 1 WHERE source = 'release_listing';
 END;
 
-CREATE TRIGGER IF NOT EXISTS release_listing_order_moved AFTER UPDATE OF album_title, credit_sort_names, credit_artist_ids, media_empty, media_key, file_count, total_size, stored, queued_count, download_queued, download_failed, move_failed, pinned_count ON release_listing
-WHEN OLD.album_title IS NOT NEW.album_title
-  OR OLD.credit_sort_names IS NOT NEW.credit_sort_names
+CREATE TRIGGER IF NOT EXISTS release_listing_order_moved AFTER UPDATE OF album_title_sort_key, credit_sort_key, credit_artist_ids, media_empty, media_key, file_count, total_size, stored, queued_count, download_queued, download_failed, move_failed, pinned_count ON release_listing
+WHEN OLD.album_title_sort_key IS NOT NEW.album_title_sort_key
+  OR OLD.credit_sort_key IS NOT NEW.credit_sort_key
   OR OLD.credit_artist_ids IS NOT NEW.credit_artist_ids
   OR OLD.media_empty IS NOT NEW.media_empty
   OR OLD.media_key IS NOT NEW.media_key

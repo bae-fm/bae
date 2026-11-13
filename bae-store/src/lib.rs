@@ -28,7 +28,7 @@ pub mod read;
 pub mod schema;
 pub use schema::{
     configure_store, Schema, SchemaCollation, SchemaFunction, SchemaPart, SqlArguments, FOLD_CASE,
-    NATURAL_ORDER, SEARCH_PATTERN,
+    NAME_KEY, NAME_LIST_KEY, NATURAL_ORDER, SEARCH_PATTERN,
 };
 mod store;
 pub use store::{syncs_on, utc_now, StorageSetupSteps, Store, UNMETERED_ONLY, UPLOADS_PAUSED};

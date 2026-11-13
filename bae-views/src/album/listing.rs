@@ -278,7 +278,7 @@ pub(super) fn album_browse_sources(group_by_artist: bool) -> &'static [&'static 
 /// Artist direction.
 pub(super) fn album_browse_sections_query(direction: SortDirection) -> String {
     let dir = sort_direction_sql(direction);
-    let order = format!("artist.sort_key COLLATE NOCASE {dir}, artist.artist_id {dir}");
+    let order = format!("artist.sort_name_sort_key {dir}, artist.artist_id {dir}");
     format!(
         "SELECT artist.artist_id, artist.name, \
                 SUM(artist.album_count) OVER (ORDER BY {order} ROWS UNBOUNDED PRECEDING) \
@@ -334,16 +334,15 @@ fn album_order(sort: &[AlbumSortCriterion], rows: AlbumRows) -> ListOrder {
             let dir = c.direction;
             match c.field {
                 AlbumSortField::Title => {
-                    vec![SortTerm::running(format!("{values}.title COLLATE NOCASE"), dir)]
+                    vec![SortTerm::running(format!("{values}.title_sort_key"), dir)]
                 }
                 AlbumSortField::Artist => match rows {
                     AlbumRows::Flat => vec![
-                        SortTerm::running("listing.credit_sort_names COLLATE NOCASE", dir)
-                            .nullable(),
+                        SortTerm::running("listing.credit_sort_key", dir).nullable(),
                         SortTerm::running("listing.credit_artist_ids", dir).nullable(),
                     ],
                     AlbumRows::ByArtist => vec![
-                        SortTerm::running("artist.sort_key COLLATE NOCASE", dir),
+                        SortTerm::running("artist.sort_name_sort_key", dir),
                         SortTerm::running("artist.artist_id", dir),
                     ],
                 },

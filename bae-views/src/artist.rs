@@ -276,14 +276,14 @@ pub(crate) fn artist_order(sort: &[ArtistSortCriterion]) -> ListOrder {
         .iter()
         .map(|c| {
             let field = match c.field {
-                ArtistSortField::Name => "listing.name",
+                ArtistSortField::Name => "listing.name_sort_key",
                 ArtistSortField::AlbumCount => "listing.album_count",
             };
             SortTerm::running(field, c.direction)
         })
         .collect::<Vec<_>>();
     let ordered_by_name = sort.iter().any(|c| c.field == ArtistSortField::Name);
-    ListOrder::named(terms, ordered_by_name, "listing.name", "listing.artist_id")
+    ListOrder::named(terms, ordered_by_name, "listing.name_sort_key", "listing.artist_id")
 }
 
 #[derive(Debug, Clone, PartialEq)]

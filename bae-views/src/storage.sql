@@ -7,7 +7,7 @@
 -- and Local filters.
 
 -- Each release, with what the Storage Manager sorts and filters it by:
--- `album_title` and the credit keys copied from its album's `album_listing`
+-- `album_title_sort_key` and the credit key copied from its album's `album_listing`
 -- row; `media_empty` and `media_key` as `release_media_sort` works them out
 -- from its `release_media`; `created_at`, when the release was added; its
 -- files' count and total size, `stored`, `pinned_count` and
@@ -21,8 +21,8 @@
 CREATE TABLE IF NOT EXISTS release_listing (
     release_id TEXT PRIMARY KEY REFERENCES releases (id) ON DELETE CASCADE,
     album_id TEXT NOT NULL,
-    album_title TEXT NOT NULL,
-    credit_sort_names TEXT,
+    album_title_sort_key BLOB NOT NULL,
+    credit_sort_key BLOB,
     credit_artist_ids TEXT,
     media_empty INTEGER NOT NULL,
     media_key TEXT,
@@ -46,35 +46,35 @@ CREATE TABLE IF NOT EXISTS release_listing (
 
 CREATE INDEX IF NOT EXISTS idx_release_listing_album ON release_listing (album_id);
 
-CREATE INDEX IF NOT EXISTS idx_release_listing_title ON release_listing (album_title COLLATE NOCASE, created_at, release_id);
-CREATE INDEX IF NOT EXISTS idx_release_listing_title_desc ON release_listing (album_title COLLATE NOCASE DESC, created_at, release_id);
-CREATE INDEX IF NOT EXISTS idx_release_listing_credits ON release_listing (credit_sort_names COLLATE NOCASE, credit_artist_ids, album_title COLLATE NOCASE, created_at, release_id);
-CREATE INDEX IF NOT EXISTS idx_release_listing_credits_desc ON release_listing (credit_sort_names COLLATE NOCASE DESC, credit_artist_ids DESC, album_title COLLATE NOCASE, created_at, release_id);
-CREATE INDEX IF NOT EXISTS idx_release_listing_media ON release_listing (media_empty, media_key, album_title COLLATE NOCASE, created_at, release_id);
-CREATE INDEX IF NOT EXISTS idx_release_listing_media_desc ON release_listing (media_empty, media_key DESC, album_title COLLATE NOCASE, created_at, release_id);
-CREATE INDEX IF NOT EXISTS idx_release_listing_files ON release_listing (file_count, album_title COLLATE NOCASE, created_at, release_id);
-CREATE INDEX IF NOT EXISTS idx_release_listing_files_desc ON release_listing (file_count DESC, album_title COLLATE NOCASE, created_at, release_id);
-CREATE INDEX IF NOT EXISTS idx_release_listing_size ON release_listing (total_size, album_title COLLATE NOCASE, created_at, release_id);
-CREATE INDEX IF NOT EXISTS idx_release_listing_size_desc ON release_listing (total_size DESC, album_title COLLATE NOCASE, created_at, release_id);
-CREATE INDEX IF NOT EXISTS idx_release_listing_storage ON release_listing (storage_order, album_title COLLATE NOCASE, created_at, release_id);
-CREATE INDEX IF NOT EXISTS idx_release_listing_storage_desc ON release_listing (storage_order DESC, album_title COLLATE NOCASE, created_at, release_id);
-CREATE INDEX IF NOT EXISTS idx_release_listing_added ON release_listing (created_at, album_title COLLATE NOCASE, release_id);
-CREATE INDEX IF NOT EXISTS idx_release_listing_added_desc ON release_listing (created_at DESC, album_title COLLATE NOCASE, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_title ON release_listing (album_title_sort_key, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_title_desc ON release_listing (album_title_sort_key DESC, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_credits ON release_listing (credit_sort_key, credit_artist_ids, album_title_sort_key, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_credits_desc ON release_listing (credit_sort_key DESC, credit_artist_ids DESC, album_title_sort_key, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_media ON release_listing (media_empty, media_key, album_title_sort_key, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_media_desc ON release_listing (media_empty, media_key DESC, album_title_sort_key, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_files ON release_listing (file_count, album_title_sort_key, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_files_desc ON release_listing (file_count DESC, album_title_sort_key, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_size ON release_listing (total_size, album_title_sort_key, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_size_desc ON release_listing (total_size DESC, album_title_sort_key, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_storage ON release_listing (storage_order, album_title_sort_key, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_storage_desc ON release_listing (storage_order DESC, album_title_sort_key, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_added ON release_listing (created_at, album_title_sort_key, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_added_desc ON release_listing (created_at DESC, album_title_sort_key, release_id);
 
-CREATE INDEX IF NOT EXISTS idx_release_listing_stored_title ON release_listing (stored, album_title COLLATE NOCASE, created_at, release_id);
-CREATE INDEX IF NOT EXISTS idx_release_listing_stored_title_desc ON release_listing (stored, album_title COLLATE NOCASE DESC, created_at, release_id);
-CREATE INDEX IF NOT EXISTS idx_release_listing_stored_credits ON release_listing (stored, credit_sort_names COLLATE NOCASE, credit_artist_ids, album_title COLLATE NOCASE, created_at, release_id);
-CREATE INDEX IF NOT EXISTS idx_release_listing_stored_credits_desc ON release_listing (stored, credit_sort_names COLLATE NOCASE DESC, credit_artist_ids DESC, album_title COLLATE NOCASE, created_at, release_id);
-CREATE INDEX IF NOT EXISTS idx_release_listing_stored_media ON release_listing (stored, media_empty, media_key, album_title COLLATE NOCASE, created_at, release_id);
-CREATE INDEX IF NOT EXISTS idx_release_listing_stored_media_desc ON release_listing (stored, media_empty, media_key DESC, album_title COLLATE NOCASE, created_at, release_id);
-CREATE INDEX IF NOT EXISTS idx_release_listing_stored_files ON release_listing (stored, file_count, album_title COLLATE NOCASE, created_at, release_id);
-CREATE INDEX IF NOT EXISTS idx_release_listing_stored_files_desc ON release_listing (stored, file_count DESC, album_title COLLATE NOCASE, created_at, release_id);
-CREATE INDEX IF NOT EXISTS idx_release_listing_stored_size ON release_listing (stored, total_size, album_title COLLATE NOCASE, created_at, release_id);
-CREATE INDEX IF NOT EXISTS idx_release_listing_stored_size_desc ON release_listing (stored, total_size DESC, album_title COLLATE NOCASE, created_at, release_id);
-CREATE INDEX IF NOT EXISTS idx_release_listing_stored_storage ON release_listing (stored, storage_order, album_title COLLATE NOCASE, created_at, release_id);
-CREATE INDEX IF NOT EXISTS idx_release_listing_stored_storage_desc ON release_listing (stored, storage_order DESC, album_title COLLATE NOCASE, created_at, release_id);
-CREATE INDEX IF NOT EXISTS idx_release_listing_stored_added ON release_listing (stored, created_at, album_title COLLATE NOCASE, release_id);
-CREATE INDEX IF NOT EXISTS idx_release_listing_stored_added_desc ON release_listing (stored, created_at DESC, album_title COLLATE NOCASE, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_stored_title ON release_listing (stored, album_title_sort_key, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_stored_title_desc ON release_listing (stored, album_title_sort_key DESC, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_stored_credits ON release_listing (stored, credit_sort_key, credit_artist_ids, album_title_sort_key, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_stored_credits_desc ON release_listing (stored, credit_sort_key DESC, credit_artist_ids DESC, album_title_sort_key, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_stored_media ON release_listing (stored, media_empty, media_key, album_title_sort_key, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_stored_media_desc ON release_listing (stored, media_empty, media_key DESC, album_title_sort_key, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_stored_files ON release_listing (stored, file_count, album_title_sort_key, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_stored_files_desc ON release_listing (stored, file_count DESC, album_title_sort_key, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_stored_size ON release_listing (stored, total_size, album_title_sort_key, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_stored_size_desc ON release_listing (stored, total_size DESC, album_title_sort_key, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_stored_storage ON release_listing (stored, storage_order, album_title_sort_key, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_stored_storage_desc ON release_listing (stored, storage_order DESC, album_title_sort_key, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_stored_added ON release_listing (stored, created_at, album_title_sort_key, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_stored_added_desc ON release_listing (stored, created_at DESC, album_title_sort_key, release_id);
 
 -- How many releases are stored and how many aren't, and their files' total
 -- size, for the Storage Manager's count and total: a row for each of `stored`
@@ -131,10 +131,10 @@ CREATE VIEW IF NOT EXISTS release_listing_refresh AS SELECT NULL AS release_id W
 CREATE TRIGGER IF NOT EXISTS release_listing_refresh INSTEAD OF INSERT ON release_listing_refresh
 BEGIN
     INSERT INTO release_listing (
-        release_id, album_id, album_title, credit_sort_names, credit_artist_ids,
+        release_id, album_id, album_title_sort_key, credit_sort_key, credit_artist_ids,
         media_empty, media_key, created_at, file_count, total_size, stored, pinned_count,
         queued_count, download_queued, download_failed, move_failed)
-    SELECT r.id, r.album_id, album.title, album.credit_sort_names, album.credit_artist_ids,
+    SELECT r.id, r.album_id, album.title_sort_key, album.credit_sort_key, album.credit_artist_ids,
            media.media_empty,
            media.media_key,
            r.created_at,
@@ -155,8 +155,8 @@ BEGIN
     WHERE r.id = NEW.release_id
     ON CONFLICT (release_id) DO UPDATE SET
         album_id = excluded.album_id,
-        album_title = excluded.album_title,
-        credit_sort_names = excluded.credit_sort_names,
+        album_title_sort_key = excluded.album_title_sort_key,
+        credit_sort_key = excluded.credit_sort_key,
         credit_artist_ids = excluded.credit_artist_ids,
         media_empty = excluded.media_empty,
         media_key = excluded.media_key,
@@ -242,9 +242,9 @@ BEGIN
       AND EXISTS (SELECT 1 FROM release_storage storage WHERE storage.release_id = r.id);
 END;
 
-CREATE TRIGGER IF NOT EXISTS release_listing_album_changed AFTER UPDATE OF title, credit_sort_names, credit_artist_ids ON album_listing
-WHEN OLD.title IS NOT NEW.title
-  OR OLD.credit_sort_names IS NOT NEW.credit_sort_names
+CREATE TRIGGER IF NOT EXISTS release_listing_album_changed AFTER UPDATE OF title_sort_key, credit_sort_key, credit_artist_ids ON album_listing
+WHEN OLD.title_sort_key IS NOT NEW.title_sort_key
+  OR OLD.credit_sort_key IS NOT NEW.credit_sort_key
   OR OLD.credit_artist_ids IS NOT NEW.credit_artist_ids
 BEGIN
     INSERT INTO release_listing_refresh (release_id)

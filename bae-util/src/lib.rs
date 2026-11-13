@@ -11,6 +11,7 @@ pub mod error_text;
 pub mod fs;
 pub mod http;
 pub mod logging;
+pub mod name_key;
 pub mod natural_order;
 #[cfg(unix)]
 pub mod open_file_limit;

@@ -33,6 +33,8 @@ mod invites;
 pub use invites::{InviteEntry, OpenInvite, RefusedInvite};
 mod models;
 pub mod playlists;
+mod name_sort;
+pub use name_sort::SortLanguageError;
 pub mod release;
 #[cfg(desktop)]
 mod release_files;
@@ -103,6 +105,7 @@ use std::collections::BTreeSet;
 /// the order each runs after the files creating the tables its triggers fire
 /// on.
 pub const SCHEMA_PARTS: &[bae_store::SchemaPart] = &[bae_store::SchemaPart::new(&[
+    name_sort::SQL,
     album::LISTING_SQL,
     artist::SQL,
     composer::SQL,
@@ -115,7 +118,8 @@ pub const SCHEMA_PARTS: &[bae_store::SchemaPart] = &[bae_store::SchemaPart::new(
 .functions(SQL_FUNCTIONS)];
 
 /// The SQL functions the views' SQL names.
-const SQL_FUNCTIONS: &[&bae_store::SchemaFunction] = &[&bae_store::FOLD_CASE];
+const SQL_FUNCTIONS: &[&bae_store::SchemaFunction] =
+    &[&bae_store::FOLD_CASE, &bae_store::NAME_KEY, &bae_store::NAME_LIST_KEY];
 
 /// The schema this crate's tests open their stores on: records' and release
 /// storage's parts, people's and membership's, the sync status's part,

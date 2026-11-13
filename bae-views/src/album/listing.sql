@@ -2,23 +2,25 @@
 -- artist lists it once under each artist its credits show. These tables hold
 -- what it sorts and groups by, kept by the triggers below.
 
--- Each album the library shows, with the values its sorts compare. The credit
--- keys sort it by artist: every credit's shown artist's sort name (else name),
--- then their ids, each in credit order and joined by a separator below every
--- printable character, so "A" sorts before "A & B" and "A & B" before
--- "A & C"; NULL for an album with no credits.
+-- Each album the library shows, with the values its sorts compare. `title_sort_key`
+-- is the title's sort key in the device's language (`name_sort`). The credit
+-- keys sort it by artist: `credit_sort_key` is the key of every credit's shown
+-- artist's sort name (else name), each in credit order, so "A" sorts before
+-- "A & B" and "A & B" before "A & C", and `credit_artist_ids` their ids,
+-- joined by a separator below every printable character; both NULL for an
+-- album with no credits.
 CREATE TABLE IF NOT EXISTS album_listing (
     album_id TEXT PRIMARY KEY REFERENCES albums (id) ON DELETE CASCADE,
-    title TEXT NOT NULL,
+    title_sort_key BLOB NOT NULL,
     year INTEGER,
     created_at TEXT NOT NULL,
-    credit_sort_names TEXT,
+    credit_sort_key BLOB,
     credit_artist_ids TEXT
 ) STRICT;
 
-CREATE INDEX IF NOT EXISTS idx_album_listing_title ON album_listing (title COLLATE NOCASE, album_id);
+CREATE INDEX IF NOT EXISTS idx_album_listing_title ON album_listing (title_sort_key, album_id);
 
-CREATE INDEX IF NOT EXISTS idx_album_listing_title_desc ON album_listing (title COLLATE NOCASE DESC, album_id);
+CREATE INDEX IF NOT EXISTS idx_album_listing_title_desc ON album_listing (title_sort_key DESC, album_id);
 
 CREATE INDEX IF NOT EXISTS idx_album_listing_added ON album_listing (created_at, album_id);
 
@@ -28,19 +30,19 @@ CREATE INDEX IF NOT EXISTS idx_album_listing_year ON album_listing (year IS NULL
 
 CREATE INDEX IF NOT EXISTS idx_album_listing_year_desc ON album_listing (year IS NULL DESC, year DESC, album_id);
 
-CREATE INDEX IF NOT EXISTS idx_album_listing_credits ON album_listing (credit_sort_names COLLATE NOCASE, credit_artist_ids, album_id);
+CREATE INDEX IF NOT EXISTS idx_album_listing_credits ON album_listing (credit_sort_key, credit_artist_ids, album_id);
 
-CREATE INDEX IF NOT EXISTS idx_album_listing_credits_desc ON album_listing (credit_sort_names COLLATE NOCASE DESC, credit_artist_ids DESC, album_id);
+CREATE INDEX IF NOT EXISTS idx_album_listing_credits_desc ON album_listing (credit_sort_key DESC, credit_artist_ids DESC, album_id);
 
 -- Each album the library shows and each artist one of its credits shows,
--- once however many credits name that artist, with the title, year and date
+-- once however many credits name that artist, with the title key, year and date
 -- added of the album's `album_listing` row: the grid grouped by artist reads
 -- each artist's albums in the grid's sort from an index here, after
 -- `artist_listing`'s index has put the artists in order, and sorts none.
 CREATE TABLE IF NOT EXISTS album_artist_link (
     artist_id TEXT NOT NULL,
     album_id TEXT NOT NULL REFERENCES album_listing (album_id) ON DELETE CASCADE,
-    title TEXT NOT NULL,
+    title_sort_key BLOB NOT NULL,
     year INTEGER,
     created_at TEXT NOT NULL,
     PRIMARY KEY (artist_id, album_id)
@@ -48,9 +50,9 @@ CREATE TABLE IF NOT EXISTS album_artist_link (
 
 CREATE INDEX IF NOT EXISTS idx_album_artist_link_album ON album_artist_link (album_id);
 
-CREATE INDEX IF NOT EXISTS idx_album_artist_link_title ON album_artist_link (artist_id, title COLLATE NOCASE, album_id);
+CREATE INDEX IF NOT EXISTS idx_album_artist_link_title ON album_artist_link (artist_id, title_sort_key, album_id);
 
-CREATE INDEX IF NOT EXISTS idx_album_artist_link_title_desc ON album_artist_link (artist_id, title COLLATE NOCASE DESC, album_id);
+CREATE INDEX IF NOT EXISTS idx_album_artist_link_title_desc ON album_artist_link (artist_id, title_sort_key DESC, album_id);
 
 CREATE INDEX IF NOT EXISTS idx_album_artist_link_added ON album_artist_link (artist_id, created_at, album_id);
 
@@ -73,51 +75,56 @@ CREATE TRIGGER IF NOT EXISTS album_listing_refresh INSTEAD OF INSERT ON album_li
 BEGIN
     DELETE FROM album_listing WHERE album_id = NEW.album_id
         AND NOT EXISTS (SELECT 1 FROM releases WHERE album_id = NEW.album_id);
-    INSERT INTO album_listing (album_id, title, year, created_at, credit_sort_names, credit_artist_ids)
-    SELECT a.id, a.title, a.year, a.created_at,
-           (SELECT GROUP_CONCAT(COALESCE(credited.sort_name, credited.name), char(31) ORDER BY credit.position)
-            FROM album_artists credit
-            JOIN artist_shown_as shown ON shown.artist_id = credit.artist_id
-            JOIN artists credited ON credited.id = shown.shown_artist_id
-            WHERE credit.album_id = a.id),
-           (SELECT GROUP_CONCAT(credited.id, char(31) ORDER BY credit.position)
-            FROM album_artists credit
-            JOIN artist_shown_as shown ON shown.artist_id = credit.artist_id
-            JOIN artists credited ON credited.id = shown.shown_artist_id
-            WHERE credit.album_id = a.id)
-    FROM albums a
-    WHERE a.id = NEW.album_id AND EXISTS (SELECT 1 FROM releases WHERE album_id = a.id)
+    INSERT INTO album_listing (album_id, title_sort_key, year, created_at, credit_sort_key, credit_artist_ids)
+    SELECT album_id, bae_name_key(title, language), year, created_at,
+           bae_name_list_key(credit_sort_names, language), credit_artist_ids
+    FROM (
+        SELECT a.id AS album_id, a.title, a.year, a.created_at,
+               (SELECT GROUP_CONCAT(COALESCE(credited.sort_name, credited.name), char(31) ORDER BY credit.position)
+                FROM album_artists credit
+                JOIN artist_shown_as shown ON shown.artist_id = credit.artist_id
+                JOIN artists credited ON credited.id = shown.shown_artist_id
+                WHERE credit.album_id = a.id) AS credit_sort_names,
+               (SELECT GROUP_CONCAT(credited.id, char(31) ORDER BY credit.position)
+                FROM album_artists credit
+                JOIN artist_shown_as shown ON shown.artist_id = credit.artist_id
+                JOIN artists credited ON credited.id = shown.shown_artist_id
+                WHERE credit.album_id = a.id) AS credit_artist_ids
+        FROM albums a
+        WHERE a.id = NEW.album_id AND EXISTS (SELECT 1 FROM releases WHERE album_id = a.id)
+    ) CROSS JOIN (SELECT language FROM name_sort)
+    WHERE true
     ON CONFLICT (album_id) DO UPDATE SET
-        title = excluded.title,
+        title_sort_key = excluded.title_sort_key,
         year = excluded.year,
         created_at = excluded.created_at,
-        credit_sort_names = excluded.credit_sort_names,
+        credit_sort_key = excluded.credit_sort_key,
         credit_artist_ids = excluded.credit_artist_ids
-    WHERE album_listing.title IS NOT excluded.title
+    WHERE album_listing.title_sort_key IS NOT excluded.title_sort_key
        OR album_listing.year IS NOT excluded.year
        OR album_listing.created_at IS NOT excluded.created_at
-       OR album_listing.credit_sort_names IS NOT excluded.credit_sort_names
+       OR album_listing.credit_sort_key IS NOT excluded.credit_sort_key
        OR album_listing.credit_artist_ids IS NOT excluded.credit_artist_ids;
     DELETE FROM album_artist_link WHERE album_id = NEW.album_id
         AND artist_id NOT IN (
             SELECT shown.shown_artist_id FROM album_artists credit
             JOIN artist_shown_as shown ON shown.artist_id = credit.artist_id
             WHERE credit.album_id = NEW.album_id);
-    INSERT OR IGNORE INTO album_artist_link (artist_id, album_id, title, year, created_at)
-    SELECT DISTINCT shown.shown_artist_id, listing.album_id, listing.title, listing.year, listing.created_at
+    INSERT OR IGNORE INTO album_artist_link (artist_id, album_id, title_sort_key, year, created_at)
+    SELECT DISTINCT shown.shown_artist_id, listing.album_id, listing.title_sort_key, listing.year, listing.created_at
     FROM album_listing listing
     JOIN album_artists credit ON credit.album_id = listing.album_id
     JOIN artist_shown_as shown ON shown.artist_id = credit.artist_id
     WHERE listing.album_id = NEW.album_id;
 END;
 
--- A listing row's title, year or date added changing moves its links with it.
-CREATE TRIGGER IF NOT EXISTS album_listing_values_changed AFTER UPDATE OF title, year, created_at ON album_listing
-WHEN OLD.title IS NOT NEW.title
+-- A listing row's title key, year or date added changing moves its links with it.
+CREATE TRIGGER IF NOT EXISTS album_listing_values_changed AFTER UPDATE OF title_sort_key, year, created_at ON album_listing
+WHEN OLD.title_sort_key IS NOT NEW.title_sort_key
   OR OLD.year IS NOT NEW.year
   OR OLD.created_at IS NOT NEW.created_at
 BEGIN
-    UPDATE album_artist_link SET title = NEW.title, year = NEW.year, created_at = NEW.created_at
+    UPDATE album_artist_link SET title_sort_key = NEW.title_sort_key, year = NEW.year, created_at = NEW.created_at
     WHERE album_id = NEW.album_id;
 END;
 

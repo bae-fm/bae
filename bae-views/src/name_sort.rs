@@ -1,0 +1,78 @@
+//! The language this device orders names in, and the rewrite of every stored
+//! name key when it, or the collation data the keys are written with, changes.
+//!
+//! Its table is `name_sort.sql`; the keys are the columns the listings'
+//! triggers write (`album/listing.sql`, `artist.sql`, `storage.sql`).
+
+use super::*;
+use bae_util::name_key::{InvalidLanguage, NameKeys, DATA_VERSION};
+
+/// The SQL creating this part's table.
+pub(crate) const SQL: &str = include_str!("name_sort.sql");
+
+/// A language the device's names could not be ordered in.
+#[derive(Debug, thiserror::Error)]
+pub enum SortLanguageError {
+    /// The tag is not a language tag.
+    #[error(transparent)]
+    Invalid(#[from] InvalidLanguage),
+    #[error(transparent)]
+    Database(#[from] DbError),
+}
+
+/// Every listing's key columns written again from the rows they come from,
+/// in the language of `name_sort`: the albums are listed again, which writes
+/// their links' and releases' keys through the triggers that copy them, and
+/// the artists' keys are written from their names.
+const REKEY: &[&str] = &[
+    "INSERT INTO album_listing_refresh (album_id) SELECT album_id FROM album_listing",
+    "UPDATE artist_listing SET \
+         name_sort_key = bae_name_key(artists.name, (SELECT language FROM name_sort)), \
+         sort_name_sort_key = bae_name_key(COALESCE(artists.sort_name, artists.name), \
+                                      (SELECT language FROM name_sort)) \
+     FROM artists WHERE artists.id = artist_listing.artist_id",
+];
+
+impl LibraryViews {
+    /// Order this device's names in the language `tag`: every stored name key
+    /// is written again in it, and the lists' versions advance with the keys,
+    /// in one write that commits whole or not at all. A device already
+    /// ordering in `tag` with keys of the current collation data writes
+    /// nothing, so this is safe to call at every start, and to call again
+    /// after it failed.
+    pub async fn set_sort_language(&self, tag: &str) -> Result<(), SortLanguageError> {
+        let language = NameKeys::for_language(tag)?.tag().to_string();
+        Ok(self
+            .store
+            .call_bulk(move |sql| {
+                let (stored, version): (String, u32) =
+                    sql.query_row("SELECT language, data_version FROM name_sort", [], |row| {
+                        Ok((row.get(0)?, row.get(1)?))
+                    })?;
+                if stored == language && version == DATA_VERSION {
+                    return Ok(());
+                }
+                sql.execute(
+                    "UPDATE name_sort SET language = ?1, data_version = ?2",
+                    params![language, DATA_VERSION],
+                )?;
+                for statement in REKEY {
+                    sql.execute(statement, [])?;
+                }
+                Ok(())
+            })
+            .await?)
+    }
+
+    /// The language this device orders names in: `und`, the root order, until
+    /// it is set.
+    pub async fn sort_language(&self) -> Result<String, DbError> {
+        self.store
+            .read(|sql| Ok(sql.query_row("SELECT language FROM name_sort", [], |row| row.get(0))?))
+            .await
+    }
+}
+
+#[cfg(test)]
+#[path = "name_sort_tests.rs"]
+mod tests;

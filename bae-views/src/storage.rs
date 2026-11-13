@@ -727,34 +727,34 @@ pub(crate) fn storage_order(sort: &StorageSortCriterion) -> ListOrder {
     let dir = sort.direction;
     let mut terms = match sort.field {
         StorageSortField::AlbumTitle => {
-            vec![SortTerm::running("listing.album_title COLLATE NOCASE", dir)]
+            vec![SortTerm::running("listing.album_title_sort_key", dir)]
         }
         StorageSortField::ArtistNames => vec![
-            SortTerm::running("listing.credit_sort_names COLLATE NOCASE", dir).nullable(),
+            SortTerm::running("listing.credit_sort_key", dir).nullable(),
             SortTerm::running("listing.credit_artist_ids", dir).nullable(),
-            SortTerm::ascending("listing.album_title COLLATE NOCASE"),
+            SortTerm::ascending("listing.album_title_sort_key"),
         ],
         // A release stating no medium goes last either way.
         StorageSortField::Media => vec![
             SortTerm::ascending("listing.media_empty"),
             SortTerm::running("listing.media_key", dir).nullable(),
-            SortTerm::ascending("listing.album_title COLLATE NOCASE"),
+            SortTerm::ascending("listing.album_title_sort_key"),
         ],
         StorageSortField::FileCount => vec![
             SortTerm::running("listing.file_count", dir),
-            SortTerm::ascending("listing.album_title COLLATE NOCASE"),
+            SortTerm::ascending("listing.album_title_sort_key"),
         ],
         StorageSortField::TotalSize => vec![
             SortTerm::running("listing.total_size", dir),
-            SortTerm::ascending("listing.album_title COLLATE NOCASE"),
+            SortTerm::ascending("listing.album_title_sort_key"),
         ],
         StorageSortField::Storage => vec![
             SortTerm::running("listing.storage_order", dir),
-            SortTerm::ascending("listing.album_title COLLATE NOCASE"),
+            SortTerm::ascending("listing.album_title_sort_key"),
         ],
         StorageSortField::DateAdded => vec![
             SortTerm::running("listing.created_at", dir),
-            SortTerm::ascending("listing.album_title COLLATE NOCASE"),
+            SortTerm::ascending("listing.album_title_sort_key"),
         ],
     };
     if sort.field != StorageSortField::DateAdded {

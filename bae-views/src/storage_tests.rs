@@ -696,10 +696,12 @@ async fn renaming_an_album_renames_its_releases_listing_rows() {
         )
         .await
         .unwrap();
-    let titles: Vec<String> = db
+    let renamed: Vec<bool> = db
         .call(|conn| {
             Ok(conn.query(
-                "SELECT album_title FROM release_listing \
+                "SELECT album_title_sort_key = bae_name_key('Album Title Renamed', \
+                                                       (SELECT language FROM name_sort)) \
+                 FROM release_listing \
                  WHERE album_id = '07d22f7d-3980-4c81-9d27-8fcd50ee3464'",
                 [],
                 |row| row.get(0),
@@ -707,7 +709,7 @@ async fn renaming_an_album_renames_its_releases_listing_rows() {
         })
         .await
         .unwrap();
-    assert_eq!(titles, vec!["Album Title Renamed".to_string(); 2]);
+    assert_eq!(renamed, vec![true; 2]);
 }
 
 /// The trigger that runs first of the two on a release arriving, which
