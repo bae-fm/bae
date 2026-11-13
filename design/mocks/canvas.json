@@ -3890,6 +3890,22 @@
    "w": 690,
    "x": 3096,
    "y": 27204
+  },
+  "android.settings.person.add-device.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "A person: add a device for them",
+   "w": 412,
+   "x": 0,
+   "y": 27204
+  },
+  "mac.settings.person.add-device.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: A person: add a device for them",
+   "w": 690,
+   "x": 508,
+   "y": 27204
   }
  },
  "createdOnFiles": {
@@ -5886,7 +5902,9 @@
   "android.settings.your-plays.dc.html",
   "android.settings.person.plays.dc.html",
   "mac.settings.your-plays.dc.html",
-  "mac.settings.person.plays.dc.html"
+  "mac.settings.person.plays.dc.html",
+  "android.settings.person.add-device.dc.html",
+  "mac.settings.person.add-device.dc.html"
  ],
  "pages": [
   {
