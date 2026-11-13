@@ -587,6 +587,35 @@ struct ImportSearchFlowLibraryStatusTests {
         }
     }
 
+    @Test(
+        "a read that fails, whatever its error, and a check core refuses are told to the person"
+    )
+    func failuresAreReported() async throws {
+        let store = ImportStore()
+        let reported = ReportedFailures()
+        store.sessionWriter = CandidateSessionWriter(
+            movePane: { _, _ in },
+            setSearchForm: { _, _ in },
+            reportFailure: { reported.errors.append($0) }
+        )
+        let candidate = PreviewData.folderCandidates[0]
+        store.selectedCandidates[candidate.key] = candidate
+        let feed = LibraryStatusFeed()
+        let importer = Importer(subscribeLibraryStatuses: { feed.query() })
+
+        feed.failChecks(with: LibraryStatusFeedFailure.refused)
+        store.refreshLibraryStatusSubscriptions(
+            importer: importer,
+            key: candidate.key,
+            desired: ImportSearchFlow.releaseStatusKeys(state: state())
+        )
+        #expect(reported.errors.count == 1)
+
+        feed.failNext(with: LibraryStatusFeedFailure.unreadable)
+        try await Wait.until { reported.errors.count == 2 }
+        #expect(reported.errors.last is LibraryStatusFeedFailure)
+    }
+
     private func status(_ albumId: String) -> BridgeLibraryStatus {
         BridgeLibraryStatus(
             releaseId: "rel-live",
@@ -679,6 +708,8 @@ private final class LibraryStatusFeed: @unchecked Sendable {
         CheckedContinuation<BridgeLibraryStatusSnapshot, any Error>?
     private var wasCancelled = false
     private var askedCount = 0
+    private var checksFailure: (any Error)?
+    private var nextFailure: (any Error)?
 
     var opened: Int { lock.withLock { openedCount } }
     var requested: [[BridgeLibraryCheck]] { lock.withLock { requests } }
@@ -693,8 +724,31 @@ private final class LibraryStatusFeed: @unchecked Sendable {
         return FeedSubscription(feed: self)
     }
 
-    fileprivate func setChecks(_ checks: [BridgeLibraryCheck]) -> UInt64 {
-        lock.recording {
+    /// Make the next `setChecks` throw `error`.
+    func failChecks(with error: any Error) {
+        lock.withLock { checksFailure = error }
+    }
+
+    /// Make the reader's next ask throw `error`.
+    func failNext(with error: any Error) {
+        let waiting:
+            CheckedContinuation<BridgeLibraryStatusSnapshot, any Error>? =
+                lock.recording {
+                    nextFailure = error
+                    let waiting = waiter
+                    waiter = nil
+                    return waiting
+                }
+        waiting?.resume(throwing: error)
+    }
+
+    fileprivate func setChecks(_ checks: [BridgeLibraryCheck]) throws -> UInt64
+    {
+        try lock.recording {
+            if let checksFailure {
+                self.checksFailure = nil
+                throw checksFailure
+            }
             requests.append(checks)
             return UInt64(requests.count)
         }
@@ -704,6 +758,11 @@ private final class LibraryStatusFeed: @unchecked Sendable {
         try await withCheckedThrowingContinuation { continuation in
             let ready: BridgeLibraryStatusSnapshot? = lock.recording {
                 askedCount += 1
+                if let nextFailure {
+                    self.nextFailure = nil
+                    continuation.resume(throwing: nextFailure)
+                    return nil
+                }
                 if pending.isEmpty {
                     waiter = continuation
                     return nil
@@ -745,6 +804,18 @@ private final class LibraryStatusFeed: @unchecked Sendable {
     }
 }
 
+/// The failures a store told the person about.
+@MainActor
+private final class ReportedFailures {
+    var errors: [any Error] = []
+}
+
+/// A failure of a feed's read that is not a bridge error.
+private enum LibraryStatusFeedFailure: Error {
+    case refused
+    case unreadable
+}
+
 /// The library-status subscription a `LibraryStatusFeed` stands behind, in
 /// place of the bridge's.
 private final class FeedSubscription: LibraryStatusSubscription,
@@ -762,7 +833,7 @@ private final class FeedSubscription: LibraryStatusSubscription,
     }
 
     override func setChecks(checks: [BridgeLibraryCheck]) throws -> UInt64 {
-        feed.setChecks(checks)
+        try feed.setChecks(checks)
     }
 
     override func next() async throws -> BridgeLibraryStatusSnapshot {

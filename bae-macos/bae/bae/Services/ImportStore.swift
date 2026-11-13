@@ -590,8 +590,7 @@ extension ImportStore {
                 onError: { [weak self, weak observation] error in
                     guard let observation,
                         self?.candidate(forKey: key)?
-                            .libraryStatusObservation === observation,
-                        (error as? BridgeError)?.localizedLine != nil
+                            .libraryStatusObservation === observation
                     else { return }
                     self?.reportFailure(error)
                 }
@@ -604,6 +603,7 @@ extension ImportStore {
             importStoreLogger.error(
                 "library status checks for \(bridgeCandidateKeyText(candidateKey: key)) were not requested: \(String(describing: error))"
             )
+            reportFailure(error)
         }
     }
 }
