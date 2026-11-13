@@ -13,12 +13,21 @@ step android android ./bae-android/compile-all.sh
 step android android-tests ./bae-android/test-unit.sh
 step android android-album-detail-tests ./bae-android/gradle.sh :app:testFullDebugUnitTest --tests *AlbumDetailPlaceholderTest
 step android android-element-list-tests ./bae-android/gradle.sh :app:testFullDebugUnitTest --tests *ElementListTest
+step android android-playback-service-tests ./bae-android/gradle.sh :app:testFullDebugUnitTest --tests *PlaybackServiceTest
 step android android-welcome-libraries-tests ./bae-android/gradle.sh :app:testFullDebugUnitTest --tests *WelcomeLibrariesTest
 step mac macos-welcome-library-row-tests ./bae-macos/test.sh --run-only WelcomeLibraryRowTests
 step mac macos-sort-language-tests ./bae-macos/test.sh --run-only SortLanguageTests
 step android android-sort-language-tests ./bae-android/gradle.sh :app:testFullDebugUnitTest --tests *SortLanguageTest
 step mac macos-screen-subscription-tests ./bae-macos/test.sh --run-only ScreenSubscriptionTests
 step android android-screen-subscription-tests ./bae-android/gradle.sh :screensubscription:testFullDebugUnitTest --tests *ScreenSubscriptionTest
+step mac media-control-service-tests ./bae-macos/test.sh --run-only MediaControlServiceTests
+step mac library-projection-store-search-tests ./bae-macos/test.sh --run-only LibraryProjectionStoreSearchTests
+step mac import-search-flow-library-status-tests ./bae-macos/test.sh --run-only ImportSearchFlowLibraryStatusTests
+step mac import-store-summary-tests ./bae-macos/test.sh --run-only ImportStoreSummaryTests
+step mac import-list-selection-tests ./bae-macos/test.sh --run-only ImportListSelectionTests
+step mac import-list-same-view-value-tests ./bae-macos/test.sh --run-only ImportListSameViewValueTests
+step mac import-candidate-table-place-tests ./bae-macos/test.sh --run-only ImportCandidateTablePlaceTests
+step mac playback-store-begin-loading-tests ./bae-macos/test.sh --run-only PlaybackStoreBeginLoadingTests
 step mac mac-shots scripts/cargo.sh run -p bae-shots -- run --platform mac
 step mac mac-welcome-shots scripts/cargo.sh run -p bae-shots -- run --platform mac --select mac.welcome.
 step mac mac-component-shots scripts/cargo.sh run -p bae-shots -- run --platform mac --select mac.component.
