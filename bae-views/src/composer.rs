@@ -144,7 +144,7 @@ fn find_work_detail_on(
     let child_works = sql.query(
         &work_summary_query(
             Some("JOIN work_parts wp ON wp.child_work_id = w.id AND wp.parent_work_id = ?"),
-            Some("ORDER BY wp.position, w.title"),
+            Some(&format!("ORDER BY wp.position, {}", crate::name_sort::sort_key_sql("w.title"))),
         ),
         params![work.work.id],
         row_to_work_summary,
@@ -247,12 +247,15 @@ pub(crate) fn composer_listing_query(
 }
 
 /// The order a work's releases take over the album `album` and its release
-/// `release`: albums by title, compared without case as the composer page
+/// `release`: albums by title, compared by sort key as the composer page
 /// compares titles, then by id, so two albums sharing a title don't
 /// interleave; each album's releases in album order. The work's page lists
 /// its releases and their tracks in it, and its cover is the first.
 fn work_release_order(album: &str, release: &str) -> String {
-    format!("{album}.title COLLATE NOCASE, {album}.id, {release}.album_order, {release}.id")
+    format!(
+        "{}, {album}.id, {release}.album_order, {release}.id",
+        crate::name_sort::sort_key_sql(&format!("{album}.title"))
+    )
 }
 
 /// The release whose cover a work shows (a SQL expression over `w`): the
@@ -424,7 +427,7 @@ pub(crate) fn composer_order(sort: &[ComposerSortCriterion]) -> ListOrder {
         .iter()
         .map(|c| {
             let field = match c.field {
-                ComposerSortField::Name => "listing.name",
+                ComposerSortField::Name => "listing.name_sort_key",
                 ComposerSortField::WorkCount => "listing.work_count",
                 ComposerSortField::LinkedReleaseCount => "listing.linked_release_count",
             };
@@ -432,7 +435,7 @@ pub(crate) fn composer_order(sort: &[ComposerSortCriterion]) -> ListOrder {
         })
         .collect::<Vec<_>>();
     let ordered_by_name = sort.iter().any(|c| c.field == ComposerSortField::Name);
-    ListOrder::named(terms, ordered_by_name, "listing.name", "listing.artist_id")
+    ListOrder::named(terms, ordered_by_name, "listing.name_sort_key", "listing.artist_id")
 }
 
 #[derive(Debug, Clone, PartialEq)]

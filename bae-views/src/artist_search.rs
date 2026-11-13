@@ -5,6 +5,7 @@
 use super::search::LibrarySearchQuery;
 use super::*;
 use crate::album_detail::ArtistSearchResult;
+use crate::name_sort::sort_key_sql;
 use bae_records::records::artist_credit_names::{credit_names_column, credit_names_json_sql};
 use bae_store::{LibraryBrowseWindow, LibraryPageWindows};
 
@@ -215,13 +216,14 @@ fn artist_search_rows_on(
                            = bae_fold_case(?1) THEN 1
                     ELSE 2
                 END,
-                name COLLATE NOCASE,
+                {name_key},
                 id
             LIMIT ?2 OFFSET ?3
             "#,
             filter = artist_search_filter("?4"),
             image = artist_image_version_sql("artists.id"),
-            credit_names = credit_names_json_sql("artists.id"),
+            credit_names = credit_names_json_sql("artists.id", &sort_key_sql("credit_name.name")),
+            name_key = sort_key_sql("name"),
         ),
         params![
             query.as_str(),

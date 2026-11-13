@@ -16,8 +16,6 @@ CREATE TABLE IF NOT EXISTS artists (
     created_at TEXT NOT NULL
 ) STRICT;
 
-CREATE INDEX IF NOT EXISTS idx_artists_name ON artists (name COLLATE NOCASE);
-
 CREATE INDEX IF NOT EXISTS idx_artists_name_key ON artists (name_key);
 
 CREATE INDEX IF NOT EXISTS idx_artists_discogs_id ON artists (discogs_artist_id);

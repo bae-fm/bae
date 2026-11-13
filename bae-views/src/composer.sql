@@ -77,36 +77,37 @@ CREATE INDEX IF NOT EXISTS idx_composer_unlinked_credit_artist ON composer_unlin
 
 CREATE INDEX IF NOT EXISTS idx_composer_unlinked_credit_release ON composer_unlinked_credit (release_id);
 
--- Each artist the composer list shows, with its name for the list's order and
--- the three counts: a row while any count is above zero. An index serves each
+-- Each artist the composer list shows, with its name and the name's sort key
+-- (`name_sort`) for the list's order and the three counts: a row while any count is above zero. An index serves each
 -- of the list's sorts, ties broken by name, then id.
 CREATE TABLE IF NOT EXISTS composer_listing (
     artist_id TEXT PRIMARY KEY REFERENCES artists (id) ON DELETE CASCADE,
     name TEXT NOT NULL,
+    name_sort_key BLOB NOT NULL,
     work_count INTEGER NOT NULL CHECK (work_count >= 0),
     linked_release_count INTEGER NOT NULL CHECK (linked_release_count >= 0),
     unlinked_credit_count INTEGER NOT NULL CHECK (unlinked_credit_count >= 0)
 ) STRICT;
 
-CREATE INDEX IF NOT EXISTS idx_composer_listing_name ON composer_listing (name, artist_id);
+CREATE INDEX IF NOT EXISTS idx_composer_listing_name ON composer_listing (name_sort_key, artist_id);
 
-CREATE INDEX IF NOT EXISTS idx_composer_listing_name_desc ON composer_listing (name DESC, artist_id);
+CREATE INDEX IF NOT EXISTS idx_composer_listing_name_desc ON composer_listing (name_sort_key DESC, artist_id);
 
-CREATE INDEX IF NOT EXISTS idx_composer_listing_work_count ON composer_listing (work_count, name, artist_id);
+CREATE INDEX IF NOT EXISTS idx_composer_listing_work_count ON composer_listing (work_count, name_sort_key, artist_id);
 
-CREATE INDEX IF NOT EXISTS idx_composer_listing_work_count_desc ON composer_listing (work_count DESC, name, artist_id);
+CREATE INDEX IF NOT EXISTS idx_composer_listing_work_count_desc ON composer_listing (work_count DESC, name_sort_key, artist_id);
 
-CREATE INDEX IF NOT EXISTS idx_composer_listing_release_count ON composer_listing (linked_release_count, name, artist_id);
+CREATE INDEX IF NOT EXISTS idx_composer_listing_release_count ON composer_listing (linked_release_count, name_sort_key, artist_id);
 
-CREATE INDEX IF NOT EXISTS idx_composer_listing_release_count_desc ON composer_listing (linked_release_count DESC, name, artist_id);
+CREATE INDEX IF NOT EXISTS idx_composer_listing_release_count_desc ON composer_listing (linked_release_count DESC, name_sort_key, artist_id);
 
 -- Each row added to or removed from the three tables counts in or out of its
 -- artist's listing row. The artist a row counts under is held: it is shown
 -- for an artist the row's credit names, and a credit arrives after its artist.
 CREATE TRIGGER IF NOT EXISTS composer_work_added AFTER INSERT ON composer_work
 BEGIN
-    INSERT INTO composer_listing (artist_id, name, work_count, linked_release_count, unlinked_credit_count)
-    VALUES (NEW.artist_id, (SELECT name FROM artists WHERE id = NEW.artist_id), 1, 0, 0)
+    INSERT INTO composer_listing (artist_id, name, name_sort_key, work_count, linked_release_count, unlinked_credit_count)
+    VALUES (NEW.artist_id, (SELECT name FROM artists WHERE id = NEW.artist_id), (SELECT bae_name_key(name, (SELECT language FROM name_sort)) FROM artists WHERE id = NEW.artist_id), 1, 0, 0)
     ON CONFLICT (artist_id) DO UPDATE SET work_count = work_count + 1;
 END;
 
@@ -119,8 +120,8 @@ END;
 
 CREATE TRIGGER IF NOT EXISTS composer_release_added AFTER INSERT ON composer_release
 BEGIN
-    INSERT INTO composer_listing (artist_id, name, work_count, linked_release_count, unlinked_credit_count)
-    VALUES (NEW.artist_id, (SELECT name FROM artists WHERE id = NEW.artist_id), 0, 1, 0)
+    INSERT INTO composer_listing (artist_id, name, name_sort_key, work_count, linked_release_count, unlinked_credit_count)
+    VALUES (NEW.artist_id, (SELECT name FROM artists WHERE id = NEW.artist_id), (SELECT bae_name_key(name, (SELECT language FROM name_sort)) FROM artists WHERE id = NEW.artist_id), 0, 1, 0)
     ON CONFLICT (artist_id) DO UPDATE SET linked_release_count = linked_release_count + 1;
 END;
 
@@ -133,8 +134,8 @@ END;
 
 CREATE TRIGGER IF NOT EXISTS composer_unlinked_credit_added AFTER INSERT ON composer_unlinked_credit
 BEGIN
-    INSERT INTO composer_listing (artist_id, name, work_count, linked_release_count, unlinked_credit_count)
-    VALUES (NEW.artist_id, (SELECT name FROM artists WHERE id = NEW.artist_id), 0, 0, 1)
+    INSERT INTO composer_listing (artist_id, name, name_sort_key, work_count, linked_release_count, unlinked_credit_count)
+    VALUES (NEW.artist_id, (SELECT name FROM artists WHERE id = NEW.artist_id), (SELECT bae_name_key(name, (SELECT language FROM name_sort)) FROM artists WHERE id = NEW.artist_id), 0, 0, 1)
     ON CONFLICT (artist_id) DO UPDATE SET unlinked_credit_count = unlinked_credit_count + 1;
 END;
 
@@ -205,7 +206,9 @@ END;
 
 CREATE TRIGGER IF NOT EXISTS artist_renamed AFTER UPDATE OF name ON artists
 BEGIN
-    UPDATE composer_listing SET name = NEW.name WHERE artist_id = NEW.id;
+    UPDATE composer_listing SET name = NEW.name,
+        name_sort_key = bae_name_key(NEW.name, (SELECT language FROM name_sort))
+    WHERE artist_id = NEW.id;
 END;
 
 -- A work's credited artist arriving changes its rows and those of every

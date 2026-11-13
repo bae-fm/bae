@@ -18,5 +18,10 @@ async fn a_name_for_an_artist_no_longer_held_is_refused() {
         matches!(&refused, Err(CreditNameError::ArtistMissing(artist)) if artist == "gone"),
         "{refused:?}"
     );
-    assert!(records.get_artist_credit_names(&["gone".to_string()]).await.unwrap().is_empty());
+    let held = records
+        .store
+        .read(|sql| credit_names_of_on(&sql, &["gone".to_string()], "credit_name.name"))
+        .await
+        .unwrap();
+    assert!(held.is_empty());
 }

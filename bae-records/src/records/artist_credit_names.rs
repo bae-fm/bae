@@ -99,14 +99,15 @@ fn relink_credit_name(
 }
 
 /// The other printed names of the artist `artist_id` shows as (a SQL
-/// expression), in name order, as a JSON array: its own rows and those of the
+/// expression), in the order of `order_key` (a SQL expression over
+/// `credit_name.name`: the name's sort key), as a JSON array: its own rows and those of the
 /// artists merged into it, read by the artists' shown-as index.
-pub fn credit_names_json_sql(artist_id: &str) -> String {
+pub fn credit_names_json_sql(artist_id: &str, order_key: &str) -> String {
     format!(
         "(SELECT json_group_array(json_object('artist_id', credit_name.artist_id, \
                                               'key', credit_name.name_key, \
                                               'name', credit_name.name) \
-                                  ORDER BY credit_name.name COLLATE NOCASE, credit_name.name_key) \
+                                  ORDER BY {order_key}, credit_name.name_key) \
           FROM artist_shown_as shown \
           JOIN artist_credits credit_name ON credit_name.artist_id = shown.artist_id \
           WHERE shown.shown_artist_id = {artist_id})"
@@ -132,11 +133,13 @@ pub fn credit_names_column(row: &Row<'_>, column: &str) -> rusqlite::Result<Vec<
 }
 
 /// The other printed names of each of `artist_ids` (artists as they show,
-/// after merges), each artist's in name order: its own rows and those of the
-/// artists merged into it.
+/// after merges), each artist's in the order of `order_key` (a SQL expression
+/// over `credit_name.name`: the name's sort key): its own rows and those of
+/// the artists merged into it.
 pub fn credit_names_of_on(
     sql: &SqlReadContext<'_>,
     artist_ids: &[String],
+    order_key: &str,
 ) -> Result<HashMap<String, Vec<ArtistCreditName>>, DbError> {
     let mut names: HashMap<String, Vec<ArtistCreditName>> = HashMap::new();
     for chunk in artist_ids.chunks(SQL_MAX_IN_VARS) {
@@ -146,7 +149,7 @@ pub fn credit_names_of_on(
              FROM artist_shown_as shown \
              JOIN artist_credits credit_name ON credit_name.artist_id = shown.artist_id \
              WHERE shown.shown_artist_id IN ({placeholders}) \
-             ORDER BY shown_id, credit_name.name COLLATE NOCASE, credit_name.name_key",
+             ORDER BY shown_id, {order_key}, credit_name.name_key",
             placeholders = in_clause_placeholders(chunk.len()),
         );
         for (shown_id, name) in
@@ -167,16 +170,6 @@ pub fn credit_names_of_on(
 }
 
 impl Records {
-    /// The other printed names of each of `artist_ids` (artists as they
-    /// show, after merges), each artist's in name order.
-    pub async fn get_artist_credit_names(
-        &self,
-        artist_ids: &[String],
-    ) -> Result<HashMap<String, Vec<ArtistCreditName>>, DbError> {
-        let artist_ids = artist_ids.to_vec();
-        self.store.read(move |sql| credit_names_of_on(&sql, &artist_ids)).await
-    }
-
     /// Give `artist_id` the other printed name `name`. A name that folds to
     /// the artist's own, or to one it already goes by, adds nothing: the
     /// artist already goes by it. An artist the library no longer holds is

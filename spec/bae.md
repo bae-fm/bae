@@ -219,8 +219,10 @@ many albums credit it ("1 album", "3 albums"), in core's words for each
 language.
 
 **Names order in the device's language.** Every list that sorts by a name
-(album titles and artists in the grid, the artist list, the Storage manager's
-album and artist columns) orders them as a reader of the device's language
+(album titles and artists in the grid, the artist and composer lists, a
+composer's page, the Storage manager's album and artist columns, and the
+order of library search's results and of an artist's albums and other printed
+names) orders them as a reader of the device's language
 expects, by Unicode collation with that language's tailoring: in Swedish å, ä
 and ö come after z, in Spanish ñ after n, in Russian "я" and "Я" sit together,
 and in the root order accented letters sort with their base letter. Names
@@ -5551,8 +5553,8 @@ What the library lists, bae-views' part, kept by its triggers:
 | `composer_work` | work and artist shown credited on it |
 | `composer_release` | release and artist shown credited on a work one of its tracks performs |
 | `composer_unlinked_credit` | catalog role credit none of its artist's works links (§2.4), keyed by the credit: the artist it shows as and its release |
-| `composer_listing` | artist the composer list shows (§2.4): its name and its counts of works, releases and unlinked credits, with an index for each of the list's sorts |
-| `composer_detail_row` | row of a composer's page (§2.4): a credited work under a work it is part of, a work heading a group, or an unlinked credit under its release, with what the page sorts it by, the heading work's title or the release's album title, album and place, and an index of the page's order |
+| `composer_listing` | artist the composer list shows (§2.4): its name, the name's sort key and its counts of works, releases and unlinked credits, with an index for each of the list's sorts |
+| `composer_detail_row` | row of a composer's page (§2.4): a credited work under a work it is part of, a work heading a group, or an unlinked credit under its release, with what the page sorts it by, the sort key of the heading work's title or the release's album title, album and place, and a work's title sort key, and an index of the page's order |
 | `album_listing` | album the grid shows (§2.1), keyed by the album: its title's sort key, year and date added, and its credits' sort names' sort key and ids in credit order, with an index for each of the grid's sorts |
 | `album_artist_link` | album the grid shows and artist its credits show: the album's title key, year and date added from its `album_listing` row, with an index for each sort of an artist's albums in the grid grouped by artist |
 | `artist_listing` | artist the artist list shows (§2.1): its name, the sort keys of its name and of its sort name (else name) and how many shown albums credit it, with an index for each of the list's sorts and the grid's grouping |

@@ -389,15 +389,16 @@ fn search_library_on(
                 SELECT a.id, a.title, a.year FROM albums a
                 WHERE {album_matches}
                   AND {ALBUM_A_IS_SHOWN}
-                ORDER BY a.title, a.id
+                ORDER BY {title_key}, a.id
                 LIMIT ?2
             ) a
-            ORDER BY a.title, a.id
+            ORDER BY {title_key}, a.id
             "#,
         primary_release = album_primary_release_sql(),
         primary_cover = bae_records::records::files::cover_version_sql(album_primary_release_sql()),
         artist_names = album_credits_json_sql(),
         album_matches = album_matches_sql("a.id", "?1"),
+        title_key = crate::name_sort::sort_key_sql("a.title"),
     );
     let albums = sql.query(&album_query, params![pattern, limit], |row| {
         Ok(AlbumSearchRow {
@@ -420,13 +421,15 @@ fn search_library_on(
             JOIN albums a ON r.album_id = a.id
             WHERE t.id IN (
                 SELECT track_id FROM track_search WHERE title GLOB ?1
-                ORDER BY sort_title, track_id
+                ORDER BY {sort_title_key}, track_id
                 LIMIT ?2
             )
-            ORDER BY t.title, t.id
+            ORDER BY {title_key}, t.id
             "#,
             track_credits_json_sql("t"),
             bae_records::records::files::cover_version_sql("t.release_id"),
+            sort_title_key = crate::name_sort::sort_key_sql("sort_title"),
+            title_key = crate::name_sort::sort_key_sql("t.title"),
         ),
         params![pattern, limit],
         |row| {
@@ -446,7 +449,7 @@ fn search_library_on(
         &artist_listing_query(
             None,
             Some(&format!("WHERE ar.id IN ({})", artists_found_sql("?1"))),
-            Some("ORDER BY listing.name, listing.artist_id LIMIT ?2"),
+            Some("ORDER BY listing.name_sort_key, listing.artist_id LIMIT ?2"),
         ),
         params![pattern, limit],
         row_to_artist_summary,
@@ -455,21 +458,22 @@ fn search_library_on(
         &composer_listing_query(
             None,
             Some(&format!("WHERE composer.id IN ({})", artists_found_sql("?1"))),
-            Some("ORDER BY listing.name, listing.artist_id LIMIT ?2"),
+            Some("ORDER BY listing.name_sort_key, listing.artist_id LIMIT ?2"),
         ),
         params![pattern, limit],
         row_to_composer_summary,
     )?;
     let works = sql.query(
         &work_summary_query(
-            Some(
+            Some(&format!(
                 "WHERE w.id IN (
                     SELECT work_id FROM work_search WHERE title GLOB ?1
-                    ORDER BY sort_title, work_id
+                    ORDER BY {}, work_id
                     LIMIT ?2
                 )",
-            ),
-            Some("ORDER BY w.title, w.id"),
+                crate::name_sort::sort_key_sql("sort_title"),
+            )),
+            Some(&format!("ORDER BY {}, w.id", crate::name_sort::sort_key_sql("w.title"))),
         ),
         params![pattern, limit],
         row_to_work_summary,

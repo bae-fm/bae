@@ -41,7 +41,7 @@ const TRACK_ONE: &str = "5a6b1e8c-4f5b-4a7c-8d9e-0f1a2b3c4e02";
 /// of both, a work part of none heading a part of its own, and a lone work;
 /// and holding release credits on two albums and track credits on two tracks
 /// of the first, none linked by a work. Titles mix case, which the page's
-/// order ignores.
+/// order weighs after the letters.
 async fn write_page(db: &Store) {
     let written_by = (Catalog::Discogs, "Written-By");
     let composer = (Catalog::MusicBrainz, "composer");
@@ -386,7 +386,7 @@ async fn credits_on_albums_sharing_a_title_stay_by_album() {
     write_page(&db).await;
     let written_by = (Catalog::Discogs, "Written-By");
     RecordsFixture::new()
-        .album("3e4f9c6a-2d3f-4e5a-8b7c-8d9e0f1a2c03", "album first", None, &[])
+        .album("3e4f9c6a-2d3f-4e5a-8b7c-8d9e0f1a2c03", "Album First", None, &[])
         .release("3e4f9c6a-2d3f-4e5a-8b7c-8d9e0f1a2c03", "4f5a0d7b-3e4a-4f6b-9c8d-9e0f1a2b3d03")
         .release(ALBUM_FIRST, "4f5a0d7b-3e4a-4f6b-9c8d-9e0f1a2b3d04")
         .release_role(
@@ -423,4 +423,35 @@ async fn credits_on_albums_sharing_a_title_stay_by_album() {
             CREDIT_ON_SECOND,
         ]
     );
+}
+
+/// A change of language writes every key of the composers and their pages
+/// again, in the new language.
+#[tokio::test]
+async fn a_language_change_writes_the_composers_and_their_pages_keys_again() {
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
+    write_page(&db).await;
+    LibraryViews::new(db.clone()).set_sort_language("sv").await.unwrap();
+    let (rows, stale_rows, composers, stale_composers): (i64, i64, i64, i64) = db
+        .read(|sql| {
+            Ok(sql.query_row(
+                "SELECT
+                   (SELECT COUNT(*) FROM composer_detail_row WHERE section = 0),
+                   (SELECT COUNT(*) FROM composer_detail_row row
+                    WHERE row.section = 0
+                      AND (row.title_sort_key IS NOT (SELECT bae_name_key(w.title, 'sv')
+                                                      FROM works w WHERE w.id = row.item_id)
+                           OR row.group_title_sort_key IS NOT (SELECT bae_name_key(g.title, 'sv')
+                                                               FROM works g WHERE g.id = row.group_id))),
+                   (SELECT COUNT(*) FROM composer_listing),
+                   (SELECT COUNT(*) FROM composer_listing l JOIN artists a ON a.id = l.artist_id
+                    WHERE l.name_sort_key IS NOT bae_name_key(a.name, 'sv'))",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+            )?)
+        })
+        .await
+        .unwrap();
+    assert!(rows > 0 && composers > 0, "the page has rows to rewrite");
+    assert_eq!((stale_rows, stale_composers), (0, 0));
 }

@@ -171,12 +171,12 @@ pub(crate) fn composer_detail_order(alias: &str) -> ListOrder {
     let term = |column: &str| format!("{alias}.{column}");
     ListOrder::new(vec![
         SortTerm::ascending(term("section")),
-        SortTerm::ascending(term("group_title")),
+        SortTerm::ascending(term("group_title_sort_key")),
         SortTerm::ascending(term("group_album")).nullable(),
         SortTerm::ascending(term("group_order")).nullable(),
         SortTerm::ascending(term("group_id")),
         SortTerm::ascending(term("place")).nullable(),
-        SortTerm::ascending(term("title")).nullable(),
+        SortTerm::ascending(term("title_sort_key")).nullable(),
         SortTerm::ascending(term("position")).nullable(),
         SortTerm::ascending(term("item_id")),
     ])

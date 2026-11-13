@@ -12,7 +12,8 @@
 -- Each unlinked credit is listed under its release, the releases by album
 -- title, then by album, so two albums sharing a title don't interleave, then
 -- by the release's place among its album's; the credits by track and then by
--- their own order. Titles compare without case, as the album grid's do.
+-- their own order. Titles compare by their sort keys (`name_sort`), as the
+-- album grid's do.
 CREATE TABLE IF NOT EXISTS composer_detail_row (
     -- The row's number: what a screen tells it apart by.
     entry       INTEGER PRIMARY KEY,
@@ -24,8 +25,8 @@ CREATE TABLE IF NOT EXISTS composer_detail_row (
     -- The row's group: in the works, the work heading it; for a credit, its
     -- release.
     group_id    TEXT NOT NULL,
-    -- The heading work's title, or the release's album's.
-    group_title TEXT NOT NULL COLLATE NOCASE,
+    -- The sort key of the heading work's title, or of the release's album's.
+    group_title_sort_key BLOB NOT NULL,
     -- For a credit, the release's album.
     group_album TEXT,
     -- For a credit, the release's place among its album's (`album_order`).
@@ -33,14 +34,14 @@ CREATE TABLE IF NOT EXISTS composer_detail_row (
     -- In the works, 0 for the work heading its group and 1 for a part; for a
     -- track credit, its track's position. NULL for a release credit.
     place       INTEGER,
-    -- A work's title.
-    title       TEXT COLLATE NOCASE,
+    -- The sort key of a work's title.
+    title_sort_key BLOB,
     -- A credit's position among its release's or its track's.
     position    INTEGER,
     -- The work or the credit the row shows.
     item_id     TEXT NOT NULL,
     UNIQUE (artist_id, section, group_id, item_id),
-    CHECK ((section = 0) = (title IS NOT NULL)),
+    CHECK ((section = 0) = (title_sort_key IS NOT NULL)),
     CHECK ((section = 0) = (group_album IS NULL)),
     CHECK ((section = 0) = (group_order IS NULL)),
     CHECK ((section = 0) = (position IS NULL)),
@@ -49,7 +50,7 @@ CREATE TABLE IF NOT EXISTS composer_detail_row (
 ) STRICT;
 
 CREATE INDEX IF NOT EXISTS idx_composer_detail_row_order ON composer_detail_row
-    (artist_id, section, group_title, group_album, group_order, group_id, place, title, position, item_id);
+    (artist_id, section, group_title_sort_key, group_album, group_order, group_id, place, title_sort_key, position, item_id);
 
 CREATE INDEX IF NOT EXISTS idx_composer_detail_row_item ON composer_detail_row (item_id);
 
@@ -112,14 +113,16 @@ BEGIN
       AND group_id NOT IN (
           SELECT group_id FROM composer_detail_works
           WHERE artist_id = NEW.artist_id AND item_id = NEW.work_id);
-    INSERT INTO composer_detail_row (artist_id, section, group_id, group_title, place, title, item_id)
-    SELECT artist_id, 0, group_id, group_title, place, title, item_id FROM composer_detail_works
+    INSERT INTO composer_detail_row (artist_id, section, group_id, group_title_sort_key, place, title_sort_key, item_id)
+    SELECT artist_id, 0, group_id, bae_name_key(group_title, language), place,
+           bae_name_key(title, language), item_id
+    FROM composer_detail_works CROSS JOIN (SELECT language FROM name_sort)
     WHERE artist_id = NEW.artist_id AND item_id = NEW.work_id
     ON CONFLICT (artist_id, section, group_id, item_id) DO UPDATE SET
-        group_title = excluded.group_title,
-        title = excluded.title
-    WHERE composer_detail_row.group_title IS NOT excluded.group_title
-       OR composer_detail_row.title IS NOT excluded.title;
+        group_title_sort_key = excluded.group_title_sort_key,
+        title_sort_key = excluded.title_sort_key
+    WHERE composer_detail_row.group_title_sort_key IS NOT excluded.group_title_sort_key
+       OR composer_detail_row.title_sort_key IS NOT excluded.title_sort_key;
 END;
 
 CREATE VIEW IF NOT EXISTS composer_detail_credit_refresh AS SELECT NULL AS credit_id WHERE 0;
@@ -132,16 +135,17 @@ BEGIN
           SELECT artist_id, section, group_id FROM composer_detail_credits
           WHERE item_id = NEW.credit_id);
     INSERT INTO composer_detail_row
-        (artist_id, section, group_id, group_title, group_album, group_order, place, position,
-         item_id)
-    SELECT artist_id, section, group_id, group_title, group_album, group_order, place, position,
-           item_id
-    FROM composer_detail_credits WHERE item_id = NEW.credit_id
+        (artist_id, section, group_id, group_title_sort_key, group_album, group_order, place,
+         position, item_id)
+    SELECT artist_id, section, group_id, bae_name_key(group_title, language), group_album,
+           group_order, place, position, item_id
+    FROM composer_detail_credits CROSS JOIN (SELECT language FROM name_sort)
+    WHERE item_id = NEW.credit_id
     ON CONFLICT (artist_id, section, group_id, item_id) DO UPDATE SET
-        group_title = excluded.group_title,
+        group_title_sort_key = excluded.group_title_sort_key,
         group_album = excluded.group_album,
         group_order = excluded.group_order
-    WHERE composer_detail_row.group_title IS NOT excluded.group_title
+    WHERE composer_detail_row.group_title_sort_key IS NOT excluded.group_title_sort_key
        OR composer_detail_row.group_album IS NOT excluded.group_album
        OR composer_detail_row.group_order IS NOT excluded.group_order;
 END;

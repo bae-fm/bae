@@ -23,6 +23,11 @@ pub fn plant_in_library_file(directory: &std::path::Path, table: &str, damage: &
                 continue;
             }
             let connection = rusqlite::Connection::open(&path).expect("the library's file opens");
+            // The functions the schema's triggers call, which a write the
+            // damage makes runs.
+            for function in [&crate::FOLD_CASE, &crate::NAME_KEY, &crate::NAME_LIST_KEY] {
+                crate::schema::register_bare_function(&connection, function);
+            }
             let holds_table: bool = connection
                 .query_row(
                     "SELECT EXISTS (SELECT 1 FROM sqlite_master WHERE name = ?)",

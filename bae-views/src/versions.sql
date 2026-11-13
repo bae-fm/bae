@@ -26,8 +26,9 @@ BEGIN
     UPDATE library_list_versions SET version = version + 1 WHERE source = 'composer_listing';
 END;
 
-CREATE TRIGGER IF NOT EXISTS composer_listing_order_moved AFTER UPDATE OF name, work_count, linked_release_count ON composer_listing
+CREATE TRIGGER IF NOT EXISTS composer_listing_order_moved AFTER UPDATE OF name, name_sort_key, work_count, linked_release_count ON composer_listing
 WHEN OLD.name IS NOT NEW.name
+  OR OLD.name_sort_key IS NOT NEW.name_sort_key
   OR OLD.work_count IS NOT NEW.work_count
   OR OLD.linked_release_count IS NOT NEW.linked_release_count
 BEGIN
@@ -44,11 +45,11 @@ BEGIN
     UPDATE library_list_versions SET version = version + 1 WHERE source = 'composer_detail_row';
 END;
 
-CREATE TRIGGER IF NOT EXISTS composer_detail_row_order_moved AFTER UPDATE OF group_title, group_album, group_order, title ON composer_detail_row
-WHEN OLD.group_title IS NOT NEW.group_title
+CREATE TRIGGER IF NOT EXISTS composer_detail_row_order_moved AFTER UPDATE OF group_title_sort_key, group_album, group_order, title_sort_key ON composer_detail_row
+WHEN OLD.group_title_sort_key IS NOT NEW.group_title_sort_key
   OR OLD.group_album IS NOT NEW.group_album
   OR OLD.group_order IS NOT NEW.group_order
-  OR OLD.title IS NOT NEW.title
+  OR OLD.title_sort_key IS NOT NEW.title_sort_key
 BEGIN
     UPDATE library_list_versions SET version = version + 1 WHERE source = 'composer_detail_row';
 END;

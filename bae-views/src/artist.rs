@@ -166,13 +166,15 @@ fn find_artist_detail_on(
          JOIN albums a ON a.id = link.album_id \
          WHERE link.artist_id = ?1 \
          ORDER BY CASE WHEN a.year IS NULL THEN 1 ELSE 0 END, \
-                  a.year, a.title COLLATE NOCASE, a.id",
+                  a.year, {title_key}, a.id",
         select = album_summary_select(),
+        title_key = crate::name_sort::sort_key_sql("a.title"),
     );
     let albums = sql.query(&albums_query, params![artist_id], AlbumSummaryRow::read)?;
     let credit_names = bae_records::records::artist_credit_names::credit_names_of_on(
         sql,
         std::slice::from_ref(&artist.artist.id),
+        &crate::name_sort::sort_key_sql("credit_name.name"),
     )?
     .remove(&artist.artist.id)
     .unwrap_or_default();

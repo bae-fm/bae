@@ -261,23 +261,29 @@ fn coven_path_text(arguments: &SqlArguments<'_>) -> rusqlite::Result<rusqlite::t
     coven::path_text_sql(arguments.get_raw(0))
 }
 
+/// `function` on `conn`, a bare connection.
+#[cfg(any(test, feature = "test-utils"))]
+pub(crate) fn register_bare_function(conn: &rusqlite::Connection, function: &SchemaFunction) {
+    let deterministic = rusqlite::functions::FunctionFlags::SQLITE_UTF8
+        | rusqlite::functions::FunctionFlags::SQLITE_DETERMINISTIC
+        | rusqlite::functions::FunctionFlags::SQLITE_INNOCUOUS;
+    let compute = function.compute;
+    conn.create_scalar_function(
+        function.name,
+        i32::from(function.arguments),
+        deterministic,
+        move |context| compute(&SqlArguments::Bare(context)),
+    )
+    .unwrap_or_else(|error| panic!("{} registers: {error}", function.name));
+}
+
 /// Open an in-memory library on `schema` on `conn`, a fresh in-memory
 /// connection, as [`BareLibraryParts`] says: this crate's own tests'.
 #[cfg(any(test, feature = "test-utils"))]
 pub(crate) fn open_bare_library(conn: &rusqlite::Connection, schema: Schema) {
     let parts = schema.bare_library_parts();
-    let deterministic = rusqlite::functions::FunctionFlags::SQLITE_UTF8
-        | rusqlite::functions::FunctionFlags::SQLITE_DETERMINISTIC
-        | rusqlite::functions::FunctionFlags::SQLITE_INNOCUOUS;
     for function in parts.functions {
-        let compute = function.compute;
-        conn.create_scalar_function(
-            function.name,
-            i32::from(function.arguments),
-            deterministic,
-            move |context| compute(&SqlArguments::Bare(context)),
-        )
-        .unwrap_or_else(|error| panic!("{} registers: {error}", function.name));
+        register_bare_function(conn, function);
     }
     for collation in parts.collations {
         conn.create_collation(collation.name, collation.compare)

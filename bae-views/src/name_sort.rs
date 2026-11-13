@@ -23,7 +23,8 @@ pub enum SortLanguageError {
 /// Every listing's key columns written again from the rows they come from,
 /// in the language of `name_sort`: the albums are listed again, which writes
 /// their links' and releases' keys through the triggers that copy them, and
-/// the artists' keys are written from their names.
+/// the artists' and composers' keys are written from their names, and the
+/// composers' pages' rows are listed again.
 const REKEY: &[&str] = &[
     "INSERT INTO album_listing_refresh (album_id) SELECT album_id FROM album_listing",
     "UPDATE artist_listing SET \
@@ -31,7 +32,21 @@ const REKEY: &[&str] = &[
          sort_name_sort_key = bae_name_key(COALESCE(artists.sort_name, artists.name), \
                                       (SELECT language FROM name_sort)) \
      FROM artists WHERE artists.id = artist_listing.artist_id",
+    "UPDATE composer_listing SET \
+         name_sort_key = bae_name_key(artists.name, (SELECT language FROM name_sort)) \
+     FROM artists WHERE artists.id = composer_listing.artist_id",
+    "INSERT INTO composer_detail_work_refresh (artist_id, work_id) \
+     SELECT DISTINCT artist_id, item_id FROM composer_detail_row WHERE section = 0",
+    "INSERT INTO composer_detail_credit_refresh (credit_id) \
+     SELECT DISTINCT item_id FROM composer_detail_row WHERE section <> 0",
 ];
+
+/// The sort key of the name `name` (a SQL expression) in the device's
+/// language, for a list too small to keep keys beside its names: it orders
+/// by the same key the stored ones are.
+pub(crate) fn sort_key_sql(name: &str) -> String {
+    format!("bae_name_key({name}, (SELECT language FROM name_sort))")
+}
 
 impl LibraryViews {
     /// Order this device's names in the language `tag`: every stored name key
