@@ -124,7 +124,7 @@ final class StorageActionRunner {
     }
 
     /// Run `action` against every release in `releaseIds`. Moving to cloud
-    /// defers to the confirm sheet; making local asks for a destination folder
+    /// defers to the confirm sheet; moving to This Mac asks for a destination folder
     /// once and queues the whole batch on the download queue, each release in
     /// a folder of its own below it; pin enqueues the whole batch on the
     /// download queue; unpin asks first while the setting says to, then releases
@@ -212,7 +212,7 @@ final class StorageActionRunner {
         pendingMoveToCloud = nil
     }
 
-    /// Cancel each release's in-progress transition (pin / upload / make local),
+    /// Cancel each release's in-progress transition (pin / upload / move to This Mac),
     /// leaving it in its prior state — core dispatches to whichever is running.
     func cancelTransitions(releaseIds: [String]) {
         let releaseIds = listed(releaseIds)

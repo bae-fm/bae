@@ -3,7 +3,7 @@ import SwiftUI
 
 /// One download-queue row: album title, file count, size, a state chip, and a
 /// cancel button; once the download failed, a button that queues every failed
-/// download again. A pin and a release being made local read alike but for
+/// download again. A pin and a release moving to This Mac read alike but for
 /// their words and the progress they follow.
 struct DownloadRow: View {
     let op: BridgeDownloadOp
@@ -50,7 +50,7 @@ struct DownloadRow: View {
         case (.pin, .queued):
             StatusChip("Queued to pin", symbol: "clock")
         case (.makeLocal, .queued):
-            StatusChip("Queued to make local", symbol: "clock")
+            StatusChip("Queued to move to This Mac", symbol: "clock")
         case (.pin, .active):
             StatusChip(
                 "Pinning",
@@ -75,7 +75,7 @@ struct DownloadRow: View {
             Notice(
                 title: op.kind == .pin
                     ? String(localized: "Could not pin")
-                    : String(localized: "Could not make local"),
+                    : String(localized: "Could not move to This Mac"),
                 advice: nil,
                 error: DisplayError(line: error),
                 look: .quiet,

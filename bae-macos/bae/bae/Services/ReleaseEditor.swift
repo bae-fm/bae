@@ -15,7 +15,7 @@ final class ReleaseEditor: Observable {
     private let moveReleasesToCloudAction:
         @Sendable (_ releaseIds: [String]) async throws ->
             BridgeUploadReleasesOutcome
-    /// Queue the releases to be made local into a folder of their own each
+    /// Queue the releases to move to This Mac into a folder of their own each
     /// below `folder`.
     let makeReleasesLocal:
         @Sendable (_ releaseIds: [String], _ folder: URL) async throws -> Void

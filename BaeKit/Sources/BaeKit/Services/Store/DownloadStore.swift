@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// The streams of how far each pinning release, each file a pin downloads,
-/// and each release being made local, has got. The bridge holds each latest value, and the native
+/// and each release moving to This Mac, has got. The bridge holds each latest value, and the native
 /// view drawing that release or file reads it once per display frame, so
 /// arriving bytes run no SwiftUI update and no main-thread hop. The queue's
 /// entries are the Storage Manager inspector's, read for one release in core.
@@ -15,7 +15,7 @@ public class DownloadStore {
     /// The latest progress of each downloading release.
     public nonisolated let releaseProgress:
         LatestStream<BridgeDownloadTransferProgress>
-    /// The latest progress of each release being made local.
+    /// The latest progress of each release moving to This Mac.
     public nonisolated let makeLocalTransfers:
         LatestStream<BridgeMakeLocalProgress>
     /// Whether the person paused the download queue, as the retained
@@ -50,7 +50,7 @@ public class DownloadStore {
         releaseProgress.source(for: releaseId)
     }
 
-    /// The latest progress of a release being made local, for the native
+    /// The latest progress of a release moving to This Mac, for the native
     /// views that read it each display frame.
     public nonisolated func makeLocalProgress(forRelease releaseId: String)
         -> LatestSource<BridgeMakeLocalProgress>

@@ -46,7 +46,7 @@ struct StorageStatusBand: View {
     }
 
     /// The one change on its way: files uploading or waiting to upload, the
-    /// release being pinned or made local, each waiting its turn or moving.
+    /// release being pinned or moving to This Mac, each waiting its turn or moving.
     @ViewBuilder
     private var pill: some View {
         if release.summary.upload?.missing != nil {
@@ -91,7 +91,7 @@ struct StorageStatusBand: View {
         }
         if case .failed(let error) = release.makeLocal {
             Notice(
-                title: String(localized: "Could not make local"),
+                title: String(localized: "Could not move to This Mac"),
                 advice: nil,
                 error: DisplayError(line: error)
             )

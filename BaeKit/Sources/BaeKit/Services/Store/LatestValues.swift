@@ -398,7 +398,7 @@ extension LatestStream where Value == BridgeDownloadTransferProgress {
 }
 
 extension LatestStream where Value == BridgeMakeLocalProgress {
-    /// How far each release being made local has downloaded, by release id;
+    /// How far each release moving to This Mac has downloaded, by release id;
     /// a shot's holds `values` and nothing feeds it.
     public static func makeLocals(holding values: [String: Value] = [:])
         -> LatestStream

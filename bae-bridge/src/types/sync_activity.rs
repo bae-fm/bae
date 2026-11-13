@@ -25,7 +25,7 @@ pub struct BridgeSyncActivity {
     pub uploads: Option<BridgeUploadQueueActivity>,
     /// The Pinning line, while its batch holds a release.
     pub pins: Option<BridgeDownloadQueueActivity>,
-    /// The Making local line, while its batch holds a release; never on a
+    /// The Moving to This Mac line, while its batch holds a release; never on a
     /// phone, which makes nothing local.
     pub making_local: Option<BridgeDownloadQueueActivity>,
 }
@@ -93,7 +93,7 @@ impl BridgeUploadQueueActivity {
     }
 }
 
-/// The Pinning or the Making local line: the releases queued as that kind
+/// The Pinning or the Moving to This Mac line: the releases queued as that kind
 /// since none of it waited or downloaded. Mirrors
 /// `bae_views::DownloadQueueActivity`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]

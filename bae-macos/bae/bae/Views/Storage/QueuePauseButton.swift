@@ -4,7 +4,7 @@ import SwiftUI
 /// A transfer queue the person can pause whole.
 enum StorageQueueKind {
     case uploads
-    /// Pinning and making local: one queue.
+    /// Pinning and moving to This Mac: one queue.
     case downloads
     case outputs
 }

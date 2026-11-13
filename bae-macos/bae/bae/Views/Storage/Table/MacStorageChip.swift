@@ -3,7 +3,7 @@ import SwiftUI
 
 /// The storage state chip: what core says the row's storage shows. Files on
 /// the move fill their chip as far as they have come, as does a release
-/// being made local.
+/// moving to This Mac.
 struct MacStorageChip: View {
     let release: ReleaseSummary
     let status: BridgeStorageRowStatus
@@ -33,10 +33,10 @@ struct MacStorageChip: View {
         case .pinning(.running):
             StoragePinningChipContainer(releaseId: release.id)
         case .makeLocalFailed(let error):
-            StatusChip("Could not make local", tone: .danger)
+            StatusChip("Could not move to This Mac", tone: .danger)
                 .help(error)
         case .makingLocal(.queued):
-            StatusChip("Queued to make local", tone: .activity)
+            StatusChip("Queued to move to This Mac", tone: .activity)
         case .makingLocal(.running):
             StorageMakingLocalChipContainer(releaseId: release.id)
         case .onOneDevice:
@@ -99,7 +99,7 @@ struct StoragePinningChipContainer: View {
     }
 }
 
-/// A release being made local's chip, filled each frame from how far its
+/// A release moving to This Mac's chip, filled each frame from how far its
 /// files have downloaded into the person's folder.
 struct StorageMakingLocalChipContainer: View {
     let releaseId: String

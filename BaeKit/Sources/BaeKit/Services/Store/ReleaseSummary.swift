@@ -11,7 +11,7 @@ import Foundation
 /// What of the release waits in the upload queue is `upload`, read with the
 /// row; how fast its files go is its transfer in `OutboxStore`.
 ///
-/// Where a release stands in the download queue (a pin, or being made local)
+/// Where a release stands in the download queue (a pin, or moving to This Mac)
 /// is not here: it arrives with the release's detail
 /// (`ReleaseDetail.downloadStatus`, `ReleaseDetail.makeLocal`) and the
 /// Storage Manager row's status.

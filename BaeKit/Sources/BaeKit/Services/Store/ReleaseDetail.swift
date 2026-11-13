@@ -38,8 +38,8 @@ public struct ReleaseDetail: Identifiable, Sendable {
     /// Where the release stands in this device's download queue, and what
     /// holds the queue back; nil when core offers no download control.
     public var downloadStatus: BridgeReleaseDownloadStatus?
-    /// Where the release stands in being made local, in the same queue; nil
-    /// when it is not being made local.
+    /// Where the release stands in moving to This Mac, in the same queue; nil
+    /// when it is not moving to This Mac.
     public var makeLocal: BridgeMakeLocalStatus?
 
     public var id: String {

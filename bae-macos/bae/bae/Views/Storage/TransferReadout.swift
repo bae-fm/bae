@@ -3,7 +3,7 @@ import BaeKit
 import SwiftUI
 
 /// A release transfer's readout: the bytes it holds of its size and how fast
-/// it goes (for a release made local, the bytes of the file being
+/// it goes (for a release moved to This Mac, the bytes of the file being
 /// downloaded) on one line, over a bar of the same bytes, all read from the
 /// release's latest progress once per display frame while it moves. Moving
 /// bytes run no SwiftUI update. Before the stream names the release the

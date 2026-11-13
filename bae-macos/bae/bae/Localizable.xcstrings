@@ -1552,348 +1552,348 @@
         }
       }
     },
-    "Queued to make local" : {
-      "comment" : "Storage Manager and album detail: a make-local waiting in the download queue",
+    "Queued to move to This Mac" : {
+      "comment" : "Storage Manager and album detail: a move to this Mac waiting in the download queue",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "في الانتظار لجعله محليًا"
+            "value" : "في الانتظار للنقل إلى هذا الـ Mac"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "В опашката за превръщане в локално"
+            "value" : "В опашката за преместване на този Mac"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ve frontě k převedení na místní"
+            "value" : "Ve frontě k přesunu na tento Mac"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "I kø til at blive lokal"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Queued to make local"
+            "value" : "I kø til at flytte til denne Mac"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "In Warteschlange, um lokal zu machen"
+            "value" : "In Warteschlange zum Verschieben auf diesen Mac"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Σε ουρά για τοπική διάθεση"
+            "value" : "Σε ουρά για μετακίνηση σε αυτό το Mac"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Queued to move to This Mac"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "En cola para hacerlo local"
+            "value" : "En cola para mover a este Mac"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Jonossa paikalliseksi tekemistä varten"
+            "value" : "Jonossa siirrettäväksi tälle Macille"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "En file pour être rendu local"
+            "value" : "En file pour être déplacé vers ce Mac"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "בתור להפיכה למקומי"
+            "value" : "בתור להעברה ל-Mac הזה"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Na čekanju za postavljanje lokalno"
+            "value" : "Na čekanju za premještanje na ovaj Mac"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sorban a helyivé tételhez"
+            "value" : "Sorban az erre a Macre való áthelyezéshez"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "In coda per essere reso locale"
+            "value" : "In coda per essere spostato su questo Mac"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ローカル化の待機中"
+            "value" : "この Mac への移動の待機中"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "로컬 전환 대기 중"
+            "value" : "이 Mac으로 이동 대기 중"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "I kø for å gjøres lokal"
+            "value" : "I kø for å flyttes til denne Macen"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "In wachtrij om lokaal te maken"
+            "value" : "In wachtrij om naar deze Mac te verplaatsen"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "W kolejce do ustawienia jako lokalne"
+            "value" : "W kolejce do przeniesienia na ten Mac"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Na fila para tornar local"
+            "value" : "Na fila para mover para este Mac"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Em fila para tornar local"
+            "value" : "Em fila para mover para este Mac"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "În coadă pentru a deveni local"
+            "value" : "În coadă pentru mutare pe acest Mac"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "V rade na sprístupnenie lokálne"
+            "value" : "V rade na presun na tento Mac"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "I kö för att göras lokal"
+            "value" : "I kö för att flyttas till den här Macen"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Yerel yapmak için sırada"
+            "value" : "Bu Mac’e taşımak için sırada"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "У черзі, щоб зробити локальним"
+            "value" : "У черзі на переміщення на цей Mac"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "已排队，等待设为本地"
+            "value" : "已排队，等待移到这台 Mac"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "已加入佇列，等待設為本機"
+            "value" : "已加入佇列，等待移到這台 Mac"
           }
         }
       }
     },
-    "Could not make local" : {
-      "comment" : "Storage Manager and album detail: a make-local the download queue could not finish; its error is in the help text",
+    "Could not move to This Mac" : {
+      "comment" : "Storage Manager and album detail: a move to this Mac the download queue could not finish; its error is in the help text",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "تعذر جعله محليًا"
+            "value" : "تعذر النقل إلى هذا الـ Mac"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Не можа да се направи локално"
+            "value" : "Не можа да се премести на този Mac"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nepodařilo se převést na místní"
+            "value" : "Nepodařilo se přesunout na tento Mac"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kunne ikke gøres lokal"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Could not make local"
+            "value" : "Kunne ikke flytte til denne Mac"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Konnte nicht lokal gemacht werden"
+            "value" : "Konnte nicht auf diesen Mac verschoben werden"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Η τοπική διάθεση απέτυχε"
+            "value" : "Η μετακίνηση σε αυτό το Mac απέτυχε"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Could not move to This Mac"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No se pudo hacer local"
+            "value" : "No se pudo mover a este Mac"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Paikalliseksi tekeminen epäonnistui"
+            "value" : "Siirtäminen tälle Macille epäonnistui"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible de rendre local"
+            "value" : "Impossible de déplacer vers ce Mac"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "לא ניתן להפוך למקומי"
+            "value" : "לא ניתן להעביר ל-Mac הזה"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nije uspjelo postaviti lokalno"
+            "value" : "Nije uspjelo premjestiti na ovaj Mac"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nem sikerült helyivé tenni"
+            "value" : "Nem sikerült áthelyezni erre a Macre"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossibile rendere locale"
+            "value" : "Impossibile spostare su questo Mac"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ローカルにできませんでした"
+            "value" : "この Mac に移動できませんでした"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "로컬로 전환하지 못함"
+            "value" : "이 Mac으로 이동하지 못함"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kunne ikke gjøres lokal"
+            "value" : "Kunne ikke flyttes til denne Macen"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kon niet lokaal worden gemaakt"
+            "value" : "Kon niet naar deze Mac worden verplaatst"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nie udało się ustawić jako lokalne"
+            "value" : "Nie udało się przenieść na ten Mac"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Não foi possível tornar local"
+            "value" : "Não foi possível mover para este Mac"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Não foi possível tornar local"
+            "value" : "Não foi possível mover para este Mac"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nu s-a putut face local"
+            "value" : "Nu s-a putut muta pe acest Mac"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nepodarilo sa sprístupniť lokálne"
+            "value" : "Nepodarilo sa presunúť na tento Mac"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kunde inte göras lokal"
+            "value" : "Kunde inte flyttas till den här Macen"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Yerel yapılamadı"
+            "value" : "Bu Mac’e taşınamadı"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Не вдалося зробити локальним"
+            "value" : "Не вдалося перемістити на цей Mac"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "无法设为本地"
+            "value" : "无法移到这台 Mac"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "無法設為本機"
+            "value" : "無法移到這台 Mac"
           }
         }
       }
@@ -54063,175 +54063,175 @@
         }
       }
     },
-    "Make local…" : {
-      "comment" : "Storage action: choose a folder and make a cloud release local",
+    "Move to This Mac…" : {
+      "comment" : "Storage action: choose a folder and move a cloud release to this Mac",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "جعله محليًا…"
+            "value" : "نقل إلى هذا الـ Mac…"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Направи локално…"
+            "value" : "Премести на този Mac…"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Převést na místní…"
+            "value" : "Přesunout na tento Mac…"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gør lokal…"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Make local…"
+            "value" : "Flyt til denne Mac…"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lokal machen…"
+            "value" : "Auf diesen Mac verschieben…"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Τοπική διάθεση…"
+            "value" : "Μετακίνηση σε αυτό το Mac…"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Move to This Mac…"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hacer local…"
+            "value" : "Mover a este Mac…"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tee paikalliseksi…"
+            "value" : "Siirrä tälle Macille…"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rendre local…"
+            "value" : "Déplacer vers ce Mac…"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "הפוך למקומי…"
+            "value" : "העבר ל-Mac הזה…"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Postavi lokalno…"
+            "value" : "Premjesti na ovaj Mac…"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Helyivé tétel…"
+            "value" : "Áthelyezés erre a Macre…"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rendi locale…"
+            "value" : "Sposta su questo Mac…"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ローカルにする…"
+            "value" : "この Mac に移動…"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "로컬로 전환…"
+            "value" : "이 Mac으로 이동…"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gjør lokal…"
+            "value" : "Flytt til denne Macen…"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lokaal maken…"
+            "value" : "Verplaats naar deze Mac…"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ustaw jako lokalne…"
+            "value" : "Przenieś na ten Mac…"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tornar local…"
+            "value" : "Mover para este Mac…"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tornar local…"
+            "value" : "Mover para este Mac…"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fă local…"
+            "value" : "Mută pe acest Mac…"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sprístupniť lokálne…"
+            "value" : "Presunúť na tento Mac…"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gör lokal…"
+            "value" : "Flytta till den här Macen…"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Yerel yap…"
+            "value" : "Bu Mac’e taşı…"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Зробити локальним…"
+            "value" : "Перемістити на цей Mac…"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "设为本地…"
+            "value" : "移到这台 Mac…"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "設為本機…"
+            "value" : "移到這台 Mac…"
           }
         }
       }
@@ -120077,7 +120077,7 @@
       }
     },
     "Current file: %@" : {
-      "comment" : "Make Local progress: how far the file being downloaded into the chosen folder has come, as bytes of its size (\"3 MB of 10 MB\")",
+      "comment" : "Move to This Mac progress: how far the file being downloaded into the chosen folder has come, as bytes of its size (\"3 MB of 10 MB\")",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -142506,175 +142506,175 @@
         }
       }
     },
-    "How many files upload to the cloud at once after an import, and how many download at once. Downloads are pinning and making local; they share this limit and Pause downloads." : {
+    "How many files upload to the cloud at once after an import, and how many download at once. Downloads are pinning and moving to This Mac; they share this limit and Pause downloads." : {
       "comment" : "Settings, Transfers: the note under the two limits",
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "How many files upload to the cloud at once after an import, and how many download at once. Downloads are pinning and making local; they share this limit and Pause downloads."
-          }
-        },
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "عدد الملفات التي تُرفع إلى السحابة في آن واحد بعد الاستيراد، وعدد الملفات التي تُنزَّل في آن واحد. التنزيلات هي التثبيت وجعل الإصدار محليًا، وهي تتشارك هذا الحد وخيار إيقاف التنزيلات مؤقتًا."
+            "value" : "عدد الملفات التي تُرفع إلى السحابة في آن واحد بعد الاستيراد، وعدد الملفات التي تُنزَّل في آن واحد. التنزيلات هي التثبيت والنقل إلى هذا الـ Mac، وهي تتشارك هذا الحد وخيار إيقاف التنزيلات مؤقتًا."
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Колко файла се качват едновременно в облака след импортиране и колко се изтеглят едновременно. Изтеглянията са закачането и превръщането в локално; те споделят това ограничение и Пауза на изтеглянията."
+            "value" : "Колко файла се качват едновременно в облака след импортиране и колко се изтеглят едновременно. Изтеглянията са закачането и преместването на този Mac; те споделят това ограничение и Пауза на изтеглянията."
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kolik souborů se po importu nahrává najednou do cloudu a kolik se jich najednou stahuje. Stahování je připínání a převod na místní; sdílí tento limit i volbu Pozastavit stahování."
+            "value" : "Kolik souborů se po importu nahrává najednou do cloudu a kolik se jich najednou stahuje. Stahování je připínání a přesouvání na tento Mac; sdílí tento limit i volbu Pozastavit stahování."
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hvor mange filer der uploades til skyen ad gangen efter en import, og hvor mange der downloades ad gangen. Downloads er fastgørelse og at gøre lokal; de deler denne grænse og Sæt downloads på pause."
+            "value" : "Hvor mange filer der uploades til skyen ad gangen efter en import, og hvor mange der downloades ad gangen. Downloads er fastgørelse og flytning til denne Mac; de deler denne grænse og Sæt downloads på pause."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Wie viele Dateien nach einem Import gleichzeitig in die Cloud hochgeladen werden und wie viele gleichzeitig heruntergeladen werden. Downloads sind das Anheften und das Lokalmachen; sie teilen sich dieses Limit und Downloads pausieren."
+            "value" : "Wie viele Dateien nach einem Import gleichzeitig in die Cloud hochgeladen werden und wie viele gleichzeitig heruntergeladen werden. Downloads sind das Anheften und das Verschieben auf diesen Mac; sie teilen sich dieses Limit und Downloads pausieren."
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Πόσα αρχεία μεταφορτώνονται ταυτόχρονα στο cloud μετά από μια εισαγωγή και πόσα λαμβάνονται ταυτόχρονα. Οι λήψεις είναι το καρφίτσωμα και η τοπική διάθεση· μοιράζονται αυτό το όριο και την Παύση λήψεων."
+            "value" : "Πόσα αρχεία μεταφορτώνονται ταυτόχρονα στο cloud μετά από μια εισαγωγή και πόσα λαμβάνονται ταυτόχρονα. Οι λήψεις είναι το καρφίτσωμα και η μετακίνηση σε αυτό το Mac· μοιράζονται αυτό το όριο και την Παύση λήψεων."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "How many files upload to the cloud at once after an import, and how many download at once. Downloads are pinning and moving to This Mac; they share this limit and Pause downloads."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cuántos archivos se suben a la vez a la nube tras una importación, y cuántos se descargan a la vez. Las descargas son fijar y hacer local; comparten este límite y Pausar descargas."
+            "value" : "Cuántos archivos se suben a la vez a la nube tras una importación, y cuántos se descargan a la vez. Las descargas son fijar y mover a este Mac; comparten este límite y Pausar descargas."
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kuinka monta tiedostoa lähetetään pilveen kerralla tuonnin jälkeen ja kuinka monta ladataan kerralla. Lataukset ovat kiinnittämistä ja paikalliseksi tekemistä; ne jakavat tämän rajan ja asetuksen Keskeytä lataukset."
+            "value" : "Kuinka monta tiedostoa lähetetään pilveen kerralla tuonnin jälkeen ja kuinka monta ladataan kerralla. Lataukset ovat kiinnittämistä ja siirtämistä tälle Macille; ne jakavat tämän rajan ja asetuksen Keskeytä lataukset."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Combien de fichiers sont envoyés en même temps vers le cloud après un import, et combien sont téléchargés en même temps. Les téléchargements sont l’épinglage et la mise en local ; ils partagent cette limite et Suspendre les téléchargements."
+            "value" : "Combien de fichiers sont envoyés en même temps vers le cloud après un import, et combien sont téléchargés en même temps. Les téléchargements sont l’épinglage et le déplacement vers ce Mac ; ils partagent cette limite et Suspendre les téléchargements."
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "כמה קבצים מועלים בו‑זמנית לענן לאחר ייבוא, וכמה מורדים בו‑זמנית. הורדות הן הצמדה והפיכה למקומי; הן חולקות את המגבלה הזו ואת השהיית הורדות."
+            "value" : "כמה קבצים מועלים בו‑זמנית לענן לאחר ייבוא, וכמה מורדים בו‑זמנית. הורדות הן הצמדה והעברה ל-Mac הזה; הן חולקות את המגבלה הזו ואת השהיית הורדות."
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Koliko se datoteka nakon uvoza istodobno prenosi u oblak i koliko se istodobno preuzima. Preuzimanja su prikvačivanje i postavljanje lokalno; dijele ovo ograničenje i Pauziraj preuzimanja."
+            "value" : "Koliko se datoteka nakon uvoza istodobno prenosi u oblak i koliko se istodobno preuzima. Preuzimanja su prikvačivanje i premještanje na ovaj Mac; dijele ovo ograničenje i Pauziraj preuzimanja."
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hány fájl töltődjön fel egyszerre a felhőbe importálás után, és hány töltődjön le egyszerre. A letöltések a rögzítés és a helyivé tétel; közös a korlátjuk, és közös a Letöltések szüneteltetése."
+            "value" : "Hány fájl töltődjön fel egyszerre a felhőbe importálás után, és hány töltődjön le egyszerre. A letöltések a rögzítés és az erre a Macre való áthelyezés; közös a korlátjuk, és közös a Letöltések szüneteltetése."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Quanti file vengono caricati contemporaneamente nel cloud dopo un’importazione, e quanti vengono scaricati contemporaneamente. I download sono il fissaggio e il rendere locale; condividono questo limite e Sospendi download."
+            "value" : "Quanti file vengono caricati contemporaneamente nel cloud dopo un’importazione, e quanti vengono scaricati contemporaneamente. I download sono il fissaggio e lo spostamento su questo Mac; condividono questo limite e Sospendi download."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "インポート後に一度にクラウドへアップロードするファイル数と、一度にダウンロードするファイル数。ダウンロードにはピン留めとローカル化が含まれ、この上限とダウンロードの一時停止を共有します。"
+            "value" : "インポート後に一度にクラウドへアップロードするファイル数と、一度にダウンロードするファイル数。ダウンロードにはピン留めとこの Mac への移動が含まれ、この上限とダウンロードの一時停止を共有します。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "가져오기 후 한 번에 클라우드로 업로드할 파일 수와, 한 번에 다운로드할 파일 수입니다. 다운로드는 고정과 로컬 전환이며, 이 한도와 다운로드 일시 정지를 함께 사용합니다."
+            "value" : "가져오기 후 한 번에 클라우드로 업로드할 파일 수와, 한 번에 다운로드할 파일 수입니다. 다운로드는 고정과 이 Mac으로 이동이며, 이 한도와 다운로드 일시 정지를 함께 사용합니다."
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hvor mange filer som lastes opp til skyen samtidig etter en import, og hvor mange som lastes ned samtidig. Nedlastinger er festing og det å gjøre lokal; de deler denne grensen og Sett nedlastinger på pause."
+            "value" : "Hvor mange filer som lastes opp til skyen samtidig etter en import, og hvor mange som lastes ned samtidig. Nedlastinger er festing og flytting til denne Macen; de deler denne grensen og Sett nedlastinger på pause."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hoeveel bestanden na een import tegelijk naar de cloud worden geüpload, en hoeveel er tegelijk worden gedownload. Downloads zijn vastzetten en lokaal maken; ze delen deze limiet en Downloads pauzeren."
+            "value" : "Hoeveel bestanden na een import tegelijk naar de cloud worden geüpload, en hoeveel er tegelijk worden gedownload. Downloads zijn vastzetten en verplaatsen naar deze Mac; ze delen deze limiet en Downloads pauzeren."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ile plików jest przesyłanych jednocześnie do chmury po imporcie i ile jest jednocześnie pobieranych. Pobieranie to przypinanie i ustawianie jako lokalne; obejmuje je ten sam limit i opcja Wstrzymaj pobieranie."
+            "value" : "Ile plików jest przesyłanych jednocześnie do chmury po imporcie i ile jest jednocześnie pobieranych. Pobieranie to przypinanie i przenoszenie na ten Mac; obejmuje je ten sam limit i opcja Wstrzymaj pobieranie."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Quantos arquivos são enviados de uma vez para a nuvem após uma importação, e quantos são baixados de uma vez. Downloads são fixar e tornar local; eles compartilham este limite e Pausar downloads."
+            "value" : "Quantos arquivos são enviados de uma vez para a nuvem após uma importação, e quantos são baixados de uma vez. Downloads são fixar e mover para este Mac; eles compartilham este limite e Pausar downloads."
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Quantos ficheiros são enviados de uma vez para a nuvem depois de uma importação e quantos são descarregados de uma vez. Os descarregamentos são fixar e tornar local; partilham este limite e Pausar descarregamentos."
+            "value" : "Quantos ficheiros são enviados de uma vez para a nuvem depois de uma importação e quantos são descarregados de uma vez. Os descarregamentos são fixar e mover para este Mac; partilham este limite e Pausar descarregamentos."
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Câte fișiere se încarcă simultan în cloud după un import și câte se descarcă simultan. Descărcările sunt fixarea și transformarea în local; ele împart această limită și opțiunea Întrerupe descărcările."
+            "value" : "Câte fișiere se încarcă simultan în cloud după un import și câte se descarcă simultan. Descărcările sunt fixarea și mutarea pe acest Mac; ele împart această limită și opțiunea Întrerupe descărcările."
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Koľko súborov sa po importe naraz odosiela do cloudu a koľko sa ich naraz sťahuje. Sťahovanie je pripínanie a sprístupnenie lokálne; zdieľa tento limit aj voľbu Pozastaviť sťahovanie."
+            "value" : "Koľko súborov sa po importe naraz odosiela do cloudu a koľko sa ich naraz sťahuje. Sťahovanie je pripínanie a presun na tento Mac; zdieľa tento limit aj voľbu Pozastaviť sťahovanie."
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hur många filer som skickas upp till molnet samtidigt efter en import, och hur många som hämtas samtidigt. Hämtningar är fästning och att göra lokal; de delar den här gränsen och Pausa hämtningar."
+            "value" : "Hur många filer som skickas upp till molnet samtidigt efter en import, och hur många som hämtas samtidigt. Hämtningar är fästning och att flytta till den här Macen; de delar den här gränsen och Pausa hämtningar."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "İçe aktarmadan sonra buluta aynı anda kaç dosyanın yükleneceği ve aynı anda kaç dosyanın indirileceği. İndirmeler, sabitleme ve yerel yapmadır; bu sınırı ve İndirmeleri duraklat ayarını paylaşırlar."
+            "value" : "İçe aktarmadan sonra buluta aynı anda kaç dosyanın yükleneceği ve aynı anda kaç dosyanın indirileceği. İndirmeler, sabitleme ve Bu Mac’e taşımadır; bu sınırı ve İndirmeleri duraklat ayarını paylaşırlar."
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Скільки файлів одночасно вивантажується до хмари після імпорту і скільки одночасно завантажується. Завантаження охоплюють закріплення й перетворення на локальне; вони ділять це обмеження та Призупинити завантаження."
+            "value" : "Скільки файлів одночасно вивантажується до хмари після імпорту і скільки одночасно завантажується. Завантаження охоплюють закріплення й переміщення на цей Mac; вони ділять це обмеження та Призупинити завантаження."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "导入后同时上传到云端的文件数，以及同时下载的文件数。下载包括固定和设为本地，共用此限制和暂停下载。"
+            "value" : "导入后同时上传到云端的文件数，以及同时下载的文件数。下载包括固定和移到这台 Mac，共用此限制和暂停下载。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "匯入後同時上傳至雲端的檔案數，以及同時下載的檔案數。下載包括釘選和設為本機，共用此限制和暫停下載。"
+            "value" : "匯入後同時上傳至雲端的檔案數，以及同時下載的檔案數。下載包括釘選和移到這台 Mac，共用此限制和暫停下載。"
           }
         }
       }

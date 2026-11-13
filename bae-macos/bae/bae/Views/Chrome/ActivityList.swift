@@ -170,7 +170,7 @@ extension BridgeSyncActivity {
     }
 }
 
-/// A pass running, then the Uploading, Pinning and Making local lines, each
+/// A pass running, then the Uploading, Pinning and Moving to This Mac lines, each
 /// while its batch holds a release, counting its releases done or showing
 /// what holds its queue back in the count's place, with a bar of its batch's
 /// bytes. Each queue's line ends in the button that pauses it.
@@ -253,7 +253,9 @@ private struct TransferLine: View {
                             paused: queue.paused,
                             glyph: .medium
                         )
-                        .buttonStyle(BoxedIconButtonStyle(size: .small).accentFocus())
+                        .buttonStyle(
+                            BoxedIconButtonStyle(size: .small).accentFocus()
+                        )
                     }
                 }
             }

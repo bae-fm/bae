@@ -2324,7 +2324,7 @@ Each row's storage state is the place it sorts by, which core reads with the
 row: Could not pin, its error behind *Details* (§9.7), or Move failed, naming the file whose
 original changed since import, first; Uploading, its chip filled as far
 as its bytes have come while any file is being sent, or Queued to upload while its files only wait; Pinning, filled as far
-as its download has come once it starts, or Queued to pin before; making local, Moving to This Mac… filled as far as its copies have downloaded
+as its download has come once it starts, or Queued to pin before; a move to This Mac, Moving to This Mac… filled as far as its copies have downloaded
 (§4.4), or Queued to move to This Mac before, or Could not move to This Mac, its error behind *Details*, in the first place with
 Could not pin; Local, Pinned or
 In cloud at rest. No rate shows beside it, nor how many entries wait ahead
@@ -3743,7 +3743,7 @@ or removed from the library, stays in the count and never counts as done. A
 queue's hold (Paused, Waiting for network, and for uploads Waiting for Wi-Fi or
 Retrying at its time) stands in place of its count. On
 the desktop each queue's line ends in Pause, or Resume while that queue is
-paused; pinning and making local are one queue, as in Transfers settings, so
+paused; pinning and moving to This Mac are one queue, as in Transfers settings, so
 their lines pause and resume together. Under the lines, *Open Storage Manager*
 opens the Storage manager. On the phones the Pinning line ends in Pause or
 Resume too, and opens the Pinning screen. With nothing to show it says

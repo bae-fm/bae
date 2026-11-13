@@ -1,4 +1,4 @@
-//! The Activity panel's Pinning and Making local lines as the download
+//! The Activity panel's Pinning and Moving to This Mac lines as the download
 //! queue's pins and make-locals run: each line counts the releases of its own
 //! batch, done of all it has held since its kind last had none waiting.
 

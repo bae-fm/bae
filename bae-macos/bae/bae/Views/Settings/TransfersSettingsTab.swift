@@ -90,7 +90,7 @@ struct TransfersSettingsTab: View {
                     )
                 } footer: {
                     Text(
-                        "How many files upload to the cloud at once after an import, and how many download at once. Downloads are pinning and making local; they share this limit and Pause downloads."
+                        "How many files upload to the cloud at once after an import, and how many download at once. Downloads are pinning and moving to This Mac; they share this limit and Pause downloads."
                     )
                 }
             }

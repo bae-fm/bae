@@ -8,7 +8,7 @@ extension BridgeReleaseStorageAction {
     var label: String {
         switch self {
         case .upload: String(localized: "Move to cloud")
-        case .detachAudio: String(localized: "Make local…")
+        case .detachAudio: String(localized: "Move to This Mac…")
         case .pin: String(localized: "Pin")
         case .unpin: String(localized: "Unpin")
         }
