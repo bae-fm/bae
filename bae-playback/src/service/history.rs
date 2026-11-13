@@ -1,3 +1,4 @@
+use super::renderer::ObservedStatus;
 use super::*;
 use bae_people::history::HistoryPlay;
 use std::time::Duration;
@@ -124,6 +125,9 @@ impl PlaybackService {
             return;
         };
         if self.renderer.is_remote() {
+            // What the device has played since its last status, worked out
+            // from that status: the play is credited up to this moment.
+            self.observe_remote_now();
             return;
         }
         if let Some(output) = &self.output {
@@ -187,7 +191,8 @@ impl PlaybackService {
         }
     }
 
-    /// The next moment audio still in an AirPlay receiver makes something due:
+    /// The next moment audio still in an AirPlay receiver makes something due,
+    /// or the play on a device comes to count as played:
     /// a finished play whose audio has been heard, or comes to count as played,
     /// and saves; a drained track whose last audio has been heard, and
     /// completes. The run loop waits for it, then checkpoints and publishes.
@@ -202,6 +207,7 @@ impl PlaybackService {
             .iter()
             .filter_map(|buffered| buffered.tail.as_ref().map(AudibleTail::next_due))
             .chain(completion)
+            .chain(self.remote_qualifies_at())
             .min()
     }
 
@@ -286,7 +292,60 @@ impl PlaybackService {
         }
     }
 
-    pub(super) fn observe_remote_listening(&mut self, position: StreamPosition, playing: bool) {
+    /// Credit the play with what the device has played by now, worked out from
+    /// its last status. Nothing without a status.
+    pub(super) fn observe_remote_now(&mut self) {
+        let now = self.clock.now();
+        let Some(ObservedStatus { status, observed_at }) = self.renderer.last_remote_status()
+        else {
+            return;
+        };
+        let Some(position) = status.position_at(observed_at, now) else {
+            return;
+        };
+        let playing = matches!(status.player_state, crate::renderer::RendererPlayerState::Playing);
+        self.observe_remote_listening(StreamPosition::from_duration(position), playing, now);
+    }
+
+    /// The moment the remote play comes to count as played, from the last
+    /// status and what the play has been credited so far: when the position
+    /// has reached the track body and the time left to qualify has passed. The
+    /// device's movement counts at most as fast as real time, as
+    /// [`Self::observe_remote_listening`] counts it. `None` when the device
+    /// isn't playing at a known rate, or the play already counts.
+    pub(super) fn remote_qualifies_at(&self) -> Option<chrono::DateTime<chrono::Utc>> {
+        let listening = self.listening.as_ref()?;
+        let ListeningMeter::Remote { position, reported_at } = listening.meter else {
+            return None;
+        };
+        let PlaybackSlot::Active(cur) = &self.slot else {
+            return None;
+        };
+        let ObservedStatus { status, .. } = self.renderer.last_remote_status()?;
+        let rate = status.rate.filter(|rate| *rate > 0.0 && rate.is_finite())?;
+        if !matches!(status.player_state, crate::renderer::RendererPlayerState::Playing) {
+            return None;
+        }
+        let left = listening.play.left_to_qualify()?;
+        let to_body = cur
+            .prepared
+            .timeline
+            .track_start()
+            .as_duration()
+            .saturating_sub(position.as_duration())
+            .as_secs_f64()
+            / rate;
+        let after = (to_body + left.as_secs_f64() / rate).max(left.as_secs_f64());
+        let after = Duration::try_from_secs_f64(after).ok()?;
+        Some(reported_at + chrono::Duration::from_std(after).ok()?)
+    }
+
+    pub(super) fn observe_remote_listening(
+        &mut self,
+        position: StreamPosition,
+        playing: bool,
+        now: chrono::DateTime<chrono::Utc>,
+    ) {
         let track_start = match &self.slot {
             PlaybackSlot::Active(cur) => cur.prepared.timeline.track_start().as_duration(),
             _ => return,
@@ -294,7 +353,6 @@ impl PlaybackService {
         let Some(listening) = &mut self.listening else {
             return;
         };
-        let now = self.clock.now();
         if let ListeningMeter::Remote { position: previous, reported_at } = listening.meter {
             if playing {
                 // A device-side seek must not turn skipped positions into listening.

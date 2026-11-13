@@ -439,11 +439,13 @@ impl PlaybackService {
         let service = self.command_tx.service;
         let mut countdown = deadline_wait::DeadlineWait::new();
         let mut audible = deadline_wait::DeadlineWait::new();
+        let mut ticking = deadline_wait::DeadlineWait::new();
         loop {
             let follows =
                 caught_sync("follow the deadlines, the staged sides and the held tracks", || {
                     countdown.follow(self.side_pause_countdown_deadline(), self.clock.as_ref());
                     audible.follow(self.audible_deadline(), self.clock.as_ref());
+                    ticking.follow(self.remote_display_deadline(), self.clock.as_ref());
                     self.follow_staged_sides();
                     self.follow_held_tracks();
                 });
@@ -459,6 +461,7 @@ impl PlaybackService {
                     () = audio_events_ready(&self.output) => Wake::AudioEvents,
                     deadline = countdown.elapsed(), if countdown.is_armed() => Wake::CountdownElapsed(deadline),
                     _ = audible.elapsed(), if audible.is_armed() => Wake::AudibleDeadline,
+                    due = ticking.elapsed(), if ticking.is_armed() => Wake::RemoteDisplayTick(due),
                     Some(command) = next_command(commands, service) => Wake::Command(command),
                     (held, infos) = self.held_tracks.next() => Wake::HeldTracks { held, infos },
                     else => break,
@@ -484,9 +487,11 @@ impl PlaybackService {
                 self.checkpoint_listening().await;
             }
             Wake::AudibleDeadline => {
+                self.observe_remote_now();
                 self.checkpoint_listening().await;
                 self.publish_audible_completion();
             }
+            Wake::RemoteDisplayTick(due) => self.remote_display_tick(due),
             Wake::CountdownElapsed(deadline) => self.side_pause_countdown_elapsed(deadline).await,
             Wake::Command(command) => return self.handle_command(command).await,
             Wake::HeldTracks { held, infos } => self.handle_held_tracks(held, infos).await,
@@ -524,6 +529,9 @@ enum Wake {
     /// Audio still in the AirPlay receiver has been heard, or a play in it
     /// came to count as played (`audible_deadline`).
     AudibleDeadline,
+    /// The device plays: bring the shown position up to date from its last
+    /// status (`remote_display_deadline`).
+    RemoteDisplayTick(chrono::DateTime<chrono::Utc>),
     Command(PlaybackCommand),
     /// The library's facts of the tracks playback holds, `held`, which
     /// leave out each one it no longer holds.

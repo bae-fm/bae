@@ -33,6 +33,8 @@ impl PlaybackService {
         if self.renderer.is_remote() {
             self.reset_remote_listening_position(position);
             self.renderer.seek_remote(position);
+            // The device's last status is from before the seek.
+            self.renderer.forget_remote_status();
             if let PlaybackSlot::Active(cur) = &mut self.slot {
                 cur.position = position;
             }

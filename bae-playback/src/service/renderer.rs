@@ -69,6 +69,22 @@ impl Renderer {
         }
     }
 
+    /// Drop the last status: the device's position is no longer known until
+    /// its next status, as after a seek, and nothing is worked out from the
+    /// old one.
+    pub(super) fn forget_remote_status(&mut self) {
+        if let Self::Remote(remote) = self {
+            remote.last_status = None;
+        }
+    }
+
+    pub(super) fn last_remote_status(&self) -> Option<ObservedStatus> {
+        match self {
+            Self::Remote(remote) => remote.last_status,
+            Self::Local | Self::AirPlay(_) => None,
+        }
+    }
+
     pub(super) fn flush_airplay(&self) {
         if let Self::AirPlay(airplay) = self {
             airplay.control.flush();
@@ -201,6 +217,20 @@ pub(super) struct RemoteRenderer {
     device: CastReceiver,
     session: RendererSession,
     media_source: RendererMediaSource,
+    /// The last status the device gave, and when it arrived: its position is
+    /// worked out from it between statuses. `None` before the first status of
+    /// the loaded track, and after a seek, which the next status confirms.
+    last_status: Option<ObservedStatus>,
+    /// When the shown position is next brought up to date, while the device
+    /// plays.
+    next_display_tick: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+/// A status and the moment it arrived.
+#[derive(Clone, Copy)]
+pub(super) struct ObservedStatus {
+    pub(super) status: ReceiverStatus,
+    pub(super) observed_at: chrono::DateTime<chrono::Utc>,
 }
 
 impl RemoteRenderer {
@@ -308,6 +338,7 @@ impl PlaybackService {
         let session = match RendererSession::start(
             &self.diagnostics,
             channel,
+            self.clock.clone(),
             event_callback(self.command_tx.clone()),
         ) {
             Ok(session) => session,
@@ -322,8 +353,13 @@ impl PlaybackService {
             }
         };
         session.set_volume(volume);
-        self.renderer =
-            Renderer::Remote(RemoteRenderer { device: device.clone(), session, media_source });
+        self.renderer = Renderer::Remote(RemoteRenderer {
+            device: device.clone(),
+            session,
+            media_source,
+            last_status: None,
+            next_display_tick: None,
+        });
         self.hand_over_to_device(device, current, target).await;
     }
 
@@ -379,7 +415,9 @@ impl PlaybackService {
             return;
         }
         match event {
-            RendererSessionEvent::Status(status) => self.apply_remote_status(status).await,
+            RendererSessionEvent::Status { status, observed_at } => {
+                self.apply_remote_status(status, observed_at).await
+            }
             RendererSessionEvent::CommandFailed(error) => self.fail_playback(
                 PlaybackOperation::Renderer,
                 crate::PlaybackErrorReason::renderer(error),
@@ -426,10 +464,21 @@ impl PlaybackService {
     /// Reconcile the slot and the progress feed to a non-terminal device status:
     /// emit a position update, and drive queue-advance / phase changes off the
     /// device's player state.
-    async fn apply_remote_status(&mut self, status: ReceiverStatus) {
+    async fn apply_remote_status(
+        &mut self,
+        status: ReceiverStatus,
+        observed_at: chrono::DateTime<chrono::Utc>,
+    ) {
         let PlaybackSlot::Active(cur) = &mut self.slot else {
             return;
         };
+        if let Renderer::Remote(remote) = &mut self.renderer {
+            remote.last_status = Some(ObservedStatus { status, observed_at });
+            remote.next_display_tick.get_or_insert_with(|| {
+                observed_at
+                    + chrono::Duration::milliseconds(self.position_update_interval_ms.into())
+            });
+        }
         let track_id = cur.prepared.track_id.clone();
         let was_playing = matches!(cur.phase, TrackPhase::Playing);
 
@@ -454,7 +503,7 @@ impl PlaybackService {
             }
         }
         if let Some(position) = status.position.map(StreamPosition::from_duration) {
-            self.observe_remote_listening(position, was_playing);
+            self.observe_remote_listening(position, was_playing, observed_at);
             self.checkpoint_listening().await;
         }
         match status.player_state {
@@ -475,6 +524,53 @@ impl PlaybackService {
             // Buffering/idle are transient; the installed phase stands.
             RendererPlayerState::Buffering | RendererPlayerState::Idle => {}
         }
+    }
+
+    /// The next moment the shown position is brought up to date: while the
+    /// device plays the track at a known rate, every
+    /// `position_update_interval_ms`, the cadence local playback uses.
+    pub(super) fn remote_display_deadline(&self) -> Option<chrono::DateTime<chrono::Utc>> {
+        let Renderer::Remote(remote) = &self.renderer else {
+            return None;
+        };
+        let PlaybackSlot::Active(cur) = &self.slot else {
+            return None;
+        };
+        let status = remote.last_status?.status;
+        let moving = matches!(status.player_state, RendererPlayerState::Playing)
+            && status.position.is_some()
+            && status.rate.is_some()
+            && matches!(cur.phase, TrackPhase::Playing);
+        remote.next_display_tick.filter(|_| moving)
+    }
+
+    /// Bring the shown position up to date: where the device has reached by
+    /// now, worked out from its last status. `due` is the moment that was
+    /// waited for; the next is one interval after it.
+    pub(super) fn remote_display_tick(&mut self, due: chrono::DateTime<chrono::Utc>) {
+        let now = self.clock.now();
+        let interval = chrono::Duration::milliseconds(self.position_update_interval_ms.into());
+        let Renderer::Remote(remote) = &mut self.renderer else {
+            return;
+        };
+        let next = due + interval;
+        remote.next_display_tick = Some(if next > now { next } else { now + interval });
+        let Some(ObservedStatus { status, observed_at }) = remote.last_status else {
+            return;
+        };
+        let Some(position) = status.position_at(observed_at, now) else {
+            return;
+        };
+        let PlaybackSlot::Active(cur) = &mut self.slot else {
+            return;
+        };
+        let position = StreamPosition::from_duration(position);
+        cur.position = position;
+        let (timeline, track_id) = (cur.prepared.timeline, cur.prepared.track_id.clone());
+        emit_progress(
+            &self.progress_tx,
+            PlaybackProgress::position_update(timeline, track_id, position),
+        );
     }
 
     /// Move the current remote track to `phase` and emit, but only on a real
@@ -586,6 +682,7 @@ impl PlaybackService {
             return;
         }
         self.reset_remote_listening_position(start_position);
+        self.renderer.forget_remote_status();
         self.emit_state();
         self.persist_playback_state().await;
     }

@@ -12,8 +12,8 @@ use std::time::Duration;
 
 use super::discovery::{parse_device_description, parse_ssdp_location};
 use super::soap::{
-    self, parse_hms, parse_position_info, parse_transport_state, DidlMetadata, PositionInfo,
-    TransportState,
+    self, parse_hms, parse_position_info, parse_transport_speed, parse_transport_state,
+    DidlMetadata, PositionInfo, TransportState, UnreadableSpeed,
 };
 use crate::renderer::{RendererConnection, RendererDevice};
 
@@ -496,6 +496,8 @@ struct FakeRenderer {
     /// The `RelTime` / `TrackDuration` the next GetPositionInfo returns.
     rel_time: String,
     track_duration: String,
+    /// The `CurrentSpeed` the next GetTransportInfo returns; `1` when unset.
+    speed: Option<String>,
 }
 
 type Shared = Arc<Mutex<FakeRenderer>>;
@@ -511,8 +513,9 @@ fn response_for(action: &str, state: &FakeRenderer) -> String {
     let inner = match action {
         "GetTransportInfo" => format!(
             "<CurrentTransportState>{}</CurrentTransportState>\
-             <CurrentTransportStatus>OK</CurrentTransportStatus><CurrentSpeed>1</CurrentSpeed>",
-            state.transport_state
+             <CurrentTransportStatus>OK</CurrentTransportStatus><CurrentSpeed>{}</CurrentSpeed>",
+            state.transport_state,
+            state.speed.as_deref().unwrap_or("1")
         ),
         "GetPositionInfo" => format!(
             "<Track>1</Track><TrackDuration>{}</TrackDuration><RelTime>{}</RelTime>",
@@ -821,4 +824,52 @@ fn a_renderer_time_too_long_to_be_a_time_is_none() {
     for time in ["99999999999999999:00:00", "5124095576030431:00:00", "9000:00:00"] {
         assert_eq!(parse_hms(time), None, "{time}");
     }
+}
+
+#[test]
+fn transport_speed_reads_a_whole_number_or_a_fraction() {
+    let speed = |value: &str| {
+        parse_transport_speed(&format!(
+            "<u:GetTransportInfoResponse xmlns:u=\"urn:schemas-upnp-org:service:AVTransport:1\">\
+             <CurrentSpeed>{value}</CurrentSpeed></u:GetTransportInfoResponse>"
+        ))
+    };
+    assert_eq!(speed("1"), Ok(1.0));
+    assert_eq!(speed("1/2"), Ok(0.5));
+    assert_eq!(speed(" 2 "), Ok(2.0));
+    assert_eq!(speed(""), Err(UnreadableSpeed(None)), "an empty element has no text");
+    for unreadable in ["fast", "0", "-1", "1/0", "1/x", "NaN"] {
+        assert_eq!(
+            speed(unreadable),
+            Err(UnreadableSpeed(Some(unreadable.to_string()))),
+            "{unreadable:?}"
+        );
+    }
+    assert_eq!(
+        parse_transport_speed(
+            "<u:GetTransportInfoResponse xmlns:u=\"urn:schemas-upnp-org:service:AVTransport:1\">\
+             </u:GetTransportInfoResponse>"
+        ),
+        Err(UnreadableSpeed(None))
+    );
+}
+
+/// A poll carries the speed the renderer states, or none it can use.
+#[test]
+fn a_poll_states_the_renderers_speed_or_none_when_it_is_unreadable() {
+    let runtime = bae_library::test_libraries::multi_thread_runtime();
+    let state: Shared = Arc::new(Mutex::new(FakeRenderer {
+        transport_state: "PLAYING".to_string(),
+        rel_time: "0:00:10".to_string(),
+        track_duration: "0:03:00".to_string(),
+        ..FakeRenderer::default()
+    }));
+    let base = runtime.block_on(start_fake_renderer(state.clone()));
+    let mut channel = channel_to(&base);
+
+    assert_eq!(channel.poll_status().unwrap().rate, Some(1.0));
+    state.lock().unwrap().speed = Some("1/2".to_string());
+    assert_eq!(channel.poll_status().unwrap().rate, Some(0.5));
+    state.lock().unwrap().speed = Some("fast".to_string());
+    assert_eq!(channel.poll_status().unwrap().rate, None);
 }

@@ -20,6 +20,7 @@ use bae_diagnostics::{Diagnostics, ReportedThread};
 use tracing::{debug, warn};
 
 use super::channel::{ReceiverStatus, RendererChannel, RendererError, RendererMedia};
+use crate::PlaybackClockRef;
 
 /// How often the session polls the renderer for status between commands.
 const POLL_INTERVAL: Duration = Duration::from_millis(500);
@@ -28,8 +29,8 @@ const POLL_INTERVAL: Duration = Duration::from_millis(500);
 /// refused, and the session's end.
 #[derive(Debug, Clone, PartialEq)]
 pub enum RendererSessionEvent {
-    /// A status read off the renderer.
-    Status(ReceiverStatus),
+    /// A status read off the renderer, and when it arrived.
+    Status { status: ReceiverStatus, observed_at: chrono::DateTime<chrono::Utc> },
     /// The renderer refused a command — a load, a play, a seek. The session
     /// goes on: the link is still up, and the next command may land.
     CommandFailed(RendererError),
@@ -71,13 +72,14 @@ impl RendererSession {
     pub fn start(
         diagnostics: &Diagnostics,
         channel: Box<dyn RendererChannel>,
+        clock: PlaybackClockRef,
         on_event: EventCallback,
     ) -> std::io::Result<Self> {
         let (command_tx, command_rx) = mpsc::channel();
         let on_panic_event = on_event.clone();
         let thread = diagnostics.spawn_thread_reported(
             "renderer session",
-            move || run_session(channel, command_rx, on_event),
+            move || run_session(channel, command_rx, clock, on_event),
             move |failed| {
                 on_panic_event(RendererSessionEvent::Ended(RendererError::Panicked(failed)))
             },
@@ -139,9 +141,12 @@ impl Drop for RendererSession {
 fn run_session(
     mut channel: Box<dyn RendererChannel>,
     command_rx: mpsc::Receiver<SessionCommand>,
+    clock: PlaybackClockRef,
     on_event: EventCallback,
 ) {
-    if let ControlFlow::Break(error) = drive(channel.as_mut(), &command_rx, &on_event) {
+    if let ControlFlow::Break(error) =
+        drive(channel.as_mut(), &command_rx, clock.as_ref(), &on_event)
+    {
         warn!("renderer session ended: {error}");
         on_event(RendererSessionEvent::Ended(error));
     }
@@ -152,19 +157,20 @@ fn run_session(
 fn drive(
     channel: &mut dyn RendererChannel,
     command_rx: &mpsc::Receiver<SessionCommand>,
+    clock: &dyn crate::PlaybackClock,
     on_event: &EventCallback,
 ) -> ControlFlow<RendererError> {
     // An initial poll surfaces the renderer's starting state promptly.
-    poll_and_report(channel, on_event)?;
+    poll_and_report(channel, clock, on_event)?;
     loop {
         match command_rx.recv_timeout(POLL_INTERVAL) {
             Ok(command) => {
                 run_command(channel, command, on_event)?;
                 // Reflect the command's effect immediately rather than waiting
                 // for the next poll tick.
-                poll_and_report(channel, on_event)?;
+                poll_and_report(channel, clock, on_event)?;
             }
-            Err(mpsc::RecvTimeoutError::Timeout) => poll_and_report(channel, on_event)?,
+            Err(mpsc::RecvTimeoutError::Timeout) => poll_and_report(channel, clock, on_event)?,
             Err(mpsc::RecvTimeoutError::Disconnected) => return ControlFlow::Continue(()),
         }
     }
@@ -201,11 +207,13 @@ fn run_command(
 /// failure to read status is warned and the next poll tries again.
 fn poll_and_report(
     channel: &mut dyn RendererChannel,
+    clock: &dyn crate::PlaybackClock,
     on_event: &EventCallback,
 ) -> ControlFlow<RendererError> {
     match channel.poll_status() {
         Ok(status) => {
-            on_event(RendererSessionEvent::Status(status));
+            // Stamped as the poll returns: the status is as old as that.
+            on_event(RendererSessionEvent::Status { status, observed_at: clock.now() });
             ControlFlow::Continue(())
         }
         Err(error @ RendererError::Connection(_)) => ControlFlow::Break(error),

@@ -48,12 +48,16 @@ async fn remote_finished_advances_queue_and_loads_next() {
     assert!(wait_until(&state, |s| !s.loads.is_empty()));
 
     service
-        .handle_remote_event(RendererSessionEvent::Status(ReceiverStatus {
-            player_state: RendererPlayerState::Finished,
-            position: None,
-            duration: None,
-            volume: Some(1.0),
-        }))
+        .handle_remote_event(status_event(
+            &service,
+            ReceiverStatus {
+                player_state: RendererPlayerState::Finished,
+                position: None,
+                duration: None,
+                volume: Some(1.0),
+                rate: None,
+            },
+        ))
         .await;
 
     assert_eq!(
@@ -80,12 +84,16 @@ async fn remote_status_feeds_progress() {
     while rx.try_recv().is_ok() {}
 
     service
-        .handle_remote_event(RendererSessionEvent::Status(ReceiverStatus {
-            player_state: RendererPlayerState::Playing,
-            position: Some(std::time::Duration::from_secs(30)),
-            duration: Some(std::time::Duration::from_secs(180)),
-            volume: Some(1.0),
-        }))
+        .handle_remote_event(status_event(
+            &service,
+            ReceiverStatus {
+                player_state: RendererPlayerState::Playing,
+                position: Some(std::time::Duration::from_secs(30)),
+                duration: Some(std::time::Duration::from_secs(180)),
+                volume: Some(1.0),
+                rate: None,
+            },
+        ))
         .await;
 
     let mut saw_position = false;
@@ -250,12 +258,16 @@ async fn ending_remote_playback_after_an_advance_resumes_the_next_track_at_its_s
         (RendererPlayerState::Finished, None),
     ] {
         service
-            .handle_remote_event(RendererSessionEvent::Status(ReceiverStatus {
-                player_state,
-                position,
-                duration: None,
-                volume: Some(1.0),
-            }))
+            .handle_remote_event(status_event(
+                &service,
+                ReceiverStatus {
+                    player_state,
+                    position,
+                    duration: None,
+                    volume: Some(1.0),
+                    rate: None,
+                },
+            ))
             .await;
     }
 
@@ -393,12 +405,16 @@ async fn a_queued_track_renamed_while_another_plays_remotely_loads_with_its_new_
         .unwrap();
 
     service
-        .handle_remote_event(RendererSessionEvent::Status(ReceiverStatus {
-            player_state: RendererPlayerState::Finished,
-            position: None,
-            duration: None,
-            volume: Some(1.0),
-        }))
+        .handle_remote_event(status_event(
+            &service,
+            ReceiverStatus {
+                player_state: RendererPlayerState::Finished,
+                position: None,
+                duration: None,
+                volume: Some(1.0),
+                rate: None,
+            },
+        ))
         .await;
 
     let second = loop {
@@ -466,12 +482,16 @@ async fn served_whole_file_then_window(
         ))
         .await;
     service
-        .handle_remote_event(RendererSessionEvent::Status(ReceiverStatus {
-            player_state: RendererPlayerState::Finished,
-            position: None,
-            duration: None,
-            volume: Some(1.0),
-        }))
+        .handle_remote_event(status_event(
+            &service,
+            ReceiverStatus {
+                player_state: RendererPlayerState::Finished,
+                position: None,
+                duration: None,
+                volume: Some(1.0),
+                rate: None,
+            },
+        ))
         .await;
 
     assert!(wait_until(&state, |s| s.loads.len() == 2), "both tracks are loaded onto the device");
@@ -921,4 +941,9 @@ async fn a_refused_command_ships_a_renderer_failure() {
 
     diagnostics.flush().await.expect("flush succeeds");
     assert_eq!(playback_failed_operations(&transport), ["renderer"]);
+}
+
+/// A status event for `service` as if it arrived now, on its clock.
+fn status_event(service: &PlaybackService, status: ReceiverStatus) -> RendererSessionEvent {
+    RendererSessionEvent::Status { status, observed_at: service.clock.now() }
 }

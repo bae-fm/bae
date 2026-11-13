@@ -211,6 +211,42 @@ pub(crate) fn parse_transport_state(body: &str) -> TransportState {
     }
 }
 
+/// What `GetTransportInfo`'s `CurrentSpeed` held when it was no speed.
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) struct UnreadableSpeed(pub(crate) Option<String>);
+
+impl std::fmt::Display for UnreadableSpeed {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self.0 {
+            Some(text) => write!(f, "CurrentSpeed {text:?} is not a speed above zero"),
+            None => write!(f, "the response has no CurrentSpeed"),
+        }
+    }
+}
+
+/// How fast `GetTransportInfo`'s `CurrentSpeed` says the renderer plays, as a
+/// multiple of real time: a whole number or a fraction, `1` and `1/2`.
+pub(crate) fn parse_transport_speed(body: &str) -> Result<f64, UnreadableSpeed> {
+    let text = element_text(body, "CurrentSpeed").ok_or(UnreadableSpeed(None))?;
+    let unreadable = || UnreadableSpeed(Some(text.clone()));
+    let trimmed = text.trim();
+    let speed = match trimmed.split_once('/') {
+        Some((numerator, denominator)) => {
+            let numerator =
+                numerator.trim().parse::<f64>().map_err(|_not_a_number| unreadable())?;
+            let denominator =
+                denominator.trim().parse::<f64>().map_err(|_not_a_number| unreadable())?;
+            numerator / denominator
+        }
+        None => trimmed.parse::<f64>().map_err(|_not_a_number| unreadable())?,
+    };
+    if speed.is_finite() && speed > 0.0 {
+        Ok(speed)
+    } else {
+        Err(unreadable())
+    }
+}
+
 /// The text of the first element with local name `local_name` anywhere in `xml`,
 /// ignoring XML namespaces (UPnP action arguments are unprefixed, but the
 /// wrapping action element is `u:`-prefixed, so matching on the local name is

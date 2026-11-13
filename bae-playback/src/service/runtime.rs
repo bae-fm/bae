@@ -40,6 +40,11 @@ impl PlaybackService {
     }
 
     pub(super) fn retire_current_track(&mut self) -> bool {
+        if self.renderer.is_remote() {
+            // A device's play is credited up to this moment while the slot
+            // still holds the track the credit is measured on.
+            self.capture_listening_position();
+        }
         if let PlaybackSlot::Active(current) =
             std::mem::replace(&mut self.slot, PlaybackSlot::Stopped)
         {

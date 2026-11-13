@@ -27,7 +27,7 @@ use tracing::{debug, warn};
 
 use super::channel::receiver_time;
 use super::connection::{ended_error, CastConnection, End, Handler, OnEnd};
-use super::messages::{IdleReason, Inbound, MediaStatusEntry, PlayerState, Request};
+use super::messages::{IdleReason, Inbound, MediaStatusEntry, PlayerState, Request, StatedRate};
 
 /// The Default Media Receiver, Google's built-in player.
 const MEDIA_RECEIVER_APP: &str = "CC1AD845";
@@ -60,6 +60,9 @@ pub(crate) struct MediaSessionView {
     pub(crate) state: RendererPlayerState,
     /// Seconds into the media, when the receiver stated a number.
     pub(crate) current_time: Option<f64>,
+    /// How fast the position moves while playing, when the receiver stated a
+    /// number.
+    pub(crate) playback_rate: Option<f64>,
     /// Seconds, from the last status that carried the media.
     pub(crate) duration: Option<f64>,
 }
@@ -70,6 +73,7 @@ impl MediaSessionView {
             id: entry.media_session_id,
             state: entry.renderer_state(),
             current_time: entry.current_time,
+            playback_rate: readable_rate(&entry.playback_rate),
             // The receiver sends `media` only when it changed.
             duration: entry.media.as_ref().map_or(previous_duration, |media| media.duration),
         }
@@ -471,6 +475,7 @@ impl CastClient {
             position: media.and_then(|media| media.current_time).and_then(receiver_time),
             duration: media.and_then(|media| media.duration).and_then(receiver_time),
             volume: state.volume.map(|level| level as f32),
+            rate: media.and_then(|media| media.playback_rate),
         }
     }
 
@@ -515,6 +520,24 @@ impl CastClient {
         }
         farewells.push(Request::Close.into_frame(SENDER_ID, RECEIVER_ID));
         self.connection.close(farewells).await;
+    }
+}
+
+/// The rate a receiver stated, when it can be used: finite and above zero. One
+/// it stated that cannot be, a number or not, is said with what it was, and
+/// the position holds between statuses.
+fn readable_rate(stated: &StatedRate) -> Option<f64> {
+    match stated {
+        StatedRate::Absent => None,
+        StatedRate::Number(rate) if rate.is_finite() && *rate > 0.0 => Some(*rate),
+        StatedRate::Number(rate) => {
+            warn!("the Cast receiver stated a playback rate of {rate}; the position holds between statuses");
+            None
+        }
+        StatedRate::NotANumber(text) => {
+            warn!("the Cast receiver stated a playback rate of {text}, which is no number; the position holds between statuses");
+            None
+        }
     }
 }
 

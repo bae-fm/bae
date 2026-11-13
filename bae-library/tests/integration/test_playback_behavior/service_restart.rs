@@ -225,7 +225,13 @@ impl RendererChannel for FakeReceiver {
         } else {
             RendererPlayerState::Playing
         };
-        Ok(ReceiverStatus { player_state, position: None, duration: None, volume: Some(1.0) })
+        Ok(ReceiverStatus {
+            player_state,
+            position: None,
+            duration: None,
+            volume: Some(1.0),
+            rate: None,
+        })
     }
 }
 

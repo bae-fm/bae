@@ -125,6 +125,9 @@ mod command_kind_tests;
 #[cfg(test)]
 mod queue_commands_tests;
 
+#[cfg(test)]
+mod remote_position_tests;
+
 mod runtime;
 
 struct TrackDecoder {

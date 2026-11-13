@@ -449,3 +449,24 @@ async fn casting_again_after_a_lost_connection_connects_from_scratch_with_a_new_
     assert_eq!(launches, 1, "a new client launches the app again");
     second.load(&media()).await.expect("the new client plays");
 }
+
+#[tokio::test]
+async fn the_status_carries_the_rate_the_receiver_stated_when_it_can_be_used() {
+    let (client, mut fake) = client_over_a_fake_receiver().await;
+    client.load(&media()).await.unwrap();
+    assert_eq!(client.status().rate, Some(1.0));
+
+    for (stated, rate) in [
+        (json!(0.5), Some(0.5)),
+        (json!(0), None),
+        (json!(-1), None),
+        (json!("x"), None),
+        (json!(null), None),
+    ] {
+        fake.push_media_status(json!({
+            "mediaSessionId": 1, "playerState": "PLAYING", "currentTime": 3.0, "playbackRate": stated,
+        }));
+        heard_everything(&mut fake).await;
+        assert_eq!(client.status().rate, rate, "{stated}");
+    }
+}

@@ -391,3 +391,29 @@ fn the_other_player_states_map_across() {
 fn an_empty_status_list_has_no_entries() {
     assert!(media_entries(json!([])).is_empty());
 }
+
+#[test]
+fn a_playback_rate_that_is_there_and_no_number_is_told_from_one_that_is_absent() {
+    let rates = media_entries(json!([
+        {"mediaSessionId": 1, "playerState": "PLAYING", "playbackRate": 0.5},
+        {"mediaSessionId": 1, "playerState": "PLAYING", "playbackRate": 1},
+        {"mediaSessionId": 1, "playerState": "PLAYING"},
+        {"mediaSessionId": 1, "playerState": "PLAYING", "playbackRate": null},
+        {"mediaSessionId": 1, "playerState": "PLAYING", "playbackRate": "fast"},
+        {"mediaSessionId": 1, "playerState": "PLAYING", "playbackRate": {"n": 1}},
+    ]))
+    .into_iter()
+    .map(|entry| entry.playback_rate)
+    .collect::<Vec<_>>();
+    assert_eq!(
+        rates,
+        [
+            StatedRate::Number(0.5),
+            StatedRate::Number(1.0),
+            StatedRate::Absent,
+            StatedRate::Absent,
+            StatedRate::NotANumber("\"fast\"".to_string()),
+            StatedRate::NotANumber("{\"n\":1}".to_string()),
+        ]
+    );
+}

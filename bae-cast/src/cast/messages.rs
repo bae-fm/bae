@@ -250,6 +250,9 @@ pub(crate) struct MediaStatusEntry {
     /// Seconds into the media. Anything but a number is not a position.
     #[serde(default, deserialize_with = "number_or_none")]
     pub(crate) current_time: Option<f64>,
+    /// How fast the position moves while playing.
+    #[serde(default, deserialize_with = "stated_rate")]
+    pub(crate) playback_rate: StatedRate,
     /// The media, which the receiver sends only when it changed.
     #[serde(default)]
     pub(crate) media: Option<MediaInfo>,
@@ -292,6 +295,27 @@ impl MediaStatusEntry {
             (PlayerState::Idle, _) => RendererPlayerState::Idle,
         }
     }
+}
+
+/// What a status said of the playback rate.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub(crate) enum StatedRate {
+    /// Left out, or `null`.
+    #[default]
+    Absent,
+    Number(f64),
+    /// Present, and no number: the JSON text of what the receiver sent.
+    NotANumber(String),
+}
+
+fn stated_rate<'de, D: Deserializer<'de>>(deserializer: D) -> Result<StatedRate, D::Error> {
+    Ok(match Option::<Value>::deserialize(deserializer)? {
+        None | Some(Value::Null) => StatedRate::Absent,
+        Some(value) => match value.as_f64() {
+            Some(number) => StatedRate::Number(number),
+            None => StatedRate::NotANumber(value.to_string()),
+        },
+    })
 }
 
 fn number_or_none<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Option<f64>, D::Error> {

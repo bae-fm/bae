@@ -5,12 +5,19 @@
 use std::sync::{Arc, Condvar, Mutex};
 use std::time::Duration;
 
-use super::channel::{fake_status as status, FakeChannel, RendererError, RendererPlayerState};
+use super::channel::{
+    fake_status as status, FakeChannel, ReceiverStatus, RendererError, RendererPlayerState,
+};
 use super::session::{EventCallback, RendererSession, RendererSessionEvent};
 use super::RendererMedia;
 
 /// Collects the events the session reports, and lets a test wait for one that
 /// matches a predicate.
+/// A clock for a session whose statuses a test reads no time from.
+fn test_clock() -> crate::PlaybackClockRef {
+    Arc::new(crate::ManualPlaybackClock::new(chrono::DateTime::UNIX_EPOCH))
+}
+
 #[derive(Clone)]
 struct StatusSink {
     reported: Arc<(Mutex<Vec<RendererSessionEvent>>, Condvar)>,
@@ -69,6 +76,7 @@ fn session_routes_commands_to_the_channel() {
     let session = RendererSession::start(
         &bae_diagnostics::Diagnostics::noop(),
         Box::new(channel),
+        test_clock(),
         sink.callback(),
     )
     .expect("start the session thread");
@@ -101,11 +109,12 @@ fn session_reports_polled_status_to_the_callback() {
     let session = RendererSession::start(
         &bae_diagnostics::Diagnostics::noop(),
         Box::new(channel),
+        test_clock(),
         sink.callback(),
     )
     .expect("start the session thread");
     let saw_playing = sink.wait_for(|event| {
-        matches!(event, RendererSessionEvent::Status(s) if s.player_state == RendererPlayerState::Playing)
+        matches!(event, RendererSessionEvent::Status { status: s, .. } if s.player_state == RendererPlayerState::Playing)
     });
     drop(session);
 
@@ -128,6 +137,7 @@ fn session_ends_on_receiver_side_stop() {
     let session = RendererSession::start(
         &bae_diagnostics::Diagnostics::noop(),
         Box::new(channel),
+        test_clock(),
         sink.callback(),
     )
     .expect("start the session thread");
@@ -154,6 +164,7 @@ fn session_reports_a_refused_command_and_continues() {
     let session = RendererSession::start(
         &bae_diagnostics::Diagnostics::noop(),
         Box::new(channel),
+        test_clock(),
         sink.callback(),
     )
     .expect("start the session thread");
@@ -166,7 +177,7 @@ fn session_reports_a_refused_command_and_continues() {
             .is_some_and(|at| {
                 events[at + 1..]
                     .iter()
-                    .any(|event| matches!(event, RendererSessionEvent::Status(_)))
+                    .any(|event| matches!(event, RendererSessionEvent::Status { .. }))
             })
     });
     drop(session);
@@ -193,16 +204,83 @@ fn session_reports_finished_for_queue_advance() {
     let session = RendererSession::start(
         &bae_diagnostics::Diagnostics::noop(),
         Box::new(channel),
+        test_clock(),
         sink.callback(),
     )
     .expect("start the session thread");
     let saw_finished = sink.wait_for(|event| {
-        matches!(event, RendererSessionEvent::Status(s) if s.player_state == RendererPlayerState::Finished)
+        matches!(event, RendererSessionEvent::Status { status: s, .. } if s.player_state == RendererPlayerState::Finished)
     });
     drop(session);
 
     assert!(
         saw_finished,
         "a renderer end-of-media status must surface as Finished for queue advance"
+    );
+}
+
+fn position_status(
+    player_state: RendererPlayerState,
+    position: Option<u64>,
+    rate: Option<f64>,
+) -> ReceiverStatus {
+    ReceiverStatus {
+        player_state,
+        position: position.map(Duration::from_secs),
+        duration: None,
+        volume: None,
+        rate,
+    }
+}
+
+fn after(seconds: i64) -> chrono::DateTime<chrono::Utc> {
+    chrono::DateTime::UNIX_EPOCH + chrono::Duration::seconds(seconds)
+}
+
+#[test]
+fn a_playing_position_moves_on_at_the_stated_rate() {
+    let status = position_status(RendererPlayerState::Playing, Some(30), Some(1.0));
+    assert_eq!(status.position_at(after(0), after(0)), Some(Duration::from_secs(30)));
+    assert_eq!(status.position_at(after(0), after(4)), Some(Duration::from_secs(34)));
+    let slow = position_status(RendererPlayerState::Playing, Some(30), Some(0.5));
+    assert_eq!(slow.position_at(after(0), after(4)), Some(Duration::from_secs(32)));
+}
+
+#[test]
+fn a_position_that_is_not_playing_or_has_no_rate_holds() {
+    for state in [
+        RendererPlayerState::Paused,
+        RendererPlayerState::Buffering,
+        RendererPlayerState::Idle,
+        RendererPlayerState::Finished,
+    ] {
+        let status = position_status(state, Some(30), Some(1.0));
+        assert_eq!(
+            status.position_at(after(0), after(9)),
+            Some(Duration::from_secs(30)),
+            "{state:?}"
+        );
+    }
+    let unrated = position_status(RendererPlayerState::Playing, Some(30), None);
+    assert_eq!(unrated.position_at(after(0), after(9)), Some(Duration::from_secs(30)));
+}
+
+#[test]
+fn no_stated_position_is_no_position_whatever_the_time() {
+    let status = position_status(RendererPlayerState::Playing, None, Some(1.0));
+    assert_eq!(status.position_at(after(0), after(9)), None);
+}
+
+#[test]
+fn a_position_does_not_run_back_or_past_the_media() {
+    let mut status = position_status(RendererPlayerState::Playing, Some(30), Some(1.0));
+    assert_eq!(status.position_at(after(9), after(0)), Some(Duration::from_secs(30)));
+    status.duration = Some(Duration::from_secs(33));
+    assert_eq!(status.position_at(after(0), after(9)), Some(Duration::from_secs(33)));
+    status.duration = Some(Duration::from_secs(10));
+    assert_eq!(
+        status.position_at(after(0), after(9)),
+        Some(Duration::from_secs(30)),
+        "a duration shorter than the stated position doesn't pull it back"
     );
 }

@@ -15,7 +15,7 @@
 
 use std::time::Duration;
 
-use tracing::debug;
+use tracing::{debug, warn};
 
 use bae_playback::renderer::{
     ReceiverStatus, RendererChannel, RendererError, RendererMedia, RendererPlayerState,
@@ -65,6 +65,9 @@ struct PlaybackTracking {
     /// The track's duration, from `GetPositionInfo` (falling back to the LOAD's);
     /// `None` when neither knows it.
     duration: Option<Duration>,
+    /// The renderer's speed has been found unreadable, and said so, since the
+    /// last load.
+    unreadable_speed_told: bool,
 }
 
 impl DlnaChannel {
@@ -227,6 +230,16 @@ impl RendererChannel for DlnaChannel {
         let transport_body =
             self.post(&self.av_transport_url.clone(), soap::get_transport_info())?;
         let transport = soap::parse_transport_state(&transport_body);
+        let rate = match soap::parse_transport_speed(&transport_body) {
+            Ok(rate) => Some(rate),
+            Err(unreadable) => {
+                // Its position then holds between polls. Said once per load.
+                if !std::mem::replace(&mut self.playback.unreadable_speed_told, true) {
+                    warn!("dlna: {unreadable}; the position holds between polls");
+                }
+                None
+            }
+        };
 
         let position_info = match self
             .post(&self.av_transport_url.clone(), soap::get_position_info())
@@ -259,6 +272,7 @@ impl RendererChannel for DlnaChannel {
             // Volume isn't polled (it would be a second SOAP round-trip each
             // tick); carried as absent rather than invented.
             volume: None,
+            rate,
         })
     }
 }

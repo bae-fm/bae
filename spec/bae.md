@@ -4449,6 +4449,12 @@ the session goes on.
 A load or command the receiver refuses, or doesn't answer within ten seconds,
 is reported and the session goes on.
 
+On a Chromecast or UPnP receiver, the position shown moves on from the last
+status the receiver gave, at the speed it stated, and a play counts toward
+history the moment the receiver's position reaches the threshold, not at the
+next status. A receiver that states no speed bae can read keeps its position
+where it was until its next status.
+
 **AirPlay** receivers of both generations play. A receiver that demands a PIN,
 an AirPlay 2 receiver that doesn't take the password-less transient pairing
 (the only AirPlay 2 pairing bae does), or one that offers only an encryption

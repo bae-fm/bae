@@ -65,6 +65,33 @@ pub struct ReceiverStatus {
     /// as absent rather than invented, so a UI slider isn't jumped to a
     /// fabricated level.
     pub volume: Option<f32>,
+    /// How fast the position moves while playing, as a multiple of real time.
+    /// `None` when the renderer stated none that can be read (finite and above
+    /// zero): the position then holds until the next status.
+    pub rate: Option<f64>,
+}
+
+impl ReceiverStatus {
+    /// Where the renderer's position has reached at `now`, given this status
+    /// arrived at `observed_at`: the stated position, plus the time since
+    /// times the stated rate while playing, held to the media's duration when
+    /// the renderer stated one. A status that isn't playing, or states no
+    /// rate, keeps its stated position. `None` when it stated none.
+    pub fn position_at(
+        &self,
+        observed_at: chrono::DateTime<chrono::Utc>,
+        now: chrono::DateTime<chrono::Utc>,
+    ) -> Option<Duration> {
+        let stated = self.position?;
+        let (RendererPlayerState::Playing, Some(rate)) = (self.player_state, self.rate) else {
+            return Some(stated);
+        };
+        let elapsed = (now - observed_at).to_std().unwrap_or(Duration::ZERO);
+        let moved =
+            Duration::try_from_secs_f64(elapsed.as_secs_f64() * rate).unwrap_or(Duration::ZERO);
+        let reached = stated + moved;
+        Some(self.duration.map_or(reached, |duration| reached.min(duration.max(stated))))
+    }
 }
 
 /// A failure talking to the renderer. `Connection` is terminal — it means the
@@ -165,7 +192,7 @@ impl FakeChannel {
 /// A status carrying `player_state` and nothing a test has to care about.
 #[cfg(test)]
 pub(crate) fn fake_status(player_state: RendererPlayerState) -> ReceiverStatus {
-    ReceiverStatus { player_state, position: None, duration: None, volume: Some(1.0) }
+    ReceiverStatus { player_state, position: None, duration: None, volume: Some(1.0), rate: None }
 }
 
 #[cfg(test)]
