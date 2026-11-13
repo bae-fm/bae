@@ -94,6 +94,16 @@
     <string name="library_switch_view">Schimbă vizualizarea</string>
     <string name="more">Mai multe</string>
     <string name="library_empty_artists">Niciun artist</string>
+    <string name="library_mode_playlists">Liste de redare</string>
+    <string name="library_empty_playlists">Încă nicio listă de redare</string>
+    <string name="library_empty_playlists_without_profile">Listele de redare apar odată ce ai un profil</string>
+    <string name="playlist_new">Listă de redare nouă</string>
+    <string name="playlist_name">Nume</string>
+    <string name="playlist_sharing_private">Doar eu</string>
+    <string name="playlist_sharing_household">Toată lumea</string>
+    <string name="playlist_sharing_private_note">Doar tu vezi această listă de redare.</string>
+    <string name="playlist_sharing_household_note">Toți cei din bibliotecă văd această listă de redare și o pot reda. Doar tu o poți modifica.</string>
+    <string name="playlist_create">Creează</string>
     <plurals name="album_count">
         <item quantity="one">%1$d album</item>
         <item quantity="few">%1$d albume</item>

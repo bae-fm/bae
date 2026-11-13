@@ -95,6 +95,16 @@
     <string name="library_switch_view">Prepnúť zobrazenie</string>
     <string name="more">Viac</string>
     <string name="library_empty_artists">Žiadni interpreti</string>
+    <string name="library_mode_playlists">Zoznamy skladieb</string>
+    <string name="library_empty_playlists">Zatiaľ žiadne zoznamy skladieb</string>
+    <string name="library_empty_playlists_without_profile">Zoznamy skladieb sa zobrazia, keď budete mať profil</string>
+    <string name="playlist_new">Nový zoznam skladieb</string>
+    <string name="playlist_name">Názov</string>
+    <string name="playlist_sharing_private">Len ja</string>
+    <string name="playlist_sharing_household">Všetci</string>
+    <string name="playlist_sharing_private_note">Tento zoznam skladieb vidíte len vy.</string>
+    <string name="playlist_sharing_household_note">Všetci v knižnici tento zoznam skladieb vidia a môžu ho prehrať. Meniť ho môžete len vy.</string>
+    <string name="playlist_create">Vytvoriť</string>
     <plurals name="album_count">
         <item quantity="one">%1$d album</item>
         <item quantity="few">%1$d albumy</item>

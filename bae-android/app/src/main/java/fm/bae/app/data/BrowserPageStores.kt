@@ -36,6 +36,18 @@ internal class PageError(
     val onRetry: () -> Unit,
 )
 
+/** What a library list's body draws its states from: the read still running, its failure, and how much it holds. */
+internal interface BrowserPageState {
+    val loading: Boolean
+    val error: PageError?
+
+    /** Whether any row is held to draw. */
+    val hasRows: Boolean
+
+    /** How many rows the list has. */
+    val totalCount: Int
+}
+
 /**
  * One value a browse query delivered: each requested window with its rows, the list's total, and
  * what the list delivers [beside] its rows when that changed (the album grid's artist sections, in
@@ -68,18 +80,19 @@ internal abstract class WindowedBrowserPageStore<Parameter, Row, Beside>(
     @StringRes private val loadMoreFailed: Int,
     /** The headline for the first page failing to load, naming what this list holds. */
     @StringRes private val loadFailed: Int = R.string.library_load_failed,
-) {
+) : BrowserPageState {
     val rows = mutableStateMapOf<Int, Row>()
 
     /** What the last value delivered beside its rows. */
     var beside by mutableStateOf(nothingBeside)
         private set
-    var totalCount by mutableStateOf(0)
+    override var totalCount by mutableStateOf(0)
         private set
-    var loading by mutableStateOf(true)
+    override var loading by mutableStateOf(true)
         private set
-    var error by mutableStateOf<PageError?>(null)
+    override var error by mutableStateOf<PageError?>(null)
         private set
+    override val hasRows: Boolean get() = rows.isNotEmpty()
 
     private var parameter: Parameter? = null
     private var active = false
@@ -361,6 +374,7 @@ internal class BrowserPageStores(
     val composers = ComposerPageStore(library, appContext, errors, scope)
     val composerRows = ComposerDetailRowsPageStore(library, appContext, errors, scope)
     val downloads = DownloadPageStore(library, appContext, errors, scope)
+    val playlists = PlaylistListingStore(library::playlists, appContext, errors, scope)
 
     fun cancel() {
         albums.deactivate()
@@ -368,5 +382,6 @@ internal class BrowserPageStores(
         composers.deactivate()
         composerRows.deactivate()
         downloads.deactivate()
+        playlists.deactivate()
     }
 }

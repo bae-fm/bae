@@ -22,6 +22,8 @@ import uniffi.bae_bridge.BridgeDownloadBrowseSnapshot
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeLibraryPageWindow
 import uniffi.bae_bridge.BridgeLibrarySearchSnapshot
+import uniffi.bae_bridge.BridgePlaylistDetail
+import uniffi.bae_bridge.BridgePlaylistListing
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeSearchResults
 import uniffi.bae_bridge.BridgeSortCriterion
@@ -164,6 +166,21 @@ class Library(
                 free = read::close,
             )
         }
+
+    internal fun playlistDetail(): DetailRead<BridgePlaylistDetail> =
+        handle.subscribePlaylistDetail().let { read ->
+            BridgeDetailRead(
+                set = read::setId,
+                pulls = pulled(read::next, read::cancel).map { DetailDelivery(it.id, it.value) },
+                free = read::close,
+            )
+        }
+
+    /** Every playlist this device holds, now and after each change. */
+    internal fun playlists(): PulledSubscription<BridgePlaylistListing> {
+        val read = handle.subscribePlaylists()
+        return pulled(read::next, read::cancel)
+    }
 
     /**
      * One album's detail as a flow, for a surface that holds many items' details at once (Android

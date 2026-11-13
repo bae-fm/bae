@@ -24,7 +24,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
-import fm.bae.app.data.WindowedBrowserPageStore
+import fm.bae.app.data.BrowserPageState
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidNotice
@@ -36,7 +36,8 @@ import kotlinx.coroutines.launch
 
 /**
  * A library browse tab's body: pull-to-refresh over load failure, nothing
- * while the first read runs, empty message or rows, each inside a scrollable so the pull reaches
+ * while the first read runs, empty message (with the [emptyAction] under it,
+ * when the list has one) or rows, each inside a scrollable so the pull reaches
  * [PullToRefreshBox]. The pull retries sync, and its spinner stays, over the
  * sync status line that says what sync is doing, until the pass the retry ran
  * ends.
@@ -45,8 +46,9 @@ import kotlinx.coroutines.launch
 @Composable
 internal fun LibraryPageContent(
     session: OpenLibrary,
-    page: WindowedBrowserPageStore<*, *, *>,
+    page: BrowserPageState,
     emptyMessage: String,
+    emptyAction: (@Composable () -> Unit)? = null,
     rows: @Composable () -> Unit,
 ) {
     var refreshing by remember { mutableStateOf(false) }
@@ -78,7 +80,7 @@ internal fun LibraryPageContent(
         },
     ) {
         when {
-            pageError != null && page.rows.isEmpty() -> {
+            pageError != null && !page.hasRows -> {
                 ListPlaceholder {
                     AndroidNotice(
                         title = stringResource(R.string.library_read_failed),
@@ -91,24 +93,34 @@ internal fun LibraryPageContent(
             }
 
             // The first window is a local read; nothing shows until it lands.
-            page.loading && page.rows.isEmpty() -> {
+            page.loading && !page.hasRows -> {
                 ListPlaceholder {}
             }
 
             page.totalCount == 0 -> {
-                ListPlaceholder {
-                    Text(
-                        text = emptyMessage,
-                        style = ThemeText.body.style,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                ListPlaceholder { EmptyList(emptyMessage, emptyAction) }
             }
 
             else -> {
                 rows()
             }
         }
+    }
+}
+
+/** The line a list with nothing in it says, with its [action] under it when it has one. */
+@Composable
+private fun EmptyList(
+    message: String,
+    action: (@Composable () -> Unit)?,
+) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = message,
+            style = ThemeText.body.style,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        action?.invoke()
     }
 }
 

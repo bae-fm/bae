@@ -93,6 +93,16 @@
     <string name="library_switch_view">Vaihda näkymää</string>
     <string name="more">Lisää</string>
     <string name="library_empty_artists">Ei esittäjiä</string>
+    <string name="library_mode_playlists">Soittolistat</string>
+    <string name="library_empty_playlists">Ei vielä soittolistoja</string>
+    <string name="library_empty_playlists_without_profile">Soittolistat näkyvät, kun sinulla on profiili</string>
+    <string name="playlist_new">Uusi soittolista</string>
+    <string name="playlist_name">Nimi</string>
+    <string name="playlist_sharing_private">Vain minä</string>
+    <string name="playlist_sharing_household">Kaikki</string>
+    <string name="playlist_sharing_private_note">Vain sinä näet tämän soittolistan.</string>
+    <string name="playlist_sharing_household_note">Kaikki kirjastossa näkevät tämän soittolistan ja voivat toistaa sen. Vain sinä voit muuttaa sitä.</string>
+    <string name="playlist_create">Luo</string>
     <plurals name="album_count">
         <item quantity="one">%1$d albumi</item>
         <item quantity="other">%1$d albumia</item>

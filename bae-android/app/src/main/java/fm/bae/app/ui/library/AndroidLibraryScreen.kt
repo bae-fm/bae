@@ -53,6 +53,7 @@ internal class LibraryBrowserState {
     val gridState = LazyGridState()
     val artistListState = LazyListState()
     val composerListState = LazyListState()
+    val playlistListState = LazyListState()
 
     fun closeSearch() {
         searchOpen = false
@@ -153,6 +154,7 @@ private fun rememberHeadingCollapse(state: LibraryBrowserState): State<Float> =
         LibraryBrowserMode.ALBUMS -> rememberHeadingCollapse(state.gridState)
         LibraryBrowserMode.ARTISTS -> rememberHeadingCollapse(state.artistListState)
         LibraryBrowserMode.COMPOSERS -> rememberHeadingCollapse(state.composerListState)
+        LibraryBrowserMode.PLAYLISTS -> rememberHeadingCollapse(state.playlistListState)
     }
 
 @Composable
@@ -203,6 +205,14 @@ private fun LibraryBrowserContent(
                         sortCriterion = state.composerSortCriterion,
                         listState = state.composerListState,
                         onSelectComposer = onSelectComposer,
+                    )
+                }
+
+                LibraryBrowserMode.PLAYLISTS -> {
+                    PlaylistListContent(
+                        session = session,
+                        page = rememberPlaylistListing(session),
+                        listState = state.playlistListState,
                     )
                 }
             }

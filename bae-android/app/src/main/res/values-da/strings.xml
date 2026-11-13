@@ -93,6 +93,16 @@
     <string name="library_switch_view">Skift visning</string>
     <string name="more">Mere</string>
     <string name="library_empty_artists">Ingen kunstnere</string>
+    <string name="library_mode_playlists">Afspilningslister</string>
+    <string name="library_empty_playlists">Ingen afspilningslister endnu</string>
+    <string name="library_empty_playlists_without_profile">Afspilningslister vises, når du har en profil</string>
+    <string name="playlist_new">Ny afspilningsliste</string>
+    <string name="playlist_name">Navn</string>
+    <string name="playlist_sharing_private">Kun mig</string>
+    <string name="playlist_sharing_household">Alle</string>
+    <string name="playlist_sharing_private_note">Kun du kan se denne afspilningsliste.</string>
+    <string name="playlist_sharing_household_note">Alle i biblioteket kan se denne afspilningsliste og afspille den. Kun du kan ændre den.</string>
+    <string name="playlist_create">Opret</string>
     <plurals name="album_count">
         <item quantity="one">%1$d album</item>
         <item quantity="other">%1$d album</item>

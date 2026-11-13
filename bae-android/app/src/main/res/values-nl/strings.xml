@@ -89,6 +89,16 @@
     <string name="library_switch_view">Weergave wijzigen</string>
     <string name="more">Meer</string>
     <string name="library_empty_artists">Geen artiesten</string>
+    <string name="library_mode_playlists">Afspeellijsten</string>
+    <string name="library_empty_playlists">Nog geen afspeellijsten</string>
+    <string name="library_empty_playlists_without_profile">Afspeellijsten verschijnen zodra je een profiel hebt</string>
+    <string name="playlist_new">Nieuwe afspeellijst</string>
+    <string name="playlist_name">Naam</string>
+    <string name="playlist_sharing_private">Alleen ik</string>
+    <string name="playlist_sharing_household">Iedereen</string>
+    <string name="playlist_sharing_private_note">Alleen jij ziet deze afspeellijst.</string>
+    <string name="playlist_sharing_household_note">Iedereen in de bibliotheek ziet deze afspeellijst en kan hem afspelen. Alleen jij kunt hem wijzigen.</string>
+    <string name="playlist_create">Maak</string>
     <plurals name="album_count">
         <item quantity="one">%1$d album</item>
         <item quantity="other">%1$d albums</item>

@@ -93,6 +93,16 @@
     <string name="library_switch_view">Mudar vista</string>
     <string name="more">Mais</string>
     <string name="library_empty_artists">Sem artistas</string>
+    <string name="library_mode_playlists">Listas de reprodução</string>
+    <string name="library_empty_playlists">Ainda não há listas de reprodução</string>
+    <string name="library_empty_playlists_without_profile">As listas de reprodução aparecem quando tiver um perfil</string>
+    <string name="playlist_new">Nova lista de reprodução</string>
+    <string name="playlist_name">Nome</string>
+    <string name="playlist_sharing_private">Apenas eu</string>
+    <string name="playlist_sharing_household">Todos</string>
+    <string name="playlist_sharing_private_note">Só você vê esta lista de reprodução.</string>
+    <string name="playlist_sharing_household_note">Todos na biblioteca veem esta lista de reprodução e podem reproduzi-la. Só você pode alterá-la.</string>
+    <string name="playlist_create">Criar</string>
     <plurals name="album_count">
         <item quantity="one">%1$d álbum</item>
         <item quantity="other">%1$d álbuns</item>

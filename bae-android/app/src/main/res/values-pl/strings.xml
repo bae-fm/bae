@@ -89,6 +89,16 @@
     <string name="library_switch_view">Przełącz widok</string>
     <string name="more">Więcej</string>
     <string name="library_empty_artists">Brak wykonawców</string>
+    <string name="library_mode_playlists">Playlisty</string>
+    <string name="library_empty_playlists">Nie ma jeszcze playlist</string>
+    <string name="library_empty_playlists_without_profile">Playlisty pojawią się, gdy będziesz mieć profil</string>
+    <string name="playlist_new">Nowa playlista</string>
+    <string name="playlist_name">Nazwa</string>
+    <string name="playlist_sharing_private">Tylko ja</string>
+    <string name="playlist_sharing_household">Wszyscy</string>
+    <string name="playlist_sharing_private_note">Tę playlistę widzisz tylko Ty.</string>
+    <string name="playlist_sharing_household_note">Wszyscy w bibliotece widzą tę playlistę i mogą ją odtwarzać. Tylko Ty możesz ją zmieniać.</string>
+    <string name="playlist_create">Utwórz</string>
     <plurals name="album_count">
         <item quantity="one">%1$d album</item>
         <item quantity="few">%1$d albumy</item>

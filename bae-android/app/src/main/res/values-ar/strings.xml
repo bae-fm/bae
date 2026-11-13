@@ -89,6 +89,16 @@
     <string name="library_switch_view">تبديل العرض</string>
     <string name="more">المزيد</string>
     <string name="library_empty_artists">لا يوجد فنانون</string>
+    <string name="library_mode_playlists">قوائم التشغيل</string>
+    <string name="library_empty_playlists">لا توجد قوائم تشغيل بعد</string>
+    <string name="library_empty_playlists_without_profile">تظهر قوائم التشغيل بعد أن يصبح لديك ملف شخصي</string>
+    <string name="playlist_new">قائمة تشغيل جديدة</string>
+    <string name="playlist_name">الاسم</string>
+    <string name="playlist_sharing_private">أنا فقط</string>
+    <string name="playlist_sharing_household">الجميع</string>
+    <string name="playlist_sharing_private_note">أنت وحدك ترى قائمة التشغيل هذه.</string>
+    <string name="playlist_sharing_household_note">يرى الجميع في المكتبة قائمة التشغيل هذه ويمكنهم تشغيلها. أنت وحدك من يمكنه تغييرها.</string>
+    <string name="playlist_create">إنشاء</string>
     <plurals name="album_count">
         <item quantity="zero">%1$d ألبوم</item>
         <item quantity="one">ألبوم واحد</item>

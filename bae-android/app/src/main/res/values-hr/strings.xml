@@ -89,6 +89,16 @@
     <string name="library_switch_view">Promijeni prikaz</string>
     <string name="more">Više</string>
     <string name="library_empty_artists">Nema izvođača</string>
+    <string name="library_mode_playlists">Popisi za reprodukciju</string>
+    <string name="library_empty_playlists">Još nema popisa za reprodukciju</string>
+    <string name="library_empty_playlists_without_profile">Popisi za reprodukciju pojavit će se čim imate profil</string>
+    <string name="playlist_new">Novi popis za reprodukciju</string>
+    <string name="playlist_name">Naziv</string>
+    <string name="playlist_sharing_private">Samo ja</string>
+    <string name="playlist_sharing_household">Svi</string>
+    <string name="playlist_sharing_private_note">Ovaj popis za reprodukciju vidite samo vi.</string>
+    <string name="playlist_sharing_household_note">Svi u fonoteci vide ovaj popis za reprodukciju i mogu ga reproducirati. Samo ga vi možete mijenjati.</string>
+    <string name="playlist_create">Izradi</string>
     <plurals name="album_count">
         <item quantity="one">%1$d album</item>
         <item quantity="few">%1$d albuma</item>

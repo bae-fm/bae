@@ -249,8 +249,8 @@ top of the list the heading is full size; as the list scrolls it shrinks into a
 slim bar pinned above it, and a scroll that stops part way leaves it at the
 nearer size. On Android, the heading's end holds Search, the Activity
 button (§6.4) and ⋮, whose menu gives the view's sort under *Sort by* (the
-fields, the direction, and for albums *Group by artist*), then *Shuffle
-library* and *Settings*. A card's title or artists, or a row's name, too long
+fields, the direction, and for albums *Group by artist*; the playlists view has
+none), then *Shuffle library* and *Settings*. A card's title or artists, or a row's name, too long
 for its one line ends in "…". On Android the grid grouped by artist opens each
 artist's albums with a header of the artist's round picture, name and album
 count, which opens the artist; the header of the artist being scrolled through
@@ -2753,6 +2753,10 @@ starting on *Only me*; a blank name cannot be made, by the rule that refuses a
 blank library or profile name. On macOS the Playlists heading's *New
 playlist…* button opens the sheet for it, and the playlist made opens in the
 view.
+On Android the Playlists view lists the playlists with a *New playlist* button
+under them, or under *No playlists yet* when there are none, which opens a
+dialog for the name and who sees it; a person without a profile sees *Playlists
+appear once you have a profile* and no button.
 
 On macOS a track's menu offers *Add to playlist* when the person can make
 playlists: a submenu of their own playlists by name, which adds the track to the

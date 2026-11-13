@@ -17,6 +17,7 @@ step android android-tests ./bae-android/test-unit.sh
 step android android-album-detail-tests ./bae-android/gradle.sh :app:testFullDebugUnitTest --tests *AlbumDetailPlaceholderTest
 step android android-element-list-tests ./bae-android/gradle.sh :app:testFullDebugUnitTest --tests *ElementListTest
 step android android-playback-service-tests ./bae-android/gradle.sh :app:testFullDebugUnitTest --tests *PlaybackServiceTest
+step android android-playlist-tests ./bae-android/gradle.sh :app:testFullDebugUnitTest --tests *PlaylistListingStoreTest --tests *NewPlaylistDialogTest --tests *LibraryHeaderTest
 step android android-welcome-libraries-tests ./bae-android/gradle.sh :app:testFullDebugUnitTest --tests *WelcomeLibrariesTest
 step mac macos-welcome-library-row-tests ./bae-macos/test.sh --run-only WelcomeLibraryRowTests
 step mac macos-sort-language-tests ./bae-macos/test.sh --run-only SortLanguageTests
@@ -49,6 +50,7 @@ limit macos-track-tests 10m
 limit macos-detail-tests 10m
 limit android-album-detail-tests 10m
 limit macos-welcome-library-row-tests 10m
+limit android-playlist-tests 10m
 limit android-welcome-libraries-tests 10m
 limit macos-sort-language-tests 10m
 limit macos-folder-picker-notice-tests 10m

@@ -93,6 +93,16 @@
     <string name="library_switch_view">Byt vy</string>
     <string name="more">Mer</string>
     <string name="library_empty_artists">Inga artister</string>
+    <string name="library_mode_playlists">Spellistor</string>
+    <string name="library_empty_playlists">Inga spellistor än</string>
+    <string name="library_empty_playlists_without_profile">Spellistor visas när du har en profil</string>
+    <string name="playlist_new">Ny spellista</string>
+    <string name="playlist_name">Namn</string>
+    <string name="playlist_sharing_private">Bara jag</string>
+    <string name="playlist_sharing_household">Alla</string>
+    <string name="playlist_sharing_private_note">Bara du ser den här spellistan.</string>
+    <string name="playlist_sharing_household_note">Alla i biblioteket ser den här spellistan och kan spela upp den. Bara du kan ändra den.</string>
+    <string name="playlist_create">Skapa</string>
     <plurals name="album_count">
         <item quantity="one">%1$d album</item>
         <item quantity="other">%1$d album</item>

@@ -89,6 +89,16 @@
     <string name="library_switch_view">Ansicht wechseln</string>
     <string name="more">Mehr</string>
     <string name="library_empty_artists">Keine Künstler</string>
+    <string name="library_mode_playlists">Wiedergabelisten</string>
+    <string name="library_empty_playlists">Noch keine Wiedergabelisten</string>
+    <string name="library_empty_playlists_without_profile">Wiedergabelisten erscheinen, sobald du ein Profil hast</string>
+    <string name="playlist_new">Neue Wiedergabeliste</string>
+    <string name="playlist_name">Name</string>
+    <string name="playlist_sharing_private">Nur ich</string>
+    <string name="playlist_sharing_household">Alle</string>
+    <string name="playlist_sharing_private_note">Nur du siehst diese Wiedergabeliste.</string>
+    <string name="playlist_sharing_household_note">Alle in der Bibliothek sehen diese Wiedergabeliste und können sie abspielen. Nur du kannst sie ändern.</string>
+    <string name="playlist_create">Erstellen</string>
     <plurals name="album_count">
         <item quantity="one">%1$d Album</item>
         <item quantity="other">%1$d Alben</item>

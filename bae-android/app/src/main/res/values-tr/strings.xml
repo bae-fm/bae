@@ -89,6 +89,16 @@
     <string name="library_switch_view">Görünümü değiştir</string>
     <string name="more">Diğer</string>
     <string name="library_empty_artists">Sanatçı yok</string>
+    <string name="library_mode_playlists">Çalma listeleri</string>
+    <string name="library_empty_playlists">Henüz çalma listesi yok</string>
+    <string name="library_empty_playlists_without_profile">Çalma listeleri, bir profiliniz olduğunda görünür</string>
+    <string name="playlist_new">Yeni çalma listesi</string>
+    <string name="playlist_name">Ad</string>
+    <string name="playlist_sharing_private">Yalnızca ben</string>
+    <string name="playlist_sharing_household">Herkes</string>
+    <string name="playlist_sharing_private_note">Bu çalma listesini yalnızca siz görürsünüz.</string>
+    <string name="playlist_sharing_household_note">Kitaplıktaki herkes bu çalma listesini görebilir ve çalabilir. Yalnızca siz değiştirebilirsiniz.</string>
+    <string name="playlist_create">Oluştur</string>
     <plurals name="album_count">
         <item quantity="one">%1$d albüm</item>
         <item quantity="other">%1$d albüm</item>

@@ -89,6 +89,16 @@
     <string name="library_switch_view">החלפת תצוגה</string>
     <string name="more">עוד</string>
     <string name="library_empty_artists">אין אמנים</string>
+    <string name="library_mode_playlists">רשימות השמעה</string>
+    <string name="library_empty_playlists">עדיין אין רשימות השמעה</string>
+    <string name="library_empty_playlists_without_profile">רשימות ההשמעה יופיעו ברגע שיהיה לך פרופיל</string>
+    <string name="playlist_new">רשימת השמעה חדשה</string>
+    <string name="playlist_name">שם</string>
+    <string name="playlist_sharing_private">רק אני</string>
+    <string name="playlist_sharing_household">כולם</string>
+    <string name="playlist_sharing_private_note">רשימת ההשמעה הזאת גלויה רק לך.</string>
+    <string name="playlist_sharing_household_note">כל מי שבספרייה רואה את רשימת ההשמעה הזאת ויכול להשמיע אותה. רק לך יש אפשרות לשנות אותה.</string>
+    <string name="playlist_create">יצירה</string>
     <plurals name="album_count">
         <item quantity="one">אלבום אחד</item>
         <item quantity="two">%1$d אלבומים</item>

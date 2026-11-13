@@ -89,6 +89,16 @@
     <string name="library_switch_view">Přepnout zobrazení</string>
     <string name="more">Další</string>
     <string name="library_empty_artists">Žádní interpreti</string>
+    <string name="library_mode_playlists">Seznamy skladeb</string>
+    <string name="library_empty_playlists">Zatím žádné seznamy skladeb</string>
+    <string name="library_empty_playlists_without_profile">Seznamy skladeb se zobrazí, jakmile budete mít profil</string>
+    <string name="playlist_new">Nový seznam skladeb</string>
+    <string name="playlist_name">Název</string>
+    <string name="playlist_sharing_private">Jen já</string>
+    <string name="playlist_sharing_household">Všichni</string>
+    <string name="playlist_sharing_private_note">Tento seznam skladeb vidíte jen vy.</string>
+    <string name="playlist_sharing_household_note">Všichni v knihovně tento seznam skladeb vidí a mohou ho přehrát. Měnit ho můžete jen vy.</string>
+    <string name="playlist_create">Vytvořit</string>
     <plurals name="album_count">
         <item quantity="one">%1$d album</item>
         <item quantity="few">%1$d alba</item>

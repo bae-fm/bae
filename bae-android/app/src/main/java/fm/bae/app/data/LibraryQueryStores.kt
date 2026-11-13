@@ -14,6 +14,7 @@ import uniffi.bae_bridge.BridgeArtistDetail
 import uniffi.bae_bridge.BridgeComposerDetail
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeLibrarySearchSnapshot
+import uniffi.bae_bridge.BridgePlaylistDetail
 import uniffi.bae_bridge.BridgeSearchResults
 import uniffi.bae_bridge.BridgeWorkDetail
 
@@ -198,6 +199,7 @@ internal class LibraryQueryStores(
     val artist = DetailQueryStore<BridgeArtistDetail>(scope, library::artistDetail)
     val composer = DetailQueryStore<BridgeComposerDetail>(scope, library::composerDetail)
     val work = DetailQueryStore<BridgeWorkDetail>(scope, library::workDetail)
+    val playlist = DetailQueryStore<BridgePlaylistDetail>(scope, library::playlistDetail)
     val search = SearchQueryStore(library, scope)
 
     fun cancel() {
@@ -205,6 +207,7 @@ internal class LibraryQueryStores(
         artist.cancel()
         composer.cancel()
         work.cancel()
+        playlist.cancel()
         search.cancel()
     }
 }

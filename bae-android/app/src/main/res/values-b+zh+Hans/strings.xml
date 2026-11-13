@@ -89,6 +89,16 @@
     <string name="library_switch_view">切换视图</string>
     <string name="more">更多</string>
     <string name="library_empty_artists">没有艺人</string>
+    <string name="library_mode_playlists">播放列表</string>
+    <string name="library_empty_playlists">暂无播放列表</string>
+    <string name="library_empty_playlists_without_profile">有了个人资料后，播放列表才会显示</string>
+    <string name="playlist_new">新建播放列表</string>
+    <string name="playlist_name">名称</string>
+    <string name="playlist_sharing_private">仅自己</string>
+    <string name="playlist_sharing_household">所有人</string>
+    <string name="playlist_sharing_private_note">只有你能看到这个播放列表。</string>
+    <string name="playlist_sharing_household_note">库中的所有人都能看到并播放这个播放列表，只有你能修改。</string>
+    <string name="playlist_create">创建</string>
     <plurals name="album_count">
         <item quantity="other">%1$d 张专辑</item>
     </plurals>

@@ -15,10 +15,13 @@ import uniffi.bae_bridge.BridgeSortCriterion
 /** The library's views, in the order the heading's menu lists them. */
 internal enum class LibraryBrowserMode(
     @StringRes val label: Int,
+    /** Whether the ⋮ menu offers a sort for the view. */
+    val sortable: Boolean = true,
 ) {
     ALBUMS(R.string.library_mode_albums),
     ARTISTS(R.string.library_mode_artists),
     COMPOSERS(R.string.library_mode_composers),
+    PLAYLISTS(R.string.library_mode_playlists, sortable = false),
 }
 
 /** Reports the album grid's parameters and visible rows to the session-owned

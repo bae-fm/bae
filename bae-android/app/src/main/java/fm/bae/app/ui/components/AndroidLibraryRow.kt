@@ -25,13 +25,15 @@ import fm.bae.app.ui.appearance.ThemeSize
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import uniffi.bae_bridge.BridgeImageRef
+import uniffi.bae_bridge.BridgePlaylistCover
 
 /**
  * One row of a library list: the picture [art], the [title], a second line [subtitle] (left out when
  * null or blank, so the row is shorter) and a [trailing] label at the end, a track's duration. A track
  * or a credit has no picture ([noArt]); an artist or composer with none is a plain tile ([missing]).
- * A [part] is indented under its group's heading work; an [inset] row, on the composer and work pages,
- * sets its text further in, in a taller row. A row with an [onClick] opens something.
+ * A playlist draws its [playlistCover] where the others draw [art]. A [part] is indented under its
+ * group's heading work; an [inset] row, on the composer and work pages, sets its text further in,
+ * in a taller row. A row with an [onClick] opens something.
  */
 @Composable
 fun AndroidLibraryRow(
@@ -40,6 +42,7 @@ fun AndroidLibraryRow(
     subtitle: String? = null,
     trailing: String? = null,
     art: BridgeImageRef? = null,
+    playlistCover: BridgePlaylistCover? = null,
     noArt: Boolean = false,
     missing: Boolean = false,
     part: Boolean = false,
@@ -56,7 +59,7 @@ fun AndroidLibraryRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (!noArt) {
-            RowArt(art = art, missing = missing, description = title)
+            RowArt(art = art, playlistCover = playlistCover, missing = missing, description = title)
             Spacer(modifier = Modifier.width(ThemeSpace.group))
         }
         Column(
@@ -102,11 +105,19 @@ fun AndroidLibraryRow(
 @Composable
 private fun RowArt(
     art: BridgeImageRef?,
+    playlistCover: BridgePlaylistCover?,
     missing: Boolean,
     description: String,
 ) {
     val tile = Modifier.size(ThemeSize.rowArtwork)
-    if (missing) {
+    if (playlistCover != null) {
+        PlaylistPicture(
+            cover = playlistCover,
+            cornerRadius = ThemeRadius.artwork,
+            modifier = tile,
+            contentDescription = description,
+        )
+    } else if (missing) {
         Box(tile.clip(RoundedCornerShape(ThemeRadius.artwork)).background(BaeTheme.surfaces.placeholder))
     } else {
         CoverImage(

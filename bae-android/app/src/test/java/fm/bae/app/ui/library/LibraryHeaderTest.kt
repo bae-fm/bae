@@ -68,6 +68,22 @@ class LibraryHeaderTest {
     }
 
     @Test
+    fun thePlaylistsViewIsAfterComposersAndItsMoreMenuOffersNoSort() {
+        val state = LibraryBrowserState()
+        showHeader(state)
+
+        compose.onNodeWithText("Albums").performClick()
+        compose.onNodeWithText("Playlists").performClick()
+        assertEquals(LibraryBrowserMode.PLAYLISTS, state.mode)
+        assertEquals(LibraryBrowserMode.COMPOSERS, LibraryBrowserMode.entries[LibraryBrowserMode.PLAYLISTS.ordinal - 1])
+
+        compose.onNodeWithContentDescription("More").performClick()
+        compose.onNodeWithText("Sort by").assertDoesNotExist()
+        compose.onNodeWithText("Shuffle library").assertExists()
+        compose.onNodeWithText("Settings").assertExists()
+    }
+
+    @Test
     fun theMoreMenuOpensSettingsAndShufflesTheLibrary() {
         val state = LibraryBrowserState()
         var shuffled = false

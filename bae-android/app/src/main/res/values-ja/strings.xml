@@ -89,6 +89,16 @@
     <string name="library_switch_view">表示を切り替える</string>
     <string name="more">その他</string>
     <string name="library_empty_artists">アーティストがいません</string>
+    <string name="library_mode_playlists">プレイリスト</string>
+    <string name="library_empty_playlists">プレイリストがまだありません</string>
+    <string name="library_empty_playlists_without_profile">プロフィールを作成すると、プレイリストが表示されます</string>
+    <string name="playlist_new">新規プレイリスト</string>
+    <string name="playlist_name">名前</string>
+    <string name="playlist_sharing_private">自分のみ</string>
+    <string name="playlist_sharing_household">全員</string>
+    <string name="playlist_sharing_private_note">このプレイリストはあなただけに表示されます。</string>
+    <string name="playlist_sharing_household_note">ライブラリの全員がこのプレイリストを見て再生できます。変更できるのはあなただけです。</string>
+    <string name="playlist_create">作成</string>
     <plurals name="album_count">
         <item quantity="other">%1$d枚のアルバム</item>
     </plurals>

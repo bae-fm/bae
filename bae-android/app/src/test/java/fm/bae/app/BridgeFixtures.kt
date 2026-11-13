@@ -28,6 +28,10 @@ import uniffi.bae_bridge.BridgeLibraryState
 import uniffi.bae_bridge.BridgeLookupCatalog
 import uniffi.bae_bridge.BridgeLookupCatalogSetting
 import uniffi.bae_bridge.BridgeMcpConfig
+import uniffi.bae_bridge.BridgePlaylistCover
+import uniffi.bae_bridge.BridgePlaylistListing
+import uniffi.bae_bridge.BridgePlaylistOwner
+import uniffi.bae_bridge.BridgePlaylistSummary
 import uniffi.bae_bridge.BridgePressingFacts
 import uniffi.bae_bridge.BridgeQueueWait
 import uniffi.bae_bridge.BridgeQueuedRelease
@@ -45,6 +49,7 @@ import uniffi.bae_bridge.BridgeSaveFolderPiece
 import uniffi.bae_bridge.BridgeSaveFolderValue
 import uniffi.bae_bridge.BridgeSavePreset
 import uniffi.bae_bridge.BridgeSearchResults
+import uniffi.bae_bridge.BridgeSharing
 import uniffi.bae_bridge.BridgeSidePauseCountdown
 import uniffi.bae_bridge.BridgeSourceAudioSummary
 import uniffi.bae_bridge.BridgeSourceAvailability
@@ -173,6 +178,27 @@ object BridgeFixtures {
             countLine = BridgeCountLabel(key = "core.library.album_count", count = 1u),
             image = null,
         )
+
+    fun playlistSummary(
+        id: String = "playlist-1",
+        name: String = "Late night",
+        sharing: BridgeSharing = BridgeSharing.PRIVATE,
+    ): BridgePlaylistSummary =
+        BridgePlaylistSummary(
+            id = id,
+            name = name,
+            sharing = sharing,
+            owner = BridgePlaylistOwner(person = "person-1", name = "Mara", avatarVersion = null),
+            yours = true,
+            trackCount = BridgeCountLabel(key = "core.library.track_count", count = 12u),
+            totalDuration = null,
+            cover = BridgePlaylistCover.Single(cover = null),
+        )
+
+    fun playlistListing(
+        listed: List<BridgePlaylistSummary> = listOf(playlistSummary()),
+        canCreate: Boolean = true,
+    ): BridgePlaylistListing = BridgePlaylistListing(listed = listed, addTargets = listed, canCreate = canCreate)
 
     fun composerSummary(
         artistId: String = "artist-1",

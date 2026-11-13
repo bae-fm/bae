@@ -86,7 +86,7 @@ private fun BridgeSortDirection.reversed(): BridgeSortDirection =
 
 /**
  * The header's ⋮ and its menu: the view's sort choices under "Sort by" (the
- * albums view's with Group by artist), then Shuffle library and Settings.
+ * albums view's with Group by artist; the playlists view has none), then Shuffle library and Settings.
  */
 @Composable
 internal fun LibraryMoreMenu(
@@ -117,17 +117,19 @@ internal fun LibraryMoreMenuItems(
     onSettings: () -> Unit,
 ) {
     val close = { state.openMenu = null }
-    Text(
-        text = stringResource(R.string.sort_by),
-        style = ThemeText.detail.style,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier =
-            Modifier
-                .padding(horizontal = ThemeSpace.group, vertical = ThemeSpace.inline)
-                .semantics { heading() },
-    )
-    ViewSortItems(state = state, close = close)
-    HorizontalDivider(modifier = Modifier.padding(vertical = ThemeSpace.related))
+    if (state.mode.sortable) {
+        Text(
+            text = stringResource(R.string.sort_by),
+            style = ThemeText.detail.style,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier =
+                Modifier
+                    .padding(horizontal = ThemeSpace.group, vertical = ThemeSpace.inline)
+                    .semantics { heading() },
+        )
+        ViewSortItems(state = state, close = close)
+        HorizontalDivider(modifier = Modifier.padding(vertical = ThemeSpace.related))
+    }
     DropdownMenuItem(
         text = { Text(stringResource(R.string.shuffle_library)) },
         onClick = {
@@ -199,6 +201,9 @@ private fun ViewSortItems(
                 },
             )
         }
+
+        // The playlists have one order, by name, and offer no sort.
+        LibraryBrowserMode.PLAYLISTS -> {}
     }
 }
 

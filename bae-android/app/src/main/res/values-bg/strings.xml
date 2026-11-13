@@ -89,6 +89,16 @@
     <string name="library_switch_view">Смяна на изгледа</string>
     <string name="more">Още</string>
     <string name="library_empty_artists">Няма изпълнители</string>
+    <string name="library_mode_playlists">Плейлисти</string>
+    <string name="library_empty_playlists">Все още няма плейлисти</string>
+    <string name="library_empty_playlists_without_profile">Плейлистите се показват, след като имате профил</string>
+    <string name="playlist_new">Нов плейлист</string>
+    <string name="playlist_name">Име</string>
+    <string name="playlist_sharing_private">Само аз</string>
+    <string name="playlist_sharing_household">Всички</string>
+    <string name="playlist_sharing_private_note">Само вие виждате този плейлист.</string>
+    <string name="playlist_sharing_household_note">Всички в библиотеката виждат този плейлист и могат да го пускат. Само вие можете да го променяте.</string>
+    <string name="playlist_create">Създай</string>
     <plurals name="album_count">
         <item quantity="one">%1$d албум</item>
         <item quantity="other">%1$d албума</item>

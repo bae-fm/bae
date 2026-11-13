@@ -93,6 +93,16 @@
     <string name="library_switch_view">Nézet váltása</string>
     <string name="more">Továbbiak</string>
     <string name="library_empty_artists">Nincs előadó</string>
+    <string name="library_mode_playlists">Lejátszási listák</string>
+    <string name="library_empty_playlists">Még nincs lejátszási lista</string>
+    <string name="library_empty_playlists_without_profile">A lejátszási listák akkor jelennek meg, ha van profilod</string>
+    <string name="playlist_new">Új lejátszási lista</string>
+    <string name="playlist_name">Név</string>
+    <string name="playlist_sharing_private">Csak én</string>
+    <string name="playlist_sharing_household">Mindenki</string>
+    <string name="playlist_sharing_private_note">Ezt a lejátszási listát csak te látod.</string>
+    <string name="playlist_sharing_household_note">A könyvtárban mindenki látja ezt a lejátszási listát, és le is játszhatja. Csak te módosíthatod.</string>
+    <string name="playlist_create">Létrehozás</string>
     <plurals name="album_count">
         <item quantity="one">%1$d album</item>
         <item quantity="other">%1$d album</item>

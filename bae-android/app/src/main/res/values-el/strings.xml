@@ -93,6 +93,16 @@
     <string name="library_switch_view">Αλλαγή προβολής</string>
     <string name="more">Περισσότερα</string>
     <string name="library_empty_artists">Κανένας καλλιτέχνης</string>
+    <string name="library_mode_playlists">Λίστες αναπαραγωγής</string>
+    <string name="library_empty_playlists">Καμία λίστα αναπαραγωγής ακόμη</string>
+    <string name="library_empty_playlists_without_profile">Οι λίστες αναπαραγωγής εμφανίζονται μόλις αποκτήσετε προφίλ</string>
+    <string name="playlist_new">Νέα λίστα αναπαραγωγής</string>
+    <string name="playlist_name">Όνομα</string>
+    <string name="playlist_sharing_private">Μόνο εγώ</string>
+    <string name="playlist_sharing_household">Όλοι</string>
+    <string name="playlist_sharing_private_note">Μόνο εσείς βλέπετε αυτή τη λίστα αναπαραγωγής.</string>
+    <string name="playlist_sharing_household_note">Όλοι στη βιβλιοθήκη βλέπουν αυτή τη λίστα αναπαραγωγής και μπορούν να την αναπαράγουν. Μόνο εσείς μπορείτε να την αλλάξετε.</string>
+    <string name="playlist_create">Δημιουργία</string>
     <plurals name="album_count">
         <item quantity="one">%1$d άλμπουμ</item>
         <item quantity="other">%1$d άλμπουμ</item>

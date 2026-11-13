@@ -119,6 +119,16 @@
     <string name="library_switch_view">Switch view</string>
     <string name="more">More</string>
     <string name="library_empty_artists">No artists</string>
+    <string name="library_mode_playlists">Playlists</string>
+    <string name="library_empty_playlists">No playlists yet</string>
+    <string name="library_empty_playlists_without_profile">Playlists appear once you have a profile</string>
+    <string name="playlist_new">New playlist</string>
+    <string name="playlist_name">Name</string>
+    <string name="playlist_sharing_private">Only me</string>
+    <string name="playlist_sharing_household">Everyone</string>
+    <string name="playlist_sharing_private_note">Only you see this playlist.</string>
+    <string name="playlist_sharing_household_note">Everyone in the library sees this playlist and can play it. Only you can change it.</string>
+    <string name="playlist_create">Create</string>
     <plurals name="album_count">
         <item quantity="one">%1$d album</item>
         <item quantity="other">%1$d albums</item>
